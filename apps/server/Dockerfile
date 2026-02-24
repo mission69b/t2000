@@ -6,7 +6,6 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/server/package.json apps/server/
 COPY packages/sdk/package.json packages/sdk/
-COPY apps/server/prisma apps/server/prisma/
 
 RUN pnpm install --frozen-lockfile
 
@@ -24,12 +23,13 @@ RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists
 
 WORKDIR /app
 
-COPY --from=builder /app/apps/server/dist ./dist
-COPY --from=builder /app/apps/server/prisma ./prisma
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/prisma ./apps/server/prisma
+COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
 
 ENV NODE_ENV=production
 EXPOSE 3000
-
+WORKDIR /app/apps/server
 CMD ["node", "dist/index.js"]

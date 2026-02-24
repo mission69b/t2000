@@ -1,27 +1,32 @@
-FROM node:22-slim AS base
-RUN corepack enable
-WORKDIR /app
+FROM node:22-slim AS builder
 
-FROM base AS deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY apps/server/package.json apps/server/package.json
-COPY packages/sdk/package.json packages/sdk/package.json
+RUN corepack enable
+
+WORKDIR /app
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/server/package.json apps/server/
+COPY packages/sdk/package.json packages/sdk/
+
 RUN pnpm install --frozen-lockfile
 
-FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
-COPY --from=deps /app/packages/sdk/node_modules ./packages/sdk/node_modules
-COPY . .
+COPY packages/sdk packages/sdk/
+COPY apps/server apps/server/
+COPY tsconfig.base.json ./
+
 RUN pnpm --filter @t2000/sdk build
-RUN cd apps/server && npx prisma generate
+RUN pnpm --filter @t2000/server db:generate
 RUN pnpm --filter @t2000/server build
 
-FROM base AS runner
-COPY --from=build /app/apps/server/dist ./dist
-COPY --from=build /app/apps/server/node_modules ./node_modules
-COPY --from=build /app/apps/server/prisma ./prisma
-COPY --from=build /app/node_modules/.pnpm node_modules/.pnpm
+FROM node:22-slim AS runner
+
+WORKDIR /app
+
+COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/prisma ./apps/server/prisma
+COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
 
 ENV NODE_ENV=production
+WORKDIR /app/apps/server
 CMD ["node", "dist/indexer/index.js"]
