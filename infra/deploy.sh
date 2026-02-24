@@ -30,7 +30,7 @@ fi
 
 REPO="t2000-$SERVICE"
 DOCKERFILE="apps/server/Dockerfile"
-TASK_DEF_FILE="infra/task-definition.json"
+TASK_DEF_FILE="infra/server-task-definition.json"
 
 if [ "$SERVICE" = "indexer" ]; then
   DOCKERFILE="infra/indexer.Dockerfile"
