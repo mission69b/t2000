@@ -52,3 +52,16 @@ export {
   getAddress,
 } from './wallet/keyManager.js';
 export { solveHashcash } from './utils/hashcash.js';
+export {
+  executeWithGas,
+  shouldAutoTopUp,
+  executeAutoTopUp,
+  getGasStatus,
+} from './gas/index.js';
+export type {
+  GasExecutionResult,
+  AutoTopUpResult,
+  GasSponsorResponse,
+  GasStatusResponse,
+  GasRequestType,
+} from './gas/index.js';

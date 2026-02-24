@@ -16,6 +16,7 @@ import { queryBalance } from './wallet/balance.js';
 import { queryHistory } from './wallet/history.js';
 import * as suilend from './protocols/suilend.js';
 import { solveHashcash } from './utils/hashcash.js';
+import { shouldAutoTopUp, executeAutoTopUp } from './gas/autoTopUp.js';
 import type {
   T2000Options,
   BalanceResponse,
@@ -41,6 +42,7 @@ interface T2000Events {
   balanceChange: (balance: BalanceResponse) => void;
   healthWarning: (hf: number) => void;
   healthCritical: (hf: number) => void;
+  gasAutoTopUp: (result: { usdcSpent: number; suiReceived: number }) => void;
   error: (error: T2000Error) => void;
 }
 
@@ -48,6 +50,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly keypair: Ed25519Keypair;
   private readonly client: SuiClient;
   private readonly _address: string;
+  private _lastGasMethod: GasMethod = 'self-funded';
 
   private constructor(keypair: Ed25519Keypair, client: SuiClient) {
     super();
@@ -112,6 +115,30 @@ export class T2000 extends EventEmitter<T2000Events> {
     return { agent, address, sponsored };
   }
 
+  // -- Gas --
+
+  /**
+   * Ensure the agent has enough SUI for gas.
+   * If SUI is low and USDC is available, auto-swaps $1 USDC → SUI.
+   */
+  private async ensureGas(): Promise<void> {
+    this._lastGasMethod = 'self-funded';
+
+    const needsTopUp = await shouldAutoTopUp(this.client, this._address);
+    if (!needsTopUp) return;
+
+    try {
+      const result = await executeAutoTopUp(this.client, this.keypair);
+      this._lastGasMethod = 'auto-topup';
+      this.emit('gasAutoTopUp', {
+        usdcSpent: result.usdcSpent,
+        suiReceived: result.suiReceived,
+      });
+    } catch {
+      // Auto-topup failed — operation will proceed with whatever SUI is available
+    }
+  }
+
   // -- Wallet --
 
   address(): string {
@@ -124,7 +151,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
     }
 
-    const gasMethod: GasMethod = 'self-funded';
+    await this.ensureGas();
 
     const result = await buildAndExecuteSend({
       client: this.client,
@@ -144,7 +171,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       to: params.to,
       gasCost: result.gasCost,
       gasCostUnit: 'SUI',
-      gasMethod,
+      gasMethod: this._lastGasMethod,
       balance,
     };
   }
@@ -210,7 +237,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     } else {
       amount = params.amount;
     }
-    return suilend.save(this.client, this.keypair, amount);
+    await this.ensureGas();
+    const result = await suilend.save(this.client, this.keypair, amount);
+    return { ...result, gasMethod: this._lastGasMethod };
   }
 
   async withdraw(params: { amount: number | 'all'; asset?: string }): Promise<WithdrawResult> {
@@ -224,7 +253,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     } else {
       amount = params.amount;
     }
-    return suilend.withdraw(this.client, this.keypair, amount);
+    await this.ensureGas();
+    const result = await suilend.withdraw(this.client, this.keypair, amount);
+    return { ...result, gasMethod: this._lastGasMethod };
   }
 
   async maxWithdraw(): Promise<MaxWithdrawResult> {
@@ -241,7 +272,9 @@ export class T2000 extends EventEmitter<T2000Events> {
         currentHF: maxResult.currentHF,
       });
     }
-    return suilend.borrow(this.client, this.keypair, params.amount);
+    await this.ensureGas();
+    const result = await suilend.borrow(this.client, this.keypair, params.amount);
+    return { ...result, gasMethod: this._lastGasMethod };
   }
 
   async repay(params: { amount: number | 'all'; asset?: string }): Promise<RepayResult> {
@@ -255,7 +288,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     } else {
       amount = params.amount;
     }
-    return suilend.repay(this.client, this.keypair, amount);
+    await this.ensureGas();
+    const result = await suilend.repay(this.client, this.keypair, amount);
+    return { ...result, gasMethod: this._lastGasMethod };
   }
 
   async maxBorrow(): Promise<MaxBorrowResult> {

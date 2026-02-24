@@ -1,36 +1,126 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# t2000
 
-## Getting Started
+Agentic DeFi SDK for Sui — wallet management, savings (Suilend), and borrowing with a CLI and TypeScript API.
 
-First, run the development server:
+## Monorepo Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+packages/
+  sdk/          @t2000/sdk        Core SDK (wallet, Suilend, hashcash)
+  cli/          @t2000/cli        CLI interface
+  contracts/    Move contracts    On-chain modules (deployed to mainnet)
+apps/
+  server/       @t2000/server     Hono API (sponsor, health)
+  web/          Next.js app       Dashboard (WIP)
+scripts/
+  integration-test.ts             Mainnet integration test
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+pnpm build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy the environment template and fill in your values:
 
-## Learn More
+```bash
+cp .env.example .env.local
+```
 
-To learn more about Next.js, take a look at the following resources:
+Required variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | NeonDB connection string |
+| `T2000_PASSPHRASE` | Sui private key (`suiprivkey1q...`) for test wallet |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Development
 
-## Deploy on Vercel
+```bash
+pnpm dev          # Start all dev servers
+pnpm build        # Build all packages
+pnpm lint         # Lint all packages
+pnpm typecheck    # TypeScript check all packages
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### SDK Tests
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm --filter @t2000/sdk test
+```
+
+## Integration Test
+
+The integration test runs a full save → earn → withdraw roundtrip against Suilend on **mainnet** using real funds. It verifies:
+
+1. Wallet loading from private key
+2. Balance check (USDC + SUI + savings)
+3. Suilend APY rates
+4. Current positions
+5. Save $1 USDC to Suilend
+6. Position & health factor after deposit
+7. Withdraw all USDC from Suilend
+8. Final balance reconciliation
+
+### Prerequisites
+
+- A funded wallet with at least **$2 USDC** and **0.05 SUI** for gas
+- `T2000_PASSPHRASE` set in `.env.local` (the `suiprivkey1q...` for that wallet)
+
+### Running
+
+```bash
+export $(grep -v '^#' .env.local | xargs)
+pnpm --filter @t2000/server exec tsx ../../scripts/integration-test.ts
+```
+
+### Expected Output
+
+```
+=== t2000 Integration Test (mainnet) ===
+
+1. Loading wallet...
+   Address: 0x4e12...480f
+
+2. Checking balance...
+   Available: $72.31 USDC
+   Savings:   $0.00 USDC
+   Gas:       104.83 SUI (~$366.92)
+
+3. Fetching Suilend rates...
+   Save APY:   4.50%
+   Borrow APY: 6.00%
+
+5. Saving $1 USDC to Suilend...
+   ✓ Saved $1.00 USDC
+
+8. Withdrawing all USDC from Suilend...
+   ✓ Withdrew $1.00 USDC
+
+=== Integration test complete ===
+```
+
+## CLI
+
+```bash
+# Initialize a new agent wallet
+pnpm --filter @t2000/cli exec t2000 init
+
+# Check balance
+pnpm --filter @t2000/cli exec t2000 balance
+
+# Save USDC to Suilend
+pnpm --filter @t2000/cli exec t2000 save 10      # save $10
+pnpm --filter @t2000/cli exec t2000 save all     # save all available
+
+# Withdraw from Suilend
+pnpm --filter @t2000/cli exec t2000 withdraw 5   # withdraw $5
+pnpm --filter @t2000/cli exec t2000 withdraw all  # withdraw everything
+
+# Check positions & health
+pnpm --filter @t2000/cli exec t2000 positions
+pnpm --filter @t2000/cli exec t2000 health
+pnpm --filter @t2000/cli exec t2000 rates
+```

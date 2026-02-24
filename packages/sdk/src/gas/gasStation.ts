@@ -1,0 +1,92 @@
+import { API_BASE_URL } from '../constants.js';
+import { T2000Error } from '../errors.js';
+
+export type GasRequestType = 'bootstrap' | 'auto-topup' | 'fallback';
+
+export interface GasSponsorResponse {
+  txBytes: string;
+  sponsorSignature: string;
+  gasEstimateUsd: number;
+  type: GasRequestType;
+}
+
+export interface GasStatusResponse {
+  circuitBreaker: boolean;
+  suiPrice: number;
+  bootstrapUsed?: number;
+  bootstrapRemaining?: number;
+}
+
+export async function requestGasSponsorship(
+  txBytesBase64: string,
+  sender: string,
+  type?: GasRequestType,
+): Promise<GasSponsorResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/gas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ txBytes: txBytesBase64, sender, type }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    const errorCode = data.error as string;
+
+    if (errorCode === 'CIRCUIT_BREAKER' || errorCode === 'POOL_DEPLETED') {
+      throw new T2000Error(
+        'GAS_STATION_UNAVAILABLE',
+        data.message ?? 'Gas station temporarily unavailable',
+        { retryAfter: data.retryAfter },
+        true,
+      );
+    }
+    if (errorCode === 'GAS_FEE_EXCEEDED') {
+      throw new T2000Error(
+        'GAS_FEE_EXCEEDED',
+        data.message ?? 'Gas fee exceeds ceiling',
+        { retryAfter: data.retryAfter },
+        true,
+      );
+    }
+
+    throw new T2000Error(
+      'GAS_STATION_UNAVAILABLE',
+      data.message ?? 'Gas sponsorship request failed',
+      undefined,
+      true,
+    );
+  }
+
+  return data as GasSponsorResponse;
+}
+
+export async function reportGasUsage(
+  sender: string,
+  txDigest: string,
+  gasCostSui: number,
+  usdcCharged: number,
+  type: GasRequestType,
+): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/api/gas/report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sender, txDigest, gasCostSui, usdcCharged, type }),
+    });
+  } catch {
+    // Non-critical — best-effort reporting
+  }
+}
+
+export async function getGasStatus(address?: string): Promise<GasStatusResponse> {
+  const url = new URL(`${API_BASE_URL}/api/gas/status`);
+  if (address) url.searchParams.set('address', address);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    throw new T2000Error('GAS_STATION_UNAVAILABLE', 'Failed to fetch gas status', undefined, true);
+  }
+
+  return (await res.json()) as GasStatusResponse;
+}

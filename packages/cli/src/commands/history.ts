@@ -28,7 +28,7 @@ export function registerHistory(program: Command) {
         } else {
           for (const tx of txns) {
             const time = tx.timestamp ? new Date(tx.timestamp).toLocaleString() : 'unknown';
-            const gas = tx.gasCost ? ` (gas: ${tx.gasCost.toFixed(4)} SUI)` : '';
+            const gas = tx.gasMethod ? ` (${tx.gasMethod})` : '';
             console.log(`  ${truncateAddress(tx.digest)}  ${tx.action}${gas}  ${time}`);
           }
         }
