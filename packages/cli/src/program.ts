@@ -16,6 +16,10 @@ import { registerHealth } from './commands/health.js';
 import { registerRates } from './commands/rates.js';
 import { registerPositions } from './commands/positions.js';
 import { registerSwap } from './commands/swap.js';
+import { registerEarnings } from './commands/earnings.js';
+import { registerFundStatus } from './commands/fundStatus.js';
+import { registerConfig } from './commands/config.js';
+import { registerServe } from './commands/serve.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -47,6 +51,10 @@ export function createProgram(): Command {
   registerRates(program);
   registerPositions(program);
   registerSwap(program);
+  registerEarnings(program);
+  registerFundStatus(program);
+  registerConfig(program);
+  registerServe(program);
 
   return program;
 }

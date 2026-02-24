@@ -17,6 +17,7 @@ import { queryHistory } from './wallet/history.js';
 import * as suilend from './protocols/suilend.js';
 import * as cetus from './protocols/cetus.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
+import * as yieldTracker from './protocols/yieldTracker.js';
 import { solveHashcash } from './utils/hashcash.js';
 import { shouldAutoTopUp, executeAutoTopUp } from './gas/autoTopUp.js';
 import type {
@@ -36,16 +37,20 @@ import type {
   TransactionRecord,
   DepositInfo,
   GasMethod,
+  EarningsResult,
+  FundStatusResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
 import { truncateAddress } from './utils/sui.js';
 
 interface T2000Events {
-  balanceChange: (balance: BalanceResponse) => void;
-  healthWarning: (hf: number) => void;
-  healthCritical: (hf: number) => void;
+  balanceChange: (event: { asset: string; previous: number; current: number; cause: string; tx?: string }) => void;
+  healthWarning: (event: { healthFactor: number; threshold: number; severity: 'warning' }) => void;
+  healthCritical: (event: { healthFactor: number; threshold: number; severity: 'critical' }) => void;
+  yield: (event: { earned: number; total: number; apy: number; timestamp: number }) => void;
   gasAutoTopUp: (result: { usdcSpent: number; suiReceived: number }) => void;
+  gasStationFallback: (event: { reason: string; method: string; suiUsed: number }) => void;
   error: (error: T2000Error) => void;
 }
 
@@ -138,7 +143,11 @@ export class T2000 extends EventEmitter<T2000Events> {
         suiReceived: result.suiReceived,
       });
     } catch {
-      // Auto-topup failed — operation will proceed with whatever SUI is available
+      this.emit('gasStationFallback', {
+        reason: 'auto-topup failed',
+        method: 'self-funded',
+        suiUsed: 0,
+      });
     }
   }
 
@@ -165,7 +174,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     });
 
     const balance = await this.balance();
-    this.emit('balanceChange', balance);
+
+    this.emitBalanceChange(asset, params.amount, 'send', result.digest);
 
     return {
       success: true,
@@ -247,6 +257,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     reportFee(this._address, 'save', fee.amount, fee.rate, result.tx);
 
+    this.emitBalanceChange('USDC', amount, 'save', result.tx);
+
     return { ...result, fee: fee.amount, gasMethod: this._lastGasMethod };
   }
 
@@ -280,6 +292,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
     await this.ensureGas();
     const result = await suilend.withdraw(this.client, this.keypair, amount);
+
+    this.emitBalanceChange('USDC', amount, 'withdraw', result.tx);
+
     return { ...result, gasMethod: this._lastGasMethod };
   }
 
@@ -304,6 +319,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     reportFee(this._address, 'borrow', fee.amount, fee.rate, result.tx);
 
+    this.emitBalanceChange('USDC', params.amount, 'borrow', result.tx);
+
     return { ...result, fee: fee.amount, gasMethod: this._lastGasMethod };
   }
 
@@ -320,6 +337,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
     await this.ensureGas();
     const result = await suilend.repay(this.client, this.keypair, amount);
+
+    this.emitBalanceChange('USDC', amount, 'repay', result.tx);
+
     return { ...result, gasMethod: this._lastGasMethod };
   }
 
@@ -331,9 +351,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     const hf = await suilend.getHealthFactor(this.client, this.keypair);
 
     if (hf.healthFactor < 1.2) {
-      this.emit('healthCritical', hf.healthFactor);
+      this.emit('healthCritical', { healthFactor: hf.healthFactor, threshold: 1.5, severity: 'critical' });
     } else if (hf.healthFactor < 2.0) {
-      this.emit('healthWarning', hf.healthFactor);
+      this.emit('healthWarning', { healthFactor: hf.healthFactor, threshold: 2.0, severity: 'warning' });
     }
 
     return hf;
@@ -366,6 +386,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     });
 
     reportFee(this._address, 'swap', fee.amount, fee.rate, result.digest);
+
+    this.emitBalanceChange(result.fromAsset, result.fromAmount, 'swap', result.digest);
 
     return {
       success: true,
@@ -402,6 +424,31 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async rates(): Promise<RatesResult> {
     return suilend.getRates(this.client);
+  }
+
+  async earnings(): Promise<EarningsResult> {
+    const result = await yieldTracker.getEarnings(this.client, this.keypair);
+
+    if (result.totalYieldEarned > 0) {
+      this.emit('yield', {
+        earned: result.dailyEarning,
+        total: result.totalYieldEarned,
+        apy: result.currentApy / 100,
+        timestamp: Date.now(),
+      });
+    }
+
+    return result;
+  }
+
+  async fundStatus(): Promise<FundStatusResult> {
+    return yieldTracker.getFundStatus(this.client, this.keypair);
+  }
+
+  // -- Helpers --
+
+  private emitBalanceChange(asset: string, amount: number, cause: string, tx?: string): void {
+    this.emit('balanceChange', { asset, previous: 0, current: 0, cause, tx });
   }
 }
 

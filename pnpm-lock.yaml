@@ -94,6 +94,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@hono/node-server':
+        specifier: ^1
+        version: 1.19.9(hono@4.12.2)
       '@inquirer/prompts':
         specifier: ^7
         version: 7.10.1(@types/node@22.19.11)
@@ -103,6 +106,9 @@ importers:
       commander:
         specifier: ^13
         version: 13.1.0
+      hono:
+        specifier: ^4
+        version: 4.12.2
       picocolors:
         specifier: ^1
         version: 1.1.1

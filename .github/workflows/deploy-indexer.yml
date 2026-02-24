@@ -1,0 +1,124 @@
+name: Deploy Indexer
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-only:
+        description: "Build & push only — skip ECS deploy"
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "apps/server/src/indexer/**"
+      - "apps/server/src/db/**"
+      - "apps/server/prisma/**"
+      - "infra/indexer*"
+
+concurrency:
+  group: deploy-indexer
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: mission69b-mainnet
+
+jobs:
+  check:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/server typecheck
+
+  build:
+    name: Build & Push
+    needs: [check]
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set image tag
+        id: tag
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/indexer.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/t2000-indexer:${{ steps.tag.outputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/t2000-indexer:latest
+          cache-from: type=gha,scope=t2000-indexer
+          cache-to: type=gha,mode=max,scope=t2000-indexer
+          provenance: false
+
+  deploy:
+    name: Deploy to ECS
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.build-only == true) }}
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Register task definition
+        id: taskdef
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_BASE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+          ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/mission69b-mainnet-ecs-execution-role"
+          sed \
+            -e "s|\${AWS_ACCOUNT_ID}|$ACCOUNT_ID|g" \
+            -e "s|\${AWS_REGION}|$AWS_REGION|g" \
+            -e "s|\${ECR_BASE}|$ECR_BASE|g" \
+            -e "s|\${EXEC_ROLE_ARN}|$ROLE_ARN|g" \
+            -e "s|\${LOG_GROUP}|/ecs/mission69b-mainnet|g" \
+            infra/indexer-task-definition.json > /tmp/task-def.json
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/task-def.json \
+            --query "taskDefinition.taskDefinitionArn" --output text)
+          echo "arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
+      - name: Deploy to ECS
+        run: |
+          SERVICE="t2000-indexer"
+          VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text)
+          SUBNETS=$(aws ec2 describe-subnets --filters "Name=defaultForAz,Values=true" "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].SubnetId" --output json | jq -r 'join(",")')
+          SG_ID=$(aws ec2 describe-security-groups --filters "Name=tag:Name,Values=mission69b-mainnet-ecs-sg" "Name=vpc-id,Values=$VPC_ID" --query "SecurityGroups[0].GroupId" --output text)
+          ACTIVE=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services "$SERVICE" --query "services[?status=='ACTIVE'] | length(@)" --output text 2>/dev/null || echo "0")
+          if [ "$ACTIVE" -gt 0 ]; then
+            aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service "$SERVICE" --task-definition "${{ steps.taskdef.outputs.arn }}" --force-new-deployment --desired-count 1 > /dev/null
+          else
+            aws ecs create-service --cluster ${{ env.ECS_CLUSTER }} --service-name "$SERVICE" --task-definition "${{ steps.taskdef.outputs.arn }}" --desired-count 1 --capacity-provider-strategy "capacityProvider=FARGATE,weight=1" --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG_ID],assignPublicIp=ENABLED}" --deployment-configuration "minimumHealthyPercent=0,maximumPercent=100" > /dev/null
+          fi
+          echo "Deployed $SERVICE"
+      - name: Wait for stability
+        run: |
+          aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services t2000-indexer \
+            && echo "Stable" || echo "Check ECS console"

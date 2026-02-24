@@ -1,0 +1,149 @@
+#!/bin/bash
+# ==============================================================================
+# t2000 — One-Shot AWS Infrastructure Setup
+# ==============================================================================
+# Provisions: default VPC networking, ECR repos, ECS cluster, IAM role,
+# CloudWatch log group. Idempotent — safe to re-run.
+#
+# Usage: ./infra/setup.sh
+# ==============================================================================
+
+set -euo pipefail
+
+AWS_REGION="${AWS_REGION:-us-east-1}"
+CLUSTER_NAME="mission69b-mainnet"
+LOG_GROUP="/ecs/mission69b-mainnet"
+EXEC_ROLE_NAME="mission69b-mainnet-ecs-execution-role"
+SG_TAG_NAME="mission69b-mainnet-ecs-sg"
+SERVICES=("t2000-server" "t2000-indexer")
+
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+ECR_BASE="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+echo "============================================"
+echo "  t2000 — AWS Infrastructure Setup"
+echo "  Cluster: $CLUSTER_NAME"
+echo "  Region:  $AWS_REGION"
+echo "  Account: $AWS_ACCOUNT_ID"
+echo "============================================"
+echo ""
+
+# 1. Networking
+echo "--- Step 1: Networking ---"
+VPC_ID=$(aws ec2 describe-vpcs \
+  --filters "Name=isDefault,Values=true" \
+  --query "Vpcs[0].VpcId" --output text \
+  --region "$AWS_REGION")
+
+if [ -z "$VPC_ID" ] || [ "$VPC_ID" = "None" ]; then
+  echo "  No default VPC in $AWS_REGION"
+  exit 1
+fi
+echo "  VPC: $VPC_ID"
+
+SUBNET_A=$(aws ec2 describe-subnets \
+  --filters "Name=defaultForAz,Values=true" "Name=vpc-id,Values=$VPC_ID" \
+  --query "Subnets[0].SubnetId" --output text --region "$AWS_REGION")
+SUBNET_B=$(aws ec2 describe-subnets \
+  --filters "Name=defaultForAz,Values=true" "Name=vpc-id,Values=$VPC_ID" \
+  --query "Subnets[1].SubnetId" --output text --region "$AWS_REGION")
+echo "  Subnets: $SUBNET_A, $SUBNET_B"
+
+EXISTING_SG=$(aws ec2 describe-security-groups \
+  --filters "Name=tag:Name,Values=$SG_TAG_NAME" "Name=vpc-id,Values=$VPC_ID" \
+  --query "SecurityGroups[0].GroupId" --output text \
+  --region "$AWS_REGION" 2>/dev/null || echo "None")
+
+if [ "$EXISTING_SG" != "None" ] && [ "$EXISTING_SG" != "null" ]; then
+  SG_ID="$EXISTING_SG"
+  echo "  SG exists: $SG_ID"
+else
+  SG_ID=$(aws ec2 create-security-group \
+    --group-name "$SG_TAG_NAME" \
+    --description "t2000 ECS Fargate - outbound only" \
+    --vpc-id "$VPC_ID" \
+    --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=$SG_TAG_NAME}]" \
+    --query "GroupId" --output text --region "$AWS_REGION")
+  aws ec2 revoke-security-group-ingress --group-id "$SG_ID" --protocol all --source-group "$SG_ID" --region "$AWS_REGION" > /dev/null 2>&1 || true
+  echo "  Created SG: $SG_ID"
+fi
+echo ""
+
+# 2. ECR Repositories
+echo "--- Step 2: ECR Repositories ---"
+LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 5","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":5},"action":{"type":"expire"}}]}'
+
+for svc in "${SERVICES[@]}"; do
+  aws ecr create-repository \
+    --repository-name "$svc" \
+    --region "$AWS_REGION" \
+    --image-scanning-configuration scanOnPush=true \
+    > /dev/null 2>&1 && echo "  Created ECR: $svc" || echo "  ECR $svc exists"
+  aws ecr put-lifecycle-policy \
+    --repository-name "$svc" \
+    --lifecycle-policy-text "$LIFECYCLE_POLICY" \
+    --region "$AWS_REGION" > /dev/null 2>&1 || true
+done
+echo ""
+
+# 3. ECS Cluster + CloudWatch
+echo "--- Step 3: ECS Cluster + CloudWatch ---"
+aws ecs create-cluster --cluster-name "$CLUSTER_NAME" --region "$AWS_REGION" \
+  2>/dev/null > /dev/null && echo "  Created cluster: $CLUSTER_NAME" || echo "  Cluster exists"
+
+aws logs create-log-group --log-group-name "$LOG_GROUP" --region "$AWS_REGION" \
+  2>/dev/null && echo "  Created log group: $LOG_GROUP" || echo "  Log group exists"
+
+aws logs put-retention-policy --log-group-name "$LOG_GROUP" --retention-in-days 30 --region "$AWS_REGION"
+echo "  Log retention: 30 days"
+echo ""
+
+# 4. IAM Execution Role
+echo "--- Step 4: IAM Execution Role ---"
+aws iam create-role \
+  --role-name "$EXEC_ROLE_NAME" \
+  --assume-role-policy-document '{
+    "Version":"2012-10-17",
+    "Statement":[{"Effect":"Allow","Principal":{"Service":"ecs-tasks.amazonaws.com"},"Action":"sts:AssumeRole"}]
+  }' 2>/dev/null > /dev/null && echo "  Created role: $EXEC_ROLE_NAME" || echo "  Role exists"
+
+aws iam attach-role-policy \
+  --role-name "$EXEC_ROLE_NAME" \
+  --policy-arn "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy" 2>/dev/null || true
+
+aws iam put-role-policy \
+  --role-name "$EXEC_ROLE_NAME" \
+  --policy-name "secrets-access" \
+  --policy-document '{
+    "Version":"2012-10-17",
+    "Statement":[{"Effect":"Allow","Action":["secretsmanager:GetSecretValue"],"Resource":"arn:aws:secretsmanager:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':secret:t2000/*"}]
+  }' 2>/dev/null || true
+echo "  Policies attached"
+echo ""
+
+# 5. Save resource IDs
+ENV_FILE="$(dirname "$0")/.env.infra"
+cat > "$ENV_FILE" <<EOF
+# Generated by setup.sh — $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+AWS_REGION=$AWS_REGION
+AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID
+VPC_ID=$VPC_ID
+SUBNET_A=$SUBNET_A
+SUBNET_B=$SUBNET_B
+SECURITY_GROUP_ID=$SG_ID
+ECS_CLUSTER=$CLUSTER_NAME
+ECR_BASE=$ECR_BASE
+EXEC_ROLE_ARN=arn:aws:iam::$AWS_ACCOUNT_ID:role/$EXEC_ROLE_NAME
+LOG_GROUP=$LOG_GROUP
+EOF
+
+echo "  Saved to $ENV_FILE"
+echo ""
+echo "============================================"
+echo "  Setup Complete"
+echo ""
+echo "  Next: store secrets in AWS Secrets Manager:"
+echo "    aws secretsmanager create-secret --name t2000/mainnet/database-url --secret-string 'postgres://...'"
+echo "    aws secretsmanager create-secret --name t2000/mainnet/sponsor-key --secret-string 'suiprivkey...'"
+echo "    aws secretsmanager create-secret --name t2000/mainnet/gas-station-key --secret-string 'suiprivkey...'"
+echo "============================================"

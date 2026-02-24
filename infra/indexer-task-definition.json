@@ -1,0 +1,34 @@
+{
+  "family": "t2000-indexer",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "${EXEC_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "t2000-indexer",
+      "image": "${ECR_BASE}/t2000-indexer:latest",
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "${LOG_GROUP}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "t2000-indexer"
+        }
+      },
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "SUI_RPC_URL", "value": "https://fullnode.mainnet.sui.io:443" },
+        { "name": "INDEXER_POLL_INTERVAL_MS", "value": "2000" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/database-url"
+        }
+      ]
+    }
+  ]
+}

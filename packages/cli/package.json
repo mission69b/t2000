@@ -6,7 +6,9 @@
   "bin": {
     "t2000": "./dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -15,16 +17,18 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@hono/node-server": "^1",
+    "@inquirer/prompts": "^7",
     "@t2000/sdk": "workspace:*",
     "commander": "^13",
-    "@inquirer/prompts": "^7",
+    "hono": "^4",
     "picocolors": "^1"
   },
   "devDependencies": {
-    "tsup": "^8",
-    "typescript": "^5",
     "@types/node": "^22",
-    "eslint": "^9"
+    "eslint": "^9",
+    "tsup": "^8",
+    "typescript": "^5"
   },
   "license": "MIT"
 }
