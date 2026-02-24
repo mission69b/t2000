@@ -19,8 +19,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/x402 build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/sdk typecheck
+      - run: pnpm --filter @t2000/x402 typecheck
       - run: pnpm --filter @t2000/server typecheck
       - run: pnpm --filter @t2000/cli typecheck
 
@@ -35,4 +37,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/x402 build
+      - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/sdk test
+      - run: pnpm --filter @t2000/x402 test
+      - run: pnpm --filter @t2000/server test
