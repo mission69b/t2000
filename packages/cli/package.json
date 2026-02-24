@@ -1,0 +1,30 @@
+{
+  "name": "@t2000/cli",
+  "version": "0.1.0",
+  "description": "CLI for t2000 — the first wallet for AI agents",
+  "type": "module",
+  "bin": {
+    "t2000": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@t2000/sdk": "workspace:*",
+    "commander": "^13",
+    "@inquirer/prompts": "^7",
+    "picocolors": "^1"
+  },
+  "devDependencies": {
+    "tsup": "^8",
+    "typescript": "^5",
+    "@types/node": "^22",
+    "eslint": "^9"
+  },
+  "license": "MIT"
+}

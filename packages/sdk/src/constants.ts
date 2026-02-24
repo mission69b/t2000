@@ -1,0 +1,45 @@
+export const MIST_PER_SUI = 1_000_000_000n;
+export const SUI_DECIMALS = 9;
+export const USDC_DECIMALS = 6;
+
+export const BPS_DENOMINATOR = 10_000n;
+export const PRECISION = 1_000_000_000_000_000_000n;
+
+export const MIN_DEPOSIT = 1_000_000n; // 1 USDC (6 decimals)
+export const GAS_RESERVE_USDC = 1_000_000n; // $1 USDC reserved for gas
+export const AUTO_TOPUP_THRESHOLD = 50_000_000n; // 0.05 SUI
+export const AUTO_TOPUP_AMOUNT = 1_000_000n; // $1 USDC worth of SUI
+
+export const SAVE_FEE_BPS = 10n; // 0.1%
+export const SWAP_FEE_BPS = 10n; // 0.1%
+export const BORROW_FEE_BPS = 5n; // 0.05%
+
+export const CLOCK_ID = '0x6';
+
+export const SUPPORTED_ASSETS = {
+  USDC: {
+    type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+    decimals: 6,
+    symbol: 'USDC',
+  },
+  SUI: {
+    type: '0x2::sui::SUI',
+    decimals: 9,
+    symbol: 'SUI',
+  },
+} as const;
+
+export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
+
+export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0x51c44bb2ad3ba608cf9adbc6e37ee67268ef9313a4ff70957d4c6e7955dc7eef';
+export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0xd30408960ac38eced670acc102df9e178b5b46b3a8c0e96a53ec2fd3f39b5936';
+export const T2000_ADMIN_CAP_ID = '0x8f8a1147f9e52738485817ee499736d878546f079fc99d5560cdd570fec7d13e';
+export const T2000_UPGRADE_CAP_ID = '0x9627206ae0265afaae354864116b1cd152cb872ca28dfb4cd8d50ad46f69d7fa';
+export const T2000_TREASURY_ID = process.env.T2000_TREASURY_ID ?? '0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8';
+
+export const DEFAULT_NETWORK = 'mainnet' as const;
+export const DEFAULT_RPC_URL = 'https://fullnode.mainnet.sui.io:443';
+export const DEFAULT_KEY_PATH = '~/.t2000/wallet.key';
+export const DEFAULT_CONFIG_PATH = '~/.t2000/config.json';
+
+export const API_BASE_URL = process.env.T2000_API_URL ?? 'https://api.t2000.ai';

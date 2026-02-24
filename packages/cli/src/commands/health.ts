@@ -1,0 +1,45 @@
+import type { Command } from 'commander';
+import { T2000 } from '@t2000/sdk';
+import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printSuccess, printWarning, printError } from '../output.js';
+
+export function registerHealth(program: Command) {
+  program
+    .command('health')
+    .description('Check savings health factor')
+    .option('--key <path>', 'Key file path')
+    .action(async (opts) => {
+      try {
+        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
+        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+
+        const hf = await agent.healthFactor();
+
+        if (isJsonMode()) {
+          printJson(hf);
+          return;
+        }
+
+        printBlank();
+
+        const hfStr = hf.healthFactor === Infinity ? '∞' : hf.healthFactor.toFixed(2);
+        if (hf.healthFactor >= 2.0) {
+          printSuccess(`Health Factor: ${hfStr} (healthy)`);
+        } else if (hf.healthFactor >= 1.5) {
+          printWarning(`Health Factor: ${hfStr} (moderate)`);
+        } else if (hf.healthFactor >= 1.2) {
+          printWarning(`Health Factor: ${hfStr} (low)`);
+        } else {
+          printError(`Health Factor: ${hfStr} (CRITICAL)`);
+        }
+
+        printBlank();
+        printKeyValue('Supplied', `$${hf.supplied.toFixed(2)} USDC`);
+        printKeyValue('Borrowed', `$${hf.borrowed.toFixed(2)} USDC`);
+        printKeyValue('Max Borrow', `$${hf.maxBorrow.toFixed(2)} USDC`);
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
+}

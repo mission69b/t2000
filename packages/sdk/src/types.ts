@@ -1,0 +1,154 @@
+export interface T2000Options {
+  keyPath?: string;
+  passphrase?: string;
+  network?: 'mainnet' | 'testnet';
+  rpcUrl?: string;
+  sponsored?: boolean;
+  name?: string;
+}
+
+export interface GasReserve {
+  sui: number;
+  usdEquiv: number;
+}
+
+export interface BalanceResponse {
+  available: number;
+  savings: number;
+  gasReserve: GasReserve;
+  total: number;
+  assets: Record<string, number>;
+}
+
+export type GasMethod = 'self-funded' | 'sponsored' | 'auto-topup';
+
+export interface SendResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  to: string;
+  gasCost: number;
+  gasCostUnit: string;
+  gasMethod: GasMethod;
+  balance: BalanceResponse;
+}
+
+export interface SaveResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  apy: number;
+  fee: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface WithdrawResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface BorrowResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  fee: number;
+  healthFactor: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface RepayResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  remainingDebt: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface SwapResult {
+  success: boolean;
+  tx: string;
+  fromAmount: number;
+  fromAsset: string;
+  toAmount: number;
+  toAsset: string;
+  priceImpact: number;
+  fee: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface HealthFactorResult {
+  healthFactor: number;
+  supplied: number;
+  borrowed: number;
+  maxBorrow: number;
+  liquidationThreshold: number;
+}
+
+export interface MaxWithdrawResult {
+  maxAmount: number;
+  healthFactorAfter: number;
+  currentHF: number;
+}
+
+export interface MaxBorrowResult {
+  maxAmount: number;
+  healthFactorAfter: number;
+  currentHF: number;
+}
+
+export interface RatesResult {
+  USDC: {
+    saveApy: number;
+    borrowApy: number;
+  };
+}
+
+export interface PositionEntry {
+  protocol: string;
+  asset: string;
+  type: 'save' | 'borrow';
+  amount: number;
+  apy: number;
+}
+
+export interface PositionsResult {
+  positions: PositionEntry[];
+}
+
+export interface EarningsResult {
+  totalYieldEarned: number;
+  currentApy: number;
+  dailyEarning: number;
+  supplied: number;
+}
+
+export interface FundStatusResult {
+  supplied: number;
+  apy: number;
+  earnedToday: number;
+  earnedAllTime: number;
+  projectedMonthly: number;
+}
+
+export interface DepositInfo {
+  address: string;
+  network: string;
+  supportedAssets: string[];
+  instructions: string;
+}
+
+export interface TransactionRecord {
+  digest: string;
+  action: string;
+  amount?: number;
+  asset?: string;
+  timestamp: number;
+  gasMethod?: GasMethod;
+}

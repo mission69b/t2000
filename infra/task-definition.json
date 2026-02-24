@@ -1,0 +1,48 @@
+{
+  "family": "t2000-server",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/t2000-server-role",
+  "containerDefinitions": [
+    {
+      "name": "t2000-server",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/t2000-server:latest",
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "PORT", "value": "3000" },
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "INDEXER_POLL_INTERVAL_MS", "value": "2000" },
+        { "name": "INDEXER_BATCH_SIZE", "value": "100" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL", "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/t2000/DATABASE_URL" },
+        { "name": "SPONSOR_PRIVATE_KEY", "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/t2000/SPONSOR_PRIVATE_KEY" },
+        { "name": "GAS_STATION_PRIVATE_KEY", "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/t2000/GAS_STATION_PRIVATE_KEY" },
+        { "name": "SUI_RPC_URL", "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/t2000/SUI_RPC_URL" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/t2000-server",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "t2000"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 10
+      }
+    }
+  ]
+}
