@@ -26,11 +26,15 @@ RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists
 
 WORKDIR /app
 
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
-COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/server/prisma ./apps/server/prisma
 COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder /app/packages/sdk/package.json ./packages/sdk/package.json
+COPY --from=builder /app/packages/sdk/dist ./packages/sdk/dist
+COPY --from=builder /app/packages/x402/package.json ./packages/x402/package.json
+COPY --from=builder /app/packages/x402/dist ./packages/x402/dist
 
 ENV NODE_ENV=production
 EXPOSE 3000
