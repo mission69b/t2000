@@ -160,9 +160,20 @@ export async function withdraw(
   const info = await getObligationInfo({ suilendClient, client, keypair, address });
   if (!info) throw new T2000Error('NO_COLLATERAL', 'No savings position found');
 
-  const rawAmount = usdcToRaw(amount).toString();
-
   const obligation = await suilendClient.getObligation(info.obligationId);
+
+  let deposited = 0;
+  for (const deposit of obligation.deposits) {
+    const symbol = coinTypeToSymbol(deposit.coinType);
+    if (symbol === 'USDC') {
+      deposited += await getDepositedUnderlying(client, deposit, USDC_DECIMALS);
+    }
+  }
+
+  // Cap at available — leave 0.001 USDC buffer for rounding
+  const effectiveAmount = Math.min(amount, Math.max(0, deposited - 0.001));
+  if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', 'Nothing to withdraw');
+  const rawAmount = usdcToRaw(effectiveAmount).toString();
 
   const tx = new Transaction();
   await suilendClient.refreshAll(tx, obligation);
@@ -185,7 +196,7 @@ export async function withdraw(
   return {
     success: true,
     tx: result.digest,
-    amount,
+    amount: effectiveAmount,
     gasCost: extractGasCost(result.effects),
     gasMethod: 'self-funded' as GasMethod,
   };
@@ -290,14 +301,13 @@ export async function getHealthFactor(
   for (const deposit of obligation.deposits) {
     const symbol = coinTypeToSymbol(deposit.coinType);
     if (symbol === 'USDC') {
-      supplied += Number(deposit.depositedCtokenAmount) / 10 ** USDC_DECIMALS;
+      supplied += await getDepositedUnderlying(client, deposit, USDC_DECIMALS);
     }
   }
 
   for (const borrowPos of obligation.borrows) {
     const symbol = coinTypeToSymbol(borrowPos.coinType);
     if (symbol === 'USDC') {
-      // borrowedAmount is a Decimal struct with a `value` field (u256 as string)
       const rawValue = borrowPos.borrowedAmount.value?.toString?.() ?? '0';
       borrowed += Number(BigInt(rawValue)) / 10 ** (18 + USDC_DECIMALS);
     }
@@ -321,6 +331,34 @@ async function fetchCoinMetadata(client: SuiClient, coinType: string): Promise<C
   const meta = await client.getCoinMetadata({ coinType });
   if (meta) _coinMetadataCache[coinType] = meta;
   return meta;
+}
+
+async function getCTokenExchangeRate(client: SuiClient, coinType: string): Promise<number> {
+  try {
+    const suilendClient = await getSuilendClient(client);
+    const reserveIndex = suilendClient.findReserveArrayIndex(coinType);
+    const reserve = suilendClient.lendingMarket.reserves[Number(reserveIndex)];
+    if (!reserve) return 1;
+
+    const meta = await fetchCoinMetadata(client, coinType);
+    if (!meta) return 1;
+
+    const parsed = parseReserve(reserve, { [coinType]: meta });
+    return parsed.cTokenExchangeRate.toNumber();
+  } catch {
+    return 1;
+  }
+}
+
+async function getDepositedUnderlying(
+  client: SuiClient,
+  deposit: { coinType: unknown; depositedCtokenAmount: unknown },
+  decimals: number,
+): Promise<number> {
+  const coinType = typeof deposit.coinType === 'string' ? deposit.coinType : USDC_TYPE;
+  const ctokenRaw = Number(deposit.depositedCtokenAmount) / 10 ** decimals;
+  const exchangeRate = await getCTokenExchangeRate(client, coinType);
+  return ctokenRaw * exchangeRate;
 }
 
 export async function getRates(client: SuiClient): Promise<RatesResult> {
@@ -368,11 +406,13 @@ export async function getPositions(
 
   for (const deposit of obligation.deposits) {
     const symbol = coinTypeToSymbol(deposit.coinType);
+    const decimals = symbol === 'USDC' ? USDC_DECIMALS : 9;
+    const underlying = await getDepositedUnderlying(client, deposit, decimals);
     positions.push({
       protocol: 'suilend',
       asset: symbol,
       type: 'save',
-      amount: Number(deposit.depositedCtokenAmount) / 10 ** USDC_DECIMALS,
+      amount: underlying,
       apy: 0,
     });
   }
