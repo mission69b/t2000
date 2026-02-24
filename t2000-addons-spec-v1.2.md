@@ -48,8 +48,11 @@ Source repositories confirmed:
 - TypeScript SDK: `github.com/MystenLabs/ts-sdks` → `packages/payment-kit`
 - Listed as an official Sui standard alongside Coin, Kiosk, and DeepBook
 
-The `PaymentReceipt` structure and `PaymentEvent` emission are exactly what the
-spec requires. **The v1.0 critical risk is fully resolved.**
+The `PaymentReceipt` event emission is exactly what the spec requires.
+**The v1.0 critical risk is fully resolved.**
+
+Mainnet Package ID: `0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6`
+t2000 PaymentRegistry ID: `0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291`
 
 > **Action required before building:** Fetch the package ID from `Move.lock`
 > in the `sui-payment-kit` repo (requires GitHub auth) or query the Namespace
@@ -848,9 +851,8 @@ const paymentRequired = parsePaymentRequired(
 
 ```typescript
 // Mainnet Namespace: 0xccd3e4c7802921991cd9ce488c4ca0b51334ba75483702744242284ccf3ae7c2
-// PAYMENT_KIT_PACKAGE: fetch from Move.lock `published-at` field in sui-payment-kit repo
-// T2000_PAYMENT_REGISTRY_ID: created once via create_registry<USDC> during deployment setup
-//   → stored in constants.ts alongside other contract IDs
+// PAYMENT_KIT_PACKAGE: 0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6
+// T2000_PAYMENT_REGISTRY_ID: 0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291
 
 const tx = new Transaction();
 tx.moveCall({

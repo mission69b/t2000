@@ -5,7 +5,7 @@ import type {
   VerifyResponse,
   VerifyFailureReason,
 } from './types.js';
-import { PAYMENT_KIT_MODULE } from './constants.js';
+import { PAYMENT_RECEIPT_EVENT_TYPE } from './constants.js';
 
 interface PaymentReceiptFields {
   payment_amount: string;
@@ -16,7 +16,7 @@ interface PaymentReceiptFields {
 }
 
 function isPaymentReceipt(event: SuiEvent): boolean {
-  return event.type.includes(`${PAYMENT_KIT_MODULE}::PaymentReceipt`);
+  return event.type === PAYMENT_RECEIPT_EVENT_TYPE;
 }
 
 function parsePaymentReceiptFields(event: SuiEvent): PaymentReceiptFields | null {

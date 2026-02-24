@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { verifyPayment } from './facilitator.js';
 import type { VerifyRequest } from './types.js';
-import { PAYMENT_KIT_MODULE } from './constants.js';
+import { PAYMENT_RECEIPT_EVENT_TYPE } from './constants.js';
 
 function createMockClient(txResult: unknown) {
   return {
@@ -24,7 +24,7 @@ function createVerifyRequest(overrides: Partial<VerifyRequest> = {}): VerifyRequ
 
 function createPaymentReceipt(fields: Record<string, unknown> = {}) {
   return {
-    type: `0xpackage::${PAYMENT_KIT_MODULE}::PaymentReceipt`,
+    type: PAYMENT_RECEIPT_EVENT_TYPE,
     parsedJson: {
       payment_amount: '10000',
       receiver: '0xrecipient',

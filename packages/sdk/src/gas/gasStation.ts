@@ -28,7 +28,7 @@ export async function requestGasSponsorship(
     body: JSON.stringify({ txBytes: txBytesBase64, sender, type }),
   });
 
-  const data = await res.json();
+  const data = (await res.json()) as Record<string, unknown>;
 
   if (!res.ok) {
     const errorCode = data.error as string;
@@ -36,7 +36,7 @@ export async function requestGasSponsorship(
     if (errorCode === 'CIRCUIT_BREAKER' || errorCode === 'POOL_DEPLETED') {
       throw new T2000Error(
         'GAS_STATION_UNAVAILABLE',
-        data.message ?? 'Gas station temporarily unavailable',
+        (data.message as string) ?? 'Gas station temporarily unavailable',
         { retryAfter: data.retryAfter },
         true,
       );
@@ -44,7 +44,7 @@ export async function requestGasSponsorship(
     if (errorCode === 'GAS_FEE_EXCEEDED') {
       throw new T2000Error(
         'GAS_FEE_EXCEEDED',
-        data.message ?? 'Gas fee exceeds ceiling',
+        (data.message as string) ?? 'Gas fee exceeds ceiling',
         { retryAfter: data.retryAfter },
         true,
       );
@@ -52,13 +52,13 @@ export async function requestGasSponsorship(
 
     throw new T2000Error(
       'GAS_STATION_UNAVAILABLE',
-      data.message ?? 'Gas sponsorship request failed',
+      (data.message as string) ?? 'Gas sponsorship request failed',
       undefined,
       true,
     );
   }
 
-  return data as GasSponsorResponse;
+  return data as unknown as GasSponsorResponse;
 }
 
 export async function reportGasUsage(

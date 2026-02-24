@@ -6,10 +6,10 @@ import {
   BORROW_FEE_BPS,
   BPS_DENOMINATOR,
   SUPPORTED_ASSETS,
-  T2000_PACKAGE_ID,
   T2000_TREASURY_ID,
   API_BASE_URL,
 } from '../constants.js';
+import { usdcToRaw } from '../utils/format.js';
 
 export type FeeOperation = 'save' | 'swap' | 'borrow';
 
@@ -29,7 +29,7 @@ const FEE_RATES: Record<FeeOperation, bigint> = {
 export function calculateFee(operation: FeeOperation, amount: number): ProtocolFeeInfo {
   const bps = FEE_RATES[operation];
   const feeAmount = amount * Number(bps) / Number(BPS_DENOMINATOR);
-  const rawAmount = BigInt(Math.floor(feeAmount * 1e6)); // USDC decimals
+  const rawAmount = usdcToRaw(feeAmount);
 
   return {
     amount: feeAmount,

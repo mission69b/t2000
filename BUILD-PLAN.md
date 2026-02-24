@@ -1517,16 +1517,19 @@ sui client publish --gas-budget 100000000
 ### Payment Registry → Mainnet (one-time, for x402)
 
 ```bash
-# Fetch Payment Kit package ID from MystenLabs/sui-payment-kit Move.lock
-# or query the Namespace object on-chain:
-#   Mainnet Namespace: 0xccd3e4c7802921991cd9ce488c4ca0b51334ba75483702744242284ccf3ae7c2
+# Payment Kit package ID (from MystenLabs/sui-payment-kit Move.lock):
+#   0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6
+# Namespace object (NOT the package):
+#   0xccd3e4c7802921991cd9ce488c4ca0b51334ba75483702744242284ccf3ae7c2
+# t2000 PaymentRegistry (created via PTB, tx 666ZX1Ph...):
+#   0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291
 
-# Create t2000's PaymentRegistry<USDC> (one-time transaction):
-sui client call \
-  --package $PAYMENT_KIT_PACKAGE \
-  --module payment_kit \
-  --function create_registry \
-  --type-args $USDC_TYPE \
+# Create t2000's PaymentRegistry (one-time PTB — already done):
+sui client ptb \
+  --move-call "0xbc126f...::payment_kit::create_registry" @0xccd3e4c7... '"t2000"' \
+  --assign result \
+  --move-call "0xbc126f...::payment_kit::share" result.0 \
+  --transfer-objects "[result.1]" @YOUR_ADDRESS \
   --gas-budget 10000000
 
 # After creation:

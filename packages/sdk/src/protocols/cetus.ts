@@ -1,11 +1,9 @@
 import type { SuiClient } from '@mysten/sui/client';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { CetusClmmSDK } from '@cetusprotocol/sui-clmm-sdk';
-import { SUPPORTED_ASSETS, CLOCK_ID } from '../constants.js';
+import { SUPPORTED_ASSETS, CLOCK_ID, CETUS_USDC_SUI_POOL } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import type { GasMethod } from '../types.js';
-
-const CETUS_USDC_SUI_POOL = '0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab';
 
 const DEFAULT_SLIPPAGE_BPS = 300; // 3%
 

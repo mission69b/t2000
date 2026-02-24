@@ -1,9 +1,6 @@
 import type { SuiClient } from '@mysten/sui/client';
-import { SUPPORTED_ASSETS, MIST_PER_SUI } from '../constants.js';
+import { SUPPORTED_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
 import type { BalanceResponse } from '../types.js';
-
-// Cetus USDC/SUI pool — same as used by priceCache on server
-const CETUS_USDC_SUI_POOL = '0xb8d7d9e66a60c239e7a60110efcf8b555571a820a5c015ae1ce01bd5e9c4ac51';
 
 let _cachedSuiPrice = 3.5;
 let _priceLastFetched = 0;
