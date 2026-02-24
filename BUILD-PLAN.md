@@ -1064,26 +1064,26 @@ T2000_TREASURY_ID="0x..."
 
 #### Tasks
 
-| # | Task | Package | Est |
-|---|------|---------|-----|
-| 1.1 | Monorepo setup: pnpm workspaces, turbo.json, tsconfig.base, eslint, prettier | root | 2h |
-| 1.2 | SDK package scaffold: tsup config, vitest config, package.json | sdk | 1h |
-| 1.3 | CLI package scaffold: Commander.js setup, bin entry | cli | 1h |
-| 1.4 | `keyManager.ts`: Ed25519 keypair gen, AES-256-GCM encrypt/decrypt, load/save/export/import | sdk | 4h |
-| 1.5 | `sui.ts` utils: SuiClient factory (mainnet), address validation/truncation | sdk | 1h |
-| 1.6 | `errors.ts`: T2000Error class, all 15 error codes | sdk | 1h |
-| 1.7 | `constants.ts`: MIST_PER_SUI, asset addresses (USDC on mainnet), placeholders for contract IDs | sdk | 1h |
-| 1.8 | `types.ts`: All response/result types | sdk | 2h |
-| 1.9 | `send.ts`: USDC transfer via PTB (no fee collection yet, no gas management yet — uses agent's SUI) | sdk | 3h |
-| 1.10 | `balance.ts`: Query USDC + SUI balances, format as BalanceResponse | sdk | 2h |
-| 1.11 | `history.ts`: Query recent transactions from RPC | sdk | 2h |
-| 1.12 | `t2000.ts`: T2000 class wiring keyManager + send + balance + history | sdk | 3h |
-| 1.13 | CLI commands: `init`, `send`, `balance`, `address`, `deposit`, `history`, `export`, `import` | cli | 4h |
-| 1.14 | `output.ts` + `prompts.ts`: Human/JSON output, passphrase prompts | cli | 2h |
-| 1.15 | Move contract: write all source files (t2000, admin, constants, errors, events, treasury) | contracts | 4h |
-| 1.16 | Move tests: treasury_tests, admin_tests | contracts | 3h |
-| 1.17 | Deploy Move contract to mainnet, record IDs | contracts | 1h |
-| 1.18 | SDK unit tests for wallet module | sdk | 3h |
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 1.1 | Monorepo setup: pnpm workspaces, turbo.json, tsconfig.base, eslint, prettier | root | 2h | ✅ |
+| 1.2 | SDK package scaffold: tsup config, vitest config, package.json | sdk | 1h | ✅ |
+| 1.3 | CLI package scaffold: Commander.js setup, bin entry | cli | 1h | ✅ |
+| 1.4 | `keyManager.ts`: Ed25519 keypair gen, AES-256-GCM encrypt/decrypt, load/save/export/import | sdk | 4h | ✅ |
+| 1.5 | `sui.ts` utils: SuiClient factory (mainnet), address validation/truncation | sdk | 1h | ✅ |
+| 1.6 | `errors.ts`: T2000Error class, all 15 error codes | sdk | 1h | ✅ |
+| 1.7 | `constants.ts`: MIST_PER_SUI, asset addresses (USDC on mainnet), placeholders for contract IDs | sdk | 1h | ✅ |
+| 1.8 | `types.ts`: All response/result types | sdk | 2h | ✅ |
+| 1.9 | `send.ts`: USDC transfer via PTB (no fee collection yet, no gas management yet — uses agent's SUI) | sdk | 3h | ✅ |
+| 1.10 | `balance.ts`: Query USDC + SUI balances, format as BalanceResponse | sdk | 2h | ✅ |
+| 1.11 | `history.ts`: Query recent transactions from RPC | sdk | 2h | ✅ |
+| 1.12 | `t2000.ts`: T2000 class wiring keyManager + send + balance + history | sdk | 3h | ✅ |
+| 1.13 | CLI commands: `init`, `send`, `balance`, `address`, `deposit`, `history`, `export`, `import` | cli | 4h | ✅ |
+| 1.14 | `output.ts` + `prompts.ts`: Human/JSON output, passphrase prompts | cli | 2h | ✅ |
+| 1.15 | Move contract: write all source files (t2000, admin, constants, errors, events, treasury) | contracts | 4h | ✅ |
+| 1.16 | Move tests: treasury_tests, admin_tests | contracts | 3h | ✅ |
+| 1.17 | Deploy Move contract to mainnet, record IDs | contracts | 1h | ✅ |
+| 1.18 | SDK unit tests for wallet module | sdk | 3h | ✅ |
 
 **Week 1 testing:** Pre-funded mainnet wallet via `T2000_PRIVATE_KEY` env var. Small amounts ($5 USDC).
 
@@ -1097,19 +1097,19 @@ T2000_TREASURY_ID="0x..."
 
 #### Tasks
 
-| # | Task | Package | Est |
-|---|------|---------|-----|
-| 2.1 | Server package scaffold: Hono app, tsup config, Dockerfile, prisma | server | 2h |
-| 2.2 | Prisma schema: all tables (sponsor, gas, fees, indexer cursor, agents, positions, transactions, yield). Push to NeonDB. | server | 2h |
-| 2.3 | `POST /api/sponsor`: hashcash verification, rate limiting, serialized wallet signing | server | 4h |
-| 2.4 | `hashcash.ts`: Proof-of-work generation (SDK) + verification (server) | sdk + server | 2h |
-| 2.5 | Update `t2000 init`: call sponsor API, solve hashcash challenge | sdk + cli | 3h |
-| 2.6 | `suilend.ts`: save (deposit), withdraw, borrow, repay, healthFactor, rates | sdk | 8h |
-| 2.7 | `maxWithdraw()` + `maxBorrow()`: read-only safe limit queries | sdk | 2h |
-| 2.8 | CLI commands: `save`, `withdraw`, `borrow`, `repay`, `health`, `rates`, `positions` | cli | 3h |
-| 2.9 | Integration: save → earn → withdraw roundtrip on mainnet (small amounts) | — | 2h |
-| 2.10 | SDK unit tests for Suilend module | sdk | 3h |
-| 2.11 | ECS Fargate deployment: Docker build, task definition, deploy. Connect NeonDB. | server | 3h |
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 2.1 | Server package scaffold: Hono app, tsup config, Dockerfile, prisma | server | 2h | ✅ |
+| 2.2 | Prisma schema: all tables (sponsor, gas, fees, indexer cursor, agents, positions, transactions, yield). Push to NeonDB. | server | 2h | ✅ |
+| 2.3 | `POST /api/sponsor`: hashcash verification, rate limiting, serialized wallet signing | server | 4h | ✅ |
+| 2.4 | `hashcash.ts`: Proof-of-work generation (SDK) + verification (server) | sdk + server | 2h | ✅ |
+| 2.5 | Update `t2000 init`: call sponsor API, solve hashcash challenge | sdk + cli | 3h | ✅ |
+| 2.6 | `suilend.ts`: save (deposit), withdraw, borrow, repay, healthFactor, rates | sdk | 8h | ✅ |
+| 2.7 | `maxWithdraw()` + `maxBorrow()`: read-only safe limit queries | sdk | 2h | ✅ |
+| 2.8 | CLI commands: `save`, `withdraw`, `borrow`, `repay`, `health`, `rates`, `positions` | cli | 3h | ✅ |
+| 2.9 | Integration: save → earn → withdraw roundtrip on mainnet (small amounts) | — | 2h | ✅ |
+| 2.10 | SDK unit tests for Suilend module | sdk | 3h | ✅ |
+| 2.11 | ECS Fargate deployment: Docker build, task definition, deploy. Connect NeonDB. | server | 3h | ✅ |
 
 **Definition of done:** `npx t2000 init` creates wallet with zero cost (sponsored). `t2000 save 2 USDC` deposits to Suilend. `t2000 withdraw 1 USDC` works. Health factor checks enforced. Backend running on ECS Fargate.
 
@@ -1121,19 +1121,19 @@ T2000_TREASURY_ID="0x..."
 
 #### Tasks
 
-| # | Task | Package | Est |
-|---|------|---------|-----|
-| 3.1 | `POST /api/gas`: gas sponsorship endpoint (bootstrap + fallback + auto-topup). Serialized signing via in-process queue. | server | 4h |
-| 3.2 | Bootstrap counter: server-side tracking by wallet address in gas_ledger | server | 2h |
-| 3.3 | `priceCache.ts`: In-memory SUI price TWAP (5-min window), circuit breaker (>20% in 1hr → 503), gas fee ceiling ($0.05 → `GAS_FEE_EXCEEDED`) | server | 3h |
-| 3.4 | `gasStation.ts`: SDK client for Gas Station API | sdk | 2h |
-| 3.5 | `autoTopUp.ts`: USDC→SUI auto-swap when SUI < 0.05 (via Cetus) | sdk | 3h |
-| 3.6 | `manager.ts`: Gas resolution chain (self-funded → auto-topup → sponsored → fail) | sdk | 4h |
-| 3.7 | Wire gas manager into all SDK operations (send, save, withdraw, etc.) | sdk | 3h |
-| 3.8 | `retry.ts`: Exponential backoff, RPC failover logic | sdk | 2h |
-| 3.9 | Update balance to include gasReserve (SUI amount + usdEquiv) | sdk | 1h |
-| 3.10 | Integration tests: bootstrap → auto-topup → self-funded lifecycle | — | 3h |
-| 3.11 | SDK unit tests for gas module | sdk | 3h |
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 3.1 | `POST /api/gas`: gas sponsorship endpoint (bootstrap + fallback + auto-topup). Serialized signing via in-process queue. | server | 4h | ✅ |
+| 3.2 | Bootstrap counter: server-side tracking by wallet address in gas_ledger | server | 2h | ✅ |
+| 3.3 | `priceCache.ts`: In-memory SUI price TWAP (5-min window), circuit breaker (>20% in 1hr → 503), gas fee ceiling ($0.05 → `GAS_FEE_EXCEEDED`) | server | 3h | ✅ |
+| 3.4 | `gasStation.ts`: SDK client for Gas Station API | sdk | 2h | ✅ |
+| 3.5 | `autoTopUp.ts`: USDC→SUI auto-swap when SUI < 0.05 (via Cetus) | sdk | 3h | ✅ |
+| 3.6 | `manager.ts`: Gas resolution chain (self-funded → auto-topup → sponsored → fail) | sdk | 4h | ✅ |
+| 3.7 | Wire gas manager into all SDK operations (send, save, withdraw, etc.) | sdk | 3h | ✅ |
+| 3.8 | `retry.ts`: Exponential backoff, RPC failover logic | sdk | 2h | ✅ |
+| 3.9 | Update balance to include gasReserve (SUI amount + usdEquiv) | sdk | 1h | ✅ |
+| 3.10 | Integration tests: bootstrap → auto-topup → self-funded lifecycle | — | 3h | ✅ |
+| 3.11 | SDK unit tests for gas module | sdk | 3h | ✅ |
 
 **Definition of done:** Fresh wallet gets first 10 txs sponsored. After bootstrap, auto-swaps USDC→SUI silently. `gasMethod` shown in every response. Circuit breaker tested. In-memory TWAP running.
 
@@ -1145,20 +1145,20 @@ T2000_TREASURY_ID="0x..."
 
 #### Tasks
 
-| # | Task | Package | Est |
-|---|------|---------|-----|
-| 4.1 | `cetus.ts`: Swap integration with on-chain slippage (`sqrt_price_limit`) | sdk | 6h |
-| 4.2 | `protocolFee.ts`: Fee calculation, PTB command construction for on-chain collection | sdk | 4h |
-| 4.3 | Wire protocol fees into save, swap, borrow operations | sdk | 3h |
-| 4.4 | Protocol fee ledger: log fee events to NeonDB (via server API or indexer) | server | 2h |
-| 4.5 | Pre-signing disclosure: surface fee + gas estimate before signing | sdk | 2h |
-| 4.6 | Risk module: HF check before borrow AND withdraw | sdk | 2h |
-| 4.7 | `WITHDRAW_WOULD_LIQUIDATE` with `safeWithdrawAmount` | sdk | 1h |
-| 4.8 | Transaction simulation with Move abort code in error messages | sdk | 2h |
-| 4.9 | Address validation on send | sdk | 1h |
-| 4.10 | CLI command: `swap` | cli | 2h |
-| 4.11 | Integration tests: swap, fee collection, risk enforcement | — | 3h |
-| 4.12 | SDK unit tests for cetus, protocolFee modules | sdk | 3h |
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 4.1 | `cetus.ts`: Swap integration with on-chain slippage (`sqrt_price_limit`) | sdk | 6h | ✅ |
+| 4.2 | `protocolFee.ts`: Fee calculation, PTB command construction for on-chain collection | sdk | 4h | ✅ |
+| 4.3 | Wire protocol fees into save, swap, borrow operations | sdk | 3h | ✅ |
+| 4.4 | Protocol fee ledger: log fee events to NeonDB (via server API or indexer) | server | 2h | ✅ |
+| 4.5 | Pre-signing disclosure: surface fee + gas estimate before signing | sdk | 2h | ✅ |
+| 4.6 | Risk module: HF check before borrow AND withdraw | sdk | 2h | ✅ |
+| 4.7 | `WITHDRAW_WOULD_LIQUIDATE` with `safeWithdrawAmount` | sdk | 1h | ✅ |
+| 4.8 | Transaction simulation with Move abort code in error messages | sdk | 2h | ✅ |
+| 4.9 | Address validation on send | sdk | 1h | ✅ |
+| 4.10 | CLI command: `swap` | cli | 2h | ✅ |
+| 4.11 | Integration tests: swap, fee collection, risk enforcement | — | 3h | ✅ |
+| 4.12 | SDK unit tests for cetus, protocolFee modules | sdk | 3h | ✅ |
 
 **Definition of done:** `t2000 swap 2 USDC to SUI` works with on-chain slippage. Protocol fee deducted and visible. Withdraw blocked if HF would drop below 1.5.
 
@@ -1170,25 +1170,25 @@ T2000_TREASURY_ID="0x..."
 
 #### Tasks
 
-| # | Task | Package | Est |
-|---|------|---------|-----|
-| 5.1 | `checkpoint.ts`: Sui checkpoint fetcher — paginated checkpoint retrieval, tx block expansion with events | server | 4h |
-| 5.2 | `indexer.ts`: Main indexer loop — boot from cursor, poll, filter by package ID + agent addresses, parse events | server | 6h |
-| 5.3 | Event parser: FeeCollected → protocol_fee_ledger, transfers → transactions, Suilend events → positions | server | 4h |
-| 5.4 | Yield snapshotter: hourly cron (in-process) — read Suilend accrual index, compute deltas, write yield_snapshots | server | 3h |
-| 5.5 | `GET /api/health` update: include indexer lag (latest_checkpoint - last_processed), pool status | server | 1h |
-| 5.6 | `tracker.ts`: Client-side yield tracking via Suilend accrual index (for agents not registered in indexer) | sdk | 3h |
-| 5.7 | CLI commands: `earnings`, `fund-status` | cli | 2h |
-| 5.8 | `emitter.ts`: EventEmitter for SDK events (yield, balanceChange, health*, gasStationFallback, error) | sdk | 3h |
-| 5.9 | `serve.ts` command: Hono HTTP API server | cli | 4h |
-| 5.10 | Bearer token auth: generate at startup, store in config.json | cli | 1h |
-| 5.11 | Rate limiting middleware (configurable via `--rate-limit`) | cli | 1h |
-| 5.12 | All HTTP API endpoints: /v1/balance, /v1/send, /v1/save (+ /v1/supply alias), /v1/withdraw, /v1/borrow, /v1/repay, /v1/swap, /v1/history, /v1/earnings, /v1/health-factor, /v1/deposit, /v1/address, /v1/max-withdraw, /v1/max-borrow, /v1/positions, /v1/rates | cli | 4h |
-| 5.13 | SSE endpoint: /v1/events | cli | 2h |
-| 5.14 | `--json` flag on all CLI commands | cli | 2h |
-| 5.15 | `config` command: show/set preferences | cli | 1h |
-| 5.16 | Integration tests: indexer checkpoint processing, yield tracking, HTTP API auth, rate limiting | — | 4h |
-| 5.17 | SDK unit tests for events, funding modules | sdk | 2h |
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 5.1 | `checkpoint.ts`: Sui checkpoint fetcher — paginated checkpoint retrieval, tx block expansion with events | server | 4h | ✅ |
+| 5.2 | `indexer.ts`: Main indexer loop — boot from cursor, poll, filter by package ID + agent addresses, parse events | server | 6h | ✅ |
+| 5.3 | Event parser: FeeCollected → protocol_fee_ledger, transfers → transactions, Suilend events → positions | server | 4h | ✅ |
+| 5.4 | Yield snapshotter: hourly cron (in-process) — read Suilend accrual index, compute deltas, write yield_snapshots | server | 3h | ✅ |
+| 5.5 | `GET /api/health` update: include indexer lag (latest_checkpoint - last_processed), pool status | server | 1h | ✅ |
+| 5.6 | `tracker.ts`: Client-side yield tracking via Suilend accrual index (for agents not registered in indexer) | sdk | 3h | ✅ |
+| 5.7 | CLI commands: `earnings`, `fund-status` | cli | 2h | ✅ |
+| 5.8 | `emitter.ts`: EventEmitter for SDK events (yield, balanceChange, health*, gasStationFallback, error) | sdk | 3h | ✅ |
+| 5.9 | `serve.ts` command: Hono HTTP API server | cli | 4h | ✅ |
+| 5.10 | Bearer token auth: generate at startup, store in config.json | cli | 1h | ✅ |
+| 5.11 | Rate limiting middleware (configurable via `--rate-limit`) | cli | 1h | ✅ |
+| 5.12 | All HTTP API endpoints: /v1/balance, /v1/send, /v1/save (+ /v1/supply alias), /v1/withdraw, /v1/borrow, /v1/repay, /v1/swap, /v1/history, /v1/earnings, /v1/health-factor, /v1/deposit, /v1/address, /v1/max-withdraw, /v1/max-borrow, /v1/positions, /v1/rates | cli | 4h | ✅ |
+| 5.13 | SSE endpoint: /v1/events | cli | 2h | ✅ |
+| 5.14 | `--json` flag on all CLI commands | cli | 2h | ✅ |
+| 5.15 | `config` command: show/set preferences | cli | 1h | ✅ |
+| 5.16 | Integration tests: indexer checkpoint processing, yield tracking, HTTP API auth, rate limiting | — | 4h | ✅ |
+| 5.17 | SDK unit tests for events, funding modules | sdk | 2h | ✅ |
 
 **Definition of done:** Indexer is processing checkpoints with <10s lag. `t2000 earnings` shows yield. `t2000 serve` starts HTTP API with auth. All endpoints working. Events fire correctly.
 
@@ -1200,17 +1200,17 @@ T2000_TREASURY_ID="0x..."
 
 #### Tasks
 
-| # | Task | Package | Est |
-|---|------|---------|-----|
-| 6.1 | npm publish: `@t2000/sdk` and `@t2000/cli` | sdk + cli | 2h |
-| 6.2 | Vercel Next.js app scaffold: project setup, tailwind | web | 2h |
-| 6.3 | Landing page: Hero, terminal demo (animated), features, install command, wireframes from spec | web | 6h |
-| 6.4 | Vercel deployment: connect domain (t2000.ai), deploy | web | 1h |
-| 6.5 | README: 30-second quickstart, badges, API reference link | root | 2h |
-| 6.6 | Full E2E test pass on mainnet (the demo sequence from the spec) | — | 4h |
-| 6.7 | Record terminal demo video (for landing page + hackathon) | — | 2h |
-| 6.8 | Polish: error messages, output formatting, edge cases | all | 4h |
-| 6.9 | DeepSurge: Register + submit hackathon project | — | 1h |
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 6.1 | npm publish: `@t2000/sdk` and `@t2000/cli` | sdk + cli | 2h | ⬜ |
+| 6.2 | Vercel Next.js app scaffold: project setup, tailwind | web | 2h | ✅ |
+| 6.3 | Landing page: Hero, terminal demo (animated), features, install command, wireframes from spec | web | 6h | ✅ |
+| 6.4 | Vercel deployment: connect domain (t2000.ai), deploy | web | 1h | ✅ |
+| 6.5 | README: 30-second quickstart, badges, API reference link | root | 2h | ✅ |
+| 6.6 | Full E2E test pass on mainnet (the demo sequence from the spec) | — | 4h | ⬜ |
+| 6.7 | Record terminal demo video (for landing page + hackathon) | — | 2h | ⬜ |
+| 6.8 | Polish: error messages, output formatting, edge cases | all | 4h | ✅ |
+| 6.9 | DeepSurge: Register + submit hackathon project | — | 1h | ⬜ |
 
 **Definition of done:** `npm install -g @t2000/cli` works. `npx t2000 init` → send → save → swap → borrow → yield tracked. Landing page live. Hackathon submitted.
 

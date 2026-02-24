@@ -1,30 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --muted: #a1a1aa;
-  --accent: #22d3ee;
-  --accent-2: #a78bfa;
-  --border: #27272a;
-  --card: #18181b;
+  --background: #0A0A0A;
+  --surface: #141414;
+  --border: #1E1E1E;
+  --foreground: #E5E5E5;
+  --muted: #737373;
+  --accent: #00D4FF;
+  --accent-glow: rgba(0, 212, 255, 0.2);
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
-  --color-accent-2: var(--accent-2);
+  --color-accent-glow: var(--accent-glow);
   --color-border: var(--border);
-  --color-card: var(--card);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-body: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-body), var(--font-sans), system-ui, sans-serif;
 }
 
 @keyframes blink {
@@ -33,14 +41,14 @@ body {
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes typing {
-  from { width: 0; }
-  to { width: 100%; }
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-blink { animation: blink 1s infinite; }
-.animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+.animate-blink { animation: blink 1s step-end infinite; }
+.animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
