@@ -42,15 +42,21 @@ export async function fetchCheckpoints(
       continue;
     }
 
-    const txBlocks = await client.multiGetTransactionBlocks({
-      digests: txDigests,
-      options: {
-        showEvents: true,
-        showBalanceChanges: true,
-        showInput: true,
-        showEffects: true,
-      },
-    });
+    const RPC_BATCH_LIMIT = 50;
+    const txBlocks: SuiTransactionBlockResponse[] = [];
+    for (let i = 0; i < txDigests.length; i += RPC_BATCH_LIMIT) {
+      const batch = txDigests.slice(i, i + RPC_BATCH_LIMIT);
+      const results = await client.multiGetTransactionBlocks({
+        digests: batch,
+        options: {
+          showEvents: true,
+          showBalanceChanges: true,
+          showInput: true,
+          showEffects: true,
+        },
+      });
+      txBlocks.push(...results);
+    }
 
     const transactions: ParsedTransaction[] = txBlocks.map((tx) => ({
       digest: tx.digest,
