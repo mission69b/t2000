@@ -19,6 +19,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/server typecheck
       - run: pnpm --filter @t2000/cli typecheck
