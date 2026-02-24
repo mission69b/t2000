@@ -15,6 +15,8 @@ import { buildAndExecuteSend } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory } from './wallet/history.js';
 import * as suilend from './protocols/suilend.js';
+import * as cetus from './protocols/cetus.js';
+import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import { solveHashcash } from './utils/hashcash.js';
 import { shouldAutoTopUp, executeAutoTopUp } from './gas/autoTopUp.js';
 import type {
@@ -25,6 +27,7 @@ import type {
   WithdrawResult,
   BorrowResult,
   RepayResult,
+  SwapResult,
   HealthFactorResult,
   MaxWithdrawResult,
   MaxBorrowResult,
@@ -237,9 +240,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     } else {
       amount = params.amount;
     }
+    const fee = calculateFee('save', amount);
+
     await this.ensureGas();
     const result = await suilend.save(this.client, this.keypair, amount);
-    return { ...result, gasMethod: this._lastGasMethod };
+
+    reportFee(this._address, 'save', fee.amount, fee.rate, result.tx);
+
+    return { ...result, fee: fee.amount, gasMethod: this._lastGasMethod };
   }
 
   async withdraw(params: { amount: number | 'all'; asset?: string }): Promise<WithdrawResult> {
@@ -252,6 +260,23 @@ export class T2000 extends EventEmitter<T2000Events> {
       }
     } else {
       amount = params.amount;
+
+      // Risk check: would this withdrawal drop HF below minimum?
+      const hf = await this.healthFactor();
+      if (hf.borrowed > 0) {
+        const maxResult = await this.maxWithdraw();
+        if (amount > maxResult.maxAmount) {
+          throw new T2000Error(
+            'WITHDRAW_WOULD_LIQUIDATE',
+            `Withdrawing $${amount.toFixed(2)} would drop health factor below 1.5`,
+            {
+              safeWithdrawAmount: maxResult.maxAmount,
+              currentHF: maxResult.currentHF,
+              projectedHF: maxResult.healthFactorAfter,
+            },
+          );
+        }
+      }
     }
     await this.ensureGas();
     const result = await suilend.withdraw(this.client, this.keypair, amount);
@@ -272,9 +297,14 @@ export class T2000 extends EventEmitter<T2000Events> {
         currentHF: maxResult.currentHF,
       });
     }
+    const fee = calculateFee('borrow', params.amount);
+
     await this.ensureGas();
     const result = await suilend.borrow(this.client, this.keypair, params.amount);
-    return { ...result, gasMethod: this._lastGasMethod };
+
+    reportFee(this._address, 'borrow', fee.amount, fee.rate, result.tx);
+
+    return { ...result, fee: fee.amount, gasMethod: this._lastGasMethod };
   }
 
   async repay(params: { amount: number | 'all'; asset?: string }): Promise<RepayResult> {
@@ -307,6 +337,61 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     return hf;
+  }
+
+  // -- Swap --
+
+  async swap(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
+    const fromAsset = params.from.toUpperCase() as 'USDC' | 'SUI';
+    const toAsset = params.to.toUpperCase() as 'USDC' | 'SUI';
+
+    if (!(fromAsset in SUPPORTED_ASSETS) || !(toAsset in SUPPORTED_ASSETS)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap pair ${fromAsset}/${toAsset} is not supported`);
+    }
+    if (fromAsset === toAsset) {
+      throw new T2000Error('INVALID_AMOUNT', 'Cannot swap same asset');
+    }
+
+    const fee = calculateFee('swap', params.amount);
+
+    await this.ensureGas();
+
+    const result = await cetus.executeSwap({
+      client: this.client,
+      keypair: this.keypair,
+      fromAsset,
+      toAsset,
+      amount: params.amount,
+      maxSlippageBps: params.maxSlippage ? params.maxSlippage * 100 : undefined,
+    });
+
+    reportFee(this._address, 'swap', fee.amount, fee.rate, result.digest);
+
+    return {
+      success: true,
+      tx: result.digest,
+      fromAmount: result.fromAmount,
+      fromAsset: result.fromAsset,
+      toAmount: result.toAmount,
+      toAsset: result.toAsset,
+      priceImpact: result.priceImpact,
+      fee: fee.amount,
+      gasCost: result.gasCost,
+      gasMethod: this._lastGasMethod,
+    };
+  }
+
+  async swapQuote(params: { from: string; to: string; amount: number }): Promise<{
+    expectedOutput: number;
+    priceImpact: number;
+    poolPrice: number;
+    fee: { amount: number; rate: number };
+  }> {
+    const fromAsset = params.from.toUpperCase() as 'USDC' | 'SUI';
+    const toAsset = params.to.toUpperCase() as 'USDC' | 'SUI';
+    const quote = await cetus.getSwapQuote(this.client, fromAsset, toAsset, params.amount);
+    const fee = calculateFee('swap', params.amount);
+    return { ...quote, fee: { amount: fee.amount, rate: fee.rate } };
   }
 
   // -- Info --

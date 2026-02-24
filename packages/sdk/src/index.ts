@@ -52,6 +52,11 @@ export {
   getAddress,
 } from './wallet/keyManager.js';
 export { solveHashcash } from './utils/hashcash.js';
+export { calculateFee } from './protocols/protocolFee.js';
+export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
+export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
+export type { SimulationResult } from './utils/simulate.js';
+export { getPoolPrice, getSwapQuote } from './protocols/cetus.js';
 export {
   executeWithGas,
   shouldAutoTopUp,

@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { sponsor } from './routes/sponsor.js';
 import { health } from './routes/health.js';
 import { gas } from './routes/gas.js';
+import { fees } from './routes/fees.js';
 import { startPriceCache } from './lib/priceCache.js';
 
 const app = new Hono();
@@ -13,6 +14,7 @@ app.use('*', cors());
 app.route('/', sponsor);
 app.route('/', health);
 app.route('/', gas);
+app.route('/', fees);
 
 app.get('/', (c) => c.json({ service: 't2000-server', version: '0.1.0' }));
 
