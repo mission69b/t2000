@@ -22,23 +22,24 @@ function createVerifyRequest(overrides: Partial<VerifyRequest> = {}): VerifyRequ
   };
 }
 
-function createPaymentEvent(fields: Record<string, unknown> = {}) {
+function createPaymentReceipt(fields: Record<string, unknown> = {}) {
   return {
-    type: `0xpackage::${PAYMENT_KIT_MODULE}::PaymentEvent`,
+    type: `0xpackage::${PAYMENT_KIT_MODULE}::PaymentReceipt`,
     parsedJson: {
-      amount: '10000',
+      payment_amount: '10000',
       receiver: '0xrecipient',
       nonce: '550e8400-e29b-41d4-a716-446655440000',
-      receipt_id: '0xreceipt123',
+      coin_type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      timestamp_ms: '1708300000000',
       ...fields,
     },
   };
 }
 
 describe('verifyPayment', () => {
-  it('verifies a valid Sui payment and returns receiptId', async () => {
+  it('verifies a valid Sui payment', async () => {
     const client = createMockClient({
-      events: [createPaymentEvent()],
+      events: [createPaymentReceipt()],
     });
 
     const result = await verifyPayment(client, createVerifyRequest());
@@ -46,7 +47,6 @@ describe('verifyPayment', () => {
     expect(result.verified).toBe(true);
     expect(result.txHash).toBe('0xabc123');
     expect(result.settledAmount).toBe('0.01');
-    expect(result.receiptId).toBe('0xreceipt123');
     expect(result.settledAt).toBeDefined();
   });
 
@@ -72,7 +72,7 @@ describe('verifyPayment', () => {
     expect(result.reason).toBe('tx_not_found');
   });
 
-  it('rejects when no PaymentEvent found (plain USDC transfer)', async () => {
+  it('rejects when no PaymentReceipt found (plain USDC transfer)', async () => {
     const client = createMockClient({
       events: [
         {
@@ -90,7 +90,7 @@ describe('verifyPayment', () => {
   it('rejects when amount does not match', async () => {
     const client = createMockClient({
       events: [
-        createPaymentEvent({ amount: '99999' }),
+        createPaymentReceipt({ payment_amount: '99999' }),
       ],
     });
 
@@ -102,7 +102,7 @@ describe('verifyPayment', () => {
   it('rejects when recipient does not match', async () => {
     const client = createMockClient({
       events: [
-        createPaymentEvent({ receiver: '0xwrong' }),
+        createPaymentReceipt({ receiver: '0xwrong' }),
       ],
     });
 
@@ -114,7 +114,7 @@ describe('verifyPayment', () => {
   it('rejects when nonce does not match', async () => {
     const client = createMockClient({
       events: [
-        createPaymentEvent({ nonce: 'different-nonce' }),
+        createPaymentReceipt({ nonce: 'different-nonce' }),
       ],
     });
 

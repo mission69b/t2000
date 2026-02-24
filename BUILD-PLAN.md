@@ -1286,7 +1286,7 @@ T2000_PAYMENT_REGISTRY_ID="0x..."
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
 | 8.1 | Confirm Payment Kit package ID from `Move.lock` `published-at` field or on-chain Namespace query | — | 1h | ✅ |
-| 8.2 | Create `T2000_PAYMENT_REGISTRY_ID` on-chain: call `create_registry<USDC>` via Payment Kit Move call. Record object ID. | — | 1h | ⬜ (deploy-time) |
+| 8.2 | Create `T2000_PAYMENT_REGISTRY_ID` on-chain: call `create_registry` via Payment Kit. Registry: `0x4009dd17...271291`. Tx: `666ZX1Ph...RgmL` | — | 1h | ✅ |
 
 #### x402 Client Package (`@t2000/x402`)
 
@@ -1314,7 +1314,7 @@ T2000_PAYMENT_REGISTRY_ID="0x..."
 |---|------|---------|-----|--------|
 | 8.13 | `t2000 pay <url>` CLI command: GET → detect 402 → pay → retry → display response | cli | 3h | ✅ |
 | 8.14 | Update `constants.ts` with `PAYMENT_KIT_PACKAGE` and `T2000_PAYMENT_REGISTRY_ID` | sdk | 0.5h | ✅ |
-| 8.15 | Deploy updated server with `/x402/*` routes to ECS | server | 1h | ⬜ (deploy-time) |
+| 8.15 | Deploy updated server with `/x402/*` routes to ECS | server | 1h | ✅ |
 
 #### Tests
 
@@ -1324,9 +1324,9 @@ T2000_PAYMENT_REGISTRY_ID="0x..."
 | 8.17 | Unit: `buildPaymentPTB` — correct Move call target, USDC type arg, nonce format (UUIDv4), `usdcToRaw` conversion | x402 | 1h | ✅ |
 | 8.18 | Unit: `x402Client.fetch` — maxPrice enforcement, non-402 passthrough, retry with X-PAYMENT header | x402 | 1.5h | ✅ |
 | 8.19 | Unit: facilitator `/x402/verify` — valid payment returns receiptId, expired → rejected, wrong recipient → rejected, amount mismatch → rejected, no PaymentEvent (plain USDC transfer) → rejected, tx_not_found | server | 2h | ✅ |
-| 8.20 | Unit: facilitator `/x402/settle` — marks settled, idempotent re-settle, unknown nonce → 404 | server | 0.5h | ⬜ (server-level tests) |
-| 8.21 | Integration: full x402 flow on testnet — GET → 402 → pay via Payment Kit → X-PAYMENT → 200 | x402 | 2h | ⬜ (requires PaymentRegistry) |
-| 8.22 | Integration: duplicate nonce — second payment tx fails on-chain with `EDuplicatePayment` | x402 | 1h | ⬜ (requires PaymentRegistry) |
+| 8.20 | Unit: facilitator `/x402/settle` — marks settled, idempotent re-settle, unknown nonce → 404 | server | 0.5h | ✅ |
+| 8.21 | Integration: full x402 flow on mainnet — build → sign → execute → verify PaymentReceipt → facilitator | x402 | 2h | ✅ |
+| 8.22 | Integration: duplicate nonce — second payment tx rejected on-chain | x402 | 1h | ✅ |
 
 **Definition of done:** `t2000 pay https://example.com/data` detects 402, pays via Sui Payment Kit, retries with receipt, returns 200 response. Facilitator verifies on-chain. Duplicate payments rejected by Move. All unit + integration tests pass.
 

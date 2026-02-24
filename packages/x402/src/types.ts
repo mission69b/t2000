@@ -30,7 +30,6 @@ export interface VerifyResponse {
   txHash?: string;
   settledAmount?: string;
   settledAt?: number;
-  receiptId?: string;
   reason?: VerifyFailureReason;
 }
 

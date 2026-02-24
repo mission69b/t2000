@@ -15,6 +15,7 @@ on:
       - "apps/server/prisma/**"
       - "apps/server/Dockerfile"
       - "infra/server-task-definition.json"
+      - "packages/x402/src/**"
 
 concurrency:
   group: deploy-server
@@ -37,6 +38,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/x402 build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/server typecheck
 

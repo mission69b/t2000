@@ -7,28 +7,28 @@ import type {
 } from './types.js';
 import { PAYMENT_KIT_MODULE } from './constants.js';
 
-interface PaymentEventFields {
-  amount: string;
+interface PaymentReceiptFields {
+  payment_amount: string;
   receiver: string;
   nonce: string;
   coin_type?: string;
-  receipt_id?: string;
+  timestamp_ms?: string;
 }
 
-function isPaymentEvent(event: SuiEvent): boolean {
-  return event.type.includes(`${PAYMENT_KIT_MODULE}::PaymentEvent`);
+function isPaymentReceipt(event: SuiEvent): boolean {
+  return event.type.includes(`${PAYMENT_KIT_MODULE}::PaymentReceipt`);
 }
 
-function parsePaymentEventFields(event: SuiEvent): PaymentEventFields | null {
+function parsePaymentReceiptFields(event: SuiEvent): PaymentReceiptFields | null {
   const json = event.parsedJson as Record<string, unknown> | undefined;
   if (!json) return null;
 
   return {
-    amount: String(json.amount ?? ''),
+    payment_amount: String(json.payment_amount ?? ''),
     receiver: String(json.receiver ?? ''),
     nonce: String(json.nonce ?? ''),
     coin_type: json.coin_type ? String(json.coin_type) : undefined,
-    receipt_id: json.receipt_id ? String(json.receipt_id) : undefined,
+    timestamp_ms: json.timestamp_ms ? String(json.timestamp_ms) : undefined,
   };
 }
 
@@ -38,7 +38,7 @@ function parsePaymentEventFields(event: SuiEvent): PaymentEventFields | null {
  * Verification steps:
  * 1. Check if the challenge has expired
  * 2. Fetch the transaction from Sui RPC
- * 3. Find the PaymentEvent emitted by Payment Kit
+ * 3. Find the PaymentReceipt event emitted by Payment Kit
  * 4. Validate amount, recipient, and nonce match the request
  *
  * Duplicate nonces are already prevented by Move's EDuplicatePayment.
@@ -66,18 +66,18 @@ export async function verifyPayment(
     return { verified: false, reason: 'tx_not_found' };
   }
 
-  const paymentEvent = tx.events?.find(isPaymentEvent);
-  if (!paymentEvent) {
+  const receiptEvent = tx.events?.find(isPaymentReceipt);
+  if (!receiptEvent) {
     return { verified: false, reason: 'no_payment_event' };
   }
 
-  const fields = parsePaymentEventFields(paymentEvent);
+  const fields = parsePaymentReceiptFields(receiptEvent);
   if (!fields) {
     return { verified: false, reason: 'no_payment_event' };
   }
 
   const expectedAmount = usdcToRaw(Number(req.amount));
-  if (BigInt(fields.amount) !== expectedAmount) {
+  if (BigInt(fields.payment_amount) !== expectedAmount) {
     return { verified: false, reason: 'amount_mismatch' };
   }
 
@@ -94,6 +94,5 @@ export async function verifyPayment(
     txHash: req.txHash,
     settledAmount: req.amount,
     settledAt: Math.floor(Date.now() / 1000),
-    receiptId: fields.receipt_id,
   };
 }
