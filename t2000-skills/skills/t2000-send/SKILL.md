@@ -1,0 +1,47 @@
+---
+name: t2000-send
+description: >-
+  Send USDC from the t2000 agent wallet to another address on Sui. Use when
+  asked to pay someone, transfer funds, send money, tip a creator, or make a
+  payment to a specific Sui address. Do NOT use for API payments — use
+  t2000-pay for x402-protected services.
+license: MIT
+metadata:
+  author: t2000
+  version: "1.1"
+  requires: t2000 CLI (npm install -g t2000)
+---
+
+# t2000: Send USDC
+
+## Purpose
+Transfer USDC from the agent's available balance to any Sui address. Gas is
+self-funded from the agent's SUI reserve (auto-topped up if needed).
+
+## Command
+```bash
+t2000 send <amount> USDC to <address>
+
+# Examples:
+t2000 send 10 USDC to 0x8b3e...d412
+t2000 send 50 USDC to 0xabcd...1234
+```
+
+## Pre-flight checks (automatic)
+1. Sufficient available USDC balance (amount + protocol fee)
+2. SUI gas reserve present; if not, auto-topup is triggered ($1 USDC → SUI)
+3. Transaction simulation before broadcast
+
+## Output
+```
+✓ Auto-topped up gas reserve ($1.00 USDC → SUI)   [only shown if triggered]
+✓ Sent $XX.XX USDC → 0x8b3e...d412
+✓ Gas: X.XXX SUI (self-funded)
+✓ Balance: $XX.XX USDC available
+  Tx: https://suiexplorer.com/tx/0x...
+```
+
+## Error handling
+- `INSUFFICIENT_BALANCE`: available balance is less than the requested amount
+- `INVALID_ADDRESS`: destination is not a valid Sui address
+- `SIMULATION_FAILED`: transaction would fail on-chain; details in error message

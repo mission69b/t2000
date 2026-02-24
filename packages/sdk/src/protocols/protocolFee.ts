@@ -34,7 +34,7 @@ export function calculateFee(operation: FeeOperation, amount: number): ProtocolF
   return {
     amount: feeAmount,
     asset: 'USDC',
-    rate: Number(bps) / 100,
+    rate: Number(bps) / Number(BPS_DENOMINATOR),
     rawAmount,
   };
 }

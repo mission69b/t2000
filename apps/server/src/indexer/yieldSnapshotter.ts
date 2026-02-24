@@ -1,10 +1,10 @@
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { getLendingState } from '@naviprotocol/lending';
 import { prisma } from '../db/prisma.js';
 
 const SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
-const USDC_DECIMALS = 6;
+const NAVI_BALANCE_DECIMALS = 9;
 
-const SUILEND_LENDING_MARKET = '0x84030d26d85eaa7035084a057f2f11f701b7e2e4eda87551becbc7c97505ece1';
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -14,44 +14,26 @@ function getClient(): SuiClient {
   return new SuiClient({ url });
 }
 
-async function getObligationForAgent(
+async function getNaviPositionForAgent(
   client: SuiClient,
   agentAddress: string,
 ): Promise<{ supplied: number } | null> {
   try {
-    const ownedObjects = await client.getOwnedObjects({
-      owner: agentAddress,
-      filter: { StructType: `0x06b1e3fe0a0410add53e62183390362a94ee64c6a3a60f27c07e3253c5a85baa::lending_market::ObligationOwnerCap<${SUILEND_LENDING_MARKET}>` },
-      options: { showContent: true },
+    const state = await getLendingState(agentAddress, {
+      client,
+      env: 'prod' as const,
+      disableCache: true,
     });
 
-    if (ownedObjects.data.length === 0) return null;
+    if (!state || state.length === 0) return null;
 
-    const cap = ownedObjects.data[0];
-    if (!cap?.data?.content || cap.data.content.dataType !== 'moveObject') return null;
+    const usdcPos = state.find(
+      (p) => p.pool.token?.symbol === 'USDC' || p.pool.coinType?.toLowerCase().includes('usdc'),
+    );
 
-    const fields = cap.data.content.fields as Record<string, unknown>;
-    const obligationId = String(fields.obligation_id ?? '');
-    if (!obligationId) return null;
+    if (!usdcPos) return { supplied: 0 };
 
-    const obligation = await client.getObject({
-      id: obligationId,
-      options: { showContent: true },
-    });
-
-    if (!obligation.data?.content || obligation.data.content.dataType !== 'moveObject') return null;
-
-    const oblFields = obligation.data.content.fields as Record<string, unknown>;
-    const deposits = oblFields.deposits as Array<Record<string, unknown>> | undefined;
-
-    if (!deposits || deposits.length === 0) return { supplied: 0 };
-
-    let supplied = 0;
-    for (const deposit of deposits) {
-      const ctokenAmount = Number(deposit.deposited_ctoken_amount ?? deposit.depositedCtokenAmount ?? 0) / 10 ** USDC_DECIMALS;
-      supplied += ctokenAmount;
-    }
-
+    const supplied = Number(usdcPos.supplyBalance) / 10 ** NAVI_BALANCE_DECIMALS;
     return { supplied };
   } catch {
     return null;
@@ -67,7 +49,7 @@ async function takeSnapshots(): Promise<void> {
 
   for (const agent of agents) {
     try {
-      const position = await getObligationForAgent(client, agent.address);
+      const position = await getNaviPositionForAgent(client, agent.address);
       if (!position || position.supplied <= 0) continue;
 
       const lastSnapshot = await prisma.yieldSnapshot.findFirst({

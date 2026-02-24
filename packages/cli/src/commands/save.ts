@@ -41,7 +41,7 @@ export function registerSave(program: Command) {
 
   program
     .command('save')
-    .description('Deposit USDC into savings (Suilend)')
+    .description('Deposit USDC into savings (NAVI Protocol)')
     .argument('<amount>', 'Amount in USDC to save (or "all")')
     .option('--key <path>', 'Key file path')
     .action(action);

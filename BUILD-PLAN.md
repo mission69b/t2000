@@ -26,7 +26,7 @@ t2000/
 │   │       │   ├── balance.ts        # Balance query (available, savings, gasReserve)
 │   │       │   └── history.ts        # Transaction history (local + RPC)
 │   │       ├── protocols/
-│   │       │   ├── suilend.ts        # Save, withdraw, borrow, repay, rates, positions, maxWithdraw/maxBorrow
+│   │       │   ├── navi.ts            # Save, withdraw, borrow, repay, rates, positions, maxWithdraw/maxBorrow
 │   │       │   └── cetus.ts          # Swap (with on-chain slippage via sqrt_price_limit, priceImpact calculation)
 │   │       ├── gas/
 │   │       │   ├── manager.ts        # Gas resolution: self-funded → auto-topup → sponsored → fail
@@ -35,7 +35,7 @@ t2000/
 │   │       ├── fees/
 │   │       │   └── protocolFee.ts    # Fee calculation + PTB commands for on-chain collection
 │   │       ├── funding/
-│   │       │   └── tracker.ts        # Yield tracking (Suilend accrual index + polling fallback)
+│   │       │   └── tracker.ts        # Yield tracking (NAVI accrual index + polling fallback)
 │   │       ├── events/
 │   │       │   └── emitter.ts        # EventEmitter (yield, balanceChange, health*, error)
 │   │       └── utils/
@@ -67,9 +67,23 @@ t2000/
 │   │       │   ├── export.ts         # Export key (encrypted file or --stdout)
 │   │       │   ├── import.ts         # Import key
 │   │       │   ├── config.ts         # Show/set config
+│   │       │   ├── pay.ts            # x402 payment: t2000 pay <url>
 │   │       │   └── serve.ts          # Start Hono HTTP API server
 │   │       ├── output.ts             # Human vs --json output formatting
 │   │       └── prompts.ts            # Passphrase, confirmation prompts (inquirer)
+│   │
+│   ├── x402/                            # @t2000/x402 — x402 Payment Client
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── tsup.config.ts
+│   │   ├── vitest.config.ts
+│   │   └── src/
+│   │       ├── index.ts              # Public exports
+│   │       ├── client.ts             # x402Client class (402 detection, pay, retry)
+│   │       ├── facilitator.ts        # Facilitator verification logic (used by server routes)
+│   │       ├── payment-kit.ts        # Sui Payment Kit PTB construction
+│   │       ├── types.ts              # PaymentRequired, PaymentPayload, VerifyResponse
+│   │       └── constants.ts          # PAYMENT_KIT_PACKAGE, T2000_PAYMENT_REGISTRY_ID
 │   │
 │   └── contracts/                    # Move smart contracts
 │       ├── Move.toml
@@ -103,7 +117,8 @@ t2000/
 │       │   ├── routes/
 │       │   │   ├── sponsor.ts       # POST /api/sponsor — wallet init + hashcash
 │       │   │   ├── gas.ts           # POST /api/gas — gas sponsorship
-│       │   │   └── health.ts        # GET /api/health — service + indexer + pool status
+│       │   │   ├── health.ts        # GET /api/health — service + indexer + pool status
+│       │   │   └── x402.ts          # POST /x402/verify + POST /x402/settle — facilitator
 │       │   ├── services/
 │       │   │   ├── sponsor.ts       # Sponsor wallet signing (serialized in-process)
 │       │   │   ├── gasStation.ts    # Gas pool management, circuit breaker
@@ -124,6 +139,19 @@ t2000/
 ├── infra/                            # AWS infrastructure
 │   ├── Dockerfile                    # Shared Dockerfile (if needed)
 │   └── task-definition.json          # ECS Fargate task definition
+│
+├── t2000-skills/                        # Agent Skills (separate repo: mission69b/t2000-skills)
+│   ├── README.md
+│   ├── LICENSE.md                       # MIT
+│   └── skills/
+│       ├── t2000-check-balance/SKILL.md
+│       ├── t2000-send/SKILL.md
+│       ├── t2000-save/SKILL.md
+│       ├── t2000-withdraw/SKILL.md
+│       ├── t2000-swap/SKILL.md
+│       ├── t2000-borrow/SKILL.md
+│       ├── t2000-repay/SKILL.md
+│       └── t2000-pay/SKILL.md           # status: coming-soon (ships with x402)
 │
 ├── turbo.json                        # Turborepo config
 ├── pnpm-workspace.yaml               # pnpm workspaces
@@ -154,6 +182,8 @@ The checkpoint-based indexer also requires a persistent process to maintain its 
 - `POST /api/sponsor` — wallet creation with hashcash
 - `POST /api/gas` — gas sponsorship (bootstrap + auto-topup + fallback)
 - `GET /api/health` — service health + pool status + indexer checkpoint lag
+- `POST /x402/verify` — x402 facilitator payment verification (Sui RPC)
+- `POST /x402/settle` — x402 settlement confirmation
 - In-memory: SUI price cache (TWAP), rate limiting, circuit breaker
 - Background: checkpoint-based indexer loop
 
@@ -214,7 +244,7 @@ The gold standard for on-chain indexing. Sui produces sequentially numbered chec
 | t2000 contract | `FeeCollected` | Insert into `protocol_fee_ledger` |
 | t2000 contract | `ConfigUpdated` | Log admin activity |
 | t2000 contract | `FeeChangeProposed` | Track pending governance |
-| Suilend | Deposit/Withdraw | Upsert `positions` table |
+| NAVI | Deposit/Withdraw | Upsert `positions` table |
 | Cetus | Swap | Insert into `transactions` |
 | Sui native | Transfer (USDC) | Insert send/receive into `transactions` |
 | Any | Gas sponsor txs | Update `gas_ledger` with actual costs |
@@ -660,8 +690,8 @@ PTB:
   2. SplitCoins: split save_amount from merged coin
   3. MoveCall: t2000::treasury::collect_fee<USDC>(&mut treasury, &config, &mut save_coin, OP_SAVE)
      → save_coin value reduced by fee, fee stored in treasury
-  4. MoveCall: suilend::lending_market::deposit(..., save_coin, ...)
-     → deposits remaining USDC into Suilend
+  4. MoveCall: navi::lending::deposit(..., save_coin, ...)
+     → deposits remaining USDC into NAVI
 ```
 
 **Pattern B — Swap (fee on input USDC)**
@@ -678,7 +708,7 @@ PTB:
 **Pattern C — Borrow (fee on output)**
 ```
 PTB:
-  1. MoveCall: suilend::lending_market::borrow(...) → borrowed_coin
+  1. MoveCall: navi::lending::borrow(...) → borrowed_coin
   2. MoveCall: t2000::treasury::collect_fee<USDC>(&mut treasury, &config, &mut borrowed_coin, OP_BORROW)
      → borrowed_coin value reduced by fee
   3. TransferObjects: transfer remaining USDC to agent
@@ -706,15 +736,15 @@ All patterns are atomic. If any step fails, the entire PTB reverts including the
 T2000 (main class)
 ├── wallet/keyManager     ← crypto (AES-256-GCM), fs
 ├── wallet/send           ← sui client, gas/manager, fees/protocolFee
-├── wallet/balance        ← sui client, protocols/suilend
+├── wallet/balance        ← sui client, protocols/navi
 ├── wallet/history        ← sui client
-├── protocols/suilend     ← sui client, @suilend/sdk
+├── protocols/navi        ← sui client, @naviprotocol/lending
 ├── protocols/cetus       ← sui client, @cetusprotocol/sui-clmm-sdk
 ├── gas/manager           ← gas/autoTopUp, gas/gasStation
 ├── gas/autoTopUp         ← protocols/cetus (USDC→SUI swap)
 ├── gas/gasStation        ← fetch (ECS backend API)
 ├── fees/protocolFee      ← constants (contract IDs, fee rates)
-├── funding/tracker       ← protocols/suilend (accrual index)
+├── funding/tracker       ← protocols/navi (accrual index)
 ├── events/emitter        ← EventEmitter
 └── utils/*               ← shared utilities
 ```
@@ -766,7 +796,7 @@ class T2000 extends EventEmitter {
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `@mysten/sui` | latest | SuiClient, Transaction, utils |
-| `@suilend/sdk` | latest | Suilend lending operations |
+| `@naviprotocol/lending` | latest | NAVI Protocol lending operations |
 | `@cetusprotocol/sui-clmm-sdk` | latest | Cetus swap routing |
 
 ### Asset Whitelist (constants.ts)
@@ -983,7 +1013,7 @@ model Agent {
 model Position {
   id           Int      @id @default(autoincrement())
   agentAddress String   @map("agent_address")
-  protocol     String                                          // 'suilend'
+  protocol     String                                          // 'navi'
   asset        String
   positionType String   @map("position_type")                  // 'save' | 'borrow'
   amount       Decimal
@@ -1052,6 +1082,10 @@ NEXT_PUBLIC_API_URL="https://api.t2000.ai"
 T2000_PACKAGE_ID="0x..."
 T2000_CONFIG_ID="0x..."
 T2000_TREASURY_ID="0x..."
+
+# x402 / Payment Kit (set after registry creation)
+PAYMENT_KIT_PACKAGE="0x..."
+T2000_PAYMENT_REGISTRY_ID="0x..."
 ```
 
 ---
@@ -1104,14 +1138,14 @@ T2000_TREASURY_ID="0x..."
 | 2.3 | `POST /api/sponsor`: hashcash verification, rate limiting, serialized wallet signing | server | 4h | ✅ |
 | 2.4 | `hashcash.ts`: Proof-of-work generation (SDK) + verification (server) | sdk + server | 2h | ✅ |
 | 2.5 | Update `t2000 init`: call sponsor API, solve hashcash challenge | sdk + cli | 3h | ✅ |
-| 2.6 | `suilend.ts`: save (deposit), withdraw, borrow, repay, healthFactor, rates | sdk | 8h | ✅ |
+| 2.6 | `navi.ts`: save (deposit), withdraw, borrow, repay, healthFactor, rates | sdk | 8h | ✅ |
 | 2.7 | `maxWithdraw()` + `maxBorrow()`: read-only safe limit queries | sdk | 2h | ✅ |
 | 2.8 | CLI commands: `save`, `withdraw`, `borrow`, `repay`, `health`, `rates`, `positions` | cli | 3h | ✅ |
 | 2.9 | Integration: save → earn → withdraw roundtrip on mainnet (small amounts) | — | 2h | ✅ |
-| 2.10 | SDK unit tests for Suilend module | sdk | 3h | ✅ |
+| 2.10 | SDK unit tests for NAVI module | sdk | 3h | ✅ |
 | 2.11 | ECS Fargate deployment: Docker build, task definition, deploy. Connect NeonDB. | server | 3h | ✅ |
 
-**Definition of done:** `npx t2000 init` creates wallet with zero cost (sponsored). `t2000 save 2 USDC` deposits to Suilend. `t2000 withdraw 1 USDC` works. Health factor checks enforced. Backend running on ECS Fargate.
+**Definition of done:** `npx t2000 init` creates wallet with zero cost (sponsored). `t2000 save 2 USDC` deposits to NAVI. `t2000 withdraw 1 USDC` works. Health factor checks enforced. Backend running on ECS Fargate.
 
 ---
 
@@ -1174,10 +1208,10 @@ T2000_TREASURY_ID="0x..."
 |---|------|---------|-----|--------|
 | 5.1 | `checkpoint.ts`: Sui checkpoint fetcher — paginated checkpoint retrieval, tx block expansion with events | server | 4h | ✅ |
 | 5.2 | `indexer.ts`: Main indexer loop — boot from cursor, poll, filter by package ID + agent addresses, parse events | server | 6h | ✅ |
-| 5.3 | Event parser: FeeCollected → protocol_fee_ledger, transfers → transactions, Suilend events → positions | server | 4h | ✅ |
-| 5.4 | Yield snapshotter: hourly cron (in-process) — read Suilend accrual index, compute deltas, write yield_snapshots | server | 3h | ✅ |
+| 5.3 | Event parser: FeeCollected → protocol_fee_ledger, transfers → transactions, NAVI events → positions | server | 4h | ✅ |
+| 5.4 | Yield snapshotter: hourly cron (in-process) — read NAVI lending state, compute deltas, write yield_snapshots | server | 3h | ✅ |
 | 5.5 | `GET /api/health` update: include indexer lag (latest_checkpoint - last_processed), pool status | server | 1h | ✅ |
-| 5.6 | `tracker.ts`: Client-side yield tracking via Suilend accrual index (for agents not registered in indexer) | sdk | 3h | ✅ |
+| 5.6 | `tracker.ts`: Client-side yield tracking via NAVI lending state (for agents not registered in indexer) | sdk | 3h | ✅ |
 | 5.7 | CLI commands: `earnings`, `fund-status` | cli | 2h | ✅ |
 | 5.8 | `emitter.ts`: EventEmitter for SDK events (yield, balanceChange, health*, gasStationFallback, error) | sdk | 3h | ✅ |
 | 5.9 | `serve.ts` command: Hono HTTP API server | cli | 4h | ✅ |
@@ -1202,17 +1236,125 @@ T2000_TREASURY_ID="0x..."
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 6.1 | npm publish: `@t2000/sdk` and `@t2000/cli` | sdk + cli | 2h | ⬜ |
+| 6.1 | npm publish: `@t2000/sdk` and `@t2000/cli` | sdk + cli | 2h | → 9.9 |
 | 6.2 | Vercel Next.js app scaffold: project setup, tailwind | web | 2h | ✅ |
 | 6.3 | Landing page: Hero, terminal demo (animated), features, install command, wireframes from spec | web | 6h | ✅ |
 | 6.4 | Vercel deployment: connect domain (t2000.ai), deploy | web | 1h | ✅ |
 | 6.5 | README: 30-second quickstart, badges, API reference link | root | 2h | ✅ |
-| 6.6 | Full E2E test pass on mainnet (the demo sequence from the spec) | — | 4h | ⬜ |
-| 6.7 | Record terminal demo video (for landing page + hackathon) | — | 2h | ⬜ |
+| 6.6 | Full E2E test pass on mainnet (the demo sequence from the spec) | — | 4h | → 9.11 |
+| 6.7 | Record terminal demo video (for landing page + hackathon) | — | 2h | → 9.12 |
 | 6.8 | Polish: error messages, output formatting, edge cases | all | 4h | ✅ |
-| 6.9 | DeepSurge: Register + submit hackathon project | — | 1h | ⬜ |
+| 6.9 | DeepSurge: Register + submit hackathon project | — | 1h | → 9.13 |
+
+**Note:** Tasks 6.1, 6.6, 6.7, 6.9 are deferred to Phase 9 — they now include x402 in scope.
 
 **Definition of done:** `npm install -g @t2000/cli` works. `npx t2000 init` → send → save → swap → borrow → yield tracked. Landing page live. Hackathon submitted.
+
+---
+
+### Phase 7 — Agent Skills (Week 6, Day 1-2)
+
+**Goal:** Ship `t2000-skills` repo. Any AI agent framework can discover and use t2000 via SKILL.md files.
+
+#### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 7.1 | `t2000-skills` repo scaffold: README, LICENSE (MIT), directory structure | t2000-skills | 1h | ✅ |
+| 7.2 | Write `t2000-check-balance/SKILL.md` (balance, --show-limits, --json) | t2000-skills | 0.5h | ✅ |
+| 7.3 | Write `t2000-send/SKILL.md` (send USDC, pre-flight, errors) | t2000-skills | 0.5h | ✅ |
+| 7.4 | Write `t2000-save/SKILL.md` (save, save all, gas manager mechanic) | t2000-skills | 0.5h | ✅ |
+| 7.5 | Write `t2000-withdraw/SKILL.md` (withdraw, health factor safety) | t2000-skills | 0.5h | ✅ |
+| 7.6 | Write `t2000-swap/SKILL.md` (swap, slippage, whitelisted pairs) | t2000-skills | 0.5h | ✅ |
+| 7.7 | Write `t2000-borrow/SKILL.md` (borrow, HF > 1.5, collateral required) | t2000-skills | 0.5h | ✅ |
+| 7.8 | Write `t2000-repay/SKILL.md` (repay, repay all, interest) | t2000-skills | 0.5h | ✅ |
+| 7.9 | Write `t2000-pay/SKILL.md` (`status: coming-soon`, `available: false`) | t2000-skills | 0.5h | ✅ |
+| 7.10 | Implement `t2000 balance --show-limits` CLI flag (maxWithdraw, maxBorrow, HF) | cli + sdk | 2h | ✅ |
+| 7.11 | Skill validation tests: lint all SKILL.md files for required frontmatter fields | t2000-skills | 1h | ✅ |
+| 7.12 | README: usage instructions for Cursor, Claude, Devin, custom frameworks | t2000-skills | 1h | ✅ |
+
+**Definition of done:** `t2000-skills` repo published on GitHub. All 7 core skills pass frontmatter validation. `t2000 balance --show-limits` works. `t2000-pay` skill exists with `coming-soon` status.
+
+---
+
+### Phase 8 — x402 Client + Facilitator (Week 6, Day 2-5)
+
+**Goal:** First x402 implementation on Sui. Agent can pay for x402-protected API resources with USDC.
+
+#### Prerequisites
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 8.1 | Confirm Payment Kit package ID from `Move.lock` `published-at` field or on-chain Namespace query | — | 1h | ✅ |
+| 8.2 | Create `T2000_PAYMENT_REGISTRY_ID` on-chain: call `create_registry<USDC>` via Payment Kit Move call. Record object ID. | — | 1h | ⬜ (deploy-time) |
+
+#### x402 Client Package (`@t2000/x402`)
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 8.3 | Package scaffold: package.json, tsconfig, tsup, vitest config | x402 | 1h | ✅ |
+| 8.4 | `types.ts`: PaymentRequired, PaymentPayload, VerifyRequest, VerifyResponse, x402 header types | x402 | 1h | ✅ |
+| 8.5 | `constants.ts`: PAYMENT_KIT_PACKAGE, T2000_PAYMENT_REGISTRY_ID, USDC_TYPE | x402 | 0.5h | ✅ |
+| 8.6 | `payment-kit.ts`: build PTB for `process_registry_payment` (nonce, amount via `usdcToRaw`, receiver, clock) | x402 | 4h | ✅ |
+| 8.7 | `client.ts`: x402Client — 402 response detection, `PAYMENT-REQUIRED` header parsing, `maxPrice` enforcement | x402 | 3h | ✅ |
+| 8.8 | `client.ts`: x402Client — Payment Kit PTB execution via wallet, retry original request with `X-PAYMENT` header | x402 | 3h | ✅ |
+
+#### Facilitator (routes on existing server at `api.t2000.ai`)
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 8.9 | Prisma migration: `x402_payments` audit log table (nonce PK, tx_hash, pay_to, amount, verified_at, expires_at, settled) + indexes | server | 1h | ✅ |
+| 8.10 | `routes/x402.ts`: `POST /x402/verify` — fetch tx from Sui RPC, find `PaymentEvent`, validate amount/recipient/nonce/expiry, log to audit table | server | 4h | ✅ |
+| 8.11 | `routes/x402.ts`: `POST /x402/settle` — mark payment as settled in audit log | server | 1h | ✅ |
+| 8.12 | Rate limiting: 100 verifications/minute per IP on `/x402/*` routes | server | 0.5h | ✅ |
+
+#### CLI + Integration
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 8.13 | `t2000 pay <url>` CLI command: GET → detect 402 → pay → retry → display response | cli | 3h | ✅ |
+| 8.14 | Update `constants.ts` with `PAYMENT_KIT_PACKAGE` and `T2000_PAYMENT_REGISTRY_ID` | sdk | 0.5h | ✅ |
+| 8.15 | Deploy updated server with `/x402/*` routes to ECS | server | 1h | ⬜ (deploy-time) |
+
+#### Tests
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 8.16 | Unit: `parsePaymentRequired` — valid header, unsupported network, expired challenge, price exceeds limit | x402 | 1h | ✅ |
+| 8.17 | Unit: `buildPaymentPTB` — correct Move call target, USDC type arg, nonce format (UUIDv4), `usdcToRaw` conversion | x402 | 1h | ✅ |
+| 8.18 | Unit: `x402Client.fetch` — maxPrice enforcement, non-402 passthrough, retry with X-PAYMENT header | x402 | 1.5h | ✅ |
+| 8.19 | Unit: facilitator `/x402/verify` — valid payment returns receiptId, expired → rejected, wrong recipient → rejected, amount mismatch → rejected, no PaymentEvent (plain USDC transfer) → rejected, tx_not_found | server | 2h | ✅ |
+| 8.20 | Unit: facilitator `/x402/settle` — marks settled, idempotent re-settle, unknown nonce → 404 | server | 0.5h | ⬜ (server-level tests) |
+| 8.21 | Integration: full x402 flow on testnet — GET → 402 → pay via Payment Kit → X-PAYMENT → 200 | x402 | 2h | ⬜ (requires PaymentRegistry) |
+| 8.22 | Integration: duplicate nonce — second payment tx fails on-chain with `EDuplicatePayment` | x402 | 1h | ⬜ (requires PaymentRegistry) |
+
+**Definition of done:** `t2000 pay https://example.com/data` detects 402, pays via Sui Payment Kit, retries with receipt, returns 200 response. Facilitator verifies on-chain. Duplicate payments rejected by Move. All unit + integration tests pass.
+
+---
+
+### Phase 9 — Landing Page Redesign + Final Launch (Week 6, Day 5-6)
+
+**Goal:** Convert new landing page design to Next.js. Ship everything. Submit hackathon.
+
+#### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 9.1 | Design system: update `globals.css` with new palette (green #00d68f), IBM Plex Mono + Instrument Serif fonts | web | 1h | ⬜ |
+| 9.2 | Hero section: multi-column layout, wordmark, `npx t2000 init` command, scrolling DeFi ticker | web | 3h | ⬜ |
+| 9.3 | Features section: 6-card grid (Send, Save, Swap, Borrow, History, Events) with new styling | web | 2h | ⬜ |
+| 9.4 | x402 panel: payment flow visualization (402 → pay → 200 sequence) | web | 2h | ⬜ |
+| 9.5 | Competitive comparison table: t2000 vs Coinbase Agentic Wallet (from spec) | web | 1h | ⬜ |
+| 9.6 | Terminal demo: update with x402 `pay` command in sequence | web | 1h | ⬜ |
+| 9.7 | Footer CTA + social links (GitHub, docs, npm) | web | 0.5h | ⬜ |
+| 9.8 | Enable `t2000-pay` SKILL.md: set `status: active`, `available: true` | t2000-skills | 0.5h | ⬜ |
+| 9.9 | npm publish: `@t2000/sdk`, `@t2000/cli`, `@t2000/x402` | sdk + cli + x402 | 2h | ⬜ |
+| 9.10 | Deploy landing page to Vercel | web | 1h | ⬜ |
+| 9.11 | Full E2E test pass on mainnet: core demo + x402 demo sequence | — | 4h | ⬜ |
+| 9.12 | Record terminal demo video: core flow + x402 pay (for landing page + hackathon) | — | 2h | ⬜ |
+| 9.13 | DeepSurge: register + submit hackathon project | — | 1h | ⬜ |
+
+**Definition of done:** Landing page live at t2000.ai with new design. npm packages published. Terminal demo video recorded. E2E pass on mainnet (including x402 flow). Hackathon submitted.
 
 ---
 
@@ -1254,7 +1396,7 @@ Uses `run_env!` test macro and `create_for_testing`/`destroy_for_testing` helper
 | `keyManager` | Keypair gen (valid Ed25519). Encrypt/decrypt roundtrip. `--no-encrypt` plaintext. Env var override. Export encrypted file. Import from file. Import from raw hex. |
 | `send` | Address validation. Insufficient balance. Correct PTB construction. Balance returned. |
 | `balance` | Correct aggregation (available + savings + gasReserve). USD equiv calculation. |
-| `suilend` | Save returns digest. `save all` reserves $1. HF < 1.5 blocks borrow. HF < 1.5 blocks withdraw with `safeWithdrawAmount`. No collateral throws. Repay all correct amount. |
+| `navi` | Save returns digest. `save all` reserves $1. HF < 1.5 blocks borrow. HF < 1.5 blocks withdraw with `safeWithdrawAmount`. No collateral throws. Repay all correct amount. |
 | `cetus` | Slippage enforcement (sqrt_price_limit set). Whitelist rejects unlisted. |
 | `gas/manager` | Resolution order correct. Self-funded when SUI sufficient. Auto-topup triggers at threshold. Sponsored fallback works. |
 | `gas/autoTopUp` | Triggers when SUI < 0.05 and USDC > $5. Swaps $1 USDC. |
@@ -1264,6 +1406,39 @@ Uses `run_env!` test macro and `create_for_testing`/`destroy_for_testing` helper
 | `events/emitter` | Events fire with correct data. SSE serialization. |
 | `errors` | All error codes correct shape. Retryable flag correct. |
 | `utils/retry` | Backoff timing. Max retries. Failover. |
+
+### x402 Client Unit Tests (Vitest)
+
+| Module | Tests |
+|--------|-------|
+| `parsePaymentRequired` | Valid PAYMENT-REQUIRED header parsed correctly. Non-Sui network throws `UNSUPPORTED_NETWORK`. Expired `expiresAt` throws `PAYMENT_EXPIRED`. Price > maxPrice throws `PRICE_EXCEEDS_LIMIT`. Malformed header produces graceful error. |
+| `buildPaymentPTB` | Correct Move call target (`payment_kit::process_registry_payment`). USDC type argument present. Nonce is valid UUIDv4. Amount converted via `usdcToRaw`. Registry ID, receiver, clock (0x6) args correct. |
+| `x402Client.fetch` | Non-402 response passes through unmodified. 402 triggers payment flow. maxPrice exceeded throws without paying. Successful payment retries with X-PAYMENT header. Non-JSON 402 body gracefully falls back to header parsing. |
+| `x402Client` error codes | `PRICE_EXCEEDS_LIMIT`, `UNSUPPORTED_NETWORK`, `PAYMENT_EXPIRED`, `FACILITATOR_TIMEOUT`, `FACILITATOR_REJECTION` all produce correct T2000Error shape. |
+
+### Facilitator Tests (Vitest)
+
+| Suite | Verification |
+|-------|-------------|
+| `/x402/verify` — valid payment | Fetches tx from Sui RPC, finds `PaymentEvent`, confirms amount + recipient + nonce. Returns `{ verified: true, receiptId }`. Audit log row inserted. |
+| `/x402/verify` — expired | `expiresAt` in past → `{ verified: false, reason: 'expired' }`. No audit log row. |
+| `/x402/verify` — wrong recipient | PaymentEvent `receiver` ≠ `payTo` → `{ verified: false, reason: 'wrong_recipient' }`. |
+| `/x402/verify` — amount mismatch | PaymentEvent `amount` ≠ requested → `{ verified: false, reason: 'amount_mismatch' }`. |
+| `/x402/verify` — no PaymentEvent | Tx is a plain USDC transfer (not via Payment Kit) → `{ verified: false, reason: 'no_payment_event' }`. |
+| `/x402/verify` — tx not found | Invalid tx hash → `{ verified: false, reason: 'tx_not_found' }`. |
+| `/x402/settle` — success | Valid nonce → `{ settled: true }`. Row updated `settled = true`. |
+| `/x402/settle` — idempotent | Re-settle same nonce → still `{ settled: true }`. |
+| `/x402/settle` — unknown nonce | Non-existent nonce → 404. |
+| Rate limiting | 101st verification in 1 minute → 429. |
+
+### Agent Skills Validation Tests
+
+| Suite | Verification |
+|-------|-------------|
+| Frontmatter required fields | All SKILL.md files have `name`, `description`, `license`, `metadata.author`, `metadata.version`, `metadata.requires`. |
+| `t2000-pay` status | Has `status: coming-soon` and `available: false` until x402 ships. |
+| Command references | Every command referenced in a skill exists in `t2000 --help` output. |
+| No broken examples | All example commands parse correctly (no typos in flags/args). |
 
 ### Integration Tests (Mainnet, small amounts)
 
@@ -1278,6 +1453,10 @@ Uses `run_env!` test macro and `create_for_testing`/`destroy_for_testing` helper
 | Auto-SUI Reserve | When SUI < 0.05: auto-swap triggers. gasReserve in balance. |
 | Protocol Fees | Save: 0.1% deducted. Swap: 0.1%. Borrow: 0.05%. Fee in response. |
 | API Auth | No token → 401. Rate limit → 429. Valid token → 200. |
+| x402 Pay | `t2000 pay <test-endpoint>` → GET → 402 → Payment Kit PTB → X-PAYMENT → 200. Balance decremented. |
+| x402 Duplicate | Second `t2000 pay` with replayed nonce → `EDuplicatePayment` on-chain. Agent gets `DUPLICATE_PAYMENT` error. |
+| x402 maxPrice | Price exceeds agent maxPrice → `PRICE_EXCEEDS_LIMIT`, no payment made, no balance change. |
+| Facilitator Verify | POST valid tx hash to `/x402/verify` → `{ verified: true, receiptId }`. Audit log row created. |
 
 ### Indexer Tests
 
@@ -1286,7 +1465,7 @@ Uses `run_env!` test macro and `create_for_testing`/`destroy_for_testing` helper
 | Checkpoint parsing | Process a real checkpoint, extract t2000 package events correctly. |
 | Cursor persistence | Process checkpoints, kill process, restart → resumes from exact cursor. No gaps. |
 | Event filtering | Only t2000 package events + known agent addresses indexed. Noise ignored. |
-| Position upsert | Suilend deposit → position created. Withdrawal → position updated/removed. |
+| Position upsert | NAVI deposit → position created. Withdrawal → position updated/removed. |
 | Transaction insert | Send/swap/borrow → inserted with correct action, amount, gasMethod. Duplicate tx_digest rejected. |
 | Yield snapshot | Hourly snapshot captures correct supplied balance and yield delta. |
 | Lag monitoring | `GET /api/health` reports accurate checkpoint lag. |
@@ -1300,7 +1479,7 @@ t2000 balance                              # $0.00
 # (fund with $10 USDC on mainnet)
 t2000 balance                              # $10.00 USDC
 t2000 send 1 USDC to <test-address>        # auto-topup + send
-t2000 save 5 USDC                          # deposit to Suilend, fee shown
+t2000 save 5 USDC                          # deposit to NAVI, fee shown
 t2000 balance                              # available + savings + gasReserve
 t2000 borrow 2 USDC                        # borrow, HF checked
 t2000 health                               # HF > 1.5
@@ -1310,6 +1489,10 @@ t2000 earnings                             # yield tracked
 t2000 fund-status                          # savings summary
 t2000 repay all USDC                       # repay borrow
 t2000 withdraw all USDC                    # withdraw savings
+
+# === x402: Pay for an external API ===
+t2000 pay https://example.com/data         # GET → 402 → pay $0.01 USDC → 200 OK
+t2000 balance                              # available decreased by $0.01
 ```
 
 ---
@@ -1331,11 +1514,33 @@ sui client publish --gas-budget 100000000
 # 4. Update packages/sdk/src/constants.ts
 ```
 
+### Payment Registry → Mainnet (one-time, for x402)
+
+```bash
+# Fetch Payment Kit package ID from MystenLabs/sui-payment-kit Move.lock
+# or query the Namespace object on-chain:
+#   Mainnet Namespace: 0xccd3e4c7802921991cd9ce488c4ca0b51334ba75483702744242284ccf3ae7c2
+
+# Create t2000's PaymentRegistry<USDC> (one-time transaction):
+sui client call \
+  --package $PAYMENT_KIT_PACKAGE \
+  --module payment_kit \
+  --function create_registry \
+  --type-args $USDC_TYPE \
+  --gas-budget 10000000
+
+# After creation:
+# 1. Record T2000_PAYMENT_REGISTRY_ID from created objects
+# 2. Update packages/x402/src/constants.ts
+# 3. Add T2000_PAYMENT_REGISTRY_ID to ECS environment variables
+```
+
 ### npm → Registry
 
 ```bash
 cd packages/sdk && pnpm publish --access public
 cd packages/cli && pnpm publish --access public
+cd packages/x402 && pnpm publish --access public
 ```
 
 ### ECS Fargate → Production
@@ -1354,6 +1559,7 @@ docker build -t t2000-server .
 # - Environment variables:
 #   DATABASE_URL, SPONSOR_PRIVATE_KEY, GAS_STATION_PRIVATE_KEY,
 #   SUI_RPC_URL, T2000_PACKAGE_ID, T2000_CONFIG_ID, T2000_TREASURY_ID,
+#   PAYMENT_KIT_PACKAGE, T2000_PAYMENT_REGISTRY_ID,
 #   PORT, INDEXER_POLL_INTERVAL_MS, INDEXER_BATCH_SIZE
 ```
 
@@ -1379,8 +1585,11 @@ vercel --prod
 | README (quickstart) | `README.md` (root) | Week 6 |
 | SDK README | `packages/sdk/README.md` | Week 6 |
 | CLI README | `packages/cli/README.md` | Week 6 |
+| x402 README | `packages/x402/README.md` | Week 6 |
+| Skills README | `t2000-skills/README.md` | Week 6 |
 | API Reference | Landing page or generated docs | Week 6 |
 | Spec | `t2000-sdk-spec-v2.0.md` (already complete) | — |
+| Addons Spec | `t2000-addons-spec-v1.2.md` (Skills + x402) | — |
 | Build Plan | `BUILD-PLAN.md` (this file) | — |
 
 README structure: one-liner description → 30-second install → demo GIF → feature list → API reference → contributing.
@@ -1391,7 +1600,7 @@ README structure: one-liner description → 30-second install → demo GIF → f
 
 | Risk | Mitigation |
 |------|-----------|
-| Suilend SDK breaking changes | Pin version, test on CI before upgrade |
+| NAVI SDK breaking changes | Pin version, test on CI before upgrade |
 | Cetus SDK API differences | Verify `sqrt_price_limit` support before Week 4 |
 | Gas Station wallet coin locking (concurrency) | Single ECS task = serialized in-process. No concurrency issue. |
 | Mainnet testing costs | Budget $50 USDC for testing. Use $1-$5 amounts. |
@@ -1399,6 +1608,10 @@ README structure: one-liner description → 30-second install → demo GIF → f
 | ECS Fargate task failure | Health check auto-restarts. Indexer resumes from checkpoint cursor. Stateless API (no in-memory state loss except price cache, which rebuilds in minutes). |
 | Indexer falls behind | Monitor checkpoint lag via `/api/health`. Alert if lag > 100 checkpoints. Increase `INDEXER_BATCH_SIZE` if needed. |
 | Hackathon deadline pressure (Week 6) | Landing page can be minimal. Core product > polish. |
+| Payment Kit package ID changes | Pin constant. Query Namespace on-chain as source of truth. |
+| Facilitator as SPOF | Documented. x402 servers can verify directly against Sui RPC in v2. Acceptable for hackathon. |
+| x402 test endpoint availability | Stand up a minimal test server locally or on ECS. Don't depend on third-party x402 servers for demos. |
+| PaymentRegistry object not created | Gated as Phase 8 prerequisite. Must complete before any x402 integration testing. |
 
 ---
 
@@ -1407,9 +1620,11 @@ README structure: one-liner description → 30-second install → demo GIF → f
 | Component | Technology | Deployment |
 |-----------|-----------|------------|
 | Move contracts | Sui Move | Mainnet (published once) |
-| SDK | TypeScript, @mysten/sui, @suilend/sdk, Cetus SDK | npm (@t2000/sdk) |
+| SDK | TypeScript, @mysten/sui, @naviprotocol/lending, Cetus SDK | npm (@t2000/sdk) |
 | CLI | TypeScript, Commander.js, Hono (local API) | npm (@t2000/cli) |
-| Backend (Sponsor + Gas Station + Indexer) | Hono (Node.js) | ECS Fargate (single task) at api.t2000.ai |
+| x402 Client | TypeScript, @mysten/payment-kit, @mysten/sui | npm (@t2000/x402) |
+| Agent Skills | Markdown (SKILL.md) | GitHub (mission69b/t2000-skills) |
+| Backend (Sponsor + Gas Station + Indexer + Facilitator) | Hono (Node.js) | ECS Fargate (single task) at api.t2000.ai |
 | Website | Next.js | Vercel at t2000.ai |
 | Database | PostgreSQL (Prisma ORM) | NeonDB |
 | Dashboard (v1.1) | Next.js | Vercel (post-MVP) |

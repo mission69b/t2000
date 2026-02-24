@@ -101,7 +101,7 @@ export default function Home() {
           </div>
 
           <p className="mt-8 text-center text-muted text-lg">
-            30 seconds. Wallet → send → earn. That&apos;s it.
+            30 seconds. Send → save → borrow → swap → repay → withdraw.
           </p>
         </div>
       </section>

@@ -1150,7 +1150,7 @@ The agent never sees protocol names. These are the underlying protocols:
 
 | Protocol | Role | Agent Sees |
 |----------|------|------------|
-| Suilend | Lending / yield | `save` / `withdraw` / `borrow` / `repay` |
+| NAVI | Lending / yield | `save` / `withdraw` / `borrow` / `repay` |
 | Cetus | Spot swaps | `swap` |
 | Sui native | Transfers | `send` |
 
@@ -1190,7 +1190,7 @@ Bluefin integration: `long`, `short`, `close`, `pnl`. SUI-PERP, BTC-PERP, ETH-PE
 
 Savings positions accrue yield continuously. t2000 tracks this using the lending protocol's **accrual index** (preferred) with polling as fallback:
 
-**Primary method (accrual index):** Read Suilend's on-chain accrual index directly. `yield = principal × (current_index / deposit_index - 1)`. Exact, no polling drift, handles multiple positions and external deposits correctly.
+**Primary method (accrual index):** Read NAVI's on-chain accrual index directly. `yield = principal × (current_index / deposit_index - 1)`. Exact, no polling drift, handles multiple positions and external deposits correctly.
 
 **Fallback method (polling):** If accrual index is unavailable:
 
@@ -2025,7 +2025,7 @@ CREATE TABLE agents (
 CREATE TABLE positions (
   id            SERIAL PRIMARY KEY,
   agent_address TEXT NOT NULL REFERENCES agents(address),
-  protocol      TEXT NOT NULL,              -- 'suilend'
+  protocol      TEXT NOT NULL,              -- 'navi'
   asset         TEXT NOT NULL,
   position_type TEXT NOT NULL,              -- 'save' | 'borrow'
   amount        NUMERIC NOT NULL,
@@ -2081,7 +2081,7 @@ Every 2 seconds:
   4. On crash → restart from stored cursor (no gaps, no duplicates)
 
 Every 1 hour (in-process cron):
-  1. Read Suilend accrual index for all indexed agents
+  1. Read NAVI accrual index for all indexed agents
   2. Compute yield deltas since last snapshot
   3. Insert yield_snapshots
 
@@ -2187,15 +2187,15 @@ Everything above the line ships in 6 weeks. Everything below waits.
 
 ### MVP (Weeks 1-6)
 
-Wallet SDK + CLI + Gas Station + Suilend + Cetus + local API + sponsored onboarding + yield tracking. Single wallet. Landing page at t2000.ai. **Start date: Jan 26, 2026 → Ship date: March 2, 2026** (before hackathon deadline March 4).
+Wallet SDK + CLI + Gas Station + NAVI + Cetus + local API + sponsored onboarding + yield tracking. Single wallet. Landing page at t2000.ai. **Start date: Jan 26, 2026 → Ship date: March 2, 2026** (before hackathon deadline March 4).
 
 | Week | Focus | Deliverable |
 |------|-------|-------------|
 | 1 | Core Wallet + Key Security | Monorepo setup (pnpm), `T2000` class, Ed25519 keypair gen with **mandatory AES-256-GCM encryption** (`--no-encrypt` opt-out), load/export/import (encrypted file default, `--stdout` with warning), `t2000 init` (local keypair only — no sponsor yet), `t2000 send`, `t2000 balance` (with gasReserve), `t2000 address`, `t2000 deposit` (static instructions), `t2000 history`. Single wallet at `~/.t2000/wallet.key`. *Week 1 tests use a pre-funded mainnet wallet via `T2000_PRIVATE_KEY` env var (small amounts, no sponsor yet).* |
-| 2 | Sponsor + Savings | Backend deployed (ECS Fargate). Sponsor service: sponsored `t2000 init` with hashcash. Bootstrap sponsorship (first 10 txs). Suilend integration: `save` (`supply` alias, `all` reserves $1), `withdraw` (HF check), `borrow` (HF check), `repay`, `healthFactor`, `rates`. |
+| 2 | Sponsor + Savings | Backend deployed (ECS Fargate). Sponsor service: sponsored `t2000 init` with hashcash. Bootstrap sponsorship (first 10 txs). NAVI integration: `save` (`supply` alias, `all` reserves $1), `withdraw` (HF check), `borrow` (HF check), `repay`, `healthFactor`, `rates`. |
 | 3 | Gas Station + Auto-SUI Reserve | Gas Station endpoint on same ECS task — tested independently. Auto-SUI reserve logic (auto-swap USDC→SUI when SUI low, swap gas always sponsored). Bootstrap counter tracked server-side by wallet address in NeonDB. In-memory SUI price TWAP + circuit breaker. Retry/fallback logic. |
 | 4 | Swaps + Protocol Fees + Risk | Cetus swap integration with **on-chain slippage enforcement** (`sqrt_price_limit`). **Protocol fee collection** (0.1% save/swap, 0.05% borrow) — atomic PTB inclusion, pre-signing disclosure, `protocol_fee_ledger` table. Risk module: HF checks before borrow AND withdraw (`maxWithdraw`/`maxBorrow` helpers), tx simulation with Move abort code in errors, address validation on `send`. |
-| 5 | Indexer + Yield + Events + Local API | **Checkpoint-based indexer**: processes Sui checkpoints sequentially, indexes positions/transactions/fees, crash-safe cursor in NeonDB. Yield snapshotter (hourly). `GET /api/health` with indexer lag. Client-side yield tracker via Suilend accrual index. `earnings`, `fund-status`. Event system: `EventEmitter` for `yield`, `balanceChange`, `healthWarning`, `healthCritical`, `gasStationFallback`, `error`. `t2000 serve` (Hono) with **bearer token auth** and **configurable rate limit** (`--rate-limit`, default 10 req/sec). SSE `/v1/events`. `--json` output on all CLI commands. Restart generates new token. |
+| 5 | Indexer + Yield + Events + Local API | **Checkpoint-based indexer**: processes Sui checkpoints sequentially, indexes positions/transactions/fees, crash-safe cursor in NeonDB. Yield snapshotter (hourly). `GET /api/health` with indexer lag. Client-side yield tracker via NAVI accrual index. `earnings`, `fund-status`. Event system: `EventEmitter` for `yield`, `balanceChange`, `healthWarning`, `healthCritical`, `gasStationFallback`, `error`. `t2000 serve` (Hono) with **bearer token auth** and **configurable rate limit** (`--rate-limit`, default 10 req/sec). SSE `/v1/events`. `--json` output on all CLI commands. Restart generates new token. |
 | 6 | Launch | npm publish (`@t2000/sdk`, `@t2000/cli`). README with 30-second quickstart. Static landing page at t2000.ai (Vercel). Full E2E test pass on mainnet (small amounts). **Must ship before March 4 hackathon deadline.** |
 
 ### v1.1 — Dashboard + Multi-Agent (Weeks 7-10)
@@ -2233,7 +2233,7 @@ Wallet SDK + CLI + Gas Station + Suilend + Cetus + local API + sponsored onboard
 | TypeScript | Everything |
 | pnpm workspaces | Monorepo (sdk, cli packages) |
 | @mysten/sui | Transaction building, simulation, submission |
-| Suilend SDK | Lending protocol integration |
+| NAVI SDK | Lending protocol integration |
 | Cetus SDK | Spot swap routing |
 | Commander.js | CLI framework |
 | Hono | Local HTTP API server (lightweight, fast) |
@@ -2278,7 +2278,7 @@ Wallet SDK + CLI + Gas Station + Suilend + Cetus + local API + sponsored onboard
 |--------|-------------------|
 | `wallet/keyManager` | Keypair gen produces valid Ed25519. **Encryption mandatory by default** — load/save with passphrase. Export to encrypted file roundtrip works. `--stdout` export with `--raw` import roundtrip works. Env var override (`T2000_PRIVATE_KEY`) works. `--no-encrypt` stores plaintext with warning. |
 | `wallet/send` | Send validates address format. Send throws `INSUFFICIENT_BALANCE` when amount > available. Send returns correct balance breakdown (available/savings/total). |
-| `protocols/suilend` | Save (supply) returns tx digest. `save all` reserves $1 USDC. HF check throws at < 1.5 on borrow AND withdraw. `WITHDRAW_WOULD_LIQUIDATE` includes `safeWithdrawAmount`. Borrow with no collateral throws `NO_COLLATERAL`. Repay all calculates correct amount. Yield tracking via accrual index is accurate. |
+| `protocols/navi` | Save (supply) returns tx digest. `save all` reserves $1 USDC. HF check throws at < 1.5 on borrow AND withdraw. `WITHDRAW_WOULD_LIQUIDATE` includes `safeWithdrawAmount`. Borrow with no collateral throws `NO_COLLATERAL`. Repay all calculates correct amount. Yield tracking via accrual index is accurate. |
 | `protocols/cetus` | Swap enforces slippage **on-chain** via `sqrt_price_limit`. Whitelist rejects unlisted assets. |
 | `gasStation/client` | Dynamic fee calculation correct. Fallback to Gas Station works when SUI empty. Auto-SUI reserve top-up triggers at threshold. Fee cap ($0.05) enforced. `GAS_FEE_EXCEEDED` thrown when cap hit. SUI price circuit breaker activates on >20% move. Bootstrap phase tracks tx count correctly. |
 | `fees/protocolFee` | Protocol fee calculated correctly (0.1% save/swap, 0.05% borrow). Fee included atomically in PTB. Fee shown in pre-signing disclosure. Free operations (send, withdraw, repay) have zero protocol fee. Fee ledger entry created on success. |
@@ -2292,9 +2292,9 @@ Wallet SDK + CLI + Gas Station + Suilend + Cetus + local API + sponsored onboard
 | Suite | What to Verify |
 |-------|---------------|
 | Send | USDC transfer executes, balance updates (including gasReserve), recipient receives funds |
-| Save (Suilend) | Full save → earn → withdraw roundtrip. `save all` reserves $1 USDC. Balance shows available/savings/gasReserve split. Yield tracked via accrual index. |
-| Withdraw (Suilend) | Withdraw succeeds when HF safe. Withdraw blocked with `WITHDRAW_WOULD_LIQUIDATE` when would drop HF < 1.5. Returns `safeWithdrawAmount`. |
-| Borrow (Suilend) | Borrow with collateral succeeds. Borrow without collateral throws `NO_COLLATERAL`. Borrow that drops HF < 1.5 throws `HEALTH_FACTOR_TOO_LOW`. |
+| Save (NAVI) | Full save → earn → withdraw roundtrip. `save all` reserves $1 USDC. Balance shows available/savings/gasReserve split. Yield tracked via accrual index. |
+| Withdraw (NAVI) | Withdraw succeeds when HF safe. Withdraw blocked with `WITHDRAW_WOULD_LIQUIDATE` when would drop HF < 1.5. Returns `safeWithdrawAmount`. |
+| Borrow (NAVI) | Borrow with collateral succeeds. Borrow without collateral throws `NO_COLLATERAL`. Borrow that drops HF < 1.5 throws `HEALTH_FACTOR_TOO_LOW`. |
 | Cetus | SUI→USDC swap executes with on-chain slippage protection (`sqrt_price_limit`), balance updates |
 | Sponsored Init | New wallet created with zero cost (encrypted key by default), hashcash challenge passed |
 | Bootstrap Gas | First 10 txs sponsored. After bootstrap, agent auto-swaps USDC→SUI and pays own gas. |
@@ -2396,11 +2396,11 @@ The first send on any fresh wallet shows the auto-top-up line. Subsequent sends 
 | Borrow | No use case explanation | **"Why borrow" explainer** + plain-English health factor | Agent devs need to understand when/why to borrow |
 | Simulation error | Generic failure | **Includes Move abort code** and human-readable reason | Agents need actionable failure info |
 | Withdraw | No HF check | **Checks projected HF** — blocks if would drop below 1.5 | Prevents accidental liquidation |
-| Yield tracking | Polling delta | **Suilend accrual index** (polling as fallback) | Exact, no drift, handles edge cases |
+| Yield tracking | Polling delta | **NAVI accrual index** (polling as fallback) | Exact, no drift, handles edge cases |
 | SUI price crash | Not addressed | **Circuit breaker**: suspend Gas Station if >20% move in 1hr | Protects pool from being drained |
 | Balance shape | Available + Savings | **+ gasReserve** (SUI amount + USD equiv) | Transparency: agent always sees gas state |
 | Self-funding threshold | "$500 = self-funding" | **"$2,000+ to be practical"** | Honest about fiat conversion friction |
-| Timeline | Week 2 = Sponsor + Gas Station + Suilend | **Week 3 = Gas Station, Week 4 = Swaps + Fees, Week 5 = Events + API** | Realistic weekly load |
+| Timeline | Week 2 = Sponsor + Gas Station + NAVI | **Week 3 = Gas Station, Week 4 = Swaps + Fees, Week 5 = Events + API** | Realistic weekly load |
 | Revenue model | No revenue model | **Protocol fees**: 0.1% save/swap, 0.05% borrow. Free wallet, paid DeFi. | Sustainable business. Standard aggregator model. |
 | Auto-top-up | Not addressed | **Auto-top-up swaps always sponsored** by Gas Station (prevents zero-SUI deadlock) | Race condition fix |
 | Bootstrap tracking | Unspecified | **Server-side by wallet address** in `gas_ledger` | Client-side is spoofable |
@@ -2490,7 +2490,7 @@ Both may be used. Ika for multi-chain wallet control (agent signs transactions o
 | Criterion | How t2000 Meets It |
 |-----------|-------------------|
 | **Developed by AI agents** | Spec designed with AI. Codebase built with AI assistance. |
-| **Uses Sui Stack** | Native Sui transactions, Suilend, Cetus, sponsored transactions, USDC on Sui |
+| **Uses Sui Stack** | Native Sui transactions, NAVI, Cetus, sponsored transactions, USDC on Sui |
 | **Working demo** | `npx t2000 init` → send → save → earn yield. Full E2E on mainnet. |
 | **The "Infinite Money Glitch"** | Agent supplies idle USDC to earn 8%+ APY. Yield offsets compute costs. At $2,000+ supplied, self-funding becomes practical. |
 | **Local God Mode** | Runs entirely on the agent's machine. Local keypair, local API server, no custody. The agent controls its own wallet. |
@@ -2498,7 +2498,7 @@ Both may be used. Ika for multi-chain wallet control (agent signs transactions o
 ### Sui Stack Integration
 
 - **@mysten/sui** — Transaction building, simulation, PTB construction
-- **Suilend** — Lending/borrowing (save, withdraw, borrow, repay)
+- **NAVI** — Lending/borrowing (save, withdraw, borrow, repay)
 - **Cetus** — DEX swaps with slippage protection
 - **Sponsored transactions** — Gas Station uses Sui-native sponsored tx pattern
 - **Native USDC on Sui** — Circle-issued, not bridged

@@ -22,7 +22,7 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 |---------|---------------|
 | Agents can't hold money | Non-custodial wallet in one line of code |
 | Gas tokens are confusing | Auto-managed — agent never sees SUI |
-| Idle funds lose value | Automatic yield via Suilend (8%+ APY) |
+| Idle funds lose value | Automatic yield via NAVI Protocol (8%+ APY) |
 | DeFi is complex | `save()`, `swap()`, `borrow()` — three methods |
 | No standard wallet interface | SDK + CLI + HTTP API for any language |
 
@@ -77,7 +77,7 @@ t2000/
 │   │   └── src/
 │   │       ├── t2000.ts        Main T2000 class
 │   │       ├── wallet/         Key management, send, balance, history
-│   │       ├── protocols/      Suilend (save/borrow), Cetus (swap), fees
+│   │       ├── protocols/      NAVI (save/borrow), Cetus (swap), fees
 │   │       ├── gas/            Gas manager, auto-topup, gas station client
 │   │       └── utils/          Retry, simulate, format, hashcash
 │   │
@@ -125,7 +125,7 @@ t2000/
 - **Key Management** — AES-256-GCM encrypted, passphrase-protected
 
 ### Savings (DeFi)
-- **Save** — Deposit to Suilend, earn 8%+ APY
+- **Save** — Deposit to NAVI Protocol, earn 8%+ APY
 - **Withdraw** — Pull from savings anytime (risk-checked)
 - **Earnings** — Track yield earned, daily rate, projections
 - **Positions** — View all open DeFi positions
@@ -183,7 +183,7 @@ t2000 balance ──────────────────► Query on
 ### Flow 2: Save and Earn
 
 ```
-Agent                            t2000                         Suilend
+Agent                            t2000                         NAVI
 ─────                            ─────                         ───────
 agent.save({ amount: 50 }) ────► Validate balance
                                  Calculate fee (0.1%)
@@ -196,7 +196,7 @@ agent.save({ amount: 50 }) ────► Validate balance
 
 [Time passes — yield accrues]
 
-agent.earnings() ──────────────► Read Suilend position
+agent.earnings() ──────────────► Read NAVI position
                                  Calculate daily rate
 ◄──────────────────────────────── Supplied: $50.00
                                   APY: 8.2%
@@ -383,7 +383,7 @@ Response envelope: `{ success: true, data: {...}, timestamp }`.
                               │           T2000 Core Engine            │
                               │                                        │
                               │  ┌──────────┐ ┌──────────┐ ┌────────┐ │
-                              │  │ Wallet   │ │ Suilend  │ │ Cetus  │ │
+                              │  │ Wallet   │ │ NAVI     │ │ Cetus  │ │
                               │  │ send     │ │ save     │ │ swap   │ │
                               │  │ balance  │ │ withdraw │ │ quote  │ │
                               │  │ history  │ │ borrow   │ │        │ │
@@ -429,14 +429,14 @@ Response envelope: `{ success: true, data: {...}, timestamp }`.
 |-------|------------|
 | **Chain** | Sui (mainnet) |
 | **Contracts** | Move (treasury, admin, fee collection) |
-| **SDK** | TypeScript, `@mysten/sui`, `@suilend/sdk`, `eventemitter3` |
+| **SDK** | TypeScript, `@mysten/sui`, `@naviprotocol/wallet-client`, `eventemitter3` |
 | **CLI** | Commander.js, Hono (serve), `@inquirer/prompts` |
 | **Server** | Hono, Prisma, Node.js |
 | **Database** | NeonDB (serverless Postgres) |
 | **Web** | Next.js 16, Tailwind CSS v4, React 19 |
 | **Infra** | AWS ECS Fargate, ECR, CloudWatch, Secrets Manager |
 | **CI/CD** | GitHub Actions (lint → typecheck → build → deploy) |
-| **DeFi** | Suilend (lending), Cetus CLMM (swaps) |
+| **DeFi** | NAVI Protocol (lending), Cetus CLMM (swaps) |
 
 ---
 

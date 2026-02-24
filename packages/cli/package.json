@@ -28,6 +28,7 @@
     "@hono/node-server": "^1",
     "@inquirer/prompts": "^7",
     "@t2000/sdk": "workspace:*",
+    "@t2000/x402": "workspace:*",
     "commander": "^13",
     "hono": "^4",
     "picocolors": "^1"

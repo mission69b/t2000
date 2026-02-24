@@ -1,14 +1,14 @@
 import type { SuiClient } from '@mysten/sui/client';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import * as suilend from './suilend.js';
+import * as navi from './navi.js';
 import type { EarningsResult, FundStatusResult } from '../types.js';
 
 export async function getEarnings(
   client: SuiClient,
   keypair: Ed25519Keypair,
 ): Promise<EarningsResult> {
-  const hf = await suilend.getHealthFactor(client, keypair);
-  const rates = await suilend.getRates(client);
+  const hf = await navi.getHealthFactor(client, keypair);
+  const rates = await navi.getRates(client);
 
   const supplied = hf.supplied;
   const apy = rates.USDC.saveApy / 100;

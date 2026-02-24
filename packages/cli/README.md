@@ -50,7 +50,7 @@ t2000 earnings
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount>` | Deposit to Suilend (earn APY) |
+| `t2000 save <amount>` | Deposit to NAVI Protocol (earn APY) |
 | `t2000 withdraw <amount>` | Withdraw from savings |
 | `t2000 swap <amount> <from> <to>` | Swap via Cetus |
 | `t2000 borrow <amount>` | Borrow against collateral |

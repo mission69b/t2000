@@ -10,20 +10,36 @@ interface TerminalLine {
 
 const LINES: TerminalLine[] = [
   { type: "command", text: "$ npx t2000 init", delay: 0 },
-  { type: "success", text: "  ✓ Wallet created (sponsored)", delay: 700 },
-  { type: "info", text: "  ✓ Address: 0x4a7f...c291", delay: 300 },
-  { type: "command", text: "$ t2000 send 10 USDC to 0x8b3e...d412", delay: 1400 },
-  { type: "success", text: "  ✓ Auto-topped up gas reserve ($1 USDC → SUI)", delay: 600 },
-  { type: "success", text: "  ✓ Sent $10.00 USDC → 0x8b3e...d412", delay: 400 },
-  { type: "info", text: "  ✓ Gas: 0.002 SUI (self-funded)", delay: 200 },
-  { type: "command", text: "$ t2000 save 79 USDC", delay: 1400 },
-  { type: "success", text: "  ✓ $79.00 USDC → savings (8.2% APY)", delay: 700 },
-  { type: "info", text: "  ✓ Earning ~$0.018/day", delay: 300 },
-  { type: "command", text: "$ t2000 balance", delay: 1400 },
-  { type: "output", text: "  Available:    $9.92 USDC", delay: 500 },
-  { type: "output", text: "  Savings:      $79.00 USDC (8.2% APY)", delay: 150 },
-  { type: "output", text: "  Gas reserve:  0.28 SUI ✓ auto-managed", delay: 150 },
-  { type: "output", text: "  Total:        $89.90", delay: 150 },
+  { type: "success", text: "  ✓ Wallet created (sponsored · zero cost)", delay: 700 },
+  { type: "info", text: "  Address: 0x4e12...480f", delay: 300 },
+
+  { type: "command", text: "$ t2000 send 10 USDC to 0x8b3e...d412", delay: 1200 },
+  { type: "success", text: "  ✓ Sent $10.00 USDC → 0x8b3e...d412", delay: 500 },
+  { type: "info", text: "  Gas: 0.002 SUI (self-funded)", delay: 200 },
+
+  { type: "command", text: "$ t2000 save 80 USDC", delay: 1200 },
+  { type: "success", text: "  ✓ Deposited $80.00 USDC → NAVI Protocol", delay: 600 },
+  { type: "info", text: "  APY: 3.79% · Earning ~$0.008/day", delay: 250 },
+
+  { type: "command", text: "$ t2000 borrow 20 USDC", delay: 1200 },
+  { type: "success", text: "  ✓ Borrowed $20.00 USDC (same-asset)", delay: 600 },
+  { type: "info", text: "  Health Factor: 3.39", delay: 250 },
+
+  { type: "command", text: "$ t2000 swap 5 USDC to SUI", delay: 1200 },
+  { type: "success", text: "  ✓ 5.00 USDC → 5.83 SUI", delay: 500 },
+  { type: "info", text: "  Impact: 0.05% · Fee: $0.005", delay: 200 },
+
+  { type: "command", text: "$ t2000 repay 20 USDC", delay: 1200 },
+  { type: "success", text: "  ✓ Repaid $20.00 USDC · Debt: $0.00", delay: 500 },
+
+  { type: "command", text: "$ t2000 withdraw all", delay: 1200 },
+  { type: "success", text: "  ✓ Withdrew $80.00 USDC from NAVI", delay: 500 },
+
+  { type: "command", text: "$ t2000 balance", delay: 1200 },
+  { type: "output", text: "  Available:  $85.00 USDC", delay: 400 },
+  { type: "output", text: "  Savings:    $0.00", delay: 120 },
+  { type: "output", text: "  Gas:        6.31 SUI ✓ auto-managed", delay: 120 },
+  { type: "output", text: "  Total:      $107.09", delay: 120 },
 ];
 
 export function TerminalDemo() {
@@ -61,7 +77,7 @@ export function TerminalDemo() {
         <span className="ml-2 text-xs text-muted font-mono">Terminal</span>
       </div>
 
-      <div className="p-5 font-mono text-sm leading-7 min-h-[440px]">
+      <div className="p-5 font-mono text-sm leading-7 min-h-[580px]">
         {LINES.slice(0, visibleLines).map((line, i) => (
           <div
             key={`${cycle}-${i}`}

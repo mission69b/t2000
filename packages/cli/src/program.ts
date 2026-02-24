@@ -20,6 +20,7 @@ import { registerEarnings } from './commands/earnings.js';
 import { registerFundStatus } from './commands/fundStatus.js';
 import { registerConfig } from './commands/config.js';
 import { registerServe } from './commands/serve.js';
+import { registerPay } from './commands/pay.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -55,6 +56,7 @@ export function createProgram(): Command {
   registerFundStatus(program);
   registerConfig(program);
   registerServe(program);
+  registerPay(program);
 
   return program;
 }

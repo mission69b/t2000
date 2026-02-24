@@ -6,7 +6,7 @@ import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInf
 export function registerRates(program: Command) {
   program
     .command('rates')
-    .description('Show current Suilend APY rates')
+    .description('Show current NAVI Protocol APY rates')
     .option('--key <path>', 'Key file path')
     .action(async (opts) => {
       try {
@@ -21,7 +21,7 @@ export function registerRates(program: Command) {
         }
 
         printBlank();
-        printInfo('USDC Rates (Suilend)');
+        printInfo('USDC Rates (NAVI Protocol)');
         printKeyValue('Save APY', `${rates.USDC.saveApy.toFixed(2)}%`);
         printKeyValue('Borrow APY', `${rates.USDC.borrowApy.toFixed(2)}%`);
         printBlank();

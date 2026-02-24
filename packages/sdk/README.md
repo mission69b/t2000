@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-TypeScript SDK for AI agent wallets on Sui. Send USDC, earn yield via Suilend, swap on Cetus, borrow against collateral — all from a single class.
+TypeScript SDK for AI agent wallets on Sui. Send USDC, earn yield via NAVI Protocol, swap on Cetus, borrow against collateral — all from a single class.
 
 ## Install
 
@@ -22,7 +22,7 @@ console.log(`$${balance.available} USDC available`);
 // Send USDC
 await agent.send({ to: '0x...', amount: 10 });
 
-// Save (earn yield via Suilend)
+// Save (earn yield via NAVI Protocol)
 await agent.save({ amount: 50 });
 
 // Swap USDC → SUI (via Cetus)
@@ -38,7 +38,7 @@ await agent.borrow({ amount: 20 });
 |---------|--------|-------------|
 | **Send** | `agent.send()` | Transfer USDC to any Sui address |
 | **Balance** | `agent.balance()` | Available + savings + gas reserve |
-| **Save** | `agent.save()` | Deposit to Suilend (earn APY) |
+| **Save** | `agent.save()` | Deposit to NAVI Protocol (earn APY) |
 | **Withdraw** | `agent.withdraw()` | Withdraw from savings |
 | **Swap** | `agent.swap()` | USDC/SUI via Cetus CLMM |
 | **Borrow** | `agent.borrow()` | Borrow against collateral |

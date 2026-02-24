@@ -55,7 +55,7 @@ export async function queryBalance(
   const usdcAmount = Number(usdcBalance.totalBalance) / 10 ** SUPPORTED_ASSETS.USDC.decimals;
   const suiAmount = Number(suiBalance.totalBalance) / Number(MIST_PER_SUI);
 
-  const savings = 0; // Merged from Suilend in T2000.balance()
+  const savings = 0; // Merged from NAVI in T2000.balance()
   const usdEquiv = suiAmount * suiPriceUsd;
   const total = usdcAmount + savings + usdEquiv;
 

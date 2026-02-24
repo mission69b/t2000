@@ -89,10 +89,12 @@ export async function buildAndExecuteSend({
 
   const gasUsed = result.effects?.gasUsed;
   const gasCost = gasUsed
-    ? (Number(gasUsed.computationCost) +
-        Number(gasUsed.storageCost) -
-        Number(gasUsed.storageRebate)) /
-      1e9
+    ? Math.abs(
+        (Number(gasUsed.computationCost) +
+          Number(gasUsed.storageCost) -
+          Number(gasUsed.storageRebate)) /
+        1e9
+      )
     : 0;
 
   return {

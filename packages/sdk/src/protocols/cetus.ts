@@ -1,19 +1,13 @@
 import type { SuiClient } from '@mysten/sui/client';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
-import { SUPPORTED_ASSETS, MIST_PER_SUI, CLOCK_ID } from '../constants.js';
+import { CetusClmmSDK } from '@cetusprotocol/sui-clmm-sdk';
+import { SUPPORTED_ASSETS, CLOCK_ID } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import type { GasMethod } from '../types.js';
 
-const CETUS_PACKAGE = '0x1eabed72c53feb3805120a081dc15963c204dc8d091542592abaf7a35689b2fb';
-const CETUS_GLOBAL_CONFIG = '0xdaa46292632c3c4d8f31f23ea0f9b36a28ff3677e9684980e4438403a67a3d8f';
-const CETUS_USDC_SUI_POOL = '0xb8d7d9e66a60c239e7a60110efcf8b555571a820a5c015ae1ce01bd5e9c4ac51';
+const CETUS_USDC_SUI_POOL = '0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab';
 
-// Cetus sqrt_price boundaries (Q64.64 format)
-const MIN_SQRT_PRICE = '4295048016';
-const MAX_SQRT_PRICE = '79226673515401279992447579055';
-
-const DEFAULT_MAX_SLIPPAGE_BPS = 300; // 3%
+const DEFAULT_SLIPPAGE_BPS = 300; // 3%
 
 export interface SwapParams {
   client: SuiClient;
@@ -55,100 +49,63 @@ function isA2B(from: string): boolean {
   return from === 'USDC';
 }
 
-export async function buildSwapTransaction(
-  params: SwapParams,
-): Promise<{ tx: Transaction; expectedOutput: number }> {
-  const { client, keypair, fromAsset, toAsset, amount, maxSlippageBps = DEFAULT_MAX_SLIPPAGE_BPS } = params;
-  const address = keypair.getPublicKey().toSuiAddress();
-  const a2b = isA2B(fromAsset);
+let _cetusSDK: CetusClmmSDK | null = null;
 
+function getCetusSDK(): CetusClmmSDK {
+  if (!_cetusSDK) {
+    _cetusSDK = CetusClmmSDK.createSDK({ env: 'mainnet' });
+  }
+  return _cetusSDK;
+}
+
+export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
+  const { client, keypair, fromAsset, toAsset, amount, maxSlippageBps = DEFAULT_SLIPPAGE_BPS } = params;
+  const address = keypair.getPublicKey().toSuiAddress();
+
+  const a2b = isA2B(fromAsset);
   const fromInfo = SUPPORTED_ASSETS[fromAsset];
   const toInfo = SUPPORTED_ASSETS[toAsset];
   const rawAmount = BigInt(Math.floor(amount * 10 ** fromInfo.decimals));
 
-  // Get current pool price for slippage calculation and expected output
-  const poolPrice = await getPoolPrice(client);
-  let expectedOutput: number;
-  if (a2b) {
-    // USDC → SUI: amount_usdc / price_sui
-    expectedOutput = amount / poolPrice;
-  } else {
-    // SUI → USDC: amount_sui * price_sui
-    expectedOutput = amount * poolPrice;
-  }
+  const sdk = getCetusSDK();
+  sdk.setSenderAddress(address);
 
-  // sqrt_price_limit enforces max slippage on-chain
-  const sqrtPriceLimit = a2b ? MIN_SQRT_PRICE : MAX_SQRT_PRICE;
+  const pool = await sdk.Pool.getPool(CETUS_USDC_SUI_POOL);
 
-  const tx = new Transaction();
-  tx.setSender(address);
-
-  let inputCoin;
-  if (fromAsset === 'SUI') {
-    inputCoin = tx.splitCoins(tx.gas, [rawAmount]);
-  } else {
-    const coins = await client.getCoins({ owner: address, coinType: fromInfo.type });
-    if (coins.data.length === 0) {
-      throw new T2000Error('INSUFFICIENT_BALANCE', `No ${fromAsset} coins found`);
-    }
-
-    const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), 0n);
-    if (totalBalance < rawAmount) {
-      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${fromAsset} balance`, {
-        available: Number(totalBalance) / 10 ** fromInfo.decimals,
-        required: amount,
-      });
-    }
-
-    const primary = tx.object(coins.data[0].coinObjectId);
-    if (coins.data.length > 1) {
-      tx.mergeCoins(primary, coins.data.slice(1).map((c) => tx.object(c.coinObjectId)));
-    }
-    inputCoin = tx.splitCoins(primary, [rawAmount]);
-  }
-
-  const swapTarget = a2b
-    ? `${CETUS_PACKAGE}::pool_script::swap_a2b`
-    : `${CETUS_PACKAGE}::pool_script::swap_b2a`;
-
-  const typeArgs = [SUPPORTED_ASSETS.USDC.type, SUPPORTED_ASSETS.SUI.type];
-
-  const [receivedCoin, returnedCoin] = tx.moveCall({
-    target: swapTarget,
-    arguments: [
-      tx.object(CETUS_GLOBAL_CONFIG),
-      tx.object(CETUS_USDC_SUI_POOL),
-      inputCoin,
-      tx.pure.bool(true), // by_amount_in
-      tx.pure.u64(rawAmount),
-      tx.pure.u128(sqrtPriceLimit),
-      tx.object(CLOCK_ID),
-    ],
-    typeArguments: typeArgs,
+  const preSwapResult = await sdk.Swap.preSwap({
+    pool,
+    current_sqrt_price: pool.current_sqrt_price,
+    coin_type_a: pool.coin_type_a,
+    coin_type_b: pool.coin_type_b,
+    decimals_a: 6,
+    decimals_b: 9,
+    a2b,
+    by_amount_in: true,
+    amount: rawAmount.toString(),
   });
 
-  tx.transferObjects([receivedCoin], address);
-  tx.transferObjects([returnedCoin], address);
+  const estimatedOut = Number(preSwapResult.estimated_amount_out);
+  const slippageFactor = (10000 - maxSlippageBps) / 10000;
+  const amountLimit = Math.floor(estimatedOut * slippageFactor);
 
-  return { tx, expectedOutput };
-}
-
-export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
-  const { client, keypair, fromAsset, toAsset, amount } = params;
-  const address = keypair.getPublicKey().toSuiAddress();
-
-  const { tx, expectedOutput } = await buildSwapTransaction(params);
+  const swapPayload = await sdk.Swap.createSwapPayload({
+    pool_id: pool.id,
+    coin_type_a: pool.coin_type_a,
+    coin_type_b: pool.coin_type_b,
+    a2b,
+    by_amount_in: true,
+    amount: preSwapResult.amount.toString(),
+    amount_limit: amountLimit.toString(),
+  });
 
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
-    transaction: tx,
+    transaction: swapPayload,
     options: { showEffects: true, showBalanceChanges: true },
   });
 
   await client.waitForTransaction({ digest: result.digest });
 
-  // Extract actual received amount from balance changes
-  const toInfo = SUPPORTED_ASSETS[toAsset];
   let actualReceived = 0;
   if (result.balanceChanges) {
     for (const change of result.balanceChanges) {
@@ -165,6 +122,7 @@ export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
     }
   }
 
+  const expectedOutput = estimatedOut / 10 ** toInfo.decimals;
   if (actualReceived === 0) actualReceived = expectedOutput;
 
   const priceImpact = expectedOutput > 0
@@ -196,8 +154,11 @@ export async function getPoolPrice(client: SuiClient): Promise<number> {
       if (currentSqrtPrice > 0n) {
         const Q64 = 2n ** 64n;
         const sqrtPriceFloat = Number(currentSqrtPrice) / Number(Q64);
+        // rawPrice = SUI_smallest / USDC_smallest (token1 per token0 in raw units)
+        // Human conversion: 1 USDC = rawPrice * 10^(6-9) SUI
+        // SUI price in USD = 1 / (rawPrice * 10^(6-9)) = 10^3 / rawPrice
         const rawPrice = sqrtPriceFloat * sqrtPriceFloat;
-        const suiPriceUsd = rawPrice * 1e3;
+        const suiPriceUsd = 1e3 / rawPrice;
         if (suiPriceUsd > 0.01 && suiPriceUsd < 1000) return suiPriceUsd;
       }
     }
@@ -214,14 +175,39 @@ export async function getSwapQuote(
   toAsset: 'USDC' | 'SUI',
   amount: number,
 ): Promise<{ expectedOutput: number; priceImpact: number; poolPrice: number }> {
+  const a2b = isA2B(fromAsset);
+  const fromInfo = SUPPORTED_ASSETS[fromAsset];
+  const toInfo = SUPPORTED_ASSETS[toAsset];
+  const rawAmount = BigInt(Math.floor(amount * 10 ** fromInfo.decimals));
+
   const poolPrice = await getPoolPrice(client);
-  let expectedOutput: number;
 
-  if (fromAsset === 'USDC') {
-    expectedOutput = amount / poolPrice;
-  } else {
-    expectedOutput = amount * poolPrice;
+  try {
+    const sdk = getCetusSDK();
+    const pool = await sdk.Pool.getPool(CETUS_USDC_SUI_POOL);
+
+    const preSwapResult = await sdk.Swap.preSwap({
+      pool,
+      current_sqrt_price: pool.current_sqrt_price,
+      coin_type_a: pool.coin_type_a,
+      coin_type_b: pool.coin_type_b,
+      decimals_a: 6,
+      decimals_b: 9,
+      a2b,
+      by_amount_in: true,
+      amount: rawAmount.toString(),
+    });
+
+    const expectedOutput = Number(preSwapResult.estimated_amount_out) / 10 ** toInfo.decimals;
+
+    return { expectedOutput, priceImpact: 0, poolPrice };
+  } catch {
+    let expectedOutput: number;
+    if (fromAsset === 'USDC') {
+      expectedOutput = amount / poolPrice;
+    } else {
+      expectedOutput = amount * poolPrice;
+    }
+    return { expectedOutput, priceImpact: 0, poolPrice };
   }
-
-  return { expectedOutput, priceImpact: 0, poolPrice };
 }

@@ -14,7 +14,7 @@ import {
 import { buildAndExecuteSend } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory } from './wallet/history.js';
-import * as suilend from './protocols/suilend.js';
+import * as navi from './protocols/navi.js';
 import * as cetus from './protocols/cetus.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
@@ -151,6 +151,16 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
   }
 
+  /** SuiClient used by this agent — exposed for x402 and other integrations. */
+  get suiClient(): SuiClient {
+    return this.client;
+  }
+
+  /** Ed25519Keypair used by this agent — exposed for x402 and other integrations. */
+  get signer(): Ed25519Keypair {
+    return this.keypair;
+  }
+
   // -- Wallet --
 
   address(): string {
@@ -200,7 +210,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       bal.savings = savings;
       bal.total = bal.available + savings + bal.gasReserve.usdEquiv;
     } catch {
-      // Suilend unavailable — show basic balance
+      // NAVI unavailable — show basic balance
     }
 
     return bal;
@@ -253,7 +263,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fee = calculateFee('save', amount);
 
     await this.ensureGas();
-    const result = await suilend.save(this.client, this.keypair, amount);
+    const result = await navi.save(this.client, this.keypair, amount);
 
     reportFee(this._address, 'save', fee.amount, fee.rate, result.tx);
 
@@ -291,7 +301,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       }
     }
     await this.ensureGas();
-    const result = await suilend.withdraw(this.client, this.keypair, amount);
+    const result = await navi.withdraw(this.client, this.keypair, amount);
 
     this.emitBalanceChange('USDC', amount, 'withdraw', result.tx);
 
@@ -299,7 +309,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async maxWithdraw(): Promise<MaxWithdrawResult> {
-    return suilend.maxWithdrawAmount(this.client, this.keypair);
+    return navi.maxWithdrawAmount(this.client, this.keypair);
   }
 
   // -- Borrowing --
@@ -315,7 +325,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fee = calculateFee('borrow', params.amount);
 
     await this.ensureGas();
-    const result = await suilend.borrow(this.client, this.keypair, params.amount);
+    const result = await navi.borrow(this.client, this.keypair, params.amount);
 
     reportFee(this._address, 'borrow', fee.amount, fee.rate, result.tx);
 
@@ -336,7 +346,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       amount = params.amount;
     }
     await this.ensureGas();
-    const result = await suilend.repay(this.client, this.keypair, amount);
+    const result = await navi.repay(this.client, this.keypair, amount);
 
     this.emitBalanceChange('USDC', amount, 'repay', result.tx);
 
@@ -344,11 +354,11 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async maxBorrow(): Promise<MaxBorrowResult> {
-    return suilend.maxBorrowAmount(this.client, this.keypair);
+    return navi.maxBorrowAmount(this.client, this.keypair);
   }
 
   async healthFactor(): Promise<HealthFactorResult> {
-    const hf = await suilend.getHealthFactor(this.client, this.keypair);
+    const hf = await navi.getHealthFactor(this.client, this.keypair);
 
     if (hf.healthFactor < 1.2) {
       this.emit('healthCritical', { healthFactor: hf.healthFactor, threshold: 1.5, severity: 'critical' });
@@ -419,11 +429,11 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Info --
 
   async positions(): Promise<PositionsResult> {
-    return suilend.getPositions(this.client, this.keypair);
+    return navi.getPositions(this.client, this.keypair);
   }
 
   async rates(): Promise<RatesResult> {
-    return suilend.getRates(this.client);
+    return navi.getRates(this.client);
   }
 
   async earnings(): Promise<EarningsResult> {
