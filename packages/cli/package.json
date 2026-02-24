@@ -1,14 +1,22 @@
 {
   "name": "@t2000/cli",
   "version": "0.1.0",
-  "description": "CLI for t2000 — the first wallet for AI agents",
+  "description": "CLI wallet for AI agents on Sui — send, save, swap, borrow from your terminal",
   "type": "module",
   "bin": {
     "t2000": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
+  "keywords": ["sui", "wallet", "ai", "agent", "cli", "defi", "usdc"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/t2000",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://t2000.ai",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

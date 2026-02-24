@@ -31,3 +31,6 @@ packages/contracts/build/
 
 # wallet keys (never commit)
 *.key
+
+# infra generated
+infra/.env.infra

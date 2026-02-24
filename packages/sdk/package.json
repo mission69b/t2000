@@ -1,7 +1,7 @@
 {
   "name": "@t2000/sdk",
   "version": "0.1.0",
-  "description": "The first wallet for AI agents",
+  "description": "TypeScript SDK for AI agent wallets on Sui — send, save, swap, borrow",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -14,8 +14,16 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
+  "keywords": ["sui", "wallet", "ai", "agent", "defi", "sdk", "usdc", "suilend", "cetus"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/t2000",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://t2000.ai",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

@@ -1,126 +1,181 @@
 # t2000
 
-Agentic DeFi SDK for Sui — wallet management, savings (Suilend), and borrowing with a CLI and TypeScript API.
+The first wallet for AI agents. Send, save, swap, and borrow on Sui — in one line of code.
 
-## Monorepo Structure
-
-```
-packages/
-  sdk/          @t2000/sdk        Core SDK (wallet, Suilend, hashcash)
-  cli/          @t2000/cli        CLI interface
-  contracts/    Move contracts    On-chain modules (deployed to mainnet)
-apps/
-  server/       @t2000/server     Hono API (sponsor, health)
-  web/          Next.js app       Dashboard (WIP)
-scripts/
-  integration-test.ts             Mainnet integration test
+```typescript
+const agent = await T2000.create({ passphrase: 'my-secret' });
+await agent.send({ to: '0x...', amount: 50 });
+await agent.save({ amount: 100 });  // earn 8% APY via Suilend
 ```
 
-## Setup
+## 30-Second Quickstart
 
 ```bash
-pnpm install
-pnpm build
+# Install the CLI
+npm install -g @t2000/cli
+
+# Create a wallet
+t2000 init
+
+# Fund it with USDC on Sui
+t2000 deposit
+
+# Start using it
+t2000 balance
+t2000 send 10 0x8b3e...d412
+t2000 save 50
+t2000 earnings
 ```
 
-Copy the environment template and fill in your values:
+## Packages
+
+| Package | Description | Install |
+|---------|-------------|---------|
+| [`@t2000/sdk`](packages/sdk) | TypeScript SDK | `npm i @t2000/sdk` |
+| [`@t2000/cli`](packages/cli) | Terminal wallet | `npm i -g @t2000/cli` |
+| [`@t2000/server`](apps/server) | Gas station + indexer | Self-hosted |
+
+## SDK Usage
+
+```typescript
+import { T2000 } from '@t2000/sdk';
+
+const agent = await T2000.create({ passphrase: process.env.T2000_PASSPHRASE });
+
+// Wallet
+const balance = await agent.balance();       // { available, savings, gasReserve, total }
+await agent.send({ to, amount: 50 });        // USDC transfer
+
+// Savings (Suilend)
+await agent.save({ amount: 100 });           // earn yield
+await agent.withdraw({ amount: 50 });        // withdraw anytime
+const earnings = await agent.earnings();     // yield summary
+
+// Swap (Cetus)
+await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
+
+// Borrow
+await agent.borrow({ amount: 20 });          // against savings collateral
+await agent.repay({ amount: 20 });
+const hf = await agent.healthFactor();       // liquidation safety check
+```
+
+## CLI Commands
 
 ```bash
-cp .env.example .env.local
+t2000 init                    # Create wallet
+t2000 balance                 # Check balance
+t2000 send 10 0xABC...        # Send USDC
+t2000 save 50                 # Save (earn yield)
+t2000 withdraw 25             # Withdraw savings
+t2000 swap 5 USDC SUI         # Swap on Cetus
+t2000 borrow 10               # Borrow against collateral
+t2000 repay 10                # Repay borrow
+t2000 health                  # Health factor
+t2000 earnings                # Yield earned
+t2000 fund-status             # Full savings report
+t2000 rates                   # Current APYs
+t2000 positions               # Open positions
+t2000 history                 # Transaction history
+t2000 serve --port 3001       # Start HTTP API
+t2000 config set key value    # Set config
 ```
 
-Required variables:
+Add `--json` to any command for structured JSON output.
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | NeonDB connection string |
-| `T2000_PASSPHRASE` | Sui private key (`suiprivkey1q...`) for test wallet |
+## HTTP API
+
+```bash
+t2000 serve --port 3001
+# ✓ API server running on http://localhost:3001
+# ✓ Auth token: t2k_a1b2c3d4e5f6...
+```
+
+```bash
+# All endpoints require: Authorization: Bearer <token>
+
+curl http://localhost:3001/v1/balance
+curl -X POST http://localhost:3001/v1/send -d '{"to":"0x...","amount":10}'
+curl -X POST http://localhost:3001/v1/save -d '{"amount":50}'
+curl -X POST http://localhost:3001/v1/swap -d '{"from":"USDC","to":"SUI","amount":5}'
+curl http://localhost:3001/v1/earnings
+curl http://localhost:3001/v1/health-factor
+
+# SSE events
+curl http://localhost:3001/v1/events?subscribe=yield,balanceChange
+```
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌───────────┐
+│  @t2000/cli │────▶│  @t2000/sdk │────▶│  Sui RPC  │
+│  (terminal) │     │  (core)     │     └───────────┘
+└─────────────┘     │             │     ┌───────────┐
+                    │             │────▶│  Suilend  │
+┌─────────────┐     │             │     └───────────┘
+│  HTTP API   │────▶│             │     ┌───────────┐
+│  (t2000     │     │             │────▶│  Cetus    │
+│   serve)    │     └──────┬──────┘     └───────────┘
+└─────────────┘            │
+                    ┌──────▼──────┐
+                    │  Gas Station│ (auto SUI top-up)
+                    │  @t2000/    │
+                    │  server     │
+                    └─────────────┘
+```
+
+## Gas Abstraction
+
+Agents never need to think about gas:
+
+1. **Self-funded** — uses agent's own SUI
+2. **Auto-topup** — swaps $1 USDC → SUI when gas is low
+3. **Sponsored** — gas station pays for bootstrapping
+
+Every result includes `gasMethod` so you know how gas was paid.
 
 ## Development
 
 ```bash
-pnpm dev          # Start all dev servers
-pnpm build        # Build all packages
-pnpm lint         # Lint all packages
-pnpm typecheck    # TypeScript check all packages
-```
+# Clone and install
+git clone https://github.com/user/t2000 && cd t2000
+pnpm install
 
-### SDK Tests
+# Build all packages
+pnpm build
 
-```bash
-pnpm --filter @t2000/sdk test
+# Run checks
+pnpm typecheck
+pnpm test
+
+# Dev mode
+cd packages/sdk && pnpm dev
+cd packages/cli && pnpm dev
+cd apps/server && pnpm dev
 ```
 
 ## Integration Test
 
-The integration test runs a full save → earn → withdraw roundtrip against Suilend on **mainnet** using real funds. It verifies:
+```bash
+# Set your private key
+echo 'T2000_PASSPHRASE=suiprivkey1q...' >> .env.local
 
-1. Wallet loading from private key
-2. Balance check (USDC + SUI + savings)
-3. Suilend APY rates
-4. Current positions
-5. Save $1 USDC to Suilend
-6. Position & health factor after deposit
-7. Withdraw all USDC from Suilend
-8. Final balance reconciliation
+# Run the mainnet integration test
+export $(grep -v '^#' .env.local | xargs) && pnpm exec tsx scripts/integration-test.ts
+```
 
-### Prerequisites
-
-- A funded wallet with at least **$2 USDC** and **0.05 SUI** for gas
-- `T2000_PASSPHRASE` set in `.env.local` (the `suiprivkey1q...` for that wallet)
-
-### Running
+## Infrastructure
 
 ```bash
-export $(grep -v '^#' .env.local | xargs)
-pnpm --filter @t2000/server exec tsx ../../scripts/integration-test.ts
+# One-time AWS setup (ECS cluster, ECR, IAM)
+./infra/setup.sh
+
+# Deploy server or indexer
+./infra/deploy.sh --service server
+./infra/deploy.sh --service indexer
 ```
 
-### Expected Output
+## License
 
-```
-=== t2000 Integration Test (mainnet) ===
-
-1. Loading wallet...
-   Address: 0x4e12...480f
-
-2. Checking balance...
-   Available: $72.31 USDC
-   Savings:   $0.00 USDC
-   Gas:       104.83 SUI (~$366.92)
-
-3. Fetching Suilend rates...
-   Save APY:   4.50%
-   Borrow APY: 6.00%
-
-5. Saving $1 USDC to Suilend...
-   ✓ Saved $1.00 USDC
-
-8. Withdrawing all USDC from Suilend...
-   ✓ Withdrew $1.00 USDC
-
-=== Integration test complete ===
-```
-
-## CLI
-
-```bash
-# Initialize a new agent wallet
-pnpm --filter @t2000/cli exec t2000 init
-
-# Check balance
-pnpm --filter @t2000/cli exec t2000 balance
-
-# Save USDC to Suilend
-pnpm --filter @t2000/cli exec t2000 save 10      # save $10
-pnpm --filter @t2000/cli exec t2000 save all     # save all available
-
-# Withdraw from Suilend
-pnpm --filter @t2000/cli exec t2000 withdraw 5   # withdraw $5
-pnpm --filter @t2000/cli exec t2000 withdraw all  # withdraw everything
-
-# Check positions & health
-pnpm --filter @t2000/cli exec t2000 positions
-pnpm --filter @t2000/cli exec t2000 health
-pnpm --filter @t2000/cli exec t2000 rates
-```
+MIT
