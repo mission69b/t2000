@@ -19,6 +19,8 @@ RUN pnpm --filter @t2000/server build
 
 FROM node:22-slim AS runner
 
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
