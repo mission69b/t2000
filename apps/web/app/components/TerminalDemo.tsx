@@ -46,6 +46,7 @@ export function TerminalDemo() {
   const [visibleLines, setVisibleLines] = useState(0);
   const [cycle, setCycle] = useState(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const startAnimation = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
@@ -68,6 +69,12 @@ export function TerminalDemo() {
     return () => timersRef.current.forEach(clearTimeout);
   }, [cycle, startAnimation]);
 
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    }
+  }, [visibleLines]);
+
   return (
     <div className="w-full max-w-2xl mx-auto rounded-xl border border-border bg-[#0D1117] overflow-hidden shadow-2xl shadow-accent/5">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -77,7 +84,10 @@ export function TerminalDemo() {
         <span className="ml-2 text-xs text-muted font-mono">Terminal</span>
       </div>
 
-      <div className="p-5 font-mono text-sm leading-7 min-h-[580px]">
+      <div
+        ref={scrollRef}
+        className="p-5 font-mono text-sm leading-7 h-[400px] overflow-y-auto scrollbar-hide"
+      >
         {LINES.slice(0, visibleLines).map((line, i) => (
           <div
             key={`${cycle}-${i}`}

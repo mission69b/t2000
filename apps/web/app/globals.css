@@ -52,3 +52,11 @@ body {
 
 .animate-blink { animation: blink 1s step-end infinite; }
 .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
