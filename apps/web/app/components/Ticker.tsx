@@ -1,9 +1,9 @@
 "use client";
 
 const DEFI_ITEMS = [
-  { name: "USDC/SUI", value: "0.2847", change: "+0.42%", up: true },
+  { name: "USDC/SUI", value: "1.0989", change: "+0.42%", up: true },
   { name: "NAVI APY", value: "4.21%", change: "+0.08%", up: true },
-  { name: "SUI Price", value: "$3.47", change: "-1.2%", up: false },
+  { name: "SUI Price", value: "$0.91", change: "-1.2%", up: false },
   { name: "Borrow Rate", value: "7.83%", change: "-0.1%", up: false },
   { name: "Cetus TVL", value: "$412M", change: "+2.1%", up: true },
   { name: "Sui TPS", value: "8,240", change: "↑", up: true },
@@ -46,7 +46,7 @@ export function Ticker() {
         <div className="flex-1 overflow-hidden relative">
           <div className="absolute inset-y-0 left-0 w-10 sm:w-15 bg-gradient-to-r from-surface to-transparent z-2" />
           <div className="absolute inset-y-0 right-0 w-10 sm:w-15 bg-gradient-to-l from-surface to-transparent z-2" />
-          <div className="flex gap-10 whitespace-nowrap animate-ticker py-3.5 px-4 sm:px-8">
+          <div className="flex gap-8 whitespace-nowrap animate-ticker py-3.5 px-4 sm:px-7">
             <TickerItems items={DEFI_ITEMS} />
             <TickerItems items={DEFI_ITEMS} />
           </div>
@@ -61,7 +61,7 @@ export function Ticker() {
         <div className="flex-1 overflow-hidden relative">
           <div className="absolute inset-y-0 left-0 w-10 sm:w-15 bg-gradient-to-r from-surface to-transparent z-2" />
           <div className="absolute inset-y-0 right-0 w-10 sm:w-15 bg-gradient-to-l from-surface to-transparent z-2" />
-          <div className="flex gap-10 whitespace-nowrap animate-ticker-reverse py-3.5 px-4 sm:px-8">
+          <div className="flex gap-8 whitespace-nowrap animate-ticker-reverse py-3.5 px-4 sm:px-7">
             <TickerItems items={X402_ITEMS} />
             <TickerItems items={X402_ITEMS} />
           </div>
