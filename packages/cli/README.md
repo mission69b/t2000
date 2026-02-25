@@ -19,23 +19,45 @@ npx @t2000/cli init
 
 ## Quick Start
 
-```bash
-# 1. Create a wallet (free, gas-sponsored)
-t2000 init
-
-# 2. Show your deposit address
-t2000 deposit
-
-# 3. Send USDC from a CEX to the address above, then:
-t2000 balance
-
-# 4. Start operating
-t2000 send 10 USDC to 0x8b3e...d412
-t2000 save 80 USDC
-t2000 swap 5 USDC SUI
-t2000 borrow 20 USDC
-t2000 pay https://api.example.com/data
 ```
+❯ t2000 init
+✓ Wallet created (sponsored · zero cost)
+  ✓ Address: 0x4e12...480f
+
+❯ t2000 send 10 USDC to 0x8b3e...d412
+✓ Sent $10.00 USDC → 0x8b3e...d412
+  Gas: 0.002 SUI (self-funded)
+
+❯ t2000 save 80 USDC
+✓ Deposited $80.00 USDC → NAVI Protocol
+  APY: 3.79% · Earning ~$0.008/day
+
+❯ t2000 borrow 20 USDC
+✓ Borrowed $20.00 USDC (same-asset)
+  Health Factor: 3.39
+
+❯ t2000 swap 5 USDC to SUI
+✓ 5.00 USDC → 5.83 SUI
+  Impact: 0.05% · Fee: $0.005
+
+❯ t2000 pay https://data.api.com/prices
+  402 Payment Required · $0.01 USDC
+✓ Paid $0.01 USDC · 200 OK · 820ms
+
+❯ t2000 repay 20 USDC
+✓ Repaid $20.00 USDC · Debt: $0.00
+
+❯ t2000 withdraw all
+✓ Withdrew $80.00 USDC from NAVI
+
+❯ t2000 balance
+  Available:  $85.00 USDC
+  Savings:    $0.00
+  Gas:        6.31 SUI ✓ auto-managed
+  Total:      $107.09
+```
+
+30 seconds. Send → save → borrow → swap → pay → repay → withdraw.
 
 ## Commands
 
