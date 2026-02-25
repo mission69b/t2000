@@ -1,5 +1,3 @@
-import { execSync } from 'node:child_process';
-import { platform } from 'node:os';
 import pc from 'picocolors';
 
 let jsonMode = false;
@@ -68,19 +66,6 @@ export function printSuccessKV(key: string, value: string, keyWidth = 20) {
   if (jsonMode) return;
   const paddedKey = key.padEnd(keyWidth);
   console.log(`  ${pc.green('✓')} ${paddedKey}${pc.dim(value)}`);
-}
-
-export function copyToClipboard(text: string): boolean {
-  try {
-    const os = platform();
-    if (os === 'darwin') execSync('pbcopy', { input: text });
-    else if (os === 'linux') execSync('xclip -selection clipboard', { input: text });
-    else if (os === 'win32') execSync('clip', { input: text });
-    else return false;
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export function handleError(error: unknown) {

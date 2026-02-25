@@ -5,7 +5,6 @@ import { askPassphraseConfirm, getPassphraseFromEnv } from '../prompts.js';
 import {
   printSuccess, printSuccessKV, printBlank, printInfo,
   printJson, printDivider, printLine, isJsonMode, handleError,
-  copyToClipboard,
 } from '../output.js';
 
 export function registerInit(program: Command) {
@@ -59,10 +58,9 @@ export function registerInit(program: Command) {
         printBlank();
         printLine(`🎉 ${pc.green('Bank account created successfully')}`);
 
-        const copied = copyToClipboard(address);
         printBlank();
         printDivider();
-        printLine(`Your agent's address${copied ? ' (copied to clipboard)' : ''}:`);
+        printLine(`Your agent's address:`);
         printLine(pc.yellow(address));
         printBlank();
         printLine(`Deposit USDC on Sui network — not Ethereum, Base, or Solana`);

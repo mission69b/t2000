@@ -398,7 +398,7 @@ function QuickStart({
         {"  "}{S.g("✓")} 402 Pay             {S.m("pay for APIs and services autonomously")}{"\n\n"}
         {"  "}🎉 {S.g("Bank account created successfully")}{"\n\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}Your agent{"'"}s address (copied to clipboard):{"\n"}
+        {"  "}Your agent{"'"}s address:{"\n"}
         {"  "}{S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...4d5e6f")}{"\n\n"}
         {"  "}Deposit USDC on Sui network — not Ethereum, Base, or Solana{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n\n"}
