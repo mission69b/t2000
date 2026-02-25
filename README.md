@@ -59,11 +59,10 @@ Agent becomes self-funding
 npm install -g @t2000/cli    # or: pnpm add -g @t2000/cli
 
 t2000 init              # Create a wallet
-t2000 deposit           # Get funding address
 t2000 balance           # Check balance
-t2000 send 10 0x...     # Send USDC
-t2000 save 50           # Earn yield
-t2000 earnings          # Check what you've earned
+t2000 send 10 USDC to 0x...  # Send USDC
+t2000 save all          # Earn yield on idle funds
+t2000 balance           # See savings + daily earnings
 ```
 
 ---
@@ -165,19 +164,17 @@ Developer                        t2000
 npm install -g @t2000/cli
 t2000 init ─────────────────────► Generate Ed25519 keypair
                                   Encrypt with AES-256-GCM
-                                  Save to ~/.t2000/key.enc
+                                  Save to ~/.t2000/wallet.key
                                   Call /api/sponsor (hashcash PoW)
-◄──────────────────────────────── Address: 0x4e12...480f
-                                  Sponsored: ✓ (gas station funded)
-
-t2000 deposit ──────────────────► Show funding instructions
-                                  "Send USDC on Sui to 0x4e12..."
+◄──────────────────────────────── 🎉 Bank account created
+                                  Address: 0x8b3e...d412
+                                  Deposit USDC on Sui network only.
 
 [User sends USDC from Coinbase]
 
 t2000 balance ──────────────────► Query on-chain balances
-◄──────────────────────────────── Available: $100.00 USDC
-                                  Gas: 0.12 SUI (~$0.42)
+◄──────────────────────────────── Available: $100.00 USDC (checking — spendable)
+                                  Gas: 0.12 SUI (~$0.11)
 ```
 
 ### Flow 2: Save and Earn
@@ -190,9 +187,10 @@ agent.save({ amount: 50 }) ────► Validate balance
                                  ensureGas()
                                  Build PTB (deposit + fee) ──► Supply USDC
                                  Sign & execute
-◄──────────────────────────────── Saved $50.00 @ 8.2% APY
-                                  Fee: $0.05
-                                  Tx: 0xa1c2...
+◄──────────────────────────────── ✓ Saved $50.00 USDC to NAVI
+                                  ✓ Protocol fee: $0.05 (0.1%)
+                                  ✓ Current APY: 4.21%
+                                  Tx: https://suiexplorer.com/txblock/0xa1c2...
 
 [Time passes — yield accrues]
 
@@ -215,9 +213,8 @@ agent.swap({                 ──► Check SUI balance
 }) ────────────────────────────── Build swap PTB
                                   Set sqrt_price_limit ── Execute swap
                                   Extract received amount
-◄──────────────────────────────── Swapped $5.00 → 1.43 SUI
-                                  Gas: auto-topup
-                                  Fee: $0.005
+◄──────────────────────────────── ✓ Swapped 5 USDC → 1.43 SUI
+                                  Tx: https://suiexplorer.com/txblock/0xb2c3...
 ```
 
 ### Flow 4: HTTP API (Non-TypeScript Agents)

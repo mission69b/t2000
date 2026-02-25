@@ -21,40 +21,65 @@ npx @t2000/cli init
 
 ```
 ❯ t2000 init
-✓ Wallet created (sponsored · zero cost)
-  ✓ Address: 0x4e12...480f
+
+  Creating agent wallet...
+  ✓ Keypair generated
+  ✓ Network  Sui mainnet
+  ✓ Gas sponsorship  enabled
+
+  Setting up accounts...
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ 402 Pay
+
+  🎉 Bank account created
+  Address:  0x8b3e4f2a...
+
+  Deposit USDC on Sui network only.
+  ─────────────────────────────────────────────────────
+  t2000 balance            check for funds
+  t2000 save all           start earning yield
+  t2000 address            show address again
 
 ❯ t2000 send 10 USDC to 0x8b3e...d412
-✓ Sent $10.00 USDC → 0x8b3e...d412
-  Gas: 0.002 SUI (self-funded)
+  ✓ Sent $10.00 USDC → 0x8b3e...d412
+  Tx:  https://suiexplorer.com/txblock/0xa1b2...
 
 ❯ t2000 save 80 USDC
-✓ Deposited $80.00 USDC → NAVI Protocol
-  APY: 3.79% · Earning ~$0.008/day
+  ✓ Saved $80.00 USDC to NAVI
+  ✓ Protocol fee: $0.08 USDC (0.1%)
+  ✓ Current APY: 4.21%
+  ✓ Savings balance: $79.92 USDC
+  Tx:  https://suiexplorer.com/txblock/0x9f2c...
 
 ❯ t2000 borrow 20 USDC
-✓ Borrowed $20.00 USDC (same-asset)
-  Health Factor: 3.39
+  ✓ Borrowed $20.00 USDC
+  Health Factor:  3.39
+  Tx:  https://suiexplorer.com/txblock/0xb3c4...
 
 ❯ t2000 swap 5 USDC to SUI
-✓ 5.00 USDC → 5.83 SUI
-  Impact: 0.05% · Fee: $0.005
+  ✓ Swapped 5 USDC → 5.83 SUI
+  Tx:  https://suiexplorer.com/txblock/0xd5e6...
 
 ❯ t2000 pay https://data.api.com/prices
-  402 Payment Required · $0.01 USDC
-✓ Paid $0.01 USDC · 200 OK · 820ms
+  → GET https://data.api.com/prices
+  ← 402 Payment Required: $0.01 USDC (Sui)
+  ✓ Paid $0.01 USDC (tx: 0x9f2c...a801)
+  ← 200 OK  [342ms]
 
 ❯ t2000 repay 20 USDC
-✓ Repaid $20.00 USDC · Debt: $0.00
+  ✓ Repaid $20.00 USDC
+  Remaining Debt:  $0.00
+  Tx:  https://suiexplorer.com/txblock/0xe7f8...
 
 ❯ t2000 withdraw all
-✓ Withdrew $80.00 USDC from NAVI
+  ✓ Withdrew $79.92 USDC
+  Tx:  https://suiexplorer.com/txblock/0xf9a0...
 
 ❯ t2000 balance
-  Available:  $85.00 USDC
-  Savings:    $0.00
-  Gas:        6.31 SUI ✓ auto-managed
-  Total:      $107.09
+  Available:  $85.00 USDC  (checking — spendable)
+  Savings:    $0.00 USDC
+  Gas:        0.31 SUI     (~$0.28)
+  ──────────────────────────────────────
+  Total:      $85.28 USDC
 ```
 
 30 seconds. Send → save → borrow → swap → pay → repay → withdraw.

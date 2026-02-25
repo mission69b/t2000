@@ -33,14 +33,13 @@ import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create({ passphrase: 'my-secret' });
 
-const client = new x402Client({
-  wallet: agent,
+const client = new x402Client(agent);
+
+// Fetch a paid API — handles the full 402 handshake
+const response = await client.fetch('https://api.example.com/data', {
   maxPrice: 0.10,    // max USDC per request (default: $1.00)
   timeout: 30_000,   // request timeout in ms (default: 30s)
 });
-
-// Fetch a paid API — handles the full 402 handshake
-const response = await client.fetch('https://api.example.com/data');
 const data = await response.json();
 ```
 
@@ -81,16 +80,12 @@ Total round-trip: ~820ms.
 
 ## Client API
 
-### `new x402Client(options)`
+### `new x402Client(wallet)`
+
+Creates an x402 client with the given wallet. Per-request options like `maxPrice` and `timeout` are passed to `client.fetch()`.
 
 ```typescript
-interface X402ClientOptions {
-  wallet: X402Wallet;           // T2000 instance or compatible wallet
-  maxPrice?: number;            // Max USDC per request (default: 1.0)
-  timeout?: number;             // Request timeout in ms (default: 30000)
-  facilitatorUrl?: string;      // Facilitator URL (default: api.t2000.ai/x402)
-  registryId?: string;          // Payment Kit registry object ID
-}
+const client = new x402Client(wallet);
 ```
 
 ### `client.fetch(url, init?)`
@@ -185,12 +180,10 @@ Any wallet implementing `X402Wallet` can be used as a payment source:
 
 ```typescript
 interface X402Wallet {
-  getAddress(): string;
-  signAndExecuteTransaction(params: {
-    transaction: Transaction;
-    options?: { showObjectChanges?: boolean };
-  }): Promise<{ digest: string; effects?: { status: { status: string } } }>;
-  getSuiClient(): SuiClient;
+  client: SuiClient;
+  keypair: Ed25519Keypair;
+  address(): string;
+  signAndExecute(tx: unknown): Promise<{ digest: string }>;
 }
 ```
 
