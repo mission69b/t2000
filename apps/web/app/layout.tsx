@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${ibmPlexMono.variable} ${instrumentSerif.variable} antialiased`}
+        className={`${ibmPlexMono.variable} ${instrumentSerif.variable}`}
       >
         {children}
       </body>
