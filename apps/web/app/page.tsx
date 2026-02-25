@@ -720,7 +720,7 @@ export default function Home() {
           </div>
 
           <div className="text-[10px] sm:text-[11px] text-dim tracking-wide mt-6">
-            MIT · Non-custodial · Sui mainnet & testnet
+            MIT · Non-custodial · Sui mainnet
           </div>
         </div>
       </section>
@@ -730,12 +730,12 @@ export default function Home() {
         <div className="text-xs text-dim">t2000 · Built on Sui</div>
         <div className="flex gap-4 sm:gap-6 flex-wrap justify-center">
           <a
-            href={GITHUB_URL}
+            href="https://www.npmjs.com/package/@t2000/cli"
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
-            GitHub
+            npm
           </a>
           <a
             href={`${GITHUB_URL}/tree/main/t2000-skills`}
