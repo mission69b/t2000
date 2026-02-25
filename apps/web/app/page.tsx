@@ -237,16 +237,16 @@ export default function Home() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 items-center gap-0 pt-14 sm:pt-16">
-        <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-6 sm:py-8 lg:py-0">
+      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-[80px] overflow-hidden">
+        <div className="flex flex-col justify-center px-6 sm:px-8 lg:pl-16 xl:pl-20 lg:pr-10 xl:pr-15 py-12 sm:py-16 lg:py-20">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
             Built for Sui · Open source · Non-custodial
           </div>
 
-          <h1 className="text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-light">
+          <h1 className="text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2">
             The first{" "}
-            <em className="text-accent">bank account</em>
+            <em>bank account</em>
             <br />
             for AI agents.
           </h1>
@@ -278,20 +278,20 @@ export default function Home() {
           <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
             <a
               href="#install"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.06em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
             >
               Get started →
             </a>
             <a
               href="#how"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.06em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
             >
-              How it works
+              See how it works
             </a>
           </div>
         </div>
 
-        <div className="flex items-center justify-center px-6 sm:px-8 lg:px-5 xl:px-20 py-8 lg:py-20 relative">
+        <div className="flex items-center justify-center px-6 sm:px-8 lg:pl-5 lg:pr-16 xl:pr-20 py-12 lg:py-20 relative">
           <div className="relative w-full max-w-[520px]">
             <TerminalDemo />
             <BalanceWidget />
@@ -318,10 +318,10 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Four accounts
             </div>
-            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
               Everything a bank offers.
               <br />
-              Built for <em className="text-accent">machines.</em>
+              Built for <em>machines.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -368,9 +368,9 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               How it works
             </div>
-            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
               From zero to{" "}
-              <em className="text-accent">operating</em>
+              <em>operating</em>
               <br />
               in 30 seconds.
             </h2>
@@ -483,11 +483,11 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Agent Skills
             </div>
-            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
               Your agent already knows
               <br />
               how to use{" "}
-              <em className="text-accent">t2000.</em>
+              <em>t2000.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -572,10 +572,10 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Comparison
             </div>
-            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
               Not a wallet.
               <br />A{" "}
-              <em className="text-accent">bank account.</em>
+              <em>bank account.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -637,10 +637,10 @@ export default function Home() {
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-5">
             Get started
           </div>
-          <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground mb-5">
+          <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground mb-5">
             Give your agent
             <br />a{" "}
-            <em className="text-accent">financial life.</em>
+            <em>financial life.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.8]">
             Install t2000, fund with USDC, and your agent is operating in under

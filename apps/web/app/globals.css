@@ -53,10 +53,16 @@ body {
   overflow-x: hidden;
 }
 
+h1,
+h2 {
+  font-family: var(--font-instrument-serif), 'Instrument Serif', serif;
+  font-weight: 400;
+}
+
 h1 em,
 h2 em {
-  font-family: var(--font-instrument-serif), 'Instrument Serif', serif;
   font-style: italic;
+  color: var(--accent);
 }
 
 /* Noise overlay */
