@@ -96,7 +96,7 @@ body::after {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -220,8 +220,6 @@ body::after {
   .docs-page h2 { font-size: 16px; margin: 32px 0 12px; }
 }
 
-/* Tables: the DocTable component wrapper handles overflow — no display:block needed */
-
 .docs-page .t-comment { color: rgba(255,255,255,0.28); }
 .docs-page .t-green { color: var(--accent); }
 .docs-page .t-amber { color: var(--warning); }
@@ -233,7 +231,7 @@ body::after {
 
 @keyframes docFadeIn {
   from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 .animate-doc-fade-in {
   animation: docFadeIn 0.2s ease;

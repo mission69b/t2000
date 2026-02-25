@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
@@ -14,6 +14,13 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#040406",
+};
 
 export const metadata: Metadata = {
   title: "t2000 — The First Bank Account for AI Agents",
