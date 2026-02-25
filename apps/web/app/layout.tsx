@@ -1,31 +1,28 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import { Inter } from "next/font/google";
-import { JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
   subsets: ["latin"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
-  title: "t2000 — The First Wallet for AI Agents",
+  title: "t2000 — The First Bank Account for AI Agents",
   description:
-    "Send, save, swap, and borrow on Sui — in one line of code. TypeScript SDK and CLI for AI agent wallets.",
+    "Send, save, swap, borrow, and pay on Sui — in one CLI command. The complete financial stack for autonomous AI agents.",
   openGraph: {
-    title: "t2000 — The First Wallet for AI Agents",
-    description: "Send, save, swap, and borrow on Sui — in one line of code.",
+    title: "t2000 — The First Bank Account for AI Agents",
+    description:
+      "Send, save, swap, borrow, and pay on Sui — in one CLI command.",
     type: "website",
   },
 };
@@ -38,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${ibmPlexMono.variable} ${instrumentSerif.variable} antialiased`}
       >
         {children}
       </body>

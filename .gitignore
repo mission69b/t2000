@@ -34,3 +34,10 @@ packages/contracts/build/
 
 # infra generated
 infra/.env.infra
+
+# specs (private reference docs)
+spec/
+CLAUDE.md
+
+# pnpm store
+.pnpm-store/

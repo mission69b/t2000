@@ -6,7 +6,9 @@ interface InstallCommandProps {
   command?: string;
 }
 
-export function InstallCommand({ command = "npx t2000 init" }: InstallCommandProps) {
+export function InstallCommand({
+  command = "npm install -g t2000 && t2000 init",
+}: InstallCommandProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -18,12 +20,12 @@ export function InstallCommand({ command = "npx t2000 init" }: InstallCommandPro
   return (
     <button
       onClick={handleCopy}
-      className="group inline-flex items-center gap-3 rounded-xl border border-border bg-surface px-6 py-3.5 font-mono text-base transition-all hover:border-accent/40 hover:shadow-[0_0_24px_rgba(0,212,255,0.08)]"
+      className="group inline-flex items-center gap-3 border border-border-bright bg-panel px-4 sm:px-6 py-3.5 font-mono text-xs sm:text-sm transition-all hover:border-accent hover:text-accent hover:shadow-[0_0_30px_var(--accent-glow)] cursor-pointer max-w-full overflow-x-auto scrollbar-hide"
     >
-      <span className="text-accent">$</span>
-      <span className="text-foreground/90">{command}</span>
-      <span className="ml-2 text-muted group-hover:text-accent transition-colors text-lg">
-        {copied ? "✓" : "⎘"}
+      <span className="text-accent shrink-0">$</span>
+      <span className="text-foreground whitespace-nowrap">{command}</span>
+      <span className="ml-2 text-muted group-hover:text-accent transition-colors text-xs shrink-0">
+        {copied ? "Copied!" : ""}
       </span>
     </button>
   );
