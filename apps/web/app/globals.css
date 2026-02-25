@@ -180,7 +180,6 @@ body::after {
   --toc-w: 200px;
   font-size: 13.5px;
   line-height: 1.7;
-  overflow-x: hidden;
 }
 
 .docs-page .sidebar-scroll::-webkit-scrollbar { width: 4px; }
