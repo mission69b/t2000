@@ -1337,7 +1337,7 @@ export default function DocsPage() {
   return (
     <div className="docs-page min-h-screen bg-background text-[var(--doc-text)]">
       {/* ── Topbar ── */}
-      <header className="sticky top-0 h-[var(--topbar-h)] bg-[rgba(4,4,6,0.92)] backdrop-blur-xl border-b border-[var(--border)] flex items-center px-4 sm:px-5 z-50">
+      <header className="fixed top-0 left-0 right-0 h-[var(--topbar-h)] bg-[rgba(4,4,6,0.92)] backdrop-blur-xl border-b border-[var(--border)] flex items-center px-4 sm:px-5 z-50">
         {/* Hamburger — mobile only */}
         <button
           onClick={() => setMobileMenuOpen((v) => !v)}
@@ -1440,7 +1440,7 @@ export default function DocsPage() {
       </div>
 
       {/* ── Layout ── */}
-      <div className="flex min-h-screen">
+      <div className="flex pt-[var(--topbar-h)] min-h-screen">
         {/* ── Desktop sidebar ── */}
         <nav className="fixed top-[var(--topbar-h)] left-0 bottom-0 w-[var(--sidebar-w)] overflow-y-auto border-r border-[var(--border)] py-6 bg-[rgba(4,4,6,0.6)] sidebar-scroll hidden md:block">
           <SidebarNav

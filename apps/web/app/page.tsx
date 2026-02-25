@@ -203,7 +203,7 @@ export default function Home() {
       <div className="fixed inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(0,214,143,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,214,143,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-[rgba(4,4,6,0.9)] backdrop-blur-xl">
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-[rgba(4,4,6,0.9)] backdrop-blur-xl">
         <div className="font-mono font-semibold text-base sm:text-lg text-accent tracking-tight flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
           t2000
@@ -239,7 +239,7 @@ export default function Home() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative z-1 min-h-[calc(100vh-52px)] grid grid-cols-1 lg:grid-cols-2 gap-0 pt-4 sm:pt-8">
+      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-16 sm:pt-20">
         <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-12 sm:py-16 lg:py-20">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
