@@ -137,7 +137,14 @@ const PLATFORMS = [
   "+ 20 more",
 ];
 
-const COMPARE_ROWS = [
+const COMPARE_ROWS: {
+  feature: string;
+  coinbase: string;
+  t2000: string;
+  bothCheck?: boolean;
+  coinbaseCross?: boolean;
+  comingSoon?: boolean;
+}[] = [
   { feature: "Chain", coinbase: "Base only", t2000: "Sui" },
   { feature: "Send / receive", coinbase: "✓", t2000: "✓", bothCheck: true },
   {
@@ -193,6 +200,13 @@ const COMPARE_ROWS = [
     coinbase: "— (EIP-3009)",
     t2000: "✓ Sui Payment Kit",
     coinbaseCross: true,
+  },
+  {
+    feature: "Yield Optimizer",
+    coinbase: "—",
+    t2000: "Coming soon",
+    coinbaseCross: true,
+    comingSoon: true,
   },
 ];
 
@@ -611,7 +625,7 @@ export default function Home() {
                   >
                     {row.coinbase}
                   </td>
-                  <td className="px-5 py-4 border-b border-border text-foreground bg-[rgba(0,214,143,0.03)] border-l border-r border-l-accent/10 border-r-accent/10">
+                  <td className={`px-5 py-4 border-b border-border bg-[rgba(0,214,143,0.03)] border-l border-r border-l-accent/10 border-r-accent/10 ${row.comingSoon ? "text-warning italic" : "text-foreground"}`}>
                     {row.t2000}
                   </td>
                 </tr>
@@ -645,7 +659,7 @@ export default function Home() {
                   <div className="text-[9px] tracking-[0.1em] uppercase text-accent mb-1">
                     t2000
                   </div>
-                  <div className="text-[11px] leading-[1.5] text-foreground">
+                  <div className={`text-[11px] leading-[1.5] ${row.comingSoon ? "text-warning italic" : "text-foreground"}`}>
                     {row.t2000}
                   </div>
                 </div>

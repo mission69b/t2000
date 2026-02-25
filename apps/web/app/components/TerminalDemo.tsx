@@ -35,6 +35,9 @@ const LINES: TerminalLine[] = [
   { type: "success", text: "✓ Borrowed $20.00 USDC (same-asset)", delay: 600 },
   { type: "info", text: "  Health Factor: 3.39", delay: 250 },
 
+  { type: "command", text: "❯ t2000 repay 20 USDC", delay: 1200 },
+  { type: "success", text: "✓ Repaid $20.00 USDC · Debt: $0.00", delay: 600 },
+
   { type: "command", text: "❯ t2000 swap 5 USDC to SUI", delay: 1200 },
   { type: "success", text: "✓ 5.00 USDC → 5.83 SUI", delay: 500 },
   { type: "info", text: "  Impact: 0.05% · Fee: $0.005", delay: 200 },
