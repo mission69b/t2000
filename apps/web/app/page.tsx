@@ -648,25 +648,25 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
             >
               GitHub →
-            </a>
-            <a
-              href={NPM_ORG_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
-            >
-              npm →
             </a>
             <a
               href={DOCS_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
             >
               Docs →
+            </a>
+            <a
+              href={`${GITHUB_URL}/tree/main/t2000-skills`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
+            >
+              Skills package →
             </a>
           </div>
 
