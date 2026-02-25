@@ -579,17 +579,18 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0 scrollbar-hide">
-          <table className="w-full border-collapse text-[11px] sm:text-xs min-w-[600px]">
+        {/* Desktop table */}
+        <div className="hidden sm:block">
+          <table className="w-full border-collapse text-xs">
             <thead>
               <tr>
-                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-muted">
+                <th className="text-left px-5 py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[11px] uppercase text-muted">
                   Feature
                 </th>
-                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-muted">
+                <th className="text-left px-5 py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[11px] uppercase text-muted">
                   Coinbase
                 </th>
-                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-accent">
+                <th className="text-left px-5 py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[11px] uppercase text-accent">
                   t2000
                 </th>
               </tr>
@@ -600,21 +601,55 @@ export default function Home() {
                   key={row.feature}
                   className="hover:bg-white/[0.01]"
                 >
-                  <td className="px-3 sm:px-5 py-3 sm:py-4 border-b border-border text-foreground whitespace-nowrap">
+                  <td className="px-5 py-4 border-b border-border text-foreground whitespace-nowrap">
                     {row.feature}
                   </td>
                   <td
-                    className={`px-3 sm:px-5 py-3 sm:py-4 border-b border-border ${row.coinbaseCross ? "text-dim" : row.bothCheck ? "text-accent" : "text-muted"}`}
+                    className={`px-5 py-4 border-b border-border ${row.coinbaseCross ? "text-dim" : row.bothCheck ? "text-accent" : "text-muted"}`}
                   >
                     {row.coinbase}
                   </td>
-                  <td className="px-3 sm:px-5 py-3 sm:py-4 border-b border-border text-foreground bg-[rgba(0,214,143,0.03)] border-l border-r border-l-accent/10 border-r-accent/10">
+                  <td className="px-5 py-4 border-b border-border text-foreground bg-[rgba(0,214,143,0.03)] border-l border-r border-l-accent/10 border-r-accent/10">
                     {row.t2000}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile stacked cards */}
+        <div className="sm:hidden flex flex-col gap-px">
+          {COMPARE_ROWS.map((row) => (
+            <div
+              key={row.feature}
+              className="border-b border-border py-4"
+            >
+              <div className="text-[11px] font-medium text-foreground mb-2.5">
+                {row.feature}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[9px] tracking-[0.1em] uppercase text-muted mb-1">
+                    Coinbase
+                  </div>
+                  <div
+                    className={`text-[11px] leading-[1.5] ${row.coinbaseCross ? "text-dim" : row.bothCheck ? "text-accent" : "text-muted"}`}
+                  >
+                    {row.coinbase}
+                  </div>
+                </div>
+                <div className="bg-[rgba(0,214,143,0.03)] rounded px-2.5 py-1.5 -my-1.5 border-l border-l-accent/10">
+                  <div className="text-[9px] tracking-[0.1em] uppercase text-accent mb-1">
+                    t2000
+                  </div>
+                  <div className="text-[11px] leading-[1.5] text-foreground">
+                    {row.t2000}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
