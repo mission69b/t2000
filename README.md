@@ -444,7 +444,7 @@ Response envelope: `{ success: true, data: {...}, timestamp }`.
 
 ```bash
 # Clone and install
-git clone https://github.com/user/t2000 && cd t2000
+git clone https://github.com/mission69b/t2000 && cd t2000
 pnpm install
 
 # Build all packages
@@ -452,7 +452,6 @@ pnpm build
 
 # Run checks
 pnpm typecheck              # TypeScript across all packages
-pnpm test                   # Unit tests (28 tests)
 pnpm lint                   # ESLint
 
 # Dev mode (watch)
@@ -462,15 +461,48 @@ pnpm --filter @t2000/server dev
 pnpm --filter @t2000/web dev
 ```
 
-### Integration Test (Mainnet)
+### Testing
 
 ```bash
-# Set your private key
-echo 'T2000_PASSPHRASE=suiprivkey1q...' >> .env.local
+# Run all unit tests
+pnpm test
 
-# Run
+# Run tests for a specific package
+pnpm --filter @t2000/sdk test     # 92 tests (format, simulate, navi, hashcash, keyManager, errors, sui)
+pnpm --filter @t2000/x402 test    # 27 tests (client, facilitator, payment-kit)
+pnpm --filter @t2000/server test  # 10 tests (x402 routes)
+```
+
+Unit tests run in CI on every push via GitHub Actions (`ci.yml`).
+
+### Integration Tests (Local Only)
+
+Integration tests run real transactions on Sui mainnet. They require a funded wallet with USDC and are **not** included in CI — run them locally before shipping major changes.
+
+```bash
+# 1. Set your funded mainnet private key
+export T2000_PRIVATE_KEY='suiprivkey1q...'
+
+# 2. Run x402 on-chain integration tests
+INTEGRATION=true pnpm --filter @t2000/x402 test
+
+# 3. Run the full E2E integration script
 export $(grep -v '^#' .env.local | xargs) && pnpm exec tsx scripts/integration-test.ts
 ```
+
+**What the integration tests cover:**
+
+| Test | Description |
+|------|-------------|
+| `8.21` | Full x402 payment flow — build PTB, sign, execute, verify `PaymentReceipt` event |
+| `8.22` | Duplicate nonce rejection — Payment Kit's on-chain replay protection |
+| `integration-test.ts` | E2E wallet flow — init, balance, send, save, withdraw |
+
+**Requirements:**
+
+- `T2000_PRIVATE_KEY` — Sui private key in `suiprivkey1...` bech32 format
+- The wallet must hold ≥ 0.01 USDC and ≥ 0.1 SUI for gas
+- `SUI_RPC_URL` — optional, defaults to mainnet fullnode
 
 ---
 

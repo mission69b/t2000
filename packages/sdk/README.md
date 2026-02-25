@@ -189,6 +189,23 @@ try {
 
 Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `SLIPPAGE_EXCEEDED` · `ASSET_NOT_SUPPORTED` · `WITHDRAW_WOULD_LIQUIDATE`
 
+## Testing
+
+```bash
+# Run all SDK unit tests (92 tests)
+pnpm --filter @t2000/sdk test
+```
+
+| Test File | Coverage |
+|-----------|----------|
+| `format.test.ts` | `mistToSui`, `suiToMist`, `usdcToRaw`, `rawToUsdc`, `rawToDisplay`, `displayToRaw`, `bpsToPercent`, `formatUsd`, `formatSui`, `formatLargeNumber` |
+| `sui.test.ts` | `validateAddress`, `truncateAddress` |
+| `simulate.test.ts` | `throwIfSimulationFailed` (success, failure, missing error, metadata) |
+| `hashcash.test.ts` | PoW generation and verification |
+| `keyManager.test.ts` | Key generation, encryption, decryption, import/export |
+| `errors.test.ts` | `T2000Error` construction, serialization, `mapWalletError`, `mapMoveAbortCode` |
+| `navi.test.ts` | NAVI math utilities (health factor, APY, position calculations) |
+
 ## Protocol Fees
 
 | Operation | Fee |

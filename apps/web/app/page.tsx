@@ -2,6 +2,7 @@ import { TerminalDemo } from "./components/TerminalDemo";
 import { InstallCommand } from "./components/InstallCommand";
 import { Ticker } from "./components/Ticker";
 import { BalanceWidget } from "./components/BalanceWidget";
+import { FadeSection } from "./components/FadeSection";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 
@@ -299,17 +300,18 @@ export default function Home() {
       </section>
 
       {/* ── Divider ── */}
-      <div className="relative z-1 px-6 sm:px-10 lg:px-20 border-t border-border">
+      <FadeSection className="relative z-1 px-6 sm:px-10 lg:px-20 border-t border-border">
         <div className="text-[10px] tracking-[0.2em] uppercase text-dim py-5 flex items-center gap-4">
           Four accounts. One agent. Zero friction.
           <span className="flex-1 h-px bg-border" />
         </div>
-      </div>
+      </FadeSection>
 
       {/* ── Ticker ── */}
       <Ticker />
 
       {/* ── Account Cards ── */}
+      <FadeSection>
       <section id="accounts" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
@@ -356,8 +358,10 @@ export default function Home() {
           ))}
         </div>
       </section>
+      </FadeSection>
 
       {/* ── How It Works + x402 Panel ── */}
+      <FadeSection>
       <section id="how" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
@@ -466,8 +470,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </FadeSection>
 
       {/* ── Agent Skills ── */}
+      <FadeSection>
       <section
         id="skills"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface"
@@ -553,8 +559,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </FadeSection>
 
       {/* ── Comparison Table ── */}
+      <FadeSection>
       <section
         id="compare"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border"
@@ -615,8 +623,10 @@ export default function Home() {
           </table>
         </div>
       </section>
+      </FadeSection>
 
       {/* ── Final CTA ── */}
+      <FadeSection>
       <section
         id="install"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-24 lg:py-32 border-t border-border text-center overflow-hidden"
@@ -671,6 +681,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </FadeSection>
 
       {/* ── Footer ── */}
       <footer className="relative z-1 px-6 sm:px-8 lg:px-20 py-6 sm:py-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">

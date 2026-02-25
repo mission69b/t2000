@@ -196,6 +196,18 @@ interface X402Wallet {
 
 The `T2000` class from `@t2000/sdk` implements this interface.
 
+## Testing
+
+```bash
+# Unit tests (27 tests)
+pnpm --filter @t2000/x402 test
+
+# Integration tests (requires funded mainnet wallet)
+T2000_PRIVATE_KEY='suiprivkey1q...' INTEGRATION=true pnpm --filter @t2000/x402 test
+```
+
+Integration tests execute real on-chain transactions to verify the full payment flow and replay protection. See the [root README](https://github.com/mission69b/t2000#integration-tests-local-only) for details.
+
 ## License
 
 MIT — see [LICENSE](https://github.com/mission69b/t2000/blob/main/LICENSE)
