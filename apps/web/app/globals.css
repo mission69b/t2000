@@ -53,14 +53,14 @@ body {
   overflow-x: hidden;
 }
 
-h1,
-h2 {
-  font-family: var(--font-instrument-serif), 'Instrument Serif', serif;
-  font-weight: 400;
+body h1,
+body h2 {
+  font-family: var(--font-instrument-serif), 'Instrument Serif', serif !important;
+  font-weight: 400 !important;
 }
 
-h1 em,
-h2 em {
+body h1 em,
+body h2 em {
   font-style: italic;
   color: var(--accent);
 }

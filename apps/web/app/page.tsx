@@ -238,7 +238,7 @@ export default function Home() {
 
       {/* ── Hero ── */}
       <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-[80px] overflow-hidden">
-        <div className="flex flex-col justify-center px-6 sm:px-8 lg:pl-16 xl:pl-20 lg:pr-10 xl:pr-15 py-12 sm:py-16 lg:py-20">
+        <div className="flex flex-col justify-center px-6 sm:px-8 lg:pl-20 lg:pr-15 py-12 lg:py-20">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
             Built for Sui · Open source · Non-custodial
@@ -291,7 +291,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex items-center justify-center px-6 sm:px-8 lg:pl-5 lg:pr-16 xl:pr-20 py-12 lg:py-20 relative">
+        <div className="flex items-center justify-center px-6 sm:px-8 lg:pl-5 lg:pr-20 py-12 lg:py-20 relative">
           <div className="relative w-full max-w-[520px]">
             <TerminalDemo />
             <BalanceWidget />
