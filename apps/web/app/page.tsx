@@ -201,7 +201,7 @@ export default function Home() {
 
       {/* ── Header ── */}
       <header className="fixed top-0 left-0 right-0 z-100 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-[rgba(4,4,6,0.9)] backdrop-blur-xl">
-        <div className="font-mono font-semibold text-base sm:text-lg text-accent tracking-tight flex items-center gap-2">
+        <div className="font-mono font-semibold text-base sm:text-lg text-accent tracking-[-0.02em] flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
           t2000
         </div>
@@ -228,7 +228,7 @@ export default function Home() {
           </a>
           <a
             href="#install"
-            className="px-4 sm:px-5 py-2 border border-accent text-accent text-[11px] sm:text-xs tracking-[0.1em] uppercase transition-all hover:bg-accent-dim hover:shadow-[0_0_20px_var(--accent-glow)]"
+            className="px-5 py-2 border border-accent text-accent text-xs tracking-[0.1em] uppercase rounded-sm transition-all hover:bg-accent-dim hover:shadow-[0_0_20px_var(--accent-glow)]"
           >
             Install →
           </a>
@@ -243,7 +243,7 @@ export default function Home() {
             Built for Sui · Open source · Non-custodial
           </div>
 
-          <h1 className="font-serif text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">
+          <h1 className="text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">
             The first{" "}
             <em className="italic text-accent">bank account</em>
             <br />
@@ -266,7 +266,7 @@ export default function Home() {
             ].map((pill) => (
               <div
                 key={pill.label}
-                className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim"
+                className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright rounded-sm text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all duration-300 hover:border-accent hover:text-foreground hover:bg-accent-dim"
               >
                 <span className="text-xs sm:text-sm">{pill.icon}</span>
                 {pill.label}
@@ -277,13 +277,13 @@ export default function Home() {
           <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
             <a
               href="#install"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+              className="px-7 py-3.5 bg-accent text-background font-mono text-xs font-semibold tracking-[0.1em] uppercase rounded-sm transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px active:translate-y-0 active:shadow-none"
             >
               Get started →
             </a>
             <a
               href="#how"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              className="px-7 py-3.5 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground active:opacity-70"
             >
               How it works
             </a>
@@ -316,7 +316,7 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Four accounts
             </div>
-            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Everything a bank offers.
               <br />
               Built for <em className="italic text-accent">machines.</em>
@@ -364,7 +364,7 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               How it works
             </div>
-            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               From zero to{" "}
               <em className="italic text-accent">operating</em>
               <br />
@@ -383,21 +383,21 @@ export default function Home() {
             {STEPS.map((step, i) => (
               <div
                 key={step.num}
-                className={`grid grid-cols-[40px_1fr] gap-5 py-7 border-b border-border ${i === 0 ? "border-t" : ""}`}
+                className={`group/step grid grid-cols-[40px_1fr] gap-5 py-7 pl-6 border-b border-border border-l-2 border-l-dim cursor-pointer transition-colors hover:border-l-accent ${i === 0 ? "border-t" : ""}`}
               >
-                <div className="text-[11px] text-dim pt-1 tracking-wide">
+                <div className="text-[11px] text-dim pt-1 tracking-[0.05em] transition-colors group-hover/step:text-accent">
                   {step.num}
                 </div>
                 <div>
                   <div className="text-sm text-foreground mb-2 font-medium flex items-center gap-3">
                     {step.title}
                     <span
-                      className={`text-[10px] px-2 py-0.5 tracking-[0.08em] ${step.badgeType === "done" ? "bg-accent-dim text-accent" : "bg-[rgba(245,166,35,0.1)] text-warning"}`}
+                      className={`text-[10px] px-2 py-0.5 rounded-sm tracking-[0.08em] ${step.badgeType === "done" ? "bg-accent-dim text-accent" : "bg-[rgba(245,166,35,0.1)] text-warning"}`}
                     >
                       {step.badge}
                     </span>
                   </div>
-                  <div className="text-xs text-muted leading-[1.7] opacity-70">
+                  <div className="text-xs text-muted leading-[1.7] opacity-70 transition-opacity group-hover/step:opacity-100">
                     {step.code && (
                       <>
                         <code className="text-accent text-xs">
@@ -416,12 +416,12 @@ export default function Home() {
 
           {/* x402 Panel */}
           <div className="lg:sticky lg:top-[120px]">
-            <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
+            <div className="bg-panel border border-border-bright rounded overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <span className="text-[11px] tracking-[0.1em] text-muted uppercase">
                   x402 payment flow · live
                 </span>
-                <span className="text-[10px] px-2 py-0.5 bg-[rgba(74,144,226,0.15)] text-blue tracking-[0.08em]">
+                <span className="text-[10px] px-2 py-0.5 rounded-sm bg-[rgba(74,144,226,0.15)] text-blue tracking-[0.08em]">
                   Sui · USDC
                 </span>
               </div>
@@ -456,8 +456,8 @@ export default function Home() {
                 </div>
 
                 <div className="mt-6 pt-5 border-t border-border">
-                  <div className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.1em] uppercase text-accent px-2.5 py-1 border border-accent/30 bg-accent-dim">
-                    <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot" />
+                  <div className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.1em] uppercase text-accent px-2.5 py-1 border border-accent/30 bg-accent-dim rounded-sm">
+                    <div className="w-[5px] h-[5px] bg-accent rounded-full animate-pulse-dot" />
                     First x402 client on Sui
                   </div>
                 </div>
@@ -477,7 +477,7 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Agent Skills
             </div>
-            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Your agent already knows
               <br />
               how to use{" "}
@@ -494,7 +494,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20">
           <div>
             {/* Install box */}
-            <div className="bg-panel border border-border-bright rounded-sm overflow-hidden mb-6">
+            <div className="bg-panel border border-border-bright rounded overflow-hidden mb-6">
               <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
                 Install · one command
               </div>
@@ -543,7 +543,7 @@ export default function Home() {
                 {PLATFORMS.map((p) => (
                   <span
                     key={p}
-                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-[0.05em]"
+                    className="text-[11px] px-3 py-1.5 border border-border-bright rounded-sm text-muted tracking-[0.05em]"
                   >
                     {p}
                   </span>
@@ -564,7 +564,7 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Comparison
             </div>
-            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Not a wallet.
               <br />A{" "}
               <em className="italic text-accent">bank account.</em>
@@ -627,7 +627,7 @@ export default function Home() {
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-5">
             Get started
           </div>
-          <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
+          <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
             Give your agent
             <br />a{" "}
             <em className="italic text-accent">financial life.</em>
@@ -646,13 +646,13 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              className="px-7 py-3.5 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground active:opacity-70"
             >
               GitHub →
             </a>
             <a
               href="#"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              className="px-7 py-3.5 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground active:opacity-70"
             >
               Docs →
             </a>
@@ -660,7 +660,7 @@ export default function Home() {
               href="https://www.npmjs.com/package/@t2000/sdk"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              className="px-7 py-3.5 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground active:opacity-70"
             >
               Skills Package →
             </a>

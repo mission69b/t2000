@@ -47,6 +47,17 @@ body {
   overflow-x: hidden;
 }
 
+h1,
+h2 {
+  font-family: var(--font-mono), monospace;
+}
+
+h1 em,
+h2 em {
+  font-family: var(--font-serif), serif;
+  font-style: italic;
+}
+
 /* Noise overlay */
 body::before {
   content: "";
