@@ -184,6 +184,9 @@ body::after {
   border-bottom: 1px solid var(--border);
   scroll-margin-top: 80px;
 }
+.docs-page h2:first-of-type {
+  margin-top: 0;
+}
 
 .docs-page h3 {
   font-size: 14px;
