@@ -646,6 +646,27 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 config" desc="Get or set configuration" onClick={() => scrollToCmd("config")} />
       </div>
 
+      <h2 id="cmd-init">t2000 init</h2>
+      <p>Generate a new Ed25519 keypair, encrypt it with AES-256-GCM, and set up all accounts.</p>
+      <CodeBlock lang="bash">
+        t2000 init [--key &lt;path&gt;]
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.m("Creating agent wallet...")}{"\n"}
+        {S.g("✓")} Keypair generated{"\n"}
+        {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
+        {S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
+        {S.m("Setting up accounts...")}{"\n"}
+        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} 402 Pay{"\n\n"}
+        🎉 {S.g("Bank account created")}{"\n"}
+        Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}{"\n\n"}
+        Deposit USDC on Sui network only.{"\n"}
+        {S.m("─────────────────────────────────────────────────────")}{"\n\n"}
+        {S.b("t2000 balance")}            check for funds{"\n"}
+        {S.b("t2000 save all")}           start earning yield{"\n"}
+        {S.b("t2000 address")}            show address again
+      </CodeBlock>
+
       <h2 id="cmd-balance">t2000 balance</h2>
       <p>Returns balances across all four accounts. Use <InlineCode>--show-limits</InlineCode> before any borrow or withdrawal with an active loan.</p>
       <CodeBlock lang="bash">
@@ -667,18 +688,32 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       </CodeBlock>
 
       <h2 id="cmd-send">t2000 send</h2>
+      <p>Transfer USDC to any Sui address.</p>
       <CodeBlock lang="bash">
         t2000 send &lt;amount&gt; USDC to &lt;address&gt;{"\n\n"}
         t2000 send {S.a("10")} USDC to {S.a("0x8b3e...d412")}{"\n"}
         t2000 send {S.a("50")} USDC to {S.a("0xabcd...1234")} --json
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Sent {S.a("$10.00")} USDC → 0x8b3e...d412{"\n"}
+        Balance:  {S.a("$90.00")} USDC{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xa1b2...")}
+      </CodeBlock>
 
       <h2 id="cmd-save">t2000 save</h2>
+      <p>Deposit USDC into NAVI Protocol to earn variable APY.</p>
       <CodeBlock lang="bash">
         t2000 save &lt;amount&gt; USDC{"\n"}
         t2000 save all              {S.c("# saves everything; gas manager runs first if needed")}{"\n\n"}
         t2000 save {S.a("80")} USDC{"\n"}
         t2000 save all
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Saved {S.a("$80.00")} USDC to NAVI{"\n"}
+        {S.g("✓")} Protocol fee: {S.m("$0.08 USDC (0.1%)")}{"\n"}
+        {S.g("✓")} Current APY: {S.g("4.21%")}{"\n"}
+        {S.g("✓")} Savings balance: {S.a("$79.92")} USDC{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0x9f2c...")}
       </CodeBlock>
       <Callout type="note" label="Fee">
         A <strong>0.1% protocol fee</strong> applies to every deposit.{" "}
@@ -687,30 +722,52 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       </Callout>
 
       <h2 id="cmd-withdraw">t2000 withdraw</h2>
+      <p>Pull USDC from savings back to checking. Risk-checked if you have an active loan.</p>
       <CodeBlock lang="bash">
         t2000 withdraw &lt;amount&gt; USDC{"\n"}
         t2000 withdraw all{"\n\n"}
         {S.c("# Check safe limits first if you have an active loan:")}{"\n"}
         t2000 balance --show-limits
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Withdrew {S.a("$50.00")} USDC{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xc3d4...")}
+      </CodeBlock>
 
       <h2 id="cmd-borrow">t2000 borrow</h2>
+      <p>Borrow USDC against your savings collateral. Health factor must stay above 1.5.</p>
       <CodeBlock lang="bash">
         t2000 borrow &lt;amount&gt; USDC{"\n\n"}
         t2000 borrow {S.a("40")} USDC    {S.c("# health factor enforced — must stay ≥ 1.5")}
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Borrowed {S.a("$40.00")} USDC{"\n"}
+        Health Factor:  {S.a("2.15")}{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xd5e6...")}
+      </CodeBlock>
 
       <h2 id="cmd-repay">t2000 repay</h2>
+      <p>Repay outstanding borrows. Use <InlineCode>all</InlineCode> to clear the full debt including accrued interest.</p>
       <CodeBlock lang="bash">
         t2000 repay &lt;amount&gt; USDC{"\n"}
         t2000 repay all             {S.c("# includes accrued interest")}
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Repaid {S.a("$40.00")} USDC{"\n"}
+        Remaining Debt:  {S.a("$0.00")}{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xe7f8...")}
+      </CodeBlock>
 
       <h2 id="cmd-swap">t2000 swap</h2>
+      <p>Swap between tokens via Cetus DEX with on-chain slippage protection.</p>
       <CodeBlock lang="bash">
         t2000 swap &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
         t2000 swap {S.a("5")} USDC SUI{"\n"}
         t2000 swap {S.a("100")} USDC SUI --slippage {S.a("0.5")}   {S.c("# default: 3%")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Swapped {S.a("5")} USDC → {S.a("5.8300")} SUI{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xf9a0...")}
       </CodeBlock>
 
       <h2 id="cmd-pay">
@@ -726,11 +783,55 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 pay https://api.ai.com/analyze --method POST --data {S.s("'{\"text\":\"hello\"}'")}{"\n"}
         t2000 pay https://api.data.com/prices --max-price {S.a("0.05")}
       </CodeBlock>
+      <CodeBlock lang="output">
+        → GET https://api.weather.com/forecast{"\n"}
+        ← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
+        {S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
+        ← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
+        {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
+      </CodeBlock>
+
+      <h2 id="cmd-health">t2000 health</h2>
+      <p>Check your lending health factor. Color-coded by severity — green (healthy), yellow (moderate/low), red (critical).</p>
+      <CodeBlock lang="bash">
+        t2000 health
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Health Factor: {S.g("2.50")} {S.c("(healthy)")}{"\n\n"}
+        Supplied:    {S.a("$500.00")} USDC{"\n"}
+        Borrowed:    {S.a("$200.00")} USDC{"\n"}
+        Max Borrow:  {S.a("$133.33")} USDC
+      </CodeBlock>
+
+      <h2 id="cmd-positions">t2000 positions</h2>
+      <p>View all open DeFi positions across protocols.</p>
+      <CodeBlock lang="bash">
+        t2000 positions
+      </CodeBlock>
+      <CodeBlock lang="output">
+        📈 Saving:     {S.a("$500.00")} USDC {S.m("(NAVI)")}{"\n"}
+        📉 Borrowing:  {S.a("$200.00")} USDC {S.m("(NAVI)")}
+      </CodeBlock>
+
+      <h2 id="cmd-history">t2000 history</h2>
+      <p>Show recent transaction history with action type and timestamp.</p>
+      <CodeBlock lang="bash">
+        t2000 history
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.b("Transaction History")}{"\n\n"}
+        0x9f2c...a801  save {S.m("(sponsor)")}     2/19/2026, 3:45 PM{"\n"}
+        0xa1b2...c3d4  send {S.m("(self-funded)")}  2/19/2026, 2:30 PM{"\n"}
+        0xd5e6...f7a8  swap {S.m("(auto-topup)")}   2/18/2026, 1:15 PM
+      </CodeBlock>
 
       <h2 id="cmd-address">t2000 address</h2>
       <p>Prints the agent&apos;s Sui address. Useful for receiving funds or sharing with other agents.</p>
       <CodeBlock lang="bash">
         t2000 address
+      </CodeBlock>
+      <CodeBlock lang="output">
+        Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}
       </CodeBlock>
 
       <h2 id="cmd-deposit">t2000 deposit</h2>
@@ -738,11 +839,27 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="bash">
         t2000 deposit
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.b("Fund your wallet")}{"\n\n"}
+        Send USDC on Sui to: {S.a("0x8b3e4f2a...")}{"\n\n"}
+        From a CEX (Coinbase, Binance):{"\n"}
+        {"  "}1. Withdraw USDC{"\n"}
+        {"  "}2. Select {S.g("\"Sui\"")} network{"\n"}
+        {"  "}3. Paste address{"\n\n"}
+        From another Sui wallet:{"\n"}
+        {"  "}Transfer USDC to {S.a("0x8b3e...d412")}
+      </CodeBlock>
 
       <h2 id="cmd-earnings">t2000 earnings</h2>
       <p>Shows yield earned to date, current APY, and daily earning rate.</p>
       <CodeBlock lang="bash">
         t2000 earnings
+      </CodeBlock>
+      <CodeBlock lang="output">
+        Saved:        {S.a("$500.00")} USDC{"\n"}
+        APY:          {S.a("4.21%")}{"\n"}
+        Daily Yield:  {S.a("~$0.0576/day")}{"\n"}
+        Est. Earned:  {S.a("~$2.88")}
       </CodeBlock>
 
       <h2 id="cmd-fund-status">t2000 fund-status</h2>
@@ -750,11 +867,24 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="bash">
         t2000 fund-status
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Savings: ACTIVE{"\n\n"}
+        Saved:              {S.a("$500.00")} USDC @ 4.21% APY{"\n"}
+        Earned today:       {S.a("~$0.0576")}{"\n"}
+        Earned all time:    {S.a("~$2.88")}{"\n"}
+        Monthly projected:  {S.a("~$1.75/month")}{"\n\n"}
+        {S.m("Withdraw anytime: t2000 withdraw <amount>")}
+      </CodeBlock>
 
       <h2 id="cmd-rates">t2000 rates</h2>
       <p>Fetches live save and borrow APYs from NAVI Protocol.</p>
       <CodeBlock lang="bash">
         t2000 rates
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.m("USDC Rates (NAVI Protocol)")}{"\n"}
+        Save APY:    {S.g("4.21%")}{"\n"}
+        Borrow APY:  {S.a("6.53%")}
       </CodeBlock>
 
       <h2 id="cmd-import">t2000 import</h2>
@@ -762,11 +892,20 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="bash">
         t2000 import &lt;private-key&gt;
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Wallet imported (encrypted){"\n"}
+        Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}
+      </CodeBlock>
 
       <h2 id="cmd-export">t2000 export</h2>
-      <p>Export the agent&apos;s private key in bech32 format. Handle with care — this key controls the wallet.</p>
+      <p>Export the agent&apos;s private key in hex format. Handle with care — this key controls the wallet.</p>
       <CodeBlock lang="bash">
         t2000 export
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Private key (Ed25519, hex):{"\n"}
+        {S.a("0xabcdef1234...567890ab")}{"\n\n"}
+        {S.m("Not a BIP39 mnemonic. Store securely and never share.")}
       </CodeBlock>
 
       <h2 id="cmd-config">t2000 config</h2>
@@ -776,6 +915,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 config set &lt;key&gt; &lt;value&gt;{"\n\n"}
         t2000 config get network{"\n"}
         t2000 config set rpcUrl {S.s('"https://custom-rpc.example.com"')}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        network:  {S.a("mainnet")}{"\n\n"}
+        {S.c("# After setting:")}{"\n"}
+        Set rpcUrl = https://custom-rpc.example.com
       </CodeBlock>
     </>
   );
