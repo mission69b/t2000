@@ -1335,13 +1335,13 @@ export default function DocsPage() {
     "Docs";
 
   return (
-    <div className="docs-page min-h-screen bg-background text-[var(--doc-text)]">
-      {/* ── Topbar ── */}
-      <header className="site-nav h-[var(--topbar-h)] bg-background border-b border-[var(--border)] flex items-center px-4 sm:px-5">
+    <>
+      {/* ── Topbar — direct child of <body> for reliable fixed positioning ── */}
+      <header className="fixed top-0 inset-x-0 z-50 h-[var(--topbar-h)] bg-background border-b border-[var(--border)] flex items-center px-4 sm:px-5">
         {/* Hamburger — mobile only */}
         <button
           onClick={() => setMobileMenuOpen((v) => !v)}
-          className="md:hidden mr-3 text-[var(--doc-text)] cursor-pointer p-1"
+          className="md:hidden mr-3 text-white/80 cursor-pointer p-1"
           aria-label="Toggle menu"
         >
           {mobileMenuOpen ? (
@@ -1357,14 +1357,14 @@ export default function DocsPage() {
           </div>
           <div className="text-[14px] font-semibold text-white/90 tracking-[0.04em]">
             t2000{" "}
-            <span className="text-[var(--doc-muted)] font-normal ml-1.5 text-[11px]">
+            <span className="text-white/35 font-normal ml-1.5 text-[11px]">
               / docs
             </span>
           </div>
         </Link>
 
         <div className="flex-1 max-w-[340px] mx-6 relative hidden md:block">
-          <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-[var(--doc-muted)] text-xs">
+          <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-white/35 text-xs">
             ⌕
           </span>
           <input
@@ -1373,9 +1373,9 @@ export default function DocsPage() {
             placeholder="Search docs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-md py-1.5 pl-[34px] pr-12 text-xs text-[var(--doc-text)] outline-none focus:border-[rgba(0,214,143,0.4)] transition-colors placeholder:text-[var(--doc-muted)]"
+            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-md py-1.5 pl-[34px] pr-12 text-xs text-white/80 outline-none focus:border-[rgba(0,214,143,0.4)] transition-colors placeholder:text-white/35"
           />
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--doc-muted)] bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-1.5 py-px">
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-white/35 bg-[#0d1117] border border-[var(--border)] rounded-[3px] px-1.5 py-px">
             ⌘K
           </span>
         </div>
@@ -1384,14 +1384,14 @@ export default function DocsPage() {
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
             v0.1.0
           </span>
-          <Link href="/" className="text-xs text-[var(--doc-muted)] no-underline hover:text-[var(--doc-text)] transition-colors hidden sm:inline">
+          <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home
           </Link>
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 border border-[var(--border)] rounded-[5px] text-xs text-[var(--doc-text)] no-underline transition-colors hover:border-[var(--border-mid)] hover:bg-[var(--surface)]"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 border border-[var(--border)] rounded-[5px] text-xs text-white/80 no-underline transition-colors hover:border-[rgba(255,255,255,0.12)] hover:bg-[var(--surface)]"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
@@ -1405,10 +1405,10 @@ export default function DocsPage() {
       {mobileMenuOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black/60 z-90 md:hidden"
+            className="fixed inset-0 bg-black/60 z-[90] md:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <nav className="fixed top-[var(--topbar-h)] left-0 bottom-0 w-[280px] overflow-y-auto border-r border-[var(--border)] py-6 bg-[var(--background)] sidebar-scroll z-95 md:hidden animate-doc-fade-in">
+          <nav className="fixed top-[var(--topbar-h)] left-0 bottom-0 w-[280px] overflow-y-auto border-r border-[var(--border)] py-6 bg-background sidebar-scroll z-[95] md:hidden animate-doc-fade-in">
             {/* Mobile search */}
             <div className="px-4 mb-4">
               <input
@@ -1416,7 +1416,7 @@ export default function DocsPage() {
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-md py-1.5 px-3 text-xs text-[var(--doc-text)] outline-none focus:border-[rgba(0,214,143,0.4)] transition-colors placeholder:text-[var(--doc-muted)]"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-md py-1.5 px-3 text-xs text-white/80 outline-none focus:border-[rgba(0,214,143,0.4)] transition-colors placeholder:text-white/35"
               />
             </div>
             <SidebarNav
@@ -1429,16 +1429,17 @@ export default function DocsPage() {
       )}
 
       {/* ── Mobile section breadcrumb ── */}
-      <div className="fixed top-[var(--topbar-h)] left-0 right-0 h-10 bg-[rgba(4,4,6,0.95)] backdrop-blur-md border-b border-[var(--border)] flex items-center px-4 z-80 md:hidden">
-        <span className="text-[10px] tracking-[0.08em] uppercase text-[var(--doc-muted)] mr-1.5">
+      <div className="fixed top-[var(--topbar-h)] inset-x-0 h-10 bg-background border-b border-[var(--border)] flex items-center px-4 z-40 md:hidden">
+        <span className="text-[10px] tracking-[0.08em] uppercase text-white/35 mr-1.5">
           {NAV.find((g) => g.items.some((i) => i.id === activeSection))?.label}
         </span>
-        <span className="text-[var(--doc-muted)] text-[10px] mx-1">/</span>
+        <span className="text-white/35 text-[10px] mx-1">/</span>
         <span className="text-[11px] text-accent font-medium truncate">
           {currentSectionName}
         </span>
       </div>
 
+    <div className="docs-page min-h-screen bg-background text-[var(--doc-text)]">
       {/* ── Layout ── */}
       <div className="flex pt-[var(--topbar-h)] min-h-screen">
         {/* ── Desktop sidebar ── */}
@@ -1515,5 +1516,6 @@ export default function DocsPage() {
         </aside>
       </div>
     </div>
+    </>
   );
 }

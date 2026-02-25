@@ -198,12 +198,9 @@ const COMPARE_ROWS = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Grid background */}
-      <div className="fixed inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(0,214,143,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,214,143,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
-
-      {/* ── Header ── */}
-      <header className="site-nav px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background">
+    <>
+      {/* ── Header — direct child of <body> for reliable fixed positioning ── */}
+      <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background">
         <div className="font-mono font-semibold text-base sm:text-lg text-accent tracking-tight flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
           t2000
@@ -237,6 +234,10 @@ export default function Home() {
           </a>
         </nav>
       </header>
+
+      <div className="min-h-screen bg-background">
+      {/* Grid background */}
+      <div className="fixed inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(0,214,143,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,214,143,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
       {/* ── Hero ── */}
       <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-16 sm:pt-20">
@@ -739,5 +740,6 @@ export default function Home() {
         </div>
       </footer>
     </div>
+    </>
   );
 }

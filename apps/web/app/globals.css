@@ -16,6 +16,8 @@
   --warning: #f5a623;
   --danger: #ff4757;
   --blue: #4a90e2;
+  --topbar-h: 52px;
+  --sidebar-w: 260px;
 }
 
 @theme inline {
@@ -42,14 +44,6 @@ html {
   overflow-x: hidden;
 }
 
-.site-nav {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 9990 !important;
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
@@ -65,7 +59,7 @@ body::before {
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events: none;
-  z-index: 9999;
+  z-index: 1;
   opacity: 0.4;
 }
 
@@ -82,7 +76,7 @@ body::after {
     rgba(0, 0, 0, 0.03) 4px
   );
   pointer-events: none;
-  z-index: 9998;
+  z-index: 1;
 }
 
 @keyframes blink {
@@ -173,8 +167,6 @@ body::after {
   --doc-text-dim: rgba(255,255,255,0.6);
   --doc-text-bright: rgba(255,255,255,0.9);
   --doc-text-max: rgba(255,255,255,0.95);
-  --sidebar-w: 260px;
-  --topbar-h: 52px;
   --toc-w: 200px;
   font-size: 13.5px;
   line-height: 1.7;
