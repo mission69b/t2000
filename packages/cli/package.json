@@ -11,9 +11,10 @@
     "README.md"
   ],
   "keywords": ["sui", "wallet", "ai", "agent", "cli", "defi", "usdc"],
+  "author": "t2000",
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/t2000",
+    "url": "https://github.com/mission69b/t2000",
     "directory": "packages/cli"
   },
   "homepage": "https://t2000.ai",

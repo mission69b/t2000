@@ -7,19 +7,18 @@ description: >-
   a resource that requires micropayment. Handles the full x402 handshake
   automatically.
 license: MIT
-status: coming-soon
+status: active
 metadata:
   author: t2000
   version: "1.1"
-  requires: t2000 CLI with x402 support (npm install -g t2000 @t2000/x402)
-  available: false
+  requires: t2000 CLI (npm install -g t2000)
+  available: true
 ---
 
 # t2000: Pay for x402 API Service
 
 ## Status
-⚠️ This skill requires the @t2000/x402 package which is not yet released.
-It will be available before the March 4, 2026 hackathon deadline.
+✅ Active — requires `t2000` CLI with `@t2000/x402` installed.
 
 ## Purpose
 Make a paid HTTP request to any x402-protected endpoint. Handles the 402

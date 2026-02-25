@@ -18,6 +18,7 @@
     "README.md"
   ],
   "keywords": ["x402", "sui", "payment", "micropayment", "usdc", "ai", "agent", "402"],
+  "author": "t2000",
   "repository": {
     "type": "git",
     "url": "https://github.com/mission69b/t2000",
