@@ -175,6 +175,39 @@ body::after {
 
 .docs-page pre { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
+.docs-page h2 {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.9);
+  margin: 48px 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  scroll-margin-top: 80px;
+}
+
+.docs-page h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.8);
+  margin: 28px 0 12px;
+  scroll-margin-top: 80px;
+}
+
+.docs-page p {
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 16px;
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.docs-page a:not(.no-underline) {
+  color: var(--accent);
+  text-decoration: none;
+}
+.docs-page a:not(.no-underline):hover {
+  text-decoration: underline;
+}
+
 .docs-page .t-comment { color: rgba(255,255,255,0.28); }
 .docs-page .t-green { color: var(--accent); }
 .docs-page .t-amber { color: var(--warning); }
