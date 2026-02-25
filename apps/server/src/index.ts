@@ -8,6 +8,15 @@ import { fees } from './routes/fees.js';
 import { x402 } from './routes/x402.js';
 import { startPriceCache } from './lib/priceCache.js';
 
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] Unhandled rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[server] Uncaught exception:', err);
+  process.exit(1);
+});
+
 const app = new Hono();
 
 app.use('*', cors());

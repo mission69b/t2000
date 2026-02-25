@@ -22,7 +22,7 @@ async function fetchSuiPriceFromChain(): Promise<number> {
 
     // Fetch Cetus USDC/SUI pool to derive price
     // Use the well-known Cetus USDC/SUI pool on mainnet
-    const CETUS_USDC_SUI_POOL = '0xb8d7d9e66a60c239e7a60110efcf8b555571a820a5c015ae1ce01bd5e9c4ac51';
+    const CETUS_USDC_SUI_POOL = '0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab';
 
     const pool = await client.getObject({
       id: CETUS_USDC_SUI_POOL,
@@ -97,8 +97,14 @@ async function pollPrice(): Promise<void> {
 
 export function startPriceCache(): void {
   if (pollTimer) return;
-  pollPrice();
-  pollTimer = setInterval(pollPrice, POLL_INTERVAL_MS);
+  pollPrice().catch((err) => {
+    console.error('[priceCache] Initial poll error:', err instanceof Error ? err.message : err);
+  });
+  pollTimer = setInterval(() => {
+    pollPrice().catch((err) => {
+      console.error('[priceCache] Poll error:', err instanceof Error ? err.message : err);
+    });
+  }, POLL_INTERVAL_MS);
 }
 
 export function stopPriceCache(): void {

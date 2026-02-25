@@ -32,7 +32,11 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/server ./apps/server
 
+RUN apt-get update -y && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 EXPOSE 3000
 WORKDIR /app/apps/server
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
 CMD ["node", "dist/index.js"]
