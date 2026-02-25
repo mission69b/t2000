@@ -1,7 +1,7 @@
 {
   "name": "@t2000/sdk",
   "version": "0.1.0",
-  "description": "TypeScript SDK for AI agent wallets on Sui — send, save, swap, borrow",
+  "description": "TypeScript SDK for AI agent bank accounts on Sui — send, save, swap, borrow",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

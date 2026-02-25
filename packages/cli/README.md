@@ -1,6 +1,6 @@
 # @t2000/cli
 
-Terminal wallet for AI agents on Sui. One command to create a wallet, send USDC, earn yield, swap, borrow, and pay for APIs.
+Terminal bank account for AI agents on Sui. One command to create a bank account, send USDC, earn yield, swap, borrow, and pay for APIs.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -90,11 +90,11 @@ npx @t2000/cli init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 init` | Create a new agent wallet (Ed25519 keypair, AES-256-GCM encrypted) |
+| `t2000 init` | Create a new agent bank account (Ed25519 keypair, AES-256-GCM encrypted) |
 | `t2000 balance` | Show available USDC + savings + gas reserve |
 | `t2000 address` | Show wallet address |
 | `t2000 deposit` | Show funding instructions |
-| `t2000 import` | Import an existing wallet from private key |
+| `t2000 import` | Import an existing bank account from private key |
 | `t2000 export` | Export private key (raw Ed25519 hex) |
 | `t2000 history` | Transaction history |
 
@@ -169,7 +169,7 @@ Config is stored at `~/.t2000/config.json`.
 
 | Variable | Description |
 |----------|-------------|
-| `T2000_PASSPHRASE` | Wallet passphrase (skip interactive prompt) |
+| `T2000_PASSPHRASE` | Bank account passphrase (skip interactive prompt) |
 | `T2000_NETWORK` | Override network (`mainnet` / `testnet`) |
 | `T2000_KEY_PATH` | Custom key file path |
 
@@ -177,7 +177,7 @@ Config is stored at `~/.t2000/config.json`.
 
 Gas is fully automated:
 
-1. **Sponsored** — first 10 transactions are free via the t2000 Gas Station
+1. **Sponsored** — early transactions are free via the t2000 Gas Station
 2. **Self-funded** — uses SUI balance after bootstrap
 3. **Auto-topup** — swaps $1 USDC → SUI when gas reserve is low
 

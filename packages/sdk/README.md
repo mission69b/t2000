@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for AI agent wallets on Sui. Send USDC, earn yield via NAVI Protocol, swap on Cetus DEX, borrow against collateral — all from a single class.
+The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI Protocol, swap on Cetus DEX, borrow against collateral — all from a single class.
 
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -24,7 +24,7 @@ yarn add @t2000/sdk
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-// Create or load a wallet
+// Create or load a bank account
 const agent = await T2000.create({ passphrase: 'my-secret' });
 
 // Check balance
@@ -48,7 +48,7 @@ await agent.borrow({ amount: 20 });
 
 ### `T2000.create(options)`
 
-Creates a new wallet or loads an existing one.
+Creates a new bank account or loads an existing one.
 
 ```typescript
 const agent = await T2000.create({
@@ -159,7 +159,7 @@ Every transaction result includes a `gasMethod` field indicating which strategy 
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `T2000_PASSPHRASE` | Wallet passphrase | — |
+| `T2000_PASSPHRASE` | Bank account passphrase | — |
 | `T2000_NETWORK` | `mainnet` or `testnet` | `mainnet` |
 | `T2000_RPC_URL` | Custom Sui RPC URL | Sui public fullnode |
 | `T2000_KEY_PATH` | Path to encrypted key file | `~/.t2000/wallet.key` |

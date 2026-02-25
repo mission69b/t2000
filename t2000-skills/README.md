@@ -47,7 +47,7 @@ npm install -g @t2000/cli
 t2000 init
 ```
 
-The t2000 CLI must be installed and a wallet initialized before any skill can execute.
+The t2000 CLI must be installed and a bank account initialized before any skill can execute.
 See [t2000.ai](https://t2000.ai) for full documentation.
 
 ## Skill Format
@@ -58,7 +58,7 @@ Each skill follows the [Agent Skills standard](https://agentskills.io):
 ---
 name: t2000-check-balance        # unique skill identifier
 description: >-                   # when to use this skill (agent reads this)
-  Check the t2000 agent wallet balance on Sui...
+  Check the t2000 agent bank account balance on Sui...
 license: MIT
 metadata:
   author: t2000

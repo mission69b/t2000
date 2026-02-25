@@ -1,16 +1,71 @@
-# t2000
+<p align="center">
+  <strong>t2000</strong>
+</p>
 
-### The first wallet for AI agents.
+<h3 align="center">The first bank account for AI agents.</h3>
 
-One command to create. USDC in, USDC out. Gas is invisible. Idle cash earns yield.
+<p align="center">
+  Checking · Savings · Credit · Exchange · x402 Pay
+  <br />
+  Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial
+</p>
+
+<p align="center">
+  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a>
+</p>
+
+---
+
+Your agent can hold money, earn yield, borrow against savings, exchange currencies, and pay for APIs — all in one CLI command. No human in the loop.
 
 ```typescript
 const agent = await T2000.create({ passphrase: process.env.T2000_PASSPHRASE });
 await agent.send({ to: '0x...', amount: 50 });
-await agent.save({ amount: 100 });  // earn 8%+ APY
+await agent.save({ amount: 100 });     // earn ~4–8% APY via NAVI Protocol
+await agent.borrow({ amount: 20 });    // borrow against savings
+await agent.repay({ amount: 20 });     // repay debt
+await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 ```
 
----
+## See it work
+
+```
+❯ t2000 init
+  ✓ Keypair generated
+  ✓ Network  Sui mainnet
+  ✓ Gas sponsorship  enabled
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ 402 Pay
+  🎉 Bank account created
+  Address: 0x8b3e...d412
+
+❯ t2000 send 10 USDC to 0x8b3e...d412
+  ✓ Sent $10.00 USDC → 0x8b3e...d412
+
+❯ t2000 save 80 USDC
+  ✓ Saved $80.00 USDC to NAVI
+  APY: 4.21% · Earning ~$0.009/day
+
+❯ t2000 borrow 20 USDC
+  ✓ Borrowed $20.00 USDC (same-asset)
+  Health Factor: 3.39
+
+❯ t2000 repay 20 USDC
+  ✓ Repaid $20.00 USDC · Debt: $0.00
+
+❯ t2000 swap 5 USDC to SUI
+  ✓ 5.00 USDC → 5.83 SUI
+
+❯ t2000 pay https://data.api.com/prices
+  ← 402 Payment Required · $0.01 USDC
+  ✓ Paid $0.01 USDC · 200 OK · 820ms
+
+❯ t2000 balance
+  Available:  $85.00 USDC  (checking — spendable)
+  Savings:    $80.00 USDC  (earning 4.21% APY)
+  Gas:        0.31 SUI     (~$0.28)
+  ──────────────────────
+  Total:      $165.28 USDC
+```
 
 ## Why t2000?
 
@@ -20,546 +75,261 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 
 | Problem | t2000 Solution |
 |---------|---------------|
-| Agents can't hold money | Non-custodial wallet in one line of code |
+| Agents can't hold money | Non-custodial bank account in one line of code |
 | Gas tokens are confusing | Auto-managed — agent never sees SUI |
-| Idle funds lose value | Automatic yield via NAVI Protocol (8%+ APY) |
-| DeFi is complex | `save()`, `swap()`, `borrow()` — three methods |
+| Idle funds lose value | Automatic yield via NAVI Protocol (~4–8% APY) |
+| DeFi is complex | `save()`, `swap()`, `borrow()`, `repay()` — four methods |
+| No standard payment protocol | x402 client — first implementation on Sui |
 | No standard wallet interface | SDK + CLI + HTTP API for any language |
 
-### The Self-Funding Loop
+## Quickstart
 
+```bash
+npm install -g @t2000/cli
+
+t2000 init                         # Create a bank account
+t2000 balance                      # Check balance
+t2000 send 10 USDC to 0x...       # Send USDC
+t2000 save all                     # Earn yield on idle funds
+t2000 pay https://api.example.com  # Pay for x402 APIs
 ```
-Agent initializes (t2000 init)
-       ↓
-Fund wallet with USDC
-       ↓
-Agent sends, receives, holds USDC
-       ↓
-Idle USDC → save → earn yield automatically
-       ↓
-Yield accumulates (8%+ APY)
-       ↓
-At $2,000+ supplied, yield offsets compute costs
-       ↓
-Agent becomes self-funding
-```
+
+## How it works
+
+t2000 wraps five DeFi primitives into a single interface that any AI agent can use:
+
+| Feature | What it does | How |
+|---------|-------------|-----|
+| **Checking** | Send and receive USDC | Direct Sui transfers |
+| **Savings** | Earn ~4–8% APY on idle funds | [NAVI Protocol](https://naviprotocol.io) lending |
+| **Credit** | Borrow against savings | NAVI collateralized loans |
+| **Exchange** | Swap between USDC and SUI | [Cetus](https://cetus.zone) CLMM DEX |
+| **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
+
+Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
+
+### The self-funding loop
+
+At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the agent becomes self-funding.
 
 | Supplied | APY | Monthly Yield | Covers |
 |----------|-----|---------------|--------|
-| $100 | 8% | $0.67 | — |
-| $500 | 8% | $3.33 | Light agent ($3/mo) |
-| $2,000 | 8% | $13.33 | Medium agent ($15/mo) |
-| $10,000 | 8% | $66.67 | Heavy agent |
+| $100 | ~8% | $0.67 | — |
+| $500 | ~8% | $3.33 | Light agent ($3/mo) |
+| $2,000 | ~8% | $13.33 | Medium agent ($15/mo) |
+| $10,000 | ~8% | $66.67 | Heavy agent |
 
----
+## Packages
 
-## 30-Second Quickstart
+| Package | Description | Install |
+|---------|-------------|---------|
+| [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
+| [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
+| [`@t2000/x402`](packages/x402) | x402 payment client (first on Sui) | `npm install @t2000/x402` |
 
-```bash
-npm install -g @t2000/cli    # or: pnpm add -g @t2000/cli
-
-t2000 init              # Create a wallet
-t2000 balance           # Check balance
-t2000 send 10 USDC to 0x...  # Send USDC
-t2000 save all          # Earn yield on idle funds
-t2000 balance           # See savings + daily earnings
-```
-
----
-
-## Repository Structure
-
-```
-t2000/
-├── packages/
-│   ├── sdk/                    @t2000/sdk — TypeScript SDK (core)
-│   │   └── src/
-│   │       ├── t2000.ts        Main T2000 class
-│   │       ├── wallet/         Key management, send, balance, history
-│   │       ├── protocols/      NAVI (save/borrow), Cetus (swap), fees
-│   │       ├── gas/            Gas manager, auto-topup, gas station client
-│   │       └── utils/          Retry, simulate, format, hashcash
-│   │
-│   ├── cli/                    @t2000/cli — Terminal wallet
-│   │   └── src/commands/       20 commands + HTTP API server (serve)
-│   │
-│   └── contracts/              Move smart contracts (deployed to mainnet)
-│       └── sources/            treasury, admin, events, errors
-│
-├── apps/
-│   ├── server/                 @t2000/server — Gas station + indexer
-│   │   ├── src/routes/         /api/sponsor, /api/gas, /api/health, /api/fees
-│   │   ├── src/indexer/        Checkpoint indexer + yield snapshotter
-│   │   ├── src/services/       Sponsor, gas station logic
-│   │   ├── src/lib/            Price cache, signing queue, wallets
-│   │   └── prisma/             Database schema (8 models)
-│   │
-│   └── web/                    @t2000/web — Landing page (Next.js)
-│
-├── infra/                      AWS ECS deployment
-│   ├── setup.sh                One-shot infrastructure provisioning
-│   ├── deploy.sh               Build → ECR → ECS Fargate
-│   ├── server-task-definition.json
-│   ├── indexer-task-definition.json
-│   └── indexer.Dockerfile
-│
-├── .github/workflows/
-│   ├── ci.yml                  Lint + typecheck + tests
-│   ├── deploy-server.yml       Auto-deploy server on push
-│   └── deploy-indexer.yml      Auto-deploy indexer on push
-│
-└── scripts/
-    └── integration-test.ts     Mainnet E2E test
-```
-
----
-
-## Features
-
-### Wallet (Core)
-- **Send USDC** — Transfer to any Sui address
-- **Receive** — Deposit USDC from CEX or wallet
-- **Balance** — Available + savings + gas reserve breakdown
-- **History** — Full transaction log with action inference
-- **Key Management** — AES-256-GCM encrypted, passphrase-protected
-
-### Savings (DeFi)
-- **Save** — Deposit to NAVI Protocol, earn 8%+ APY
-- **Withdraw** — Pull from savings anytime (risk-checked)
-- **Earnings** — Track yield earned, daily rate, projections
-- **Positions** — View all open DeFi positions
-
-### Swap
-- **USDC/SUI** — Via Cetus CLMM with on-chain slippage protection
-- **Quotes** — Pre-swap price impact and fee disclosure
-- **Fee** — 0.1% protocol fee (atomic, on-chain)
-
-### Borrowing
-- **Borrow** — Against savings collateral (health factor checked)
-- **Repay** — Full or partial, with remaining debt shown
-- **Health Factor** — Real-time liquidation safety monitoring
-- **Risk Guards** — Blocks withdrawals/borrows that would cause liquidation
-
-### Gas Abstraction
-- **Self-funded** — Uses agent's own SUI
-- **Auto-topup** — Silently swaps $1 USDC → SUI when gas is low
-- **Sponsored** — Gas station pays for bootstrapping
-- **Invisible** — Agent never thinks about gas
-
-### Infrastructure
-- **Checkpoint Indexer** — 2s polling, crash-safe cursor, event parsing
-- **Yield Snapshotter** — Hourly position snapshots for charts
-- **Gas Station** — Sponsored transactions with circuit breaker + fee ceiling
-- **Price Cache** — TWAP from Cetus pool with 20% circuit breaker
-
----
-
-## User Flows
-
-### Flow 1: Agent Onboarding
-
-```
-Developer                        t2000
-─────────                        ─────
-npm install -g @t2000/cli
-t2000 init ─────────────────────► Generate Ed25519 keypair
-                                  Encrypt with AES-256-GCM
-                                  Save to ~/.t2000/wallet.key
-                                  Call /api/sponsor (hashcash PoW)
-◄──────────────────────────────── 🎉 Bank account created
-                                  Address: 0x8b3e...d412
-                                  Deposit USDC on Sui network only.
-
-[User sends USDC from Coinbase]
-
-t2000 balance ──────────────────► Query on-chain balances
-◄──────────────────────────────── Available: $100.00 USDC (checking — spendable)
-                                  Gas: 0.12 SUI (~$0.11)
-```
-
-### Flow 2: Save and Earn
-
-```
-Agent                            t2000                         NAVI
-─────                            ─────                         ───────
-agent.save({ amount: 50 }) ────► Validate balance
-                                 Calculate fee (0.1%)
-                                 ensureGas()
-                                 Build PTB (deposit + fee) ──► Supply USDC
-                                 Sign & execute
-◄──────────────────────────────── ✓ Saved $50.00 USDC to NAVI
-                                  ✓ Protocol fee: $0.05 (0.1%)
-                                  ✓ Current APY: 4.21%
-                                  Tx: https://suiscan.xyz/mainnet/tx/0xa1c2...
-
-[Time passes — yield accrues]
-
-agent.earnings() ──────────────► Read NAVI position
-                                 Calculate daily rate
-◄──────────────────────────────── Supplied: $50.00
-                                  APY: 8.2%
-                                  Daily: ~$0.011
-```
-
-### Flow 3: Swap with Gas Abstraction
-
-```
-Agent                            t2000                  Cetus         Gas Station
-─────                            ─────                  ─────         ───────────
-agent.swap({                 ──► Check SUI balance
-  from: 'USDC',                  SUI < 0.05? ──────────────────────► Request sponsor
-  to: 'SUI',                     Auto-topup:
-  amount: 5                      Swap $1 USDC → SUI ──► Execute
-}) ────────────────────────────── Build swap PTB
-                                  Set sqrt_price_limit ── Execute swap
-                                  Extract received amount
-◄──────────────────────────────── ✓ Swapped 5 USDC → 1.43 SUI
-                                  Tx: https://suiscan.xyz/mainnet/tx/0xb2c3...
-```
-
-### Flow 4: HTTP API (Non-TypeScript Agents)
-
-```
-Python/Go/Rust Agent             t2000 serve            T2000 SDK
-────────────────────             ───────────            ─────────
-                                 t2000 serve --port 3001
-                                 Token: t2k_a1b2c3...
-
-POST /v1/send ──────────────────► Auth: Bearer t2k_...
-  { to, amount }                  Rate limit check
-                                  agent.send() ────────► Execute on Sui
-◄──────────────────────────────── { success: true,
-                                    data: { tx, amount,
-                                    gasMethod } }
-
-GET /v1/events ─────────────────► SSE stream
-  ?subscribe=yield               Keep-alive ping
-◄─ event: yield ─────────────────  { earned: 0.003 }
-◄─ event: yield ─────────────────  { earned: 0.003 }
-```
-
----
-
-## SDK Usage
+## SDK
 
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-// Create from passphrase
 const agent = await T2000.create({ passphrase: process.env.T2000_PASSPHRASE });
-
-// Or from private key directly
-const agent = T2000.fromPrivateKey('suiprivkey1q...');
+// or: const agent = T2000.fromPrivateKey('suiprivkey1q...');
 ```
 
-### All Methods
+| Category | Method | Description |
+|----------|--------|-------------|
+| **Wallet** | `agent.balance()` | Available + savings + gas breakdown |
+| | `agent.send({ to, amount })` | Send USDC |
+| | `agent.history()` | Transaction log |
+| **Savings** | `agent.save({ amount })` | Deposit to NAVI, earn APY |
+| | `agent.withdraw({ amount })` | Withdraw from savings |
+| | `agent.earnings()` | Yield earned, daily rate |
+| **Credit** | `agent.borrow({ amount })` | Borrow against collateral |
+| | `agent.repay({ amount })` | Repay debt |
+| | `agent.healthFactor()` | Liquidation safety |
+| **Exchange** | `agent.swap({ from, to, amount })` | Swap via Cetus DEX |
+| **x402** | `agent.pay(url)` | Pay for x402 APIs |
+| **Info** | `agent.rates()` | Current APYs |
+| | `agent.positions()` | Open DeFi positions |
 
-| Category | Method | Returns |
-|----------|--------|---------|
-| **Wallet** | `agent.address()` | `string` |
-| | `agent.balance()` | `{ available, savings, gasReserve, total }` |
-| | `agent.send({ to, amount })` | `{ tx, gasMethod, balance }` |
-| | `agent.history({ limit })` | `TransactionRecord[]` |
-| | `agent.deposit()` | `{ address, instructions }` |
-| **Savings** | `agent.save({ amount })` | `{ tx, apy, fee, gasMethod }` |
-| | `agent.withdraw({ amount })` | `{ tx, amount, gasMethod }` |
-| | `agent.earnings()` | `{ totalYieldEarned, currentApy, dailyEarning }` |
-| | `agent.fundStatus()` | `{ supplied, apy, projectedMonthly }` |
-| **Swap** | `agent.swap({ from, to, amount })` | `{ tx, toAmount, priceImpact, fee }` |
-| | `agent.swapQuote({ from, to, amount })` | `{ expectedOutput, poolPrice, fee }` |
-| **Borrow** | `agent.borrow({ amount })` | `{ tx, healthFactor, fee }` |
-| | `agent.repay({ amount })` | `{ tx, remainingDebt }` |
-| **Info** | `agent.healthFactor()` | `{ healthFactor, supplied, borrowed }` |
-| | `agent.maxWithdraw()` | `{ maxAmount, healthFactorAfter }` |
-| | `agent.maxBorrow()` | `{ maxAmount, healthFactorAfter }` |
-| | `agent.rates()` | `{ USDC: { saveApy, borrowApy } }` |
-| | `agent.positions()` | `{ positions: PositionEntry[] }` |
+Full API reference → [`@t2000/sdk` README](packages/sdk)
 
-### Events
-
-```typescript
-agent.on('balanceChange', (e) => console.log(e.cause, e.asset));
-agent.on('healthWarning', (e) => console.log('HF:', e.healthFactor));
-agent.on('healthCritical', (e) => console.log('CRITICAL:', e.healthFactor));
-agent.on('yield', (e) => console.log('Earned:', e.earned));
-agent.on('gasAutoTopUp', (e) => console.log('Topped up:', e.suiReceived, 'SUI'));
-agent.on('gasStationFallback', (e) => console.log('Fallback:', e.reason));
-agent.on('error', (e) => console.error(e.code, e.message));
-```
-
----
-
-## CLI Commands
+## CLI
 
 ```bash
 # Wallet
-t2000 init                      Create wallet
-t2000 balance                   Check balance
-t2000 address                   Show address
-t2000 deposit                   Funding instructions
-t2000 send 10 0xABC...          Send USDC
-t2000 history                   Transaction history
-t2000 export-key                Export private key
-t2000 import-key <key>          Import private key
+t2000 init                         Create bank account
+t2000 balance                      Check balance
+t2000 send 10 USDC to 0x...       Send USDC
+t2000 history                      Transaction history
 
 # Savings & DeFi
-t2000 save 50                   Save (earn yield)
-t2000 withdraw 25               Withdraw savings
-t2000 swap 5 USDC SUI           Swap on Cetus
-t2000 borrow 10                 Borrow against collateral
-t2000 repay 10                  Repay borrow
-t2000 health                    Health factor
-t2000 earnings                  Yield earned
-t2000 fund-status               Full savings report
-t2000 rates                     Current APYs
-t2000 positions                 Open positions
+t2000 save 50                      Earn yield via NAVI
+t2000 withdraw 25                  Withdraw savings
+t2000 borrow 10                    Borrow against collateral
+t2000 repay 10                     Repay debt
+t2000 swap 5 USDC SUI             Swap via Cetus DEX
+t2000 earnings                     Yield earned
+t2000 health                       Health factor
+t2000 rates                        Current APYs
 
-# API Server
-t2000 serve --port 3001         Start HTTP API
-t2000 config set key value      Set configuration
+# x402 Payments
+t2000 pay https://api.example.com  Pay for API resource
 
-# Flags
---json                          Structured JSON output
---yes                           Skip confirmations
---key <path>                    Custom key file
+# HTTP API (for non-TypeScript agents)
+t2000 serve --port 3001            Start HTTP API server
 ```
 
----
+Every command supports `--json` for structured output and `--yes` to skip confirmations.
+
+Full command reference → [`@t2000/cli` README](packages/cli)
 
 ## HTTP API
+
+For agents written in Python, Go, Rust, or any language:
 
 ```bash
 t2000 serve --port 3001
 # ✓ Auth token: t2k_a1b2c3d4e5f6...
 ```
 
-All endpoints require `Authorization: Bearer <token>`.
+```bash
+curl -H "Authorization: Bearer t2k_..." http://localhost:3001/v1/balance
+curl -X POST -H "Authorization: Bearer t2k_..." \
+  -d '{"to":"0x...","amount":10}' \
+  http://localhost:3001/v1/send
+```
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/v1/address` | Wallet address |
 | GET | `/v1/balance` | Balance breakdown |
-| GET | `/v1/history` | Transaction history |
-| GET | `/v1/deposit` | Funding instructions |
 | GET | `/v1/earnings` | Yield summary |
 | GET | `/v1/rates` | Current APYs |
 | GET | `/v1/health-factor` | Health factor |
-| GET | `/v1/max-withdraw` | Safe withdrawal limit |
-| GET | `/v1/max-borrow` | Safe borrow limit |
-| GET | `/v1/positions` | Open positions |
-| POST | `/v1/send` | Send USDC `{ to, amount }` |
-| POST | `/v1/save` | Save `{ amount }` |
-| POST | `/v1/supply` | Alias for save |
-| POST | `/v1/withdraw` | Withdraw `{ amount }` |
-| POST | `/v1/swap` | Swap `{ from, to, amount }` |
-| POST | `/v1/borrow` | Borrow `{ amount }` |
-| POST | `/v1/repay` | Repay `{ amount }` |
-| GET | `/v1/events` | SSE stream `?subscribe=yield,balanceChange` |
+| POST | `/v1/send` | Send USDC |
+| POST | `/v1/save` | Deposit to savings |
+| POST | `/v1/withdraw` | Withdraw from savings |
+| POST | `/v1/swap` | Swap tokens |
+| POST | `/v1/borrow` | Borrow USDC |
+| POST | `/v1/repay` | Repay debt |
+| GET | `/v1/events` | SSE stream (yield, balance changes) |
 
-Response envelope: `{ success: true, data: {...}, timestamp }`.
+## x402 Payments
 
----
+t2000 is the first [x402 protocol](https://www.x402.org/) client on Sui. When a server returns `402 Payment Required`, t2000 automatically pays with USDC and retries — no API keys, no subscriptions, no human approval.
 
-## Architecture
-
-```
-                              ┌─────────────────────────────────────────┐
-                              │              AI Agent                   │
-                              │  (TypeScript / Python / Go / Rust)      │
-                              └────────────┬───────────────┬────────────┘
-                                           │               │
-                              ┌────────────▼──┐    ┌───────▼──────────┐
-                              │  @t2000/sdk   │    │  HTTP API        │
-                              │  (TypeScript) │    │  (t2000 serve)   │
-                              └────────┬──────┘    │  Bearer auth     │
-                                       │           │  Rate limiting   │
-                                       │           │  SSE events      │
-                                       │           └───────┬──────────┘
-                                       │                   │
-                              ┌────────▼───────────────────▼──────────┐
-                              │           T2000 Core Engine            │
-                              │                                        │
-                              │  ┌──────────┐ ┌──────────┐ ┌────────┐ │
-                              │  │ Wallet   │ │ NAVI     │ │ Cetus  │ │
-                              │  │ send     │ │ save     │ │ swap   │ │
-                              │  │ balance  │ │ withdraw │ │ quote  │ │
-                              │  │ history  │ │ borrow   │ │        │ │
-                              │  └──────────┘ │ repay    │ └────────┘ │
-                              │               └──────────┘            │
-                              │  ┌──────────────────────────────────┐ │
-                              │  │        Gas Manager               │ │
-                              │  │  self-funded → auto-topup →      │ │
-                              │  │  sponsored → fail                │ │
-                              │  └──────────────────────────────────┘ │
-                              └────────────────────┬──────────────────┘
-                                                   │
-                    ┌──────────────────────────────┼──────────────────────┐
-                    │                              │                      │
-          ┌─────────▼─────────┐         ┌──────────▼─────────┐  ┌────────▼────────┐
-          │    Sui Network    │         │   t2000 Server     │  │  NeonDB         │
-          │                   │         │   (ECS Fargate)    │  │  (Postgres)     │
-          │  • Transactions   │         │                    │  │                 │
-          │  • Objects        │         │  • /api/sponsor    │  │  • agents       │
-          │  • Events         │         │  • /api/gas        │  │  • transactions │
-          │  • Checkpoints    │         │  • /api/health     │  │  • positions    │
-          │                   │         │  • /api/fees       │  │  • yield snaps  │
-          └───────────────────┘         │                    │  │  • fee ledger   │
-                    ▲                   │  ┌──────────────┐  │  │  • gas ledger   │
-                    │                   │  │   Indexer     │  │  └─────────────────┘
-                    └───────────────────┤  │   (2s poll)   │  │
-                                        │  │   checkpoint  │  │
-                                        │  │   cursor      │  │
-                                        │  └──────────────┘  │
-                                        │                    │
-                                        │  ┌──────────────┐  │
-                                        │  │ Price Cache   │  │
-                                        │  │ TWAP + CB     │  │
-                                        │  └──────────────┘  │
-                                        └────────────────────┘
+```typescript
+import { x402Client } from '@t2000/x402';
+const client = new x402Client(agent);
+const response = await client.fetch('https://api.example.com/data');
 ```
 
----
+Built on the [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) with Move-level replay protection.
 
-## Tech Stack
+Full reference → [`@t2000/x402` README](packages/x402)
 
-| Layer | Technology |
-|-------|------------|
-| **Chain** | Sui (mainnet) |
-| **Contracts** | Move (treasury, admin, fee collection) |
-| **SDK** | TypeScript, `@mysten/sui`, `@naviprotocol/wallet-client`, `eventemitter3` |
-| **CLI** | Commander.js, Hono (serve), `@inquirer/prompts` |
-| **Server** | Hono, Prisma, Node.js |
-| **Database** | NeonDB (serverless Postgres) |
-| **Web** | Next.js 16, Tailwind CSS v4, React 19 |
-| **Infra** | AWS ECS Fargate, ECR, CloudWatch, Secrets Manager |
-| **CI/CD** | GitHub Actions (lint → typecheck → build → deploy) |
-| **DeFi** | NAVI Protocol (lending), Cetus CLMM (swaps) |
+## Agent Skills
 
----
+Install one package and your AI agent gains financial capabilities:
+
+```bash
+npx skills add t2000/t2000-skills
+```
+
+Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goose, and [20+ more](https://agentskills.io).
+
+| Skill | Trigger |
+|-------|---------|
+| `t2000-check-balance` | "check balance", "how much USDC do I have" |
+| `t2000-send` | "send 10 USDC to..." |
+| `t2000-save` | "deposit to savings", "earn yield" |
+| `t2000-withdraw` | "withdraw from savings" |
+| `t2000-swap` | "swap USDC for SUI" |
+| `t2000-borrow` | "borrow 40 USDC" |
+| `t2000-repay` | "repay my loan" |
+| `t2000-pay` | "call that paid API" |
+
+Full reference → [Agent Skills README](t2000-skills)
+
+## Comparison
+
+| Feature | Coinbase Agent Kit | t2000 |
+|---------|--------------------|-------|
+| Chain | Base only | Sui |
+| Send / receive | ✓ | ✓ |
+| Earn yield on savings | — | ✓ NAVI (~4–8% APY) |
+| Borrow / credit line | — | ✓ Collateralized |
+| Token swap | ✓ Base tokens | ✓ Cetus DEX |
+| x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
+| Agent Skills | ✓ | ✓ |
+| Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
+| DeFi composability | — | ✓ Atomic PTB multi-step |
+| Health factor protection | — | ✓ On-chain enforcement |
+| Yield Optimizer | — | *Coming soon* |
+
+## Security
+
+- **Non-custodial** — keys live on the agent's machine, never transmitted
+- **Encrypted storage** — AES-256-GCM with passphrase-derived key (scrypt)
+- **Bearer auth** — HTTP API requires token generated at startup
+- **Rate limiting** — 10 req/s default prevents runaway drain
+- **Risk guards** — health factor checks block risky withdrawals/borrows
+- **Transaction simulation** — dry-run before signing with Move abort code parsing
+- **Circuit breaker** — gas station pauses if SUI price moves >20% in 1 hour
+- **Replay protection** — on-chain nonce enforcement via Sui Payment Kit
+
+## Repository structure
+
+```
+t2000/
+├── packages/
+│   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
+│   ├── cli/              @t2000/cli — Terminal bank account
+│   └── x402/             @t2000/x402 — x402 payment client
+│
+├── apps/
+│   ├── server/           Gas station + checkpoint indexer
+│   └── web/              Landing page + docs (Next.js)
+│
+├── t2000-skills/         Agent Skills for AI coding assistants
+├── infra/                AWS ECS deployment scripts
+└── .github/workflows/    CI/CD (lint → typecheck → test → deploy)
+```
 
 ## Development
 
 ```bash
-# Clone and install
 git clone https://github.com/mission69b/t2000 && cd t2000
 pnpm install
-
-# Build all packages
 pnpm build
 
-# Run checks
-pnpm typecheck              # TypeScript across all packages
-pnpm lint                   # ESLint
-
-# Dev mode (watch)
-pnpm --filter @t2000/sdk dev
-pnpm --filter @t2000/cli dev
-pnpm --filter @t2000/server dev
-pnpm --filter @t2000/web dev
+pnpm typecheck    # TypeScript across all packages
+pnpm lint         # ESLint
+pnpm test         # All unit tests
 ```
 
 ### Testing
 
 ```bash
-# Run all unit tests
-pnpm test
-
-# Run tests for a specific package
-pnpm --filter @t2000/sdk test     # 92 tests (format, simulate, navi, hashcash, keyManager, errors, sui)
-pnpm --filter @t2000/x402 test    # 27 tests (client, facilitator, payment-kit)
-pnpm --filter @t2000/server test  # 10 tests (x402 routes)
+pnpm --filter @t2000/sdk test     # 92 tests
+pnpm --filter @t2000/x402 test    # 27 tests
+pnpm --filter @t2000/server test  # 10 tests
 ```
 
-Unit tests run in CI on every push via GitHub Actions (`ci.yml`).
+Integration tests run real transactions on Sui mainnet and require a funded wallet. See each package README for details.
 
-### Integration Tests (Local Only)
+## Tech stack
 
-Integration tests run real transactions on Sui mainnet. They require a funded wallet with USDC and are **not** included in CI — run them locally before shipping major changes.
-
-```bash
-# 1. Set your funded mainnet private key
-export T2000_PRIVATE_KEY='suiprivkey1q...'
-
-# 2. Run x402 on-chain integration tests
-INTEGRATION=true pnpm --filter @t2000/x402 test
-
-# 3. Run the full E2E integration script
-export $(grep -v '^#' .env.local | xargs) && pnpm exec tsx scripts/integration-test.ts
-```
-
-**What the integration tests cover:**
-
-| Test | Description |
-|------|-------------|
-| `8.21` | Full x402 payment flow — build PTB, sign, execute, verify `PaymentReceipt` event |
-| `8.22` | Duplicate nonce rejection — Payment Kit's on-chain replay protection |
-| `integration-test.ts` | E2E wallet flow — init, balance, send, save, withdraw |
-
-**Requirements:**
-
-- `T2000_PRIVATE_KEY` — Sui private key in `suiprivkey1...` bech32 format
-- The wallet must hold ≥ 0.01 USDC and ≥ 0.1 SUI for gas
-- `SUI_RPC_URL` — optional, defaults to mainnet fullnode
-
----
-
-## Infrastructure
-
-### One-Time Setup
-
-```bash
-# Provision ECS cluster, ECR repos, IAM roles, CloudWatch
-./infra/setup.sh
-
-# Store secrets
-aws secretsmanager create-secret --name t2000/mainnet/database-url --secret-string 'postgres://...' --region us-east-1
-aws secretsmanager create-secret --name t2000/mainnet/sponsor-key --secret-string 'suiprivkey1q...' --region us-east-1
-aws secretsmanager create-secret --name t2000/mainnet/gas-station-key --secret-string 'suiprivkey1q...' --region us-east-1
-```
-
-### Deploy
-
-```bash
-# Manual deploy
-./infra/deploy.sh --service server
-./infra/deploy.sh --service indexer
-
-# Auto-deploy: push to main triggers GitHub Actions
-```
-
-### Services
-
-| Service | CPU | Memory | Task |
-|---------|-----|--------|------|
-| `t2000-server` | 512 | 1024 MB | API + gas station |
-| `t2000-indexer` | 256 | 512 MB | Checkpoint indexer + yield snapshots |
-
----
-
-## Security
-
-- **Non-custodial** — Keys live on the agent's machine, never transmitted
-- **Encrypted storage** — AES-256-GCM with passphrase-derived key (scrypt)
-- **Bearer auth** — HTTP API requires token (generated at startup, stored in config)
-- **Rate limiting** — 10 req/s default, prevents runaway drain
-- **Risk guards** — Health factor checks block risky withdrawals/borrows
-- **Transaction simulation** — Dry-run before signing, Move abort code parsing
-- **Circuit breaker** — Gas station pauses if SUI price moves >20% in 1 hour
-- **Fee ceiling** — Sponsored gas capped at $0.05 per transaction
-- **Hashcash PoW** — Anti-spam for sponsored onboarding
-
----
-
-## Packages
-
-| Package | Version | Description |
-|---------|---------|-------------|
-| [`@t2000/sdk`](packages/sdk) | 0.1.0 | Core TypeScript SDK |
-| [`@t2000/cli`](packages/cli) | 0.1.0 | Terminal wallet + HTTP API |
-| [`@t2000/server`](apps/server) | 0.1.0 | Gas station + indexer (self-hosted) |
-| [`@t2000/web`](apps/web) | 0.1.0 | Landing page |
-
----
+| Layer | Technology |
+|-------|------------|
+| Chain | Sui (mainnet) |
+| Contracts | Move (treasury, admin, fee collection) |
+| SDK | TypeScript, `@mysten/sui` |
+| CLI | Commander.js, Hono (HTTP API) |
+| DeFi | NAVI Protocol (lending), Cetus CLMM (swaps) |
+| Web | Next.js 16, Tailwind CSS v4, React 19 |
+| Infra | AWS ECS Fargate |
+| CI/CD | GitHub Actions |
 
 ## License
 
