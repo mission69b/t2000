@@ -2,7 +2,6 @@ import { TerminalDemo } from "./components/TerminalDemo";
 import { InstallCommand } from "./components/InstallCommand";
 import { Ticker } from "./components/Ticker";
 import { BalanceWidget } from "./components/BalanceWidget";
-import { FadeSection } from "./components/FadeSection";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 
@@ -237,16 +236,16 @@ export default function Home() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-[80px] overflow-hidden">
-        <div className="flex flex-col justify-center px-6 sm:px-8 lg:pl-20 lg:pr-15 py-12 lg:py-20">
+      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-16 sm:pt-20">
+        <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-12 sm:py-16 lg:py-20">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
             Built for Sui · Open source · Non-custodial
           </div>
 
-          <h1 className="text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2">
+          <h1 className="font-serif text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">
             The first{" "}
-            <em>bank account</em>
+            <em className="italic text-accent">bank account</em>
             <br />
             for AI agents.
           </h1>
@@ -257,7 +256,7 @@ export default function Home() {
             human in the loop.
           </p>
 
-          <div className="flex gap-1.5 sm:gap-2 mb-8 sm:mb-12 flex-wrap">
+          <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
             {[
               { icon: "⟳", label: "Checking" },
               { icon: "◈", label: "Savings" },
@@ -267,9 +266,9 @@ export default function Home() {
             ].map((pill) => (
               <div
                 key={pill.label}
-                className="px-2.5 py-1 border border-border-bright text-[11px] tracking-[0.04em] flex items-center gap-1.5 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim"
+                className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim"
               >
-                <span className="text-xs">{pill.icon}</span>
+                <span className="text-xs sm:text-sm">{pill.icon}</span>
                 {pill.label}
               </div>
             ))}
@@ -286,12 +285,12 @@ export default function Home() {
               href="#how"
               className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
             >
-              See how it works
+              How it works
             </a>
           </div>
         </div>
 
-        <div className="flex items-center justify-center px-6 sm:px-8 lg:pl-5 lg:pr-20 py-12 lg:py-20 relative">
+        <div className="flex items-center justify-center px-6 sm:px-8 lg:px-5 xl:px-20 py-8 lg:py-20 relative">
           <div className="relative w-full max-w-[520px]">
             <TerminalDemo />
             <BalanceWidget />
@@ -300,28 +299,27 @@ export default function Home() {
       </section>
 
       {/* ── Divider ── */}
-      <FadeSection className="relative z-1 px-6 sm:px-10 lg:px-20 border-t border-border">
+      <div className="relative z-1 px-6 sm:px-10 lg:px-20 border-t border-border">
         <div className="text-[10px] tracking-[0.2em] uppercase text-dim py-5 flex items-center gap-4">
           Four accounts. One agent. Zero friction.
           <span className="flex-1 h-px bg-border" />
         </div>
-      </FadeSection>
+      </div>
 
       {/* ── Ticker ── */}
       <Ticker />
 
       {/* ── Account Cards ── */}
-      <FadeSection>
       <section id="accounts" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Four accounts
             </div>
-            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
+            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Everything a bank offers.
               <br />
-              Built for <em>machines.</em>
+              Built for <em className="italic text-accent">machines.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -358,19 +356,17 @@ export default function Home() {
           ))}
         </div>
       </section>
-      </FadeSection>
 
       {/* ── How It Works + x402 Panel ── */}
-      <FadeSection>
       <section id="how" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               How it works
             </div>
-            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
+            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               From zero to{" "}
-              <em>operating</em>
+              <em className="italic text-accent">operating</em>
               <br />
               in 30 seconds.
             </h2>
@@ -387,9 +383,9 @@ export default function Home() {
             {STEPS.map((step, i) => (
               <div
                 key={step.num}
-                className={`group/step grid grid-cols-[40px_1fr] gap-5 py-7 pl-5 border-b border-border border-l-2 border-l-dim transition-colors hover:border-l-accent ${i === 0 ? "border-t" : ""}`}
+                className={`grid grid-cols-[40px_1fr] gap-5 py-7 border-b border-border ${i === 0 ? "border-t" : ""}`}
               >
-                <div className="text-[11px] text-dim pt-1 tracking-wide transition-colors group-hover/step:text-accent">
+                <div className="text-[11px] text-dim pt-1 tracking-wide">
                   {step.num}
                 </div>
                 <div>
@@ -437,7 +433,7 @@ export default function Home() {
                         <div className="absolute left-[15px] top-8 bottom-0 w-px bg-border" />
                       )}
                       <div
-                        className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center shrink-0 relative z-1 ${step.active ? "border-accent bg-accent-dim text-accent" : "border-border-bright bg-surface text-muted"} ${step.icon === "⬡" ? "text-sm" : "text-[11px]"}`}
+                        className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center text-xs shrink-0 relative z-1 ${step.active ? "border-accent bg-accent-dim text-accent" : "border-border-bright bg-surface"}`}
                       >
                         {step.icon}
                       </div>
@@ -445,7 +441,7 @@ export default function Home() {
                         <div className="text-xs text-foreground mb-1">
                           {step.title}
                         </div>
-                        <div className="text-[11px] text-[#7a8090] leading-[1.7]">
+                        <div className="text-[11px] text-muted leading-[1.6]">
                           {step.isCode ? (
                             <code className="text-accent text-[11px]">
                               {step.detail}
@@ -470,10 +466,8 @@ export default function Home() {
           </div>
         </div>
       </section>
-      </FadeSection>
 
       {/* ── Agent Skills ── */}
-      <FadeSection>
       <section
         id="skills"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface"
@@ -483,11 +477,11 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Agent Skills
             </div>
-            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
+            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Your agent already knows
               <br />
               how to use{" "}
-              <em>t2000.</em>
+              <em className="italic text-accent">t2000.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -549,7 +543,7 @@ export default function Home() {
                 {PLATFORMS.map((p) => (
                   <span
                     key={p}
-                    className="text-[11px] px-3 py-1.5 border border-border text-dim tracking-wide"
+                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
                   >
                     {p}
                   </span>
@@ -559,10 +553,8 @@ export default function Home() {
           </div>
         </div>
       </section>
-      </FadeSection>
 
       {/* ── Comparison Table ── */}
-      <FadeSection>
       <section
         id="compare"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border"
@@ -572,10 +564,10 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Comparison
             </div>
-            <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground">
+            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Not a wallet.
               <br />A{" "}
-              <em>bank account.</em>
+              <em className="italic text-accent">bank account.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -589,13 +581,13 @@ export default function Home() {
           <table className="w-full border-collapse text-[11px] sm:text-xs min-w-[600px]">
             <thead>
               <tr>
-                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-dim">
+                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-muted">
                   Feature
                 </th>
                 <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-muted">
                   Coinbase
                 </th>
-                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-accent bg-[rgba(0,214,143,0.03)] border-l border-r border-l-accent/10 border-r-accent/10">
+                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-accent">
                   t2000
                 </th>
               </tr>
@@ -623,10 +615,8 @@ export default function Home() {
           </table>
         </div>
       </section>
-      </FadeSection>
 
       {/* ── Final CTA ── */}
-      <FadeSection>
       <section
         id="install"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-24 lg:py-32 border-t border-border text-center overflow-hidden"
@@ -637,10 +627,10 @@ export default function Home() {
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-5">
             Get started
           </div>
-          <h2 className="text-[clamp(32px,4vw,52px)] leading-[1.1] text-foreground mb-5">
+          <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
             Give your agent
             <br />a{" "}
-            <em>financial life.</em>
+            <em className="italic text-accent">financial life.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.8]">
             Install t2000, fund with USDC, and your agent is operating in under
@@ -681,7 +671,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      </FadeSection>
 
       {/* ── Footer ── */}
       <footer className="relative z-1 px-6 sm:px-8 lg:px-20 py-6 sm:py-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">

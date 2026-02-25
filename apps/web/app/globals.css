@@ -34,35 +34,17 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-blue: var(--blue);
-  --font-sans: var(--font-ibm-plex-mono);
   --font-mono: var(--font-ibm-plex-mono);
   --font-serif: var(--font-instrument-serif);
-}
-
-html,
-body,
-body * {
-  font-family: var(--font-ibm-plex-mono), 'IBM Plex Mono', monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-mono), monospace;
   font-size: 14px;
   line-height: 1.6;
   overflow-x: hidden;
-}
-
-body h1,
-body h2 {
-  font-family: var(--font-instrument-serif), 'Instrument Serif', serif !important;
-  font-weight: 400 !important;
-}
-
-body h1 em,
-body h2 em {
-  font-style: italic;
-  color: var(--accent);
 }
 
 /* Noise overlay */
@@ -105,7 +87,7 @@ body::after {
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -148,17 +130,7 @@ body::after {
   animation: blink 1s step-end infinite;
 }
 .animate-fade-in-up {
-  animation: fadeInUp 0.3s ease-out forwards;
-}
-
-.fade-section {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-.fade-section.visible {
-  opacity: 1;
-  transform: translateY(0);
+  animation: fadeInUp 0.4s ease-out forwards;
 }
 .animate-pulse-dot {
   animation: pulseDot 2s ease-in-out infinite;
