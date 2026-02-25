@@ -385,7 +385,7 @@ export default function Home() {
             {STEPS.map((step, i) => (
               <div
                 key={step.num}
-                className={`grid grid-cols-[40px_1fr] gap-5 py-7 border-b border-border ${i === 0 ? "border-t" : ""}`}
+                className={`group grid grid-cols-[40px_1fr] gap-5 py-7 border-b border-border cursor-pointer transition-all ${i === 0 ? "border-t" : ""}`}
               >
                 <div className="text-[11px] text-dim pt-1 tracking-wide">
                   {step.num}
@@ -399,7 +399,7 @@ export default function Home() {
                       {step.badge}
                     </span>
                   </div>
-                  <div className="text-xs text-muted leading-[1.7] opacity-70">
+                  <div className="text-xs text-muted leading-[1.7] opacity-70 transition-opacity group-hover:opacity-100">
                     {step.code && (
                       <>
                         <code className="text-accent text-xs">
