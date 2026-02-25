@@ -636,14 +636,6 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 health" desc="Check system + protocol status" onClick={() => scrollToCmd("health")} />
         <CmdCard name="t2000 positions" desc="View DeFi positions detail" onClick={() => scrollToCmd("positions")} />
         <CmdCard name="t2000 history" desc="Transaction history" onClick={() => scrollToCmd("history")} />
-        <CmdCard name="t2000 address" desc="Show wallet address" onClick={() => scrollToCmd("address")} />
-        <CmdCard name="t2000 deposit" desc="Show funding instructions" onClick={() => scrollToCmd("deposit")} />
-        <CmdCard name="t2000 earnings" desc="Yield earned to date" onClick={() => scrollToCmd("earnings")} />
-        <CmdCard name="t2000 fund-status" desc="Full savings summary" onClick={() => scrollToCmd("fund-status")} />
-        <CmdCard name="t2000 rates" desc="Current save / borrow APYs" onClick={() => scrollToCmd("rates")} />
-        <CmdCard name="t2000 import" desc="Import wallet from private key" onClick={() => scrollToCmd("import")} />
-        <CmdCard name="t2000 export" desc="Export private key" onClick={() => scrollToCmd("export")} />
-        <CmdCard name="t2000 config" desc="Get or set configuration" onClick={() => scrollToCmd("config")} />
       </div>
 
       <h2 id="cmd-init">t2000 init</h2>
@@ -825,102 +817,20 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         0xd5e6...f7a8  swap {S.m("(auto-topup)")}   2/18/2026, 1:15 PM
       </CodeBlock>
 
-      <h2 id="cmd-address">t2000 address</h2>
-      <p>Prints the agent&apos;s Sui address. Useful for receiving funds or sharing with other agents.</p>
-      <CodeBlock lang="bash">
-        t2000 address
-      </CodeBlock>
-      <CodeBlock lang="output">
-        Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}
-      </CodeBlock>
-
-      <h2 id="cmd-deposit">t2000 deposit</h2>
-      <p>Shows step-by-step funding instructions — which network, which asset, and the address to send to.</p>
-      <CodeBlock lang="bash">
-        t2000 deposit
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.b("Fund your wallet")}{"\n\n"}
-        Send USDC on Sui to: {S.a("0x8b3e4f2a...")}{"\n\n"}
-        From a CEX (Coinbase, Binance):{"\n"}
-        {"  "}1. Withdraw USDC{"\n"}
-        {"  "}2. Select {S.g("\"Sui\"")} network{"\n"}
-        {"  "}3. Paste address{"\n\n"}
-        From another Sui wallet:{"\n"}
-        {"  "}Transfer USDC to {S.a("0x8b3e...d412")}
-      </CodeBlock>
-
-      <h2 id="cmd-earnings">t2000 earnings</h2>
-      <p>Shows yield earned to date, current APY, and daily earning rate.</p>
-      <CodeBlock lang="bash">
-        t2000 earnings
-      </CodeBlock>
-      <CodeBlock lang="output">
-        Saved:        {S.a("$500.00")} USDC{"\n"}
-        APY:          {S.a("4.21%")}{"\n"}
-        Daily Yield:  {S.a("~$0.0576/day")}{"\n"}
-        Est. Earned:  {S.a("~$2.88")}
-      </CodeBlock>
-
-      <h2 id="cmd-fund-status">t2000 fund-status</h2>
-      <p>Complete savings summary: supplied amount, current APY, projected monthly yield, and time to self-funding.</p>
-      <CodeBlock lang="bash">
-        t2000 fund-status
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("✓")} Savings: ACTIVE{"\n\n"}
-        Saved:              {S.a("$500.00")} USDC @ 4.21% APY{"\n"}
-        Earned today:       {S.a("~$0.0576")}{"\n"}
-        Earned all time:    {S.a("~$2.88")}{"\n"}
-        Monthly projected:  {S.a("~$1.75/month")}{"\n\n"}
-        {S.m("Withdraw anytime: t2000 withdraw <amount>")}
-      </CodeBlock>
-
-      <h2 id="cmd-rates">t2000 rates</h2>
-      <p>Fetches live save and borrow APYs from NAVI Protocol.</p>
-      <CodeBlock lang="bash">
-        t2000 rates
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.m("USDC Rates (NAVI Protocol)")}{"\n"}
-        Save APY:    {S.g("4.21%")}{"\n"}
-        Borrow APY:  {S.a("6.53%")}
-      </CodeBlock>
-
-      <h2 id="cmd-import">t2000 import</h2>
-      <p>Import an existing Sui wallet from a private key (<InlineCode>suiprivkey1...</InlineCode> bech32 or raw hex).</p>
-      <CodeBlock lang="bash">
-        t2000 import &lt;private-key&gt;
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("✓")} Wallet imported (encrypted){"\n"}
-        Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}
-      </CodeBlock>
-
-      <h2 id="cmd-export">t2000 export</h2>
-      <p>Export the agent&apos;s private key in hex format. Handle with care — this key controls the wallet.</p>
-      <CodeBlock lang="bash">
-        t2000 export
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("✓")} Private key (Ed25519, hex):{"\n"}
-        {S.a("0xabcdef1234...567890ab")}{"\n\n"}
-        {S.m("Not a BIP39 mnemonic. Store securely and never share.")}
-      </CodeBlock>
-
-      <h2 id="cmd-config">t2000 config</h2>
-      <p>Read or write values in <InlineCode>~/.t2000/config.json</InlineCode>.</p>
-      <CodeBlock lang="bash">
-        t2000 config get &lt;key&gt;{"\n"}
-        t2000 config set &lt;key&gt; &lt;value&gt;{"\n\n"}
-        t2000 config get network{"\n"}
-        t2000 config set rpcUrl {S.s('"https://custom-rpc.example.com"')}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        network:  {S.a("mainnet")}{"\n\n"}
-        {S.c("# After setting:")}{"\n"}
-        Set rpcUrl = https://custom-rpc.example.com
-      </CodeBlock>
+      <h2 id="cmd-more">More commands</h2>
+      <DocTable
+        headers={["Command", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
+          [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
+          [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
+          [<InlineCode key="k">t2000 fund-status</InlineCode>, "Full savings summary with monthly projection"],
+          [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from NAVI"],
+          [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
+          [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
+          [<InlineCode key="k">t2000 config get|set</InlineCode>, <>Read or write <InlineCode>~/.t2000/config.json</InlineCode></>],
+        ]}
+      />
     </>
   );
 }
