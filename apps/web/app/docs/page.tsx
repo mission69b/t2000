@@ -384,26 +384,18 @@ function QuickStart({
       </p>
       <CodeBlock lang="bash">
         {S.g("$")} t2000 init{"\n\n"}
-        {"  "}{S.m("Creating agent wallet...")}{"\n\n"}
+        {"  "}{S.m("Creating agent wallet...")}{"\n"}
         {"  "}{S.g("✓")} Keypair generated{"\n"}
-        {"  "}{S.g("✓")} Keypair saved        {S.m("~/.t2000/agent-0.key")}{"\n"}
-        {"  "}{S.g("✓")} Config written       {S.m("~/.t2000/config.json")}{"\n"}
-        {"  "}{S.g("✓")} Network              {S.a("Sui mainnet")}{"\n"}
-        {"  "}{S.g("✓")} Gas sponsorship      {S.a("enabled")}{"\n\n"}
-        {"  "}{S.m("Setting up accounts...")}{"\n\n"}
-        {"  "}{S.g("✓")} Checking            {S.m("hold and send USDC instantly")}{"\n"}
-        {"  "}{S.g("✓")} Savings             {S.m("earn ~8.2% APY automatically")}{"\n"}
-        {"  "}{S.g("✓")} Credit              {S.m("borrow against your savings")}{"\n"}
-        {"  "}{S.g("✓")} Exchange            {S.m("swap currencies on demand")}{"\n"}
-        {"  "}{S.g("✓")} 402 Pay             {S.m("pay for APIs and services autonomously")}{"\n\n"}
-        {"  "}🎉 {S.g("Bank account created successfully")}{"\n\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}Your agent{"'"}s address:{"\n"}
-        {"  "}{S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...4d5e6f")}{"\n\n"}
-        {"  "}Deposit USDC on Sui network — not Ethereum, Base, or Solana{"\n"}
+        {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
+        {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
+        {"  "}{S.m("Setting up accounts...")}{"\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} 402 Pay{"\n\n"}
+        {"  "}🎉 {S.g("Bank account created")}{"\n"}
+        {"  "}Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a1c2d3e4f...")}{"\n\n"}
+        {"  "}Deposit USDC on Sui network only.{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n\n"}
-        {"  "}{S.b("t2000 balance --watch")}    wait for funds to arrive{"\n"}
-        {"  "}{S.b("t2000 save all")}           start earning (~8.2% APY){"\n"}
+        {"  "}{S.b("t2000 balance")}            check for funds{"\n"}
+        {"  "}{S.b("t2000 save all")}           start earning yield{"\n"}
         {"  "}{S.b("t2000 address")}            show address again
       </CodeBlock>
       <Callout type="tip" label="Tip">

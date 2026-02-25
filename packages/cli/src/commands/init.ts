@@ -4,7 +4,7 @@ import { T2000 } from '@t2000/sdk';
 import { askPassphraseConfirm, getPassphraseFromEnv } from '../prompts.js';
 import {
   printSuccess, printBlank, printInfo, printKeyValue,
-  printJson, printLine, isJsonMode, handleError,
+  printJson, printLine, printDivider, isJsonMode, handleError,
 } from '../output.js';
 
 export function registerInit(program: Command) {
@@ -53,6 +53,14 @@ export function registerInit(program: Command) {
         printBlank();
         printLine(`🎉 ${pc.green('Bank account created')}`);
         printKeyValue('Address', pc.yellow(address));
+
+        printBlank();
+        printLine(`Deposit USDC on Sui network only.`);
+        printDivider();
+        printBlank();
+        printLine(`${pc.cyan('t2000 balance')}            check for funds`);
+        printLine(`${pc.cyan('t2000 save all')}           start earning yield`);
+        printLine(`${pc.cyan('t2000 address')}            show address again`);
         printBlank();
       } catch (error) {
         handleError(error);
