@@ -38,15 +38,21 @@ fees.get('/api/fees', async (c) => {
   const address = c.req.query('address');
   if (!address) return c.json({ error: 'address query param required' }, 400);
 
-  const records = await prisma.protocolFeeLedger.findMany({
-    where: { agentAddress: address },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  });
+  try {
+    const records = await prisma.protocolFeeLedger.findMany({
+      where: { agentAddress: address },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
 
-  const totalFees = records.reduce((sum: number, r: { feeAmount: unknown }) => sum + Number(r.feeAmount), 0);
+    const totalFees = records.reduce((sum: number, r: { feeAmount: unknown }) => sum + Number(r.feeAmount), 0);
 
-  return c.json({ records, totalFees });
+    return c.json({ records, totalFees });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Failed to fetch fees';
+    console.error('[fees] Error:', msg);
+    return c.json({ error: msg }, 500);
+  }
 });
 
 export { fees };

@@ -8,6 +8,13 @@ import { fees } from './routes/fees.js';
 import { x402 } from './routes/x402.js';
 import { startPriceCache } from './lib/priceCache.js';
 
+const REQUIRED_ENV = ['DATABASE_URL', 'SPONSOR_PRIVATE_KEY', 'GAS_STATION_PRIVATE_KEY'];
+const missing = REQUIRED_ENV.filter((v) => !process.env[v]);
+if (missing.length > 0) {
+  console.error(`[server] Missing required env vars: ${missing.join(', ')}`);
+  process.exit(1);
+}
+
 process.on('unhandledRejection', (reason) => {
   console.error('[server] Unhandled rejection:', reason);
 });
