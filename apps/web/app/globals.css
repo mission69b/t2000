@@ -152,3 +152,42 @@ body::after {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Docs page ── */
+.docs-page {
+  --surface-2: #0d1117;
+  --border-mid: rgba(255,255,255,0.12);
+  --doc-text: rgba(255,255,255,0.82);
+  --doc-muted: rgba(255,255,255,0.35);
+  --doc-text-dim: rgba(255,255,255,0.6);
+  --doc-text-bright: rgba(255,255,255,0.9);
+  --doc-text-max: rgba(255,255,255,0.95);
+  --sidebar-w: 260px;
+  --topbar-h: 52px;
+  --toc-w: 200px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.docs-page .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.docs-page .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.docs-page .sidebar-scroll { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+.docs-page pre { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+.docs-page .t-comment { color: rgba(255,255,255,0.28); }
+.docs-page .t-green { color: var(--accent); }
+.docs-page .t-amber { color: var(--warning); }
+.docs-page .t-blue { color: #7eb8f7; }
+.docs-page .t-purple { color: #c792ea; }
+.docs-page .t-red { color: var(--danger); }
+.docs-page .t-muted { color: var(--doc-muted); }
+.docs-page .t-string { color: #c3e88d; }
+
+@keyframes docFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-doc-fade-in {
+  animation: docFadeIn 0.2s ease;
+}

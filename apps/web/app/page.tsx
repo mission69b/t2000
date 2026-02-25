@@ -5,7 +5,7 @@ import { BalanceWidget } from "./components/BalanceWidget";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 const NPM_ORG_URL = "https://www.npmjs.com/org/t2000";
-const DOCS_URL = "https://github.com/mission69b/t2000#readme";
+const DOCS_URL = "/docs";
 
 const ACCOUNTS = [
   {
