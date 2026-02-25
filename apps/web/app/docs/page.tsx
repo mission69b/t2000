@@ -4,6 +4,68 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 
+/* ─── Sidebar nav item (shared between desktop sidebar & mobile drawer) ─── */
+function SidebarNav({
+  nav,
+  activeSection,
+  onSelect,
+}: {
+  nav: { label: string; items: NavItem[] }[];
+  activeSection: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <>
+      {nav.map((group, gi) => (
+        <div key={group.label}>
+          {gi > 0 && <div className="h-px bg-[var(--border)] mx-5 my-4" />}
+          <div className="mb-7">
+            <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--doc-muted)] px-5 mb-1.5">
+              {group.label}
+            </div>
+            {group.items.map((item) =>
+              item.href ? (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between px-5 py-1.5 text-[12.5px] text-[var(--doc-muted)] no-underline cursor-pointer transition-colors border-l-2 border-l-transparent hover:text-[var(--doc-text)] hover:bg-white/[0.03]"
+                >
+                  {item.name}
+                </a>
+              ) : (
+                <a
+                  key={item.id}
+                  onClick={() => onSelect(item.id)}
+                  className={`flex items-center justify-between px-5 py-1.5 text-[12.5px] cursor-pointer transition-colors border-l-2 no-underline ${
+                    activeSection === item.id
+                      ? "text-accent border-l-accent bg-accent-dim"
+                      : "text-[var(--doc-muted)] border-l-transparent hover:text-[var(--doc-text)] hover:bg-white/[0.03]"
+                  }`}
+                >
+                  {item.name}
+                  {item.badge && (
+                    <span
+                      className={`text-[10px] rounded-[3px] px-1.5 py-px ${
+                        item.badgeGreen
+                          ? "text-accent bg-accent-dim"
+                          : "text-warning bg-[rgba(245,166,35,0.10)]"
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </a>
+              ),
+            )}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
 /* ─── Nav structure ─── */
 interface NavItem {
   id: string;
@@ -71,8 +133,8 @@ function CodeBlock({
   };
 
   return (
-    <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-lg my-4 mb-6 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] bg-white/[0.02]">
+    <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-lg my-4 mb-6 overflow-hidden -mx-4 sm:mx-0">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 border-b border-[var(--border)] bg-white/[0.02]">
         <div className="flex items-center gap-3">
           {filename && (
             <span className="text-[11.5px] text-white/45">{filename}</span>
@@ -94,7 +156,7 @@ function CodeBlock({
       </div>
       <pre
         ref={preRef}
-        className="px-5 py-4.5 overflow-x-auto text-[13px] leading-[1.65]"
+        className="px-3 sm:px-5 py-3.5 sm:py-4.5 overflow-x-auto text-[12px] sm:text-[13px] leading-[1.65]"
       >
         <code>{children}</code>
       </pre>
@@ -143,26 +205,28 @@ function TryIt({ cmd, note }: { cmd: string; note?: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <div className="flex items-center justify-between bg-[var(--surface)] border border-[rgba(0,214,143,0.25)] rounded-lg px-4.5 py-3.5 my-6 shadow-[0_0_20px_rgba(0,214,143,0.06)]">
-      <div className="flex items-center gap-3">
-        <span className="text-accent text-[13px]">$</span>
-        <span className="text-[13px] text-white/85">{cmd}</span>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 bg-[var(--surface)] border border-[rgba(0,214,143,0.25)] rounded-lg px-4 sm:px-4.5 py-3 sm:py-3.5 my-6 shadow-[0_0_20px_rgba(0,214,143,0.06)]">
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="text-accent text-[13px] shrink-0">$</span>
+        <span className="text-[12px] sm:text-[13px] text-white/85 break-all sm:break-normal">{cmd}</span>
       </div>
-      {note && (
-        <span className="text-[11.5px] text-[var(--doc-muted)] hidden sm:inline">
-          {note}
-        </span>
-      )}
-      <button
-        onClick={handleCopy}
-        className={`text-[11px] px-3.5 py-1.5 rounded-[5px] cursor-pointer shrink-0 ml-4 transition-shadow ${
-          copied
-            ? "text-accent bg-[rgba(0,214,143,0.2)] border border-[rgba(0,214,143,0.3)]"
-            : "text-accent bg-accent-dim border border-[rgba(0,214,143,0.3)] hover:shadow-[0_0_12px_var(--accent-glow)]"
-        }`}
-      >
-        {copied ? "✓ Copied" : "Copy"}
-      </button>
+      <div className="flex items-center gap-3 self-end sm:self-auto">
+        {note && (
+          <span className="text-[11.5px] text-[var(--doc-muted)] hidden sm:inline">
+            {note}
+          </span>
+        )}
+        <button
+          onClick={handleCopy}
+          className={`text-[11px] px-3.5 py-1.5 rounded-[5px] cursor-pointer shrink-0 transition-shadow ${
+            copied
+              ? "text-accent bg-[rgba(0,214,143,0.2)] border border-[rgba(0,214,143,0.3)]"
+              : "text-accent bg-accent-dim border border-[rgba(0,214,143,0.3)] hover:shadow-[0_0_12px_var(--accent-glow)]"
+          }`}
+        >
+          {copied ? "✓ Copied" : "Copy"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -177,7 +241,8 @@ function DocTable({
   skillRow?: boolean;
 }) {
   return (
-    <table className="w-full border-collapse my-4 mb-7 text-[13px]">
+    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+    <table className="w-full border-collapse my-4 mb-7 text-[12px] sm:text-[13px] min-w-[480px]">
       <thead>
         <tr>
           {headers.map((h) => (
@@ -213,6 +278,7 @@ function DocTable({
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
 
@@ -299,10 +365,10 @@ function QuickStart({
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Getting Started
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         Up and running <em className="italic text-accent">in 45 seconds.</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 is a full bank account for AI agents on Sui — checking, savings,
         credit, and currency exchange in one CLI command.
       </p>
@@ -416,10 +482,10 @@ function InstallSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Getting Started
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         <em className="italic text-accent">Installation</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 is a Node.js CLI. Install globally, then initialize a wallet per
         agent or per project.
       </p>
@@ -484,10 +550,10 @@ function ConceptsSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Getting Started
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         Core <em className="italic text-accent">Concepts</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Four accounts, one wallet. Everything runs on Sui via atomic
         Programmable Transaction Blocks.
       </p>
@@ -540,16 +606,16 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Reference
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         CLI <em className="italic text-accent">Commands</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         All commands follow the same output contract: structured boxes for state
         changes, <InlineCode>--json</InlineCode> for agent consumption,{" "}
         <InlineCode>--verbose</InlineCode> for debugging.
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
         <CmdCard name="t2000 init" desc="Generate keypair, write config" onClick={() => scrollToCmd("init")} />
         <CmdCard name="t2000 balance" desc="View all accounts + limits" onClick={() => scrollToCmd("balance")} />
         <CmdCard name="t2000 send" desc="Transfer USDC to any address" onClick={() => scrollToCmd("send")} />
@@ -655,10 +721,10 @@ function SdkSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Reference
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         SDK <em className="italic text-accent">/ API</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Use t2000 programmatically inside your agent code. The SDK wraps every
         CLI command as a typed async function.
       </p>
@@ -723,10 +789,10 @@ function ConfigSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Reference
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         <em className="italic text-accent">Configuration</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 reads from <InlineCode>~/.t2000/config.json</InlineCode> by
         default. All fields can be overridden with environment variables.
       </p>
@@ -754,10 +820,10 @@ function ErrorsSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Reference
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         Error <em className="italic text-accent">Codes</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Every error has a <InlineCode>code</InlineCode>, a human-readable{" "}
         <InlineCode>message</InlineCode>, and structured{" "}
         <InlineCode>data</InlineCode> that tells the agent exactly what to do
@@ -802,10 +868,10 @@ function SkillsSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Guides
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         Agent <em className="italic text-accent">Skills</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Install once and any Claude, Codex, or Copilot agent discovers t2000
         automatically — no manual wiring.
       </p>
@@ -860,10 +926,10 @@ function X402Section() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Guides
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         x402 <em className="italic text-accent">Payments</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 is the first x402 implementation on Sui. Your agent can
         autonomously pay for API services using USDC micropayments.
       </p>
@@ -929,10 +995,10 @@ function DefiSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Guides
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         DeFi <em className="italic text-accent">& Yield</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 integrates NAVI Protocol for savings and borrowing, and Cetus DEX
         for token exchange. Both are composed atomically via PTBs.
       </p>
@@ -982,10 +1048,10 @@ function GasSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Guides
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         Gas <em className="italic text-accent">Management</em>
       </h1>
-      <p className="text-[14.5px] text-white/55 leading-[1.7] mb-10 max-w-[580px]">
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 manages gas completely autonomously. You never need to manually
         fund SUI — the gas manager handles it.
       </p>
@@ -1027,7 +1093,7 @@ function ChangelogSection() {
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         More
       </div>
-      <h1 className="font-serif text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         <em className="italic text-accent">Changelog</em>
       </h1>
 
@@ -1051,12 +1117,14 @@ export default function DocsPage() {
   const [tocItems, setTocItems] = useState<{ id: string; text: string; level: number }[]>([]);
   const [activeTocId, setActiveTocId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
 
   const goTo = useCallback(
     (id: string, anchor?: string) => {
       if (id.startsWith("_")) return;
       setActiveSection(id);
+      setMobileMenuOpen(false);
       if (anchor) {
         setTimeout(() => {
           document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1107,6 +1175,12 @@ export default function DocsPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [activeSection]);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileMenuOpen]);
+
   // Cmd+K search shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1131,11 +1205,28 @@ export default function DocsPage() {
       })).filter((g) => g.items.length > 0)
     : NAV;
 
+  const currentSectionName =
+    NAV.flatMap((g) => g.items).find((i) => i.id === activeSection)?.name ??
+    "Docs";
+
   return (
     <div className="docs-page min-h-screen bg-background text-[var(--doc-text)]">
       {/* ── Topbar ── */}
-      <header className="fixed top-0 left-0 right-0 h-[var(--topbar-h)] bg-[rgba(4,4,6,0.92)] backdrop-blur-xl border-b border-[var(--border)] flex items-center px-5 z-100">
-        <a href="/" className="flex items-center gap-2.5 w-[var(--sidebar-w)] shrink-0 no-underline">
+      <header className="fixed top-0 left-0 right-0 h-[var(--topbar-h)] bg-[rgba(4,4,6,0.92)] backdrop-blur-xl border-b border-[var(--border)] flex items-center px-4 sm:px-5 z-100">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          className="md:hidden mr-3 text-[var(--doc-text)] cursor-pointer p-1"
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+          )}
+        </button>
+
+        <a href="/" className="flex items-center gap-2.5 md:w-[var(--sidebar-w)] shrink-0 no-underline">
           <div className="w-[26px] h-[26px] border-[1.5px] border-accent rounded-[5px] flex items-center justify-center text-[11px] font-semibold text-accent shadow-[0_0_8px_var(--accent-glow)] shrink-0">
             t2
           </div>
@@ -1164,7 +1255,7 @@ export default function DocsPage() {
           </span>
         </div>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
             v0.1.0
           </span>
@@ -1175,74 +1266,69 @@ export default function DocsPage() {
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-[var(--border)] rounded-[5px] text-xs text-[var(--doc-text)] no-underline transition-colors hover:border-[var(--border-mid)] hover:bg-[var(--surface)]"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 border border-[var(--border)] rounded-[5px] text-xs text-[var(--doc-text)] no-underline transition-colors hover:border-[var(--border-mid)] hover:bg-[var(--surface)]"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
             </svg>
-            GitHub
+            <span className="hidden sm:inline">GitHub</span>
           </a>
         </div>
       </header>
 
+      {/* ── Mobile sidebar drawer ── */}
+      {mobileMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 z-90 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <nav className="fixed top-[var(--topbar-h)] left-0 bottom-0 w-[280px] overflow-y-auto border-r border-[var(--border)] py-6 bg-[var(--background)] sidebar-scroll z-95 md:hidden animate-doc-fade-in">
+            {/* Mobile search */}
+            <div className="px-4 mb-4">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-md py-1.5 px-3 text-xs text-[var(--doc-text)] outline-none focus:border-[rgba(0,214,143,0.4)] transition-colors placeholder:text-[var(--doc-muted)]"
+              />
+            </div>
+            <SidebarNav
+              nav={filteredNav}
+              activeSection={activeSection}
+              onSelect={(id) => goTo(id)}
+            />
+          </nav>
+        </>
+      )}
+
+      {/* ── Mobile section breadcrumb ── */}
+      <div className="fixed top-[var(--topbar-h)] left-0 right-0 h-10 bg-[rgba(4,4,6,0.95)] backdrop-blur-md border-b border-[var(--border)] flex items-center px-4 z-80 md:hidden">
+        <span className="text-[10px] tracking-[0.08em] uppercase text-[var(--doc-muted)] mr-1.5">
+          {NAV.find((g) => g.items.some((i) => i.id === activeSection))?.label}
+        </span>
+        <span className="text-[var(--doc-muted)] text-[10px] mx-1">/</span>
+        <span className="text-[11px] text-accent font-medium truncate">
+          {currentSectionName}
+        </span>
+      </div>
+
       {/* ── Layout ── */}
       <div className="flex pt-[var(--topbar-h)] min-h-screen">
-        {/* ── Sidebar ── */}
+        {/* ── Desktop sidebar ── */}
         <nav className="fixed top-[var(--topbar-h)] left-0 bottom-0 w-[var(--sidebar-w)] overflow-y-auto border-r border-[var(--border)] py-6 bg-[rgba(4,4,6,0.6)] sidebar-scroll hidden md:block">
-          {filteredNav.map((group, gi) => (
-            <div key={group.label}>
-              {gi > 0 && (
-                <div className="h-px bg-[var(--border)] mx-5 my-4" />
-              )}
-              <div className="mb-7">
-                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[var(--doc-muted)] px-5 mb-1.5">
-                  {group.label}
-                </div>
-                {group.items.map((item) =>
-                  item.href ? (
-                    <a
-                      key={item.id}
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between px-5 py-1.5 text-[12.5px] text-[var(--doc-muted)] no-underline cursor-pointer transition-colors border-l-2 border-l-transparent hover:text-[var(--doc-text)] hover:bg-white/[0.03]"
-                    >
-                      {item.name}
-                    </a>
-                  ) : (
-                    <a
-                      key={item.id}
-                      onClick={() => goTo(item.id)}
-                      className={`flex items-center justify-between px-5 py-1.5 text-[12.5px] cursor-pointer transition-colors border-l-2 no-underline ${
-                        activeSection === item.id
-                          ? "text-accent border-l-accent bg-accent-dim"
-                          : "text-[var(--doc-muted)] border-l-transparent hover:text-[var(--doc-text)] hover:bg-white/[0.03]"
-                      }`}
-                    >
-                      {item.name}
-                      {item.badge && (
-                        <span
-                          className={`text-[10px] rounded-[3px] px-1.5 py-px ${
-                            item.badgeGreen
-                              ? "text-accent bg-accent-dim"
-                              : "text-warning bg-[rgba(245,166,35,0.10)]"
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </a>
-                  ),
-                )}
-              </div>
-            </div>
-          ))}
+          <SidebarNav
+            nav={filteredNav}
+            activeSection={activeSection}
+            onSelect={(id) => goTo(id)}
+          />
         </nav>
 
         {/* ── Main content ── */}
         <main
           ref={mainRef}
-          className="md:ml-[var(--sidebar-w)] flex-1 min-w-0 px-5 sm:px-8 lg:px-12 py-12 lg:pb-20 max-w-[860px]"
+          className="md:ml-[var(--sidebar-w)] flex-1 min-w-0 px-4 sm:px-8 lg:px-12 pt-14 md:pt-12 pb-12 lg:pb-20 max-w-[860px]"
         >
           <div className="animate-doc-fade-in" key={activeSection}>
             {activeSection === "quickstart" && <QuickStart goTo={goTo} />}
@@ -1260,7 +1346,7 @@ export default function DocsPage() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-16 pt-6 border-t border-[var(--border)] text-xs text-[var(--doc-muted)]">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-16 pt-6 border-t border-[var(--border)] text-xs text-[var(--doc-muted)]">
             <span>
               © 2026 t2000 ·{" "}
               <a href="https://t2000.ai" target="_blank" rel="noopener noreferrer" className="text-[var(--doc-muted)] hover:text-[var(--doc-text)] no-underline">

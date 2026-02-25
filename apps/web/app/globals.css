@@ -211,6 +211,19 @@ body::after {
   text-decoration: underline;
 }
 
+/* Responsive heading sizes for mobile */
+@media (max-width: 639px) {
+  .docs-page h1 { font-size: 28px !important; }
+  .docs-page h2 { font-size: 16px; margin: 32px 0 12px; }
+}
+
+/* Tables scroll horizontally on small screens */
+.docs-page table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .docs-page .t-comment { color: rgba(255,255,255,0.28); }
 .docs-page .t-green { color: var(--accent); }
 .docs-page .t-amber { color: var(--warning); }
