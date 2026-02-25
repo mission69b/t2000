@@ -399,7 +399,7 @@ function QuickStart({
         {"  "}{S.b("t2000 address")}            show address again
       </CodeBlock>
       <Callout type="tip" label="Tip">
-        Your encrypted key lives at <InlineCode>~/.t2000/agent-0.key</InlineCode>.
+        Your encrypted key lives at <InlineCode>~/.t2000/wallet.key</InlineCode>.
         Never commit this file — add it to{" "}
         <InlineCode>.gitignore</InlineCode> before initializing in a repo.
       </Callout>
