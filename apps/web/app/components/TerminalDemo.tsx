@@ -10,12 +10,14 @@ interface TerminalLine {
 
 const LINES: TerminalLine[] = [
   { type: "command", text: "❯ t2000 init", delay: 0 },
-  {
-    type: "success",
-    text: "✓ Wallet created (sponsored · zero cost)",
-    delay: 700,
-  },
-  { type: "info", text: "  ✓ Address: 0x4e12...480f", delay: 300 },
+  { type: "info", text: "  Creating agent wallet...", delay: 500 },
+  { type: "success", text: "✓ Keypair generated", delay: 400 },
+  { type: "success", text: "✓ Network              Sui mainnet", delay: 200 },
+  { type: "success", text: "✓ Gas sponsorship      enabled", delay: 200 },
+  { type: "info", text: "  Setting up accounts...", delay: 400 },
+  { type: "success", text: "✓ Checking   ✓ Savings   ✓ Credit   ✓ Exchange   ✓ 402 Pay", delay: 300 },
+  { type: "info", text: "  🎉 Bank account created", delay: 300 },
+  { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
   { type: "command", text: "❯ t2000 send 10 USDC to 0x8b3e...d412", delay: 1200 },
   { type: "success", text: "✓ Sent $10.00 USDC → 0x8b3e...d412", delay: 500 },

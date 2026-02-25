@@ -380,20 +380,34 @@ function QuickStart({
       <h2 id="qs-init">2. Initialize your agent wallet</h2>
       <p>
         Run <InlineCode>t2000 init</InlineCode> to generate a new Sui keypair
-        and configure your wallet. Takes about 10 seconds.
+        and configure your wallet.
       </p>
       <CodeBlock lang="bash">
         {S.g("$")} t2000 init{"\n\n"}
-        {S.m("Creating agent wallet...")}{"\n"}
-        {S.g("✓")} Keypair generated{"\n"}
-        {S.g("✓")} Config written to ~/.t2000/config.json{"\n"}
-        {S.g("✓")} Wallet address: {S.a("0x8b3e...d412")}{"\n\n"}
-        {S.c("# Fund your wallet before first use:")}{"\n"}
-        {S.m("Deposit USDC to:")} {S.a("0x8b3e1f4a...d412")}{"\n"}
-        {S.m("Or onramp via:")}  {S.b("t2000 onramp")}
+        {"  "}{S.m("Creating agent wallet...")}{"\n\n"}
+        {"  "}{S.g("✓")} Keypair generated{"\n"}
+        {"  "}{S.g("✓")} Keypair saved        {S.m("~/.t2000/agent-0.key")}{"\n"}
+        {"  "}{S.g("✓")} Config written       {S.m("~/.t2000/config.json")}{"\n"}
+        {"  "}{S.g("✓")} Network              {S.a("Sui mainnet")}{"\n"}
+        {"  "}{S.g("✓")} Gas sponsorship      {S.a("enabled")}{"\n\n"}
+        {"  "}{S.m("Setting up accounts...")}{"\n\n"}
+        {"  "}{S.g("✓")} Checking            {S.m("hold and send USDC instantly")}{"\n"}
+        {"  "}{S.g("✓")} Savings             {S.m("earn ~8.2% APY automatically")}{"\n"}
+        {"  "}{S.g("✓")} Credit              {S.m("borrow against your savings")}{"\n"}
+        {"  "}{S.g("✓")} Exchange            {S.m("swap currencies on demand")}{"\n"}
+        {"  "}{S.g("✓")} 402 Pay             {S.m("pay for APIs and services autonomously")}{"\n\n"}
+        {"  "}🎉 {S.g("Bank account created successfully")}{"\n\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}Your agent{"'"}s address (copied to clipboard):{"\n"}
+        {"  "}{S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...4d5e6f")}{"\n\n"}
+        {"  "}Deposit USDC on Sui network — not Ethereum, Base, or Solana{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n\n"}
+        {"  "}{S.b("t2000 balance --watch")}    wait for funds to arrive{"\n"}
+        {"  "}{S.b("t2000 save all")}           start earning (~8.2% APY){"\n"}
+        {"  "}{S.b("t2000 address")}            show address again
       </CodeBlock>
       <Callout type="tip" label="Tip">
-        Your private key lives at <InlineCode>~/.t2000/config.json</InlineCode>.
+        Your encrypted key lives at <InlineCode>~/.t2000/agent-0.key</InlineCode>.
         Never commit this file — add it to{" "}
         <InlineCode>.gitignore</InlineCode> before initializing in a repo.
       </Callout>
@@ -454,9 +468,10 @@ function QuickStart({
             </p>
             <CodeBlock lang="bash">
               {S.g("$")} npx skills add t2000/t2000-skills{"\n\n"}
-              {S.g("✓")} Installed 7 skills{"\n"}
+              {S.g("✓")} Installed 8 skills{"\n"}
               {S.m("  t2000-check-balance, t2000-send, t2000-save,")}{"\n"}
-              {S.m("  t2000-withdraw, t2000-swap, t2000-borrow, t2000-repay")}{"\n\n"}
+              {S.m("  t2000-withdraw, t2000-swap, t2000-borrow,")}{"\n"}
+              {S.m("  t2000-repay, t2000-pay")}{"\n\n"}
               {S.c("# Your agent now knows how to use t2000 automatically.")}
             </CodeBlock>
           </div>
@@ -636,8 +651,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="bash">
         t2000 balance [flags]{"\n\n"}
         {"  "}{S.a("--show-limits")}   Include maxWithdraw, maxBorrow, healthFactor{"\n"}
-        {"  "}{S.a("--json")}          Machine-readable JSON output{"\n"}
-        {"  "}{S.a("--verbose")}       Include per-token breakdown
+        {"  "}{S.a("--json")}          Machine-readable JSON output
       </CodeBlock>
       <CodeBlock lang="output">
         Available:  {S.a("$78.91")} USDC  {S.c("(checking — spendable immediately)")}{"\n"}
@@ -744,7 +758,7 @@ function SdkSection() {
         {"}"});{"\n\n"}
         {S.c("// Check balance")}{"\n"}
         {S.p("const")} balance = {S.p("await")} agent.{S.g("balance")}();{"\n"}
-        console.log(balance.available); {S.c('// "$78.91"')}{"\n\n"}
+        console.log(balance.available); {S.c("// 78.91")}{"\n\n"}
         {S.c("// Send")}{"\n"}
         {S.p("await")} agent.{S.g("send")}({`{ to: `}{S.s("'0x8b3e...d412'")}{`, amount: 10 }`});{"\n\n"}
         {S.c("// Save all")}{"\n"}
@@ -806,8 +820,6 @@ function ConfigSection() {
           [<InlineCode key="k">rpcUrl</InlineCode>, "string", "Mysten public", "Sui RPC endpoint"],
           [<InlineCode key="k">privateKey</InlineCode>, "string", "—", <>Sui private key (<InlineCode>suiprivkey1...</InlineCode>)</>],
           [<InlineCode key="k">address</InlineCode>, "string", "derived", "Auto-derived from privateKey"],
-          [<InlineCode key="k">gasReserveMin</InlineCode>, "string", <InlineCode key="v">0.05</InlineCode>, "SUI threshold triggering auto-topup"],
-          [<InlineCode key="k">gasReserveTarget</InlineCode>, "string", <InlineCode key="v">0.5</InlineCode>, "SUI target after auto-topup"],
           [<InlineCode key="k">slippage</InlineCode>, "number", <InlineCode key="v">1</InlineCode>, "Default swap slippage % (overridable per-swap)"],
         ]}
       />
@@ -1077,13 +1089,20 @@ function GasSection() {
         this into expected output when building agents.
       </Callout>
 
-      <h2 id="gas-config">Configure thresholds</h2>
-      <CodeBlock lang="json" filename="~/.t2000/config.json">
-        {"{\n"}
-        {"  "}{S.s('"gasReserveMin"')}:    {S.s('"0.05"')},  {S.c("// SUI — trigger auto-topup below this")}{"\n"}
-        {"  "}{S.s('"gasReserveTarget"')}: {S.s('"0.5"')}   {S.c("// SUI — fill to this amount")}{"\n"}
-        {"}"}
-      </CodeBlock>
+      <h2 id="gas-config">Thresholds</h2>
+      <p>
+        Gas thresholds are SDK constants — not user-configurable. This prevents
+        agents from accidentally setting values that would cause transactions to
+        fail.
+      </p>
+      <DocTable
+        headers={["Constant", "Value", "Purpose"]}
+        rows={[
+          [<InlineCode key="k">AUTO_TOPUP_THRESHOLD</InlineCode>, "0.05 SUI", "Trigger auto-topup when SUI balance falls below this"],
+          [<InlineCode key="k">AUTO_TOPUP_AMOUNT</InlineCode>, "$1 USDC", "Max USDC converted to SUI per top-up"],
+          [<InlineCode key="k">GAS_FEE_CEILING_USD</InlineCode>, "$0.05", "Refuse to execute if estimated gas exceeds this"],
+        ]}
+      />
     </>
   );
 }

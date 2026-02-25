@@ -38,12 +38,12 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 | `t2000-swap` | "swap USDC for SUI", "convert..." |
 | `t2000-borrow` | "borrow 40 USDC", "take out a loan" |
 | `t2000-repay` | "repay my loan", "pay back..." |
-| `t2000-pay` | *(coming soon — x402 required)* |
+| `t2000-pay` | "call that paid API", "pay for x402 service" |
 
 ## Prerequisites
 
 ```bash
-npm install -g t2000
+npm install -g @t2000/cli
 t2000 init
 ```
 
@@ -63,7 +63,7 @@ license: MIT
 metadata:
   author: t2000
   version: "1.1"
-  requires: t2000 CLI (npm install -g t2000)
+  requires: t2000 CLI (npm install -g @t2000/cli)
 ---
 
 # Skill body with commands, output examples, and error handling
@@ -79,7 +79,7 @@ savings (earn yield via NAVI), credit (borrow against deposits), and currency
 exchange (swap via Cetus) in one CLI command.
 
 - **SDK**: `npm install @t2000/sdk`
-- **CLI**: `npm install -g t2000`
+- **CLI**: `npm install -g @t2000/cli`
 - **Docs**: [t2000.ai](https://t2000.ai)
 - **GitHub**: [github.com/mission69b/t2000](https://github.com/mission69b/t2000)
 
