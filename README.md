@@ -56,7 +56,7 @@ Agent becomes self-funding
 ## 30-Second Quickstart
 
 ```bash
-npm install -g @t2000/cli
+npm install -g @t2000/cli    # or: pnpm add -g @t2000/cli
 
 t2000 init              # Create a wallet
 t2000 deposit           # Get funding address

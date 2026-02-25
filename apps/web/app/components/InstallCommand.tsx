@@ -7,7 +7,7 @@ interface InstallCommandProps {
 }
 
 export function InstallCommand({
-  command = "npm install -g t2000 && t2000 init",
+  command = "npm install -g @t2000/cli && t2000 init",
 }: InstallCommandProps) {
   const [copied, setCopied] = useState(false);
 

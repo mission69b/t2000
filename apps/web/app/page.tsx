@@ -4,6 +4,8 @@ import { Ticker } from "./components/Ticker";
 import { BalanceWidget } from "./components/BalanceWidget";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
+const NPM_ORG_URL = "https://www.npmjs.com/org/t2000";
+const DOCS_URL = "https://github.com/mission69b/t2000#readme";
 
 const ACCOUNTS = [
   {
@@ -48,7 +50,7 @@ const STEPS = [
     badgeType: "done" as const,
     content:
       "Generates an Ed25519 keypair, encrypts it with AES-256-GCM, and bootstraps the wallet with 10 Gas Station-sponsored transactions.",
-    code: "npm install -g t2000 && t2000 init",
+    code: "npm install -g @t2000/cli && t2000 init",
   },
   {
     num: "02",
@@ -651,7 +653,7 @@ export default function Home() {
               GitHub →
             </a>
             <a
-              href="https://www.npmjs.com/package/@t2000/sdk"
+              href={NPM_ORG_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
@@ -659,10 +661,12 @@ export default function Home() {
               npm →
             </a>
             <a
-              href="#skills"
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
             >
-              Skills →
+              Docs →
             </a>
           </div>
 
@@ -685,7 +689,7 @@ export default function Home() {
             GitHub
           </a>
           <a
-            href="https://www.npmjs.com/package/@t2000/sdk"
+            href={NPM_ORG_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
@@ -693,16 +697,12 @@ export default function Home() {
             npm
           </a>
           <a
-            href="#"
+            href={DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
             Docs
-          </a>
-          <a
-            href="#"
-            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-          >
-            Discord
           </a>
         </div>
       </footer>
