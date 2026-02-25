@@ -99,7 +99,7 @@ const X402_STEPS = [
     detail: "Sui Payment Kit · 0.01 USDC → 0x8b3e... · ~380ms finality",
   },
   {
-    icon: "⬡",
+    icon: "hex",
     active: false,
     title: "Facilitator verifies on-chain",
     detail:
@@ -237,16 +237,16 @@ export default function Home() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-16 sm:pt-20">
-        <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-12 sm:py-16 lg:py-20">
+      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-14 sm:pt-16">
+        <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-8 sm:py-10 lg:py-12">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
             Built for Sui · Open source · Non-custodial
           </div>
 
-          <h1 className="font-mono text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-light">
+          <h1 className="text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-light">
             The first{" "}
-            <em className="font-serif italic text-accent">bank account</em>
+            <em className="text-accent">bank account</em>
             <br />
             for AI agents.
           </h1>
@@ -318,10 +318,10 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Four accounts
             </div>
-            <h2 className="font-mono text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
               Everything a bank offers.
               <br />
-              Built for <em className="font-serif italic text-accent">machines.</em>
+              Built for <em className="text-accent">machines.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -368,9 +368,9 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               How it works
             </div>
-            <h2 className="font-mono text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
               From zero to{" "}
-              <em className="font-serif italic text-accent">operating</em>
+              <em className="text-accent">operating</em>
               <br />
               in 30 seconds.
             </h2>
@@ -437,9 +437,9 @@ export default function Home() {
                         <div className="absolute left-[15px] top-8 bottom-0 w-px bg-border" />
                       )}
                       <div
-                        className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center text-[11px] shrink-0 relative z-1 ${step.active ? "border-accent bg-accent-dim text-accent" : "border-border-bright bg-surface text-muted"}`}
+                        className={`w-[30px] h-[30px] border flex items-center justify-center text-[11px] shrink-0 relative z-1 ${step.icon === "hex" ? "clip-hexagon" : "rounded-full"} ${step.active ? "border-accent bg-accent-dim text-accent" : "border-border-bright bg-surface text-muted"}`}
                       >
-                        {step.icon}
+                        {step.icon === "hex" ? "" : step.icon}
                       </div>
                       <div className="pt-1">
                         <div className="text-xs text-foreground mb-1">
@@ -483,11 +483,11 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Agent Skills
             </div>
-            <h2 className="font-mono text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
               Your agent already knows
               <br />
               how to use{" "}
-              <em className="font-serif italic text-accent">t2000.</em>
+              <em className="text-accent">t2000.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -572,10 +572,10 @@ export default function Home() {
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
               Comparison
             </div>
-            <h2 className="font-mono text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
+            <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground">
               Not a wallet.
               <br />A{" "}
-              <em className="font-serif italic text-accent">bank account.</em>
+              <em className="text-accent">bank account.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
@@ -595,7 +595,7 @@ export default function Home() {
                 <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-muted">
                   Coinbase
                 </th>
-                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-accent">
+                <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-accent bg-[rgba(0,214,143,0.03)] border-l border-r border-l-accent/10 border-r-accent/10">
                   t2000
                 </th>
               </tr>
@@ -637,10 +637,10 @@ export default function Home() {
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-5">
             Get started
           </div>
-          <h2 className="font-mono text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground mb-5">
+          <h2 className="text-[32px] sm:text-[clamp(32px,4vw,52px)] font-light leading-[1.1] text-foreground mb-5">
             Give your agent
             <br />a{" "}
-            <em className="font-serif italic text-accent">financial life.</em>
+            <em className="text-accent">financial life.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.8]">
             Install t2000, fund with USDC, and your agent is operating in under

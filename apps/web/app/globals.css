@@ -47,6 +47,23 @@ body {
   overflow-x: hidden;
 }
 
+h1,
+h2 {
+  font-family: var(--font-mono), monospace;
+}
+
+h1 em,
+h2 em {
+  font-family: var(--font-serif), serif;
+  font-style: italic;
+}
+
+table,
+table th,
+table td {
+  font-family: var(--font-mono), monospace;
+}
+
 /* Noise overlay */
 body::before {
   content: "";
@@ -153,6 +170,10 @@ body::after {
 }
 .animate-ticker-reverse {
   animation: tickerScroll 40s linear infinite reverse;
+}
+
+.clip-hexagon {
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
 }
 
 .scrollbar-hide {
