@@ -689,12 +689,12 @@ export default function Home() {
             GitHub
           </a>
           <a
-            href={NPM_ORG_URL}
+            href={`${GITHUB_URL}/tree/main/t2000-skills`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
-            npm
+            Skills
           </a>
           <a
             href={DOCS_URL}
