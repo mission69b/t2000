@@ -42,6 +42,14 @@ html {
   overflow-x: hidden;
 }
 
+.site-nav {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9990 !important;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

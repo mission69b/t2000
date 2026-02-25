@@ -1337,7 +1337,7 @@ export default function DocsPage() {
   return (
     <div className="docs-page min-h-screen bg-background text-[var(--doc-text)]">
       {/* ── Topbar ── */}
-      <header className="fixed top-0 left-0 right-0 h-[var(--topbar-h)] bg-background border-b border-[var(--border)] flex items-center px-4 sm:px-5 z-50">
+      <header className="site-nav h-[var(--topbar-h)] bg-background border-b border-[var(--border)] flex items-center px-4 sm:px-5">
         {/* Hamburger — mobile only */}
         <button
           onClick={() => setMobileMenuOpen((v) => !v)}
