@@ -243,7 +243,7 @@ function DocTable({
 }) {
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-    <table className="w-full border-collapse my-4 mb-7 text-[12px] sm:text-[13px] min-w-[480px]">
+    <table className="w-full border-collapse my-4 mb-7 text-[12px] sm:text-[13px] sm:min-w-[480px]">
       <thead>
         <tr>
           {headers.map((h) => (
@@ -309,7 +309,7 @@ function Badge({
 
 function InlineCode({ children }: { children: React.ReactNode }) {
   return (
-    <code className="bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-1.5 py-px text-[12.5px] text-white/80">
+    <code className="bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-1.5 py-px text-[12.5px] text-white/80 break-words">
       {children}
     </code>
   );
@@ -393,10 +393,10 @@ function QuickStart({
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a1c2d3e4f...")}{"\n\n"}
         {"  "}Deposit USDC on Sui network only.{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n\n"}
-        {"  "}{S.b("t2000 balance")}            check for funds{"\n"}
-        {"  "}{S.b("t2000 save all")}           start earning yield{"\n"}
-        {"  "}{S.b("t2000 address")}            show address again
+        {"  "}{S.m("───────────────────────────────────")}{"\n\n"}
+        {"  "}{S.b("t2000 balance")}    check for funds{"\n"}
+        {"  "}{S.b("t2000 save all")}   start earning yield{"\n"}
+        {"  "}{S.b("t2000 address")}    show address again
       </CodeBlock>
       <Callout type="tip" label="Tip">
         Your encrypted key lives at <InlineCode>~/.t2000/wallet.key</InlineCode>.
@@ -412,7 +412,7 @@ function QuickStart({
           <div className="w-8 h-8 border border-accent rounded-md flex items-center justify-center text-xs text-accent bg-accent-dim shrink-0 relative z-1 shadow-[0_0_8px_var(--accent-glow)]">
             ✓
           </div>
-          <div className="flex-1 pt-1">
+          <div className="flex-1 min-w-0 pt-1">
             <div className="text-[13.5px] font-medium text-white/85 mb-1.5">
               Check your balance
             </div>
@@ -431,7 +431,7 @@ function QuickStart({
           <div className="w-8 h-8 border border-accent rounded-md flex items-center justify-center text-xs text-accent bg-accent-dim shrink-0 relative z-1 shadow-[0_0_8px_var(--accent-glow)]">
             ✓
           </div>
-          <div className="flex-1 pt-1">
+          <div className="flex-1 min-w-0 pt-1">
             <div className="text-[13.5px] font-medium text-white/85 mb-1.5">
               Put idle funds to work
             </div>
@@ -450,7 +450,7 @@ function QuickStart({
           <div className="w-8 h-8 border border-accent rounded-md flex items-center justify-center text-xs text-accent bg-accent-dim shrink-0 relative z-1 shadow-[0_0_8px_var(--accent-glow)]">
             ✓
           </div>
-          <div className="flex-1 pt-1">
+          <div className="flex-1 min-w-0 pt-1">
             <div className="text-[13.5px] font-medium text-white/85 mb-1.5">
               Install agent skills <Badge color="muted">optional</Badge>
             </div>
@@ -653,10 +653,10 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         🎉 {S.g("Bank account created")}{"\n"}
         Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}{"\n\n"}
         Deposit USDC on Sui network only.{"\n"}
-        {S.m("─────────────────────────────────────────────────────")}{"\n\n"}
-        {S.b("t2000 balance")}            check for funds{"\n"}
-        {S.b("t2000 save all")}           start earning yield{"\n"}
-        {S.b("t2000 address")}            show address again
+        {S.m("───────────────────────────────────")}{"\n\n"}
+        {S.b("t2000 balance")}    check for funds{"\n"}
+        {S.b("t2000 save all")}   start earning yield{"\n"}
+        {S.b("t2000 address")}    show address again
       </CodeBlock>
 
       <h2 id="cmd-balance">t2000 balance</h2>
@@ -670,7 +670,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         Available:  {S.a("$78.91")} USDC  {S.c("(checking — spendable)")}{"\n"}
         Savings:    {S.a("$80.00")} USDC  {S.c("(earning 4.21% APY)")}{"\n"}
         Gas:        {S.a("0.12")} SUI    {S.c("(~$0.11)")}{"\n"}
-        {S.m("──────────────────────────────────────")}{"\n"}
+        {S.m("──────────────────────")}{"\n"}
         Total:      {S.a("$159.02")} USDC{"\n\n"}
         {S.c("# With --show-limits:")}{"\n"}
         Limits:{"\n"}
@@ -1061,10 +1061,10 @@ function X402Section() {
           { num: "4", dir: "→ GET", dirClass: "text-warning", desc: <>Retries with <InlineCode>X-PAYMENT: &#123;txHash, nonce&#125;</InlineCode> header</> },
           { num: "5", dir: "← 200", dirClass: "text-accent", desc: <>Facilitator verifies <InlineCode>PaymentEvent</InlineCode> on-chain → server returns the resource</> },
         ].map((step, i, arr) => (
-          <div key={i} className={`flex items-start gap-3.5 px-4.5 py-3.5 bg-[var(--surface)] transition-colors hover:bg-white/[0.02] ${i < arr.length - 1 ? "border-b border-[var(--border)]" : ""}`}>
-            <span className="text-[11px] text-[var(--doc-muted)] shrink-0 mt-0.5 w-4.5">{step.num}</span>
-            <span className={`text-[11px] font-semibold shrink-0 mt-0.5 w-10.5 ${step.dirClass}`}>{step.dir}</span>
-            <span className="text-[12.5px] text-white/60 leading-[1.6]">{step.desc}</span>
+          <div key={i} className={`flex items-start gap-2.5 sm:gap-3.5 px-3 sm:px-4.5 py-3 sm:py-3.5 bg-[var(--surface)] transition-colors hover:bg-white/[0.02] ${i < arr.length - 1 ? "border-b border-[var(--border)]" : ""}`}>
+            <span className="text-[11px] text-[var(--doc-muted)] shrink-0 mt-0.5 w-4">{step.num}</span>
+            <span className={`text-[11px] font-semibold shrink-0 mt-0.5 w-10 ${step.dirClass}`}>{step.dir}</span>
+            <span className="text-[12px] sm:text-[12.5px] text-white/60 leading-[1.6] min-w-0">{step.desc}</span>
           </div>
         ))}
       </div>
@@ -1453,7 +1453,7 @@ export default function DocsPage() {
         {/* ── Main content ── */}
         <main
           ref={mainRef}
-          className="md:ml-[var(--sidebar-w)] flex-1 min-w-0 px-4 sm:px-8 lg:px-12 pt-14 md:pt-12 pb-12 lg:pb-20 max-w-[860px]"
+          className="md:ml-[var(--sidebar-w)] flex-1 min-w-0 overflow-x-hidden px-4 sm:px-8 lg:px-12 pt-14 md:pt-12 pb-12 lg:pb-20 max-w-[860px]"
         >
           <div className="animate-doc-fade-in" key={activeSection}>
             {activeSection === "quickstart" && <QuickStart goTo={goTo} />}

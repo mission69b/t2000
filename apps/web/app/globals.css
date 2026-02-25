@@ -180,6 +180,7 @@ body::after {
   --toc-w: 200px;
   font-size: 13.5px;
   line-height: 1.7;
+  overflow-x: hidden;
 }
 
 .docs-page .sidebar-scroll::-webkit-scrollbar { width: 4px; }
@@ -230,12 +231,7 @@ body::after {
   .docs-page h2 { font-size: 16px; margin: 32px 0 12px; }
 }
 
-/* Tables scroll horizontally on small screens */
-.docs-page table {
-  display: block;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
+/* Tables: the DocTable component wrapper handles overflow — no display:block needed */
 
 .docs-page .t-comment { color: rgba(255,255,255,0.28); }
 .docs-page .t-green { color: var(--accent); }
