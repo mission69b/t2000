@@ -44,7 +44,7 @@ fees.get('/api/fees', async (c) => {
     take: 50,
   });
 
-  const totalFees = records.reduce((sum, r) => sum + Number(r.feeAmount), 0);
+  const totalFees = records.reduce((sum: number, r: { feeAmount: unknown }) => sum + Number(r.feeAmount), 0);
 
   return c.json({ records, totalFees });
 });

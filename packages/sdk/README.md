@@ -82,7 +82,7 @@ const agent = await T2000.create({
 | `agent.fundStatus()` | Complete savings summary | `FundStatusResult` |
 | `agent.maxWithdraw()` | Max safe withdrawal amount | `MaxWithdrawResult` |
 | `agent.maxBorrow()` | Max safe borrow amount | `MaxBorrowResult` |
-| `agent.depositInfo()` | Wallet address + funding instructions | `DepositInfo` |
+| `agent.deposit()` | Wallet address + funding instructions | `DepositInfo` |
 | `agent.history()` | Transaction history | `TransactionRecord[]` |
 
 ### Key Management
@@ -187,7 +187,7 @@ try {
 }
 ```
 
-Error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_DEBT` · `WALLET_NOT_FOUND` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PAUSED`
+Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `SLIPPAGE_EXCEEDED` · `ASSET_NOT_SUPPORTED` · `WITHDRAW_WOULD_LIQUIDATE`
 
 ## Protocol Fees
 

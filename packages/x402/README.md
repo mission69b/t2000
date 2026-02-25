@@ -139,18 +139,9 @@ if (result.valid) {
 }
 ```
 
-### `settlePayment(params)`
+### Settlement
 
-Mark a payment as settled (prevents double-use).
-
-```typescript
-import { settlePayment } from '@t2000/x402';
-
-await settlePayment({
-  txDigest: 'ABC123...',
-  facilitatorUrl: 'https://api.t2000.ai/x402',
-});
-```
+Settlement (marking payments as used) is handled server-side by the t2000 facilitator API. The `/x402/settle` endpoint records the payment in the database to prevent double-use. See the [server source](https://github.com/mission69b/t2000/tree/main/apps/server) for implementation details.
 
 ## Payment Kit Integration
 
@@ -161,10 +152,10 @@ Payments are executed on-chain via the [Sui Payment Kit](https://docs.sui.io/sta
 - **On-chain receipts** — `PaymentReceipt` events for auditing
 
 ```typescript
-import { buildPaymentPTB } from '@t2000/x402';
+import { buildPaymentTransaction } from '@t2000/x402';
 
 // Build a payment transaction (advanced usage)
-const tx = buildPaymentPTB({
+const tx = buildPaymentTransaction({
   registryId: '0x...',
   recipient: '0x...',
   amount: 10000n,          // raw USDC units

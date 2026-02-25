@@ -37,7 +37,7 @@ async function getOrCreateCursor(): Promise<string | null> {
 
 async function getKnownAgents(): Promise<Set<string>> {
   const agents = await prisma.agent.findMany({ select: { address: true } });
-  return new Set(agents.map((a) => a.address));
+  return new Set(agents.map((a: { address: string }) => a.address));
 }
 
 async function processCheckpoints(
