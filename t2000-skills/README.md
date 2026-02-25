@@ -43,8 +43,7 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 ## Prerequisites
 
 ```bash
-npm install -g @t2000/cli
-t2000 init
+npx @t2000/cli init
 ```
 
 The t2000 CLI must be installed and a bank account initialized before any skill can execute.
@@ -63,7 +62,7 @@ license: MIT
 metadata:
   author: t2000
   version: "1.1"
-  requires: t2000 CLI (npm install -g @t2000/cli)
+  requires: t2000 CLI (npx @t2000/cli init)
 ---
 
 # Skill body with commands, output examples, and error handling
@@ -79,7 +78,7 @@ savings (earn yield via NAVI), credit (borrow against deposits), and currency
 exchange (swap via Cetus) in one CLI command.
 
 - **SDK**: `npm install @t2000/sdk`
-- **CLI**: `npm install -g @t2000/cli`
+- **CLI**: `npx @t2000/cli init`
 - **Docs**: [t2000.ai](https://t2000.ai)
 - **GitHub**: [github.com/mission69b/t2000](https://github.com/mission69b/t2000)
 

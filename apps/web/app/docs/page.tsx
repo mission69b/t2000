@@ -375,7 +375,7 @@ function QuickStart({
       </p>
 
       <h2 id="qs-install">1. Install</h2>
-      <TryIt cmd="npm install -g @t2000/cli" note="Node.js 18+ required" />
+      <TryIt cmd="npx @t2000/cli init" note="Node.js 18+ required" />
 
       <h2 id="qs-init">2. Initialize your agent wallet</h2>
       <p>
@@ -510,7 +510,7 @@ function InstallSection() {
 
       <h2 id="inst-global">Global install</h2>
       <CodeBlock lang="bash">
-        {S.g("$")} npm install -g @t2000/cli{"\n\n"}
+        {S.g("$")} npx @t2000/cli init{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
         {S.a("0.1.0")}

@@ -51,7 +51,7 @@ const STEPS = [
     badgeType: "done" as const,
     content:
       "Generates an Ed25519 keypair, encrypts it with AES-256-GCM, and bootstraps the wallet with 10 Gas Station-sponsored transactions.",
-    code: "npm install -g @t2000/cli && t2000 init",
+    code: "npx @t2000/cli init",
   },
   {
     num: "02",

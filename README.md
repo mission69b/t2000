@@ -85,9 +85,7 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 ## Quickstart
 
 ```bash
-npm install -g @t2000/cli
-
-t2000 init                         # Create a bank account
+npx @t2000/cli init                # Create a bank account
 t2000 balance                      # Check balance
 t2000 send 10 USDC to 0x...       # Send USDC
 t2000 save all                     # Earn yield on idle funds
@@ -124,7 +122,7 @@ At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the
 | Package | Description | Install |
 |---------|-------------|---------|
 | [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
-| [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
+| [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npx @t2000/cli init` |
 | [`@t2000/x402`](packages/x402) | x402 payment client (first on Sui) | `npm install @t2000/x402` |
 
 ## SDK

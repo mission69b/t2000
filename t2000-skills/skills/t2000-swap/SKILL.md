@@ -9,7 +9,7 @@ license: MIT
 metadata:
   author: t2000
   version: "1.1"
-  requires: t2000 CLI (npm install -g @t2000/cli)
+  requires: t2000 CLI (npx @t2000/cli init)
 ---
 
 # t2000: Swap Tokens
