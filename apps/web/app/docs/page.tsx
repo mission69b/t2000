@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 
@@ -1226,7 +1227,7 @@ export default function DocsPage() {
           )}
         </button>
 
-        <a href="/" className="flex items-center gap-2.5 md:w-[var(--sidebar-w)] shrink-0 no-underline">
+        <Link href="/" className="flex items-center gap-2.5 md:w-[var(--sidebar-w)] shrink-0 no-underline">
           <div className="w-[26px] h-[26px] border-[1.5px] border-accent rounded-[5px] flex items-center justify-center text-[11px] font-semibold text-accent shadow-[0_0_8px_var(--accent-glow)] shrink-0">
             t2
           </div>
@@ -1236,7 +1237,7 @@ export default function DocsPage() {
               / docs
             </span>
           </div>
-        </a>
+        </Link>
 
         <div className="flex-1 max-w-[340px] mx-6 relative hidden md:block">
           <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-[var(--doc-muted)] text-xs">
@@ -1259,9 +1260,9 @@ export default function DocsPage() {
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
             v0.1.0
           </span>
-          <a href="/" className="text-xs text-[var(--doc-muted)] no-underline hover:text-[var(--doc-text)] transition-colors hidden sm:inline">
+          <Link href="/" className="text-xs text-[var(--doc-muted)] no-underline hover:text-[var(--doc-text)] transition-colors hidden sm:inline">
             Home
-          </a>
+          </Link>
           <a
             href={GITHUB_URL}
             target="_blank"

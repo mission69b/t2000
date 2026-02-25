@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { TerminalDemo } from "./components/TerminalDemo";
 import { InstallCommand } from "./components/InstallCommand";
 import { Ticker } from "./components/Ticker";
@@ -695,14 +696,12 @@ export default function Home() {
             >
               Skills package →
             </a>
-            <a
+            <Link
               href={DOCS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
               className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
             >
               Docs →
-            </a>
+            </Link>
           </div>
 
           <div className="text-[10px] sm:text-[11px] text-dim tracking-wide mt-6">
@@ -731,14 +730,12 @@ export default function Home() {
           >
             Skills
           </a>
-          <a
+          <Link
             href={DOCS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
             Docs
-          </a>
+          </Link>
         </div>
       </footer>
     </div>

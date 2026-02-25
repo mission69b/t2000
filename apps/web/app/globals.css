@@ -153,6 +153,19 @@ body::after {
   display: none;
 }
 
+/* ── Page transitions ── */
+@keyframes pageIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+::view-transition-old(root) {
+  animation: 150ms ease-out both pageIn reverse;
+}
+::view-transition-new(root) {
+  animation: 200ms ease-in both pageIn;
+}
+
 /* ── Docs page ── */
 .docs-page {
   --surface-2: #0d1117;
