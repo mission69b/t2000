@@ -1,10 +1,11 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000 } from '@t2000/sdk';
+import { truncateAddress } from '@t2000/sdk';
 import { askPassphraseConfirm, getPassphraseFromEnv } from '../prompts.js';
 import {
-  printSuccess, printSuccessKV, printBlank, printInfo,
-  printJson, printDivider, printLine, isJsonMode, handleError,
+  printSuccess, printBlank, printInfo, printKeyValue,
+  printJson, printLine, isJsonMode, handleError,
 } from '../output.js';
 
 export function registerInit(program: Command) {
@@ -21,7 +22,6 @@ export function registerInit(program: Command) {
         if (!isJsonMode()) {
           printBlank();
           printInfo('Creating agent wallet...');
-          printBlank();
         }
 
         const { agent, address, sponsored } = await T2000.init({
@@ -36,40 +36,24 @@ export function registerInit(program: Command) {
           return;
         }
 
-        const keyPath = opts.key ?? '~/.t2000/agent-0.key';
-        const network = 'Sui mainnet';
-
-        printSuccessKV('Keypair generated', '');
-        printSuccessKV('Keypair saved', keyPath, 20);
-        printSuccessKV('Config written', '~/.t2000/config.json', 20);
-        printSuccessKV('Network', network, 20);
-        printSuccessKV('Gas sponsorship', sponsored ? 'enabled' : 'disabled', 20);
+        printSuccess('Keypair generated');
+        printSuccess(`Network ${pc.dim('Sui mainnet')}`);
+        printSuccess(`Gas sponsorship ${pc.dim(sponsored ? 'enabled' : 'disabled')}`);
 
         printBlank();
         printInfo('Setting up accounts...');
-        printBlank();
 
-        printSuccessKV('Checking', 'hold and send USDC instantly', 20);
-        printSuccessKV('Savings', 'earn yield automatically', 20);
-        printSuccessKV('Credit', 'borrow against your savings', 20);
-        printSuccessKV('Exchange', 'swap currencies on demand', 20);
-        printSuccessKV('402 Pay', 'pay for APIs and services autonomously', 20);
-
-        printBlank();
-        printLine(`🎉 ${pc.green('Bank account created successfully')}`);
+        printLine(
+          `${pc.green('✓')} Checking  ` +
+          `${pc.green('✓')} Savings  ` +
+          `${pc.green('✓')} Credit  ` +
+          `${pc.green('✓')} Exchange  ` +
+          `${pc.green('✓')} 402 Pay`
+        );
 
         printBlank();
-        printDivider();
-        printLine(`Your agent's address:`);
-        printLine(pc.yellow(address));
-        printBlank();
-        printLine(`Deposit USDC on Sui network — not Ethereum, Base, or Solana`);
-        printDivider();
-
-        printBlank();
-        printLine(`${pc.cyan('t2000 balance --watch')}    wait for funds to arrive`);
-        printLine(`${pc.cyan('t2000 save all')}           start earning yield`);
-        printLine(`${pc.cyan('t2000 address')}            show address again`);
+        printLine(`🎉 ${pc.green('Bank account created')}`);
+        printKeyValue('Address', pc.yellow(truncateAddress(address)));
         printBlank();
       } catch (error) {
         handleError(error);
