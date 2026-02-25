@@ -203,7 +203,7 @@ export default function Home() {
       <div className="fixed inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(0,214,143,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,214,143,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
       {/* ── Header ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-[rgba(4,4,6,0.9)] backdrop-blur-xl">
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background">
         <div className="font-mono font-semibold text-base sm:text-lg text-accent tracking-tight flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
           t2000
