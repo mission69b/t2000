@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
 import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
-import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError } from '../output.js';
+import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 import { truncateAddress, formatUsd } from '@t2000/sdk';
 
 export function registerSend(program: Command) {
@@ -30,7 +30,7 @@ export function registerSend(program: Command) {
         printSuccess(`Sent ${formatUsd(result.amount)} ${asset.toUpperCase()} → ${truncateAddress(result.to)}`);
         printKeyValue('Gas', `${result.gasCost.toFixed(4)} ${result.gasCostUnit} (${result.gasMethod})`);
         printKeyValue('Balance', formatUsd(result.balance.available) + ' USDC');
-        printKeyValue('Tx', result.tx);
+        printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {
         handleError(error);

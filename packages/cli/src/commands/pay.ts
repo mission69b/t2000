@@ -1,11 +1,11 @@
 import type { Command } from 'commander';
-import { T2000, formatUsd } from '@t2000/sdk';
+import pc from 'picocolors';
+import { T2000 } from '@t2000/sdk';
 import { x402Client } from '@t2000/x402';
 import type { X402Wallet } from '@t2000/x402';
 import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
 import {
   printSuccess,
-  printKeyValue,
   printBlank,
   printJson,
   printInfo,
@@ -54,6 +54,8 @@ export function registerPay(program: Command) {
         const wallet = createX402Wallet(agent);
         const client = new x402Client(wallet);
 
+        const startTime = Date.now();
+
         if (!isJsonMode()) {
           printBlank();
           printInfo(`→ ${opts.method} ${url}`);
@@ -74,8 +76,10 @@ export function registerPay(program: Command) {
           },
         });
 
+        const elapsed = Date.now() - startTime;
+
         if (!isJsonMode()) {
-          printInfo(`← ${response.status} ${response.statusText || 'OK'}`);
+          printInfo(`← ${response.status} ${response.statusText || 'OK'}  ${pc.dim(`[${elapsed}ms]`)}`);
         }
 
         const contentType = response.headers.get('content-type') ?? '';
@@ -87,6 +91,7 @@ export function registerPay(program: Command) {
           printJson({
             status: response.status,
             url,
+            elapsed,
             body,
           });
         } else {

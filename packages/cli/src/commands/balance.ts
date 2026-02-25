@@ -1,7 +1,8 @@
 import type { Command } from 'commander';
-import { T2000, formatUsd } from '@t2000/sdk';
+import pc from 'picocolors';
+import { T2000, formatUsd, getRates } from '@t2000/sdk';
 import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader } from '../output.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printLine } from '../output.js';
 
 interface LimitsData {
   maxWithdraw: string;
@@ -46,13 +47,31 @@ export function registerBalance(program: Command) {
           return;
         }
 
-        printBlank();
-        printKeyValue('Available', `${formatUsd(bal.available)} USDC`);
+        let apyStr = '';
         if (bal.savings > 0) {
-          printKeyValue('Savings', `${formatUsd(bal.savings)} USDC`);
+          try {
+            const rates = await getRates(agent.suiClient);
+            const apy = rates.USDC.saveApy;
+            apyStr = `  ${pc.dim(`(earning ${apy.toFixed(2)}% APY)`)}`;
+          } catch { /* rates unavailable */ }
         }
-        printKeyValue('Gas reserve', `${bal.gasReserve.sui.toFixed(4)} SUI (~${formatUsd(bal.gasReserve.usdEquiv)})`);
-        printKeyValue('Total', formatUsd(bal.total));
+
+        printBlank();
+        printKeyValue('Available', `${formatUsd(bal.available)} USDC  ${pc.dim('(checking — spendable)')}`);
+        printKeyValue('Savings', `${formatUsd(bal.savings)} USDC${apyStr}`);
+        printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
+        printSeparator();
+        printKeyValue('Total', `${formatUsd(bal.total)} USDC`);
+
+        if (bal.savings > 0 && apyStr) {
+          try {
+            const rates = await getRates(agent.suiClient);
+            const dailyEarning = (bal.savings * rates.USDC.saveApy / 100) / 365;
+            if (dailyEarning > 0.001) {
+              printLine(pc.dim(`Earning ~${formatUsd(dailyEarning)}/day`));
+            }
+          } catch { /* skip daily earning */ }
+        }
 
         if (limits) {
           printBlank();
@@ -61,7 +80,7 @@ export function registerBalance(program: Command) {
           printKeyValue('Max borrow', `${formatUsd(Number(limits.maxBorrow))} USDC`, 4);
           const hfDisplay = limits.healthFactor !== null
             ? limits.healthFactor.toFixed(2)
-            : '∞ (no active loan)';
+            : `${pc.green('∞')}  ${pc.dim('(no active loan)')}`;
           printKeyValue('Health factor', hfDisplay, 4);
         }
 

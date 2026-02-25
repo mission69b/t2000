@@ -57,6 +57,7 @@ export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
 export { getPoolPrice, getSwapQuote } from './protocols/cetus.js';
+export { getRates } from './protocols/navi.js';
 export {
   executeWithGas,
   shouldAutoTopUp,

@@ -68,6 +68,19 @@ export function printSuccessKV(key: string, value: string, keyWidth = 20) {
   console.log(`  ${pc.green('✓')} ${paddedKey}${pc.dim(value)}`);
 }
 
+export function printSeparator() {
+  if (jsonMode) return;
+  console.log(`  ${pc.dim('──────────────────────────────────────')}`);
+}
+
+export function explorerUrl(txHash: string, network = 'mainnet'): string {
+  const base = network === 'testnet'
+    ? 'https://suiexplorer.com/txblock'
+    : 'https://suiexplorer.com/txblock';
+  const suffix = network === 'testnet' ? '?network=testnet' : '';
+  return `${base}/${txHash}${suffix}`;
+}
+
 export function handleError(error: unknown) {
   if (jsonMode) {
     const data = error instanceof Error && 'toJSON' in error

@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
 import { askPassphrase, getPassphraseFromEnv, askConfirm } from '../prompts.js';
-import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning } from '../output.js';
+import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
 export function registerSwap(program: Command) {
   program
@@ -56,8 +56,7 @@ export function registerSwap(program: Command) {
         if (result.fee > 0) {
           printKeyValue('Fee', `$${result.fee.toFixed(4)}`);
         }
-        printKeyValue('Tx', result.tx);
-        printKeyValue('Gas', `${result.gasCost.toFixed(6)} SUI (${result.gasMethod})`);
+        printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {
         handleError(error);

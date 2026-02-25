@@ -438,7 +438,7 @@ function QuickStart({
             <CodeBlock lang="bash">
               {S.g("$")} t2000 save all{"\n\n"}
               {S.g("✓")} Gas manager: {S.a("$1.00")} USDC → SUI{"\n"}
-              {S.g("✓")} Deposited {S.a("$99.00")} USDC to NAVI{"\n"}
+              {S.g("✓")} Saved {S.a("$99.00")} USDC to NAVI{"\n"}
               {S.g("✓")} Protocol fee: {S.m("$0.099 USDC (0.1%)")}{"\n"}
               {S.g("✓")} Current APY: {S.g("4.21%")}{"\n"}
               {S.g("✓")} Savings balance: {S.a("$98.90")} USDC{"\n"}
@@ -618,9 +618,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         CLI <em className="italic text-accent">Commands</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        All commands follow the same output contract: structured boxes for state
-        changes, <InlineCode>--json</InlineCode> for agent consumption,{" "}
-        <InlineCode>--verbose</InlineCode> for debugging.
+        All commands follow the same output contract: structured key-value
+        output for state changes, <InlineCode>--json</InlineCode> for agent
+        consumption.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
@@ -646,9 +646,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}{S.a("--json")}          Machine-readable JSON output
       </CodeBlock>
       <CodeBlock lang="output">
-        Available:  {S.a("$78.91")} USDC  {S.c("(checking — spendable immediately)")}{"\n"}
-        Savings:    {S.a("$80.00")} USDC  {S.c("(earning 4.21% APY in NAVI)")}{"\n"}
-        Gas:        {S.a("0.12")} SUI    {S.c("(~$0.11 at current price)")}{"\n"}
+        Available:  {S.a("$78.91")} USDC  {S.c("(checking — spendable)")}{"\n"}
+        Savings:    {S.a("$80.00")} USDC  {S.c("(earning 4.21% APY)")}{"\n"}
+        Gas:        {S.a("0.12")} SUI    {S.c("(~$0.11)")}{"\n"}
         {S.m("──────────────────────────────────────")}{"\n"}
         Total:      {S.a("$159.02")} USDC{"\n\n"}
         {S.c("# With --show-limits:")}{"\n"}
@@ -702,7 +702,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="bash">
         t2000 swap &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
         t2000 swap {S.a("5")} USDC SUI{"\n"}
-        t2000 swap {S.a("100")} USDC SUI --slippage {S.a("0.5")}   {S.c("# default: 1%")}
+        t2000 swap {S.a("100")} USDC SUI --slippage {S.a("0.5")}   {S.c("# default: 3%")}
       </CodeBlock>
 
       <h2 id="cmd-pay">
@@ -812,7 +812,7 @@ function ConfigSection() {
           [<InlineCode key="k">rpcUrl</InlineCode>, "string", "Mysten public", "Sui RPC endpoint"],
           [<InlineCode key="k">privateKey</InlineCode>, "string", "—", <>Sui private key (<InlineCode>suiprivkey1...</InlineCode>)</>],
           [<InlineCode key="k">address</InlineCode>, "string", "derived", "Auto-derived from privateKey"],
-          [<InlineCode key="k">slippage</InlineCode>, "number", <InlineCode key="v">1</InlineCode>, "Default swap slippage % (overridable per-swap)"],
+          [<InlineCode key="k">slippage</InlineCode>, "number", <InlineCode key="v">3</InlineCode>, "Default swap slippage % (overridable per-swap)"],
         ]}
       />
     </>
@@ -962,7 +962,7 @@ function X402Section() {
         → GET https://weather.api.com/forecast{"\n"}
         ← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
         {S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
-        ← {S.g("200 OK")}  {S.m("[342ms after payment]")}{"\n\n"}
+        ← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
         {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
       </CodeBlock>
 

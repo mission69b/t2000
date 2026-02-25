@@ -21,15 +21,15 @@ const LINES: TerminalLine[] = [
 
   { type: "command", text: "❯ t2000 send 10 USDC to 0x8b3e...d412", delay: 1200 },
   { type: "success", text: "✓ Sent $10.00 USDC → 0x8b3e...d412", delay: 500 },
-  { type: "info", text: "  Gas: 0.002 SUI (self-funded)", delay: 200 },
+  { type: "info", text: "  Tx: https://suiexplorer.com/tx/0xa1b2...", delay: 200 },
 
   { type: "command", text: "❯ t2000 save 80 USDC", delay: 1200 },
   {
     type: "success",
-    text: "✓ Deposited $80.00 USDC → NAVI Protocol",
+    text: "✓ Saved $80.00 USDC to NAVI",
     delay: 600,
   },
-  { type: "info", text: "  APY: 3.79% · Earning ~$0.008/day", delay: 250 },
+  { type: "info", text: "  APY: 4.21% · Earning ~$0.009/day", delay: 250 },
 
   { type: "command", text: "❯ t2000 borrow 20 USDC", delay: 1200 },
   { type: "success", text: "✓ Borrowed $20.00 USDC (same-asset)", delay: 600 },
@@ -44,10 +44,11 @@ const LINES: TerminalLine[] = [
   { type: "success", text: "✓ Paid $0.01 USDC · 200 OK · 820ms", delay: 600 },
 
   { type: "command", text: "❯ t2000 balance", delay: 1200 },
-  { type: "output", text: "  Available:  $85.00 USDC", delay: 400 },
-  { type: "output", text: "  Savings:    $80.00", delay: 120 },
-  { type: "output", text: "  Gas:        6.31 SUI ✓ auto-managed", delay: 120 },
-  { type: "output", text: "  Total:      $168.91", delay: 120 },
+  { type: "output", text: "  Available:  $85.00 USDC  (checking — spendable)", delay: 400 },
+  { type: "output", text: "  Savings:    $80.00 USDC  (earning 4.21% APY)", delay: 120 },
+  { type: "output", text: "  Gas:        0.31 SUI     (~$0.28)", delay: 120 },
+  { type: "output", text: "  ──────────────────────", delay: 80 },
+  { type: "output", text: "  Total:      $165.28 USDC", delay: 120 },
 ];
 
 export function TerminalDemo() {
