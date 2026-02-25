@@ -187,8 +187,8 @@ const COMPARE_ROWS = [
   },
   {
     feature: "Move-level nonce enforcement",
-    coinbase: "— (EIP-3009)",
-    t2000: "✓ Sui Payment Kit",
+    coinbase: "— (EIP-3009 replay protection)",
+    t2000: "✓ Sui Payment Kit (EDuplicatePayment)",
     coinbaseCross: true,
   },
 ];
@@ -333,14 +333,14 @@ export default function Home() {
           {ACCOUNTS.map((account) => (
             <div
               key={account.title}
-              className="bg-panel p-6 sm:p-7 lg:p-9 relative overflow-hidden group transition-colors hover:bg-[rgba(0,214,143,0.03)]"
+              className="bg-panel p-6 sm:px-7 sm:py-9 relative overflow-hidden group transition-colors hover:bg-[rgba(0,214,143,0.03)]"
             >
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent scale-x-0 origin-left transition-transform duration-400 group-hover:scale-x-100" />
               <div className="text-[10px] tracking-[0.15em] text-dim mb-4 sm:mb-5">
                 {account.num}
               </div>
               <span className="text-[24px] sm:text-[28px] block mb-3 sm:mb-4">{account.icon}</span>
-              <div className="text-base font-medium text-foreground mb-2 tracking-tight">
+              <div className="text-base font-medium text-foreground mb-2 tracking-[-0.01em]">
                 {account.title}
               </div>
               <div className="text-[11px] text-muted tracking-[0.05em] uppercase mb-4 sm:mb-5">
@@ -349,7 +349,7 @@ export default function Home() {
               <p className="text-xs text-muted leading-[1.7] mb-5 sm:mb-6">
                 {account.desc}
               </p>
-              <div className="text-[11px] text-accent bg-accent-dim px-3 py-2 tracking-wide overflow-x-auto scrollbar-hide">
+              <div className="text-[11px] text-accent bg-accent-dim px-3 py-2 rounded-sm tracking-[0.03em] overflow-x-auto scrollbar-hide">
                 {account.cmd}
               </div>
             </div>
@@ -543,7 +543,7 @@ export default function Home() {
                 {PLATFORMS.map((p) => (
                   <span
                     key={p}
-                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
+                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-[0.05em]"
                   >
                     {p}
                   </span>
@@ -585,7 +585,7 @@ export default function Home() {
                   Feature
                 </th>
                 <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-muted">
-                  Coinbase
+                  Coinbase Agentic Wallet
                 </th>
                 <th className="text-left px-3 sm:px-5 py-3 sm:py-4 border-b border-border-bright font-medium tracking-[0.05em] text-[10px] sm:text-[11px] uppercase text-accent">
                   t2000
@@ -651,22 +651,22 @@ export default function Home() {
               GitHub →
             </a>
             <a
+              href="#"
+              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+            >
+              Docs →
+            </a>
+            <a
               href="https://www.npmjs.com/package/@t2000/sdk"
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
             >
-              npm →
-            </a>
-            <a
-              href="#skills"
-              className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
-            >
-              Skills →
+              Skills Package →
             </a>
           </div>
 
-          <div className="text-[10px] sm:text-[11px] text-dim tracking-wide mt-6">
+          <div className="text-[10px] sm:text-[11px] text-dim tracking-[0.05em] mt-6">
             MIT · Non-custodial · Sui mainnet & testnet
           </div>
         </div>
@@ -680,29 +680,35 @@ export default function Home() {
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+            className="text-[11px] text-dim tracking-[0.05em] hover:text-muted transition-colors"
           >
             GitHub
+          </a>
+          <a
+            href="#"
+            className="text-[11px] text-dim tracking-[0.05em] hover:text-muted transition-colors"
+          >
+            Docs
           </a>
           <a
             href="https://www.npmjs.com/package/@t2000/sdk"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+            className="text-[11px] text-dim tracking-[0.05em] hover:text-muted transition-colors"
           >
             npm
           </a>
           <a
             href="#"
-            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-          >
-            Docs
-          </a>
-          <a
-            href="#"
-            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+            className="text-[11px] text-dim tracking-[0.05em] hover:text-muted transition-colors"
           >
             Discord
+          </a>
+          <a
+            href="https://t2000.ai"
+            className="text-[11px] text-dim tracking-[0.05em] hover:text-muted transition-colors"
+          >
+            t2000.ai
           </a>
         </div>
       </footer>
