@@ -1,7 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000 } from '@t2000/sdk';
-import { truncateAddress } from '@t2000/sdk';
 import { askPassphraseConfirm, getPassphraseFromEnv } from '../prompts.js';
 import {
   printSuccess, printBlank, printInfo, printKeyValue,
@@ -53,7 +52,7 @@ export function registerInit(program: Command) {
 
         printBlank();
         printLine(`🎉 ${pc.green('Bank account created')}`);
-        printKeyValue('Address', pc.yellow(truncateAddress(address)));
+        printKeyValue('Address', pc.yellow(address));
         printBlank();
       } catch (error) {
         handleError(error);
