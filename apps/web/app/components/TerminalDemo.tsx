@@ -21,7 +21,7 @@ const LINES: TerminalLine[] = [
 
   { type: "command", text: "❯ t2000 send 10 USDC to 0x8b3e...d412", delay: 1200 },
   { type: "success", text: "✓ Sent $10.00 USDC → 0x8b3e...d412", delay: 500 },
-  { type: "info", text: "  Tx: https://suiexplorer.com/tx/0xa1b2...", delay: 200 },
+  { type: "info", text: "  Tx: https://suiscan.xyz/mainnet/tx/0xa1b2...", delay: 200 },
 
   { type: "command", text: "❯ t2000 save 80 USDC", delay: 1200 },
   {

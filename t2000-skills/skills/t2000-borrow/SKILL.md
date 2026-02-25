@@ -44,7 +44,7 @@ t2000 balance --show-limits
 ✓ Protocol fee: $0.XX USDC (0.05%)
 ✓ Health factor: X.XX (safe above 1.5)
 ✓ Available balance: $XX.XX USDC
-  Tx: https://suiexplorer.com/tx/0x...
+  Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Errors

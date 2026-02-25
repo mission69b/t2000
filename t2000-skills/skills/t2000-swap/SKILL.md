@@ -43,7 +43,7 @@ Preview:
   Min received:      XX.XX SUI (guaranteed on-chain)
 
 ✓ Swapped XX.XX USDC → XX.XX SUI
-  Tx: https://suiexplorer.com/tx/0x...
+  Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Notes

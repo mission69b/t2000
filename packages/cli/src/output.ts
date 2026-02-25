@@ -75,9 +75,9 @@ export function printSeparator() {
 
 export function explorerUrl(txHash: string, network = 'mainnet'): string {
   const base = network === 'testnet'
-    ? 'https://suiexplorer.com/txblock'
-    : 'https://suiexplorer.com/txblock';
-  const suffix = network === 'testnet' ? '?network=testnet' : '';
+    ? 'https://suiscan.xyz/testnet/tx'
+    : 'https://suiscan.xyz/mainnet/tx';
+  const suffix = '';
   return `${base}/${txHash}${suffix}`;
 }
 

@@ -57,7 +57,7 @@ Gas:        0.00 SUI  (low — gas manager triggers)
 ✓ Protocol fee: $0.XX USDC (0.1%)
 ✓ Current APY: X.XX%
 ✓ Savings balance: $XX.XX USDC
-  Tx: https://suiexplorer.com/tx/0x...
+  Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Notes

@@ -41,23 +41,23 @@ npx @t2000/cli init
 
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
-  Tx:  https://suiexplorer.com/txblock/0xa1b2...
+  Tx:  https://suiscan.xyz/mainnet/tx/0xa1b2...
 
 ❯ t2000 save 80 USDC
   ✓ Saved $80.00 USDC to NAVI
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
   ✓ Savings balance: $79.92 USDC
-  Tx:  https://suiexplorer.com/txblock/0x9f2c...
+  Tx:  https://suiscan.xyz/mainnet/tx/0x9f2c...
 
 ❯ t2000 borrow 20 USDC
   ✓ Borrowed $20.00 USDC
   Health Factor:  3.39
-  Tx:  https://suiexplorer.com/txblock/0xb3c4...
+  Tx:  https://suiscan.xyz/mainnet/tx/0xb3c4...
 
 ❯ t2000 swap 5 USDC to SUI
   ✓ Swapped 5 USDC → 5.83 SUI
-  Tx:  https://suiexplorer.com/txblock/0xd5e6...
+  Tx:  https://suiscan.xyz/mainnet/tx/0xd5e6...
 
 ❯ t2000 pay https://data.api.com/prices
   → GET https://data.api.com/prices
@@ -68,11 +68,11 @@ npx @t2000/cli init
 ❯ t2000 repay 20 USDC
   ✓ Repaid $20.00 USDC
   Remaining Debt:  $0.00
-  Tx:  https://suiexplorer.com/txblock/0xe7f8...
+  Tx:  https://suiscan.xyz/mainnet/tx/0xe7f8...
 
 ❯ t2000 withdraw all
   ✓ Withdrew $79.92 USDC
-  Tx:  https://suiexplorer.com/txblock/0xf9a0...
+  Tx:  https://suiscan.xyz/mainnet/tx/0xf9a0...
 
 ❯ t2000 balance
   Available:  $85.00 USDC  (checking — spendable)

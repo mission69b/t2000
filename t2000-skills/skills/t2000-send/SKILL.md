@@ -38,7 +38,7 @@ t2000 send 50 USDC to 0xabcd...1234
 ✓ Sent $XX.XX USDC → 0x8b3e...d412
 ✓ Gas: X.XXX SUI (self-funded)
 ✓ Balance: $XX.XX USDC available
-  Tx: https://suiexplorer.com/tx/0x...
+  Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Error handling

@@ -32,7 +32,7 @@ t2000 repay all
 ✓ Outstanding loan: $XX.XX USDC (was $XX.XX)
 ✓ Health factor: X.XX → X.XX
 ✓ Available balance: $XX.XX USDC
-  Tx: https://suiexplorer.com/tx/0x...
+  Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Notes

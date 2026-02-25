@@ -190,7 +190,7 @@ agent.save({ amount: 50 }) ────► Validate balance
 ◄──────────────────────────────── ✓ Saved $50.00 USDC to NAVI
                                   ✓ Protocol fee: $0.05 (0.1%)
                                   ✓ Current APY: 4.21%
-                                  Tx: https://suiexplorer.com/txblock/0xa1c2...
+                                  Tx: https://suiscan.xyz/mainnet/tx/0xa1c2...
 
 [Time passes — yield accrues]
 
@@ -214,7 +214,7 @@ agent.swap({                 ──► Check SUI balance
                                   Set sqrt_price_limit ── Execute swap
                                   Extract received amount
 ◄──────────────────────────────── ✓ Swapped 5 USDC → 1.43 SUI
-                                  Tx: https://suiexplorer.com/txblock/0xb2c3...
+                                  Tx: https://suiscan.xyz/mainnet/tx/0xb2c3...
 ```
 
 ### Flow 4: HTTP API (Non-TypeScript Agents)

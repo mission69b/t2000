@@ -442,7 +442,7 @@ function QuickStart({
               {S.g("✓")} Protocol fee: {S.m("$0.099 USDC (0.1%)")}{"\n"}
               {S.g("✓")} Current APY: {S.g("4.21%")}{"\n"}
               {S.g("✓")} Savings balance: {S.a("$98.90")} USDC{"\n"}
-              {"  "}Tx: {S.b("https://suiexplorer.com/tx/0x9f2c...")}
+              {"  "}Tx: {S.b("https://suiscan.xyz/mainnet/tx/0x9f2c...")}
             </CodeBlock>
           </div>
         </li>

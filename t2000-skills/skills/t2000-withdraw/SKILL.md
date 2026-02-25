@@ -41,7 +41,7 @@ t2000 balance --show-limits
 ```
 ✓ Withdrew $XX.XX USDC from NAVI
 ✓ Available balance: $XX.XX USDC
-  Tx: https://suiexplorer.com/tx/0x...
+  Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Errors
