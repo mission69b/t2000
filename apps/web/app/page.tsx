@@ -99,7 +99,7 @@ const X402_STEPS = [
     detail: "Sui Payment Kit · 0.01 USDC → 0x8b3e... · ~380ms finality",
   },
   {
-    icon: "hex",
+    icon: "⬡",
     active: false,
     title: "Facilitator verifies on-chain",
     detail:
@@ -237,8 +237,8 @@ export default function Home() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-14 sm:pt-16">
-        <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-8 sm:py-10 lg:py-12">
+      <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 items-center gap-0 pt-14 sm:pt-16">
+        <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-6 sm:py-8 lg:py-0">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
             Built for Sui · Open source · Non-custodial
@@ -387,9 +387,9 @@ export default function Home() {
             {STEPS.map((step, i) => (
               <div
                 key={step.num}
-                className={`grid grid-cols-[40px_1fr] gap-5 py-7 border-b border-border ${i === 0 ? "border-t" : ""}`}
+                className={`group/step grid grid-cols-[40px_1fr] gap-5 py-7 pl-5 border-b border-border border-l-2 border-l-dim transition-colors hover:border-l-accent ${i === 0 ? "border-t" : ""}`}
               >
-                <div className="text-[11px] text-dim pt-1 tracking-wide">
+                <div className="text-[11px] text-dim pt-1 tracking-wide transition-colors group-hover/step:text-accent">
                   {step.num}
                 </div>
                 <div>
@@ -437,9 +437,9 @@ export default function Home() {
                         <div className="absolute left-[15px] top-8 bottom-0 w-px bg-border" />
                       )}
                       <div
-                        className={`w-[30px] h-[30px] border flex items-center justify-center text-[11px] shrink-0 relative z-1 ${step.icon === "hex" ? "clip-hexagon" : "rounded-full"} ${step.active ? "border-accent bg-accent-dim text-accent" : "border-border-bright bg-surface text-muted"}`}
+                        className={`w-[30px] h-[30px] rounded-full border flex items-center justify-center shrink-0 relative z-1 ${step.active ? "border-accent bg-accent-dim text-accent" : "border-border-bright bg-surface text-muted"} ${step.icon === "⬡" ? "text-sm" : "text-[11px]"}`}
                       >
-                        {step.icon === "hex" ? "" : step.icon}
+                        {step.icon}
                       </div>
                       <div className="pt-1">
                         <div className="text-xs text-foreground mb-1">

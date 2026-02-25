@@ -34,34 +34,29 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-blue: var(--blue);
+  --font-sans: var(--font-ibm-plex-mono);
   --font-mono: var(--font-ibm-plex-mono);
   --font-serif: var(--font-instrument-serif);
+}
+
+html,
+body,
+body * {
+  font-family: var(--font-ibm-plex-mono), 'IBM Plex Mono', monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-mono), monospace;
   font-size: 14px;
   line-height: 1.6;
   overflow-x: hidden;
 }
 
-h1,
-h2 {
-  font-family: var(--font-mono), monospace;
-}
-
 h1 em,
 h2 em {
-  font-family: var(--font-serif), serif;
+  font-family: var(--font-instrument-serif), 'Instrument Serif', serif;
   font-style: italic;
-}
-
-table,
-table th,
-table td {
-  font-family: var(--font-mono), monospace;
 }
 
 /* Noise overlay */
@@ -170,10 +165,6 @@ body::after {
 }
 .animate-ticker-reverse {
   animation: tickerScroll 40s linear infinite reverse;
-}
-
-.clip-hexagon {
-  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
 }
 
 .scrollbar-hide {

@@ -40,7 +40,7 @@ export function Ticker() {
     <div className="relative z-1 border-t border-b border-border bg-surface overflow-hidden">
       {/* Row 1: DeFi */}
       <div className="flex items-center border-b border-border">
-        <div className="hidden sm:block shrink-0 w-[100px] px-6 py-3.5 text-[10px] tracking-[0.15em] uppercase text-dim border-r border-border">
+        <div className="hidden sm:flex shrink-0 w-[80px] items-center px-4 py-3.5 text-[10px] tracking-[0.1em] uppercase text-dim border-r border-border">
           Sui · DeFi
         </div>
         <div className="flex-1 overflow-hidden relative">
@@ -55,7 +55,7 @@ export function Ticker() {
 
       {/* Row 2: x402 */}
       <div className="flex items-center">
-        <div className="hidden sm:block shrink-0 w-[100px] px-6 py-3.5 text-[10px] tracking-[0.15em] uppercase text-dim border-r border-border">
+        <div className="hidden sm:flex shrink-0 w-[80px] items-center px-4 py-3.5 text-[10px] tracking-[0.1em] uppercase text-dim border-r border-border">
           x402 · Live
         </div>
         <div className="flex-1 overflow-hidden relative">
