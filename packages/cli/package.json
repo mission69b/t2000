@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "CLI bank account for AI agents on Sui — send, save, swap, borrow from your terminal",
   "type": "module",
   "bin": {
@@ -40,6 +40,7 @@
   "dependencies": {
     "@hono/node-server": "^1",
     "@inquirer/prompts": "^7",
+    "@mysten/sui": "^1.45.2",
     "@t2000/sdk": "workspace:*",
     "@t2000/x402": "workspace:*",
     "commander": "^13",

@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1",
-    "@mysten/sui": "^1",
+    "@mysten/sui": "^1.45.2",
     "@naviprotocol/lending": "^1.3.11",
     "@prisma/client": "^6",
     "@t2000/sdk": "workspace:*",

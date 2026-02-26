@@ -62,8 +62,9 @@ export async function sponsorTransaction(
     const gasKeypair = getGasStationWallet();
     const gasAddress = gasKeypair.getPublicKey().toSuiAddress();
 
-    // Reconstruct the transaction from bytes
-    const tx = Transaction.from(Buffer.from(txBytesBase64, 'base64'));
+    // Reconstruct the transaction from JSON (base64-encoded JSON string)
+    const txJson = Buffer.from(txBytesBase64, 'base64').toString('utf-8');
+    const tx = Transaction.from(txJson);
     tx.setSender(senderAddress);
     tx.setGasOwner(gasAddress);
 

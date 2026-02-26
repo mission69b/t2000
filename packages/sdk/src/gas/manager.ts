@@ -101,9 +101,9 @@ async function trySponsored(
   const address = keypair.getPublicKey().toSuiAddress();
   tx.setSender(address);
 
-  // Let build/sponsorship errors propagate for diagnostics
-  const txBytes = await tx.build({ client, onlyTransactionKind: true });
-  const txBytesBase64 = Buffer.from(txBytes).toString('base64');
+  // Send JSON-serialized tx to gas station (avoids BCS TransactionKind compat issues)
+  const txJson = tx.serialize();
+  const txBytesBase64 = Buffer.from(txJson).toString('base64');
   const sponsoredResult = await requestGasSponsorship(txBytesBase64, address);
 
   const sponsoredTxBytes = Buffer.from(sponsoredResult.txBytes, 'base64');
