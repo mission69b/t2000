@@ -1,6 +1,6 @@
 {
   "name": "@t2000/x402",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "x402 payment protocol client for AI agents on Sui — pay for API resources with USDC",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -17,7 +17,16 @@
     "dist",
     "README.md"
   ],
-  "keywords": ["x402", "sui", "payment", "micropayment", "usdc", "ai", "agent", "402"],
+  "keywords": [
+    "x402",
+    "sui",
+    "payment",
+    "micropayment",
+    "usdc",
+    "ai",
+    "agent",
+    "402"
+  ],
   "author": "t2000",
   "repository": {
     "type": "git",

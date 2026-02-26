@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "CLI bank account for AI agents on Sui — send, save, swap, borrow from your terminal",
   "type": "module",
   "bin": {
@@ -10,7 +10,19 @@
     "dist",
     "README.md"
   ],
-  "keywords": ["sui", "wallet", "ai", "agent", "cli", "defi", "usdc", "x402", "t2000", "navi", "cetus"],
+  "keywords": [
+    "sui",
+    "wallet",
+    "ai",
+    "agent",
+    "cli",
+    "defi",
+    "usdc",
+    "x402",
+    "t2000",
+    "navi",
+    "cetus"
+  ],
   "author": "t2000",
   "repository": {
     "type": "git",
