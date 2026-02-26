@@ -72,11 +72,8 @@ async function tryAutoTopUpThenSelfFund(
   const canTopUp = await shouldAutoTopUp(client, address);
   if (!canTopUp) return null;
 
-  try {
-    await executeAutoTopUp(client, keypair);
-  } catch {
-    return null;
-  }
+  // Let errors propagate so executeWithGas captures the real reason
+  await executeAutoTopUp(client, keypair);
 
   // After top-up, try self-funded again
   tx.setSender(address);
@@ -104,21 +101,10 @@ async function trySponsored(
   const address = keypair.getPublicKey().toSuiAddress();
   tx.setSender(address);
 
-  let txBytes: Uint8Array;
-  try {
-    txBytes = await tx.build({ client, onlyTransactionKind: true });
-  } catch {
-    return null;
-  }
-
+  // Let build/sponsorship errors propagate for diagnostics
+  const txBytes = await tx.build({ client, onlyTransactionKind: true });
   const txBytesBase64 = Buffer.from(txBytes).toString('base64');
-
-  let sponsoredResult;
-  try {
-    sponsoredResult = await requestGasSponsorship(txBytesBase64, address);
-  } catch {
-    return null;
-  }
+  const sponsoredResult = await requestGasSponsorship(txBytesBase64, address);
 
   const sponsoredTxBytes = Buffer.from(sponsoredResult.txBytes, 'base64');
   const { signature: agentSig } = await keypair.signTransaction(sponsoredTxBytes);
