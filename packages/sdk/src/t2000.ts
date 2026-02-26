@@ -11,7 +11,7 @@ import {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
-import { buildAndExecuteSend } from './wallet/send.js';
+import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory } from './wallet/history.js';
 import * as navi from './protocols/navi.js';
@@ -19,7 +19,7 @@ import * as cetus from './protocols/cetus.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
 import { solveHashcash } from './utils/hashcash.js';
-import { shouldAutoTopUp, executeAutoTopUp } from './gas/autoTopUp.js';
+import { executeWithGas } from './gas/manager.js';
 import type {
   T2000Options,
   BalanceResponse,
@@ -36,7 +36,6 @@ import type {
   PositionsResult,
   TransactionRecord,
   DepositInfo,
-  GasMethod,
   EarningsResult,
   FundStatusResult,
 } from './types.js';
@@ -58,7 +57,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly keypair: Ed25519Keypair;
   private readonly client: SuiClient;
   private readonly _address: string;
-  private _lastGasMethod: GasMethod = 'self-funded';
+
 
   private constructor(keypair: Ed25519Keypair, client: SuiClient) {
     super();
@@ -127,32 +126,6 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Gas --
 
-  /**
-   * Ensure the agent has enough SUI for gas.
-   * If SUI is low and USDC is available, auto-swaps $1 USDC → SUI.
-   */
-  private async ensureGas(): Promise<void> {
-    this._lastGasMethod = 'self-funded';
-
-    const needsTopUp = await shouldAutoTopUp(this.client, this._address);
-    if (!needsTopUp) return;
-
-    try {
-      const result = await executeAutoTopUp(this.client, this.keypair);
-      this._lastGasMethod = 'auto-topup';
-      this.emit('gasAutoTopUp', {
-        usdcSpent: result.usdcSpent,
-        suiReceived: result.suiReceived,
-      });
-    } catch {
-      this.emit('gasStationFallback', {
-        reason: 'auto-topup failed',
-        method: 'self-funded',
-        suiUsed: 0,
-      });
-    }
-  }
-
   /** SuiClient used by this agent — exposed for x402 and other integrations. */
   get suiClient(): SuiClient {
     return this.client;
@@ -175,28 +148,25 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
     }
 
-    await this.ensureGas();
+    const sendAmount = params.amount;
+    const sendTo = params.to;
 
-    const result = await buildAndExecuteSend({
-      client: this.client,
-      keypair: this.keypair,
-      to: params.to,
-      amount: params.amount,
-      asset,
-    });
+    const gasResult = await executeWithGas(this.client, this.keypair, () =>
+      buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset }),
+    );
 
     const balance = await this.balance();
 
-    this.emitBalanceChange(asset, params.amount, 'send', result.digest);
+    this.emitBalanceChange(asset, sendAmount, 'send', gasResult.digest);
 
     return {
       success: true,
-      tx: result.digest,
-      amount: params.amount,
+      tx: gasResult.digest,
+      amount: sendAmount,
       to: params.to,
-      gasCost: result.gasCost,
+      gasCost: gasResult.gasCostSui,
       gasCostUnit: 'SUI',
-      gasMethod: this._lastGasMethod,
+      gasMethod: gasResult.gasMethod,
       balance,
     };
   }
@@ -263,15 +233,25 @@ export class T2000 extends EventEmitter<T2000Events> {
       amount = params.amount;
     }
     const fee = calculateFee('save', amount);
+    const saveAmount = amount;
 
-    await this.ensureGas();
-    const result = await navi.save(this.client, this.keypair, amount);
+    const gasResult = await executeWithGas(this.client, this.keypair, () =>
+      navi.buildSaveTx(this.client, this._address, saveAmount),
+    );
 
-    reportFee(this._address, 'save', fee.amount, fee.rate, result.tx);
+    const rates = await navi.getRates(this.client);
+    reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
+    this.emitBalanceChange('USDC', saveAmount, 'save', gasResult.digest);
 
-    this.emitBalanceChange('USDC', amount, 'save', result.tx);
-
-    return { ...result, fee: fee.amount, gasMethod: this._lastGasMethod };
+    return {
+      success: true,
+      tx: gasResult.digest,
+      amount: saveAmount,
+      apy: rates.USDC.saveApy,
+      fee: fee.amount,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
   }
 
   async withdraw(params: { amount: number | 'all'; asset?: string }): Promise<WithdrawResult> {
@@ -302,12 +282,24 @@ export class T2000 extends EventEmitter<T2000Events> {
         }
       }
     }
-    await this.ensureGas();
-    const result = await navi.withdraw(this.client, this.keypair, amount);
+    const withdrawAmount = amount;
+    let effectiveAmount = withdrawAmount;
 
-    this.emitBalanceChange('USDC', amount, 'withdraw', result.tx);
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const built = await navi.buildWithdrawTx(this.client, this._address, withdrawAmount);
+      effectiveAmount = built.effectiveAmount;
+      return built.tx;
+    });
 
-    return { ...result, gasMethod: this._lastGasMethod };
+    this.emitBalanceChange('USDC', effectiveAmount, 'withdraw', gasResult.digest);
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      amount: effectiveAmount,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
   }
 
   async maxWithdraw(): Promise<MaxWithdrawResult> {
@@ -326,14 +318,25 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
     const fee = calculateFee('borrow', params.amount);
 
-    await this.ensureGas();
-    const result = await navi.borrow(this.client, this.keypair, params.amount);
+    const borrowAmount = params.amount;
 
-    reportFee(this._address, 'borrow', fee.amount, fee.rate, result.tx);
+    const gasResult = await executeWithGas(this.client, this.keypair, () =>
+      navi.buildBorrowTx(this.client, this._address, borrowAmount),
+    );
 
-    this.emitBalanceChange('USDC', params.amount, 'borrow', result.tx);
+    const hf = await navi.getHealthFactor(this.client, this.keypair);
+    reportFee(this._address, 'borrow', fee.amount, fee.rate, gasResult.digest);
+    this.emitBalanceChange('USDC', borrowAmount, 'borrow', gasResult.digest);
 
-    return { ...result, fee: fee.amount, gasMethod: this._lastGasMethod };
+    return {
+      success: true,
+      tx: gasResult.digest,
+      amount: borrowAmount,
+      fee: fee.amount,
+      healthFactor: hf.healthFactor,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
   }
 
   async repay(params: { amount: number | 'all'; asset?: string }): Promise<RepayResult> {
@@ -347,12 +350,23 @@ export class T2000 extends EventEmitter<T2000Events> {
     } else {
       amount = params.amount;
     }
-    await this.ensureGas();
-    const result = await navi.repay(this.client, this.keypair, amount);
+    const repayAmount = amount;
 
-    this.emitBalanceChange('USDC', amount, 'repay', result.tx);
+    const gasResult = await executeWithGas(this.client, this.keypair, () =>
+      navi.buildRepayTx(this.client, this._address, repayAmount),
+    );
 
-    return { ...result, gasMethod: this._lastGasMethod };
+    const hf = await navi.getHealthFactor(this.client, this.keypair);
+    this.emitBalanceChange('USDC', repayAmount, 'repay', gasResult.digest);
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      amount: repayAmount,
+      remainingDebt: hf.borrowed,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
   }
 
   async maxBorrow(): Promise<MaxBorrowResult> {
@@ -385,33 +399,67 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     const fee = calculateFee('swap', params.amount);
+    const swapAmount = params.amount;
+    const slippageBps = params.maxSlippage ? params.maxSlippage * 100 : undefined;
 
-    await this.ensureGas();
+    let swapMeta: { estimatedOut: number; toDecimals: number } = { estimatedOut: 0, toDecimals: 0 };
 
-    const result = await cetus.executeSwap({
-      client: this.client,
-      keypair: this.keypair,
-      fromAsset,
-      toAsset,
-      amount: params.amount,
-      maxSlippageBps: params.maxSlippage ? params.maxSlippage * 100 : undefined,
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const built = await cetus.buildSwapTx({
+        client: this.client,
+        address: this._address,
+        fromAsset,
+        toAsset,
+        amount: swapAmount,
+        maxSlippageBps: slippageBps,
+      });
+      swapMeta = { estimatedOut: built.estimatedOut, toDecimals: built.toDecimals };
+      return built.tx;
     });
 
-    reportFee(this._address, 'swap', fee.amount, fee.rate, result.digest);
+    const toInfo = SUPPORTED_ASSETS[toAsset];
+    const txDetail = await this.client.getTransactionBlock({
+      digest: gasResult.digest,
+      options: { showBalanceChanges: true },
+    });
 
-    this.emitBalanceChange(result.fromAsset, result.fromAmount, 'swap', result.digest);
+    let actualReceived = 0;
+    if (txDetail.balanceChanges) {
+      for (const change of txDetail.balanceChanges) {
+        if (
+          change.coinType === toInfo.type &&
+          change.owner &&
+          typeof change.owner === 'object' &&
+          'AddressOwner' in change.owner &&
+          change.owner.AddressOwner === this._address
+        ) {
+          const amt = Number(change.amount) / 10 ** toInfo.decimals;
+          if (amt > 0) actualReceived += amt;
+        }
+      }
+    }
+
+    const expectedOutput = swapMeta.estimatedOut / 10 ** swapMeta.toDecimals;
+    if (actualReceived === 0) actualReceived = expectedOutput;
+
+    const priceImpact = expectedOutput > 0
+      ? Math.abs(actualReceived - expectedOutput) / expectedOutput
+      : 0;
+
+    reportFee(this._address, 'swap', fee.amount, fee.rate, gasResult.digest);
+    this.emitBalanceChange(fromAsset, swapAmount, 'swap', gasResult.digest);
 
     return {
       success: true,
-      tx: result.digest,
-      fromAmount: result.fromAmount,
-      fromAsset: result.fromAsset,
-      toAmount: result.toAmount,
-      toAsset: result.toAsset,
-      priceImpact: result.priceImpact,
+      tx: gasResult.digest,
+      fromAmount: swapAmount,
+      fromAsset,
+      toAmount: actualReceived,
+      toAsset,
+      priceImpact,
       fee: fee.amount,
-      gasCost: result.gasCost,
-      gasMethod: this._lastGasMethod,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
     };
   }
 

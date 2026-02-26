@@ -56,9 +56,23 @@ function getCetusSDK(): CetusClmmSDK {
   return _cetusSDK;
 }
 
-export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
-  const { client, keypair, fromAsset, toAsset, amount, maxSlippageBps = DEFAULT_SLIPPAGE_BPS } = params;
-  const address = keypair.getPublicKey().toSuiAddress();
+import type { Transaction } from '@mysten/sui/transactions';
+
+export interface SwapBuildResult {
+  tx: Transaction;
+  estimatedOut: number;
+  toDecimals: number;
+}
+
+export async function buildSwapTx(params: {
+  client: SuiClient;
+  address: string;
+  fromAsset: 'USDC' | 'SUI';
+  toAsset: 'USDC' | 'SUI';
+  amount: number;
+  maxSlippageBps?: number;
+}): Promise<SwapBuildResult> {
+  const { client, address, fromAsset, toAsset, amount, maxSlippageBps = DEFAULT_SLIPPAGE_BPS } = params;
 
   const a2b = isA2B(fromAsset);
   const fromInfo = SUPPORTED_ASSETS[fromAsset];
@@ -96,9 +110,30 @@ export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
     amount_limit: amountLimit.toString(),
   });
 
+  return {
+    tx: swapPayload as unknown as Transaction,
+    estimatedOut,
+    toDecimals: toInfo.decimals,
+  };
+}
+
+export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
+  const { client, keypair, fromAsset, toAsset, amount, maxSlippageBps } = params;
+  const address = keypair.getPublicKey().toSuiAddress();
+  const toInfo = SUPPORTED_ASSETS[toAsset];
+
+  const { tx, estimatedOut, toDecimals } = await buildSwapTx({
+    client,
+    address,
+    fromAsset,
+    toAsset,
+    amount,
+    maxSlippageBps,
+  });
+
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
-    transaction: swapPayload,
+    transaction: tx,
     options: { showEffects: true, showBalanceChanges: true },
   });
 
@@ -120,7 +155,7 @@ export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
     }
   }
 
-  const expectedOutput = estimatedOut / 10 ** toInfo.decimals;
+  const expectedOutput = estimatedOut / 10 ** toDecimals;
   if (actualReceived === 0) actualReceived = expectedOutput;
 
   const priceImpact = expectedOutput > 0

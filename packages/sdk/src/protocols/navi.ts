@@ -102,12 +102,11 @@ async function updateOracle(tx: Transaction, client: SuiClient, address: string)
   }
 }
 
-export async function save(
+export async function buildSaveTx(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  address: string,
   amount: number,
-): Promise<SaveResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
+): Promise<Transaction> {
   const rawAmount = Number(usdcToRaw(amount));
 
   const coins = await getCoins(address, { coinType: USDC_TYPE, client });
@@ -120,6 +119,17 @@ export async function save(
 
   const coinObj = mergeCoinsPTB(tx, coins, { balance: rawAmount });
   await depositCoinPTB(tx, USDC_TYPE, coinObj, ENV);
+
+  return tx;
+}
+
+export async function save(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  amount: number,
+): Promise<SaveResult> {
+  const address = keypair.getPublicKey().toSuiAddress();
+  const tx = await buildSaveTx(client, address, amount);
 
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
@@ -141,13 +151,11 @@ export async function save(
   };
 }
 
-export async function withdraw(
+export async function buildWithdrawTx(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  address: string,
   amount: number,
-): Promise<WithdrawResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
-
+): Promise<{ tx: Transaction; effectiveAmount: number }> {
   const state = await getLendingState(address, clientOpt(client, true));
   const usdcPos = findUsdcPosition(state);
   const deposited = usdcPos ? Number(usdcPos.supplyBalance) / 10 ** NAVI_BALANCE_DECIMALS : 0;
@@ -165,6 +173,17 @@ export async function withdraw(
   const withdrawnCoin = await withdrawCoinPTB(tx, USDC_TYPE, rawAmount, ENV);
   tx.transferObjects([withdrawnCoin], address);
 
+  return { tx, effectiveAmount };
+}
+
+export async function withdraw(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  amount: number,
+): Promise<WithdrawResult> {
+  const address = keypair.getPublicKey().toSuiAddress();
+  const { tx, effectiveAmount } = await buildWithdrawTx(client, address, amount);
+
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
     transaction: tx,
@@ -181,12 +200,11 @@ export async function withdraw(
   };
 }
 
-export async function borrow(
+export async function buildBorrowTx(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  address: string,
   amount: number,
-): Promise<BorrowResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
+): Promise<Transaction> {
   const rawAmount = Number(usdcToRaw(amount));
 
   const tx = new Transaction();
@@ -196,6 +214,17 @@ export async function borrow(
 
   const borrowedCoin = await borrowCoinPTB(tx, USDC_TYPE, rawAmount, ENV);
   tx.transferObjects([borrowedCoin], address);
+
+  return tx;
+}
+
+export async function borrow(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  amount: number,
+): Promise<BorrowResult> {
+  const address = keypair.getPublicKey().toSuiAddress();
+  const tx = await buildBorrowTx(client, address, amount);
 
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
@@ -217,12 +246,11 @@ export async function borrow(
   };
 }
 
-export async function repay(
+export async function buildRepayTx(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  address: string,
   amount: number,
-): Promise<RepayResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
+): Promise<Transaction> {
   const rawAmount = Number(usdcToRaw(amount));
 
   const coins = await getCoins(address, { coinType: USDC_TYPE, client });
@@ -235,6 +263,17 @@ export async function repay(
 
   const coinObj = mergeCoinsPTB(tx, coins, { balance: rawAmount });
   await repayCoinPTB(tx, USDC_TYPE, coinObj, { ...ENV, amount: rawAmount });
+
+  return tx;
+}
+
+export async function repay(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  amount: number,
+): Promise<RepayResult> {
+  const address = keypair.getPublicKey().toSuiAddress();
+  const tx = await buildRepayTx(client, address, amount);
 
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
