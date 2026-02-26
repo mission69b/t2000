@@ -2,13 +2,28 @@ import type { SuiClient } from '@mysten/sui/client';
 import { SUPPORTED_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
 import type { BalanceResponse } from '../types.js';
 
-let _cachedSuiPrice = 3.5;
+let _cachedSuiPrice = 0;
 let _priceLastFetched = 0;
 const PRICE_CACHE_TTL_MS = 60_000;
 
+/**
+ * Fetch SUI price in USD from the Cetus USDC/SUI pool's sqrt_price.
+ *
+ * Pool is Pool<USDC, SUI> so coin_a = USDC (6 dec), coin_b = SUI (9 dec).
+ * current_sqrt_price (Q64 fixed-point) encodes sqrt(raw_price) where
+ * raw_price = SUI_raw / USDC_raw.
+ *
+ * USDC per SUI = 10^(decimals_a - decimals_b) / raw_price
+ *              = 10^(6-9) / raw_price
+ *              = 1 / (raw_price * 1000)
+ *
+ * Equivalently: 1000 / raw_price
+ */
 async function fetchSuiPrice(client: SuiClient): Promise<number> {
   const now = Date.now();
-  if (now - _priceLastFetched < PRICE_CACHE_TTL_MS) return _cachedSuiPrice;
+  if (_cachedSuiPrice > 0 && now - _priceLastFetched < PRICE_CACHE_TTL_MS) {
+    return _cachedSuiPrice;
+  }
 
   try {
     const pool = await client.getObject({
@@ -24,8 +39,7 @@ async function fetchSuiPrice(client: SuiClient): Promise<number> {
         const Q64 = 2n ** 64n;
         const sqrtPriceFloat = Number(currentSqrtPrice) / Number(Q64);
         const rawPrice = sqrtPriceFloat * sqrtPriceFloat;
-        // Adjust for decimal difference: USDC(6) vs SUI(9) → multiply by 1e3
-        const price = rawPrice * 1e3;
+        const price = 1000 / rawPrice;
         if (price > 0.01 && price < 1000) {
           _cachedSuiPrice = price;
           _priceLastFetched = now;

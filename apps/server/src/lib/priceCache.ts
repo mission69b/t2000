@@ -34,14 +34,13 @@ async function fetchSuiPriceFromChain(): Promise<number> {
       const currentSqrtPrice = BigInt(String(fields.current_sqrt_price ?? '0'));
 
       if (currentSqrtPrice > 0n) {
-        // Cetus uses Q64 fixed-point for sqrt_price
-        // price = (sqrt_price / 2^64)^2 * 10^(decimals_a - decimals_b)
-        // For USDC(6)/SUI(9) pool: adjustment = 10^(6-9) = 10^-3
+        // Pool is Pool<USDC, SUI> → coin_a=USDC(6), coin_b=SUI(9)
+        // rawPrice = (sqrtPrice / 2^64)^2 = SUI_raw per USDC_raw
+        // USDC per SUI = 1000 / rawPrice
         const Q64 = 2n ** 64n;
         const sqrtPriceFloat = Number(currentSqrtPrice) / Number(Q64);
         const rawPrice = sqrtPriceFloat * sqrtPriceFloat;
-        // rawPrice = USDC per SUI in raw units, adjust for decimal difference
-        const suiPriceUsd = rawPrice * 1e3;
+        const suiPriceUsd = 1000 / rawPrice;
         if (suiPriceUsd > 0.01 && suiPriceUsd < 1000) return suiPriceUsd;
       }
     }
@@ -49,7 +48,7 @@ async function fetchSuiPriceFromChain(): Promise<number> {
     // Fall through to fallback
   }
 
-  return 3.5;
+  return 1.0;
 }
 
 function pruneOldPoints(): void {
@@ -117,7 +116,7 @@ export function stopPriceCache(): void {
 export function getSuiPriceTwap(): number {
   const cutoff = Date.now() - TWAP_WINDOW_MS;
   const recent = priceHistory.filter((p) => p.timestamp > cutoff);
-  if (recent.length === 0) return 3.5;
+  if (recent.length === 0) return 1.0;
 
   const sum = recent.reduce((acc, p) => acc + p.price, 0);
   return sum / recent.length;
