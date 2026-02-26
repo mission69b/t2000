@@ -155,13 +155,16 @@ export async function executeWithGas(
   keypair: Ed25519Keypair,
   buildTx: () => Transaction | Promise<Transaction>,
 ): Promise<GasExecutionResult> {
+  const errors: string[] = [];
+
   // Step 1: Try self-funded
   try {
     const tx = await buildTx();
     const result = await trySelfFunded(client, keypair, tx);
     if (result) return result;
-  } catch {
-    // Self-funded failed — continue to next strategy
+    errors.push('self-funded: SUI below threshold');
+  } catch (err) {
+    errors.push(`self-funded: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Step 2: Try auto-topup then self-fund
@@ -169,8 +172,9 @@ export async function executeWithGas(
     const tx = await buildTx();
     const result = await tryAutoTopUpThenSelfFund(client, keypair, tx);
     if (result) return result;
-  } catch {
-    // Auto-topup failed — continue to next strategy
+    errors.push('auto-topup: not eligible (low USDC or sufficient SUI)');
+  } catch (err) {
+    errors.push(`auto-topup: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Step 3: Try gas station sponsored
@@ -178,14 +182,15 @@ export async function executeWithGas(
     const tx = await buildTx();
     const result = await trySponsored(client, keypair, tx);
     if (result) return result;
-  } catch {
-    // Sponsored failed — last resort
+    errors.push('sponsored: returned null');
+  } catch (err) {
+    errors.push(`sponsored: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Step 4: All methods failed
   throw new T2000Error(
     'INSUFFICIENT_GAS',
-    'No SUI for gas and Gas Station unavailable. Fund your wallet with SUI or USDC.',
-    { reason: 'all_gas_methods_exhausted' },
+    `No SUI for gas and Gas Station unavailable. Fund your wallet with SUI or USDC. [${errors.join(' | ')}]`,
+    { reason: 'all_gas_methods_exhausted', errors },
   );
 }
