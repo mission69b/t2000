@@ -29,7 +29,7 @@ export function createProgram(): Command {
   program
     .name('t2000')
     .description('The first bank account for AI agents')
-    .version('0.1.9')
+    .version('0.2.0')
     .option('--json', 'Output in JSON format')
     .option('--yes', 'Skip confirmation prompts')
     .hook('preAction', (thisCommand) => {

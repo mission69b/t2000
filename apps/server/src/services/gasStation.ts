@@ -41,8 +41,15 @@ async function determineGasType(agentAddress: string): Promise<GasRequestType> {
   return 'fallback';
 }
 
+/**
+ * Sponsor a transaction.
+ *
+ * Accepts the transaction as either:
+ *   - txJson: a JSON string from Transaction.serialize() (preferred, v0.1.9+)
+ *   - txBytes: base64-encoded BCS bytes (legacy, pre-v0.1.9)
+ */
 export async function sponsorTransaction(
-  txBytesBase64: string,
+  input: { txJson?: string; txBytes?: string },
   senderAddress: string,
   requestType?: GasRequestType,
 ): Promise<GasSponsorResult> {
@@ -62,16 +69,20 @@ export async function sponsorTransaction(
     const gasKeypair = getGasStationWallet();
     const gasAddress = gasKeypair.getPublicKey().toSuiAddress();
 
-    // Reconstruct the transaction from JSON (base64-encoded JSON string)
-    const txJson = Buffer.from(txBytesBase64, 'base64').toString('utf-8');
-    const tx = Transaction.from(txJson);
+    let tx: InstanceType<typeof Transaction>;
+    if (input.txJson) {
+      tx = Transaction.from(input.txJson);
+    } else if (input.txBytes) {
+      tx = Transaction.from(Buffer.from(input.txBytes, 'base64'));
+    } else {
+      throw new Error('INVALID_REQUEST: txJson or txBytes required');
+    }
+
     tx.setSender(senderAddress);
     tx.setGasOwner(gasAddress);
 
-    // Build the transaction to get gas estimate
     const builtBytes = await tx.build({ client });
 
-    // Estimate gas cost — dry run
     const dryRun = await client.dryRunTransactionBlock({
       transactionBlock: Buffer.from(builtBytes).toString('base64'),
     });
@@ -86,12 +97,10 @@ export async function sponsorTransaction(
       ) / 1e9;
     }
 
-    // Check fee ceiling for non-bootstrap requests
     if (type === 'fallback' && exceedsGasFeeCeiling(gasCostSui)) {
       throw new Error(`GAS_FEE_EXCEEDED: Gas cost $${gasCostToUsd(gasCostSui).toFixed(4)} exceeds $${GAS_FEE_CEILING} ceiling`);
     }
 
-    // Sponsor signs the transaction
     const { signature } = await gasKeypair.signTransaction(builtBytes);
 
     return {

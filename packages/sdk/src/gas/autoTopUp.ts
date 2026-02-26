@@ -49,11 +49,8 @@ export async function executeAutoTopUp(
     amount: topupAmountHuman,
   });
 
-  // Send JSON-serialized tx to gas station (avoids BCS TransactionKind compat issues)
   const txJson = tx.serialize();
-  const txBytesBase64 = Buffer.from(txJson).toString('base64');
-
-  const sponsoredResult = await requestGasSponsorship(txBytesBase64, address, 'auto-topup');
+  const sponsoredResult = await requestGasSponsorship(txJson, address, 'auto-topup');
 
   // Sign with agent key and submit
   const sponsoredTxBytes = Buffer.from(sponsoredResult.txBytes, 'base64');

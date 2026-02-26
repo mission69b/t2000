@@ -11,17 +11,22 @@ const gas = new Hono();
 
 gas.post('/api/gas', async (c) => {
   const body = await c.req.json<{
-    txBytes: string;
+    txJson?: string;
+    txBytes?: string;
     sender: string;
     type?: GasRequestType;
   }>();
 
-  if (!body.txBytes || !body.sender) {
-    return c.json({ error: 'txBytes and sender are required' }, 400);
+  if ((!body.txJson && !body.txBytes) || !body.sender) {
+    return c.json({ error: 'txJson (or txBytes) and sender are required' }, 400);
   }
 
   try {
-    const result = await sponsorTransaction(body.txBytes, body.sender, body.type);
+    const result = await sponsorTransaction(
+      { txJson: body.txJson, txBytes: body.txBytes },
+      body.sender,
+      body.type,
+    );
     return c.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Gas sponsorship failed';
