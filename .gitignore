@@ -38,5 +38,8 @@ infra/.env.infra
 # specs (private reference docs)
 spec/
 
+# marketing (private)
+marketing/
+
 # pnpm store
 .pnpm-store/
