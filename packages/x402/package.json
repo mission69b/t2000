@@ -1,6 +1,6 @@
 {
   "name": "@t2000/x402",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "x402 payment protocol client for AI agents on Sui — pay for API resources with USDC",
   "type": "module",
   "main": "./dist/index.cjs",

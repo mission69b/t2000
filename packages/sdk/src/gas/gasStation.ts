@@ -19,18 +19,22 @@ export interface GasStatusResponse {
 
 /**
  * Request gas sponsorship from the gas station.
- * Sends the transaction as a JSON string (from Transaction.serialize()).
- * The server reconstructs it with Transaction.from(jsonString).
+ *
+ * Sends both `txJson` (preferred, v0.2.0+ server) and `txBytes` (base64-encoded
+ * JSON for backward compat with v0.1.9 server). The server uses whichever field
+ * it understands.
  */
 export async function requestGasSponsorship(
   txJson: string,
   sender: string,
   type?: GasRequestType,
 ): Promise<GasSponsorResponse> {
+  const txBytes = Buffer.from(txJson).toString('base64');
+
   const res = await fetch(`${API_BASE_URL}/api/gas`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ txJson, sender, type }),
+    body: JSON.stringify({ txJson, txBytes, sender, type }),
   });
 
   const data = (await res.json()) as Record<string, unknown>;
