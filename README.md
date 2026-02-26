@@ -21,9 +21,9 @@ Your agent can hold money, earn yield, borrow against savings, exchange currenci
 ```typescript
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
 await agent.send({ to: '0x...', amount: 50 });
-await agent.save({ amount: 100 });     // earn ~4–8% APY via NAVI Protocol
-await agent.borrow({ amount: 20 });    // borrow against savings
-await agent.repay({ amount: 20 });     // repay debt
+await agent.save({ amount: 100, asset: 'USDC' });   // earn ~4–8% APY via NAVI Protocol
+await agent.borrow({ amount: 20, asset: 'USDC' });  // borrow against savings
+await agent.repay({ amount: 20, asset: 'USDC' });   // repay debt
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 ```
 
@@ -41,15 +41,15 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
 
-❯ t2000 save 80
+❯ t2000 save 80 USDC
   ✓ Saved $80.00 USDC to NAVI
   APY: 4.21% · Earning ~$0.009/day
 
-❯ t2000 borrow 20
+❯ t2000 borrow 20 USDC
   ✓ Borrowed $20.00 USDC (same-asset)
   Health Factor: 3.39
 
-❯ t2000 repay 20
+❯ t2000 repay 20 USDC
   ✓ Repaid $20.00 USDC · Debt: $0.00
 
 ❯ t2000 swap 5 USDC to SUI
@@ -90,7 +90,7 @@ npm install -g @t2000/cli          # Install globally for persistent use
 
 t2000 balance                      # Check balance
 t2000 send 10 USDC to 0x...       # Send USDC
-t2000 save all                     # Earn yield on idle funds
+t2000 save all USDC                # Earn yield on idle funds
 t2000 pay https://api.example.com  # Pay for x402 APIs
 ```
 
@@ -141,11 +141,11 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | **Wallet** | `agent.balance()` | Available + savings + gas breakdown |
 | | `agent.send({ to, amount })` | Send USDC |
 | | `agent.history()` | Transaction log |
-| **Savings** | `agent.save({ amount })` | Deposit to NAVI, earn APY |
-| | `agent.withdraw({ amount })` | Withdraw from savings |
+| **Savings** | `agent.save({ amount, asset: 'USDC' })` | Deposit to NAVI, earn APY |
+| | `agent.withdraw({ amount, asset: 'USDC' })` | Withdraw from savings |
 | | `agent.earnings()` | Yield earned, daily rate |
-| **Credit** | `agent.borrow({ amount })` | Borrow against collateral |
-| | `agent.repay({ amount })` | Repay debt |
+| **Credit** | `agent.borrow({ amount, asset: 'USDC' })` | Borrow against collateral |
+| | `agent.repay({ amount, asset: 'USDC' })` | Repay debt |
 | | `agent.healthFactor()` | Liquidation safety |
 | **Exchange** | `agent.swap({ from, to, amount })` | Swap via Cetus DEX |
 | **x402** | `agent.pay(url)` | Pay for x402 APIs |
@@ -164,10 +164,10 @@ t2000 send 10 USDC to 0x...       Send USDC
 t2000 history                      Transaction history
 
 # Savings & DeFi
-t2000 save 50                      Earn yield via NAVI
-t2000 withdraw 25                  Withdraw savings
-t2000 borrow 10                    Borrow against collateral
-t2000 repay 10                     Repay debt
+t2000 save 50 USDC                 Earn yield via NAVI
+t2000 withdraw 25 USDC             Withdraw savings
+t2000 borrow 10 USDC              Borrow against collateral
+t2000 repay 10 USDC               Repay debt
 t2000 swap 5 USDC SUI             Swap via Cetus DEX
 t2000 earnings                     Yield earned
 t2000 health                       Health factor

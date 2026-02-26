@@ -20,12 +20,12 @@ withdrawable at any time (subject to utilization).
 
 ## Command
 ```bash
-t2000 save <amount>
-t2000 save all
+t2000 save <amount> USDC
+t2000 save all USDC
 
 # Examples:
-t2000 save 80
-t2000 save all
+t2000 save 80 USDC
+t2000 save all USDC
 ```
 
 ## Important: how `save all` works

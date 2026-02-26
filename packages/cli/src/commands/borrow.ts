@@ -8,8 +8,9 @@ export function registerBorrow(program: Command) {
     .command('borrow')
     .description('Borrow USDC against savings collateral')
     .argument('<amount>', 'Amount in USDC to borrow')
+    .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
-    .action(async (amountStr, opts) => {
+    .action(async (amountStr, assetStr, opts) => {
       try {
         const amount = parseFloat(amountStr);
         if (isNaN(amount) || amount <= 0) {
@@ -31,7 +32,8 @@ export function registerBorrow(program: Command) {
           if (!ok) return;
         }
 
-        const result = await agent.borrow({ amount });
+        const asset = assetStr ?? 'USDC';
+        const result = await agent.borrow({ amount, asset });
 
         if (isJsonMode()) {
           printJson(result);

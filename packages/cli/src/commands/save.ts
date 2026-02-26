@@ -5,7 +5,7 @@ import { resolvePin, askConfirm } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
 export function registerSave(program: Command) {
-  const action = async (amountStr: string, opts: { key?: string }) => {
+  const action = async (amountStr: string, assetStr: string | undefined, opts: { key?: string }) => {
       try {
         const amount: number | 'all' = amountStr === 'all' ? 'all' : parseFloat(amountStr);
         if (amount !== 'all' && (isNaN(amount) || amount <= 0)) {
@@ -27,7 +27,8 @@ export function registerSave(program: Command) {
           gasManagerUsdc = data.usdcSpent;
         });
 
-        const result = await agent.save({ amount });
+        const asset = assetStr ?? 'USDC';
+        const result = await agent.save({ amount, asset });
 
         if (isJsonMode()) {
           printJson(result);
@@ -62,6 +63,7 @@ export function registerSave(program: Command) {
     .command('save')
     .description('Deposit USDC into savings (NAVI Protocol)')
     .argument('<amount>', 'Amount in USDC to save (or "all")')
+    .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
     .action(action);
 
@@ -69,6 +71,7 @@ export function registerSave(program: Command) {
     .command('supply')
     .description('Deposit USDC into savings (alias for save)')
     .argument('<amount>', 'Amount in USDC to save (or "all")')
+    .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
     .action(action);
 }

@@ -18,12 +18,12 @@ Return borrowed USDC to NAVI to reduce loan balance and improve health factor.
 
 ## Command
 ```bash
-t2000 repay <amount>
-t2000 repay all          # repays full outstanding balance including interest
+t2000 repay <amount> USDC
+t2000 repay all USDC     # repays full outstanding balance including interest
 
 # Examples:
-t2000 repay 20
-t2000 repay all
+t2000 repay 20 USDC
+t2000 repay all USDC
 ```
 
 ## Output

@@ -35,13 +35,13 @@ console.log(`$${balance.available} USDC available`);
 await agent.send({ to: '0x...', amount: 10 });
 
 // Save (earn yield via NAVI Protocol)
-await agent.save({ amount: 50 });
+await agent.save({ amount: 50, asset: 'USDC' });
 
 // Swap USDC → SUI (via Cetus DEX)
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 
 // Borrow against savings
-await agent.borrow({ amount: 20 });
+await agent.borrow({ amount: 20, asset: 'USDC' });
 ```
 
 ## API Reference
@@ -65,11 +65,11 @@ const agent = await T2000.create({
 |--------|-------------|---------|
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount })` | Deposit USDC to NAVI Protocol (earn APY) | `SaveResult` |
-| `agent.withdraw({ amount })` | Withdraw USDC from savings | `WithdrawResult` |
+| `agent.save({ amount, asset: 'USDC' })` | Deposit USDC to NAVI Protocol (earn APY) | `SaveResult` |
+| `agent.withdraw({ amount, asset: 'USDC' })` | Withdraw USDC from savings | `WithdrawResult` |
 | `agent.swap({ from, to, amount })` | Swap via Cetus CLMM DEX | `SwapResult` |
-| `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
-| `agent.repay({ amount })` | Repay outstanding borrows | `RepayResult` |
+| `agent.borrow({ amount, asset: 'USDC' })` | Borrow USDC against collateral | `BorrowResult` |
+| `agent.repay({ amount, asset: 'USDC' })` | Repay outstanding borrows | `RepayResult` |
 
 ### Query Methods
 

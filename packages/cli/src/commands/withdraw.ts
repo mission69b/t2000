@@ -8,8 +8,9 @@ export function registerWithdraw(program: Command) {
     .command('withdraw')
     .description('Withdraw USDC from savings')
     .argument('<amount>', 'Amount in USDC to withdraw (or "all")')
+    .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
-    .action(async (amountStr, opts) => {
+    .action(async (amountStr, assetStr, opts) => {
       try {
         const amount: number | 'all' = amountStr === 'all' ? 'all' : parseFloat(amountStr);
         if (amount !== 'all' && (isNaN(amount) || amount <= 0)) {
@@ -34,7 +35,8 @@ export function registerWithdraw(program: Command) {
           if (!ok) return;
         }
 
-        const result = await agent.withdraw({ amount });
+        const asset = assetStr ?? 'USDC';
+        const result = await agent.withdraw({ amount, asset });
 
         if (isJsonMode()) {
           printJson(result);

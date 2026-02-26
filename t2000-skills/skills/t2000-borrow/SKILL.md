@@ -20,10 +20,10 @@ Borrowed USDC goes to the available balance. A 0.05% protocol fee applies.
 
 ## Command
 ```bash
-t2000 borrow <amount>
+t2000 borrow <amount> USDC
 
 # Example:
-t2000 borrow 40
+t2000 borrow 40 USDC
 ```
 
 ## Before borrowing: check limits

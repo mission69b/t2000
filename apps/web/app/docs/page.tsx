@@ -402,7 +402,7 @@ function QuickStart({
         {"  "}{S.m("Install globally for persistent use:")}{"\n"}
         {"  "}{S.b("npm install -g @t2000/cli")}{"\n\n"}
         {"  "}{S.b("t2000 balance")}    check for funds{"\n"}
-        {"  "}{S.b("t2000 save all")}   start earning yield{"\n"}
+        {"  "}{S.b("t2000 save all USDC")}   start earning yield{"\n"}
         {"  "}{S.b("t2000 address")}    show address again
       </CodeBlock>
       <Callout type="tip" label="Tip">
@@ -443,7 +443,7 @@ function QuickStart({
               Put idle funds to work
             </div>
             <CodeBlock lang="bash">
-              {S.g("$")} t2000 save all{"\n\n"}
+              {S.g("$")} t2000 save all USDC{"\n\n"}
               {S.g("✓")} Gas manager: {S.a("$1.00")} USDC → SUI{"\n"}
               {S.g("✓")} Saved {S.a("$99.00")} USDC to NAVI{"\n"}
               {S.g("✓")} Protocol fee: {S.m("$0.099 USDC (0.1%)")}{"\n"}
@@ -679,7 +679,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {S.m("Install globally for persistent use:")}{"\n"}
         {S.b("npm install -g @t2000/cli")}{"\n\n"}
         {S.b("t2000 balance")}    check for funds{"\n"}
-        {S.b("t2000 save all")}   start earning yield{"\n"}
+        {S.b("t2000 save all USDC")}   start earning yield{"\n"}
         {S.b("t2000 address")}    show address again
       </CodeBlock>
 
@@ -719,10 +719,10 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-save">t2000 save</h2>
       <p>Deposit USDC into NAVI Protocol to earn variable APY.</p>
       <CodeBlock lang="bash">
-        t2000 save &lt;amount&gt;{"\n"}
-        t2000 save all              {S.c("# saves everything; gas manager runs first if needed")}{"\n\n"}
-        t2000 save {S.a("80")}{"\n"}
-        t2000 save all
+        t2000 save &lt;amount&gt; USDC{"\n"}
+        t2000 save all USDC         {S.c("# saves everything; gas manager runs first if needed")}{"\n\n"}
+        t2000 save {S.a("80")} USDC{"\n"}
+        t2000 save all USDC
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Saved {S.a("$80.00")} USDC to NAVI{"\n"}
@@ -740,8 +740,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-withdraw">t2000 withdraw</h2>
       <p>Pull USDC from savings back to checking. Risk-checked if you have an active loan.</p>
       <CodeBlock lang="bash">
-        t2000 withdraw &lt;amount&gt;{"\n"}
-        t2000 withdraw all{"\n\n"}
+        t2000 withdraw &lt;amount&gt; USDC{"\n"}
+        t2000 withdraw all USDC{"\n\n"}
         {S.c("# Check safe limits first if you have an active loan:")}{"\n"}
         t2000 balance --show-limits
       </CodeBlock>
@@ -753,8 +753,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-borrow">t2000 borrow</h2>
       <p>Borrow USDC against your savings collateral. Health factor must stay above 1.5.</p>
       <CodeBlock lang="bash">
-        t2000 borrow &lt;amount&gt;{"\n\n"}
-        t2000 borrow {S.a("40")}    {S.c("# health factor enforced — must stay ≥ 1.5")}
+        t2000 borrow &lt;amount&gt; USDC{"\n\n"}
+        t2000 borrow {S.a("40")} USDC    {S.c("# health factor enforced — must stay ≥ 1.5")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Borrowed {S.a("$40.00")} USDC{"\n"}
@@ -765,8 +765,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-repay">t2000 repay</h2>
       <p>Repay outstanding borrows. Use <InlineCode>all</InlineCode> to clear the full debt including accrued interest.</p>
       <CodeBlock lang="bash">
-        t2000 repay &lt;amount&gt;{"\n"}
-        t2000 repay all             {S.c("# includes accrued interest")}
+        t2000 repay &lt;amount&gt; USDC{"\n"}
+        t2000 repay all USDC        {S.c("# includes accrued interest")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Repaid {S.a("$40.00")} USDC{"\n"}
@@ -1175,10 +1175,10 @@ function DefiSection() {
       </p>
       <CodeBlock lang="bash">
         {S.c("# Typical leverage loop for an agent:")}{"\n"}
-        {S.g("$")} t2000 save all                  {S.c("# deposit to savings")}{"\n"}
+        {S.g("$")} t2000 save all USDC             {S.c("# deposit to savings")}{"\n"}
         {S.g("$")} t2000 balance --show-limits      {S.c("# check maxBorrow")}{"\n"}
-        {S.g("$")} t2000 borrow {S.a("40")}                  {S.c("# borrow against collateral")}{"\n"}
-        {S.g("$")} t2000 save {S.a("40")}                    {S.c("# deposit borrowed USDC for more yield")}
+        {S.g("$")} t2000 borrow {S.a("40")} USDC             {S.c("# borrow against collateral")}{"\n"}
+        {S.g("$")} t2000 save {S.a("40")} USDC               {S.c("# deposit borrowed USDC for more yield")}
       </CodeBlock>
     </>
   );

@@ -23,7 +23,7 @@ const ACCOUNTS = [
     title: "Savings",
     subtitle: "Earn · Yield · NAVI",
     desc: "Idle USDC earns yield automatically via NAVI Protocol (~4–8% APY). Deposits are non-custodial, composable with the borrow account, and withdrawable any time.",
-    cmd: "t2000 save all",
+    cmd: "t2000 save all USDC",
   },
   {
     num: "03 / 04",
@@ -31,7 +31,7 @@ const ACCOUNTS = [
     title: "Credit",
     subtitle: "Borrow · Repay · NAVI",
     desc: "Borrow USDC against savings collateral without selling the position. Health factor is enforced on-chain. The agent can leverage, operate, and repay autonomously.",
-    cmd: "t2000 borrow 40",
+    cmd: "t2000 borrow 40 USDC",
   },
   {
     num: "04 / 04",

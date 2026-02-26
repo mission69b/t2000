@@ -43,21 +43,21 @@ npm install -g @t2000/cli
   npm install -g @t2000/cli
 
   t2000 balance            check for funds
-  t2000 save all           start earning yield
+  t2000 save all USDC      start earning yield
   t2000 address            show address again
 
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
   Tx:  https://suiscan.xyz/mainnet/tx/0xa1b2...
 
-❯ t2000 save 80
+❯ t2000 save 80 USDC
   ✓ Saved $80.00 USDC to NAVI
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
   ✓ Savings balance: $79.92 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0x9f2c...
 
-❯ t2000 borrow 20
+❯ t2000 borrow 20 USDC
   ✓ Borrowed $20.00 USDC
   Health Factor:  3.39
   Tx:  https://suiscan.xyz/mainnet/tx/0xb3c4...
@@ -72,12 +72,12 @@ npm install -g @t2000/cli
   ✓ Paid $0.01 USDC (tx: 0x9f2c...a801)
   ← 200 OK  [342ms]
 
-❯ t2000 repay 20
+❯ t2000 repay 20 USDC
   ✓ Repaid $20.00 USDC
   Remaining Debt:  $0.00
   Tx:  https://suiscan.xyz/mainnet/tx/0xe7f8...
 
-❯ t2000 withdraw all
+❯ t2000 withdraw all USDC
   ✓ Withdrew $79.92 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0xf9a0...
 
@@ -116,10 +116,10 @@ npm install -g @t2000/cli
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount>` | Deposit USDC to NAVI Protocol (earn ~4–8% APY) |
-| `t2000 withdraw <amount>` | Withdraw USDC from savings |
-| `t2000 borrow <amount>` | Borrow USDC against savings collateral |
-| `t2000 repay <amount>` | Repay outstanding borrows |
+| `t2000 save <amount> USDC` | Deposit USDC to NAVI Protocol (earn ~4–8% APY) |
+| `t2000 withdraw <amount> USDC` | Withdraw USDC from savings |
+| `t2000 borrow <amount> USDC` | Borrow USDC against savings collateral |
+| `t2000 repay <amount> USDC` | Repay outstanding borrows |
 | `t2000 swap <amount> <from> <to>` | Swap via Cetus DEX (e.g. `swap 5 USDC SUI`) |
 | `t2000 health` | Check savings health factor |
 | `t2000 rates` | Current NAVI save/borrow APYs |
@@ -202,10 +202,10 @@ You never need to manually acquire SUI for gas.
 
 ```bash
 # Full DeFi cycle
-t2000 save all              # Deposit all available USDC
-t2000 borrow 40             # Borrow against it
-t2000 repay 40              # Pay it back
-t2000 withdraw all          # Get everything out
+t2000 save all USDC         # Deposit all available USDC
+t2000 borrow 40 USDC       # Borrow against it
+t2000 repay 40 USDC        # Pay it back
+t2000 withdraw all USDC    # Get everything out
 
 # Automation-friendly (no prompts, JSON output)
 t2000 balance --json
