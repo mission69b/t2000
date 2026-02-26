@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -45,6 +46,7 @@ export default function RootLayout({
         className={`${ibmPlexMono.variable} ${instrumentSerif.variable}`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
