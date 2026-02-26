@@ -1,8 +1,15 @@
 /**
  * t2000 Integration Test — Mainnet
  *
- * Requires T2000_PASSPHRASE env var set to a suiprivkey1... private key.
+ * Requires T2000_PASSPHRASE or T2000_PIN env var set to a suiprivkey1... private key.
  * The wallet must have at least $5 USDC and 0.05 SUI for gas.
+ *
+ * All operations route through executeWithGas() which has a 3-step gas chain:
+ *   1. Self-funded (enough SUI)
+ *   2. Auto-topup (swap USDC→SUI via sponsored tx)
+ *   3. Gas station sponsored (fallback)
+ *
+ * Each test asserts gasMethod ∈ {'self-funded', 'auto-topup', 'sponsored'}.
  *
  * Usage:
  *   source .env.local && pnpm dlx tsx scripts/integration-test.ts
@@ -10,9 +17,9 @@
 
 import { T2000 } from '../packages/sdk/src/index.js';
 
-const PRIVATE_KEY = process.env.T2000_PASSPHRASE;
+const PRIVATE_KEY = process.env.T2000_PASSPHRASE ?? process.env.T2000_PIN;
 if (!PRIVATE_KEY) {
-  console.error('Set T2000_PASSPHRASE in .env.local');
+  console.error('Set T2000_PASSPHRASE or T2000_PIN in .env.local');
   process.exit(1);
 }
 
@@ -148,6 +155,7 @@ async function main() {
     assert(result.apy > 0, 'APY returned');
     assert(result.fee > 0, 'fee was charged');
     assert(result.gasCost > 0, 'gas was consumed');
+    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     const balAfter = await agent.balance();
     assert(balAfter.available < balBefore.available, 'available decreased after save');
@@ -202,6 +210,7 @@ async function main() {
     assert(result.healthFactor > 1.0, 'health factor > 1 after borrow');
     assert(result.fee >= 0, 'fee is non-negative');
     assert(result.gasCost > 0, 'gas was consumed');
+    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     didBorrow = true;
   });
@@ -255,6 +264,7 @@ async function main() {
     assert(result.amount === BORROW_AMOUNT, 'repay amount matches');
     assert(result.remainingDebt >= 0, 'remaining debt >= 0');
     assert(result.gasCost > 0, 'gas was consumed');
+    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
   });
 
   // ── 13. Swap (USDC → SUI) ──
@@ -275,6 +285,7 @@ async function main() {
     assert(result.toAmount > 0, 'received SUI > 0');
     assert(result.fee > 0, 'swap fee charged');
     assert(result.priceImpact >= 0, 'priceImpact >= 0');
+    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     const suiAfter = (await agent.balance()).gasReserve.sui;
     assert(suiAfter > suiBefore, 'SUI balance increased after swap');
@@ -305,6 +316,7 @@ async function main() {
 
     assert(result.success === true, 'withdraw succeeded');
     assert(result.amount > 0, 'withdrew amount > 0');
+    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     const balAfter = await agent.balance();
     assert(balAfter.savings < 0.01, 'savings ≈ 0 after withdraw all');

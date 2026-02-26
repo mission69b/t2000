@@ -587,10 +587,22 @@ function ConceptsSection() {
 
       <h2 id="con-gas">Gas management</h2>
       <p>
-        t2000 manages its own gas. Every transaction is self-funded from the SUI
-        reserve. If the SUI reserve is too low, the gas manager auto-converts up
-        to $1 USDC → SUI before executing your intended operation. You never
-        need to manually top up gas.
+        Every operation routes through a 3-step gas resolution chain. The agent
+        never fails due to low gas if it has USDC or the Gas Station is
+        reachable:
+      </p>
+      <DocTable
+        headers={["Step", "Strategy", "Condition"]}
+        rows={[
+          ["1", "Self-funded", "SUI ≥ 0.05 — uses agent's own SUI"],
+          ["2", "Auto-topup", "SUI < 0.05, USDC ≥ $2 — swaps $1 USDC → SUI (sponsored), then self-funds"],
+          ["3", "Sponsored", "Steps 1 & 2 fail — Gas Station sponsors the full transaction"],
+        ]}
+      />
+      <p>
+        Every transaction result includes a <InlineCode>gasMethod</InlineCode> field
+        (<InlineCode>self-funded</InlineCode> | <InlineCode>auto-topup</InlineCode> | <InlineCode>sponsored</InlineCode>)
+        indicating which strategy was used. You never need to manually top up gas.
       </p>
 
       <h2 id="con-ptb">Programmable Transaction Blocks</h2>

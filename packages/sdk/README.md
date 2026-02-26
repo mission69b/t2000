@@ -147,13 +147,18 @@ validateAddress('0x...');        // throws if invalid
 
 ## Gas Abstraction
 
-Gas is handled automatically with three strategies:
+Every operation (send, save, borrow, repay, withdraw, swap) routes through a 3-step gas resolution chain via `executeWithGas()`. The agent never fails due to low gas if it has USDC or the Gas Station is reachable:
 
-1. **Self-funded** — uses the agent's SUI balance
-2. **Auto-topup** — swaps $1 USDC → SUI when gas runs low (< 0.05 SUI)
-3. **Sponsored** — Gas Station fallback for bootstrapping (first 10 transactions)
+| Step | Strategy | Condition | How it works |
+|------|----------|-----------|--------------|
+| 1 | **Self-funded** | SUI ≥ 0.05 | Uses the agent's own SUI for gas |
+| 2 | **Auto-topup** | SUI < 0.05, USDC ≥ $2 | Swaps $1 USDC → SUI (swap is gas-sponsored), then self-funds |
+| 3 | **Sponsored** | Steps 1 & 2 fail | Gas Station sponsors the full transaction |
+| 4 | **Error** | All fail | Throws `INSUFFICIENT_GAS` |
 
-Every transaction result includes a `gasMethod` field indicating which strategy was used.
+Every transaction result includes a `gasMethod` field (`'self-funded'` | `'auto-topup'` | `'sponsored'`) indicating which strategy was used.
+
+**Architecture:** Each protocol operation (NAVI, Cetus, send) exposes a `buildXxxTx()` function that returns a `Transaction` without executing it. `executeWithGas()` then handles execution with the fallback chain. This separation ensures gas management is consistent across all operations.
 
 ## Configuration
 
