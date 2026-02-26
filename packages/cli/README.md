@@ -50,14 +50,14 @@ npm install -g @t2000/cli
   ✓ Sent $10.00 USDC → 0x8b3e...d412
   Tx:  https://suiscan.xyz/mainnet/tx/0xa1b2...
 
-❯ t2000 save 80 USDC
+❯ t2000 save 80
   ✓ Saved $80.00 USDC to NAVI
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
   ✓ Savings balance: $79.92 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0x9f2c...
 
-❯ t2000 borrow 20 USDC
+❯ t2000 borrow 20
   ✓ Borrowed $20.00 USDC
   Health Factor:  3.39
   Tx:  https://suiscan.xyz/mainnet/tx/0xb3c4...
@@ -72,7 +72,7 @@ npm install -g @t2000/cli
   ✓ Paid $0.01 USDC (tx: 0x9f2c...a801)
   ← 200 OK  [342ms]
 
-❯ t2000 repay 20 USDC
+❯ t2000 repay 20
   ✓ Repaid $20.00 USDC
   Remaining Debt:  $0.00
   Tx:  https://suiscan.xyz/mainnet/tx/0xe7f8...
@@ -203,8 +203,8 @@ You never need to manually acquire SUI for gas.
 ```bash
 # Full DeFi cycle
 t2000 save all              # Deposit all available USDC
-t2000 borrow 40 USDC        # Borrow against it
-t2000 repay 40 USDC         # Pay it back
+t2000 borrow 40             # Borrow against it
+t2000 repay 40              # Pay it back
 t2000 withdraw all          # Get everything out
 
 # Automation-friendly (no prompts, JSON output)

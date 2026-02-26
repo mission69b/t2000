@@ -41,15 +41,15 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
 
-❯ t2000 save 80 USDC
+❯ t2000 save 80
   ✓ Saved $80.00 USDC to NAVI
   APY: 4.21% · Earning ~$0.009/day
 
-❯ t2000 borrow 20 USDC
+❯ t2000 borrow 20
   ✓ Borrowed $20.00 USDC (same-asset)
   Health Factor: 3.39
 
-❯ t2000 repay 20 USDC
+❯ t2000 repay 20
   ✓ Repaid $20.00 USDC · Debt: $0.00
 
 ❯ t2000 swap 5 USDC to SUI

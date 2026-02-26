@@ -19,11 +19,11 @@ Move USDC from NAVI savings back to the available balance.
 
 ## Command
 ```bash
-t2000 withdraw <amount> USDC
+t2000 withdraw <amount>
 t2000 withdraw all
 
 # Examples:
-t2000 withdraw 50 USDC
+t2000 withdraw 50
 t2000 withdraw all
 ```
 

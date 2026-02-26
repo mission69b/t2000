@@ -31,7 +31,7 @@ const ACCOUNTS = [
     title: "Credit",
     subtitle: "Borrow · Repay · NAVI",
     desc: "Borrow USDC against savings collateral without selling the position. Health factor is enforced on-chain. The agent can leverage, operate, and repay autonomously.",
-    cmd: "t2000 borrow 40 USDC",
+    cmd: "t2000 borrow 40",
   },
   {
     num: "04 / 04",
@@ -50,7 +50,7 @@ const STEPS = [
     badge: "30s",
     badgeType: "done" as const,
     content:
-      "Generates an Ed25519 keypair, encrypts it with AES-256-GCM, and bootstraps the wallet with 10 Gas Station-sponsored transactions.",
+      "Generates an Ed25519 keypair, encrypts it with AES-256-GCM, and deposits SUI for gas via the Gas Station.",
     code: "npx @t2000/cli init",
   },
   {

@@ -427,9 +427,9 @@ function QuickStart({
               {S.g("$")} t2000 balance{"\n\n"}
               Available:  {S.a("$100.00")} USDC  {S.c("(checking — spendable)")}{"\n"}
               Savings:    {S.a("$0.00")} USDC{"\n"}
-              Gas:        {S.a("0.00")} SUI{"\n"}
+              Gas:        {S.a("0.05")} SUI    {S.c("(~$0.18)")}{"\n"}
               {S.m("──────────────────────")}{"\n"}
-              Total:      {S.a("$100.00")} USDC
+              Total:      {S.a("$100.18")} USDC
             </CodeBlock>
           </div>
         </li>
@@ -520,7 +520,7 @@ function InstallSection() {
         {S.g("$")} npx @t2000/cli init{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.1.2")}
+        {S.a("0.1.4")}
       </CodeBlock>
 
       <h2 id="inst-config">Config file</h2>
@@ -707,9 +707,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-save">t2000 save</h2>
       <p>Deposit USDC into NAVI Protocol to earn variable APY.</p>
       <CodeBlock lang="bash">
-        t2000 save &lt;amount&gt; USDC{"\n"}
+        t2000 save &lt;amount&gt;{"\n"}
         t2000 save all              {S.c("# saves everything; gas manager runs first if needed")}{"\n\n"}
-        t2000 save {S.a("80")} USDC{"\n"}
+        t2000 save {S.a("80")}{"\n"}
         t2000 save all
       </CodeBlock>
       <CodeBlock lang="output">
@@ -728,7 +728,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-withdraw">t2000 withdraw</h2>
       <p>Pull USDC from savings back to checking. Risk-checked if you have an active loan.</p>
       <CodeBlock lang="bash">
-        t2000 withdraw &lt;amount&gt; USDC{"\n"}
+        t2000 withdraw &lt;amount&gt;{"\n"}
         t2000 withdraw all{"\n\n"}
         {S.c("# Check safe limits first if you have an active loan:")}{"\n"}
         t2000 balance --show-limits
@@ -741,8 +741,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-borrow">t2000 borrow</h2>
       <p>Borrow USDC against your savings collateral. Health factor must stay above 1.5.</p>
       <CodeBlock lang="bash">
-        t2000 borrow &lt;amount&gt; USDC{"\n\n"}
-        t2000 borrow {S.a("40")} USDC    {S.c("# health factor enforced — must stay ≥ 1.5")}
+        t2000 borrow &lt;amount&gt;{"\n\n"}
+        t2000 borrow {S.a("40")}    {S.c("# health factor enforced — must stay ≥ 1.5")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Borrowed {S.a("$40.00")} USDC{"\n"}
@@ -753,7 +753,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-repay">t2000 repay</h2>
       <p>Repay outstanding borrows. Use <InlineCode>all</InlineCode> to clear the full debt including accrued interest.</p>
       <CodeBlock lang="bash">
-        t2000 repay &lt;amount&gt; USDC{"\n"}
+        t2000 repay &lt;amount&gt;{"\n"}
         t2000 repay all             {S.c("# includes accrued interest")}
       </CodeBlock>
       <CodeBlock lang="output">
@@ -1165,8 +1165,8 @@ function DefiSection() {
         {S.c("# Typical leverage loop for an agent:")}{"\n"}
         {S.g("$")} t2000 save all                  {S.c("# deposit to savings")}{"\n"}
         {S.g("$")} t2000 balance --show-limits      {S.c("# check maxBorrow")}{"\n"}
-        {S.g("$")} t2000 borrow {S.a("40")} USDC             {S.c("# borrow against collateral")}{"\n"}
-        {S.g("$")} t2000 save {S.a("40")} USDC               {S.c("# deposit borrowed USDC for more yield")}
+        {S.g("$")} t2000 borrow {S.a("40")}                  {S.c("# borrow against collateral")}{"\n"}
+        {S.g("$")} t2000 save {S.a("40")}                    {S.c("# deposit borrowed USDC for more yield")}
       </CodeBlock>
     </>
   );
@@ -1235,7 +1235,7 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.1.2 <Badge color="green">current</Badge>
+        v0.1.4 <Badge color="green">current</Badge>
       </h2>
       <p>
         Full bank account model: checking, savings, credit, and currency
@@ -1394,7 +1394,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.1.2
+            v0.1.4
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

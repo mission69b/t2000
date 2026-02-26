@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd, getRates, getGasStatus } from '@t2000/sdk';
+import { T2000, formatUsd, getRates } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printLine } from '../output.js';
 
@@ -59,17 +59,7 @@ export function registerBalance(program: Command) {
         printBlank();
         printKeyValue('Available', `${formatUsd(bal.available)} USDC  ${pc.dim('(checking — spendable)')}`);
         printKeyValue('Savings', `${formatUsd(bal.savings)} USDC${apyStr}`);
-        let gasNote = `(~${formatUsd(bal.gasReserve.usdEquiv)})`;
-        if (bal.gasReserve.sui === 0) {
-          try {
-            const status = await getGasStatus(agent.address());
-            const remaining = status.bootstrapRemaining ?? 0;
-            if (remaining > 0) {
-              gasNote = `(${remaining} sponsored tx remaining)`;
-            }
-          } catch { /* gas station unreachable */ }
-        }
-        printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(gasNote)}`);
+        printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
         printSeparator();
         printKeyValue('Total', `${formatUsd(bal.total)} USDC`);
 

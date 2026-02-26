@@ -24,7 +24,7 @@ const LINES: TerminalLine[] = [
   { type: "success", text: "✓ Sent $10.00 USDC → 0x8b3e...d412", delay: 500 },
   { type: "info", text: "  Tx: https://suiscan.xyz/mainnet/tx/0xa1b2...", delay: 200 },
 
-  { type: "command", text: "❯ t2000 save 80 USDC", delay: 1200 },
+  { type: "command", text: "❯ t2000 save 80", delay: 1200 },
   {
     type: "success",
     text: "✓ Saved $80.00 USDC to NAVI",
@@ -32,11 +32,11 @@ const LINES: TerminalLine[] = [
   },
   { type: "info", text: "  APY: 4.21% · Earning ~$0.009/day", delay: 250 },
 
-  { type: "command", text: "❯ t2000 borrow 20 USDC", delay: 1200 },
+  { type: "command", text: "❯ t2000 borrow 20", delay: 1200 },
   { type: "success", text: "✓ Borrowed $20.00 USDC (same-asset)", delay: 600 },
   { type: "info", text: "  Health Factor: 3.39", delay: 250 },
 
-  { type: "command", text: "❯ t2000 repay 20 USDC", delay: 1200 },
+  { type: "command", text: "❯ t2000 repay 20", delay: 1200 },
   { type: "success", text: "✓ Repaid $20.00 USDC · Debt: $0.00", delay: 600 },
 
   { type: "command", text: "❯ t2000 swap 5 USDC to SUI", delay: 1200 },

@@ -1,6 +1,6 @@
 {
   "name": "@t2000/x402",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "x402 payment protocol client for AI agents on Sui — pay for API resources with USDC",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -21,7 +21,7 @@
   "author": "t2000",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mission69b/t2000",
+    "url": "git+https://github.com/mission69b/t2000.git",
     "directory": "packages/x402"
   },
   "homepage": "https://t2000.ai",
