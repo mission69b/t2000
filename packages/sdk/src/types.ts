@@ -44,6 +44,7 @@ export interface SaveResult {
   fee: number;
   gasCost: number;
   gasMethod: GasMethod;
+  savingsBalance: number;
 }
 
 export interface WithdrawResult {

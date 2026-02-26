@@ -243,6 +243,16 @@ export class T2000 extends EventEmitter<T2000Events> {
     reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange('USDC', saveAmount, 'save', gasResult.digest);
 
+    let savingsBalance = saveAmount - fee.amount;
+    try {
+      const positions = await this.positions();
+      savingsBalance = positions.positions
+        .filter((p) => p.type === 'save')
+        .reduce((sum, p) => sum + p.amount, 0);
+    } catch {
+      // NAVI query failed — fall back to deposit amount
+    }
+
     return {
       success: true,
       tx: gasResult.digest,
@@ -251,6 +261,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       fee: fee.amount,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
+      savingsBalance,
     };
   }
 

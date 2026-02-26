@@ -49,8 +49,7 @@ export function registerSave(program: Command) {
 
         printSuccess(`Current APY: ${pc.green(`${result.apy.toFixed(2)}%`)}`);
 
-        const savingsBalance = result.amount - result.fee;
-        printSuccess(`Savings balance: ${pc.yellow(formatUsd(savingsBalance))} USDC`);
+        printSuccess(`Savings balance: ${pc.yellow(formatUsd(result.savingsBalance))} USDC`);
 
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();

@@ -148,6 +148,7 @@ export async function save(
     fee: 0,
     gasCost: extractGasCost(result.effects),
     gasMethod: 'self-funded' as GasMethod,
+    savingsBalance: amount,
   };
 }
 
