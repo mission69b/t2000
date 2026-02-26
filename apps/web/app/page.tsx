@@ -38,7 +38,7 @@ const ACCOUNTS = [
     icon: "⇌",
     title: "Exchange",
     subtitle: "Swap · Cetus DEX · On-chain",
-    desc: "Exchange any token pair via Cetus DEX. Slippage is enforced on-chain. The agent can rebalance portfolios, acquire gas, or hedge exposure — all autonomously.",
+    desc: "Swap between USDC and SUI via Cetus DEX. Slippage is enforced on-chain. The agent can acquire gas, rebalance holdings, or convert earnings — all autonomously.",
     cmd: "t2000 swap 5 USDC SUI",
   },
 ];
