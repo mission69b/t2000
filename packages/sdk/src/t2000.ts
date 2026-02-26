@@ -218,6 +218,11 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Savings --
 
   async save(params: { amount: number | 'all'; asset?: string }): Promise<SaveResult> {
+    const asset = (params.asset ?? 'USDC').toUpperCase();
+    if (asset !== 'USDC') {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for save. Got: ${asset}`);
+    }
+
     let amount: number;
     if (params.amount === 'all') {
       const bal = await queryBalance(this.client, this._address);
@@ -266,6 +271,11 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async withdraw(params: { amount: number | 'all'; asset?: string }): Promise<WithdrawResult> {
+    const asset = (params.asset ?? 'USDC').toUpperCase();
+    if (asset !== 'USDC') {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for withdraw. Got: ${asset}`);
+    }
+
     let amount: number;
     if (params.amount === 'all') {
       const maxResult = await this.maxWithdraw();
@@ -320,6 +330,11 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Borrowing --
 
   async borrow(params: { amount: number; asset?: string }): Promise<BorrowResult> {
+    const asset = (params.asset ?? 'USDC').toUpperCase();
+    if (asset !== 'USDC') {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for borrow. Got: ${asset}`);
+    }
+
     const maxResult = await this.maxBorrow();
     if (params.amount > maxResult.maxAmount) {
       throw new T2000Error('HEALTH_FACTOR_TOO_LOW', `Max safe borrow: $${maxResult.maxAmount.toFixed(2)}`, {
@@ -351,6 +366,11 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async repay(params: { amount: number | 'all'; asset?: string }): Promise<RepayResult> {
+    const asset = (params.asset ?? 'USDC').toUpperCase();
+    if (asset !== 'USDC') {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for repay. Got: ${asset}`);
+    }
+
     let amount: number;
     if (params.amount === 'all') {
       const hf = await this.healthFactor();
