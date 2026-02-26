@@ -19,7 +19,7 @@
 Your agent can hold money, earn yield, borrow against savings, exchange currencies, and pay for APIs — all in one CLI command. No human in the loop.
 
 ```typescript
-const agent = await T2000.create({ passphrase: process.env.T2000_PASSPHRASE });
+const agent = await T2000.create({ pin: process.env.T2000_PIN });
 await agent.send({ to: '0x...', amount: 50 });
 await agent.save({ amount: 100 });     // earn ~4–8% APY via NAVI Protocol
 await agent.borrow({ amount: 20 });    // borrow against savings
@@ -86,6 +86,8 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 
 ```bash
 npx @t2000/cli init                # Create a bank account
+npm install -g @t2000/cli          # Install globally for persistent use
+
 t2000 balance                      # Check balance
 t2000 send 10 USDC to 0x...       # Send USDC
 t2000 save all                     # Earn yield on idle funds
@@ -130,7 +132,7 @@ At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-const agent = await T2000.create({ passphrase: process.env.T2000_PASSPHRASE });
+const agent = await T2000.create({ pin: process.env.T2000_PIN });
 // or: const agent = T2000.fromPrivateKey('suiprivkey1q...');
 ```
 
@@ -268,7 +270,7 @@ Full reference → [Agent Skills README](t2000-skills)
 ## Security
 
 - **Non-custodial** — keys live on the agent's machine, never transmitted
-- **Encrypted storage** — AES-256-GCM with passphrase-derived key (scrypt)
+- **Encrypted storage** — AES-256-GCM with PIN-derived key (scrypt)
 - **Bearer auth** — HTTP API requires token generated at startup
 - **Rate limiting** — 10 req/s default prevents runaway drain
 - **Risk guards** — health factor checks block risky withdrawals/borrows

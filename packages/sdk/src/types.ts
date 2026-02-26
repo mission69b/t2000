@@ -1,5 +1,8 @@
 export interface T2000Options {
   keyPath?: string;
+  /** PIN to decrypt the key file. Accepts any string (4+ chars). */
+  pin?: string;
+  /** @deprecated Use `pin` instead. */
   passphrase?: string;
   network?: 'mainnet' | 'testnet';
   rpcUrl?: string;

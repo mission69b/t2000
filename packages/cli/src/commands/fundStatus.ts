@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError } from '../output.js';
 
 export function registerFundStatus(program: Command) {
@@ -10,8 +10,8 @@ export function registerFundStatus(program: Command) {
     .option('--key <path>', 'Key file path')
     .action(async (opts: { key?: string }) => {
       try {
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
 
         const result = await agent.fundStatus();
 

@@ -41,13 +41,13 @@ describe('keyManager', () => {
     expect(getAddress(loaded)).toBe(getAddress(keypair));
   });
 
-  it('rejects wrong passphrase', async () => {
+  it('rejects wrong PIN', async () => {
     const keypair = generateKeypair();
     const keyPath = join(tempDir, 'wallet.key');
 
-    await saveKey(keypair, 'correct-passphrase', keyPath);
+    await saveKey(keypair, 'correct-pin', keyPath);
 
-    await expect(loadKey('wrong-passphrase', keyPath)).rejects.toThrow('Invalid passphrase');
+    await expect(loadKey('wrong-pin', keyPath)).rejects.toThrow('Invalid PIN');
   });
 
   it('throws if wallet already exists', async () => {

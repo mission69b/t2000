@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { askPassphrase, getPassphraseFromEnv, askConfirm } from '../prompts.js';
+import { resolvePin, askConfirm } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
 export function registerWithdraw(program: Command) {
@@ -16,8 +16,8 @@ export function registerWithdraw(program: Command) {
           throw new Error('Amount must be a positive number or "all"');
         }
 
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
 
         if (amount !== 'all') {
           const maxResult = await agent.maxWithdraw();

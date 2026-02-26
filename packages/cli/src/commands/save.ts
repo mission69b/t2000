@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, formatUsd } from '@t2000/sdk';
-import { askPassphrase, getPassphraseFromEnv, askConfirm } from '../prompts.js';
+import { resolvePin, askConfirm } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
 export function registerSave(program: Command) {
@@ -12,8 +12,8 @@ export function registerSave(program: Command) {
           throw new Error('Amount must be a positive number or "all"');
         }
 
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
 
         const globalOpts = program.optsWithGlobals();
         if (!globalOpts.yes) {

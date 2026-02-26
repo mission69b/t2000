@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { T2000 } from '@t2000/sdk';
-import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { handleError } from '../output.js';
 import { streamSSE } from 'hono/streaming';
 
@@ -51,8 +51,8 @@ export function registerServe(program: Command) {
     .option('--key <path>', 'Key file path')
     .action(async (opts: { port: string; rateLimit: string; key?: string }) => {
       try {
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
         const port = parseInt(opts.port, 10);
         const rateLimit = parseInt(opts.rateLimit, 10);
 

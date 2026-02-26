@@ -68,14 +68,15 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   static async create(options: T2000Options = {}): Promise<T2000> {
-    const { keyPath, passphrase, network = DEFAULT_NETWORK, rpcUrl, sponsored, name } = options;
+    const { keyPath, pin, passphrase, network = DEFAULT_NETWORK, rpcUrl, sponsored, name } = options;
+    const secret = pin ?? passphrase;
 
     const client = getSuiClient(rpcUrl);
 
     if (sponsored) {
       const keypair = generateKeypair();
-      if (passphrase) {
-        await saveKey(keypair, passphrase, keyPath);
+      if (secret) {
+        await saveKey(keypair, secret, keyPath);
       }
       return new T2000(keypair, client);
     }
@@ -88,11 +89,11 @@ export class T2000 extends EventEmitter<T2000Events> {
       );
     }
 
-    if (!passphrase) {
-      throw new T2000Error('WALLET_LOCKED', 'Passphrase required to unlock wallet');
+    if (!secret) {
+      throw new T2000Error('WALLET_LOCKED', 'PIN required to unlock wallet');
     }
 
-    const keypair = await loadKey(passphrase, keyPath);
+    const keypair = await loadKey(secret, keyPath);
     return new T2000(keypair, client);
   }
 
@@ -102,9 +103,10 @@ export class T2000 extends EventEmitter<T2000Events> {
     return new T2000(keypair, client);
   }
 
-  static async init(options: { passphrase: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean }> {
+  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean }> {
+    const secret = options.pin ?? options.passphrase ?? '';
     const keypair = generateKeypair();
-    await saveKey(keypair, options.passphrase, options.keyPath);
+    await saveKey(keypair, secret, options.keyPath);
 
     const client = getSuiClient();
     const agent = new T2000(keypair, client);

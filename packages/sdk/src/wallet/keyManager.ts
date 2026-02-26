@@ -65,7 +65,7 @@ function decrypt(encrypted: EncryptedKey, passphrase: string): Buffer {
   try {
     return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   } catch {
-    throw new T2000Error('WALLET_LOCKED', 'Invalid passphrase');
+    throw new T2000Error('WALLET_LOCKED', 'Invalid PIN');
   }
 }
 

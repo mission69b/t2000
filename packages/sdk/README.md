@@ -25,7 +25,7 @@ yarn add @t2000/sdk
 import { T2000 } from '@t2000/sdk';
 
 // Create or load a bank account
-const agent = await T2000.create({ passphrase: 'my-secret' });
+const agent = await T2000.create({ pin: 'my-secret' });
 
 // Check balance
 const balance = await agent.balance();
@@ -52,7 +52,7 @@ Creates a new bank account or loads an existing one.
 
 ```typescript
 const agent = await T2000.create({
-  passphrase: 'my-secret',        // Required — encrypts/decrypts the key
+  pin: 'my-secret',               // Required — encrypts/decrypts the key
   network: 'mainnet',             // 'mainnet' | 'testnet' (default: 'mainnet')
   rpcUrl: 'https://...',          // Custom RPC endpoint (optional)
   keyPath: '~/.t2000/wallet.key', // Custom key file path (optional)
@@ -159,7 +159,7 @@ Every transaction result includes a `gasMethod` field indicating which strategy 
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `T2000_PASSPHRASE` | Bank account passphrase | — |
+| `T2000_PIN` | Bank account PIN | — |
 | `T2000_NETWORK` | `mainnet` or `testnet` | `mainnet` |
 | `T2000_RPC_URL` | Custom Sui RPC URL | Sui public fullnode |
 | `T2000_KEY_PATH` | Path to encrypted key file | `~/.t2000/wallet.key` |

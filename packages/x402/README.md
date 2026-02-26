@@ -31,7 +31,7 @@ yarn add @t2000/x402
 import { x402Client } from '@t2000/x402';
 import { T2000 } from '@t2000/sdk';
 
-const agent = await T2000.create({ passphrase: 'my-secret' });
+const agent = await T2000.create({ pin: 'my-secret' });
 
 const client = new x402Client(agent);
 

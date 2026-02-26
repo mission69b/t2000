@@ -21,14 +21,15 @@ import { registerFundStatus } from './commands/fundStatus.js';
 import { registerConfig } from './commands/config.js';
 import { registerServe } from './commands/serve.js';
 import { registerPay } from './commands/pay.js';
+import { registerLock } from './commands/lock.js';
 
 export function createProgram(): Command {
   const program = new Command();
 
   program
     .name('t2000')
-    .description('The first wallet for AI agents')
-    .version('0.1.0')
+    .description('The first bank account for AI agents')
+    .version('0.1.2')
     .option('--json', 'Output in JSON format')
     .option('--yes', 'Skip confirmation prompts')
     .hook('preAction', (thisCommand) => {
@@ -57,6 +58,7 @@ export function createProgram(): Command {
   registerConfig(program);
   registerServe(program);
   registerPay(program);
+  registerLock(program);
 
   return program;
 }

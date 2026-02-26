@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { askPassphrase, getPassphraseFromEnv, askConfirm } from '../prompts.js';
+import { resolvePin, askConfirm } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
 export function registerSwap(program: Command) {
@@ -21,8 +21,8 @@ export function registerSwap(program: Command) {
 
         const maxSlippage = parseFloat(opts.slippage ?? '3') / 100;
 
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
 
         // Show quote before confirming
         const quote = await agent.swapQuote({ from, to, amount });

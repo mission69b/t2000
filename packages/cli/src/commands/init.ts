@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000 } from '@t2000/sdk';
-import { askPassphraseConfirm, getPassphraseFromEnv } from '../prompts.js';
+import { resolvePin, saveSession } from '../prompts.js';
 import {
   printSuccess, printBlank, printInfo, printKeyValue,
   printJson, printLine, printDivider, isJsonMode, handleError,
@@ -10,13 +10,13 @@ import {
 export function registerInit(program: Command) {
   program
     .command('init')
-    .description('Create a new agent wallet')
+    .description('Create a new agent bank account')
     .option('--name <name>', 'Agent name')
     .option('--key <path>', 'Key file path')
     .option('--no-sponsor', 'Skip gas sponsorship')
     .action(async (opts) => {
       try {
-        const passphrase = getPassphraseFromEnv() ?? await askPassphraseConfirm();
+        const pin = await resolvePin({ confirm: true });
 
         if (!isJsonMode()) {
           printBlank();
@@ -24,7 +24,7 @@ export function registerInit(program: Command) {
         }
 
         const { agent, address, sponsored } = await T2000.init({
-          passphrase,
+          pin,
           keyPath: opts.key,
           name: opts.name,
           sponsored: opts.sponsor,
@@ -57,6 +57,9 @@ export function registerInit(program: Command) {
         printBlank();
         printLine(`Deposit USDC on Sui network only.`);
         printDivider();
+        printBlank();
+        printLine(`${pc.dim('Install globally for persistent use:')}`);
+        printLine(`${pc.cyan('npm install -g @t2000/cli')}`);
         printBlank();
         printLine(`${pc.cyan('t2000 balance')}            check for funds`);
         printLine(`${pc.cyan('t2000 save all')}           start earning yield`);

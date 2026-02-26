@@ -3,7 +3,7 @@ import pc from 'picocolors';
 import { T2000 } from '@t2000/sdk';
 import { x402Client } from '@t2000/x402';
 import type { X402Wallet } from '@t2000/x402';
-import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import {
   printSuccess,
   printBlank,
@@ -49,8 +49,8 @@ export function registerPay(program: Command) {
       dryRun?: boolean;
     }) => {
       try {
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
         const wallet = createX402Wallet(agent);
         const client = new x402Client(wallet);
 

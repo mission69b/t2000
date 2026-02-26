@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd, getRates } from '@t2000/sdk';
-import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
+import { T2000, formatUsd, getRates, getGasStatus } from '@t2000/sdk';
+import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printLine } from '../output.js';
 
 interface LimitsData {
@@ -32,8 +32,8 @@ export function registerBalance(program: Command) {
     .option('--show-limits', 'Include maxWithdraw, maxBorrow, and health factor')
     .action(async (opts) => {
       try {
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
 
         const bal = await agent.balance();
 
@@ -59,7 +59,17 @@ export function registerBalance(program: Command) {
         printBlank();
         printKeyValue('Available', `${formatUsd(bal.available)} USDC  ${pc.dim('(checking — spendable)')}`);
         printKeyValue('Savings', `${formatUsd(bal.savings)} USDC${apyStr}`);
-        printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
+        let gasNote = `(~${formatUsd(bal.gasReserve.usdEquiv)})`;
+        if (bal.gasReserve.sui === 0) {
+          try {
+            const status = await getGasStatus(agent.address());
+            const remaining = status.bootstrapRemaining ?? 0;
+            if (remaining > 0) {
+              gasNote = `(${remaining} sponsored tx remaining)`;
+            }
+          } catch { /* gas station unreachable */ }
+        }
+        printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(gasNote)}`);
         printSeparator();
         printKeyValue('Total', `${formatUsd(bal.total)} USDC`);
 

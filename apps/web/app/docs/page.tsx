@@ -374,16 +374,21 @@ function QuickStart({
         credit, and currency exchange in one CLI command.
       </p>
 
-      <h2 id="qs-install">1. Install</h2>
+      <h2 id="qs-install">1. Create your bank account</h2>
       <TryIt cmd="npx @t2000/cli init" note="Node.js 18+ required" />
+      <p className="text-[12.5px] text-white/45 mt-2">
+        For persistent use, install globally: <InlineCode>npm install -g @t2000/cli</InlineCode>
+      </p>
 
-      <h2 id="qs-init">2. Initialize your agent wallet</h2>
+      <h2 id="qs-init">2. What happens</h2>
       <p>
-        Run <InlineCode>t2000 init</InlineCode> to generate a new Sui keypair
-        and configure your wallet.
+        The init command generates a new Sui keypair, encrypts it,
+        and configures your bank account.
       </p>
       <CodeBlock lang="bash">
-        {S.g("$")} t2000 init{"\n\n"}
+        {S.g("$")} npx @t2000/cli init{"\n\n"}
+        {"  "}{S.b("Create PIN (min 4 chars):")} ****{"\n"}
+        {"  "}{S.b("Confirm PIN:")} ****{"\n\n"}
         {"  "}{S.m("Creating agent wallet...")}{"\n"}
         {"  "}{S.g("✓")} Keypair generated{"\n"}
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
@@ -394,6 +399,8 @@ function QuickStart({
         {"  "}Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a1c2d3e4f...")}{"\n\n"}
         {"  "}Deposit USDC on Sui network only.{"\n"}
         {"  "}{S.m("───────────────────────────────────")}{"\n\n"}
+        {"  "}{S.m("Install globally for persistent use:")}{"\n"}
+        {"  "}{S.b("npm install -g @t2000/cli")}{"\n\n"}
         {"  "}{S.b("t2000 balance")}    check for funds{"\n"}
         {"  "}{S.b("t2000 save all")}   start earning yield{"\n"}
         {"  "}{S.b("t2000 address")}    show address again
@@ -513,7 +520,7 @@ function InstallSection() {
         {S.g("$")} npx @t2000/cli init{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.1.0")}
+        {S.a("0.1.2")}
       </CodeBlock>
 
       <h2 id="inst-config">Config file</h2>
@@ -542,6 +549,7 @@ function InstallSection() {
       <DocTable
         headers={["Variable", "Description"]}
         rows={[
+          [<InlineCode key="k">T2000_PIN</InlineCode>, "Bank account PIN (skip interactive prompt)"],
           [<InlineCode key="k">T2000_PRIVATE_KEY</InlineCode>, <>Overrides <InlineCode>privateKey</InlineCode> in config. Use in CI/CD.</>],
           [<InlineCode key="k">T2000_CONFIG</InlineCode>, <>Path to config file. Default: <InlineCode>~/.t2000/config.json</InlineCode></>],
           [<InlineCode key="k">T2000_NETWORK</InlineCode>, <><InlineCode>mainnet</InlineCode> | <InlineCode>testnet</InlineCode></>],
@@ -644,6 +652,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 init [--key &lt;path&gt;]
       </CodeBlock>
       <CodeBlock lang="output">
+        {S.b("Create PIN (min 4 chars):")} ****{"\n"}
+        {S.b("Confirm PIN:")} ****{"\n\n"}
         {S.m("Creating agent wallet...")}{"\n"}
         {S.g("✓")} Keypair generated{"\n"}
         {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
@@ -654,6 +664,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}{"\n\n"}
         Deposit USDC on Sui network only.{"\n"}
         {S.m("───────────────────────────────────")}{"\n\n"}
+        {S.m("Install globally for persistent use:")}{"\n"}
+        {S.b("npm install -g @t2000/cli")}{"\n\n"}
         {S.b("t2000 balance")}    check for funds{"\n"}
         {S.b("t2000 save all")}   start earning yield{"\n"}
         {S.b("t2000 address")}    show address again
@@ -858,7 +870,7 @@ function SdkSection() {
       <CodeBlock lang="typescript" filename="agent.ts">
         {S.p("import")} {"{ T2000 }"} {S.p("from")} {S.s("'@t2000/sdk'")};{"\n\n"}
         {S.p("const")} agent = {S.p("await")} {S.b("T2000")}.{S.g("create")}({"{"}
-        {"\n"}{"  "}passphrase: process.env.{S.a("T2000_PASSPHRASE")},{"\n"}
+        {"\n"}{"  "}pin: process.env.{S.a("T2000_PIN")},{"\n"}
         {"  "}network: {S.s("'mainnet'")},{"\n"}
         {"}"});{"\n\n"}
         {S.c("// Check balance")}{"\n"}
@@ -1223,7 +1235,7 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.1.0 <Badge color="green">current</Badge>
+        v0.1.2 <Badge color="green">current</Badge>
       </h2>
       <p>
         Full bank account model: checking, savings, credit, and currency
@@ -1382,7 +1394,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.1.0
+            v0.1.2
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

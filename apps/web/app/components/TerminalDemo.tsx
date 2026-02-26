@@ -10,6 +10,7 @@ interface TerminalLine {
 
 const LINES: TerminalLine[] = [
   { type: "command", text: "❯ t2000 init", delay: 0 },
+  { type: "output", text: "  Create PIN: ****", delay: 400 },
   { type: "info", text: "  Creating agent wallet...", delay: 500 },
   { type: "success", text: "✓ Keypair generated", delay: 400 },
   { type: "success", text: "✓ Network  Sui mainnet", delay: 200 },

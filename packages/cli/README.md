@@ -22,6 +22,9 @@ npm install -g @t2000/cli
 ```
 ❯ t2000 init
 
+  Create PIN (min 4 chars): ****
+  Confirm PIN: ****
+
   Creating agent wallet...
   ✓ Keypair generated
   ✓ Network  Sui mainnet
@@ -35,6 +38,10 @@ npm install -g @t2000/cli
 
   Deposit USDC on Sui network only.
   ─────────────────────────────────────────────────────
+
+  Install globally for persistent use:
+  npm install -g @t2000/cli
+
   t2000 balance            check for funds
   t2000 save all           start earning yield
   t2000 address            show address again
@@ -91,6 +98,7 @@ npm install -g @t2000/cli
 | Command | Description |
 |---------|-------------|
 | `t2000 init` | Create a new agent bank account (Ed25519 keypair, AES-256-GCM encrypted) |
+| `t2000 lock` | Clear saved session (require PIN on next command) |
 | `t2000 balance` | Show available USDC + savings + gas reserve |
 | `t2000 address` | Show wallet address |
 | `t2000 deposit` | Show funding instructions |
@@ -169,7 +177,7 @@ Config is stored at `~/.t2000/config.json`.
 
 | Variable | Description |
 |----------|-------------|
-| `T2000_PASSPHRASE` | Bank account passphrase (skip interactive prompt) |
+| `T2000_PIN` | Bank account PIN (skip interactive prompt) |
 | `T2000_NETWORK` | Override network (`mainnet` / `testnet`) |
 | `T2000_KEY_PATH` | Custom key file path |
 
@@ -204,7 +212,7 @@ t2000 balance --json
 t2000 send 10 USDC to 0x... --yes --json
 
 # Use with AI coding agents
-export T2000_PASSPHRASE="agent-secret"
+export T2000_PIN="agent-secret"
 t2000 balance --json | jq '.available'
 ```
 

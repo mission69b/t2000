@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { askPassphrase, getPassphraseFromEnv } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 import { truncateAddress, formatUsd } from '@t2000/sdk';
 
@@ -12,8 +12,8 @@ export function registerSend(program: Command) {
     .action(async (amount: string, asset: string, toOrAddress: string, address: string | undefined, opts: { key?: string }) => {
       try {
         const recipient = address ?? toOrAddress;
-        const passphrase = getPassphraseFromEnv() ?? await askPassphrase();
-        const agent = await T2000.create({ passphrase, keyPath: opts.key });
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
 
         const result = await agent.send({
           to: recipient,

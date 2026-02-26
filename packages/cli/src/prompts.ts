@@ -1,31 +1,78 @@
 import { password, confirm } from '@inquirer/prompts';
+import { readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { homedir } from 'node:os';
 
-export async function askPassphrase(message = 'Enter passphrase:'): Promise<string> {
+const SESSION_PATH = resolve(homedir(), '.t2000', '.session');
+const MIN_PIN_LENGTH = 4;
+
+export async function askPin(message = 'Enter PIN:'): Promise<string> {
   const value = await password({ message });
-  if (!value || value.length < 8) {
-    throw new Error('Passphrase must be at least 8 characters');
+  if (!value || value.length < MIN_PIN_LENGTH) {
+    throw new Error(`PIN must be at least ${MIN_PIN_LENGTH} characters`);
   }
   return value;
 }
 
-export async function askPassphraseConfirm(): Promise<string> {
-  const pass = await password({ message: 'Create passphrase (min 8 chars):' });
-  if (!pass || pass.length < 8) {
-    throw new Error('Passphrase must be at least 8 characters');
+export async function askPinConfirm(): Promise<string> {
+  const pin = await password({ message: `Create PIN (min ${MIN_PIN_LENGTH} chars):` });
+  if (!pin || pin.length < MIN_PIN_LENGTH) {
+    throw new Error(`PIN must be at least ${MIN_PIN_LENGTH} characters`);
   }
 
-  const confirm_ = await password({ message: 'Confirm passphrase:' });
-  if (pass !== confirm_) {
-    throw new Error('Passphrases do not match');
+  const confirm_ = await password({ message: 'Confirm PIN:' });
+  if (pin !== confirm_) {
+    throw new Error('PINs do not match');
   }
 
-  return pass;
+  return pin;
 }
 
 export async function askConfirm(message: string): Promise<boolean> {
   return confirm({ message });
 }
 
-export function getPassphraseFromEnv(): string | undefined {
-  return process.env.T2000_PASSPHRASE;
+export function getPinFromEnv(): string | undefined {
+  return process.env.T2000_PIN ?? process.env.T2000_PASSPHRASE;
 }
+
+async function readSession(): Promise<string | undefined> {
+  try {
+    const content = await readFile(SESSION_PATH, 'utf-8');
+    return content.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function saveSession(pin: string): Promise<void> {
+  await mkdir(resolve(homedir(), '.t2000'), { recursive: true });
+  await writeFile(SESSION_PATH, pin, { mode: 0o600 });
+}
+
+export async function clearSession(): Promise<void> {
+  try {
+    await unlink(SESSION_PATH);
+  } catch {
+    // already gone
+  }
+}
+
+export async function resolvePin(opts?: { confirm?: boolean }): Promise<string> {
+  const envPin = getPinFromEnv();
+  if (envPin) return envPin;
+
+  const sessionPin = await readSession();
+  if (sessionPin) return sessionPin;
+
+  const pin = opts?.confirm ? await askPinConfirm() : await askPin();
+  await saveSession(pin);
+  return pin;
+}
+
+/** @deprecated Use resolvePin() */
+export const askPassphrase = askPin;
+/** @deprecated Use resolvePin() */
+export const askPassphraseConfirm = askPinConfirm;
+/** @deprecated Use getPinFromEnv() */
+export const getPassphraseFromEnv = getPinFromEnv;
