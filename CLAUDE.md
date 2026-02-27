@@ -1,5 +1,11 @@
 # CLAUDE.md - Frontend
 
+## Single Source of Truth
+
+**Before writing or editing ANY documentation** (READMEs, docs page, skill files, marketing materials, roadmap), **read `PRODUCT_FACTS.md` first**. All product facts — versions, fees, CLI syntax, SDK signatures, output formats, error codes — must match that file. When a product fact changes, update `PRODUCT_FACTS.md` first, then propagate to all other files.
+
+---
+
 ## Next.js
 
 ### Tool Calling
