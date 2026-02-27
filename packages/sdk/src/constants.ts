@@ -14,7 +14,7 @@ export const BOOTSTRAP_LIMIT = 10;
 export const GAS_FEE_CEILING_USD = 0.05;
 
 export const SAVE_FEE_BPS = 10n; // 0.1%
-export const SWAP_FEE_BPS = 10n; // 0.1%
+export const SWAP_FEE_BPS = 0n; // Free — Cetus already charges pool fees
 export const BORROW_FEE_BPS = 5n; // 0.05%
 
 export const CLOCK_ID = '0x6';
