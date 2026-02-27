@@ -134,9 +134,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 **pay:**
 ```
-  ← 402 Payment Required · $0.01 USDC
-  ✓ Paid $0.01 USDC · 200 OK · 820ms
-  Tx:  https://suiscan.xyz/mainnet/tx/<digest>
+  → GET https://api.example.com/data
+  ← 402 Payment Required: $0.01 USDC (Sui)
+  ✓ Paid $0.01 USDC (tx: 0xabc123ab...)
+  ← 200 OK  [820ms]
 ```
 
 ---
@@ -147,7 +148,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `T2000.create()` | `(options?: { pin?: string; keyPath?: string }): Promise<T2000>` | Load existing wallet |
+| `T2000.create()` | `(options?: T2000Options): Promise<T2000>` | Load existing wallet. Key options: `pin`, `keyPath`, `rpcUrl` |
 | `T2000.init()` | `(options: { pin: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean }>` | Create new wallet |
 | `T2000.fromPrivateKey()` | `(privateKey: string, options?: { rpcUrl?: string }): T2000` | From raw key |
 
@@ -183,7 +184,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | Method | Params | Returns |
 |--------|--------|---------|
 | `swap()` | `{ from, to, amount, maxSlippage? }` | `SwapResult` |
-| `swapQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice }` |
+| `swapQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice, fee: { amount, rate } }` |
 
 ### Info
 
@@ -217,6 +218,16 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 ## SDK Types (key interfaces)
 
 ```typescript
+interface T2000Options {
+  pin?: string;           // PIN to decrypt key file
+  keyPath?: string;       // Path to key file (default: ~/.t2000/wallet.key)
+  rpcUrl?: string;        // Custom Sui RPC URL
+  passphrase?: string;    // @deprecated — use pin
+  network?: 'mainnet' | 'testnet';
+  sponsored?: boolean;
+  name?: string;
+}
+
 interface BalanceResponse {
   available: number;
   savings: number;
@@ -337,7 +348,7 @@ Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`
 | `SUI_DECIMALS` | `9` | |
 | `USDC_DECIMALS` | `6` | |
 | `BPS_DENOMINATOR` | `10_000n` | Basis points denominator |
-| `PRECISION` | `10^18` | Reward math precision (matches contract) |
+| `PRECISION` | `1_000_000_000_000_000_000n` (10^18) | Reward math precision (matches contract) |
 | `MIN_DEPOSIT` | `1_000_000n` (1 USDC) | Minimum deposit |
 | `GAS_RESERVE_USDC` | `1_000_000n` ($1) | USDC reserved for gas on `save all` |
 | `AUTO_TOPUP_THRESHOLD` | `50_000_000n` (0.05 SUI) | SUI balance below this triggers topup |
@@ -346,10 +357,10 @@ Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`
 | `BOOTSTRAP_LIMIT` | `10` | Max sponsored bootstrap transactions |
 | `GAS_FEE_CEILING_USD` | `$0.05` | Max gas fee before rejection |
 | `CLOCK_ID` | `'0x6'` | Sui Clock shared object |
-| `DEFAULT_SLIPPAGE` | `3%` | Default swap slippage |
-| `DEFAULT_RATE_LIMIT` | `10 req/s` | Default HTTP API rate limit |
+| `DEFAULT_SLIPPAGE` | `3%` | Default swap slippage (CLI `--slippage` default) |
+| `DEFAULT_RATE_LIMIT` | `10 req/s` | Default HTTP API rate limit (CLI `--rate-limit` default) |
 
-Source: `packages/sdk/src/constants.ts`
+Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/commands/*.ts` (CLI defaults)
 
 ---
 
