@@ -61,7 +61,7 @@ description: >-                   # when to use this skill (agent reads this)
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 

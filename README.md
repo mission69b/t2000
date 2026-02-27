@@ -19,7 +19,11 @@
 Your agent can hold money, earn yield, borrow against savings, exchange currencies, and pay for APIs — all in one CLI command. No human in the loop.
 
 ```typescript
+// Load existing wallet
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
+// Or create a new one
+const { agent } = await T2000.init({ pin: 'my-secret' });
+
 await agent.send({ to: '0x...', amount: 50 });
 await agent.save({ amount: 100, asset: 'USDC' });   // earn ~4–8% APY via NAVI Protocol
 await agent.borrow({ amount: 20, asset: 'USDC' });  // borrow against savings
@@ -40,20 +44,25 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
+  Gas:  0.0042 SUI (self-funded)
+  Balance:  $90.00 USDC
 
 ❯ t2000 save 80 USDC
   ✓ Saved $80.00 USDC to NAVI
-  APY: 4.21% · Earning ~$0.009/day
+  ✓ Protocol fee: $0.08 USDC (0.1%)
+  ✓ Current APY: 4.21%
+  ✓ Savings balance: $79.92 USDC
 
 ❯ t2000 borrow 20 USDC
-  ✓ Borrowed $20.00 USDC (same-asset)
-  Health Factor: 3.39
+  ✓ Borrowed $20.00 USDC
+  Health Factor:  3.39
 
 ❯ t2000 repay 20 USDC
-  ✓ Repaid $20.00 USDC · Debt: $0.00
+  ✓ Repaid $20.00 USDC
+  Remaining Debt:  $0.00
 
-❯ t2000 swap 5 USDC to SUI
-  ✓ 5.00 USDC → 5.83 SUI
+❯ t2000 swap 5 USDC SUI
+  ✓ Swapped 5 USDC → 5.8300 SUI
 
 ❯ t2000 pay https://data.api.com/prices
   ← 402 Payment Required · $0.01 USDC
@@ -160,7 +169,7 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.repay({ amount, asset: 'USDC' })` | Repay debt |
 | | `agent.healthFactor()` | Liquidation safety |
 | **Exchange** | `agent.swap({ from, to, amount })` | Swap via Cetus DEX |
-| **x402** | `agent.pay(url)` | Pay for x402 APIs |
+| | `agent.swapQuote({ from, to, amount })` | Get swap quote |
 | **Info** | `agent.rates()` | Current APYs |
 | | `agent.positions()` | Open DeFi positions |
 
@@ -232,7 +241,20 @@ t2000 is the first [x402 protocol](https://www.x402.org/) client on Sui. When a 
 
 ```typescript
 import { x402Client } from '@t2000/x402';
-const client = new x402Client(agent);
+import type { X402Wallet } from '@t2000/x402';
+
+const wallet: X402Wallet = {
+  client: agent.suiClient,
+  keypair: agent.signer,
+  address: () => agent.address(),
+  signAndExecute: async (tx) => {
+    const r = await agent.suiClient.signAndExecuteTransaction({
+      signer: agent.signer, transaction: tx,
+    });
+    return { digest: r.digest };
+  },
+};
+const client = new x402Client(wallet);
 const response = await client.fetch('https://api.example.com/data');
 ```
 
@@ -323,7 +345,7 @@ pnpm test         # All unit tests
 ### Testing
 
 ```bash
-pnpm --filter @t2000/sdk test     # 92 tests
+pnpm --filter @t2000/sdk test     # 122 tests
 pnpm --filter @t2000/x402 test    # 27 tests
 pnpm --filter @t2000/server test  # 10 tests
 ```
