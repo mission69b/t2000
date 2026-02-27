@@ -42,31 +42,32 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
   🎉 Bank account created
   Address: 0x8b3e...d412
 
-❯ t2000 send 10 USDC to 0x8b3e...d412
-  ✓ Sent $10.00 USDC → 0x8b3e...d412
-  Gas:  0.0042 SUI (self-funded)
-  Balance:  $90.00 USDC
-
 ❯ t2000 save 80 USDC
   ✓ Saved $80.00 USDC to NAVI
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
-  ✓ Savings balance: $79.92 USDC
+  ✓ Savings balance: $80.00 USDC
+  Tx:  https://suiscan.xyz/mainnet/tx/7CAugsDaPvM...
 
 ❯ t2000 borrow 20 USDC
   ✓ Borrowed $20.00 USDC
   Health Factor:  3.39
+  Tx:  https://suiscan.xyz/mainnet/tx/46MX3cMyF4f...
 
 ❯ t2000 repay 20 USDC
   ✓ Repaid $20.00 USDC
   Remaining Debt:  $0.00
+  Tx:  https://suiscan.xyz/mainnet/tx/4sKw22wL3mS...
 
 ❯ t2000 swap 5 USDC SUI
   ✓ Swapped 5 USDC → 5.8300 SUI
+  Tx:  https://suiscan.xyz/mainnet/tx/Gxdkrthd7Rd...
 
-❯ t2000 pay https://data.api.com/prices
-  ← 402 Payment Required · $0.01 USDC
-  ✓ Paid $0.01 USDC · 200 OK · 820ms
+❯ t2000 pay https://api.marketdata.dev/prices
+  → GET https://api.marketdata.dev/prices
+  ← 402 Payment Required: $0.01 USDC (Sui)
+  ✓ Paid $0.01 USDC (tx: 8kPq3RvN...)
+  ← 200 OK  [820ms]
 
 ❯ t2000 balance
   Available:  $85.00 USDC  (checking — spendable)
