@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -31,22 +31,17 @@ t2000 swap 10 USDC SUI --slippage 0.5
 ## Fees
 - Protocol fee: **Free** — no t2000 fee on swaps
 - DEX fee: Cetus standard (typically 0.01–0.05%)
-- Fees shown in the pre-flight preview before execution
 
 ## Output
 ```
 Preview:
-  Sending:           XX.XX USDC
-  Receiving:         ~XX.XX SUI (at current price)
-  Slippage tolerance: 1.00%
-  Min received:      XX.XX SUI (guaranteed on-chain)
+  Swap: XX.XX USDC → XX.XXXX SUI
+  Pool Price: 1 SUI = $X.XX
 
-✓ Swapped XX.XX USDC → XX.XX SUI
+✓ Swapped XX.XX USDC → XX.XXXX SUI
   Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Notes
-- Slippage is enforced on-chain via Cetus `sqrt_price_limit` — transaction
-  reverts if actual price moves beyond tolerance
-- Default slippage: 1%. Reduce for large swaps on thin markets.
+- Default slippage: 3%. Reduce with `--slippage` for large swaps on thin markets.
 - Supported: any Cetus-listed pair (USDC, SUI, USDT, and more)

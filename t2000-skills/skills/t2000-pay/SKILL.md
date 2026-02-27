@@ -10,7 +10,7 @@ license: MIT
 status: active
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
   available: true
 ---
@@ -27,18 +27,30 @@ the API response.
 
 ## Command
 ```bash
-t2000 pay <url> [--method GET|POST] [--data '<json>'] [--max-price <amount>]
+t2000 pay <url> [options]
 
 # Examples:
 t2000 pay https://api.example.com/data
 t2000 pay https://api.example.com/analyze --method POST --data '{"text":"hello"}'
 t2000 pay https://api.example.com/premium --max-price 0.10
+t2000 pay https://api.example.com/data --dry-run
+t2000 pay https://api.example.com/data --header 'X-Custom=value' --timeout 60
 ```
+
+## Options
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--method <method>` | HTTP method (GET, POST, PUT) | GET |
+| `--data <json>` | Request body for POST/PUT | — |
+| `--max-price <amount>` | Max USDC per request | $1.00 |
+| `--header <key=value>` | Additional HTTP header (repeatable) | — |
+| `--timeout <seconds>` | Request timeout in seconds | 30 |
+| `--dry-run` | Show what would be paid without paying | — |
 
 ## Flow (automatic)
 1. Makes initial HTTP request to the URL
 2. If 402: reads PAYMENT-REQUIRED header for amount and terms
-3. If price ≤ --max-price (default: $1.00): signs and broadcasts USDC payment
+3. If price ≤ --max-price: signs and broadcasts USDC payment on Sui
 4. Retries with X-PAYMENT proof header
 5. Returns the API response body
 
@@ -51,3 +63,5 @@ t2000 pay https://api.example.com/premium --max-price 0.10
 - `PRICE_EXCEEDS_LIMIT`: API asking more than --max-price
 - `INSUFFICIENT_BALANCE`: not enough available USDC
 - `UNSUPPORTED_NETWORK`: 402 requires a network other than Sui
+- `PAYMENT_EXPIRED`: payment challenge has expired
+- `DUPLICATE_PAYMENT`: nonce already used on-chain

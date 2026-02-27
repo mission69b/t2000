@@ -1,42 +1,45 @@
 ---
 name: t2000-repay
 description: >-
-  Repay an outstanding loan on NAVI. Use when asked to repay a loan,
-  pay back borrowed funds, reduce debt, improve health factor, or close a
-  borrow position. Funds are taken from the available (checking) balance.
+  Repay borrowed USDC on NAVI Protocol. Use when asked to repay a loan,
+  pay back debt, reduce outstanding balance, or clear borrows. Supports
+  partial and full repayment.
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
-# t2000: Repay Loan
+# t2000: Repay Borrow
 
 ## Purpose
-Return borrowed USDC to NAVI to reduce loan balance and improve health factor.
+Repay outstanding USDC debt on NAVI. Supports specific amounts or
+`repay all` to clear the full balance including accrued interest.
 
 ## Command
 ```bash
-t2000 repay <amount> USDC
-t2000 repay all USDC     # repays full outstanding balance including interest
+t2000 repay <amount> [asset]
+t2000 repay all [asset]
 
 # Examples:
 t2000 repay 20 USDC
-t2000 repay all USDC
+t2000 repay 20
+t2000 repay all
 ```
+
+Asset defaults to USDC if omitted.
+
+## Fees
+- No protocol fee on repayment
 
 ## Output
 ```
-✓ Repaid $XX.XX USDC to NAVI
-✓ Outstanding loan: $XX.XX USDC (was $XX.XX)
-✓ Health factor: X.XX → X.XX
-✓ Available balance: $XX.XX USDC
+✓ Repaid $XX.XX USDC
+  Remaining Debt: $XX.XX
   Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Notes
-- No protocol fee on repayment
 - `repay all` calculates full outstanding principal + accrued interest
-  The amount deducted may be slightly more than the original borrow
-- Repayment improves health factor immediately
+- Available USDC balance must cover the repayment amount

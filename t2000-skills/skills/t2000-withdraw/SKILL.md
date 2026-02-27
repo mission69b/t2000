@@ -1,51 +1,51 @@
 ---
 name: t2000-withdraw
 description: >-
-  Withdraw USDC from savings back to the available (checking) balance. Use
-  when asked to withdraw savings, access deposited funds, move money from
-  savings to checking, or liquidate a savings position. Will be blocked if
-  the withdrawal would put any active loan at risk.
+  Withdraw USDC from savings (NAVI Protocol). Use when asked to withdraw
+  from savings, access deposited funds, pull money out of savings, or
+  reduce yield position. For sending to another address, use t2000-send.
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
 # t2000: Withdraw from Savings
 
 ## Purpose
-Move USDC from NAVI savings back to the available balance.
+Withdraw USDC from NAVI savings back to the available (checking) balance.
+Subject to pool utilization — if utilization is very high, partial
+withdrawals may be needed.
 
 ## Command
 ```bash
-t2000 withdraw <amount> USDC
-t2000 withdraw all USDC
+t2000 withdraw <amount> [asset]
+t2000 withdraw all [asset]
 
 # Examples:
-t2000 withdraw 50 USDC
-t2000 withdraw all USDC
+t2000 withdraw 25 USDC
+t2000 withdraw 25
+t2000 withdraw all
 ```
 
-## Safety check
-If the wallet has an active borrow position, withdrawal is blocked if it
-would drop the health factor below 1.5. The error includes `safeWithdrawAmount`.
+Asset defaults to USDC if omitted.
 
-## Query safe limits first (recommended before withdrawing with active loan)
-```bash
-t2000 balance --show-limits
-# Returns: maxWithdraw, maxBorrow, currentHealthFactor
-```
+## Fees
+- No protocol fee on withdrawals
 
 ## Output
 ```
-✓ Withdrew $XX.XX USDC from NAVI
-✓ Available balance: $XX.XX USDC
+✓ Withdrew $XX.XX USDC
   Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
-## Errors
-- `WITHDRAW_WOULD_LIQUIDATE`: withdrawal would drop health factor below 1.5
-  → data includes `safeWithdrawAmount` (the safe maximum)
-- `INSUFFICIENT_SAVINGS`: savings balance is less than the requested amount
-- `NAVI_LIQUIDITY_UNAVAILABLE`: pool utilization too high; retry later
+## Safety
+If there's an active borrow, t2000 checks the health factor before
+withdrawing. If the withdrawal would drop HF below 1.5, it throws
+`WITHDRAW_WOULD_LIQUIDATE` with a `safeWithdrawAmount`.
+
+## Error handling
+- `WITHDRAW_WOULD_LIQUIDATE`: withdrawal would make health factor unsafe. Check `safeWithdrawAmount` in error data.
+- `NO_COLLATERAL`: no savings to withdraw
+- `INSUFFICIENT_BALANCE`: requested amount exceeds savings balance

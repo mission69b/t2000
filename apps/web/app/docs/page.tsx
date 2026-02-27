@@ -402,8 +402,8 @@ function QuickStart({
         {"  "}{S.m("Install globally for persistent use:")}{"\n"}
         {"  "}{S.b("npm install -g @t2000/cli")}{"\n\n"}
         {"  "}{S.b("t2000 balance")}    check for funds{"\n"}
-        {"  "}{S.b("t2000 save all USDC")}   start earning yield{"\n"}
-        {"  "}{S.b("t2000 address")}    show address again
+        {"  "}{S.b("t2000 save all")}           start earning yield{"\n"}
+        {"  "}{S.b("t2000 address")}            show address again
       </CodeBlock>
       <Callout type="tip" label="Tip">
         Your encrypted key lives at <InlineCode>~/.t2000/wallet.key</InlineCode>.
@@ -520,29 +520,28 @@ function InstallSection() {
         {S.g("$")} npx @t2000/cli init{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.1.4")}
+        {S.a("0.2.6")}
       </CodeBlock>
 
-      <h2 id="inst-config">Config file</h2>
+      <h2 id="inst-config">File locations</h2>
+      <DocTable
+        headers={["File", "Path", "Description"]}
+        rows={[
+          [<InlineCode key="k">wallet.key</InlineCode>, <InlineCode key="v">~/.t2000/wallet.key</InlineCode>, "AES-256-GCM encrypted Ed25519 keypair"],
+          [<InlineCode key="k">config.json</InlineCode>, <InlineCode key="v">~/.t2000/config.json</InlineCode>, "General config (managed via t2000 config set)"],
+        ]}
+      />
       <p>
-        On first <InlineCode>t2000 init</InlineCode>, a config file is written
-        to <InlineCode>~/.t2000/config.json</InlineCode>. You can override the
-        path with the <InlineCode>T2000_CONFIG</InlineCode> environment variable
-        — useful for running multiple agents simultaneously.
+        The private key is stored <strong>encrypted</strong> in{" "}
+        <InlineCode>wallet.key</InlineCode>, never in config.json.
+        Use <InlineCode>t2000 config get</InlineCode> to view and{" "}
+        <InlineCode>t2000 config set &lt;key&gt; &lt;value&gt;</InlineCode> to
+        update config values.
       </p>
-      <CodeBlock lang="json" filename="~/.t2000/config.json">
-        {"{\n"}
-        {"  "}{S.s('"network"')}:    {S.s('"mainnet"')},{"\n"}
-        {"  "}{S.s('"rpcUrl"')}:     {S.s('"https://fullnode.mainnet.sui.io"')},{"\n"}
-        {"  "}{S.s('"privateKey"')}: {S.s('"suiprivkey1..."')},{"\n"}
-        {"  "}{S.s('"address"')}:    {S.s('"0x8b3e...d412"')}{"\n"}
-        {"}"}
-      </CodeBlock>
       <Callout type="warn" label="Security">
-        Never commit your config file. Add <InlineCode>~/.t2000/</InlineCode> or{" "}
-        <InlineCode>.t2000/</InlineCode> to your{" "}
+        Never commit <InlineCode>~/.t2000/</InlineCode>. Add it to your{" "}
         <InlineCode>.gitignore</InlineCode>. For CI/CD, use the{" "}
-        <InlineCode>T2000_PRIVATE_KEY</InlineCode> environment variable instead.
+        <InlineCode>T2000_PIN</InlineCode> environment variable instead.
       </Callout>
 
       <h2 id="inst-env">Environment variables</h2>
@@ -550,10 +549,7 @@ function InstallSection() {
         headers={["Variable", "Description"]}
         rows={[
           [<InlineCode key="k">T2000_PIN</InlineCode>, "Bank account PIN (skip interactive prompt)"],
-          [<InlineCode key="k">T2000_PRIVATE_KEY</InlineCode>, <>Overrides <InlineCode>privateKey</InlineCode> in config. Use in CI/CD.</>],
-          [<InlineCode key="k">T2000_CONFIG</InlineCode>, <>Path to config file. Default: <InlineCode>~/.t2000/config.json</InlineCode></>],
-          [<InlineCode key="k">T2000_NETWORK</InlineCode>, <><InlineCode>mainnet</InlineCode> | <InlineCode>testnet</InlineCode></>],
-          [<InlineCode key="k">T2000_RPC_URL</InlineCode>, "Custom Sui RPC endpoint"],
+          [<InlineCode key="k">T2000_PRIVATE_KEY</InlineCode>, <>Private key for <InlineCode>t2000 import</InlineCode> (skip interactive prompt)</>],
         ]}
       />
     </>
@@ -679,7 +675,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-init">t2000 init</h2>
       <p>Generate a new Ed25519 keypair, encrypt it with AES-256-GCM, and set up all accounts.</p>
       <CodeBlock lang="bash">
-        t2000 init [--key &lt;path&gt;]
+        t2000 init [--key &lt;path&gt;] [--name &lt;name&gt;] [--no-sponsor]
       </CodeBlock>
       <CodeBlock lang="output">
         {S.b("Create PIN (min 4 chars):")} ****{"\n"}
@@ -697,8 +693,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {S.m("Install globally for persistent use:")}{"\n"}
         {S.b("npm install -g @t2000/cli")}{"\n\n"}
         {S.b("t2000 balance")}    check for funds{"\n"}
-        {S.b("t2000 save all USDC")}   start earning yield{"\n"}
-        {S.b("t2000 address")}    show address again
+        {S.b("t2000 save all")}           start earning yield{"\n"}
+        {S.b("t2000 address")}            show address again
       </CodeBlock>
 
       <h2 id="cmd-balance">t2000 balance</h2>
@@ -812,6 +808,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}{S.a("--method")}     GET | POST | PUT  (default: GET){"\n"}
         {"  "}{S.a("--data")}       JSON body for POST/PUT{"\n"}
         {"  "}{S.a("--max-price")}  Max USDC to auto-approve (default: 1.00){"\n"}
+        {"  "}{S.a("--header")}     Additional HTTP header as key=value (repeatable){"\n"}
+        {"  "}{S.a("--timeout")}    Request timeout in seconds (default: 30){"\n"}
         {"  "}{S.a("--dry-run")}    Preview without paying{"\n\n"}
         t2000 pay https://api.weather.com/forecast{"\n"}
         t2000 pay https://api.ai.com/analyze --method POST --data {S.s("'{\"text\":\"hello\"}'")}{"\n"}
@@ -850,11 +848,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-history">t2000 history</h2>
       <p>Show recent transaction history with action type and timestamp.</p>
       <CodeBlock lang="bash">
-        t2000 history
+        t2000 history [--limit &lt;n&gt;]   {S.c("# default: 20")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.b("Transaction History")}{"\n\n"}
-        0x9f2c...a801  save {S.m("(sponsor)")}     2/19/2026, 3:45 PM{"\n"}
+        0x9f2c...a801  save {S.m("(sponsored)")}     2/19/2026, 3:45 PM{"\n"}
         0xa1b2...c3d4  send {S.m("(self-funded)")}  2/19/2026, 2:30 PM{"\n"}
         0xd5e6...f7a8  swap {S.m("(auto-topup)")}   2/18/2026, 1:15 PM
       </CodeBlock>
@@ -917,14 +915,19 @@ function SdkSection() {
         {S.p("interface")} {S.b("BalanceResponse")} {"{"}{"\n"}
         {"  "}available:    {S.a("number")};  {S.c("// USDC")}{"\n"}
         {"  "}savings:      {S.a("number")};  {S.c("// USDC in NAVI")}{"\n"}
-        {"  "}gasReserve:   {S.a("number")};  {S.c("// SUI")}{"\n"}
+        {"  "}gasReserve:   {"{ "}{S.a("sui")}: number; {S.a("usdEquiv")}: number {"}"}; {S.c("// SUI reserve")}{"\n"}
         {"  "}total:        {S.a("number")};{"\n"}
+        {"  "}assets:       Record{S.a("<string, number>")};{"\n"}
         {"}"}{"\n\n"}
         {S.p("interface")} {S.b("SendResult")} {"{"}{"\n"}
+        {"  "}success:   {S.a("boolean")};{"\n"}
         {"  "}tx:        {S.a("string")};{"\n"}
         {"  "}amount:    {S.a("number")};{"\n"}
-        {"  "}gasMethod: {S.a("string")};  {S.c("// 'self-funded' | 'auto-topup' | 'sponsored'")}{"\n"}
-        {"  "}balance:   {S.a("number")};  {S.c("// remaining USDC")}{"\n"}
+        {"  "}to:        {S.a("string")};{"\n"}
+        {"  "}gasCost:   {S.a("number")};{"\n"}
+        {"  "}gasCostUnit: {S.a("string")};{"\n"}
+        {"  "}gasMethod: {S.a("GasMethod")};  {S.c("// 'self-funded' | 'auto-topup' | 'sponsored'")}{"\n"}
+        {"  "}balance:   {S.a("BalanceResponse")};{"\n"}
         {"}"}
       </CodeBlock>
 
@@ -965,9 +968,6 @@ function ConfigSection() {
         rows={[
           [<InlineCode key="k">network</InlineCode>, "string", <InlineCode key="v">mainnet</InlineCode>, <><InlineCode>mainnet</InlineCode> | <InlineCode>testnet</InlineCode></>],
           [<InlineCode key="k">rpcUrl</InlineCode>, "string", "Mysten public", "Sui RPC endpoint"],
-          [<InlineCode key="k">privateKey</InlineCode>, "string", "—", <>Sui private key (<InlineCode>suiprivkey1...</InlineCode>)</>],
-          [<InlineCode key="k">address</InlineCode>, "string", "derived", "Auto-derived from privateKey"],
-          [<InlineCode key="k">slippage</InlineCode>, "number", <InlineCode key="v">3</InlineCode>, "Default swap slippage % (overridable per-swap)"],
         ]}
       />
     </>
@@ -997,8 +997,8 @@ function ErrorsSection() {
           [<InlineCode key="k">INSUFFICIENT_BALANCE</InlineCode>, <InlineCode key="d">{`{ required, available }`}</InlineCode>, "Not enough USDC in checking"],
           [<InlineCode key="k">INVALID_ADDRESS</InlineCode>, <InlineCode key="d">{`{ address }`}</InlineCode>, "Invalid Sui address format"],
           [<InlineCode key="k">SIMULATION_FAILED</InlineCode>, <InlineCode key="d">{`{ reason }`}</InlineCode>, "Tx would fail on-chain"],
-          [<InlineCode key="k">HEALTH_FACTOR_TOO_LOW</InlineCode>, <InlineCode key="d">{`{ maxBorrow }`}</InlineCode>, "Borrow drops HF below 1.5"],
-          [<InlineCode key="k">WITHDRAW_WOULD_LIQUIDATE</InlineCode>, <InlineCode key="d">{`{ maxWithdraw }`}</InlineCode>, "Withdrawal drops HF below 1.5"],
+          [<InlineCode key="k">HEALTH_FACTOR_TOO_LOW</InlineCode>, <InlineCode key="d">{`{ maxBorrow, currentHF }`}</InlineCode>, "Borrow drops HF below 1.5"],
+          [<InlineCode key="k">WITHDRAW_WOULD_LIQUIDATE</InlineCode>, <InlineCode key="d">{`{ safeWithdrawAmount }`}</InlineCode>, "Withdrawal drops HF below 1.5"],
           [<InlineCode key="k">NO_COLLATERAL</InlineCode>, "—", "No savings to borrow against"],
           [<InlineCode key="k">SLIPPAGE_EXCEEDED</InlineCode>, "—", "Swap price moved beyond tolerance"],
           [<InlineCode key="k">PROTOCOL_PAUSED</InlineCode>, "—", "Protocol is temporarily paused"],
@@ -1100,8 +1100,8 @@ function X402Section() {
           { num: "1", dir: "→ GET", dirClass: "text-warning", desc: <>Agent requests <InlineCode>/api/resource</InlineCode> — no payment header</> },
           { num: "2", dir: "← 402", dirClass: "text-accent", desc: <>Server returns <InlineCode>402 Payment Required</InlineCode> with amount, payTo, nonce, expiresAt</> },
           { num: "3", dir: "→ PTB", dirClass: "text-warning", desc: <>t2000 calls <InlineCode>process_registry_payment</InlineCode> via Sui Payment Kit — nonce enforced by Move, replay impossible</> },
-          { num: "4", dir: "→ GET", dirClass: "text-warning", desc: <>Retries with <InlineCode>X-PAYMENT: &#123;txHash, nonce&#125;</InlineCode> header</> },
-          { num: "5", dir: "← 200", dirClass: "text-accent", desc: <>Facilitator verifies <InlineCode>PaymentEvent</InlineCode> on-chain → server returns the resource</> },
+          { num: "4", dir: "→ GET", dirClass: "text-warning", desc: <>Retries with <InlineCode>X-PAYMENT: &#123;txHash, network, amount, nonce&#125;</InlineCode> header</> },
+          { num: "5", dir: "← 200", dirClass: "text-accent", desc: <>Facilitator verifies <InlineCode>PaymentReceipt</InlineCode> on-chain → server returns the resource</> },
         ].map((step, i, arr) => (
           <div key={i} className={`flex items-start gap-2.5 sm:gap-3.5 px-3 sm:px-4.5 py-3 sm:py-3.5 bg-[var(--surface)] transition-colors hover:bg-white/[0.02] ${i < arr.length - 1 ? "border-b border-[var(--border)]" : ""}`}>
             <span className="text-[11px] text-[var(--doc-muted)] shrink-0 mt-0.5 w-4">{step.num}</span>
@@ -1123,8 +1123,21 @@ function X402Section() {
 
       <h2 id="x402-sdk">SDK usage</h2>
       <CodeBlock lang="typescript">
-        {S.p("import")} {"{ x402Client }"} {S.p("from")} {S.s("'@t2000/x402'")};{"\n\n"}
-        {S.p("const")} client = {S.p("new")} {S.b("x402Client")}(agent);{"\n\n"}
+        {S.p("import")} {"{ x402Client }"} {S.p("from")} {S.s("'@t2000/x402'")};{"\n"}
+        {S.p("import")} {S.p("type")} {"{ X402Wallet }"} {S.p("from")} {S.s("'@t2000/x402'")};{"\n\n"}
+        {S.c("// Create x402 wallet wrapper from t2000 agent")}{"\n"}
+        {S.p("const")} wallet: {S.b("X402Wallet")} = {"{"}{"\n"}
+        {"  "}client: agent.{S.a("suiClient")},{"\n"}
+        {"  "}keypair: agent.{S.a("signer")},{"\n"}
+        {"  "}address: () {"=>"} agent.{S.g("address")}(),{"\n"}
+        {"  "}signAndExecute: {S.p("async")} (tx) {"=>"} {"{"}{"\n"}
+        {"    "}{S.p("const")} r = {S.p("await")} agent.suiClient.{S.g("signAndExecuteTransaction")}({"{"}{"\n"}
+        {"      "}signer: agent.signer, transaction: tx,{"\n"}
+        {"    }"});{"\n"}
+        {"    "}{S.p("return")} {"{"} digest: r.digest {"}"};{"\n"}
+        {"  }"},{"\n"}
+        {"}"};{"\n\n"}
+        {S.p("const")} client = {S.p("new")} {S.b("x402Client")}(wallet);{"\n\n"}
         {S.p("const")} res = {S.p("await")} client.{S.g("fetch")}({S.s("'https://api.example.com/data'")}, {"{"}{"\n"}
         {"  "}maxPrice: {S.a("0.05")},        {S.c("// refuse if price > $0.05 USDC")}{"\n"}
         {"}"});{"\n\n"}
@@ -1179,9 +1192,9 @@ function DefiSection() {
       <h2 id="defi-cetus">Cetus DEX integration</h2>
       <p>
         Token swaps route through Cetus DEX with on-chain slippage protection.
-        The <InlineCode>sqrt_price_limit</InlineCode> parameter ensures the
-        transaction reverts automatically if the market moves beyond your
-        tolerance — no partial fills, no silent slippage.
+        The <InlineCode>amount_limit</InlineCode> parameter ensures the
+        transaction reverts automatically if the received amount falls below
+        your tolerance — no partial fills, no silent slippage.
       </p>
 
       <h2 id="defi-borrow">Collateralized borrowing</h2>
@@ -1265,7 +1278,7 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.1.4 <Badge color="green">current</Badge>
+        v0.2.6 <Badge color="green">current</Badge>
       </h2>
       <p>
         Full bank account model: checking, savings, credit, and currency
@@ -1424,7 +1437,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.1.4
+            v0.2.6
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

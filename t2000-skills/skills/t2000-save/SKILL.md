@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -20,31 +20,17 @@ withdrawable at any time (subject to utilization).
 
 ## Command
 ```bash
-t2000 save <amount> USDC
-t2000 save all USDC
+t2000 save <amount> [asset]
+t2000 save all [asset]
 
 # Examples:
 t2000 save 80 USDC
-t2000 save all USDC
+t2000 save 80
+t2000 save all
 ```
 
-## Important: how `save all` works
-`save all` deposits everything except what the gas manager needs. It does NOT
-simply reserve $1 USDC liquid. Instead: if the SUI gas reserve is low, the gas
-manager will auto-convert up to $1 USDC → SUI before depositing the remainder.
-The exact USDC deposited = available balance minus any gas conversion amount.
-If no gas conversion is needed, the full available balance is deposited.
-
-Example:
-```
-Available:  $100.00 USDC
-Gas:        0.00 SUI  (low — gas manager triggers)
-
-→ Gas manager converts $1.00 USDC → SUI
-→ Deposits $99.00 USDC to NAVI
-→ Protocol fee: $0.099 USDC (0.1%)
-→ Net deposited: $98.90 USDC
-```
+Asset defaults to USDC if omitted. `save all` deposits the full available
+balance minus a $1 USDC reserve held back for future gas needs.
 
 ## Fees
 - Protocol fee: 0.1% of the deposit amount
@@ -52,8 +38,8 @@ Gas:        0.00 SUI  (low — gas manager triggers)
 
 ## Output
 ```
-✓ Gas manager: $1.00 USDC → SUI          [only shown if triggered]
-✓ Deposited $XX.XX USDC to NAVI
+✓ Gas manager: $1.00 USDC → SUI          [only shown if auto-topup triggered]
+✓ Saved $XX.XX USDC to NAVI
 ✓ Protocol fee: $0.XX USDC (0.1%)
 ✓ Current APY: X.XX%
 ✓ Savings balance: $XX.XX USDC
@@ -63,3 +49,4 @@ Gas:        0.00 SUI  (low — gas manager triggers)
 ## Notes
 - APY is variable based on NAVI utilization
 - If available balance is $0 after gas conversion, returns INSUFFICIENT_BALANCE
+- `t2000 supply` is an alias for `t2000 save`

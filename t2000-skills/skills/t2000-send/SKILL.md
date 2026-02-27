@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -20,24 +20,25 @@ self-funded from the agent's SUI reserve (auto-topped up if needed).
 
 ## Command
 ```bash
-t2000 send <amount> USDC to <address>
+t2000 send <amount> <asset> to <address>
+t2000 send <amount> <asset> <address>
 
 # Examples:
 t2000 send 10 USDC to 0x8b3e...d412
-t2000 send 50 USDC to 0xabcd...1234
+t2000 send 50 USDC 0xabcd...1234
 ```
+
+The `to` keyword is optional.
 
 ## Pre-flight checks (automatic)
 1. Sufficient available USDC balance
-2. SUI gas reserve present; if not, auto-topup is triggered ($1 USDC → SUI)
-3. Transaction simulation before broadcast
+2. SUI gas reserve present; if not, auto-topup triggers transparently
 
 ## Output
 ```
-✓ Auto-topped up gas reserve ($1.00 USDC → SUI)   [only shown if triggered]
 ✓ Sent $XX.XX USDC → 0x8b3e...d412
-✓ Gas: X.XXX SUI (self-funded)
-✓ Balance: $XX.XX USDC available
+  Gas: X.XXXX SUI (self-funded)
+  Balance: $XX.XX USDC
   Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 

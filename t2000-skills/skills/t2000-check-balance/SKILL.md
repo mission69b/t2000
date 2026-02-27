@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -22,24 +22,27 @@ savings (NAVI deposit), gas reserve (SUI), and total portfolio value.
 ```bash
 t2000 balance                 # human-readable summary
 t2000 balance --show-limits   # includes maxWithdraw, maxBorrow, healthFactor
-t2000 balance --json          # machine-parseable JSON (use this in agent code)
+t2000 balance --json          # machine-parseable JSON (works on all commands)
 ```
 
 ## Output (default)
 ```
-Available:  $XX.XX USDC   (checking — spendable immediately)
-Savings:    $XX.XX USDC   (earning ~X.XX% APY in NAVI)
-Gas:        X.XX SUI      (~$X.XX at current price)
-──────────────────────────
+Available:  $XX.XX USDC  (checking — spendable)
+Savings:    $XX.XX USDC  (earning X.XX% APY)
+Gas:        X.XX SUI     (~$X.XX)
+──────────────────────────────────────
 Total:      $XX.XX USDC
+Earning ~$X.XX/day
 ```
+
+The daily earnings line only appears when savings > 0.
 
 ## Output (--show-limits)
 Appends to the above:
 ```
 Limits:
-  Max withdraw:   $XX.XX USDC   (safe given current loan position)
-  Max borrow:     $XX.XX USDC   (50% LTV ceiling)
+  Max withdraw:   $XX.XX USDC
+  Max borrow:     $XX.XX USDC
   Health factor:  X.XX          (∞ if no active loan)
 ```
 
@@ -48,3 +51,4 @@ Limits:
   without any swap occurring
 - If balance shows $0.00 available and wallet was just created, fund it first
   via Coinbase Onramp or a direct USDC transfer to the wallet address
+- `--json` is a global flag that works on all t2000 commands, not just balance
