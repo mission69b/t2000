@@ -27,6 +27,19 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+x402.get('/x402', (c) => {
+  return c.json({
+    service: 't2000 x402 facilitator',
+    network: 'sui:mainnet',
+    endpoints: {
+      verify: 'POST /x402/verify',
+      settle: 'POST /x402/settle',
+    },
+    docs: 'https://t2000.ai/docs#x402',
+    npm: 'https://www.npmjs.com/package/@t2000/x402',
+  });
+});
+
 x402.post('/x402/verify', async (c) => {
   const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? '127.0.0.1';
   if (!checkRateLimit(ip)) {

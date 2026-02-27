@@ -24,7 +24,10 @@ yarn add @t2000/sdk
 ```typescript
 import { T2000 } from '@t2000/sdk';
 
-// Create or load a bank account
+// Create a new bank account
+const { agent, address } = await T2000.init({ pin: 'my-secret' });
+
+// Or load an existing one
 const agent = await T2000.create({ pin: 'my-secret' });
 
 // Check balance
@@ -46,30 +49,53 @@ await agent.borrow({ amount: 20, asset: 'USDC' });
 
 ## API Reference
 
-### `T2000.create(options)`
+### `T2000.init(options)` — Create a new wallet
 
-Creates a new bank account or loads an existing one.
+Creates a new bank account (generates keypair, encrypts, and saves to disk).
+
+```typescript
+const { agent, address, sponsored } = await T2000.init({
+  pin: 'my-secret',       // Required — encrypts the key
+  keyPath: '~/.t2000/wallet.key',  // Optional — custom key file path
+  name: 'my-agent',       // Optional — agent name for sponsor registration
+  sponsored: true,         // Optional — register with gas station (default: true)
+});
+```
+
+### `T2000.create(options)` — Load an existing wallet
+
+Loads an existing bank account from an encrypted key file. Throws `WALLET_NOT_FOUND` if no wallet exists.
 
 ```typescript
 const agent = await T2000.create({
-  pin: 'my-secret',               // Required — encrypts/decrypts the key
-  network: 'mainnet',             // 'mainnet' | 'testnet' (default: 'mainnet')
-  rpcUrl: 'https://...',          // Custom RPC endpoint (optional)
-  keyPath: '~/.t2000/wallet.key', // Custom key file path (optional)
+  pin: 'my-secret',                 // Required — decrypts the key
+  keyPath: '~/.t2000/wallet.key',   // Optional — custom key file path
+  rpcUrl: 'https://...',            // Optional — custom Sui RPC endpoint
 });
+```
+
+### `T2000.fromPrivateKey(key, options?)` — Load from raw key
+
+Synchronous factory that creates an agent from a raw private key (bech32 `suiprivkey1...` or hex).
+
+```typescript
+const agent = T2000.fromPrivateKey('suiprivkey1q...');
 ```
 
 ### Core Methods
 
 | Method | Description | Returns |
 |--------|-------------|---------|
+| `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
-| `agent.send({ to, amount })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, asset: 'USDC' })` | Deposit USDC to NAVI Protocol (earn APY) | `SaveResult` |
-| `agent.withdraw({ amount, asset: 'USDC' })` | Withdraw USDC from savings | `WithdrawResult` |
-| `agent.swap({ from, to, amount })` | Swap via Cetus CLMM DEX | `SwapResult` |
-| `agent.borrow({ amount, asset: 'USDC' })` | Borrow USDC against collateral | `BorrowResult` |
-| `agent.repay({ amount, asset: 'USDC' })` | Repay outstanding borrows | `RepayResult` |
+| `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
+| `agent.save({ amount, asset })` | Deposit USDC to NAVI Protocol (earn APY). `amount` can be `'all'`. | `SaveResult` |
+| `agent.withdraw({ amount, asset })` | Withdraw USDC from savings. `amount` can be `'all'`. | `WithdrawResult` |
+| `agent.swap({ from, to, amount, maxSlippage? })` | Swap via Cetus CLMM DEX. `maxSlippage` in % (default: 3). | `SwapResult` |
+| `agent.swapQuote({ from, to, amount })` | Get swap quote without executing | `SwapQuote` |
+| `agent.borrow({ amount, asset })` | Borrow USDC against collateral | `BorrowResult` |
+| `agent.repay({ amount, asset })` | Repay outstanding borrows. `amount` can be `'all'`. | `RepayResult` |
+| `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
 
@@ -83,7 +109,7 @@ const agent = await T2000.create({
 | `agent.maxWithdraw()` | Max safe withdrawal amount | `MaxWithdrawResult` |
 | `agent.maxBorrow()` | Max safe borrow amount | `MaxBorrowResult` |
 | `agent.deposit()` | Wallet address + funding instructions | `DepositInfo` |
-| `agent.history()` | Transaction history | `TransactionRecord[]` |
+| `agent.history({ limit? })` | Transaction history (default: all) | `TransactionRecord[]` |
 
 ### Key Management
 
@@ -93,6 +119,9 @@ import {
   keypairFromPrivateKey,
   exportPrivateKey,
   getAddress,
+  saveKey,
+  loadKey,
+  walletExists,
 } from '@t2000/sdk';
 
 // Generate a new keypair
@@ -106,21 +135,44 @@ const privkey = exportPrivateKey(keypair);
 
 // Get the Sui address
 const address = getAddress(keypair);
+
+// Check if wallet exists on disk
+const exists = await walletExists();
+
+// Save/load encrypted key
+await saveKey(keypair, 'my-pin');
+const loaded = await loadKey('my-pin');
 ```
 
 ### Events
 
 ```typescript
 agent.on('balanceChange', (e) => {
-  console.log(`${e.cause}: ${e.asset} changed`);
+  console.log(`${e.cause}: ${e.asset} ${e.previous} → ${e.current}`);
 });
 
 agent.on('healthWarning', (e) => {
-  console.log(`Health factor: ${e.healthFactor}`);
+  console.log(`Health factor: ${e.healthFactor} (warning)`);
+});
+
+agent.on('healthCritical', (e) => {
+  console.log(`Health factor: ${e.healthFactor} (critical — below 1.2)`);
 });
 
 agent.on('yield', (e) => {
-  console.log(`Earned: $${e.earned}`);
+  console.log(`Earned: $${e.earned}, total: $${e.total}`);
+});
+
+agent.on('gasAutoTopUp', (e) => {
+  console.log(`Auto-topped up gas: $${e.usdcSpent} USDC → ${e.suiReceived} SUI`);
+});
+
+agent.on('gasStationFallback', (e) => {
+  console.log(`Gas station fallback: ${e.reason}`);
+});
+
+agent.on('error', (e) => {
+  console.error(`Error: ${e.code} — ${e.message}`);
 });
 ```
 
@@ -140,9 +192,18 @@ import {
 
 mistToSui(1_000_000_000n);      // 1.0
 usdcToRaw(10.50);               // 10_500_000n
-formatUsd(1234.5);              // "$1,234.50"
-truncateAddress('0xabcd...1234'); // "0xabcd...1234"
+formatUsd(1234.5);              // "$1234.50"
+truncateAddress('0xabcdef...1234'); // "0xabcd...1234"
 validateAddress('0x...');        // throws if invalid
+```
+
+### Advanced: Exposed Internals
+
+For integrations (like `@t2000/x402`), the agent exposes:
+
+```typescript
+agent.suiClient;   // SuiClient instance
+agent.signer;      // Ed25519Keypair
 ```
 
 ## Gas Abstraction
@@ -164,11 +225,9 @@ Every transaction result includes a `gasMethod` field (`'self-funded'` | `'auto-
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `T2000_PIN` | Bank account PIN | — |
-| `T2000_NETWORK` | `mainnet` or `testnet` | `mainnet` |
-| `T2000_RPC_URL` | Custom Sui RPC URL | Sui public fullnode |
-| `T2000_KEY_PATH` | Path to encrypted key file | `~/.t2000/wallet.key` |
 | `T2000_API_URL` | t2000 API base URL | `https://api.t2000.ai` |
+
+Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create()` or `T2000.init()`. The CLI handles env vars like `T2000_PIN` — see the [CLI README](https://www.npmjs.com/package/@t2000/cli).
 
 ## Supported Assets
 
@@ -192,12 +251,12 @@ try {
 }
 ```
 
-Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `SLIPPAGE_EXCEEDED` · `ASSET_NOT_SUPPORTED` · `WITHDRAW_WOULD_LIQUIDATE`
+Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `SLIPPAGE_EXCEEDED` · `ASSET_NOT_SUPPORTED` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE`
 
 ## Testing
 
 ```bash
-# Run all SDK unit tests (92 tests)
+# Run all SDK unit tests (122 tests)
 pnpm --filter @t2000/sdk test
 ```
 
@@ -210,6 +269,10 @@ pnpm --filter @t2000/sdk test
 | `keyManager.test.ts` | Key generation, encryption, decryption, import/export |
 | `errors.test.ts` | `T2000Error` construction, serialization, `mapWalletError`, `mapMoveAbortCode` |
 | `navi.test.ts` | NAVI math utilities (health factor, APY, position calculations) |
+| `send.test.ts` | Send transaction building and validation |
+| `manager.test.ts` | Gas resolution chain (self-fund, auto-topup, sponsored fallback) |
+| `autoTopUp.test.ts` | Auto-topup threshold logic and swap execution |
+| `serialization.test.ts` | Transaction JSON serialization roundtrip |
 
 ## Protocol Fees
 

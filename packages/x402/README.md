@@ -100,36 +100,43 @@ const res = await client.fetch('https://api.example.com/data', {
 });
 ```
 
-### `parsePaymentRequired(response)`
+### `parsePaymentRequired(headerValue, maxPrice?)`
 
-Parses a 402 response into structured payment terms.
+Parses the `PAYMENT-REQUIRED` header from a 402 response into structured payment terms. Validates network (must be `sui`), asset (must be `USDC`), expiry, and price limit.
 
 ```typescript
 import { parsePaymentRequired } from '@t2000/x402';
 
-const terms = parsePaymentRequired(response);
-// { amount: 10000, recipient: '0x...', network: 'sui', ... }
+const headerValue = response.headers.get('payment-required');
+const terms = parsePaymentRequired(headerValue, 1.0);
+// { amount: '0.01', payTo: '0x...', network: 'sui', nonce: '...', expiresAt: 1709... }
 ```
 
 ## Facilitator API (Server-Side)
 
 For API providers who want to accept x402 payments:
 
-### `verifyPayment(params)`
+### `verifyPayment(client, request)`
 
-Verify that an on-chain payment transaction is valid.
+Verify that an on-chain payment transaction is valid. Checks the transaction for a `PaymentReceipt` event and validates amount, recipient, and nonce.
 
 ```typescript
 import { verifyPayment } from '@t2000/x402';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 
-const result = await verifyPayment({
-  txDigest: 'ABC123...',
-  expectedAmount: 10000,       // 0.01 USDC in raw units (6 decimals)
-  expectedRecipient: '0x...',
-  client: suiClient,          // SuiClient instance
+const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
+
+const result = await verifyPayment(client, {
+  txHash: 'ABC123...',
+  amount: '0.01',
+  asset: 'USDC',
+  payTo: '0x...',
+  nonce: 'unique-nonce',
+  expiresAt: 1709500000,
+  network: 'sui',
 });
 
-if (result.valid) {
+if (result.verified) {
   // Payment verified — serve the resource
 }
 ```
@@ -148,14 +155,15 @@ Payments are executed on-chain via the [Sui Payment Kit](https://docs.sui.io/sta
 
 ```typescript
 import { buildPaymentTransaction } from '@t2000/x402';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+
+const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
 
 // Build a payment transaction (advanced usage)
-const tx = buildPaymentTransaction({
-  registryId: '0x...',
-  recipient: '0x...',
-  amount: 10000n,          // raw USDC units
+const tx = await buildPaymentTransaction(client, senderAddress, {
   nonce: 'unique-nonce',
-  coinObjectId: '0x...',
+  amount: '0.01',           // USDC as string (converted to raw internally)
+  payTo: '0x...',
 });
 ```
 
