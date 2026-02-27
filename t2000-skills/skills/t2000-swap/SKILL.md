@@ -3,8 +3,8 @@ name: t2000-swap
 description: >-
   Swap one token for another using Cetus DEX on Sui. Use when asked to
   exchange tokens, convert USDC to SUI, trade one asset for another, or
-  change currency. A 0.1% protocol fee applies. Slippage is enforced
-  on-chain.
+  change currency. No protocol fee — only standard Cetus pool fees.
+  Slippage is enforced on-chain.
 license: MIT
 metadata:
   author: t2000
@@ -29,16 +29,15 @@ t2000 swap 10 USDC SUI --slippage 0.5
 ```
 
 ## Fees
-- Protocol fee: 0.1% of the swap amount
+- Protocol fee: **Free** — no t2000 fee on swaps
 - DEX fee: Cetus standard (typically 0.01–0.05%)
-- Both shown in the pre-flight preview before execution
+- Fees shown in the pre-flight preview before execution
 
 ## Output
 ```
 Preview:
   Sending:           XX.XX USDC
   Receiving:         ~XX.XX SUI (at current price)
-  Protocol fee:      $0.XX USDC (0.1%)
   Slippage tolerance: 1.00%
   Min received:      XX.XX SUI (guaranteed on-chain)
 

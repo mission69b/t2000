@@ -213,11 +213,15 @@ pnpm --filter @t2000/sdk test
 
 ## Protocol Fees
 
-| Operation | Fee |
-|-----------|-----|
-| Save (deposit) | 0.10% |
-| Swap | 0.10% |
-| Borrow | 0.05% |
+| Operation | Fee | Notes |
+|-----------|-----|-------|
+| Save (deposit) | 0.10% | Protocol fee on deposit |
+| Borrow | 0.05% | Protocol fee on loan |
+| Swap | **Free** | Only standard Cetus pool fees |
+| Withdraw | Free | |
+| Repay | Free | |
+| Send | Free | |
+| Pay (x402) | Free | Agent pays the API price, no t2000 surcharge |
 
 Fees are collected by the t2000 protocol treasury on-chain.
 

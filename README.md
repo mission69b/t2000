@@ -108,6 +108,18 @@ t2000 wraps five DeFi primitives into a single interface that any AI agent can u
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
 
+### Fees
+
+| Operation | Fee | Notes |
+|-----------|-----|-------|
+| Save | 0.1% | Protocol fee on deposit |
+| Borrow | 0.05% | Protocol fee on loan |
+| Swap | **Free** | Only standard Cetus pool fees |
+| Withdraw | Free | |
+| Repay | Free | |
+| Send | Free | |
+| Pay (x402) | Free | Agent pays the API price, no t2000 surcharge |
+
 ### The self-funding loop
 
 At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the agent becomes self-funding.

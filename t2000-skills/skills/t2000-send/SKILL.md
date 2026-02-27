@@ -28,7 +28,7 @@ t2000 send 50 USDC to 0xabcd...1234
 ```
 
 ## Pre-flight checks (automatic)
-1. Sufficient available USDC balance (amount + protocol fee)
+1. Sufficient available USDC balance
 2. SUI gas reserve present; if not, auto-topup is triggered ($1 USDC → SUI)
 3. Transaction simulation before broadcast
 
