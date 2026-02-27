@@ -613,6 +613,24 @@ function ConceptsSection() {
         states, no stranded funds.
       </p>
 
+      <h2 id="con-fees">Fees</h2>
+      <DocTable
+        headers={["Operation", "Fee", "Notes"]}
+        rows={[
+          ["Save", "0.1%", "Protocol fee on deposit"],
+          ["Borrow", "0.05%", "Protocol fee on loan"],
+          ["Swap", <strong key="f">Free</strong>, "Only standard Cetus pool fees"],
+          ["Withdraw", <strong key="f">Free</strong>, ""],
+          ["Repay", <strong key="f">Free</strong>, ""],
+          ["Send", <strong key="f">Free</strong>, ""],
+          ["Pay (x402)", <strong key="f">Free</strong>, "Agent pays the API price, no t2000 surcharge"],
+        ]}
+      />
+      <p>
+        Fees are collected atomically on-chain — if the transaction fails, no fee
+        is charged.
+      </p>
+
       <h2 id="con-hf">Health factor</h2>
       <p>
         If you have an active borrow, t2000 enforces a minimum health factor of{" "}
