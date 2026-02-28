@@ -759,6 +759,12 @@ export default function Home() {
             Demos
           </Link>
           <Link
+            href="/stats"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Stats
+          </Link>
+          <Link
             href={DOCS_URL}
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
