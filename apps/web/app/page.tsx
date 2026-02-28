@@ -705,7 +705,7 @@ export default function Home() {
               GitHub →
             </a>
             <a
-              href={`${GITHUB_URL}/tree/main/t2000-skills`}
+              href={"https://github.com/mission69b/t2000-skills"}
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
@@ -745,7 +745,7 @@ export default function Home() {
             npm
           </a>
           <a
-            href={`${GITHUB_URL}/tree/main/t2000-skills`}
+            href={"https://github.com/mission69b/t2000-skills"}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
