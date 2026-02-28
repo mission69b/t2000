@@ -379,13 +379,22 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 
 ## Contract Object IDs (Mainnet)
 
+### t2000 Protocol
+
 | Object | ID |
 |--------|----|
 | Package | `0x51c44bb2ad3ba608cf9adbc6e37ee67268ef9313a4ff70957d4c6e7955dc7eef` |
 | Config | `0xd30408960ac38eced670acc102df9e178b5b46b3a8c0e96a53ec2fd3f39b5936` |
 | Treasury (USDC) | `0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8` |
-| AdminCap | `0x8f8a1147f9e52738485817ee499736d878546f079fc99d5560cdd570fec7d13e` |
-| UpgradeCap | `0x9627206ae0265afaae354864116b1cd152cb872ca28dfb4cd8d50ad46f69d7fa` |
+
+> **Note:** AdminCap and UpgradeCap IDs are intentionally omitted — stored in `.env.local` only.
+
+### x402 Payment Kit (Sui Payment Kit)
+
+| Object | ID |
+|--------|----|
+| Package | `0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6` |
+| Payment Registry | `0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291` |
 
 ---
 
