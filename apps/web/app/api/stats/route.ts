@@ -1,22 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 
 const SUI_RPC = process.env.SUI_RPC_URL ?? getFullnodeUrl("mainnet");
 
-function auth(req: NextRequest): boolean {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) return false;
-  const token =
-    req.headers.get("authorization")?.replace("Bearer ", "") ??
-    req.nextUrl.searchParams.get("token");
-  return token === secret;
-}
-
-export async function GET(req: NextRequest) {
-  if (!auth(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET() {
 
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
