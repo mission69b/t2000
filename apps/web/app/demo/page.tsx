@@ -22,7 +22,7 @@ export default function DemoPage() {
             href="/"
             className="inline-block text-muted hover:text-accent text-xs font-mono mb-8 transition-colors"
           >
-            ← t2000.sh
+            ← t2000.ai
           </a>
           <h1 className="text-3xl sm:text-4xl font-serif italic text-foreground mb-3 tracking-tight">
             Live Demos

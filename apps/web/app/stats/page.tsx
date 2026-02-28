@@ -21,7 +21,7 @@ export default function StatsPage() {
             href="/"
             className="inline-block text-muted hover:text-accent text-xs font-mono mb-8 transition-colors"
           >
-            ← t2000.sh
+            ← t2000.ai
           </a>
           <div className="flex items-center gap-4 mb-3">
             <h1 className="text-3xl sm:text-4xl font-serif italic text-foreground tracking-tight">

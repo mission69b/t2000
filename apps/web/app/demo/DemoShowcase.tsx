@@ -46,15 +46,6 @@ export function DemoShowcase() {
             </p>
           </div>
 
-          <div className="bg-panel border border-border rounded p-4">
-            <div className="text-[10px] text-muted uppercase tracking-widest mb-2">
-              Suggested tweet
-            </div>
-            <p className="text-xs text-foreground/70 leading-relaxed font-mono">
-              {activeDemo.tweet}
-            </p>
-          </div>
-
           <div className="space-y-2">
             <div className="text-[10px] text-muted uppercase tracking-widest">
               Commands used
