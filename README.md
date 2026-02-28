@@ -268,7 +268,7 @@ Full reference → [`@t2000/x402` README](packages/x402)
 Install one package and your AI agent gains financial capabilities:
 
 ```bash
-npx skills add t2000/t2000-skills
+npx skills add mission69b/t2000-skills
 ```
 
 Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goose, and [20+ more](https://agentskills.io).

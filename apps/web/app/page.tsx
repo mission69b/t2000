@@ -69,7 +69,7 @@ const STEPS = [
     badgeType: "new" as const,
     content:
       "Works with Claude Code, Codex, Copilot, Cursor, and 20+ platforms. Your agent now knows when and how to use every t2000 command — no manual wiring.",
-    code: "npx skills add t2000/t2000-skills",
+    code: "npx skills add mission69b/t2000-skills",
   },
   {
     num: "04",
@@ -519,7 +519,7 @@ export default function Home() {
               </div>
               <div className="px-4 sm:px-5 py-4 text-xs sm:text-sm text-accent flex items-center gap-2.5 overflow-x-auto scrollbar-hide">
                 <span className="text-muted shrink-0">$</span>
-                <span className="whitespace-nowrap">npx skills add t2000/t2000-skills</span>
+                <span className="whitespace-nowrap">npx skills add mission69b/t2000-skills</span>
               </div>
             </div>
 

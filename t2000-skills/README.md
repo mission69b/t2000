@@ -7,7 +7,7 @@ tokens, borrow, and pay for x402 API services — all on Sui.
 ## Install
 
 ```bash
-npx skills add t2000/t2000-skills
+npx skills add mission69b/t2000-skills
 ```
 
 Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, and

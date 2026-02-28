@@ -466,7 +466,7 @@ function QuickStart({
               automatically.
             </p>
             <CodeBlock lang="bash">
-              {S.g("$")} npx skills add t2000/t2000-skills{"\n\n"}
+              {S.g("$")} npx skills add mission69b/t2000-skills{"\n\n"}
               {S.g("✓")} Installed 8 skills{"\n"}
               {S.m("  t2000-check-balance, t2000-send, t2000-save,")}{"\n"}
               {S.m("  t2000-withdraw, t2000-swap, t2000-borrow,")}{"\n"}
@@ -1037,7 +1037,7 @@ function SkillsSection() {
       </p>
 
       <h2 id="sk-install">Install</h2>
-      <TryIt cmd="npx skills add t2000/t2000-skills" />
+      <TryIt cmd="npx skills add mission69b/t2000-skills" />
       <p>
         Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code,
         and any platform implementing the{" "}
