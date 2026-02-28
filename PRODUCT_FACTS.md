@@ -19,6 +19,19 @@
 
 ---
 
+## Agent Skills
+
+| Fact | Value |
+|------|-------|
+| Install command | `npx skills add mission69b/t2000-skills` |
+| Repo | `https://github.com/mission69b/t2000-skills` |
+| Skill count | 8 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-swap`, `t2000-borrow`, `t2000-repay`, `t2000-pay` |
+| Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
+| Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
+
+---
+
 ## Fees
 
 | Operation | BPS | Rate | Notes |
