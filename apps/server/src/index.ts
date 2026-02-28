@@ -6,6 +6,7 @@ import { health } from './routes/health.js';
 import { gas } from './routes/gas.js';
 import { fees } from './routes/fees.js';
 import { x402 } from './routes/x402.js';
+import { stats } from './routes/stats.js';
 import { startPriceCache } from './lib/priceCache.js';
 
 const REQUIRED_ENV = ['DATABASE_URL', 'SPONSOR_PRIVATE_KEY', 'GAS_STATION_PRIVATE_KEY'];
@@ -33,6 +34,7 @@ app.route('/', health);
 app.route('/', gas);
 app.route('/', fees);
 app.route('/', x402);
+app.route('/', stats);
 
 app.get('/', (c) => c.json({ service: 't2000-server', version: '0.1.0' }));
 

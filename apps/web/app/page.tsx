@@ -7,6 +7,7 @@ import { BalanceWidget } from "./components/BalanceWidget";
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 const NPM_ORG_URL = "https://www.npmjs.com/org/t2000";
 const DOCS_URL = "/docs";
+const DEMO_URL = "/demo";
 
 const ACCOUNTS = [
   {
@@ -712,6 +713,12 @@ export default function Home() {
               Skills package →
             </a>
             <Link
+              href={DEMO_URL}
+              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
+            >
+              Live Demos →
+            </Link>
+            <Link
               href={DOCS_URL}
               className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
             >
@@ -745,6 +752,12 @@ export default function Home() {
           >
             Skills
           </a>
+          <Link
+            href={DEMO_URL}
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Demos
+          </Link>
           <Link
             href={DOCS_URL}
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
