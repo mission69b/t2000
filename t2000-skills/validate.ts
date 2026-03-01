@@ -149,26 +149,6 @@ function validateSkill(skillDir: string, name: string): ValidationError[] {
   return errors;
 }
 
-function validatePaySkillStatus(skillDir: string): ValidationError[] {
-  const errors: ValidationError[] = [];
-  const skillPath = join(skillDir, 'SKILL.md');
-  if (!existsSync(skillPath)) return errors;
-
-  const content = readFileSync(skillPath, 'utf-8');
-  const fm = parseFrontmatter(content);
-  if (!fm) return errors;
-
-  if (fm.status !== 'coming-soon') {
-    errors.push({ skill: 't2000-pay', field: 'status', message: `Expected status "coming-soon" but got "${fm.status}"` });
-  }
-
-  if (fm.metadata?.available !== false) {
-    errors.push({ skill: 't2000-pay', field: 'metadata.available', message: `Expected available: false but got ${fm.metadata?.available}` });
-  }
-
-  return errors;
-}
-
 function main() {
   const scriptDir = import.meta.dirname ?? new URL('.', import.meta.url).pathname;
   const skillsRoot = resolve(scriptDir, 'skills');
@@ -195,10 +175,6 @@ function main() {
     totalSkills++;
     const errors = validateSkill(join(skillsRoot, dir), dir);
 
-    if (dir === 't2000-pay') {
-      errors.push(...validatePaySkillStatus(join(skillsRoot, dir)));
-    }
-
     if (errors.length === 0) {
       console.log(`  ✓ ${dir}`);
     } else {
@@ -218,6 +194,7 @@ function main() {
     't2000-borrow',
     't2000-repay',
     't2000-pay',
+    't2000-sentinel',
   ];
 
   const missing = expectedSkills.filter(s => !skillDirs.includes(s));

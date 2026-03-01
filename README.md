@@ -173,6 +173,8 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.swapQuote({ from, to, amount })` | Get swap quote |
 | **Info** | `agent.rates()` | Current APYs |
 | | `agent.positions()` | Open DeFi positions |
+| **Sentinel** | `agent.sentinelList()` | Browse active sentinels |
+| | `agent.sentinelAttack(id, prompt)` | Full attack flow |
 
 Full API reference → [`@t2000/sdk` README](packages/sdk)
 
@@ -197,6 +199,11 @@ t2000 rates                        Current APYs
 
 # x402 Payments
 t2000 pay https://api.example.com  Pay for API resource
+
+# Sentinel (earn bounties)
+t2000 sentinel list                Browse active sentinels
+t2000 sentinel attack <id> "..."   Attack a sentinel (costs SUI)
+t2000 sentinel info <id>           Sentinel details
 
 # HTTP API (for non-TypeScript agents)
 t2000 serve --port 3001            Start HTTP API server
@@ -283,6 +290,7 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-borrow` | "borrow 40 USDC" |
 | `t2000-repay` | "repay my loan" |
 | `t2000-pay` | "call that paid API" |
+| `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 
 Full reference → [Agent Skills README](t2000-skills)
 

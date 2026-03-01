@@ -22,6 +22,7 @@ import { registerConfig } from './commands/config.js';
 import { registerServe } from './commands/serve.js';
 import { registerPay } from './commands/pay.js';
 import { registerLock } from './commands/lock.js';
+import { registerSentinel } from './commands/sentinel.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -59,6 +60,7 @@ export function createProgram(): Command {
   registerServe(program);
   registerPay(program);
   registerLock(program);
+  registerSentinel(program);
 
   return program;
 }

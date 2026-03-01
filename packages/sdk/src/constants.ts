@@ -50,3 +50,15 @@ export const API_BASE_URL = process.env.T2000_API_URL ?? 'https://api.t2000.ai';
 export const CETUS_USDC_SUI_POOL = '0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab';
 export const CETUS_GLOBAL_CONFIG = '0xdaa46292632c3c4d8f31f23ea0f9b36a28ff3677e9684980e4438403a67a3d8f';
 export const CETUS_PACKAGE = '0x1eabed72c53feb3805120a081dc15963c204dc8d091542592abaf7a35689b2fb';
+
+export const SENTINEL = {
+  PACKAGE: '0x88b83f36dafcd5f6dcdcf1d2cb5889b03f61264ab3cee9cae35db7aa940a21b7',
+  AGENT_REGISTRY: '0xc47564f5f14c12b31e0dfa1a3dc99a6380a1edf8929c28cb0eaa3359c8db36ac',
+  ENCLAVE: '0xfb1261aeb9583514cb1341a548a5ec12d1231bd96af22215f1792617a93e1213',
+  PROTOCOL_CONFIG: '0x2fa4fa4a1dd0498612304635ff9334e1b922e78af325000e9d9c0e88adea459f',
+  TEE_API: 'https://app.suisentinel.xyz/api/consume-prompt',
+  SENTINELS_API: 'https://api.suisentinel.xyz/agents/mainnet',
+  RANDOM: '0x8',
+  MIN_FEE_MIST: 100_000_000n, // 0.1 SUI
+  MAX_PROMPT_TOKENS: 600,
+} as const;

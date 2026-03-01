@@ -156,3 +156,37 @@ export interface TransactionRecord {
   timestamp: number;
   gasMethod?: GasMethod;
 }
+
+export interface SentinelAgent {
+  id: string;
+  objectId: string;
+  name: string;
+  model: string;
+  systemPrompt: string;
+  attackFee: bigint;
+  prizePool: bigint;
+  totalAttacks: number;
+  successfulBreaches: number;
+  state: string;
+}
+
+export interface SentinelVerdict {
+  success: boolean;
+  score: number;
+  agentResponse: string;
+  juryResponse: string;
+  funResponse: string;
+  signature: string;
+  timestampMs: number;
+}
+
+export interface SentinelAttackResult {
+  attackObjectId: string;
+  sentinelId: string;
+  prompt: string;
+  verdict: SentinelVerdict;
+  requestTx: string;
+  settleTx: string;
+  won: boolean;
+  feePaid: number;
+}

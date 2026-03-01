@@ -22,6 +22,9 @@ export type {
   FundStatusResult,
   DepositInfo,
   TransactionRecord,
+  SentinelAgent,
+  SentinelVerdict,
+  SentinelAttackResult,
 } from './types.js';
 export {
   MIST_PER_SUI,
@@ -31,6 +34,7 @@ export {
   SUPPORTED_ASSETS,
   CLOCK_ID,
   DEFAULT_NETWORK,
+  SENTINEL,
 } from './constants.js';
 export type { SupportedAsset } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
@@ -58,6 +62,14 @@ export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.j
 export type { SimulationResult } from './utils/simulate.js';
 export { getPoolPrice, getSwapQuote } from './protocols/cetus.js';
 export { getRates } from './protocols/navi.js';
+export {
+  listSentinels,
+  getSentinelInfo,
+  requestAttack,
+  submitPrompt,
+  settleAttack,
+  attack as sentinelAttack,
+} from './protocols/sentinel.js';
 export {
   executeWithGas,
   shouldAutoTopUp,

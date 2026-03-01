@@ -111,6 +111,14 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.deposit()` | Wallet address + funding instructions | `DepositInfo` |
 | `agent.history({ limit? })` | Transaction history (default: all) | `TransactionRecord[]` |
 
+### Sentinel Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `agent.sentinelList()` | List active sentinels with prize pools | `SentinelAgent[]` |
+| `agent.sentinelInfo(id)` | Get sentinel details (from API or on-chain) | `SentinelAgent` |
+| `agent.sentinelAttack(id, prompt, fee?)` | Full attack flow: request → TEE → settle | `SentinelAttackResult` |
+
 ### Key Management
 
 ```typescript

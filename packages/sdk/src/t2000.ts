@@ -18,6 +18,7 @@ import * as navi from './protocols/navi.js';
 import * as cetus from './protocols/cetus.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
+import * as sentinel from './protocols/sentinel.js';
 import { solveHashcash } from './utils/hashcash.js';
 import { executeWithGas } from './gas/manager.js';
 import type {
@@ -38,6 +39,8 @@ import type {
   DepositInfo,
   EarningsResult,
   FundStatusResult,
+  SentinelAgent,
+  SentinelAttackResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
@@ -534,6 +537,20 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async fundStatus(): Promise<FundStatusResult> {
     return yieldTracker.getFundStatus(this.client, this.keypair);
+  }
+
+  // -- Sentinel --
+
+  async sentinelList(): Promise<SentinelAgent[]> {
+    return sentinel.listSentinels();
+  }
+
+  async sentinelInfo(id: string): Promise<SentinelAgent> {
+    return sentinel.getSentinelInfo(this.client, id);
+  }
+
+  async sentinelAttack(id: string, prompt: string, fee?: bigint): Promise<SentinelAttackResult> {
+    return sentinel.attack(this.client, this.keypair, id, prompt, fee);
   }
 
   // -- Helpers --

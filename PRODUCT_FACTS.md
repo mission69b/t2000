@@ -25,8 +25,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 8 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-swap`, `t2000-borrow`, `t2000-repay`, `t2000-pay` |
+| Skill count | 9 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-swap`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -88,6 +88,9 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | export | `t2000 export` | Options: `--yes` to skip confirmation |
 | import | `t2000 import` | |
 | lock | `t2000 lock` | Clear saved session |
+| sentinel list | `t2000 sentinel list` | List active sentinels with prize pools |
+| sentinel info | `t2000 sentinel info <id>` | Show details for a sentinel |
+| sentinel attack | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel (full 3-step flow). Options: `--fee <sui>` |
 
 ### Global Flags
 
@@ -207,6 +210,14 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | `positions()` | — | `PositionsResult` |
 | `earnings()` | — | `EarningsResult` |
 | `fundStatus()` | — | `FundStatusResult` |
+
+### Sentinel
+
+| Method | Params | Returns |
+|--------|--------|---------|
+| `sentinelList()` | — | `SentinelAgent[]` |
+| `sentinelInfo()` | `id: string` | `SentinelAgent` |
+| `sentinelAttack()` | `id: string, prompt: string, fee?: bigint` | `SentinelAttackResult` |
 
 ### Getters
 
@@ -395,6 +406,18 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 |--------|----|
 | Package | `0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6` |
 | Payment Registry | `0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291` |
+
+### Sui Sentinel (Partner — Red Teaming)
+
+| Object | ID |
+|--------|----|
+| Package | `0x88b83f36dafcd5f6dcdcf1d2cb5889b03f61264ab3cee9cae35db7aa940a21b7` |
+| Agent Registry | `0xc47564f5f14c12b31e0dfa1a3dc99a6380a1edf8929c28cb0eaa3359c8db36ac` |
+| Enclave | `0xfb1261aeb9583514cb1341a548a5ec12d1231bd96af22215f1792617a93e1213` |
+| Protocol Config | `0x2fa4fa4a1dd0498612304635ff9334e1b922e78af325000e9d9c0e88adea459f` |
+
+> Sentinel integration: SDK (`protocols/sentinel.ts`), CLI (`t2000 sentinel list|info|attack`), and `t2000-sentinel` skill.
+> Docs: https://docs.suisentinel.xyz | App: https://app.suisentinel.xyz
 
 ---
 
