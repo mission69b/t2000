@@ -142,6 +142,12 @@ npm install -g @t2000/cli
 | `t2000 pay <url> --timeout 60` | Request timeout in seconds (default: 30) |
 | `t2000 pay <url> --dry-run` | Show what would be paid without paying |
 
+### Earn (Directory)
+
+| Command | Description |
+|---------|-------------|
+| `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
+
 ### Sentinel (Earn Bounties)
 
 | Command | Description |

@@ -23,6 +23,7 @@ import { registerServe } from './commands/serve.js';
 import { registerPay } from './commands/pay.js';
 import { registerLock } from './commands/lock.js';
 import { registerSentinel } from './commands/sentinel.js';
+import { registerEarn } from './commands/earn.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -30,7 +31,7 @@ export function createProgram(): Command {
   program
     .name('t2000')
     .description('The first bank account for AI agents')
-    .version('0.2.10')
+    .version('0.2.11')
     .option('--json', 'Output in JSON format')
     .option('--yes', 'Skip confirmation prompts')
     .hook('preAction', (thisCommand) => {
@@ -61,6 +62,7 @@ export function createProgram(): Command {
   registerPay(program);
   registerLock(program);
   registerSentinel(program);
+  registerEarn(program);
 
   return program;
 }

@@ -200,6 +200,9 @@ t2000 rates                        Current APYs
 # x402 Payments
 t2000 pay https://api.example.com  Pay for API resource
 
+# Earn (directory)
+t2000 earn                         Show all earning opportunities
+
 # Sentinel (earn bounties)
 t2000 sentinel list                Browse active sentinels
 t2000 sentinel attack <id> "..."   Attack a sentinel (costs SUI)

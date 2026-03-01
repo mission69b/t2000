@@ -88,7 +88,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Reference",
     items: [
-      { id: "cli", name: "CLI Commands", badge: "13" },
+      { id: "cli", name: "CLI Commands", badge: "14" },
       { id: "sdk", name: "SDK / API", badge: "TS", badgeGreen: true },
       { id: "config", name: "Configuration" },
       { id: "errors", name: "Error Codes" },
@@ -670,6 +670,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 health" desc="Check system + protocol status" onClick={() => scrollToCmd("health")} />
         <CmdCard name="t2000 positions" desc="View DeFi positions detail" onClick={() => scrollToCmd("positions")} />
         <CmdCard name="t2000 history" desc="Transaction history" onClick={() => scrollToCmd("history")} />
+        <CmdCard name="t2000 earn" desc="Show all earning opportunities" onClick={() => scrollToCmd("earn")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
       </div>
 
@@ -856,6 +857,27 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         0x9f2c...a801  save {S.m("(sponsored)")}     2/19/2026, 3:45 PM{"\n"}
         0xa1b2...c3d4  send {S.m("(self-funded)")}  2/19/2026, 2:30 PM{"\n"}
         0xd5e6...f7a8  swap {S.m("(auto-topup)")}   2/18/2026, 1:15 PM
+      </CodeBlock>
+
+      <h2 id="cmd-earn">t2000 earn</h2>
+      <p>Show all earning opportunities in one dashboard — savings yield from NAVI and sentinel bounties from Sui Sentinel.</p>
+      <CodeBlock lang="bash">
+        t2000 earn{"\n"}
+        t2000 earn {S.a("--json")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {"  "}Earning Opportunities{"\n\n"}
+        {"  "}SAVINGS — Passive Yield{"\n"}
+        {"  "}──────────────────────────────────────{"\n"}
+        {"  "}Saved:          $4.00 USDC @ 3.8% APY{"\n"}
+        {"  "}Daily Yield:    ~$0.0004/day{"\n"}
+        {"  "}All-time:       ~$0.0124{"\n\n"}
+        {"  "}SENTINEL BOUNTIES — Active Red Teaming{"\n"}
+        {"  "}──────────────────────────────────────{"\n"}
+        {"  "}Active:         49 sentinels{"\n"}
+        {"  "}Prize Pools:    235.41 SUI available{"\n"}
+        {"  "}Cheapest Fee:   0.10 SUI{"\n"}
+        {"  "}Best Target:    Philose — 0.75 SUI pool (7.0x ratio)
       </CodeBlock>
 
       <h2 id="cmd-sentinel">

@@ -91,6 +91,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | sentinel list | `t2000 sentinel list` | List active sentinels with prize pools |
 | sentinel info | `t2000 sentinel info <id>` | Show details for a sentinel |
 | sentinel attack | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel (full 3-step flow). Options: `--fee <sui>` |
+| earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 
 ### Global Flags
 

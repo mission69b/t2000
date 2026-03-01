@@ -167,6 +167,38 @@ export const demos: Demo[] = [
     ],
   },
   {
+    id: "earn",
+    title: "Earn — Opportunities Dashboard",
+    description: "See all earning opportunities in one view — savings yield and sentinel bounties.",
+    steps: [
+      {
+        command: "t2000 earn",
+        output: `  Earning Opportunities
+
+  SAVINGS — Passive Yield
+  ──────────────────────────────────────
+  Saved:          $4.00 USDC @ 3.8% APY
+  Daily Yield:    ~$0.0004/day
+  All-time:       ~$0.0124
+  Monthly Est:    ~$0.01/month
+
+  SENTINEL BOUNTIES — Active Red Teaming
+  ──────────────────────────────────────
+  Active:         49 sentinels
+  Prize Pools:    235.41 SUI available
+  Cheapest Fee:   0.10 SUI
+  Best Target:    Philose — 0.75 SUI pool (7.0x ratio)
+
+  Quick Actions
+  ──────────────────────────────────────
+    t2000 save <amount>            Save USDC for yield
+    t2000 sentinel list            Browse sentinel bounties
+    t2000 sentinel attack <id>     Attack a sentinel`,
+        delay: 800,
+      },
+    ],
+  },
+  {
     id: "sentinel",
     title: "Sentinel — Earn Bounties",
     description: "Attack AI sentinels, earn bounties by finding vulnerabilities. Partner integration with Sui Sentinel.",
