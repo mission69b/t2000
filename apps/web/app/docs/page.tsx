@@ -401,9 +401,9 @@ function QuickStart({
         {"  "}{S.m("───────────────────────────────────")}{"\n\n"}
         {"  "}{S.m("Install globally for persistent use:")}{"\n"}
         {"  "}{S.b("npm install -g @t2000/cli")}{"\n\n"}
-        {"  "}{S.b("t2000 balance")}    check for funds{"\n"}
-        {"  "}{S.b("t2000 save all")}           start earning yield{"\n"}
-        {"  "}{S.b("t2000 address")}            show address again
+        {"  "}{S.b("t2000 balance ")}{"  "}check for funds{"\n"}
+        {"  "}{S.b("t2000 save all")}{"  "}start earning yield{"\n"}
+        {"  "}{S.b("t2000 address ")}{"  "}show address again
       </CodeBlock>
       <Callout type="tip" label="Tip">
         Your encrypted key lives at <InlineCode>~/.t2000/wallet.key</InlineCode>.
