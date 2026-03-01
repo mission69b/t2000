@@ -868,16 +868,22 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="output">
         {"  "}Earning Opportunities{"\n\n"}
         {"  "}SAVINGS — Passive Yield{"\n"}
-        {"  "}──────────────────────────────────────{"\n"}
-        {"  "}Saved:          $4.00 USDC @ 3.8% APY{"\n"}
-        {"  "}Daily Yield:    ~$0.0004/day{"\n"}
-        {"  "}All-time:       ~$0.0124{"\n\n"}
+        {"  "}─────────────────────────────────────────────────────{"\n"}
+        {"  "}Saved:          $0.00 USDC @ 3.8% APY{"\n"}
+        {"  "}Daily Yield:    ~$0.0000/day{"\n"}
+        {"  "}All-time:       ~$0.0000{"\n"}
+        {"  "}Monthly Est:    ~$0.00/month{"\n\n"}
         {"  "}SENTINEL BOUNTIES — Active Red Teaming{"\n"}
-        {"  "}──────────────────────────────────────{"\n"}
+        {"  "}─────────────────────────────────────────────────────{"\n"}
         {"  "}Active:         49 sentinels{"\n"}
-        {"  "}Prize Pools:    235.41 SUI available{"\n"}
+        {"  "}Prize Pools:    238.67 SUI available{"\n"}
         {"  "}Cheapest Fee:   0.10 SUI{"\n"}
-        {"  "}Best Target:    Philose — 0.75 SUI pool (7.0x ratio)
+        {"  "}Best Target:    NeonYieldCore — 20.90 SUI pool (116.1x ratio){"\n\n"}
+        {"  "}Quick Actions{"\n"}
+        {"  "}─────────────────────────────────────────────────────{"\n"}
+        {"  "}  t2000 save {"<amount>"}            Save USDC for yield{"\n"}
+        {"  "}  t2000 sentinel list            Browse sentinel bounties{"\n"}
+        {"  "}  t2000 sentinel attack {"<id>"}     Attack a sentinel
       </CodeBlock>
 
       <h2 id="cmd-sentinel">

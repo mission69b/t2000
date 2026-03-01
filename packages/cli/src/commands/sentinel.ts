@@ -1,6 +1,5 @@
 import type { Command } from 'commander';
 import { T2000, MIST_PER_SUI } from '@t2000/sdk';
-import type { SentinelAgent } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import {
   printSuccess,
@@ -19,11 +18,6 @@ import pc from 'picocolors';
 
 function formatSui(mist: bigint): string {
   return (Number(mist) / Number(MIST_PER_SUI)).toFixed(2);
-}
-
-function truncateId(id: string, chars = 8): string {
-  if (id.length <= chars * 2 + 3) return id;
-  return `${id.slice(0, chars + 2)}...${id.slice(-chars)}`;
 }
 
 export function registerSentinel(program: Command) {
@@ -58,18 +52,13 @@ export function registerSentinel(program: Command) {
 
         printHeader('Active Sentinels');
 
-        const header = `  ${'#'.padEnd(4)}${'Name'.padEnd(20)}${'Prize Pool'.padEnd(14)}${'Fee'.padEnd(12)}${'Attacks'.padEnd(10)}ID`;
-        printLine(pc.dim(header));
-        printDivider(90);
-
-        sentinels.forEach((s, i) => {
-          const num = String(i + 1).padEnd(4);
-          const name = s.name.slice(0, 18).padEnd(20);
-          const pool = `${formatSui(s.prizePool)} SUI`.padEnd(14);
+        sentinels.forEach((s) => {
+          const pool = `${formatSui(s.prizePool)} SUI`.padEnd(12);
           const fee = `${formatSui(s.attackFee)} SUI`.padEnd(12);
-          const attacks = String(s.totalAttacks).padEnd(10);
-          const id = truncateId(s.objectId);
-          printLine(`  ${num}${name}${pool}${fee}${attacks}${pc.dim(id)}`);
+          printLine(`  ${s.name}`);
+          printLine(`  ${pc.dim(`Pool: ${pool}Fee: ${fee}Attacks: ${s.totalAttacks}`)}`);
+          printLine(`  ${pc.dim(s.objectId)}`);
+          printBlank();
         });
 
         printBlank();
@@ -83,7 +72,7 @@ export function registerSentinel(program: Command) {
   sentinel
     .command('info')
     .description('Show details for a sentinel')
-    .argument('<id>', 'Sentinel object ID or agent ID')
+    .argument('<id>', 'Sentinel object ID')
     .action(async (id: string) => {
       try {
         const pin = await resolvePin();
@@ -122,7 +111,7 @@ export function registerSentinel(program: Command) {
   sentinel
     .command('attack')
     .description('Attack a sentinel with a prompt (costs SUI)')
-    .argument('<id>', 'Sentinel object ID or agent ID')
+    .argument('<id>', 'Sentinel object ID')
     .argument('[prompt]', 'Attack prompt')
     .option('--fee <sui>', 'Override attack fee in SUI')
     .option('--key <path>', 'Key file path')
