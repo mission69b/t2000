@@ -66,5 +66,5 @@ const LINES: TerminalLine[] = [
 ];
 
 export function TerminalDemo() {
-  return <DemoTerminal lines={LINES} height="420px" />;
+  return <DemoTerminal lines={LINES} height="420px" title="t2000 — terminal" />;
 }
