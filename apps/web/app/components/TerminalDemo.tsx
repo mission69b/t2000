@@ -42,21 +42,6 @@ const LINES: TerminalLine[] = [
   { type: "success", text: "✓ Paid $0.01 USDC (tx: 8kPq3RvN...)", delay: 500 },
   { type: "info", text: "  ← 200 OK  [820ms]", delay: 300 },
 
-  { type: "command", text: "❯ t2000 earn", delay: 1200 },
-  { type: "output", text: "  Earning Opportunities", delay: 400 },
-  { type: "output", text: "", delay: 80 },
-  { type: "output", text: "  SAVINGS — Passive Yield", delay: 120 },
-  { type: "output", text: "  ──────────────────────────────────", delay: 80 },
-  { type: "info", text: "Saved:        $80.00 USDC @ 4.2% APY", delay: 120 },
-  { type: "info", text: "Daily Yield:  ~$0.0092/day", delay: 120 },
-  { type: "info", text: "All-time:     ~$0.18", delay: 120 },
-  { type: "output", text: "", delay: 80 },
-  { type: "output", text: "  SENTINEL BOUNTIES — Active Red Teaming", delay: 120 },
-  { type: "output", text: "  ──────────────────────────────────", delay: 80 },
-  { type: "info", text: "Active:       49 sentinels", delay: 120 },
-  { type: "info", text: "Prize Pools:  238.67 SUI available", delay: 120 },
-  { type: "info", text: "Best Target:  NeonYieldCore — 20.90 SUI (116x)", delay: 120 },
-
   { type: "command", text: "❯ t2000 balance", delay: 1200 },
   { type: "output", text: "  Available:  $85.00 USDC  (checking — spendable)", delay: 400 },
   { type: "output", text: "  Savings:    $80.00 USDC  (earning 4.21% APY)", delay: 120 },
@@ -66,5 +51,5 @@ const LINES: TerminalLine[] = [
 ];
 
 export function TerminalDemo() {
-  return <DemoTerminal lines={LINES} height="420px" title="t2000 — terminal" />;
+  return <DemoTerminal lines={LINES} height="360px" title="t2000 — terminal" />;
 }
