@@ -520,7 +520,7 @@ function InstallSection() {
         {S.g("$")} npx @t2000/cli init{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.2.6")}
+        {S.a("0.2.12")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -1337,7 +1337,7 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.2.6 <Badge color="green">current</Badge>
+        v0.2.12 <Badge color="green">current</Badge>
       </h2>
       <p>
         Full bank account model: checking, savings, credit, and currency
@@ -1496,7 +1496,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.2.6
+            v0.2.12
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

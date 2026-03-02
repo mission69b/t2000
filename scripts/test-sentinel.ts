@@ -5,12 +5,13 @@
  *
  * Phases:
  *   1. SDK — list sentinels, validate data shape
- *   2. On-chain — verify contract objects exist via SDK, check SUI balance
- *   3. Live attack — full SDK attack flow (costs ~0.1 SUI)
+ *   2. On-chain — verify contract objects exist, check SUI balance
+ *   3. SDK getSentinelInfo — lookup by objectId and agent ID
+ *   4. Live attack — full SDK attack flow (costs ~0.1 SUI)
  *
  * Usage:
- *   source .env.local && npx tsx scripts/sentinel-test.ts          # phases 1-2 only
- *   source .env.local && npx tsx scripts/sentinel-test.ts --live   # full live attack
+ *   source .env.local && npx tsx scripts/test-sentinel.ts          # phases 1-3 only
+ *   source .env.local && npx tsx scripts/test-sentinel.ts --live   # full live attack
  */
 
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
@@ -24,42 +25,15 @@ import {
   MIST_PER_SUI,
 } from '@t2000/sdk';
 import type { SentinelAgent } from '@t2000/sdk';
+import { assert, section, getPrivateKey, summary, exitCode } from './test-helpers.js';
 
-const PRIVATE_KEY = process.env.T2000_PASSPHRASE ?? process.env.T2000_PIN;
-if (!PRIVATE_KEY) {
-  console.error('Set T2000_PASSPHRASE or T2000_PIN in .env.local');
-  process.exit(1);
-}
-
+const PRIVATE_KEY = getPrivateKey();
 const LIVE = process.argv.includes('--live');
 
 const client = new SuiClient({ url: process.env.SUI_RPC_URL ?? getFullnodeUrl('mainnet') });
-
 const { secretKey } = decodeSuiPrivateKey(PRIVATE_KEY);
 const signer = Ed25519Keypair.fromSecretKey(secretKey);
 const address = signer.toSuiAddress();
-
-let passed = 0;
-let failed = 0;
-const failures: string[] = [];
-
-function assert(condition: boolean, label: string, detail?: string): void {
-  if (condition) {
-    console.log(`   ✓ ${label}`);
-    passed++;
-  } else {
-    const msg = detail ? `${label} — ${detail}` : label;
-    console.log(`   ✗ ${msg}`);
-    failed++;
-    failures.push(msg);
-  }
-}
-
-function section(name: string): void {
-  console.log(`\n── ${name} ──`);
-}
-
-// --------------- Phase 1: SDK API Tests ---------------
 
 async function testListSentinels(): Promise<SentinelAgent[]> {
   section('Phase 1: SDK listSentinels()');
@@ -81,8 +55,7 @@ async function testListSentinels(): Promise<SentinelAgent[]> {
   const withPool = sentinels.filter((a) => a.prizePool > 0n);
   assert(withPool.length > 0, `${withPool.length} sentinels with non-zero prize pool`);
 
-  const cheapest = withPool
-    .sort((a, b) => Number(a.attackFee - b.attackFee));
+  const cheapest = withPool.sort((a, b) => Number(a.attackFee - b.attackFee));
 
   if (cheapest.length > 0) {
     const target = cheapest[0];
@@ -95,8 +68,6 @@ async function testListSentinels(): Promise<SentinelAgent[]> {
 
   return cheapest;
 }
-
-// --------------- Phase 2: On-chain Validation ---------------
 
 async function testOnChainObjects(): Promise<void> {
   section('Phase 2: On-chain Validation');
@@ -124,10 +95,8 @@ async function testOnChainObjects(): Promise<void> {
   console.log(`   SUI balance: ${suiBalance.toFixed(4)}`);
 }
 
-// --------------- Phase 3: SDK getSentinelInfo ---------------
-
 async function testGetSentinelInfo(targets: SentinelAgent[]): Promise<void> {
-  section('Phase 2b: SDK getSentinelInfo()');
+  section('Phase 3: SDK getSentinelInfo()');
 
   if (targets.length === 0) {
     assert(false, 'Has a target sentinel for info lookup');
@@ -146,10 +115,8 @@ async function testGetSentinelInfo(targets: SentinelAgent[]): Promise<void> {
   assert(infoById.objectId === target.objectId, 'getSentinelInfo by agent ID works');
 }
 
-// --------------- Phase 4: Live Attack via SDK ---------------
-
 async function testLiveAttack(targets: SentinelAgent[]): Promise<void> {
-  section('Phase 3: Live Attack via SDK (costs SUI)');
+  section('Phase 4: Live Attack via SDK (costs SUI)');
 
   if (!LIVE) {
     console.log('   ⏭  Skipped — run with --live to execute a real attack');
@@ -189,7 +156,7 @@ async function testLiveAttack(targets: SentinelAgent[]): Promise<void> {
     console.log(`   Settle Tx:  https://suiscan.xyz/mainnet/tx/${result.settleTx}`);
 
     if (result.won) {
-      console.log('\n   🏆 ATTACK SUCCESSFUL — prize pool won!');
+      console.log('\n   ATTACK SUCCESSFUL — prize pool won!');
     } else {
       console.log(`\n   Attack settled (not a win — success=${result.verdict.success}, score=${result.verdict.score})`);
     }
@@ -198,28 +165,17 @@ async function testLiveAttack(targets: SentinelAgent[]): Promise<void> {
   }
 }
 
-// --------------- Main ---------------
-
 async function main() {
-  console.log('╔══════════════════════════════════════╗');
-  console.log('║   t2000 × Sentinel SDK Test           ║');
-  console.log('╚══════════════════════════════════════╝');
-  console.log(`\n   Mode: ${LIVE ? '🔴 LIVE (real SUI will be spent)' : '🟢 Dry run (phases 1-2 only)'}`);
+  console.log('\n  Sentinel Tests\n');
+  console.log(`   Mode: ${LIVE ? 'LIVE (real SUI will be spent)' : 'Dry run (phases 1-3 only)'}`);
 
   const targets = await testListSentinels();
   await testOnChainObjects();
   await testGetSentinelInfo(targets);
   await testLiveAttack(targets);
 
-  console.log('\n══════════════════════════════════════');
-  console.log(`   ${passed} passed, ${failed} failed`);
-  if (failures.length > 0) {
-    console.log('\n   Failures:');
-    failures.forEach(f => console.log(`     • ${f}`));
-  }
-  console.log('');
-
-  process.exit(failed > 0 ? 1 : 0);
+  summary('Sentinel');
+  process.exit(exitCode());
 }
 
 main().catch(err => {
