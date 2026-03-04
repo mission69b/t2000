@@ -41,7 +41,7 @@ async function getWalletBalances() {
 
   try {
     const client = new SuiClient({ url: SUI_RPC });
-    const results: Record<string, { address: string; balanceSui: number; balanceUsdc?: number }> = {};
+    const results: Record<string, { address: string; balanceSui: number; balanceUsdc?: number; totalCollected?: number; totalWithdrawn?: number }> = {};
 
     if (sponsorAddr) {
       const bal = await client.getBalance({ owner: sponsorAddr });
@@ -65,8 +65,11 @@ async function getWalletBalances() {
     let treasuryWithdrawn = 0;
     if (treasuryObj.data?.content?.dataType === "moveObject") {
       const fields = treasuryObj.data.content.fields as Record<string, unknown>;
-      const balanceField = fields.balance as Record<string, string> | undefined;
-      treasuryUsdc = Number(balanceField?.fields?.value ?? balanceField?.value ?? "0") / 1e6;
+      const balanceField = fields.balance as Record<string, unknown> | undefined;
+      const balanceValue = (balanceField as Record<string, Record<string, string>> | undefined)?.fields?.value
+        ?? (balanceField as Record<string, string> | undefined)?.value
+        ?? "0";
+      treasuryUsdc = Number(balanceValue) / 1e6;
       treasuryCollected = Number(fields.total_collected ?? "0") / 1e6;
       treasuryWithdrawn = Number(fields.total_withdrawn ?? "0") / 1e6;
     }
