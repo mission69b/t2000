@@ -7,6 +7,8 @@ interface Stats {
   wallets: {
     sponsor: { address: string; balanceSui: number };
     gasStation: { address: string; balanceSui: number };
+    treasury: { address: string; balanceSui: number; balanceUsdc?: number };
+    rebate: { address: string; balanceSui: number; balanceUsdc?: number };
     totalSui: number;
   } | null;
   agents: {
@@ -423,6 +425,50 @@ export function StatsView() {
                 {stats.wallets.gasStation.balanceSui.toFixed(2)} SUI
               </span>
             </div>
+            {stats.wallets.treasury && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-mono text-muted">
+                    Treasury
+                  </span>
+                  <a
+                    href={`https://suiscan.xyz/mainnet/account/${stats.wallets.treasury.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
+                  >
+                    {truncateAddress(stats.wallets.treasury.address)}
+                  </a>
+                </div>
+                <span className="text-[11px] font-mono text-foreground">
+                  {stats.wallets.treasury.balanceUsdc != null
+                    ? `$${stats.wallets.treasury.balanceUsdc.toFixed(4)} USDC`
+                    : `${stats.wallets.treasury.balanceSui.toFixed(2)} SUI`}
+                </span>
+              </div>
+            )}
+            {stats.wallets.rebate && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-mono text-muted">
+                    Rebate
+                  </span>
+                  <a
+                    href={`https://suiscan.xyz/mainnet/account/${stats.wallets.rebate.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
+                  >
+                    {truncateAddress(stats.wallets.rebate.address)}
+                  </a>
+                </div>
+                <span className="text-[11px] font-mono text-foreground">
+                  {(stats.wallets.rebate.balanceUsdc ?? 0) > 0
+                    ? `$${stats.wallets.rebate.balanceUsdc!.toFixed(4)} USDC`
+                    : `${stats.wallets.rebate.balanceSui.toFixed(2)} SUI`}
+                </span>
+              </div>
+            )}
           </div>
         </section>
       )}

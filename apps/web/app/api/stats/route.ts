@@ -3,6 +3,8 @@ import { prisma } from "@/app/lib/prisma";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 
 const SUI_RPC = process.env.SUI_RPC_URL ?? getFullnodeUrl("mainnet");
+const TREASURY_ADDRESS = "0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8";
+const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
 
 export async function GET() {
 
@@ -39,7 +41,7 @@ async function getWalletBalances() {
 
   try {
     const client = new SuiClient({ url: SUI_RPC });
-    const results: Record<string, { address: string; balanceSui: number }> = {};
+    const results: Record<string, { address: string; balanceSui: number; balanceUsdc?: number }> = {};
 
     if (sponsorAddr) {
       const bal = await client.getBalance({ owner: sponsorAddr });
@@ -49,6 +51,24 @@ async function getWalletBalances() {
       const bal = await client.getBalance({ owner: gasAddr });
       results.gasStation = { address: gasAddr, balanceSui: Number(bal.totalBalance) / 1e9 };
     }
+
+    const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
+    const [treasurySui, treasuryUsdc, rebateSui, rebateUsdc] = await Promise.all([
+      client.getBalance({ owner: TREASURY_ADDRESS }),
+      client.getBalance({ owner: TREASURY_ADDRESS, coinType: USDC_TYPE }),
+      client.getBalance({ owner: REBATE_ADDRESS }),
+      client.getBalance({ owner: REBATE_ADDRESS, coinType: USDC_TYPE }),
+    ]);
+    results.treasury = {
+      address: TREASURY_ADDRESS,
+      balanceSui: Number(treasurySui.totalBalance) / 1e9,
+      balanceUsdc: Number(treasuryUsdc.totalBalance) / 1e6,
+    };
+    results.rebate = {
+      address: REBATE_ADDRESS,
+      balanceSui: Number(rebateSui.totalBalance) / 1e9,
+      balanceUsdc: Number(rebateUsdc.totalBalance) / 1e6,
+    };
 
     const totalSui = (results.sponsor?.balanceSui ?? 0) + (results.gasStation?.balanceSui ?? 0);
     return { ...results, totalSui };
