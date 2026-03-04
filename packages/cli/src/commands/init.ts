@@ -58,9 +58,6 @@ export function registerInit(program: Command) {
         printLine(`Deposit USDC on Sui network only.`);
         printDivider();
         printBlank();
-        printLine(`${pc.dim('Install globally for persistent use:')}`);
-        printLine(`${pc.cyan('npm install -g @t2000/cli')}`);
-        printBlank();
         printLine(`${pc.cyan('t2000 balance')}            check for funds`);
         printLine(`${pc.cyan('t2000 save all')}           start earning yield`);
         printLine(`${pc.cyan('t2000 address')}            show address again`);
