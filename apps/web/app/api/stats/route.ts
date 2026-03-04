@@ -157,13 +157,31 @@ async function getGasStats(oneDayAgo: Date, sevenDaysAgo: Date) {
 }
 
 async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
+  let onChainTotal = 0;
+  try {
+    const client = new SuiClient({ url: SUI_RPC });
+    const treasuryObj = await client.getObject({
+      id: TREASURY_ID,
+      options: { showContent: true },
+    });
+    if (treasuryObj.data?.content?.dataType === "moveObject") {
+      const fields = treasuryObj.data.content.fields as Record<string, unknown>;
+      const raw = fields.total_collected;
+      onChainTotal = Number(typeof raw === "string" || typeof raw === "number" ? raw : "0") / 1e6;
+    }
+  } catch { /* fall through to DB */ }
+
+  const V2_DEPLOY = new Date("2025-06-02T00:00:00Z");
   const allFees = await prisma.protocolFeeLedger.findMany({
+    where: { createdAt: { gte: V2_DEPLOY } },
     select: { feeAmount: true, feeAsset: true, operation: true, createdAt: true },
   });
 
-  const totalUsdc = allFees
+  const dbTotal = allFees
     .filter((f) => f.feeAsset === "USDC")
     .reduce((s, f) => s + Number(f.feeAmount), 0);
+
+  const totalUsdc = onChainTotal > 0 ? onChainTotal : dbTotal;
 
   const byOperation: Record<string, { count: number; totalUsdc: number }> = {};
   for (const f of allFees) {
