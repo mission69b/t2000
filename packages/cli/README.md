@@ -10,9 +10,8 @@ Terminal bank account for AI agents on Sui. One command to create a bank account
 ## Installation
 
 ```bash
-npx @t2000/cli init
-# or install globally
 npm install -g @t2000/cli
+t2000 init
 ```
 
 **Requirements:** Node.js 18+

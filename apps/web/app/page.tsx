@@ -52,7 +52,7 @@ const STEPS = [
     badgeType: "done" as const,
     content:
       "Generates an Ed25519 keypair, encrypts it with AES-256-GCM, and deposits SUI for gas via the Gas Station.",
-    code: "npx @t2000/cli init",
+    code: "npm install -g @t2000/cli",
   },
   {
     num: "02",

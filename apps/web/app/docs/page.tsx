@@ -374,19 +374,16 @@ function QuickStart({
         credit, and currency exchange in one CLI command.
       </p>
 
-      <h2 id="qs-install">1. Create your bank account</h2>
-      <TryIt cmd="npx @t2000/cli init" note="Node.js 18+ required" />
-      <p className="text-[12.5px] text-white/45 mt-2">
-        For persistent use, install globally: <InlineCode>npm install -g @t2000/cli</InlineCode>
-      </p>
+      <h2 id="qs-install">1. Install t2000</h2>
+      <TryIt cmd="npm install -g @t2000/cli" note="Node.js 18+ required" />
 
-      <h2 id="qs-init">2. What happens</h2>
+      <h2 id="qs-init">2. Create your bank account</h2>
       <p>
         The init command generates a new Sui keypair, encrypts it,
         and configures your bank account.
       </p>
       <CodeBlock lang="bash">
-        {S.g("$")} npx @t2000/cli init{"\n\n"}
+        {S.g("$")} t2000 init{"\n\n"}
         {"  "}{S.b("Create PIN (min 4 chars):")} ****{"\n"}
         {"  "}{S.b("Confirm PIN:")} ****{"\n\n"}
         {"  "}{S.m("Creating agent wallet...")}{"\n"}
@@ -399,8 +396,6 @@ function QuickStart({
         {"  "}Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a1c2d3e4f...")}{"\n\n"}
         {"  "}Deposit USDC on Sui network only.{"\n"}
         {"  "}{S.m("───────────────────────────────────")}{"\n\n"}
-        {"  "}{S.m("Install globally for persistent use:")}{"\n"}
-        {"  "}{S.b("npm install -g @t2000/cli")}{"\n\n"}
         {"  "}{S.b("t2000 balance ")}{"  "}check for funds{"\n"}
         {"  "}{S.b("t2000 save all")}{"  "}start earning yield{"\n"}
         {"  "}{S.b("t2000 address ")}{"  "}show address again
@@ -517,10 +512,10 @@ function InstallSection() {
 
       <h2 id="inst-global">Global install</h2>
       <CodeBlock lang="bash">
-        {S.g("$")} npx @t2000/cli init{"\n\n"}
+        {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.2.12")}
+        {S.a("0.3.1")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -1337,7 +1332,16 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.2.12 <Badge color="green">current</Badge>
+        v0.3.1 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        On-chain fee collection via Move contracts v2. AdminCap enforcement on
+        treasury operations. Fresh contract deploy with proper PTB-based fee
+        collection for save and borrow. SDK v0.3.0 with addCollectFeeToTx.
+      </p>
+
+      <h2 id="cl-0212">
+        v0.2.12
       </h2>
       <p>
         Full bank account model: checking, savings, credit, and currency
@@ -1496,7 +1500,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.2.12
+            v0.3.1
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home
