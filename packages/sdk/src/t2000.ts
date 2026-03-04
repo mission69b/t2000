@@ -244,14 +244,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     const saveAmount = amount;
 
     const gasResult = await executeWithGas(this.client, this.keypair, () =>
-      navi.buildSaveTx(this.client, this._address, saveAmount),
+      navi.buildSaveTx(this.client, this._address, saveAmount, { collectFee: true }),
     );
 
     const rates = await navi.getRates(this.client);
     reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange('USDC', saveAmount, 'save', gasResult.digest);
 
-    let savingsBalance = saveAmount - fee.amount;
+    let savingsBalance = saveAmount;
     try {
       const positions = await this.positions();
       savingsBalance = positions.positions
@@ -350,7 +350,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const borrowAmount = params.amount;
 
     const gasResult = await executeWithGas(this.client, this.keypair, () =>
-      navi.buildBorrowTx(this.client, this._address, borrowAmount),
+      navi.buildBorrowTx(this.client, this._address, borrowAmount, { collectFee: true }),
     );
 
     const hf = await navi.getHealthFactor(this.client, this.keypair);

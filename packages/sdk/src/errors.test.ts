@@ -39,6 +39,7 @@ describe('mapMoveAbortCode', () => {
   it('maps known abort codes', () => {
     expect(mapMoveAbortCode(1)).toContain('paused');
     expect(mapMoveAbortCode(6)).toContain('authorized');
+    expect(mapMoveAbortCode(10)).toContain('version');
   });
 
   it('handles unknown codes', () => {

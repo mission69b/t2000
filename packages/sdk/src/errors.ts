@@ -87,6 +87,7 @@ export function mapMoveAbortCode(code: number): string {
     7: 'Package version mismatch — upgrade required',
     8: 'Timelock is active — wait for expiry',
     9: 'No pending change to execute',
+    10: 'Already at current version',
   };
   return abortMessages[code] ?? `Move abort code: ${code}`;
 }

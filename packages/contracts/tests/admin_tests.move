@@ -153,3 +153,27 @@ fun test_cancel_fee_change() {
 
     scenario.end();
 }
+
+#[test]
+#[expected_failure(abort_code = 10, location = t2000::admin)]
+fun test_migrate_config_already_at_version() {
+    let admin_addr = @0xA;
+    let mut scenario = test_scenario::begin(admin_addr);
+
+    {
+        core::init_for_testing(scenario.ctx());
+    };
+
+    scenario.next_tx(admin_addr);
+    {
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let mut config = scenario.take_shared<Config>();
+
+        admin::migrate_config(&admin_cap, &mut config);
+
+        test_scenario::return_shared(config);
+        scenario.return_to_sender(admin_cap);
+    };
+
+    scenario.end();
+}

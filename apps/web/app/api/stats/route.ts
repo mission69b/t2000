@@ -3,7 +3,7 @@ import { prisma } from "@/app/lib/prisma";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 
 const SUI_RPC = process.env.SUI_RPC_URL ?? getFullnodeUrl("mainnet");
-const TREASURY_ID = "0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8";
+const TREASURY_ID = "0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91";
 const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
 
 export async function GET() {
@@ -59,14 +59,30 @@ async function getWalletBalances() {
       client.getBalance({ owner: REBATE_ADDRESS, coinType: USDC_TYPE }),
     ]);
 
-    // Treasury fees are sent via transferObjects (not collect_fee), so the
-    // on-chain Balance<T> field is empty. Use DB fee total as source of truth.
-    const allFees = await prisma.protocolFeeLedger.findMany({
-      select: { feeAmount: true, feeAsset: true },
-    });
-    const treasuryUsdc = allFees
-      .filter((f) => f.feeAsset === "USDC")
-      .reduce((s, f) => s + Number(f.feeAmount), 0);
+    // Read on-chain treasury balance (populated by collect_fee since v2).
+    // Fall back to DB fee ledger if on-chain read fails.
+    let treasuryUsdc = 0;
+    try {
+      const treasuryObj = await client.getObject({
+        id: TREASURY_ID,
+        options: { showContent: true },
+      });
+      if (treasuryObj.data?.content?.dataType === "moveObject") {
+        const fields = treasuryObj.data.content.fields as Record<string, unknown>;
+        const balanceField = fields.balance as Record<string, unknown> | undefined;
+        const balanceValue = (balanceField?.fields as Record<string, string> | undefined)?.value
+          ?? balanceField?.value
+          ?? "0";
+        treasuryUsdc = Number(balanceValue) / 1e6;
+      }
+    } catch {
+      const allFees = await prisma.protocolFeeLedger.findMany({
+        select: { feeAmount: true, feeAsset: true },
+      });
+      treasuryUsdc = allFees
+        .filter((f) => f.feeAsset === "USDC")
+        .reduce((s, f) => s + Number(f.feeAmount), 0);
+    }
 
     results.treasury = {
       address: TREASURY_ID,

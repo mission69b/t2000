@@ -1,7 +1,7 @@
 import type { SuiEvent } from '@mysten/sui/client';
 import type { ParsedTransaction } from './checkpoint.js';
 
-const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0x51c44bb2ad3ba608cf9adbc6e37ee67268ef9313a4ff70957d4c6e7955dc7eef';
+const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 

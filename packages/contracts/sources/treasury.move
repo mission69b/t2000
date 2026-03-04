@@ -2,10 +2,11 @@ module t2000::treasury;
 
 use sui::coin::{Self, Coin};
 use sui::balance::{Self, Balance};
+use sui::transfer::Receiving;
 use t2000::constants;
 use t2000::errors;
 use t2000::events;
-use t2000::core::Config;
+use t2000::core::{Config, AdminCap};
 
 public struct Treasury<phantom T> has key {
     id: UID,
@@ -18,7 +19,7 @@ public struct Treasury<phantom T> has key {
     created_at: u64,
 }
 
-public fun create_treasury<T>(clock: &sui::clock::Clock, ctx: &mut TxContext) {
+public fun create_treasury<T>(_: &AdminCap, clock: &sui::clock::Clock, ctx: &mut TxContext) {
     let treasury = Treasury<T> {
         id: object::new(ctx),
         version: constants::VERSION!(),
@@ -67,6 +68,20 @@ public fun collect_fee<T>(
     fee_amount
 }
 
+/// Claim coins that were sent to the treasury via transferObjects.
+/// Recovers object-owned coins into the treasury's internal balance.
+public fun receive_coins<T>(
+    treasury: &mut Treasury<T>,
+    _: &AdminCap,
+    receiving: Receiving<Coin<T>>,
+) {
+    assert_version(treasury);
+    let coin = transfer::public_receive(&mut treasury.id, receiving);
+    let amount = coin::value(&coin);
+    treasury.balance.join(coin::into_balance(coin));
+    treasury.total_collected = treasury.total_collected + amount;
+}
+
 public fun total_collected<T>(treasury: &Treasury<T>): u64 {
     treasury.total_collected
 }
@@ -82,6 +97,7 @@ public fun admin<T>(treasury: &Treasury<T>): address {
 #[allow(lint(self_transfer))]
 public fun withdraw_fees<T>(
     treasury: &mut Treasury<T>,
+    _: &AdminCap,
     amount: u64,
     ctx: &mut TxContext,
 ) {
@@ -98,6 +114,7 @@ public fun withdraw_fees<T>(
 
 public fun propose_admin_transfer<T>(
     treasury: &mut Treasury<T>,
+    _: &AdminCap,
     new_admin: address,
     ctx: &mut TxContext,
 ) {
@@ -123,10 +140,15 @@ public fun accept_admin_transfer<T>(
     events::emit_admin_transfer_accepted(old_admin, ctx.sender());
 }
 
+/// Bump protocol version for package upgrades.
+/// Call after publishing a new package version to activate new code
+/// and disable old package calls.
 public fun migrate_treasury<T>(
     treasury: &mut Treasury<T>,
+    _: &AdminCap,
     ctx: &mut TxContext,
 ) {
+    assert!(treasury.version < constants::VERSION!(), errors::already_migrated!());
     assert!(treasury.admin == ctx.sender(), errors::not_authorized!());
     treasury.version = constants::VERSION!();
 }

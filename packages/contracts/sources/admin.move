@@ -78,9 +78,13 @@ public fun cancel_fee_change(
     t2000::core::clear_pending_fees(config);
 }
 
+/// Bump protocol version for package upgrades.
+/// Call after publishing a new package version to activate new code
+/// and disable old package calls.
 public fun migrate_config(
     _: &AdminCap,
     config: &mut Config,
 ) {
+    assert!(t2000::core::version(config) < constants::VERSION!(), t2000::errors::already_migrated!());
     t2000::core::set_version(config, constants::VERSION!());
 }

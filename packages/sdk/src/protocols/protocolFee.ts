@@ -1,4 +1,4 @@
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import type { SuiClient } from '@mysten/sui/client';
 import {
   SAVE_FEE_BPS,
@@ -6,7 +6,9 @@ import {
   BORROW_FEE_BPS,
   BPS_DENOMINATOR,
   SUPPORTED_ASSETS,
+  T2000_PACKAGE_ID,
   T2000_TREASURY_ID,
+  T2000_CONFIG_ID,
   API_BASE_URL,
 } from '../constants.js';
 import { usdcToRaw } from '../utils/format.js';
@@ -16,7 +18,7 @@ export type FeeOperation = 'save' | 'swap' | 'borrow';
 export interface ProtocolFeeInfo {
   amount: number;
   asset: string;
-  rate: number; // as percentage, e.g. 0.1
+  rate: number;
   rawAmount: bigint;
 }
 
@@ -24,6 +26,12 @@ const FEE_RATES: Record<FeeOperation, bigint> = {
   save: SAVE_FEE_BPS,
   swap: SWAP_FEE_BPS,
   borrow: BORROW_FEE_BPS,
+};
+
+const OP_CODES: Record<FeeOperation, number> = {
+  save: 0,
+  swap: 1,
+  borrow: 2,
 };
 
 export function calculateFee(operation: FeeOperation, amount: number): ProtocolFeeInfo {
@@ -40,39 +48,28 @@ export function calculateFee(operation: FeeOperation, amount: number): ProtocolF
 }
 
 /**
- * Add protocol fee collection to an existing PTB.
- * Splits the fee from the agent's USDC coins and sends to the treasury.
- * Returns the fee coin for inclusion in the atomic transaction.
+ * Add on-chain fee collection to an existing PTB via t2000::treasury::collect_fee().
+ * The Move function splits the fee from the payment coin and stores it in the
+ * Treasury's internal Balance<T>. Atomic — reverts with the operation if it fails.
  */
-export async function addFeeToTransaction(
+export function addCollectFeeToTx(
   tx: Transaction,
-  client: SuiClient,
-  senderAddress: string,
+  paymentCoin: TransactionObjectArgument,
   operation: FeeOperation,
-  amount: number,
-): Promise<ProtocolFeeInfo> {
-  const fee = calculateFee(operation, amount);
+): void {
+  const bps = FEE_RATES[operation];
+  if (bps <= 0n) return;
 
-  if (fee.rawAmount <= 0n) return fee;
-
-  const coins = await client.getCoins({
-    owner: senderAddress,
-    coinType: SUPPORTED_ASSETS.USDC.type,
+  tx.moveCall({
+    target: `${T2000_PACKAGE_ID}::treasury::collect_fee`,
+    typeArguments: [SUPPORTED_ASSETS.USDC.type],
+    arguments: [
+      tx.object(T2000_TREASURY_ID),
+      tx.object(T2000_CONFIG_ID),
+      paymentCoin,
+      tx.pure.u8(OP_CODES[operation]),
+    ],
   });
-
-  if (coins.data.length === 0) return fee;
-
-  const primary = tx.object(coins.data[0].coinObjectId);
-  if (coins.data.length > 1) {
-    tx.mergeCoins(primary, coins.data.slice(1).map((c) => tx.object(c.coinObjectId)));
-  }
-
-  const [feeCoin] = tx.splitCoins(primary, [fee.rawAmount]);
-
-  // Transfer fee directly to treasury
-  tx.transferObjects([feeCoin], T2000_TREASURY_ID);
-
-  return fee;
 }
 
 export async function reportFee(

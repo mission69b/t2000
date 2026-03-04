@@ -4,7 +4,7 @@
 > When a product fact changes, update this file FIRST, then propagate.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-02-27
+> Last verified: 2026-02-19
 
 ---
 
@@ -12,8 +12,8 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.2.6` |
-| `@t2000/cli` | `0.2.6` |
+| `@t2000/sdk` | `0.3.0` |
+| `@t2000/cli` | `0.2.12` |
 | `@t2000/x402` | `0.2.6` |
 | Agent Skills | `1.2` |
 
@@ -45,6 +45,8 @@
 | Pay (x402) | — | Free | Agent pays the API price, no t2000 surcharge |
 
 Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `SWAP_FEE_BPS`, `BORROW_FEE_BPS`
+
+Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same PTB as the operation. The Move function takes `&mut Coin<T>` and splits the fee into the Treasury's internal `Balance<T>`. Swap is exempt (0 BPS) — Cetus pool fees apply separately.
 
 ---
 
@@ -360,8 +362,9 @@ Source: `packages/sdk/src/errors.ts`
 | 7 | Package version mismatch (`EVERSION_MISMATCH`) |
 | 8 | Timelock is active (`ETIMELOCK_ACTIVE`) |
 | 9 | No pending change to execute (`ENO_PENDING_CHANGE`) |
+| 10 | Already at current version (`EALREADY_MIGRATED`) |
 
-Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`
+Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`, `packages/contracts/sources/errors.move`
 
 ---
 
@@ -395,11 +398,21 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 
 | Object | ID |
 |--------|----|
-| Package | `0x51c44bb2ad3ba608cf9adbc6e37ee67268ef9313a4ff70957d4c6e7955dc7eef` |
-| Config | `0xd30408960ac38eced670acc102df9e178b5b46b3a8c0e96a53ec2fd3f39b5936` |
-| Treasury (USDC) | `0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8` |
+| Package | `0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3` |
+| Config | `0x408add9aa9322f93cfd87523d8f603006eb8713894f4c460283c58a6888dae8a` |
+| Treasury (USDC) | `0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91` |
 
 > **Note:** AdminCap and UpgradeCap IDs are intentionally omitted — stored in `.env.local` only.
+> **Contract Version:** 2 (set in `packages/contracts/sources/constants.move`). After publishing a new package, call `migrate_config` and `migrate_treasury` with AdminCap to activate version 2 and disable v1 calls.
+
+### Treasury Functions (v2)
+
+| Function | Description |
+|----------|-------------|
+| `collect_fee<T>()` | Called in PTB — splits fee from `&mut Coin<T>` into `Balance<T>` |
+| `receive_coins<T>()` | Admin recovery of coins sent via `transferObjects` (object-owned) |
+| `withdraw_fees<T>()` | Admin withdraw from treasury balance (requires AdminCap) |
+| `migrate_treasury<T>()` | Version bump guard — call after package upgrade (requires AdminCap) |
 
 ### x402 Payment Kit (Sui Payment Kit)
 

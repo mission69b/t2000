@@ -14,10 +14,11 @@ import {
 } from '@naviprotocol/lending';
 import type { SuiClient } from '@mysten/sui/client';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { SUPPORTED_ASSETS } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { usdcToRaw } from '../utils/format.js';
+import { addCollectFeeToTx } from './protocolFee.js';
 import type {
   SaveResult,
   WithdrawResult,
@@ -106,6 +107,7 @@ export async function buildSaveTx(
   client: SuiClient,
   address: string,
   amount: number,
+  options: { collectFee?: boolean } = {},
 ): Promise<Transaction> {
   const rawAmount = Number(usdcToRaw(amount));
 
@@ -118,6 +120,11 @@ export async function buildSaveTx(
   tx.setSender(address);
 
   const coinObj = mergeCoinsPTB(tx, coins, { balance: rawAmount });
+
+  if (options.collectFee) {
+    addCollectFeeToTx(tx, coinObj as TransactionObjectArgument, 'save');
+  }
+
   await depositCoinPTB(tx, USDC_TYPE, coinObj, ENV);
 
   return tx;
@@ -205,6 +212,7 @@ export async function buildBorrowTx(
   client: SuiClient,
   address: string,
   amount: number,
+  options: { collectFee?: boolean } = {},
 ): Promise<Transaction> {
   const rawAmount = Number(usdcToRaw(amount));
 
@@ -214,6 +222,11 @@ export async function buildBorrowTx(
   await updateOracle(tx, client, address);
 
   const borrowedCoin = await borrowCoinPTB(tx, USDC_TYPE, rawAmount, ENV);
+
+  if (options.collectFee) {
+    addCollectFeeToTx(tx, borrowedCoin, 'borrow');
+  }
+
   tx.transferObjects([borrowedCoin], address);
 
   return tx;
