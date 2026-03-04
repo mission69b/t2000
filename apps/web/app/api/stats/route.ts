@@ -69,10 +69,14 @@ async function getWalletBalances() {
       });
       if (treasuryObj.data?.content?.dataType === "moveObject") {
         const fields = treasuryObj.data.content.fields as Record<string, unknown>;
-        const balanceField = fields.balance as Record<string, unknown> | undefined;
-        const balanceValue = (balanceField?.fields as Record<string, string> | undefined)?.value
-          ?? balanceField?.value
-          ?? "0";
+        const raw = fields.balance;
+        const balanceValue =
+          typeof raw === "string" || typeof raw === "number"
+            ? String(raw)
+            : typeof raw === "object" && raw !== null
+              ? ((raw as Record<string, unknown>).fields as Record<string, string> | undefined)?.value
+                ?? String((raw as Record<string, unknown>).value ?? "0")
+              : "0";
         treasuryUsdc = Number(balanceValue) / 1e6;
       }
     } catch {

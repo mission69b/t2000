@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { resolvePin, askConfirm } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
 export function registerWithdraw(program: Command) {
@@ -26,13 +26,6 @@ export function registerWithdraw(program: Command) {
             printWarning(`Max safe withdrawal: $${maxResult.maxAmount.toFixed(2)} (HF ${maxResult.currentHF.toFixed(2)} → ${maxResult.healthFactorAfter.toFixed(2)})`);
             return;
           }
-        }
-
-        const globalOpts = program.optsWithGlobals();
-        if (!globalOpts.yes) {
-          const label = amount === 'all' ? 'all savings' : `$${amount.toFixed(2)} USDC`;
-          const ok = await askConfirm(`Withdraw ${label} from savings?`);
-          if (!ok) return;
         }
 
         const asset = assetStr ?? 'USDC';

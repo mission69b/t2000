@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { resolvePin, askConfirm } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
 export function registerBorrow(program: Command) {
@@ -24,12 +24,6 @@ export function registerBorrow(program: Command) {
         if (amount > maxResult.maxAmount) {
           printWarning(`Max safe borrow: $${maxResult.maxAmount.toFixed(2)} (HF ${maxResult.currentHF.toFixed(2)} → min 1.5)`);
           return;
-        }
-
-        const globalOpts = program.optsWithGlobals();
-        if (!globalOpts.yes) {
-          const ok = await askConfirm(`Borrow $${amount.toFixed(2)} USDC?`);
-          if (!ok) return;
         }
 
         const asset = assetStr ?? 'USDC';

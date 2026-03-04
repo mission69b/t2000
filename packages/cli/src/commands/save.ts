@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { T2000, formatUsd } from '@t2000/sdk';
-import { resolvePin, askConfirm } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
 export function registerSave(program: Command) {
@@ -14,13 +14,6 @@ export function registerSave(program: Command) {
 
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
-
-        const globalOpts = program.optsWithGlobals();
-        if (!globalOpts.yes) {
-          const label = amount === 'all' ? 'all available USDC' : `$${(amount as number).toFixed(2)} USDC`;
-          const ok = await askConfirm(`Save ${label} to earn yield?`);
-          if (!ok) return;
-        }
 
         let gasManagerUsdc = 0;
         agent.on('gasAutoTopUp', (data) => {

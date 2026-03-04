@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { resolvePin, askConfirm } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
 export function registerSwap(program: Command) {
@@ -26,20 +26,6 @@ export function registerSwap(program: Command) {
 
         // Show quote before confirming
         const quote = await agent.swapQuote({ from, to, amount });
-
-        const globalOpts = program.optsWithGlobals();
-        if (!globalOpts.yes) {
-          printBlank();
-          printKeyValue('Swap', `${amount} ${from.toUpperCase()} → ${quote.expectedOutput.toFixed(4)} ${to.toUpperCase()}`);
-          printKeyValue('Pool Price', `1 SUI = $${quote.poolPrice.toFixed(2)}`);
-          if (quote.fee.amount > 0) {
-            printKeyValue('Protocol Fee', `$${quote.fee.amount.toFixed(4)} (${quote.fee.rate}%)`);
-          }
-          printBlank();
-
-          const ok = await askConfirm('Execute swap?');
-          if (!ok) return;
-        }
 
         const result = await agent.swap({ from, to, amount, maxSlippage });
 

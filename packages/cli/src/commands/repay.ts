@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { T2000 } from '@t2000/sdk';
-import { resolvePin, askConfirm } from '../prompts.js';
+import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
 export function registerRepay(program: Command) {
@@ -19,13 +19,6 @@ export function registerRepay(program: Command) {
 
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
-
-        const globalOpts = program.optsWithGlobals();
-        if (!globalOpts.yes) {
-          const label = amount === 'all' ? 'all outstanding USDC debt' : `$${amount.toFixed(2)} USDC`;
-          const ok = await askConfirm(`Repay ${label}?`);
-          if (!ok) return;
-        }
 
         const asset = assetStr ?? 'USDC';
         const result = await agent.repay({ amount, asset });

@@ -515,7 +515,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.3.2")}
+        {S.a("0.3.3")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -1332,7 +1332,7 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.3.2 <Badge color="green">current</Badge>
+        v0.3.3 <Badge color="green">current</Badge>
       </h2>
       <p>
         On-chain fee collection via Move contracts v2. AdminCap enforcement on
@@ -1500,7 +1500,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.3.2
+            v0.3.3
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home
