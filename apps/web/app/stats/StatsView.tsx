@@ -7,7 +7,7 @@ interface Stats {
   wallets: {
     sponsor: { address: string; balanceSui: number };
     gasStation: { address: string; balanceSui: number };
-    treasury: { address: string; balanceSui: number; balanceUsdc?: number; totalCollected?: number; totalWithdrawn?: number };
+    treasury: { address: string; balanceSui: number; balanceUsdc?: number };
     rebate: { address: string; balanceSui: number; balanceUsdc?: number };
     totalSui: number;
   } | null;
@@ -442,11 +442,6 @@ export function StatsView() {
                 </div>
                 <span className="text-[11px] font-mono text-foreground">
                   ${(stats.wallets.treasury.balanceUsdc ?? 0).toFixed(4)} USDC
-                  {stats.wallets.treasury.totalCollected != null && (
-                    <span className="text-muted ml-2">
-                      (collected: ${stats.wallets.treasury.totalCollected.toFixed(4)})
-                    </span>
-                  )}
                 </span>
               </div>
             )}

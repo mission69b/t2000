@@ -41,7 +41,7 @@ async function getWalletBalances() {
 
   try {
     const client = new SuiClient({ url: SUI_RPC });
-    const results: Record<string, { address: string; balanceSui: number; balanceUsdc?: number; totalCollected?: number; totalWithdrawn?: number }> = {};
+    const results: Record<string, { address: string; balanceSui: number; balanceUsdc?: number }> = {};
 
     if (sponsorAddr) {
       const bal = await client.getBalance({ owner: sponsorAddr });
@@ -54,31 +54,24 @@ async function getWalletBalances() {
 
     const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
-    const [treasuryObj, rebateSui, rebateUsdc] = await Promise.all([
-      client.getObject({ id: TREASURY_ID, options: { showContent: true } }),
+    const [rebateSui, rebateUsdc] = await Promise.all([
       client.getBalance({ owner: REBATE_ADDRESS }),
       client.getBalance({ owner: REBATE_ADDRESS, coinType: USDC_TYPE }),
     ]);
 
-    let treasuryUsdc = 0;
-    let treasuryCollected = 0;
-    let treasuryWithdrawn = 0;
-    if (treasuryObj.data?.content?.dataType === "moveObject") {
-      const fields = treasuryObj.data.content.fields as Record<string, unknown>;
-      const balanceField = fields.balance as Record<string, unknown> | undefined;
-      const balanceValue = (balanceField as Record<string, Record<string, string>> | undefined)?.fields?.value
-        ?? (balanceField as Record<string, string> | undefined)?.value
-        ?? "0";
-      treasuryUsdc = Number(balanceValue) / 1e6;
-      treasuryCollected = Number(fields.total_collected ?? "0") / 1e6;
-      treasuryWithdrawn = Number(fields.total_withdrawn ?? "0") / 1e6;
-    }
+    // Treasury fees are sent via transferObjects (not collect_fee), so the
+    // on-chain Balance<T> field is empty. Use DB fee total as source of truth.
+    const allFees = await prisma.protocolFeeLedger.findMany({
+      select: { feeAmount: true, feeAsset: true },
+    });
+    const treasuryUsdc = allFees
+      .filter((f) => f.feeAsset === "USDC")
+      .reduce((s, f) => s + Number(f.feeAmount), 0);
+
     results.treasury = {
       address: TREASURY_ID,
       balanceSui: 0,
-      balanceUsdc: treasuryUsdc,
-      totalCollected: treasuryCollected,
-      totalWithdrawn: treasuryWithdrawn,
+      balanceUsdc: +treasuryUsdc.toFixed(6),
     };
 
     results.rebate = {
