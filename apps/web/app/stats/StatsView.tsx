@@ -7,7 +7,7 @@ interface Stats {
   wallets: {
     sponsor: { address: string; balanceSui: number };
     gasStation: { address: string; balanceSui: number };
-    treasury: { address: string; balanceSui: number; balanceUsdc?: number };
+    treasury: { address: string; balanceSui: number; balanceUsdc?: number; totalCollected?: number; totalWithdrawn?: number };
     rebate: { address: string; balanceSui: number; balanceUsdc?: number };
     totalSui: number;
   } | null;
@@ -432,7 +432,7 @@ export function StatsView() {
                     Treasury
                   </span>
                   <a
-                    href={`https://suiscan.xyz/mainnet/account/${stats.wallets.treasury.address}`}
+                    href={`https://suiscan.xyz/mainnet/object/${stats.wallets.treasury.address}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
@@ -441,9 +441,12 @@ export function StatsView() {
                   </a>
                 </div>
                 <span className="text-[11px] font-mono text-foreground">
-                  {stats.wallets.treasury.balanceUsdc != null
-                    ? `$${stats.wallets.treasury.balanceUsdc.toFixed(4)} USDC`
-                    : `${stats.wallets.treasury.balanceSui.toFixed(2)} SUI`}
+                  ${(stats.wallets.treasury.balanceUsdc ?? 0).toFixed(4)} USDC
+                  {stats.wallets.treasury.totalCollected != null && (
+                    <span className="text-muted ml-2">
+                      (collected: ${stats.wallets.treasury.totalCollected.toFixed(4)})
+                    </span>
+                  )}
                 </span>
               </div>
             )}

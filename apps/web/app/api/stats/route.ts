@@ -3,7 +3,7 @@ import { prisma } from "@/app/lib/prisma";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 
 const SUI_RPC = process.env.SUI_RPC_URL ?? getFullnodeUrl("mainnet");
-const TREASURY_ADDRESS = "0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8";
+const TREASURY_ID = "0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8";
 const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
 
 export async function GET() {
@@ -53,17 +53,31 @@ async function getWalletBalances() {
     }
 
     const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
-    const [treasurySui, treasuryUsdc, rebateSui, rebateUsdc] = await Promise.all([
-      client.getBalance({ owner: TREASURY_ADDRESS }),
-      client.getBalance({ owner: TREASURY_ADDRESS, coinType: USDC_TYPE }),
+
+    const [treasuryObj, rebateSui, rebateUsdc] = await Promise.all([
+      client.getObject({ id: TREASURY_ID, options: { showContent: true } }),
       client.getBalance({ owner: REBATE_ADDRESS }),
       client.getBalance({ owner: REBATE_ADDRESS, coinType: USDC_TYPE }),
     ]);
+
+    let treasuryUsdc = 0;
+    let treasuryCollected = 0;
+    let treasuryWithdrawn = 0;
+    if (treasuryObj.data?.content?.dataType === "moveObject") {
+      const fields = treasuryObj.data.content.fields as Record<string, unknown>;
+      const balanceField = fields.balance as Record<string, string> | undefined;
+      treasuryUsdc = Number(balanceField?.fields?.value ?? balanceField?.value ?? "0") / 1e6;
+      treasuryCollected = Number(fields.total_collected ?? "0") / 1e6;
+      treasuryWithdrawn = Number(fields.total_withdrawn ?? "0") / 1e6;
+    }
     results.treasury = {
-      address: TREASURY_ADDRESS,
-      balanceSui: Number(treasurySui.totalBalance) / 1e9,
-      balanceUsdc: Number(treasuryUsdc.totalBalance) / 1e6,
+      address: TREASURY_ID,
+      balanceSui: 0,
+      balanceUsdc: treasuryUsdc,
+      totalCollected: treasuryCollected,
+      totalWithdrawn: treasuryWithdrawn,
     };
+
     results.rebate = {
       address: REBATE_ADDRESS,
       balanceSui: Number(rebateSui.totalBalance) / 1e9,
