@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI Protocol, swap on Cetus DEX, borrow against collateral — all from a single class.
+The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI + Suilend, swap on Cetus DEX, borrow against collateral — all from a single class.
 
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -37,7 +37,7 @@ console.log(`$${balance.available} USDC available`);
 // Send USDC
 await agent.send({ to: '0x...', amount: 10 });
 
-// Save (earn yield via NAVI Protocol)
+// Save (earn yield — auto-selects best rate across NAVI + Suilend)
 await agent.save({ amount: 50, asset: 'USDC' });
 
 // Swap USDC → SUI (via Cetus DEX)
@@ -89,7 +89,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, asset })` | Deposit USDC to NAVI Protocol (earn APY). `amount` can be `'all'`. | `SaveResult` |
+| `agent.save({ amount, asset, protocol? })` | Deposit USDC to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
 | `agent.withdraw({ amount, asset })` | Withdraw USDC from savings. `amount` can be `'all'`. | `WithdrawResult` |
 | `agent.swap({ from, to, amount, maxSlippage? })` | Swap via Cetus CLMM DEX. `maxSlippage` in % (default: 3). | `SwapResult` |
 | `agent.swapQuote({ from, to, amount })` | Get swap quote without executing | `SwapQuote` |
@@ -103,7 +103,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 |--------|-------------|---------|
 | `agent.healthFactor()` | Lending health factor | `HealthFactorResult` |
 | `agent.earnings()` | Yield earned to date | `EarningsResult` |
-| `agent.rates()` | Current save/borrow APYs | `RatesResult` |
+| `agent.rates()` | Best save/borrow APYs across protocols | `RatesResult` |
 | `agent.positions()` | All open DeFi positions | `PositionsResult` |
 | `agent.fundStatus()` | Complete savings summary | `FundStatusResult` |
 | `agent.maxWithdraw()` | Max safe withdrawal amount | `MaxWithdrawResult` |
@@ -227,7 +227,7 @@ Every operation (send, save, borrow, repay, withdraw, swap) routes through a 3-s
 
 Every transaction result includes a `gasMethod` field (`'self-funded'` | `'auto-topup'` | `'sponsored'`) indicating which strategy was used.
 
-**Architecture:** Each protocol operation (NAVI, Cetus, send) exposes a `buildXxxTx()` function that returns a `Transaction` without executing it. `executeWithGas()` then handles execution with the fallback chain. This separation ensures gas management is consistent across all operations.
+**Architecture:** Each protocol operation (NAVI, Suilend, Cetus, send) exposes a `buildXxxTx()` function that returns a `Transaction` without executing it. `executeWithGas()` then handles execution with the fallback chain. This separation ensures gas management is consistent across all operations.
 
 ## Configuration
 
@@ -264,7 +264,7 @@ Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOU
 ## Testing
 
 ```bash
-# Run all SDK unit tests (122 tests)
+# Run all SDK unit tests (262 tests)
 pnpm --filter @t2000/sdk test
 ```
 

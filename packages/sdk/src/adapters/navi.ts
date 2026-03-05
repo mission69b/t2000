@@ -7,6 +7,7 @@ import type {
   AdapterTxResult,
   AdapterCapability,
 } from './types.js';
+import { T2000Error } from '../errors.js';
 import * as naviProtocol from '../protocols/navi.js';
 
 export class NaviAdapter implements LendingAdapter {
@@ -31,7 +32,7 @@ export class NaviAdapter implements LendingAdapter {
     const rates = await naviProtocol.getRates(this.client);
     const key = asset.toUpperCase() as keyof typeof rates;
     const r = rates[key];
-    if (!r) throw new Error(`NAVI does not support ${asset}`);
+    if (!r) throw new T2000Error('ASSET_NOT_SUPPORTED', `NAVI does not support ${asset}`);
     return { asset, saveApy: r.saveApy, borrowApy: r.borrowApy };
   }
 

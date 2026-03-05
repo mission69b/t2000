@@ -4,7 +4,7 @@
 > When a product fact changes, update this file FIRST, then propagate.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-02-19
+> Last verified: 2026-03-05
 
 ---
 
@@ -12,8 +12,8 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.3.0` |
-| `@t2000/cli` | `0.3.3` |
+| `@t2000/sdk` | `0.6.2` |
+| `@t2000/cli` | `0.6.2` |
 | `@t2000/x402` | `0.2.6` |
 | Agent Skills | `1.2` |
 
@@ -58,7 +58,7 @@ t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
 |---------|------|-------------|--------|
 | NAVI (`navi`) | Lending | save, withdraw, borrow, repay | Built-in |
 | Cetus (`cetus`) | Swap | swap | Built-in |
-| Suilend (`suilend`) | Lending | save, withdraw | Stub (in progress) |
+| Suilend (`suilend`) | Lending | save, withdraw | Built-in |
 
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth
 - `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
@@ -136,7 +136,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 **save:**
 ```
-  ✓ Saved $1.00 USDC to NAVI
+  ✓ Saved $1.00 USDC to best rate
   ✓ Protocol fee: $0.00 USDC (0.1%)
   ✓ Current APY: 3.31%
   ✓ Savings balance: $1.00 USDC
@@ -257,6 +257,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | `balanceChange` | Balance changed |
 | `healthWarning` | HF dropping, attention recommended |
 | `healthCritical` | HF dangerous, action required |
+| `gasAutoTopUp` | Auto-topped up gas via USDC→SUI swap |
 | `gasStationFallback` | Gas resolution fell back to sponsor |
 | `error` | SDK error |
 
@@ -354,7 +355,7 @@ Source: `packages/sdk/src/types.ts`
 | `WITHDRAW_WOULD_LIQUIDATE` | Withdraw would drop HF below safe | No |
 | `NO_COLLATERAL` | No savings to borrow against | No |
 | `PROTOCOL_PAUSED` | t2000 contract paused | No |
-| `PROTOCOL_UNAVAILABLE` | NAVI/Cetus unavailable | Yes |
+| `PROTOCOL_UNAVAILABLE` | NAVI/Suilend/Cetus unavailable | Yes |
 | `RPC_ERROR` | Sui RPC error | Yes |
 | `RPC_UNREACHABLE` | Sui RPC unreachable | Yes |
 | `PRICE_EXCEEDS_LIMIT` | x402 price > maxPrice | No |
@@ -363,6 +364,10 @@ Source: `packages/sdk/src/types.ts`
 | `DUPLICATE_PAYMENT` | x402 nonce already used | No |
 | `FACILITATOR_REJECTION` | Facilitator rejected payment | No |
 | `FACILITATOR_TIMEOUT` | Facilitator timed out | Yes |
+| `SENTINEL_API_ERROR` | Sentinel API request failed | Yes |
+| `SENTINEL_NOT_FOUND` | Sentinel agent not found | No |
+| `SENTINEL_TX_FAILED` | Sentinel transaction failed | No |
+| `SENTINEL_TEE_ERROR` | TEE attestation/prompt error | Yes |
 | `UNKNOWN` | Unclassified error | Yes |
 
 Source: `packages/sdk/src/errors.ts`

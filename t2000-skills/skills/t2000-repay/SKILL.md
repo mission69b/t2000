@@ -1,9 +1,9 @@
 ---
 name: t2000-repay
 description: >-
-  Repay borrowed USDC on NAVI Protocol. Use when asked to repay a loan,
-  pay back debt, reduce outstanding balance, or clear borrows. Supports
-  partial and full repayment.
+  Repay borrowed USDC. Use when asked to repay a loan, pay back debt,
+  reduce outstanding balance, or clear borrows. Supports partial and full
+  repayment.
 license: MIT
 metadata:
   author: t2000
@@ -14,7 +14,7 @@ metadata:
 # t2000: Repay Borrow
 
 ## Purpose
-Repay outstanding USDC debt on NAVI. Supports specific amounts or
+Repay outstanding USDC debt. Supports specific amounts or
 `repay all` to clear the full balance including accrued interest.
 
 ## Command

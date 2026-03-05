@@ -52,7 +52,7 @@ t2000 init
   Tx:  https://suiscan.xyz/mainnet/tx/0xa1b2...
 
 ❯ t2000 save 80 USDC
-  ✓ Saved $80.00 USDC to NAVI
+  ✓ Saved $80.00 USDC to best rate
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
   ✓ Savings balance: $79.92 USDC
@@ -118,14 +118,14 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount> [asset]` | Deposit to NAVI Protocol (earn ~4–8% APY). Asset defaults to USDC. |
+| `t2000 save <amount> [asset] [--protocol <name>]` | Deposit to savings (earn ~2–8% APY). Auto-selects best rate or use `--protocol navi\|suilend`. |
 | `t2000 save all` | Deposit all available USDC |
-| `t2000 withdraw <amount> [asset]` | Withdraw from savings |
-| `t2000 borrow <amount> [asset]` | Borrow against savings collateral |
-| `t2000 repay <amount> [asset]` | Repay outstanding borrows. Use `repay all` for full repayment. |
+| `t2000 withdraw <amount> [asset] [--protocol <name>]` | Withdraw from savings. Use `--protocol navi\|suilend` to target specific protocol. |
+| `t2000 borrow <amount> [asset] [--protocol <name>]` | Borrow against savings collateral |
+| `t2000 repay <amount> [asset] [--protocol <name>]` | Repay outstanding borrows. Use `repay all` for full repayment. |
 | `t2000 swap <amount> <from> <to>` | Swap via Cetus DEX (e.g. `swap 5 USDC SUI`) |
 | `t2000 health` | Check savings health factor |
-| `t2000 rates` | Current NAVI save/borrow APYs |
+| `t2000 rates` | Best save/borrow APYs across protocols |
 | `t2000 positions` | Open savings & borrow positions |
 | `t2000 earnings` | Yield earned to date |
 | `t2000 fund-status` | Full savings summary |

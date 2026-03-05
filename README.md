@@ -25,7 +25,7 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 const { agent } = await T2000.init({ pin: 'my-secret' });
 
 await agent.send({ to: '0x...', amount: 50 });
-await agent.save({ amount: 100, asset: 'USDC' });   // earn ~4–8% APY via NAVI Protocol
+await agent.save({ amount: 100, asset: 'USDC' });   // earn ~2–8% APY (auto-selects best rate)
 await agent.borrow({ amount: 20, asset: 'USDC' });  // borrow against savings
 await agent.repay({ amount: 20, asset: 'USDC' });   // repay debt
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
@@ -43,7 +43,7 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
   Address: 0x8b3e...d412
 
 ❯ t2000 save 80 USDC
-  ✓ Saved $80.00 USDC to NAVI
+  ✓ Saved $80.00 USDC to best rate
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
   ✓ Savings balance: $80.00 USDC
@@ -87,7 +87,7 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 |---------|---------------|
 | Agents can't hold money | Non-custodial bank account in one line of code |
 | Gas tokens are confusing | Auto-managed — agent never sees SUI |
-| Idle funds lose value | Automatic yield via NAVI Protocol (~4–8% APY) |
+| Idle funds lose value | Automatic yield via NAVI + Suilend (~2–8% APY) |
 | DeFi is complex | `save()`, `swap()`, `borrow()`, `repay()` — four methods |
 | No standard payment protocol | x402 client — first implementation on Sui |
 | No standard wallet interface | SDK + CLI + HTTP API for any language |
@@ -112,7 +112,7 @@ t2000 wraps five DeFi primitives into a single interface that any AI agent can u
 | Feature | What it does | How |
 |---------|-------------|-----|
 | **Checking** | Send and receive USDC | Direct Sui transfers |
-| **Savings** | Earn ~4–8% APY on idle funds | [NAVI Protocol](https://naviprotocol.io) lending |
+| **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) + [Suilend](https://suilend.fi) (auto-selected) |
 | **Credit** | Borrow against savings | NAVI collateralized loans |
 | **Exchange** | Swap between USDC and SUI | [Cetus](https://cetus.zone) CLMM DEX |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
@@ -164,7 +164,7 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | **Wallet** | `agent.balance()` | Available + savings + gas breakdown |
 | | `agent.send({ to, amount })` | Send USDC |
 | | `agent.history()` | Transaction log |
-| **Savings** | `agent.save({ amount, asset: 'USDC' })` | Deposit to NAVI, earn APY |
+| **Savings** | `agent.save({ amount, asset: 'USDC' })` | Deposit to savings, earn APY |
 | | `agent.withdraw({ amount, asset: 'USDC' })` | Withdraw from savings |
 | | `agent.earnings()` | Yield earned, daily rate |
 | **Credit** | `agent.borrow({ amount, asset: 'USDC' })` | Borrow against collateral |
@@ -189,7 +189,7 @@ t2000 send 10 USDC to 0x...       Send USDC
 t2000 history                      Transaction history
 
 # Savings & DeFi
-t2000 save 50 USDC                 Earn yield via NAVI
+t2000 save 50 USDC                 Earn yield (best rate)
 t2000 withdraw 25 USDC             Withdraw savings
 t2000 borrow 10 USDC              Borrow against collateral
 t2000 repay 10 USDC               Repay debt
@@ -304,7 +304,7 @@ Full reference → [Agent Skills README](t2000-skills)
 |---------|--------------------|-------|
 | Chain | Base only | Sui |
 | Send / receive | ✓ | ✓ |
-| Earn yield on savings | — | ✓ NAVI (~4–8% APY) |
+| Earn yield on savings | — | ✓ NAVI + Suilend (~2–8% APY) |
 | Borrow / credit line | — | ✓ Collateralized |
 | Token swap | ✓ Base tokens | ✓ Cetus DEX |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
@@ -373,7 +373,7 @@ Integration tests run real transactions on Sui mainnet and require a funded wall
 | Contracts | Move (treasury, admin, fee collection) |
 | SDK | TypeScript, `@mysten/sui` |
 | CLI | Commander.js, Hono (HTTP API) |
-| DeFi | NAVI Protocol (lending), Cetus CLMM (swaps) |
+| DeFi | NAVI + Suilend (lending), Cetus CLMM (swaps) |
 | Web | Next.js 16, Tailwind CSS v4, React 19 |
 | Infra | AWS ECS Fargate |
 | CI/CD | GitHub Actions |

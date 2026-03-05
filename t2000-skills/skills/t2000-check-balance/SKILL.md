@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Fetch the current balance across all accounts: available USDC (checking),
-savings (NAVI deposit), gas reserve (SUI), and total portfolio value.
+savings (NAVI + Suilend), gas reserve (SUI), and total portfolio value.
 
 ## Commands
 ```bash

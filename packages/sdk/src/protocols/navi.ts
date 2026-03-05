@@ -56,11 +56,12 @@ interface NaviConfig {
     priceOracle: string;
     oracleConfig: string;
     supraOracleHolder: string;
+    switchboardAggregator: string;
     feeds: OracleFeed[];
   };
 }
 
-const ORACLE_PRO_PACKAGE = '0xc2d49bf5e75d2258ee5563efa527feb6155de7ac6f6bf025a23ee88cd12d5a83';
+// Oracle package ID comes from config.oracle.packageId (not hardcoded)
 
 interface NaviPool {
   id: number;
@@ -165,16 +166,19 @@ async function getUsdcPool(): Promise<NaviPool> {
 
 function addOracleUpdate(tx: Transaction, config: NaviConfig, pool: NaviPool): void {
   const feed = config.oracle.feeds?.find((f) => f.assetId === pool.id);
-  if (!feed) return;
+  if (!feed) {
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `Oracle feed not found for asset ${pool.token?.symbol ?? pool.id}`);
+  }
 
   tx.moveCall({
-    target: `${ORACLE_PRO_PACKAGE}::oracle_pro::update_single_price`,
+    target: `${config.oracle.packageId}::oracle_pro::update_single_price_v2`,
     arguments: [
       tx.object(CLOCK),
       tx.object(config.oracle.oracleConfig),
       tx.object(config.oracle.priceOracle),
       tx.object(config.oracle.supraOracleHolder),
       tx.object(feed.pythPriceInfoObject),
+      tx.object(config.oracle.switchboardAggregator),
       tx.pure.address(feed.feedId),
     ],
   });
@@ -219,7 +223,7 @@ function compoundBalance(rawBalance: bigint, currentIndex: string): number {
   if (!rawBalance || !currentIndex || currentIndex === '0') return 0;
   const scale = BigInt('1' + '0'.repeat(RATE_DECIMALS));
   const half = scale / 2n;
-  const result = (rawBalance * scale + half) / BigInt(currentIndex);
+  const result = (rawBalance * BigInt(currentIndex) + half) / scale;
   return Number(result) / 10 ** NAVI_BALANCE_DECIMALS;
 }
 
@@ -295,6 +299,9 @@ export async function buildSaveTx(
   amount: number,
   options: { collectFee?: boolean } = {},
 ): Promise<Transaction> {
+  if (!amount || amount <= 0 || !Number.isFinite(amount)) {
+    throw new T2000Error('INVALID_AMOUNT', 'Save amount must be a positive number');
+  }
   const rawAmount = Number(usdcToRaw(amount));
   const [config, pool] = await Promise.all([getConfig(), getUsdcPool()]);
 
@@ -438,6 +445,9 @@ export async function buildBorrowTx(
   amount: number,
   options: { collectFee?: boolean } = {},
 ): Promise<Transaction> {
+  if (!amount || amount <= 0 || !Number.isFinite(amount)) {
+    throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be a positive number');
+  }
   const rawAmount = Number(usdcToRaw(amount));
   const [config, pool] = await Promise.all([getConfig(), getUsdcPool()]);
 
@@ -467,6 +477,10 @@ export async function buildBorrowTx(
     arguments: [balance],
     typeArguments: [pool.suiCoinType],
   });
+
+  if (options.collectFee) {
+    addCollectFeeToTx(tx, borrowedCoin, 'borrow');
+  }
 
   tx.transferObjects([borrowedCoin], address);
 
@@ -506,6 +520,9 @@ export async function buildRepayTx(
   address: string,
   amount: number,
 ): Promise<Transaction> {
+  if (!amount || amount <= 0 || !Number.isFinite(amount)) {
+    throw new T2000Error('INVALID_AMOUNT', 'Repay amount must be a positive number');
+  }
   const rawAmount = Number(usdcToRaw(amount));
   const [config, pool] = await Promise.all([getConfig(), getUsdcPool()]);
 
@@ -514,6 +531,8 @@ export async function buildRepayTx(
 
   const tx = new Transaction();
   tx.setSender(address);
+
+  addOracleUpdate(tx, config, pool);
 
   const coinObj = mergeCoins(tx, coins);
 

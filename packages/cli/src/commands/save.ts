@@ -34,7 +34,7 @@ export function registerSave(program: Command) {
           printSuccess(`Gas manager: ${pc.yellow(formatUsd(gasManagerUsdc))} USDC → SUI`);
         }
 
-        const protocolName = opts.protocol ?? 'NAVI';
+        const protocolName = opts.protocol ?? 'best rate';
         printSuccess(`Saved ${pc.yellow(formatUsd(result.amount))} USDC to ${protocolName}`);
 
         if (result.fee > 0) {

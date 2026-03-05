@@ -1,10 +1,10 @@
 ---
 name: t2000-save
 description: >-
-  Deposit USDC into savings to earn yield on Sui via NAVI. Use when asked
-  to save money, earn interest, deposit to savings, put funds to work, or
-  maximize yield on idle USDC. Not for sending to other addresses — use
-  t2000-send for that.
+  Deposit USDC into savings to earn yield on Sui via NAVI or Suilend
+  (auto-selects best rate). Use when asked to save money, earn interest,
+  deposit to savings, put funds to work, or maximize yield on idle USDC.
+  Not for sending to other addresses — use t2000-send for that.
 license: MIT
 metadata:
   author: t2000
@@ -12,21 +12,23 @@ metadata:
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
-# t2000: Save (Deposit to NAVI)
+# t2000: Save (Deposit to Savings)
 
 ## Purpose
-Deposit USDC into NAVI to earn yield. Funds remain non-custodial and
-withdrawable at any time (subject to utilization).
+Deposit USDC into savings to earn yield (auto-selects best rate across
+NAVI and Suilend, or specify `--protocol navi|suilend`). Funds remain
+non-custodial and withdrawable at any time (subject to utilization).
 
 ## Command
 ```bash
-t2000 save <amount> [asset]
+t2000 save <amount> [asset] [--protocol <name>]
 t2000 save all [asset]
 
 # Examples:
 t2000 save 80 USDC
 t2000 save 80
 t2000 save all
+t2000 save 50 --protocol suilend
 ```
 
 Asset defaults to USDC if omitted. `save all` deposits the full available
@@ -39,7 +41,7 @@ balance minus a $1 USDC reserve held back for future gas needs.
 ## Output
 ```
 ✓ Gas manager: $1.00 USDC → SUI          [only shown if auto-topup triggered]
-✓ Saved $XX.XX USDC to NAVI
+✓ Saved $XX.XX USDC to best rate
 ✓ Protocol fee: $0.XX USDC (0.1%)
 ✓ Current APY: X.XX%
 ✓ Savings balance: $XX.XX USDC
@@ -47,6 +49,6 @@ balance minus a $1 USDC reserve held back for future gas needs.
 ```
 
 ## Notes
-- APY is variable based on NAVI utilization
+- APY is variable based on protocol utilization
 - If available balance is $0 after gas conversion, returns INSUFFICIENT_BALANCE
 - `t2000 supply` is an alias for `t2000 save`

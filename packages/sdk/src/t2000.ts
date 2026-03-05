@@ -14,7 +14,6 @@ import {
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory } from './wallet/history.js';
-import * as navi from './protocols/navi.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
 import * as sentinel from './protocols/sentinel.js';
@@ -577,7 +576,10 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async rates(): Promise<RatesResult> {
-    return navi.getRates(this.client);
+    const allRatesResult = await this.registry.allRates('USDC');
+    if (allRatesResult.length === 0) return { USDC: { saveApy: 0, borrowApy: 0 } };
+    const best = allRatesResult.reduce((a, b) => (b.rates.saveApy > a.rates.saveApy ? b : a));
+    return { USDC: { saveApy: best.rates.saveApy, borrowApy: best.rates.borrowApy } };
   }
 
   async allRates(asset = 'USDC') {

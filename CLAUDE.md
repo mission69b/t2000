@@ -198,7 +198,7 @@ import {
 ### Key Values
 
 - `MIST_PER_SUI`: `1_000_000_000n`
-- `MIN_DEPOSIT`: `1_000_000_000n` (1 SUI)
+- `MIN_DEPOSIT`: `1_000_000n` (1 USDC)
 - `BPS_DENOMINATOR`: `10_000n`
 - `PRECISION`: `1_000_000_000_000_000_000n` (10^18, for reward math - matches contract)
 - `CLOCK_ID`: `'0x6'`

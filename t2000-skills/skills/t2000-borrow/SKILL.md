@@ -1,9 +1,9 @@
 ---
 name: t2000-borrow
 description: >-
-  Borrow USDC against savings collateral via NAVI Protocol. Use when asked
-  to borrow, take a loan, get credit, leverage savings, or access funds
-  without withdrawing from savings. A 0.05% protocol fee applies.
+  Borrow USDC against savings collateral. Use when asked to borrow, take
+  a loan, get credit, leverage savings, or access funds without
+  withdrawing from savings. A 0.05% protocol fee applies.
 license: MIT
 metadata:
   author: t2000
@@ -14,7 +14,7 @@ metadata:
 # t2000: Borrow USDC
 
 ## Purpose
-Take a collateralized loan from NAVI using savings deposits as collateral.
+Take a collateralized loan using savings deposits as collateral.
 Borrowed USDC goes to the available balance. A 0.05% protocol fee applies.
 
 ## Command

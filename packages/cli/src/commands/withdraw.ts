@@ -21,14 +21,6 @@ export function registerWithdraw(program: Command) {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        if (amount !== 'all') {
-          const maxResult = await agent.maxWithdraw();
-          if (amount > maxResult.maxAmount) {
-            printWarning(`Max safe withdrawal: $${maxResult.maxAmount.toFixed(2)} (HF ${maxResult.currentHF.toFixed(2)} → ${maxResult.healthFactorAfter.toFixed(2)})`);
-            return;
-          }
-        }
-
         const asset = assetStr ?? 'USDC';
         const result = await agent.withdraw({ amount, asset, protocol: opts.protocol });
 

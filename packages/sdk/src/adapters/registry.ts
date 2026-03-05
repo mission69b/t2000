@@ -5,6 +5,7 @@ import type {
   SwapQuote,
   AdapterPositions,
 } from './types.js';
+import { T2000Error } from '../errors.js';
 
 export class ProtocolRegistry {
   private lending: Map<string, LendingAdapter> = new Map();
@@ -33,7 +34,7 @@ export class ProtocolRegistry {
     }
 
     if (candidates.length === 0) {
-      throw new Error(`No lending adapter supports saving ${asset}`);
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `No lending adapter supports saving ${asset}`);
     }
 
     candidates.sort((a, b) => b.rate.saveApy - a.rate.saveApy);
@@ -56,7 +57,7 @@ export class ProtocolRegistry {
     }
 
     if (candidates.length === 0) {
-      throw new Error(`No lending adapter supports borrowing ${asset}`);
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `No lending adapter supports borrowing ${asset}`);
     }
 
     candidates.sort((a, b) => a.rate.borrowApy - b.rate.borrowApy);
@@ -78,7 +79,7 @@ export class ProtocolRegistry {
     }
 
     if (candidates.length === 0) {
-      throw new Error(`No swap adapter supports ${from} → ${to}`);
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `No swap adapter supports ${from} → ${to}`);
     }
 
     candidates.sort((a, b) => b.quote.expectedOutput - a.quote.expectedOutput);
