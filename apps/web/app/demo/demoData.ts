@@ -12,7 +12,7 @@ export const demos: Demo[] = [
   {
     id: "save",
     title: "Savings — Earn Yield",
-    description: "Deposit idle USDC into savings, earn APY via NAVI Protocol, check earnings.",
+    description: "Deposit idle USDC into savings, earn APY via NAVI or Suilend (best rate), check earnings.",
     tweet: "Week 2 Monday — Savings feature",
     lines: [
       { type: "command", text: "❯ t2000 rates", delay: 0 },
@@ -27,7 +27,7 @@ export const demos: Demo[] = [
       { type: "output", text: "  Total:      $4.99 USDC", delay: 120 },
 
       { type: "command", text: "❯ t2000 save 1", delay: 1200 },
-      { type: "success", text: "✓ Saved $1.00 USDC to NAVI", delay: 600 },
+      { type: "success", text: "✓ Saved $1.00 USDC to best rate", delay: 600 },
       { type: "success", text: "✓ Protocol fee: $0.00 USDC (0.1%)", delay: 200 },
       { type: "success", text: "✓ Current APY: 3.31%", delay: 200 },
       { type: "success", text: "✓ Savings balance: $1.00 USDC", delay: 200 },
@@ -123,8 +123,13 @@ export const demos: Demo[] = [
       { type: "output", text: "    Health factor:  ∞  (no active loan)", delay: 150 },
 
       { type: "command", text: "❯ t2000 rates", delay: 1200 },
-      { type: "output", text: "  USDC Save APY:    3.31%", delay: 400 },
-      { type: "output", text: "  USDC Borrow APY:  5.84%", delay: 150 },
+      { type: "output", text: "  USDC Rates (NAVI Protocol)", delay: 400 },
+      { type: "output", text: "  Save APY:    5.57%", delay: 150 },
+      { type: "output", text: "  Borrow APY:  7.99%", delay: 150 },
+      { type: "output", text: "", delay: 80 },
+      { type: "output", text: "  USDC Rates (Suilend)", delay: 200 },
+      { type: "output", text: "  Save APY:    2.18%", delay: 150 },
+      { type: "output", text: "  Borrow APY:  5.58%", delay: 150 },
 
       { type: "command", text: "❯ t2000 earnings", delay: 1200 },
       { type: "output", text: "  Supplied:      $1.00 USDC", delay: 400 },
@@ -236,9 +241,11 @@ export const demos: Demo[] = [
       { type: "output", text: "", delay: 80 },
       { type: "output", text: "  SAVINGS — Passive Yield", delay: 120 },
       { type: "output", text: "  ──────────────────────────────────", delay: 80 },
-      { type: "info", text: "Saved:        $80.00 USDC @ 3.8% APY", delay: 120 },
-      { type: "info", text: "Daily Yield:  ~$0.0083/day", delay: 120 },
-      { type: "info", text: "All-time:     ~$0.18", delay: 120 },
+      { type: "info", text: "navi:     $50.00 USDC @ 5.6% APY", delay: 120 },
+      { type: "info", text: "suilend:  $30.00 USDC @ 2.2% APY", delay: 120 },
+      { type: "info", text: "    ~$0.01/day · ~$0.29/month", delay: 120 },
+      { type: "output", text: "", delay: 80 },
+      { type: "info", text: "Total Saved:  $80.00 USDC", delay: 120 },
       { type: "output", text: "", delay: 80 },
       { type: "output", text: "  SENTINEL BOUNTIES — Active Red Teaming", delay: 120 },
       { type: "output", text: "  ──────────────────────────────────", delay: 80 },
