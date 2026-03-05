@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { AggregatorClient, Env } from '@cetusprotocol/aggregator-sdk';
@@ -9,7 +9,7 @@ import type { GasMethod } from '../types.js';
 const DEFAULT_SLIPPAGE_BPS = 300; // 3%
 
 export interface SwapParams {
-  client: SuiClient;
+  client: SuiJsonRpcClient;
   keypair: Ed25519Keypair;
   fromAsset: 'USDC' | 'SUI';
   toAsset: 'USDC' | 'SUI';
@@ -44,16 +44,18 @@ export interface SwapBuildResult {
   toDecimals: number;
 }
 
-function createAggregatorClient(client: SuiClient, signer?: string): AggregatorClient {
+function createAggregatorClient(client: SuiJsonRpcClient, signer?: string): AggregatorClient {
+  // Cetus SDK bundles @mysten/sui v1 internally — the runtime API is
+  // identical to SuiJsonRpcClient, so the cast is safe.
   return new AggregatorClient({
-    client,
+    client: client as never,
     signer,
     env: Env.Mainnet,
   });
 }
 
 export async function buildSwapTx(params: {
-  client: SuiClient;
+  client: SuiJsonRpcClient;
   address: string;
   fromAsset: 'USDC' | 'SUI';
   toAsset: 'USDC' | 'SUI';
@@ -87,7 +89,7 @@ export async function buildSwapTx(params: {
 
   await aggClient.fastRouterSwap({
     router: result,
-    txb: tx,
+    txb: tx as never,
     slippage,
   });
 
@@ -156,7 +158,7 @@ export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
   };
 }
 
-export async function getPoolPrice(client: SuiClient): Promise<number> {
+export async function getPoolPrice(client: SuiJsonRpcClient): Promise<number> {
   try {
     const pool = await client.getObject({
       id: CETUS_USDC_SUI_POOL,
@@ -183,7 +185,7 @@ export async function getPoolPrice(client: SuiClient): Promise<number> {
 }
 
 export async function getSwapQuote(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   fromAsset: 'USDC' | 'SUI',
   toAsset: 'USDC' | 'SUI',
   amount: number,

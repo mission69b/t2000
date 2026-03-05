@@ -1,5 +1,5 @@
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import {
   SAVE_FEE_BPS,
   SWAP_FEE_BPS,

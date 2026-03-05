@@ -1,5 +1,5 @@
 import { EventEmitter } from 'eventemitter3';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { getSuiClient } from './utils/sui.js';
 import {
@@ -62,11 +62,11 @@ interface T2000Events {
 
 export class T2000 extends EventEmitter<T2000Events> {
   private readonly keypair: Ed25519Keypair;
-  private readonly client: SuiClient;
+  private readonly client: SuiJsonRpcClient;
   private readonly _address: string;
   private readonly registry: ProtocolRegistry;
 
-  private constructor(keypair: Ed25519Keypair, client: SuiClient, registry?: ProtocolRegistry) {
+  private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry) {
     super();
     this.keypair = keypair;
     this.client = client;
@@ -74,7 +74,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.registry = registry ?? T2000.createDefaultRegistry(client);
   }
 
-  private static createDefaultRegistry(client: SuiClient): ProtocolRegistry {
+  private static createDefaultRegistry(client: SuiJsonRpcClient): ProtocolRegistry {
     const registry = new ProtocolRegistry();
     const naviAdapter = new NaviAdapter();
     naviAdapter.initSync(client);
@@ -148,8 +148,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Gas --
 
-  /** SuiClient used by this agent — exposed for x402 and other integrations. */
-  get suiClient(): SuiClient {
+  /** SuiJsonRpcClient used by this agent — exposed for x402 and other integrations. */
+  get suiClient(): SuiJsonRpcClient {
     return this.client;
   }
 

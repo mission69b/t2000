@@ -1,6 +1,6 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
 function loadKeypair(envVar: string): Ed25519Keypair {
   const key = process.env[envVar];
@@ -16,7 +16,7 @@ function loadKeypair(envVar: string): Ed25519Keypair {
 
 let _sponsorWallet: Ed25519Keypair | null = null;
 let _gasStationWallet: Ed25519Keypair | null = null;
-let _suiClient: SuiClient | null = null;
+let _suiClient: SuiJsonRpcClient | null = null;
 
 export function getSponsorWallet(): Ed25519Keypair {
   if (!_sponsorWallet) _sponsorWallet = loadKeypair('SPONSOR_PRIVATE_KEY');
@@ -28,10 +28,10 @@ export function getGasStationWallet(): Ed25519Keypair {
   return _gasStationWallet;
 }
 
-export function getSuiClient(): SuiClient {
+export function getSuiClient(): SuiJsonRpcClient {
   if (!_suiClient) {
-    const url = process.env.SUI_RPC_URL ?? getFullnodeUrl('mainnet');
-    _suiClient = new SuiClient({ url });
+    const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
+    _suiClient = new SuiJsonRpcClient({ url, network: 'mainnet' });
   }
   return _suiClient;
 }

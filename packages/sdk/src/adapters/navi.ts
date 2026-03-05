@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type {
   LendingAdapter,
   LendingRates,
@@ -17,13 +17,13 @@ export class NaviAdapter implements LendingAdapter {
   readonly supportedAssets: readonly string[] = ['USDC'];
   readonly supportsSameAssetBorrow = true;
 
-  private client!: SuiClient;
+  private client!: SuiJsonRpcClient;
 
-  async init(client: SuiClient): Promise<void> {
+  async init(client: SuiJsonRpcClient): Promise<void> {
     this.client = client;
   }
 
-  initSync(client: SuiClient): void {
+  initSync(client: SuiJsonRpcClient): void {
     this.client = client;
   }
 

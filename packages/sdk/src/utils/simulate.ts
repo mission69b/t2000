@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { T2000Error } from '../errors.js';
 import { mapMoveAbortCode } from '../errors.js';
@@ -15,7 +15,7 @@ export interface SimulationResult {
 }
 
 export async function simulateTransaction(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   tx: Transaction,
   sender: string,
 ): Promise<SimulationResult> {

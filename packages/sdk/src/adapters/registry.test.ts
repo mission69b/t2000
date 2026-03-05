@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProtocolRegistry } from './registry.js';
 import type { LendingAdapter, SwapAdapter, AdapterCapability } from './types.js';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
 function mockLending(overrides: Partial<LendingAdapter> = {}): LendingAdapter {
   return {

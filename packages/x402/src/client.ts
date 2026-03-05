@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { T2000Error } from '@t2000/sdk';
 import type {
@@ -85,7 +85,7 @@ export function parsePaymentRequired(
 }
 
 export interface X402Wallet {
-  client: SuiClient;
+  client: SuiJsonRpcClient;
   keypair: Ed25519Keypair;
   address(): string;
   signAndExecute(tx: unknown): Promise<{ digest: string }>;

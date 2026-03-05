@@ -10,7 +10,7 @@
  *   runLendingComplianceTests(() => new MyAdapter(), mockClient);
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { LendingAdapter, SwapAdapter } from './types.js';
 
 vi.mock('../protocols/navi.js', () => ({}));
@@ -107,7 +107,7 @@ export function runLendingComplianceTests(
     if (!options.isStub) {
       it('init does not throw', async () => {
         adapter = createAdapter();
-        const mockClient = {} as SuiClient;
+        const mockClient = {} as SuiJsonRpcClient;
         await expect(adapter.init(mockClient)).resolves.not.toThrow();
       });
     }
@@ -175,7 +175,7 @@ export function runSwapComplianceTests(
     if (!options.isStub) {
       it('init does not throw', async () => {
         adapter = createAdapter();
-        const mockClient = {} as SuiClient;
+        const mockClient = {} as SuiJsonRpcClient;
         await expect(adapter.init(mockClient)).resolves.not.toThrow();
       });
     }

@@ -210,7 +210,7 @@ validateAddress('0x...');        // throws if invalid
 For integrations (like `@t2000/x402`), the agent exposes:
 
 ```typescript
-agent.suiClient;   // SuiClient instance
+agent.suiClient;   // SuiJsonRpcClient instance
 agent.signer;      // Ed25519Keypair
 ```
 

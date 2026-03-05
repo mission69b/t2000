@@ -8,9 +8,9 @@ This guide covers how to build a new DeFi protocol adapter for t2000.
 adapters/
   types.ts              # LendingAdapter, SwapAdapter interfaces
   registry.ts           # ProtocolRegistry (routing + discovery)
-  navi.ts               # NaviAdapter (reference implementation)
+  navi.ts               # NaviAdapter (reference implementation, contract-first)
   cetus.ts              # CetusAdapter (swap reference, Aggregator V3)
-  suilend.ts            # SuilendAdapter (save + withdraw, dynamic @suilend/sdk import)
+  suilend.ts            # SuilendAdapter (save + withdraw, contract-first)
   compliance.test.ts    # Reusable adapter compliance test suite
   index.ts              # Barrel exports
 ```
@@ -22,7 +22,7 @@ adapters/
 For lending protocols, implement `LendingAdapter`:
 
 ```typescript
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { LendingAdapter, AdapterTxResult, AdapterCapability } from '@t2000/sdk/adapters';
 
 export class MyProtocolAdapter implements LendingAdapter {
@@ -33,15 +33,20 @@ export class MyProtocolAdapter implements LendingAdapter {
   readonly supportedAssets: readonly string[] = ['USDC'];
   readonly supportsSameAssetBorrow = false;
 
-  private client!: SuiClient;
+  private client!: SuiJsonRpcClient;
 
-  async init(client: SuiClient): Promise<void> {
+  async init(client: SuiJsonRpcClient): Promise<void> {
     this.client = client;
   }
 
   // ... implement all interface methods
 }
 ```
+
+> **Contract-first pattern:** t2000 adapters interact directly with Move contracts
+> via `client.getObject()`, `client.devInspectTransactionBlock()`, and `tx.moveCall()`.
+> Do not add external protocol SDKs as dependencies — this avoids `@mysten/sui`
+> version conflicts and keeps the dependency tree clean.
 
 For swap protocols, implement `SwapAdapter`.
 
@@ -71,7 +76,7 @@ t2000 save 100
 
 | Method | Required | Description |
 |--------|----------|-------------|
-| `init(client)` | Yes | Initialize with SuiClient |
+| `init(client)` | Yes | Initialize with SuiJsonRpcClient |
 | `getRates(asset)` | Yes | Return save/borrow APY |
 | `getPositions(address)` | Yes | Return user's supplies + borrows |
 | `getHealth(address)` | Yes | Return health factor info |
@@ -86,7 +91,7 @@ t2000 save 100
 
 | Method | Required | Description |
 |--------|----------|-------------|
-| `init(client)` | Yes | Initialize with SuiClient |
+| `init(client)` | Yes | Initialize with SuiJsonRpcClient |
 | `getQuote(from, to, amount)` | Yes | Get swap quote |
 | `buildSwapTx(address, from, to, amount, slippage?)` | Yes | Build swap PTB |
 | `getSupportedPairs()` | Yes | List tradeable pairs |
@@ -148,7 +153,7 @@ pnpm --filter @t2000/sdk exec vitest run src/adapters/compliance.test.ts
 
 Each adapter should test:
 - Metadata (id, name, capabilities, supportedAssets)
-- All interface methods delegate correctly to the underlying protocol SDK
+- All interface methods delegate correctly to the underlying protocol (contract calls or API)
 - Error cases (unsupported assets, insufficient balance)
 - Edge cases specific to the protocol (e.g., Suilend obligation creation)
 

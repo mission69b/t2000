@@ -1,4 +1,4 @@
-import type { SuiClient, SuiEvent } from '@mysten/sui/client';
+import type { SuiJsonRpcClient, SuiEvent } from '@mysten/sui/jsonRpc';
 import { usdcToRaw } from '@t2000/sdk';
 import type {
   VerifyRequest,
@@ -45,7 +45,7 @@ function parsePaymentReceiptFields(event: SuiEvent): PaymentReceiptFields | null
  * This function only verifies payments that successfully landed on-chain.
  */
 export async function verifyPayment(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   req: VerifyRequest,
 ): Promise<VerifyResponse> {
   if (Date.now() / 1000 > req.expiresAt) {

@@ -1,4 +1,4 @@
-import type { SuiClient, SuiTransactionBlockResponse, SuiEvent } from '@mysten/sui/client';
+import type { SuiJsonRpcClient, SuiTransactionBlockResponse, SuiEvent } from '@mysten/sui/jsonRpc';
 
 export interface CheckpointBatch {
   checkpoints: ParsedCheckpoint[];
@@ -23,7 +23,7 @@ export interface ParsedTransaction {
 }
 
 export async function fetchCheckpoints(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   cursor: string | null,
   limit: number = 10,
 ): Promise<CheckpointBatch> {
@@ -78,6 +78,6 @@ export async function fetchCheckpoints(
   };
 }
 
-export async function getLatestCheckpoint(client: SuiClient): Promise<string> {
+export async function getLatestCheckpoint(client: SuiJsonRpcClient): Promise<string> {
   return client.getLatestCheckpointSequenceNumber();
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 
 const mockFindRouters = vi.fn();
@@ -38,7 +38,7 @@ describe('protocols/cetus - Aggregator V3', () => {
     getBalance: vi.fn(),
     signAndExecuteTransaction: vi.fn(),
     waitForTransaction: vi.fn(),
-  } as unknown as SuiClient;
+  } as unknown as SuiJsonRpcClient;
 
   beforeEach(() => {
     vi.clearAllMocks();

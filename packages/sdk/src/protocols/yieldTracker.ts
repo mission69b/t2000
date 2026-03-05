@@ -1,10 +1,10 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import * as navi from './navi.js';
 import type { EarningsResult, FundStatusResult } from '../types.js';
 
 export async function getEarnings(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
 ): Promise<EarningsResult> {
   const hf = await navi.getHealthFactor(client, keypair);
@@ -28,7 +28,7 @@ export async function getEarnings(
 }
 
 export async function getFundStatus(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
 ): Promise<FundStatusResult> {
   const earnings = await getEarnings(client, keypair);

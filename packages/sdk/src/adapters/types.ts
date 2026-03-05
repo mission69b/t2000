@@ -1,5 +1,5 @@
 import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
 export type AdapterCapability = 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap';
 
@@ -42,7 +42,7 @@ export interface LendingAdapter {
   readonly supportedAssets: readonly string[];
   readonly supportsSameAssetBorrow: boolean;
 
-  init(client: SuiClient): Promise<void>;
+  init(client: SuiJsonRpcClient): Promise<void>;
 
   getRates(asset: string): Promise<LendingRates>;
   getPositions(address: string): Promise<AdapterPositions>;
@@ -63,7 +63,7 @@ export interface SwapAdapter {
   readonly version: string;
   readonly capabilities: readonly AdapterCapability[];
 
-  init(client: SuiClient): Promise<void>;
+  init(client: SuiJsonRpcClient): Promise<void>;
 
   getQuote(from: string, to: string, amount: number): Promise<SwapQuote>;
   buildSwapTx(

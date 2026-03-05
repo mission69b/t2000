@@ -1,19 +1,19 @@
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { DEFAULT_RPC_URL } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
-let cachedClient: SuiClient | null = null;
+let cachedClient: SuiJsonRpcClient | null = null;
 
-export function getSuiClient(rpcUrl?: string): SuiClient {
+export function getSuiClient(rpcUrl?: string): SuiJsonRpcClient {
   const url = rpcUrl ?? DEFAULT_RPC_URL;
   if (cachedClient) return cachedClient;
-  cachedClient = new SuiClient({ url });
+  cachedClient = new SuiJsonRpcClient({ url, network: 'mainnet' });
   return cachedClient;
 }
 
-export function createSuiClient(network: 'mainnet' | 'testnet' = 'mainnet'): SuiClient {
-  return new SuiClient({ url: getFullnodeUrl(network) });
+export function createSuiClient(network: 'mainnet' | 'testnet' = 'mainnet'): SuiJsonRpcClient {
+  return new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(network), network });
 }
 
 export function validateAddress(address: string): string {

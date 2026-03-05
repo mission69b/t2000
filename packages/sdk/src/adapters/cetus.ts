@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type {
   SwapAdapter,
   SwapQuote,
@@ -13,13 +13,13 @@ export class CetusAdapter implements SwapAdapter {
   readonly version = '1.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['swap'];
 
-  private client!: SuiClient;
+  private client!: SuiJsonRpcClient;
 
-  async init(client: SuiClient): Promise<void> {
+  async init(client: SuiJsonRpcClient): Promise<void> {
     this.client = client;
   }
 
-  initSync(client: SuiClient): void {
+  initSync(client: SuiJsonRpcClient): void {
     this.client = client;
   }
 

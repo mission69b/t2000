@@ -1,39 +1,69 @@
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
-import { getLendingState } from '@naviprotocol/lending';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { Transaction } from '@mysten/sui/transactions';
+import { bcs } from '@mysten/sui/bcs';
 import { prisma } from '../db/prisma.js';
 
 const SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const NAVI_BALANCE_DECIMALS = 9;
+const RATE_DECIMALS = 27;
 
-const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+const CONFIG_API = 'https://open-api.naviprotocol.io/api/navi/config?env=prod';
+const POOLS_API = 'https://open-api.naviprotocol.io/api/navi/pools?env=prod';
+
+const UserStateInfo = bcs.struct('UserStateInfo', {
+  asset_id: bcs.u8(),
+  borrow_balance: bcs.u256(),
+  supply_balance: bcs.u256(),
+});
 
 let timer: ReturnType<typeof setInterval> | null = null;
 
-function getClient(): SuiClient {
-  const url = process.env.SUI_RPC_URL ?? getFullnodeUrl('mainnet');
-  return new SuiClient({ url });
+function getClient(): SuiJsonRpcClient {
+  const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
+  return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 
 async function getNaviPositionForAgent(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   agentAddress: string,
 ): Promise<{ supplied: number } | null> {
   try {
-    const state = await getLendingState(agentAddress, {
-      client,
-      env: 'prod' as const,
-      disableCache: true,
+    const [configRes, poolsRes] = await Promise.all([
+      fetch(CONFIG_API).then((r) => r.json() as Promise<{ data: { storage: string; uiGetter: string } }>),
+      fetch(POOLS_API).then((r) => r.json() as Promise<{ data: Array<{ id: number; token: { symbol: string }; currentSupplyIndex: string; coinType: string }> }>),
+    ]);
+
+    const config = configRes.data;
+    const pools = poolsRes.data;
+    const usdcPool = pools.find(
+      (p) => p.token?.symbol === 'USDC' || p.coinType?.toLowerCase().includes('usdc'),
+    );
+    if (!usdcPool) return { supplied: 0 };
+
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${config.uiGetter}::getter_unchecked::get_user_state`,
+      arguments: [tx.object(config.storage), tx.pure.address(agentAddress)],
     });
 
-    if (!state || state.length === 0) return null;
+    const result = await client.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: agentAddress,
+    });
 
-    const usdcPos = state.find(
-      (p) => p.pool.token?.symbol === 'USDC' || p.pool.coinType?.toLowerCase().includes('usdc'),
-    );
+    if (result.error || !result.results?.[0]?.returnValues?.[0]) return null;
+    const bytes = Uint8Array.from(result.results[0].returnValues[0][0]);
+    const states = bcs.vector(UserStateInfo).parse(bytes);
 
-    if (!usdcPos) return { supplied: 0 };
+    const usdcState = states.find((s: { asset_id: number }) => s.asset_id === usdcPool.id);
+    if (!usdcState || String(usdcState.supply_balance) === '0') return { supplied: 0 };
 
-    const supplied = Number(usdcPos.supplyBalance) / 10 ** NAVI_BALANCE_DECIMALS;
+    const supplyBal = BigInt(String(usdcState.supply_balance));
+    const scale = BigInt('1' + '0'.repeat(RATE_DECIMALS));
+    const half = scale / 2n;
+    const compounded = (supplyBal * scale + half) / BigInt(usdcPool.currentSupplyIndex);
+    const supplied = Number(compounded) / 10 ** NAVI_BALANCE_DECIMALS;
+
     return { supplied };
   } catch {
     return null;

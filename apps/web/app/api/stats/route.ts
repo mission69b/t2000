@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 
-const SUI_RPC = process.env.SUI_RPC_URL ?? getFullnodeUrl("mainnet");
+const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
 const TREASURY_ID = "0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91";
 const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
 
@@ -40,7 +40,7 @@ async function getWalletBalances() {
   if (!sponsorAddr && !gasAddr) return null;
 
   try {
-    const client = new SuiClient({ url: SUI_RPC });
+    const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
     const results: Record<string, { address: string; balanceSui: number; balanceUsdc?: number }> = {};
 
     if (sponsorAddr) {
@@ -159,7 +159,7 @@ async function getGasStats(oneDayAgo: Date, sevenDaysAgo: Date) {
 async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
   let onChainTotal = 0;
   try {
-    const client = new SuiClient({ url: SUI_RPC });
+    const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
     const treasuryObj = await client.getObject({
       id: TREASURY_ID,
       options: { showContent: true },

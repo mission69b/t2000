@@ -122,9 +122,9 @@ Verify that an on-chain payment transaction is valid. Checks the transaction for
 
 ```typescript
 import { verifyPayment } from '@t2000/x402';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
-const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
+const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('mainnet'), network: 'mainnet' });
 
 const result = await verifyPayment(client, {
   txHash: 'ABC123...',
@@ -155,9 +155,9 @@ Payments are executed on-chain via the [Sui Payment Kit](https://docs.sui.io/sta
 
 ```typescript
 import { buildPaymentTransaction } from '@t2000/x402';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
-const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
+const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('mainnet'), network: 'mainnet' });
 
 // Build a payment transaction (advanced usage)
 const tx = await buildPaymentTransaction(client, senderAddress, {
@@ -188,7 +188,7 @@ Any wallet implementing `X402Wallet` can be used as a payment source:
 
 ```typescript
 interface X402Wallet {
-  client: SuiClient;
+  client: SuiJsonRpcClient;
   keypair: Ed25519Keypair;
   address(): string;
   signAndExecute(tx: unknown): Promise<{ digest: string }>;

@@ -1,4 +1,4 @@
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { prisma } from '../db/prisma.js';
 import { fetchCheckpoints, getLatestCheckpoint } from './checkpoint.js';
 import { parseFeeEvents, parseTransfers } from './eventParser.js';
@@ -8,9 +8,9 @@ const BATCH_SIZE = 10;
 
 let running = false;
 
-function getClient(): SuiClient {
-  const url = process.env.SUI_RPC_URL ?? getFullnodeUrl('mainnet');
-  return new SuiClient({ url });
+function getClient(): SuiJsonRpcClient {
+  const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
+  return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 
 async function getOrCreateCursor(): Promise<string | null> {
@@ -41,7 +41,7 @@ async function getKnownAgents(): Promise<Set<string>> {
 }
 
 async function processCheckpoints(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   cursor: string,
   knownAgents: Set<string>,
 ): Promise<string> {

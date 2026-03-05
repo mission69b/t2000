@@ -1,5 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { usdcToRaw } from '@t2000/sdk';
 import {
   PAYMENT_KIT_PACKAGE,
@@ -32,7 +32,7 @@ export interface PaymentPTBParams {
  * Move enforces nonce uniqueness atomically via EDuplicatePayment.
  */
 export async function buildPaymentTransaction(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   senderAddress: string,
   params: PaymentPTBParams,
 ): Promise<Transaction> {

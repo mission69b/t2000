@@ -11,7 +11,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
-    "@mysten/sui": "1.45.2",
+    "@mysten/sui": "2.6.0",
     "@prisma/client": "^6",
     "@vercel/analytics": "^1.6.1",
     "next": "16.1.6",

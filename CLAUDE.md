@@ -92,14 +92,17 @@
 
 ## Sui Integration
 
-### Package Imports
+### Package Imports (`@mysten/sui@2.x`)
 
 ```ts
-// Client & queries
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+// Client & queries (v2: SuiJsonRpcClient from /jsonRpc, NOT SuiClient from /client)
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
 // Transaction building
 import { Transaction } from '@mysten/sui/transactions';
+
+// BCS encoding/decoding (for devInspect results, on-chain data parsing)
+import { bcs } from '@mysten/sui/bcs';
 
 // Utilities (MIST_PER_SUI = 1e9, SUI_DECIMALS = 9)
 import {
@@ -121,6 +124,14 @@ import {
   useSuiClientQuery,
 } from '@mysten/dapp-kit';
 ```
+
+### v2 Migration Notes
+
+- `SuiClient` → `SuiJsonRpcClient` (import from `@mysten/sui/jsonRpc`)
+- `getFullnodeUrl` → `getJsonRpcFullnodeUrl`
+- Constructor requires `network` parameter: `new SuiJsonRpcClient({ url, network: 'mainnet' })`
+- Protocol integrations (NAVI, Suilend) are **contract-first** — no external SDK deps
+- Cetus aggregator SDK bundles its own v1 internally; use `as never` cast for type bridge
 
 ### Providers
 

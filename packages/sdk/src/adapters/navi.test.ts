@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NaviAdapter } from './navi.js';
 import * as naviProtocol from '../protocols/navi.js';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 
 vi.mock('../protocols/navi.js', () => ({
@@ -18,7 +18,7 @@ vi.mock('../protocols/navi.js', () => ({
 
 describe('NaviAdapter', () => {
   let adapter: NaviAdapter;
-  const mockClient = {} as SuiClient;
+  const mockClient = {} as SuiJsonRpcClient;
 
   beforeEach(async () => {
     vi.clearAllMocks();

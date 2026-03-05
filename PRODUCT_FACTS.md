@@ -246,7 +246,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 | Getter | Returns |
 |--------|---------|
-| `agent.suiClient` | `SuiClient` |
+| `agent.suiClient` | `SuiJsonRpcClient` |
 | `agent.signer` | `Ed25519Keypair` |
 
 ### Events

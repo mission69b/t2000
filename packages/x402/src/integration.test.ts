@@ -9,7 +9,7 @@
  *   SUI_RPC_URL — optional, defaults to mainnet fullnode
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { buildPaymentTransaction } from './payment-kit.js';
@@ -21,7 +21,7 @@ const TEST_AMOUNT = '0.001';
 const TEST_PAY_TO = '0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a';
 const SHARED_NONCE = `integration-test-${Date.now()}`;
 
-let client: SuiClient;
+let client: SuiJsonRpcClient;
 let keypair: Ed25519Keypair;
 let senderAddress: string;
 let paymentDigest: string;
@@ -35,8 +35,8 @@ function loadKeypair(): Ed25519Keypair {
 
 describe.skipIf(SKIP)('x402 on-chain integration', () => {
   beforeAll(() => {
-    const rpcUrl = process.env.SUI_RPC_URL ?? getFullnodeUrl('mainnet');
-    client = new SuiClient({ url: rpcUrl });
+    const rpcUrl = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
+    client = new SuiJsonRpcClient({ url: rpcUrl, network: 'mainnet' });
     keypair = loadKeypair();
     senderAddress = keypair.getPublicKey().toSuiAddress();
   });

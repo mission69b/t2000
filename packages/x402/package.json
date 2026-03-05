@@ -44,7 +44,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@mysten/sui": "^1",
+    "@mysten/sui": "^2",
     "@t2000/sdk": "workspace:*"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CetusAdapter } from './cetus.js';
 import * as cetusProtocol from '../protocols/cetus.js';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 
 vi.mock('../protocols/cetus.js', () => ({
@@ -12,7 +12,7 @@ vi.mock('../protocols/cetus.js', () => ({
 
 describe('CetusAdapter', () => {
   let adapter: CetusAdapter;
-  const mockClient = {} as SuiClient;
+  const mockClient = {} as SuiJsonRpcClient;
 
   beforeEach(async () => {
     vi.clearAllMocks();

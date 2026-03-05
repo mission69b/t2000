@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { SUPPORTED_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
 import type { BalanceResponse } from '../types.js';
 
@@ -19,7 +19,7 @@ const PRICE_CACHE_TTL_MS = 60_000;
  *
  * Equivalently: 1000 / raw_price
  */
-async function fetchSuiPrice(client: SuiClient): Promise<number> {
+async function fetchSuiPrice(client: SuiJsonRpcClient): Promise<number> {
   const now = Date.now();
   if (_cachedSuiPrice > 0 && now - _priceLastFetched < PRICE_CACHE_TTL_MS) {
     return _cachedSuiPrice;
@@ -54,7 +54,7 @@ async function fetchSuiPrice(client: SuiClient): Promise<number> {
 }
 
 export async function queryBalance(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   address: string,
 ): Promise<BalanceResponse> {
   const [usdcBalance, suiBalance, suiPriceUsd] = await Promise.all([

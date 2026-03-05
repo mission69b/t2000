@@ -1,4 +1,4 @@
-import type { SuiEvent } from '@mysten/sui/client';
+import type { SuiEvent } from '@mysten/sui/jsonRpc';
 import type { ParsedTransaction } from './checkpoint.js';
 
 const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';

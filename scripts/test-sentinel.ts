@@ -14,7 +14,7 @@
  *   source .env.local && npx tsx scripts/test-sentinel.ts --live   # full live attack
  */
 
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import {
@@ -30,7 +30,7 @@ import { assert, section, getPrivateKey, summary, exitCode } from './test-helper
 const PRIVATE_KEY = getPrivateKey();
 const LIVE = process.argv.includes('--live');
 
-const client = new SuiClient({ url: process.env.SUI_RPC_URL ?? getFullnodeUrl('mainnet') });
+const client = new SuiJsonRpcClient({ url: process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet'), network: 'mainnet' });
 const { secretKey } = decodeSuiPrivateKey(PRIVATE_KEY);
 const signer = Ed25519Keypair.fromSecretKey(secretKey);
 const address = signer.toSuiAddress();

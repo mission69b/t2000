@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
@@ -51,7 +51,7 @@ export async function listSentinels(): Promise<SentinelAgent[]> {
 }
 
 export async function getSentinelInfo(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   sentinelObjectId: string,
 ): Promise<SentinelAgent> {
   const agents = await listSentinels();
@@ -90,7 +90,7 @@ export async function getSentinelInfo(
 }
 
 export async function requestAttack(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   signer: Ed25519Keypair,
   sentinelObjectId: string,
   feeMist: bigint,
@@ -182,7 +182,7 @@ export async function submitPrompt(
 }
 
 export async function settleAttack(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   signer: Ed25519Keypair,
   sentinelObjectId: string,
   attackObjectId: string,
@@ -226,7 +226,7 @@ export async function settleAttack(
 }
 
 export async function attack(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   signer: Ed25519Keypair,
   sentinelId: string,
   prompt: string,

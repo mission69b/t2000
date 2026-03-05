@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import {
@@ -29,13 +29,13 @@ function extractGasCost(
   ) / 1e9;
 }
 
-async function getSuiBalance(client: SuiClient, address: string): Promise<bigint> {
+async function getSuiBalance(client: SuiJsonRpcClient, address: string): Promise<bigint> {
   const bal = await client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS.SUI.type });
   return BigInt(bal.totalBalance);
 }
 
 async function trySelfFunded(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
   tx: Transaction,
 ): Promise<GasExecutionResult | null> {
@@ -63,7 +63,7 @@ async function trySelfFunded(
 }
 
 async function tryAutoTopUpThenSelfFund(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
   tx: Transaction,
 ): Promise<GasExecutionResult | null> {
@@ -94,7 +94,7 @@ async function tryAutoTopUpThenSelfFund(
 }
 
 async function trySponsored(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
   tx: Transaction,
 ): Promise<GasExecutionResult | null> {
@@ -135,7 +135,7 @@ async function trySponsored(
  * 4. Fail with INSUFFICIENT_GAS
  */
 export async function executeWithGas(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
   buildTx: () => Transaction | Promise<Transaction>,
 ): Promise<GasExecutionResult> {

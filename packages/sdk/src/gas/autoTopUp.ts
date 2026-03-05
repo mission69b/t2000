@@ -1,4 +1,4 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   SUPPORTED_ASSETS,
@@ -19,7 +19,7 @@ export interface AutoTopUpResult {
 }
 
 export async function shouldAutoTopUp(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   address: string,
 ): Promise<boolean> {
   const [suiBalance, usdcBalance] = await Promise.all([
@@ -34,7 +34,7 @@ export async function shouldAutoTopUp(
 }
 
 export async function executeAutoTopUp(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
 ): Promise<AutoTopUpResult> {
   const address = keypair.getPublicKey().toSuiAddress();

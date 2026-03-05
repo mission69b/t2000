@@ -1,5 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { SUPPORTED_ASSETS, type SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
@@ -7,7 +7,7 @@ import { validateAddress } from '../utils/sui.js';
 import { displayToRaw } from '../utils/format.js';
 
 export interface SendParams {
-  client: SuiClient;
+  client: SuiJsonRpcClient;
   keypair: Ed25519Keypair;
   to: string;
   amount: number;
@@ -25,7 +25,7 @@ export async function buildSendTx({
   to,
   amount,
   asset = 'USDC',
-}: { client: SuiClient; address: string; to: string; amount: number; asset?: SupportedAsset }): Promise<Transaction> {
+}: { client: SuiJsonRpcClient; address: string; to: string; amount: number; asset?: SupportedAsset }): Promise<Transaction> {
   const recipient = validateAddress(to);
   const assetInfo = SUPPORTED_ASSETS[asset];
 

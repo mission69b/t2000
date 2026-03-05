@@ -1,8 +1,8 @@
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { TransactionRecord } from '../types.js';
 
 export async function queryHistory(
-  client: SuiClient,
+  client: SuiJsonRpcClient,
   address: string,
   limit = 20,
 ): Promise<TransactionRecord[]> {
