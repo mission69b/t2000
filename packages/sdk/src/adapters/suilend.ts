@@ -182,43 +182,57 @@ export class SuilendAdapter implements LendingAdapter {
   private suilend!: SuilendClientInstance;
   private lendingMarketType!: string;
   private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   async init(client: SuiClient): Promise<void> {
-    let sdk: SuilendSdk;
-    try {
-      sdk = (await import('@suilend/sdk')) as unknown as SuilendSdk;
-    } catch {
-      throw new T2000Error(
-        'PROTOCOL_UNAVAILABLE',
-        'Suilend SDK not installed. Run: npm install @suilend/sdk@^1',
-      );
-    }
-
     this.client = client;
-    this.lendingMarketType = sdk.LENDING_MARKET_TYPE;
-
-    try {
-      this.suilend = await sdk.SuilendClient.initialize(
-        sdk.LENDING_MARKET_ID,
-        sdk.LENDING_MARKET_TYPE,
-        client,
-      );
-    } catch (err) {
-      throw new T2000Error(
-        'PROTOCOL_UNAVAILABLE',
-        `Failed to initialize Suilend: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-
-    this.initialized = true;
+    await this.lazyInit();
   }
 
-  private ensureInit(): void {
+  initSync(client: SuiClient): void {
+    this.client = client;
+  }
+
+  private async lazyInit(): Promise<void> {
+    if (this.initialized) return;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      let sdk: SuilendSdk;
+      try {
+        sdk = (await import('@suilend/sdk')) as unknown as SuilendSdk;
+      } catch {
+        throw new T2000Error(
+          'PROTOCOL_UNAVAILABLE',
+          'Suilend SDK not installed. Run: npm install @suilend/sdk@^1',
+        );
+      }
+
+      this.lendingMarketType = sdk.LENDING_MARKET_TYPE;
+
+      try {
+        this.suilend = await sdk.SuilendClient.initialize(
+          sdk.LENDING_MARKET_ID,
+          sdk.LENDING_MARKET_TYPE,
+          this.client,
+        );
+      } catch (err) {
+        this.initPromise = null;
+        throw new T2000Error(
+          'PROTOCOL_UNAVAILABLE',
+          `Failed to initialize Suilend: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+
+      this.initialized = true;
+    })();
+
+    return this.initPromise;
+  }
+
+  private async ensureInit(): Promise<void> {
     if (!this.initialized) {
-      throw new T2000Error(
-        'PROTOCOL_UNAVAILABLE',
-        'SuilendAdapter not initialized. Call init() first.',
-      );
+      await this.lazyInit();
     }
   }
 
@@ -258,7 +272,7 @@ export class SuilendAdapter implements LendingAdapter {
   }
 
   async getRates(asset: string): Promise<LendingRates> {
-    this.ensureInit();
+    await this.ensureInit();
 
     const reserve = this.findReserve(asset);
     if (!reserve) {
@@ -275,7 +289,7 @@ export class SuilendAdapter implements LendingAdapter {
   }
 
   async getPositions(address: string): Promise<AdapterPositions> {
-    this.ensureInit();
+    await this.ensureInit();
 
     const supplies: Array<{ asset: string; amount: number; apy: number }> = [];
     const borrows: Array<{ asset: string; amount: number; apy: number }> = [];
@@ -322,7 +336,7 @@ export class SuilendAdapter implements LendingAdapter {
   }
 
   async getHealth(address: string): Promise<HealthInfo> {
-    this.ensureInit();
+    await this.ensureInit();
 
     const caps = await this.getObligationCaps(address);
     if (caps.length === 0) {
@@ -353,7 +367,7 @@ export class SuilendAdapter implements LendingAdapter {
     _asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    this.ensureInit();
+    await this.ensureInit();
 
     const rawAmount = usdcToRaw(amount).toString();
     const tx = new Transaction();
@@ -398,7 +412,7 @@ export class SuilendAdapter implements LendingAdapter {
     amount: number,
     _asset: string,
   ): Promise<AdapterTxResult & { effectiveAmount: number }> {
-    this.ensureInit();
+    await this.ensureInit();
 
     const caps = await this.getObligationCaps(address);
     if (caps.length === 0) {
@@ -457,7 +471,7 @@ export class SuilendAdapter implements LendingAdapter {
     address: string,
     _asset: string,
   ): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }> {
-    this.ensureInit();
+    await this.ensureInit();
 
     const health = await this.getHealth(address);
 

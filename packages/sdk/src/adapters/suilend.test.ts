@@ -113,9 +113,12 @@ describe('SuilendAdapter', () => {
       );
     });
 
-    it('throws if called before init', async () => {
-      const uninitAdapter = new SuilendAdapter();
-      await expect(uninitAdapter.getRates('USDC')).rejects.toThrow('not initialized');
+    it('lazy-initializes when called without explicit init', async () => {
+      const lazyAdapter = new SuilendAdapter();
+      lazyAdapter.initSync(mockClient);
+      const rates = await lazyAdapter.getRates('USDC');
+      expect(rates.asset).toBe('USDC');
+      expect(rates.saveApy).toBeGreaterThan(0);
     });
   });
 

@@ -21,6 +21,7 @@ import * as sentinel from './protocols/sentinel.js';
 import { ProtocolRegistry } from './adapters/registry.js';
 import { NaviAdapter } from './adapters/navi.js';
 import { CetusAdapter } from './adapters/cetus.js';
+import { SuilendAdapter } from './adapters/suilend.js';
 import type { LendingAdapter, SwapAdapter } from './adapters/types.js';
 import { solveHashcash } from './utils/hashcash.js';
 import { executeWithGas } from './gas/manager.js';
@@ -81,6 +82,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     const cetusAdapter = new CetusAdapter();
     cetusAdapter.initSync(client);
     registry.registerSwap(cetusAdapter);
+    const suilendAdapter = new SuilendAdapter();
+    suilendAdapter.initSync(client);
+    registry.registerLending(suilendAdapter);
     return registry;
   }
 
