@@ -97,7 +97,9 @@ export function registerEarn(program: Command) {
             const dailyYield = (pos.amount * pos.apy / 100) / 365;
             printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(1)}% APY`);
             if (dailyYield > 0.0001) {
-              printLine(pc.dim(`    ~${formatUsd(dailyYield)}/day · ~${formatUsd(dailyYield * 30)}/month`));
+              const dailyStr = dailyYield < 0.01 ? `$${dailyYield.toFixed(4)}` : formatUsd(dailyYield);
+              const monthlyStr = dailyYield * 30 < 0.01 ? `$${(dailyYield * 30).toFixed(4)}` : formatUsd(dailyYield * 30);
+              printLine(pc.dim(`    ~${dailyStr}/day · ~${monthlyStr}/month`));
             }
           }
           if (savePositions.length > 1) {
