@@ -100,7 +100,7 @@ export function runLendingComplianceTests(
         'maxWithdraw', 'maxBorrow',
       ];
       for (const method of methods) {
-        expect(typeof (adapter as Record<string, unknown>)[method]).toBe('function');
+        expect(typeof (adapter as unknown as Record<string, unknown>)[method]).toBe('function');
       }
     });
 
@@ -156,7 +156,7 @@ export function runSwapComplianceTests(
       adapter = createAdapter();
       const methods = ['getQuote', 'buildSwapTx', 'getSupportedPairs', 'getPoolPrice'];
       for (const method of methods) {
-        expect(typeof (adapter as Record<string, unknown>)[method]).toBe('function');
+        expect(typeof (adapter as unknown as Record<string, unknown>)[method]).toBe('function');
       }
     });
 
