@@ -440,7 +440,7 @@ function QuickStart({
             <CodeBlock lang="bash">
               {S.g("$")} t2000 save all USDC{"\n\n"}
               {S.g("✓")} Gas manager: {S.a("$1.00")} USDC → SUI{"\n"}
-              {S.g("✓")} Saved {S.a("$99.00")} USDC to NAVI{"\n"}
+              {S.g("✓")} Saved {S.a("$99.00")} USDC to best rate{"\n"}
               {S.g("✓")} Protocol fee: {S.m("$0.099 USDC (0.1%)")}{"\n"}
               {S.g("✓")} Current APY: {S.g("4.21%")}{"\n"}
               {S.g("✓")} Savings balance: {S.a("$98.90")} USDC{"\n"}
@@ -570,7 +570,7 @@ function ConceptsSection() {
         headers={["Account", "What it is", "CLI"]}
         rows={[
           [<InlineCode key="k">checking</InlineCode>, "USDC available for immediate use. Shown as Available in balance output.", <InlineCode key="v">t2000 send</InlineCode>],
-          [<InlineCode key="k">savings</InlineCode>, "USDC deposited to NAVI, earning variable APY. Withdrawable any time.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
+          [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI, Suilend), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
           [<InlineCode key="k">credit</InlineCode>, "USDC borrowed against savings collateral. Health factor enforced on-chain.", <><InlineCode>t2000 borrow</InlineCode> / <InlineCode>repay</InlineCode></>],
           [<InlineCode key="k">exchange</InlineCode>, "Token swaps via Cetus DEX. Any Cetus-listed pair, with on-chain slippage protection.", <InlineCode key="v">t2000 swap</InlineCode>],
         ]}
@@ -631,7 +631,7 @@ function ConceptsSection() {
       <CodeBlock lang="formula">
         HF = (collateral_value × liquidation_threshold) / borrowed_value{"\n\n"}
         {S.c("# HF ≥ 1.5  →  safe to operate")}{"\n"}
-        {S.c("# HF  < 1.0  →  position eligible for liquidation on NAVI")}
+        {S.c("# HF  < 1.0  →  position eligible for liquidation")}
       </CodeBlock>
     </>
   );
@@ -656,7 +656,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 init" desc="Generate keypair, write config" onClick={() => scrollToCmd("init")} />
         <CmdCard name="t2000 balance" desc="View all accounts + limits" onClick={() => scrollToCmd("balance")} />
         <CmdCard name="t2000 send" desc="Transfer USDC to any address" onClick={() => scrollToCmd("send")} />
-        <CmdCard name="t2000 save" desc="Deposit to NAVI savings" onClick={() => scrollToCmd("save")} />
+        <CmdCard name="t2000 save" desc="Deposit to savings (best rate)" onClick={() => scrollToCmd("save")} />
         <CmdCard name="t2000 withdraw" desc="Pull funds from savings" onClick={() => scrollToCmd("withdraw")} />
         <CmdCard name="t2000 borrow" desc="Borrow against collateral" onClick={() => scrollToCmd("borrow")} />
         <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollToCmd("repay")} />
@@ -728,15 +728,16 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       </CodeBlock>
 
       <h2 id="cmd-save">t2000 save</h2>
-      <p>Deposit USDC into NAVI Protocol to earn variable APY.</p>
+      <p>Deposit USDC into savings to earn variable APY. Auto-routes to the best rate across NAVI and Suilend, or specify a protocol with <InlineCode>--protocol</InlineCode>.</p>
       <CodeBlock lang="bash">
         t2000 save &lt;amount&gt; USDC{"\n"}
-        t2000 save all USDC         {S.c("# saves everything; gas manager runs first if needed")}{"\n\n"}
+        t2000 save all USDC         {S.c("# saves everything; gas manager runs first if needed")}{"\n"}
+        t2000 save {S.a("80")} USDC --protocol suilend  {S.c("# target a specific protocol")}{"\n\n"}
         t2000 save {S.a("80")} USDC{"\n"}
         t2000 save all USDC
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Saved {S.a("$80.00")} USDC to NAVI{"\n"}
+        {S.g("✓")} Saved {S.a("$80.00")} USDC to best rate{"\n"}
         {S.g("✓")} Protocol fee: {S.m("$0.08 USDC (0.1%)")}{"\n"}
         {S.g("✓")} Current APY: {S.g("4.21%")}{"\n"}
         {S.g("✓")} Savings balance: {S.a("$79.92")} USDC{"\n"}
@@ -838,8 +839,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 positions
       </CodeBlock>
       <CodeBlock lang="output">
-        📈 Saving:     {S.a("$500.00")} USDC {S.m("(NAVI)")}{"\n"}
-        📉 Borrowing:  {S.a("$200.00")} USDC {S.m("(NAVI)")}
+        📈 Saving:  {S.a("$300.00")} USDC {S.m("(navi)")}{"\n"}
+        📈 Saving:  {S.a("$200.00")} USDC {S.m("(suilend)")}{"\n"}
+        📉 Borrowing:  {S.a("$100.00")} USDC {S.m("(navi)")}
       </CodeBlock>
 
       <h2 id="cmd-history">t2000 history</h2>
@@ -855,7 +857,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       </CodeBlock>
 
       <h2 id="cmd-earn">t2000 earn</h2>
-      <p>Show all earning opportunities in one dashboard — savings yield from NAVI and sentinel bounties from Sui Sentinel.</p>
+      <p>Show all earning opportunities in one dashboard — savings yield from NAVI and Suilend, plus sentinel bounties from Sui Sentinel.</p>
       <CodeBlock lang="bash">
         t2000 earn{"\n"}
         t2000 earn {S.a("--json")}
@@ -864,10 +866,10 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}Earning Opportunities{"\n\n"}
         {"  "}SAVINGS — Passive Yield{"\n"}
         {"  "}─────────────────────────────────────────────────────{"\n"}
-        {"  "}Saved:          $0.00 USDC @ 3.8% APY{"\n"}
-        {"  "}Daily Yield:    ~$0.0000/day{"\n"}
-        {"  "}All-time:       ~$0.0000{"\n"}
-        {"  "}Monthly Est:    ~$0.00/month{"\n\n"}
+        {"  "}navi:  $300.00 USDC @ 5.6% APY{"\n"}
+        {"  "}suilend:  $200.00 USDC @ 2.2% APY{"\n"}
+        {"  "}    ~$0.06/day · ~$1.72/month{"\n\n"}
+        {"  "}Total Saved:  $500.00 USDC{"\n\n"}
         {"  "}SENTINEL BOUNTIES — Active Red Teaming{"\n"}
         {"  "}─────────────────────────────────────────────────────{"\n"}
         {"  "}Active:         49 sentinels{"\n"}
@@ -918,7 +920,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
           [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
           [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
           [<InlineCode key="k">t2000 fund-status</InlineCode>, "Full savings summary with monthly projection"],
-          [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from NAVI"],
+          [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from all protocols"],
           [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
           [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
           [<InlineCode key="k">t2000 config get|set</InlineCode>, <>Read or write <InlineCode>~/.t2000/config.json</InlineCode></>],
@@ -967,7 +969,7 @@ function SdkSection() {
       <CodeBlock lang="typescript">
         {S.p("interface")} {S.b("BalanceResponse")} {"{"}{"\n"}
         {"  "}available:    {S.a("number")};  {S.c("// USDC")}{"\n"}
-        {"  "}savings:      {S.a("number")};  {S.c("// USDC in NAVI")}{"\n"}
+        {"  "}savings:      {S.a("number")};  {S.c("// USDC across lending protocols")}{"\n"}
         {"  "}gasReserve:   {"{ "}{S.a("sui")}: number; {S.a("usdEquiv")}: number {"}"}; {S.c("// SUI reserve")}{"\n"}
         {"  "}total:        {S.a("number")};{"\n"}
         {"  "}assets:       Record{S.a("<string, number>")};{"\n"}
@@ -1126,7 +1128,7 @@ function SkillsSection() {
       <CodeBlock lang="yaml" filename="skills/t2000-save/SKILL.md">
         {S.m("---")}{"\n"}
         {S.a("name")}: t2000-save{"\n"}
-        {S.a("description")}: {S.s(`>-\n  Deposit USDC into savings to earn yield on Sui via NAVI.\n  Use when asked to save money, earn interest, deposit to savings,\n  put funds to work, or maximize yield on idle USDC.`)}{"\n"}
+        {S.a("description")}: {S.s(`>-\n  Deposit USDC into savings to earn yield on Sui.\n  Auto-routes to best rate across NAVI and Suilend.\n  Use when asked to save money, earn interest, or maximize yield.`)}{"\n"}
         {S.m("---")}{"\n"}
         {S.c("# Full instructions follow below...")}
       </CodeBlock>
@@ -1226,15 +1228,17 @@ function DefiSection() {
         DeFi <em className="italic text-accent">& Yield</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        t2000 integrates NAVI Protocol for savings and borrowing, and Cetus DEX
-        for token exchange. Both are composed atomically via PTBs.
+        t2000 integrates NAVI Protocol and Suilend for savings and borrowing, and Cetus DEX
+        for token exchange. All protocols are composed atomically via PTBs using direct Move contract calls — no external SDK dependencies.
       </p>
 
-      <h2 id="defi-navi">NAVI Protocol integration</h2>
+      <h2 id="defi-navi">Lending protocol integration</h2>
       <p>
-        NAVI is a non-custodial lending protocol on Sui. When you call{" "}
-        <InlineCode>t2000 save</InlineCode>, your USDC is deposited directly
-        into NAVI&#39;s USDC lending pool. You earn yield continuously as the
+        t2000 supports multiple lending protocols on Sui. When you call{" "}
+        <InlineCode>t2000 save</InlineCode>, your USDC is auto-routed to the protocol
+        offering the best APY (currently NAVI and Suilend). You can also target a specific
+        protocol with <InlineCode>--protocol navi</InlineCode> or{" "}
+        <InlineCode>--protocol suilend</InlineCode>. You earn yield continuously as each
         pool&#39;s interest accrues.
       </p>
       <Callout type="tip" label="Tip">
@@ -1253,8 +1257,8 @@ function DefiSection() {
 
       <h2 id="defi-borrow">Collateralized borrowing</h2>
       <p>
-        You can borrow USDC against your NAVI deposit. t2000 enforces a health
-        factor floor of 1.5 — more conservative than NAVI&#39;s liquidation
+        You can borrow USDC against your savings collateral. t2000 enforces a health
+        factor floor of 1.5 — more conservative than the protocol&#39;s liquidation
         threshold of 1.0 — to give your agent a safety buffer before liquidation
         risk.
       </p>
