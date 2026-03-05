@@ -328,8 +328,8 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  const [balance] = tx.moveCall({
-    target: `${config.package}::incentive_v3::withdraw_v2`,
+  tx.moveCall({
+    target: `${config.package}::incentive_v3::entry_withdraw_v2`,
     arguments: [
       tx.object(CLOCK),
       tx.object(config.oracle.priceOracle),
@@ -341,16 +341,7 @@ export async function buildWithdrawTx(
       tx.object(config.incentiveV3),
       tx.object(SUI_SYSTEM_STATE),
     ],
-    typeArguments: [pool.suiCoinType],
   });
-
-  const [coin] = tx.moveCall({
-    target: '0x2::coin::from_balance',
-    arguments: [balance],
-    typeArguments: [pool.suiCoinType],
-  });
-
-  tx.transferObjects([coin], address);
 
   return { tx, effectiveAmount };
 }
@@ -391,8 +382,8 @@ export async function buildBorrowTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  const [balance] = tx.moveCall({
-    target: `${config.package}::incentive_v3::borrow_v2`,
+  tx.moveCall({
+    target: `${config.package}::incentive_v3::entry_borrow_v2`,
     arguments: [
       tx.object(CLOCK),
       tx.object(config.oracle.priceOracle),
@@ -404,20 +395,7 @@ export async function buildBorrowTx(
       tx.object(config.incentiveV3),
       tx.object(SUI_SYSTEM_STATE),
     ],
-    typeArguments: [pool.suiCoinType],
   });
-
-  const [borrowedCoin] = tx.moveCall({
-    target: '0x2::coin::from_balance',
-    arguments: [balance],
-    typeArguments: [pool.suiCoinType],
-  });
-
-  if (options.collectFee) {
-    addCollectFeeToTx(tx, borrowedCoin, 'borrow');
-  }
-
-  tx.transferObjects([borrowedCoin], address);
 
   return tx;
 }
