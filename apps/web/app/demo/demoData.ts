@@ -246,6 +246,13 @@ export const demos: Demo[] = [
       { type: "info", text: "Prize Pools:  258.70 SUI available", delay: 120 },
       { type: "info", text: "Best Target:  NeonYieldCore — 52.30 SUI pool (290.6x ratio)", delay: 120 },
 
+      { type: "command", text: "❯ t2000 save 10", delay: 1200 },
+      { type: "success", text: "✓ Saved $10.00 USDC to NAVI", delay: 600 },
+      { type: "success", text: "✓ Protocol fee: $0.01 USDC (0.1%)", delay: 200 },
+      { type: "success", text: "✓ Current APY: 5.57%", delay: 200 },
+      { type: "success", text: "✓ Savings balance: $90.00 USDC", delay: 200 },
+      { type: "info", text: "  Tx: suiscan.xyz/mainnet/tx/BpiPwGHQGA...", delay: 200 },
+
       { type: "command", text: "❯ t2000 sentinel list", delay: 1200 },
       { type: "output", text: "  #   Name                Prize Pool    Fee         Attacks   ID", delay: 400 },
       { type: "output", text: "  ──────────────────────────────────────────────────────────────────────────────────────────", delay: 80 },
@@ -254,8 +261,6 @@ export const demos: Demo[] = [
       { type: "output", text: "  3   ObsidianGenie        38.60 SUI     0.20 SUI    86        0x978e...a5ae", delay: 150 },
       { type: "output", text: "  4   CipherLion           30.40 SUI     0.10 SUI    24        0x825b...4744", delay: 150 },
       { type: "output", text: "  5   IronShield           22.50 SUI     0.10 SUI    142       0x1234...5678", delay: 150 },
-      { type: "output", text: "  6   FortressAI           18.30 SUI     0.25 SUI    89        0xdef6...7890", delay: 150 },
-      { type: "output", text: "  7   MuskSentinel         15.20 SUI     0.10 SUI    53        0xc98c...b10d", delay: 150 },
       { type: "output", text: "", delay: 80 },
       { type: "info", text: "  42 active sentinels", delay: 200 },
 
