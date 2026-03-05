@@ -515,7 +515,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.3.3")}
+        {S.a("0.6.3")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -1336,7 +1336,17 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.3.3 <Badge color="green">current</Badge>
+        v0.6.3 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        Multi-protocol lending: NAVI + Suilend with auto-routing to best APY.
+        Contract-first architecture — no external SDK dependencies. Migrated to{" "}
+        <InlineCode>@mysten/sui@2.x</InlineCode>. Dynamic package ID resolution
+        for NAVI contract upgrades. Oracle price updates for withdraw/borrow.
+      </p>
+
+      <h2 id="cl-033">
+        v0.3.3
       </h2>
       <p>
         On-chain fee collection via Move contracts v2. AdminCap enforcement on
@@ -1474,8 +1484,8 @@ export default function DocsPage() {
         </button>
 
         <Link href="/" className="flex items-center gap-2.5 md:w-[var(--sidebar-w)] shrink-0 no-underline">
-          <div className="w-[26px] h-[26px] border-[1.5px] border-accent rounded-[5px] flex items-center justify-center text-[11px] font-semibold text-accent shadow-[0_0_8px_var(--accent-glow)] shrink-0">
-            t2
+          <div className="h-[26px] px-1.5 border-[1.5px] border-accent rounded-[5px] flex items-center justify-center text-[10px] font-semibold text-accent shadow-[0_0_8px_var(--accent-glow)] shrink-0">
+            t2000
           </div>
           <div className="text-[14px] font-semibold text-white/90 tracking-[0.04em]">
             t2000{" "}
@@ -1504,7 +1514,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.3.3
+            v0.6.3
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home
