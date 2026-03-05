@@ -31,7 +31,7 @@ export function createProgram(): Command {
   program
     .name('t2000')
     .description('The first bank account for AI agents')
-    .version('0.4.0')
+    .version('0.4.2')
     .option('--json', 'Output in JSON format')
     .hook('preAction', (thisCommand) => {
       const opts = thisCommand.optsWithGlobals();
