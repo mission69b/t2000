@@ -432,6 +432,10 @@ export class SuilendAdapter implements LendingAdapter {
       ],
     });
 
+    if (typeof capRef !== 'string') {
+      tx.transferObjects([capRef], address);
+    }
+
     return { tx };
   }
 
