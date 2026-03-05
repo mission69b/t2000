@@ -38,14 +38,29 @@ let packageCache: { id: string; ts: number } | null = null;
 // Types
 // ---------------------------------------------------------------------------
 
+interface OracleFeed {
+  oracleId: number;
+  assetId: number;
+  feedId: string;
+  pythPriceInfoObject: string;
+}
+
 interface NaviConfig {
   package: string;
   storage: string;
   incentiveV2: string;
   incentiveV3: string;
   uiGetter: string;
-  oracle: { packageId: string; priceOracle: string };
+  oracle: {
+    packageId: string;
+    priceOracle: string;
+    oracleConfig: string;
+    supraOracleHolder: string;
+    feeds: OracleFeed[];
+  };
 }
+
+const ORACLE_PRO_PACKAGE = '0xc2d49bf5e75d2258ee5563efa527feb6155de7ac6f6bf025a23ee88cd12d5a83';
 
 interface NaviPool {
   id: number;
@@ -142,6 +157,27 @@ async function getUsdcPool(): Promise<NaviPool> {
   );
   if (!usdc) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'USDC pool not found on NAVI');
   return usdc;
+}
+
+// ---------------------------------------------------------------------------
+// Oracle price update (required before withdraw/borrow)
+// ---------------------------------------------------------------------------
+
+function addOracleUpdate(tx: Transaction, config: NaviConfig, pool: NaviPool): void {
+  const feed = config.oracle.feeds?.find((f) => f.assetId === pool.id);
+  if (!feed) return;
+
+  tx.moveCall({
+    target: `${ORACLE_PRO_PACKAGE}::oracle_pro::update_single_price`,
+    arguments: [
+      tx.object(CLOCK),
+      tx.object(config.oracle.oracleConfig),
+      tx.object(config.oracle.priceOracle),
+      tx.object(config.oracle.supraOracleHolder),
+      tx.object(feed.pythPriceInfoObject),
+      tx.pure.address(feed.feedId),
+    ],
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +379,8 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
+  addOracleUpdate(tx, config, pool);
+
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
     arguments: [
@@ -405,6 +443,8 @@ export async function buildBorrowTx(
 
   const tx = new Transaction();
   tx.setSender(address);
+
+  addOracleUpdate(tx, config, pool);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::borrow_v2`,
