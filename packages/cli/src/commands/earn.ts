@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { T2000, MIST_PER_SUI, listSentinels } from '@t2000/sdk';
+import { T2000, MIST_PER_SUI, listSentinels, formatUsd } from '@t2000/sdk';
 import type { SentinelAgent } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import {
@@ -39,13 +39,15 @@ export function registerEarn(program: Command) {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        const [fundResult, sentinels] = await Promise.allSettled([
-          agent.fundStatus(),
+        const [positionsResult, sentinels] = await Promise.allSettled([
+          agent.positions(),
           listSentinels(),
         ]);
 
-        const fund = fundResult.status === 'fulfilled' ? fundResult.value : null;
+        const posData = positionsResult.status === 'fulfilled' ? positionsResult.value : null;
         const agents = sentinels.status === 'fulfilled' ? sentinels.value : null;
+        const savePositions = posData?.positions.filter((p) => p.type === 'save') ?? [];
+        const totalSaved = savePositions.reduce((s, p) => s + p.amount, 0);
 
         if (isJsonMode()) {
           const best = agents ? bestTarget(agents) : undefined;
@@ -57,15 +59,13 @@ export function registerEarn(program: Command) {
             : 0;
 
           printJson({
-            savings: fund
-              ? {
-                  supplied: fund.supplied,
-                  apy: fund.apy,
-                  dailyEarning: fund.earnedToday,
-                  earnedAllTime: fund.earnedAllTime,
-                  projectedMonthly: fund.projectedMonthly,
-                }
-              : null,
+            savings: savePositions.map((p) => ({
+              protocol: p.protocol,
+              asset: p.asset,
+              amount: p.amount,
+              apy: p.apy,
+            })),
+            totalSaved,
             sentinel: agents
               ? {
                   activeSentinels: agents.length,
@@ -92,12 +92,19 @@ export function registerEarn(program: Command) {
         printLine(pc.bold('SAVINGS') + pc.dim(' — Passive Yield'));
         printDivider();
 
-        if (fund && fund.supplied > 0) {
-          printKeyValue('Saved', `$${fund.supplied.toFixed(2)} USDC @ ${fund.apy.toFixed(1)}% APY`);
-          printKeyValue('Daily Yield', `~$${fund.earnedToday.toFixed(4)}/day`);
-          printKeyValue('All-time', `~$${fund.earnedAllTime.toFixed(4)}`);
-          printKeyValue('Monthly Est', `~$${fund.projectedMonthly.toFixed(2)}/month`);
-        } else if (fund) {
+        if (savePositions.length > 0) {
+          for (const pos of savePositions) {
+            const dailyYield = (pos.amount * pos.apy / 100) / 365;
+            printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(1)}% APY`);
+            if (dailyYield > 0.0001) {
+              printLine(pc.dim(`    ~${formatUsd(dailyYield)}/day · ~${formatUsd(dailyYield * 30)}/month`));
+            }
+          }
+          if (savePositions.length > 1) {
+            printBlank();
+            printKeyValue('Total Saved', `${formatUsd(totalSaved)} USDC`);
+          }
+        } else if (posData) {
           printInfo('No savings yet — run `t2000 save <amount>` to start earning yield');
         } else {
           printInfo('Savings data unavailable');

@@ -1,5 +1,9 @@
 import { Command } from 'commander';
+import { createRequire } from 'node:module';
 import { setJsonMode } from './output.js';
+
+const require = createRequire(import.meta.url);
+const { version: CLI_VERSION } = require('../package.json') as { version: string };
 import { registerInit } from './commands/init.js';
 import { registerSend } from './commands/send.js';
 import { registerBalance } from './commands/balance.js';
@@ -31,7 +35,7 @@ export function createProgram(): Command {
   program
     .name('t2000')
     .description('The first bank account for AI agents')
-    .version('0.4.3')
+    .version(CLI_VERSION)
     .option('--json', 'Output in JSON format')
     .hook('preAction', (thisCommand) => {
       const opts = thisCommand.optsWithGlobals();
