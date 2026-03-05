@@ -173,9 +173,6 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
-      '@zodios/core':
-        specifier: ^10.9.6
-        version: 10.9.6(axios@1.13.5)(zod@3.25.76)
       eventemitter3:
         specifier: ^5
         version: 5.0.4
