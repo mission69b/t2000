@@ -6,12 +6,13 @@ This guide covers how to build a new DeFi protocol adapter for t2000.
 
 ```
 adapters/
-  types.ts          # LendingAdapter, SwapAdapter interfaces
-  registry.ts       # ProtocolRegistry (routing + discovery)
-  navi.ts           # NaviAdapter (reference implementation)
-  cetus.ts          # CetusAdapter (swap reference)
-  suilend.ts        # SuilendAdapter (stub — save/withdraw only)
-  index.ts          # Barrel exports
+  types.ts              # LendingAdapter, SwapAdapter interfaces
+  registry.ts           # ProtocolRegistry (routing + discovery)
+  navi.ts               # NaviAdapter (reference implementation)
+  cetus.ts              # CetusAdapter (swap reference, Aggregator V3)
+  suilend.ts            # SuilendAdapter (save + withdraw, dynamic @suilend/sdk import)
+  compliance.test.ts    # Reusable adapter compliance test suite
+  index.ts              # Barrel exports
 ```
 
 ## Quick Start

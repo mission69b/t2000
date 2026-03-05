@@ -170,9 +170,9 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@cetusprotocol/sui-clmm-sdk':
-        specifier: ^1.4.0
-        version: 1.4.0(@cetusprotocol/common-sdk@1.3.2(@mysten/sui@1.45.2(typescript@5.9.3)))(@mysten/sui@1.45.2(typescript@5.9.3))
+      '@cetusprotocol/aggregator-sdk':
+        specifier: ^1.4.4
+        version: 1.4.5(axios@1.13.5)(typescript@5.9.3)
       '@mysten/sui':
         specifier: ^1.45.2
         version: 1.45.2(typescript@5.9.3)
@@ -180,8 +180,8 @@ importers:
         specifier: ^1.3.11
         version: 1.3.11(@mysten/sui@1.45.2(typescript@5.9.3))(axios@1.13.5)(typescript@5.9.3)
       '@suilend/sdk':
-        specifier: '>=1.0.0'
-        version: 2.0.2(@mysten/bcs@1.9.2)(@mysten/sui@1.45.2(typescript@5.9.3))(@pythnetwork/pyth-sui-js@2.4.0(axios@1.13.5)(typescript@5.9.3))(@suilend/sui-fe@2.0.8(@mysten/sui@1.45.2(typescript@5.9.3)))(axios@1.13.5)(graphql@16.12.0)(typescript@5.9.3)
+        specifier: ^1.0.0
+        version: 1.1.99(@mysten/sui@1.45.2(typescript@5.9.3))(@pythnetwork/pyth-sui-js@2.4.0(axios@1.13.5)(typescript@5.9.3))(@suilend/sui-fe@2.0.8(@mysten/sui@1.45.2(typescript@5.9.3)))(axios@1.13.5)(graphql@16.12.0)(typescript@5.9.3)
       '@zodios/core':
         specifier: ^10.9.6
         version: 10.9.6(axios@1.13.5)(zod@4.3.6)
@@ -333,17 +333,6 @@ packages:
     resolution: {integrity: sha512-TWuENnwtdJsn/Tg9MORwoH8UpFtkQbhVjBg7Ez8nD4wUT7dUgd9U8vRCXtaCOPpCHuYkVLsWuXk8X0obNVnYFg==}
     peerDependencies:
       typescript: ^5.0.0
-
-  '@cetusprotocol/common-sdk@1.3.2':
-    resolution: {integrity: sha512-1akpvt5GoNNp2OHrKLRelRmVbsOX8NzQdGd4ieY3QjK2iyHVVGXKIbHc1pCiSpC3KmpK+YTRn7S4G2thVxJzPg==}
-    peerDependencies:
-      '@mysten/sui': '*'
-
-  '@cetusprotocol/sui-clmm-sdk@1.4.0':
-    resolution: {integrity: sha512-/SPf6+ZMY0OgmyfQ+hgIlUSruksO5TO+7kwvcQUFkdVtB6P1WSE7NVPV1W61QAPUHQ/5mnPqMyLCITeuDvyvqQ==}
-    peerDependencies:
-      '@cetusprotocol/common-sdk': '*'
-      '@mysten/sui': '*'
 
   '@emnapi/core@1.8.1':
     resolution: {integrity: sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==}
@@ -1190,16 +1179,16 @@ packages:
   '@suchipi/femver@1.0.0':
     resolution: {integrity: sha512-bprE8+K5V+DPX7q2e2K57ImqNBdfGHDIWaGI5xHxZoxbKOuQZn4wzPiUxOAHnsUr3w3xHrWXwN7gnG/iIuEMIg==}
 
-  '@suilend/sdk@2.0.2':
-    resolution: {integrity: sha512-RBQDcFWti1BmTBYGgGspTOxSP4h4/vYR3wpaZkNLXlCv9igR0F5B++7B1MOSBZ7Fclr2glF1evliCp7Hl33hQA==}
+  '@suilend/sdk@1.1.99':
+    resolution: {integrity: sha512-KwEK0lCIcYgW5w/vPl2z9K5AfaAKc9oonboZfHPsAYl6+Ajor9x5hVGoQlpGhN2ScRM2Ze+TaoLVK4KazEfB8A==}
     peerDependencies:
-      '@mysten/bcs': 2.0.1
-      '@mysten/sui': 2.3.1
+      '@mysten/bcs': 1.8.1
+      '@mysten/sui': 1.42.0
       '@pythnetwork/pyth-sui-js': 2.2.0
-      '@suilend/sui-fe': ^2.0.6
+      '@suilend/sui-fe': ^0.3.49
 
-  '@suilend/springsui-sdk@2.0.1':
-    resolution: {integrity: sha512-JYMQz4q828A/I5i1iMgqGYquJCidIfpJxSYUSIF2n7ZY6ggmi1O5D/4AY/+C1zClLYU5s9TGlSlQyrKm2f903w==}
+  '@suilend/springsui-sdk@1.0.29':
+    resolution: {integrity: sha512-9Ewfbb4lcsuizIVLpTG+YHGk8re2g11MY4Jf52Wvme4gxNI9xs4BfcGsandY1TBDzwrCcu4bkwyeUBFzNjkh4A==}
     peerDependencies:
       '@mysten/bcs': 2.0.1
       '@mysten/sui': 2.3.1
@@ -3806,15 +3795,6 @@ snapshots:
       - '@gql.tada/vue-support'
       - axios
 
-  '@cetusprotocol/common-sdk@1.3.2(@mysten/sui@1.45.2(typescript@5.9.3))':
-    dependencies:
-      '@mysten/sui': 1.45.2(typescript@5.9.3)
-
-  '@cetusprotocol/sui-clmm-sdk@1.4.0(@cetusprotocol/common-sdk@1.3.2(@mysten/sui@1.45.2(typescript@5.9.3)))(@mysten/sui@1.45.2(typescript@5.9.3))':
-    dependencies:
-      '@cetusprotocol/common-sdk': 1.3.2(@mysten/sui@1.45.2(typescript@5.9.3))
-      '@mysten/sui': 1.45.2(typescript@5.9.3)
-
   '@emnapi/core@1.8.1':
     dependencies:
       '@emnapi/wasi-threads': 1.1.0
@@ -4552,15 +4532,14 @@ snapshots:
 
   '@suchipi/femver@1.0.0': {}
 
-  '@suilend/sdk@2.0.2(@mysten/bcs@1.9.2)(@mysten/sui@1.45.2(typescript@5.9.3))(@pythnetwork/pyth-sui-js@2.4.0(axios@1.13.5)(typescript@5.9.3))(@suilend/sui-fe@2.0.8(@mysten/sui@1.45.2(typescript@5.9.3)))(axios@1.13.5)(graphql@16.12.0)(typescript@5.9.3)':
+  '@suilend/sdk@1.1.99(@mysten/sui@1.45.2(typescript@5.9.3))(@pythnetwork/pyth-sui-js@2.4.0(axios@1.13.5)(typescript@5.9.3))(@suilend/sui-fe@2.0.8(@mysten/sui@1.45.2(typescript@5.9.3)))(axios@1.13.5)(graphql@16.12.0)(typescript@5.9.3)':
     dependencies:
       '@bluefin-exchange/bluefin7k-aggregator-sdk': 5.4.2(@mysten/sui@1.45.2(typescript@5.9.3))(@pythnetwork/pyth-sui-js@2.4.0(axios@1.13.5)(typescript@5.9.3))
       '@cetusprotocol/aggregator-sdk': 1.4.5(axios@1.13.5)(typescript@5.9.3)
       '@flowx-finance/sdk': 1.15.0(@pythnetwork/pyth-sui-js@2.4.0(axios@1.13.5)(typescript@5.9.3))(axios@1.13.5)(graphql@16.12.0)(typescript@5.9.3)
-      '@mysten/bcs': 1.9.2
       '@mysten/sui': 1.45.2(typescript@5.9.3)
       '@pythnetwork/pyth-sui-js': 2.4.0(axios@1.13.5)(typescript@5.9.3)
-      '@suilend/springsui-sdk': 2.0.1(@mysten/bcs@1.9.2)(@mysten/sui@1.45.2(typescript@5.9.3))
+      '@suilend/springsui-sdk': 1.0.29(@mysten/sui@1.45.2(typescript@5.9.3))(typescript@5.9.3)
       '@suilend/sui-fe': 2.0.8(@mysten/sui@1.45.2(typescript@5.9.3))
       aftermath-ts-sdk: 1.3.29(@mysten/sui@1.45.2(typescript@5.9.3))
       bignumber.js: 9.1.2
@@ -4577,11 +4556,15 @@ snapshots:
       - graphql
       - typescript
 
-  '@suilend/springsui-sdk@2.0.1(@mysten/bcs@1.9.2)(@mysten/sui@1.45.2(typescript@5.9.3))':
+  '@suilend/springsui-sdk@1.0.29(@mysten/sui@1.45.2(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
-      '@mysten/bcs': 1.9.2
       '@mysten/sui': 1.45.2(typescript@5.9.3)
+      '@mysten/sui-v1': '@mysten/sui@1.45.2(typescript@5.9.3)'
       bignumber.js: 9.1.2
+    transitivePeerDependencies:
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - typescript
 
   '@suilend/sui-fe@2.0.8(@mysten/sui@1.45.2(typescript@5.9.3))':
     dependencies:
