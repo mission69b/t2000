@@ -488,6 +488,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     });
 
     const toInfo = SUPPORTED_ASSETS[toAsset];
+    await this.client.waitForTransaction({ digest: gasResult.digest });
     const txDetail = await this.client.getTransactionBlock({
       digest: gasResult.digest,
       options: { showBalanceChanges: true },
