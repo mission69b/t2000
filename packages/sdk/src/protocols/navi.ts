@@ -31,6 +31,9 @@ const NAVI_BALANCE_DECIMALS = 9;
 const CONFIG_API = 'https://open-api.naviprotocol.io/api/navi/config?env=prod';
 const POOLS_API = 'https://open-api.naviprotocol.io/api/navi/pools?env=prod';
 
+const PACKAGE_API = 'https://open-api.naviprotocol.io/api/package';
+let packageCache: { id: string; ts: number } | null = null;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -104,9 +107,23 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (json.data ?? json) as T;
 }
 
+async function getLatestPackageId(): Promise<string> {
+  if (packageCache && Date.now() - packageCache.ts < CACHE_TTL) return packageCache.id;
+  const res = await fetch(PACKAGE_API);
+  if (!res.ok) throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI package API error: ${res.status}`);
+  const json = (await res.json()) as { packageId?: string };
+  if (!json.packageId) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'NAVI package API returned no packageId');
+  packageCache = { id: json.packageId, ts: Date.now() };
+  return json.packageId;
+}
+
 async function getConfig(fresh = false): Promise<NaviConfig> {
   if (configCache && !fresh && Date.now() - configCache.ts < CACHE_TTL) return configCache.data;
-  const data = await fetchJson<NaviConfig>(CONFIG_API);
+  const [data, latestPkg] = await Promise.all([
+    fetchJson<NaviConfig>(CONFIG_API),
+    getLatestPackageId(),
+  ]);
+  data.package = latestPkg;
   configCache = { data, ts: Date.now() };
   return data;
 }
@@ -218,10 +235,9 @@ async function fetchCoins(
   return all;
 }
 
-function mergeCoinsPtb(
+function mergeCoins(
   tx: Transaction,
   coins: Array<{ coinObjectId: string; balance: string }>,
-  amount: number,
 ): TransactionObjectArgument {
   if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No coins to merge');
 
@@ -230,8 +246,7 @@ function mergeCoinsPtb(
     tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
   }
 
-  const [split] = tx.splitCoins(primary, [amount]);
-  return split;
+  return primary;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +268,7 @@ export async function buildSaveTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  const coinObj = mergeCoinsPtb(tx, coins, rawAmount);
+  const coinObj = mergeCoins(tx, coins);
 
   if (options.collectFee) {
     addCollectFeeToTx(tx, coinObj, 'save');
@@ -328,8 +343,8 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_withdraw_v2`,
+  const [balance] = tx.moveCall({
+    target: `${config.package}::incentive_v3::withdraw_v2`,
     arguments: [
       tx.object(CLOCK),
       tx.object(config.oracle.priceOracle),
@@ -341,7 +356,16 @@ export async function buildWithdrawTx(
       tx.object(config.incentiveV3),
       tx.object(SUI_SYSTEM_STATE),
     ],
+    typeArguments: [pool.suiCoinType],
   });
+
+  const [coin] = tx.moveCall({
+    target: '0x2::coin::from_balance',
+    arguments: [balance],
+    typeArguments: [pool.suiCoinType],
+  });
+
+  tx.transferObjects([coin], address);
 
   return { tx, effectiveAmount };
 }
@@ -382,8 +406,8 @@ export async function buildBorrowTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_borrow_v2`,
+  const [balance] = tx.moveCall({
+    target: `${config.package}::incentive_v3::borrow_v2`,
     arguments: [
       tx.object(CLOCK),
       tx.object(config.oracle.priceOracle),
@@ -395,7 +419,16 @@ export async function buildBorrowTx(
       tx.object(config.incentiveV3),
       tx.object(SUI_SYSTEM_STATE),
     ],
+    typeArguments: [pool.suiCoinType],
   });
+
+  const [borrowedCoin] = tx.moveCall({
+    target: '0x2::coin::from_balance',
+    arguments: [balance],
+    typeArguments: [pool.suiCoinType],
+  });
+
+  tx.transferObjects([borrowedCoin], address);
 
   return tx;
 }
@@ -442,7 +475,7 @@ export async function buildRepayTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  const coinObj = mergeCoinsPtb(tx, coins, rawAmount);
+  const coinObj = mergeCoins(tx, coins);
 
   tx.moveCall({
     target: `${config.package}::incentive_v3::entry_repay`,
