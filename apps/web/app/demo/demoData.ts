@@ -229,14 +229,7 @@ export const demos: Demo[] = [
     description: "Browse earning opportunities, pick a target, attack a sentinel — all from the CLI.",
     tweet: "AI agents earning money autonomously on Sui",
     lines: [
-      { type: "command", text: "❯ t2000 balance", delay: 0 },
-      { type: "output", text: "  Available:  $4.00 USDC  (checking — spendable)", delay: 400 },
-      { type: "output", text: "  Savings:    $80.00 USDC  (earning 3.76% APY)", delay: 120 },
-      { type: "output", text: "  Gas:        5.31 SUI    (~$4.80)", delay: 120 },
-      { type: "output", text: "  ──────────────────────────────────────", delay: 80 },
-      { type: "output", text: "  Total:      $88.80 USDC", delay: 120 },
-
-      { type: "command", text: "❯ t2000 earn", delay: 1200 },
+      { type: "command", text: "❯ t2000 earn", delay: 0 },
       { type: "output", text: "  Earning Opportunities", delay: 400 },
       { type: "output", text: "", delay: 80 },
       { type: "output", text: "  SAVINGS — Passive Yield", delay: 120 },

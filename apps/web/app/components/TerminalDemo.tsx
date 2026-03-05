@@ -16,9 +16,9 @@ const LINES: TerminalLine[] = [
   { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
   { type: "command", text: "❯ t2000 save 80", delay: 1200 },
-  { type: "success", text: "✓ Saved $80.00 USDC to NAVI", delay: 600 },
+  { type: "success", text: "✓ Saved $80.00 USDC to best rate", delay: 600 },
   { type: "success", text: "✓ Protocol fee: $0.08 USDC (0.1%)", delay: 200 },
-  { type: "success", text: "✓ Current APY: 4.21%", delay: 200 },
+  { type: "success", text: "✓ Current APY: 5.57%", delay: 200 },
   { type: "success", text: "✓ Savings balance: $80.00 USDC", delay: 200 },
   { type: "info", text: "  Tx: suiscan.xyz/mainnet/tx/7CAugsDaPvM...", delay: 200 },
 
@@ -44,7 +44,7 @@ const LINES: TerminalLine[] = [
 
   { type: "command", text: "❯ t2000 balance", delay: 1200 },
   { type: "output", text: "  Available:  $85.00 USDC  (checking — spendable)", delay: 400 },
-  { type: "output", text: "  Savings:    $80.00 USDC  (earning 4.21% APY)", delay: 120 },
+  { type: "output", text: "  Savings:    $80.00 USDC  (earning 5.57% APY)", delay: 120 },
   { type: "output", text: "  Gas:        0.31 SUI     (~$0.28)", delay: 120 },
   { type: "output", text: "  ──────────────────────", delay: 80 },
   { type: "output", text: "  Total:      $165.28 USDC", delay: 120 },
