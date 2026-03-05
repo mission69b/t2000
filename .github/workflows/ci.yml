@@ -43,3 +43,20 @@ jobs:
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/x402 test
       - run: pnpm --filter @t2000/server test
+
+  adapters:
+    name: Adapter Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @t2000/sdk build
+      - name: Run adapter compliance tests
+        run: pnpm --filter @t2000/sdk exec vitest run src/adapters/ --reporter=verbose
+      - name: Run adapter contract tests
+        run: pnpm --filter @t2000/sdk exec vitest run src/adapters/compliance.test.ts --reporter=verbose

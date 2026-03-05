@@ -10,6 +10,7 @@ export function registerRepay(program: Command) {
     .argument('<amount>', 'Amount in USDC to repay (or "all")')
     .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
+    .option('--protocol <name>', 'Protocol to use (e.g. navi)')
     .action(async (amountStr, assetStr, opts) => {
       try {
         const amount: number | 'all' = amountStr === 'all' ? 'all' : parseFloat(amountStr);
@@ -21,7 +22,7 @@ export function registerRepay(program: Command) {
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
         const asset = assetStr ?? 'USDC';
-        const result = await agent.repay({ amount, asset });
+        const result = await agent.repay({ amount, asset, protocol: opts.protocol });
 
         if (isJsonMode()) {
           printJson(result);

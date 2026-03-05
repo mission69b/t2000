@@ -50,6 +50,26 @@ Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same
 
 ---
 
+## Protocol Adapters
+
+t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
+
+| Adapter | Type | Capabilities | Status |
+|---------|------|-------------|--------|
+| NAVI (`navi`) | Lending | save, withdraw, borrow, repay | Built-in |
+| Cetus (`cetus`) | Swap | swap | Built-in |
+| Suilend (`suilend`) | Lending | save, withdraw | Stub (in progress) |
+
+- `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth
+- `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
+- `ProtocolRegistry` auto-selects best rates/quotes across registered adapters
+- CLI `--protocol <name>` flag on save/withdraw/borrow/repay/swap to pin a specific protocol
+- Third-party adapters can be registered via `agent.registerAdapter(new MyAdapter())`
+
+Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts, cetus.ts, suilend.ts
+
+---
+
 ## Supported Assets
 
 | Symbol | Decimals | Send | Save | Borrow | Swap |

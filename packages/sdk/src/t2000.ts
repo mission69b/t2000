@@ -15,10 +15,13 @@ import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory } from './wallet/history.js';
 import * as navi from './protocols/navi.js';
-import * as cetus from './protocols/cetus.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
 import * as sentinel from './protocols/sentinel.js';
+import { ProtocolRegistry } from './adapters/registry.js';
+import { NaviAdapter } from './adapters/navi.js';
+import { CetusAdapter } from './adapters/cetus.js';
+import type { LendingAdapter, SwapAdapter } from './adapters/types.js';
 import { solveHashcash } from './utils/hashcash.js';
 import { executeWithGas } from './gas/manager.js';
 import type {
@@ -60,13 +63,25 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly keypair: Ed25519Keypair;
   private readonly client: SuiClient;
   private readonly _address: string;
+  private readonly registry: ProtocolRegistry;
 
-
-  private constructor(keypair: Ed25519Keypair, client: SuiClient) {
+  private constructor(keypair: Ed25519Keypair, client: SuiClient, registry?: ProtocolRegistry) {
     super();
     this.keypair = keypair;
     this.client = client;
     this._address = getAddress(keypair);
+    this.registry = registry ?? T2000.createDefaultRegistry(client);
+  }
+
+  private static createDefaultRegistry(client: SuiClient): ProtocolRegistry {
+    const registry = new ProtocolRegistry();
+    const naviAdapter = new NaviAdapter();
+    naviAdapter.initSync(client);
+    registry.registerLending(naviAdapter);
+    const cetusAdapter = new CetusAdapter();
+    cetusAdapter.initSync(client);
+    registry.registerSwap(cetusAdapter);
+    return registry;
   }
 
   static async create(options: T2000Options = {}): Promise<T2000> {
@@ -218,9 +233,15 @@ export class T2000 extends EventEmitter<T2000Events> {
     return exportPrivateKey(this.keypair);
   }
 
+  async registerAdapter(adapter: LendingAdapter | SwapAdapter): Promise<void> {
+    await adapter.init(this.client);
+    if ('buildSaveTx' in adapter) this.registry.registerLending(adapter as LendingAdapter);
+    if ('buildSwapTx' in adapter) this.registry.registerSwap(adapter as SwapAdapter);
+  }
+
   // -- Savings --
 
-  async save(params: { amount: number | 'all'; asset?: string }): Promise<SaveResult> {
+  async save(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<SaveResult> {
     const asset = (params.asset ?? 'USDC').toUpperCase();
     if (asset !== 'USDC') {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for save. Got: ${asset}`);
@@ -243,11 +264,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fee = calculateFee('save', amount);
     const saveAmount = amount;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, () =>
-      navi.buildSaveTx(this.client, this._address, saveAmount, { collectFee: true }),
-    );
+    const adapter = await this.resolveLending(params.protocol, asset, 'save');
 
-    const rates = await navi.getRates(this.client);
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const { tx } = await adapter.buildSaveTx(this._address, saveAmount, asset, { collectFee: true });
+      return tx;
+    });
+
+    const rates = await adapter.getRates(asset);
     reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange('USDC', saveAmount, 'save', gasResult.digest);
 
@@ -258,14 +282,14 @@ export class T2000 extends EventEmitter<T2000Events> {
         .filter((p) => p.type === 'save')
         .reduce((sum, p) => sum + p.amount, 0);
     } catch {
-      // NAVI query failed — fall back to deposit amount
+      // query failed — fall back to deposit amount
     }
 
     return {
       success: true,
       tx: gasResult.digest,
       amount: saveAmount,
-      apy: rates.USDC.saveApy,
+      apy: rates.saveApy,
       fee: fee.amount,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
@@ -273,15 +297,17 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async withdraw(params: { amount: number | 'all'; asset?: string }): Promise<WithdrawResult> {
+  async withdraw(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<WithdrawResult> {
     const asset = (params.asset ?? 'USDC').toUpperCase();
     if (asset !== 'USDC') {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for withdraw. Got: ${asset}`);
     }
 
+    const adapter = await this.resolveLending(params.protocol, asset, 'withdraw');
+
     let amount: number;
     if (params.amount === 'all') {
-      const maxResult = await this.maxWithdraw();
+      const maxResult = await adapter.maxWithdraw(this._address, asset);
       amount = maxResult.maxAmount;
       if (amount <= 0) {
         throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw');
@@ -289,10 +315,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     } else {
       amount = params.amount;
 
-      // Risk check: would this withdrawal drop HF below minimum?
-      const hf = await this.healthFactor();
+      const hf = await adapter.getHealth(this._address);
       if (hf.borrowed > 0) {
-        const maxResult = await this.maxWithdraw();
+        const maxResult = await adapter.maxWithdraw(this._address, asset);
         if (amount > maxResult.maxAmount) {
           throw new T2000Error(
             'WITHDRAW_WOULD_LIQUIDATE',
@@ -310,7 +335,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     let effectiveAmount = withdrawAmount;
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const built = await navi.buildWithdrawTx(this.client, this._address, withdrawAmount);
+      const built = await adapter.buildWithdrawTx(this._address, withdrawAmount, asset);
       effectiveAmount = built.effectiveAmount;
       return built.tx;
     });
@@ -327,18 +352,21 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async maxWithdraw(): Promise<MaxWithdrawResult> {
-    return navi.maxWithdrawAmount(this.client, this.keypair);
+    const adapter = await this.resolveLending(undefined, 'USDC', 'withdraw');
+    return adapter.maxWithdraw(this._address, 'USDC');
   }
 
   // -- Borrowing --
 
-  async borrow(params: { amount: number; asset?: string }): Promise<BorrowResult> {
+  async borrow(params: { amount: number; asset?: string; protocol?: string }): Promise<BorrowResult> {
     const asset = (params.asset ?? 'USDC').toUpperCase();
     if (asset !== 'USDC') {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for borrow. Got: ${asset}`);
     }
 
-    const maxResult = await this.maxBorrow();
+    const adapter = await this.resolveLending(params.protocol, asset, 'borrow');
+
+    const maxResult = await adapter.maxBorrow(this._address, asset);
     if (params.amount > maxResult.maxAmount) {
       throw new T2000Error('HEALTH_FACTOR_TOO_LOW', `Max safe borrow: $${maxResult.maxAmount.toFixed(2)}`, {
         maxBorrow: maxResult.maxAmount,
@@ -346,14 +374,14 @@ export class T2000 extends EventEmitter<T2000Events> {
       });
     }
     const fee = calculateFee('borrow', params.amount);
-
     const borrowAmount = params.amount;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, () =>
-      navi.buildBorrowTx(this.client, this._address, borrowAmount, { collectFee: true }),
-    );
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: true });
+      return tx;
+    });
 
-    const hf = await navi.getHealthFactor(this.client, this.keypair);
+    const hf = await adapter.getHealth(this._address);
     reportFee(this._address, 'borrow', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange('USDC', borrowAmount, 'borrow', gasResult.digest);
 
@@ -368,15 +396,17 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async repay(params: { amount: number | 'all'; asset?: string }): Promise<RepayResult> {
+  async repay(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<RepayResult> {
     const asset = (params.asset ?? 'USDC').toUpperCase();
     if (asset !== 'USDC') {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for repay. Got: ${asset}`);
     }
 
+    const adapter = await this.resolveLending(params.protocol, asset, 'repay');
+
     let amount: number;
     if (params.amount === 'all') {
-      const hf = await this.healthFactor();
+      const hf = await adapter.getHealth(this._address);
       amount = hf.borrowed;
       if (amount <= 0) {
         throw new T2000Error('NO_COLLATERAL', 'No outstanding borrow to repay');
@@ -386,11 +416,12 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
     const repayAmount = amount;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, () =>
-      navi.buildRepayTx(this.client, this._address, repayAmount),
-    );
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const { tx } = await adapter.buildRepayTx(this._address, repayAmount, asset);
+      return tx;
+    });
 
-    const hf = await navi.getHealthFactor(this.client, this.keypair);
+    const hf = await adapter.getHealth(this._address);
     this.emitBalanceChange('USDC', repayAmount, 'repay', gasResult.digest);
 
     return {
@@ -404,11 +435,13 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async maxBorrow(): Promise<MaxBorrowResult> {
-    return navi.maxBorrowAmount(this.client, this.keypair);
+    const adapter = await this.resolveLending(undefined, 'USDC', 'borrow');
+    return adapter.maxBorrow(this._address, 'USDC');
   }
 
   async healthFactor(): Promise<HealthFactorResult> {
-    const hf = await navi.getHealthFactor(this.client, this.keypair);
+    const adapter = await this.resolveLending(undefined, 'USDC', 'save');
+    const hf = await adapter.getHealth(this._address);
 
     if (hf.healthFactor < 1.2) {
       this.emit('healthCritical', { healthFactor: hf.healthFactor, threshold: 1.5, severity: 'critical' });
@@ -421,7 +454,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Swap --
 
-  async swap(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
+  async swap(params: { from: string; to: string; amount: number; maxSlippage?: number; protocol?: string }): Promise<SwapResult> {
     const fromAsset = params.from.toUpperCase() as 'USDC' | 'SUI';
     const toAsset = params.to.toUpperCase() as 'USDC' | 'SUI';
 
@@ -432,6 +465,16 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INVALID_AMOUNT', 'Cannot swap same asset');
     }
 
+    let adapter: SwapAdapter;
+    if (params.protocol) {
+      const found = this.registry.getSwap(params.protocol);
+      if (!found) throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap adapter '${params.protocol}' not found`);
+      adapter = found;
+    } else {
+      const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
+      adapter = best.adapter;
+    }
+
     const fee = calculateFee('swap', params.amount);
     const swapAmount = params.amount;
     const slippageBps = params.maxSlippage ? params.maxSlippage * 100 : undefined;
@@ -439,14 +482,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     let swapMeta: { estimatedOut: number; toDecimals: number } = { estimatedOut: 0, toDecimals: 0 };
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const built = await cetus.buildSwapTx({
-        client: this.client,
-        address: this._address,
-        fromAsset,
-        toAsset,
-        amount: swapAmount,
-        maxSlippageBps: slippageBps,
-      });
+      const built = await adapter.buildSwapTx(this._address, fromAsset, toAsset, swapAmount, slippageBps);
       swapMeta = { estimatedOut: built.estimatedOut, toDecimals: built.toDecimals };
       return built.tx;
     });
@@ -503,21 +539,44 @@ export class T2000 extends EventEmitter<T2000Events> {
     poolPrice: number;
     fee: { amount: number; rate: number };
   }> {
-    const fromAsset = params.from.toUpperCase() as 'USDC' | 'SUI';
-    const toAsset = params.to.toUpperCase() as 'USDC' | 'SUI';
-    const quote = await cetus.getSwapQuote(this.client, fromAsset, toAsset, params.amount);
+    const fromAsset = params.from.toUpperCase();
+    const toAsset = params.to.toUpperCase();
+    const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
     const fee = calculateFee('swap', params.amount);
-    return { ...quote, fee: { amount: fee.amount, rate: fee.rate } };
+    return { ...best.quote, fee: { amount: fee.amount, rate: fee.rate } };
   }
 
   // -- Info --
 
   async positions(): Promise<PositionsResult> {
-    return navi.getPositions(this.client, this.keypair);
+    const allPositions = await this.registry.allPositions(this._address);
+    const positions = allPositions.flatMap(p =>
+      [
+        ...p.positions.supplies.map(s => ({
+          protocol: p.protocolId,
+          asset: s.asset,
+          type: 'save' as const,
+          amount: s.amount,
+          apy: s.apy,
+        })),
+        ...p.positions.borrows.map(b => ({
+          protocol: p.protocolId,
+          asset: b.asset,
+          type: 'borrow' as const,
+          amount: b.amount,
+          apy: b.apy,
+        })),
+      ],
+    );
+    return { positions };
   }
 
   async rates(): Promise<RatesResult> {
     return navi.getRates(this.client);
+  }
+
+  async allRates(asset = 'USDC') {
+    return this.registry.allRates(asset);
   }
 
   async earnings(): Promise<EarningsResult> {
@@ -554,6 +613,35 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   // -- Helpers --
+
+  private async resolveLending(protocol: string | undefined, asset: string, capability: 'save' | 'withdraw' | 'borrow' | 'repay'): Promise<LendingAdapter> {
+    if (protocol) {
+      const adapter = this.registry.getLending(protocol);
+      if (!adapter) throw new T2000Error('ASSET_NOT_SUPPORTED', `Lending adapter '${protocol}' not found`);
+      return adapter;
+    }
+
+    if (capability === 'save') {
+      const { adapter } = await this.registry.bestSaveRate(asset);
+      return adapter;
+    }
+
+    if (capability === 'borrow' || capability === 'repay') {
+      const adapters = this.registry.listLending().filter(
+        a => a.supportedAssets.includes(asset) &&
+             a.capabilities.includes(capability) &&
+             (capability !== 'borrow' || a.supportsSameAssetBorrow),
+      );
+      if (adapters.length === 0) throw new T2000Error('ASSET_NOT_SUPPORTED', `No adapter supports ${capability} ${asset}`);
+      return adapters[0];
+    }
+
+    const adapters = this.registry.listLending().filter(
+      a => a.supportedAssets.includes(asset) && a.capabilities.includes(capability),
+    );
+    if (adapters.length === 0) throw new T2000Error('ASSET_NOT_SUPPORTED', `No adapter supports ${capability} ${asset}`);
+    return adapters[0];
+  }
 
   private emitBalanceChange(asset: string, amount: number, cause: string, tx?: string): void {
     this.emit('balanceChange', { asset, previous: 0, current: 0, cause, tx });

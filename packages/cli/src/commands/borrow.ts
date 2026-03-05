@@ -10,6 +10,7 @@ export function registerBorrow(program: Command) {
     .argument('<amount>', 'Amount in USDC to borrow')
     .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
+    .option('--protocol <name>', 'Protocol to use (e.g. navi)')
     .action(async (amountStr, assetStr, opts) => {
       try {
         const amount = parseFloat(amountStr);
@@ -27,7 +28,7 @@ export function registerBorrow(program: Command) {
         }
 
         const asset = assetStr ?? 'USDC';
-        const result = await agent.borrow({ amount, asset });
+        const result = await agent.borrow({ amount, asset, protocol: opts.protocol });
 
         if (isJsonMode()) {
           printJson(result);

@@ -312,9 +312,11 @@ export async function repay(
 
 export async function getHealthFactor(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  addressOrKeypair: string | Ed25519Keypair,
 ): Promise<HealthFactorResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
+  const address = typeof addressOrKeypair === 'string'
+    ? addressOrKeypair
+    : addressOrKeypair.getPublicKey().toSuiAddress();
 
   const [healthFactor, state, pool] = await Promise.all([
     naviGetHealthFactor(address, clientOpt(client, true)),
@@ -358,9 +360,11 @@ export async function getRates(client: SuiClient): Promise<RatesResult> {
 
 export async function getPositions(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  addressOrKeypair: string | Ed25519Keypair,
 ): Promise<PositionsResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
+  const address = typeof addressOrKeypair === 'string'
+    ? addressOrKeypair
+    : addressOrKeypair.getPublicKey().toSuiAddress();
 
   const state = await getLendingState(address, clientOpt(client, true));
   const positions: PositionEntry[] = [];
@@ -396,9 +400,9 @@ export async function getPositions(
 
 export async function maxWithdrawAmount(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  addressOrKeypair: string | Ed25519Keypair,
 ): Promise<MaxWithdrawResult> {
-  const hf = await getHealthFactor(client, keypair);
+  const hf = await getHealthFactor(client, addressOrKeypair);
   const ltv = hf.liquidationThreshold > 0 ? hf.liquidationThreshold : 0.75;
 
   let maxAmount: number;
@@ -420,9 +424,9 @@ export async function maxWithdrawAmount(
 
 export async function maxBorrowAmount(
   client: SuiClient,
-  keypair: Ed25519Keypair,
+  addressOrKeypair: string | Ed25519Keypair,
 ): Promise<MaxBorrowResult> {
-  const hf = await getHealthFactor(client, keypair);
+  const hf = await getHealthFactor(client, addressOrKeypair);
   const ltv = hf.liquidationThreshold > 0 ? hf.liquidationThreshold : 0.75;
 
   const maxAmount = Math.max(0, hf.supplied * ltv / MIN_HEALTH_FACTOR - hf.borrowed);

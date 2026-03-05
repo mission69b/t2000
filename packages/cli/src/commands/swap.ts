@@ -12,7 +12,8 @@ export function registerSwap(program: Command) {
     .argument('<to>', 'Asset to swap to (USDC or SUI)')
     .option('--slippage <percent>', 'Max slippage percentage', '3')
     .option('--key <path>', 'Key file path')
-    .action(async (amountStr: string, from: string, to: string, opts: { slippage?: string; key?: string }) => {
+    .option('--protocol <name>', 'Protocol to use (e.g. cetus)')
+    .action(async (amountStr: string, from: string, to: string, opts: { slippage?: string; key?: string; protocol?: string }) => {
       try {
         const amount = parseFloat(amountStr);
         if (isNaN(amount) || amount <= 0) {
@@ -27,7 +28,7 @@ export function registerSwap(program: Command) {
         // Show quote before confirming
         const quote = await agent.swapQuote({ from, to, amount });
 
-        const result = await agent.swap({ from, to, amount, maxSlippage });
+        const result = await agent.swap({ from, to, amount, maxSlippage, protocol: opts.protocol });
 
         if (isJsonMode()) {
           printJson(result);

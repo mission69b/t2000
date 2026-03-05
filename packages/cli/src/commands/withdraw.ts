@@ -10,6 +10,7 @@ export function registerWithdraw(program: Command) {
     .argument('<amount>', 'Amount in USDC to withdraw (or "all")')
     .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
+    .option('--protocol <name>', 'Protocol to use (e.g. navi, suilend)')
     .action(async (amountStr, assetStr, opts) => {
       try {
         const amount: number | 'all' = amountStr === 'all' ? 'all' : parseFloat(amountStr);
@@ -29,7 +30,7 @@ export function registerWithdraw(program: Command) {
         }
 
         const asset = assetStr ?? 'USDC';
-        const result = await agent.withdraw({ amount, asset });
+        const result = await agent.withdraw({ amount, asset, protocol: opts.protocol });
 
         if (isJsonMode()) {
           printJson(result);

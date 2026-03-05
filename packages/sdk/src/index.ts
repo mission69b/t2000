@@ -62,6 +62,7 @@ export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.j
 export type { SimulationResult } from './utils/simulate.js';
 export { getPoolPrice, getSwapQuote } from './protocols/cetus.js';
 export { getRates } from './protocols/navi.js';
+export * from './adapters/index.js';
 export {
   listSentinels,
   getSentinelInfo,
