@@ -1,6 +1,6 @@
 {
   "name": "@t2000/sdk",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "TypeScript SDK for AI agent bank accounts on Sui — send, save, swap, borrow",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -53,16 +53,9 @@
     "@cetusprotocol/aggregator-sdk": "^1.4.4",
     "@mysten/sui": "^1.45.2",
     "@naviprotocol/lending": "^1.3.11",
+    "@suilend/sdk": "^1.0.0",
     "@zodios/core": "^10.9.6",
     "eventemitter3": "^5"
-  },
-  "peerDependencies": {
-    "@suilend/sdk": "^1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@suilend/sdk": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@types/node": "^22",
