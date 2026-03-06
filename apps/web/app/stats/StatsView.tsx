@@ -16,7 +16,7 @@ interface Stats {
     last24h: number;
     last7d: number;
     last30d: number;
-    recent: { address: string; name: string | null; createdAt: string; lastSeen: string | null }[];
+    recent: { address: string; createdAt: string; lastSeen: string | null }[];
   };
   gas: {
     totalRecords: number;
@@ -348,7 +348,6 @@ export function StatsView() {
               <tr className="text-muted text-left">
                 <th className="pb-2 font-normal">#</th>
                 <th className="pb-2 font-normal">Address</th>
-                <th className="pb-2 font-normal">Name</th>
                 <th className="pb-2 font-normal text-right">Registered</th>
               </tr>
             </thead>
@@ -368,9 +367,6 @@ export function StatsView() {
                     >
                       {truncateAddress(agent.address)}
                     </a>
-                  </td>
-                  <td className="py-2.5 text-muted">
-                    {agent.name ?? "—"}
                   </td>
                   <td className="py-2.5 text-muted text-right">
                     {timeAgo(agent.createdAt)}
