@@ -78,6 +78,7 @@ async function processCheckpoints(
 
       // Parse transfers for known agents
       const transfers = parseTransfers(tx, knownAgents);
+      const seenAgents = new Set<string>();
       for (const transfer of transfers) {
         try {
           await prisma.transaction.upsert({
@@ -94,10 +95,18 @@ async function processCheckpoints(
               executedAt: new Date(transfer.timestamp),
             },
           });
+          seenAgents.add(transfer.agentAddress);
           txCount++;
         } catch {
           // Duplicate — skip
         }
+      }
+
+      for (const addr of seenAgents) {
+        await prisma.agent.update({
+          where: { address: addr },
+          data: { lastSeen: new Date(tx.timestamp) },
+        }).catch(() => {});
       }
     }
 
