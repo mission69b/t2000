@@ -41,7 +41,7 @@ async function main() {
 
   await runSection(`Save $${SAVE_AMOUNT} USDC → NAVI`, async () => {
     const balBefore = await agent.balance();
-    const result = await agent.save({ amount: SAVE_AMOUNT });
+    const result = await agent.save({ amount: SAVE_AMOUNT, protocol: 'navi' });
     console.log(`   Tx:  ${result.tx}`);
     console.log(`   APY: ${result.apy.toFixed(2)}%`);
     console.log(`   Fee: $${result.fee.toFixed(4)} USDC`);

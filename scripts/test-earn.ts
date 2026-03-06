@@ -26,6 +26,20 @@ async function main() {
     assert(typeof status.projectedMonthly === 'number', 'projectedMonthly is a number');
   });
 
+  await runSection('Positions (multi-protocol)', async () => {
+    const pos = await agent.positions();
+    for (const p of pos.positions) {
+      console.log(`   ${p.protocol}: ${p.type} $${p.amount.toFixed(2)} ${p.asset}`);
+    }
+    const protocols = new Set(pos.positions.map(p => p.protocol));
+    console.log(`   Active protocols: ${[...protocols].join(', ') || 'none'}`);
+
+    assert(Array.isArray(pos.positions), 'positions is an array');
+    for (const p of pos.positions) {
+      assert(typeof p.protocol === 'string' && p.protocol.length > 0, `position has protocol: ${p.protocol}`);
+    }
+  });
+
   await runSection('List Sentinels (bounty data)', async () => {
     const sentinels = await listSentinels();
     console.log(`   Active sentinels: ${sentinels.length}`);
