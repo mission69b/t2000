@@ -28,6 +28,16 @@ const app = new Hono();
 
 app.use('*', cors());
 
+app.use('*', async (c, next) => {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  const status = c.res.status;
+  if (c.req.path !== '/api/health') {
+    console.log(`[server] ${c.req.method} ${c.req.path} → ${status} (${ms}ms)`);
+  }
+});
+
 app.route('/', sponsor);
 app.route('/', health);
 app.route('/', gas);

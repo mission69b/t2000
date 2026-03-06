@@ -134,19 +134,30 @@ async function pollLoop(): Promise<void> {
   let cursor = await getOrCreateCursor();
   let knownAgents = await getKnownAgents();
   let agentRefreshCounter = 0;
+  let consecutiveErrors = 0;
 
   console.log(`[indexer] Starting from checkpoint ${cursor}`);
 
   while (running) {
     try {
-      // Refresh known agents every 100 iterations (~200s at 2s poll)
       if (agentRefreshCounter++ % 100 === 0) {
         knownAgents = await getKnownAgents();
       }
 
       cursor = await processCheckpoints(client, cursor!, knownAgents);
+      consecutiveErrors = 0;
     } catch (err) {
-      console.error('[indexer] Error:', err instanceof Error ? err.message : err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('effect is empty') || msg.includes('balance/object changes')) {
+        console.warn(`[indexer] Skipping checkpoint (empty effects) — cursor: ${cursor}`);
+      } else {
+        consecutiveErrors++;
+        console.error(`[indexer] Error (${consecutiveErrors}x): ${msg}`);
+        if (consecutiveErrors >= 10) {
+          console.error('[indexer] 10 consecutive errors — backing off 30s');
+          await sleep(30_000);
+        }
+      }
     }
 
     await sleep(POLL_INTERVAL_MS);
