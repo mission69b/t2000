@@ -118,7 +118,7 @@ async function getAgentStats(oneDayAgo: Date, sevenDaysAgo: Date, thirtyDaysAgo:
   const recent = await prisma.agent.findMany({
     orderBy: { createdAt: "desc" },
     take: 10,
-    select: { address: true, name: true, createdAt: true, lastSeen: true },
+    select: { address: true, createdAt: true, lastSeen: true },
   });
 
   return { total, last24h, last7d, last30d, recent };
