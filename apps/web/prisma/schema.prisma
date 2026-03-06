@@ -93,6 +93,7 @@ model Transaction {
   agentAddress String   @map("agent_address")
   txDigest     String   @unique @map("tx_digest")
   action       String
+  protocol     String?
   asset        String?
   amount       Decimal?
   gasCostUsd   Decimal? @map("gas_cost_usd")
