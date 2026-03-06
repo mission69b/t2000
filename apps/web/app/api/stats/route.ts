@@ -223,13 +223,17 @@ async function getTransactionStats(oneDayAgo: Date, sevenDaysAgo: Date) {
     prisma.transaction.count({ where: { executedAt: { gte: sevenDaysAgo } } }),
   ]);
 
-  const allTx = await prisma.transaction.findMany({ select: { action: true } });
+  const allTx = await prisma.transaction.findMany({ select: { action: true, protocol: true } });
   const byAction: Record<string, number> = {};
+  const byProtocol: Record<string, number> = {};
   for (const tx of allTx) {
     byAction[tx.action] = (byAction[tx.action] ?? 0) + 1;
+    if (tx.protocol) {
+      byProtocol[tx.protocol] = (byProtocol[tx.protocol] ?? 0) + 1;
+    }
   }
 
   const uniqueAgents = await prisma.transaction.groupBy({ by: ["agentAddress"] });
 
-  return { total, last24h, last7d, byAction, uniqueAgents: uniqueAgents.length };
+  return { total, last24h, last7d, byAction, byProtocol, uniqueAgents: uniqueAgents.length };
 }

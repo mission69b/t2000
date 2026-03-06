@@ -6,24 +6,56 @@ This guide covers how to build a new DeFi protocol adapter for t2000.
 
 ```
 adapters/
-  types.ts              # LendingAdapter, SwapAdapter interfaces
+  types.ts              # LendingAdapter, SwapAdapter, ProtocolDescriptor interfaces
   registry.ts           # ProtocolRegistry (routing + discovery)
-  navi.ts               # NaviAdapter (reference implementation, contract-first)
-  cetus.ts              # CetusAdapter (swap reference, Aggregator V3)
-  suilend.ts            # SuilendAdapter (save + withdraw, contract-first)
-  compliance.test.ts    # Reusable adapter compliance test suite
-  index.ts              # Barrel exports
+  navi.ts               # NaviAdapter + descriptor (reference, contract-first)
+  cetus.ts              # CetusAdapter + descriptor (swap, Aggregator V3)
+  suilend.ts            # SuilendAdapter + descriptor (save + withdraw, contract-first)
+  compliance.test.ts    # Adapter + descriptor compliance test suite
+  index.ts              # Barrel exports + allDescriptors registry
 ```
 
 ## Quick Start
 
-### 1. Implement the interface
+### 1. Export a ProtocolDescriptor
+
+Every adapter must export a `descriptor` that tells the indexer how to classify
+this protocol's on-chain transactions. This is how stats, analytics, and event
+tracking automatically pick up your protocol — no server-side changes needed.
+
+```typescript
+import type { ProtocolDescriptor } from './types.js';
+
+export const descriptor: ProtocolDescriptor = {
+  id: 'myprotocol',
+  name: 'My Protocol',
+  packages: ['0x<your_package_id>'],
+  actionMap: {
+    'vault::deposit': 'save',
+    'vault::withdraw': 'withdraw',
+    'vault::borrow': 'borrow',
+    'vault::repay': 'repay',
+  },
+};
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Lowercase kebab-case, must match adapter's `id` field |
+| `name` | Yes | Human-readable protocol name |
+| `packages` | Yes | On-chain package IDs (base/original package for upgradeable contracts) |
+| `actionMap` | Yes | Maps `module::function` to action type (`save`, `withdraw`, `borrow`, `repay`, `swap`, `sentinel_attack`) |
+| `dynamicPackageId` | No | Set `true` if the protocol uses frequently upgraded package IDs (like NAVI). Indexer matches by `module::function` only, ignoring package prefix |
+
+### 2. Implement the interface
 
 For lending protocols, implement `LendingAdapter`:
 
 ```typescript
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import type { LendingAdapter, AdapterTxResult, AdapterCapability } from '@t2000/sdk/adapters';
+import type { LendingAdapter, AdapterTxResult, AdapterCapability, ProtocolDescriptor } from '@t2000/sdk/adapters';
+
+export const descriptor: ProtocolDescriptor = { /* see above */ };
 
 export class MyProtocolAdapter implements LendingAdapter {
   readonly id = 'myprotocol';
@@ -50,7 +82,7 @@ export class MyProtocolAdapter implements LendingAdapter {
 
 For swap protocols, implement `SwapAdapter`.
 
-### 2. Register the adapter
+### 3. Register the adapter
 
 ```typescript
 import { T2000 } from '@t2000/sdk';
@@ -60,7 +92,7 @@ const agent = await T2000.create({ pin: '1234' });
 await agent.registerAdapter(new MyProtocolAdapter());
 ```
 
-### 3. Use it
+### 4. Use it
 
 ```bash
 # CLI with protocol flag
@@ -120,8 +152,9 @@ async buildSaveTx(address, amount, asset, options?) {
 
 ### Compliance Test Suite
 
-Every adapter is automatically validated against the contract compliance tests. These check:
+Every adapter and descriptor is automatically validated against the compliance tests. These check:
 
+**Adapter compliance:**
 - Required metadata fields (id, name, version format)
 - Valid capabilities array (only known values)
 - Valid supportedAssets (non-empty, uppercase)
@@ -131,12 +164,22 @@ Every adapter is automatically validated against the contract compliance tests. 
 - All interface methods exist
 - Unsupported capabilities throw
 
-To hook your adapter into the compliance suite, add it to `compliance.test.ts`:
+**Descriptor compliance:**
+- Non-empty id in kebab-case format
+- Non-empty name
+- Valid package IDs (hex format) — or empty array if `dynamicPackageId: true`
+- Non-empty actionMap with valid action types
+- All actionMap patterns contain `::`
+- Descriptor is registered in `allDescriptors`
+
+To hook your adapter into the compliance suite, add both to `compliance.test.ts`:
 
 ```typescript
 import { MyAdapter } from './my-adapter.js';
+import { descriptor as myProtocolDesc } from './my-adapter.js';
 
 runLendingComplianceTests('MyAdapter', () => new MyAdapter());
+runDescriptorComplianceTests(myProtocolDesc);
 ```
 
 ### Unit Tests
@@ -171,11 +214,13 @@ The CI output shows verbose results so you can see exactly which checks passed/f
 ## Raising a PR
 
 1. **Create your adapter file**: `packages/sdk/src/adapters/<protocol>.ts`
+   - Export `descriptor: ProtocolDescriptor` with package IDs and action mappings
+   - Export the adapter class implementing `LendingAdapter` or `SwapAdapter`
 2. **Create unit tests**: `packages/sdk/src/adapters/<protocol>.test.ts`
-3. **Register in compliance suite**: Add to `compliance.test.ts`
-4. **Export from barrel**: Add to `packages/sdk/src/adapters/index.ts`
+3. **Register in compliance suite**: Add both adapter and descriptor to `compliance.test.ts`
+4. **Export from barrel**: Add adapter, descriptor, and `allDescriptors` entry to `index.ts`
 5. **Run locally**: `pnpm --filter @t2000/sdk test`
-6. **Raise PR**: CI will validate everything automatically
+6. **Raise PR**: CI validates adapter compliance, descriptor compliance, and all tests
 
 ## Key Constraints
 
@@ -187,3 +232,5 @@ The CI output shows verbose results so you can see exactly which checks passed/f
 - **id format**: Lowercase kebab-case (e.g., `suilend`, `my-protocol`)
 - **version format**: Semver (e.g., `1.0.0`)
 - **No side effects in init**: `init()` should only store the client ref and do lightweight setup
+- **Descriptor required**: Every adapter must export a `descriptor: ProtocolDescriptor` — the indexer uses this to classify transactions automatically
+- **Dynamic package IDs**: If your protocol frequently upgrades its package, set `dynamicPackageId: true` and leave `packages: []` — the indexer matches by `module::function` only

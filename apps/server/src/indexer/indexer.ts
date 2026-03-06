@@ -87,6 +87,7 @@ async function processCheckpoints(
               agentAddress: transfer.agentAddress,
               txDigest: transfer.txDigest,
               action: transfer.action,
+              protocol: transfer.protocol,
               asset: transfer.asset,
               amount: transfer.amount,
               gasMethod: transfer.gasMethod,

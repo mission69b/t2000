@@ -186,3 +186,58 @@ export function runSwapComplianceTests(
 runLendingComplianceTests('NaviAdapter', () => new NaviAdapter());
 runSwapComplianceTests('CetusAdapter', () => new CetusAdapter());
 runLendingComplianceTests('SuilendAdapter', () => new SuilendAdapter(), { isStub: true });
+
+// --- Protocol Descriptor Compliance ---
+
+import { descriptor as naviDesc } from './navi.js';
+import { descriptor as suilendDesc } from './suilend.js';
+import { descriptor as cetusDesc } from './cetus.js';
+import { descriptor as sentinelDesc } from '../protocols/sentinel.js';
+import { allDescriptors } from './index.js';
+import type { ProtocolDescriptor } from './types.js';
+
+const VALID_ACTIONS = ['save', 'withdraw', 'borrow', 'repay', 'swap', 'sentinel_attack', 'sentinel_settle'];
+
+function runDescriptorComplianceTests(desc: ProtocolDescriptor) {
+  describe(`ProtocolDescriptor: ${desc.id}`, () => {
+    it('has a non-empty id', () => {
+      expect(desc.id).toBeTruthy();
+      expect(desc.id).toMatch(/^[a-z][a-z0-9-]*$/);
+    });
+
+    it('has a non-empty name', () => {
+      expect(desc.name).toBeTruthy();
+      expect(desc.name.length).toBeGreaterThan(0);
+    });
+
+    it('has packages array (can be empty for dynamic)', () => {
+      expect(Array.isArray(desc.packages)).toBe(true);
+      if (!desc.dynamicPackageId) {
+        expect(desc.packages.length).toBeGreaterThan(0);
+      }
+      for (const pkg of desc.packages) {
+        expect(pkg).toMatch(/^0x[a-f0-9]+$/);
+      }
+    });
+
+    it('has a non-empty actionMap', () => {
+      expect(Object.keys(desc.actionMap).length).toBeGreaterThan(0);
+    });
+
+    it('actionMap values are valid action types', () => {
+      for (const [pattern, action] of Object.entries(desc.actionMap)) {
+        expect(VALID_ACTIONS).toContain(action);
+        expect(pattern).toContain('::');
+      }
+    });
+
+    it('is included in allDescriptors', () => {
+      expect(allDescriptors.some(d => d.id === desc.id)).toBe(true);
+    });
+  });
+}
+
+runDescriptorComplianceTests(naviDesc);
+runDescriptorComplianceTests(suilendDesc);
+runDescriptorComplianceTests(cetusDesc);
+runDescriptorComplianceTests(sentinelDesc);

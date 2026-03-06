@@ -8,6 +8,7 @@ import type {
   HealthInfo,
   AdapterTxResult,
   AdapterCapability,
+  ProtocolDescriptor,
 } from './types.js';
 import { SUPPORTED_ASSETS } from '../constants.js';
 import { usdcToRaw } from '../utils/format.js';
@@ -25,6 +26,21 @@ const LENDING_MARKET_TYPE = '0xf95b06141ed4a174f239417323bde3f209b972f5930d8521e
 const SUILEND_PACKAGE = '0xf95b06141ed4a174f239417323bde3f209b972f5930d8521ea38a52aff3a6ddf';
 const UPGRADE_CAP_ID = '0x3d4ef1859c3ee9fc72858f588b56a09da5466e64f8cc4e90a7b3b909fba8a7ae';
 const FALLBACK_PUBLISHED_AT = '0xd2a67633ccb8de063163e25bcfca242929caf5cf1a26c2929dab519ee0b8f331';
+
+export const descriptor: ProtocolDescriptor = {
+  id: 'suilend',
+  name: 'Suilend',
+  packages: [SUILEND_PACKAGE],
+  actionMap: {
+    'lending_market::deposit_liquidity_and_mint_ctokens': 'save',
+    'lending_market::deposit_ctokens_into_obligation': 'save',
+    'lending_market::create_obligation': 'save',
+    'lending_market::withdraw_ctokens': 'withdraw',
+    'lending_market::redeem_ctokens_and_withdraw_liquidity': 'withdraw',
+    'lending_market::borrow': 'borrow',
+    'lending_market::repay': 'repay',
+  },
+};
 
 interface Reserve {
   coinType: string;

@@ -3,6 +3,37 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
 export type AdapterCapability = 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap';
 
+/**
+ * Describes a protocol for indexer event classification.
+ * Each adapter exports one of these so the server can auto-build
+ * detection rules without manual sync.
+ *
+ * To add a new protocol: export a `descriptor` from your adapter file.
+ */
+export interface ProtocolDescriptor {
+  /** Unique protocol ID — must match the adapter's `id` field */
+  id: string;
+  /** Human-readable name */
+  name: string;
+  /**
+   * On-chain package IDs that identify this protocol's transactions.
+   * For protocols with upgradeable packages, list the original/base package.
+   */
+  packages: string[];
+  /**
+   * Maps `module::function` patterns to action types.
+   * The indexer matches Move call targets against these patterns.
+   * For dynamic package IDs (e.g. NAVI), matching is done on module::function only.
+   */
+  actionMap: Record<string, string>;
+  /**
+   * If true, the indexer matches by module::function suffix only,
+   * ignoring the package ID prefix. Use for protocols with frequently
+   * upgraded (dynamic) package IDs.
+   */
+  dynamicPackageId?: boolean;
+}
+
 export interface AdapterTxResult {
   tx: Transaction;
   feeCoin?: TransactionObjectArgument;

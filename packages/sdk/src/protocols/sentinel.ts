@@ -5,6 +5,17 @@ import { bcs } from '@mysten/sui/bcs';
 import { SENTINEL, CLOCK_ID, MIST_PER_SUI } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import type { SentinelAgent, SentinelVerdict, SentinelAttackResult } from '../types.js';
+import type { ProtocolDescriptor } from '../adapters/types.js';
+
+export const descriptor: ProtocolDescriptor = {
+  id: 'sentinel',
+  name: 'Sui Sentinel',
+  packages: [SENTINEL.PACKAGE],
+  actionMap: {
+    'sentinel::request_attack': 'sentinel_attack',
+    'sentinel::consume_prompt': 'sentinel_settle',
+  },
+};
 
 interface RawSentinelAgent {
   agent_id: string;

@@ -20,6 +20,7 @@ export interface ParsedTransaction {
     coinType: string;
     amount: string;
   }>;
+  moveCallTargets: string[];
 }
 
 export async function fetchCheckpoints(
@@ -58,13 +59,26 @@ export async function fetchCheckpoints(
       txBlocks.push(...results);
     }
 
-    const transactions: ParsedTransaction[] = txBlocks.map((tx) => ({
-      digest: tx.digest,
-      sender: tx.transaction?.data?.sender ?? '',
-      timestamp: Number(tx.timestampMs ?? 0),
-      events: tx.events ?? [],
-      balanceChanges: (tx.balanceChanges ?? []) as ParsedTransaction['balanceChanges'],
-    }));
+    const transactions: ParsedTransaction[] = txBlocks.map((tx) => {
+      const moveCallTargets: string[] = [];
+      const txKind = tx.transaction?.data?.transaction;
+      if (txKind && 'transactions' in txKind) {
+        for (const cmd of (txKind as { transactions: Array<Record<string, unknown>> }).transactions) {
+          if ('MoveCall' in cmd) {
+            const mc = cmd.MoveCall as { package: string; module: string; function: string };
+            moveCallTargets.push(`${mc.package}::${mc.module}::${mc.function}`);
+          }
+        }
+      }
+      return {
+        digest: tx.digest,
+        sender: tx.transaction?.data?.sender ?? '',
+        timestamp: Number(tx.timestampMs ?? 0),
+        events: tx.events ?? [],
+        balanceChanges: (tx.balanceChanges ?? []) as ParsedTransaction['balanceChanges'],
+        moveCallTargets,
+      };
+    });
 
     parsed.push({
       sequenceNumber: cp.sequenceNumber,
