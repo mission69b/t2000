@@ -361,17 +361,204 @@ t2000 agents                     # List all profiles
 
 ---
 
+## Phase 18 — Agent Safeguards
+
+**Goal:** Spending limits, transaction controls, and safety guardrails for autonomous agents. Like a real bank's card controls — but for AI agents operating unsupervised.
+
+**Why this matters:** Agents act autonomously. Without guardrails, a misconfigured or compromised agent can drain funds. Real banks enforce limits at the card level; t2000 enforces them at the agent level.
+
+### Controls
+
+| Control | Description | Example |
+|---------|-------------|---------|
+| Per-transaction limit | Max amount per single operation | `maxPerTx: 500` |
+| Daily send limit | Max outbound transfers per 24h (excludes save/withdraw) | `maxDailySend: 1000` |
+| Recipient whitelist | Only send to approved addresses | `allowedRecipients: ['0x...']` |
+| Protocol allowlist | Only interact with approved protocols | `allowedProtocols: ['navi', 'suilend', 'cetus']` |
+| Agent lock | Freeze all operations instantly | `t2000 lock` / `t2000 unlock` |
+| Alert threshold | Emit events when approaching limits (80%) | `alertThreshold: 0.8` |
+
+### CLI
+
+```bash
+t2000 config set maxDailySend 1000
+t2000 config set maxPerTx 500
+t2000 config set allowedRecipients add 0x...
+t2000 config set allowedProtocols navi suilend cetus
+t2000 lock                          # Freeze agent — no transactions
+t2000 unlock                        # Resume operations
+t2000 config show                   # Display all safeguards
+```
+
+### Design decisions
+
+- **Local enforcement (v1)**: Config stored in `~/.t2000/config.json`. Enforced in SDK before signing. Simple, no on-chain overhead.
+- **On-chain enforcement (v2)**: Move module wrapping transactions with limit checks. Protects even if private key is compromised.
+- **Limit change cool-down**: Lowering limits is instant. Raising limits requires 24h cool-down — prevents a compromised agent from removing its own guardrails.
+- **Scope**: Send limits apply to outbound transfers only. Save/withdraw are internal position movements and don't count.
+- **Alert mode**: Before hard-blocking, emit `limitApproaching` events at 80% threshold for operator awareness.
+
+### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 18.1 | Define safeguard config schema + storage | sdk | 2h | ⬜ |
+| 18.2 | Pre-sign enforcement layer in SDK | sdk | 4h | ⬜ |
+| 18.3 | CLI: `t2000 config` command group | cli | 3h | ⬜ |
+| 18.4 | CLI: `t2000 lock` / `t2000 unlock` | cli | 1h | ⬜ |
+| 18.5 | `limitApproaching` + `limitExceeded` events | sdk | 2h | ⬜ |
+| 18.6 | Limit change cool-down (24h for increases) | sdk | 2h | ⬜ |
+| 18.7 | Agent Skill: `t2000-safeguards` | skills | 1h | ⬜ |
+| 18.8 | Tests + docs | all | 3h | ⬜ |
+
+**Estimated total:** 3-4 days
+
+---
+
+## Phase 19 — Investment Account (Bluefin + Crypto Assets)
+
+**Goal:** A separate product tier for leveraged trading and crypto asset exposure. Extends t2000 from "bank" to "bank + brokerage" — checking, savings, and now investments.
+
+**Why a separate tier:** Investment carries liquidation risk and volatility — fundamentally different from the safe, predictable savings tier. Mixing them would violate the "bank account" trust model.
+
+### Account Tiers
+
+| Tier | What it is | Risk | Providers |
+|------|-----------|------|-----------|
+| **Checking** | USDC balance | None | Native |
+| **Savings** | Protocol deposits | Minimal (smart contract risk) | NAVI, Suilend |
+| **Investment** | Perps + crypto exposure | High (liquidation, volatility) | Bluefin, Cetus |
+
+### CLI
+
+```bash
+# Spot (buy/sell crypto assets)
+t2000 invest buy 0.1 BTC              # Buy wBTC via Cetus aggregator
+t2000 invest sell 0.1 BTC             # Sell wBTC back to USDC
+
+# Perps (leveraged positions via Bluefin)
+t2000 invest long BTC 100 --5x        # 5x leveraged long
+t2000 invest short ETH 50 --3x        # 3x leveraged short
+t2000 invest close <position-id>      # Close a position
+
+# Portfolio view
+t2000 invest positions                 # Open positions + PnL
+t2000 invest pnl                       # Realized + unrealized PnL
+
+# Combined balance
+t2000 balance
+  Checking:   $500.00 USDC
+  Savings:    $2,000.00 USDC (earning 5.4% APY)
+  Investment: $1,500.00 (0.5 BTC, 1 ETH, 1 BTC-PERP-LONG)
+  ──────────────────────────────────
+  Total:      $4,000.00
+```
+
+### Design decisions
+
+- **Spot vs perps clarity**: "buy/sell" = spot (own the asset). "long/short" = perps (leveraged exposure). CLI makes this unambiguous.
+- **Liquidation monitoring is mandatory**: Auto-protection required before any leveraged position is allowed. `t2000 serve` must run health checks.
+- **Risk budget**: Optional config: `maxInvestmentPct: 20` — total investment exposure capped at % of portfolio.
+- **Mandatory safeguards**: Investment tier requires safeguards (Phase 18) to be configured — max leverage, max position size, stop-loss.
+- **PnL tracking**: Track cost basis, realized/unrealized gains, per-position and aggregate.
+
+### Implementation
+
+#### 19.1 — New adapter type: `PerpsAdapter`
+
+```typescript
+export interface PerpsAdapter {
+  readonly id: string;
+  readonly name: string;
+  getFundingRate(pair: string): Promise<FundingRate>;
+  getPositions(address: string): Promise<PerpsPosition[]>;
+  buildOpenTx(address: string, params: OpenPositionParams): Promise<AdapterTxResult>;
+  buildCloseTx(address: string, positionId: string): Promise<AdapterTxResult>;
+  buildAdjustMarginTx(address: string, positionId: string, amount: number): Promise<AdapterTxResult>;
+}
+```
+
+#### 19.2 — Bluefin adapter (contract-first)
+
+Research Bluefin Move contracts, implement `BluefinAdapter`, add ProtocolDescriptor.
+
+#### 19.3 — Spot asset expansion
+
+Add wBTC, wETH to `SUPPORTED_ASSETS`. Cetus Aggregator V3 already routes these pairs.
+
+#### 19.4 — Auto-protection
+
+Before opening any leveraged position, verify safeguards are configured. Monitor health while positions are open. Auto-close at critical thresholds.
+
+### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 19.1 | Define `PerpsAdapter` interface | sdk | 2h | ⬜ |
+| 19.2 | Research Bluefin Move contracts + API | sdk | 4h | ⬜ |
+| 19.3 | Implement `BluefinAdapter` (contract-first) | sdk | 8h | ⬜ |
+| 19.4 | Add wBTC, wETH to `SUPPORTED_ASSETS` | sdk | 2h | ⬜ |
+| 19.5 | CLI: `t2000 invest` command group | cli | 6h | ⬜ |
+| 19.6 | Auto-protection + liquidation monitoring | sdk | 6h | ⬜ |
+| 19.7 | PnL tracking (cost basis, realized/unrealized) | sdk | 4h | ⬜ |
+| 19.8 | Risk budget enforcement | sdk | 2h | ⬜ |
+| 19.9 | Update `t2000 balance` for 3-tier display | cli | 2h | ⬜ |
+| 19.10 | Agent Skill: `t2000-invest` | skills | 1h | ⬜ |
+| 19.11 | Tests + docs | all | 4h | ⬜ |
+
+**Estimated total:** 2 weeks
+
+---
+
+## Phase 20 — Global Payments (Checking Account)
+
+**Goal:** Position `t2000 send` as a first-class global payments feature. Free, instant, borderless stablecoin transfers — the "checking account" experience.
+
+**Foundation:** `t2000 send` is already shipped and working. This phase adds UX polish and features that make it feel like a real payments product.
+
+### Features
+
+| Feature | Description | CLI |
+|---------|-------------|-----|
+| Contact book | Named addresses for frequent recipients | `t2000 send 50 to @alice` |
+| Payment receipts | Shareable links after each send | Auto-generated on send |
+| Payment requests | Generate a "pay me" link | `t2000 request 50 from @bob` |
+| Recurring payments | Scheduled sends (via `t2000 serve`) | `t2000 send 50 to @alice --recurring monthly` |
+
+### Design decisions
+
+- **Contact book**: Stored in `~/.t2000/contacts.json`. Aliases map to addresses. Managed via `t2000 contacts add @alice 0x...`.
+- **Keep it simple first**: Ship contact book + receipts. Defer recurring payments and payment requests to a later sub-phase.
+- **Receipt format**: Suiscan link + amount + timestamp + recipient — printable/shareable.
+
+### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 20.1 | Contact book (storage, add/remove/list) | sdk + cli | 3h | ⬜ |
+| 20.2 | `t2000 contacts` CLI command | cli | 2h | ⬜ |
+| 20.3 | Payment receipts (post-send shareable link) | cli | 2h | ⬜ |
+| 20.4 | Payment requests (`t2000 request`) | cli + sdk | 4h | ⬜ |
+| 20.5 | Recurring payments (scheduler in `t2000 serve`) | cli + sdk | 4h | ⬜ |
+| 20.6 | Tests + docs | all | 2h | ⬜ |
+
+**Estimated total:** 3-4 days
+
+---
+
 ## Priority Summary
 
 | Phase | Feature | Priority | Effort | Status |
 |-------|---------|----------|--------|--------|
 | **10** | Multi-Stable (USDT, USDe) | **P0** | 2-3 days | ⬜ Next |
 | **11** | Yield Optimizer (rebalance, events) | **P0** | 2-3 days | 🔶 Partially shipped |
-| **12** | Bluefin Perps Adapter | **P0** | 1 week | ⬜ In discussion |
+| **18** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ |
+| **19** | Investment Account (Bluefin perps + crypto) | **P0** | 2 weeks | ⬜ In discussion |
 | **13** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
 | **14** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
+| **20** | Global Payments (contacts, receipts) | P1 | 3-4 days | 🔶 Send shipped |
 | **15** | Multi-Agent Profiles | P2 | 1 week | ⬜ |
-| **16** | Investment Account (WETH, WBTC) | P2 | 2 weeks | ⬜ |
+| **16** | Investment Account — volatile assets (WETH, WBTC spot) | P2 | 2 weeks | ⬜ Merged into Phase 19 |
 | **17** | Cross-Chain (CCTP) | P3 | TBD | Blocked |
 
 ---
