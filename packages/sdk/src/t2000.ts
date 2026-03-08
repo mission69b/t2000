@@ -263,6 +263,10 @@ export class T2000 extends EventEmitter<T2000Events> {
       }
     } else {
       amount = params.amount;
+      const bal = await queryBalance(this.client, this._address);
+      if (amount > bal.available) {
+        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient USDC. Available: $${bal.available.toFixed(2)}, requested: $${amount.toFixed(2)}`);
+      }
     }
     const fee = calculateFee('save', amount);
     const saveAmount = amount;
@@ -304,6 +308,10 @@ export class T2000 extends EventEmitter<T2000Events> {
     const asset = (params.asset ?? 'USDC').toUpperCase();
     if (asset !== 'USDC') {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for withdraw. Got: ${asset}`);
+    }
+
+    if (params.amount === 'all' && !params.protocol) {
+      return this.withdrawAllProtocols(asset);
     }
 
     const adapter = await this.resolveLending(params.protocol, asset, 'withdraw');
@@ -351,6 +359,56 @@ export class T2000 extends EventEmitter<T2000Events> {
       amount: effectiveAmount,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  private async withdrawAllProtocols(asset: string): Promise<WithdrawResult> {
+    const allPositions = await this.registry.allPositions(this._address);
+    const withSupply = allPositions.filter(
+      (p) => p.positions.supplies.some((s) => s.asset === asset && s.amount > 0.001),
+    );
+
+    if (withSupply.length === 0) {
+      throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
+    }
+
+    let totalWithdrawn = 0;
+    let lastDigest = '';
+    let totalGasCost = 0;
+    let lastGasMethod: WithdrawResult['gasMethod'] = 'self-funded';
+
+    for (const pos of withSupply) {
+      const adapter = this.registry.getLending(pos.protocolId);
+      if (!adapter) continue;
+
+      const maxResult = await adapter.maxWithdraw(this._address, asset);
+      if (maxResult.maxAmount <= 0.001) continue;
+
+      let effectiveAmount = maxResult.maxAmount;
+
+      const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+        const built = await adapter.buildWithdrawTx(this._address, maxResult.maxAmount, asset);
+        effectiveAmount = built.effectiveAmount;
+        return built.tx;
+      });
+
+      totalWithdrawn += effectiveAmount;
+      lastDigest = gasResult.digest;
+      totalGasCost += gasResult.gasCostSui;
+      lastGasMethod = gasResult.gasMethod;
+      this.emitBalanceChange('USDC', effectiveAmount, 'withdraw', gasResult.digest);
+    }
+
+    if (totalWithdrawn <= 0) {
+      throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
+    }
+
+    return {
+      success: true,
+      tx: lastDigest,
+      amount: totalWithdrawn,
+      gasCost: totalGasCost,
+      gasMethod: lastGasMethod,
     };
   }
 
