@@ -340,3 +340,326 @@ describe('multi-protocol edge cases', () => {
     expect(rates[0].protocolId).toBe('good');
   });
 });
+
+// ─── borrow/repay routing with supportsSameAssetBorrow ────────
+
+describe('borrow routing — supportsSameAssetBorrow', () => {
+  let navi: LendingAdapter;
+  let suilend: LendingAdapter;
+  let registry: ProtocolRegistry;
+
+  beforeEach(() => {
+    navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      supportsSameAssetBorrow: true,
+      getRates: vi.fn().mockResolvedValue({ asset: 'USDC', saveApy: 5.5, borrowApy: 8.0 }),
+    });
+    suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      supportsSameAssetBorrow: false,
+      capabilities: ['save', 'withdraw'] as readonly AdapterCapability[],
+      getRates: vi.fn().mockResolvedValue({ asset: 'USDC', saveApy: 2.2, borrowApy: 5.5 }),
+    });
+    registry = new ProtocolRegistry();
+    registry.registerLending(navi);
+    registry.registerLending(suilend);
+  });
+
+  it('bestBorrowRate skips adapters without same-asset borrow', async () => {
+    const result = await registry.bestBorrowRate('USDC', { requireSameAssetBorrow: true });
+    expect(result.adapter.id).toBe('navi');
+  });
+
+  it('bestBorrowRate throws when no adapter supports borrow', async () => {
+    const registry = new ProtocolRegistry();
+    const saveOnly = createMockLending({
+      id: 'save-only',
+      name: 'Save Only',
+      capabilities: ['save', 'withdraw'] as readonly AdapterCapability[],
+      supportsSameAssetBorrow: false,
+    });
+    registry.registerLending(saveOnly);
+    await expect(registry.bestBorrowRate('USDC')).rejects.toThrow('No lending adapter supports borrowing USDC');
+  });
+
+  it('listLending filtered by borrow capability excludes save-only adapters', () => {
+    const borrowable = registry.listLending().filter(
+      a => a.supportedAssets.includes('USDC') &&
+           a.capabilities.includes('borrow') &&
+           a.supportsSameAssetBorrow,
+    );
+    expect(borrowable).toHaveLength(1);
+    expect(borrowable[0].id).toBe('navi');
+  });
+
+  it('listLending filtered by repay capability excludes save-only adapters', () => {
+    const repayable = registry.listLending().filter(
+      a => a.supportedAssets.includes('USDC') && a.capabilities.includes('repay'),
+    );
+    expect(repayable).toHaveLength(1);
+    expect(repayable[0].id).toBe('navi');
+  });
+
+  it('bestBorrowRate picks lowest APY among eligible', async () => {
+    const cheapBorrow = createMockLending({
+      id: 'cheap',
+      name: 'Cheap Borrow',
+      supportsSameAssetBorrow: true,
+      getRates: vi.fn().mockResolvedValue({ asset: 'USDC', saveApy: 3.0, borrowApy: 2.0 }),
+    });
+    registry.registerLending(cheapBorrow);
+
+    const result = await registry.bestBorrowRate('USDC');
+    expect(result.adapter.id).toBe('cheap');
+    expect(result.rate.borrowApy).toBe(2.0);
+  });
+});
+
+// ─── positions() flattening across protocols ──────────────────
+
+describe('positions — multi-protocol flattening', () => {
+  it('flattens supplies from multiple protocols with correct protocol field', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 5.0, apy: 5.5 }],
+        borrows: [],
+      }),
+    });
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 2.5, apy: 2.2 }],
+        borrows: [],
+      }),
+    });
+    registry.registerLending(navi);
+    registry.registerLending(suilend);
+
+    const allPos = await registry.allPositions('0xtest');
+    const flattened = allPos.flatMap(p => [
+      ...p.positions.supplies.map(s => ({
+        protocol: p.protocolId,
+        asset: s.asset,
+        type: 'save' as const,
+        amount: s.amount,
+        apy: s.apy,
+      })),
+      ...p.positions.borrows.map(b => ({
+        protocol: p.protocolId,
+        asset: b.asset,
+        type: 'borrow' as const,
+        amount: b.amount,
+        apy: b.apy,
+      })),
+    ]);
+
+    expect(flattened).toHaveLength(2);
+    expect(flattened.find(p => p.protocol === 'navi')?.amount).toBe(5.0);
+    expect(flattened.find(p => p.protocol === 'suilend')?.amount).toBe(2.5);
+  });
+
+  it('includes both supplies and borrows in flattened result', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 10.0, apy: 5.5 }],
+        borrows: [{ asset: 'USDC', amount: 3.0, apy: 8.0 }],
+      }),
+    });
+    registry.registerLending(navi);
+
+    const allPos = await registry.allPositions('0xtest');
+    const flattened = allPos.flatMap(p => [
+      ...p.positions.supplies.map(s => ({ protocol: p.protocolId, type: 'save' as const, amount: s.amount })),
+      ...p.positions.borrows.map(b => ({ protocol: p.protocolId, type: 'borrow' as const, amount: b.amount })),
+    ]);
+
+    expect(flattened).toHaveLength(2);
+    expect(flattened.find(p => p.type === 'save')?.amount).toBe(10.0);
+    expect(flattened.find(p => p.type === 'borrow')?.amount).toBe(3.0);
+  });
+});
+
+// ─── withdraw all --protocol (single protocol "all") ──────────
+
+describe('withdraw all --protocol (single protocol path)', () => {
+  it('withdraw all --protocol suilend only touches suilend adapter', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 5.0, apy: 5.5 }],
+        borrows: [],
+      }),
+      maxWithdraw: vi.fn().mockResolvedValue({ maxAmount: 5.0, healthFactorAfter: 999, currentHF: 999 }),
+    });
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 2.5, apy: 2.2 }],
+        borrows: [],
+      }),
+      maxWithdraw: vi.fn().mockResolvedValue({ maxAmount: 2.5, healthFactorAfter: 999, currentHF: 999 }),
+    });
+    registry.registerLending(navi);
+    registry.registerLending(suilend);
+
+    // When protocol is specified, getLending returns that specific adapter
+    const adapter = registry.getLending('suilend');
+    expect(adapter).toBe(suilend);
+    const max = await adapter!.maxWithdraw('0xtest', 'USDC');
+    expect(max.maxAmount).toBe(2.5);
+    // NAVI should not be touched
+    expect(navi.maxWithdraw).not.toHaveBeenCalled();
+  });
+});
+
+// ─── withdraw with active borrows (health factor guard) ───────
+
+describe('withdraw — health factor guard', () => {
+  it('maxWithdraw respects health factor when borrowed > 0', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      getHealth: vi.fn().mockResolvedValue({
+        healthFactor: 2.5,
+        supplied: 100,
+        borrowed: 50,
+        maxBorrow: 30,
+        liquidationThreshold: 0.8,
+      }),
+      maxWithdraw: vi.fn().mockResolvedValue({ maxAmount: 30.0, healthFactorAfter: 1.5, currentHF: 2.5 }),
+    });
+    registry.registerLending(navi);
+
+    const adapter = registry.getLending('navi')!;
+    const hf = await adapter.getHealth('0xtest');
+    expect(hf.borrowed).toBe(50);
+    expect(hf.healthFactor).toBe(2.5);
+
+    const max = await adapter.maxWithdraw('0xtest', 'USDC');
+    expect(max.maxAmount).toBe(30.0);
+    expect(max.healthFactorAfter).toBe(1.5);
+  });
+
+  it('protocol with no borrows allows full withdrawal', async () => {
+    const registry = new ProtocolRegistry();
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      getHealth: vi.fn().mockResolvedValue({
+        healthFactor: Infinity,
+        supplied: 50,
+        borrowed: 0,
+        maxBorrow: 40,
+        liquidationThreshold: 0.8,
+      }),
+      maxWithdraw: vi.fn().mockResolvedValue({ maxAmount: 50.0, healthFactorAfter: Infinity, currentHF: Infinity }),
+    });
+    registry.registerLending(suilend);
+
+    const adapter = registry.getLending('suilend')!;
+    const hf = await adapter.getHealth('0xtest');
+    expect(hf.borrowed).toBe(0);
+
+    const max = await adapter.maxWithdraw('0xtest', 'USDC');
+    expect(max.maxAmount).toBe(50.0);
+  });
+});
+
+// ─── swap adapter routing ─────────────────────────────────────
+
+describe('swap — multi-adapter routing', () => {
+  it('bestSwapQuote picks adapter with best output', async () => {
+    const registry = new ProtocolRegistry();
+    const { SwapAdapter: _unused, ...rest } = {} as Record<string, unknown>;
+    const worse: import('./adapters/types.js').SwapAdapter = {
+      id: 'worse-dex',
+      name: 'Worse DEX',
+      version: '1.0.0',
+      capabilities: ['swap'] as readonly AdapterCapability[],
+      init: vi.fn(),
+      getQuote: vi.fn().mockResolvedValue({ expectedOutput: 90, priceImpact: 0.03, poolPrice: 0.95 }),
+      buildSwapTx: vi.fn(),
+      getSupportedPairs: vi.fn().mockReturnValue([{ from: 'USDC', to: 'SUI' }, { from: 'SUI', to: 'USDC' }]),
+      getPoolPrice: vi.fn().mockResolvedValue(0.95),
+    };
+    const better: import('./adapters/types.js').SwapAdapter = {
+      id: 'better-dex',
+      name: 'Better DEX',
+      version: '1.0.0',
+      capabilities: ['swap'] as readonly AdapterCapability[],
+      init: vi.fn(),
+      getQuote: vi.fn().mockResolvedValue({ expectedOutput: 105, priceImpact: 0.01, poolPrice: 1.05 }),
+      buildSwapTx: vi.fn(),
+      getSupportedPairs: vi.fn().mockReturnValue([{ from: 'USDC', to: 'SUI' }, { from: 'SUI', to: 'USDC' }]),
+      getPoolPrice: vi.fn().mockResolvedValue(1.05),
+    };
+    registry.registerSwap(worse);
+    registry.registerSwap(better);
+
+    const result = await registry.bestSwapQuote('USDC', 'SUI', 100);
+    expect(result.adapter.id).toBe('better-dex');
+    expect(result.quote.expectedOutput).toBe(105);
+  });
+
+  it('bestSwapQuote skips adapter that throws', async () => {
+    const registry = new ProtocolRegistry();
+    const broken: import('./adapters/types.js').SwapAdapter = {
+      id: 'broken-dex',
+      name: 'Broken DEX',
+      version: '1.0.0',
+      capabilities: ['swap'] as readonly AdapterCapability[],
+      init: vi.fn(),
+      getQuote: vi.fn().mockRejectedValue(new Error('pool not found')),
+      buildSwapTx: vi.fn(),
+      getSupportedPairs: vi.fn().mockReturnValue([{ from: 'USDC', to: 'SUI' }]),
+      getPoolPrice: vi.fn(),
+    };
+    const good: import('./adapters/types.js').SwapAdapter = {
+      id: 'good-dex',
+      name: 'Good DEX',
+      version: '1.0.0',
+      capabilities: ['swap'] as readonly AdapterCapability[],
+      init: vi.fn(),
+      getQuote: vi.fn().mockResolvedValue({ expectedOutput: 100, priceImpact: 0.01, poolPrice: 1.0 }),
+      buildSwapTx: vi.fn(),
+      getSupportedPairs: vi.fn().mockReturnValue([{ from: 'USDC', to: 'SUI' }]),
+      getPoolPrice: vi.fn().mockResolvedValue(1.0),
+    };
+    registry.registerSwap(broken);
+    registry.registerSwap(good);
+
+    const result = await registry.bestSwapQuote('USDC', 'SUI', 100);
+    expect(result.adapter.id).toBe('good-dex');
+  });
+
+  it('bestSwapQuote throws when no adapter supports pair', async () => {
+    const registry = new ProtocolRegistry();
+    const dex: import('./adapters/types.js').SwapAdapter = {
+      id: 'dex',
+      name: 'DEX',
+      version: '1.0.0',
+      capabilities: ['swap'] as readonly AdapterCapability[],
+      init: vi.fn(),
+      getQuote: vi.fn(),
+      buildSwapTx: vi.fn(),
+      getSupportedPairs: vi.fn().mockReturnValue([{ from: 'USDC', to: 'SUI' }]),
+      getPoolPrice: vi.fn(),
+    };
+    registry.registerSwap(dex);
+
+    await expect(registry.bestSwapQuote('BTC', 'ETH', 1)).rejects.toThrow('No swap adapter supports BTC → ETH');
+  });
+});
