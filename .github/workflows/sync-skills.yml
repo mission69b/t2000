@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout monorepo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: monorepo
 
       - name: Checkout skills repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: mission69b/t2000-skills
           token: ${{ secrets.SKILLS_SYNC_TOKEN }}
