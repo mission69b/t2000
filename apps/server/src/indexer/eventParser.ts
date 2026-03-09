@@ -167,12 +167,25 @@ export function parseTransfers(
 
     agentAddress = owner;
     const amt = Number(bc.amount);
+    const ct = bc.coinType.toLowerCase();
 
-    if (bc.coinType.includes('usdc') || bc.coinType.includes('USDC')) {
+    if (ct.includes('usdc')) {
       asset = 'USDC';
       amount = Math.abs(amt) / 1e6;
       action = amt > 0 ? 'receive' : 'send';
-    } else if (bc.coinType.includes('SUI') || bc.coinType === '0x2::sui::SUI') {
+    } else if (ct.includes('usdt')) {
+      asset = 'USDT';
+      amount = Math.abs(amt) / 1e6;
+      action = amt > 0 ? 'receive' : 'send';
+    } else if (ct.includes('sui_usde') || ct.includes('usde')) {
+      asset = 'USDe';
+      amount = Math.abs(amt) / 1e6;
+      action = amt > 0 ? 'receive' : 'send';
+    } else if (ct.includes('usdsui')) {
+      asset = 'USDsui';
+      amount = Math.abs(amt) / 1e6;
+      action = amt > 0 ? 'receive' : 'send';
+    } else if (ct.includes('sui') || bc.coinType === '0x2::sui::SUI') {
       asset = 'SUI';
       amount = Math.abs(amt) / 1e9;
       if (Math.abs(amt) > 10_000_000) {
