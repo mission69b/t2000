@@ -1,7 +1,7 @@
 # t2000 Roadmap — v2.0
 
 **Last updated:** March 2026
-**Current version:** v0.7.0 (SDK + CLI published on npm, x402 v0.3.0)
+**Current version:** v0.7.1 (SDK + CLI published on npm, x402 v0.3.0)
 
 ---
 
@@ -49,7 +49,7 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | ProtocolDescriptor pattern — scalable event tracking from SDK to indexer | ✅ |
 | CLI multi-protocol — `--protocol` flag, `rates`, `earn`, `positions` | ✅ |
 | Auto-routing — `t2000 save` picks best APY across protocols | ✅ |
-| Adapter compliance test suite — 286 tests across 19 files | ✅ |
+| Test suite — 317 tests across 20 files (unit + integration + compliance) | ✅ |
 | `CONTRIBUTING-ADAPTERS.md` — developer guide for new adapters | ✅ |
 | CI — Adapter Compliance job on PRs to main | ✅ |
 | Indexer — protocol-aware classification, `byProtocol` stats | ✅ |
@@ -176,61 +176,7 @@ Unit + integration tests for new assets. Publish updated SDK + CLI.
 
 ---
 
-## Phase 12 — Bluefin Perps Adapter
-
-**Goal:** Integrate Bluefin perpetual futures — agents can open/close positions, manage margin, and earn funding rates.
-
-**Status:** Initial contact made with Bluefin team. ProtocolDescriptor pattern ready for new adapter types.
-
-### What it enables
-
-```bash
-t2000 perps open long 100 USDC --leverage 5x    # Open leveraged long
-t2000 perps close <position-id>                   # Close position
-t2000 perps positions                             # View open positions
-t2000 perps funding                               # Check funding rates
-```
-
-### Implementation
-
-#### New adapter type: `PerpsAdapter`
-
-```typescript
-export interface PerpsAdapter {
-  readonly id: string;
-  readonly name: string;
-  readonly version: string;
-  readonly capabilities: readonly AdapterCapability[];
-
-  init(client: SuiJsonRpcClient): Promise<void>;
-
-  getFundingRate(pair: string): Promise<FundingRate>;
-  getPositions(address: string): Promise<PerpsPosition[]>;
-  buildOpenTx(address: string, params: OpenPositionParams): Promise<AdapterTxResult>;
-  buildCloseTx(address: string, positionId: string): Promise<AdapterTxResult>;
-  buildAdjustMarginTx(address: string, positionId: string, amount: number): Promise<AdapterTxResult>;
-}
-```
-
-### Tasks
-
-| # | Task | Package | Est | Status |
-|---|------|---------|-----|--------|
-| 12.1 | Define `PerpsAdapter` interface in types.ts | sdk | 2h | ⬜ |
-| 12.2 | Research Bluefin Move contracts + API | sdk | 4h | ⬜ |
-| 12.3 | Implement `BluefinAdapter` (contract-first) | sdk | 8h | ⬜ |
-| 12.4 | Add ProtocolDescriptor for Bluefin | sdk | 1h | ⬜ |
-| 12.5 | CLI: `t2000 perps` command group | cli | 4h | ⬜ |
-| 12.6 | Update registry for perps routing | sdk | 2h | ⬜ |
-| 12.7 | Tests + compliance suite | sdk | 4h | ⬜ |
-| 12.8 | Agent Skill: `t2000-perps` | skills | 1h | ⬜ |
-| 12.9 | Docs + CONTRIBUTING update | docs | 1h | ⬜ |
-
-**Estimated total:** 1 week
-
----
-
-## Phase 13 — `t2000 monetize` — x402 Server Middleware
+## Phase 12 — `t2000 monetize` — x402 Server Middleware
 
 **Goal:** Let agents sell API access. The reverse of `t2000 pay` — agents can monetize their own endpoints.
 
@@ -246,17 +192,17 @@ Wraps any HTTP server with x402 payment gating.
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 13.1 | `x402Middleware` for Hono | x402 | 4h | ⬜ |
-| 13.2 | `x402Middleware` for Express | x402 | 2h | ⬜ |
-| 13.3 | `t2000 monetize` CLI command | cli | 3h | ⬜ |
-| 13.4 | `t2000-monetize` Agent Skill | skills | 1h | ⬜ |
-| 13.5 | Tests + docs | all | 2h | ⬜ |
+| 12.1 | `x402Middleware` for Hono | x402 | 4h | ⬜ |
+| 12.2 | `x402Middleware` for Express | x402 | 2h | ⬜ |
+| 12.3 | `t2000 monetize` CLI command | cli | 3h | ⬜ |
+| 12.4 | `t2000-monetize` Agent Skill | skills | 1h | ⬜ |
+| 12.5 | Tests + docs | all | 2h | ⬜ |
 
 **Estimated total:** 2-3 days
 
 ---
 
-## Phase 14 — Dashboard + Agent Network (v1.0)
+## Phase 13 — Dashboard + Agent Network (v1.0)
 
 **Goal:** Public dashboard showing live agent activity. The growth engine.
 
@@ -275,19 +221,19 @@ Wraps any HTTP server with x402 payment gating.
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 14.1 | Dashboard layout + KPI cards | web | 4h | ⬜ |
-| 14.2 | Agent leaderboard (rank by supplied, yield, tx count) | web | 4h | ⬜ |
-| 14.3 | Agent detail page (/agent/0x...) | web | 4h | ⬜ |
-| 14.4 | `--public` opt-in flag on `t2000 init` | cli + sdk | 2h | ⬜ |
-| 14.5 | OG image generation for agent cards | web | 3h | ⬜ |
-| 14.6 | Embeddable badges | web | 2h | ⬜ |
-| 14.7 | API routes for dashboard data | web | 3h | ⬜ |
+| 13.1 | Dashboard layout + KPI cards | web | 4h | ⬜ |
+| 13.2 | Agent leaderboard (rank by supplied, yield, tx count) | web | 4h | ⬜ |
+| 13.3 | Agent detail page (/agent/0x...) | web | 4h | ⬜ |
+| 13.4 | `--public` opt-in flag on `t2000 init` | cli + sdk | 2h | ⬜ |
+| 13.5 | OG image generation for agent cards | web | 3h | ⬜ |
+| 13.6 | Embeddable badges | web | 2h | ⬜ |
+| 13.7 | API routes for dashboard data | web | 3h | ⬜ |
 
 **Estimated total:** 2 weeks
 
 ---
 
-## Phase 15 — Multi-Agent Profiles (v1.0)
+## Phase 14 — Multi-Agent Profiles (v1.0)
 
 **Goal:** Run multiple agents from one machine with separate bank accounts.
 
@@ -308,47 +254,17 @@ t2000 agents                     # List all profiles
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 15.1 | Profile system (`--profile` flag, agents directory) | sdk + cli | 4h | ⬜ |
-| 15.2 | `T2000Fleet` SDK class | sdk | 4h | ⬜ |
-| 15.3 | `t2000 agents` + `t2000 use` commands | cli | 2h | ⬜ |
-| 15.4 | Webhook configuration for events | sdk | 3h | ⬜ |
-| 15.5 | Tests + docs | all | 2h | ⬜ |
+| 14.1 | Profile system (`--profile` flag, agents directory) | sdk + cli | 4h | ⬜ |
+| 14.2 | `T2000Fleet` SDK class | sdk | 4h | ⬜ |
+| 14.3 | `t2000 agents` + `t2000 use` commands | cli | 2h | ⬜ |
+| 14.4 | Webhook configuration for events | sdk | 3h | ⬜ |
+| 14.5 | Tests + docs | all | 2h | ⬜ |
 
 **Estimated total:** 1 week
 
 ---
 
-## Phase 16 — Investment Account (v1.1)
-
-**Goal:** Support volatile assets (WETH, WBTC) for agents that want exposure beyond stablecoins.
-
-**Prerequisites:** Auto-protect (auto-repay at low HF), health monitoring alerts, stop-loss logic.
-
-### What it includes
-
-- New asset tier: "investment" (vs "banking" for stables)
-- WETH, WBTC support for save/borrow/swap
-- Health factor monitoring with auto-protection
-- Risk warnings in CLI output
-- Separate `t2000 invest` command (distinct from `t2000 save`)
-
-### Tasks
-
-| # | Task | Package | Est | Status |
-|---|------|---------|-----|--------|
-| 16.1 | Add WETH, WBTC to `SUPPORTED_ASSETS` (investment tier) | sdk | 2h | ⬜ |
-| 16.2 | Cetus pool IDs for WETH/WBTC pairs | sdk | 2h | ⬜ |
-| 16.3 | Auto-protect: auto-repay at HF < 1.2 | sdk | 6h | ⬜ |
-| 16.4 | `t2000 invest` command | cli | 3h | ⬜ |
-| 16.5 | Health monitoring daemon in `t2000 serve` | cli + sdk | 4h | ⬜ |
-| 16.6 | Investment-tier Agent Skills | skills | 2h | ⬜ |
-| 16.7 | Tests | sdk | 4h | ⬜ |
-
-**Estimated total:** 2 weeks
-
----
-
-## Phase 17 — Cross-Chain (v1.2)
+## Phase 15 — Cross-Chain (v1.2)
 
 **Goal:** Send and receive across chains.
 
@@ -361,7 +277,7 @@ t2000 agents                     # List all profiles
 
 ---
 
-## Phase 18 — Agent Safeguards
+## Phase 16 — Agent Safeguards
 
 **Goal:** Spending limits, transaction controls, and safety guardrails for autonomous agents. Like a real bank's card controls — but for AI agents operating unsupervised.
 
@@ -402,22 +318,26 @@ t2000 config show                   # Display all safeguards
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 18.1 | Define safeguard config schema + storage | sdk | 2h | ⬜ |
-| 18.2 | Pre-sign enforcement layer in SDK | sdk | 4h | ⬜ |
-| 18.3 | CLI: `t2000 config` command group | cli | 3h | ⬜ |
-| 18.4 | CLI: `t2000 lock` / `t2000 unlock` | cli | 1h | ⬜ |
-| 18.5 | `limitApproaching` + `limitExceeded` events | sdk | 2h | ⬜ |
-| 18.6 | Limit change cool-down (24h for increases) | sdk | 2h | ⬜ |
-| 18.7 | Agent Skill: `t2000-safeguards` | skills | 1h | ⬜ |
-| 18.8 | Tests + docs | all | 3h | ⬜ |
+| 16.1 | Define safeguard config schema + storage | sdk | 2h | ⬜ |
+| 16.2 | Pre-sign enforcement layer in SDK | sdk | 4h | ⬜ |
+| 16.3 | CLI: `t2000 config` command group | cli | 3h | ⬜ |
+| 16.4 | CLI: `t2000 lock` / `t2000 unlock` | cli | 1h | ⬜ |
+| 16.5 | `limitApproaching` + `limitExceeded` events | sdk | 2h | ⬜ |
+| 16.6 | Limit change cool-down (24h for increases) | sdk | 2h | ⬜ |
+| 16.7 | Agent Skill: `t2000-safeguards` | skills | 1h | ⬜ |
+| 16.8 | Tests + docs | all | 3h | ⬜ |
 
 **Estimated total:** 3-4 days
 
 ---
 
-## Phase 19 — Investment Account (Bluefin + Crypto Assets)
+## Phase 17 — Investment Account (Bluefin + Crypto Assets)
 
-**Goal:** A separate product tier for leveraged trading and crypto asset exposure. Extends t2000 from "bank" to "bank + brokerage" — checking, savings, and now investments.
+**Goal:** A separate product tier for leveraged trading and crypto asset exposure. Extends t2000 from "bank" to "bank + brokerage" — checking, savings, and now investments. Merges the previously separate "Bluefin Perps" and "Volatile Assets" concepts into one coherent phase.
+
+**Status:** Initial contact made with Bluefin team. ProtocolDescriptor pattern ready for new adapter types.
+
+**Prerequisites:** Phase 16 (Agent Safeguards) — investment tier requires safeguards to be configured before any leveraged position.
 
 **Why a separate tier:** Investment carries liquidation risk and volatility — fundamentally different from the safe, predictable savings tier. Mixing them would violate the "bank account" trust model.
 
@@ -444,6 +364,7 @@ t2000 invest close <position-id>      # Close a position
 # Portfolio view
 t2000 invest positions                 # Open positions + PnL
 t2000 invest pnl                       # Realized + unrealized PnL
+t2000 invest funding                   # Check funding rates
 
 # Combined balance
 t2000 balance
@@ -459,17 +380,23 @@ t2000 balance
 - **Spot vs perps clarity**: "buy/sell" = spot (own the asset). "long/short" = perps (leveraged exposure). CLI makes this unambiguous.
 - **Liquidation monitoring is mandatory**: Auto-protection required before any leveraged position is allowed. `t2000 serve` must run health checks.
 - **Risk budget**: Optional config: `maxInvestmentPct: 20` — total investment exposure capped at % of portfolio.
-- **Mandatory safeguards**: Investment tier requires safeguards (Phase 18) to be configured — max leverage, max position size, stop-loss.
+- **Mandatory safeguards**: Investment tier requires safeguards (Phase 16) to be configured — max leverage, max position size, stop-loss.
 - **PnL tracking**: Track cost basis, realized/unrealized gains, per-position and aggregate.
+- **Contract-first**: Follow the same pattern as NAVI/Suilend — no Bluefin SDK dependency, direct Move calls.
 
 ### Implementation
 
-#### 19.1 — New adapter type: `PerpsAdapter`
+#### 17.1 — New adapter type: `PerpsAdapter`
 
 ```typescript
 export interface PerpsAdapter {
   readonly id: string;
   readonly name: string;
+  readonly version: string;
+  readonly capabilities: readonly AdapterCapability[];
+
+  init(client: SuiJsonRpcClient): Promise<void>;
+
   getFundingRate(pair: string): Promise<FundingRate>;
   getPositions(address: string): Promise<PerpsPosition[]>;
   buildOpenTx(address: string, params: OpenPositionParams): Promise<AdapterTxResult>;
@@ -478,15 +405,15 @@ export interface PerpsAdapter {
 }
 ```
 
-#### 19.2 — Bluefin adapter (contract-first)
+#### 17.2 — Bluefin adapter (contract-first)
 
 Research Bluefin Move contracts, implement `BluefinAdapter`, add ProtocolDescriptor.
 
-#### 19.3 — Spot asset expansion
+#### 17.3 — Spot asset expansion
 
 Add wBTC, wETH to `SUPPORTED_ASSETS`. Cetus Aggregator V3 already routes these pairs.
 
-#### 19.4 — Auto-protection
+#### 17.4 — Auto-protection
 
 Before opening any leveraged position, verify safeguards are configured. Monitor health while positions are open. Auto-close at critical thresholds.
 
@@ -494,23 +421,26 @@ Before opening any leveraged position, verify safeguards are configured. Monitor
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 19.1 | Define `PerpsAdapter` interface | sdk | 2h | ⬜ |
-| 19.2 | Research Bluefin Move contracts + API | sdk | 4h | ⬜ |
-| 19.3 | Implement `BluefinAdapter` (contract-first) | sdk | 8h | ⬜ |
-| 19.4 | Add wBTC, wETH to `SUPPORTED_ASSETS` | sdk | 2h | ⬜ |
-| 19.5 | CLI: `t2000 invest` command group | cli | 6h | ⬜ |
-| 19.6 | Auto-protection + liquidation monitoring | sdk | 6h | ⬜ |
-| 19.7 | PnL tracking (cost basis, realized/unrealized) | sdk | 4h | ⬜ |
-| 19.8 | Risk budget enforcement | sdk | 2h | ⬜ |
-| 19.9 | Update `t2000 balance` for 3-tier display | cli | 2h | ⬜ |
-| 19.10 | Agent Skill: `t2000-invest` | skills | 1h | ⬜ |
-| 19.11 | Tests + docs | all | 4h | ⬜ |
+| 17.1 | Define `PerpsAdapter` interface in types.ts | sdk | 2h | ⬜ |
+| 17.2 | Research Bluefin Move contracts + API | sdk | 4h | ⬜ |
+| 17.3 | Implement `BluefinAdapter` (contract-first) | sdk | 8h | ⬜ |
+| 17.4 | Add ProtocolDescriptor for Bluefin | sdk | 1h | ⬜ |
+| 17.5 | Add wBTC, wETH to `SUPPORTED_ASSETS` | sdk | 2h | ⬜ |
+| 17.6 | Update registry for perps routing | sdk | 2h | ⬜ |
+| 17.7 | CLI: `t2000 invest` command group | cli | 6h | ⬜ |
+| 17.8 | Auto-protection + liquidation monitoring | sdk | 6h | ⬜ |
+| 17.9 | PnL tracking (cost basis, realized/unrealized) | sdk | 4h | ⬜ |
+| 17.10 | Risk budget enforcement | sdk | 2h | ⬜ |
+| 17.11 | Update `t2000 balance` for 3-tier display | cli | 2h | ⬜ |
+| 17.12 | PerpsAdapter compliance test suite | sdk | 4h | ⬜ |
+| 17.13 | Agent Skill: `t2000-invest` | skills | 1h | ⬜ |
+| 17.14 | Docs + CONTRIBUTING update | docs | 1h | ⬜ |
 
-**Estimated total:** 2 weeks
+**Estimated total:** 2-3 weeks
 
 ---
 
-## Phase 20 — Global Payments (Checking Account)
+## Phase 18 — Global Payments (Checking Account)
 
 **Goal:** Position `t2000 send` as a first-class global payments feature. Free, instant, borderless stablecoin transfers — the "checking account" experience.
 
@@ -535,12 +465,12 @@ Before opening any leveraged position, verify safeguards are configured. Monitor
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 20.1 | Contact book (storage, add/remove/list) | sdk + cli | 3h | ⬜ |
-| 20.2 | `t2000 contacts` CLI command | cli | 2h | ⬜ |
-| 20.3 | Payment receipts (post-send shareable link) | cli | 2h | ⬜ |
-| 20.4 | Payment requests (`t2000 request`) | cli + sdk | 4h | ⬜ |
-| 20.5 | Recurring payments (scheduler in `t2000 serve`) | cli + sdk | 4h | ⬜ |
-| 20.6 | Tests + docs | all | 2h | ⬜ |
+| 18.1 | Contact book (storage, add/remove/list) | sdk + cli | 3h | ⬜ |
+| 18.2 | `t2000 contacts` CLI command | cli | 2h | ⬜ |
+| 18.3 | Payment receipts (post-send shareable link) | cli | 2h | ⬜ |
+| 18.4 | Payment requests (`t2000 request`) | cli + sdk | 4h | ⬜ |
+| 18.5 | Recurring payments (scheduler in `t2000 serve`) | cli + sdk | 4h | ⬜ |
+| 18.6 | Tests + docs | all | 2h | ⬜ |
 
 **Estimated total:** 3-4 days
 
@@ -552,16 +482,15 @@ Before opening any leveraged position, verify safeguards are configured. Monitor
 |-------|---------|----------|--------|--------|
 | **10** | Multi-Stable (USDT, USDe) | **P0** | 2-3 days | ⬜ Next |
 | **11** | Yield Optimizer (rebalance, events) | **P0** | 2-3 days | 🔶 Partially shipped |
-| **18** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ |
-| **19** | Investment Account (Bluefin perps + crypto) | **P0** | 2 weeks | ⬜ In discussion |
-| **13** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
-| **14** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
-| **20** | Global Payments (contacts, receipts) | P1 | 3-4 days | 🔶 Send shipped |
-| **15** | Multi-Agent Profiles | P2 | 1 week | ⬜ |
-| **16** | Investment Account — volatile assets (WETH, WBTC spot) | P2 | 2 weeks | ⬜ Merged into Phase 19 |
-| **17** | Cross-Chain (CCTP) | P3 | TBD | Blocked |
+| **16** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ |
+| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ In discussion |
+| **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
+| **13** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
+| **18** | Global Payments (contacts, receipts) | P1 | 3-4 days | 🔶 Send shipped |
+| **14** | Multi-Agent Profiles | P2 | 1 week | ⬜ |
+| **15** | Cross-Chain (CCTP) | P3 | TBD | Blocked |
 
 ---
 
 *t2000 — The first bank account for AI agents.*
-*Roadmap v2.0*
+*Roadmap v2.1*
