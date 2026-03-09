@@ -73,86 +73,54 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 
 ---
 
-## Phase 10 — Multi-Stable Support
+## Phase 10 — Yield Optimizer + Multi-Stable Infrastructure
 
-**Goal:** Expand the banking stack to support USDT, USDe, and USDsui alongside USDC. Stables-only for save/borrow — zero liquidation risk. Product-first UX: smart defaults, clear feedback, zero friction.
+**Goal:** Agents earn the best yield across all stablecoins automatically via `t2000 rebalance`. Core flows (save, send) stay USDC-first — simple, predictable, zero breaking changes. Borrow/repay unlock multi-stable for rate shopping and protocol compatibility.
 
-**Why stables-only:** The "bank account" positioning means dollar-denominated, safe, predictable. Volatile assets (WETH, WBTC) introduce liquidation risk for autonomous agents operating unsupervised. Those ship later as an "investment account" feature with proper risk management.
+**Why merged:** Phase 10 (multi-stable infrastructure) and Phase 11 (yield optimizer) are one product feature. The adapter infrastructure is a prerequisite for rebalance, not a standalone feature. Nobody runs `t2000 save 100 USDT` manually — they want the best yield, and `t2000 rebalance` delivers that.
 
-**Confirmed:** All 4 stables available on both NAVI and Suilend. Cetus Aggregator V3 routes all pairs.
+**Confirmed:** All 4 stables (USDC, suiUSDT, suiUSDe, USDsui) available on both NAVI and Suilend.
 
-### Supported Assets (after Phase 10)
+### What changes vs what stays the same
 
-| Asset | Type | Send | Save | Borrow | Swap | Notes |
-|-------|------|------|------|--------|------|-------|
-| USDC | Native (Circle) | ✅ | ✅ | ✅ | ✅ | Primary unit of account |
-| SUI | Native | ✅ | — | — | ✅ | Gas + exchange |
-| suiUSDT | Bridged stable | ✅ | ✅ | ✅ | ✅ | NAVI + Suilend |
-| suiUSDe | Bridged stable (Ethena) | ✅ | ✅ | ✅ | ✅ | NAVI + Suilend |
-| USDsui | Native (Bridge/Stripe) | ✅ | ✅ | ✅ | ✅ | NAVI + Suilend — launched March 2026 |
+| Command | Change | Multi-stable? |
+|---------|--------|---------------|
+| `save` | Unchanged — USDC at best rate | No |
+| `send` | Unchanged — USDC | No |
+| `borrow` | **Unlocked** — user picks asset | Yes |
+| `repay` | **Unlocked** — matches debt asset | Yes |
+| `withdraw` | **Handles any asset** | Yes |
+| **`rebalance`** | **New** — cross-asset yield optimization | Yes — the star feature |
+| `rates` | **Enhanced** — headline + all stables | Yes (read-only) |
+| `balance` | **Enhanced** — shows all stables held | Yes (read-only) |
+| `positions` / `earn` | **Enhanced** — multi-asset positions | Yes (read-only) |
 
-### Key UX Features
+### Key UX
 
-- **Smart save**: `t2000 save 100` (no asset) detects which stables you hold, picks best rate
-- **Rates headline**: `t2000 rates` leads with "Best yield: X% — asset on protocol"
-- **Dollar-first balance**: Total dollars with inline per-stable breakdown
-- **Helpful errors**: Protocol+asset mismatch shows alternatives, not just "not supported"
-- **Yield hint**: After saving, nudges if a better rate exists on a different asset (Phase 11 acts on it)
+```bash
+t2000 save 1000                     # USDC, simple (unchanged)
+t2000 rebalance --dry-run           # "Move USDC → USDT for +1.2% APY"
+t2000 rebalance                     # Swap + deposit automatically
+t2000 borrow 100 USDT               # Cheapest borrow rate
+t2000 rates                         # "⭐ Best: 5.4% — USDT on Suilend"
+```
 
 ### Tasks
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
 | 10.1 | Add USDT, USDe, USDsui to `SUPPORTED_ASSETS` + format utils | sdk | 1h | ⬜ |
-| 10.2 | Multi-stable balance query (`stables` field, total `available`) | sdk | 2h | ⬜ |
-| 10.3 | NAVI adapter multi-asset (dynamic pool lookup) | sdk | 4h | ⬜ |
-| 10.4 | Suilend adapter multi-asset (dynamic reserve lookup) | sdk | 3h | ⬜ |
-| 10.5 | Cetus adapter — all stable swap pairs + dynamic decimals | sdk | 2h | ⬜ |
-| 10.6 | T2000 class — smart save, `bestSaveRateAcrossAssets()`, yield hint | sdk | 3h | ⬜ |
-| 10.7 | CLI: balance, rates, save, withdraw, earn, positions (multi-asset UX) | cli | 3h | ⬜ |
-| 10.8 | Indexer + Stats API — multi-asset event parsing, yield snapshots | server + web | 2h | ⬜ |
-| 10.9 | Send + Gas — multi-stable send, auto top-up fallback | sdk | 1h | ⬜ |
-| 10.10 | Tests — unit, compliance, smart save, integration, CLI smoke | sdk + cli | 3h | ⬜ |
-| 10.11 | Docs — all 9 Skills, PRODUCT_FACTS, READMEs, CLAUDE.md, demos | all | 3h | ⬜ |
-| 10.12 | Website — page.tsx, demoData, TerminalDemo, Ticker, docs | web | 2h | ⬜ |
-| 10.13 | Marketing — multi-stable launch tweet, update marketing plan | marketing | 1h | ⬜ |
-| 10.14 | Build, bump to 0.8.0, publish, deploy server+indexer, verify CI | all | 1h | ⬜ |
+| 10.2 | Adapter infrastructure — NAVI, Suilend, Cetus multi-asset | sdk | 6h | ⬜ |
+| 10.3 | Balance + display — multi-stable balance, rates headline, positions | sdk + cli | 2h | ⬜ |
+| 10.4 | Borrow + repay — unlock multi-stable, helpful errors | sdk + cli | 2h | ⬜ |
+| 10.5 | Rebalance — `rebalance()` method + `t2000 rebalance` CLI | sdk + cli | 4h | ⬜ |
+| 10.6 | Tests — unit, compliance, rebalance, borrow, integration, CLI smoke | sdk + cli | 3h | ⬜ |
+| 10.7 | Docs — targeted skill updates, new rebalance skill, READMEs | all | 2h | ⬜ |
+| 10.8 | Build, bump to 0.8.0, publish, verify CI | all | 1h | ⬜ |
 
-**Estimated total:** 4-5 days
+**Estimated total:** 3 days
 
 **Detailed build plan:** `spec/phase10-multi-stable-build-plan.md`
-
----
-
-## Phase 11 — Yield Optimizer
-
-**Goal:** Agents automatically earn the best yield on their stables across protocols. Includes rebalancing and yield event notifications.
-
-### What's done vs remaining
-
-| Feature | Status |
-|---------|--------|
-| Suilend protocol adapter (save, withdraw, rates, positions) | ✅ Shipped in v0.5.x |
-| Protocol router (rate comparison, auto-routing) | ✅ Shipped (ProtocolRegistry) |
-| Multi-protocol `t2000 rates` | ✅ Shipped |
-| `--protocol` flag on save/withdraw/borrow/repay | ✅ Shipped |
-| Auto-routing `t2000 save` to best APY | ✅ Shipped |
-| Rebalance logic + `rebalance()` method | ⬜ |
-| `t2000 rebalance` CLI command | ⬜ |
-| `yieldOpportunity` event in event system | ⬜ |
-| Update Agent Skills with yield optimization guidance | ⬜ |
-
-### Remaining Tasks
-
-| # | Task | Package | Est | Status |
-|---|------|---------|-----|--------|
-| 11.3 | Rebalance logic + `rebalance()` method | sdk | 4h | ⬜ |
-| 11.4 | `t2000 rebalance` + `--dry-run` CLI command | cli | 3h | ⬜ |
-| 11.5 | `yieldOpportunity` event in event system | sdk | 2h | ⬜ |
-| 11.7 | Update Agent Skills with yield optimization guidance | skills | 1h | ⬜ |
-| 11.9 | Integration tests: rebalance flow | sdk | 3h | ⬜ |
-
-**Estimated total:** 2-3 days
 
 ---
 
@@ -614,8 +582,7 @@ jobs:
 | Phase | Feature | Priority | Effort | Status |
 |-------|---------|----------|--------|--------|
 | **19** | Security Audit + Trust Infrastructure | **P0** | 3-4 days | ✅ Done |
-| **10** | Multi-Stable (USDT, USDe) | **P0** | 2-3 days | ⬜ Next |
-| **11** | Yield Optimizer (rebalance, events) | **P0** | 2-3 days | 🔶 Partially shipped |
+| **10** | Yield Optimizer + Multi-Stable Infrastructure | **P0** | 3 days | ⬜ Next |
 | **16** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ |
 | **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ In discussion |
 | **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
@@ -627,4 +594,4 @@ jobs:
 ---
 
 *t2000 — The first bank account for AI agents.*
-*Roadmap v2.2*
+*Roadmap v2.3*
