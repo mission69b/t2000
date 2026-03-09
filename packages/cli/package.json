@@ -48,7 +48,7 @@
     "picocolors": "^1"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^25",
     "eslint": "^9",
     "tsup": "^8",
     "typescript": "^5"
