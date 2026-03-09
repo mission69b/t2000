@@ -43,7 +43,7 @@
     "@mysten/sui": "^2.6.0",
     "@t2000/sdk": "workspace:*",
     "@t2000/x402": "workspace:*",
-    "commander": "^13",
+    "commander": "^14",
     "hono": "^4",
     "picocolors": "^1"
   },
