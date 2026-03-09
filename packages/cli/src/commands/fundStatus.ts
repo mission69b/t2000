@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import pc from 'picocolors';
 import { T2000 } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError } from '../output.js';
@@ -14,9 +15,11 @@ export function registerFundStatus(program: Command) {
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
         const result = await agent.fundStatus();
+        const pos = await agent.positions();
+        const savePositions = pos.positions.filter((p) => p.type === 'save');
 
         if (isJsonMode()) {
-          printJson(result);
+          printJson({ ...result, positions: savePositions });
           return;
         }
 
@@ -27,7 +30,15 @@ export function registerFundStatus(program: Command) {
           console.log('  Savings: INACTIVE — run `t2000 save <amount>` to start earning');
         }
         printBlank();
-        printKeyValue('Saved', `$${result.supplied.toFixed(2)} @ ${result.apy.toFixed(1)}% APY`);
+        printKeyValue('Total Saved', `$${result.supplied.toFixed(2)}`);
+
+        if (savePositions.length > 0) {
+          for (const p of savePositions) {
+            console.log(`    ${pc.dim('•')} $${p.amount.toFixed(2)} ${p.asset} on ${p.protocol} @ ${p.apy.toFixed(1)}% APY`);
+          }
+        }
+
+        printKeyValue('Blended APY', `${result.apy.toFixed(1)}%`);
         printKeyValue('Earned today', `~$${result.earnedToday.toFixed(4)}`);
         printKeyValue('Earned all time', `~$${result.earnedAllTime.toFixed(4)}`);
         printKeyValue('Monthly projected', `~$${result.projectedMonthly.toFixed(2)}/month`);

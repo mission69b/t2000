@@ -3,7 +3,6 @@
 # Run: T2000_PIN=your-pin bash scripts/cli/test-borrow-multi.sh
 # Requires: savings deposited first (t2000 save 1)
 
-set -e
 PASS=0
 FAIL=0
 
@@ -38,7 +37,7 @@ OUTPUT=$(t2000 borrow 0.1 USDT --protocol navi 2>&1) || true
 echo "$OUTPUT" | grep -q "Borrowed"
 check $? "borrow USDT on navi succeeds"
 
-echo "$OUTPUT" | grep -q "USDT"
+echo "$OUTPUT" | grep -q "USDT" 2>/dev/null
 check $? "borrow output shows USDT asset"
 
 echo ""
