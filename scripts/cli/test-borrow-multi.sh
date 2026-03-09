@@ -22,19 +22,19 @@ echo "── CLI: Multi-Stable Borrow + Repay ──"
 
 echo ""
 echo "   t2000 borrow 0.1 USDC (default)"
-OUTPUT=$(t2000 borrow 0.1 2>&1)
+OUTPUT=$(t2000 borrow 0.1 2>&1) || true
 echo "$OUTPUT" | grep -q "Borrowed"
 check $? "borrow USDC succeeds"
 
 echo ""
 echo "   t2000 repay 0.1 USDC"
-OUTPUT=$(t2000 repay 0.1 2>&1)
+OUTPUT=$(t2000 repay 0.1 2>&1) || true
 echo "$OUTPUT" | grep -q "Repaid"
 check $? "repay USDC succeeds"
 
 echo ""
 echo "   t2000 borrow 0.1 USDT --protocol navi"
-OUTPUT=$(t2000 borrow 0.1 USDT --protocol navi 2>&1)
+OUTPUT=$(t2000 borrow 0.1 USDT --protocol navi 2>&1) || true
 echo "$OUTPUT" | grep -q "Borrowed"
 check $? "borrow USDT on navi succeeds"
 
@@ -43,13 +43,13 @@ check $? "borrow output shows USDT asset"
 
 echo ""
 echo "   t2000 repay 0.1 USDT --protocol navi"
-OUTPUT=$(t2000 repay 0.1 USDT --protocol navi 2>&1)
+OUTPUT=$(t2000 repay 0.1 USDT --protocol navi 2>&1) || true
 echo "$OUTPUT" | grep -q "Repaid"
 check $? "repay USDT on navi succeeds"
 
 echo ""
 echo "   t2000 positions (check multi-asset display)"
-OUTPUT=$(t2000 positions 2>&1)
+OUTPUT=$(t2000 positions 2>&1) || true
 echo "$OUTPUT" | grep -qE "Savings|No open"
 check $? "positions shows output"
 
