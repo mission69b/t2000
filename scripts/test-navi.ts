@@ -28,6 +28,15 @@ async function main() {
     assert(rates.USDC.saveApy > 0, 'Save APY > 0');
     assert(rates.USDC.borrowApy > 0, 'Borrow APY > 0');
     assert(rates.USDC.borrowApy > rates.USDC.saveApy, 'Borrow APY > Save APY');
+
+    const assets = Object.keys(rates);
+    console.log(`   Assets with rates: ${assets.join(', ')}`);
+    assert(assets.includes('USDC'), 'rates include USDC');
+    assert(assets.length >= 2, `Multi-stable rates returned (${assets.length} assets)`);
+    for (const asset of assets) {
+      assert(typeof rates[asset].saveApy === 'number', `${asset} saveApy is a number`);
+      assert(typeof rates[asset].borrowApy === 'number', `${asset} borrowApy is a number`);
+    }
   });
 
   await runSection('Positions (baseline)', async () => {

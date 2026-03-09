@@ -1,21 +1,22 @@
 ---
 name: t2000-borrow
 description: >-
-  Borrow USDC against savings collateral. Use when asked to borrow, take
-  a loan, get credit, leverage savings, or access funds without
-  withdrawing from savings. A 0.05% protocol fee applies.
+  Borrow stablecoins (USDC, USDT, USDe, USDsui) against savings collateral.
+  Use when asked to borrow, take a loan, get credit, leverage savings, or
+  access funds without withdrawing from savings. A 0.05% protocol fee applies.
 license: MIT
 metadata:
   author: t2000
-  version: "1.2"
+  version: "1.3"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
-# t2000: Borrow USDC
+# t2000: Borrow Stablecoins
 
 ## Purpose
 Take a collateralized loan using savings deposits as collateral.
-Borrowed USDC goes to the available balance. A 0.05% protocol fee applies.
+Borrowed funds go to the available balance. A 0.05% protocol fee applies.
+Supports USDC, USDT, USDe, and USDsui — shop for the cheapest borrow rate.
 
 ## Command
 ```bash
@@ -23,11 +24,13 @@ t2000 borrow <amount> [asset]
 
 # Examples:
 t2000 borrow 40 USDC
-t2000 borrow 40
-t2000 borrow 0.5
+t2000 borrow 40              # defaults to USDC
+t2000 borrow 100 USDT        # borrow USDT instead
+t2000 borrow 50 USDe --protocol navi
 ```
 
-Asset defaults to USDC if omitted.
+Asset defaults to USDC if omitted. Check `t2000 rates` to compare borrow
+rates across assets and protocols before borrowing.
 
 ## Safety
 Before borrowing, t2000 checks:
@@ -45,7 +48,7 @@ If the amount exceeds the safe limit, the CLI shows:
 
 ## Output
 ```
-✓ Borrowed $XX.XX USDC
+✓ Borrowed $XX.XX USDT
   Health Factor: X.XX
   Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
@@ -53,3 +56,4 @@ If the amount exceeds the safe limit, the CLI shows:
 ## Error handling
 - `NO_COLLATERAL`: no savings deposited to borrow against
 - `HEALTH_FACTOR_TOO_LOW`: borrow would drop HF below 1.5. Error data includes `maxBorrow`.
+- `ASSET_NOT_SUPPORTED`: no protocol supports the requested asset for borrowing. Includes alternatives.

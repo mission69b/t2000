@@ -7,7 +7,7 @@ import type {
   ProtocolDescriptor,
 } from './types.js';
 import * as cetusProtocol from '../protocols/cetus.js';
-import { CETUS_PACKAGE } from '../constants.js';
+import { CETUS_PACKAGE, STABLE_ASSETS } from '../constants.js';
 
 export const descriptor: ProtocolDescriptor = {
   id: 'cetus',
@@ -70,10 +70,16 @@ export class CetusAdapter implements SwapAdapter {
   }
 
   getSupportedPairs(): Array<{ from: string; to: string }> {
-    return [
+    const pairs: Array<{ from: string; to: string }> = [
       { from: 'USDC', to: 'SUI' },
       { from: 'SUI', to: 'USDC' },
     ];
+    for (const a of STABLE_ASSETS) {
+      for (const b of STABLE_ASSETS) {
+        if (a !== b) pairs.push({ from: a, to: b });
+      }
+    }
+    return pairs;
   }
 
   async getPoolPrice(): Promise<number> {

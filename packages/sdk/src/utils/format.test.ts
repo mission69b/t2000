@@ -4,12 +4,16 @@ import {
   suiToMist,
   usdcToRaw,
   rawToUsdc,
+  stableToRaw,
+  rawToStable,
+  getDecimals,
   rawToDisplay,
   displayToRaw,
   bpsToPercent,
   formatUsd,
   formatSui,
   formatLargeNumber,
+  normalizeAsset,
 } from './format.js';
 
 describe('format utilities', () => {
@@ -166,6 +170,79 @@ describe('format utilities', () => {
 
     it('formats exactly 1K', () => {
       expect(formatLargeNumber(1_000)).toBe('1.0K');
+    });
+  });
+
+  describe('stableToRaw', () => {
+    it('converts 100 USDC (6 decimals) to raw', () => {
+      expect(stableToRaw(100, 6)).toBe(100_000_000n);
+    });
+
+    it('converts 50.5 USDT (6 decimals) to raw', () => {
+      expect(stableToRaw(50.5, 6)).toBe(50_500_000n);
+    });
+  });
+
+  describe('rawToStable', () => {
+    it('converts raw to 100 USDC', () => {
+      expect(rawToStable(100_000_000n, 6)).toBe(100);
+    });
+  });
+
+  describe('getDecimals', () => {
+    it('returns 6 for USDC', () => {
+      expect(getDecimals('USDC')).toBe(6);
+    });
+
+    it('returns 6 for USDT', () => {
+      expect(getDecimals('USDT')).toBe(6);
+    });
+
+    it('returns 6 for USDe', () => {
+      expect(getDecimals('USDe')).toBe(6);
+    });
+
+    it('returns 6 for USDsui', () => {
+      expect(getDecimals('USDsui')).toBe(6);
+    });
+
+    it('returns 9 for SUI', () => {
+      expect(getDecimals('SUI')).toBe(9);
+    });
+  });
+
+  describe('normalizeAsset', () => {
+    it('returns canonical casing for USDC', () => {
+      expect(normalizeAsset('usdc')).toBe('USDC');
+      expect(normalizeAsset('USDC')).toBe('USDC');
+      expect(normalizeAsset('Usdc')).toBe('USDC');
+    });
+
+    it('returns canonical casing for USDe', () => {
+      expect(normalizeAsset('usde')).toBe('USDe');
+      expect(normalizeAsset('USDE')).toBe('USDe');
+      expect(normalizeAsset('USDe')).toBe('USDe');
+    });
+
+    it('returns canonical casing for USDsui', () => {
+      expect(normalizeAsset('usdsui')).toBe('USDsui');
+      expect(normalizeAsset('USDSUI')).toBe('USDsui');
+      expect(normalizeAsset('USDsui')).toBe('USDsui');
+    });
+
+    it('returns canonical casing for USDT', () => {
+      expect(normalizeAsset('usdt')).toBe('USDT');
+      expect(normalizeAsset('USDT')).toBe('USDT');
+    });
+
+    it('returns canonical casing for SUI', () => {
+      expect(normalizeAsset('sui')).toBe('SUI');
+      expect(normalizeAsset('SUI')).toBe('SUI');
+    });
+
+    it('passes through unknown assets for downstream rejection', () => {
+      expect(normalizeAsset('DOGE')).toBe('DOGE');
+      expect(normalizeAsset('unknown')).toBe('unknown');
     });
   });
 });

@@ -34,6 +34,16 @@ async function main() {
   assert(b.total >= 0, 'total >= 0');
   assert(b.gasReserve.sui > 0.01, 'Has enough SUI for gas');
 
+  section('Stablecoins');
+  assert(typeof b.stables === 'object', 'stables field exists');
+  assert('USDC' in b.stables, 'stables contains USDC');
+  console.log(`   Stables:`);
+  for (const [asset, amount] of Object.entries(b.stables)) {
+    console.log(`     ${asset}: $${amount.toFixed(2)}`);
+    assert(typeof amount === 'number', `${asset} balance is a number`);
+    assert(amount >= 0, `${asset} balance >= 0`);
+  }
+
   summary('Wallet & Balance');
   process.exit(exitCode());
 }

@@ -205,9 +205,8 @@ const COMPARE_ROWS: {
   {
     feature: "Yield Optimizer",
     coinbase: "—",
-    t2000: "Coming soon",
+    t2000: "✓ Auto-rebalance across 4 stablecoins",
     coinbaseCross: true,
-    comingSoon: true,
   },
 ];
 

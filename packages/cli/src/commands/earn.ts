@@ -104,7 +104,7 @@ export function registerEarn(program: Command) {
           }
           if (savePositions.length > 1) {
             printBlank();
-            printKeyValue('Total Saved', `${formatUsd(totalSaved)} USDC`);
+            printKeyValue('Total Saved', formatUsd(totalSaved));
           }
         } else if (posData) {
           printInfo('No savings yet — run `t2000 save <amount>` to start earning yield');
@@ -142,7 +142,7 @@ export function registerEarn(program: Command) {
         // --- Quick actions ---
         printLine(pc.bold('Quick Actions'));
         printDivider();
-        printLine(`  ${pc.dim('t2000 save <amount>')}            Save USDC for yield`);
+        printLine(`  ${pc.dim('t2000 save <amount> [asset]')}     Save stablecoins for yield`);
         printLine(`  ${pc.dim('t2000 sentinel list')}            Browse sentinel bounties`);
         printLine(`  ${pc.dim('t2000 sentinel attack <id>')}     Attack a sentinel`);
         printBlank();

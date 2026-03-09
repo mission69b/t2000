@@ -35,16 +35,16 @@ export function registerSave(program: Command) {
         }
 
         const protocolName = opts.protocol ?? 'best rate';
-        printSuccess(`Saved ${pc.yellow(formatUsd(result.amount))} USDC to ${protocolName}`);
+        printSuccess(`Saved ${pc.yellow(formatUsd(result.amount))} ${asset} to ${protocolName}`);
 
         if (result.fee > 0) {
           const feeRate = (result.fee / result.amount * 100).toFixed(1);
-          printSuccess(`Protocol fee: ${pc.dim(`${formatUsd(result.fee)} USDC (${feeRate}%)`)}`);
+          printSuccess(`Protocol fee: ${pc.dim(`${formatUsd(result.fee)} ${asset} (${feeRate}%)`)}`);
         }
 
         printSuccess(`Current APY: ${pc.green(`${result.apy.toFixed(2)}%`)}`);
 
-        printSuccess(`Savings balance: ${pc.yellow(formatUsd(result.savingsBalance))} USDC`);
+        printSuccess(`Savings balance: ${pc.yellow(formatUsd(result.savingsBalance))} ${asset}`);
 
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
@@ -55,8 +55,8 @@ export function registerSave(program: Command) {
 
   program
     .command('save')
-    .description('Deposit USDC into savings')
-    .argument('<amount>', 'Amount in USDC to save (or "all")')
+    .description('Deposit stablecoins into savings')
+    .argument('<amount>', 'Amount to save (or "all")')
     .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi, suilend)')
@@ -64,8 +64,8 @@ export function registerSave(program: Command) {
 
   program
     .command('supply')
-    .description('Deposit USDC into savings (alias for save)')
-    .argument('<amount>', 'Amount in USDC to save (or "all")')
+    .description('Deposit stablecoins into savings (alias for save)')
+    .argument('<amount>', 'Amount to save (or "all")')
     .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi, suilend)')

@@ -8,6 +8,8 @@ import type {
   AdapterCapability,
   ProtocolDescriptor,
 } from './types.js';
+import { STABLE_ASSETS } from '../constants.js';
+import type { StableAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import * as naviProtocol from '../protocols/navi.js';
 
@@ -33,7 +35,7 @@ export class NaviAdapter implements LendingAdapter {
   readonly name = 'NAVI Protocol';
   readonly version = '1.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw', 'borrow', 'repay'];
-  readonly supportedAssets: readonly string[] = ['USDC'];
+  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS];
   readonly supportsSameAssetBorrow = true;
 
   private client!: SuiJsonRpcClient;
@@ -73,38 +75,42 @@ export class NaviAdapter implements LendingAdapter {
   async buildSaveTx(
     address: string,
     amount: number,
-    _asset: string,
+    asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    const tx = await naviProtocol.buildSaveTx(this.client, address, amount, options);
+    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const tx = await naviProtocol.buildSaveTx(this.client, address, amount, { ...options, asset: stableAsset });
     return { tx };
   }
 
   async buildWithdrawTx(
     address: string,
     amount: number,
-    _asset: string,
+    asset: string,
   ): Promise<AdapterTxResult & { effectiveAmount: number }> {
-    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount);
+    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, { asset: stableAsset });
     return { tx: result.tx, effectiveAmount: result.effectiveAmount };
   }
 
   async buildBorrowTx(
     address: string,
     amount: number,
-    _asset: string,
+    asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, options);
+    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, { ...options, asset: stableAsset });
     return { tx };
   }
 
   async buildRepayTx(
     address: string,
     amount: number,
-    _asset: string,
+    asset: string,
   ): Promise<AdapterTxResult> {
-    const tx = await naviProtocol.buildRepayTx(this.client, address, amount);
+    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const tx = await naviProtocol.buildRepayTx(this.client, address, amount, { asset: stableAsset });
     return { tx };
   }
 

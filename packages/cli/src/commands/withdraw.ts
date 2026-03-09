@@ -6,9 +6,9 @@ import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleE
 export function registerWithdraw(program: Command) {
   program
     .command('withdraw')
-    .description('Withdraw USDC from savings')
-    .argument('<amount>', 'Amount in USDC to withdraw (or "all")')
-    .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
+    .description('Withdraw stablecoins from savings')
+    .argument('<amount>', 'Amount to withdraw (or "all")')
+    .argument('[asset]', 'Asset to withdraw (USDC, USDT, USDe, USDsui)', 'USDC')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi, suilend)')
     .action(async (amountStr, assetStr, opts) => {
@@ -30,7 +30,7 @@ export function registerWithdraw(program: Command) {
         }
 
         printBlank();
-        printSuccess(`Withdrew $${result.amount.toFixed(2)} USDC`);
+        printSuccess(`Withdrew $${result.amount.toFixed(2)} ${asset}`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {

@@ -34,12 +34,28 @@ t2000 balance 2>&1 | grep -q "Gas"
 check $? "balance output contains Gas"
 
 echo ""
+echo "   t2000 balance --json (stables field)"
+t2000 balance --json > /dev/null 2>&1
+check $? "balance --json exits 0"
+
+t2000 balance --json 2>&1 | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'stables' in d and 'USDC' in d['stables']" 2>/dev/null
+check $? "balance --json contains stables.USDC"
+
+echo ""
 echo "   t2000 rates"
 t2000 rates > /dev/null 2>&1
 check $? "rates exits 0"
 
 t2000 rates 2>&1 | grep -q "APY"
 check $? "rates output contains APY"
+
+t2000 rates 2>&1 | grep -q "Best yield"
+check $? "rates output shows Best yield headline"
+
+echo ""
+echo "   t2000 positions"
+t2000 positions > /dev/null 2>&1
+check $? "positions exits 0"
 
 echo ""
 echo "   t2000 earnings"

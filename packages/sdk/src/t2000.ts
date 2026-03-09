@@ -44,10 +44,14 @@ import type {
   FundStatusResult,
   SentinelAgent,
   SentinelAttackResult,
+  RebalanceResult,
+  RebalanceStep,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
+import { SUPPORTED_ASSETS, STABLE_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
+import type { StableAsset } from './constants.js';
 import { truncateAddress } from './utils/sui.js';
+import { normalizeAsset } from './utils/format.js';
 
 interface T2000Events {
   balanceChange: (event: { asset: string; previous: number; current: number; cause: string; tx?: string }) => void;
@@ -245,48 +249,55 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Savings --
 
   async save(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<SaveResult> {
-    const asset = (params.asset ?? 'USDC').toUpperCase();
-    if (asset !== 'USDC') {
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for save. Got: ${asset}`);
+    const asset = normalizeAsset(params.asset ?? 'USDC');
+
+    if (!this.registry.isSupportedAsset(asset, 'save')) {
+      const supported = this.registry.getSupportedAssets('save').join(', ');
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `${asset} is not supported for save. Supported: ${supported}`);
     }
 
     let amount: number;
     if (params.amount === 'all') {
       const bal = await queryBalance(this.client, this._address);
-      const GAS_RESERVE_USDC = 1.0;
-      amount = bal.available - GAS_RESERVE_USDC;
+      const assetBalance = bal.stables[asset as StableAsset] ?? 0;
+      const reserve = asset === 'USDC' ? 1.0 : 0;
+      amount = assetBalance - reserve;
       if (amount <= 0) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', 'Balance too low to save after $1 gas reserve', {
-          reason: 'gas_reserve_required',
-          available: bal.available,
+        throw new T2000Error('INSUFFICIENT_BALANCE', `Balance too low to save${asset === 'USDC' ? ' after $1 gas reserve' : ''}`, {
+          reason: asset === 'USDC' ? 'gas_reserve_required' : 'zero_balance',
+          available: assetBalance,
         });
       }
     } else {
       amount = params.amount;
       const bal = await queryBalance(this.client, this._address);
-      if (amount > bal.available) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient USDC. Available: $${bal.available.toFixed(2)}, requested: $${amount.toFixed(2)}`);
+      const assetBalance = bal.stables[asset as StableAsset] ?? 0;
+      if (amount > assetBalance) {
+        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${asset}. Available: $${assetBalance.toFixed(2)}, requested: $${amount.toFixed(2)}`);
       }
     }
-    const fee = calculateFee('save', amount);
+    const shouldCollectFee = asset === 'USDC';
+    const fee = shouldCollectFee ? calculateFee('save', amount) : { amount: 0, asset, rate: 0, rawAmount: 0n };
     const saveAmount = amount;
 
     const adapter = await this.resolveLending(params.protocol, asset, 'save');
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const { tx } = await adapter.buildSaveTx(this._address, saveAmount, asset, { collectFee: true });
+      const { tx } = await adapter.buildSaveTx(this._address, saveAmount, asset, { collectFee: shouldCollectFee });
       return tx;
     });
 
     const rates = await adapter.getRates(asset);
-    reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
-    this.emitBalanceChange('USDC', saveAmount, 'save', gasResult.digest);
+    if (shouldCollectFee) {
+      reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
+    }
+    this.emitBalanceChange(asset, saveAmount, 'save', gasResult.digest);
 
     let savingsBalance = saveAmount;
     try {
       const positions = await this.positions();
       savingsBalance = positions.positions
-        .filter((p) => p.type === 'save')
+        .filter((p) => p.type === 'save' && p.asset === asset)
         .reduce((sum, p) => sum + p.amount, 0);
     } catch {
       // query failed — fall back to deposit amount
@@ -296,6 +307,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       success: true,
       tx: gasResult.digest,
       amount: saveAmount,
+      asset,
       apy: rates.saveApy,
       fee: fee.amount,
       gasCost: gasResult.gasCostSui,
@@ -305,10 +317,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async withdraw(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<WithdrawResult> {
-    const asset = (params.asset ?? 'USDC').toUpperCase();
-    if (asset !== 'USDC') {
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for withdraw. Got: ${asset}`);
-    }
+    const asset = normalizeAsset(params.asset ?? 'USDC');
 
     if (params.amount === 'all' && !params.protocol) {
       return this.withdrawAllProtocols(asset);
@@ -351,7 +360,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       return built.tx;
     });
 
-    this.emitBalanceChange('USDC', effectiveAmount, 'withdraw', gasResult.digest);
+    this.emitBalanceChange(asset, effectiveAmount, 'withdraw', gasResult.digest);
 
     return {
       success: true,
@@ -362,13 +371,19 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  private async withdrawAllProtocols(asset: string): Promise<WithdrawResult> {
+  private async withdrawAllProtocols(_asset: string): Promise<WithdrawResult> {
     const allPositions = await this.registry.allPositions(this._address);
-    const withSupply = allPositions.filter(
-      (p) => p.positions.supplies.some((s) => s.asset === asset && s.amount > 0.001),
-    );
 
-    if (withSupply.length === 0) {
+    const withdrawable: Array<{ protocolId: string; asset: string; amount: number }> = [];
+    for (const pos of allPositions) {
+      for (const supply of pos.positions.supplies) {
+        if (supply.amount > 0.001) {
+          withdrawable.push({ protocolId: pos.protocolId, asset: supply.asset, amount: supply.amount });
+        }
+      }
+    }
+
+    if (withdrawable.length === 0) {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
     }
 
@@ -377,17 +392,17 @@ export class T2000 extends EventEmitter<T2000Events> {
     let totalGasCost = 0;
     let lastGasMethod: WithdrawResult['gasMethod'] = 'self-funded';
 
-    for (const pos of withSupply) {
-      const adapter = this.registry.getLending(pos.protocolId);
+    for (const entry of withdrawable) {
+      const adapter = this.registry.getLending(entry.protocolId);
       if (!adapter) continue;
 
-      const maxResult = await adapter.maxWithdraw(this._address, asset);
+      const maxResult = await adapter.maxWithdraw(this._address, entry.asset);
       if (maxResult.maxAmount <= 0.001) continue;
 
       let effectiveAmount = maxResult.maxAmount;
 
       const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-        const built = await adapter.buildWithdrawTx(this._address, maxResult.maxAmount, asset);
+        const built = await adapter.buildWithdrawTx(this._address, maxResult.maxAmount, entry.asset);
         effectiveAmount = built.effectiveAmount;
         return built.tx;
       });
@@ -396,7 +411,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       lastDigest = gasResult.digest;
       totalGasCost += gasResult.gasCostSui;
       lastGasMethod = gasResult.gasMethod;
-      this.emitBalanceChange('USDC', effectiveAmount, 'withdraw', gasResult.digest);
+      this.emitBalanceChange(entry.asset, effectiveAmount, 'withdraw', gasResult.digest);
     }
 
     if (totalWithdrawn <= 0) {
@@ -420,31 +435,33 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Borrowing --
 
   async borrow(params: { amount: number; asset?: string; protocol?: string }): Promise<BorrowResult> {
-    const asset = (params.asset ?? 'USDC').toUpperCase();
-    if (asset !== 'USDC') {
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for borrow. Got: ${asset}`);
-    }
-
+    const asset = normalizeAsset(params.asset ?? 'USDC');
     const adapter = await this.resolveLending(params.protocol, asset, 'borrow');
 
     const maxResult = await adapter.maxBorrow(this._address, asset);
+    if (maxResult.maxAmount <= 0) {
+      throw new T2000Error('NO_COLLATERAL', 'No collateral deposited. Save first with `t2000 save <amount>`.');
+    }
     if (params.amount > maxResult.maxAmount) {
       throw new T2000Error('HEALTH_FACTOR_TOO_LOW', `Max safe borrow: $${maxResult.maxAmount.toFixed(2)}`, {
         maxBorrow: maxResult.maxAmount,
         currentHF: maxResult.currentHF,
       });
     }
-    const fee = calculateFee('borrow', params.amount);
+    const shouldCollectFee = asset === 'USDC';
+    const fee = shouldCollectFee ? calculateFee('borrow', params.amount) : { amount: 0, asset, rate: 0, rawAmount: 0n };
     const borrowAmount = params.amount;
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: true });
+      const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: shouldCollectFee });
       return tx;
     });
 
     const hf = await adapter.getHealth(this._address);
-    reportFee(this._address, 'borrow', fee.amount, fee.rate, gasResult.digest);
-    this.emitBalanceChange('USDC', borrowAmount, 'borrow', gasResult.digest);
+    if (shouldCollectFee) {
+      reportFee(this._address, 'borrow', fee.amount, fee.rate, gasResult.digest);
+    }
+    this.emitBalanceChange(asset, borrowAmount, 'borrow', gasResult.digest);
 
     return {
       success: true,
@@ -458,11 +475,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async repay(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<RepayResult> {
-    const asset = (params.asset ?? 'USDC').toUpperCase();
-    if (asset !== 'USDC') {
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `Only USDC is supported for repay. Got: ${asset}`);
-    }
-
+    const asset = normalizeAsset(params.asset ?? 'USDC');
     const adapter = await this.resolveLending(params.protocol, asset, 'repay');
 
     let amount: number;
@@ -483,7 +496,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     });
 
     const hf = await adapter.getHealth(this._address);
-    this.emitBalanceChange('USDC', repayAmount, 'repay', gasResult.digest);
+    this.emitBalanceChange(asset, repayAmount, 'repay', gasResult.digest);
 
     return {
       success: true,
@@ -516,8 +529,8 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Swap --
 
   async swap(params: { from: string; to: string; amount: number; maxSlippage?: number; protocol?: string }): Promise<SwapResult> {
-    const fromAsset = params.from.toUpperCase() as 'USDC' | 'SUI';
-    const toAsset = params.to.toUpperCase() as 'USDC' | 'SUI';
+    const fromAsset = normalizeAsset(params.from) as 'USDC' | 'SUI';
+    const toAsset = normalizeAsset(params.to) as 'USDC' | 'SUI';
 
     if (!(fromAsset in SUPPORTED_ASSETS) || !(toAsset in SUPPORTED_ASSETS)) {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap pair ${fromAsset}/${toAsset} is not supported`);
@@ -601,8 +614,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     poolPrice: number;
     fee: { amount: number; rate: number };
   }> {
-    const fromAsset = params.from.toUpperCase();
-    const toAsset = params.to.toUpperCase();
+    const fromAsset = normalizeAsset(params.from);
+    const toAsset = normalizeAsset(params.to);
     const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
     const fee = calculateFee('swap', params.amount);
     return { ...best.quote, fee: { amount: fee.amount, rate: fee.rate } };
@@ -634,14 +647,255 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async rates(): Promise<RatesResult> {
-    const allRatesResult = await this.registry.allRates('USDC');
-    if (allRatesResult.length === 0) return { USDC: { saveApy: 0, borrowApy: 0 } };
-    const best = allRatesResult.reduce((a, b) => (b.rates.saveApy > a.rates.saveApy ? b : a));
-    return { USDC: { saveApy: best.rates.saveApy, borrowApy: best.rates.borrowApy } };
+    const allRatesResult = await this.registry.allRatesAcrossAssets();
+    const result: RatesResult = {};
+    for (const entry of allRatesResult) {
+      if (!result[entry.asset] || entry.rates.saveApy > result[entry.asset].saveApy) {
+        result[entry.asset] = { saveApy: entry.rates.saveApy, borrowApy: entry.rates.borrowApy };
+      }
+    }
+    if (!result.USDC) result.USDC = { saveApy: 0, borrowApy: 0 };
+    return result;
   }
 
   async allRates(asset = 'USDC') {
     return this.registry.allRates(asset);
+  }
+
+  async allRatesAcrossAssets() {
+    return this.registry.allRatesAcrossAssets();
+  }
+
+  async rebalance(opts: { dryRun?: boolean; minYieldDiff?: number; maxBreakEven?: number } = {}): Promise<RebalanceResult> {
+    const dryRun = opts.dryRun ?? false;
+    const minYieldDiff = opts.minYieldDiff ?? 0.5;
+    const maxBreakEven = opts.maxBreakEven ?? 30;
+
+    const [allPositions, allRates] = await Promise.all([
+      this.registry.allPositions(this._address),
+      this.registry.allRatesAcrossAssets(),
+    ]);
+
+    const savePositions = allPositions.flatMap(p =>
+      p.positions.supplies.filter(s => s.amount > 0.01).map(s => ({
+        protocolId: p.protocolId,
+        protocol: p.protocol,
+        asset: s.asset,
+        amount: s.amount,
+        apy: s.apy,
+      })),
+    );
+
+    if (savePositions.length === 0) {
+      throw new T2000Error('NO_COLLATERAL', 'No savings positions to rebalance. Use `t2000 save <amount>` first.');
+    }
+
+    const borrowPositions = allPositions.flatMap(p =>
+      p.positions.borrows.filter(b => b.amount > 0.01),
+    );
+    if (borrowPositions.length > 0) {
+      const healthResults = await Promise.all(
+        allPositions
+          .filter(p => p.positions.borrows.some(b => b.amount > 0.01))
+          .map(async p => {
+            const adapter = this.registry.getLending(p.protocolId);
+            if (!adapter) return null;
+            return adapter.getHealth(this._address);
+          }),
+      );
+      for (const hf of healthResults) {
+        if (hf && hf.healthFactor < 1.5) {
+          throw new T2000Error(
+            'HEALTH_FACTOR_TOO_LOW',
+            `Cannot rebalance — health factor is ${hf.healthFactor.toFixed(2)} (minimum 1.5). Repay some debt first.`,
+            { healthFactor: hf.healthFactor },
+          );
+        }
+      }
+    }
+
+    const bestRate = allRates.reduce((best, r) =>
+      r.rates.saveApy > best.rates.saveApy ? r : best,
+    );
+
+    const current = savePositions.reduce((worst, p) =>
+      p.apy < worst.apy ? p : worst,
+    );
+
+    const apyDiff = bestRate.rates.saveApy - current.apy;
+    const isSameProtocol = current.protocolId === bestRate.protocolId;
+    const isSameAsset = current.asset === bestRate.asset;
+
+    if (apyDiff < minYieldDiff) {
+      return {
+        executed: false,
+        steps: [],
+        fromProtocol: current.protocol,
+        fromAsset: current.asset,
+        toProtocol: bestRate.protocol,
+        toAsset: bestRate.asset,
+        amount: current.amount,
+        currentApy: current.apy,
+        newApy: bestRate.rates.saveApy,
+        annualGain: (current.amount * apyDiff) / 100,
+        estimatedSwapCost: 0,
+        breakEvenDays: Infinity,
+        txDigests: [],
+        totalGasCost: 0,
+      };
+    }
+
+    if (isSameProtocol && isSameAsset) {
+      return {
+        executed: false,
+        steps: [],
+        fromProtocol: current.protocol,
+        fromAsset: current.asset,
+        toProtocol: bestRate.protocol,
+        toAsset: bestRate.asset,
+        amount: current.amount,
+        currentApy: current.apy,
+        newApy: bestRate.rates.saveApy,
+        annualGain: 0,
+        estimatedSwapCost: 0,
+        breakEvenDays: Infinity,
+        txDigests: [],
+        totalGasCost: 0,
+      };
+    }
+
+    const steps: RebalanceStep[] = [];
+    let estimatedSwapCost = 0;
+
+    steps.push({
+      action: 'withdraw',
+      protocol: current.protocolId,
+      fromAsset: current.asset,
+      amount: current.amount,
+    });
+
+    let amountToDeposit = current.amount;
+
+    if (!isSameAsset) {
+      try {
+        const quote = await this.registry.bestSwapQuote(current.asset, bestRate.asset, current.amount);
+        amountToDeposit = quote.quote.expectedOutput;
+        estimatedSwapCost = Math.abs(current.amount - amountToDeposit);
+      } catch {
+        estimatedSwapCost = current.amount * 0.003;
+        amountToDeposit = current.amount - estimatedSwapCost;
+      }
+
+      steps.push({
+        action: 'swap',
+        fromAsset: current.asset,
+        toAsset: bestRate.asset,
+        amount: current.amount,
+        estimatedOutput: amountToDeposit,
+      });
+    }
+
+    steps.push({
+      action: 'deposit',
+      protocol: bestRate.protocolId,
+      toAsset: bestRate.asset,
+      amount: amountToDeposit,
+    });
+
+    const annualGain = (amountToDeposit * apyDiff) / 100;
+    const breakEvenDays = estimatedSwapCost > 0 ? Math.ceil((estimatedSwapCost / annualGain) * 365) : 0;
+
+    if (breakEvenDays > maxBreakEven && estimatedSwapCost > 0) {
+      return {
+        executed: false,
+        steps,
+        fromProtocol: current.protocol,
+        fromAsset: current.asset,
+        toProtocol: bestRate.protocol,
+        toAsset: bestRate.asset,
+        amount: current.amount,
+        currentApy: current.apy,
+        newApy: bestRate.rates.saveApy,
+        annualGain,
+        estimatedSwapCost,
+        breakEvenDays,
+        txDigests: [],
+        totalGasCost: 0,
+      };
+    }
+
+    if (dryRun) {
+      return {
+        executed: false,
+        steps,
+        fromProtocol: current.protocol,
+        fromAsset: current.asset,
+        toProtocol: bestRate.protocol,
+        toAsset: bestRate.asset,
+        amount: current.amount,
+        currentApy: current.apy,
+        newApy: bestRate.rates.saveApy,
+        annualGain,
+        estimatedSwapCost,
+        breakEvenDays,
+        txDigests: [],
+        totalGasCost: 0,
+      };
+    }
+
+    const txDigests: string[] = [];
+    let totalGasCost = 0;
+
+    const withdrawAdapter = this.registry.getLending(current.protocolId);
+    if (!withdrawAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${current.protocolId} not found`);
+
+    const withdrawResult = await executeWithGas(this.client, this.keypair, async () => {
+      const built = await withdrawAdapter.buildWithdrawTx(this._address, current.amount, current.asset);
+      amountToDeposit = isSameAsset ? built.effectiveAmount : built.effectiveAmount;
+      return built.tx;
+    });
+    txDigests.push(withdrawResult.digest);
+    totalGasCost += withdrawResult.gasCostSui;
+
+    if (!isSameAsset) {
+      const swapAdapter = this.registry.listSwap()[0];
+      if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
+
+      const swapResult = await executeWithGas(this.client, this.keypair, async () => {
+        const built = await swapAdapter.buildSwapTx(this._address, current.asset, bestRate.asset, amountToDeposit);
+        amountToDeposit = built.estimatedOut / 10 ** built.toDecimals;
+        return built.tx;
+      });
+      txDigests.push(swapResult.digest);
+      totalGasCost += swapResult.gasCostSui;
+    }
+
+    const depositAdapter = this.registry.getLending(bestRate.protocolId);
+    if (!depositAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${bestRate.protocolId} not found`);
+
+    const depositResult = await executeWithGas(this.client, this.keypair, async () => {
+      const { tx } = await depositAdapter.buildSaveTx(this._address, amountToDeposit, bestRate.asset, { collectFee: bestRate.asset === 'USDC' });
+      return tx;
+    });
+    txDigests.push(depositResult.digest);
+    totalGasCost += depositResult.gasCostSui;
+
+    return {
+      executed: true,
+      steps,
+      fromProtocol: current.protocol,
+      fromAsset: current.asset,
+      toProtocol: bestRate.protocol,
+      toAsset: bestRate.asset,
+      amount: current.amount,
+      currentApy: current.apy,
+      newApy: bestRate.rates.saveApy,
+      annualGain,
+      estimatedSwapCost,
+      breakEvenDays,
+      txDigests,
+      totalGasCost,
+    };
   }
 
   async earnings(): Promise<EarningsResult> {
@@ -697,14 +951,34 @@ export class T2000 extends EventEmitter<T2000Events> {
              a.capabilities.includes(capability) &&
              (capability !== 'borrow' || a.supportsSameAssetBorrow),
       );
-      if (adapters.length === 0) throw new T2000Error('ASSET_NOT_SUPPORTED', `No adapter supports ${capability} ${asset}`);
+      if (adapters.length === 0) {
+        const alternatives = this.registry.listLending().filter(
+          a => a.capabilities.includes(capability) &&
+               (capability !== 'borrow' || a.supportsSameAssetBorrow),
+        );
+        if (alternatives.length > 0) {
+          const altList = alternatives.map(a => a.name).join(', ');
+          const altAssets = [...new Set(alternatives.flatMap(a => [...a.supportedAssets]))].join(', ');
+          throw new T2000Error('ASSET_NOT_SUPPORTED', `No protocol supports ${capability} for ${asset}. Available for ${capability}: ${altList} (assets: ${altAssets})`);
+        }
+        throw new T2000Error('ASSET_NOT_SUPPORTED', `No adapter supports ${capability} ${asset}`);
+      }
       return adapters[0];
     }
 
     const adapters = this.registry.listLending().filter(
       a => a.supportedAssets.includes(asset) && a.capabilities.includes(capability),
     );
-    if (adapters.length === 0) throw new T2000Error('ASSET_NOT_SUPPORTED', `No adapter supports ${capability} ${asset}`);
+    if (adapters.length === 0) {
+      const alternatives = this.registry.listLending().filter(
+        a => a.capabilities.includes(capability),
+      );
+      if (alternatives.length > 0) {
+        const altList = alternatives.map(a => `${a.name} (${[...a.supportedAssets].join(', ')})`).join('; ');
+        throw new T2000Error('ASSET_NOT_SUPPORTED', `No protocol supports ${capability} for ${asset}. Try: ${altList}`);
+      }
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `No adapter supports ${capability} ${asset}`);
+    }
     return adapters[0];
   }
 

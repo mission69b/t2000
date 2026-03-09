@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI + Suilend, swap on Cetus DEX, borrow against collateral — all from a single class.
+The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI + Suilend across 4 stablecoins (USDC, USDT, USDe, USDsui), swap on Cetus DEX, borrow against collateral, and auto-rebalance for optimal yield — all from a single class.
 
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -39,6 +39,14 @@ await agent.send({ to: '0x...', amount: 10 });
 
 // Save (earn yield — auto-selects best rate across NAVI + Suilend)
 await agent.save({ amount: 50, asset: 'USDC' });
+
+// Borrow a different stablecoin against your collateral
+await agent.borrow({ amount: 25, asset: 'USDT', protocol: 'suilend' });
+
+// Rebalance — move savings to the best rate (dry-run first)
+const plan = await agent.rebalance({ dryRun: true });
+console.log(`+${plan.annualGain.toFixed(2)}/year, break-even: ${plan.breakEvenDays} days`);
+await agent.rebalance(); // execute
 
 // Swap USDC → SUI (via Cetus DEX)
 await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
@@ -89,12 +97,13 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, asset, protocol? })` | Deposit USDC to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
+| `agent.save({ amount, asset, protocol? })` | Deposit stablecoins to savings (earn APY). Supports USDC, USDT, USDe, USDsui. Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
 | `agent.withdraw({ amount, asset })` | Withdraw USDC from savings. `amount` can be `'all'`. | `WithdrawResult` |
 | `agent.swap({ from, to, amount, maxSlippage? })` | Swap via Cetus CLMM DEX. `maxSlippage` in % (default: 3). | `SwapResult` |
 | `agent.swapQuote({ from, to, amount })` | Get swap quote without executing | `SwapQuote` |
 | `agent.borrow({ amount, asset })` | Borrow USDC against collateral | `BorrowResult` |
 | `agent.repay({ amount, asset })` | Repay outstanding borrows. `amount` can be `'all'`. | `RepayResult` |
+| `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins. Dry-run for preview. | `RebalanceResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -104,6 +113,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.healthFactor()` | Lending health factor | `HealthFactorResult` |
 | `agent.earnings()` | Yield earned to date | `EarningsResult` |
 | `agent.rates()` | Best save/borrow APYs across protocols | `RatesResult` |
+| `agent.allRatesAcrossAssets()` | All rates for all stablecoins across all protocols | `Array<{ protocol, asset, rates }>` |
 | `agent.positions()` | All open DeFi positions | `PositionsResult` |
 | `agent.fundStatus()` | Complete savings summary | `FundStatusResult` |
 | `agent.maxWithdraw()` | Max safe withdrawal amount | `MaxWithdrawResult` |
@@ -239,10 +249,13 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 
 ## Supported Assets
 
-| Asset | Type | Decimals |
-|-------|------|----------|
-| USDC | `0xdba3...::usdc::USDC` | 6 |
-| SUI | `0x2::sui::SUI` | 9 |
+| Asset | Display | Type | Decimals | Save | Borrow | Swap | Rebalance |
+|-------|---------|------|----------|------|--------|------|-----------|
+| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ | ✅ |
+| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | ✅ | ✅ | ✅ | ✅ |
+| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | ✅ | ✅ | ✅ | ✅ |
+| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | ✅ | ✅ | ✅ | ✅ |
+| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | ✅ | — |
 
 ## Error Handling
 

@@ -1,7 +1,7 @@
 # t2000 Roadmap — v2.0
 
 **Last updated:** March 2026
-**Current version:** v0.7.2 (SDK + CLI published on npm, x402 v0.3.0)
+**Current version:** v0.8.0 (SDK + CLI published on npm, x402 v0.3.0)
 
 ---
 
@@ -49,35 +49,38 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | ProtocolDescriptor pattern — scalable event tracking from SDK to indexer | ✅ |
 | CLI multi-protocol — `--protocol` flag, `rates`, `earn`, `positions` | ✅ |
 | Auto-routing — `t2000 save` picks best APY across protocols | ✅ |
-| Test suite — 317 tests across 20 files (unit + integration + compliance) | ✅ |
+| Test suite — 331+ tests across 20 files (unit + integration + compliance) | ✅ |
 | `CONTRIBUTING-ADAPTERS.md` — developer guide for new adapters | ✅ |
 | CI — Adapter Compliance job on PRs to main | ✅ |
 | Indexer — protocol-aware classification, `byProtocol` stats | ✅ |
 | Stats API — `/api/stats` with protocol breakdown, agent activity | ✅ |
 | Deploy workflows — server + indexer CI/CD with typecheck gates | ✅ |
 
-### Supported Assets (current — USDC only, expanding in Phase 10)
+### Supported Assets (v0.8.0)
 
-| Asset | Send | Save | Borrow | Swap |
-|-------|------|------|--------|------|
-| USDC | ✅ | ✅ (NAVI + Suilend) | ✅ (NAVI) | ✅ |
-| SUI | ✅ (gas) | — | — | ✅ |
+| Asset | Send | Save | Borrow | Swap | Rebalance |
+|-------|------|------|--------|------|-----------|
+| USDC | ✅ | ✅ (NAVI + Suilend) | ✅ (NAVI + Suilend) | ✅ | ✅ |
+| suiUSDT | — | ✅ (NAVI + Suilend) | ✅ (NAVI + Suilend) | ✅ | ✅ |
+| suiUSDe | — | ✅ (NAVI + Suilend) | ✅ (NAVI + Suilend) | ✅ | ✅ |
+| USDsui | — | ✅ (NAVI + Suilend) | ✅ (NAVI + Suilend) | ✅ | ✅ |
+| SUI | ✅ (gas) | — | — | ✅ | — |
 
 ### Supported Protocols (current)
 
 | Protocol | Type | Capabilities | Approach |
 |----------|------|-------------|----------|
 | NAVI Protocol | Lending | save, withdraw, borrow, repay | Contract-first (dynamic package ID) |
-| Suilend | Lending | save, withdraw | Contract-first |
+| Suilend | Lending | save, withdraw, borrow, repay | Contract-first |
 | Cetus | Swap | swap (Aggregator V3, 20+ DEXes) | SDK with type-cast bridge |
 
 ---
 
 ## Phase 10 — Yield Optimizer + Multi-Stable Infrastructure
 
-**Goal:** Agents earn the best yield across all stablecoins automatically via `t2000 rebalance`. Core flows (save, send) stay USDC-first — simple, predictable, zero breaking changes. Borrow/repay unlock multi-stable for rate shopping and protocol compatibility.
+**Goal:** Agents earn the best yield across all stablecoins automatically via `t2000 rebalance`. Save is open to all supported stables (USDC, USDT, USDe, USDsui). Send stays USDC-only. Borrow/repay unlock multi-stable for rate shopping and protocol compatibility.
 
-**Why merged:** Phase 10 (multi-stable infrastructure) and Phase 11 (yield optimizer) are one product feature. The adapter infrastructure is a prerequisite for rebalance, not a standalone feature. Nobody runs `t2000 save 100 USDT` manually — they want the best yield, and `t2000 rebalance` delivers that.
+**Why merged:** Phase 10 (multi-stable infrastructure) and Phase 11 (yield optimizer) are one product feature. The adapter infrastructure is a prerequisite for rebalance, not a standalone feature.
 
 **Confirmed:** All 4 stables (USDC, suiUSDT, suiUSDe, USDsui) available on both NAVI and Suilend.
 
@@ -85,7 +88,7 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 
 | Command | Change | Multi-stable? |
 |---------|--------|---------------|
-| `save` | Unchanged — USDC at best rate | No |
+| `save` | **Open** — any supported stablecoin (USDC default) | Yes |
 | `send` | Unchanged — USDC | No |
 | `borrow` | **Unlocked** — user picks asset | Yes |
 | `repay` | **Unlocked** — matches debt asset | Yes |
@@ -98,7 +101,9 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 ### Key UX
 
 ```bash
-t2000 save 1000                     # USDC, simple (unchanged)
+t2000 save 1000                     # USDC (default, backward compatible)
+t2000 save 100 USDT                 # Direct USDT save
+t2000 save all USDsui               # Save full USDsui balance
 t2000 rebalance --dry-run           # "Move USDC → USDT for +1.2% APY"
 t2000 rebalance                     # Swap + deposit automatically
 t2000 borrow 100 USDT               # Cheapest borrow rate
@@ -109,14 +114,14 @@ t2000 rates                         # "⭐ Best: 5.4% — USDT on Suilend"
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 10.1 | Add USDT, USDe, USDsui to `SUPPORTED_ASSETS` + format utils | sdk | 1h | ⬜ |
-| 10.2 | Adapter infrastructure — NAVI, Suilend, Cetus multi-asset | sdk | 6h | ⬜ |
-| 10.3 | Balance + display — multi-stable balance, rates headline, positions | sdk + cli | 2h | ⬜ |
-| 10.4 | Borrow + repay — unlock multi-stable, helpful errors | sdk + cli | 2h | ⬜ |
-| 10.5 | Rebalance — `rebalance()` method + `t2000 rebalance` CLI | sdk + cli | 4h | ⬜ |
-| 10.6 | Tests — unit, compliance, rebalance, borrow, integration, CLI smoke | sdk + cli | 3h | ⬜ |
-| 10.7 | Docs — targeted skill updates, new rebalance skill, READMEs | all | 2h | ⬜ |
-| 10.8 | Build, bump to 0.8.0, publish, verify CI | all | 1h | ⬜ |
+| 10.1 | Add USDT, USDe, USDsui to `SUPPORTED_ASSETS` + format utils | sdk | 1h | ✅ |
+| 10.2 | Adapter infrastructure — NAVI, Suilend, Cetus multi-asset | sdk | 6h | ✅ |
+| 10.3 | Balance + display — multi-stable balance, rates headline, positions | sdk + cli | 2h | ✅ |
+| 10.4 | Borrow + repay — unlock multi-stable, helpful errors | sdk + cli | 2h | ✅ |
+| 10.5 | Rebalance — `rebalance()` method + `t2000 rebalance` CLI | sdk + cli | 4h | ✅ |
+| 10.6 | Tests — unit, compliance, rebalance, borrow, integration, CLI smoke | sdk + cli | 3h | ✅ |
+| 10.7 | Docs — targeted skill updates, new rebalance skill, READMEs | all | 2h | ✅ |
+| 10.8 | Build, bump to 0.8.0, publish, verify CI | all | 1h | ✅ |
 
 **Estimated total:** 3 days
 

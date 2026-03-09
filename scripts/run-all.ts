@@ -20,6 +20,7 @@ const tests = [
   { name: 'Wallet & Balance', file: 'test-wallet.ts' },
   { name: 'Send', file: 'test-send.ts' },
   { name: 'NAVI Protocol', file: 'test-navi.ts' },
+  { name: 'Suilend Protocol', file: 'test-suilend.ts' },
   { name: 'Swap', file: 'test-swap.ts' },
   { name: 'Earn', file: 'test-earn.ts' },
   { name: 'Sentinel', file: 'test-sentinel.ts', args: LIVE ? '--live' : '' },

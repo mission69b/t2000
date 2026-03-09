@@ -15,11 +15,14 @@ export type {
   HealthFactorResult,
   MaxWithdrawResult,
   MaxBorrowResult,
+  AssetRates,
   RatesResult,
   PositionEntry,
   PositionsResult,
   EarningsResult,
   FundStatusResult,
+  RebalanceStep,
+  RebalanceResult,
   DepositInfo,
   TransactionRecord,
   SentinelAgent,
@@ -32,19 +35,24 @@ export {
   USDC_DECIMALS,
   BPS_DENOMINATOR,
   SUPPORTED_ASSETS,
+  STABLE_ASSETS,
   CLOCK_ID,
   DEFAULT_NETWORK,
   SENTINEL,
 } from './constants.js';
-export type { SupportedAsset } from './constants.js';
+export type { SupportedAsset, StableAsset } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {
   mistToSui,
   suiToMist,
   usdcToRaw,
   rawToUsdc,
+  stableToRaw,
+  rawToStable,
+  getDecimals,
   formatUsd,
   formatSui,
+  normalizeAsset,
 } from './utils/format.js';
 export {
   generateKeypair,

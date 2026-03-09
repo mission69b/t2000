@@ -202,6 +202,24 @@ import {
 - `BPS_DENOMINATOR`: `10_000n`
 - `PRECISION`: `1_000_000_000_000_000_000n` (10^18, for reward math - matches contract)
 - `CLOCK_ID`: `'0x6'`
+- `STABLE_ASSETS`: `['USDC', 'USDT', 'USDe', 'USDsui']`
+
+### Stablecoin Coin Types
+
+- **USDC**: `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`
+- **suiUSDT**: `0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT`
+- **suiUSDe**: `0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE`
+- **USDsui**: `0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI`
+
+All stablecoins use 6 decimals. All are supported on NAVI and Suilend.
+
+### Rebalance
+
+- `agent.rebalance({ dryRun: true })` — preview yield optimization plan
+- `agent.rebalance()` — execute: withdraw → swap (if cross-asset) → deposit
+- `agent.rebalance({ minYieldDiff: 1.0, maxBreakEven: 14 })` — custom thresholds
+- CLI: `t2000 rebalance --dry-run`, `t2000 rebalance --yes`
+- Safety: refuses if health factor < 1.5, skips if break-even > 30 days
 
 ---
 

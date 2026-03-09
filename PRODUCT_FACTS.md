@@ -12,10 +12,10 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.6.2` |
-| `@t2000/cli` | `0.6.2` |
+| `@t2000/sdk` | `0.8.0` |
+| `@t2000/cli` | `0.8.0` |
 | `@t2000/x402` | `0.2.6` |
-| Agent Skills | `1.2` |
+| Agent Skills | `1.3` |
 
 ---
 
@@ -25,8 +25,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 9 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-swap`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel` |
+| Skill count | 10 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-swap`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -58,7 +58,7 @@ t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
 |---------|------|-------------|--------|
 | NAVI (`navi`) | Lending | save, withdraw, borrow, repay | Built-in |
 | Cetus (`cetus`) | Swap | swap | Built-in |
-| Suilend (`suilend`) | Lending | save, withdraw | Built-in |
+| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay | Built-in |
 
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth
 - `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
@@ -72,10 +72,13 @@ Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts, cetus.t
 
 ## Supported Assets
 
-| Symbol | Decimals | Send | Save | Borrow | Swap |
-|--------|----------|------|------|--------|------|
-| USDC | 6 | ✅ | ✅ | ✅ | ✅ |
-| SUI | 9 | ✅ (gas) | — | — | ✅ |
+| Symbol | Display | Decimals | Send | Save | Borrow | Swap | Rebalance |
+|--------|---------|----------|------|------|--------|------|-----------|
+| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| USDT | suiUSDT | 6 | — | ✅ | ✅ | ✅ | ✅ |
+| USDe | suiUSDe | 6 | — | ✅ | ✅ | ✅ | ✅ |
+| USDsui | USDsui | 6 | — | ✅ | ✅ | ✅ | ✅ |
+| SUI | SUI | 9 | ✅ (gas) | — | — | ✅ | — |
 
 Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
@@ -90,7 +93,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
-| save | `t2000 save <amount> [asset]` | `asset` defaults to USDC. Alias: `supply` |
+| save | `t2000 save <amount> [asset]` | Supports USDC, USDT, USDe, USDsui (default: USDC). Alias: `supply`. Non-USDC saves are fee-free. |
 | withdraw | `t2000 withdraw <amount> [asset]` | `asset` defaults to USDC. `amount` accepts `all` |
 | borrow | `t2000 borrow <amount> [asset]` | `asset` defaults to USDC |
 | repay | `t2000 repay <amount> [asset]` | `asset` defaults to USDC. `amount` accepts `all` |
@@ -113,6 +116,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | sentinel list | `t2000 sentinel list` | List active sentinels with prize pools |
 | sentinel info | `t2000 sentinel info <id>` | Show details for a sentinel |
 | sentinel attack | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel (full 3-step flow). Options: `--fee <sui>` |
+| rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 
 ### Global Flags
@@ -230,9 +234,11 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | Method | Params | Returns |
 |--------|--------|---------|
 | `rates()` | — | `RatesResult` |
+| `allRatesAcrossAssets()` | — | `Array<{ protocol, asset, rates }>` |
 | `positions()` | — | `PositionsResult` |
 | `earnings()` | — | `EarningsResult` |
 | `fundStatus()` | — | `FundStatusResult` |
+| `rebalance()` | `{ dryRun?, minYieldDiff?, maxBreakEven? }` | `RebalanceResult` |
 
 ### Sentinel
 
@@ -278,6 +284,7 @@ interface T2000Options {
 
 interface BalanceResponse {
   available: number;
+  stables: Record<string, number>;  // Per-stablecoin breakdown
   savings: number;
   gasReserve: { sui: number; usdEquiv: number };  // GasReserve
   total: number;
@@ -323,6 +330,24 @@ interface SwapResult {
   toAmount: number; toAsset: string;
   priceImpact: number; fee: number;
   gasCost: number; gasMethod: GasMethod;
+}
+
+interface RebalanceStep {
+  action: 'withdraw' | 'swap' | 'deposit';
+  protocol?: string;
+  fromAsset?: string; toAsset?: string;
+  amount: number; estimatedOutput?: number;
+}
+
+interface RebalanceResult {
+  executed: boolean;
+  steps: RebalanceStep[];
+  fromProtocol: string; fromAsset: string;
+  toProtocol: string; toAsset: string;
+  amount: number; currentApy: number; newApy: number;
+  annualGain: number; estimatedSwapCost: number;
+  breakEvenDays: number;
+  txDigests: string[]; totalGasCost: number;
 }
 ```
 

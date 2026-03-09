@@ -184,4 +184,104 @@ describe('ProtocolRegistry', () => {
       expect(result[0].protocolId).toBe('has');
     });
   });
+
+  describe('bestSaveRateAcrossAssets', () => {
+    it('finds best rate across all stablecoins', async () => {
+      const navi = mockLending({
+        id: 'navi',
+        name: 'NAVI',
+        supportedAssets: ['USDC', 'USDT', 'USDe', 'USDsui'],
+        getRates: vi.fn().mockImplementation((asset: string) => {
+          if (asset === 'USDT') return Promise.resolve({ asset, saveApy: 8.5, borrowApy: 5 });
+          return Promise.resolve({ asset, saveApy: 4.0, borrowApy: 6 });
+        }),
+      });
+      registry.registerLending(navi);
+
+      const result = await registry.bestSaveRateAcrossAssets();
+      expect(result.asset).toBe('USDT');
+      expect(result.rate.saveApy).toBe(8.5);
+    });
+
+    it('throws when no adapters registered', async () => {
+      await expect(registry.bestSaveRateAcrossAssets()).rejects.toThrow();
+    });
+  });
+
+  describe('allRatesAcrossAssets', () => {
+    it('returns rates for all supported assets', async () => {
+      const adapter = mockLending({
+        id: 'multi',
+        name: 'Multi',
+        supportedAssets: ['USDC', 'USDT'],
+        getRates: vi.fn().mockImplementation((asset: string) =>
+          Promise.resolve({ asset, saveApy: asset === 'USDT' ? 7 : 4, borrowApy: 5 }),
+        ),
+      });
+      registry.registerLending(adapter);
+
+      const results = await registry.allRatesAcrossAssets();
+      expect(results.length).toBeGreaterThanOrEqual(2);
+      expect(results.some(r => r.asset === 'USDC')).toBe(true);
+      expect(results.some(r => r.asset === 'USDT')).toBe(true);
+    });
+  });
+
+  describe('isSupportedAsset', () => {
+    it('returns true for registered asset', () => {
+      registry.registerLending(mockLending({ supportedAssets: ['USDC', 'USDT'] }));
+      expect(registry.isSupportedAsset('USDC')).toBe(true);
+      expect(registry.isSupportedAsset('USDT')).toBe(true);
+    });
+
+    it('returns false for unregistered asset', () => {
+      registry.registerLending(mockLending({ supportedAssets: ['USDC'] }));
+      expect(registry.isSupportedAsset('DOGE')).toBe(false);
+    });
+
+    it('filters by capability', () => {
+      registry.registerLending(mockLending({
+        supportedAssets: ['USDC', 'USDT'],
+        capabilities: ['save', 'withdraw'],
+      }));
+      expect(registry.isSupportedAsset('USDC', 'save')).toBe(true);
+      expect(registry.isSupportedAsset('USDC', 'borrow')).toBe(false);
+    });
+
+    it('returns false when no adapters registered', () => {
+      expect(registry.isSupportedAsset('USDC')).toBe(false);
+    });
+  });
+
+  describe('getSupportedAssets', () => {
+    it('returns deduplicated list across adapters', () => {
+      registry.registerLending(mockLending({ id: 'a', supportedAssets: ['USDC', 'USDT'] }));
+      registry.registerLending(mockLending({ id: 'b', supportedAssets: ['USDC', 'USDe'] }));
+      const assets = registry.getSupportedAssets();
+      expect(assets).toContain('USDC');
+      expect(assets).toContain('USDT');
+      expect(assets).toContain('USDe');
+      expect(assets.filter(a => a === 'USDC')).toHaveLength(1);
+    });
+
+    it('filters by capability', () => {
+      registry.registerLending(mockLending({
+        supportedAssets: ['USDC', 'USDT'],
+        capabilities: ['save', 'withdraw'],
+      }));
+      registry.registerLending(mockLending({
+        id: 'borrow-only',
+        supportedAssets: ['USDC', 'USDe'],
+        capabilities: ['borrow', 'repay'],
+      }));
+      const saveAssets = registry.getSupportedAssets('save');
+      expect(saveAssets).toContain('USDC');
+      expect(saveAssets).toContain('USDT');
+      expect(saveAssets).not.toContain('USDe');
+    });
+
+    it('returns empty array when no adapters registered', () => {
+      expect(registry.getSupportedAssets()).toEqual([]);
+    });
+  });
 });

@@ -4,7 +4,9 @@ import type {
   LendingRates,
   SwapQuote,
   AdapterPositions,
+  AdapterCapability,
 } from './types.js';
+import { STABLE_ASSETS } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
 export class ProtocolRegistry {
@@ -86,6 +88,44 @@ export class ProtocolRegistry {
     return candidates[0];
   }
 
+  async bestSaveRateAcrossAssets(): Promise<{ adapter: LendingAdapter; rate: LendingRates; asset: string }> {
+    const candidates: Array<{ adapter: LendingAdapter; rate: LendingRates; asset: string }> = [];
+
+    for (const asset of STABLE_ASSETS) {
+      for (const adapter of this.lending.values()) {
+        if (!adapter.supportedAssets.includes(asset)) continue;
+        if (!adapter.capabilities.includes('save')) continue;
+        try {
+          const rate = await adapter.getRates(asset);
+          candidates.push({ adapter, rate, asset });
+        } catch { /* skip */ }
+      }
+    }
+
+    if (candidates.length === 0) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', 'No lending adapter found for any stablecoin');
+    }
+
+    candidates.sort((a, b) => b.rate.saveApy - a.rate.saveApy);
+    return candidates[0];
+  }
+
+  async allRatesAcrossAssets(): Promise<Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }>> {
+    const results: Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }> = [];
+    for (const asset of STABLE_ASSETS) {
+      for (const adapter of this.lending.values()) {
+        if (!adapter.supportedAssets.includes(asset)) continue;
+        try {
+          const rates = await adapter.getRates(asset);
+          if (rates.saveApy > 0 || rates.borrowApy > 0) {
+            results.push({ protocol: adapter.name, protocolId: adapter.id, asset, rates });
+          }
+        } catch { /* skip */ }
+      }
+    }
+    return results;
+  }
+
   async allRates(asset: string): Promise<Array<{ protocol: string; protocolId: string; rates: LendingRates }>> {
     const results: Array<{ protocol: string; protocolId: string; rates: LendingRates }> = [];
     for (const adapter of this.lending.values()) {
@@ -129,5 +169,25 @@ export class ProtocolRegistry {
 
   listSwap(): SwapAdapter[] {
     return [...this.swap.values()];
+  }
+
+  isSupportedAsset(asset: string, capability?: AdapterCapability): boolean {
+    for (const adapter of this.lending.values()) {
+      if (!adapter.supportedAssets.includes(asset)) continue;
+      if (capability && !adapter.capabilities.includes(capability)) continue;
+      return true;
+    }
+    return false;
+  }
+
+  getSupportedAssets(capability?: AdapterCapability): string[] {
+    const assets = new Set<string>();
+    for (const adapter of this.lending.values()) {
+      if (capability && !adapter.capabilities.includes(capability)) continue;
+      for (const a of adapter.supportedAssets) {
+        assets.add(a);
+      }
+    }
+    return [...assets];
   }
 }

@@ -10,8 +10,9 @@ import type {
   AdapterCapability,
   ProtocolDescriptor,
 } from './types.js';
-import { SUPPORTED_ASSETS } from '../constants.js';
-import { usdcToRaw } from '../utils/format.js';
+import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
+import type { StableAsset } from '../constants.js';
+import { stableToRaw, usdcToRaw } from '../utils/format.js';
 import { T2000Error } from '../errors.js';
 import { addCollectFeeToTx } from '../protocols/protocolFee.js';
 import type { TransactionObjectArgument } from '@mysten/sui/transactions';
@@ -197,8 +198,8 @@ export class SuilendAdapter implements LendingAdapter {
   readonly id = 'suilend';
   readonly name = 'Suilend';
   readonly version = '2.0.0';
-  readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw'];
-  readonly supportedAssets: readonly string[] = ['USDC'];
+  readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw', 'borrow', 'repay'];
+  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS];
   readonly supportsSameAssetBorrow = false;
 
   private client!: SuiJsonRpcClient;
@@ -253,12 +254,14 @@ export class SuilendAdapter implements LendingAdapter {
   }
 
   private findReserve(reserves: Reserve[], asset: string): Reserve | undefined {
-    const upper = asset.toUpperCase();
     let coinType: string;
-    if (upper === 'USDC') coinType = USDC_TYPE;
-    else if (upper === 'SUI') coinType = '0x2::sui::SUI';
-    else if (asset.includes('::')) coinType = asset;
-    else return undefined;
+    if (asset in SUPPORTED_ASSETS) {
+      coinType = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS].type;
+    } else if (asset.includes('::')) {
+      coinType = asset;
+    } else {
+      return undefined;
+    }
 
     try {
       const normalized = normalizeStructTag(coinType);
@@ -309,8 +312,11 @@ export class SuilendAdapter implements LendingAdapter {
   private resolveSymbol(coinType: string): string {
     try {
       const normalized = normalizeStructTag(coinType);
-      if (normalized === normalizeStructTag(USDC_TYPE)) return 'USDC';
-      if (normalized === normalizeStructTag('0x2::sui::SUI')) return 'SUI';
+      for (const [key, info] of Object.entries(SUPPORTED_ASSETS)) {
+        try {
+          if (normalizeStructTag(info.type) === normalized) return key;
+        } catch { /* skip */ }
+      }
     } catch { /* fall through */ }
     const parts = coinType.split('::');
     return parts[parts.length - 1] || 'UNKNOWN';
@@ -368,18 +374,40 @@ export class SuilendAdapter implements LendingAdapter {
       return { healthFactor: Infinity, supplied: 0, borrowed: 0, maxBorrow: 0, liquidationThreshold: 0 };
     }
 
-    const positions = await this.getPositions(address);
-    const supplied = positions.supplies.reduce((s, p) => s + p.amount, 0);
-    const borrowed = positions.borrows.reduce((s, p) => s + p.amount, 0);
+    const [reserves, obligation] = await Promise.all([
+      this.loadReserves(),
+      this.fetchObligation(caps[0].obligationId),
+    ]);
 
-    const reserves = await this.loadReserves();
-    const reserve = this.findReserve(reserves, 'USDC');
-    const closeLtv = reserve?.closeLtvPct ?? 75;
-    const openLtv = reserve?.openLtvPct ?? 70;
-    const liqThreshold = closeLtv / 100;
+    let supplied = 0;
+    let borrowed = 0;
+    let weightedCloseLtv = 0;
+    let weightedOpenLtv = 0;
+
+    for (const dep of obligation.deposits) {
+      const reserve = reserves[dep.reserveIdx];
+      if (!reserve) continue;
+      const ratio = cTokenRatio(reserve);
+      const amount = (dep.ctokenAmount * ratio) / 10 ** reserve.mintDecimals;
+      supplied += amount;
+      weightedCloseLtv += amount * (reserve.closeLtvPct / 100);
+      weightedOpenLtv += amount * (reserve.openLtvPct / 100);
+    }
+
+    for (const bor of obligation.borrows) {
+      const reserve = reserves[bor.reserveIdx];
+      if (!reserve) continue;
+      const rawAmount = bor.borrowedWad / WAD / 10 ** reserve.mintDecimals;
+      const reserveRate = reserve.cumulativeBorrowRateWad / WAD;
+      const posRate = bor.cumBorrowRateWad / WAD;
+      borrowed += posRate > 0 ? rawAmount * (reserveRate / posRate) : rawAmount;
+    }
+
+    const liqThreshold = supplied > 0 ? weightedCloseLtv / supplied : 0.75;
+    const openLtv = supplied > 0 ? weightedOpenLtv / supplied : 0.70;
 
     const healthFactor = borrowed > 0 ? (supplied * liqThreshold) / borrowed : Infinity;
-    const maxBorrow = Math.max(0, supplied * (openLtv / 100) - borrowed);
+    const maxBorrow = Math.max(0, supplied * openLtv - borrowed);
 
     return { healthFactor, supplied, borrowed, maxBorrow, liquidationThreshold: liqThreshold };
   }
@@ -387,12 +415,14 @@ export class SuilendAdapter implements LendingAdapter {
   async buildSaveTx(
     address: string,
     amount: number,
-    _asset: string,
+    asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
+    const assetKey = (asset in SUPPORTED_ASSETS ? asset : 'USDC') as keyof typeof SUPPORTED_ASSETS;
+    const assetInfo = SUPPORTED_ASSETS[assetKey];
     const [pkg, reserves] = await Promise.all([this.resolvePackage(), this.loadReserves()]);
-    const usdcReserve = this.findReserve(reserves, 'USDC');
-    if (!usdcReserve) throw new T2000Error('ASSET_NOT_SUPPORTED', 'USDC reserve not found on Suilend');
+    const reserve = this.findReserve(reserves, assetKey);
+    if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `${assetInfo.displayName} reserve not found on Suilend. Try: NAVI or a different asset.`);
 
     const caps = await this.fetchObligationCaps(address);
     const tx = new Transaction();
@@ -410,15 +440,15 @@ export class SuilendAdapter implements LendingAdapter {
       capRef = caps[0].id;
     }
 
-    const allCoins = await this.fetchAllCoins(address, USDC_TYPE);
-    if (allCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins found');
+    const allCoins = await this.fetchAllCoins(address, assetInfo.type);
+    if (allCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
 
     const primaryCoinId = allCoins[0].coinObjectId;
     if (allCoins.length > 1) {
       tx.mergeCoins(tx.object(primaryCoinId), allCoins.slice(1).map((c) => tx.object(c.coinObjectId)));
     }
 
-    const rawAmount = usdcToRaw(amount).toString();
+    const rawAmount = stableToRaw(amount, assetInfo.decimals).toString();
     const [depositCoin] = tx.splitCoins(tx.object(primaryCoinId), [rawAmount]);
 
     if (options?.collectFee) {
@@ -427,10 +457,10 @@ export class SuilendAdapter implements LendingAdapter {
 
     const [ctokens] = tx.moveCall({
       target: `${pkg}::lending_market::deposit_liquidity_and_mint_ctokens`,
-      typeArguments: [LENDING_MARKET_TYPE, USDC_TYPE],
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
       arguments: [
         tx.object(LENDING_MARKET_ID),
-        tx.pure.u64(usdcReserve.arrayIndex),
+        tx.pure.u64(reserve.arrayIndex),
         tx.object(CLOCK),
         depositCoin,
       ],
@@ -438,10 +468,10 @@ export class SuilendAdapter implements LendingAdapter {
 
     tx.moveCall({
       target: `${pkg}::lending_market::deposit_ctokens_into_obligation`,
-      typeArguments: [LENDING_MARKET_TYPE, USDC_TYPE],
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
       arguments: [
         tx.object(LENDING_MARKET_ID),
-        tx.pure.u64(usdcReserve.arrayIndex),
+        tx.pure.u64(reserve.arrayIndex),
         typeof capRef === 'string' ? tx.object(capRef) : capRef,
         tx.object(CLOCK),
         ctokens,
@@ -458,39 +488,41 @@ export class SuilendAdapter implements LendingAdapter {
   async buildWithdrawTx(
     address: string,
     amount: number,
-    _asset: string,
+    asset: string,
   ): Promise<AdapterTxResult & { effectiveAmount: number }> {
+    const assetKey = (asset in SUPPORTED_ASSETS ? asset : 'USDC') as keyof typeof SUPPORTED_ASSETS;
+    const assetInfo = SUPPORTED_ASSETS[assetKey];
     const [pkg, reserves] = await Promise.all([this.resolvePackage(), this.loadReserves(true)]);
-    const usdcReserve = this.findReserve(reserves, 'USDC');
-    if (!usdcReserve) throw new T2000Error('ASSET_NOT_SUPPORTED', 'USDC reserve not found on Suilend');
+    const reserve = this.findReserve(reserves, assetKey);
+    if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `${assetInfo.displayName} reserve not found on Suilend`);
 
     const caps = await this.fetchObligationCaps(address);
     if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend position found');
 
     const positions = await this.getPositions(address);
-    const deposited = positions.supplies.find((s) => s.asset === 'USDC')?.amount ?? 0;
+    const deposited = positions.supplies.find((s) => s.asset === assetKey)?.amount ?? 0;
     const effectiveAmount = Math.min(amount, deposited);
-    if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', 'Nothing to withdraw from Suilend');
+    if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
 
-    const ratio = cTokenRatio(usdcReserve);
-    const ctokenAmount = Math.ceil(effectiveAmount * 10 ** usdcReserve.mintDecimals / ratio);
+    const ratio = cTokenRatio(reserve);
+    const ctokenAmount = Math.ceil(effectiveAmount * 10 ** reserve.mintDecimals / ratio);
 
     const tx = new Transaction();
     tx.setSender(address);
 
     const [ctokens] = tx.moveCall({
       target: `${pkg}::lending_market::withdraw_ctokens`,
-      typeArguments: [LENDING_MARKET_TYPE, USDC_TYPE],
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
       arguments: [
         tx.object(LENDING_MARKET_ID),
-        tx.pure.u64(usdcReserve.arrayIndex),
+        tx.pure.u64(reserve.arrayIndex),
         tx.object(caps[0].id),
         tx.object(CLOCK),
         tx.pure.u64(ctokenAmount),
       ],
     });
 
-    const exemptionType = `${SUILEND_PACKAGE}::lending_market::RateLimiterExemption<${LENDING_MARKET_TYPE}, ${USDC_TYPE}>`;
+    const exemptionType = `${SUILEND_PACKAGE}::lending_market::RateLimiterExemption<${LENDING_MARKET_TYPE}, ${assetInfo.type}>`;
     const [none] = tx.moveCall({
       target: '0x1::option::none',
       typeArguments: [exemptionType],
@@ -498,10 +530,10 @@ export class SuilendAdapter implements LendingAdapter {
 
     const [coin] = tx.moveCall({
       target: `${pkg}::lending_market::redeem_ctokens_and_withdraw_liquidity`,
-      typeArguments: [LENDING_MARKET_TYPE, USDC_TYPE],
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
       arguments: [
         tx.object(LENDING_MARKET_ID),
-        tx.pure.u64(usdcReserve.arrayIndex),
+        tx.pure.u64(reserve.arrayIndex),
         tx.object(CLOCK),
         ctokens,
         none,
@@ -514,20 +546,86 @@ export class SuilendAdapter implements LendingAdapter {
   }
 
   async buildBorrowTx(
-    _address: string,
-    _amount: number,
-    _asset: string,
-    _options?: { collectFee?: boolean },
+    address: string,
+    amount: number,
+    asset: string,
+    options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    throw new T2000Error('ASSET_NOT_SUPPORTED', 'Suilend borrow requires different collateral/borrow assets. Deferred to Phase 10.');
+    const assetKey = (asset in SUPPORTED_ASSETS ? asset : 'USDC') as keyof typeof SUPPORTED_ASSETS;
+    const assetInfo = SUPPORTED_ASSETS[assetKey];
+    const [pkg, reserves] = await Promise.all([this.resolvePackage(), this.loadReserves()]);
+    const reserve = this.findReserve(reserves, assetKey);
+    if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `${assetInfo.displayName} reserve not found on Suilend. Try: NAVI or a different asset.`);
+
+    const caps = await this.fetchObligationCaps(address);
+    if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend position found. Deposit collateral first with: t2000 save <amount>');
+
+    const rawAmount = stableToRaw(amount, assetInfo.decimals);
+    const tx = new Transaction();
+    tx.setSender(address);
+
+    const [coin] = tx.moveCall({
+      target: `${pkg}::lending_market::borrow`,
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        tx.object(caps[0].id),
+        tx.object(CLOCK),
+        tx.pure.u64(rawAmount),
+      ],
+    });
+
+    if (options?.collectFee) {
+      addCollectFeeToTx(tx, coin as TransactionObjectArgument, 'borrow');
+    }
+
+    tx.transferObjects([coin], address);
+
+    return { tx };
   }
 
   async buildRepayTx(
-    _address: string,
-    _amount: number,
-    _asset: string,
+    address: string,
+    amount: number,
+    asset: string,
   ): Promise<AdapterTxResult> {
-    throw new T2000Error('ASSET_NOT_SUPPORTED', 'Suilend repay deferred to Phase 10.');
+    const assetKey = (asset in SUPPORTED_ASSETS ? asset : 'USDC') as keyof typeof SUPPORTED_ASSETS;
+    const assetInfo = SUPPORTED_ASSETS[assetKey];
+    const [pkg, reserves] = await Promise.all([this.resolvePackage(), this.loadReserves()]);
+    const reserve = this.findReserve(reserves, assetKey);
+    if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `${assetInfo.displayName} reserve not found on Suilend`);
+
+    const caps = await this.fetchObligationCaps(address);
+    if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend obligation found');
+
+    const allCoins = await this.fetchAllCoins(address, assetInfo.type);
+    if (allCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins to repay with`);
+
+    const rawAmount = stableToRaw(amount, assetInfo.decimals);
+    const tx = new Transaction();
+    tx.setSender(address);
+
+    const primaryCoinId = allCoins[0].coinObjectId;
+    if (allCoins.length > 1) {
+      tx.mergeCoins(tx.object(primaryCoinId), allCoins.slice(1).map((c) => tx.object(c.coinObjectId)));
+    }
+
+    const [repayCoin] = tx.splitCoins(tx.object(primaryCoinId), [rawAmount.toString()]);
+
+    tx.moveCall({
+      target: `${pkg}::lending_market::repay`,
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        tx.object(caps[0].id),
+        tx.object(CLOCK),
+        repayCoin,
+      ],
+    });
+
+    return { tx };
   }
 
   async maxWithdraw(
@@ -552,10 +650,12 @@ export class SuilendAdapter implements LendingAdapter {
   }
 
   async maxBorrow(
-    _address: string,
+    address: string,
     _asset: string,
   ): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }> {
-    throw new T2000Error('ASSET_NOT_SUPPORTED', 'Suilend maxBorrow deferred to Phase 10.');
+    const health = await this.getHealth(address);
+    const maxAmount = health.maxBorrow;
+    return { maxAmount, healthFactorAfter: MIN_HEALTH_FACTOR, currentHF: health.healthFactor };
   }
 
   private async fetchAllCoins(

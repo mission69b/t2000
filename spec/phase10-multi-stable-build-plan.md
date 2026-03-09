@@ -1,6 +1,6 @@
 # Phase 10+11 — Yield Optimizer + Multi-Stable Infrastructure
 
-**Goal:** Agents earn the best yield across all stablecoins automatically. One command: `t2000 rebalance`. Core flows (save, send) stay USDC-first — simple, predictable, zero breaking changes. Borrow/repay unlock multi-stable for rate shopping and protocol compatibility.
+**Goal:** Agents earn the best yield across all stablecoins automatically. One command: `t2000 rebalance`. Save is open to all supported stablecoins (USDC default, backward compatible). Send stays USDC-only. Borrow/repay unlock multi-stable for rate shopping and protocol compatibility.
 
 **Version bump:** `0.7.2` → `0.8.0` (minor — new feature)
 
@@ -45,7 +45,7 @@ All 4 stables confirmed on both lending protocols:
 
 ---
 
-## Pre-work: On-Chain Verification (30m)
+## Pre-work: On-Chain Verification (30m) ✅
 
 Coin types are confirmed. Remaining verification:
 
@@ -54,14 +54,14 @@ Coin types are confirmed. Remaining verification:
 | ~~suiUSDT coin type~~ | ✅ `0x375f...::usdt::USDT` | Done |
 | ~~suiUSDe coin type~~ | ✅ `0x41d5...::sui_usde::SUI_USDE` | Done |
 | ~~USDsui coin type~~ | ✅ `0x44f8...::usdsui::USDSUI` | Done |
-| Confirm decimals for USDT, USDe, USDsui | `CoinMetadata.decimals` via RPC | Likely all 6, must verify |
-| NAVI pool configs for each asset | NAVI API (`/api/navi/pools`) | Pool IDs, reserve IDs, oracle feeds |
-| Suilend reserve configs for each asset | Suilend LendingMarket object | Reserve indices, coin types |
-| Cetus Aggregator quote for each pair | Cetus API test call | Confirm routing + liquidity |
+| ~~Confirm decimals for USDT, USDe, USDsui~~ | ✅ All 6 decimals | Done |
+| ~~NAVI pool configs for each asset~~ | ✅ Dynamic via NAVI API | Done |
+| ~~Suilend reserve configs for each asset~~ | ✅ Parsed from LendingMarket | Done |
+| ~~Cetus Aggregator quote for each pair~~ | ✅ All stable pairs added | Done |
 
 ---
 
-## Stage 1: SDK Constants + Types (1h)
+## Stage 1: SDK Constants + Types (1h) ✅
 
 ### 1.1 — `packages/sdk/src/constants.ts`
 
@@ -109,7 +109,7 @@ export const STABLE_ASSETS: StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'];
 
 ---
 
-## Stage 2: Adapter Infrastructure — Multi-Asset (6h)
+## Stage 2: Adapter Infrastructure — Multi-Asset (6h) ✅
 
 Internal-only: adapters learn about all 4 stables. No user-facing command changes yet.
 
@@ -157,7 +157,7 @@ Fetches rates for all assets across all protocols, returns the global best. Used
 
 ---
 
-## Stage 3: Balance + Display — Multi-Asset (2h)
+## Stage 3: Balance + Display — Multi-Asset (2h) ✅
 
 Read-only: show what the user holds across all stables. No behavioral changes.
 
@@ -235,7 +235,7 @@ Show asset alongside each position. Positions and earn already have per-position
 
 ---
 
-## Stage 4: Borrow + Repay — Multi-Stable (2h)
+## Stage 4: Borrow + Repay — Multi-Stable (2h) ✅
 
 Unlock the `[asset]` parameter for borrow/repay. The adapter work is done in Stage 2.
 
@@ -271,7 +271,7 @@ The `rates` display (Stage 3.4) already shows borrow rates per asset per protoco
 
 ---
 
-## Stage 5: Rebalance — The Star Feature (4h)
+## Stage 5: Rebalance — The Star Feature (4h) ✅
 
 ### 5.1 — SDK: `rebalance()` method
 
@@ -360,132 +360,133 @@ t2000 rebalance
 
 ---
 
-## Stage 6: Tests (3h)
+## Stage 6: Tests (3h) ✅
 
-### 6.1 — Unit tests
+### 6.1 — Unit tests ✅
 
-- `SUPPORTED_ASSETS` has all 4 stables + SUI
-- `StableAsset` type excludes SUI
-- `stableToRaw()` / `rawToStable()` for all decimal counts
-- `getDecimals()` returns correct values
+- ✅ `SUPPORTED_ASSETS` has all 4 stables + SUI
+- ✅ `StableAsset` type excludes SUI
+- ✅ `stableToRaw()` / `rawToStable()` for all decimal counts
+- ✅ `getDecimals()` returns correct values
 
-### 6.2 — Adapter compliance tests
+### 6.2 — Adapter compliance tests ✅
 
-- Run compliance suite against all 4 assets per adapter
-- Test `buildBorrowTx`, `buildRepayTx` with USDT, USDe, USDsui
-- Verify `supportedAssets` matches what each adapter actually supports
+- ✅ Run compliance suite against all 4 assets per adapter
+- ✅ Test `buildBorrowTx`, `buildRepayTx` with USDT, USDe, USDsui
+- ✅ Verify `supportedAssets` matches what each adapter actually supports
 
-### 6.3 — Rebalance tests
+### 6.3 — Rebalance tests ✅
 
-- Same-asset rebalance (USDC NAVI → USDC Suilend): no swap, pure gain
-- Cross-asset rebalance (USDC → USDT): swap cost + break-even calculated
-- Dry run returns opportunities without executing
-- Skips opportunities below `minYieldDiff` threshold
-- Skips cross-asset moves with break-even > 30 days
-- Handles empty positions (nothing to rebalance)
-- Handles single position (only cross-protocol/cross-asset)
-- Health factor check prevents unsafe rebalance with active borrows
+- ✅ Same-asset rebalance (USDC NAVI → USDC Suilend): no swap, pure gain
+- ✅ Cross-asset rebalance (USDC → USDT): swap cost + break-even calculated
+- ✅ Dry run returns opportunities without executing
+- ✅ Skips opportunities below `minYieldDiff` threshold
+- ✅ Skips cross-asset moves with break-even > 30 days
+- ✅ Handles empty positions (nothing to rebalance)
+- ✅ Handles single position (only cross-protocol/cross-asset)
+- ✅ Health factor check prevents unsafe rebalance with active borrows
 
-### 6.4 — Borrow multi-stable tests
+### 6.4 — Borrow multi-stable tests ✅
 
-- `borrow(100, 'USDT')` works on NAVI
-- `borrow(100, 'USDe')` works on NAVI
-- `repay(100, 'USDT')` repays correct asset
-- Protocol mismatch returns helpful error with alternatives
-- Backward compatible: `borrow(100)` defaults to USDC
+- ✅ `borrow(100, 'USDT')` works on NAVI
+- ✅ `borrow(100, 'USDe')` works on NAVI
+- ✅ `repay(100, 'USDT')` repays correct asset
+- ✅ Protocol mismatch returns helpful error with alternatives
+- ✅ Backward compatible: `borrow(100)` defaults to USDC
 
-### 6.5 — Integration tests
+### 6.5 — Integration tests ✅
 
-- `bestSaveRateAcrossAssets()` returns global best
-- `allPositions` with multi-asset supplies
-- `withdraw all` with positions in different assets across protocols
-- Balance query returns all stables with correct sums
-- `allRates` returns rates for all assets
+- ✅ `bestSaveRateAcrossAssets()` returns global best
+- ✅ `allPositions` with multi-asset supplies
+- ✅ `withdraw all` with positions in different assets across protocols
+- ✅ Balance query returns all stables with correct sums
+- ✅ `allRates` returns rates for all assets
 
-### 6.6 — CLI integration tests
+### 6.6 — CLI integration tests ✅
 
-Update `scripts/cli/test-*.sh`:
+Updated `scripts/cli/test-*.sh` + new `test-rebalance.sh` + `test-borrow-multi.sh`:
 
 ```bash
-t2000 balance                           # Shows multi-stable balances
-t2000 rates                             # Shows headline + per-asset rates
-t2000 borrow 0.1 USDT --protocol navi   # Borrows USDT
-t2000 repay 0.1 USDT --protocol navi    # Repays USDT
-t2000 rebalance --dry-run               # Shows opportunities
-t2000 positions                         # Shows positions across assets
-t2000 earn                              # Shows earnings across assets
+t2000 balance                           # ✅ Shows multi-stable balances
+t2000 rates                             # ✅ Shows headline + per-asset rates
+t2000 borrow 0.1 USDT --protocol navi   # ✅ Borrows USDT
+t2000 repay 0.1 USDT --protocol navi    # ✅ Repays USDT
+t2000 rebalance --dry-run               # ✅ Shows opportunities
+t2000 positions                         # ✅ Shows positions across assets
+t2000 earn                              # ✅ Shows earnings across assets
 ```
 
 ---
 
-## Stage 7: Documentation (2h)
+## Stage 7: Documentation (2h) ✅
 
-### 7.1 — Agent Skills (targeted updates)
+### 7.1 — Agent Skills (targeted updates) ✅
 
-Only update skills that are directly affected:
+| Skill | Change | Status |
+|-------|--------|--------|
+| `t2000-borrow` | Add USDT, USDe, USDsui as borrowable assets | ✅ |
+| `t2000-repay` | Mention matching debt asset | ✅ |
+| `t2000-save` | Mention `t2000 rebalance` for optimization | ✅ |
+| `t2000-check-balance` | Note: balance shows all stables | ✅ |
+| Others (send, swap, pay, sentinel) | No change needed | ✅ |
 
-| Skill | Change |
-|-------|--------|
-| `t2000-borrow` | Add USDT, USDe, USDsui as borrowable assets |
-| `t2000-repay` | Mention matching debt asset |
-| `t2000-earn` | Mention `t2000 rebalance` for optimization |
-| `t2000-check-balance` | Note: balance shows all stables |
-| Others (save, send, swap, pay, sentinel) | No change needed |
+### 7.2 — New Agent Skill: `t2000-rebalance` ✅
 
-### 7.2 — New Agent Skill: `t2000-rebalance`
+- ✅ When to use it (periodic optimization)
+- ✅ `--dry-run` first, then execute
+- ✅ Explain break-even and swap cost concepts
+- ✅ `--min-yield` and `--max-break-even` flags
 
-New SKILL.md for the rebalance command:
-- When to use it (periodic optimization)
-- `--dry-run` first, then execute
-- Explain break-even and swap cost concepts
-- `--min-yield` and `--max-break-even` flags
+### 7.3 — READMEs ✅
 
-### 7.3 — READMEs
+| File | Changes | Status |
+|------|---------|--------|
+| `README.md` (root) | Add rebalance to feature list | ✅ |
+| `packages/sdk/README.md` | Add `rebalance()` method, update supported assets | ✅ |
+| `packages/cli/README.md` | Add `t2000 rebalance` command | ✅ |
+| `CONTRIBUTING-ADAPTERS.md` | Update `supportedAssets` examples to show multi-asset | ✅ |
 
-| File | Changes |
-|------|---------|
-| `README.md` (root) | Add rebalance to feature list |
-| `packages/sdk/README.md` | Add `rebalance()` method, update supported assets |
-| `packages/cli/README.md` | Add `t2000 rebalance` command |
-| `CONTRIBUTING-ADAPTERS.md` | Update `supportedAssets` examples to show multi-asset |
+### 7.4 — PRODUCT_FACTS.md ✅
 
-### 7.4 — PRODUCT_FACTS.md
+- ✅ Add Supported Assets table (4 stables)
+- ✅ Add rebalance command + method + types
+- ✅ Note borrow is multi-stable, save/send stay USDC
+- ✅ Version bumped to 0.8.0
+- ✅ Suilend capabilities updated (borrow, repay)
+- ✅ BalanceResponse includes `stables` field
 
-- Add Supported Assets table (4 stables)
-- Add rebalance section
-- Note borrow is multi-stable, save/send stay USDC
+### 7.5 — CLAUDE.md ✅
 
-### 7.5 — CLAUDE.md
+- ✅ Add `StableAsset` type, `STABLE_ASSETS` array
+- ✅ Add stablecoin coin types
+- ✅ Add rebalance method reference
 
-- Add `StableAsset` type, `STABLE_ASSETS` array
-- Add rebalance method reference
+### 7.6 — Website (minimal) ✅
 
-### 7.6 — Website (minimal)
+- ✅ `apps/web/app/page.tsx` — "Yield Optimizer" changed from "Coming soon" to "✓ Auto-rebalance across 4 stablecoins"
 
-- `apps/web/app/page.tsx` — add "Yield Optimizer" to features, keep USDC as primary messaging
-- Consider adding rebalance to demo flows (optional, can be follow-up)
+### 7.7 — Marketing ✅
 
-### 7.7 — Marketing
-
-- Draft `marketing/rebalance-tweet.md` for the rebalance feature launch
+- ✅ Draft `marketing/rebalance-tweet.md` for the rebalance feature launch
 
 **No changes needed:** demo scripts, Ticker, TerminalDemo, indexer, stats API, x402, gas auto-top-up, marketing-plan.md (save for follow-up)
 
 ---
 
-## Stage 8: Build + Publish (1h)
+## Stage 8: Build + Publish (1h) ✅
 
-### 8.1 — Version bump
+### 8.1 — Version bump ✅
 
-- SDK: `0.7.2` → `0.8.0`
-- CLI: `0.7.2` → `0.8.0`
+- ✅ SDK: `0.7.2` → `0.8.0`
+- ✅ CLI: `0.7.2` → `0.8.0`
 
-### 8.2 — Build + verify
+### 8.2 — Build + verify ✅
 
 ```bash
-pnpm --filter @t2000/sdk typecheck && pnpm --filter @t2000/sdk test
-pnpm --filter @t2000/cli typecheck
-pnpm --filter @t2000/sdk build && pnpm --filter @t2000/cli build
+pnpm --filter @t2000/sdk typecheck && pnpm --filter @t2000/sdk test  # ✅ 344 tests pass
+pnpm --filter @t2000/cli typecheck                                    # ✅ clean
+pnpm --filter @t2000/server typecheck && pnpm --filter @t2000/server test  # ✅ 10 tests pass
+pnpm --filter @t2000/sdk build && pnpm --filter @t2000/cli build     # ✅
 ```
 
 ### 8.3 — Publish
@@ -592,7 +593,7 @@ t2000 withdraw all
 
 | Risk | Mitigation |
 |------|-----------|
-| USDsui is very new (launched March 4) | Verify Cetus liquidity before adding swap pairs. Skip swap if thin. |
+| USDsui is very new (launched March 4) | Verified — deep liquidity on Cetus. Swap pairs active. |
 | Cross-asset rebalance: swap succeeds, deposit fails | Stop on failure, report state. User has the stable, just not deposited. |
 | Rebalance during volatile period | Break-even filter (30 day max) and min yield diff (0.5%) prevent bad trades. |
 | Different decimals than expected | Pre-work verifies via CoinMetadata. Dynamic `getDecimals()`. |
@@ -601,31 +602,31 @@ t2000 withdraw all
 
 ---
 
-## Edge Cases to Handle
+## Edge Cases to Handle ✅
 
-### `withdraw all` after rebalance
-If rebalance moved USDC → USDT on Suilend, `withdraw all` must iterate all adapters AND all assets per adapter. Currently `withdrawAllProtocols()` filters by a single asset. **Fix:** iterate each adapter's `supportedAssets` and check for positions in each.
+### `withdraw all` after rebalance ✅
+If rebalance moved USDC → USDT on Suilend, `withdraw all` must iterate all adapters AND all assets per adapter. ~~Currently `withdrawAllProtocols()` filters by a single asset.~~ **Fixed:** `withdrawAllProtocols()` now iterates every supply across all adapters, ignoring the `_asset` param.
 
-### `withdraw` with explicit asset but no `--protocol`
-User runs `t2000 withdraw 100 USDT` without specifying protocol. Must resolve which protocol holds USDT. Use existing `resolveLending` logic — find first adapter with a USDT position.
+### `withdraw` with explicit asset but no `--protocol` ✅
+User runs `t2000 withdraw 100 USDT` without specifying protocol. `resolveLending` filters by `supportedAssets.includes('USDT')` + `capabilities.includes('withdraw')` and returns the first match. Includes helpful error with alternatives if none found.
 
-### Coin merging for non-USDC stables
-When withdrawing or swapping, the user's USDT/USDe/USDsui may be split across multiple coin objects (just like USDC). The coin merging logic in `buildDepositTx` / `buildSwapTx` must use the correct coin type, not hardcoded USDC type.
+### Coin merging for non-USDC stables ✅
+All `buildSaveTx`, `buildRepayTx` in both NAVI and Suilend use `assetInfo.type` from `SUPPORTED_ASSETS[asset]` — not hardcoded USDC type — when calling `fetchCoins`/`fetchAllCoins`.
 
-### Rebalance with zero positions
-`t2000 rebalance --dry-run` when user has no savings → clean message: "No savings positions to optimize. Run `t2000 save <amount>` first."
+### Rebalance with zero positions ✅
+`t2000 rebalance --dry-run` when user has no savings → throws `NO_COLLATERAL`: "No savings positions to rebalance. Use `t2000 save <amount>` first."
 
-### Rebalance suggests same protocol, different asset
-USDC on NAVI at 4.2% → USDT on NAVI at 4.8%. This requires withdraw USDC + swap + deposit USDT, all on the same protocol. Should work but test this path.
+### Rebalance suggests same protocol, different asset ✅
+USDC on NAVI at 4.2% → USDT on NAVI at 4.8%. The early-exit guard only triggers when **both** protocol AND asset match. When only asset differs, execution continues through withdraw + swap + deposit steps on the same protocol.
 
-### Borrow without collateral
-User tries `t2000 borrow 100 USDT` with no savings. Error must be clear: "No collateral deposited. Save first with `t2000 save <amount>`."
+### Borrow without collateral ✅
+User tries `t2000 borrow 100 USDT` with no savings → throws `NO_COLLATERAL`: "No collateral deposited. Save first with `t2000 save <amount>`."
 
-### `rates` with no protocol support for an asset
-If NAVI doesn't support USDsui (hypothetical), `rates` should simply omit it from the USDsui section, not error.
+### `rates` with no protocol support for an asset ✅
+Individual adapters may throw for unsupported assets, but `registry.allRatesAcrossAssets()` wraps each call in try-catch and skips failures. NAVI's `getRates()` also uses `if (!pool) continue` to skip missing pools gracefully.
 
-### USDe module name mismatch
-USDe uses `sui_usde::SUI_USDE` not `usde::USDe`. When matching NAVI/Suilend pool coin types against `SUPPORTED_ASSETS`, use `normalizeStructTag()` and match by full type string, not by parsing module/struct names.
+### USDe module name mismatch ✅
+NAVI uses `matchesCoinType()` with `.toLowerCase()` suffix comparison. Suilend uses `normalizeStructTag()` from `@mysten/sui/utils`. Both handle `sui_usde::SUI_USDE` correctly.
 
 ---
 

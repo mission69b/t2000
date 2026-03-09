@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd, getRates } from '@t2000/sdk';
+import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printLine } from '../output.js';
 
@@ -47,31 +47,24 @@ export function registerBalance(program: Command) {
           return;
         }
 
-        let apyStr = '';
-        if (bal.savings > 0) {
-          try {
-            const rates = await getRates(agent.suiClient);
-            const apy = rates.USDC.saveApy;
-            apyStr = `  ${pc.dim(`(earning ${apy.toFixed(2)}% APY)`)}`;
-          } catch { /* rates unavailable */ }
+        printBlank();
+
+        const stables = bal.stables ?? {};
+        const stableEntries = Object.entries(stables).filter(([, v]) => v > 0.001);
+
+        if (stableEntries.length <= 1) {
+          printKeyValue('Available', `${formatUsd(bal.available)}  ${pc.dim('(checking — spendable)')}`);
+        } else {
+          printKeyValue('Available', `${formatUsd(bal.available)}  ${pc.dim('(total stablecoins)')}`);
+          for (const [symbol, amount] of stableEntries) {
+            printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}`);
+          }
         }
 
-        printBlank();
-        printKeyValue('Available', `${formatUsd(bal.available)} USDC  ${pc.dim('(checking — spendable)')}`);
-        printKeyValue('Savings', `${formatUsd(bal.savings)} USDC${apyStr}`);
+        printKeyValue('Savings', `${formatUsd(bal.savings)}`);
         printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
         printSeparator();
-        printKeyValue('Total', `${formatUsd(bal.total)} USDC`);
-
-        if (bal.savings > 0 && apyStr) {
-          try {
-            const rates = await getRates(agent.suiClient);
-            const dailyEarning = (bal.savings * rates.USDC.saveApy / 100) / 365;
-            if (dailyEarning > 0.001) {
-              printLine(pc.dim(`Earning ~${formatUsd(dailyEarning)}/day`));
-            }
-          } catch { /* skip daily earning */ }
-        }
+        printKeyValue('Total', `${formatUsd(bal.total)}`);
 
         if (limits) {
           printBlank();

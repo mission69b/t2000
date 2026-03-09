@@ -2,9 +2,10 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
-import { SUPPORTED_ASSETS } from '../constants.js';
+import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
+import type { StableAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
-import { usdcToRaw } from '../utils/format.js';
+import { stableToRaw, usdcToRaw } from '../utils/format.js';
 import { addCollectFeeToTx } from './protocolFee.js';
 import type {
   SaveResult,
@@ -151,13 +152,30 @@ async function getPools(fresh = false): Promise<NaviPool[]> {
   return data;
 }
 
-async function getUsdcPool(): Promise<NaviPool> {
+function matchesCoinType(poolType: string, targetType: string): boolean {
+  const poolSuffix = poolType.split('::').slice(1).join('::').toLowerCase();
+  const targetSuffix = targetType.split('::').slice(1).join('::').toLowerCase();
+  return poolSuffix === targetSuffix;
+}
+
+async function getPool(asset: StableAsset = 'USDC'): Promise<NaviPool> {
   const pools = await getPools();
-  const usdc = pools.find(
-    (p) => p.token?.symbol === 'USDC' || p.coinType?.toLowerCase().includes('usdc'),
+  const targetType = SUPPORTED_ASSETS[asset].type;
+
+  const pool = pools.find(
+    (p) => matchesCoinType(p.suiCoinType || p.coinType || '', targetType),
   );
-  if (!usdc) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'USDC pool not found on NAVI');
-  return usdc;
+  if (!pool) {
+    throw new T2000Error(
+      'ASSET_NOT_SUPPORTED',
+      `${SUPPORTED_ASSETS[asset].displayName} pool not found on NAVI. Try: ${STABLE_ASSETS.filter(a => a !== asset).join(', ')}`,
+    );
+  }
+  return pool;
+}
+
+async function getUsdcPool(): Promise<NaviPool> {
+  return getPool('USDC');
 }
 
 // ---------------------------------------------------------------------------
@@ -297,16 +315,18 @@ export async function buildSaveTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { collectFee?: boolean } = {},
+  options: { collectFee?: boolean; asset?: StableAsset } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Save amount must be a positive number');
   }
-  const rawAmount = Number(usdcToRaw(amount));
-  const [config, pool] = await Promise.all([getConfig(), getUsdcPool()]);
+  const asset = options.asset ?? 'USDC';
+  const assetInfo = SUPPORTED_ASSETS[asset];
+  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
 
-  const coins = await fetchCoins(client, address, USDC_TYPE);
-  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins found');
+  const coins = await fetchCoins(client, address, assetInfo.type);
+  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
 
   const tx = new Transaction();
   tx.setSender(address);
@@ -356,6 +376,7 @@ export async function save(
     success: true,
     tx: result.digest,
     amount,
+    asset: 'USDC',
     apy: rates.USDC.saveApy,
     fee: 0,
     gasCost: extractGasCost(result.effects),
@@ -368,21 +389,24 @@ export async function buildWithdrawTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
+  options: { asset?: StableAsset } = {},
 ): Promise<{ tx: Transaction; effectiveAmount: number }> {
+  const asset = options.asset ?? 'USDC';
+  const assetInfo = SUPPORTED_ASSETS[asset];
   const [config, pool, pools, states] = await Promise.all([
     getConfig(),
-    getUsdcPool(),
+    getPool(asset),
     getPools(),
     getUserState(client, address),
   ]);
 
-  const usdcState = states.find((s) => s.assetId === pool.id);
-  const deposited = usdcState ? compoundBalance(usdcState.supplyBalance, pool.currentSupplyIndex) : 0;
+  const assetState = states.find((s) => s.assetId === pool.id);
+  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex) : 0;
 
   const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
-  if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', 'Nothing to withdraw');
+  if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
 
-  const rawAmount = Number(usdcToRaw(effectiveAmount));
+  const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
   const tx = new Transaction();
   tx.setSender(address);
 
@@ -443,13 +467,15 @@ export async function buildBorrowTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { collectFee?: boolean } = {},
+  options: { collectFee?: boolean; asset?: StableAsset } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be a positive number');
   }
-  const rawAmount = Number(usdcToRaw(amount));
-  const [config, pool] = await Promise.all([getConfig(), getUsdcPool()]);
+  const asset = options.asset ?? 'USDC';
+  const assetInfo = SUPPORTED_ASSETS[asset];
+  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
 
   const tx = new Transaction();
   tx.setSender(address);
@@ -519,15 +545,18 @@ export async function buildRepayTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
+  options: { asset?: StableAsset } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Repay amount must be a positive number');
   }
-  const rawAmount = Number(usdcToRaw(amount));
-  const [config, pool] = await Promise.all([getConfig(), getUsdcPool()]);
+  const asset = options.asset ?? 'USDC';
+  const assetInfo = SUPPORTED_ASSETS[asset];
+  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
 
-  const coins = await fetchCoins(client, address, USDC_TYPE);
-  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins to repay with');
+  const coins = await fetchCoins(client, address, assetInfo.type);
+  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins to repay with`);
 
   const tx = new Transaction();
   tx.setSender(address);
@@ -571,9 +600,13 @@ export async function repay(
   await client.waitForTransaction({ digest: result.digest });
 
   const states = await getUserState(client, address);
-  const pool = await getUsdcPool();
-  const usdcState = states.find((s) => s.assetId === pool.id);
-  const remainingDebt = usdcState ? compoundBalance(usdcState.borrowBalance, pool.currentBorrowIndex) : 0;
+  const pools = await getPools();
+  let remainingDebt = 0;
+  for (const state of states) {
+    const pool = pools.find((p) => p.id === state.assetId);
+    if (!pool) continue;
+    remainingDebt += compoundBalance(state.borrowBalance, pool.currentBorrowIndex);
+  }
 
   return {
     success: true,
@@ -593,24 +626,44 @@ export async function getHealthFactor(
     ? addressOrKeypair
     : addressOrKeypair.getPublicKey().toSuiAddress();
 
-  const [config, pool, states] = await Promise.all([
+  const [config, pools, states] = await Promise.all([
     getConfig(),
-    getUsdcPool(),
+    getPools(),
     getUserState(client, address),
   ]);
 
-  const usdcState = states.find((s) => s.assetId === pool.id);
-  const supplied = usdcState ? compoundBalance(usdcState.supplyBalance, pool.currentSupplyIndex) : 0;
-  const borrowed = usdcState ? compoundBalance(usdcState.borrowBalance, pool.currentBorrowIndex) : 0;
+  let supplied = 0;
+  let borrowed = 0;
+  let weightedLtv = 0;
+  let weightedLiqThreshold = 0;
 
-  const ltv = parseLtv(pool.ltv);
-  const liqThreshold = parseLiqThreshold(pool.liquidationFactor.threshold);
+  for (const state of states) {
+    const pool = pools.find((p) => p.id === state.assetId);
+    if (!pool) continue;
+
+    const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex);
+    const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex);
+    const price = pool.token?.price ?? 1;
+
+    supplied += supplyBal * price;
+    borrowed += borrowBal * price;
+
+    if (supplyBal > 0) {
+      weightedLtv += supplyBal * price * parseLtv(pool.ltv);
+      weightedLiqThreshold += supplyBal * price * parseLiqThreshold(pool.liquidationFactor.threshold);
+    }
+  }
+
+  const ltv = supplied > 0 ? weightedLtv / supplied : 0.75;
+  const liqThreshold = supplied > 0 ? weightedLiqThreshold / supplied : 0.75;
   const maxBorrowVal = Math.max(0, supplied * ltv - borrowed);
+
+  const usdcPool = pools.find((p) => matchesCoinType(p.suiCoinType || p.coinType || '', SUPPORTED_ASSETS.USDC.type));
 
   let healthFactor: number;
   if (borrowed <= 0) {
     healthFactor = Infinity;
-  } else {
+  } else if (usdcPool) {
     try {
       const tx = new Transaction();
       tx.moveCall({
@@ -619,14 +672,14 @@ export async function getHealthFactor(
           tx.object(CLOCK),
           tx.object(config.storage),
           tx.object(config.oracle.priceOracle),
-          tx.pure.u8(pool.id),
+          tx.pure.u8(usdcPool.id),
           tx.pure.address(address),
-          tx.pure.u8(pool.id),
+          tx.pure.u8(usdcPool.id),
           tx.pure.u64(0),
           tx.pure.u64(0),
           tx.pure.bool(false),
         ],
-        typeArguments: [pool.suiCoinType],
+        typeArguments: [usdcPool.suiCoinType],
       });
 
       const result = await client.devInspectTransactionBlock({
@@ -638,11 +691,13 @@ export async function getHealthFactor(
       if (decoded !== undefined) {
         healthFactor = normalizeHealthFactor(Number(decoded));
       } else {
-        healthFactor = borrowed > 0 ? (supplied * liqThreshold) / borrowed : Infinity;
+        healthFactor = (supplied * liqThreshold) / borrowed;
       }
     } catch {
-      healthFactor = borrowed > 0 ? (supplied * liqThreshold) / borrowed : Infinity;
+      healthFactor = (supplied * liqThreshold) / borrowed;
     }
+  } else {
+    healthFactor = (supplied * liqThreshold) / borrowed;
   }
 
   return {
@@ -656,15 +711,25 @@ export async function getHealthFactor(
 
 export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
   try {
-    const pool = await getUsdcPool();
+    const pools = await getPools();
+    const result: RatesResult = {};
 
-    let saveApy = rateToApy(pool.currentSupplyRate);
-    let borrowApy = rateToApy(pool.currentBorrowRate);
+    for (const asset of STABLE_ASSETS) {
+      const targetType = SUPPORTED_ASSETS[asset].type;
+      const pool = pools.find((p) => matchesCoinType(p.suiCoinType || p.coinType || '', targetType));
+      if (!pool) continue;
 
-    if (saveApy <= 0 || saveApy > 100) saveApy = 4.0;
-    if (borrowApy <= 0 || borrowApy > 100) borrowApy = 6.0;
+      let saveApy = rateToApy(pool.currentSupplyRate);
+      let borrowApy = rateToApy(pool.currentBorrowRate);
 
-    return { USDC: { saveApy, borrowApy } };
+      if (saveApy <= 0 || saveApy > 100) saveApy = 0;
+      if (borrowApy <= 0 || borrowApy > 100) borrowApy = 0;
+
+      result[asset] = { saveApy, borrowApy };
+    }
+
+    if (!result.USDC) result.USDC = { saveApy: 4.0, borrowApy: 6.0 };
+    return result;
   } catch {
     return { USDC: { saveApy: 4.0, borrowApy: 6.0 } };
   }

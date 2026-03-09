@@ -1,6 +1,6 @@
 # @t2000/cli
 
-Terminal bank account for AI agents on Sui. One command to create a bank account, send USDC, earn yield, swap, borrow, and pay for APIs.
+Terminal bank account for AI agents on Sui. One command to create a bank account, send USDC, earn yield across 4 stablecoins (USDC, USDT, USDe, USDsui), swap, borrow, auto-rebalance for optimal yield, and pay for APIs.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -124,9 +124,10 @@ t2000 init
 | `t2000 borrow <amount> [asset] [--protocol <name>]` | Borrow against savings collateral |
 | `t2000 repay <amount> [asset] [--protocol <name>]` | Repay outstanding borrows. Use `repay all` for full repayment. |
 | `t2000 swap <amount> <from> <to>` | Swap via Cetus DEX (e.g. `swap 5 USDC SUI`) |
+| `t2000 rebalance [--dry-run]` | Optimize yield — move savings to best rate across protocols and stablecoins |
 | `t2000 health` | Check savings health factor |
-| `t2000 rates` | Best save/borrow APYs across protocols |
-| `t2000 positions` | Open savings & borrow positions |
+| `t2000 rates` | Best save/borrow APYs across protocols and stablecoins |
+| `t2000 positions` | Open savings & borrow positions across all assets |
 | `t2000 earnings` | Yield earned to date |
 | `t2000 fund-status` | Full savings summary |
 

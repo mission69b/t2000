@@ -1,4 +1,5 @@
-import { MIST_PER_SUI, BPS_DENOMINATOR, USDC_DECIMALS, SUI_DECIMALS } from '../constants.js';
+import { MIST_PER_SUI, BPS_DENOMINATOR, USDC_DECIMALS, SUI_DECIMALS, SUPPORTED_ASSETS } from '../constants.js';
+import type { SupportedAsset } from '../constants.js';
 
 export function mistToSui(mist: bigint): number {
   return Number(mist) / Number(MIST_PER_SUI);
@@ -14,6 +15,18 @@ export function usdcToRaw(amount: number): bigint {
 
 export function rawToUsdc(raw: bigint): number {
   return Number(raw) / 10 ** USDC_DECIMALS;
+}
+
+export function stableToRaw(amount: number, decimals: number): bigint {
+  return BigInt(Math.round(amount * 10 ** decimals));
+}
+
+export function rawToStable(raw: bigint, decimals: number): number {
+  return Number(raw) / 10 ** decimals;
+}
+
+export function getDecimals(asset: SupportedAsset): number {
+  return SUPPORTED_ASSETS[asset].decimals;
 }
 
 export function rawToDisplay(raw: bigint, decimals: number): number {
@@ -41,4 +54,17 @@ export function formatLargeNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toFixed(2);
+}
+
+const ASSET_LOOKUP = new Map(
+  Object.keys(SUPPORTED_ASSETS).map(k => [k.toUpperCase(), k]),
+);
+
+/**
+ * Case-insensitive lookup against SUPPORTED_ASSETS keys.
+ * 'usde' → 'USDe', 'usdsui' → 'USDsui', 'usdc' → 'USDC'.
+ * Returns the original input if not found so downstream validation can reject it.
+ */
+export function normalizeAsset(input: string): string {
+  return ASSET_LOOKUP.get(input.toUpperCase()) ?? input;
 }

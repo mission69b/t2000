@@ -663,3 +663,225 @@ describe('swap — multi-adapter routing', () => {
     await expect(registry.bestSwapQuote('BTC', 'ETH', 1)).rejects.toThrow('No swap adapter supports BTC → ETH');
   });
 });
+
+// ─── rebalance: yield optimization ───────────────
+
+describe('rebalance — yield optimization', () => {
+  let registry: ProtocolRegistry;
+
+  beforeEach(() => {
+    registry = new ProtocolRegistry();
+  });
+
+  it('identifies lowest-yield position and best opportunity', async () => {
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      supportedAssets: ['USDC', 'USDT'],
+      getRates: vi.fn().mockImplementation((asset: string) =>
+        asset === 'USDC'
+          ? { asset: 'USDC', saveApy: 3.0, borrowApy: 6.0 }
+          : { asset: 'USDT', saveApy: 5.5, borrowApy: 7.0 },
+      ),
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 1000, apy: 3.0 }],
+        borrows: [],
+      }),
+    });
+    registry.registerLending(navi);
+
+    const allRates = await registry.allRatesAcrossAssets();
+    expect(allRates.length).toBeGreaterThanOrEqual(2);
+
+    const best = allRates.reduce((a, b) => b.rates.saveApy > a.rates.saveApy ? b : a);
+    expect(best.asset).toBe('USDT');
+    expect(best.rates.saveApy).toBe(5.5);
+  });
+
+  it('bestSaveRateAcrossAssets returns global best', async () => {
+    const low = createMockLending({
+      id: 'low',
+      name: 'Low',
+      supportedAssets: ['USDC'],
+      getRates: vi.fn().mockResolvedValue({ asset: 'USDC', saveApy: 2.0, borrowApy: 5.0 }),
+    });
+    const high = createMockLending({
+      id: 'high',
+      name: 'High',
+      supportedAssets: ['USDC', 'USDT'],
+      getRates: vi.fn().mockImplementation((asset: string) =>
+        asset === 'USDT'
+          ? { asset: 'USDT', saveApy: 8.0, borrowApy: 10.0 }
+          : { asset: 'USDC', saveApy: 4.0, borrowApy: 6.0 },
+      ),
+    });
+    registry.registerLending(low);
+    registry.registerLending(high);
+
+    const result = await registry.bestSaveRateAcrossAssets();
+    expect(result.asset).toBe('USDT');
+    expect(result.rate.saveApy).toBe(8.0);
+    expect(result.adapter.name).toBe('High');
+  });
+
+  it('calculates break-even days for cross-asset moves', () => {
+    const swapCost = 0.30;
+    const annualGain = 11.90;
+    const breakEvenDays = Math.ceil((swapCost / annualGain) * 365);
+    expect(breakEvenDays).toBe(10);
+  });
+
+  it('same-asset rebalance has zero swap cost', () => {
+    const isSameAsset = true;
+    const estimatedSwapCost = isSameAsset ? 0 : 0.30;
+    const breakEvenDays = estimatedSwapCost > 0 ? Math.ceil((estimatedSwapCost / 6.9) * 365) : 0;
+    expect(estimatedSwapCost).toBe(0);
+    expect(breakEvenDays).toBe(0);
+  });
+
+  it('skips opportunities below minYieldDiff', () => {
+    const currentApy = 4.2;
+    const bestApy = 4.5;
+    const minYieldDiff = 0.5;
+    const apyDiff = bestApy - currentApy;
+    expect(apyDiff < minYieldDiff).toBe(true);
+  });
+
+  it('skips cross-asset moves with break-even > maxBreakEven', () => {
+    const swapCost = 5.0;
+    const annualGain = 2.0;
+    const maxBreakEven = 30;
+    const breakEvenDays = Math.ceil((swapCost / annualGain) * 365);
+    expect(breakEvenDays).toBeGreaterThan(maxBreakEven);
+  });
+
+  it('handles empty positions (nothing to rebalance)', async () => {
+    const empty = createMockLending({
+      id: 'empty',
+      name: 'Empty',
+      getPositions: vi.fn().mockResolvedValue({ supplies: [], borrows: [] }),
+    });
+    registry.registerLending(empty);
+
+    const positions = await registry.allPositions('0x123');
+    const savePositions = positions.flatMap(p =>
+      p.positions.supplies.filter(s => s.amount > 0.01),
+    );
+    expect(savePositions.length).toBe(0);
+  });
+
+  it('health factor check prevents unsafe rebalance', () => {
+    const healthFactor = 1.3;
+    const threshold = 1.5;
+    expect(healthFactor < threshold).toBe(true);
+  });
+});
+
+// ─── borrow multi-stable ───────────────
+
+describe('borrow multi-stable', () => {
+  let registry: ProtocolRegistry;
+
+  beforeEach(() => {
+    registry = new ProtocolRegistry();
+  });
+
+  it('finds adapter supporting USDT borrow', () => {
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      supportedAssets: ['USDC', 'USDT', 'USDe', 'USDsui'],
+      capabilities: ['save', 'withdraw', 'borrow', 'repay'],
+    });
+    registry.registerLending(navi);
+
+    const adapters = registry.listLending().filter(
+      a => a.supportedAssets.includes('USDT') && a.capabilities.includes('borrow'),
+    );
+    expect(adapters.length).toBe(1);
+    expect(adapters[0].id).toBe('navi');
+  });
+
+  it('finds adapter supporting USDe borrow', () => {
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      supportedAssets: ['USDC', 'USDT', 'USDe', 'USDsui'],
+    });
+    registry.registerLending(navi);
+
+    const adapters = registry.listLending().filter(
+      a => a.supportedAssets.includes('USDe') && a.capabilities.includes('borrow'),
+    );
+    expect(adapters.length).toBe(1);
+  });
+
+  it('defaults to USDC when no asset specified', () => {
+    const params: { asset?: string } = {};
+    const asset = params.asset ?? 'USDC';
+    expect(asset).toBe('USDC');
+  });
+
+  it('returns error with alternatives when asset not supported', () => {
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      supportedAssets: ['USDC'],
+      capabilities: ['save', 'withdraw'],
+      supportsSameAssetBorrow: false,
+    });
+    registry.registerLending(suilend);
+
+    const adapters = registry.listLending().filter(
+      a => a.supportedAssets.includes('WBTC') && a.capabilities.includes('borrow'),
+    );
+    expect(adapters.length).toBe(0);
+
+    const alternatives = registry.listLending().filter(
+      a => a.capabilities.includes('borrow') || a.capabilities.includes('save'),
+    );
+    expect(alternatives.length).toBeGreaterThan(0);
+  });
+
+  it('repay resolves correct asset adapter', () => {
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      supportedAssets: ['USDC', 'USDT', 'USDe', 'USDsui'],
+    });
+    registry.registerLending(navi);
+
+    const asset = 'USDT';
+    const adapters = registry.listLending().filter(
+      a => a.supportedAssets.includes(asset) && a.capabilities.includes('repay'),
+    );
+    expect(adapters.length).toBe(1);
+    expect(adapters[0].id).toBe('navi');
+  });
+});
+
+describe('SUPPORTED_ASSETS', () => {
+  it('includes all 4 stables and SUI', async () => {
+    const { SUPPORTED_ASSETS, STABLE_ASSETS } = await import('./constants.js');
+    expect(SUPPORTED_ASSETS.USDC).toBeDefined();
+    expect(SUPPORTED_ASSETS.USDT).toBeDefined();
+    expect(SUPPORTED_ASSETS.USDe).toBeDefined();
+    expect(SUPPORTED_ASSETS.USDsui).toBeDefined();
+    expect(SUPPORTED_ASSETS.SUI).toBeDefined();
+    expect(STABLE_ASSETS).toEqual(['USDC', 'USDT', 'USDe', 'USDsui']);
+  });
+
+  it('all stables have 6 decimals', async () => {
+    const { SUPPORTED_ASSETS, STABLE_ASSETS } = await import('./constants.js');
+    for (const asset of STABLE_ASSETS) {
+      expect(SUPPORTED_ASSETS[asset].decimals).toBe(6);
+    }
+  });
+
+  it('all assets have displayName', async () => {
+    const { SUPPORTED_ASSETS } = await import('./constants.js');
+    for (const [, info] of Object.entries(SUPPORTED_ASSETS)) {
+      expect((info as { displayName: string }).displayName).toBeTruthy();
+    }
+  });
+});

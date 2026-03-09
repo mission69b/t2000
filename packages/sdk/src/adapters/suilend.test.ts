@@ -155,11 +155,11 @@ describe('SuilendAdapter', () => {
       expect(adapter.version).toBe('2.0.0');
     });
 
-    it('supports save and withdraw only', () => {
+    it('supports save, withdraw, borrow, and repay', () => {
       expect(adapter.capabilities).toContain('save');
       expect(adapter.capabilities).toContain('withdraw');
-      expect(adapter.capabilities).not.toContain('borrow');
-      expect(adapter.capabilities).not.toContain('repay');
+      expect(adapter.capabilities).toContain('borrow');
+      expect(adapter.capabilities).toContain('repay');
     });
 
     it('does not support same-asset borrow', () => {
@@ -325,17 +325,19 @@ describe('SuilendAdapter', () => {
     });
   });
 
-  describe('deferred methods (Phase 10)', () => {
-    it('buildBorrowTx throws', async () => {
-      await expect(adapter.buildBorrowTx(TEST_ADDRESS, 100, 'USDC')).rejects.toThrow('Phase 10');
+  describe('borrow and repay', () => {
+    it('buildBorrowTx throws when no obligation', async () => {
+      await expect(adapter.buildBorrowTx(TEST_ADDRESS, 100, 'USDC')).rejects.toThrow('No Suilend position');
     });
 
-    it('buildRepayTx throws', async () => {
-      await expect(adapter.buildRepayTx(TEST_ADDRESS, 100, 'USDC')).rejects.toThrow('Phase 10');
+    it('buildRepayTx throws when no obligation', async () => {
+      await expect(adapter.buildRepayTx(TEST_ADDRESS, 100, 'USDC')).rejects.toThrow('No Suilend obligation');
     });
 
-    it('maxBorrow throws', async () => {
-      await expect(adapter.maxBorrow(TEST_ADDRESS, 'USDC')).rejects.toThrow('Phase 10');
+    it('maxBorrow returns 0 when no position', async () => {
+      const result = await adapter.maxBorrow(TEST_ADDRESS, 'USDC');
+      expect(result.maxAmount).toBe(0);
+      expect(result.currentHF).toBe(Infinity);
     });
   });
 });

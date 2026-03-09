@@ -1,5 +1,6 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import { SUPPORTED_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
+import { SUPPORTED_ASSETS, STABLE_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
+import type { StableAsset } from '../constants.js';
 import type { BalanceResponse } from '../types.js';
 
 let _cachedSuiPrice = 0;
@@ -57,29 +58,40 @@ export async function queryBalance(
   client: SuiJsonRpcClient,
   address: string,
 ): Promise<BalanceResponse> {
-  const [usdcBalance, suiBalance, suiPriceUsd] = await Promise.all([
-    client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS.USDC.type }),
+  const stableBalancePromises = STABLE_ASSETS.map((asset) =>
+    client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS[asset].type })
+      .then((b) => ({ asset, amount: Number(b.totalBalance) / 10 ** SUPPORTED_ASSETS[asset].decimals })),
+  );
+
+  const [suiBalance, suiPriceUsd, ...stableResults] = await Promise.all([
     client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS.SUI.type }),
     fetchSuiPrice(client),
+    ...stableBalancePromises,
   ]);
 
-  const usdcAmount = Number(usdcBalance.totalBalance) / 10 ** SUPPORTED_ASSETS.USDC.decimals;
-  const suiAmount = Number(suiBalance.totalBalance) / Number(MIST_PER_SUI);
+  const stables = {} as Record<StableAsset, number>;
+  let totalStables = 0;
+  for (const { asset, amount } of stableResults) {
+    stables[asset] = amount;
+    totalStables += amount;
+  }
 
+  const suiAmount = Number(suiBalance.totalBalance) / Number(MIST_PER_SUI);
   const savings = 0; // Merged from NAVI in T2000.balance()
   const usdEquiv = suiAmount * suiPriceUsd;
-  const total = usdcAmount + savings + usdEquiv;
+  const total = totalStables + savings + usdEquiv;
 
   return {
-    available: usdcAmount,
+    available: totalStables,
     savings,
     gasReserve: {
       sui: suiAmount,
       usdEquiv,
     },
     total,
+    stables,
     assets: {
-      USDC: usdcAmount,
+      USDC: stables.USDC ?? 0,
       SUI: suiAmount,
     },
   };

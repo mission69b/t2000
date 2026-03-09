@@ -21,6 +21,7 @@ export interface BalanceResponse {
   gasReserve: GasReserve;
   total: number;
   assets: Record<string, number>;
+  stables: Record<string, number>;
 }
 
 export type GasMethod = 'self-funded' | 'sponsored' | 'auto-topup';
@@ -40,6 +41,7 @@ export interface SaveResult {
   success: boolean;
   tx: string;
   amount: number;
+  asset: string;
   apy: number;
   fee: number;
   gasCost: number;
@@ -107,11 +109,13 @@ export interface MaxBorrowResult {
   currentHF: number;
 }
 
+export interface AssetRates {
+  saveApy: number;
+  borrowApy: number;
+}
+
 export interface RatesResult {
-  USDC: {
-    saveApy: number;
-    borrowApy: number;
-  };
+  [asset: string]: AssetRates;
 }
 
 export interface PositionEntry {
@@ -139,6 +143,32 @@ export interface FundStatusResult {
   earnedToday: number;
   earnedAllTime: number;
   projectedMonthly: number;
+}
+
+export interface RebalanceStep {
+  action: 'withdraw' | 'swap' | 'deposit';
+  protocol?: string;
+  fromAsset?: string;
+  toAsset?: string;
+  amount: number;
+  estimatedOutput?: number;
+}
+
+export interface RebalanceResult {
+  executed: boolean;
+  steps: RebalanceStep[];
+  fromProtocol: string;
+  fromAsset: string;
+  toProtocol: string;
+  toAsset: string;
+  amount: number;
+  currentApy: number;
+  newApy: number;
+  annualGain: number;
+  estimatedSwapCost: number;
+  breakEvenDays: number;
+  txDigests: string[];
+  totalGasCost: number;
 }
 
 export interface DepositInfo {

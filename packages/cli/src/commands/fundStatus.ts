@@ -24,10 +24,10 @@ export function registerFundStatus(program: Command) {
         if (result.supplied > 0) {
           printSuccess('Savings: ACTIVE');
         } else {
-          console.log('  Savings: INACTIVE — deposit USDC and run `t2000 save`');
+          console.log('  Savings: INACTIVE — run `t2000 save <amount>` to start earning');
         }
         printBlank();
-        printKeyValue('Saved', `$${result.supplied.toFixed(2)} USDC @ ${result.apy.toFixed(1)}% APY`);
+        printKeyValue('Saved', `$${result.supplied.toFixed(2)} @ ${result.apy.toFixed(1)}% APY`);
         printKeyValue('Earned today', `~$${result.earnedToday.toFixed(4)}`);
         printKeyValue('Earned all time', `~$${result.earnedAllTime.toFixed(4)}`);
         printKeyValue('Monthly projected', `~$${result.projectedMonthly.toFixed(2)}/month`);

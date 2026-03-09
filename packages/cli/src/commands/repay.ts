@@ -6,9 +6,9 @@ import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleE
 export function registerRepay(program: Command) {
   program
     .command('repay')
-    .description('Repay borrowed USDC')
-    .argument('<amount>', 'Amount in USDC to repay (or "all")')
-    .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
+    .description('Repay borrowed stablecoins')
+    .argument('<amount>', 'Amount to repay (or "all")')
+    .argument('[asset]', 'Asset to repay (USDC, USDT, USDe, USDsui)', 'USDC')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi)')
     .action(async (amountStr, assetStr, opts) => {
@@ -30,7 +30,7 @@ export function registerRepay(program: Command) {
         }
 
         printBlank();
-        printSuccess(`Repaid $${result.amount.toFixed(2)} USDC`);
+        printSuccess(`Repaid $${result.amount.toFixed(2)} ${asset}`);
         printKeyValue('Remaining Debt', `$${result.remainingDebt.toFixed(2)}`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();

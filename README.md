@@ -107,14 +107,15 @@ t2000 pay https://api.example.com  # Pay for x402 APIs
 
 ## How it works
 
-t2000 wraps five DeFi primitives into a single interface that any AI agent can use:
+t2000 wraps six DeFi primitives into a single interface that any AI agent can use:
 
 | Feature | What it does | How |
 |---------|-------------|-----|
 | **Checking** | Send and receive USDC | Direct Sui transfers |
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) + [Suilend](https://suilend.fi) (auto-selected) |
-| **Credit** | Borrow against savings | NAVI collateralized loans |
-| **Exchange** | Swap between USDC and SUI | [Cetus](https://cetus.zone) CLMM DEX |
+| **Credit** | Borrow stablecoins against savings | NAVI + Suilend collateralized loans (USDC, USDT, USDe, USDsui) |
+| **Exchange** | Swap between stablecoins and SUI | [Cetus](https://cetus.zone) CLMM DEX |
+| **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.

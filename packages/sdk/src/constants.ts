@@ -24,15 +24,37 @@ export const SUPPORTED_ASSETS = {
     type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
     decimals: 6,
     symbol: 'USDC',
+    displayName: 'USDC',
+  },
+  USDT: {
+    type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+    decimals: 6,
+    symbol: 'USDT',
+    displayName: 'suiUSDT',
+  },
+  USDe: {
+    type: '0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE',
+    decimals: 6,
+    symbol: 'USDe',
+    displayName: 'suiUSDe',
+  },
+  USDsui: {
+    type: '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI',
+    decimals: 6,
+    symbol: 'USDsui',
+    displayName: 'USDsui',
   },
   SUI: {
     type: '0x2::sui::SUI',
     decimals: 9,
     symbol: 'SUI',
+    displayName: 'SUI',
   },
 } as const;
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
+export type StableAsset = Exclude<SupportedAsset, 'SUI'>;
+export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'] as const;
 
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
 export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0x408add9aa9322f93cfd87523d8f603006eb8713894f4c460283c58a6888dae8a';

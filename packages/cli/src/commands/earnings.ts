@@ -21,7 +21,7 @@ export function registerEarnings(program: Command) {
         }
 
         printBlank();
-        printKeyValue('Saved', `$${result.supplied.toFixed(2)} USDC`);
+        printKeyValue('Saved', `$${result.supplied.toFixed(2)}`);
         printKeyValue('APY', `${result.currentApy.toFixed(2)}%`);
         printKeyValue('Daily Yield', `~$${result.dailyEarning.toFixed(4)}/day`);
         printKeyValue('Est. Earned', `~$${result.totalYieldEarned.toFixed(4)}`);

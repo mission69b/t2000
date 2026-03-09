@@ -75,7 +75,7 @@ describe('NaviAdapter', () => {
 
     const result = await adapter.buildSaveTx('0xaddr', 100, 'USDC', { collectFee: true });
     expect(result.tx).toBe(tx);
-    expect(naviProtocol.buildSaveTx).toHaveBeenCalledWith(mockClient, '0xaddr', 100, { collectFee: true });
+    expect(naviProtocol.buildSaveTx).toHaveBeenCalledWith(mockClient, '0xaddr', 100, { collectFee: true, asset: 'USDC' });
   });
 
   it('buildWithdrawTx returns effectiveAmount', async () => {

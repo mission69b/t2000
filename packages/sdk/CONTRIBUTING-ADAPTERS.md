@@ -62,7 +62,7 @@ export class MyProtocolAdapter implements LendingAdapter {
   readonly name = 'My Protocol';
   readonly version = '1.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw'];
-  readonly supportedAssets: readonly string[] = ['USDC'];
+  readonly supportedAssets: readonly string[] = ['USDC', 'USDT', 'USDe', 'USDsui'];
   readonly supportsSameAssetBorrow = false;
 
   private client!: SuiJsonRpcClient;

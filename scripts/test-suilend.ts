@@ -25,6 +25,11 @@ async function main() {
 
     assert(rates.USDC.saveApy > 0, 'Save APY > 0');
     assert(rates.USDC.borrowApy > 0, 'Borrow APY > 0');
+
+    const assets = Object.keys(rates);
+    console.log(`   Assets with rates: ${assets.join(', ')}`);
+    assert(assets.includes('USDC'), 'rates include USDC');
+    assert(assets.length >= 2, `Multi-stable rates returned (${assets.length} assets)`);
   });
 
   await runSection('Balance (before)', async () => {

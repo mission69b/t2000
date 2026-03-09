@@ -6,9 +6,9 @@ import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleE
 export function registerBorrow(program: Command) {
   program
     .command('borrow')
-    .description('Borrow USDC against savings collateral')
-    .argument('<amount>', 'Amount in USDC to borrow')
-    .argument('[asset]', 'Asset symbol (default: USDC)', 'USDC')
+    .description('Borrow stablecoins against savings collateral')
+    .argument('<amount>', 'Amount to borrow')
+    .argument('[asset]', 'Asset to borrow (USDC, USDT, USDe, USDsui)', 'USDC')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi)')
     .action(async (amountStr, assetStr, opts) => {
@@ -36,7 +36,7 @@ export function registerBorrow(program: Command) {
         }
 
         printBlank();
-        printSuccess(`Borrowed $${amount.toFixed(2)} USDC`);
+        printSuccess(`Borrowed $${amount.toFixed(2)} ${asset}`);
         printKeyValue('Health Factor', result.healthFactor.toFixed(2));
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
