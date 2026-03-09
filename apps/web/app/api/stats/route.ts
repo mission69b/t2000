@@ -41,15 +41,15 @@ async function getWalletBalances() {
 
   try {
     const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
-    const results: Record<string, { address: string; balanceSui: number; balanceUsdc?: number }> = {};
+    const results: Record<string, { balanceSui: number; balanceUsdc?: number }> = {};
 
     if (sponsorAddr) {
       const bal = await client.getBalance({ owner: sponsorAddr });
-      results.sponsor = { address: sponsorAddr, balanceSui: Number(bal.totalBalance) / 1e9 };
+      results.sponsor = { balanceSui: Number(bal.totalBalance) / 1e9 };
     }
     if (gasAddr) {
       const bal = await client.getBalance({ owner: gasAddr });
-      results.gasStation = { address: gasAddr, balanceSui: Number(bal.totalBalance) / 1e9 };
+      results.gasStation = { balanceSui: Number(bal.totalBalance) / 1e9 };
     }
 
     const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
@@ -89,13 +89,11 @@ async function getWalletBalances() {
     }
 
     results.treasury = {
-      address: TREASURY_ID,
       balanceSui: 0,
       balanceUsdc: +treasuryUsdc.toFixed(6),
     };
 
     results.rebate = {
-      address: REBATE_ADDRESS,
       balanceSui: Number(rebateSui.totalBalance) / 1e9,
       balanceUsdc: Number(rebateUsdc.totalBalance) / 1e6,
     };
@@ -115,13 +113,7 @@ async function getAgentStats(oneDayAgo: Date, sevenDaysAgo: Date, thirtyDaysAgo:
     prisma.agent.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
   ]);
 
-  const recent = await prisma.agent.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 10,
-    select: { address: true, createdAt: true, lastSeen: true },
-  });
-
-  return { total, last24h, last7d, last30d, recent };
+  return { total, last24h, last7d, last30d };
 }
 
 async function getGasStats(oneDayAgo: Date, sevenDaysAgo: Date) {

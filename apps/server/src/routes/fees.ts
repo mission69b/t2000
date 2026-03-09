@@ -1,7 +1,10 @@
 import { Hono } from 'hono';
+import { isValidSuiAddress } from '@mysten/sui/utils';
 import { prisma } from '../db/prisma.js';
 
 const fees = new Hono();
+
+const TX_DIGEST_RE = /^[A-Za-z0-9+/=]{32,64}$/;
 
 fees.post('/api/fees', async (c) => {
   const body = await c.req.json<{
@@ -16,6 +19,21 @@ fees.post('/api/fees', async (c) => {
     return c.json({ error: 'agentAddress, operation, and txDigest are required' }, 400);
   }
 
+  if (!isValidSuiAddress(body.agentAddress)) {
+    return c.json({ error: 'INVALID_ADDRESS' }, 400);
+  }
+
+  if (!TX_DIGEST_RE.test(body.txDigest)) {
+    return c.json({ error: 'INVALID_DIGEST', message: 'Invalid transaction digest format' }, 400);
+  }
+
+  const existing = await prisma.protocolFeeLedger.findFirst({
+    where: { txDigest: body.txDigest },
+  });
+  if (existing) {
+    return c.json({ ok: true, duplicate: true });
+  }
+
   try {
     await prisma.protocolFeeLedger.create({
       data: {
@@ -28,9 +46,8 @@ fees.post('/api/fees', async (c) => {
     });
     return c.json({ ok: true });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Failed to record fee';
-    console.error('[fees] Error:', msg);
-    return c.json({ error: msg }, 500);
+    console.error('[fees] Error:', error instanceof Error ? error.message : error);
+    return c.json({ error: 'FEE_RECORD_FAILED' }, 500);
   }
 });
 
@@ -49,9 +66,8 @@ fees.get('/api/fees', async (c) => {
 
     return c.json({ records, totalFees });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Failed to fetch fees';
-    console.error('[fees] Error:', msg);
-    return c.json({ error: msg }, 500);
+    console.error('[fees] Error:', error instanceof Error ? error.message : error);
+    return c.json({ error: 'FETCH_FAILED' }, 500);
   }
 });
 

@@ -1,6 +1,7 @@
 import { getSuiClient } from './wallets.js';
 
 const TWAP_WINDOW_MS = 5 * 60 * 1000;
+const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 const CIRCUIT_BREAKER_WINDOW_MS = 60 * 60 * 1000;
 const CIRCUIT_BREAKER_THRESHOLD = 0.20;
 const POLL_INTERVAL_MS = 30_000;
@@ -116,10 +117,19 @@ export function stopPriceCache(): void {
 export function getSuiPriceTwap(): number {
   const cutoff = Date.now() - TWAP_WINDOW_MS;
   const recent = priceHistory.filter((p) => p.timestamp > cutoff);
-  if (recent.length === 0) return 1.0;
+  if (recent.length === 0) {
+    console.warn('[priceCache] No recent price data — using fallback $1.00');
+    return 1.0;
+  }
 
   const sum = recent.reduce((acc, p) => acc + p.price, 0);
   return sum / recent.length;
+}
+
+export function isPriceStale(): boolean {
+  if (priceHistory.length === 0) return true;
+  const latest = priceHistory[priceHistory.length - 1];
+  return Date.now() - latest.timestamp > STALE_THRESHOLD_MS;
 }
 
 export function isCircuitBreakerTripped(): boolean {

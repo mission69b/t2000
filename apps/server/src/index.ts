@@ -8,6 +8,7 @@ import { gas } from './routes/gas.js';
 import { fees } from './routes/fees.js';
 import { x402 } from './routes/x402.js';
 import { startPriceCache } from './lib/priceCache.js';
+import { testDatabaseConnection } from './db/prisma.js';
 
 const REQUIRED_ENV = ['DATABASE_URL', 'SPONSOR_PRIVATE_KEY', 'GAS_STATION_PRIVATE_KEY'];
 const missing = REQUIRED_ENV.filter((v) => !process.env[v]);
@@ -54,9 +55,11 @@ app.get('/', (c) => c.json({ service: 't2000-server', version: '0.1.0' }));
 
 const port = parseInt(process.env.PORT ?? '3000', 10);
 
-startPriceCache();
-console.log(`t2000 server starting on port ${port}`);
-
-serve({ fetch: app.fetch, port });
+(async () => {
+  await testDatabaseConnection();
+  startPriceCache();
+  console.log(`t2000 server starting on port ${port}`);
+  serve({ fetch: app.fetch, port });
+})();
 
 export default app;

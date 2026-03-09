@@ -2,6 +2,16 @@ import { createHash, randomBytes } from 'node:crypto';
 
 const DIFFICULTY = 20; // 20 leading zero bits (~1M hashes, ~1-2 seconds)
 
+const usedStamps = new Map<string, number>();
+const STAMP_TTL_MS = 24 * 60 * 60 * 1000;
+
+function cleanExpiredStamps(): void {
+  const now = Date.now();
+  for (const [stamp, expiry] of usedStamps) {
+    if (now > expiry) usedStamps.delete(stamp);
+  }
+}
+
 export interface HashcashChallenge {
   resource: string;
   bits: number;
@@ -45,7 +55,14 @@ export function verifyStamp(stamp: string, expectedResource: string): boolean {
   if (diffMs < 0 || diffMs > 24 * 60 * 60 * 1000) return false;
 
   const hash = createHash('sha256').update(stamp).digest();
-  return hasLeadingZeroBits(hash, bits);
+  const valid = hasLeadingZeroBits(hash, bits);
+  if (!valid) return false;
+
+  cleanExpiredStamps();
+  if (usedStamps.has(stamp)) return false;
+  usedStamps.set(stamp, Date.now() + STAMP_TTL_MS);
+
+  return true;
 }
 
 function hasLeadingZeroBits(hash: Buffer, bits: number): boolean {

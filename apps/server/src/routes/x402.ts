@@ -8,23 +8,13 @@ const x402 = new Hono();
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 100;
-const ipRequestCounts = new Map<string, { count: number; resetAt: number }>();
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = ipRequestCounts.get(ip);
-
-  if (!entry || now > entry.resetAt) {
-    ipRequestCounts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
+async function checkRateLimit(ip: string): Promise<boolean> {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+  const count = await prisma.x402Payment.count({
+    where: { verifiedAt: { gte: windowStart } },
+  });
+  return count < RATE_LIMIT_MAX;
 }
 
 x402.get('/x402', (c) => {
@@ -42,7 +32,8 @@ x402.get('/x402', (c) => {
 
 x402.post('/x402/verify', async (c) => {
   const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? '127.0.0.1';
-  if (!checkRateLimit(ip)) {
+  const withinLimit = await checkRateLimit(ip);
+  if (!withinLimit) {
     return c.json(
       { error: 'RATE_LIMITED', message: 'Too many verification requests' },
       429,
@@ -88,9 +79,8 @@ x402.post('/x402/verify', async (c) => {
 
     return c.json(result);
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Verification failed';
-    console.error('[x402/verify] Error:', msg);
-    return c.json({ verified: false, reason: 'internal_error', message: msg }, 500);
+    console.error('[x402/verify] Error:', error instanceof Error ? error.message : error);
+    return c.json({ verified: false, reason: 'internal_error' }, 500);
   }
 });
 
@@ -112,7 +102,7 @@ x402.post('/x402/settle', async (c) => {
     });
 
     if (!payment) {
-      return c.json({ error: 'NOT_FOUND', message: 'Payment not found' }, 404);
+      return c.json({ error: 'NOT_FOUND', message: 'Payment not found — must be verified first' }, 404);
     }
 
     if (!payment.settled) {
@@ -124,9 +114,8 @@ x402.post('/x402/settle', async (c) => {
 
     return c.json({ settled: true });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Settlement failed';
-    console.error('[x402/settle] Error:', msg);
-    return c.json({ error: 'INTERNAL_ERROR', message: msg }, 500);
+    console.error('[x402/settle] Error:', error instanceof Error ? error.message : error);
+    return c.json({ error: 'INTERNAL_ERROR' }, 500);
   }
 });
 

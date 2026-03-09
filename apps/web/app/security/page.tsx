@@ -11,10 +11,10 @@ export const metadata: Metadata = {
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 
 const AUDIT_FINDINGS = [
-  { severity: "CRITICAL", count: 1, fixed: 0, color: "text-red-400 bg-red-500/10 border-red-500/20" },
-  { severity: "HIGH", count: 5, fixed: 1, color: "text-orange-400 bg-orange-500/10 border-orange-500/20" },
-  { severity: "MEDIUM", count: 7, fixed: 3, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
-  { severity: "LOW", count: 5, fixed: 0, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
+  { severity: "CRITICAL", count: 1, fixed: 1, color: "text-red-400 bg-red-500/10 border-red-500/20" },
+  { severity: "HIGH", count: 5, fixed: 5, color: "text-orange-400 bg-orange-500/10 border-orange-500/20" },
+  { severity: "MEDIUM", count: 7, fixed: 5, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
+  { severity: "LOW", count: 5, fixed: 4, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
   { severity: "INFO", count: 4, fixed: 0, color: "text-zinc-400 bg-zinc-500/10 border-zinc-500/20" },
 ];
 
@@ -119,7 +119,7 @@ export default function SecurityPage() {
             </div>
             <p className="text-xs text-muted font-mono">
               No critical vulnerabilities enabling direct fund theft were found.
-              4 of 22 findings remediated. Remaining items tracked for future releases.
+              20 of 22 findings remediated. 2 deferred (infrastructure changes).
             </p>
           </div>
         </section>

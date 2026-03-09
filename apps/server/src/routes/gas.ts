@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { isValidSuiAddress } from '@mysten/sui/utils';
 import {
   sponsorTransaction,
   recordGasSponsorship,
@@ -6,8 +7,21 @@ import {
   type GasRequestType,
 } from '../services/gasStation.js';
 import { isCircuitBreakerTripped, getSuiPriceTwap } from '../lib/priceCache.js';
+import { createChallenge, formatChallenge, verifyStamp } from '../lib/hashcash.js';
+import { prisma } from '../db/prisma.js';
 
 const gas = new Hono();
+
+const SENDER_RATE_LIMIT = 20;
+const SENDER_RATE_WINDOW_MS = 60 * 60 * 1000;
+
+async function checkSenderRateLimit(sender: string): Promise<boolean> {
+  const windowStart = new Date(Date.now() - SENDER_RATE_WINDOW_MS);
+  const count = await prisma.gasLedger.count({
+    where: { agentAddress: sender, createdAt: { gte: windowStart } },
+  });
+  return count < SENDER_RATE_LIMIT;
+}
 
 gas.post('/api/gas', async (c) => {
   const body = await c.req.json<{
@@ -15,10 +29,31 @@ gas.post('/api/gas', async (c) => {
     txBytes?: string;
     sender: string;
     type?: GasRequestType;
+    proof?: string;
   }>();
 
   if ((!body.txJson && !body.txBytes) || !body.sender) {
     return c.json({ error: 'txJson (or txBytes) and sender are required' }, 400);
+  }
+
+  if (!isValidSuiAddress(body.sender)) {
+    return c.json({ error: 'INVALID_ADDRESS', message: 'Invalid Sui address' }, 400);
+  }
+
+  const withinLimit = await checkSenderRateLimit(body.sender);
+  if (!withinLimit) {
+    if (!body.proof) {
+      const challenge = createChallenge(body.sender);
+      return c.json({
+        error: 'RATE_LIMITED',
+        challenge: formatChallenge(challenge),
+        message: 'Solve the hashcash challenge and resubmit with proof field',
+      }, 429);
+    }
+
+    if (!verifyStamp(body.proof, body.sender)) {
+      return c.json({ error: 'INVALID_PROOF', message: 'Hashcash proof is invalid' }, 403);
+    }
   }
 
   try {
@@ -32,19 +67,21 @@ gas.post('/api/gas', async (c) => {
     const msg = error instanceof Error ? error.message : 'Gas sponsorship failed';
 
     if (msg.startsWith('CIRCUIT_BREAKER')) {
-      return c.json({ error: 'CIRCUIT_BREAKER', message: msg, retryAfter: 300 }, 503);
+      return c.json({ error: 'CIRCUIT_BREAKER', retryAfter: 300 }, 503);
     }
     if (msg.startsWith('POOL_DEPLETED')) {
-      return c.json({ error: 'POOL_DEPLETED', message: msg, retryAfter: 600 }, 503);
+      return c.json({ error: 'POOL_DEPLETED', retryAfter: 600 }, 503);
     }
     if (msg.startsWith('GAS_FEE_EXCEEDED')) {
-      return c.json({ error: 'GAS_FEE_EXCEEDED', message: msg, retryAfter: 60 }, 429);
+      return c.json({ error: 'GAS_FEE_EXCEEDED', retryAfter: 60 }, 429);
     }
 
     console.error('[gas] Error:', msg);
-    return c.json({ error: 'GAS_SPONSOR_FAILED', message: msg }, 500);
+    return c.json({ error: 'GAS_SPONSOR_FAILED' }, 500);
   }
 });
+
+const TX_DIGEST_RE = /^[A-Za-z0-9+/=]{32,64}$/;
 
 gas.post('/api/gas/report', async (c) => {
   const body = await c.req.json<{
@@ -54,6 +91,18 @@ gas.post('/api/gas/report', async (c) => {
     usdcCharged: number;
     type: GasRequestType;
   }>();
+
+  if (!body.sender || !body.txDigest || !body.type) {
+    return c.json({ error: 'sender, txDigest, and type are required' }, 400);
+  }
+
+  if (!isValidSuiAddress(body.sender)) {
+    return c.json({ error: 'INVALID_ADDRESS' }, 400);
+  }
+
+  if (!TX_DIGEST_RE.test(body.txDigest)) {
+    return c.json({ error: 'INVALID_DIGEST', message: 'Invalid transaction digest format' }, 400);
+  }
 
   try {
     await recordGasSponsorship(
@@ -65,8 +114,8 @@ gas.post('/api/gas/report', async (c) => {
     );
     return c.json({ ok: true });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Report failed';
-    return c.json({ error: msg }, 500);
+    console.error('[gas/report] Error:', error instanceof Error ? error.message : error);
+    return c.json({ error: 'REPORT_FAILED' }, 500);
   }
 });
 

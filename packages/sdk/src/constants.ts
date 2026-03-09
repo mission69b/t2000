@@ -37,7 +37,6 @@ export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
 export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0x408add9aa9322f93cfd87523d8f603006eb8713894f4c460283c58a6888dae8a';
 export const T2000_ADMIN_CAP_ID = '0x863d1b02cba1b93d0fe9b87eb92d58b60c1e85c001022cb2a760e07bade47e65';
-export const T2000_UPGRADE_CAP_ID = '0xef28746d40f43ca6be1352102cef0152133bf5594e69caab28f40b1de74490c1';
 export const T2000_TREASURY_ID = process.env.T2000_TREASURY_ID ?? '0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91';
 
 export const DEFAULT_NETWORK = 'mainnet' as const;

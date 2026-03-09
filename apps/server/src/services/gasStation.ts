@@ -3,6 +3,7 @@ import { getGasStationWallet, getSuiClient } from '../lib/wallets.js';
 import { enqueueSign } from '../lib/signingQueue.js';
 import {
   isCircuitBreakerTripped,
+  isPriceStale,
   exceedsGasFeeCeiling,
   gasCostToUsd,
   GAS_FEE_CEILING,
@@ -55,6 +56,9 @@ export async function sponsorTransaction(
 ): Promise<GasSponsorResult> {
   if (isCircuitBreakerTripped()) {
     throw new Error('CIRCUIT_BREAKER: SUI price unstable — sponsorship paused');
+  }
+  if (isPriceStale()) {
+    throw new Error('PRICE_STALE: SUI price data outdated — sponsorship paused');
   }
 
   const poolOk = await checkPoolBalance();
