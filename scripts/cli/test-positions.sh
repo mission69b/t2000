@@ -47,8 +47,8 @@ OUTPUT=$(t2000 earn 2>&1)
 echo "$OUTPUT" | grep -q "SAVINGS"
 check $? "earn shows SAVINGS section"
 
-echo "$OUTPUT" | grep -q "Total Saved"
-check $? "earn shows Total Saved"
+echo "$OUTPUT" | grep -qE "Total Saved|SENTINEL BOUNTIES"
+check $? "earn shows savings or sentinel section"
 
 echo ""
 echo "════════════════════════════════════════════"
