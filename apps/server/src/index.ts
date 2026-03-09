@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
+import { bodyLimit } from 'hono/body-limit';
 import { sponsor } from './routes/sponsor.js';
 import { health } from './routes/health.js';
 import { gas } from './routes/gas.js';
@@ -26,7 +27,12 @@ process.on('uncaughtException', (err) => {
 
 const app = new Hono();
 
-app.use('*', cors());
+app.use('*', cors({
+  origin: ['https://t2000.ai', 'https://api.t2000.ai'],
+  allowMethods: ['GET', 'POST', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use('*', bodyLimit({ maxSize: 256 * 1024 }));
 
 app.use('*', async (c, next) => {
   const start = Date.now();

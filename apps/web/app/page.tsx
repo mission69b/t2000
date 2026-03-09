@@ -219,6 +219,7 @@ export default function Home() {
         <div className="font-mono font-semibold text-base sm:text-lg text-accent tracking-tight flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
           t2000
+          <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded">beta</span>
         </div>
         <nav className="flex items-center gap-4 sm:gap-8">
           <a
@@ -769,6 +770,24 @@ export default function Home() {
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
             Docs
+          </Link>
+          <Link
+            href="/security"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Security
+          </Link>
+          <Link
+            href="/terms"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Terms
+          </Link>
+          <Link
+            href="/privacy"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Privacy
           </Link>
         </div>
       </footer>

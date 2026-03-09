@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { isValidSuiAddress } from '@mysten/sui/utils';
 import { createChallenge, formatChallenge, verifyStamp } from '../lib/hashcash.js';
 import { checkRateLimit, sponsorWalletInit } from '../services/sponsor.js';
 
@@ -13,6 +14,10 @@ sponsor.post('/api/sponsor', async (c) => {
 
   if (!body.address) {
     return c.json({ error: 'address is required' }, 400);
+  }
+
+  if (!isValidSuiAddress(body.address)) {
+    return c.json({ error: 'INVALID_ADDRESS', message: 'Invalid Sui address format' }, 400);
   }
 
   const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? '127.0.0.1';
