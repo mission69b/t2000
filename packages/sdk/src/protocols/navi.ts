@@ -2,6 +2,7 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
+import { SuiPythClient, SuiPriceServiceConnection } from '@pythnetwork/pyth-sui-js';
 import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
 import type { StableAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
@@ -33,6 +34,7 @@ const CONFIG_API = 'https://open-api.naviprotocol.io/api/navi/config?env=prod';
 const POOLS_API = 'https://open-api.naviprotocol.io/api/navi/pools?env=prod';
 
 const PACKAGE_API = 'https://open-api.naviprotocol.io/api/package';
+const PYTH_HERMES_URL = 'https://hermes.pyth.network/';
 let packageCache: { id: string; ts: number } | null = null;
 
 // ---------------------------------------------------------------------------
@@ -43,6 +45,7 @@ interface OracleFeed {
   oracleId: number;
   assetId: number;
   feedId: string;
+  pythPriceFeedId: string;
   pythPriceInfoObject: string;
 }
 
@@ -58,6 +61,8 @@ interface NaviConfig {
     oracleConfig: string;
     supraOracleHolder: string;
     switchboardAggregator: string;
+    pythStateId: string;
+    wormholeStateId: string;
     feeds: OracleFeed[];
   };
 }
@@ -210,18 +215,55 @@ function addOracleUpdate(tx: Transaction, config: NaviConfig, pool: NaviPool): v
   });
 }
 
-function addOracleUpdatesForAllPools(
+/**
+ * Pushes fresh Pyth prices and then updates NAVI oracles for our
+ * supported stablecoins only (USDC, USDT, USDe, USDsui).
+ *
+ * NAVI's validate_withdraw/validate_borrow requires oracle prices
+ * fresher than 15 seconds. Keeper bots usually keep them fresh, but
+ * when they don't, the operation fails with abort code 1503. By
+ * pushing Pyth VAAs ourselves in the same PTB, we guarantee freshness.
+ */
+async function refreshStableOracles(
   tx: Transaction,
+  client: SuiJsonRpcClient,
   config: NaviConfig,
   pools: NaviPool[],
-): void {
-  const updated = new Set<number>();
-  for (const feed of config.oracle.feeds ?? []) {
-    if (updated.has(feed.assetId)) continue;
-    const pool = pools.find((p) => p.id === feed.assetId);
-    if (!pool) continue;
+): Promise<void> {
+  const stableTypes = STABLE_ASSETS.map((a) => SUPPORTED_ASSETS[a].type);
+
+  const stablePools = pools.filter((p) => {
+    const ct = p.suiCoinType || p.coinType || '';
+    return stableTypes.some((t) => matchesCoinType(ct, t));
+  });
+
+  const feeds = (config.oracle.feeds ?? []).filter(
+    (f) => stablePools.some((p) => p.id === f.assetId),
+  );
+
+  if (feeds.length === 0) return;
+
+  const pythFeedIds = feeds.map((f) => f.pythPriceFeedId).filter(Boolean);
+
+  if (pythFeedIds.length > 0 && config.oracle.pythStateId && config.oracle.wormholeStateId) {
+    try {
+      const connection = new SuiPriceServiceConnection(PYTH_HERMES_URL);
+      const priceUpdateData = await connection.getPriceFeedsUpdateData(pythFeedIds);
+      // Pyth SDK bundles @mysten/sui v1 — runtime API identical to v2.
+      const pythClient = new SuiPythClient(
+        client as never,
+        config.oracle.pythStateId,
+        config.oracle.wormholeStateId,
+      );
+      await pythClient.updatePriceFeeds(tx as never, priceUpdateData, pythFeedIds);
+    } catch {
+      // Pyth push failed — NAVI oracle update below may still succeed
+      // if on-chain Pyth prices are fresh enough from keeper bots.
+    }
+  }
+
+  for (const pool of stablePools) {
     addOracleUpdate(tx, config, pool);
-    updated.add(feed.assetId);
   }
 }
 
@@ -433,7 +475,7 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdatesForAllPools(tx, config, pools);
+  await refreshStableOracles(tx, client, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -490,7 +532,7 @@ export async function addWithdrawToTx(
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
 
-  addOracleUpdatesForAllPools(tx, config, pools);
+  await refreshStableOracles(tx, client, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -639,7 +681,7 @@ export async function buildBorrowTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdatesForAllPools(tx, config, pools);
+  await refreshStableOracles(tx, client, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::borrow_v2`,

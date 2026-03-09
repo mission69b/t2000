@@ -173,6 +173,9 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
+      '@pythnetwork/pyth-sui-js':
+        specifier: ^3.0.0
+        version: 3.0.0(axios@1.13.6)(typescript@5.9.3)
       eventemitter3:
         specifier: ^5
         version: 5.0.4
@@ -999,9 +1002,17 @@ packages:
     resolution: {integrity: sha512-XOtP5dvHfKNl+uvFzXCMI9OL7VdJ8eXsv5ahy6ZB3ArZ+UMM4U4OrPYQPwLvJwlpkBXpEqsJKlMawcoyCB+yMA==}
     engines: {node: '>=22.14.0'}
 
+  '@pythnetwork/hermes-client@3.1.0':
+    resolution: {integrity: sha512-KEILjOCtnq/CRfnmDSnNS3egBuSupDglAE/dIDy8Y9S+zMm69lFQJUP87fuymWdpkI0JKmGHWtVX6R9edEGNtA==}
+    engines: {node: ^24.0.0}
+
   '@pythnetwork/pyth-sui-js@2.4.0':
     resolution: {integrity: sha512-FvHlvU/fGcfAoHazU3UxZQBUMy90qER8SbcXcr0u2g+kwlq7qn4doadESZ7g1sgFfFwZgInLjRFIu7ZT4413zA==}
     engines: {node: '>=22.14.0'}
+
+  '@pythnetwork/pyth-sui-js@3.0.0':
+    resolution: {integrity: sha512-PXUqowHVFUTGTTyE2sEZSQI9d+Yz+cAYdffurxDlsKxM31cbd8xoyl9LFMs9i2qR398v749M1O0R8laS5eNPRA==}
+    engines: {node: ^24.0.0}
 
   '@rollup/rollup-android-arm-eabi@4.59.0':
     resolution: {integrity: sha512-upnNBkA6ZH2VKGcBj9Fyl9IGNPULcjXRlg0LLeaioQWueH30p6IXtJEbKAgvyv+mJaMxSm1l6xwDXYjpEMiLMg==}
@@ -4045,10 +4056,29 @@ snapshots:
     transitivePeerDependencies:
       - axios
 
+  '@pythnetwork/hermes-client@3.1.0(axios@1.13.6)':
+    dependencies:
+      '@zodios/core': 10.9.6(axios@1.13.6)(zod@3.25.76)
+      eventsource: 3.0.7
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - axios
+
   '@pythnetwork/pyth-sui-js@2.4.0(axios@1.13.6)(typescript@5.9.3)':
     dependencies:
       '@mysten/sui': 1.45.2(typescript@5.9.3)
       '@pythnetwork/hermes-client': 2.1.0(axios@1.13.6)
+      buffer: 6.0.3
+    transitivePeerDependencies:
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - axios
+      - typescript
+
+  '@pythnetwork/pyth-sui-js@3.0.0(axios@1.13.6)(typescript@5.9.3)':
+    dependencies:
+      '@mysten/sui': 1.45.2(typescript@5.9.3)
+      '@pythnetwork/hermes-client': 3.1.0(axios@1.13.6)
       buffer: 6.0.3
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
