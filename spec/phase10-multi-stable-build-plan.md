@@ -34,30 +34,30 @@ Adding USDT/USDe/USDsui to every command (save, send, gas auto-top-up) touches e
 
 All 4 stables confirmed on both lending protocols:
 
-| Asset | Type | Decimals | NAVI | Suilend | Cetus Swap |
-|-------|------|----------|------|---------|------------|
-| USDC | Native (Circle) | 6 | ✅ | ✅ | ✅ |
-| suiUSDT | Bridged (Wormhole) | 6 | ✅ | ✅ | ✅ |
-| suiUSDe | Bridged (Ethena) | 6* | ✅ | ✅ | ✅ |
-| USDsui | Native (Bridge/Stripe) | 6* | ✅ | ✅ | ✅ |
+| Asset | Coin Type | Decimals | NAVI | Suilend | Cetus |
+|-------|-----------|----------|------|---------|-------|
+| USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ |
+| suiUSDT | `0x375f...::usdt::USDT` | 6* | ✅ | ✅ | ✅ |
+| suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6* | ✅ | ✅ | ✅ |
+| USDsui | `0x44f8...::usdsui::USDSUI` | 6* | ✅ | ✅ | ✅ |
 
-*Decimals verified via `CoinMetadata` during pre-work.
+*Decimals to be confirmed via `CoinMetadata` during pre-work (likely 6 for all).
 
 ---
 
 ## Pre-work: On-Chain Verification (30m)
 
+Coin types are confirmed. Remaining verification:
+
 | Data needed | Source | Purpose |
 |-------------|--------|---------|
-| suiUSDT full coin type (`0x...::usdt::USDT`) | Sui Explorer / RPC | `SUPPORTED_ASSETS` |
-| suiUSDT decimals | `CoinMetadata.decimals` | Amount conversion |
-| suiUSDe full coin type | Sui Explorer / RPC | `SUPPORTED_ASSETS` |
-| suiUSDe decimals | `CoinMetadata.decimals` | Amount conversion |
-| USDsui full coin type | Sui Explorer / RPC | `SUPPORTED_ASSETS` |
-| USDsui decimals | `CoinMetadata.decimals` | Amount conversion |
+| ~~suiUSDT coin type~~ | ✅ `0x375f...::usdt::USDT` | Done |
+| ~~suiUSDe coin type~~ | ✅ `0x41d5...::sui_usde::SUI_USDE` | Done |
+| ~~USDsui coin type~~ | ✅ `0x44f8...::usdsui::USDSUI` | Done |
+| Confirm decimals for USDT, USDe, USDsui | `CoinMetadata.decimals` via RPC | Likely all 6, must verify |
 | NAVI pool configs for each asset | NAVI API (`/api/navi/pools`) | Pool IDs, reserve IDs, oracle feeds |
 | Suilend reserve configs for each asset | Suilend LendingMarket object | Reserve indices, coin types |
-| Cetus Aggregator quote for each pair | Cetus API test call | Confirm routing works |
+| Cetus Aggregator quote for each pair | Cetus API test call | Confirm routing + liquidity |
 
 ---
 
@@ -69,17 +69,34 @@ Add new assets and type helpers:
 
 ```typescript
 export const SUPPORTED_ASSETS = {
-  USDC:   { type: '0x...::usdc::USDC', decimals: 6, symbol: 'USDC', displayName: 'USDC' },
-  USDT:   { type: '0x...::usdt::USDT', decimals: 6, symbol: 'USDT', displayName: 'USDT' },
-  USDe:   { type: '0x...::usde::USDe', decimals: 6, symbol: 'USDe', displayName: 'USDe' },
-  USDsui: { type: '0x...::usdsui::USDSUI', decimals: 6, symbol: 'USDsui', displayName: 'USDsui' },
-  SUI:    { type: '0x2::sui::SUI', decimals: 9, symbol: 'SUI', displayName: 'SUI' },
+  USDC: {
+    type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+    decimals: 6, symbol: 'USDC', displayName: 'USDC',
+  },
+  USDT: {
+    type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+    decimals: 6, symbol: 'USDT', displayName: 'suiUSDT',
+  },
+  USDe: {
+    type: '0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE',
+    decimals: 6, symbol: 'USDe', displayName: 'suiUSDe',
+  },
+  USDsui: {
+    type: '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI',
+    decimals: 6, symbol: 'USDsui', displayName: 'USDsui',
+  },
+  SUI: {
+    type: '0x2::sui::SUI',
+    decimals: 9, symbol: 'SUI', displayName: 'SUI',
+  },
 } as const;
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
 export type StableAsset = Exclude<SupportedAsset, 'SUI'>;
 export const STABLE_ASSETS: StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'];
 ```
+
+**Note:** USDe uses module `sui_usde` and struct `SUI_USDE` (not `usde::USDe`). The `symbol` key (`'USDe'`) is what CLI/SDK uses internally; the `type` string is what goes on-chain.
 
 ### 1.2 — `packages/sdk/src/utils/format.ts`
 
@@ -581,6 +598,34 @@ t2000 withdraw all
 | Different decimals than expected | Pre-work verifies via CoinMetadata. Dynamic `getDecimals()`. |
 | Existing USDC tests break | Core USDC flows are untouched. Full test suite after each stage. |
 | Health factor risk with active borrows | Rebalance checks health factor, refuses if < 1.5 after move. |
+
+---
+
+## Edge Cases to Handle
+
+### `withdraw all` after rebalance
+If rebalance moved USDC → USDT on Suilend, `withdraw all` must iterate all adapters AND all assets per adapter. Currently `withdrawAllProtocols()` filters by a single asset. **Fix:** iterate each adapter's `supportedAssets` and check for positions in each.
+
+### `withdraw` with explicit asset but no `--protocol`
+User runs `t2000 withdraw 100 USDT` without specifying protocol. Must resolve which protocol holds USDT. Use existing `resolveLending` logic — find first adapter with a USDT position.
+
+### Coin merging for non-USDC stables
+When withdrawing or swapping, the user's USDT/USDe/USDsui may be split across multiple coin objects (just like USDC). The coin merging logic in `buildDepositTx` / `buildSwapTx` must use the correct coin type, not hardcoded USDC type.
+
+### Rebalance with zero positions
+`t2000 rebalance --dry-run` when user has no savings → clean message: "No savings positions to optimize. Run `t2000 save <amount>` first."
+
+### Rebalance suggests same protocol, different asset
+USDC on NAVI at 4.2% → USDT on NAVI at 4.8%. This requires withdraw USDC + swap + deposit USDT, all on the same protocol. Should work but test this path.
+
+### Borrow without collateral
+User tries `t2000 borrow 100 USDT` with no savings. Error must be clear: "No collateral deposited. Save first with `t2000 save <amount>`."
+
+### `rates` with no protocol support for an asset
+If NAVI doesn't support USDsui (hypothetical), `rates` should simply omit it from the USDsui section, not error.
+
+### USDe module name mismatch
+USDe uses `sui_usde::SUI_USDE` not `usde::USDe`. When matching NAVI/Suilend pool coin types against `SUPPORTED_ASSETS`, use `normalizeStructTag()` and match by full type string, not by parsing module/struct names.
 
 ---
 
