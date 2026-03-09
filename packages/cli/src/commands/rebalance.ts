@@ -1,6 +1,5 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import readline from 'readline';
 import { T2000, formatUsd, SUPPORTED_ASSETS } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import {
@@ -17,16 +16,6 @@ import {
   explorerUrl,
 } from '../output.js';
 
-async function confirm(message: string): Promise<boolean> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(`  ${message} (y/N) `, (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-    });
-  });
-}
-
 export function registerRebalance(program: Command) {
   program
     .command('rebalance')
@@ -35,7 +24,6 @@ export function registerRebalance(program: Command) {
     .option('--dry-run', 'Show what would happen without executing')
     .option('--min-diff <pct>', 'Minimum APY difference to trigger (default: 0.5)', '0.5')
     .option('--max-break-even <days>', 'Max break-even days for cross-asset moves (default: 30)', '30')
-    .option('--yes', 'Skip confirmation prompt')
     .action(async (opts) => {
       try {
         const pin = await resolvePin();
@@ -116,15 +104,6 @@ export function registerRebalance(program: Command) {
           printLine(pc.dim('  Run `t2000 rebalance` to execute.'));
           printBlank();
           return;
-        }
-
-        if (!opts.yes) {
-          const proceed = await confirm('Execute this rebalance?');
-          if (!proceed) {
-            printInfo('Cancelled.');
-            printBlank();
-            return;
-          }
         }
 
         const result = await agent.rebalance({ dryRun: false, minYieldDiff, maxBreakEven });
