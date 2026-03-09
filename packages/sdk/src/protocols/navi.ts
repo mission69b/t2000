@@ -210,25 +210,18 @@ function addOracleUpdate(tx: Transaction, config: NaviConfig, pool: NaviPool): v
   });
 }
 
-function addOracleUpdatesForPositions(
+function addOracleUpdatesForAllPools(
   tx: Transaction,
   config: NaviConfig,
   pools: NaviPool[],
-  states: UserState[],
-  primaryPool: NaviPool,
 ): void {
   const updated = new Set<number>();
-  addOracleUpdate(tx, config, primaryPool);
-  updated.add(primaryPool.id);
-
-  for (const state of states) {
-    if (updated.has(state.assetId)) continue;
-    const pool = pools.find((p) => p.id === state.assetId);
+  for (const feed of config.oracle.feeds ?? []) {
+    if (updated.has(feed.assetId)) continue;
+    const pool = pools.find((p) => p.id === feed.assetId);
     if (!pool) continue;
-    const feed = config.oracle.feeds?.find((f) => f.assetId === pool.id);
-    if (!feed) continue;
     addOracleUpdate(tx, config, pool);
-    updated.add(pool.id);
+    updated.add(feed.assetId);
   }
 }
 
@@ -279,7 +272,7 @@ function compoundBalance(rawBalance: bigint, currentIndex: string): number {
 // On-chain reads
 // ---------------------------------------------------------------------------
 
-async function getUserState(client: SuiJsonRpcClient, address: string, includeZero = false): Promise<UserState[]> {
+async function getUserState(client: SuiJsonRpcClient, address: string): Promise<UserState[]> {
   const config = await getConfig();
   const tx = new Transaction();
   tx.moveCall({
@@ -302,7 +295,6 @@ async function getUserState(client: SuiJsonRpcClient, address: string, includeZe
       borrowBalance: toBigInt(s.borrow_balance),
     }));
 
-  if (includeZero) return mapped;
   return mapped.filter((s) => s.supplyBalance !== 0n || s.borrowBalance !== 0n);
 }
 
@@ -424,14 +416,14 @@ export async function buildWithdrawTx(
 ): Promise<{ tx: Transaction; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = SUPPORTED_ASSETS[asset];
-  const [config, pool, pools, allStates] = await Promise.all([
+  const [config, pool, pools, states] = await Promise.all([
     getConfig(),
     getPool(asset),
     getPools(),
-    getUserState(client, address, true),
+    getUserState(client, address),
   ]);
 
-  const assetState = allStates.find((s) => s.assetId === pool.id);
+  const assetState = states.find((s) => s.assetId === pool.id);
   const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex) : 0;
 
   const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
@@ -441,7 +433,7 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdatesForPositions(tx, config, pools, allStates, pool);
+  addOracleUpdatesForAllPools(tx, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -483,14 +475,14 @@ export async function addWithdrawToTx(
 ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = SUPPORTED_ASSETS[asset];
-  const [config, pool, pools, allStates] = await Promise.all([
+  const [config, pool, pools, states] = await Promise.all([
     getConfig(),
     getPool(asset),
     getPools(),
-    getUserState(client, address, true),
+    getUserState(client, address),
   ]);
 
-  const assetState = allStates.find((s) => s.assetId === pool.id);
+  const assetState = states.find((s) => s.assetId === pool.id);
   const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex) : 0;
 
   const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
@@ -498,7 +490,7 @@ export async function addWithdrawToTx(
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
 
-  addOracleUpdatesForPositions(tx, config, pools, allStates, pool);
+  addOracleUpdatesForAllPools(tx, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -640,14 +632,14 @@ export async function buildBorrowTx(
   const asset = options.asset ?? 'USDC';
   const assetInfo = SUPPORTED_ASSETS[asset];
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
-  const [config, pool, pools, allStates] = await Promise.all([
-    getConfig(), getPool(asset), getPools(), getUserState(client, address, true),
+  const [config, pool, pools] = await Promise.all([
+    getConfig(), getPool(asset), getPools(),
   ]);
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdatesForPositions(tx, config, pools, allStates, pool);
+  addOracleUpdatesForAllPools(tx, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::borrow_v2`,
