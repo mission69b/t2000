@@ -476,11 +476,165 @@ Before opening any leveraged position, verify safeguards are configured. Monitor
 
 ---
 
+## Phase 19 — Security Audit + Trust Infrastructure
+
+**Goal:** Full-stack security audit, automated security pipeline in CI/CD, public transparency artifacts, beta branding, and legal pages. Build trust before scaling.
+
+**Why now:** t2000 handles real money on mainnet. Before adding more protocols (Phase 10+) and more users, we need: (1) a professional audit, (2) automated security checks that run on every PR, (3) public-facing trust signals, and (4) legal protection.
+
+### 19A — Full-Stack Security Audit
+
+Commission a comprehensive codebase audit (using a separate Claude instance or professional auditor). The audit covers:
+
+| Scope | What to review | Risk area |
+|-------|---------------|-----------|
+| **SDK** | Key management, transaction building, amount validation, fee logic, adapter routing | Fund safety, overflow/rounding |
+| **CLI** | Input validation, PIN handling, key storage, error message leakage | Credential exposure |
+| **Server** | Sponsor API rate limiting, gas station abuse, fee ledger integrity, x402 settlement | Drain attacks, DoS |
+| **Indexer** | Checkpoint parsing, transaction classification, crash recovery | Data integrity |
+| **Move contracts** | Fee collection, admin controls, timelock, upgrade safety | On-chain fund safety |
+| **Adapters** | NAVI/Suilend/Cetus contract calls, oracle handling, slippage, amount conversion | Protocol interaction bugs |
+| **Infrastructure** | Docker images, ECS config, env var handling, secrets management | Deployment security |
+| **Dependencies** | Transitive dependency audit, known CVEs, supply chain risk | Dependency hijacking |
+
+**Deliverable:** `SECURITY_AUDIT.md` report in repo root — findings, severity ratings, remediation status.
+
+### 19B — Automated Security Pipeline (CI/CD)
+
+Add security-focused GitHub Actions jobs that run on every push/PR — publicly visible in the repo.
+
+| Tool | What it does | GH Action |
+|------|-------------|-----------|
+| **`npm audit`** | Check for known vulnerabilities in dependencies | `npm audit --omit=dev` |
+| **Socket.dev** | Deep package analysis — typosquatting, install scripts, telemetry | `socket-security/socket-action` |
+| **GitHub Dependabot** | Auto-PR for vulnerable dependency updates | `dependabot.yml` config |
+| **Secret scanning** | Detect accidentally committed keys/tokens | GitHub native (enabled in repo settings) |
+| **CodeQL** | Static analysis for JS/TS security patterns | `github/codeql-action` |
+| **License check** | Ensure all dependencies have compatible licenses | `license-checker` or similar |
+
+New workflow file: `.github/workflows/security.yml`
+
+```yaml
+name: Security
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6am UTC
+
+jobs:
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod
+      - run: npx license-checker --failOn 'GPL-3.0;AGPL-3.0'
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+```
+
+### 19C — npm Package Health
+
+| Action | What it does |
+|--------|-------------|
+| Enable Socket on npmjs.com | Auto-analyzes `@t2000/sdk` and `@t2000/cli` for security signals |
+| Add `npm audit signatures` | Verify package provenance |
+| Add `provenance` to publish | `npm publish --provenance` — links npm package to specific GitHub commit |
+| Badge in README | `[![Socket Badge](https://socket.dev/api/badge/npm/package/@t2000/sdk)](https://socket.dev/npm/package/@t2000/sdk)` |
+
+### 19D — Beta Badge + Branding
+
+| Change | Location |
+|--------|----------|
+| Add "BETA" badge next to t2000 logo | `apps/web/app/layout.tsx` or logo component |
+| Beta badge in navbar/header | Visible on every page |
+| Beta notice in CLI | `t2000 --version` → `0.7.1 (beta)` |
+| Beta caveat in SDK README | Warning box at top |
+
+**Badge style:** Small pill badge — `[BETA]` in a colored tag (e.g. amber/yellow) next to the logo. Not intrusive, but clearly visible.
+
+### 19E — Terms of Service + Disclaimer Pages
+
+| Page | Route | Content |
+|------|-------|---------|
+| **Terms of Service** | `/terms` | Usage terms, liability limitations, no financial advice, experimental software, wallet responsibility |
+| **Disclaimer** | `/disclaimer` | "Beta software — use at your own risk", not a registered financial institution, no FDIC/deposit insurance, smart contract risk, oracle risk |
+| **Privacy Policy** | `/privacy` | What data is collected (on-chain public data only, no PII), no cookies, no analytics tracking |
+
+**Key legal points to cover:**
+- t2000 is experimental/beta software
+- Not a registered bank, broker, or financial advisor
+- No deposit insurance or guarantees
+- Users are responsible for their own private keys and funds
+- Smart contract risk — protocols can have bugs
+- Oracle/price feed risk
+- No liability for losses from protocol interactions
+- Open source — provided "as is"
+
+**Footer update:** Add links to Terms, Disclaimer, Privacy in the website footer on every page.
+
+### 19F — Public Audit Page on Website
+
+| Feature | Description |
+|---------|-------------|
+| `/security` route | Public-facing security page on t2000.ai |
+| Audit report summary | Key findings, remediation status, last audit date |
+| Link to full `SECURITY_AUDIT.md` | In the GitHub repo |
+| CI badges | Show live status of security workflow (passing/failing) |
+| "Pending full audit" banner | Until professional audit is complete |
+| Responsible disclosure | `security@t2000.ai` or GitHub Security Advisories |
+
+### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 19.1 | Run full-stack security audit (separate Claude instance) | all | 4h | ⬜ |
+| 19.2 | Write `SECURITY_AUDIT.md` report | repo root | 2h | ⬜ |
+| 19.3 | Remediate critical/high findings | varies | 4h | ⬜ |
+| 19.4 | Create `.github/workflows/security.yml` | ci | 2h | ⬜ |
+| 19.5 | Add `dependabot.yml` config | ci | 30m | ⬜ |
+| 19.6 | Enable CodeQL in repo settings | ci | 30m | ⬜ |
+| 19.7 | Enable Socket on npm packages | npm | 30m | ⬜ |
+| 19.8 | Add `--provenance` to publish workflow | ci | 30m | ⬜ |
+| 19.9 | Add security badges to SDK + CLI READMEs | docs | 30m | ⬜ |
+| 19.10 | Add "BETA" badge to website logo/header | web | 1h | ⬜ |
+| 19.11 | Add beta notice to CLI version output | cli | 30m | ⬜ |
+| 19.12 | Create `/terms` page | web | 2h | ⬜ |
+| 19.13 | Create `/disclaimer` page | web | 1h | ⬜ |
+| 19.14 | Create `/privacy` page | web | 1h | ⬜ |
+| 19.15 | Add footer links (Terms, Disclaimer, Privacy) | web | 30m | ⬜ |
+| 19.16 | Create `/security` page with audit status + CI badges | web | 2h | ⬜ |
+| 19.17 | Add responsible disclosure policy (`SECURITY.md`) | repo root | 30m | ⬜ |
+
+**Estimated total:** 3-4 days
+
+---
+
 ## Priority Summary
 
 | Phase | Feature | Priority | Effort | Status |
 |-------|---------|----------|--------|--------|
-| **10** | Multi-Stable (USDT, USDe) | **P0** | 2-3 days | ⬜ Next |
+| **19** | Security Audit + Trust Infrastructure | **P0** | 3-4 days | ⬜ Next |
+| **10** | Multi-Stable (USDT, USDe) | **P0** | 2-3 days | ⬜ |
 | **11** | Yield Optimizer (rebalance, events) | **P0** | 2-3 days | 🔶 Partially shipped |
 | **16** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ |
 | **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ In discussion |
