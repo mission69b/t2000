@@ -722,6 +722,23 @@ export class T2000 extends EventEmitter<T2000Events> {
       p.apy < worst.apy ? p : worst,
     );
 
+    const withdrawAdapter = this.registry.getLending(current.protocolId);
+    if (withdrawAdapter) {
+      try {
+        const maxResult = await withdrawAdapter.maxWithdraw(this._address, current.asset);
+        if (maxResult.maxAmount < current.amount) {
+          current.amount = Math.max(0, maxResult.maxAmount - 0.01);
+        }
+      } catch { /* fall through with full amount */ }
+    }
+
+    if (current.amount <= 0.01) {
+      throw new T2000Error(
+        'HEALTH_FACTOR_TOO_LOW',
+        'Cannot rebalance — active borrows prevent safe withdrawal. Repay some debt first.',
+      );
+    }
+
     const apyDiff = bestRate.rates.saveApy - current.apy;
     const isSameProtocol = current.protocolId === bestRate.protocolId;
     const isSameAsset = current.asset === bestRate.asset;
@@ -846,7 +863,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     const txDigests: string[] = [];
     let totalGasCost = 0;
 
-    const withdrawAdapter = this.registry.getLending(current.protocolId);
     if (!withdrawAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${current.protocolId} not found`);
 
     const withdrawResult = await executeWithGas(this.client, this.keypair, async () => {
