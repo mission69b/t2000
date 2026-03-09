@@ -1,7 +1,7 @@
 # t2000 Roadmap — v2.0
 
 **Last updated:** March 2026
-**Current version:** v0.7.1 (SDK + CLI published on npm, x402 v0.3.0)
+**Current version:** v0.7.2 (SDK + CLI published on npm, x402 v0.3.0)
 
 ---
 
@@ -607,25 +607,25 @@ jobs:
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 19.1 | Run full-stack security audit (separate Claude instance) | all | 4h | ⬜ |
-| 19.2 | Write `SECURITY_AUDIT.md` report | repo root | 2h | ⬜ |
-| 19.3 | Remediate critical/high findings | varies | 4h | ⬜ |
-| 19.4 | Create `.github/workflows/security.yml` | ci | 2h | ⬜ |
-| 19.5 | Add `dependabot.yml` config | ci | 30m | ⬜ |
-| 19.6 | Enable CodeQL in repo settings | ci | 30m | ⬜ |
-| 19.7 | Enable Socket on npm packages | npm | 30m | ⬜ |
-| 19.8 | Add `--provenance` to publish workflow | ci | 30m | ⬜ |
-| 19.9 | Add security badges to SDK + CLI READMEs | docs | 30m | ⬜ |
-| 19.10 | Add "BETA" badge to website logo/header | web | 1h | ⬜ |
-| 19.11 | Add beta notice to CLI version output | cli | 30m | ⬜ |
-| 19.12 | Create `/terms` page | web | 2h | ⬜ |
-| 19.13 | Create `/disclaimer` page | web | 1h | ⬜ |
-| 19.14 | Create `/privacy` page | web | 1h | ⬜ |
-| 19.15 | Add footer links (Terms, Disclaimer, Privacy) | web | 30m | ⬜ |
-| 19.16 | Create `/security` page with audit status + CI badges | web | 2h | ⬜ |
-| 19.17 | Add responsible disclosure policy (`SECURITY.md`) | repo root | 30m | ⬜ |
+| 19.1 | Run full-stack security audit (separate Claude instance) | all | 4h | ✅ |
+| 19.2 | Write `SECURITY_AUDIT.md` report | repo root | 2h | ✅ |
+| 19.3 | Remediate critical/high findings (20/22 fixed, 2 deferred) | varies | 4h | ✅ |
+| 19.4 | Create `.github/workflows/security.yml` | ci | 2h | ✅ |
+| 19.5 | Add `dependabot.yml` config | ci | 30m | ✅ |
+| 19.6 | Enable CodeQL in repo settings | ci | 30m | ✅ |
+| 19.7 | Enable Socket on npm packages | npm | 30m | ⬜ Manual |
+| 19.8 | Add `--provenance` to publish workflow | ci | 30m | ✅ |
+| 19.9 | Add security badges to SDK + CLI READMEs | docs | 30m | ⬜ Minor |
+| 19.10 | Add "BETA" badge to website logo/header | web | 1h | ✅ |
+| 19.11 | Add beta notice to CLI version output | cli | 30m | ✅ |
+| 19.12 | Create `/terms` page | web | 2h | ✅ |
+| 19.13 | Create `/disclaimer` page | web | 1h | ✅ |
+| 19.14 | Create `/privacy` page | web | 1h | ✅ |
+| 19.15 | Add footer links (Terms, Disclaimer, Privacy) | web | 30m | ✅ |
+| 19.16 | Create `/security` page with audit status + CI badges | web | 2h | ✅ |
+| 19.17 | Add responsible disclosure policy (`SECURITY.md`) | repo root | 30m | ✅ |
 
-**Estimated total:** 3-4 days
+**Completed.** 15/17 tasks done. 2 minor remaining (Socket enablement, README badges).
 
 ---
 
@@ -633,8 +633,8 @@ jobs:
 
 | Phase | Feature | Priority | Effort | Status |
 |-------|---------|----------|--------|--------|
-| **19** | Security Audit + Trust Infrastructure | **P0** | 3-4 days | ⬜ Next |
-| **10** | Multi-Stable (USDT, USDe) | **P0** | 2-3 days | ⬜ |
+| **19** | Security Audit + Trust Infrastructure | **P0** | 3-4 days | ✅ Done |
+| **10** | Multi-Stable (USDT, USDe) | **P0** | 2-3 days | ⬜ Next |
 | **11** | Yield Optimizer (rebalance, events) | **P0** | 2-3 days | 🔶 Partially shipped |
 | **16** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ |
 | **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ In discussion |
@@ -647,4 +647,4 @@ jobs:
 ---
 
 *t2000 — The first bank account for AI agents.*
-*Roadmap v2.1*
+*Roadmap v2.2*
