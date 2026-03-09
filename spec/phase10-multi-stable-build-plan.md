@@ -1,30 +1,48 @@
 # Phase 10 — Multi-Stable Support: Detailed Build Plan
 
-**Goal:** Add suiUSDT + USDe alongside USDC. Stables-only for save/borrow — zero liquidation risk.
+**Goal:** Expand the banking stack to support USDT, USDe, and USDsui alongside USDC. Stables-only for save/borrow — zero liquidation risk. Product-first UX: smart defaults, clear feedback, zero friction.
 
-**Estimated total:** 2-3 days
+**Version bump:** `0.7.2` → `0.8.0` (minor — new feature)
+
+**Estimated total:** 3-4 days
 
 ---
 
-## Pre-work: Research
+## Confirmed Protocol Support
 
-Before writing code, verify on-chain data for each new asset:
+All 4 stables are confirmed available on both lending protocols:
 
-| Question | Where to check | Why |
-|----------|---------------|-----|
-| suiUSDT coin type on mainnet | Sui Explorer / `0x2::coin::CoinMetadata` lookup | Needed for `SUPPORTED_ASSETS` |
-| suiUSDT decimals | CoinMetadata | Amount conversion |
-| USDe (Ethena) coin type on mainnet | Sui Explorer | Needed for `SUPPORTED_ASSETS` |
-| USDe decimals | CoinMetadata | Amount conversion |
-| NAVI pool IDs for suiUSDT | NAVI API (`/api/navi/pools`) | Check if pool exists, get reserveId |
-| NAVI pool IDs for USDe | NAVI API | Check if pool exists, get reserveId |
-| NAVI asset IDs for suiUSDT/USDe | NAVI API config | Needed for oracle price updates |
-| Suilend reserves for suiUSDT | Suilend LendingMarket object | Check if reserve exists |
-| Suilend reserves for USDe | Suilend LendingMarket object | Check if reserve exists |
-| Cetus Aggregator V3 support for suiUSDT | Cetus SDK / test quote | Aggregator routes automatically, but verify |
-| Cetus Aggregator V3 support for USDe | Cetus SDK / test quote | Same |
+| Asset | Type | Decimals | NAVI | Suilend | Cetus Swap |
+|-------|------|----------|------|---------|------------|
+| USDC | Native (Circle) | 6 | ✅ | ✅ | ✅ |
+| suiUSDT | Bridged (Wormhole) | 6 | ✅ | ✅ | ✅ |
+| suiUSDe | Bridged (Ethena) | 6* | ✅ | ✅ | ✅ |
+| USDsui | Native (Bridge/Stripe) | 6* | ✅ | ✅ | ✅ |
 
-**If a protocol doesn't support an asset, we skip it for that asset** — not all protocols need to support all stables.
+*Decimals must be verified via `CoinMetadata` on-chain during pre-work.
+
+---
+
+## Pre-work: On-Chain Verification (30m)
+
+Run before writing any code. Script or manual RPC calls:
+
+```bash
+# For each new stable, fetch CoinMetadata to confirm coin type + decimals
+sui client call --function coin_metadata --module coin --package 0x2 ...
+```
+
+| Data needed | Source | Purpose |
+|-------------|--------|---------|
+| suiUSDT full coin type (`0x...::usdt::USDT`) | Sui Explorer / RPC | `SUPPORTED_ASSETS` entry |
+| suiUSDT decimals | `CoinMetadata.decimals` | Amount conversion |
+| suiUSDe full coin type | Sui Explorer / RPC | `SUPPORTED_ASSETS` entry |
+| suiUSDe decimals | `CoinMetadata.decimals` | Amount conversion |
+| USDsui full coin type | Sui Explorer / RPC | `SUPPORTED_ASSETS` entry |
+| USDsui decimals | `CoinMetadata.decimals` | Amount conversion |
+| NAVI pool configs for each asset | NAVI API (`/api/navi/pools`) | Pool IDs, reserve IDs, oracle feeds |
+| Suilend reserve configs for each asset | Suilend LendingMarket object | Reserve indices, coin types |
+| Cetus Aggregator quote for each pair | Cetus API test call | Confirm routing works |
 
 ---
 
@@ -42,28 +60,33 @@ export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
 ```
 
 **Changes:**
-- Add `USDT` and `USDe` entries with correct coin types + decimals
-- Add decimal constants: `USDT_DECIMALS`, `USDE_DECIMALS`
-- Keep `USDC_DECIMALS` and `SUI_DECIMALS` unchanged
+- Add `USDT`, `USDe`, and `USDsui` entries with verified coin types + decimals
+- Add `StableAsset` type: all stables excluding SUI
+- Add `STABLE_ASSETS` array for iteration: `['USDC', 'USDT', 'USDe', 'USDsui']`
 
-**Files touched:** `constants.ts`
+```typescript
+export const SUPPORTED_ASSETS = {
+  USDC:   { type: '0x...::usdc::USDC', decimals: 6, symbol: 'USDC', displayName: 'USDC' },
+  USDT:   { type: '0x...::usdt::USDT', decimals: 6, symbol: 'USDT', displayName: 'USDT' },
+  USDe:   { type: '0x...::usde::USDe', decimals: 6, symbol: 'USDe', displayName: 'USDe' },
+  USDsui: { type: '0x...::usdsui::USDSUI', decimals: 6, symbol: 'USDsui', displayName: 'USDsui' },
+  SUI:    { type: '0x2::sui::SUI', decimals: 9, symbol: 'SUI', displayName: 'SUI' },
+} as const;
 
-### 1.2 — `packages/sdk/src/types.ts`
+export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
+export type StableAsset = Exclude<SupportedAsset, 'SUI'>;
+export const STABLE_ASSETS: StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'];
+```
 
-**Current state:** `BalanceResponse.assets` is `Record<string, number>` — already flexible enough for new assets. No change needed.
-
-**Verify:** `SupportedAsset` type auto-updates from `keyof typeof SUPPORTED_ASSETS` — yes, it will.
-
-### 1.3 — `packages/sdk/src/utils/format.ts`
-
-**Current state:** `usdcToRaw()` hardcodes 6 decimals. Need a generic `stableToRaw(amount, decimals)` function.
+### 1.2 — `packages/sdk/src/utils/format.ts`
 
 **Changes:**
 - Add `stableToRaw(amount: number, decimals: number): bigint` — generic converter
-- Keep `usdcToRaw()` as a shorthand that calls `stableToRaw(amount, 6)`
-- Add `rawToStable(raw: bigint, decimals: number): number` for display
+- Add `rawToStable(raw: bigint, decimals: number): number` — inverse
+- Keep `usdcToRaw()` as shorthand calling `stableToRaw(amount, 6)`
+- Add `getDecimals(asset: SupportedAsset): number` helper
 
-**Files touched:** `utils/format.ts`, `utils/format.test.ts`
+**Files touched:** `constants.ts`, `utils/format.ts`, `utils/format.test.ts`
 
 ---
 
@@ -74,28 +97,37 @@ export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
 **Current state:** Only queries USDC + SUI balances.
 
 **Changes:**
-- Query USDT and USDe balances in `queryBalance()` (add to `Promise.all`)
-- Add to `assets` field: `{ USDC: ..., SUI: ..., USDT: ..., USDe: ... }`
-- Update `available` to sum all stable balances (USDC + USDT + USDe)
-- Or: keep `available` as USDC-only and add `stableBalances` field
+- Query all 4 stable balances in `queryBalance()` via `Promise.all`
+- Add `stables` field: `{ USDC: number, USDT: number, USDe: number, USDsui: number }`
+- `available` = sum of all stable balances (total spendable dollars)
+- Keep backward-compatible: `assets.USDC` still works
 
-**Design decision needed:** Should `available` mean "total stables" or "USDC only"?
-- Recommendation: `available` = total stables (for "how much can I save?")
-- Add `balances: { USDC: number, USDT: number, USDe: number }` for per-asset detail
+**Design decision — resolved:**
+- `available` = total stables (answers "how many dollars do I have?")
+- `stables` = per-asset breakdown (answers "which dollars?")
 
-**Files touched:** `wallet/balance.ts`
+### 2.2 — Update `BalanceResponse` type
 
-### 2.2 — Update `BalanceResponse` type if needed
-
-If we add a `balances` field, update `types.ts`.
+```typescript
+interface BalanceResponse {
+  available: number;        // Total stables (USDC + USDT + USDe + USDsui)
+  stables: Record<StableAsset, number>;  // Per-asset breakdown
+  savings: number;
+  gas: number;
+  gasUsd: number;
+  total: number;
+  assets: Record<string, number>;  // Backward-compatible
+}
+```
 
 ### 2.3 — Tests
 
-- Add tests for multi-stable balance queries
-- Test that `available` sums correctly
-- Test zero balances for missing assets
+- Multi-stable balance sums correctly
+- Zero balances for assets not held
+- `available` matches sum of `stables`
+- Backward compatibility: `assets.USDC` still works
 
-**Files touched:** `wallet/balance.test.ts` (new or extend)
+**Files touched:** `wallet/balance.ts`, `types.ts`, `wallet/balance.test.ts`
 
 ---
 
@@ -103,39 +135,24 @@ If we add a `balances` field, update `types.ts`.
 
 ### 3.1 — `packages/sdk/src/protocols/navi.ts`
 
-**Current state:** `USDC_TYPE` is hardcoded. All functions use it.
+**Changes:**
+- Build dynamic `assetConfig` map from NAVI API response (keyed by symbol)
+- Each entry: `{ poolId, assetId, coinType, decimals, oracleFeedId }`
+- `getRates(asset)` — look up pool by asset symbol
+- `buildDepositTx` — use correct coin type, pool, oracle feed for the asset
+- `buildWithdrawTx`, `buildBorrowTx`, `buildRepayTx` — same pattern
+- Oracle update: use correct `assetId` and `feedId` per asset
 
-**Changes needed:**
-- Make pool lookup dynamic: given an asset symbol, find the matching NAVI pool
-- `getRates(asset)` — already accepts asset string, but internally only looks up USDC pool
-- `buildDepositTx` — needs correct coin type, pool/reserveId, and oracle feeds for the asset
-- `buildWithdrawTx` — same
-- `buildBorrowTx` / `buildRepayTx` — same
-- Oracle update: needs the correct `assetId` and `feedId` for the asset
-
-**Key data from NAVI API:**
-- Each pool has `coinType`, `id` (assetId/reserveId), `contract.pool`, `token.decimals`
-- Oracle feeds are per-asset in `config.oracle.feeds`
-
-**Approach:**
-- Build an `assetConfig` map: `{ USDC: { poolId, assetId, coinType, decimals }, USDT: {...}, USDe: {...} }`
-- Pass asset config through to all build functions
-- The NAVI API already returns all pools — just filter by coin type
-
-**Risk:** NAVI might not have pools for USDe. Verify in pre-work. If not available, skip.
-
-**Files touched:** `protocols/navi.ts`, `protocols/navi.test.ts`
+**Approach:** NAVI API already returns all pools. Parse once on `init()`, build lookup map. No hardcoded pool IDs per asset — fully dynamic from API.
 
 ### 3.2 — `packages/sdk/src/adapters/navi.ts`
 
 **Changes:**
-- Update `supportedAssets` from `['USDC']` to `['USDC', 'USDT', 'USDe']` (based on what NAVI supports)
-- `getRates(asset)` — pass asset to protocol module
-- `getPositions(address)` — return positions for all supported assets
-- `buildSaveTx(address, amount, asset)` — route to correct pool
-- All other methods — same pattern
+- `supportedAssets` → `['USDC', 'USDT', 'USDe', 'USDsui']`
+- `getPositions(address)` — return positions across all 4 assets
+- All build methods route to correct pool via asset param
 
-**Files touched:** `adapters/navi.ts`, `adapters/navi.test.ts`
+**Files touched:** `protocols/navi.ts`, `adapters/navi.ts`, tests
 
 ---
 
@@ -143,22 +160,13 @@ If we add a `balances` field, update `types.ts`.
 
 ### 4.1 — `packages/sdk/src/adapters/suilend.ts`
 
-**Current state:** Hardcodes `USDC_TYPE`, finds USDC reserve from lending market.
+**Changes:**
+- Build coin type → reserve lookup map from parsed lending market
+- `parseReserves()` already loops all reserves — index by `normalizeStructTag(coinType)`
+- `supportedAssets` → `['USDC', 'USDT', 'USDe', 'USDsui']`
+- All build functions resolve correct reserve by asset's coin type
 
-**Changes needed:**
-- Make reserve lookup dynamic by coin type
-- `parseReserves()` already loops all reserves — just need to index by coin type
-- Update `supportedAssets` to include USDT/USDe (if Suilend supports them)
-- All build functions already take an `asset` param — need to resolve correct coin type
-
-**Approach:**
-- Build coin type map: `{ USDC: '0x...::usdc::USDC', USDT: '0x...::usdt::USDT', ... }`
-- Lookup reserve by `normalizeStructTag(coinType)` match
-- Same patterns as NAVI — verify which assets Suilend actually supports
-
-**Risk:** Suilend may not support USDe. Verify in pre-work.
-
-**Files touched:** `adapters/suilend.ts`, `adapters/suilend.test.ts`
+**Files touched:** `adapters/suilend.ts`, tests
 
 ---
 
@@ -166,139 +174,254 @@ If we add a `balances` field, update `types.ts`.
 
 ### 5.1 — `packages/sdk/src/adapters/cetus.ts`
 
-**Current state:** `getSupportedPairs()` returns only USDC ↔ SUI.
-
 **Changes:**
-- Add pairs: USDT ↔ SUI, USDT ↔ USDC, USDe ↔ SUI, USDe ↔ USDC
-- Cetus Aggregator V3 handles multi-hop routing — no pool IDs needed, just coin types
-- Update `buildSwapTx` to handle new from/to coin types (amount conversion with correct decimals)
-
-**Key point:** Cetus Aggregator V3 takes coin type strings and routes automatically. The main work is ensuring correct decimal handling for non-USDC stables.
+- Expand `getSupportedPairs()` — add all stable pairs:
+  - USDC ↔ SUI (existing)
+  - USDT ↔ SUI, USDT ↔ USDC
+  - USDe ↔ SUI, USDe ↔ USDC
+  - USDsui ↔ SUI, USDsui ↔ USDC
+  - Cross-stable: USDT ↔ USDe, USDT ↔ USDsui, USDe ↔ USDsui
+- Cetus Aggregator V3 routes automatically — just need correct coin types
 
 ### 5.2 — `packages/sdk/src/protocols/cetus.ts`
 
 **Changes:**
-- `buildSwapTx` may need to handle different decimal counts for input/output coins
-- Currently assumes USDC (6) and SUI (9) — need to look up decimals dynamically from `SUPPORTED_ASSETS`
+- Dynamic decimal lookup from `SUPPORTED_ASSETS` instead of hardcoded 6/9
+- `buildSwapTx` resolves decimals for both from/to assets
 
-**Files touched:** `adapters/cetus.ts`, `protocols/cetus.ts`, `adapters/cetus.test.ts`, `protocols/cetus.test.ts`
-
----
-
-## Stage 6: T2000 Class Updates (2h)
-
-### 6.1 — `packages/sdk/src/t2000.ts`
-
-**Current state:** Most methods check `asset !== 'USDC'` and throw. Need to expand.
-
-**Changes:**
-- `save()` — accept USDT, USDe in addition to USDC
-- `withdraw()` — same
-- `borrow()` — same (only for protocols that support it for that asset)
-- `repay()` — same
-- `swap()` — already flexible via SUPPORTED_ASSETS check, just needs the new entries
-- `balance()` — update to query all stables
-- `save('all')` balance check — needs to check the specific asset balance, not just USDC
-- `withdraw all` — needs to check positions across all assets
-
-**Validation changes:**
-- Replace `if (asset !== 'USDC')` with `if (!(asset in SUPPORTED_ASSETS) || asset === 'SUI')`
-- For save/withdraw/borrow: only allow stable assets (USDC, USDT, USDe), not SUI
-- Fee calculation: `calculateFee` already takes amount, doesn't care about asset
-
-### 6.2 — `packages/sdk/src/protocols/protocolFee.ts`
-
-**Current state:** Fees are calculated as BPS of amount — asset-agnostic. No changes needed.
-
-**Files touched:** `t2000.ts`
+**Files touched:** `adapters/cetus.ts`, `protocols/cetus.ts`, tests
 
 ---
 
-## Stage 7: CLI Updates (2h)
+## Stage 6: T2000 Class — Smart Save + Multi-Asset (3h)
 
-### 7.1 — `packages/cli/src/commands/balance.ts`
+### 6.1 — Expand asset validation
 
-**Changes:**
-- Display balances for all stables with non-zero balances
-- Example output:
-  ```
-  Available:  $10.00 USDC + $5.00 USDT  (checking — spendable)
-  ```
-- Or simpler: Show total as sum, breakdown on request
+**Current:** `if (asset !== 'USDC') throw`
+**New:** `if (!STABLE_ASSETS.includes(asset)) throw` for save/withdraw/borrow
 
-### 7.2 — `packages/cli/src/commands/rates.ts`
+### 6.2 — Smart Save (when no asset specified)
 
-**Changes:**
-- Currently hardcodes `agent.allRates('USDC')`
-- Show rates for each stable: USDC, USDT, USDe
-- Group by asset, then by protocol
+When `save(amount)` is called without an explicit asset:
 
-### 7.3 — `packages/cli/src/commands/save.ts`
+1. Query balances for all stables
+2. Filter to stables with sufficient balance for the requested amount
+3. For each candidate, fetch best save rate via registry
+4. Pick the stable with the highest rate (that the user already holds)
+5. Save that asset at the best protocol
 
-**Already accepts `[asset]` argument.** The `asset` param already flows to `agent.save()`. No CLI change needed — just need the SDK to accept it.
+**Key rule:** No auto-swap. If the user holds 100 USDC and 50 USDT, and the best rate is USDT at 5.4% but they want to save 100, only USDC qualifies (sufficient balance). Smart save picks USDC at its best rate.
 
-### 7.4 — `packages/cli/src/commands/withdraw.ts`
+**Edge cases:**
+- No stable has sufficient balance → clear error with per-asset balances shown
+- Only one stable has enough → use it, mention which asset was selected
+- Multiple qualify → pick highest rate, mention the choice in output
 
-**Same — `[asset]` argument already exists.** May need to update `withdraw all` to iterate across assets.
+### 6.3 — Yield opportunity nudge
 
-### 7.5 — `packages/cli/src/commands/earn.ts`
+After a successful save, check if a better rate exists on a different asset:
 
-**Changes:**
-- Show positions across all assets, not just USDC
-- Display per-asset breakdowns
+```typescript
+// In save() success path
+const bestAcrossAll = await registry.bestSaveRateAcrossAssets(STABLE_ASSETS);
+if (bestAcrossAll.apy > usedRate.apy + 0.5) {
+  return { ...result, yieldHint: {
+    asset: bestAcrossAll.asset,
+    protocol: bestAcrossAll.protocol,
+    apy: bestAcrossAll.apy,
+  }};
+}
+```
 
-### 7.6 — `packages/cli/src/commands/positions.ts`
+The CLI displays this as a tip (not an action). Rebalance (Phase 11) handles the cross-asset move.
 
-**Changes:**
-- Show positions for all assets
+### 6.4 — Protocol+asset mismatch errors
 
-### 7.7 — `packages/cli/src/commands/swap.ts`
+When user specifies `--protocol navi` for an asset NAVI doesn't support:
 
-**Already flexible** — takes from/to as arguments. Should just work once CetusAdapter supports new pairs.
+```
+Error: NAVI doesn't support USDe savings.
+Available options for USDe:
+  Suilend — 4.80% APY
 
-**Files touched:** `balance.ts`, `rates.ts`, `earn.ts`, `positions.ts` (CLI)
+Run: t2000 save 100 USDe --protocol suilend
+```
+
+Don't just throw — suggest the alternative.
+
+### 6.5 — `withdraw all` across assets
+
+`withdraw all` (no protocol) already iterates protocols. Expand to handle positions in different assets — each protocol withdraws whatever assets it holds.
+
+### 6.6 — Registry: `bestSaveRateAcrossAssets()`
+
+New method on `ProtocolRegistry`:
+
+```typescript
+async bestSaveRateAcrossAssets(assets: StableAsset[]): Promise<{
+  asset: StableAsset;
+  protocol: string;
+  apy: number;
+}>
+```
+
+Fetches rates for all assets across all protocols, returns the global best. Used by smart save nudge and `rates` headline.
+
+**Files touched:** `t2000.ts`, `adapters/registry.ts`
+
+---
+
+## Stage 7: CLI UX Updates (3h)
+
+### 7.1 — `balance` — Multi-stable display
+
+```
+  Available:  $150.00  (100.00 USDC + 50.00 USDT)
+  Savings:    $2,000.00  (earning 5.1% avg APY)
+  Gas:        0.5 SUI (~$0.50)
+  ──────────────────────────────────────────
+  Total:      $2,150.50
+```
+
+- Show total available in dollars
+- Inline breakdown of non-zero stables in parentheses
+- If only one stable held, no parenthetical breakdown needed
+- `--json` returns full `stables` object
+
+### 7.2 — `rates` — Headline + per-asset table
+
+```
+  ⭐ Best yield: 5.40% APY — USDT on Suilend
+
+  USDC Rates
+    NAVI Protocol    Save 4.21%    Borrow 6.85%
+    Suilend          Save 3.90%    Borrow —
+
+  USDT Rates
+    NAVI Protocol    Save 4.80%    Borrow 7.10%
+    Suilend          Save 5.40%    Borrow —
+
+  USDe Rates
+    ...
+
+  USDsui Rates
+    ...
+```
+
+- Lead with headline: best rate across ALL stables + protocols
+- Then per-asset sections (only show assets with at least one protocol)
+- `--json` returns structured `{ best: {...}, rates: [...] }`
+
+### 7.3 — `save` — Smart save feedback
+
+When smart save auto-selects:
+```
+  ✓ Saved 100.00 USDT on Suilend at 5.40% APY
+    (Auto-selected USDT — best rate among your holdings)
+
+  💡 Tip: USDsui on NAVI is earning 5.60% APY
+     Run `t2000 rebalance --dry-run` to see optimization options
+```
+
+When explicit asset:
+```
+  ✓ Saved 100.00 USDC on NAVI Protocol at 4.21% APY
+```
+
+### 7.4 — `save` / `withdraw` — Better error on protocol mismatch
+
+```
+  ✗ NAVI doesn't support USDe savings.
+
+  Available options for USDe:
+    Suilend — 4.80% APY
+
+  Try: t2000 save 100 USDe --protocol suilend
+```
+
+### 7.5 — `earn` — Multi-asset positions
+
+```
+  SAVINGS — Earning Yield
+
+    NAVI Protocol    100.00 USDC @ 4.21% APY
+                       ~$0.0115/day · ~$0.35/month
+    Suilend           50.00 USDT @ 5.40% APY
+                       ~$0.0074/day · ~$0.22/month
+
+    Total Saved       $150.00  (earning 4.61% avg APY)
+```
+
+- Group by protocol, show asset per position
+- Total across all assets in dollars
+- Average APY weighted by amount
+
+### 7.6 — `positions` — Multi-asset view
+
+Show asset alongside each position. Already has per-position asset field — just needs to display correctly when assets differ.
+
+### 7.7 — `withdraw` — Smart feedback
+
+```
+  ✓ Withdrew 50.00 USDT from Suilend
+```
+
+`withdraw all` summary:
+```
+  ✓ Withdrew 100.00 USDC from NAVI Protocol
+  ✓ Withdrew 50.00 USDT from Suilend
+  ✓ Withdrew 25.00 USDe from NAVI Protocol
+
+  Total withdrawn: $175.00
+```
+
+**Files touched:** `balance.ts`, `rates.ts`, `save.ts`, `withdraw.ts`, `earn.ts`, `positions.ts`
 
 ---
 
 ## Stage 8: Tests (3h)
 
-### 8.1 — Unit tests for new constants
+### 8.1 — Unit tests
 
-- `SUPPORTED_ASSETS` has USDT and USDe entries
-- Decimal values are correct
-- `SupportedAsset` type includes new assets
+- `SUPPORTED_ASSETS` has all 4 stables + SUI
+- `StableAsset` type excludes SUI
+- `stableToRaw()` / `rawToStable()` for all decimal counts
+- `getDecimals()` returns correct values
 
-### 8.2 — Unit tests for format utilities
+### 8.2 — Adapter tests
 
-- `stableToRaw()` with 6 decimals (USDC/USDT) and 8 decimals (USDe if applicable)
-- `rawToStable()` inverse
+- NAVI: `supportedAssets` includes all 4 stables
+- NAVI: `getRates('USDT')`, `getRates('USDe')`, `getRates('USDsui')` return rates
+- Suilend: same pattern
+- Cetus: `getSupportedPairs()` includes all new pairs
+- Compliance suite: runs against all 4 assets per adapter
 
-### 8.3 — Adapter tests
+### 8.3 — Smart save tests
 
-- NAVI adapter: `supportedAssets` includes new assets
-- NAVI adapter: `getRates('USDT')` returns rates
-- Suilend adapter: same pattern
-- Cetus adapter: `getSupportedPairs()` includes new pairs
+- No asset specified + only USDC held → saves USDC at best USDC rate
+- No asset specified + USDT has more balance → saves USDT at best USDT rate
+- No asset specified + multiple qualify → picks highest rate
+- No asset specified + none have enough → clear error
+- Yield hint included when better rate exists on different asset
 
 ### 8.4 — Integration tests
 
-- `bestSaveRate('USDT')` — routes correctly across protocols
+- `bestSaveRateAcrossAssets()` returns global best
 - `allPositions` with multi-asset supplies
-- `withdraw all` with positions in different assets
-- Balance query returns all stables
+- `withdraw all` with positions in different assets across protocols
+- Balance query returns all stables with correct sums
 
-### 8.5 — Compliance tests
+### 8.5 — CLI integration tests
 
-- Run existing adapter compliance suite — should pass automatically since we're expanding, not changing the interface
-
-### 8.6 — CLI smoke tests (manual checklist)
+Update `scripts/cli/test-*.sh`:
 
 ```bash
-t2000 balance                        # Shows USDC + USDT + USDe
-t2000 rates                          # Shows rates per asset per protocol
-t2000 save 1 USDT                    # Saves USDT
-t2000 save 1 --protocol suilend      # Saves to specific protocol
-t2000 withdraw 1 USDT                # Withdraws USDT
+t2000 balance                        # Shows multi-stable balances
+t2000 rates                          # Shows headline + per-asset rates
+t2000 save 0.1 USDT                  # Saves USDT
+t2000 save 0.1 USDe --protocol navi  # Explicit asset + protocol
+t2000 save 0.1 USDsui                # Saves USDsui
+t2000 withdraw 0.1 USDT              # Withdraws USDT
 t2000 withdraw all                   # Withdraws all assets from all protocols
 t2000 swap 1 USDT USDC               # Swaps USDT to USDC
 t2000 positions                      # Shows positions across assets
@@ -311,25 +434,22 @@ t2000 earn                           # Shows earnings across assets
 
 ### 9.1 — Agent Skills
 
-Update all SKILL.md files that reference USDC to mention multi-stable support:
-- `t2000-banking`
-- `t2000-earn`
-- Any others that mention save/withdraw
+Update SKILL.md files referencing USDC to show multi-stable:
+- `t2000-banking` — mention USDT, USDe, USDsui as supported
+- `t2000-earn` — update save examples
+- Any skills mentioning save/withdraw
 
-### 9.2 — Website docs
+### 9.2 — Website
 
-- `apps/web/app/docs/page.tsx` — update supported assets table
-- `apps/web/app/page.tsx` — update if it mentions "USDC only"
+- `apps/web/app/page.tsx` — update supported assets / marketing copy
+- `apps/web/app/docs/page.tsx` — update assets table if it exists
+- Demo terminal outputs showing new stables
 
-### 9.3 — Demo page
+### 9.3 — READMEs
 
-- Update demo terminal outputs if they show hardcoded USDC
-
-### 9.4 — README files
-
-- `packages/sdk/README.md`
-- `packages/cli/README.md`
-- `CONTRIBUTING-ADAPTERS.md` — update examples
+- `packages/sdk/README.md` — supported assets table
+- `packages/cli/README.md` — command examples with new assets
+- `CONTRIBUTING-ADAPTERS.md` — update if examples are USDC-only
 
 ---
 
@@ -337,28 +457,26 @@ Update all SKILL.md files that reference USDC to mention multi-stable support:
 
 ### 10.1 — Version bump
 
-- SDK: `0.7.1` → `0.8.0` (minor bump — new feature)
-- CLI: `0.7.1` → `0.8.0`
+- SDK: `0.7.2` → `0.8.0`
+- CLI: `0.7.2` → `0.8.0`
 
-### 10.2 — Build + typecheck + full test suite
+### 10.2 — Build + verify
 
 ```bash
-pnpm --filter @t2000/sdk typecheck
-pnpm --filter @t2000/sdk test
+pnpm --filter @t2000/sdk typecheck && pnpm --filter @t2000/sdk test
 pnpm --filter @t2000/cli typecheck
-pnpm --filter @t2000/sdk build
-pnpm --filter @t2000/cli build
+pnpm --filter @t2000/sdk build && pnpm --filter @t2000/cli build
 ```
 
-### 10.3 — Publish (user handles npm login)
+### 10.3 — Publish
 
 ```bash
-pnpm --filter @t2000/sdk publish --access public --no-git-checks
-pnpm --filter @t2000/cli publish --access public --no-git-checks
+pnpm --filter @t2000/sdk publish --access public --provenance
+pnpm --filter @t2000/cli publish --access public --provenance
 npm install -g @t2000/cli@0.8.0
 ```
 
-### 10.4 — Manual CLI smoke test (see Stage 8.6)
+### 10.4 — CLI smoke test (Stage 8.5 checklist)
 
 ### 10.5 — Push + verify CI
 
@@ -367,21 +485,69 @@ npm install -g @t2000/cli@0.8.0
 ## Dependency Graph
 
 ```
-Stage 1 (constants + types)
-  ├── Stage 2 (balance query)
-  ├── Stage 3 (NAVI multi-asset) ──┐
-  ├── Stage 4 (Suilend multi-asset) ├── Stage 6 (T2000 class)
-  └── Stage 5 (Cetus multi-asset) ──┘       │
-                                         Stage 7 (CLI)
-                                             │
-                                         Stage 8 (tests)
-                                             │
-                                         Stage 9 (docs)
-                                             │
-                                         Stage 10 (publish)
+Pre-work (on-chain verification)
+    │
+Stage 1 (constants + types + format utils)
+    │
+    ├── Stage 2 (balance query)
+    ├── Stage 3 (NAVI multi-asset)   ──┐
+    ├── Stage 4 (Suilend multi-asset)  ├── Stage 6 (T2000 class + smart save)
+    └── Stage 5 (Cetus multi-asset)  ──┘       │
+                                           Stage 7 (CLI UX)
+                                               │
+                                           Stage 8 (tests)
+                                               │
+                                           Stage 9 (docs)
+                                               │
+                                           Stage 10 (publish)
 ```
 
-Stages 2-5 can be done in parallel once Stage 1 is complete.
+Stages 2-5 can be built in parallel once Stage 1 is complete.
+
+---
+
+## UX Design Principles
+
+### Smart defaults, explicit overrides
+
+| Command | Behavior |
+|---------|----------|
+| `t2000 save 100` | Smart save: picks best rate among stables you hold |
+| `t2000 save 100 USDT` | Explicit: saves USDT at best USDT rate |
+| `t2000 save 100 USDT --protocol navi` | Fully explicit: USDT on NAVI |
+| `t2000 save 100 --protocol navi` | Explicit protocol, default asset (USDC) |
+
+### Show, don't force
+
+After saving, show yield opportunities on other stables as a **tip**, not an action. Cross-asset optimization is Phase 11 (`rebalance`).
+
+### Clear errors with alternatives
+
+Never just throw "not supported." Always show what IS available and suggest the correct command.
+
+### Consistent dollar framing
+
+All stables are dollars. Balance shows total dollars. Breakdown is secondary. The user thinks in dollars, not in asset tickers.
+
+---
+
+## Phase 11 Tie-in (Design Now, Build Later)
+
+These design decisions in Phase 10 set up Phase 11 (Yield Optimizer):
+
+| Phase 10 ships | Phase 11 builds on it |
+|---------------|----------------------|
+| `bestSaveRateAcrossAssets()` | `rebalance --dry-run` uses it to find optimization opportunities |
+| `yieldHint` in save result | CLI nudge → "run `t2000 rebalance`" |
+| Per-asset positions across protocols | `rebalance` knows what to move where |
+| Cross-stable swap pairs in Cetus | `rebalance` can swap + move in two txs |
+| `StableAsset` type | Type-safe rebalance logic |
+
+Phase 11 adds:
+- `t2000 rebalance --dry-run` — show optimization plan with swap costs + break-even
+- `t2000 rebalance` — execute cross-asset moves
+- Minimum yield threshold (don't swap for <0.5% difference)
+- Break-even calculator (swap cost vs annual yield gain)
 
 ---
 
@@ -389,19 +555,22 @@ Stages 2-5 can be done in parallel once Stage 1 is complete.
 
 | Risk | Mitigation |
 |------|-----------|
-| NAVI doesn't have USDT/USDe pools | Verify via API before coding. If missing, skip that asset for NAVI. |
-| Suilend doesn't have USDT/USDe reserves | Same — verify on-chain. If missing, skip. |
-| USDe has different decimals than expected | Check CoinMetadata on-chain before hardcoding. |
-| Existing USDC tests break | Run full test suite after each stage. |
-| `withdraw all` with mixed assets | Already handled — iterates protocols, each handles its own assets. |
-| Fee calculation differs per asset | Fees are BPS-based on USD amount — asset-agnostic. No change needed. |
+| USDsui is very new (launched March 4) | Verify liquidity on Cetus before adding swap pairs. Start with save/withdraw only if liquidity is thin. |
+| Different decimals than expected | Pre-work verifies via CoinMetadata. All conversion uses dynamic `getDecimals()`. |
+| Existing USDC tests break | Run full test suite after each stage. No USDC behavior changes. |
+| `withdraw all` with 4 assets across 2 protocols | Each adapter handles its own supported assets. Iterate adapters, each withdraws what it has. |
+| Fee calculation differs per asset | Fees are BPS-based on USD amount — all stables ≈ $1, so no change needed. |
+| Smart save picks wrong asset | Only picks from assets with sufficient balance. Transparent selection message in CLI output. |
+| NAVI/Suilend pool doesn't exist for an asset | Adapter `init()` dynamically discovers pools. Missing pool = asset excluded from `supportedAssets` at runtime. |
 
 ---
 
 ## What NOT to do in Phase 10
 
+- Do NOT auto-swap between stables (that's Phase 11 `rebalance`)
 - Do NOT add volatile assets (WETH, WBTC) — that's Phase 17
 - Do NOT change the fee structure
 - Do NOT add new CLI commands (only update existing ones)
 - Do NOT change adapter interfaces
 - Do NOT touch Sentinel integration
+- Do NOT assume decimals — always verify on-chain

@@ -56,7 +56,7 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | Stats API — `/api/stats` with protocol breakdown, agent activity | ✅ |
 | Deploy workflows — server + indexer CI/CD with typecheck gates | ✅ |
 
-### Supported Assets (current)
+### Supported Assets (current — USDC only, expanding in Phase 10)
 
 | Asset | Send | Save | Borrow | Swap |
 |-------|------|------|--------|------|
@@ -75,9 +75,11 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 
 ## Phase 10 — Multi-Stable Support
 
-**Goal:** Expand the banking stack to support USDT and USDe alongside USDC. Stables-only for save/borrow — zero liquidation risk.
+**Goal:** Expand the banking stack to support USDT, USDe, and USDsui alongside USDC. Stables-only for save/borrow — zero liquidation risk. Product-first UX: smart defaults, clear feedback, zero friction.
 
 **Why stables-only:** The "bank account" positioning means dollar-denominated, safe, predictable. Volatile assets (WETH, WBTC) introduce liquidation risk for autonomous agents operating unsupervised. Those ship later as an "investment account" feature with proper risk management.
+
+**Confirmed:** All 4 stables available on both NAVI and Suilend. Cetus Aggregator V3 routes all pairs.
 
 ### Supported Assets (after Phase 10)
 
@@ -85,62 +87,37 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 |-------|------|------|------|--------|------|-------|
 | USDC | Native (Circle) | ✅ | ✅ | ✅ | ✅ | Primary unit of account |
 | SUI | Native | ✅ | — | — | ✅ | Gas + exchange |
-| suiUSDT | Bridged stable | ✅ | ✅ | ✅ | ✅ | Available on NAVI + Suilend |
-| suiUSDe | Bridged stable (Ethena) | ✅ | ✅ | ✅ | ✅ | Available on NAVI + Suilend |
+| suiUSDT | Bridged stable | ✅ | ✅ | ✅ | ✅ | NAVI + Suilend |
+| suiUSDe | Bridged stable (Ethena) | ✅ | ✅ | ✅ | ✅ | NAVI + Suilend |
+| USDsui | Native (Bridge/Stripe) | ✅ | ✅ | ✅ | ✅ | NAVI + Suilend — launched March 2026 |
 
-### Implementation
+### Key UX Features
 
-#### 10.1 — SDK: Expand `SUPPORTED_ASSETS` in constants.ts
-
-Add token type addresses for suiUSDT and suiUSDe on mainnet. Add decimal configs.
-
-#### 10.2 — SDK: Add Cetus swap pairs for new stables
-
-Cetus Aggregator V3 handles multi-hop routing automatically. Add supported pairs:
-- USDC ↔ USDT
-- USDC ↔ USDe
-- USDT ↔ SUI
-
-Update `CetusAdapter.getSupportedPairs()` and adapter constants.
-
-#### 10.3 — SDK: Update adapters for new assets
-
-Both NAVI and Suilend adapters already support the adapter interface. Extend `supportedAssets` arrays and pool configs for USDT/USDe.
-
-#### 10.4 — SDK: Update balance query
-
-`balance()` should return holdings across all supported stables.
-
-#### 10.5 — CLI: Extend asset parameter for new stables
-
-Commands already accept an optional `[asset]` argument defaulting to USDC. Extend to USDT/USDe.
-
-#### 10.6 — CLI: Extend `t2000 rates` for multi-asset
-
-Show rates per asset across all protocols.
-
-#### 10.7 — Update Agent Skills, website, docs
-
-Update all 9 SKILL.md files and web pages.
-
-#### 10.8 — Tests + publish
-
-Unit + integration tests for new assets. Publish updated SDK + CLI.
+- **Smart save**: `t2000 save 100` (no asset) detects which stables you hold, picks best rate
+- **Rates headline**: `t2000 rates` leads with "Best yield: X% — asset on protocol"
+- **Dollar-first balance**: Total dollars with inline per-stable breakdown
+- **Helpful errors**: Protocol+asset mismatch shows alternatives, not just "not supported"
+- **Yield hint**: After saving, nudges if a better rate exists on a different asset (Phase 11 acts on it)
 
 ### Tasks
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 10.1 | Add suiUSDT + suiUSDe to `SUPPORTED_ASSETS` | sdk | 1h | ⬜ |
-| 10.2 | Add Cetus Aggregator pairs for new stables | sdk | 2h | ⬜ |
-| 10.3 | Update NAVI + Suilend adapters for multi-asset | sdk | 4h | ⬜ |
-| 10.4 | Update balance query for multi-stable | sdk | 2h | ⬜ |
-| 10.5 | Extend CLI asset param to accept USDT/USDe | cli | 1h | ⬜ |
-| 10.6 | Extend `t2000 rates` for multi-asset | cli + sdk | 2h | ⬜ |
-| 10.7 | Update Agent Skills + website + docs | skills + web | 2h | ⬜ |
-| 10.8 | Unit + integration tests, npm publish | sdk + cli | 3h | ⬜ |
+| 10.1 | Add USDT, USDe, USDsui to `SUPPORTED_ASSETS` + format utils | sdk | 1h | ⬜ |
+| 10.2 | Multi-stable balance query (`stables` field, total `available`) | sdk | 2h | ⬜ |
+| 10.3 | NAVI adapter multi-asset (dynamic pool lookup) | sdk | 4h | ⬜ |
+| 10.4 | Suilend adapter multi-asset (dynamic reserve lookup) | sdk | 3h | ⬜ |
+| 10.5 | Cetus adapter — all stable swap pairs + dynamic decimals | sdk | 2h | ⬜ |
+| 10.6 | T2000 class — smart save, `bestSaveRateAcrossAssets()`, yield hint | sdk | 3h | ⬜ |
+| 10.7 | CLI: balance (multi-stable display), rates (headline) | cli | 2h | ⬜ |
+| 10.8 | CLI: save/withdraw/earn/positions (multi-asset UX, error messages) | cli | 2h | ⬜ |
+| 10.9 | Tests — unit, adapter, smart save, integration, CLI smoke | sdk + cli | 3h | ⬜ |
+| 10.10 | Docs — Agent Skills, website, READMEs | all | 2h | ⬜ |
+| 10.11 | Build, bump to 0.8.0, publish, verify CI | all | 1h | ⬜ |
 
-**Estimated total:** 2-3 days
+**Estimated total:** 3-4 days
+
+**Detailed build plan:** `spec/phase10-multi-stable-build-plan.md`
 
 ---
 
