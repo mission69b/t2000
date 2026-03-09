@@ -46,6 +46,32 @@ describe('NaviAdapter', () => {
     expect(naviProtocol.getRates).toHaveBeenCalledWith(mockClient);
   });
 
+  it('getRates normalizes case-sensitive asset keys (USDe, USDsui)', async () => {
+    const mockRates = {
+      USDC: { saveApy: 4.5, borrowApy: 6.2 },
+      USDT: { saveApy: 5.5, borrowApy: 7.9 },
+      USDe: { saveApy: 0.4, borrowApy: 3.3 },
+      USDsui: { saveApy: 1.8, borrowApy: 6.0 },
+    };
+    vi.mocked(naviProtocol.getRates).mockResolvedValue(mockRates as ReturnType<typeof naviProtocol.getRates> extends Promise<infer T> ? T : never);
+
+    const usde = await adapter.getRates('USDe');
+    expect(usde).toEqual({ asset: 'USDe', saveApy: 0.4, borrowApy: 3.3 });
+
+    const usdsui = await adapter.getRates('USDsui');
+    expect(usdsui).toEqual({ asset: 'USDsui', saveApy: 1.8, borrowApy: 6.0 });
+
+    const usdt = await adapter.getRates('usdt');
+    expect(usdt.asset).toBe('USDT');
+  });
+
+  it('getRates throws for unsupported asset', async () => {
+    const mockRates = { USDC: { saveApy: 4.5, borrowApy: 6.2 } };
+    vi.mocked(naviProtocol.getRates).mockResolvedValue(mockRates as ReturnType<typeof naviProtocol.getRates> extends Promise<infer T> ? T : never);
+
+    await expect(adapter.getRates('FAKE')).rejects.toThrow('NAVI does not support');
+  });
+
   it('getPositions maps navi positions to adapter format', async () => {
     vi.mocked(naviProtocol.getPositions).mockResolvedValue({
       positions: [
@@ -78,6 +104,16 @@ describe('NaviAdapter', () => {
     expect(naviProtocol.buildSaveTx).toHaveBeenCalledWith(mockClient, '0xaddr', 100, { collectFee: true, asset: 'USDC' });
   });
 
+  it('buildSaveTx normalizes "usdt" to "USDT"', async () => {
+    const tx = new Transaction();
+    vi.mocked(naviProtocol.buildSaveTx).mockResolvedValue(tx);
+
+    await adapter.buildSaveTx('0xaddr', 100, 'usdt');
+    expect(naviProtocol.buildSaveTx).toHaveBeenCalledWith(
+      mockClient, '0xaddr', 100, expect.objectContaining({ asset: 'USDT' }),
+    );
+  });
+
   it('buildWithdrawTx returns effectiveAmount', async () => {
     const tx = new Transaction();
     vi.mocked(naviProtocol.buildWithdrawTx).mockResolvedValue({ tx, effectiveAmount: 95 });
@@ -85,6 +121,16 @@ describe('NaviAdapter', () => {
     const result = await adapter.buildWithdrawTx('0xaddr', 100, 'USDC');
     expect(result.tx).toBe(tx);
     expect(result.effectiveAmount).toBe(95);
+  });
+
+  it('buildWithdrawTx normalizes "usde" to "USDe"', async () => {
+    const tx = new Transaction();
+    vi.mocked(naviProtocol.buildWithdrawTx).mockResolvedValue({ tx, effectiveAmount: 50 });
+
+    await adapter.buildWithdrawTx('0xaddr', 50, 'usde');
+    expect(naviProtocol.buildWithdrawTx).toHaveBeenCalledWith(
+      mockClient, '0xaddr', 50, { asset: 'USDe' },
+    );
   });
 
   it('buildBorrowTx delegates', async () => {
@@ -101,6 +147,16 @@ describe('NaviAdapter', () => {
 
     const result = await adapter.buildRepayTx('0xaddr', 20, 'USDC');
     expect(result.tx).toBe(tx);
+  });
+
+  it('buildRepayTx normalizes "usdsui" to "USDsui"', async () => {
+    const tx = new Transaction();
+    vi.mocked(naviProtocol.buildRepayTx).mockResolvedValue(tx);
+
+    await adapter.buildRepayTx('0xaddr', 20, 'usdsui');
+    expect(naviProtocol.buildRepayTx).toHaveBeenCalledWith(
+      mockClient, '0xaddr', 20, { asset: 'USDsui' },
+    );
   });
 
   it('maxWithdraw delegates', async () => {

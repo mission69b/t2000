@@ -234,4 +234,70 @@ describe('navi', () => {
       expect(usdc).toBeLessThan(0.0001);
     });
   });
+
+  describe('resolvePoolSymbol (coin type → internal key)', () => {
+    const SUPPORTED_ASSETS: Record<string, { type: string }> = {
+      USDC: { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC' },
+      USDT: { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT' },
+      USDe: { type: '0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE' },
+      USDsui: { type: '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI' },
+      SUI: { type: '0x2::sui::SUI' },
+    };
+
+    function matchesCoinType(poolType: string, targetType: string): boolean {
+      const poolSuffix = poolType.split('::').slice(1).join('::').toLowerCase();
+      const targetSuffix = targetType.split('::').slice(1).join('::').toLowerCase();
+      return poolSuffix === targetSuffix;
+    }
+
+    function resolvePoolSymbol(pool: { suiCoinType?: string; coinType?: string; token?: { symbol: string } }): string {
+      const coinType = pool.suiCoinType || pool.coinType || '';
+      for (const [key, info] of Object.entries(SUPPORTED_ASSETS)) {
+        if (matchesCoinType(coinType, info.type)) return key;
+      }
+      return pool.token?.symbol ?? 'UNKNOWN';
+    }
+
+    it('maps NAVI USDC pool to "USDC"', () => {
+      expect(resolvePoolSymbol({
+        suiCoinType: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+        token: { symbol: 'USDC' },
+      })).toBe('USDC');
+    });
+
+    it('maps NAVI suiUSDT pool to "USDT" (not "suiUSDT")', () => {
+      expect(resolvePoolSymbol({
+        suiCoinType: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+        token: { symbol: 'suiUSDT' },
+      })).toBe('USDT');
+    });
+
+    it('maps NAVI suiUSDe pool to "USDe" (not "suiUSDe")', () => {
+      expect(resolvePoolSymbol({
+        suiCoinType: '0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE',
+        token: { symbol: 'suiUSDe' },
+      })).toBe('USDe');
+    });
+
+    it('maps NAVI USDSUI pool to "USDsui" (not "USDSUI")', () => {
+      expect(resolvePoolSymbol({
+        suiCoinType: '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI',
+        token: { symbol: 'USDSUI' },
+      })).toBe('USDsui');
+    });
+
+    it('falls back to token.symbol for unknown coin types', () => {
+      expect(resolvePoolSymbol({
+        suiCoinType: '0xabc::some_coin::SOME_COIN',
+        token: { symbol: 'WEIRD' },
+      })).toBe('WEIRD');
+    });
+
+    it('works with coinType field (no 0x prefix) when suiCoinType missing', () => {
+      expect(resolvePoolSymbol({
+        coinType: '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+        token: { symbol: 'suiUSDT' },
+      })).toBe('USDT');
+    });
+  });
 });
