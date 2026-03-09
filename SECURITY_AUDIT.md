@@ -13,15 +13,19 @@ The t2000 monorepo is a Sui blockchain DeFi platform comprising a CLI wallet, SD
 
 **Overall posture: Moderate risk.** The smart contracts are well-designed with proper access controls, timelocks, and version gating. The SDK uses solid cryptographic key management (AES-256-GCM + scrypt). However, the API server has several significant gaps — open CORS, unauthenticated endpoints that accept arbitrary transactions for gas sponsorship, in-memory rate limiting, and an unauthenticated stats endpoint that leaks operational data. No critical vulnerabilities were found that would allow direct fund theft, but several high-severity issues could enable denial-of-service, gas draining, or data manipulation.
 
+### Remediation Status (Updated 2026-03-09)
+
+4 findings have been remediated. Remaining findings are tracked for future releases.
+
 ### Summary by Severity
 
-| Severity | Count |
-|----------|-------|
-| CRITICAL | 1 |
-| HIGH | 5 |
-| MEDIUM | 7 |
-| LOW | 5 |
-| INFORMATIONAL | 4 |
+| Severity | Count | Remediated |
+|----------|-------|------------|
+| CRITICAL | 1 | 0 |
+| HIGH | 5 | 1 (H-1) |
+| MEDIUM | 7 | 3 (M-2, M-4, M-6) |
+| LOW | 5 | 0 |
+| INFORMATIONAL | 4 | — |
 
 ---
 
@@ -51,13 +55,11 @@ An attacker could:
 
 ## HIGH
 
-### H-1: Wildcard CORS Allows Any Origin to Call Server APIs
+### H-1: Wildcard CORS Allows Any Origin to Call Server APIs — ✅ REMEDIATED
 
 **Location:** `apps/server/src/index.ts:29`
 
-```ts
-app.use('*', cors());
-```
+**Status:** Fixed in commit `79bae78` (2026-03-09). CORS now restricted to `https://t2000.ai` and `https://api.t2000.ai` with explicit method and header allowlists.
 
 **Description:** The Hono `cors()` middleware with no arguments sets `Access-Control-Allow-Origin: *`, allowing any website to make cross-origin requests to the API server. This means a malicious website could:
 - Call `/api/gas` to sponsor transactions using the server's gas wallet.
@@ -156,9 +158,11 @@ Additionally, neither rate limiter is protected against `x-forwarded-for` header
 
 ---
 
-### M-2: Sponsor Endpoint Does Not Validate Sui Address Format
+### M-2: Sponsor Endpoint Does Not Validate Sui Address Format — ✅ REMEDIATED
 
 **Location:** `apps/server/src/routes/sponsor.ts:7-44`
+
+**Status:** Fixed in commit `79bae78` (2026-03-09). Added `isValidSuiAddress()` check before processing, returns 400 for invalid addresses.
 
 **Description:** The `/api/sponsor` endpoint sends SUI tokens to whatever `address` is provided without validating it's a valid Sui address. While an invalid address would cause the transaction to fail on-chain, the rate limit record is still created in the database. An attacker could:
 - Submit invalid addresses to waste rate limit slots.
@@ -191,13 +195,11 @@ const SCRYPT_P = 1;
 
 ---
 
-### M-4: Next.js Config Has No Security Headers
+### M-4: Next.js Config Has No Security Headers — ✅ REMEDIATED
 
 **Location:** `apps/web/next.config.ts`
 
-```ts
-const nextConfig: NextConfig = {};
-```
+**Status:** Fixed in commit `79bae78` (2026-03-09). Added X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, and Strict-Transport-Security headers.
 
 **Description:** The Next.js configuration is empty — no security headers are configured. Missing headers include:
 - `Content-Security-Policy` — no CSP to prevent XSS.
@@ -253,9 +255,11 @@ In `priceCache.ts`, if all initial price fetches fail, the TWAP returns $1.00. I
 
 ---
 
-### M-6: No Request Body Size Limit on Server Endpoints
+### M-6: No Request Body Size Limit on Server Endpoints — ✅ REMEDIATED
 
 **Location:** `apps/server/src/index.ts`
+
+**Status:** Fixed in commit `79bae78` (2026-03-09). Added 256KB body size limit via Hono `bodyLimit` middleware.
 
 **Description:** The Hono server does not configure request body size limits. An attacker could send extremely large JSON payloads to `/api/gas` (which accepts transaction bytes), causing memory exhaustion.
 
@@ -393,18 +397,19 @@ The price cache (`apps/server/src/lib/priceCache.ts`) implements a circuit break
 
 ## Recommendations — Priority Order
 
-| Priority | Finding | Effort | Impact |
-|----------|---------|--------|--------|
-| 1 | C-1: Auth + rate limit + allowlist on `/api/gas` | Medium | Prevents gas wallet drain |
-| 2 | H-1: Restrict CORS origins | Low | Blocks cross-origin abuse |
-| 3 | H-3/H-4: Verify tx digests or remove POST endpoints | Medium | Data integrity |
-| 4 | H-2: Auth on `/api/stats` | Low | Prevents info disclosure |
-| 5 | H-5: Auth on `/x402/settle` | Low | Payment integrity |
-| 6 | M-4: Add security headers to Next.js | Low | Browser hardening |
-| 7 | M-6: Add request body size limits | Low | DoS prevention |
-| 8 | M-1: Persistent rate limiting + IP validation | Medium | Rate limit effectiveness |
-| 9 | M-5: Handle stale price data | Medium | Financial accuracy |
-| 10 | L-5: Migrate to OIDC for AWS | Medium | Supply chain security |
+| Priority | Finding | Effort | Impact | Status |
+|----------|---------|--------|--------|--------|
+| 1 | C-1: Auth + rate limit + allowlist on `/api/gas` | Medium | Prevents gas wallet drain | Open |
+| 2 | H-1: Restrict CORS origins | Low | Blocks cross-origin abuse | ✅ Fixed |
+| 3 | H-3/H-4: Verify tx digests or remove POST endpoints | Medium | Data integrity | Open |
+| 4 | H-2: Auth on `/api/stats` | Low | Prevents info disclosure | Open |
+| 5 | H-5: Auth on `/x402/settle` | Low | Payment integrity | Open |
+| 6 | M-4: Add security headers to Next.js | Low | Browser hardening | ✅ Fixed |
+| 7 | M-6: Add request body size limits | Low | DoS prevention | ✅ Fixed |
+| 8 | M-2: Validate Sui address in sponsor | Low | Input validation | ✅ Fixed |
+| 9 | M-1: Persistent rate limiting + IP validation | Medium | Rate limit effectiveness | Open |
+| 10 | M-5: Handle stale price data | Medium | Financial accuracy | Open |
+| 11 | L-5: Migrate to OIDC for AWS | Medium | Supply chain security | Open |
 
 ---
 

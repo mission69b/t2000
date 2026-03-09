@@ -15,8 +15,7 @@ If you discover a security vulnerability in t2000, please report it responsibly.
 
 ### How to report
 
-1. **GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/mission69b/t2000/security/advisories/new)
-2. **Email**: security@t2000.ai
+**GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/mission69b/t2000/security/advisories/new)
 
 ### What to include
 
