@@ -35,12 +35,11 @@ export {
   USDC_DECIMALS,
   BPS_DENOMINATOR,
   SUPPORTED_ASSETS,
-  STABLE_ASSETS,
   CLOCK_ID,
   DEFAULT_NETWORK,
   SENTINEL,
 } from './constants.js';
-export type { SupportedAsset, StableAsset } from './constants.js';
+export type { SupportedAsset } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {
   mistToSui,
@@ -52,7 +51,6 @@ export {
   getDecimals,
   formatUsd,
   formatSui,
-  normalizeAsset,
 } from './utils/format.js';
 export {
   generateKeypair,
@@ -68,7 +66,7 @@ export { calculateFee, addCollectFeeToTx } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
-export { getPoolPrice, getSwapQuote } from './protocols/cetus.js';
+export { getPoolPrice } from './protocols/cetus.js';
 export { getRates } from './protocols/navi.js';
 export * from './adapters/index.js';
 export {

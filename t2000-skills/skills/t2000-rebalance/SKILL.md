@@ -15,10 +15,11 @@ metadata:
 # t2000: Rebalance (Yield Optimizer)
 
 ## Purpose
-Automatically find and execute the best yield across NAVI and Suilend,
-across all 4 stablecoins (USDC, USDT, USDe, USDsui). One command moves
-savings from a lower-yielding position to the highest available rate,
-handling withdrawals, swaps, and deposits in sequence.
+Automatically find and execute the best yield across NAVI and Suilend.
+Internally optimizes across all 4 stablecoins (USDC, USDT, USDe, USDsui)
+— the user doesn't need to think about which stablecoin to hold. One
+command moves savings from a lower-yielding position to the highest
+available rate, handling withdrawals, swaps, and deposits in sequence.
 
 ## Command
 ```bash
@@ -94,5 +95,5 @@ DRY RUN — Preview only, no transactions executed
 ## Notes
 - Same-asset rebalance (e.g., USDC from NAVI → Suilend): no swap needed, zero cost
 - Cross-asset rebalance (e.g., USDC → USDT): swap cost factored into break-even
-- `save` supports all stablecoins (USDC, USDT, USDe, USDsui)
-- Non-USDC saves/borrows are fee-free (until multi-asset treasuries are deployed)
+- Multi-stablecoin optimization is handled internally — users save/withdraw in USDC only
+- Withdraw always returns USDC (auto-swaps non-USDC positions back)

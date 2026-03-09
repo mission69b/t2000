@@ -41,7 +41,6 @@ export interface SaveResult {
   success: boolean;
   tx: string;
   amount: number;
-  asset: string;
   apy: number;
   fee: number;
   gasCost: number;

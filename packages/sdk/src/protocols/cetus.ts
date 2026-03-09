@@ -1,6 +1,6 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { AggregatorClient, Env } from '@cetusprotocol/aggregator-sdk';
 import { SUPPORTED_ASSETS, CETUS_USDC_SUI_POOL } from '../constants.js';
 import { T2000Error } from '../errors.js';
@@ -101,6 +101,64 @@ export async function buildSwapTx(params: {
 
   return {
     tx,
+    estimatedOut,
+    toDecimals: toInfo.decimals,
+  };
+}
+
+/**
+ * Composable variant: adds swap commands to an existing PTB using
+ * routerSwap (accepts inputCoin, returns targetCoin).
+ */
+export async function addSwapToTx(params: {
+  tx: Transaction;
+  client: SuiJsonRpcClient;
+  address: string;
+  inputCoin: TransactionObjectArgument;
+  fromAsset: string;
+  toAsset: string;
+  amount: number;
+  maxSlippageBps?: number;
+}): Promise<{ outputCoin: TransactionObjectArgument; estimatedOut: number; toDecimals: number }> {
+  const { tx, client, address, inputCoin, fromAsset, toAsset, amount, maxSlippageBps = DEFAULT_SLIPPAGE_BPS } = params;
+
+  const fromInfo = SUPPORTED_ASSETS[fromAsset as keyof typeof SUPPORTED_ASSETS];
+  const toInfo = SUPPORTED_ASSETS[toAsset as keyof typeof SUPPORTED_ASSETS];
+
+  if (!fromInfo || !toInfo) {
+    throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap pair ${fromAsset}/${toAsset} is not supported`);
+  }
+  const rawAmount = BigInt(Math.floor(amount * 10 ** fromInfo.decimals));
+
+  const aggClient = createAggregatorClient(client, address);
+
+  const result = await aggClient.findRouters({
+    from: fromInfo.type,
+    target: toInfo.type,
+    amount: rawAmount,
+    byAmountIn: true,
+  });
+
+  if (!result || result.insufficientLiquidity) {
+    throw new T2000Error(
+      'ASSET_NOT_SUPPORTED',
+      `No swap route found for ${fromAsset} → ${toAsset}`,
+    );
+  }
+
+  const slippage = maxSlippageBps / 10000;
+
+  const outputCoin = await aggClient.routerSwap({
+    router: result,
+    txb: tx as never,
+    inputCoin: inputCoin as never,
+    slippage,
+  });
+
+  const estimatedOut = Number(result.amountOut.toString());
+
+  return {
+    outputCoin: outputCoin as unknown as TransactionObjectArgument,
     estimatedOut,
     toDecimals: toInfo.decimals,
   };

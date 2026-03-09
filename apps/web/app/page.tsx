@@ -24,7 +24,7 @@ const ACCOUNTS = [
     title: "Savings",
     subtitle: "Earn · Yield · Multi-protocol",
     desc: "Idle USDC earns yield automatically via NAVI and Suilend (~2–8% APY). Auto-routed to the best rate. Deposits are non-custodial, composable, and withdrawable any time.",
-    cmd: "t2000 save all USDC",
+    cmd: "t2000 save all",
   },
   {
     num: "03 / 04",
@@ -32,15 +32,15 @@ const ACCOUNTS = [
     title: "Credit",
     subtitle: "Borrow · Repay · DeFi",
     desc: "Borrow USDC against savings collateral without selling the position. Health factor is enforced on-chain. The agent can leverage, operate, and repay autonomously.",
-    cmd: "t2000 borrow 40 USDC",
+    cmd: "t2000 borrow 40",
   },
   {
     num: "04 / 04",
     icon: "⇌",
-    title: "Exchange",
-    subtitle: "Swap · Cetus DEX · On-chain",
-    desc: "Swap between USDC and SUI via Cetus DEX. Slippage is enforced on-chain. The agent can acquire gas, rebalance holdings, or convert earnings — all autonomously.",
-    cmd: "t2000 swap 5 USDC SUI",
+    title: "Yield Optimizer",
+    subtitle: "Rebalance · Multi-stable · Auto",
+    desc: "Automatically moves savings to the highest-yielding stablecoin across NAVI and Suilend. Handles withdrawals, swaps, and deposits internally — the agent just runs one command.",
+    cmd: "t2000 rebalance --dry-run",
   },
 ];
 
@@ -121,7 +121,6 @@ const SKILLS = [
   { name: "t2000-send", trigger: '"send 10 USDC to 0x8b3e..."' },
   { name: "t2000-save", trigger: '"put idle funds to work"' },
   { name: "t2000-withdraw", trigger: '"I need liquidity now"' },
-  { name: "t2000-swap", trigger: '"convert USDC to SUI"' },
   { name: "t2000-borrow", trigger: '"borrow against my savings"' },
   { name: "t2000-repay", trigger: '"pay back what I borrowed"' },
   { name: "t2000-pay", trigger: '"call that paid API"' },

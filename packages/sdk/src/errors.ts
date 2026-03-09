@@ -13,6 +13,7 @@ export type T2000ErrorCode =
   | 'SIMULATION_FAILED'
   | 'TRANSACTION_FAILED'
   | 'ASSET_NOT_SUPPORTED'
+  | 'SWAP_FAILED'
   | 'SLIPPAGE_EXCEEDED'
   | 'HEALTH_FACTOR_TOO_LOW'
   | 'WITHDRAW_WOULD_LIQUIDATE'
@@ -90,8 +91,11 @@ export function mapMoveAbortCode(code: number): string {
     10: 'Already at current version',
     // NAVI Protocol abort codes
     1502: 'Oracle price is stale — try again in a moment',
+    1503: 'Oracle validation failed during withdrawal — try again in a moment',
     1600: 'Health factor too low — withdrawal would risk liquidation',
     1605: 'Asset borrowing is disabled or at capacity on this protocol',
+    // Cetus DEX abort codes
+    46001: 'Swap failed — the DEX pool rejected the trade (liquidity or routing issue). Try again.',
   };
   return abortMessages[code] ?? `Move abort code: ${code}`;
 }
@@ -108,7 +112,12 @@ export function parseMoveAbortMessage(msg: string): string {
   const abortMatch = msg.match(/abort code:\s*(\d+)/i) ?? msg.match(/MoveAbort[^,]*,\s*(\d+)/);
   if (abortMatch) {
     const code = parseInt(abortMatch[1], 10);
-    return mapMoveAbortCode(code);
+    const mapped = mapMoveAbortCode(code);
+    if (mapped.startsWith('Move abort code:')) {
+      const moduleMatch = msg.match(/in '([^']+)'/);
+      if (moduleMatch) return `${mapped} (in ${moduleMatch[1]})`;
+    }
+    return mapped;
   }
   return msg;
 }

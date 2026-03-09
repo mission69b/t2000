@@ -1,6 +1,9 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, STABLE_ASSETS, SUPPORTED_ASSETS } from '@t2000/sdk';
+import { T2000, SUPPORTED_ASSETS } from '@t2000/sdk';
+import type { SupportedAsset } from '@t2000/sdk';
+
+const STABLE_ASSETS = (Object.keys(SUPPORTED_ASSETS) as SupportedAsset[]).filter(k => k !== 'SUI');
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider } from '../output.js';
 
@@ -34,7 +37,7 @@ export function registerRates(program: Command) {
           const assetRates = allRates.filter(r => r.asset === asset);
           if (assetRates.length === 0) continue;
 
-          const display = SUPPORTED_ASSETS[asset]?.displayName ?? asset;
+          const display = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS]?.displayName ?? asset;
           printLine(pc.bold(display));
           printDivider();
           for (const entry of assetRates) {

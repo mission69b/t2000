@@ -279,7 +279,7 @@ function compoundBalance(rawBalance: bigint, currentIndex: string): number {
 // On-chain reads
 // ---------------------------------------------------------------------------
 
-async function getUserState(client: SuiJsonRpcClient, address: string): Promise<UserState[]> {
+async function getUserState(client: SuiJsonRpcClient, address: string, includeZero = false): Promise<UserState[]> {
   const config = await getConfig();
   const tx = new Transaction();
   tx.moveCall({
@@ -295,13 +295,15 @@ async function getUserState(client: SuiJsonRpcClient, address: string): Promise<
   const decoded = decodeDevInspect(result, bcs.vector(UserStateInfo));
   if (!decoded) return [];
 
-  return (decoded as Array<{ asset_id: number; supply_balance: unknown; borrow_balance: unknown }>)
+  const mapped = (decoded as Array<{ asset_id: number; supply_balance: unknown; borrow_balance: unknown }>)
     .map((s) => ({
       assetId: s.asset_id,
       supplyBalance: toBigInt(s.supply_balance),
       borrowBalance: toBigInt(s.borrow_balance),
-    }))
-    .filter((s) => s.supplyBalance !== 0n || s.borrowBalance !== 0n);
+    }));
+
+  if (includeZero) return mapped;
+  return mapped.filter((s) => s.supplyBalance !== 0n || s.borrowBalance !== 0n);
 }
 
 async function fetchCoins(
@@ -406,7 +408,6 @@ export async function save(
     success: true,
     tx: result.digest,
     amount,
-    asset: 'USDC',
     apy: rates.USDC.saveApy,
     fee: 0,
     gasCost: extractGasCost(result.effects),
@@ -423,14 +424,14 @@ export async function buildWithdrawTx(
 ): Promise<{ tx: Transaction; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = SUPPORTED_ASSETS[asset];
-  const [config, pool, pools, states] = await Promise.all([
+  const [config, pool, pools, allStates] = await Promise.all([
     getConfig(),
     getPool(asset),
     getPools(),
-    getUserState(client, address),
+    getUserState(client, address, true),
   ]);
 
-  const assetState = states.find((s) => s.assetId === pool.id);
+  const assetState = allStates.find((s) => s.assetId === pool.id);
   const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex) : 0;
 
   const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
@@ -440,7 +441,7 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdatesForPositions(tx, config, pools, states, pool);
+  addOracleUpdatesForPositions(tx, config, pools, allStates, pool);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -467,6 +468,140 @@ export async function buildWithdrawTx(
   tx.transferObjects([coin], address);
 
   return { tx, effectiveAmount };
+}
+
+/**
+ * Composable variant: adds withdraw commands to an existing PTB and
+ * returns the coin object for chaining (no transferObjects).
+ */
+export async function addWithdrawToTx(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  address: string,
+  amount: number,
+  options: { asset?: StableAsset } = {},
+): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
+  const asset = options.asset ?? 'USDC';
+  const assetInfo = SUPPORTED_ASSETS[asset];
+  const [config, pool, pools, allStates] = await Promise.all([
+    getConfig(),
+    getPool(asset),
+    getPools(),
+    getUserState(client, address, true),
+  ]);
+
+  const assetState = allStates.find((s) => s.assetId === pool.id);
+  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex) : 0;
+
+  const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
+  if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
+
+  const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
+
+  addOracleUpdatesForPositions(tx, config, pools, allStates, pool);
+
+  const [balance] = tx.moveCall({
+    target: `${config.package}::incentive_v3::withdraw_v2`,
+    arguments: [
+      tx.object(CLOCK),
+      tx.object(config.oracle.priceOracle),
+      tx.object(config.storage),
+      tx.object(pool.contract.pool),
+      tx.pure.u8(pool.id),
+      tx.pure.u64(rawAmount),
+      tx.object(config.incentiveV2),
+      tx.object(config.incentiveV3),
+      tx.object(SUI_SYSTEM_STATE),
+    ],
+    typeArguments: [pool.suiCoinType],
+  });
+
+  const [coin] = tx.moveCall({
+    target: '0x2::coin::from_balance',
+    arguments: [balance],
+    typeArguments: [pool.suiCoinType],
+  });
+
+  return { coin, effectiveAmount };
+}
+
+/**
+ * Composable variant: adds deposit commands to an existing PTB
+ * using a coin object from a prior step (withdraw/swap).
+ */
+export async function addSaveToTx(
+  tx: Transaction,
+  _client: SuiJsonRpcClient,
+  _address: string,
+  coin: TransactionObjectArgument,
+  options: { asset?: StableAsset; collectFee?: boolean } = {},
+): Promise<void> {
+  const asset = options.asset ?? 'USDC';
+  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
+
+  if (options.collectFee) {
+    addCollectFeeToTx(tx, coin, 'save');
+  }
+
+  const [coinValue] = tx.moveCall({
+    target: '0x2::coin::value',
+    typeArguments: [pool.suiCoinType],
+    arguments: [coin],
+  });
+
+  tx.moveCall({
+    target: `${config.package}::incentive_v3::entry_deposit`,
+    arguments: [
+      tx.object(CLOCK),
+      tx.object(config.storage),
+      tx.object(pool.contract.pool),
+      tx.pure.u8(pool.id),
+      coin,
+      coinValue,
+      tx.object(config.incentiveV2),
+      tx.object(config.incentiveV3),
+    ],
+    typeArguments: [pool.suiCoinType],
+  });
+}
+
+/**
+ * Composable variant: adds repay commands to an existing PTB
+ * using a coin object from a prior step (swap).
+ */
+export async function addRepayToTx(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  _address: string,
+  coin: TransactionObjectArgument,
+  options: { asset?: StableAsset } = {},
+): Promise<void> {
+  const asset = options.asset ?? 'USDC';
+  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
+
+  addOracleUpdate(tx, config, pool);
+
+  const [coinValue] = tx.moveCall({
+    target: '0x2::coin::value',
+    typeArguments: [pool.suiCoinType],
+    arguments: [coin],
+  });
+
+  tx.moveCall({
+    target: `${config.package}::incentive_v3::entry_repay`,
+    arguments: [
+      tx.object(CLOCK),
+      tx.object(config.oracle.priceOracle),
+      tx.object(config.storage),
+      tx.object(pool.contract.pool),
+      tx.pure.u8(pool.id),
+      coin,
+      coinValue,
+      tx.object(config.incentiveV2),
+      tx.object(config.incentiveV3),
+    ],
+    typeArguments: [pool.suiCoinType],
+  });
 }
 
 export async function withdraw(
@@ -505,14 +640,14 @@ export async function buildBorrowTx(
   const asset = options.asset ?? 'USDC';
   const assetInfo = SUPPORTED_ASSETS[asset];
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
-  const [config, pool, pools, states] = await Promise.all([
-    getConfig(), getPool(asset), getPools(), getUserState(client, address),
+  const [config, pool, pools, allStates] = await Promise.all([
+    getConfig(), getPool(asset), getPools(), getUserState(client, address, true),
   ]);
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdatesForPositions(tx, config, pools, states, pool);
+  addOracleUpdatesForPositions(tx, config, pools, allStates, pool);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::borrow_v2`,

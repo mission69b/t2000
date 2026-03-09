@@ -462,10 +462,10 @@ function QuickStart({
             </p>
             <CodeBlock lang="bash">
               {S.g("$")} npx skills add mission69b/t2000-skills{"\n\n"}
-              {S.g("✓")} Installed 8 skills{"\n"}
+              {S.g("✓")} Installed 9 skills{"\n"}
               {S.m("  t2000-check-balance, t2000-send, t2000-save,")}{"\n"}
-              {S.m("  t2000-withdraw, t2000-swap, t2000-borrow,")}{"\n"}
-              {S.m("  t2000-repay, t2000-pay")}{"\n\n"}
+              {S.m("  t2000-withdraw, t2000-borrow, t2000-repay,")}{"\n"}
+              {S.m("  t2000-pay, t2000-sentinel, t2000-rebalance")}{"\n\n"}
               {S.c("# Your agent now knows how to use t2000 automatically.")}
             </CodeBlock>
           </div>
@@ -572,7 +572,7 @@ function ConceptsSection() {
           [<InlineCode key="k">checking</InlineCode>, "USDC available for immediate use. Shown as Available in balance output.", <InlineCode key="v">t2000 send</InlineCode>],
           [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI, Suilend), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
           [<InlineCode key="k">credit</InlineCode>, "USDC borrowed against savings collateral. Health factor enforced on-chain.", <><InlineCode>t2000 borrow</InlineCode> / <InlineCode>repay</InlineCode></>],
-          [<InlineCode key="k">exchange</InlineCode>, "Token swaps via Cetus DEX. Any Cetus-listed pair, with on-chain slippage protection.", <InlineCode key="v">t2000 swap</InlineCode>],
+          [<InlineCode key="k">exchange</InlineCode>, "Internal stablecoin swaps via Cetus DEX. Used by rebalance, auto-convert, and auto-swap — not a user-facing command.", <InlineCode key="v">t2000 rebalance</InlineCode>],
         ]}
       />
 
@@ -610,7 +610,7 @@ function ConceptsSection() {
         rows={[
           ["Save", "0.1%", "Protocol fee on deposit"],
           ["Borrow", "0.05%", "Protocol fee on loan"],
-          ["Swap", <strong key="f">Free</strong>, "Only standard Cetus pool fees"],
+          ["Swap (internal)", <strong key="f">Free</strong>, "Cetus pool fees only; used by rebalance/auto-convert"],
           ["Withdraw", <strong key="f">Free</strong>, ""],
           ["Repay", <strong key="f">Free</strong>, ""],
           ["Send", <strong key="f">Free</strong>, ""],
@@ -660,7 +660,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 withdraw" desc="Pull funds from savings" onClick={() => scrollToCmd("withdraw")} />
         <CmdCard name="t2000 borrow" desc="Borrow against collateral" onClick={() => scrollToCmd("borrow")} />
         <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollToCmd("repay")} />
-        <CmdCard name="t2000 swap" desc="Exchange tokens via Cetus" onClick={() => scrollToCmd("swap")} />
+        <CmdCard name="t2000 rebalance" desc="Optimize yield across protocols" onClick={() => scrollToCmd("rebalance")} />
         <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
         <CmdCard name="t2000 health" desc="Check system + protocol status" onClick={() => scrollToCmd("health")} />
         <CmdCard name="t2000 positions" desc="View DeFi positions detail" onClick={() => scrollToCmd("positions")} />
@@ -786,16 +786,17 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xe7f8...")}
       </CodeBlock>
 
-      <h2 id="cmd-swap">t2000 swap</h2>
-      <p>Swap between tokens via Cetus DEX with on-chain slippage protection.</p>
+      <h2 id="cmd-rebalance">t2000 rebalance</h2>
+      <p>Optimize yield by moving savings to the best rate across protocols and stablecoins. Executes as a single atomic PTB (withdraw → swap → deposit).</p>
       <CodeBlock lang="bash">
-        t2000 swap &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
-        t2000 swap {S.a("5")} USDC SUI{"\n"}
-        t2000 swap {S.a("100")} USDC SUI --slippage {S.a("0.5")}   {S.c("# default: 3%")}
+        t2000 rebalance [--dry-run] [--min-diff &lt;pct&gt;] [--max-break-even &lt;days&gt;]{"\n\n"}
+        t2000 rebalance --dry-run   {S.c("# preview without executing")}{"\n"}
+        t2000 rebalance             {S.c("# execute rebalance")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Swapped {S.a("5")} USDC → {S.a("5.8300")} SUI{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xf9a0...")}
+        {S.g("✓")} Rebalanced {S.a("$102.51")} → {S.a("5.47%")} APY{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/91SgBL4kSX2...")}{"\n"}
+        Gas:  {S.a("0.0103")} SUI
       </CodeBlock>
 
       <h2 id="cmd-pay">
@@ -1110,7 +1111,6 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-send</InlineCode>, <>&#34;send 10 USDC to...&#34;, &#34;pay X&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-save</InlineCode>, <>&#34;deposit to savings&#34;, &#34;earn yield on...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-withdraw</InlineCode>, <>&#34;withdraw from savings&#34;, &#34;access deposits&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-swap</InlineCode>, <>&#34;swap USDC for SUI&#34;, &#34;convert...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-borrow</InlineCode>, <>&#34;borrow 40 USDC&#34;, &#34;take out a loan&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;call that paid API&#34;, &#34;pay for x402 service&#34;</>, <Badge color="green" key="b">live</Badge>],

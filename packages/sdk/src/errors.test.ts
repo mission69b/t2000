@@ -42,6 +42,14 @@ describe('mapMoveAbortCode', () => {
     expect(mapMoveAbortCode(10)).toContain('version');
   });
 
+  it('maps NAVI oracle validation abort code 1503', () => {
+    expect(mapMoveAbortCode(1503)).toContain('Oracle validation failed');
+  });
+
+  it('maps Cetus DEX abort code 46001', () => {
+    expect(mapMoveAbortCode(46001)).toContain('Swap failed');
+  });
+
   it('handles unknown codes', () => {
     expect(mapMoveAbortCode(999)).toContain('999');
   });

@@ -1,40 +1,40 @@
 ---
 name: t2000-withdraw
 description: >-
-  Withdraw USDC from savings. Use when asked to withdraw from savings,
-  access deposited funds, pull money out of savings, or reduce yield
-  position. Use --protocol to specify navi or suilend. For sending to
-  another address, use t2000-send.
+  Withdraw from savings and receive USDC. Use when asked to withdraw from
+  savings, access deposited funds, pull money out of savings, or reduce
+  yield position. Non-USDC positions are auto-swapped back to USDC.
+  For sending to another address, use t2000-send.
 license: MIT
 metadata:
   author: t2000
-  version: "1.2"
+  version: "1.3"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
 # t2000: Withdraw from Savings
 
 ## Purpose
-Withdraw USDC from savings back to the available (checking) balance.
-Subject to pool utilization — if utilization is very high, partial
-withdrawals may be needed.
+Withdraw from savings and receive USDC. If savings are held in a
+non-USDC stablecoin (due to rebalance), t2000 auto-swaps back to
+USDC before returning funds to the checking balance.
 
 ## Command
 ```bash
-t2000 withdraw <amount> [asset] [--protocol <name>]
-t2000 withdraw all [asset]
+t2000 withdraw <amount>
+t2000 withdraw all
 
 # Examples:
-t2000 withdraw 25 USDC
 t2000 withdraw 25
 t2000 withdraw all
-t2000 withdraw all --protocol suilend
 ```
 
-Asset defaults to USDC if omitted.
+You always receive USDC regardless of which stablecoin your savings
+are held in internally.
 
 ## Fees
 - No protocol fee on withdrawals
+- Standard DEX fees apply if an auto-swap from non-USDC is needed
 
 ## Output
 ```

@@ -32,9 +32,10 @@ const LINES: TerminalLine[] = [
   { type: "info", text: "  Remaining Debt:  $0.00", delay: 250 },
   { type: "info", text: "  Tx: suiscan.xyz/mainnet/tx/4sKw22wL3mS...", delay: 200 },
 
-  { type: "command", text: "❯ t2000 swap 5 USDC SUI", delay: 1200 },
-  { type: "success", text: "✓ Swapped 5 USDC → 5.8300 SUI", delay: 500 },
+  { type: "command", text: "❯ t2000 rebalance", delay: 1200 },
+  { type: "success", text: "✓ Rebalanced $80.00 → 5.47% APY", delay: 500 },
   { type: "info", text: "  Tx: suiscan.xyz/mainnet/tx/Gxdkrthd7Rd...", delay: 200 },
+  { type: "info", text: "  Gas:  0.0103 SUI", delay: 150 },
 
   { type: "command", text: "❯ t2000 pay https://api.marketdata.dev/prices", delay: 1200 },
   { type: "info", text: "  → GET https://api.marketdata.dev/prices", delay: 300 },

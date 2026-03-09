@@ -32,7 +32,7 @@ attacks win the entire prize pool instantly on-chain.
 ## Prerequisites
 ```bash
 t2000 balance          # Must have SUI for attack fees (min 0.1 SUI per attempt)
-t2000 swap 1 USDC SUI  # Swap USDC to SUI if needed for fees
+                       # SUI gas is auto-topped up from USDC when needed
 ```
 
 ## Step 1: Browse Sentinels
@@ -121,7 +121,6 @@ After winning a bounty, earnings arrive as SUI in the agent's wallet:
 
 ```bash
 t2000 balance              # Check updated balance (bounty arrives as SUI)
-t2000 swap 10 SUI USDC     # Convert SUI earnings to USDC
 t2000 save                 # Park idle USDC at yield
 t2000 balance              # Confirm savings
 ```

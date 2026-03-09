@@ -1,3 +1,10 @@
+> **⚠️ REVERTED — Phase 10c simplification (v0.9.4)**
+> Multi-stable user-facing features have been removed. Save/borrow/repay are now USDC-only.
+> Rebalance handles multi-asset optimization internally. All multi-step flows use single atomic PTBs.
+> See `phase10c-usdc-simplification-build-plan.md`.
+
+---
+
 # Phase 10+11 — Yield Optimizer + Multi-Stable Infrastructure
 
 **Goal:** Agents earn the best yield across all stablecoins automatically. One command: `t2000 rebalance`. Save is open to all supported stablecoins (USDC default, backward compatible). Send stays USDC-only. Borrow/repay unlock multi-stable for rate shopping and protocol compatibility.

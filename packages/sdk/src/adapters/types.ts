@@ -86,6 +86,10 @@ export interface LendingAdapter {
 
   maxWithdraw(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;
   maxBorrow(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;
+
+  addWithdrawToTx?(tx: Transaction, address: string, amount: number, asset: string): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }>;
+  addSaveToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string, options?: { collectFee?: boolean }): Promise<void>;
+  addRepayToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string): Promise<void>;
 }
 
 export interface SwapAdapter {
@@ -106,4 +110,14 @@ export interface SwapAdapter {
   ): Promise<AdapterTxResult & { estimatedOut: number; toDecimals: number }>;
   getSupportedPairs(): Array<{ from: string; to: string }>;
   getPoolPrice(): Promise<number>;
+
+  addSwapToTx?(
+    tx: Transaction,
+    address: string,
+    inputCoin: TransactionObjectArgument,
+    from: string,
+    to: string,
+    amount: number,
+    maxSlippageBps?: number,
+  ): Promise<{ outputCoin: TransactionObjectArgument; estimatedOut: number; toDecimals: number }>;
 }

@@ -1,6 +1,6 @@
 # @t2000/cli
 
-Terminal bank account for AI agents on Sui. One command to create a bank account, send USDC, earn yield across 4 stablecoins (USDC, USDT, USDe, USDsui), swap, borrow, auto-rebalance for optimal yield, and pay for APIs.
+Terminal bank account for AI agents on Sui. One command to create a bank account, send USDC, earn yield, borrow, auto-rebalance for optimal yield, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -51,21 +51,17 @@ t2000 init
   Balance:  $90.00 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0xa1b2...
 
-❯ t2000 save 80 USDC
+❯ t2000 save 80
   ✓ Saved $80.00 USDC to best rate
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
   ✓ Savings balance: $79.92 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0x9f2c...
 
-❯ t2000 borrow 20 USDC
+❯ t2000 borrow 20
   ✓ Borrowed $20.00 USDC
   Health Factor:  3.39
   Tx:  https://suiscan.xyz/mainnet/tx/0xb3c4...
-
-❯ t2000 swap 5 USDC SUI
-  ✓ Swapped 5 USDC → 5.8300 SUI
-  Tx:  https://suiscan.xyz/mainnet/tx/0xd5e6...
 
 ❯ t2000 pay https://data.api.com/prices
   → GET https://data.api.com/prices
@@ -73,12 +69,12 @@ t2000 init
   ✓ Paid $0.01 USDC (tx: 0x9f2c...a801)
   ← 200 OK  [342ms]
 
-❯ t2000 repay 20 USDC
+❯ t2000 repay 20
   ✓ Repaid $20.00 USDC
   Remaining Debt:  $0.00
   Tx:  https://suiscan.xyz/mainnet/tx/0xe7f8...
 
-❯ t2000 withdraw all USDC
+❯ t2000 withdraw all
   ✓ Withdrew $79.92 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0xf9a0...
 
@@ -90,7 +86,7 @@ t2000 init
   Total:      $85.28 USDC
 ```
 
-30 seconds. Send → save → borrow → swap → pay → repay → withdraw.
+30 seconds. Send → save → borrow → pay → repay → withdraw.
 
 ## Commands
 
@@ -112,21 +108,20 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 send <amount> USDC to <address>` | Send USDC to any Sui address (the `to` keyword is optional) |
+| `t2000 send <amount> <asset> [to] <address>` | Send USDC, SUI, or other assets to any Sui address (the `to` keyword is optional) |
 
 ### Savings & DeFi
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount> [asset] [--protocol <name>]` | Deposit to savings (earn ~2–8% APY). Auto-selects best rate or use `--protocol navi\|suilend`. |
+| `t2000 save <amount> [--protocol <name>]` | Deposit USDC to savings (earn ~2–8% APY). Auto-selects best rate or use `--protocol navi\|suilend`. |
 | `t2000 save all` | Deposit all available USDC |
-| `t2000 withdraw <amount> [asset] [--protocol <name>]` | Withdraw from savings. Use `--protocol navi\|suilend` to target specific protocol. |
-| `t2000 borrow <amount> [asset] [--protocol <name>]` | Borrow against savings collateral |
-| `t2000 repay <amount> [asset] [--protocol <name>]` | Repay outstanding borrows. Use `repay all` for full repayment. |
-| `t2000 swap <amount> <from> <to>` | Swap via Cetus DEX (e.g. `swap 5 USDC SUI`) |
-| `t2000 rebalance [--dry-run]` | Optimize yield — move savings to best rate across protocols and stablecoins |
+| `t2000 withdraw <amount>` | Withdraw from savings. Always returns USDC (auto-swaps non-USDC positions). |
+| `t2000 borrow <amount>` | Borrow USDC against savings collateral |
+| `t2000 repay <amount>` | Repay outstanding USDC borrows. Use `repay all` for full repayment. |
+| `t2000 rebalance [--dry-run]` | Optimize yield — move savings to best rate across protocols and stablecoins internally |
 | `t2000 health` | Check savings health factor |
-| `t2000 rates` | Best save/borrow APYs across protocols and stablecoins |
+| `t2000 rates` | Best save/borrow APYs across protocols and all stablecoins |
 | `t2000 positions` | Open savings & borrow positions across all assets |
 | `t2000 earnings` | Yield earned to date |
 | `t2000 fund-status` | Full savings summary |
@@ -195,7 +190,6 @@ curl -X POST -H "Authorization: Bearer t2k_..." \
 |---------|--------|-------------|---------|
 | `init` | `--name <name>` | Agent name | — |
 | `init` | `--no-sponsor` | Skip gas sponsorship | — |
-| `swap` | `--slippage <percent>` | Max slippage % | `3` |
 | `history` | `--limit <n>` | Number of transactions | `20` |
 | Most commands | `--key <path>` | Custom key file path | `~/.t2000/wallet.key` |
 
@@ -225,13 +219,15 @@ Gas is fully automated:
 
 You never need to manually acquire SUI for gas.
 
+All multi-step operations (save with auto-convert, withdraw with auto-swap, rebalance) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts.
+
 ## Protocol Fees
 
 | Operation | Fee |
 |-----------|-----|
 | Save | 0.1% |
 | Borrow | 0.05% |
-| Swap | **Free** |
+| Swap (internal) | **Free** |
 | Withdraw | Free |
 | Repay | Free |
 | Send | Free |
@@ -248,14 +244,14 @@ You never need to manually acquire SUI for gas.
 
 ```bash
 # Full DeFi cycle
-t2000 save all USDC         # Deposit all available USDC
-t2000 borrow 40 USDC        # Borrow against it
-t2000 repay 40 USDC         # Pay it back
-t2000 withdraw all USDC     # Get everything out
+t2000 save all               # Deposit all available USDC
+t2000 borrow 40              # Borrow against it
+t2000 repay 40               # Pay it back
+t2000 withdraw all            # Get everything out (always USDC)
 
 # Automation-friendly (no prompts, JSON output)
 t2000 balance --json
-t2000 save 10 USDC --yes --json
+t2000 save 10 --yes --json
 
 # Use with AI coding agents
 export T2000_PIN="agent-secret"

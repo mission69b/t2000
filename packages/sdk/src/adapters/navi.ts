@@ -1,4 +1,5 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions';
 import type {
   LendingAdapter,
   LendingRates,
@@ -121,5 +122,36 @@ export class NaviAdapter implements LendingAdapter {
 
   async maxBorrow(address: string, _asset: string) {
     return naviProtocol.maxBorrowAmount(this.client, address);
+  }
+
+  async addWithdrawToTx(
+    tx: Transaction,
+    address: string,
+    amount: number,
+    asset: string,
+  ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
+    const stableAsset = normalizeAsset(asset) as StableAsset;
+    return naviProtocol.addWithdrawToTx(tx, this.client, address, amount, { asset: stableAsset });
+  }
+
+  async addSaveToTx(
+    tx: Transaction,
+    address: string,
+    coin: TransactionObjectArgument,
+    asset: string,
+    options?: { collectFee?: boolean },
+  ): Promise<void> {
+    const stableAsset = normalizeAsset(asset) as StableAsset;
+    return naviProtocol.addSaveToTx(tx, this.client, address, coin, { ...options, asset: stableAsset });
+  }
+
+  async addRepayToTx(
+    tx: Transaction,
+    address: string,
+    coin: TransactionObjectArgument,
+    asset: string,
+  ): Promise<void> {
+    const stableAsset = normalizeAsset(asset) as StableAsset;
+    return naviProtocol.addRepayToTx(tx, this.client, address, coin, { asset: stableAsset });
   }
 }

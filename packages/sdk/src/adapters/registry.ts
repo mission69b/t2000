@@ -171,23 +171,4 @@ export class ProtocolRegistry {
     return [...this.swap.values()];
   }
 
-  isSupportedAsset(asset: string, capability?: AdapterCapability): boolean {
-    for (const adapter of this.lending.values()) {
-      if (!adapter.supportedAssets.includes(asset)) continue;
-      if (capability && !adapter.capabilities.includes(capability)) continue;
-      return true;
-    }
-    return false;
-  }
-
-  getSupportedAssets(capability?: AdapterCapability): string[] {
-    const assets = new Set<string>();
-    for (const adapter of this.lending.values()) {
-      if (capability && !adapter.capabilities.includes(capability)) continue;
-      for (const a of adapter.supportedAssets) {
-        assets.add(a);
-      }
-    }
-    return [...assets];
-  }
 }

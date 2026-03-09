@@ -545,6 +545,121 @@ export class SuilendAdapter implements LendingAdapter {
     return { tx, effectiveAmount };
   }
 
+  async addWithdrawToTx(
+    tx: Transaction,
+    address: string,
+    amount: number,
+    asset: string,
+  ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
+    const assetKey = (asset in SUPPORTED_ASSETS ? asset : 'USDC') as keyof typeof SUPPORTED_ASSETS;
+    const assetInfo = SUPPORTED_ASSETS[assetKey];
+    const [pkg, reserves] = await Promise.all([this.resolvePackage(), this.loadReserves(true)]);
+    const reserve = this.findReserve(reserves, assetKey);
+    if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `${assetInfo.displayName} reserve not found on Suilend`);
+
+    const caps = await this.fetchObligationCaps(address);
+    if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend position found');
+
+    const positions = await this.getPositions(address);
+    const deposited = positions.supplies.find((s) => s.asset === assetKey)?.amount ?? 0;
+    const effectiveAmount = Math.min(amount, deposited);
+    if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
+
+    const ratio = cTokenRatio(reserve);
+    const ctokenAmount = Math.ceil(effectiveAmount * 10 ** reserve.mintDecimals / ratio);
+
+    const [ctokens] = tx.moveCall({
+      target: `${pkg}::lending_market::withdraw_ctokens`,
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        tx.object(caps[0].id),
+        tx.object(CLOCK),
+        tx.pure.u64(ctokenAmount),
+      ],
+    });
+
+    const exemptionType = `${SUILEND_PACKAGE}::lending_market::RateLimiterExemption<${LENDING_MARKET_TYPE}, ${assetInfo.type}>`;
+    const [none] = tx.moveCall({
+      target: '0x1::option::none',
+      typeArguments: [exemptionType],
+    });
+
+    const [coin] = tx.moveCall({
+      target: `${pkg}::lending_market::redeem_ctokens_and_withdraw_liquidity`,
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        tx.object(CLOCK),
+        ctokens,
+        none,
+      ],
+    });
+
+    return { coin: coin as TransactionObjectArgument, effectiveAmount };
+  }
+
+  async addSaveToTx(
+    tx: Transaction,
+    address: string,
+    coin: TransactionObjectArgument,
+    asset: string,
+    options?: { collectFee?: boolean },
+  ): Promise<void> {
+    const assetKey = (asset in SUPPORTED_ASSETS ? asset : 'USDC') as keyof typeof SUPPORTED_ASSETS;
+    const assetInfo = SUPPORTED_ASSETS[assetKey];
+    const [pkg, reserves] = await Promise.all([this.resolvePackage(), this.loadReserves()]);
+    const reserve = this.findReserve(reserves, assetKey);
+    if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `${assetInfo.displayName} reserve not found on Suilend`);
+
+    const caps = await this.fetchObligationCaps(address);
+
+    let capRef: TransactionObjectArgument | string;
+    if (caps.length === 0) {
+      const [newCap] = tx.moveCall({
+        target: `${pkg}::lending_market::create_obligation`,
+        typeArguments: [LENDING_MARKET_TYPE],
+        arguments: [tx.object(LENDING_MARKET_ID)],
+      });
+      capRef = newCap;
+    } else {
+      capRef = caps[0].id;
+    }
+
+    if (options?.collectFee) {
+      addCollectFeeToTx(tx, coin, 'save');
+    }
+
+    const [ctokens] = tx.moveCall({
+      target: `${pkg}::lending_market::deposit_liquidity_and_mint_ctokens`,
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        tx.object(CLOCK),
+        coin,
+      ],
+    });
+
+    tx.moveCall({
+      target: `${pkg}::lending_market::deposit_ctokens_into_obligation`,
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        typeof capRef === 'string' ? tx.object(capRef) : capRef,
+        tx.object(CLOCK),
+        ctokens,
+      ],
+    });
+
+    if (typeof capRef !== 'string') {
+      tx.transferObjects([capRef], address);
+    }
+  }
+
   async buildBorrowTx(
     address: string,
     amount: number,
@@ -626,6 +741,34 @@ export class SuilendAdapter implements LendingAdapter {
     });
 
     return { tx };
+  }
+
+  async addRepayToTx(
+    tx: Transaction,
+    address: string,
+    coin: TransactionObjectArgument,
+    asset: string,
+  ): Promise<void> {
+    const assetKey = (asset in SUPPORTED_ASSETS ? asset : 'USDC') as keyof typeof SUPPORTED_ASSETS;
+    const assetInfo = SUPPORTED_ASSETS[assetKey];
+    const [pkg, reserves] = await Promise.all([this.resolvePackage(), this.loadReserves()]);
+    const reserve = this.findReserve(reserves, assetKey);
+    if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `${assetInfo.displayName} reserve not found on Suilend`);
+
+    const caps = await this.fetchObligationCaps(address);
+    if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend obligation found');
+
+    tx.moveCall({
+      target: `${pkg}::lending_market::repay`,
+      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        tx.object(caps[0].id),
+        tx.object(CLOCK),
+        coin,
+      ],
+    });
   }
 
   async maxWithdraw(

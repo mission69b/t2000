@@ -1,7 +1,7 @@
 {
   "name": "@t2000/cli",
-  "version": "0.8.7",
-  "description": "CLI bank account for AI agents on Sui — send, save, swap, borrow from your terminal",
+  "version": "0.9.5",
+  "description": "CLI bank account for AI agents on Sui — send, save, borrow, rebalance from your terminal",
   "type": "module",
   "bin": {
     "t2000": "./dist/index.js"

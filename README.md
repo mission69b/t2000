@@ -25,10 +25,10 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 const { agent } = await T2000.init({ pin: 'my-secret' });
 
 await agent.send({ to: '0x...', amount: 50 });
-await agent.save({ amount: 100, asset: 'USDC' });   // earn ~2–8% APY (auto-selects best rate)
-await agent.borrow({ amount: 20, asset: 'USDC' });  // borrow against savings
-await agent.repay({ amount: 20, asset: 'USDC' });   // repay debt
-await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
+await agent.save({ amount: 100 });    // earn ~2–8% APY (auto-selects best rate)
+await agent.borrow({ amount: 20 });   // borrow against savings
+await agent.repay({ amount: 20 });    // repay debt
+await agent.withdraw({ amount: 50 }); // always returns USDC
 ```
 
 ## See it work
@@ -42,26 +42,22 @@ await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
   🎉 Bank account created
   Address: 0x8b3e...d412
 
-❯ t2000 save 80 USDC
+❯ t2000 save 80
   ✓ Saved $80.00 USDC to best rate
   ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
   ✓ Savings balance: $80.00 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/7CAugsDaPvM...
 
-❯ t2000 borrow 20 USDC
+❯ t2000 borrow 20
   ✓ Borrowed $20.00 USDC
   Health Factor:  3.39
   Tx:  https://suiscan.xyz/mainnet/tx/46MX3cMyF4f...
 
-❯ t2000 repay 20 USDC
+❯ t2000 repay 20
   ✓ Repaid $20.00 USDC
   Remaining Debt:  $0.00
   Tx:  https://suiscan.xyz/mainnet/tx/4sKw22wL3mS...
-
-❯ t2000 swap 5 USDC SUI
-  ✓ Swapped 5 USDC → 5.8300 SUI
-  Tx:  https://suiscan.xyz/mainnet/tx/Gxdkrthd7Rd...
 
 ❯ t2000 pay https://api.marketdata.dev/prices
   → GET https://api.marketdata.dev/prices
@@ -88,7 +84,7 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 | Agents can't hold money | Non-custodial bank account in one line of code |
 | Gas tokens are confusing | Auto-managed — agent never sees SUI |
 | Idle funds lose value | Automatic yield via NAVI + Suilend (~2–8% APY) |
-| DeFi is complex | `save()`, `swap()`, `borrow()`, `repay()` — four methods |
+| DeFi is complex | `save()`, `borrow()`, `repay()`, `withdraw()` — four methods |
 | No standard payment protocol | x402 client — first implementation on Sui |
 | No standard wallet interface | SDK + CLI + HTTP API for any language |
 
@@ -101,7 +97,7 @@ npm install -g @t2000/cli          # Install globally for persistent use
 
 t2000 balance                      # Check balance
 t2000 send 10 USDC to 0x...       # Send USDC
-t2000 save all USDC                # Earn yield on idle funds
+t2000 save all                     # Earn yield on idle funds
 t2000 pay https://api.example.com  # Pay for x402 APIs
 ```
 
@@ -113,12 +109,13 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 |---------|-------------|-----|
 | **Checking** | Send and receive USDC | Direct Sui transfers |
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) + [Suilend](https://suilend.fi) (auto-selected) |
-| **Credit** | Borrow stablecoins against savings | NAVI + Suilend collateralized loans (USDC, USDT, USDe, USDsui) |
-| **Exchange** | Swap between stablecoins and SUI | [Cetus](https://cetus.zone) CLMM DEX |
-| **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY |
+| **Credit** | Borrow USDC against savings | NAVI + Suilend collateralized loans |
+| **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
+
+All multi-step operations (save with auto-convert, withdraw with auto-swap, rebalance) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts — no funds left in intermediate states.
 
 ### Fees
 
@@ -126,7 +123,7 @@ Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup
 |-----------|-----|-------|
 | Save | 0.1% | Protocol fee on deposit |
 | Borrow | 0.05% | Protocol fee on loan |
-| Swap | **Free** | Only standard Cetus pool fees |
+| Swap (internal) | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
@@ -165,14 +162,12 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | **Wallet** | `agent.balance()` | Available + savings + gas breakdown |
 | | `agent.send({ to, amount })` | Send USDC |
 | | `agent.history()` | Transaction log |
-| **Savings** | `agent.save({ amount, asset: 'USDC' })` | Deposit to savings, earn APY |
-| | `agent.withdraw({ amount, asset: 'USDC' })` | Withdraw from savings |
+| **Savings** | `agent.save({ amount })` | Deposit USDC to savings, earn APY |
+| | `agent.withdraw({ amount })` | Withdraw from savings (always USDC) |
 | | `agent.earnings()` | Yield earned, daily rate |
-| **Credit** | `agent.borrow({ amount, asset: 'USDC' })` | Borrow against collateral |
-| | `agent.repay({ amount, asset: 'USDC' })` | Repay debt |
+| **Credit** | `agent.borrow({ amount })` | Borrow USDC against collateral |
+| | `agent.repay({ amount })` | Repay debt |
 | | `agent.healthFactor()` | Liquidation safety |
-| **Exchange** | `agent.swap({ from, to, amount })` | Swap via Cetus DEX |
-| | `agent.swapQuote({ from, to, amount })` | Get swap quote |
 | **Info** | `agent.rates()` | Current APYs |
 | | `agent.positions()` | Open DeFi positions |
 | **Sentinel** | `agent.sentinelList()` | Browse active sentinels |
@@ -190,11 +185,11 @@ t2000 send 10 USDC to 0x...       Send USDC
 t2000 history                      Transaction history
 
 # Savings & DeFi
-t2000 save 50 USDC                 Earn yield (best rate)
-t2000 withdraw 25 USDC             Withdraw savings
-t2000 borrow 10 USDC              Borrow against collateral
-t2000 repay 10 USDC               Repay debt
-t2000 swap 5 USDC SUI             Swap via Cetus DEX
+t2000 save 50                      Earn yield (best rate)
+t2000 withdraw 25                  Withdraw savings (always USDC)
+t2000 borrow 10                    Borrow USDC against collateral
+t2000 repay 10                     Repay debt
+t2000 rebalance                    Optimize yield across stablecoins
 t2000 earnings                     Yield earned
 t2000 health                       Health factor
 t2000 rates                        Current APYs
@@ -243,7 +238,6 @@ curl -X POST -H "Authorization: Bearer t2k_..." \
 | POST | `/v1/send` | Send USDC |
 | POST | `/v1/save` | Deposit to savings |
 | POST | `/v1/withdraw` | Withdraw from savings |
-| POST | `/v1/swap` | Swap tokens |
 | POST | `/v1/borrow` | Borrow USDC |
 | POST | `/v1/repay` | Repay debt |
 | GET | `/v1/events` | SSE stream (yield, balance changes) |
@@ -291,11 +285,11 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-send` | "send 10 USDC to..." |
 | `t2000-save` | "deposit to savings", "earn yield" |
 | `t2000-withdraw` | "withdraw from savings" |
-| `t2000-swap` | "swap USDC for SUI" |
 | `t2000-borrow` | "borrow 40 USDC" |
 | `t2000-repay` | "repay my loan" |
 | `t2000-pay` | "call that paid API" |
 | `t2000-sentinel` | "attack a sentinel", "earn bounties" |
+| `t2000-rebalance` | "optimize yield", "rebalance savings" |
 
 Full reference → [Agent Skills README](t2000-skills)
 
@@ -307,13 +301,13 @@ Full reference → [Agent Skills README](t2000-skills)
 | Send / receive | ✓ | ✓ |
 | Earn yield on savings | — | ✓ NAVI + Suilend (~2–8% APY) |
 | Borrow / credit line | — | ✓ Collateralized |
-| Token swap | ✓ Base tokens | ✓ Cetus DEX |
+| Token swap (internal) | ✓ Base tokens | ✓ Cetus DEX (rebalance) |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
 | Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
 | DeFi composability | — | ✓ Atomic PTB multi-step |
 | Health factor protection | — | ✓ On-chain enforcement |
-| Yield Optimizer | — | *Coming soon* |
+| Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 
 ## Security
 
@@ -359,7 +353,7 @@ pnpm test         # All unit tests
 ### Testing
 
 ```bash
-pnpm --filter @t2000/sdk test     # 122 tests
+pnpm --filter @t2000/sdk test     # 367 tests
 pnpm --filter @t2000/x402 test    # 27 tests
 pnpm --filter @t2000/server test  # 10 tests
 ```

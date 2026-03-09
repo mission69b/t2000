@@ -1,17 +1,16 @@
 import type { Command } from 'commander';
-import { T2000, normalizeAsset, SUPPORTED_ASSETS } from '@t2000/sdk';
+import { T2000 } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
 export function registerBorrow(program: Command) {
   program
     .command('borrow')
-    .description('Borrow stablecoins against savings collateral')
+    .description('Borrow USDC against savings collateral')
     .argument('<amount>', 'Amount to borrow')
-    .argument('[asset]', 'Asset to borrow (USDC, USDT, USDe, USDsui)', 'USDC')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi)')
-    .action(async (amountStr, assetStr, opts) => {
+    .action(async (amountStr, opts) => {
       try {
         const amount = parseFloat(amountStr);
         if (isNaN(amount) || amount <= 0) {
@@ -27,11 +26,7 @@ export function registerBorrow(program: Command) {
           return;
         }
 
-        const asset = assetStr ?? 'USDC';
-        const result = await agent.borrow({ amount, asset, protocol: opts.protocol });
-
-        const normalized = normalizeAsset(asset);
-        const displayName = SUPPORTED_ASSETS[normalized as keyof typeof SUPPORTED_ASSETS]?.displayName ?? asset;
+        const result = await agent.borrow({ amount, protocol: opts.protocol });
 
         if (isJsonMode()) {
           printJson(result);
@@ -39,7 +34,7 @@ export function registerBorrow(program: Command) {
         }
 
         printBlank();
-        printSuccess(`Borrowed $${amount.toFixed(2)} ${displayName}`);
+        printSuccess(`Borrowed $${amount.toFixed(2)} USDC`);
         printKeyValue('Health Factor', result.healthFactor.toFixed(2));
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();

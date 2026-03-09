@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI + Suilend across 4 stablecoins (USDC, USDT, USDe, USDsui), swap on Cetus DEX, borrow against collateral, and auto-rebalance for optimal yield — all from a single class.
+The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI + Suilend, borrow against collateral, and auto-rebalance for optimal yield — all from a single class. USDC in, USDC out — multi-stablecoin optimization is handled internally by rebalance.
 
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -38,21 +38,18 @@ console.log(`$${balance.available} USDC available`);
 await agent.send({ to: '0x...', amount: 10 });
 
 // Save (earn yield — auto-selects best rate across NAVI + Suilend)
-await agent.save({ amount: 50, asset: 'USDC' });
+await agent.save({ amount: 50 });
 
-// Borrow a different stablecoin against your collateral
-await agent.borrow({ amount: 25, asset: 'USDT', protocol: 'suilend' });
+// Borrow USDC against your collateral
+await agent.borrow({ amount: 25 });
 
 // Rebalance — move savings to the best rate (dry-run first)
 const plan = await agent.rebalance({ dryRun: true });
 console.log(`+${plan.annualGain.toFixed(2)}/year, break-even: ${plan.breakEvenDays} days`);
 await agent.rebalance(); // execute
 
-// Swap USDC → SUI (via Cetus DEX)
-await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
-
-// Borrow against savings
-await agent.borrow({ amount: 20, asset: 'USDC' });
+// Withdraw — always returns USDC (auto-swaps non-USDC positions)
+await agent.withdraw({ amount: 25 });
 ```
 
 ## API Reference
@@ -97,13 +94,11 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, asset, protocol? })` | Deposit stablecoins to savings (earn APY). Supports USDC, USDT, USDe, USDsui. Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
-| `agent.withdraw({ amount, asset })` | Withdraw USDC from savings. `amount` can be `'all'`. | `WithdrawResult` |
-| `agent.swap({ from, to, amount, maxSlippage? })` | Swap via Cetus CLMM DEX. `maxSlippage` in % (default: 3). | `SwapResult` |
-| `agent.swapQuote({ from, to, amount })` | Get swap quote without executing | `SwapQuote` |
-| `agent.borrow({ amount, asset })` | Borrow USDC against collateral | `BorrowResult` |
-| `agent.repay({ amount, asset })` | Repay outstanding borrows. `amount` can be `'all'`. | `RepayResult` |
-| `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins. Dry-run for preview. | `RebalanceResult` |
+| `agent.save({ amount, protocol? })` | Deposit USDC to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
+| `agent.withdraw({ amount })` | Withdraw from savings. Always returns USDC (auto-swaps non-USDC positions). `amount` can be `'all'`. | `WithdrawResult` |
+| `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
+| `agent.repay({ amount })` | Repay outstanding USDC borrows. `amount` can be `'all'`. | `RepayResult` |
+| `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins internally. Dry-run for preview. | `RebalanceResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -226,7 +221,7 @@ agent.signer;      // Ed25519Keypair
 
 ## Gas Abstraction
 
-Every operation (send, save, borrow, repay, withdraw, swap) routes through a 3-step gas resolution chain via `executeWithGas()`. The agent never fails due to low gas if it has USDC or the Gas Station is reachable:
+Every operation (send, save, borrow, repay, withdraw) routes through a 3-step gas resolution chain via `executeWithGas()`. The agent never fails due to low gas if it has USDC or the Gas Station is reachable:
 
 | Step | Strategy | Condition | How it works |
 |------|----------|-----------|--------------|
@@ -237,7 +232,7 @@ Every operation (send, save, borrow, repay, withdraw, swap) routes through a 3-s
 
 Every transaction result includes a `gasMethod` field (`'self-funded'` | `'auto-topup'` | `'sponsored'`) indicating which strategy was used.
 
-**Architecture:** Each protocol operation (NAVI, Suilend, Cetus, send) exposes a `buildXxxTx()` function that returns a `Transaction` without executing it. `executeWithGas()` then handles execution with the fallback chain. This separation ensures gas management is consistent across all operations.
+**Architecture:** Each protocol operation (NAVI, Suilend, Cetus, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step operations (save with auto-convert, withdraw with auto-swap, rebalance) compose multiple protocol calls into a single atomic PTB. `executeWithGas()` handles execution with the gas fallback chain. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
 
 ## Configuration
 
@@ -249,13 +244,16 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 
 ## Supported Assets
 
-| Asset | Display | Type | Decimals | Save | Borrow | Swap | Rebalance |
-|-------|---------|------|----------|------|--------|------|-----------|
-| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ | ✅ |
-| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | ✅ | ✅ | ✅ | ✅ |
-| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | ✅ | ✅ | ✅ | ✅ |
-| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | ✅ | ✅ | ✅ | ✅ |
-| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | ✅ | — |
+User-facing operations (save, borrow, repay, withdraw) accept USDC only.
+Rebalance optimizes across all stablecoins internally.
+
+| Asset | Display | Type | Decimals | Save | Borrow | Withdraw | Rebalance (internal) |
+|-------|---------|------|----------|------|--------|----------|---------------------|
+| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ (always returns USDC) | ✅ |
+| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | — (via rebalance) | — | — | ✅ |
+| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | — (via rebalance) | — | — | ✅ |
+| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | — (via rebalance) | — | — | ✅ |
+| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — | — |
 
 ## Error Handling
 
@@ -277,7 +275,7 @@ Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOU
 ## Testing
 
 ```bash
-# Run all SDK unit tests (262 tests)
+# Run all SDK unit tests (367 tests)
 pnpm --filter @t2000/sdk test
 ```
 
@@ -293,6 +291,13 @@ pnpm --filter @t2000/sdk test
 | `send.test.ts` | Send transaction building and validation |
 | `manager.test.ts` | Gas resolution chain (self-fund, auto-topup, sponsored fallback) |
 | `autoTopUp.test.ts` | Auto-topup threshold logic and swap execution |
+| `compliance.test.ts` | Adapter contract compliance (49 checks across all adapters) |
+| `registry.test.ts` | Best rates, multi-protocol routing, quote aggregation |
+| `cetus.test.ts` | Cetus swap adapter (metadata, quotes, transaction building) |
+| `suilend.test.ts` | Suilend adapter (rates, positions, obligation lifecycle) |
+| `t2000.integration.test.ts` | End-to-end flows (save, withdraw, borrow, repay, rebalance, auto-swap) |
+| `protocolFee.test.ts` | Protocol fee calculation and collection |
+| `sentinel.test.ts` | Sentinel attack flow, listing, fee parsing |
 | `serialization.test.ts` | Transaction JSON serialization roundtrip |
 
 ## Protocol Fees
@@ -301,7 +306,7 @@ pnpm --filter @t2000/sdk test
 |-----------|-----|-------|
 | Save (deposit) | 0.10% | Protocol fee on deposit |
 | Borrow | 0.05% | Protocol fee on loan |
-| Swap | **Free** | Only standard Cetus pool fees |
+| Swap (internal) | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |

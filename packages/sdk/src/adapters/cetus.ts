@@ -1,4 +1,5 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions';
 import type {
   SwapAdapter,
   SwapQuote,
@@ -79,5 +80,26 @@ export class CetusAdapter implements SwapAdapter {
 
   async getPoolPrice(): Promise<number> {
     return cetusProtocol.getPoolPrice(this.client);
+  }
+
+  async addSwapToTx(
+    tx: Transaction,
+    address: string,
+    inputCoin: TransactionObjectArgument,
+    from: string,
+    to: string,
+    amount: number,
+    maxSlippageBps?: number,
+  ): Promise<{ outputCoin: TransactionObjectArgument; estimatedOut: number; toDecimals: number }> {
+    return cetusProtocol.addSwapToTx({
+      tx,
+      client: this.client,
+      address,
+      inputCoin,
+      fromAsset: from,
+      toAsset: to,
+      amount,
+      maxSlippageBps,
+    });
   }
 }

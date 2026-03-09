@@ -4,7 +4,7 @@
 > When a product fact changes, update this file FIRST, then propagate.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-03-05
+> Last verified: 2026-03-09
 
 ---
 
@@ -12,8 +12,8 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.8.0` |
-| `@t2000/cli` | `0.8.0` |
+| `@t2000/sdk` | `0.9.4` |
+| `@t2000/cli` | `0.9.4` |
 | `@t2000/x402` | `0.2.6` |
 | Agent Skills | `1.3` |
 
@@ -25,8 +25,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 10 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-swap`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance` |
+| Skill count | 9 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -38,7 +38,7 @@
 |-----------|-----|------|-------|
 | Save | 10 | 0.1% | Protocol fee on deposit |
 | Borrow | 5 | 0.05% | Protocol fee on loan |
-| Swap | 0 | **Free** | Only standard Cetus pool fees apply |
+| Swap (internal) | 0 | **Free** | Only standard Cetus pool fees apply; swap is internal only (rebalance, auto-convert, auto-swap) |
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
@@ -47,6 +47,48 @@
 Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `SWAP_FEE_BPS`, `BORROW_FEE_BPS`
 
 Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same PTB as the operation. The Move function takes `&mut Coin<T>` and splits the fee into the Treasury's internal `Balance<T>`. Swap is exempt (0 BPS) — Cetus pool fees apply separately.
+
+---
+
+## Architecture
+
+### Programmable Transaction Blocks (PTBs)
+
+All multi-step operations use single atomic PTBs. This means withdraw+swap+deposit (rebalance), save with auto-convert, withdraw with auto-swap, and repay with auto-swap all execute in one on-chain transaction. If any step fails, the entire transaction reverts — no funds left in intermediate states.
+
+| Operation | PTB Composition |
+|-----------|----------------|
+| Save (with non-USDC wallet stables) | Merge wallet stables → swap to USDC → collect fee → deposit — single PTB |
+| Withdraw (non-USDC position) | Withdraw from protocol → swap to USDC → transfer — single PTB |
+| Repay (non-USDC debt) | Split USDC → swap to borrowed asset → repay — single PTB |
+| Rebalance | Withdraw from source → swap (if cross-asset) → deposit to target — single PTB |
+| Withdraw all | Withdraw all positions → swap non-USDC → merge → transfer — single PTB |
+
+### Auto-Convert (Save)
+
+`save all` or `save <amount>` when wallet USDC is insufficient automatically converts non-USDC stablecoins (USDT, USDe, USDsui) to USDC within the same PTB before depositing.
+
+### Auto-Swap (Withdraw / Repay)
+
+- **Withdraw:** Non-USDC positions are automatically swapped back to USDC within the same PTB.
+- **Repay:** When debt is in a non-USDC asset, USDC is automatically swapped to the borrowed asset within the same PTB.
+
+### Dust Filtering
+
+Positions with value ≤ $0.005 are filtered out of `positions()` display to avoid showing near-zero remnants from rounding.
+
+### Composable Adapter Methods
+
+Protocol adapters expose composable PTB methods alongside standalone transaction builders:
+
+| Method | Description |
+|--------|-------------|
+| `addWithdrawToTx(tx, ...)` | Adds withdraw commands to existing PTB, returns `TransactionObjectArgument` |
+| `addSaveToTx(tx, ...)` | Adds deposit commands, accepts coin as `TransactionObjectArgument` |
+| `addRepayToTx(tx, ...)` | Adds repay commands, accepts coin as `TransactionObjectArgument` |
+| `addSwapToTx(tx, ...)` | Adds swap commands, accepts/returns `TransactionObjectArgument` |
+
+Source: `packages/sdk/src/adapters/types.ts`, `packages/sdk/src/t2000.ts`
 
 ---
 
@@ -63,7 +105,7 @@ t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth
 - `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
 - `ProtocolRegistry` auto-selects best rates/quotes across registered adapters
-- CLI `--protocol <name>` flag on save/withdraw/borrow/repay/swap to pin a specific protocol
+- CLI `--protocol <name>` flag on save/withdraw/borrow/repay to pin a specific protocol
 - Third-party adapters can be registered via `agent.registerAdapter(new MyAdapter())`
 
 Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts, cetus.ts, suilend.ts
@@ -72,13 +114,17 @@ Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts, cetus.t
 
 ## Supported Assets
 
-| Symbol | Display | Decimals | Send | Save | Borrow | Swap | Rebalance |
-|--------|---------|----------|------|------|--------|------|-----------|
-| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| USDT | suiUSDT | 6 | — | ✅ | ✅ | ✅ | ✅ |
-| USDe | suiUSDe | 6 | — | ✅ | ✅ | ✅ | ✅ |
-| USDsui | USDsui | 6 | — | ✅ | ✅ | ✅ | ✅ |
-| SUI | SUI | 9 | ✅ (gas) | — | — | ✅ | — |
+User-facing operations (save, borrow, repay, withdraw) accept **USDC only**.
+Rebalance optimizes across all stablecoins internally. Withdraw auto-swaps
+non-USDC positions back to USDC.
+
+| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Swap (internal) | Rebalance |
+|--------|---------|----------|------|------|--------|----------|-----------------|-----------|
+| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ (always returns USDC) | ✅ | ✅ |
+| USDT | suiUSDT | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
+| USDe | suiUSDe | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
+| USDsui | USDsui | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
+| SUI | SUI | 9 | ✅ (gas) | — | — | — | ✅ | — |
 
 Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
@@ -93,11 +139,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
-| save | `t2000 save <amount> [asset]` | Supports USDC, USDT, USDe, USDsui (default: USDC). Alias: `supply`. Non-USDC saves are fee-free. |
-| withdraw | `t2000 withdraw <amount> [asset]` | `asset` defaults to USDC. `amount` accepts `all` |
-| borrow | `t2000 borrow <amount> [asset]` | `asset` defaults to USDC |
-| repay | `t2000 repay <amount> [asset]` | `asset` defaults to USDC. `amount` accepts `all` |
-| swap | `t2000 swap <amount> <from> <to>` | NO `to` keyword. Options: `--slippage <percent>` (default: 3) |
+| save | `t2000 save <amount>` | USDC only. Alias: `supply`. `amount` accepts `all`. |
+| withdraw | `t2000 withdraw <amount>` | Always returns USDC (auto-swaps non-USDC positions). `amount` accepts `all` |
+| borrow | `t2000 borrow <amount>` | USDC only |
+| repay | `t2000 repay <amount>` | USDC only. `amount` accepts `all` |
 | pay | `t2000 pay <url>` | Options: `--method`, `--data`, `--header`, `--max-price`, `--timeout`, `--dry-run` |
 | history | `t2000 history` | Options: `--limit <n>` (default: 20) |
 | earnings | `t2000 earnings` | |
@@ -161,12 +206,6 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
 
-**swap:**
-```
-  ✓ Swapped 5 USDC → 5.8300 SUI
-  Tx:  https://suiscan.xyz/mainnet/tx/<digest>
-```
-
 **send:**
 ```
   ✓ Sent $10.00 USDC → 0x8b3e...d412
@@ -209,25 +248,18 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 | Method | Params | Returns |
 |--------|--------|---------|
-| `save()` | `{ amount: number \| 'all', asset? }` | `SaveResult` |
-| `withdraw()` | `{ amount: number \| 'all', asset? }` | `WithdrawResult` |
+| `save()` | `{ amount: number \| 'all' }` | `SaveResult` |
+| `withdraw()` | `{ amount: number \| 'all' }` | `WithdrawResult` |
 | `maxWithdraw()` | — | `MaxWithdrawResult` |
 
 ### Credit
 
 | Method | Params | Returns |
 |--------|--------|---------|
-| `borrow()` | `{ amount, asset? }` | `BorrowResult` |
-| `repay()` | `{ amount: number \| 'all', asset? }` | `RepayResult` |
+| `borrow()` | `{ amount }` | `BorrowResult` |
+| `repay()` | `{ amount: number \| 'all' }` | `RepayResult` |
 | `maxBorrow()` | — | `MaxBorrowResult` |
 | `healthFactor()` | — | `HealthFactorResult` |
-
-### Exchange
-
-| Method | Params | Returns |
-|--------|--------|---------|
-| `swap()` | `{ from, to, amount, maxSlippage? }` | `SwapResult` |
-| `swapQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice, fee: { amount, rate } }` |
 
 ### Info
 
@@ -413,6 +445,8 @@ Source: `packages/sdk/src/errors.ts`
 | 8 | Timelock is active (`ETIMELOCK_ACTIVE`) |
 | 9 | No pending change to execute (`ENO_PENDING_CHANGE`) |
 | 10 | Already at current version (`EALREADY_MIGRATED`) |
+| 1503 | Oracle validation failed during withdrawal |
+| 46001 | Swap failed — DEX pool rejected the trade (Cetus liquidity/routing issue) |
 
 Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`, `packages/contracts/sources/errors.move`
 

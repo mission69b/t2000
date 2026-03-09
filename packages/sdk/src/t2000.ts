@@ -1,6 +1,7 @@
 import { EventEmitter } from 'eventemitter3';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { getSuiClient } from './utils/sui.js';
 import {
   generateKeypair,
@@ -48,10 +49,8 @@ import type {
   RebalanceStep,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, STABLE_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
-import type { StableAsset } from './constants.js';
+import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
 import { truncateAddress } from './utils/sui.js';
-import { normalizeAsset } from './utils/format.js';
 
 interface T2000Events {
   balanceChange: (event: { asset: string; previous: number; current: number; cause: string; tx?: string }) => void;
@@ -248,49 +247,97 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Savings --
 
-  async save(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<SaveResult> {
-    const asset = normalizeAsset(params.asset ?? 'USDC');
+  async save(params: { amount: number | 'all'; protocol?: string }): Promise<SaveResult> {
+    const asset = 'USDC';
+    const bal = await queryBalance(this.client, this._address);
+    const usdcBalance = bal.stables.USDC ?? 0;
 
-    if (!this.registry.isSupportedAsset(asset, 'save')) {
-      const supported = this.registry.getSupportedAssets('save').join(', ');
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `${asset} is not supported for save. Supported: ${supported}`);
-    }
+    const needsAutoConvert =
+      params.amount === 'all'
+        ? Object.entries(bal.stables).some(([k, v]) => k !== 'USDC' && v > 0.01)
+        : typeof params.amount === 'number' && params.amount > usdcBalance;
 
     let amount: number;
     if (params.amount === 'all') {
-      const bal = await queryBalance(this.client, this._address);
-      const assetBalance = bal.stables[asset as StableAsset] ?? 0;
-      const reserve = asset === 'USDC' ? 1.0 : 0;
-      amount = assetBalance - reserve;
+      amount = (bal.available ?? 0) - 1.0;
       if (amount <= 0) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', `Balance too low to save${asset === 'USDC' ? ' after $1 gas reserve' : ''}`, {
-          reason: asset === 'USDC' ? 'gas_reserve_required' : 'zero_balance',
-          available: assetBalance,
+        throw new T2000Error('INSUFFICIENT_BALANCE', 'Balance too low to save after $1 gas reserve', {
+          reason: 'gas_reserve_required', available: bal.available ?? 0,
         });
       }
     } else {
       amount = params.amount;
-      const bal = await queryBalance(this.client, this._address);
-      const assetBalance = bal.stables[asset as StableAsset] ?? 0;
-      if (amount > assetBalance) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient ${asset}. Available: $${assetBalance.toFixed(2)}, requested: $${amount.toFixed(2)}`);
+      if (amount > (bal.available ?? 0)) {
+        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${(bal.available ?? 0).toFixed(2)}, requested: $${amount.toFixed(2)}`);
       }
     }
-    const shouldCollectFee = asset === 'USDC';
-    const fee = shouldCollectFee ? calculateFee('save', amount) : { amount: 0, asset, rate: 0, rawAmount: 0n };
-    const saveAmount = amount;
 
+    const fee = calculateFee('save', amount);
+    const saveAmount = amount;
     const adapter = await this.resolveLending(params.protocol, asset, 'save');
+    const swapAdapter = this.registry.listSwap()[0];
+    const canPTB = adapter.addSaveToTx && (!needsAutoConvert || swapAdapter?.addSwapToTx);
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const { tx } = await adapter.buildSaveTx(this._address, saveAmount, asset, { collectFee: shouldCollectFee });
+      if (canPTB && needsAutoConvert) {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+        const usdcCoins: TransactionObjectArgument[] = [];
+
+        // Swap non-USDC stables → USDC within the same PTB
+        for (const [stableAsset, stableAmount] of Object.entries(bal.stables)) {
+          if (stableAsset === 'USDC' || stableAmount <= 0.01) continue;
+          const assetInfo = SUPPORTED_ASSETS[stableAsset as keyof typeof SUPPORTED_ASSETS];
+          if (!assetInfo) continue;
+
+          const coins = await this._fetchCoins(assetInfo.type);
+          if (coins.length === 0) continue;
+
+          const merged = this._mergeCoinsInTx(tx, coins);
+          const { outputCoin } = await swapAdapter!.addSwapToTx!(
+            tx, this._address, merged, stableAsset, 'USDC', stableAmount,
+          );
+          usdcCoins.push(outputCoin);
+        }
+
+        // Add existing wallet USDC
+        const existingUsdc = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
+        if (existingUsdc.length > 0) {
+          usdcCoins.push(this._mergeCoinsInTx(tx, existingUsdc));
+        }
+
+        // Merge all USDC into one coin
+        if (usdcCoins.length > 1) {
+          tx.mergeCoins(usdcCoins[0], usdcCoins.slice(1));
+        }
+
+        await adapter.addSaveToTx!(tx, this._address, usdcCoins[0], asset, { collectFee: true });
+        return tx;
+      }
+
+      if (canPTB && !needsAutoConvert) {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+        const existingUsdc = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
+        if (existingUsdc.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins found');
+
+        const merged = this._mergeCoinsInTx(tx, existingUsdc);
+        const rawAmount = BigInt(Math.floor(saveAmount * 10 ** SUPPORTED_ASSETS.USDC.decimals));
+        const [depositCoin] = tx.splitCoins(merged, [rawAmount]);
+        await adapter.addSaveToTx!(tx, this._address, depositCoin, asset, { collectFee: true });
+        return tx;
+      }
+
+      // Fallback: non-composable path
+      if (needsAutoConvert) {
+        await this._convertWalletStablesToUsdc(bal, params.amount === 'all' ? undefined : amount - usdcBalance);
+      }
+      const { tx } = await adapter.buildSaveTx(this._address, saveAmount, asset, { collectFee: true });
       return tx;
     });
 
     const rates = await adapter.getRates(asset);
-    if (shouldCollectFee) {
-      reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
-    }
+    reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(asset, saveAmount, 'save', gasResult.digest);
 
     let savingsBalance = saveAmount;
@@ -307,7 +354,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       success: true,
       tx: gasResult.digest,
       amount: saveAmount,
-      asset,
       apy: rates.saveApy,
       fee: fee.amount,
       gasCost: gasResult.gasCostSui,
@@ -316,18 +362,34 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async withdraw(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<WithdrawResult> {
-    const asset = normalizeAsset(params.asset ?? 'USDC');
-
+  async withdraw(params: { amount: number | 'all'; protocol?: string }): Promise<WithdrawResult> {
     if (params.amount === 'all' && !params.protocol) {
-      return this.withdrawAllProtocols(asset);
+      return this.withdrawAllProtocols();
     }
 
-    const adapter = await this.resolveLending(params.protocol, asset, 'withdraw');
+    // Find the actual position to withdraw from (may be non-USDC after rebalance)
+    const allPositions = await this.registry.allPositions(this._address);
+    const supplies: Array<{ protocolId: string; asset: string; amount: number; apy: number }> = [];
+    for (const pos of allPositions) {
+      if (params.protocol && pos.protocolId !== params.protocol) continue;
+      for (const s of pos.positions.supplies) {
+        if (s.amount > 0.001) supplies.push({ protocolId: pos.protocolId, asset: s.asset, amount: s.amount, apy: s.apy });
+      }
+    }
+
+    if (supplies.length === 0) {
+      throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw');
+    }
+
+    // Withdraw from lowest-APY position first
+    supplies.sort((a, b) => a.apy - b.apy);
+    const target = supplies[0]!;
+    const adapter = this.registry.getLending(target.protocolId);
+    if (!adapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${target.protocolId} not found`);
 
     let amount: number;
     if (params.amount === 'all') {
-      const maxResult = await adapter.maxWithdraw(this._address, asset);
+      const maxResult = await adapter.maxWithdraw(this._address, target.asset);
       amount = maxResult.maxAmount;
       if (amount <= 0) {
         throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw');
@@ -337,7 +399,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
       const hf = await adapter.getHealth(this._address);
       if (hf.borrowed > 0) {
-        const maxResult = await adapter.maxWithdraw(this._address, asset);
+        const maxResult = await adapter.maxWithdraw(this._address, target.asset);
         if (amount > maxResult.maxAmount) {
           throw new T2000Error(
             'WITHDRAW_WOULD_LIQUIDATE',
@@ -351,27 +413,50 @@ export class T2000 extends EventEmitter<T2000Events> {
         }
       }
     }
+
     const withdrawAmount = amount;
-    let effectiveAmount = withdrawAmount;
+    let finalAmount = withdrawAmount;
+
+    const swapAdapter = target.asset !== 'USDC' ? this.registry.listSwap()[0] : undefined;
+    const canPTB = adapter.addWithdrawToTx && (!swapAdapter || swapAdapter.addSwapToTx);
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const built = await adapter.buildWithdrawTx(this._address, withdrawAmount, asset);
-      effectiveAmount = built.effectiveAmount;
+      if (canPTB) {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+
+        const { coin, effectiveAmount } = await adapter.addWithdrawToTx!(tx, this._address, withdrawAmount, target.asset);
+        finalAmount = effectiveAmount;
+
+        if (target.asset !== 'USDC' && swapAdapter?.addSwapToTx) {
+          const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx(
+            tx, this._address, coin, target.asset, 'USDC', effectiveAmount,
+          );
+          finalAmount = estimatedOut / 10 ** toDecimals;
+          tx.transferObjects([outputCoin], this._address);
+        } else {
+          tx.transferObjects([coin], this._address);
+        }
+        return tx;
+      }
+
+      const built = await adapter.buildWithdrawTx(this._address, withdrawAmount, target.asset);
+      finalAmount = built.effectiveAmount;
       return built.tx;
     });
 
-    this.emitBalanceChange(asset, effectiveAmount, 'withdraw', gasResult.digest);
+    this.emitBalanceChange('USDC', finalAmount, 'withdraw', gasResult.digest);
 
     return {
       success: true,
       tx: gasResult.digest,
-      amount: effectiveAmount,
+      amount: finalAmount,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
     };
   }
 
-  private async withdrawAllProtocols(_asset: string): Promise<WithdrawResult> {
+  private async withdrawAllProtocols(): Promise<WithdrawResult> {
     const allPositions = await this.registry.allPositions(this._address);
 
     const withdrawable: Array<{ protocolId: string; asset: string; amount: number }> = [];
@@ -387,44 +472,159 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
     }
 
-    let totalWithdrawn = 0;
-    let lastDigest = '';
-    let totalGasCost = 0;
-    let lastGasMethod: WithdrawResult['gasMethod'] = 'self-funded';
-
+    // Pre-check maxWithdraw for each position
+    const entries: Array<{ protocolId: string; asset: string; maxAmount: number; adapter: LendingAdapter }> = [];
     for (const entry of withdrawable) {
       const adapter = this.registry.getLending(entry.protocolId);
       if (!adapter) continue;
-
       const maxResult = await adapter.maxWithdraw(this._address, entry.asset);
-      if (maxResult.maxAmount <= 0.001) continue;
-
-      let effectiveAmount = maxResult.maxAmount;
-
-      const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-        const built = await adapter.buildWithdrawTx(this._address, maxResult.maxAmount, entry.asset);
-        effectiveAmount = built.effectiveAmount;
-        return built.tx;
-      });
-
-      totalWithdrawn += effectiveAmount;
-      lastDigest = gasResult.digest;
-      totalGasCost += gasResult.gasCostSui;
-      lastGasMethod = gasResult.gasMethod;
-      this.emitBalanceChange(entry.asset, effectiveAmount, 'withdraw', gasResult.digest);
+      if (maxResult.maxAmount > 0.001) {
+        entries.push({ ...entry, maxAmount: maxResult.maxAmount, adapter });
+      }
     }
 
-    if (totalWithdrawn <= 0) {
+    if (entries.length === 0) {
+      throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
+    }
+
+    const swapAdapter = this.registry.listSwap()[0];
+    const canPTB = entries.every(e => e.adapter.addWithdrawToTx) && (!swapAdapter || swapAdapter.addSwapToTx);
+
+    let totalUsdcReceived = 0;
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      if (canPTB) {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+        const usdcCoins: TransactionObjectArgument[] = [];
+
+        for (const entry of entries) {
+          const { coin, effectiveAmount } = await entry.adapter.addWithdrawToTx!(
+            tx, this._address, entry.maxAmount, entry.asset,
+          );
+
+          if (entry.asset !== 'USDC' && swapAdapter?.addSwapToTx) {
+            const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx(
+              tx, this._address, coin, entry.asset, 'USDC', effectiveAmount,
+            );
+            totalUsdcReceived += estimatedOut / 10 ** toDecimals;
+            usdcCoins.push(outputCoin);
+          } else {
+            totalUsdcReceived += effectiveAmount;
+            usdcCoins.push(coin);
+          }
+        }
+
+        if (usdcCoins.length > 1) {
+          tx.mergeCoins(usdcCoins[0], usdcCoins.slice(1));
+        }
+        tx.transferObjects([usdcCoins[0]], this._address);
+        return tx;
+      }
+
+      // Fallback: multi-tx (shouldn't happen with current adapters)
+      let lastTx: Transaction | undefined;
+      for (const entry of entries) {
+        const built = await entry.adapter.buildWithdrawTx(this._address, entry.maxAmount, entry.asset);
+        totalUsdcReceived += built.effectiveAmount;
+        lastTx = built.tx;
+      }
+      return lastTx!;
+    });
+
+    if (totalUsdcReceived <= 0) {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
     }
 
     return {
       success: true,
-      tx: lastDigest,
-      amount: totalWithdrawn,
-      gasCost: totalGasCost,
-      gasMethod: lastGasMethod,
+      tx: gasResult.digest,
+      amount: totalUsdcReceived,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
     };
+  }
+
+  private async _fetchCoins(coinType: string): Promise<Array<{ coinObjectId: string; balance: string }>> {
+    const all: Array<{ coinObjectId: string; balance: string }> = [];
+    let cursor: string | null | undefined;
+    let hasNext = true;
+    while (hasNext) {
+      const page = await this.client.getCoins({ owner: this._address, coinType, cursor: cursor ?? undefined });
+      all.push(...page.data.map((c) => ({ coinObjectId: c.coinObjectId, balance: c.balance })));
+      cursor = page.nextCursor;
+      hasNext = page.hasNextPage;
+    }
+    return all;
+  }
+
+  private _mergeCoinsInTx(tx: Transaction, coins: Array<{ coinObjectId: string; balance: string }>): TransactionObjectArgument {
+    if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No coins to merge');
+    const primary = tx.object(coins[0].coinObjectId);
+    if (coins.length > 1) {
+      tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
+    }
+    return primary;
+  }
+
+  private async _swapToUsdc(asset: string, amount: number): Promise<{ usdcReceived: number; digest: string; gasCost: number }> {
+    const swapAdapter = this.registry.listSwap()[0];
+    if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
+
+    let estimatedOut = 0;
+    let toDecimals = 6;
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const built = await swapAdapter.buildSwapTx(this._address, asset, 'USDC', amount);
+      estimatedOut = built.estimatedOut;
+      toDecimals = built.toDecimals;
+      return built.tx;
+    });
+
+    const usdcReceived = estimatedOut / 10 ** toDecimals;
+    return { usdcReceived, digest: gasResult.digest, gasCost: gasResult.gasCostSui };
+  }
+
+  private async _swapFromUsdc(toAsset: string, amount: number): Promise<{ received: number; digest: string; gasCost: number }> {
+    const swapAdapter = this.registry.listSwap()[0];
+    if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
+
+    let estimatedOut = 0;
+    let toDecimals = 6;
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const built = await swapAdapter.buildSwapTx(this._address, 'USDC', toAsset, amount);
+      estimatedOut = built.estimatedOut;
+      toDecimals = built.toDecimals;
+      return built.tx;
+    });
+
+    const received = estimatedOut / 10 ** toDecimals;
+    return { received, digest: gasResult.digest, gasCost: gasResult.gasCostSui };
+  }
+
+  private async _convertWalletStablesToUsdc(bal: BalanceResponse, amountNeeded?: number): Promise<void> {
+    const nonUsdcStables: Array<{ asset: string; amount: number }> = [];
+    for (const [asset, amount] of Object.entries(bal.stables)) {
+      if (asset !== 'USDC' && amount > 0.01) {
+        nonUsdcStables.push({ asset, amount });
+      }
+    }
+    if (nonUsdcStables.length === 0) return;
+
+    // Sort largest balance first for efficiency
+    nonUsdcStables.sort((a, b) => b.amount - a.amount);
+
+    let converted = 0;
+    for (const entry of nonUsdcStables) {
+      if (amountNeeded !== undefined && converted >= amountNeeded) break;
+      try {
+        await this._swapToUsdc(entry.asset, entry.amount);
+        converted += entry.amount;
+      } catch {
+        // Skip this asset if swap fails, continue with others
+      }
+    }
   }
 
   async maxWithdraw(): Promise<MaxWithdrawResult> {
@@ -434,8 +634,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Borrowing --
 
-  async borrow(params: { amount: number; asset?: string; protocol?: string }): Promise<BorrowResult> {
-    const asset = normalizeAsset(params.asset ?? 'USDC');
+  async borrow(params: { amount: number; protocol?: string }): Promise<BorrowResult> {
+    const asset = 'USDC';
     const adapter = await this.resolveLending(params.protocol, asset, 'borrow');
 
     const maxResult = await adapter.maxBorrow(this._address, asset);
@@ -448,19 +648,16 @@ export class T2000 extends EventEmitter<T2000Events> {
         currentHF: maxResult.currentHF,
       });
     }
-    const shouldCollectFee = asset === 'USDC';
-    const fee = shouldCollectFee ? calculateFee('borrow', params.amount) : { amount: 0, asset, rate: 0, rawAmount: 0n };
+    const fee = calculateFee('borrow', params.amount);
     const borrowAmount = params.amount;
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: shouldCollectFee });
+      const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: true });
       return tx;
     });
 
     const hf = await adapter.getHealth(this._address);
-    if (shouldCollectFee) {
-      reportFee(this._address, 'borrow', fee.amount, fee.rate, gasResult.digest);
-    }
+    reportFee(this._address, 'borrow', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(asset, borrowAmount, 'borrow', gasResult.digest);
 
     return {
@@ -474,34 +671,159 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async repay(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<RepayResult> {
-    const asset = normalizeAsset(params.asset ?? 'USDC');
-    const adapter = await this.resolveLending(params.protocol, asset, 'repay');
-
-    let amount: number;
-    if (params.amount === 'all') {
-      const hf = await adapter.getHealth(this._address);
-      amount = hf.borrowed;
-      if (amount <= 0) {
-        throw new T2000Error('NO_COLLATERAL', 'No outstanding borrow to repay');
+  async repay(params: { amount: number | 'all'; protocol?: string }): Promise<RepayResult> {
+    // Find actual borrows (may be non-USDC from rebalance or legacy)
+    const allPositions = await this.registry.allPositions(this._address);
+    const borrows: Array<{ protocolId: string; asset: string; amount: number; apy: number }> = [];
+    for (const pos of allPositions) {
+      if (params.protocol && pos.protocolId !== params.protocol) continue;
+      for (const b of pos.positions.borrows) {
+        if (b.amount > 0.001) borrows.push({ protocolId: pos.protocolId, asset: b.asset, amount: b.amount, apy: b.apy });
       }
-    } else {
-      amount = params.amount;
     }
-    const repayAmount = amount;
+
+    if (borrows.length === 0) {
+      throw new T2000Error('NO_COLLATERAL', 'No outstanding borrow to repay');
+    }
+
+    if (params.amount === 'all') {
+      return this._repayAllBorrows(borrows);
+    }
+
+    // Repay highest-interest borrow first
+    borrows.sort((a, b) => b.apy - a.apy);
+    const target = borrows[0]!;
+    const adapter = this.registry.getLending(target.protocolId);
+    if (!adapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${target.protocolId} not found`);
+
+    const repayAmount = Math.min(params.amount, target.amount);
+    const swapAdapter = target.asset !== 'USDC' ? this.registry.listSwap()[0] : undefined;
+    const canPTB = adapter.addRepayToTx && (!swapAdapter || swapAdapter.addSwapToTx);
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
-      const { tx } = await adapter.buildRepayTx(this._address, repayAmount, asset);
+      if (canPTB && target.asset !== 'USDC' && swapAdapter?.addSwapToTx) {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+
+        const buffer = repayAmount * 1.005;
+        const usdcCoins = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
+        if (usdcCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins for swap');
+        const merged = this._mergeCoinsInTx(tx, usdcCoins);
+        const rawSwap = BigInt(Math.floor(buffer * 10 ** SUPPORTED_ASSETS.USDC.decimals));
+        const [splitCoin] = tx.splitCoins(merged, [rawSwap]);
+
+        const { outputCoin } = await swapAdapter.addSwapToTx(
+          tx, this._address, splitCoin, 'USDC', target.asset, buffer,
+        );
+
+        await adapter.addRepayToTx!(tx, this._address, outputCoin, target.asset);
+        return tx;
+      }
+
+      if (canPTB && target.asset === 'USDC') {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+        const usdcCoins = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
+        if (usdcCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins');
+        const merged = this._mergeCoinsInTx(tx, usdcCoins);
+        const raw = BigInt(Math.floor(repayAmount * 10 ** SUPPORTED_ASSETS.USDC.decimals));
+        const [repayCoin] = tx.splitCoins(merged, [raw]);
+        await adapter.addRepayToTx!(tx, this._address, repayCoin, target.asset);
+        return tx;
+      }
+
+      // Fallback: multi-tx
+      if (target.asset !== 'USDC') {
+        await this._swapFromUsdc(target.asset, repayAmount * 1.005);
+      }
+      const { tx } = await adapter.buildRepayTx(this._address, repayAmount, target.asset);
       return tx;
     });
 
     const hf = await adapter.getHealth(this._address);
-    this.emitBalanceChange(asset, repayAmount, 'repay', gasResult.digest);
+    this.emitBalanceChange('USDC', repayAmount, 'repay', gasResult.digest);
 
     return {
       success: true,
       tx: gasResult.digest,
       amount: repayAmount,
+      remainingDebt: hf.borrowed,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  private async _repayAllBorrows(borrows: Array<{ protocolId: string; asset: string; amount: number; apy: number }>): Promise<RepayResult> {
+    borrows.sort((a, b) => b.apy - a.apy);
+
+    const entries: Array<{ borrow: typeof borrows[0]; adapter: LendingAdapter }> = [];
+    for (const borrow of borrows) {
+      const adapter = this.registry.getLending(borrow.protocolId);
+      if (adapter) entries.push({ borrow, adapter });
+    }
+
+    const swapAdapter = this.registry.listSwap()[0];
+    const canPTB = entries.every(e => e.adapter.addRepayToTx) &&
+      (entries.every(e => e.borrow.asset === 'USDC') || swapAdapter?.addSwapToTx);
+
+    let totalRepaid = 0;
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      if (canPTB) {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+
+        // Pre-fetch USDC coins for any swaps or direct repays
+        const usdcCoins = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
+        let usdcMerged: TransactionObjectArgument | undefined;
+        if (usdcCoins.length > 0) {
+          usdcMerged = this._mergeCoinsInTx(tx, usdcCoins);
+        }
+
+        for (const { borrow, adapter } of entries) {
+          if (borrow.asset !== 'USDC' && swapAdapter?.addSwapToTx) {
+            const buffer = borrow.amount * 1.005;
+            const rawSwap = BigInt(Math.floor(buffer * 10 ** SUPPORTED_ASSETS.USDC.decimals));
+            if (!usdcMerged) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC for swap');
+            const [splitCoin] = tx.splitCoins(usdcMerged, [rawSwap]);
+
+            const { outputCoin } = await swapAdapter.addSwapToTx!(
+              tx, this._address, splitCoin, 'USDC', borrow.asset, buffer,
+            );
+            await adapter.addRepayToTx!(tx, this._address, outputCoin, borrow.asset);
+          } else {
+            const raw = BigInt(Math.floor(borrow.amount * 10 ** SUPPORTED_ASSETS.USDC.decimals));
+            if (!usdcMerged) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC for repayment');
+            const [repayCoin] = tx.splitCoins(usdcMerged, [raw]);
+            await adapter.addRepayToTx!(tx, this._address, repayCoin, borrow.asset);
+          }
+          totalRepaid += borrow.amount;
+        }
+
+        return tx;
+      }
+
+      // Fallback: multi-tx
+      let lastTx: Transaction | undefined;
+      for (const { borrow, adapter } of entries) {
+        if (borrow.asset !== 'USDC') {
+          await this._swapFromUsdc(borrow.asset, borrow.amount * 1.005);
+        }
+        const { tx } = await adapter.buildRepayTx(this._address, borrow.amount, borrow.asset);
+        lastTx = tx;
+        totalRepaid += borrow.amount;
+      }
+      return lastTx!;
+    });
+
+    const firstAdapter = entries[0]?.adapter;
+    const hf = firstAdapter ? await firstAdapter.getHealth(this._address) : { borrowed: 0 };
+    this.emitBalanceChange('USDC', totalRepaid, 'repay', gasResult.digest);
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      amount: totalRepaid,
       remainingDebt: hf.borrowed,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
@@ -526,11 +848,11 @@ export class T2000 extends EventEmitter<T2000Events> {
     return hf;
   }
 
-  // -- Swap --
+  // -- Swap (internal — used by rebalance and withdraw auto-swap) --
 
-  async swap(params: { from: string; to: string; amount: number; maxSlippage?: number; protocol?: string }): Promise<SwapResult> {
-    const fromAsset = normalizeAsset(params.from) as 'USDC' | 'SUI';
-    const toAsset = normalizeAsset(params.to) as 'USDC' | 'SUI';
+  private async _swap(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
+    const fromAsset = params.from as keyof typeof SUPPORTED_ASSETS;
+    const toAsset = params.to as keyof typeof SUPPORTED_ASSETS;
 
     if (!(fromAsset in SUPPORTED_ASSETS) || !(toAsset in SUPPORTED_ASSETS)) {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap pair ${fromAsset}/${toAsset} is not supported`);
@@ -539,15 +861,8 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INVALID_AMOUNT', 'Cannot swap same asset');
     }
 
-    let adapter: SwapAdapter;
-    if (params.protocol) {
-      const found = this.registry.getSwap(params.protocol);
-      if (!found) throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap adapter '${params.protocol}' not found`);
-      adapter = found;
-    } else {
-      const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
-      adapter = best.adapter;
-    }
+    const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
+    const adapter = best.adapter;
 
     const fee = calculateFee('swap', params.amount);
     const swapAmount = params.amount;
@@ -608,14 +923,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async swapQuote(params: { from: string; to: string; amount: number }): Promise<{
+  private async _swapQuote(params: { from: string; to: string; amount: number }): Promise<{
     expectedOutput: number;
     priceImpact: number;
     poolPrice: number;
     fee: { amount: number; rate: number };
   }> {
-    const fromAsset = normalizeAsset(params.from);
-    const toAsset = normalizeAsset(params.to);
+    const fromAsset = params.from;
+    const toAsset = params.to;
     const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
     const fee = calculateFee('swap', params.amount);
     return { ...best.quote, fee: { amount: fee.amount, rate: fee.rate } };
@@ -627,20 +942,24 @@ export class T2000 extends EventEmitter<T2000Events> {
     const allPositions = await this.registry.allPositions(this._address);
     const positions = allPositions.flatMap(p =>
       [
-        ...p.positions.supplies.map(s => ({
-          protocol: p.protocolId,
-          asset: s.asset,
-          type: 'save' as const,
-          amount: s.amount,
-          apy: s.apy,
-        })),
-        ...p.positions.borrows.map(b => ({
-          protocol: p.protocolId,
-          asset: b.asset,
-          type: 'borrow' as const,
-          amount: b.amount,
-          apy: b.apy,
-        })),
+        ...p.positions.supplies
+          .filter(s => s.amount > 0.005)
+          .map(s => ({
+            protocol: p.protocolId,
+            asset: s.asset,
+            type: 'save' as const,
+            amount: s.amount,
+            apy: s.apy,
+          })),
+        ...p.positions.borrows
+          .filter(b => b.amount > 0.005)
+          .map(b => ({
+            protocol: p.protocolId,
+            asset: b.asset,
+            type: 'borrow' as const,
+            amount: b.amount,
+            apy: b.apy,
+          })),
       ],
     );
     return { positions };
@@ -860,41 +1179,78 @@ export class T2000 extends EventEmitter<T2000Events> {
       };
     }
 
-    const txDigests: string[] = [];
-    let totalGasCost = 0;
-
     if (!withdrawAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${current.protocolId} not found`);
-
-    const withdrawResult = await executeWithGas(this.client, this.keypair, async () => {
-      const built = await withdrawAdapter.buildWithdrawTx(this._address, current.amount, current.asset);
-      amountToDeposit = isSameAsset ? built.effectiveAmount : built.effectiveAmount;
-      return built.tx;
-    });
-    txDigests.push(withdrawResult.digest);
-    totalGasCost += withdrawResult.gasCostSui;
-
-    if (!isSameAsset) {
-      const swapAdapter = this.registry.listSwap()[0];
-      if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
-
-      const swapResult = await executeWithGas(this.client, this.keypair, async () => {
-        const built = await swapAdapter.buildSwapTx(this._address, current.asset, bestRate.asset, amountToDeposit);
-        amountToDeposit = built.estimatedOut / 10 ** built.toDecimals;
-        return built.tx;
-      });
-      txDigests.push(swapResult.digest);
-      totalGasCost += swapResult.gasCostSui;
-    }
 
     const depositAdapter = this.registry.getLending(bestRate.protocolId);
     if (!depositAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${bestRate.protocolId} not found`);
 
-    const depositResult = await executeWithGas(this.client, this.keypair, async () => {
-      const { tx } = await depositAdapter.buildSaveTx(this._address, amountToDeposit, bestRate.asset, { collectFee: bestRate.asset === 'USDC' });
-      return tx;
-    });
-    txDigests.push(depositResult.digest);
-    totalGasCost += depositResult.gasCostSui;
+    const canComposePTB =
+      withdrawAdapter.addWithdrawToTx && depositAdapter.addSaveToTx &&
+      (isSameAsset || this.registry.listSwap()[0]?.addSwapToTx);
+
+    let txDigests: string[];
+    let totalGasCost: number;
+
+    if (canComposePTB) {
+      const result = await executeWithGas(this.client, this.keypair, async () => {
+        const tx = new Transaction();
+        tx.setSender(this._address);
+
+        const { coin: withdrawnCoin, effectiveAmount } = await withdrawAdapter.addWithdrawToTx!(
+          tx, this._address, current.amount, current.asset,
+        );
+        amountToDeposit = effectiveAmount;
+
+        let depositCoin = withdrawnCoin;
+        if (!isSameAsset) {
+          const swapAdapter = this.registry.listSwap()[0];
+          const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx!(
+            tx, this._address, withdrawnCoin, current.asset, bestRate.asset, amountToDeposit,
+          );
+          depositCoin = outputCoin;
+          amountToDeposit = estimatedOut / 10 ** toDecimals;
+        }
+
+        await depositAdapter.addSaveToTx!(
+          tx, this._address, depositCoin, bestRate.asset, { collectFee: bestRate.asset === 'USDC' },
+        );
+
+        return tx;
+      });
+      txDigests = [result.digest];
+      totalGasCost = result.gasCostSui;
+    } else {
+      txDigests = [];
+      totalGasCost = 0;
+
+      const withdrawResult = await executeWithGas(this.client, this.keypair, async () => {
+        const built = await withdrawAdapter.buildWithdrawTx(this._address, current.amount, current.asset);
+        amountToDeposit = built.effectiveAmount;
+        return built.tx;
+      });
+      txDigests.push(withdrawResult.digest);
+      totalGasCost += withdrawResult.gasCostSui;
+
+      if (!isSameAsset) {
+        const swapAdapter = this.registry.listSwap()[0];
+        if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
+
+        const swapResult = await executeWithGas(this.client, this.keypair, async () => {
+          const built = await swapAdapter.buildSwapTx(this._address, current.asset, bestRate.asset, amountToDeposit);
+          amountToDeposit = built.estimatedOut / 10 ** built.toDecimals;
+          return built.tx;
+        });
+        txDigests.push(swapResult.digest);
+        totalGasCost += swapResult.gasCostSui;
+      }
+
+      const depositResult = await executeWithGas(this.client, this.keypair, async () => {
+        const { tx } = await depositAdapter.buildSaveTx(this._address, amountToDeposit, bestRate.asset, { collectFee: bestRate.asset === 'USDC' });
+        return tx;
+      });
+      txDigests.push(depositResult.digest);
+      totalGasCost += depositResult.gasCostSui;
+    }
 
     return {
       executed: true,

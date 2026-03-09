@@ -102,6 +102,9 @@ t2000 save 100 --protocol myprotocol
 t2000 save 100
 ```
 
+> **Note:** User-facing CLI commands (save, borrow, repay, withdraw) accept USDC only.
+> Adapters internally still support multiple stablecoins for use by the rebalance engine.
+
 ## Interface Reference
 
 ### LendingAdapter

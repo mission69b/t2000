@@ -70,9 +70,9 @@ export function registerServe(program: Command) {
         console.log('    GET  /v1/balance        POST /v1/send');
         console.log('    GET  /v1/address         POST /v1/save');
         console.log('    GET  /v1/history         POST /v1/withdraw');
-        console.log('    GET  /v1/earnings        POST /v1/swap');
-        console.log('    GET  /v1/rates           POST /v1/borrow');
-        console.log('    GET  /v1/health-factor   POST /v1/repay');
+        console.log('    GET  /v1/earnings        POST /v1/borrow');
+        console.log('    GET  /v1/rates           POST /v1/repay');
+        console.log('    GET  /v1/health-factor');
         console.log('    GET  /v1/positions');
         console.log('    GET  /v1/events          (SSE)');
         console.log('');
@@ -222,12 +222,12 @@ function buildApp(agent: T2000, authToken: string, rateLimit: number): Hono {
   app.post('/v1/save', async (c) => {
     try {
       const body = await c.req.json();
-      const { amount, asset } = body as { amount: number; asset?: string };
+      const { amount } = body as { amount: number };
       if (!amount) {
         c.status(400);
         return c.json(errorResponse('INVALID_PARAMS', 'Required: amount'));
       }
-      const result = await agent.save({ amount, asset: asset ?? 'USDC' });
+      const result = await agent.save({ amount });
       return c.json(envelope(result));
     } catch (err) {
       c.status(getStatusCode(err) as 400 | 500);
@@ -238,12 +238,12 @@ function buildApp(agent: T2000, authToken: string, rateLimit: number): Hono {
   app.post('/v1/supply', async (c) => {
     try {
       const body = await c.req.json();
-      const { amount, asset } = body as { amount: number; asset?: string };
+      const { amount } = body as { amount: number };
       if (!amount) {
         c.status(400);
         return c.json(errorResponse('INVALID_PARAMS', 'Required: amount'));
       }
-      const result = await agent.save({ amount, asset: asset ?? 'USDC' });
+      const result = await agent.save({ amount });
       return c.json(envelope(result));
     } catch (err) {
       c.status(getStatusCode(err) as 400 | 500);
@@ -254,28 +254,12 @@ function buildApp(agent: T2000, authToken: string, rateLimit: number): Hono {
   app.post('/v1/withdraw', async (c) => {
     try {
       const body = await c.req.json();
-      const { amount, asset } = body as { amount: number | 'all'; asset?: string };
+      const { amount } = body as { amount: number | 'all' };
       if (!amount) {
         c.status(400);
         return c.json(errorResponse('INVALID_PARAMS', 'Required: amount'));
       }
-      const result = await agent.withdraw({ amount, asset: asset ?? 'USDC' });
-      return c.json(envelope(result));
-    } catch (err) {
-      c.status(getStatusCode(err) as 400 | 500);
-      return c.json(handleApiError(err));
-    }
-  });
-
-  app.post('/v1/swap', async (c) => {
-    try {
-      const body = await c.req.json();
-      const { from, to, amount, maxSlippage } = body as { from: string; to: string; amount: number; maxSlippage?: number };
-      if (!from || !to || !amount) {
-        c.status(400);
-        return c.json(errorResponse('INVALID_PARAMS', 'Required: from, to, amount'));
-      }
-      const result = await agent.swap({ from, to, amount, maxSlippage });
+      const result = await agent.withdraw({ amount });
       return c.json(envelope(result));
     } catch (err) {
       c.status(getStatusCode(err) as 400 | 500);
@@ -286,12 +270,12 @@ function buildApp(agent: T2000, authToken: string, rateLimit: number): Hono {
   app.post('/v1/borrow', async (c) => {
     try {
       const body = await c.req.json();
-      const { amount, asset } = body as { amount: number; asset?: string };
+      const { amount } = body as { amount: number };
       if (!amount) {
         c.status(400);
         return c.json(errorResponse('INVALID_PARAMS', 'Required: amount'));
       }
-      const result = await agent.borrow({ amount, asset: asset ?? 'USDC' });
+      const result = await agent.borrow({ amount });
       return c.json(envelope(result));
     } catch (err) {
       c.status(getStatusCode(err) as 400 | 500);
@@ -302,12 +286,12 @@ function buildApp(agent: T2000, authToken: string, rateLimit: number): Hono {
   app.post('/v1/repay', async (c) => {
     try {
       const body = await c.req.json();
-      const { amount, asset } = body as { amount: number | 'all'; asset?: string };
+      const { amount } = body as { amount: number | 'all' };
       if (!amount) {
         c.status(400);
         return c.json(errorResponse('INVALID_PARAMS', 'Required: amount'));
       }
-      const result = await agent.repay({ amount, asset: asset ?? 'USDC' });
+      const result = await agent.repay({ amount });
       return c.json(envelope(result));
     } catch (err) {
       c.status(getStatusCode(err) as 400 | 500);

@@ -1,10 +1,16 @@
+> **✅ COMPLETED — v0.9.4**
+> Phase 10c shipped. USDC-in, USDC-out model is live. All multi-step operations (save with auto-convert, withdraw with auto-swap, repay with auto-swap, rebalance) use single atomic PTBs.
+> Additional changes post-10c: composable adapter methods (`addWithdrawToTx`, `addSaveToTx`, `addRepayToTx`, `addSwapToTx`), dust filtering (≤ $0.005), error code 46001 mapping.
+
+---
+
 # Phase 10c — USDC-In, USDC-Out Simplification
 
 **Goal:** Simplify the entire product to a USDC-only user experience. Users save USDC, `rebalance` optimizes yield across stables/protocols internally, `withdraw` always returns USDC. Remove all user-facing multi-asset complexity. Clean dead code so we stop shipping multi-asset bugs.
 
 **Reverts/simplifies:** Phase 10 (multi-stable borrow/repay/save) and Phase 10b (open save to all assets). Keeps rebalance, internal swap, multi-protocol support, and read-only display commands.
 
-**Version bump:** `0.8.7` → `0.9.0` (minor — breaking change to public SDK API)
+**Version bump:** `0.8.7` → `0.9.0` → `0.9.4` (minor — breaking change to public SDK API)
 
 **Estimated total:** 1.5 days
 

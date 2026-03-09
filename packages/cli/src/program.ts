@@ -19,7 +19,6 @@ import { registerRepay } from './commands/repay.js';
 import { registerHealth } from './commands/health.js';
 import { registerRates } from './commands/rates.js';
 import { registerPositions } from './commands/positions.js';
-import { registerSwap } from './commands/swap.js';
 import { registerEarnings } from './commands/earnings.js';
 import { registerFundStatus } from './commands/fundStatus.js';
 import { registerConfig } from './commands/config.js';
@@ -58,7 +57,6 @@ export function createProgram(): Command {
   registerHealth(program);
   registerRates(program);
   registerPositions(program);
-  registerSwap(program);
   registerEarnings(program);
   registerFundStatus(program);
   registerConfig(program);
