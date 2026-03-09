@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { T2000 } from '@t2000/sdk';
+import { T2000, normalizeAsset, SUPPORTED_ASSETS } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
@@ -29,8 +29,11 @@ export function registerRepay(program: Command) {
           return;
         }
 
+        const normalized = normalizeAsset(asset);
+        const displayName = SUPPORTED_ASSETS[normalized as keyof typeof SUPPORTED_ASSETS]?.displayName ?? asset;
+
         printBlank();
-        printSuccess(`Repaid $${result.amount.toFixed(2)} ${asset}`);
+        printSuccess(`Repaid $${result.amount.toFixed(2)} ${displayName}`);
         printKeyValue('Remaining Debt', `$${result.remainingDebt.toFixed(2)}`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();

@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { T2000 } from '@t2000/sdk';
+import { T2000, normalizeAsset, SUPPORTED_ASSETS } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
@@ -30,13 +30,16 @@ export function registerBorrow(program: Command) {
         const asset = assetStr ?? 'USDC';
         const result = await agent.borrow({ amount, asset, protocol: opts.protocol });
 
+        const normalized = normalizeAsset(asset);
+        const displayName = SUPPORTED_ASSETS[normalized as keyof typeof SUPPORTED_ASSETS]?.displayName ?? asset;
+
         if (isJsonMode()) {
           printJson(result);
           return;
         }
 
         printBlank();
-        printSuccess(`Borrowed $${amount.toFixed(2)} ${asset}`);
+        printSuccess(`Borrowed $${amount.toFixed(2)} ${displayName}`);
         printKeyValue('Health Factor', result.healthFactor.toFixed(2));
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();

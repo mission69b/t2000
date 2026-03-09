@@ -7,7 +7,7 @@ import {
   MIST_PER_SUI,
 } from '../constants.js';
 import type { GasMethod } from '../types.js';
-import { T2000Error } from '../errors.js';
+import { T2000Error, isMoveAbort, parseMoveAbortMessage } from '../errors.js';
 import { shouldAutoTopUp, executeAutoTopUp } from './autoTopUp.js';
 import { requestGasSponsorship, reportGasUsage } from './gasStation.js';
 
@@ -148,7 +148,11 @@ export async function executeWithGas(
     if (result) return result;
     errors.push('self-funded: SUI below threshold');
   } catch (err) {
-    errors.push(`self-funded: ${err instanceof Error ? err.message : String(err)}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isMoveAbort(msg)) {
+      throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
+    }
+    errors.push(`self-funded: ${msg}`);
   }
 
   // Step 2: Try auto-topup then self-fund

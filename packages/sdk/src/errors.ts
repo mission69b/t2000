@@ -88,6 +88,27 @@ export function mapMoveAbortCode(code: number): string {
     8: 'Timelock is active — wait for expiry',
     9: 'No pending change to execute',
     10: 'Already at current version',
+    // NAVI Protocol abort codes
+    1502: 'Oracle price is stale — try again in a moment',
+    1600: 'Health factor too low — withdrawal would risk liquidation',
+    1605: 'Asset borrowing is disabled or at capacity on this protocol',
   };
   return abortMessages[code] ?? `Move abort code: ${code}`;
+}
+
+/**
+ * Check if an error message contains a MoveAbort — these are on-chain
+ * failures that will fail regardless of gas method, so retrying is pointless.
+ */
+export function isMoveAbort(msg: string): boolean {
+  return msg.includes('MoveAbort') || msg.includes('MovePrimitiveRuntimeError');
+}
+
+export function parseMoveAbortMessage(msg: string): string {
+  const abortMatch = msg.match(/abort code:\s*(\d+)/i) ?? msg.match(/MoveAbort[^,]*,\s*(\d+)/);
+  if (abortMatch) {
+    const code = parseInt(abortMatch[1], 10);
+    return mapMoveAbortCode(code);
+  }
+  return msg;
 }
