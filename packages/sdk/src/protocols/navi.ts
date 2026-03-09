@@ -210,6 +210,28 @@ function addOracleUpdate(tx: Transaction, config: NaviConfig, pool: NaviPool): v
   });
 }
 
+function addOracleUpdatesForPositions(
+  tx: Transaction,
+  config: NaviConfig,
+  pools: NaviPool[],
+  states: UserState[],
+  primaryPool: NaviPool,
+): void {
+  const updated = new Set<number>();
+  addOracleUpdate(tx, config, primaryPool);
+  updated.add(primaryPool.id);
+
+  for (const state of states) {
+    if (updated.has(state.assetId)) continue;
+    const pool = pools.find((p) => p.id === state.assetId);
+    if (!pool) continue;
+    const feed = config.oracle.feeds?.find((f) => f.assetId === pool.id);
+    if (!feed) continue;
+    addOracleUpdate(tx, config, pool);
+    updated.add(pool.id);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -418,7 +440,7 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdate(tx, config, pool);
+  addOracleUpdatesForPositions(tx, config, pools, states, pool);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -483,12 +505,14 @@ export async function buildBorrowTx(
   const asset = options.asset ?? 'USDC';
   const assetInfo = SUPPORTED_ASSETS[asset];
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
-  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
+  const [config, pool, pools, states] = await Promise.all([
+    getConfig(), getPool(asset), getPools(), getUserState(client, address),
+  ]);
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdate(tx, config, pool);
+  addOracleUpdatesForPositions(tx, config, pools, states, pool);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::borrow_v2`,
