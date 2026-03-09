@@ -6,6 +6,7 @@ type Json = Record<string, unknown>;
 vi.mock('../db/prisma.js', () => ({
   prisma: {
     x402Payment: {
+      count: vi.fn().mockResolvedValue(0),
       findUnique: vi.fn(),
       update: vi.fn(),
       upsert: vi.fn(),
