@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { T2000 } from '@t2000/sdk';
+import { T2000, SUPPORTED_ASSETS } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
@@ -29,8 +29,9 @@ export function registerWithdraw(program: Command) {
           return;
         }
 
+        const displayName = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS]?.displayName ?? asset;
         printBlank();
-        printSuccess(`Withdrew $${result.amount.toFixed(2)} ${asset}`);
+        printSuccess(`Withdrew $${result.amount.toFixed(2)} ${displayName}`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {

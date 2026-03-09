@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd } from '@t2000/sdk';
+import { T2000, formatUsd, SUPPORTED_ASSETS } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
@@ -35,16 +35,17 @@ export function registerSave(program: Command) {
         }
 
         const protocolName = opts.protocol ?? 'best rate';
-        printSuccess(`Saved ${pc.yellow(formatUsd(result.amount))} ${asset} to ${protocolName}`);
+        const displayName = SUPPORTED_ASSETS[result.asset as keyof typeof SUPPORTED_ASSETS]?.displayName ?? result.asset;
+        printSuccess(`Saved ${pc.yellow(formatUsd(result.amount))} ${displayName} to ${protocolName}`);
 
         if (result.fee > 0) {
           const feeRate = (result.fee / result.amount * 100).toFixed(1);
-          printSuccess(`Protocol fee: ${pc.dim(`${formatUsd(result.fee)} ${asset} (${feeRate}%)`)}`);
+          printSuccess(`Protocol fee: ${pc.dim(`${formatUsd(result.fee)} ${displayName} (${feeRate}%)`)}`);
         }
 
         printSuccess(`Current APY: ${pc.green(`${result.apy.toFixed(2)}%`)}`);
 
-        printSuccess(`Savings balance: ${pc.yellow(formatUsd(result.savingsBalance))} ${asset}`);
+        printSuccess(`Savings balance: ${pc.yellow(formatUsd(result.savingsBalance))} ${displayName}`);
 
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();

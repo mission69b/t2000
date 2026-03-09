@@ -158,6 +158,14 @@ function matchesCoinType(poolType: string, targetType: string): boolean {
   return poolSuffix === targetSuffix;
 }
 
+function resolvePoolSymbol(pool: NaviPool): string {
+  const coinType = pool.suiCoinType || pool.coinType || '';
+  for (const [key, info] of Object.entries(SUPPORTED_ASSETS)) {
+    if (matchesCoinType(coinType, info.type)) return key;
+  }
+  return pool.token?.symbol ?? 'UNKNOWN';
+}
+
 async function getPool(asset: StableAsset = 'USDC'): Promise<NaviPool> {
   const pools = await getPools();
   const targetType = SUPPORTED_ASSETS[asset].type;
@@ -750,7 +758,7 @@ export async function getPositions(
     const pool = pools.find((p) => p.id === state.assetId);
     if (!pool) continue;
 
-    const symbol = pool.token?.symbol ?? 'UNKNOWN';
+    const symbol = resolvePoolSymbol(pool);
     const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex);
     const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex);
 

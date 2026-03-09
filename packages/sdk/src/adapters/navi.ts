@@ -11,6 +11,7 @@ import type {
 import { STABLE_ASSETS } from '../constants.js';
 import type { StableAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
+import { normalizeAsset } from '../utils/format.js';
 import * as naviProtocol from '../protocols/navi.js';
 
 export const descriptor: ProtocolDescriptor = {
@@ -50,10 +51,10 @@ export class NaviAdapter implements LendingAdapter {
 
   async getRates(asset: string): Promise<LendingRates> {
     const rates = await naviProtocol.getRates(this.client);
-    const key = asset.toUpperCase() as keyof typeof rates;
-    const r = rates[key];
+    const normalized = normalizeAsset(asset);
+    const r = rates[normalized as keyof typeof rates];
     if (!r) throw new T2000Error('ASSET_NOT_SUPPORTED', `NAVI does not support ${asset}`);
-    return { asset, saveApy: r.saveApy, borrowApy: r.borrowApy };
+    return { asset: normalized, saveApy: r.saveApy, borrowApy: r.borrowApy };
   }
 
   async getPositions(address: string): Promise<AdapterPositions> {
@@ -78,7 +79,7 @@ export class NaviAdapter implements LendingAdapter {
     asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const stableAsset = normalizeAsset(asset) as StableAsset;
     const tx = await naviProtocol.buildSaveTx(this.client, address, amount, { ...options, asset: stableAsset });
     return { tx };
   }
@@ -88,7 +89,7 @@ export class NaviAdapter implements LendingAdapter {
     amount: number,
     asset: string,
   ): Promise<AdapterTxResult & { effectiveAmount: number }> {
-    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const stableAsset = normalizeAsset(asset) as StableAsset;
     const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, { asset: stableAsset });
     return { tx: result.tx, effectiveAmount: result.effectiveAmount };
   }
@@ -99,7 +100,7 @@ export class NaviAdapter implements LendingAdapter {
     asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const stableAsset = normalizeAsset(asset) as StableAsset;
     const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, { ...options, asset: stableAsset });
     return { tx };
   }
@@ -109,7 +110,7 @@ export class NaviAdapter implements LendingAdapter {
     amount: number,
     asset: string,
   ): Promise<AdapterTxResult> {
-    const stableAsset = (asset?.toUpperCase() === 'USDC' ? 'USDC' : asset) as StableAsset;
+    const stableAsset = normalizeAsset(asset) as StableAsset;
     const tx = await naviProtocol.buildRepayTx(this.client, address, amount, { asset: stableAsset });
     return { tx };
   }
