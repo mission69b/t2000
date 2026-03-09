@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -10,12 +9,9 @@ export const metadata: Metadata = {
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 
-const AUDIT_FINDINGS = [
-  { severity: "CRITICAL", count: 1, fixed: 1, color: "text-red-400 bg-red-500/10 border-red-500/20" },
-  { severity: "HIGH", count: 5, fixed: 5, color: "text-orange-400 bg-orange-500/10 border-orange-500/20" },
-  { severity: "MEDIUM", count: 7, fixed: 5, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
-  { severity: "LOW", count: 5, fixed: 4, color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-  { severity: "INFO", count: 4, fixed: 0, color: "text-zinc-400 bg-zinc-500/10 border-zinc-500/20" },
+const DEFERRED_FINDINGS = [
+  { id: "M-3", desc: "Stronger scrypt KDF parameters for key encryption", color: "text-yellow-400" },
+  { id: "L-5", desc: "Migrate CI/CD to short-lived AWS credentials (OIDC)", color: "text-blue-400" },
 ];
 
 const SECURITY_MEASURES = [
@@ -107,20 +103,31 @@ export default function SecurityPage() {
               </a>
             </div>
             <div className="h-px bg-border" />
-            <div className="flex flex-wrap gap-2">
-              {AUDIT_FINDINGS.map((f) => (
-                <span
-                  key={f.severity}
-                  className={`px-2.5 py-1 text-[11px] font-mono font-semibold border rounded ${f.color}`}
-                >
-                  {f.count} {f.severity}{f.fixed > 0 && ` (${f.fixed} fixed)`}
-                </span>
-              ))}
+            <div className="flex items-center gap-3">
+              <span className="px-2.5 py-1 text-[11px] font-mono font-semibold border rounded text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
+                20 / 22 REMEDIATED
+              </span>
+              <span className="px-2.5 py-1 text-[11px] font-mono font-semibold border rounded text-amber-400 bg-amber-500/10 border-amber-500/20">
+                2 DEFERRED
+              </span>
             </div>
             <p className="text-xs text-muted font-mono">
-              No critical vulnerabilities enabling direct fund theft were found.
-              20 of 22 findings remediated. 2 deferred (infrastructure changes).
+              No vulnerabilities enabling direct fund theft were found.
+              All critical and high-severity findings have been remediated.
             </p>
+            {DEFERRED_FINDINGS.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[10px] text-dim font-mono uppercase tracking-wider">
+                  Deferred (infrastructure changes)
+                </p>
+                {DEFERRED_FINDINGS.map((f) => (
+                  <div key={f.id} className="flex items-start gap-2 text-xs font-mono">
+                    <span className={`shrink-0 ${f.color}`}>{f.id}</span>
+                    <span className="text-muted">{f.desc}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -129,18 +136,17 @@ export default function SecurityPage() {
           <h2 className="text-foreground text-lg font-serif italic mb-4">
             CI / CD Pipeline
           </h2>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <a
               href={`${GITHUB_URL}/actions/workflows/ci.yml`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={`${GITHUB_URL}/actions/workflows/ci.yml/badge.svg`}
                 alt="CI status"
-                width={120}
-                height={20}
-                unoptimized
+                className="h-5"
               />
             </a>
             <a
@@ -148,12 +154,11 @@ export default function SecurityPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={`${GITHUB_URL}/actions/workflows/security.yml/badge.svg`}
                 alt="Security status"
-                width={120}
-                height={20}
-                unoptimized
+                className="h-5"
               />
             </a>
           </div>
