@@ -39,12 +39,7 @@ export class CetusAdapter implements SwapAdapter {
   }
 
   async getQuote(from: string, to: string, amount: number): Promise<SwapQuote> {
-    return cetusProtocol.getSwapQuote(
-      this.client,
-      from.toUpperCase() as 'USDC' | 'SUI',
-      to.toUpperCase() as 'USDC' | 'SUI',
-      amount,
-    );
+    return cetusProtocol.getSwapQuote(this.client, from, to, amount);
   }
 
   async buildSwapTx(
@@ -57,8 +52,8 @@ export class CetusAdapter implements SwapAdapter {
     const result = await cetusProtocol.buildSwapTx({
       client: this.client,
       address,
-      fromAsset: from.toUpperCase() as 'USDC' | 'SUI',
-      toAsset: to.toUpperCase() as 'USDC' | 'SUI',
+      fromAsset: from,
+      toAsset: to,
       amount,
       maxSlippageBps,
     });

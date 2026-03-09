@@ -11,8 +11,8 @@ const DEFAULT_SLIPPAGE_BPS = 300; // 3%
 export interface SwapParams {
   client: SuiJsonRpcClient;
   keypair: Ed25519Keypair;
-  fromAsset: 'USDC' | 'SUI';
-  toAsset: 'USDC' | 'SUI';
+  fromAsset: string;
+  toAsset: string;
   amount: number;
   maxSlippageBps?: number;
 }
@@ -57,15 +57,19 @@ function createAggregatorClient(client: SuiJsonRpcClient, signer?: string): Aggr
 export async function buildSwapTx(params: {
   client: SuiJsonRpcClient;
   address: string;
-  fromAsset: 'USDC' | 'SUI';
-  toAsset: 'USDC' | 'SUI';
+  fromAsset: string;
+  toAsset: string;
   amount: number;
   maxSlippageBps?: number;
 }): Promise<SwapBuildResult> {
   const { client, address, fromAsset, toAsset, amount, maxSlippageBps = DEFAULT_SLIPPAGE_BPS } = params;
 
-  const fromInfo = SUPPORTED_ASSETS[fromAsset];
-  const toInfo = SUPPORTED_ASSETS[toAsset];
+  const fromInfo = SUPPORTED_ASSETS[fromAsset as keyof typeof SUPPORTED_ASSETS];
+  const toInfo = SUPPORTED_ASSETS[toAsset as keyof typeof SUPPORTED_ASSETS];
+
+  if (!fromInfo || !toInfo) {
+    throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap pair ${fromAsset}/${toAsset} is not supported`);
+  }
   const rawAmount = BigInt(Math.floor(amount * 10 ** fromInfo.decimals));
 
   const aggClient = createAggregatorClient(client, address);
@@ -105,7 +109,7 @@ export async function buildSwapTx(params: {
 export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
   const { client, keypair, fromAsset, toAsset, amount, maxSlippageBps } = params;
   const address = keypair.getPublicKey().toSuiAddress();
-  const toInfo = SUPPORTED_ASSETS[toAsset];
+  const toInfo = SUPPORTED_ASSETS[toAsset as keyof typeof SUPPORTED_ASSETS];
 
   const { tx, estimatedOut, toDecimals } = await buildSwapTx({
     client,
@@ -186,12 +190,16 @@ export async function getPoolPrice(client: SuiJsonRpcClient): Promise<number> {
 
 export async function getSwapQuote(
   client: SuiJsonRpcClient,
-  fromAsset: 'USDC' | 'SUI',
-  toAsset: 'USDC' | 'SUI',
+  fromAsset: string,
+  toAsset: string,
   amount: number,
 ): Promise<{ expectedOutput: number; priceImpact: number; poolPrice: number }> {
-  const fromInfo = SUPPORTED_ASSETS[fromAsset];
-  const toInfo = SUPPORTED_ASSETS[toAsset];
+  const fromInfo = SUPPORTED_ASSETS[fromAsset as keyof typeof SUPPORTED_ASSETS];
+  const toInfo = SUPPORTED_ASSETS[toAsset as keyof typeof SUPPORTED_ASSETS];
+
+  if (!fromInfo || !toInfo) {
+    throw new T2000Error('ASSET_NOT_SUPPORTED', `Swap pair ${fromAsset}/${toAsset} is not supported`);
+  }
   const rawAmount = BigInt(Math.floor(amount * 10 ** fromInfo.decimals));
 
   const poolPrice = await getPoolPrice(client);

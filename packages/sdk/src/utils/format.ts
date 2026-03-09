@@ -56,13 +56,17 @@ export function formatLargeNumber(n: number): string {
   return n.toFixed(2);
 }
 
-const ASSET_LOOKUP = new Map(
-  Object.keys(SUPPORTED_ASSETS).map(k => [k.toUpperCase(), k]),
-);
+const ASSET_LOOKUP: Map<string, string> = new Map();
+for (const [key, info] of Object.entries(SUPPORTED_ASSETS)) {
+  ASSET_LOOKUP.set(key.toUpperCase(), key);
+  if (info.displayName && info.displayName.toUpperCase() !== key.toUpperCase()) {
+    ASSET_LOOKUP.set(info.displayName.toUpperCase(), key);
+  }
+}
 
 /**
- * Case-insensitive lookup against SUPPORTED_ASSETS keys.
- * 'usde' → 'USDe', 'usdsui' → 'USDsui', 'usdc' → 'USDC'.
+ * Case-insensitive lookup against SUPPORTED_ASSETS keys AND display names.
+ * 'usde' → 'USDe', 'suiusde' → 'USDe', 'suiusdt' → 'USDT', 'usdsui' → 'USDsui'.
  * Returns the original input if not found so downstream validation can reject it.
  */
 export function normalizeAsset(input: string): string {
