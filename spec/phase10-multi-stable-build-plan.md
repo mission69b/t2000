@@ -4,7 +4,7 @@
 
 **Version bump:** `0.7.2` → `0.8.0` (minor — new feature)
 
-**Estimated total:** 3-4 days
+**Estimated total:** 4-5 days
 
 ---
 
@@ -379,39 +379,115 @@ Show asset alongside each position. Already has per-position asset field — jus
 
 ---
 
-## Stage 8: Tests (3h)
+## Stage 8: Indexer + Stats API (2h)
 
-### 8.1 — Unit tests
+Without these updates, new stable transactions won't be tracked or displayed.
+
+### 8.1 — `apps/server/src/indexer/eventParser.ts`
+
+**Current:** Hardcodes `asset = 'USDC'` and checks `coinType.includes('usdc')`.
+
+**Changes:**
+- Build coin type → asset symbol lookup map from `SUPPORTED_ASSETS`
+- Match transaction coin types against all 4 stables
+- Classify deposits/withdrawals for USDT, USDe, USDsui correctly
+
+### 8.2 — `apps/server/src/indexer/yieldSnapshotter.ts`
+
+**Current:** Only snapshots the NAVI USDC pool.
+
+**Changes:**
+- Snapshot yield data for all 4 stables across both protocols
+- Store per-asset yield history
+
+### 8.3 — `apps/web/app/api/stats/route.ts`
+
+**Current:** Hardcodes `USDC_TYPE` for balance queries and fee filtering.
+
+**Changes:**
+- Query balances for all stables
+- Aggregate fees across all stable assets
+- Return per-asset breakdown in `byProtocol` stats
+
+### 8.4 — `apps/web/app/stats/StatsView.tsx`
+
+**Current:** Shows `balanceUsdc`, `totalUsdcCollected`.
+
+**Changes:**
+- Display total stables (not just USDC)
+- Update labels: "Total Stables Supplied" not "Total USDC Supplied"
+
+**Files touched:** `eventParser.ts`, `yieldSnapshotter.ts`, `stats/route.ts`, `StatsView.tsx`
+
+---
+
+## Stage 9: Send + Gas — Multi-Stable (1h)
+
+### 9.1 — `packages/sdk/src/wallet/send.ts`
+
+**Current:** Only sends USDC.
+
+**Changes:**
+- Support sending all 4 stables: `t2000 send 50 USDT to 0x...`
+- Resolve correct coin type and decimals from `SUPPORTED_ASSETS`
+- Coin merging logic for non-USDC stables (same pattern, different type)
+
+### 9.2 — `packages/sdk/src/gas/autoTopUp.ts`
+
+**Current:** Swaps USDC → SUI for auto top-up.
+
+**Changes:**
+- If agent has no USDC but holds other stables, pick the one with highest balance for the swap
+- Fallback order: USDC → USDT → USDe → USDsui (prefer the most liquid)
+- Log which stable was used for the top-up
+
+### 9.3 — x402 — Decision: Keep USDC-only
+
+x402 Payment Kit is tightly coupled to USDC (PaymentRegistry<USDC> on-chain). Multi-stable x402 requires contract changes. **Decision: x402 stays USDC-only in Phase 10.** Document this clearly.
+
+**Changes:**
+- Add comment in `packages/x402/src/client.ts`: "x402 supports USDC only — multi-stable planned for future"
+- Update `packages/x402/README.md` with a note
+
+**Files touched:** `wallet/send.ts`, `gas/autoTopUp.ts`, `x402/README.md`
+
+---
+
+## Stage 10: Tests (3h)
+
+### 10.1 — Unit tests
 
 - `SUPPORTED_ASSETS` has all 4 stables + SUI
 - `StableAsset` type excludes SUI
 - `stableToRaw()` / `rawToStable()` for all decimal counts
 - `getDecimals()` returns correct values
 
-### 8.2 — Adapter tests
+### 10.2 — Adapter compliance tests
 
-- NAVI: `supportedAssets` includes all 4 stables
-- NAVI: `getRates('USDT')`, `getRates('USDe')`, `getRates('USDsui')` return rates
-- Suilend: same pattern
-- Cetus: `getSupportedPairs()` includes all new pairs
-- Compliance suite: runs against all 4 assets per adapter
+Update `compliance.test.ts`:
+- Run compliance suite against all 4 assets per adapter
+- Test `buildSaveTx`, `buildWithdrawTx` with USDT, USDe, USDsui (not just USDC)
+- Verify `supportedAssets` matches what each adapter actually supports
 
-### 8.3 — Smart save tests
+### 10.3 — Smart save tests
 
 - No asset specified + only USDC held → saves USDC at best USDC rate
 - No asset specified + USDT has more balance → saves USDT at best USDT rate
 - No asset specified + multiple qualify → picks highest rate
-- No asset specified + none have enough → clear error
+- No asset specified + none have enough → clear error with balances shown
 - Yield hint included when better rate exists on different asset
+- Protocol+asset mismatch → helpful error with alternatives
 
-### 8.4 — Integration tests
+### 10.4 — Integration tests
 
 - `bestSaveRateAcrossAssets()` returns global best
 - `allPositions` with multi-asset supplies
 - `withdraw all` with positions in different assets across protocols
 - Balance query returns all stables with correct sums
+- Send USDT / USDe / USDsui works
+- Auto top-up fallback to non-USDC stables
 
-### 8.5 — CLI integration tests
+### 10.5 — CLI integration tests
 
 Update `scripts/cli/test-*.sh`:
 
@@ -430,37 +506,84 @@ t2000 earn                           # Shows earnings across assets
 
 ---
 
-## Stage 9: Documentation + Skills (2h)
+## Stage 11: Documentation + Skills (3h)
 
-### 9.1 — Agent Skills
+### 11.1 — Agent Skills (all 9)
 
-Update SKILL.md files referencing USDC to show multi-stable:
-- `t2000-banking` — mention USDT, USDe, USDsui as supported
-- `t2000-earn` — update save examples
-- Any skills mentioning save/withdraw
+All SKILL.md files reference USDC-specific language. Update each:
 
-### 9.2 — Website
+| Skill | Key changes |
+|-------|-------------|
+| `t2000-save` | "Deposit USDC" → "Deposit stablecoins (USDC, USDT, USDe, USDsui)" |
+| `t2000-withdraw` | "Withdraw USDC" → "Withdraw stablecoins" |
+| `t2000-check-balance` | "available USDC" → "available stablecoins" |
+| `t2000-send` | "Send USDC" → "Send stablecoins" |
+| `t2000-borrow` | "Borrow USDC" → "Borrow stablecoins" |
+| `t2000-repay` | "Repay USDC" → "Repay stablecoins" |
+| `t2000-swap` | Add new pairs; already mentions "USDT and more" |
+| `t2000-pay` | Note: x402 remains USDC-only |
+| `t2000-sentinel` | "swap USDC to SUI" → may need minor update |
 
-- `apps/web/app/page.tsx` — update supported assets / marketing copy
-- `apps/web/app/docs/page.tsx` — update assets table if it exists
-- Demo terminal outputs showing new stables
+### 11.2 — Website pages
 
-### 9.3 — READMEs
+| File | Changes |
+|------|---------|
+| `apps/web/app/page.tsx` | "Send USDC" → "Send stablecoins"; "Fund with USDC" → "Fund with USDC, USDT, USDe, or USDsui"; update ACCOUNTS section |
+| `apps/web/app/demo/demoData.ts` | Update demo flows to show multi-stable (balance with multiple stables, save USDT, etc.) |
+| `apps/web/app/components/TerminalDemo.tsx` | Update hero terminal to show multi-stable balance |
+| `apps/web/app/components/Ticker.tsx` | Add USDT/USDe/USDsui tickers |
+| `apps/web/app/docs/page.tsx` | Update supported assets table |
 
-- `packages/sdk/README.md` — supported assets table
-- `packages/cli/README.md` — command examples with new assets
-- `CONTRIBUTING-ADAPTERS.md` — update if examples are USDC-only
+### 11.3 — READMEs
+
+| File | Changes |
+|------|---------|
+| `README.md` (root) | Update examples, supported assets |
+| `packages/sdk/README.md` | Supported assets table, multi-stable examples |
+| `packages/cli/README.md` | Command examples with USDT, USDe, USDsui |
+| `packages/x402/README.md` | Note: USDC-only for now |
+| `t2000-skills/README.md` | Update example queries |
+| `CONTRIBUTING-ADAPTERS.md` | Update `supportedAssets` examples |
+
+### 11.4 — PRODUCT_FACTS.md
+
+Major update — this is the single source of truth:
+- Supported Assets table: add all 4 stables
+- CLI defaults: document smart save behavior
+- Constants: add new asset constants
+- Error codes: update "Not enough USDC" → asset-specific
+- Treasury: mention multi-stable fee collection
+
+### 11.5 — CLAUDE.md
+
+Update constants section:
+- Add `USDT_DECIMALS`, `USDE_DECIMALS`, `USDSUI_DECIMALS`
+- Update `SUPPORTED_ASSETS` reference
+- Add `StableAsset` type reference
+
+### 11.6 — Demo scripts
+
+Update `marketing/demo-*.sh`:
+- `demo-save.sh` — add USDT save example
+- `demo-full-flow.sh` — show multi-stable flow
+- `demo-earn.sh` — show multi-asset earnings
+
+### 11.7 — Marketing plan
+
+Update `marketing/marketing-plan.md`:
+- Add multi-stable launch tweet content
+- Update existing tweet drafts that say "USDC" to be multi-stable aware
 
 ---
 
-## Stage 10: Build + Publish (1h)
+## Stage 12: Build + Publish (1h)
 
-### 10.1 — Version bump
+### 12.1 — Version bump
 
 - SDK: `0.7.2` → `0.8.0`
 - CLI: `0.7.2` → `0.8.0`
 
-### 10.2 — Build + verify
+### 12.2 — Build + verify
 
 ```bash
 pnpm --filter @t2000/sdk typecheck && pnpm --filter @t2000/sdk test
@@ -468,7 +591,7 @@ pnpm --filter @t2000/cli typecheck
 pnpm --filter @t2000/sdk build && pnpm --filter @t2000/cli build
 ```
 
-### 10.3 — Publish
+### 12.3 — Publish
 
 ```bash
 pnpm --filter @t2000/sdk publish --access public --provenance
@@ -476,9 +599,13 @@ pnpm --filter @t2000/cli publish --access public --provenance
 npm install -g @t2000/cli@0.8.0
 ```
 
-### 10.4 — CLI smoke test (Stage 8.5 checklist)
+### 12.4 — CLI smoke test (Stage 10.5 checklist)
 
-### 10.5 — Push + verify CI
+### 12.5 — Deploy server + indexer (ECS)
+
+After publishing SDK/CLI, deploy updated server and indexer to pick up new event parsing and yield snapshots.
+
+### 12.6 — Push + verify CI
 
 ---
 
@@ -489,20 +616,23 @@ Pre-work (on-chain verification)
     │
 Stage 1 (constants + types + format utils)
     │
-    ├── Stage 2 (balance query)
-    ├── Stage 3 (NAVI multi-asset)   ──┐
-    ├── Stage 4 (Suilend multi-asset)  ├── Stage 6 (T2000 class + smart save)
-    └── Stage 5 (Cetus multi-asset)  ──┘       │
-                                           Stage 7 (CLI UX)
-                                               │
-                                           Stage 8 (tests)
-                                               │
-                                           Stage 9 (docs)
-                                               │
-                                           Stage 10 (publish)
+    ├── Stage 2 (balance query)          ──┐
+    ├── Stage 3 (NAVI multi-asset)         │
+    ├── Stage 4 (Suilend multi-asset)      ├── Stage 6 (T2000 class + smart save)
+    ├── Stage 5 (Cetus multi-asset)        │        │
+    └── Stage 9 (send + gas + x402)      ──┘        │
+                                               Stage 7 (CLI UX)
+                                                    │
+                                               Stage 8 (indexer + stats)
+                                                    │
+                                               Stage 10 (tests)
+                                                    │
+                                               Stage 11 (docs + skills + marketing)
+                                                    │
+                                               Stage 12 (build + publish + deploy)
 ```
 
-Stages 2-5 can be built in parallel once Stage 1 is complete.
+Stages 2-5 and 9 can be built in parallel once Stage 1 is complete.
 
 ---
 

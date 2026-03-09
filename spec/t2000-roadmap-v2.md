@@ -109,13 +109,16 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | 10.4 | Suilend adapter multi-asset (dynamic reserve lookup) | sdk | 3h | ⬜ |
 | 10.5 | Cetus adapter — all stable swap pairs + dynamic decimals | sdk | 2h | ⬜ |
 | 10.6 | T2000 class — smart save, `bestSaveRateAcrossAssets()`, yield hint | sdk | 3h | ⬜ |
-| 10.7 | CLI: balance (multi-stable display), rates (headline) | cli | 2h | ⬜ |
-| 10.8 | CLI: save/withdraw/earn/positions (multi-asset UX, error messages) | cli | 2h | ⬜ |
-| 10.9 | Tests — unit, adapter, smart save, integration, CLI smoke | sdk + cli | 3h | ⬜ |
-| 10.10 | Docs — Agent Skills, website, READMEs | all | 2h | ⬜ |
-| 10.11 | Build, bump to 0.8.0, publish, verify CI | all | 1h | ⬜ |
+| 10.7 | CLI: balance, rates, save, withdraw, earn, positions (multi-asset UX) | cli | 3h | ⬜ |
+| 10.8 | Indexer + Stats API — multi-asset event parsing, yield snapshots | server + web | 2h | ⬜ |
+| 10.9 | Send + Gas — multi-stable send, auto top-up fallback | sdk | 1h | ⬜ |
+| 10.10 | Tests — unit, compliance, smart save, integration, CLI smoke | sdk + cli | 3h | ⬜ |
+| 10.11 | Docs — all 9 Skills, PRODUCT_FACTS, READMEs, CLAUDE.md, demos | all | 3h | ⬜ |
+| 10.12 | Website — page.tsx, demoData, TerminalDemo, Ticker, docs | web | 2h | ⬜ |
+| 10.13 | Marketing — multi-stable launch tweet, update marketing plan | marketing | 1h | ⬜ |
+| 10.14 | Build, bump to 0.8.0, publish, deploy server+indexer, verify CI | all | 1h | ⬜ |
 
-**Estimated total:** 3-4 days
+**Estimated total:** 4-5 days
 
 **Detailed build plan:** `spec/phase10-multi-stable-build-plan.md`
 
