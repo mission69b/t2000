@@ -256,9 +256,8 @@ async function refreshStableOracles(
         config.oracle.wormholeStateId,
       );
       await pythClient.updatePriceFeeds(tx as never, priceUpdateData, pythFeedIds);
-    } catch {
-      // Pyth push failed — NAVI oracle update below may still succeed
-      // if on-chain Pyth prices are fresh enough from keeper bots.
+    } catch (err) {
+      console.error('[t2000] Pyth oracle push failed, falling back to cached prices:', (err as Error).message ?? err);
     }
   }
 
@@ -472,6 +471,12 @@ export async function buildWithdrawTx(
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
+  if (rawAmount <= 0) {
+    throw new T2000Error('INVALID_AMOUNT', `Withdrawal amount too small to represent (effective=${effectiveAmount}, raw=${rawAmount}, decimals=${assetInfo.decimals})`);
+  }
+
+  console.error(`[t2000] withdraw: asset=${asset} poolId=${pool.id} amount=${amount} deposited=${deposited} effective=${effectiveAmount} raw=${rawAmount} supplyBal=${assetState?.supplyBalance} index=${pool.currentSupplyIndex}`);
+
   const tx = new Transaction();
   tx.setSender(address);
 
@@ -531,6 +536,11 @@ export async function addWithdrawToTx(
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
+  if (rawAmount <= 0) {
+    throw new T2000Error('INVALID_AMOUNT', `Withdrawal amount too small to represent (effective=${effectiveAmount}, raw=${rawAmount}, decimals=${assetInfo.decimals})`);
+  }
+
+  console.error(`[t2000] withdraw: asset=${asset} poolId=${pool.id} amount=${amount} deposited=${deposited} effective=${effectiveAmount} raw=${rawAmount} supplyBal=${assetState?.supplyBalance} index=${pool.currentSupplyIndex}`);
 
   await refreshStableOracles(tx, client, config, pools);
 
