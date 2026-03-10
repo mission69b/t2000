@@ -5,10 +5,10 @@ import { useEffect, useState, useCallback } from "react";
 interface Stats {
   timestamp: string;
   wallets: {
-    sponsor: { address: string; balanceSui: number };
-    gasStation: { address: string; balanceSui: number };
-    treasury: { address: string; balanceSui: number; balanceUsdc?: number };
-    rebate: { address: string; balanceSui: number; balanceUsdc?: number };
+    sponsor: { address?: string; balanceSui: number };
+    gasStation: { address?: string; balanceSui: number };
+    treasury: { address?: string; balanceSui: number; balanceUsdc?: number };
+    rebate: { address?: string; balanceSui: number; balanceUsdc?: number };
     totalSui: number;
   } | null;
   agents: {
@@ -16,7 +16,7 @@ interface Stats {
     last24h: number;
     last7d: number;
     last30d: number;
-    recent: { address: string; createdAt: string; lastSeen: string | null }[];
+    recent?: { address: string; createdAt: string; lastSeen: string | null }[];
   };
   gas: {
     totalRecords: number;
@@ -117,6 +117,39 @@ function BarRow({
       <div className="w-10 text-[11px] text-foreground font-mono text-right shrink-0">
         {count}
       </div>
+    </div>
+  );
+}
+
+function WalletRow({
+  label,
+  address,
+  balance,
+  linkType = "account",
+}: {
+  label: string;
+  address?: string;
+  balance: string;
+  linkType?: "account" | "object";
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <span className="text-[11px] font-mono text-muted">{label}</span>
+        {address ? (
+          <a
+            href={`https://suiscan.xyz/mainnet/${linkType}/${address}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
+          >
+            {truncateAddress(address)}
+          </a>
+        ) : (
+          <span className="text-[11px] font-mono text-dim">—</span>
+        )}
+      </div>
+      <span className="text-[11px] font-mono text-foreground">{balance}</span>
     </div>
   );
 }
@@ -338,45 +371,47 @@ export function StatsView() {
       </section>
 
       {/* Recent Agents */}
-      <section className="bg-panel border border-border rounded-md p-5">
-        <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4">
-          Recent Agents
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[11px] font-mono">
-            <thead>
-              <tr className="text-muted text-left">
-                <th className="pb-2 font-normal">#</th>
-                <th className="pb-2 font-normal">Address</th>
-                <th className="pb-2 font-normal text-right">Registered</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.agents.recent.map((agent, i) => (
-                <tr
-                  key={agent.address}
-                  className="border-t border-border hover:bg-white/[0.02]"
-                >
-                  <td className="py-2.5 text-dim">{i + 1}</td>
-                  <td className="py-2.5">
-                    <a
-                      href={`https://suiscan.xyz/mainnet/account/${agent.address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-foreground hover:text-accent transition-colors"
-                    >
-                      {truncateAddress(agent.address)}
-                    </a>
-                  </td>
-                  <td className="py-2.5 text-muted text-right">
-                    {timeAgo(agent.createdAt)}
-                  </td>
+      {stats.agents.recent && stats.agents.recent.length > 0 && (
+        <section className="bg-panel border border-border rounded-md p-5">
+          <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4">
+            Recent Agents
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px] font-mono">
+              <thead>
+                <tr className="text-muted text-left">
+                  <th className="pb-2 font-normal">#</th>
+                  <th className="pb-2 font-normal">Address</th>
+                  <th className="pb-2 font-normal text-right">Registered</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {stats.agents.recent.map((agent, i) => (
+                  <tr
+                    key={agent.address}
+                    className="border-t border-border hover:bg-white/[0.02]"
+                  >
+                    <td className="py-2.5 text-dim">{i + 1}</td>
+                    <td className="py-2.5">
+                      <a
+                        href={`https://suiscan.xyz/mainnet/account/${agent.address}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-foreground hover:text-accent transition-colors"
+                      >
+                        {truncateAddress(agent.address)}
+                      </a>
+                    </td>
+                    <td className="py-2.5 text-muted text-right">
+                      {timeAgo(agent.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Wallet Addresses */}
       {stats.wallets && (
@@ -385,84 +420,31 @@ export function StatsView() {
             Infrastructure Wallets
           </div>
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-muted">
-                  Sponsor
-                </span>
-                <a
-                  href={`https://suiscan.xyz/mainnet/account/${stats.wallets.sponsor.address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
-                >
-                  {truncateAddress(stats.wallets.sponsor.address)}
-                </a>
-              </div>
-              <span className="text-[11px] font-mono text-foreground">
-                {stats.wallets.sponsor.balanceSui.toFixed(2)} SUI
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-muted">
-                  Gas Station
-                </span>
-                <a
-                  href={`https://suiscan.xyz/mainnet/account/${stats.wallets.gasStation.address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
-                >
-                  {truncateAddress(stats.wallets.gasStation.address)}
-                </a>
-              </div>
-              <span className="text-[11px] font-mono text-foreground">
-                {stats.wallets.gasStation.balanceSui.toFixed(2)} SUI
-              </span>
-            </div>
-            {stats.wallets.treasury && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-mono text-muted">
-                    Treasury
-                  </span>
-                  <a
-                    href={`https://suiscan.xyz/mainnet/object/${stats.wallets.treasury.address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
-                  >
-                    {truncateAddress(stats.wallets.treasury.address)}
-                  </a>
-                </div>
-                <span className="text-[11px] font-mono text-foreground">
-                  ${(stats.wallets.treasury.balanceUsdc ?? 0).toFixed(4)} USDC
-                </span>
-              </div>
-            )}
-            {stats.wallets.rebate && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-mono text-muted">
-                    Rebate
-                  </span>
-                  <a
-                    href={`https://suiscan.xyz/mainnet/account/${stats.wallets.rebate.address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-mono text-foreground hover:text-accent transition-colors"
-                  >
-                    {truncateAddress(stats.wallets.rebate.address)}
-                  </a>
-                </div>
-                <span className="text-[11px] font-mono text-foreground">
-                  {(stats.wallets.rebate.balanceUsdc ?? 0) > 0
-                    ? `$${stats.wallets.rebate.balanceUsdc!.toFixed(4)} USDC`
-                    : `${stats.wallets.rebate.balanceSui.toFixed(2)} SUI`}
-                </span>
-              </div>
-            )}
+            <WalletRow
+              label="Sponsor"
+              address={stats.wallets.sponsor.address}
+              balance={`${stats.wallets.sponsor.balanceSui.toFixed(2)} SUI`}
+            />
+            <WalletRow
+              label="Gas Station"
+              address={stats.wallets.gasStation.address}
+              balance={`${stats.wallets.gasStation.balanceSui.toFixed(2)} SUI`}
+            />
+            <WalletRow
+              label="Treasury"
+              address={stats.wallets.treasury?.address}
+              linkType="object"
+              balance={`$${(stats.wallets.treasury?.balanceUsdc ?? 0).toFixed(4)} USDC`}
+            />
+            <WalletRow
+              label="Rebate"
+              address={stats.wallets.rebate?.address}
+              balance={
+                (stats.wallets.rebate?.balanceUsdc ?? 0) > 0
+                  ? `$${stats.wallets.rebate!.balanceUsdc!.toFixed(4)} USDC`
+                  : `${(stats.wallets.rebate?.balanceSui ?? 0).toFixed(2)} SUI`
+              }
+            />
           </div>
         </section>
       )}

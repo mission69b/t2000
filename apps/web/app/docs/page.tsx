@@ -88,7 +88,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Reference",
     items: [
-      { id: "cli", name: "CLI Commands", badge: "15" },
+      { id: "cli", name: "CLI Commands", badge: "12" },
       { id: "sdk", name: "SDK / API", badge: "TS", badgeGreen: true },
       { id: "config", name: "Configuration" },
       { id: "errors", name: "Error Codes" },
@@ -662,11 +662,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollToCmd("repay")} />
         <CmdCard name="t2000 rebalance" desc="Optimize yield across protocols" onClick={() => scrollToCmd("rebalance")} />
         <CmdCard name="t2000 exchange" desc="Exchange tokens (USDC ⇌ SUI)" onClick={() => scrollToCmd("exchange")} />
-        <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
-        <CmdCard name="t2000 health" desc="Check system + protocol status" onClick={() => scrollToCmd("health")} />
-        <CmdCard name="t2000 positions" desc="View DeFi positions detail" onClick={() => scrollToCmd("positions")} />
-        <CmdCard name="t2000 history" desc="Transaction history" onClick={() => scrollToCmd("history")} />
         <CmdCard name="t2000 earn" desc="Show all earning opportunities" onClick={() => scrollToCmd("earn")} />
+        <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
       </div>
 
@@ -952,6 +949,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <DocTable
         headers={["Command", "Description"]}
         rows={[
+          [<InlineCode key="k">t2000 health</InlineCode>, "Check lending health factor (color-coded by severity)"],
+          [<InlineCode key="k">t2000 positions</InlineCode>, "View all open DeFi positions across protocols"],
+          [<InlineCode key="k">t2000 history</InlineCode>, "Recent transaction history with action type and timestamp"],
           [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
           [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
           [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
