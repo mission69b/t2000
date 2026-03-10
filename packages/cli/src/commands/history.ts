@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { T2000, truncateAddress } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printHeader, printBlank, printJson, isJsonMode, handleError } from '../output.js';
+import { printHeader, printBlank, printJson, isJsonMode, handleError, printLine, printInfo } from '../output.js';
 
 export function registerHistory(program: Command) {
   program
@@ -24,12 +24,12 @@ export function registerHistory(program: Command) {
         printHeader('Transaction History');
 
         if (txns.length === 0) {
-          console.log('  No transactions yet.');
+          printInfo('No transactions yet.');
         } else {
           for (const tx of txns) {
             const time = tx.timestamp ? new Date(tx.timestamp).toLocaleString() : 'unknown';
             const gas = tx.gasMethod ? ` (${tx.gasMethod})` : '';
-            console.log(`  ${truncateAddress(tx.digest)}  ${tx.action}${gas}  ${time}`);
+            printLine(`${truncateAddress(tx.digest)}  ${tx.action}${gas}  ${time}`);
           }
         }
 

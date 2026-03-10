@@ -95,7 +95,7 @@ export function registerEarn(program: Command) {
         if (savePositions.length > 0) {
           for (const pos of savePositions) {
             const dailyYield = (pos.amount * pos.apy / 100) / 365;
-            printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(1)}% APY`);
+            printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY`);
             if (dailyYield > 0.0001) {
               const dailyStr = dailyYield < 0.01 ? `$${dailyYield.toFixed(4)}` : formatUsd(dailyYield);
               const monthlyStr = dailyYield * 30 < 0.01 ? `$${(dailyYield * 30).toFixed(4)}` : formatUsd(dailyYield * 30);

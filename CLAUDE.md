@@ -4,6 +4,8 @@
 
 **Before writing or editing ANY documentation** (READMEs, docs page, skill files, marketing materials, roadmap), **read `PRODUCT_FACTS.md` first**. All product facts — versions, fees, CLI syntax, SDK signatures, output formats, error codes — must match that file. When a product fact changes, update `PRODUCT_FACTS.md` first, then propagate to all other files.
 
+**Before modifying ANY CLI command output**, **read `CLI_UX_SPEC.md` first**. It defines output primitives, formatting rules, dollar/APY precision, header styles, and the exact output format for every command. All CLI output must match that spec.
+
 ---
 
 ## Next.js

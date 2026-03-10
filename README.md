@@ -66,11 +66,12 @@ await agent.withdraw({ amount: 50 }); // always returns USDC
   ← 200 OK  [820ms]
 
 ❯ t2000 balance
-  Available:  $85.00 USDC  (checking — spendable)
-  Savings:    $80.00 USDC  (earning 4.21% APY)
+  Available:  $85.00  (checking — spendable)
+  Savings:    $80.00  (earning 4.21% APY)
   Gas:        0.31 SUI     (~$0.28)
-  ──────────────────────
-  Total:      $165.28 USDC
+  ──────────────────────────────────────
+  Total:      $165.28
+  Earning ~$0.01/day
 ```
 
 ## Why t2000?
@@ -124,7 +125,7 @@ All multi-step operations (save with auto-convert, withdraw with auto-swap, reba
 |-----------|-----|-------|
 | Save | 0.1% | Protocol fee on deposit |
 | Borrow | 0.05% | Protocol fee on loan |
-| Swap (internal) | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
+| Exchange | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |

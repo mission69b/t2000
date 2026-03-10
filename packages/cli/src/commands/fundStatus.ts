@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000 } from '@t2000/sdk';
+import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError } from '../output.js';
+import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine } from '../output.js';
 
 export function registerFundStatus(program: Command) {
   program
@@ -27,24 +27,24 @@ export function registerFundStatus(program: Command) {
         if (result.supplied > 0) {
           printSuccess('Savings: ACTIVE');
         } else {
-          console.log('  Savings: INACTIVE — run `t2000 save <amount>` to start earning');
+          printInfo('Savings: INACTIVE — run `t2000 save <amount>` to start earning');
         }
         printBlank();
-        printKeyValue('Total Saved', `$${result.supplied.toFixed(2)}`);
+        printKeyValue('Total Saved', formatUsd(result.supplied));
 
         if (savePositions.length > 0) {
           for (const p of savePositions) {
-            console.log(`    ${pc.dim('•')} $${p.amount.toFixed(2)} ${p.asset} on ${p.protocol} @ ${p.apy.toFixed(1)}% APY`);
+            printLine(`  ${pc.dim('•')} ${formatUsd(p.amount)} ${p.asset} on ${p.protocol} @ ${p.apy.toFixed(2)}% APY`);
           }
         }
 
-        printKeyValue('Blended APY', `${result.apy.toFixed(1)}%`);
-        printKeyValue('Earned today', `~$${result.earnedToday.toFixed(4)}`);
-        printKeyValue('Earned all time', `~$${result.earnedAllTime.toFixed(4)}`);
-        printKeyValue('Monthly projected', `~$${result.projectedMonthly.toFixed(2)}/month`);
+        printKeyValue('Blended APY', `${result.apy.toFixed(2)}%`);
+        printKeyValue('Earned today', `~${formatUsd(result.earnedToday)}`);
+        printKeyValue('Earned all time', `~${formatUsd(result.earnedAllTime)}`);
+        printKeyValue('Monthly projected', `~${formatUsd(result.projectedMonthly)}/month`);
         printBlank();
         if (result.supplied > 0) {
-          console.log('  Withdraw anytime: t2000 withdraw <amount>');
+          printInfo('Withdraw anytime: t2000 withdraw <amount>');
         }
         printBlank();
       } catch (error) {

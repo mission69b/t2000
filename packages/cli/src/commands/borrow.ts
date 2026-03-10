@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { T2000 } from '@t2000/sdk';
+import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printWarning, explorerUrl } from '../output.js';
 
@@ -22,7 +22,7 @@ export function registerBorrow(program: Command) {
 
         const maxResult = await agent.maxBorrow();
         if (amount > maxResult.maxAmount) {
-          printWarning(`Max safe borrow: $${maxResult.maxAmount.toFixed(2)} (HF ${maxResult.currentHF.toFixed(2)} → min 1.5)`);
+          printWarning(`Max safe borrow: ${formatUsd(maxResult.maxAmount)} (HF ${maxResult.currentHF.toFixed(2)} → min 1.5)`);
           return;
         }
 
@@ -34,7 +34,7 @@ export function registerBorrow(program: Command) {
         }
 
         printBlank();
-        printSuccess(`Borrowed $${amount.toFixed(2)} USDC`);
+        printSuccess(`Borrowed ${formatUsd(amount)} USDC`);
         printKeyValue('Health Factor', result.healthFactor.toFixed(2));
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();

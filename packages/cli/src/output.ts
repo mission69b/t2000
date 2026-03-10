@@ -62,11 +62,6 @@ export function printLine(text: string) {
   console.log(`  ${text}`);
 }
 
-export function printSuccessKV(key: string, value: string, keyWidth = 20) {
-  if (jsonMode) return;
-  const paddedKey = key.padEnd(keyWidth);
-  console.log(`  ${pc.green('✓')} ${paddedKey}${pc.dim(value)}`);
-}
 
 export function printSeparator() {
   if (jsonMode) return;

@@ -79,11 +79,11 @@ t2000 init
   Tx:  https://suiscan.xyz/mainnet/tx/0xf9a0...
 
 ❯ t2000 balance
-  Available:  $85.00 USDC  (checking — spendable)
-  Savings:    $0.00 USDC
+  Available:  $85.00  (checking — spendable)
+  Savings:    $0.00
   Gas:        0.31 SUI     (~$0.28)
   ──────────────────────────────────────
-  Total:      $85.28 USDC
+  Total:      $85.28
 ```
 
 30 seconds. Send → save → borrow → pay → repay → withdraw.
@@ -228,7 +228,7 @@ All multi-step operations (save with auto-convert, withdraw with auto-swap, reba
 |-----------|-----|
 | Save | 0.1% |
 | Borrow | 0.05% |
-| Swap (internal) | **Free** |
+| Exchange | **Free** |
 | Withdraw | Free |
 | Repay | Free |
 | Send | Free |

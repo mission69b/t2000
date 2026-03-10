@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000 } from '@t2000/sdk';
+import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError } from '../output.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printLine } from '../output.js';
 
 export function registerEarnings(program: Command) {
   program
@@ -24,17 +24,17 @@ export function registerEarnings(program: Command) {
         }
 
         printBlank();
-        printKeyValue('Total Saved', `$${result.supplied.toFixed(2)}`);
+        printKeyValue('Total Saved', formatUsd(result.supplied));
 
         if (savePositions.length > 0) {
           for (const p of savePositions) {
-            console.log(`    ${pc.dim('•')} $${p.amount.toFixed(2)} ${p.asset} on ${p.protocol} @ ${p.apy.toFixed(1)}% APY`);
+            printLine(`  ${pc.dim('•')} ${formatUsd(p.amount)} ${p.asset} on ${p.protocol} @ ${p.apy.toFixed(2)}% APY`);
           }
         }
 
         printKeyValue('Blended APY', `${result.currentApy.toFixed(2)}%`);
-        printKeyValue('Daily Yield', `~$${result.dailyEarning.toFixed(4)}/day`);
-        printKeyValue('Est. Earned', `~$${result.totalYieldEarned.toFixed(4)}`);
+        printKeyValue('Daily Yield', `~${formatUsd(result.dailyEarning)}/day`);
+        printKeyValue('Est. Earned', `~${formatUsd(result.totalYieldEarned)}`);
         printBlank();
       } catch (error) {
         handleError(error);

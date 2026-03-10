@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { T2000 } from '@t2000/sdk';
+import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printSuccess, printWarning, printError } from '../output.js';
 
@@ -34,9 +34,9 @@ export function registerHealth(program: Command) {
         }
 
         printBlank();
-        printKeyValue('Supplied', `$${hf.supplied.toFixed(2)} USDC`);
-        printKeyValue('Borrowed', `$${hf.borrowed.toFixed(2)} USDC`);
-        printKeyValue('Max Borrow', `$${hf.maxBorrow.toFixed(2)} USDC`);
+        printKeyValue('Supplied', `${formatUsd(hf.supplied)} USDC`);
+        printKeyValue('Borrowed', `${formatUsd(hf.borrowed)} USDC`);
+        printKeyValue('Max Borrow', `${formatUsd(hf.maxBorrow)} USDC`);
         printBlank();
       } catch (error) {
         handleError(error);

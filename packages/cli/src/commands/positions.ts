@@ -32,7 +32,7 @@ export function registerPositions(program: Command) {
             printLine(pc.bold('Savings'));
             printDivider();
             for (const pos of saves) {
-              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(1)}% APY`);
+              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY`);
             }
             const totalSaved = saves.reduce((s, p) => s + p.amount, 0);
             if (saves.length > 1) {
@@ -45,7 +45,7 @@ export function registerPositions(program: Command) {
             printLine(pc.bold('Borrows'));
             printDivider();
             for (const pos of borrows) {
-              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(1)}% APY`);
+              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY`);
             }
             const totalBorrowed = borrows.reduce((s, p) => s + p.amount, 0);
             if (borrows.length > 1) {
@@ -54,7 +54,6 @@ export function registerPositions(program: Command) {
             printBlank();
           }
         }
-        printBlank();
       } catch (error) {
         handleError(error);
       }

@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError } from '../output.js';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printSuccess, printInfo } from '../output.js';
 
 const CONFIG_DIR = join(homedir(), '.t2000');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
@@ -44,7 +44,7 @@ export function registerConfig(program: Command) {
           printKeyValue(key, String(config[key] ?? '(not set)'));
         } else {
           if (Object.keys(config).length === 0) {
-            console.log('  No configuration set.');
+            printInfo('No configuration set.');
           } else {
             for (const [k, v] of Object.entries(config)) {
               printKeyValue(k, String(v));
@@ -79,7 +79,9 @@ export function registerConfig(program: Command) {
           return;
         }
 
-        console.log(`  Set ${key} = ${String(parsed)}`);
+        printBlank();
+        printSuccess(`Set ${key} = ${String(parsed)}`);
+        printBlank();
       } catch (error) {
         handleError(error);
       }

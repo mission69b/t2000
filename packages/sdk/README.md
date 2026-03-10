@@ -311,7 +311,7 @@ pnpm --filter @t2000/sdk test
 |-----------|-----|-------|
 | Save (deposit) | 0.10% | Protocol fee on deposit |
 | Borrow | 0.05% | Protocol fee on loan |
-| Swap (internal) | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
+| Exchange | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |

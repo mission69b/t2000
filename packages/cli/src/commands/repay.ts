@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { T2000 } from '@t2000/sdk';
+import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
@@ -28,8 +28,8 @@ export function registerRepay(program: Command) {
         }
 
         printBlank();
-        printSuccess(`Repaid $${result.amount.toFixed(2)} USDC`);
-        printKeyValue('Remaining Debt', `$${result.remainingDebt.toFixed(2)}`);
+        printSuccess(`Repaid ${formatUsd(result.amount)} USDC`);
+        printKeyValue('Remaining Debt', formatUsd(result.remainingDebt));
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {

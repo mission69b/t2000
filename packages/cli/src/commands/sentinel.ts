@@ -3,6 +3,7 @@ import { T2000, MIST_PER_SUI } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import {
   printSuccess,
+  printError,
   printKeyValue,
   printBlank,
   printJson,
@@ -148,7 +149,7 @@ export function registerSentinel(program: Command) {
         if (result.won) {
           printSuccess(`BREACHED! (score: ${result.verdict.score}/100)`);
         } else {
-          printLine(`  ${pc.red('✗')} DEFENDED (score: ${result.verdict.score}/100)`);
+          printError(`DEFENDED (score: ${result.verdict.score}/100)`);
         }
 
         printBlank();

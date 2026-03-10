@@ -515,7 +515,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.10.1")}
+        {S.a("0.10.2")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -701,10 +701,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       </CodeBlock>
       <CodeBlock lang="output">
         Available:  {S.a("$78.91")}  {S.c("(checking — spendable)")}{"\n"}
-        Savings:    {S.a("$80.00")}{"\n"}
+        Savings:    {S.a("$80.00")}  {S.c("(earning 4.94% APY)")}{"\n"}
         Gas:        {S.a("0.12")} SUI    {S.c("(~$0.11)")}{"\n"}
         {S.m("──────────────────────────────────────")}{"\n"}
-        Total:      {S.a("$159.02")}{"\n\n"}
+        Total:      {S.a("$159.02")}{"\n"}
+        {S.m("Earning ~$0.01/day")}{"\n\n"}
         {S.c("# With --show-limits:")}{"\n"}
         Limits:{"\n"}
         {"  "}Max withdraw:   {S.a("$80.00")} USDC{"\n"}
@@ -870,11 +871,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="output">
         {"  "}Savings{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}navi:  {S.a("$300.00")} USDC @ {S.g("5.5%")} APY{"\n"}
-        {"  "}suilend:  {S.a("$200.00")} USDC @ {S.g("2.2%")} APY{"\n\n"}
+        {"  "}navi:  {S.a("$300.00")} USDC @ {S.g("5.50%")} APY{"\n"}
+        {"  "}suilend:  {S.a("$200.00")} USDC @ {S.g("2.20%")} APY{"\n\n"}
         {"  "}Borrows{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}navi:  {S.a("$100.00")} USDC @ {S.m("3.8%")} APY
+        {"  "}navi:  {S.a("$100.00")} USDC @ {S.m("3.80%")} APY
       </CodeBlock>
 
       <h2 id="cmd-history">t2000 history</h2>
@@ -899,8 +900,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}Earning Opportunities{"\n\n"}
         {"  "}SAVINGS — Passive Yield{"\n"}
         {"  "}─────────────────────────────────────────────────────{"\n"}
-        {"  "}navi:  $300.00 USDC @ 5.6% APY{"\n"}
-        {"  "}suilend:  $200.00 USDC @ 2.2% APY{"\n"}
+        {"  "}navi:  $300.00 USDC @ 5.60% APY{"\n"}
+        {"  "}suilend:  $200.00 USDC @ 2.20% APY{"\n"}
         {"  "}    ~$0.06/day · ~$1.72/month{"\n\n"}
         {"  "}Total Saved:  $500.00 USDC{"\n\n"}
         {"  "}SENTINEL BOUNTIES — Active Red Teaming{"\n"}
@@ -1373,7 +1374,17 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.10.1 <Badge color="green">current</Badge>
+        v0.10.2 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        CLI UX polish — standardized dollar formatting, APY precision (2 decimal places),
+        consistent output helpers across all commands. Added{" "}
+        <InlineCode>(earning X% APY)</InlineCode> and daily earnings to{" "}
+        <InlineCode>t2000 balance</InlineCode> output.
+      </p>
+
+      <h2 id="cl-0101">
+        v0.10.1
       </h2>
       <p>
         New <InlineCode>t2000 exchange</InlineCode> command for token swaps via
@@ -1579,7 +1590,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.10.1
+            v0.10.2
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

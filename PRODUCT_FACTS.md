@@ -3,6 +3,8 @@
 > **Every README, docs page, skill file, and marketing material MUST match this file.**
 > When a product fact changes, update this file FIRST, then propagate.
 >
+> For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
+>
 > Source: derived from actual source code in `packages/*/src/`.
 > Last verified: 2026-03-09
 
@@ -12,9 +14,9 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.9.4` |
-| `@t2000/cli` | `0.9.4` |
-| `@t2000/x402` | `0.2.6` |
+| `@t2000/sdk` | `0.10.2` |
+| `@t2000/cli` | `0.10.2` |
+| `@t2000/x402` | `0.3.0` |
 | Agent Skills | `1.3` |
 
 ---
@@ -38,7 +40,7 @@
 |-----------|-----|------|-------|
 | Save | 10 | 0.1% | Protocol fee on deposit |
 | Borrow | 5 | 0.05% | Protocol fee on loan |
-| Swap (internal) | 0 | **Free** | Only standard Cetus pool fees apply; swap is internal only (rebalance, auto-convert, auto-swap) |
+| Exchange | 0 | **Free** | Only standard Cetus pool fees apply; exchange is used internally by rebalance, auto-convert, and auto-swap |
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
@@ -118,7 +120,7 @@ User-facing operations (save, borrow, repay, withdraw) accept **USDC only**.
 Rebalance optimizes across all stablecoins internally. Withdraw auto-swaps
 non-USDC positions back to USDC.
 
-| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Swap (internal) | Rebalance |
+| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Exchange | Rebalance |
 |--------|---------|----------|------|------|--------|----------|-----------------|-----------|
 | USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ (always returns USDC) | ✅ | ✅ |
 | USDT | suiUSDT | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |

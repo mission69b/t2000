@@ -39,7 +39,8 @@ export function registerExchange(program: Command) {
         const toDecimals = toAsset === 'SUI' ? 4 : 2;
 
         printBlank();
-        printSuccess(`Exchanged ${parsedAmount} ${fromDisplay} → ${result.toAmount.toFixed(toDecimals)} ${toDisplay}`);
+        const fromStr = ['USDC', 'USDT', 'USDE'].includes(fromAsset) ? formatUsd(parsedAmount) : parsedAmount.toFixed(4);
+        printSuccess(`Exchanged ${fromStr} ${fromDisplay} → ${result.toAmount.toFixed(toDecimals)} ${toDisplay}`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printKeyValue('Gas', `${result.gasCost.toFixed(4)} SUI (${result.gasMethod})`);
         printBlank();
