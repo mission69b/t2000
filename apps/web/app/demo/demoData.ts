@@ -298,6 +298,11 @@ export const demos: Demo[] = [
       { type: "info", text: "─────────────────────────────────────────────────────", delay: 80 },
       { type: "info", text: "NAVI:  Save 5.47%  Borrow 6.12%", delay: 150 },
       { type: "info", text: "Suilend:  Save 5.10%  Borrow 5.80%", delay: 120 },
+      { type: "output", text: "", delay: 80 },
+      { type: "output", text: "  USDsui", delay: 150 },
+      { type: "info", text: "─────────────────────────────────────────────────────", delay: 80 },
+      { type: "info", text: "NAVI:  Save 2.80%  Borrow 3.90%", delay: 150 },
+      { type: "info", text: "Suilend:  Save 2.60%  Borrow 3.70%", delay: 120 },
 
       { type: "command", text: "❯ t2000 save 500", delay: 1200 },
       { type: "success", text: "✓ Saved $500.00 USDC to best rate", delay: 600 },
