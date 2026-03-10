@@ -462,7 +462,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const withdrawable: Array<{ protocolId: string; asset: string; amount: number }> = [];
     for (const pos of allPositions) {
       for (const supply of pos.positions.supplies) {
-        if (supply.amount > 0.001) {
+        if (supply.amount > 0.01) {
           withdrawable.push({ protocolId: pos.protocolId, asset: supply.asset, amount: supply.amount });
         }
       }
@@ -472,14 +472,15 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
     }
 
-    // Pre-check maxWithdraw for each position
+    // Pre-check maxWithdraw for each position (use per-asset amount, not aggregate)
     const entries: Array<{ protocolId: string; asset: string; maxAmount: number; adapter: LendingAdapter }> = [];
     for (const entry of withdrawable) {
       const adapter = this.registry.getLending(entry.protocolId);
       if (!adapter) continue;
       const maxResult = await adapter.maxWithdraw(this._address, entry.asset);
-      if (maxResult.maxAmount > 0.001) {
-        entries.push({ ...entry, maxAmount: maxResult.maxAmount, adapter });
+      const perAssetMax = Math.min(entry.amount, maxResult.maxAmount);
+      if (perAssetMax > 0.01) {
+        entries.push({ ...entry, maxAmount: perAssetMax, adapter });
       }
     }
 

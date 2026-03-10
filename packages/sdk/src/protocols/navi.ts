@@ -472,10 +472,8 @@ export async function buildWithdrawTx(
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
   if (rawAmount <= 0) {
-    throw new T2000Error('INVALID_AMOUNT', `Withdrawal amount too small to represent (effective=${effectiveAmount}, raw=${rawAmount}, decimals=${assetInfo.decimals})`);
+    throw new T2000Error('INVALID_AMOUNT', `Withdrawal amount rounds to zero — balance is dust`);
   }
-
-  console.error(`[t2000] withdraw: asset=${asset} poolId=${pool.id} amount=${amount} deposited=${deposited} effective=${effectiveAmount} raw=${rawAmount} supplyBal=${assetState?.supplyBalance} index=${pool.currentSupplyIndex}`);
 
   const tx = new Transaction();
   tx.setSender(address);
@@ -537,10 +535,13 @@ export async function addWithdrawToTx(
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
   if (rawAmount <= 0) {
-    throw new T2000Error('INVALID_AMOUNT', `Withdrawal amount too small to represent (effective=${effectiveAmount}, raw=${rawAmount}, decimals=${assetInfo.decimals})`);
+    // Dust position — create a zero-value coin instead of calling on-chain withdraw
+    const [coin] = tx.moveCall({
+      target: '0x2::coin::zero',
+      typeArguments: [pool.suiCoinType],
+    });
+    return { coin, effectiveAmount: 0 };
   }
-
-  console.error(`[t2000] withdraw: asset=${asset} poolId=${pool.id} amount=${amount} deposited=${deposited} effective=${effectiveAmount} raw=${rawAmount} supplyBal=${assetState?.supplyBalance} index=${pool.currentSupplyIndex}`);
 
   await refreshStableOracles(tx, client, config, pools);
 

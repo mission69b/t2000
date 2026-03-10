@@ -91,7 +91,7 @@ export function mapMoveAbortCode(code: number): string {
     10: 'Already at current version',
     // NAVI Protocol abort codes
     1502: 'Oracle price is stale — try again in a moment',
-    1503: 'Oracle validation failed during withdrawal — try again in a moment',
+    1503: 'Withdrawal amount is invalid (zero or dust) — try a specific amount instead of "all"',
     1600: 'Health factor too low — withdrawal would risk liquidation',
     1605: 'Asset borrowing is disabled or at capacity on this protocol',
     // Cetus DEX abort codes

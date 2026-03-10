@@ -445,7 +445,7 @@ Source: `packages/sdk/src/errors.ts`
 | 8 | Timelock is active (`ETIMELOCK_ACTIVE`) |
 | 9 | No pending change to execute (`ENO_PENDING_CHANGE`) |
 | 10 | Already at current version (`EALREADY_MIGRATED`) |
-| 1503 | Oracle validation failed during withdrawal |
+| 1503 | Invalid withdrawal amount (zero or dust balance) |
 | 46001 | Swap failed — DEX pool rejected the trade (Cetus liquidity/routing issue) |
 
 Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`, `packages/contracts/sources/errors.move`
