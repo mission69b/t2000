@@ -420,11 +420,11 @@ function QuickStart({
             </div>
             <CodeBlock lang="bash">
               {S.g("$")} t2000 balance{"\n\n"}
-              Available:  {S.a("$100.00")} USDC  {S.c("(checking — spendable)")}{"\n"}
-              Savings:    {S.a("$0.00")} USDC{"\n"}
+              Available:  {S.a("$100.00")}  {S.c("(checking — spendable)")}{"\n"}
+              Savings:    {S.a("$0.00")}{"\n"}
               Gas:        {S.a("0.05")} SUI    {S.c("(~$0.18)")}{"\n"}
-              {S.m("──────────────────────")}{"\n"}
-              Total:      {S.a("$100.18")} USDC
+              {S.m("──────────────────────────────────────")}{"\n"}
+              Total:      {S.a("$100.18")}
             </CodeBlock>
           </div>
         </li>
@@ -438,7 +438,7 @@ function QuickStart({
               Put idle funds to work
             </div>
             <CodeBlock lang="bash">
-              {S.g("$")} t2000 save all USDC{"\n\n"}
+              {S.g("$")} t2000 save all{"\n\n"}
               {S.g("✓")} Gas manager: {S.a("$1.00")} USDC → SUI{"\n"}
               {S.g("✓")} Saved {S.a("$99.00")} USDC to best rate{"\n"}
               {S.g("✓")} Protocol fee: {S.m("$0.099 USDC (0.1%)")}{"\n"}
@@ -515,7 +515,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.6.3")}
+        {S.a("0.10.1")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -610,7 +610,7 @@ function ConceptsSection() {
         rows={[
           ["Save", "0.1%", "Protocol fee on deposit"],
           ["Borrow", "0.05%", "Protocol fee on loan"],
-          ["Swap (internal)", <strong key="f">Free</strong>, "Cetus pool fees only; used by rebalance/auto-convert"],
+          ["Exchange", <strong key="f">Free</strong>, "Cetus pool fees only (slippage protected on-chain)"],
           ["Withdraw", <strong key="f">Free</strong>, ""],
           ["Repay", <strong key="f">Free</strong>, ""],
           ["Send", <strong key="f">Free</strong>, ""],
@@ -703,11 +703,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}{S.a("--json")}          Machine-readable JSON output
       </CodeBlock>
       <CodeBlock lang="output">
-        Available:  {S.a("$78.91")} USDC  {S.c("(checking — spendable)")}{"\n"}
-        Savings:    {S.a("$80.00")} USDC  {S.c("(earning 4.21% APY)")}{"\n"}
+        Available:  {S.a("$78.91")}  {S.c("(checking — spendable)")}{"\n"}
+        Savings:    {S.a("$80.00")}{"\n"}
         Gas:        {S.a("0.12")} SUI    {S.c("(~$0.11)")}{"\n"}
-        {S.m("──────────────────────")}{"\n"}
-        Total:      {S.a("$159.02")} USDC{"\n\n"}
+        {S.m("──────────────────────────────────────")}{"\n"}
+        Total:      {S.a("$159.02")}{"\n\n"}
         {S.c("# With --show-limits:")}{"\n"}
         Limits:{"\n"}
         {"  "}Max withdraw:   {S.a("$80.00")} USDC{"\n"}
@@ -731,11 +731,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-save">t2000 save</h2>
       <p>Deposit USDC into savings to earn variable APY. Auto-routes to the best rate across NAVI and Suilend, or specify a protocol with <InlineCode>--protocol</InlineCode>.</p>
       <CodeBlock lang="bash">
-        t2000 save &lt;amount&gt; USDC{"\n"}
-        t2000 save all USDC         {S.c("# saves everything; gas manager runs first if needed")}{"\n"}
-        t2000 save {S.a("80")} USDC --protocol suilend  {S.c("# target a specific protocol")}{"\n\n"}
-        t2000 save {S.a("80")} USDC{"\n"}
-        t2000 save all USDC
+        t2000 save &lt;amount&gt; [--protocol &lt;name&gt;]{"\n"}
+        t2000 save all              {S.c("# saves everything; gas manager runs first if needed")}{"\n"}
+        t2000 save {S.a("80")} --protocol suilend  {S.c("# target a specific protocol")}{"\n\n"}
+        t2000 save {S.a("80")}{"\n"}
+        t2000 save all
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Saved {S.a("$80.00")} USDC to best rate{"\n"}
@@ -753,8 +753,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-withdraw">t2000 withdraw</h2>
       <p>Pull USDC from savings back to checking. Risk-checked if you have an active loan.</p>
       <CodeBlock lang="bash">
-        t2000 withdraw &lt;amount&gt; USDC{"\n"}
-        t2000 withdraw all USDC{"\n\n"}
+        t2000 withdraw &lt;amount&gt; [--protocol &lt;name&gt;]{"\n"}
+        t2000 withdraw all{"\n\n"}
         {S.c("# Check safe limits first if you have an active loan:")}{"\n"}
         t2000 balance --show-limits
       </CodeBlock>
@@ -766,8 +766,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-borrow">t2000 borrow</h2>
       <p>Borrow USDC against your savings collateral. Health factor must stay above 1.5.</p>
       <CodeBlock lang="bash">
-        t2000 borrow &lt;amount&gt; USDC{"\n\n"}
-        t2000 borrow {S.a("40")} USDC    {S.c("# health factor enforced — must stay ≥ 1.5")}
+        t2000 borrow &lt;amount&gt;{"\n\n"}
+        t2000 borrow {S.a("40")}    {S.c("# health factor enforced — must stay ≥ 1.5")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Borrowed {S.a("$40.00")} USDC{"\n"}
@@ -778,8 +778,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-repay">t2000 repay</h2>
       <p>Repay outstanding borrows. Use <InlineCode>all</InlineCode> to clear the full debt including accrued interest.</p>
       <CodeBlock lang="bash">
-        t2000 repay &lt;amount&gt; USDC{"\n"}
-        t2000 repay all USDC        {S.c("# includes accrued interest")}
+        t2000 repay &lt;amount&gt;{"\n"}
+        t2000 repay all             {S.c("# includes accrued interest")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Repaid {S.a("$40.00")} USDC{"\n"}
@@ -795,9 +795,25 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 rebalance             {S.c("# execute rebalance")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Rebalanced {S.a("$102.51")} → {S.a("5.47%")} APY{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/91SgBL4kSX2...")}{"\n"}
-        Gas:  {S.a("0.0103")} SUI
+        {"  "}Rebalance Plan{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}From:  USDC on NAVI Protocol ({S.m("4.94%")} APY){"\n"}
+        {"  "}To:  suiUSDT on NAVI Protocol ({S.g("5.47%")} APY){"\n"}
+        {"  "}Amount:  {S.a("$19.98")}{"\n\n"}
+        {"  "}Economics{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}APY Gain:  {S.g("+0.53%")}{"\n"}
+        {"  "}Annual Gain:  {S.a("$0.11")}/year{"\n"}
+        {"  "}Swap Cost:  ~$0.00{"\n"}
+        {"  "}Break-even:  6 days{"\n\n"}
+        {"  "}Steps{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"    "}1. Withdraw $19.98 USDC from navi{"\n"}
+        {"    "}2. Swap USDC → suiUSDT (~$19.98){"\n"}
+        {"    "}3. Deposit $19.98 suiUSDT into navi{"\n\n"}
+        {"  "}{S.g("✓")} Rebalanced {S.a("$19.98")} → {S.a("5.47%")} APY{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/84qXk...")}{"\n"}
+        {"  "}Gas:  {S.a("0.0106")} SUI
       </CodeBlock>
 
       <h2 id="cmd-exchange">t2000 exchange</h2>
@@ -855,9 +871,13 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 positions
       </CodeBlock>
       <CodeBlock lang="output">
-        📈 Saving:  {S.a("$300.00")} USDC {S.m("(navi)")}{"\n"}
-        📈 Saving:  {S.a("$200.00")} USDC {S.m("(suilend)")}{"\n"}
-        📉 Borrowing:  {S.a("$100.00")} USDC {S.m("(navi)")}
+        {"  "}Savings{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}navi:  {S.a("$300.00")} USDC @ {S.g("5.5%")} APY{"\n"}
+        {"  "}suilend:  {S.a("$200.00")} USDC @ {S.g("2.2%")} APY{"\n\n"}
+        {"  "}Borrows{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}navi:  {S.a("$100.00")} USDC @ {S.m("3.8%")} APY
       </CodeBlock>
 
       <h2 id="cmd-history">t2000 history</h2>
@@ -869,7 +889,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {S.b("Transaction History")}{"\n\n"}
         0x9f2c...a801  save {S.m("(sponsored)")}     2/19/2026, 3:45 PM{"\n"}
         0xa1b2...c3d4  send {S.m("(self-funded)")}  2/19/2026, 2:30 PM{"\n"}
-        0xd5e6...f7a8  swap {S.m("(auto-topup)")}   2/18/2026, 1:15 PM
+        0xd5e6...f7a8  exchange {S.m("(self-funded)")}   2/18/2026, 1:15 PM
       </CodeBlock>
 
       <h2 id="cmd-earn">t2000 earn</h2>
@@ -1281,10 +1301,10 @@ function DefiSection() {
       </p>
       <CodeBlock lang="bash">
         {S.c("# Typical leverage loop for an agent:")}{"\n"}
-        {S.g("$")} t2000 save all USDC             {S.c("# deposit to savings")}{"\n"}
+        {S.g("$")} t2000 save all                   {S.c("# deposit to savings")}{"\n"}
         {S.g("$")} t2000 balance --show-limits      {S.c("# check maxBorrow")}{"\n"}
-        {S.g("$")} t2000 borrow {S.a("40")} USDC             {S.c("# borrow against collateral")}{"\n"}
-        {S.g("$")} t2000 save {S.a("40")} USDC               {S.c("# deposit borrowed USDC for more yield")}
+        {S.g("$")} t2000 borrow {S.a("40")}                   {S.c("# borrow against collateral")}{"\n"}
+        {S.g("$")} t2000 save {S.a("40")}                     {S.c("# deposit borrowed USDC for more yield")}
       </CodeBlock>
     </>
   );
@@ -1353,7 +1373,35 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.6.3 <Badge color="green">current</Badge>
+        v0.10.1 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        New <InlineCode>t2000 exchange</InlineCode> command for token swaps via
+        Cetus DEX with on-chain slippage protection. Public SDK methods{" "}
+        <InlineCode>exchange()</InlineCode> and{" "}
+        <InlineCode>exchangeQuote()</InlineCode>.
+      </p>
+
+      <h2 id="cl-0100">
+        v0.10.0
+      </h2>
+      <p>
+        Removed Pyth oracle dependency — simplified to NAVI native oracle
+        updates. Cleaner install with no engine warnings. Reduced dependency
+        footprint.
+      </p>
+
+      <h2 id="cl-099">
+        v0.9.9
+      </h2>
+      <p>
+        Fixed <InlineCode>withdraw all</InlineCode> failing on dust positions.
+        Graceful zero-amount handling in PTBs instead of transaction abortion.
+        Per-asset max withdrawal cap for accurate multi-position withdrawals.
+      </p>
+
+      <h2 id="cl-063">
+        v0.6.3
       </h2>
       <p>
         Multi-protocol lending: NAVI + Suilend with auto-routing to best APY.
@@ -1531,7 +1579,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.6.3
+            v0.10.1
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

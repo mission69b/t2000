@@ -18,6 +18,20 @@ check() {
 
 echo ""
 echo "── CLI: Borrow + Repay ──"
+echo "   (requires: t2000 save 1 — needs collateral)"
+
+# Check if we have savings first
+POSITIONS=$(t2000 positions 2>&1) || true
+if echo "$POSITIONS" | grep -q "No positions"; then
+  echo ""
+  echo "   ⚠  Skipped — no savings positions (deposit with t2000 save 1 first)"
+  echo ""
+  echo "════════════════════════════════════════════"
+  echo "  CLI Borrow: 0 passed, 0 failed (skipped)"
+  echo "════════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
 
 echo ""
 echo "   t2000 borrow 0.1"
@@ -37,7 +51,7 @@ check $? "repay USDC succeeds"
 echo ""
 echo "   t2000 positions (check borrow display)"
 OUTPUT=$(t2000 positions 2>&1) || true
-echo "$OUTPUT" | grep -qE "Savings|No open"
+echo "$OUTPUT" | grep -qE "Savings|No positions"
 check $? "positions shows output"
 
 echo ""
