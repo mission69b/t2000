@@ -112,6 +112,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Checking** | Send and receive USDC | Direct Sui transfers |
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) + [Suilend](https://suilend.fi) (auto-selected) |
 | **Credit** | Borrow USDC against savings | NAVI + Suilend collateralized loans |
+| **Exchange** | Swap between any supported tokens | [Cetus DEX](https://www.cetus.zone) CLMM pools |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 
@@ -305,7 +306,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Send / receive | ✓ | ✓ |
 | Earn yield on savings | — | ✓ NAVI + Suilend (~2–8% APY) |
 | Borrow / credit line | — | ✓ Collateralized |
-| Token swap (internal) | ✓ Base tokens | ✓ Cetus DEX (rebalance) |
+| Exchange / Token swap | ✓ Base tokens | ✓ Cetus DEX (any pair + rebalance) |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
 | Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |

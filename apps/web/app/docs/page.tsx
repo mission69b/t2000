@@ -820,7 +820,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 exchange &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
         t2000 exchange 5 USDC SUI            {S.c("# buy SUI with USDC")}{"\n"}
         t2000 exchange 2 SUI USDC            {S.c("# sell SUI for USDC")}{"\n"}
-        t2000 exchange 10 USDC USDT --slippage 0.5
+        t2000 exchange 10 USDC suiUSDT --slippage 0.5
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Exchanged {S.a("5")} USDC → {S.a("4.8500")} SUI{"\n"}

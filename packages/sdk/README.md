@@ -97,10 +97,10 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, protocol? })` | Deposit USDC to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
+| `agent.save({ amount, protocol? })` | Deposit to savings (earn APY). Auto-converts non-USDC stables. Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
 | `agent.withdraw({ amount })` | Withdraw from savings. Always returns USDC (auto-swaps non-USDC positions). `amount` can be `'all'`. | `WithdrawResult` |
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
-| `agent.repay({ amount })` | Repay outstanding USDC borrows. `amount` can be `'all'`. | `RepayResult` |
+| `agent.repay({ amount })` | Repay outstanding debt (auto-swaps USDC to borrowed asset if non-USDC). `amount` can be `'all'`. | `RepayResult` |
 | `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins internally. Dry-run for preview. | `RebalanceResult` |
 | `agent.exchange({ from, to, amount, maxSlippage? })` | Exchange tokens via Cetus DEX (e.g. USDC ⇌ SUI). On-chain slippage protection. | `SwapResult` |
 | `agent.exchangeQuote({ from, to, amount })` | Get exchange quote without executing | `{ expectedOutput, priceImpact, poolPrice, fee }` |
@@ -249,8 +249,10 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 
 ## Supported Assets
 
-User-facing operations (save, borrow, repay, withdraw) accept USDC only.
-Rebalance optimizes across all stablecoins internally.
+User-facing commands are denominated in USDC — the user always thinks in USDC.
+Save auto-converts non-USDC wallet stablecoins, withdraw auto-swaps non-USDC
+positions back to USDC, and repay auto-swaps USDC to the borrowed asset if
+debt is non-USDC (from rebalance). Rebalance optimizes across all stablecoins internally.
 
 | Asset | Display | Type | Decimals | Save | Borrow | Withdraw | Rebalance (internal) |
 |-------|---------|------|----------|------|--------|----------|---------------------|

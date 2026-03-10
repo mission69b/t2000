@@ -114,11 +114,11 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount> [--protocol <name>]` | Deposit USDC to savings (earn ~2–8% APY). Auto-selects best rate or use `--protocol navi\|suilend`. |
-| `t2000 save all` | Deposit all available USDC |
+| `t2000 save <amount> [--protocol <name>]` | Deposit to savings (earn ~2–8% APY). Auto-converts non-USDC stables. Auto-selects best rate or use `--protocol navi\|suilend`. |
+| `t2000 save all` | Deposit all available stablecoins (auto-converts to USDC) |
 | `t2000 withdraw <amount>` | Withdraw from savings. Always returns USDC (auto-swaps non-USDC positions). |
 | `t2000 borrow <amount>` | Borrow USDC against savings collateral |
-| `t2000 repay <amount>` | Repay outstanding USDC borrows. Use `repay all` for full repayment. |
+| `t2000 repay <amount>` | Repay outstanding debt (auto-swaps USDC to borrowed asset if non-USDC). Use `repay all` for full repayment. |
 | `t2000 rebalance [--dry-run]` | Optimize yield — move savings to best rate across protocols and stablecoins internally |
 | `t2000 exchange <amount> <from> <to>` | Exchange tokens via Cetus DEX (e.g. `t2000 exchange 5 USDC SUI`). Options: `--slippage <pct>` (default: 3%) |
 | `t2000 health` | Check savings health factor |
