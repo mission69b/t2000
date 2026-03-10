@@ -190,11 +190,12 @@ function main() {
     't2000-send',
     't2000-save',
     't2000-withdraw',
-    't2000-swap',
+    't2000-exchange',
     't2000-borrow',
     't2000-repay',
     't2000-pay',
     't2000-sentinel',
+    't2000-rebalance',
   ];
 
   const missing = expectedSkills.filter(s => !skillDirs.includes(s));

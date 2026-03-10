@@ -98,6 +98,7 @@ npm install -g @t2000/cli          # Install globally for persistent use
 t2000 balance                      # Check balance
 t2000 send 10 USDC to 0x...       # Send USDC
 t2000 save all                     # Earn yield on idle funds
+t2000 exchange 5 USDC SUI         # Currency exchange via Cetus DEX
 t2000 pay https://api.example.com  # Pay for x402 APIs
 ```
 
@@ -190,6 +191,7 @@ t2000 withdraw 25                  Withdraw savings (always USDC)
 t2000 borrow 10                    Borrow USDC against collateral
 t2000 repay 10                     Repay debt
 t2000 rebalance                    Optimize yield across stablecoins
+t2000 exchange 5 USDC SUI         Exchange tokens via Cetus DEX
 t2000 earnings                     Yield earned
 t2000 health                       Health factor
 t2000 rates                        Current APYs
@@ -287,6 +289,7 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-withdraw` | "withdraw from savings" |
 | `t2000-borrow` | "borrow 40 USDC" |
 | `t2000-repay` | "repay my loan" |
+| `t2000-exchange` | "swap USDC to SUI", "exchange tokens" |
 | `t2000-pay` | "call that paid API" |
 | `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |

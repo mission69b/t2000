@@ -120,6 +120,7 @@ t2000 init
 | `t2000 borrow <amount>` | Borrow USDC against savings collateral |
 | `t2000 repay <amount>` | Repay outstanding USDC borrows. Use `repay all` for full repayment. |
 | `t2000 rebalance [--dry-run]` | Optimize yield — move savings to best rate across protocols and stablecoins internally |
+| `t2000 exchange <amount> <from> <to>` | Exchange tokens via Cetus DEX (e.g. `t2000 exchange 5 USDC SUI`). Options: `--slippage <pct>` (default: 3%) |
 | `t2000 health` | Check savings health factor |
 | `t2000 rates` | Best save/borrow APYs across protocols and all stablecoins |
 | `t2000 positions` | Open savings & borrow positions across all assets |

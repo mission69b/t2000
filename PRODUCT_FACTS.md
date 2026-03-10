@@ -25,8 +25,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 9 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance` |
+| Skill count | 10 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -162,6 +162,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | sentinel info | `t2000 sentinel info <id>` | Show details for a sentinel |
 | sentinel attack | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel (full 3-step flow). Options: `--fee <sui>` |
 | rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
+| exchange | `t2000 exchange <amount> <from> <to>` | Exchange tokens via Cetus DEX (e.g. USDC ⇌ SUI). Options: `--slippage <pct>` (default: 3%) |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 
 ### Global Flags
@@ -271,6 +272,8 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | `earnings()` | — | `EarningsResult` |
 | `fundStatus()` | — | `FundStatusResult` |
 | `rebalance()` | `{ dryRun?, minYieldDiff?, maxBreakEven? }` | `RebalanceResult` |
+| `exchange()` | `{ from, to, amount, maxSlippage? }` | `SwapResult` |
+| `exchangeQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice, fee }` |
 
 ### Sentinel
 

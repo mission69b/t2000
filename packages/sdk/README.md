@@ -43,6 +43,9 @@ await agent.save({ amount: 50 });
 // Borrow USDC against your collateral
 await agent.borrow({ amount: 25 });
 
+// Exchange tokens (e.g. USDC ⇌ SUI)
+await agent.exchange({ from: 'USDC', to: 'SUI', amount: 5 });
+
 // Rebalance — move savings to the best rate (dry-run first)
 const plan = await agent.rebalance({ dryRun: true });
 console.log(`+${plan.annualGain.toFixed(2)}/year, break-even: ${plan.breakEvenDays} days`);
@@ -99,6 +102,8 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
 | `agent.repay({ amount })` | Repay outstanding USDC borrows. `amount` can be `'all'`. | `RepayResult` |
 | `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins internally. Dry-run for preview. | `RebalanceResult` |
+| `agent.exchange({ from, to, amount, maxSlippage? })` | Exchange tokens via Cetus DEX (e.g. USDC ⇌ SUI). On-chain slippage protection. | `SwapResult` |
+| `agent.exchangeQuote({ from, to, amount })` | Get exchange quote without executing | `{ expectedOutput, priceImpact, poolPrice, fee }` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
