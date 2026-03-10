@@ -17,7 +17,7 @@
 | `@t2000/sdk` | `0.10.3` |
 | `@t2000/cli` | `0.10.3` |
 | `@t2000/x402` | `0.3.0` |
-| Agent Skills | `1.3` |
+| Agent Skills | `1.5` |
 
 ---
 
@@ -68,7 +68,7 @@ All multi-step operations use single atomic PTBs. This means withdraw+swap+depos
 
 ### Auto-Convert (Save)
 
-`save all` or `save <amount>` when wallet USDC is insufficient automatically converts non-USDC stablecoins (USDT, USDe, USDsui) to USDC within the same PTB before depositing.
+`save all` or `save <amount>` when wallet USDC is insufficient automatically converts non-USDC stablecoins (suiUSDT, suiUSDe, USDsui) to USDC within the same PTB before depositing.
 
 ### Auto-Swap (Withdraw / Repay)
 
@@ -116,9 +116,11 @@ Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts, cetus.t
 
 ## Supported Assets
 
-User-facing operations (save, borrow, repay, withdraw) accept **USDC only**.
-Rebalance optimizes across all stablecoins internally. Withdraw auto-swaps
-non-USDC positions back to USDC.
+User-facing commands are denominated in **USDC** — the user always thinks in USDC.
+Internally, save auto-converts non-USDC wallet stablecoins to USDC, withdraw
+auto-swaps non-USDC positions back to USDC, and repay auto-swaps USDC to the
+borrowed asset if debt is in a non-USDC stablecoin (from rebalance).
+Rebalance optimizes across all stablecoins internally.
 
 | Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Exchange | Rebalance |
 |--------|---------|----------|------|------|--------|----------|-----------------|-----------|
@@ -141,10 +143,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
-| save | `t2000 save <amount>` | USDC only. Alias: `supply`. `amount` accepts `all`. |
+| save | `t2000 save <amount>` | Deposits USDC (auto-converts non-USDC stables). Alias: `supply`. `amount` accepts `all`. |
 | withdraw | `t2000 withdraw <amount>` | Always returns USDC (auto-swaps non-USDC positions). `amount` accepts `all` |
 | borrow | `t2000 borrow <amount>` | USDC only |
-| repay | `t2000 repay <amount>` | USDC only. `amount` accepts `all` |
+| repay | `t2000 repay <amount>` | Pays with USDC (auto-swaps to borrowed asset if non-USDC debt). `amount` accepts `all` |
 | pay | `t2000 pay <url>` | Options: `--method`, `--data`, `--header`, `--max-price`, `--timeout`, `--dry-run` |
 | history | `t2000 history` | Options: `--limit <n>` (default: 20) |
 | earnings | `t2000 earnings` | |
@@ -179,11 +181,12 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 **balance:**
 ```
-  Available:  $4.00 USDC  (checking — spendable)
-  Savings:    $1.00 USDC  (earning 3.31% APY)
+  Available:  $4.00  (checking — spendable)
+  Savings:    $1.00  (earning 3.31% APY)
   Gas:        1.04 SUI    (~$0.98)
   ──────────────────────────────────────
-  Total:      $5.98 USDC
+  Total:      $5.98
+  Earning ~$0.01/day
 ```
 
 **save:**

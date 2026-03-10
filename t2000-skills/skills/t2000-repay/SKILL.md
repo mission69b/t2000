@@ -1,21 +1,26 @@
 ---
 name: t2000-repay
 description: >-
-  Repay borrowed USDC. Use when asked to repay a loan, pay back debt,
+  Repay outstanding debt. Use when asked to repay a loan, pay back debt,
   reduce outstanding balance, or clear borrows. Supports partial and
-  full repayment. Only accepts USDC.
+  full repayment. User pays with USDC — if debt is in a non-USDC
+  stablecoin (from rebalance), USDC is auto-swapped to the borrowed
+  asset atomically.
 license: MIT
 metadata:
   author: t2000
-  version: "1.4"
+  version: "1.5"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
 # t2000: Repay Borrow
 
 ## Purpose
-Repay outstanding USDC debt. Supports specific amounts or
-`repay all` to clear the full balance including accrued interest.
+Repay outstanding debt. User always pays with USDC. If savings were
+rebalanced into a non-USDC stablecoin (suiUSDT, suiUSDe, USDsui), the
+repay auto-swaps USDC to the borrowed asset atomically within the same
+transaction. Supports specific amounts or `repay all` to clear the full
+balance including accrued interest across all protocols.
 
 ## Command
 ```bash
@@ -38,5 +43,6 @@ t2000 repay all
 ```
 
 ## Notes
-- `repay all` calculates full outstanding principal + accrued interest
+- `repay all` calculates full outstanding principal + accrued interest across all protocols
+- Non-USDC debt (from rebalance) is auto-handled — USDC is swapped to the borrowed asset in the same transaction
 - Available USDC balance must cover the repayment amount

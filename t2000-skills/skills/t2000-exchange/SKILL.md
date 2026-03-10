@@ -7,7 +7,7 @@ description: >-
 license: MIT
 metadata:
   author: t2000
-  version: "1.0"
+  version: "1.1"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -24,7 +24,7 @@ t2000 exchange <amount> <from> <to>
 
 t2000 exchange 5 USDC SUI              # buy SUI with USDC
 t2000 exchange 2 SUI USDC              # sell SUI for USDC
-t2000 exchange 10 USDC USDT            # stablecoin swap
+t2000 exchange 10 USDC suiUSDT         # stablecoin swap
 t2000 exchange 5 USDC SUI --slippage 0.5  # custom slippage (default: 3%)
 ```
 
@@ -46,8 +46,8 @@ t2000 exchange 5 USDC SUI --slippage 0.5  # custom slippage (default: 3%)
 |------|----|-------|
 | USDC | SUI | Buy SUI for gas or trading |
 | SUI | USDC | Convert SUI earnings to stablecoins |
-| USDC | USDT | Stablecoin swap |
-| USDC | USDe | Stablecoin swap |
+| USDC | suiUSDT | Stablecoin swap |
+| USDC | suiUSDe | Stablecoin swap |
 | USDC | USDsui | Stablecoin swap |
 | Any supported | Any supported | All pairs routed via Cetus |
 
