@@ -1,7 +1,7 @@
 # t2000 Roadmap — v2.0
 
 **Last updated:** March 2026
-**Current version:** v0.8.0 (SDK + CLI published on npm, x402 v0.3.0)
+**Current version:** v0.10.4 (SDK + CLI published on npm, x402 v0.3.0)
 
 ---
 
@@ -16,7 +16,7 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | SDK (`@t2000/sdk`) — send, save, withdraw, borrow, repay, swap, balance, events | ✅ |
 | CLI (`@t2000/cli`) — all commands, `--json` output, local HTTP API (`t2000 serve`) | ✅ |
 | x402 Client (`@t2000/x402`) — machine-to-machine payments via Sui Payment Kit | ✅ |
-| Agent Skills — 9 SKILL.md files for Claude, GPT, Cursor, Copilot, 20+ platforms | ✅ |
+| Agent Skills — 10 SKILL.md files for Claude, GPT, Cursor, Copilot, 20+ platforms | ✅ |
 | Server — sponsor API, gas station, fee ledger, x402 facilitator (/verify, /settle) | ✅ ECS Fargate |
 | Indexer — checkpoint-based, yield snapshotter, crash-safe cursor | ✅ ECS Fargate |
 | Website — t2000.ai (landing page, docs, demos, stats) | ✅ Vercel |
@@ -42,21 +42,34 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | Adapter interfaces — `LendingAdapter`, `SwapAdapter`, `ProtocolDescriptor` | ✅ |
 | Protocol Registry — rate comparison, auto-routing, multi-protocol views | ✅ |
 | NAVI adapter — save, withdraw, borrow, repay (contract-first, no SDK) | ✅ |
-| Suilend adapter — save, withdraw (contract-first, no SDK) | ✅ |
+| Suilend adapter — save, withdraw, borrow, repay (contract-first, no SDK) | ✅ |
 | Cetus adapter — swap via Aggregator V3 (20+ DEX routing) | ✅ |
 | `@mysten/sui` v2 migration — `SuiJsonRpcClient`, ESM-only | ✅ |
 | Contract-first protocol integrations — no external protocol SDKs | ✅ |
 | ProtocolDescriptor pattern — scalable event tracking from SDK to indexer | ✅ |
 | CLI multi-protocol — `--protocol` flag, `rates`, `earn`, `positions` | ✅ |
 | Auto-routing — `t2000 save` picks best APY across protocols | ✅ |
-| Test suite — 331+ tests across 20 files (unit + integration + compliance) | ✅ |
+| Test suite — 367+ tests across 20 files (unit + integration + compliance) | ✅ |
 | `CONTRIBUTING-ADAPTERS.md` — developer guide for new adapters | ✅ |
 | CI — Adapter Compliance job on PRs to main | ✅ |
 | Indexer — protocol-aware classification, `byProtocol` stats | ✅ |
 | Stats API — `/api/stats` with protocol breakdown, agent activity | ✅ |
 | Deploy workflows — server + indexer CI/CD with typecheck gates | ✅ |
 
-### Supported Assets (v0.8.0)
+### Yield Optimizer + Exchange (v0.8.0–v0.10.4)
+
+| Feature | Status |
+|---------|--------|
+| `t2000 rebalance` — cross-asset yield optimization across 4 stablecoins + 2 protocols | ✅ |
+| `t2000 exchange` — token exchange via Cetus DEX, any supported pair | ✅ |
+| USDC-in/USDC-out model — save auto-converts, withdraw auto-swaps, repay auto-swaps | ✅ |
+| Atomic PTBs for all multi-step flows (save+convert, withdraw+swap, repay+swap, rebalance) | ✅ |
+| Composable adapter methods (`addWithdrawToTx`, `addSaveToTx`, `addRepayToTx`, `addSwapToTx`) | ✅ |
+| Health factor infinity display, dust filtering, weighted APY + daily earnings in balance | ✅ |
+| `CLI_UX_SPEC.md` — design contract for all CLI output | ✅ |
+| Interactive demo page with all 7 command flows | ✅ |
+
+### Supported Assets (v0.10.4)
 
 | Asset | Send | Save | Borrow | Swap | Rebalance |
 |-------|------|------|--------|------|-----------|
@@ -76,56 +89,69 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 
 ---
 
-## Phase 10 — Yield Optimizer + Multi-Stable Infrastructure
+## Phase 10 — Yield Optimizer + Multi-Stable Infrastructure ✅
 
-**Goal:** Agents earn the best yield across all stablecoins automatically via `t2000 rebalance`. Save is open to all supported stables (USDC, USDT, USDe, USDsui). Send stays USDC-only. Borrow/repay unlock multi-stable for rate shopping and protocol compatibility.
+**Status:** Shipped (v0.8.0 → v0.10.4)
 
-**Why merged:** Phase 10 (multi-stable infrastructure) and Phase 11 (yield optimizer) are one product feature. The adapter infrastructure is a prerequisite for rebalance, not a standalone feature.
+**Goal:** Agents earn the best yield across all stablecoins automatically via `t2000 rebalance`. User-facing commands stay USDC-denominated — the agent handles multi-stable optimization internally.
 
-**Confirmed:** All 4 stables (USDC, suiUSDT, suiUSDe, USDsui) available on both NAVI and Suilend.
+**Design evolution:** Originally planned as open multi-stable (10 → 10b), then simplified to USDC-in/USDC-out (10c). The final model is cleaner: "user thinks in dollars, agent handles optimization."
 
-### What changes vs what stays the same
+### What shipped
 
-| Command | Change | Multi-stable? |
-|---------|--------|---------------|
-| `save` | **Open** — any supported stablecoin (USDC default) | Yes |
-| `send` | Unchanged — USDC | No |
-| `borrow` | **Unlocked** — user picks asset | Yes |
-| `repay` | **Unlocked** — matches debt asset | Yes |
-| `withdraw` | **Handles any asset** | Yes |
-| **`rebalance`** | **New** — cross-asset yield optimization | Yes — the star feature |
-| `rates` | **Enhanced** — headline + all stables | Yes (read-only) |
-| `balance` | **Enhanced** — shows all stables held | Yes (read-only) |
-| `positions` / `earn` | **Enhanced** — multi-asset positions | Yes (read-only) |
+| Command | What it does | Internal multi-stable? |
+|---------|-------------|----------------------|
+| `save` | Deposits USDC to best rate. Auto-converts non-USDC wallet stables atomically. | Yes (auto-convert) |
+| `withdraw` | Always returns USDC. Auto-swaps non-USDC positions back. | Yes (auto-swap) |
+| `borrow` | Borrows USDC against collateral | No |
+| `repay` | User pays USDC. Auto-swaps to borrowed asset if debt is non-USDC. | Yes (auto-swap) |
+| **`rebalance`** | Moves savings to highest yield across 4 stablecoins + 2 protocols. Single atomic PTB. | Yes — the star feature |
+| **`exchange`** | Swap any supported tokens via Cetus DEX | Yes |
+| `rates` | Shows all yields across all stablecoins and protocols | Yes (read-only) |
+| `balance` | Shows portfolio with weighted APY and daily earnings | Yes (read-only) |
+| `positions` | Shows actual holdings (may show suiUSDT etc. after rebalance) | Yes (read-only) |
 
-### Key UX
+### Key UX (as shipped)
 
 ```bash
-t2000 save 1000                     # USDC (default, backward compatible)
-t2000 save 100 USDT                 # Direct USDT save
-t2000 save all USDsui               # Save full USDsui balance
-t2000 rebalance --dry-run           # "Move USDC → USDT for +1.2% APY"
-t2000 rebalance                     # Swap + deposit automatically
-t2000 borrow 100 USDT               # Cheapest borrow rate
-t2000 rates                         # "⭐ Best: 5.4% — USDT on Suilend"
+t2000 save all                       # deposits all stablecoins as USDC
+t2000 rebalance --dry-run            # preview: "USDC → suiUSDT for +1.2% APY"
+t2000 rebalance                      # withdraw → swap → deposit in one atomic tx
+t2000 withdraw all                   # always returns USDC (auto-swaps)
+t2000 exchange 5 USDC SUI            # currency exchange via Cetus DEX
+t2000 rates                          # "Best yield: suiUSDT on NAVI (5.47%)"
+t2000 balance                        # shows APY + daily earnings
 ```
 
-### Tasks
+### Architecture delivered
 
-| # | Task | Package | Est | Status |
-|---|------|---------|-----|--------|
-| 10.1 | Add USDT, USDe, USDsui to `SUPPORTED_ASSETS` + format utils | sdk | 1h | ✅ |
-| 10.2 | Adapter infrastructure — NAVI, Suilend, Cetus multi-asset | sdk | 6h | ✅ |
-| 10.3 | Balance + display — multi-stable balance, rates headline, positions | sdk + cli | 2h | ✅ |
-| 10.4 | Borrow + repay — unlock multi-stable, helpful errors | sdk + cli | 2h | ✅ |
-| 10.5 | Rebalance — `rebalance()` method + `t2000 rebalance` CLI | sdk + cli | 4h | ✅ |
-| 10.6 | Tests — unit, compliance, rebalance, borrow, integration, CLI smoke | sdk + cli | 3h | ✅ |
-| 10.7 | Docs — targeted skill updates, new rebalance skill, READMEs | all | 2h | ✅ |
-| 10.8 | Build, bump to 0.8.0, publish, verify CI | all | 1h | ✅ |
+- **Atomic PTBs**: All multi-step flows (save+auto-convert, withdraw+auto-swap, repay+auto-swap, rebalance) execute as single atomic transactions
+- **Composable adapter methods**: `addWithdrawToTx`, `addSaveToTx`, `addRepayToTx`, `addSwapToTx` for PTB composition
+- **Dust filtering**: Positions ≤ $0.005 filtered from display
+- **Health factor guards**: Infinity display when borrowed < $0.01, safe limits on withdraw/borrow
+- **Exchange command**: Full Cetus DEX integration for any supported token pair
+- **CLI UX spec**: `CLI_UX_SPEC.md` — design contract for all CLI output formatting
 
-**Estimated total:** 3 days
+### Tasks (completed)
 
-**Detailed build plan:** `spec/phase10-multi-stable-build-plan.md`
+| # | Task | Package | Status |
+|---|------|---------|--------|
+| 10.1 | Add USDT, USDe, USDsui to `SUPPORTED_ASSETS` + format utils | sdk | ✅ |
+| 10.2 | Adapter infrastructure — NAVI, Suilend, Cetus multi-asset | sdk | ✅ |
+| 10.3 | Balance + display — multi-stable balance, rates headline, positions | sdk + cli | ✅ |
+| 10.4 | Borrow + repay — multi-stable internal handling | sdk + cli | ✅ |
+| 10.5 | Rebalance — `rebalance()` method + `t2000 rebalance` CLI | sdk + cli | ✅ |
+| 10.6 | Exchange — `exchange()` method + `t2000 exchange` CLI | sdk + cli | ✅ |
+| 10.7 | USDC-in/USDC-out simplification (10c) — auto-convert, auto-swap | sdk + cli | ✅ |
+| 10.8 | Composable PTB adapter methods | sdk | ✅ |
+| 10.9 | Health factor + dust handling fixes | sdk + cli | ✅ |
+| 10.10 | Tests — 367+ tests across unit, compliance, integration, CLI smoke | sdk + cli | ✅ |
+| 10.11 | Skills — 10 skills aligned with SDK, new exchange + rebalance skills | skills | ✅ |
+| 10.12 | Docs — READMEs, PRODUCT_FACTS, CLI_UX_SPEC, docs page, demos | all | ✅ |
+| 10.13 | Marketing — demo page, homepage (4 accounts), marketing plan | web | ✅ |
+| 10.14 | Build, bump to 0.10.4, publish | all | ✅ |
+
+**Detailed build plans:** `spec/phase10-multi-stable-build-plan.md`, `spec/phase10b-open-save-build-plan.md`, `spec/phase10c-usdc-simplification-build-plan.md`
 
 ---
 
@@ -587,9 +613,9 @@ jobs:
 | Phase | Feature | Priority | Effort | Status |
 |-------|---------|----------|--------|--------|
 | **19** | Security Audit + Trust Infrastructure | **P0** | 3-4 days | ✅ Done |
-| **10** | Yield Optimizer + Multi-Stable Infrastructure | **P0** | 3 days | ⬜ Next |
-| **16** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ |
-| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ In discussion |
+| **10** | Yield Optimizer + Multi-Stable Infrastructure | **P0** | 3 days | ✅ Done (v0.10.4) |
+| **16** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ Next |
+| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ Depends on 16 |
 | **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
 | **13** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
 | **18** | Global Payments (contacts, receipts) | P1 | 3-4 days | 🔶 Send shipped |
@@ -599,4 +625,4 @@ jobs:
 ---
 
 *t2000 — The first bank account for AI agents.*
-*Roadmap v2.3*
+*Roadmap v2.4*
