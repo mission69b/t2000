@@ -20,7 +20,7 @@ async function fetchLimits(agent: T2000): Promise<LimitsData> {
   return {
     maxWithdraw: maxWithdraw.maxAmount.toFixed(2),
     maxBorrow: maxBorrow.maxAmount.toFixed(2),
-    healthFactor: hf.borrowed > 0 ? hf.healthFactor : null,
+    healthFactor: hf.borrowed >= 0.01 ? hf.healthFactor : null,
   };
 }
 

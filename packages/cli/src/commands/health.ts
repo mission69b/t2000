@@ -22,7 +22,8 @@ export function registerHealth(program: Command) {
 
         printBlank();
 
-        const hfStr = hf.healthFactor === Infinity ? '∞' : hf.healthFactor.toFixed(2);
+        const noActiveLoan = hf.borrowed < 0.01;
+        const hfStr = (hf.healthFactor === Infinity || noActiveLoan) ? '∞' : hf.healthFactor.toFixed(2);
         if (hf.healthFactor >= 2.0) {
           printSuccess(`Health Factor: ${hfStr} (healthy)`);
         } else if (hf.healthFactor >= 1.5) {
