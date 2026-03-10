@@ -849,9 +849,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     return hf;
   }
 
-  // -- Swap (internal — used by rebalance and withdraw auto-swap) --
+  // -- Exchange --
 
-  private async _swap(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
+  async exchange(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
     const fromAsset = params.from as keyof typeof SUPPORTED_ASSETS;
     const toAsset = params.to as keyof typeof SUPPORTED_ASSETS;
 
@@ -924,7 +924,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  private async _swapQuote(params: { from: string; to: string; amount: number }): Promise<{
+  async exchangeQuote(params: { from: string; to: string; amount: number }): Promise<{
     expectedOutput: number;
     priceImpact: number;
     poolPrice: number;

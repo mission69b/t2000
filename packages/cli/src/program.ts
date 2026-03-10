@@ -28,6 +28,7 @@ import { registerLock } from './commands/lock.js';
 import { registerSentinel } from './commands/sentinel.js';
 import { registerEarn } from './commands/earn.js';
 import { registerRebalance } from './commands/rebalance.js';
+import { registerExchange } from './commands/exchange.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -66,6 +67,7 @@ export function createProgram(): Command {
   registerSentinel(program);
   registerEarn(program);
   registerRebalance(program);
+  registerExchange(program);
 
   return program;
 }
