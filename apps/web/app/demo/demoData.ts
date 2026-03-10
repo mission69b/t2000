@@ -395,4 +395,55 @@ export const demos: Demo[] = [
       { type: "output", text: "  Total:      $52.03", delay: 120 },
     ],
   },
+  {
+    id: "safeguards",
+    title: "Safeguards — Spending Controls",
+    description: "Set per-transaction limits, daily caps, and lock the agent. Outbound sends are enforced — internal ops (save, withdraw) are unrestricted until locked.",
+    tweet: "Week 8 Monday — Safeguards v0.11.0",
+    lines: [
+      { type: "command", text: "❯ t2000 config show", delay: 0 },
+      { type: "output", text: "", delay: 300 },
+      { type: "output", text: "  Agent Safeguards", delay: 200 },
+      { type: "output", text: "", delay: 80 },
+      { type: "info", text: "─────────────────────────────────────────────────────", delay: 80 },
+      { type: "info", text: "Locked:           No", delay: 150 },
+      { type: "info", text: "Per-transaction:  Unlimited", delay: 150 },
+      { type: "info", text: "Daily send limit: Unlimited", delay: 150 },
+
+      { type: "command", text: "❯ t2000 config set maxPerTx 500", delay: 1200 },
+      { type: "success", text: "  ✓ Set maxPerTx = 500", delay: 400 },
+
+      { type: "command", text: "❯ t2000 config set maxDailySend 1000", delay: 800 },
+      { type: "success", text: "  ✓ Set maxDailySend = 1000", delay: 400 },
+
+      { type: "command", text: "❯ t2000 send 1000 USDC to 0x40cd...3e62", delay: 1200 },
+      { type: "output", text: "  ✗ Amount $1000.00 exceeds per-transaction limit ($500.00)", delay: 500 },
+
+      { type: "command", text: "❯ t2000 send 400 USDC to 0x40cd...3e62", delay: 1200 },
+      { type: "success", text: "  ✓ Sent $400.00 USDC → 0x40cd...3e62", delay: 600 },
+      { type: "info", text: "Gas:  -0.0007 SUI (self-funded)", delay: 200 },
+      { type: "info", text: "Balance:  $96.81 USDC", delay: 200 },
+      { type: "info", text: "Tx:  suiscan.xyz/mainnet/tx/HMCTnbcZqYSP...", delay: 200 },
+
+      { type: "command", text: "❯ t2000 config show", delay: 1200 },
+      { type: "output", text: "", delay: 300 },
+      { type: "output", text: "  Agent Safeguards", delay: 200 },
+      { type: "output", text: "", delay: 80 },
+      { type: "info", text: "─────────────────────────────────────────────────────", delay: 80 },
+      { type: "info", text: "Locked:           No", delay: 150 },
+      { type: "info", text: "Per-transaction:  $500.00", delay: 150 },
+      { type: "info", text: "Daily send limit: $1,000.00 ($400.00 used today)", delay: 150 },
+
+      { type: "command", text: "❯ t2000 lock", delay: 1200 },
+      { type: "success", text: "  ✓ Agent locked. All operations frozen.", delay: 400 },
+      { type: "info", text: "Run: t2000 unlock  (requires PIN)", delay: 200 },
+
+      { type: "command", text: "❯ t2000 save 100", delay: 1000 },
+      { type: "output", text: "  ✗ Agent is locked. All operations are frozen.", delay: 500 },
+
+      { type: "command", text: "❯ t2000 unlock", delay: 1200 },
+      { type: "success", text: "  ✓ Agent unlocked. Operations resumed.", delay: 400 },
+      { type: "info", text: "Active safeguards: maxPerTx=$500, maxDailySend=$1000", delay: 200 },
+    ],
+  },
 ];
