@@ -129,6 +129,20 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.sentinelInfo(id)` | Get sentinel details (from API or on-chain) | `SentinelAgent` |
 | `agent.sentinelAttack(id, prompt, fee?)` | Full attack flow: request → TEE → settle | `SentinelAttackResult` |
 
+### Safeguards (Enforcer)
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `agent.enforcer.getConfig()` | Get safeguard settings | `SafeguardConfig` |
+| `agent.enforcer.set({ maxPerTx?, maxDailySend? })` | Set per-transaction and/or daily send limits | `void` |
+| `agent.enforcer.lock()` | Lock agent (freeze all operations) | `void` |
+| `agent.enforcer.unlock(pin)` | Unlock agent | `void` |
+| `agent.enforcer.check(amount)` | Check if amount is allowed under limits | `void` (throws `SafeguardError` if not) |
+| `agent.enforcer.recordUsage(amount)` | Record send for daily limit tracking | `void` |
+| `agent.enforcer.isConfigured()` | Whether safeguards are set up | `boolean` |
+
+**Types:** `SafeguardConfig` — `{ maxPerTx?, maxDailySend?, locked? }` · `SafeguardError` — thrown when limits exceeded or agent locked
+
 ### Key Management
 
 ```typescript

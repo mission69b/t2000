@@ -946,6 +946,36 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}Settle Tx:   {S.b("https://suiscan.xyz/mainnet/tx/0x5678...")}
       </CodeBlock>
 
+      <h2 id="cmd-safeguards">Agent Safeguards</h2>
+      <p>
+        Control spending limits and lock the agent to prevent unauthorized operations.
+        Use <InlineCode>t2000 config show</InlineCode> to view current settings and{" "}
+        <InlineCode>t2000 config set</InlineCode> to adjust limits.
+      </p>
+      <DocTable
+        headers={["Command", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000 config show</InlineCode>, "View safeguard settings"],
+          [<InlineCode key="k">t2000 config set maxPerTx 500</InlineCode>, "Set per-transaction limit ($500/tx)"],
+          [<InlineCode key="k">t2000 config set maxDailySend 1000</InlineCode>, "Set daily send limit ($1000/day)"],
+          [<InlineCode key="k">t2000 lock</InlineCode>, "Lock agent (freeze all operations)"],
+          [<InlineCode key="k">t2000 unlock</InlineCode>, "Unlock agent (requires PIN)"],
+        ]}
+      />
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 config show{"\n\n"}
+        maxPerTx:     {S.a("500")}{"\n"}
+        maxDailySend: {S.a("1000")}{"\n"}
+        locked:       {S.a("false")}{"\n\n"}
+        {S.g("$")} t2000 config set maxPerTx {S.a("500")}{"\n"}
+        {S.g("$")} t2000 config set maxDailySend {S.a("1000")}{"\n"}
+        {S.g("$")} t2000 lock{"\n"}
+        {S.g("✓")} Agent locked{"\n\n"}
+        {S.g("$")} t2000 unlock{"\n"}
+        {S.b("Enter PIN:")} ****{"\n"}
+        {S.g("✓")} Agent unlocked
+      </CodeBlock>
+
       <h2 id="cmd-more">More commands</h2>
       <DocTable
         headers={["Command", "Description"]}

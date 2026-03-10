@@ -34,6 +34,7 @@ export type T2000ErrorCode =
   | 'SENTINEL_NOT_FOUND'
   | 'SENTINEL_TX_FAILED'
   | 'SENTINEL_TEE_ERROR'
+  | 'SAFEGUARD_BLOCKED'
   | 'UNKNOWN';
 
 export interface T2000ErrorData {

@@ -334,10 +334,23 @@ Empty state:
   Address:  0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...
 ```
 
+### `t2000 config show`
+
+```
+  Agent Safeguards
+  ─────────────────────────────────────────────────────
+  Locked:             No
+  Per-transaction:    $500.00
+  Daily send limit:   $1,000.00 ($350.00 used today)
+```
+
+JSON: `{ "locked": false, "maxPerTx": 500, "maxDailySend": 1000, "dailyUsed": 350 }`
+
 ### `t2000 config set <key> <value>`
 
 ```
   ✓ Set rpcUrl = https://custom-rpc.example.com
+  ✓ Set maxPerTx = 500
 ```
 
 ### `t2000 config get [key]`
@@ -346,6 +359,24 @@ Empty state:
   rpcUrl:  https://custom-rpc.example.com
   network: mainnet
 ```
+
+### `t2000 lock`
+
+```
+  ✓ Agent locked. All operations frozen.
+  Run: t2000 unlock  (requires PIN)
+```
+
+JSON: `{ "locked": true }`
+
+### `t2000 unlock`
+
+```
+  ✓ Agent unlocked. Operations resumed.
+  Active safeguards: maxPerTx=$500, maxDailySend=$1000
+```
+
+JSON: `{ "locked": false }`
 
 ---
 
@@ -358,6 +389,9 @@ Structured errors include actionable context:
   ✗ Insufficient balance — need $50.00 but only $10.00 available
   ✗ Health factor too low — repay debt before withdrawing
   ✗ Oracle validation failed during withdrawal — try again in a moment
+  ✗ Blocked: amount $1,000.00 exceeds per-transaction limit ($500.00)
+  ✗ Blocked: daily send limit reached ($900.00/$1,000.00 used today)
+  ✗ Agent is locked. All operations frozen.
 ```
 
 ---

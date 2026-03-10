@@ -14,8 +14,8 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.10.4` |
-| `@t2000/cli` | `0.10.4` |
+| `@t2000/sdk` | `0.11.0` |
+| `@t2000/cli` | `0.11.0` |
 | `@t2000/x402` | `0.3.0` |
 | Agent Skills | `1.5` |
 
@@ -27,8 +27,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 10 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance` |
+| Skill count | 11 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -288,12 +288,25 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | `sentinelInfo()` | `id: string` | `SentinelAgent` |
 | `sentinelAttack()` | `id: string, prompt: string, fee?: bigint` | `SentinelAttackResult` |
 
+### Safeguards
+
+| Method | Description |
+|--------|-------------|
+| `agent.enforcer.getConfig()` | Returns current `SafeguardConfig` |
+| `agent.enforcer.isConfigured()` | `true` if any limit is non-zero |
+| `agent.enforcer.set(key, value)` | Set `maxPerTx`, `maxDailySend`, or `locked` |
+| `agent.enforcer.lock()` | Freeze all operations |
+| `agent.enforcer.unlock()` | Resume operations |
+| `agent.enforcer.check(metadata)` | Validate a `TxMetadata` against rules |
+| `agent.enforcer.recordUsage(amount)` | Record outbound USDC for daily tracking |
+
 ### Getters
 
 | Getter | Returns |
 |--------|---------|
 | `agent.suiClient` | `SuiJsonRpcClient` |
 | `agent.signer` | `Ed25519Keypair` |
+| `agent.enforcer` | `SafeguardEnforcer` |
 
 ### Events
 
@@ -433,6 +446,7 @@ Source: `packages/sdk/src/types.ts`
 | `SENTINEL_NOT_FOUND` | Sentinel agent not found | No |
 | `SENTINEL_TX_FAILED` | Sentinel transaction failed | No |
 | `SENTINEL_TEE_ERROR` | TEE attestation/prompt error | Yes |
+| `SAFEGUARD_BLOCKED` | Safeguard rule violated (locked, maxPerTx, maxDailySend) | No |
 | `UNKNOWN` | Unclassified error | Yes |
 
 Source: `packages/sdk/src/errors.ts`

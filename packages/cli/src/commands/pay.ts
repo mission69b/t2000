@@ -51,6 +51,9 @@ export function registerPay(program: Command) {
       try {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
+
+        agent.enforcer.check({ operation: 'pay', amount: parseFloat(opts.maxPrice) });
+
         const wallet = createX402Wallet(agent);
         const client = new x402Client(wallet);
 

@@ -1,7 +1,7 @@
 # t2000 Roadmap — v2.0
 
 **Last updated:** March 2026
-**Current version:** v0.10.4 (SDK + CLI published on npm, x402 v0.3.0)
+**Current version:** v0.11.0 (SDK + CLI published on npm, x402 v0.3.0)
 
 ---
 
@@ -56,7 +56,7 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | Stats API — `/api/stats` with protocol breakdown, agent activity | ✅ |
 | Deploy workflows — server + indexer CI/CD with typecheck gates | ✅ |
 
-### Yield Optimizer + Exchange (v0.8.0–v0.10.4)
+### Yield Optimizer + Exchange (v0.8.0–v0.11.0)
 
 | Feature | Status |
 |---------|--------|
@@ -69,7 +69,7 @@ Everything below is live on Sui mainnet, published on npm, and deployed.
 | `CLI_UX_SPEC.md` — design contract for all CLI output | ✅ |
 | Interactive demo page with all 7 command flows | ✅ |
 
-### Supported Assets (v0.10.4)
+### Supported Assets (v0.11.0)
 
 | Asset | Send | Save | Borrow | Swap | Rebalance |
 |-------|------|------|--------|------|-----------|
@@ -152,6 +152,134 @@ t2000 balance                        # shows APY + daily earnings
 | 10.14 | Build, bump to 0.10.4, publish | all | ✅ |
 
 **Detailed build plans:** `spec/phase10-multi-stable-build-plan.md`, `spec/phase10b-open-save-build-plan.md`, `spec/phase10c-usdc-simplification-build-plan.md`
+
+---
+
+## Phase 11 — MCP Server + Agent UI
+
+**Goal:** Make t2000 accessible to every AI platform (Claude Desktop, ChatGPT, Cursor, Codex) via MCP, then ship a local Agent UI for direct interaction. Two sub-phases — ship the protocol layer first, then the interface.
+
+**Prerequisites:** Phase 16 (Agent Safeguards) — every MCP tool call must pass through safeguard enforcement. Without spending limits, any connected AI agent could drain the wallet.
+
+### Phase 11a — MCP Server
+
+**Goal:** Wrap `@t2000/sdk` methods as MCP tools so any MCP-compatible AI can operate the agent's bank accounts.
+
+**Why MCP first:** MCP is the emerging standard for AI-to-tool communication. Shipping an MCP server instantly makes t2000 available in Claude Desktop, ChatGPT (plugin), Cursor, Windsurf, Codex, and any future MCP client — without building custom integrations for each.
+
+```bash
+t2000 mcp                             # Start MCP server (stdio transport)
+t2000 serve --mcp                     # Embed MCP in existing HTTP server
+```
+
+#### MCP Tools (15 tools)
+
+| Tool | Maps to | Category |
+|------|---------|----------|
+| `t2000_send` | `agent.send()` | Checking |
+| `t2000_balance` | `agent.getBalance()` | Read-only |
+| `t2000_positions` | `agent.getPositions()` | Read-only |
+| `t2000_rates` | `agent.getRates()` | Read-only |
+| `t2000_save` | `agent.save()` | Savings |
+| `t2000_withdraw` | `agent.withdraw()` | Savings |
+| `t2000_borrow` | `agent.borrow()` | Credit |
+| `t2000_repay` | `agent.repay()` | Credit |
+| `t2000_exchange` | `agent.exchange()` | Exchange |
+| `t2000_rebalance` | `agent.rebalance()` | Yield |
+| `t2000_pay` | `x402Client.fetch()` | x402 |
+| `t2000_config` | safeguard settings | Config |
+| `t2000_lock` | `agent.lock()` | Safety |
+| `t2000_unlock` | `agent.unlock()` | Safety |
+| `t2000_events` | `agent.getEvents()` | Read-only |
+
+#### Architecture
+
+- **Transport:** stdio (default for Claude Desktop / Cursor) + SSE (for remote/hosted)
+- **Auth:** Wallet key stays local. MCP server runs same-machine, no key transmission.
+- **Safeguards:** Every tool call passes through the Phase 16 enforcement layer before signing
+- **Confirmation:** State-changing tools return a preview + require explicit `confirm` call (two-step pattern)
+- **JSON output:** All responses use structured JSON — AI agents parse reliably
+
+#### Platform configs
+
+Ship ready-to-paste configs for:
+- Claude Desktop (`claude_desktop_config.json`)
+- Cursor (`.cursor/mcp.json`)
+- ChatGPT / OpenAI plugin manifest
+- Generic MCP client setup guide
+
+#### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 11a.1 | MCP server scaffold (stdio + SSE transport) | sdk | 3h | ⬜ |
+| 11a.2 | Implement 15 MCP tools wrapping SDK methods | sdk | 4h | ⬜ |
+| 11a.3 | Two-step confirmation pattern for state-changing tools | sdk | 2h | ⬜ |
+| 11a.4 | Safeguard enforcement on every MCP tool call | sdk | 2h | ⬜ |
+| 11a.5 | `t2000 mcp` CLI command + `--mcp` flag for `t2000 serve` | cli | 2h | ⬜ |
+| 11a.6 | Platform config files (Claude Desktop, Cursor, ChatGPT) | docs | 2h | ⬜ |
+| 11a.7 | Agent Skill: `t2000-mcp` | skills | 1h | ⬜ |
+| 11a.8 | Tests + docs | all | 3h | ⬜ |
+
+**Estimated total:** 3-4 days
+
+---
+
+### Phase 11b — Agent UI
+
+**Goal:** Ship a local-first chat interface for interacting with t2000. No cloud dependency. Launch from CLI, talk to your agent.
+
+**Why after MCP:** The Agent UI benefits from having all capabilities built (checking, savings, credit, exchange, yield, investment). Build the engine and all accounts first, then the cockpit.
+
+```bash
+t2000 ui                               # Launch local Next.js app at localhost:2000
+t2000 ui --port 3000                   # Custom port
+```
+
+#### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Chat interface** | Type commands or natural language, get formatted responses |
+| **Balance dashboard** | Always-visible sidebar showing all account tiers |
+| **Confirmation modals** | Review + approve state-changing operations before signing |
+| **Transaction history** | Scrollable feed of all operations with timestamps |
+| **Command palette** | Quick-access to all t2000 commands with autocomplete |
+| **Funding flow** | Moonpay deep link for on-ramping USDC to agent wallet |
+| **Dark/light mode** | System-aware with manual toggle |
+
+#### Architecture
+
+- **Local-first:** Next.js app bundled with CLI, runs on `localhost:2000`
+- **Backend:** Talks directly to `@t2000/sdk` — no separate API server needed
+- **No LLM required (v1):** Pattern matching + command parsing. Natural language understanding is optional (v2).
+- **Responsive:** Works on desktop and mobile browsers (for when hosted on Vercel later)
+
+#### Design principles
+
+- Minimal, modern, fast — no bloat
+- Confirmation before every state change
+- Real-time balance updates after operations
+- Keyboard-first with mouse support
+- Beautiful enough to demo, functional enough to use daily
+
+#### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 11b.1 | Scaffold Next.js app within CLI package or new `apps/agent-ui` | web | 3h | ⬜ |
+| 11b.2 | Chat interface component (input, message list, formatting) | web | 4h | ⬜ |
+| 11b.3 | Balance dashboard sidebar | web | 3h | ⬜ |
+| 11b.4 | Command parser (pattern matching, no LLM) | web | 4h | ⬜ |
+| 11b.5 | Confirmation modal system | web | 2h | ⬜ |
+| 11b.6 | Transaction history feed | web | 3h | ⬜ |
+| 11b.7 | Command palette with autocomplete | web | 2h | ⬜ |
+| 11b.8 | Moonpay deep link integration for funding | web | 2h | ⬜ |
+| 11b.9 | `t2000 ui` CLI command to launch | cli | 2h | ⬜ |
+| 11b.10 | Dark/light mode + responsive design | web | 2h | ⬜ |
+| 11b.11 | Tests + docs | all | 3h | ⬜ |
+
+**Estimated total:** 1-2 weeks
 
 ---
 
@@ -256,7 +384,9 @@ t2000 agents                     # List all profiles
 
 ---
 
-## Phase 16 — Agent Safeguards
+## Phase 16 — Agent Safeguards ✅
+
+**Status:** Shipped (v0.11.0)
 
 **Goal:** Spending limits, transaction controls, and safety guardrails for autonomous agents. Like a real bank's card controls — but for AI agents operating unsupervised.
 
@@ -608,21 +738,143 @@ jobs:
 
 ---
 
+## Phase 20 — On-ramp / Off-ramp + Card
+
+**Goal:** Close the fiat-to-crypto loop. On-ramp: fund the agent wallet with fiat. Off-ramp: spend crypto in the real world via virtual card. The last mile for t2000 to be a complete bank.
+
+**Why last:** On-ramp and off-ramp require third-party partnerships and regulatory navigation. Ship the product first, prove demand, then layer on fiat rails.
+
+### Phase 20a — On-ramp (Moonpay)
+
+**Goal:** Make it dead simple to fund an agent wallet with fiat. One command, one QR code.
+
+```bash
+t2000 deposit                          # Show QR code + Moonpay deep link
+t2000 deposit --amount 100             # Pre-fill $100 USDC purchase
+```
+
+#### How it works
+
+1. User runs `t2000 deposit`
+2. CLI generates a Moonpay deep link with the agent's Sui address pre-filled
+3. Displays QR code in terminal + clickable URL
+4. User completes KYC + purchase on Moonpay (card, bank transfer, Apple Pay)
+5. USDC arrives in agent wallet — CLI polls and confirms
+
+#### Features
+
+| Feature | Description |
+|---------|-------------|
+| Deep link generation | Pre-fill wallet address, amount, currency (USDC on Sui) |
+| QR code in terminal | Scannable from mobile for quick purchase |
+| Agent UI integration | Moonpay widget embedded in Agent UI (11b) |
+| Deposit polling | Watch for incoming USDC after Moonpay redirect |
+
+#### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 20a.1 | Moonpay deep link builder (address, amount, currency params) | sdk | 2h | ⬜ |
+| 20a.2 | QR code generation in CLI terminal | cli | 2h | ⬜ |
+| 20a.3 | `t2000 deposit` CLI command | cli | 2h | ⬜ |
+| 20a.4 | Deposit polling (watch for incoming USDC) | sdk | 2h | ⬜ |
+| 20a.5 | Agent UI: Moonpay widget / deep link button | web | 2h | ⬜ |
+| 20a.6 | Agent Skill: `t2000-deposit` | skills | 1h | ⬜ |
+| 20a.7 | Tests + docs | all | 1h | ⬜ |
+
+**Estimated total:** 2 days
+
+---
+
+### Phase 20b — Off-ramp / Virtual Card
+
+**Goal:** Spend USDC in the real world. Fund a virtual Visa from the agent's checking balance, use it anywhere Visa is accepted.
+
+**Status:** Research phase. Evaluating partners.
+
+#### Partner options
+
+| Partner | Model | Pros | Cons |
+|---------|-------|------|------|
+| **CardForAgent.com** | Virtual cards for AI agents | Purpose-built for agents, API-first | New/unproven, limited info |
+| **Slash** | MCP-native virtual cards | MCP integration ready, Visa network | Requires Base USDC (bridging needed) |
+| **AgentCard** | Programmable agent cards | Designed for autonomous spending | Early stage |
+| **Stripe Issuing** | BaaS card issuance | Mature platform, global | Requires entity registration, regulatory burden |
+
+#### Architecture (tentative)
+
+```
+t2000 agent
+├── Checking: USDC balance (Sui)
+├── Savings: Earning yield (NAVI + Suilend)
+├── Credit: Borrow against savings
+├── Exchange: Cetus DEX
+├── x402 Pay: Agent-to-agent API payments
+└── Card: Virtual Visa for real-world commerce (Phase 20b)
+```
+
+#### Open questions
+
+- **Cross-chain bridging:** Most card issuers require USDC on Base or Ethereum. Need to bridge from Sui — adds friction and gas cost.
+- **Regulatory:** Virtual card issuance may require money transmitter licensing depending on jurisdiction. BVI entity (mission69b) needs evaluation.
+- **Agent autonomy:** Should the agent be able to spend on the card autonomously? Safeguards (Phase 16) must gate card spending with limits.
+
+#### Tasks
+
+| # | Task | Package | Est | Status |
+|---|------|---------|-----|--------|
+| 20b.1 | Research: evaluate CardForAgent, Slash, AgentCard APIs | research | 4h | ⬜ |
+| 20b.2 | Research: Sui → Base bridging options + costs | research | 2h | ⬜ |
+| 20b.3 | Research: regulatory requirements for BVI entity | research | 2h | ⬜ |
+| 20b.4 | Partner integration (API client for chosen provider) | sdk | 8h | ⬜ |
+| 20b.5 | `t2000 card` CLI command group (fund, freeze, limits, transactions) | cli | 4h | ⬜ |
+| 20b.6 | Safeguard integration (card spending limits) | sdk | 2h | ⬜ |
+| 20b.7 | Agent UI: card management view | web | 4h | ⬜ |
+| 20b.8 | Tests + docs | all | 3h | ⬜ |
+
+**Estimated total:** 2-3 weeks (including research + partner onboarding)
+
+---
+
 ## Priority Summary
+
+### Execution order
+
+The agreed execution sequence, reflecting "infra first" — safeguards unlock everything else:
+
+```
+Phase 16: Safeguards          ← prerequisite for MCP + Investment
+    ↓
+Phase 11a: MCP Server         ← quick win, massive distribution
+    ↓
+Phase 17: Investment Account  ← major feature, needs safeguards
+    ↓
+Phase 11b: Agent UI           ← best after all capabilities exist
+    ↓
+Phase 12: Monetize            ← agent economy layer
+    ↓
+Phase 20: On-ramp + Card      ← fiat rails, last mile
+```
+
+### Priority table
 
 | Phase | Feature | Priority | Effort | Status |
 |-------|---------|----------|--------|--------|
 | **19** | Security Audit + Trust Infrastructure | **P0** | 3-4 days | ✅ Done |
 | **10** | Yield Optimizer + Multi-Stable Infrastructure | **P0** | 3 days | ✅ Done (v0.10.4) |
-| **16** | Agent Safeguards (limits, controls, lock) | **P0** | 3-4 days | ⬜ Next |
-| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ Depends on 16 |
+| **16** | Agent Safeguards (limits, controls, lock) | **P0** | 1.5 days | ✅ Done (v0.11.0) |
+| **11a** | MCP Server (15 tools, multi-platform) | **P0** | 3-4 days | ⬜ Next |
+| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | ⬜ After 16 |
+| **11b** | Agent UI (local chat + dashboard) | **P0** | 1-2 weeks | ⬜ After 17 |
 | **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
 | **13** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
 | **18** | Global Payments (contacts, receipts) | P1 | 3-4 days | 🔶 Send shipped |
+| **20a** | On-ramp (Moonpay deep link) | P1 | 2 days | ⬜ |
+| **20b** | Off-ramp / Virtual Card | P2 | 2-3 weeks | ⬜ Research needed |
 | **14** | Multi-Agent Profiles | P2 | 1 week | ⬜ |
 | **15** | Cross-Chain (CCTP) | P3 | TBD | Blocked |
 
 ---
 
 *t2000 — The first bank account for AI agents.*
-*Roadmap v2.4*
+*Roadmap v2.5*

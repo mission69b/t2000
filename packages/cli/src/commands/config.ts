@@ -2,10 +2,13 @@ import type { Command } from 'commander';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printSuccess, printInfo } from '../output.js';
+import { SafeguardEnforcer } from '@t2000/sdk';
+import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printSuccess, printInfo, printHeader, printDivider } from '../output.js';
 
 const CONFIG_DIR = join(homedir(), '.t2000');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
+
+const SAFEGUARD_KEYS = new Set(['locked', 'maxPerTx', 'maxDailySend', 'dailyUsed', 'dailyResetDate', 'alertThreshold']);
 
 function loadConfig(): Record<string, unknown> {
   try {
@@ -22,10 +25,46 @@ function saveConfig(config: Record<string, unknown>): void {
   writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
 }
 
+function formatUsd(amount: number): string {
+  return `$${amount.toFixed(2)}`;
+}
+
 export function registerConfig(program: Command) {
   const configCmd = program
     .command('config')
     .description('Show or set configuration');
+
+  configCmd
+    .command('show')
+    .description('Show safeguard settings')
+    .action(() => {
+      try {
+        const enforcer = new SafeguardEnforcer(CONFIG_DIR);
+        enforcer.load();
+        const config = enforcer.getConfig();
+
+        if (isJsonMode()) {
+          printJson({
+            locked: config.locked,
+            maxPerTx: config.maxPerTx,
+            maxDailySend: config.maxDailySend,
+            dailyUsed: config.dailyUsed,
+          });
+          return;
+        }
+
+        printHeader('Agent Safeguards');
+        printDivider();
+        printKeyValue('Locked', config.locked ? 'Yes' : 'No');
+        printKeyValue('Per-transaction', config.maxPerTx > 0 ? formatUsd(config.maxPerTx) : 'Unlimited');
+        printKeyValue('Daily send limit', config.maxDailySend > 0
+          ? `${formatUsd(config.maxDailySend)} (${formatUsd(config.dailyUsed)} used today)`
+          : 'Unlimited');
+        printBlank();
+      } catch (error) {
+        handleError(error);
+      }
+    });
 
   configCmd
     .command('get')
@@ -63,9 +102,30 @@ export function registerConfig(program: Command) {
     .argument('<value>', 'Config value')
     .action((key: string, value: string) => {
       try {
+        if (SAFEGUARD_KEYS.has(key)) {
+          const enforcer = new SafeguardEnforcer(CONFIG_DIR);
+          enforcer.load();
+
+          let parsed: unknown = value;
+          if (value === 'true') parsed = true;
+          else if (value === 'false') parsed = false;
+          else if (!isNaN(Number(value)) && value.trim() !== '') parsed = Number(value);
+
+          enforcer.set(key, parsed);
+
+          if (isJsonMode()) {
+            printJson({ [key]: parsed });
+            return;
+          }
+
+          printBlank();
+          printSuccess(`Set ${key} = ${String(parsed)}`);
+          printBlank();
+          return;
+        }
+
         const config = loadConfig();
 
-        // Parse booleans and numbers
         let parsed: unknown = value;
         if (value === 'true') parsed = true;
         else if (value === 'false') parsed = false;

@@ -115,6 +115,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Exchange** | Swap between any supported tokens | [Cetus DEX](https://www.cetus.zone) CLMM pools |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
+| **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
 
@@ -173,6 +174,13 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.healthFactor()` | Liquidation safety |
 | **Info** | `agent.rates()` | Current APYs |
 | | `agent.positions()` | Open DeFi positions |
+| **Safeguards** | `agent.enforcer.getConfig()` | Safeguard settings |
+| | `agent.enforcer.set({ maxPerTx?, maxDailySend? })` | Set limits |
+| | `agent.enforcer.lock()` | Lock agent (freeze all operations) |
+| | `agent.enforcer.unlock(pin)` | Unlock agent |
+| | `agent.enforcer.check(amount)` | Check if amount allowed |
+| | `agent.enforcer.recordUsage(amount)` | Record send for daily limit |
+| | `agent.enforcer.isConfigured()` | Whether safeguards are set up |
 | **Sentinel** | `agent.sentinelList()` | Browse active sentinels |
 | | `agent.sentinelAttack(id, prompt)` | Full attack flow |
 
@@ -208,6 +216,13 @@ t2000 earn                         Show all earning opportunities
 t2000 sentinel list                Browse active sentinels
 t2000 sentinel attack <id> "..."   Attack a sentinel (costs SUI)
 t2000 sentinel info <id>           Sentinel details
+
+# Safeguards
+t2000 config show                  View safeguard settings
+t2000 config set maxPerTx 500      Set per-transaction limit
+t2000 config set maxDailySend 1000 Set daily send limit
+t2000 lock                         Lock agent (freeze all operations)
+t2000 unlock                       Unlock agent (requires PIN)
 
 # HTTP API (for non-TypeScript agents)
 t2000 serve --port 3001            Start HTTP API server

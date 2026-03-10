@@ -51,6 +51,12 @@ import type {
 import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
 import { truncateAddress } from './utils/sui.js';
+import { SafeguardEnforcer } from './safeguards/enforcer.js';
+import type { TxMetadata } from './safeguards/types.js';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
+const DEFAULT_CONFIG_DIR = join(homedir(), '.t2000');
 
 interface T2000Events {
   balanceChange: (event: { asset: string; previous: number; current: number; cause: string; tx?: string }) => void;
@@ -67,13 +73,16 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly client: SuiJsonRpcClient;
   private readonly _address: string;
   private readonly registry: ProtocolRegistry;
+  readonly enforcer: SafeguardEnforcer;
 
-  private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry) {
+  private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry, configDir?: string) {
     super();
     this.keypair = keypair;
     this.client = client;
     this._address = getAddress(keypair);
     this.registry = registry ?? T2000.createDefaultRegistry(client);
+    this.enforcer = new SafeguardEnforcer(configDir);
+    this.enforcer.load();
   }
 
   private static createDefaultRegistry(client: SuiJsonRpcClient): ProtocolRegistry {
@@ -101,7 +110,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       if (secret) {
         await saveKey(keypair, secret, keyPath);
       }
-      return new T2000(keypair, client);
+      return new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);
     }
 
     const exists = await walletExists(keyPath);
@@ -117,7 +126,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     const keypair = await loadKey(secret, keyPath);
-    return new T2000(keypair, client);
+    return new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);
   }
 
   static fromPrivateKey(privateKey: string, options: { network?: 'mainnet' | 'testnet'; rpcUrl?: string } = {}): T2000 {
@@ -132,7 +141,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     await saveKey(keypair, secret, options.keyPath);
 
     const client = getSuiClient();
-    const agent = new T2000(keypair, client);
+    const agent = new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);
     const address = agent.address();
 
     let sponsored = false;
@@ -167,6 +176,8 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async send(params: { to: string; amount: number; asset?: string }): Promise<SendResult> {
+    this.enforcer.assertNotLocked();
+
     const asset = (params.asset ?? 'USDC') as keyof typeof SUPPORTED_ASSETS;
     if (!(asset in SUPPORTED_ASSETS)) {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
@@ -177,8 +188,10 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const gasResult = await executeWithGas(this.client, this.keypair, () =>
       buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset }),
+      { metadata: { operation: 'send', amount: sendAmount }, enforcer: this.enforcer },
     );
 
+    this.enforcer.recordUsage(sendAmount);
     const balance = await this.balance();
 
     this.emitBalanceChange(asset, sendAmount, 'send', gasResult.digest);
@@ -248,6 +261,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Savings --
 
   async save(params: { amount: number | 'all'; protocol?: string }): Promise<SaveResult> {
+    this.enforcer.assertNotLocked();
     const asset = 'USDC';
     const bal = await queryBalance(this.client, this._address);
     const usdcBalance = bal.stables.USDC ?? 0;
@@ -363,6 +377,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async withdraw(params: { amount: number | 'all'; protocol?: string }): Promise<WithdrawResult> {
+    this.enforcer.assertNotLocked();
     if (params.amount === 'all' && !params.protocol) {
       return this.withdrawAllProtocols();
     }
@@ -636,6 +651,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Borrowing --
 
   async borrow(params: { amount: number; protocol?: string }): Promise<BorrowResult> {
+    this.enforcer.assertNotLocked();
     const asset = 'USDC';
     const adapter = await this.resolveLending(params.protocol, asset, 'borrow');
 
@@ -673,6 +689,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async repay(params: { amount: number | 'all'; protocol?: string }): Promise<RepayResult> {
+    this.enforcer.assertNotLocked();
     // Find actual borrows (may be non-USDC from rebalance or legacy)
     const allPositions = await this.registry.allPositions(this._address);
     const borrows: Array<{ protocolId: string; asset: string; amount: number; apy: number }> = [];
@@ -852,6 +869,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Exchange --
 
   async exchange(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
+    this.enforcer.assertNotLocked();
     const fromAsset = params.from as keyof typeof SUPPORTED_ASSETS;
     const toAsset = params.to as keyof typeof SUPPORTED_ASSETS;
 
@@ -987,6 +1005,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async rebalance(opts: { dryRun?: boolean; minYieldDiff?: number; maxBreakEven?: number } = {}): Promise<RebalanceResult> {
+    this.enforcer.assertNotLocked();
     const dryRun = opts.dryRun ?? false;
     const minYieldDiff = opts.minYieldDiff ?? 0.5;
     const maxBreakEven = opts.maxBreakEven ?? 30;
@@ -1301,6 +1320,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async sentinelAttack(id: string, prompt: string, fee?: bigint): Promise<SentinelAttackResult> {
+    this.enforcer.check({ operation: 'sentinel', amount: fee ? Number(fee) / 1e9 : 0.1 });
     return sentinel.attack(this.client, this.keypair, id, prompt, fee);
   }
 

@@ -77,6 +77,9 @@ export {
   settleAttack,
   attack as sentinelAttack,
 } from './protocols/sentinel.js';
+export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
+export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
+export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';
 export {
   executeWithGas,
   shouldAutoTopUp,

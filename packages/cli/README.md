@@ -95,7 +95,8 @@ t2000 init
 | Command | Description |
 |---------|-------------|
 | `t2000 init` | Create a new agent bank account (Ed25519 keypair, AES-256-GCM encrypted) |
-| `t2000 lock` | Clear saved session (require PIN on next command) |
+| `t2000 lock` | Lock agent — freeze all operations |
+| `t2000 unlock` | Unlock agent — resume operations (requires PIN) |
 | `t2000 balance` | Show available USDC + savings + gas reserve |
 | `t2000 balance --show-limits` | Include maxWithdraw, maxBorrow, and health factor |
 | `t2000 address` | Show wallet address |
@@ -152,6 +153,16 @@ t2000 init
 | `t2000 sentinel info <id>` | Show details for a specific sentinel |
 | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel with an adversarial prompt (costs SUI) |
 | `t2000 sentinel attack <id> [prompt] --fee 0.5` | Override attack fee (default: sentinel's min fee) |
+
+### Safeguards
+
+| Command | Description |
+|---------|-------------|
+| `t2000 config show` | View safeguard settings |
+| `t2000 config set maxPerTx 500` | Set per-transaction limit |
+| `t2000 config set maxDailySend 1000` | Set daily send limit |
+| `t2000 lock` | Lock agent (freeze all operations) |
+| `t2000 unlock` | Unlock agent (requires PIN) |
 
 ### Configuration
 

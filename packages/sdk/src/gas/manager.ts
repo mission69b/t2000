@@ -10,6 +10,8 @@ import type { GasMethod } from '../types.js';
 import { T2000Error, isMoveAbort, parseMoveAbortMessage } from '../errors.js';
 import { shouldAutoTopUp, executeAutoTopUp } from './autoTopUp.js';
 import { requestGasSponsorship, reportGasUsage } from './gasStation.js';
+import type { SafeguardEnforcer } from '../safeguards/enforcer.js';
+import type { TxMetadata } from '../safeguards/types.js';
 
 export interface GasExecutionResult {
   digest: string;
@@ -138,7 +140,12 @@ export async function executeWithGas(
   client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
   buildTx: () => Transaction | Promise<Transaction>,
+  options?: { metadata?: TxMetadata; enforcer?: SafeguardEnforcer },
 ): Promise<GasExecutionResult> {
+  if (options?.enforcer && options?.metadata) {
+    options.enforcer.check(options.metadata);
+  }
+
   const errors: string[] = [];
 
   // Step 1: Try self-funded
