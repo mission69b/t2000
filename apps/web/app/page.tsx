@@ -11,7 +11,7 @@ const DEMO_URL = "/demo";
 
 const ACCOUNTS = [
   {
-    num: "01 / 05",
+    num: "01 / 04",
     icon: "⟳",
     title: "Checking",
     subtitle: "Send · Receive · Balance",
@@ -19,7 +19,7 @@ const ACCOUNTS = [
     cmd: "t2000 send 10 USDC to 0x8b3e...",
   },
   {
-    num: "02 / 05",
+    num: "02 / 04",
     icon: "◈",
     title: "Savings",
     subtitle: "Earn · Yield · Multi-protocol",
@@ -27,7 +27,7 @@ const ACCOUNTS = [
     cmd: "t2000 save all",
   },
   {
-    num: "03 / 05",
+    num: "03 / 04",
     icon: "◎",
     title: "Credit",
     subtitle: "Borrow · Repay · DeFi",
@@ -35,20 +35,12 @@ const ACCOUNTS = [
     cmd: "t2000 borrow 40",
   },
   {
-    num: "04 / 05",
+    num: "04 / 04",
     icon: "⇌",
     title: "Exchange",
     subtitle: "Swap · Cetus DEX · On-chain",
     desc: "Swap between any supported tokens via Cetus DEX. Slippage is enforced on-chain. The agent can acquire gas, convert earnings, or exchange currencies — all autonomously.",
     cmd: "t2000 exchange 5 USDC SUI",
-  },
-  {
-    num: "05 / 05",
-    icon: "◇",
-    title: "Yield Optimizer",
-    subtitle: "Rebalance · Multi-stable · Auto",
-    desc: "Automatically moves savings to the highest-yielding stablecoin across NAVI and Suilend. Handles withdrawals, swaps, and deposits in a single atomic transaction.",
-    cmd: "t2000 rebalance",
   },
 ];
 
@@ -327,7 +319,7 @@ export default function Home() {
       {/* ── Divider ── */}
       <div className="relative z-1 px-6 sm:px-10 lg:px-20 border-t border-border">
         <div className="text-[10px] tracking-[0.2em] uppercase text-dim py-5 flex items-center gap-4">
-          Five accounts. One agent. Zero friction.
+          Four accounts. One agent. Zero friction.
           <span className="flex-1 h-px bg-border" />
         </div>
       </div>
@@ -340,7 +332,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-              Five accounts
+              Four accounts
             </div>
             <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Everything a bank offers.
