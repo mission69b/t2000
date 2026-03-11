@@ -116,33 +116,6 @@ const X402_STEPS = [
   },
 ];
 
-const MCP_TOOLS: { name: string; category: "read" | "write" | "safety" }[] = [
-  { name: "t2000_balance", category: "read" },
-  { name: "t2000_address", category: "read" },
-  { name: "t2000_positions", category: "read" },
-  { name: "t2000_rates", category: "read" },
-  { name: "t2000_health", category: "read" },
-  { name: "t2000_history", category: "read" },
-  { name: "t2000_earnings", category: "read" },
-  { name: "t2000_send", category: "write" },
-  { name: "t2000_save", category: "write" },
-  { name: "t2000_withdraw", category: "write" },
-  { name: "t2000_borrow", category: "write" },
-  { name: "t2000_repay", category: "write" },
-  { name: "t2000_exchange", category: "write" },
-  { name: "t2000_rebalance", category: "write" },
-  { name: "t2000_config", category: "safety" },
-  { name: "t2000_lock", category: "safety" },
-];
-
-const MCP_PROMPTS = [
-  "financial-report",
-  "optimize-yield",
-  "send-money",
-  "budget-check",
-  "savings-strategy",
-];
-
 const MCP_PLATFORMS = [
   "Claude Desktop",
   "Cursor",
@@ -532,9 +505,8 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            One command. 16 tools. 5 prompts. Your AI can check balances,
-            send money, earn yield, borrow, and swap — all with safeguard limits
-            baked in. No config files to edit.
+            One command connects Claude Desktop, Cursor, or any MCP client.
+            Your AI gets 16 tools with safeguard limits — no config files to edit.
           </p>
         </div>
 
@@ -566,42 +538,41 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Right: Tool list + prompts + platforms */}
+          {/* Right: What your AI gets + platforms */}
           <div>
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-3">
-              16 tools · 5 prompts
+              What your AI gets
             </div>
-
-            <div className="flex flex-col gap-px bg-border border border-border overflow-hidden mb-4">
-              {MCP_TOOLS.map((tool) => (
+            <div className="flex flex-col gap-px bg-border border border-border overflow-hidden mb-8">
+              {[
+                { label: "Check balance, rates, positions, earnings, health", tag: "7 read tools" },
+                { label: "Send, save, borrow, repay, swap, rebalance", tag: "7 write tools" },
+                { label: "View/set limits, emergency lock", tag: "2 safety tools" },
+                { label: "Financial report, savings strategy, budget check", tag: "5 prompts" },
+              ].map((row) => (
                 <div
-                  key={tool.name}
-                  className="grid grid-cols-[1fr_70px] bg-panel transition-colors hover:bg-[rgba(0,214,143,0.03)]"
+                  key={row.tag}
+                  className="grid grid-cols-[1fr_auto] bg-panel px-4 py-2.5"
                 >
-                  <div className="px-4 py-2 text-xs text-accent font-mono">
-                    {tool.name}
-                  </div>
-                  <div className={`px-3 py-2 text-[10px] tracking-wide uppercase text-right ${
-                    tool.category === "read"
-                      ? "text-muted"
-                      : tool.category === "write"
-                      ? "text-amber-400/70"
-                      : "text-red-400/70"
-                  }`}>
-                    {tool.category}
-                  </div>
+                  <span className="text-xs text-muted">{row.label}</span>
+                  <span className="text-[10px] tracking-wide uppercase text-accent text-right">{row.tag}</span>
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-1.5 mb-8">
-              {MCP_PROMPTS.map((p) => (
-                <span
-                  key={p}
-                  className="text-[11px] px-2.5 py-1 bg-panel border border-border text-muted font-mono"
-                >
-                  {p}
-                </span>
+            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-3">
+              Try asking
+            </div>
+            <div className="flex flex-col gap-2 mb-8">
+              {[
+                "What's my t2000 balance?",
+                "Send $5 USDC to 0x8b3e… — dry run first",
+                "Can I afford to spend $50?",
+                "Where should I put my idle funds?",
+              ].map((q) => (
+                <p key={q} className="text-xs text-muted/70 italic">
+                  &ldquo;{q}&rdquo;
+                </p>
               ))}
             </div>
 
@@ -621,13 +592,22 @@ export default function Home() {
               </div>
             </div>
 
-            <p className="text-[11px] text-muted/50 mt-6">
-              Also available as{" "}
-              <a href="https://github.com/mission69b/t2000-skills" className="underline hover:text-accent transition-colors">
-                Agent Skills
-              </a>{" "}
-              for platforms without MCP.
-            </p>
+            <div className="mt-8 pt-6 border-t border-border">
+              <div className="text-[10px] tracking-[0.2em] uppercase text-muted mb-2">
+                Also available as Agent Skills
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-muted">
+                <span className="text-muted/50">$</span>
+                <span className="font-mono">npx skills add mission69b/t2000-skills</span>
+              </div>
+              <p className="text-[11px] text-muted/60 mt-2">
+                For platforms without MCP support.{" "}
+                <a href="https://github.com/mission69b/t2000-skills" className="underline hover:text-accent transition-colors">
+                  10 skills
+                </a>{" "}
+                for Claude Code, Codex, Copilot, and 20+ more.
+              </p>
+            </div>
           </div>
         </div>
       </section>
