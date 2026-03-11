@@ -283,7 +283,13 @@ body::after {
   <div class="chat-frame" id="cf10"><div class="chat-body" id="cb10"></div></div>
 </div>
 
-<!-- 11. Outro -->
+<!-- 11. t2000 MCP / now live -->
+<div id="s11" class="scene">
+  <div class="card-main">t2000 MCP</div>
+  <div class="card-sub" style="font-size:18px;margin-top:16px;letter-spacing:2px;text-transform:uppercase">now live.</div>
+</div>
+
+<!-- 12. Outro -->
 <div id="outro" class="scene">
   <div class="logo">t2000</div>
   <div class="tagline">The first bank account for AI agents.</div>
@@ -506,7 +512,10 @@ async function run() {
   ]);
   await sleep(1200);
 
-  // 11. Outro
+  // 11. t2000 MCP — now live
+  await showCard('#s11', 3000);
+
+  // 12. Outro
   show('#outro');
   await sleep(300);
   $('#outro .logo').classList.add('in');
