@@ -124,6 +124,7 @@ const MCP_PLATFORMS = [
   "OpenAI Codex",
   "GitHub Copilot",
   "Amp",
+  "OpenClaw",
   "+ any MCP client",
 ];
 
