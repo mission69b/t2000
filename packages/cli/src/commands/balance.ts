@@ -64,11 +64,18 @@ export function registerBalance(program: Command) {
         if (bal.savings > 0.01) {
           const positions = await agent.positions();
           const saves = positions.positions.filter(p => p.type === 'save');
+          const borrows = positions.positions.filter(p => p.type === 'borrow');
           const weightedApy = saves.length > 0
             ? saves.reduce((sum, p) => sum + p.amount * p.apy, 0) / saves.reduce((sum, p) => sum + p.amount, 0)
             : 0;
           const dailyEarning = bal.savings * (weightedApy / 100) / 365;
           printKeyValue('Savings', `${formatUsd(bal.savings)}  ${pc.dim(`(earning ${weightedApy.toFixed(2)}% APY)`)}`);
+          if (bal.debt > 0.01) {
+            const borrowApy = borrows.length > 0
+              ? borrows.reduce((sum, p) => sum + p.amount * p.apy, 0) / borrows.reduce((sum, p) => sum + p.amount, 0)
+              : 0;
+            printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}  ${pc.dim(`(${borrowApy.toFixed(2)}% APY)`)}`);
+          }
           printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
           printSeparator();
           printKeyValue('Total', `${formatUsd(bal.total)}`);
@@ -76,6 +83,9 @@ export function registerBalance(program: Command) {
             printLine(`  ${pc.dim(`Earning ~${formatUsd(dailyEarning)}/day`)}`);
           }
         } else {
+          if (bal.debt > 0.01) {
+            printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}`);
+          }
           printKeyValue('Savings', `${formatUsd(bal.savings)}`);
           printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
           printSeparator();

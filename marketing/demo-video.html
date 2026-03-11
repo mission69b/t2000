@@ -394,10 +394,12 @@ async function run() {
     { type: 'think', ms: 1200 },
     { type: 'ai', tools: ['t2000_balance', 't2000_rates'],
       html: `<table class="rt">
-        <tr><td>Checking</td><td class="hi">$96.81 USDC</td></tr>
-        <tr><td>Savings</td><td>$5.10 \u00b7 4.98% APY</td></tr>
-        <tr><td>Gas</td><td>0.86 SUI (~$0.84)</td></tr>
-        <tr><td><strong>Total</strong></td><td class="hi"><strong>$102.75</strong></td></tr>
+        <tr><td>Checking</td><td class="hi">$96.81 USDC</td><td class="nt">spendable</td></tr>
+        <tr><td>Savings</td><td>$5.10</td><td class="nt">4.98% APY</td></tr>
+        <tr><td>Credit</td><td>$0.00</td><td class="nt">no active loans</td></tr>
+        <tr><td style="opacity:0.35">Investment</td><td style="opacity:0.35">\u2014</td><td style="opacity:0.35;font-size:9px">coming soon</td></tr>
+        <tr><td>Gas</td><td>0.86 SUI</td><td class="nt">~$0.84</td></tr>
+        <tr style="border-top:1px solid var(--border-b)"><td><strong>Total</strong></td><td class="hi"><strong>$102.75</strong></td><td></td></tr>
       </table>
       <div class="nt">93% of your funds are idle in checking earning nothing.</div>`,
       hold: 2500

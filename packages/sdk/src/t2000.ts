@@ -216,8 +216,12 @@ export class T2000 extends EventEmitter<T2000Events> {
       const savings = positions.positions
         .filter((p) => p.type === 'save')
         .reduce((sum, p) => sum + p.amount, 0);
+      const debt = positions.positions
+        .filter((p) => p.type === 'borrow')
+        .reduce((sum, p) => sum + p.amount, 0);
       bal.savings = savings;
-      bal.total = bal.available + savings + bal.gasReserve.usdEquiv;
+      bal.debt = debt;
+      bal.total = bal.available + savings - debt + bal.gasReserve.usdEquiv;
     } catch {
       // NAVI unavailable — show basic balance
     }

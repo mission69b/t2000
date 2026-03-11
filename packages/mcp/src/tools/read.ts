@@ -6,7 +6,7 @@ import { errorResult } from '../errors.js';
 export function registerReadTools(server: McpServer, agent: T2000): void {
   server.tool(
     't2000_balance',
-    "Get agent's current balance — available (checking), savings, gas reserve, and total. All values in USD.",
+    "Get agent's current balance — available (checking), savings, credit (debt), gas reserve, and net total. All values in USD.",
     {},
     async () => {
       try {

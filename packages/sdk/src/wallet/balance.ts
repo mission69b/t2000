@@ -84,6 +84,7 @@ export async function queryBalance(
   return {
     available: totalStables,
     savings,
+    debt: 0,
     gasReserve: {
       sui: suiAmount,
       usdEquiv,

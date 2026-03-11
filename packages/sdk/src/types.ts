@@ -18,6 +18,7 @@ export interface GasReserve {
 export interface BalanceResponse {
   available: number;
   savings: number;
+  debt: number;
   gasReserve: GasReserve;
   total: number;
   assets: Record<string, number>;
