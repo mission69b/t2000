@@ -31,13 +31,18 @@ export class SafeguardEnforcer {
   }
 
   assertNotLocked(): void {
+    this.load();
     if (this.config.locked) {
       throw new SafeguardError('locked', {});
     }
   }
 
   check(metadata: TxMetadata): void {
-    this.assertNotLocked();
+    this.load();
+
+    if (this.config.locked) {
+      throw new SafeguardError('locked', {});
+    }
 
     if (!OUTBOUND_OPS.has(metadata.operation)) return;
 
@@ -89,6 +94,7 @@ export class SafeguardEnforcer {
   }
 
   getConfig(): SafeguardConfig {
+    this.load();
     this.resetDailyIfNewDay();
     return { ...this.config };
   }
