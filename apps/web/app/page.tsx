@@ -210,6 +210,12 @@ const COMPARE_ROWS: {
     t2000: "✓ 16 tools + 5 prompts",
     coinbaseCross: true,
   },
+  {
+    feature: "Address Book",
+    coinbase: "—",
+    t2000: "Coming soon",
+    coinbaseCross: true,
+  },
 ];
 
 export default function Home() {
