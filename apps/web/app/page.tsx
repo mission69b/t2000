@@ -116,6 +116,33 @@ const X402_STEPS = [
   },
 ];
 
+const MCP_TOOLS: { name: string; category: "read" | "write" | "safety" }[] = [
+  { name: "t2000_balance", category: "read" },
+  { name: "t2000_address", category: "read" },
+  { name: "t2000_positions", category: "read" },
+  { name: "t2000_rates", category: "read" },
+  { name: "t2000_health", category: "read" },
+  { name: "t2000_history", category: "read" },
+  { name: "t2000_earnings", category: "read" },
+  { name: "t2000_send", category: "write" },
+  { name: "t2000_save", category: "write" },
+  { name: "t2000_withdraw", category: "write" },
+  { name: "t2000_borrow", category: "write" },
+  { name: "t2000_repay", category: "write" },
+  { name: "t2000_exchange", category: "write" },
+  { name: "t2000_rebalance", category: "write" },
+  { name: "t2000_config", category: "safety" },
+  { name: "t2000_lock", category: "safety" },
+];
+
+const MCP_PROMPTS = [
+  "financial-report",
+  "optimize-yield",
+  "send-money",
+  "budget-check",
+  "savings-strategy",
+];
+
 const MCP_PLATFORMS = [
   "Claude Desktop",
   "Cursor",
@@ -505,8 +532,9 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            One command connects Claude Desktop, Cursor, or any MCP client.
-            Your AI gets 16 tools with safeguard limits — no config files to edit.
+            One command. 16 tools. 5 prompts. Your AI can check balances,
+            send money, earn yield, borrow, and swap — all with safeguard limits
+            baked in. No config files to edit.
           </p>
         </div>
 
@@ -538,37 +566,59 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Right: What your AI gets + platforms */}
+          {/* Right: Tool list + prompts + platforms */}
           <div>
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-3">
-              What your AI gets
+              16 tools · 5 prompts
             </div>
-            <div className="flex flex-col gap-px bg-border border border-border overflow-hidden mb-8">
-              {[
-                { label: "Check balance, rates, positions, earnings, health", tag: "7 read tools" },
-                { label: "Send, save, borrow, repay, swap, rebalance", tag: "7 write tools" },
-                { label: "View/set limits, emergency lock", tag: "2 safety tools" },
-                { label: "Financial report, savings strategy, budget check", tag: "5 prompts" },
-              ].map((row) => (
+
+            <div className="flex flex-col gap-px bg-border border border-border overflow-hidden mb-4">
+              {MCP_TOOLS.map((tool) => (
                 <div
-                  key={row.tag}
-                  className="grid grid-cols-[1fr_auto] bg-panel px-4 py-2.5"
+                  key={tool.name}
+                  className="grid grid-cols-[1fr_70px] bg-panel transition-colors hover:bg-[rgba(0,214,143,0.03)]"
                 >
-                  <span className="text-xs text-muted">{row.label}</span>
-                  <span className="text-[10px] tracking-wide uppercase text-accent text-right">{row.tag}</span>
+                  <div className="px-4 py-2 text-xs text-accent font-mono">
+                    {tool.name}
+                  </div>
+                  <div className={`px-3 py-2 text-[10px] tracking-wide uppercase text-right ${
+                    tool.category === "read"
+                      ? "text-muted"
+                      : tool.category === "write"
+                      ? "text-amber-400/70"
+                      : "text-red-400/70"
+                  }`}>
+                    {tool.category}
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {MCP_PLATFORMS.map((p) => (
+            <div className="flex flex-wrap gap-1.5 mb-8">
+              {MCP_PROMPTS.map((p) => (
                 <span
                   key={p}
-                  className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
+                  className="text-[11px] px-2.5 py-1 bg-panel border border-border text-muted font-mono"
                 >
                   {p}
                 </span>
               ))}
+            </div>
+
+            <div>
+              <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-3">
+                Works with
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {MCP_PLATFORMS.map((p) => (
+                  <span
+                    key={p}
+                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <p className="text-[11px] text-muted/50 mt-6">
