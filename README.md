@@ -5,13 +5,13 @@
 <h3 align="center">The first bank account for AI agents.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Exchange · x402 Pay
+  Checking · Savings · Credit · Exchange · x402 Pay · MCP
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a>
+  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 ---
@@ -288,6 +288,16 @@ Built on the [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) with M
 
 Full reference → [`@t2000/x402` README](packages/x402)
 
+## MCP Server
+
+Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
+
+```json
+{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
+```
+
+16 tools · 3 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+
 ## Agent Skills
 
 Install one package and your AI agent gains financial capabilities:
@@ -328,6 +338,8 @@ Full reference → [Agent Skills README](t2000-skills)
 | DeFi composability | — | ✓ Atomic PTB multi-step |
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
+| Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
+| MCP Server | — | ✓ 16 tools + 3 prompts |
 
 ## Security
 

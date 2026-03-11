@@ -378,6 +378,14 @@ JSON: `{ "locked": true }`
 
 JSON: `{ "locked": false }`
 
+### `t2000 mcp`
+
+```
+  ✓ t2000 MCP server running (stdio)
+  Tools: 16  Prompts: 3
+  Safeguards: maxPerTx=$100, maxDailySend=$500
+```
+
 ---
 
 ## Error Output

@@ -5,7 +5,7 @@ Terminal bank account for AI agents on Sui. One command to create a bank account
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[x402](https://www.npmjs.com/package/@t2000/x402)**
+**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[x402](https://www.npmjs.com/package/@t2000/x402)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
 
 ## Installation
 
@@ -170,6 +170,15 @@ t2000 init
 |---------|-------------|
 | `t2000 config get [key]` | Show a config value (omit key for all) |
 | `t2000 config set <key> <value>` | Set a config value |
+
+### MCP Server
+
+```bash
+# Start MCP server (stdio transport) for Claude Desktop, Cursor, etc.
+t2000 mcp
+```
+
+16 tools, 3 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for platform configs.
 
 ### HTTP API Server
 

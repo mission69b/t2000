@@ -5,7 +5,7 @@ The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn y
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[CLI](https://www.npmjs.com/package/@t2000/cli)** · **[x402](https://www.npmjs.com/package/@t2000/x402)**
+**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[CLI](https://www.npmjs.com/package/@t2000/cli)** · **[x402](https://www.npmjs.com/package/@t2000/x402)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
 
 ## Installation
 
@@ -334,6 +334,10 @@ pnpm --filter @t2000/sdk test
 | Pay (x402) | Free | Agent pays the API price, no t2000 surcharge |
 
 Fees are collected by the t2000 protocol treasury on-chain.
+
+## MCP Server
+
+The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 16 tools and 3 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
 
 ## License
 

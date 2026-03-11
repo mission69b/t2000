@@ -207,6 +207,18 @@ const COMPARE_ROWS: {
     t2000: "✓ Auto-rebalance across 4 stablecoins",
     coinbaseCross: true,
   },
+  {
+    feature: "Agent Safeguards",
+    coinbase: "—",
+    t2000: "✓ Per-tx + daily limits + lock",
+    coinbaseCross: true,
+  },
+  {
+    feature: "MCP Server",
+    coinbase: "—",
+    t2000: "✓ 16 tools + 3 prompts",
+    coinbaseCross: true,
+  },
 ];
 
 export default function Home() {
@@ -270,7 +282,7 @@ export default function Home() {
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
             Your agent can hold money, earn yield, borrow against savings,
-            exchange currencies, and pay for APIs — all in one CLI command. No
+            exchange currencies, and pay for APIs. Connect any AI via MCP — no
             human in the loop.
           </p>
 
@@ -281,6 +293,7 @@ export default function Home() {
               { icon: "◎", label: "Credit" },
               { icon: "⇌", label: "Exchange" },
               { icon: "⬡", label: "x402 Pay" },
+              { icon: "⚙", label: "MCP" },
             ].map((pill) => (
               <div
                 key={pill.label}

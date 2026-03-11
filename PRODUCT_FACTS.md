@@ -17,6 +17,7 @@
 | `@t2000/sdk` | `0.11.0` |
 | `@t2000/cli` | `0.11.0` |
 | `@t2000/x402` | `0.3.0` |
+| `@t2000/mcp` | `0.12.0` |
 | Agent Skills | `1.5` |
 
 ---
@@ -27,8 +28,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 11 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards` |
+| Skill count | 12 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -168,6 +169,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
 | exchange | `t2000 exchange <amount> <from> <to>` | Exchange tokens via Cetus DEX (e.g. USDC ⇌ SUI). Options: `--slippage <pct>` (default: 3%) |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
+| mcp | `t2000 mcp` | Start MCP server (stdio transport) for Claude Desktop, Cursor, etc. |
 
 ### Global Flags
 
@@ -577,3 +579,19 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Info endpoint | `GET /x402` (returns JSON with facilitator info) |
 | Replay protection | On-chain nonce via Sui Payment Kit |
 | Payment event | `PaymentReceipt` (from Payment Kit) |
+
+---
+
+## MCP Server
+
+| Fact | Value |
+|------|-------|
+| Package | `@t2000/mcp` |
+| Version | `0.12.0` |
+| Transport | stdio |
+| Tools | 16 |
+| Prompts | 3 |
+| Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
+| Start command | `t2000 mcp` |
+| Claude Desktop config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |
+| Cursor config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |

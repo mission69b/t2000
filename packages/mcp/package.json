@@ -1,60 +1,61 @@
 {
-  "name": "@t2000/cli",
+  "name": "@t2000/mcp",
   "version": "0.12.0",
-  "description": "CLI bank account for AI agents on Sui — send, save, borrow, rebalance from your terminal",
+  "description": "MCP server for AI agent bank accounts on Sui — 16 tools, 3 prompts, stdio transport",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "t2000": "./dist/index.js"
+    "t2000-mcp": "./dist/bin.js"
   },
   "files": [
     "dist",
     "README.md"
   ],
   "keywords": [
+    "mcp",
     "sui",
-    "wallet",
     "ai",
     "agent",
-    "cli",
-    "defi",
-    "usdc",
-    "x402",
+    "bank",
     "t2000",
-    "navi",
-    "cetus"
+    "claude",
+    "cursor",
+    "model-context-protocol"
   ],
   "author": "t2000",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mission69b/t2000.git",
-    "directory": "packages/cli"
+    "directory": "packages/mcp"
   },
   "homepage": "https://t2000.ai",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@hono/node-server": "^1",
-    "@inquirer/prompts": "^7",
-    "@mysten/sui": "^2.6.0",
+    "@modelcontextprotocol/sdk": "^1.27.0",
     "@t2000/sdk": "workspace:*",
-    "@t2000/x402": "workspace:*",
-    "commander": "^13",
-    "hono": "^4",
-    "picocolors": "^1"
-  },
-  "optionalDependencies": {
-    "@t2000/mcp": "workspace:*"
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3"
   },
   "license": "MIT"
 }

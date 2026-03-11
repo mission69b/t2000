@@ -88,7 +88,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Reference",
     items: [
-      { id: "cli", name: "CLI Commands", badge: "12" },
+      { id: "cli", name: "CLI Commands", badge: "13" },
       { id: "sdk", name: "SDK / API", badge: "TS", badgeGreen: true },
       { id: "config", name: "Configuration" },
       { id: "errors", name: "Error Codes" },
@@ -97,8 +97,9 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Guides",
     items: [
+      { id: "mcp", name: "MCP Server", badge: "NEW", badgeGreen: true },
       { id: "skills", name: "Agent Skills" },
-      { id: "x402", name: "x402 Payments", badge: "NEW", badgeGreen: true },
+      { id: "x402", name: "x402 Payments" },
       { id: "defi", name: "DeFi & Yield" },
       { id: "gas", name: "Gas Management" },
     ],
@@ -665,6 +666,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 earn" desc="Show all earning opportunities" onClick={() => scrollToCmd("earn")} />
         <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
+        <CmdCard name="t2000 mcp" desc="Start MCP server (stdio transport)" badge="NEW" onClick={() => scrollToCmd("mcp")} />
       </div>
 
       <h2 id="cmd-init">t2000 init</h2>
@@ -946,6 +948,25 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}Settle Tx:   {S.b("https://suiscan.xyz/mainnet/tx/0x5678...")}
       </CodeBlock>
 
+      <h2 id="cmd-mcp">
+        t2000 mcp <Badge color="green">NEW</Badge>
+      </h2>
+      <p>Start the MCP server for AI platform integration (Claude Desktop, Cursor, etc.). Uses stdio transport.</p>
+      <CodeBlock lang="bash">
+        t2000 mcp [--key &lt;path&gt;]
+      </CodeBlock>
+      <Callout type="tip" label="Setup">
+        Configure safeguards before starting MCP — the server refuses to start without limits.
+        See the{" "}
+        <a
+          onClick={() => {}}
+          className="text-accent cursor-pointer hover:underline"
+        >
+          MCP Server guide
+        </a>{" "}
+        for full setup instructions.
+      </Callout>
+
       <h2 id="cmd-safeguards">Agent Safeguards</h2>
       <p>
         Control spending limits and lock the agent to prevent unauthorized operations.
@@ -1138,6 +1159,149 @@ function ErrorsSection() {
             <InlineCode>EDuplicatePayment</InlineCode> — rejected on-chain
           </>],
           [<InlineCode key="k">FACILITATOR_REJECTION</InlineCode>, "facilitator", "Payment verification failed"],
+        ]}
+      />
+    </>
+  );
+}
+
+function McpSection() {
+  return (
+    <>
+      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
+        Guides
+      </div>
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+        MCP <em className="italic text-accent">Server</em>
+      </h1>
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
+        Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
+        16 tools, 3 prompts, stdio transport — your AI operates a full bank account.
+      </p>
+
+      <h2 id="mcp-setup">Setup — 3 steps</h2>
+      <CodeBlock lang="bash">
+        {S.c("# 1. Install + create wallet")}{"\n"}
+        {S.g("$")} npm i -g @t2000/cli && t2000 init{"\n\n"}
+        {S.c("# 2. Configure safeguards (required)")}{"\n"}
+        {S.g("$")} t2000 config set maxPerTx 100{"\n"}
+        {S.g("$")} t2000 config set maxDailySend 500{"\n\n"}
+        {S.c("# 3. Create session (saves PIN for MCP)")}{"\n"}
+        {S.g("$")} t2000 balance
+      </CodeBlock>
+      <p>
+        Then paste this into your AI platform&apos;s MCP config:
+      </p>
+      <CodeBlock lang="json" filename="MCP Config">
+        {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
+      </CodeBlock>
+      <Callout type="tip" label="Tip">
+        No PIN needed in the config — MCP reuses the session file created when you
+        ran <InlineCode>t2000 balance</InlineCode>. For CI/automation, set{" "}
+        <InlineCode>T2000_PIN</InlineCode> as an environment variable.
+      </Callout>
+
+      <h2 id="mcp-tools">Available tools (16)</h2>
+
+      <h3 id="mcp-tools-read">Read-only (7)</h3>
+      <DocTable
+        headers={["Tool", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000_balance</InlineCode>, "Current balance — checking, savings, gas, total"],
+          [<InlineCode key="k">t2000_address</InlineCode>, "Agent's Sui wallet address"],
+          [<InlineCode key="k">t2000_positions</InlineCode>, "Lending positions across protocols"],
+          [<InlineCode key="k">t2000_rates</InlineCode>, "Best interest rates per asset"],
+          [<InlineCode key="k">t2000_health</InlineCode>, "Health factor for borrows"],
+          [<InlineCode key="k">t2000_history</InlineCode>, "Recent transactions"],
+          [<InlineCode key="k">t2000_earnings</InlineCode>, "Yield earnings from savings"],
+        ]}
+      />
+
+      <h3 id="mcp-tools-write">State-changing (7)</h3>
+      <p>
+        All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
+        Subject to safeguard enforcement.
+      </p>
+      <DocTable
+        headers={["Tool", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000_send</InlineCode>, "Send USDC to a Sui address"],
+          [<InlineCode key="k">t2000_save</InlineCode>, "Deposit to savings (earn yield)"],
+          [<InlineCode key="k">t2000_withdraw</InlineCode>, "Withdraw from savings"],
+          [<InlineCode key="k">t2000_borrow</InlineCode>, "Borrow against collateral"],
+          [<InlineCode key="k">t2000_repay</InlineCode>, "Repay borrowed USDC"],
+          [<InlineCode key="k">t2000_exchange</InlineCode>, "Swap assets via DEX"],
+          [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
+        ]}
+      />
+
+      <h3 id="mcp-tools-safety">Safety (2)</h3>
+      <DocTable
+        headers={["Tool", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000_config</InlineCode>, "View/set safeguard limits (maxPerTx, maxDailySend)"],
+          [<InlineCode key="k">t2000_lock</InlineCode>, "Emergency freeze all operations"],
+        ]}
+      />
+      <Callout type="warn" label="Security">
+        <InlineCode>unlock</InlineCode> is intentionally <strong>not</strong> exposed
+        as an MCP tool. Only a human can unlock the agent via{" "}
+        <InlineCode>t2000 unlock</InlineCode> in the terminal.
+      </Callout>
+
+      <h2 id="mcp-prompts">Prompts (3)</h2>
+      <p>
+        Reusable conversation templates that help AI assistants interact with t2000 effectively.
+      </p>
+      <DocTable
+        headers={["Prompt", "Description"]}
+        rows={[
+          [<InlineCode key="k">financial-report</InlineCode>, "Comprehensive financial summary — balance, positions, health, earnings"],
+          [<InlineCode key="k">optimize-yield</InlineCode>, "Yield optimization analysis with rebalance recommendations"],
+          [<InlineCode key="k">send-money</InlineCode>, "Guided send flow — validate, preview, confirm, execute"],
+        ]}
+      />
+
+      <h2 id="mcp-dryrun">dryRun previews</h2>
+      <p>
+        Every state-changing tool accepts <InlineCode>dryRun: true</InlineCode>.
+        This returns a preview of what would happen — amount, fees, balance after,
+        safeguard status — without signing any transaction. The AI can inspect the
+        preview, explain it to the user, and only execute when confirmed.
+      </p>
+      <CodeBlock lang="json">
+        {S.c("// t2000_send with dryRun: true")}{"\n"}
+        {`{\n  "preview": true,\n  "canSend": true,\n  "amount": 10,\n  "to": "0x40cd...3e62",\n  "currentBalance": 96.81,\n  "balanceAfter": 86.81,\n  "safeguards": { "dailyUsedAfter": 10, "dailyLimit": 1000 }\n}`}
+      </CodeBlock>
+
+      <h2 id="mcp-platforms">Platform configs</h2>
+
+      <h3 id="mcp-claude">Claude Desktop</h3>
+      <p>
+        File: <InlineCode>~/Library/Application Support/Claude/claude_desktop_config.json</InlineCode> (macOS)
+      </p>
+      <CodeBlock lang="json" filename="claude_desktop_config.json">
+        {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
+      </CodeBlock>
+
+      <h3 id="mcp-cursor">Cursor</h3>
+      <p>
+        File: <InlineCode>.cursor/mcp.json</InlineCode> (project root) or <InlineCode>~/.cursor/mcp.json</InlineCode> (global)
+      </p>
+      <CodeBlock lang="json" filename=".cursor/mcp.json">
+        {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
+      </CodeBlock>
+
+      <h2 id="mcp-security">Security</h2>
+      <DocTable
+        headers={["Control", "How it works"]}
+        rows={[
+          ["Safeguard gate", "MCP server refuses to start without configured limits"],
+          ["Per-transaction limits", "Cap individual transaction amounts via maxPerTx"],
+          ["Daily send limits", "Cap total daily outbound transfers via maxDailySend"],
+          ["Lock / unlock", "AI can lock; only humans can unlock via CLI"],
+          ["dryRun previews", "Preview any operation before signing"],
+          ["Local-only", "stdio transport — private key never leaves the machine"],
         ]}
       />
     </>
@@ -1404,7 +1568,19 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.11.0 <Badge color="green">current</Badge>
+        v0.12.0 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        MCP Server — connect Claude Desktop, Cursor, or any MCP client to your
+        t2000 agent. 16 tools with <InlineCode>dryRun</InlineCode> previews, 3
+        prompts, safeguard enforcement, and stdio transport. New{" "}
+        <InlineCode>@t2000/mcp</InlineCode> package and{" "}
+        <InlineCode>t2000 mcp</InlineCode> CLI command. Setup in 3 steps, zero
+        friction.
+      </p>
+
+      <h2 id="cl-0110">
+        v0.11.0
       </h2>
       <p>
         Agent Safeguards — spending limits, daily caps, and lock/unlock for autonomous agents.
@@ -1638,7 +1814,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.11.0
+            v0.12.0
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home
@@ -1720,6 +1896,7 @@ export default function DocsPage() {
             {activeSection === "sdk" && <SdkSection />}
             {activeSection === "config" && <ConfigSection />}
             {activeSection === "errors" && <ErrorsSection />}
+            {activeSection === "mcp" && <McpSection />}
             {activeSection === "skills" && <SkillsSection />}
             {activeSection === "x402" && <X402Section />}
             {activeSection === "defi" && <DefiSection />}
