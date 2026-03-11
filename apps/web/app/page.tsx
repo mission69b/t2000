@@ -549,10 +549,10 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-1.5 mb-6">
               {[
-                "Show me a financial report",
-                "Send $5 USDC to 0x8b3e… — dry run first",
-                "Can I afford to spend $50?",
-                "Where should I put my idle funds?",
+                "Move my idle USDC to the highest yield protocol",
+                "Send $50 to 0x8b3e… but borrow if I\u2019m short",
+                "Rebalance my savings to maximize APY",
+                "Generate a full financial report with recommendations",
               ].map((q) => (
                 <p key={q} className="text-xs text-muted/70 italic">
                   &ldquo;{q}&rdquo;
