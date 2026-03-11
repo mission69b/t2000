@@ -64,12 +64,12 @@ const STEPS = [
   },
   {
     num: "03",
-    title: "Install skills",
-    badge: "Agent Skills",
+    title: "Connect your AI",
+    badge: "MCP",
     badgeType: "new" as const,
     content:
-      "Works with Claude Code, Codex, Copilot, Cursor, and 20+ platforms. Your agent now knows when and how to use every t2000 command — no manual wiring.",
-    code: "npx skills add mission69b/t2000-skills",
+      "Paste one JSON config into Claude Desktop, Cursor, or any MCP client. 16 tools with safeguard enforcement — your AI can manage money autonomously.",
+    code: '{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }',
   },
   {
     num: "04",
@@ -116,25 +116,34 @@ const X402_STEPS = [
   },
 ];
 
-const SKILLS = [
-  { name: "t2000-check-balance", trigger: '"how much USDC do I have?"' },
-  { name: "t2000-send", trigger: '"send 10 USDC to 0x8b3e..."' },
-  { name: "t2000-save", trigger: '"put idle funds to work"' },
-  { name: "t2000-withdraw", trigger: '"I need liquidity now"' },
-  { name: "t2000-borrow", trigger: '"borrow against my savings"' },
-  { name: "t2000-repay", trigger: '"pay back what I borrowed"' },
-  { name: "t2000-pay", trigger: '"call that paid API"' },
+const MCP_TOOLS: { name: string; category: "read" | "write" | "safety" }[] = [
+  { name: "t2000_balance", category: "read" },
+  { name: "t2000_address", category: "read" },
+  { name: "t2000_positions", category: "read" },
+  { name: "t2000_rates", category: "read" },
+  { name: "t2000_health", category: "read" },
+  { name: "t2000_history", category: "read" },
+  { name: "t2000_earnings", category: "read" },
+  { name: "t2000_send", category: "write" },
+  { name: "t2000_save", category: "write" },
+  { name: "t2000_withdraw", category: "write" },
+  { name: "t2000_borrow", category: "write" },
+  { name: "t2000_repay", category: "write" },
+  { name: "t2000_exchange", category: "write" },
+  { name: "t2000_rebalance", category: "write" },
+  { name: "t2000_config", category: "safety" },
+  { name: "t2000_lock", category: "safety" },
 ];
 
-const PLATFORMS = [
+const MCP_PLATFORMS = [
+  "Claude Desktop",
+  "Cursor",
   "Claude Code",
+  "Windsurf",
   "OpenAI Codex",
   "GitHub Copilot",
-  "Cursor",
-  "VS Code",
   "Amp",
-  "Goose",
-  "+ 20 more",
+  "+ any MCP client",
 ];
 
 const COMPARE_ROWS: {
@@ -239,10 +248,10 @@ export default function Home() {
             How it works
           </a>
           <a
-            href="#skills"
+            href="#mcp"
             className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
           >
-            Skills
+            MCP
           </a>
           <a
             href={GITHUB_URL}
@@ -498,80 +507,104 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Agent Skills ── */}
+      {/* ── Connect Your AI ── */}
       <section
-        id="skills"
+        id="mcp"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface"
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-              Agent Skills
+              Connect Your AI
             </div>
             <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
-              Your agent already knows
+              Your AI already has a
               <br />
-              how to use{" "}
-              <em className="italic text-accent">t2000.</em>
+              <em className="italic text-accent">bank account.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Install once. Works across every major AI platform — Claude, Codex,
-            Copilot, Cursor, and more. No manual wiring. The agent understands
-            when to save, when to borrow, and when to pay.
+            One config line. 16 tools. 3 prompts. Your AI can check balances,
+            send money, earn yield, borrow, and swap — all with safeguard limits
+            baked in. No wiring required.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20">
+          {/* Left: MCP config + setup steps */}
           <div>
-            {/* Install box */}
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden mb-6">
               <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-                Install · one command
+                MCP Config · paste into Claude Desktop or Cursor
               </div>
-              <div className="px-4 sm:px-5 py-4 text-xs sm:text-sm text-accent flex items-center gap-2.5 overflow-x-auto scrollbar-hide">
-                <span className="text-muted shrink-0">$</span>
-                <span className="whitespace-nowrap">npx skills add mission69b/t2000-skills</span>
-              </div>
+              <pre className="px-4 sm:px-5 py-4 text-xs sm:text-sm text-accent overflow-x-auto scrollbar-hide leading-relaxed">
+{`{
+  "mcpServers": {
+    "t2000": {
+      "command": "t2000",
+      "args": ["mcp"]
+    }
+  }
+}`}
+              </pre>
             </div>
 
-            {/* Skills grid */}
-            <div className="flex flex-col gap-px bg-border border border-border overflow-hidden">
-              {SKILLS.map((skill) => (
-                <div
-                  key={skill.name}
-                  className="grid grid-cols-1 sm:grid-cols-[180px_1fr] bg-panel transition-colors hover:bg-[rgba(0,214,143,0.03)]"
-                >
-                  <div className="px-4 py-2.5 sm:py-3.5 text-xs text-accent sm:border-r border-border">
-                    {skill.name}
+            <div className="border border-border rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
+                Setup · 3 steps
+              </div>
+              <div className="flex flex-col gap-px bg-border">
+                {[
+                  { step: "1", cmd: "npm i -g @t2000/cli && t2000 init", label: "Install + create wallet" },
+                  { step: "2", cmd: "t2000 config set maxPerTx 100", label: "Set safeguard limits" },
+                  { step: "3", cmd: "t2000 balance", label: "Enter PIN once (saves session)" },
+                ].map((s) => (
+                  <div key={s.step} className="bg-panel px-4 py-3 flex items-start gap-3">
+                    <span className="text-accent text-xs font-mono shrink-0 mt-0.5">{s.step}</span>
+                    <div>
+                      <code className="text-xs text-accent">{s.cmd}</code>
+                      <p className="text-[11px] text-muted mt-1">{s.label}</p>
+                    </div>
                   </div>
-                  <div className="px-4 pb-2.5 sm:py-3.5 text-xs text-muted italic">
-                    {skill.trigger}
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Tool list + platforms */}
+          <div>
+            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-3">
+              16 tools · 3 prompts
+            </div>
+
+            <div className="flex flex-col gap-px bg-border border border-border overflow-hidden mb-8">
+              {MCP_TOOLS.map((tool) => (
+                <div
+                  key={tool.name}
+                  className="grid grid-cols-[1fr_70px] bg-panel transition-colors hover:bg-[rgba(0,214,143,0.03)]"
+                >
+                  <div className="px-4 py-2 text-xs text-accent font-mono">
+                    {tool.name}
+                  </div>
+                  <div className={`px-3 py-2 text-[10px] tracking-wide uppercase text-right ${
+                    tool.category === "read"
+                      ? "text-muted"
+                      : tool.category === "write"
+                      ? "text-amber-400/70"
+                      : "text-red-400/70"
+                  }`}>
+                    {tool.category}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
 
-          <div>
-            <p className="text-muted text-[13px] leading-[1.8] mb-8">
-              Agent Skills is the open standard for portable AI capabilities. A
-              skill is a markdown file — it tells the agent what to do and when
-              to do it. Skills install into the agent&apos;s context and activate
-              automatically when relevant.
-            </p>
-            <p className="text-muted text-[13px] leading-[1.8] mb-8">
-              t2000 skills include precise trigger phrases, step-by-step
-              instructions, pre-flight safety checks, and error handling
-              guidance — so the agent executes financial operations correctly,
-              every time.
-            </p>
             <div>
               <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-3">
                 Works with
               </div>
-              <div className="flex flex-wrap gap-2 mt-5">
-                {PLATFORMS.map((p) => (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {MCP_PLATFORMS.map((p) => (
                   <span
                     key={p}
                     className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
@@ -580,6 +613,23 @@ export default function Home() {
                   </span>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-border">
+              <div className="text-[10px] tracking-[0.2em] uppercase text-muted mb-2">
+                Also available as Agent Skills
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-muted">
+                <span className="text-muted/50">$</span>
+                <span className="font-mono">npx skills add mission69b/t2000-skills</span>
+              </div>
+              <p className="text-[11px] text-muted/60 mt-2">
+                For platforms without MCP support.{" "}
+                <a href="https://github.com/mission69b/t2000-skills" className="underline hover:text-accent transition-colors">
+                  10 skills
+                </a>{" "}
+                for Claude Code, Codex, Copilot, and 20+ more.
+              </p>
             </div>
           </div>
         </div>
