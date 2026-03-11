@@ -119,12 +119,12 @@ const X402_STEPS = [
 const MCP_PLATFORMS = [
   "Claude Desktop",
   "Cursor",
+  "OpenClaw",
   "Claude Code",
   "Windsurf",
   "OpenAI Codex",
   "GitHub Copilot",
   "Amp",
-  "OpenClaw",
   "+ any MCP client",
 ];
 
