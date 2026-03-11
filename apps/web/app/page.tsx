@@ -211,7 +211,7 @@ const COMPARE_ROWS: {
     coinbaseCross: true,
   },
   {
-    feature: "Address Book",
+    feature: "Contacts",
     coinbase: "—",
     t2000: "Coming soon",
     coinbaseCross: true,
