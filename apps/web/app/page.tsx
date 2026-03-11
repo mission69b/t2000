@@ -511,31 +511,51 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20">
-          {/* Left: Terminal showing setup + result */}
-          <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
-            <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-              Setup
+          {/* Left: Setup steps */}
+          <div>
+            <div className="border border-border rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
+                Setup · 3 steps
+              </div>
+              <div className="flex flex-col gap-px bg-border">
+                {[
+                  { step: "1", cmd: "npm i -g @t2000/cli && t2000 init", label: "Install CLI + create wallet" },
+                  { step: "2", cmd: "t2000 config set maxPerTx 100", label: "Set safeguard limits" },
+                  { step: "3", cmd: "t2000 mcp install", label: "Auto-configure Claude Desktop + Cursor" },
+                ].map((s) => (
+                  <div key={s.step} className="bg-panel px-4 py-3 flex items-start gap-3">
+                    <span className="text-accent text-xs font-mono shrink-0 mt-0.5">{s.step}</span>
+                    <div>
+                      <code className="text-xs text-accent">{s.cmd}</code>
+                      <p className="text-[11px] text-muted mt-1">{s.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <pre className="px-4 sm:px-5 py-4 text-xs sm:text-sm overflow-x-auto scrollbar-hide leading-[2]">
-              <span className="text-muted">$</span> <span className="text-accent">t2000 init</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 config set maxPerTx 100</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 mcp install</span>{"\n"}
-              <span className="text-muted/50">{"\n"}  {"✓"} Claude Desktop  configured{"\n"}  {"✓"} Cursor (global)  configured</span>
-            </pre>
+            <p className="text-[11px] text-muted/60 mt-4">
+              Restart your AI platform, then ask: <span className="text-muted">&quot;what&apos;s my t2000 balance?&quot;</span>
+            </p>
           </div>
 
-          {/* Right: What your AI can do + platforms */}
+          {/* Right: What your AI gets + platforms */}
           <div>
-            <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-3">
+              What your AI gets
+            </div>
+            <div className="flex flex-col gap-px bg-border border border-border overflow-hidden mb-8">
               {[
-                { count: "7", label: "Read", desc: "Balance, rates, positions, earnings" },
-                { count: "7", label: "Write", desc: "Send, save, borrow, swap, rebalance" },
-                { count: "2", label: "Safety", desc: "Limits, emergency lock" },
-              ].map((g) => (
-                <div key={g.label} className="border border-border rounded-sm p-3 sm:p-4">
-                  <div className="text-accent text-lg sm:text-xl font-mono">{g.count}</div>
-                  <div className="text-[10px] tracking-[0.15em] uppercase text-muted mt-1">{g.label}</div>
-                  <p className="text-[11px] text-muted/60 mt-2 leading-[1.5]">{g.desc}</p>
+                { label: "Check balance, rates, positions, earnings, health", tag: "7 read tools" },
+                { label: "Send, save, borrow, repay, swap, rebalance", tag: "7 write tools" },
+                { label: "View/set limits, emergency lock", tag: "2 safety tools" },
+                { label: "Financial report, savings strategy, budget check", tag: "5 prompts" },
+              ].map((row) => (
+                <div
+                  key={row.tag}
+                  className="grid grid-cols-[1fr_auto] bg-panel px-4 py-2.5"
+                >
+                  <span className="text-xs text-muted">{row.label}</span>
+                  <span className="text-[10px] tracking-wide uppercase text-accent text-right">{row.tag}</span>
                 </div>
               ))}
             </div>
