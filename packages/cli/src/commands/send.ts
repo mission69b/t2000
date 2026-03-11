@@ -27,7 +27,10 @@ export function registerSend(program: Command) {
         }
 
         printBlank();
-        printSuccess(`Sent ${formatUsd(result.amount)} ${asset.toUpperCase()} → ${truncateAddress(result.to)}`);
+        const displayTo = result.contactName
+          ? `${result.contactName} (${truncateAddress(result.to)})`
+          : truncateAddress(result.to);
+        printSuccess(`Sent ${formatUsd(result.amount)} ${asset.toUpperCase()} → ${displayTo}`);
         printKeyValue('Gas', `${result.gasCost.toFixed(4)} ${result.gasCostUnit} (${result.gasMethod})`);
         printKeyValue('Balance', formatUsd(result.balance.available) + ' USDC');
         printKeyValue('Tx', explorerUrl(result.tx));

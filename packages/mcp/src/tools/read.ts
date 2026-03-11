@@ -101,4 +101,18 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
       }
     },
   );
+
+  server.tool(
+    't2000_contacts',
+    'List saved contacts (name → address mappings). Use contact names with t2000_send instead of raw addresses.',
+    {},
+    async () => {
+      try {
+        const contacts = agent.contacts.list();
+        return { content: [{ type: 'text', text: JSON.stringify({ contacts }) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
 }

@@ -30,6 +30,7 @@ import { registerEarn } from './commands/earn.js';
 import { registerRebalance } from './commands/rebalance.js';
 import { registerExchange } from './commands/exchange.js';
 import { registerMcp } from './commands/mcp.js';
+import { registerContacts } from './commands/contacts.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -70,6 +71,7 @@ export function createProgram(): Command {
   registerRebalance(program);
   registerExchange(program);
   registerMcp(program);
+  registerContacts(program);
 
   return program;
 }

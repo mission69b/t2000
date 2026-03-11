@@ -58,6 +58,13 @@ function createMockAgent() {
       lock: vi.fn(),
       set: vi.fn(),
     },
+    contacts: {
+      list: vi.fn().mockReturnValue([]),
+      resolve: vi.fn().mockImplementation((nameOrAddress: string) => {
+        if (nameOrAddress.startsWith('0x')) return { address: nameOrAddress };
+        throw new Error(`"${nameOrAddress}" is not a valid Sui address or saved contact.`);
+      }),
+    },
   } as any;
 }
 
@@ -89,9 +96,9 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 16 tools', async () => {
+  it('lists all 17 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(16);
+    expect(tools).toHaveLength(17);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -99,6 +106,7 @@ describe('integration: MCP client ↔ server', () => {
       't2000_balance',
       't2000_borrow',
       't2000_config',
+      't2000_contacts',
       't2000_earnings',
       't2000_exchange',
       't2000_health',

@@ -32,6 +32,7 @@ export interface SendResult {
   tx: string;
   amount: number;
   to: string;
+  contactName?: string;
   gasCost: number;
   gasCostUnit: string;
   gasMethod: GasMethod;

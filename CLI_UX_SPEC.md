@@ -378,6 +378,35 @@ JSON: `{ "locked": true }`
 
 JSON: `{ "locked": false }`
 
+### `t2000 contacts`
+
+```
+  Contacts
+  ─────────────────────────────────────────────────────
+  alice    0x8b3e...d412
+  bob      0xf1a2...b789
+  vault    0x4c5d...e901
+
+  3 contacts
+```
+
+Empty state:
+```
+  No contacts saved. Use `t2000 contacts add <name> <address>` to add one.
+```
+
+### `t2000 contacts add <name> <address>`
+
+```
+  ✓ Contact saved: alice → 0x8b3e...d412
+```
+
+### `t2000 contacts remove <name>`
+
+```
+  ✓ Contact removed: alice
+```
+
 ### `t2000 mcp install`
 
 ```

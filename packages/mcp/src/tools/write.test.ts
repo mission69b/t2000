@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerWriteTools } from './write.js';
-import { SafeguardError } from '@t2000/sdk';
-
-vi.mock('@t2000/sdk', async () => {
-  const actual = await vi.importActual('@t2000/sdk') as any;
-  return {
-    ...actual,
-    validateAddress: vi.fn().mockReturnValue(true),
-  };
-});
+import { SafeguardError, T2000Error } from '@t2000/sdk';
 
 function createMockAgent() {
   return {
@@ -76,6 +68,16 @@ function createMockAgent() {
       getConfig: vi.fn().mockReturnValue({ locked: false, maxPerTx: 100, maxDailySend: 1000, dailyUsed: 0, dailyResetDate: '' }),
       recordUsage: vi.fn(),
     },
+    contacts: {
+      list: vi.fn().mockReturnValue([
+        { name: 'Tom', address: '0xrecipient' },
+      ]),
+      resolve: vi.fn().mockImplementation((nameOrAddress: string) => {
+        if (nameOrAddress.startsWith('0x')) return { address: nameOrAddress };
+        if (nameOrAddress.toLowerCase() === 'tom') return { address: '0xrecipient', contactName: 'Tom' };
+        throw new T2000Error('CONTACT_NOT_FOUND', `"${nameOrAddress}" is not a valid Sui address or saved contact.`);
+      }),
+    },
   } as any;
 }
 
@@ -138,11 +140,24 @@ describe('write tools', () => {
       expect(agent.send).toHaveBeenCalled();
     });
 
-    it('should return error for invalid address', async () => {
-      const { validateAddress } = await import('@t2000/sdk');
-      vi.mocked(validateAddress).mockReturnValueOnce(false);
+    it('should resolve contact name in dryRun preview', async () => {
       const handler = tools.get('t2000_send')!;
-      const result = await handler({ to: 'invalid', amount: 10 });
+      const result = await handler({ to: 'Tom', amount: 10, dryRun: true });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.preview).toBe(true);
+      expect(data.to).toBe('0xrecipient');
+      expect(data.contactName).toBe('Tom');
+    });
+
+    it('should send to contact name', async () => {
+      const handler = tools.get('t2000_send')!;
+      await handler({ to: 'Tom', amount: 10 });
+      expect(agent.send).toHaveBeenCalledWith({ to: 'Tom', amount: 10, asset: undefined });
+    });
+
+    it('should return error for unknown contact', async () => {
+      const handler = tools.get('t2000_send')!;
+      const result = await handler({ to: 'Unknown', amount: 10 });
       expect(result.isError).toBe(true);
     });
 

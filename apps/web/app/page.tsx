@@ -68,7 +68,7 @@ const STEPS = [
     badge: "MCP",
     badgeType: "new" as const,
     content:
-      "One command auto-configures Claude Desktop and Cursor. 16 tools with safeguard enforcement — your AI manages money autonomously.",
+      "One command auto-configures Claude Desktop and Cursor. 17 tools with safeguard enforcement — your AI manages money autonomously.",
     code: "t2000 mcp install",
   },
   {
@@ -207,13 +207,13 @@ const COMPARE_ROWS: {
   {
     feature: "MCP Server",
     coinbase: "—",
-    t2000: "✓ 16 tools + 5 prompts",
+    t2000: "✓ 17 tools + 5 prompts",
     coinbaseCross: true,
   },
   {
     feature: "Contacts",
     coinbase: "—",
-    t2000: "Coming soon",
+    t2000: "✓ Send by name",
     coinbaseCross: true,
   },
 ];
@@ -513,7 +513,7 @@ export default function Home() {
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
             One command connects Claude Desktop, Cursor, or any MCP client.
-            Your AI gets 16 tools with safeguard limits — no config files to edit.
+            Your AI gets 17 tools with safeguard limits — no config files to edit.
           </p>
         </div>
 
@@ -539,7 +539,7 @@ export default function Home() {
           <div>
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { count: "7", label: "Read", desc: "Balance, rates, positions, earnings" },
+                { count: "8", label: "Read", desc: "Balance, rates, positions, earnings, contacts" },
                 { count: "7", label: "Write", desc: "Send, save, borrow, swap, rebalance" },
                 { count: "2", label: "Safety", desc: "Limits, emergency lock" },
               ].map((g) => (

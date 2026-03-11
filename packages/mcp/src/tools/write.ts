@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { T2000, validateAddress } from '@t2000/sdk';
+import type { T2000 } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
@@ -9,18 +9,16 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_send',
-    'Send USDC or stablecoins to a Sui address. Amount is in dollars. Subject to per-transaction and daily send limits. Set dryRun: true to preview without signing.',
+    'Send USDC or stablecoins to a Sui address or contact name. Amount is in dollars. Subject to per-transaction and daily send limits. Set dryRun: true to preview without signing.',
     {
-      to: z.string().describe('Recipient Sui address (0x...)'),
+      to: z.string().describe("Recipient Sui address (0x...) or contact name (e.g. 'Tom')"),
       amount: z.number().describe('Amount in dollars to send'),
       asset: z.string().optional().describe('Asset to send (default: USDC)'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
     async ({ to, amount, asset, dryRun }) => {
       try {
-        if (!validateAddress(to)) {
-          return errorResult(new Error(`Invalid Sui address: ${to}`));
-        }
+        const resolved = agent.contacts.resolve(to);
 
         if (dryRun) {
           agent.enforcer.check({ operation: 'send', amount });
@@ -34,7 +32,8 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
                 preview: true,
                 canSend: balance.available >= amount,
                 amount,
-                to,
+                to: resolved.address,
+                contactName: resolved.contactName,
                 asset: asset ?? 'USDC',
                 currentBalance: balance.available,
                 balanceAfter: balance.available - amount,

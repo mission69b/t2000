@@ -121,6 +121,16 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.deposit()` | Wallet address + funding instructions | `DepositInfo` |
 | `agent.history({ limit? })` | Transaction history (default: all) | `TransactionRecord[]` |
 
+### Contacts Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `agent.contacts.add(name, address)` | Save a named contact | `void` |
+| `agent.contacts.remove(name)` | Remove a contact | `void` |
+| `agent.contacts.list()` | List all saved contacts | `Contact[]` |
+| `agent.contacts.get(name)` | Get a contact by name | `Contact` |
+| `agent.contacts.resolve(nameOrAddress)` | Resolve name to address (passthrough if already an address) | `string` |
+
 ### Sentinel Methods
 
 | Method | Description | Returns |
@@ -337,7 +347,7 @@ Fees are collected by the t2000 protocol treasury on-chain.
 
 ## MCP Server
 
-The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 16 tools and 3 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
+The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 17 tools and 5 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
 
 ## License
 

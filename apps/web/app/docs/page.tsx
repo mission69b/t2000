@@ -88,7 +88,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Reference",
     items: [
-      { id: "cli", name: "CLI Commands", badge: "13" },
+      { id: "cli", name: "CLI Commands", badge: "14" },
       { id: "sdk", name: "SDK / API", badge: "TS", badgeGreen: true },
       { id: "config", name: "Configuration" },
       { id: "errors", name: "Error Codes" },
@@ -666,6 +666,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 earn" desc="Show all earning opportunities" onClick={() => scrollToCmd("earn")} />
         <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
+        <CmdCard name="t2000 contacts" desc="Manage named contacts for easy sends" onClick={() => scrollToCmd("contacts")} />
         <CmdCard name="t2000 mcp" desc="MCP server — install, start, uninstall" badge="NEW" onClick={() => scrollToCmd("mcp")} />
       </div>
 
@@ -951,7 +952,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 16 tools, 5 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 17 tools, 5 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1177,7 +1178,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        16 tools, 5 prompts, stdio transport — your AI operates a full bank account.
+        17 tools, 5 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 4 commands</h2>
@@ -1202,9 +1203,9 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (16)</h2>
+      <h2 id="mcp-tools">Available tools (17)</h2>
 
-      <h3 id="mcp-tools-read">Read-only (7)</h3>
+      <h3 id="mcp-tools-read">Read-only (8)</h3>
       <DocTable
         headers={["Tool", "Description"]}
         rows={[
@@ -1215,6 +1216,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_health</InlineCode>, "Health factor for borrows"],
           [<InlineCode key="k">t2000_history</InlineCode>, "Recent transactions"],
           [<InlineCode key="k">t2000_earnings</InlineCode>, "Yield earnings from savings"],
+          [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
         ]}
       />
 
@@ -1572,7 +1574,14 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.12.0 <Badge color="green">current</Badge>
+        v0.13.0 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        17 tools, contacts — send by name instead of raw addresses.
+      </p>
+
+      <h2 id="cl-0120">
+        v0.12.0
       </h2>
       <p>
         MCP Server — connect Claude Desktop, Cursor, or any MCP client to your

@@ -461,46 +461,46 @@ Add a note: "The `to` field can be a contact name (e.g. 'Tom') or a Sui address 
 
 | # | Task | Est | Status |
 |---|------|-----|--------|
-| 18a.1 | Implement `ContactManager` class (CRUD, resolve, validate) | 1h | ⬜ |
-| 18a.2 | Add `contacts` property to `T2000` class | 15m | ⬜ |
-| 18a.3 | Update `agent.send()` to resolve contacts, add `contactName` to `SendResult` | 30m | ⬜ |
+| 18a.1 | Implement `ContactManager` class (CRUD, resolve, validate) | 1h | ✅ |
+| 18a.2 | Add `contacts` property to `T2000` class | 15m | ✅ |
+| 18a.3 | Update `agent.send()` to resolve contacts, add `contactName` to `SendResult` | 30m | ✅ |
 
 ### CLI (18a.4–18a.5)
 
 | # | Task | Est | Status |
 |---|------|-----|--------|
-| 18a.4 | Implement `t2000 contacts` command (add/remove/list, JSON mode) | 1.5h | ⬜ |
-| 18a.5 | Update `send` command output to show contact name when resolved | 15m | ⬜ |
+| 18a.4 | Implement `t2000 contacts` command (add/remove/list, JSON mode) | 1.5h | ✅ |
+| 18a.5 | Update `send` command output to show contact name when resolved | 15m | ✅ |
 
 ### MCP (18a.6–18a.7)
 
 | # | Task | Est | Status |
 |---|------|-----|--------|
-| 18a.6 | New `t2000_contacts` read-only tool | 30m | ⬜ |
-| 18a.7 | Update `t2000_send` — description, `to` param, dryRun preview, remove manual validation | 30m | ⬜ |
+| 18a.6 | New `t2000_contacts` read-only tool | 30m | ✅ |
+| 18a.7 | Update `t2000_send` — description, `to` param, dryRun preview, remove manual validation | 30m | ✅ |
 
 ### Tests (18a.8–18a.11)
 
 | # | Task | Est | Status |
 |---|------|-----|--------|
-| 18a.8 | Unit tests: `ContactManager` — add, remove, list, get, resolve, case insensitivity, validation errors | 1h | ⬜ |
-| 18a.9 | Unit tests: send with contact resolution — name, address, not found | 30m | ⬜ |
-| 18a.10 | Unit tests: MCP `t2000_contacts` tool | 20m | ⬜ |
-| 18a.11 | Unit tests: MCP `t2000_send` with contact name + dryRun | 20m | ⬜ |
+| 18a.8 | Unit tests: `ContactManager` — 31 tests (add, remove, list, get, resolve, case insensitivity, validation errors, corrupted file, reload) | 1h | ✅ |
+| 18a.9 | Unit tests: send with contact resolution — name, address, not found | 30m | ✅ |
+| 18a.10 | Unit tests: MCP `t2000_contacts` tool — 2 tests | 20m | ✅ |
+| 18a.11 | Unit tests: MCP `t2000_send` with contact name + dryRun — 3 tests | 20m | ✅ |
 
 ### Agent Skill (18a.12)
 
 | # | Task | Est | Status |
 |---|------|-----|--------|
-| 18a.12 | Create `t2000-contacts` SKILL.md + update `t2000-send` skill | 30m | ⬜ |
+| 18a.12 | Create `t2000-contacts` SKILL.md + update `t2000-send` skill | 30m | ✅ |
 
 ### Docs + Marketing + Release (18a.13–18a.15)
 
 | # | Task | Est | Status |
 |---|------|-----|--------|
-| 18a.13 | All docs: docs page (section + CLI table), homepage (comparison table + tool count), CLI_UX_SPEC, PRODUCT_FACTS, all READMEs | 1.5h | ⬜ |
-| 18a.14 | Marketing: launch tweet + roadmap update | 15m | ⬜ |
-| 18a.15 | Version bump (→ 0.13.0), build all packages, publish | 15m | ⬜ |
+| 18a.13 | All docs: docs page (section + CLI table), homepage (comparison table + tool count), CLI_UX_SPEC, PRODUCT_FACTS, all READMEs | 1.5h | ✅ |
+| 18a.14 | Marketing: launch tweet + roadmap update | 15m | ✅ |
+| 18a.15 | Version bump (→ 0.13.0), build all packages, publish | 15m | ✅ (bump + build done, awaiting publish) |
 
 **Total: 15 tasks · ~7 hours**
 
@@ -537,12 +537,12 @@ Add a note: "The `to` field can be a contact name (e.g. 'Tom') or a Sui address 
 
 | Test file | What it covers | Est count |
 |-----------|---------------|-----------|
-| `contacts.test.ts` | Add, remove, list, get, resolve, case insensitivity, name validation (0x prefix, special chars, length, reserved names), corrupted file, missing file, reload from disk | ~15 |
-| `send.test.ts` (update) | Send with contact name, send with address, send with unknown name | ~3 |
-| `tools/read.test.ts` (update) | `t2000_contacts` tool returns contact list | ~2 |
-| `tools/write.test.ts` (update) | `t2000_send` with contact name, dryRun with contact | ~3 |
+| `contacts.test.ts` | Add, remove, list, get, resolve, case insensitivity, name validation (0x prefix, special chars, length, reserved names, empty), corrupted file, reload from disk | 31 ✅ |
+| `tools/read.test.ts` (update) | `t2000_contacts` tool returns contact list, empty list | 2 ✅ |
+| `tools/write.test.ts` (update) | `t2000_send` with contact name dryRun, send to contact, unknown contact | 3 ✅ |
+| `integration.test.ts` (update) | 17 tools registered, contacts mock wired | updated ✅ |
 
-**Estimated: ~23 new tests**
+**Actual: 36 new tests (SDK: 31, MCP: 5)**
 
 ---
 

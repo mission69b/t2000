@@ -53,6 +53,7 @@ import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js'
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
 import type { TxMetadata } from './safeguards/types.js';
+import { ContactManager } from './contacts.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -74,6 +75,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly _address: string;
   private readonly registry: ProtocolRegistry;
   readonly enforcer: SafeguardEnforcer;
+  readonly contacts: ContactManager;
 
   private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry, configDir?: string) {
     super();
@@ -83,6 +85,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.registry = registry ?? T2000.createDefaultRegistry(client);
     this.enforcer = new SafeguardEnforcer(configDir);
     this.enforcer.load();
+    this.contacts = new ContactManager(configDir);
   }
 
   private static createDefaultRegistry(client: SuiJsonRpcClient): ProtocolRegistry {
@@ -183,8 +186,9 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
     }
 
+    const resolved = this.contacts.resolve(params.to);
     const sendAmount = params.amount;
-    const sendTo = params.to;
+    const sendTo = resolved.address;
 
     const gasResult = await executeWithGas(this.client, this.keypair, () =>
       buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset }),
@@ -200,7 +204,8 @@ export class T2000 extends EventEmitter<T2000Events> {
       success: true,
       tx: gasResult.digest,
       amount: sendAmount,
-      to: params.to,
+      to: resolved.address,
+      contactName: resolved.contactName,
       gasCost: gasResult.gasCostSui,
       gasCostUnit: 'SUI',
       gasMethod: gasResult.gasMethod,

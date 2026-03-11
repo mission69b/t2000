@@ -1,4 +1,6 @@
 export { T2000 } from './t2000.js';
+export { ContactManager } from './contacts.js';
+export type { Contact, ContactMap } from './contacts.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';
 export type {

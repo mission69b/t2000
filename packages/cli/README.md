@@ -154,6 +154,14 @@ t2000 init
 | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel with an adversarial prompt (costs SUI) |
 | `t2000 sentinel attack <id> [prompt] --fee 0.5` | Override attack fee (default: sentinel's min fee) |
 
+### Contacts
+
+| Command | Description |
+|---------|-------------|
+| `t2000 contacts` | List saved contacts |
+| `t2000 contacts add <name> <address>` | Save a named contact |
+| `t2000 contacts remove <name>` | Remove a contact |
+
 ### Safeguards
 
 | Command | Description |
@@ -184,7 +192,7 @@ t2000 mcp uninstall
 t2000 mcp
 ```
 
-16 tools, 3 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
+17 tools, 5 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 

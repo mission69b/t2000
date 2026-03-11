@@ -610,15 +610,15 @@ t2000 send 50 USDC to Tom              # Send by name
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 18a.1 | `ContactManager` class (CRUD, resolve, validate) | sdk | 1h | ⬜ |
-| 18a.2 | Wire into `T2000` class + update `send()` | sdk | 45m | ⬜ |
-| 18a.3 | `t2000 contacts` CLI command (add/remove/list) | cli | 1.5h | ⬜ |
-| 18a.4 | Update send output to show contact name | cli | 15m | ⬜ |
-| 18a.5 | MCP `t2000_contacts` tool + update `t2000_send` | mcp | 1h | ⬜ |
-| 18a.6 | Tests (~20 tests across SDK + MCP) | all | 2h | ⬜ |
-| 18a.7 | Agent Skill: `t2000-contacts` | skills | 30m | ⬜ |
-| 18a.8 | Docs, READMEs, homepage, marketing, CLI_UX_SPEC, PRODUCT_FACTS | all | 1.5h | ⬜ |
-| 18a.9 | Version bump (→ 0.13.0), build, publish | all | 15m | ⬜ |
+| 18a.1 | `ContactManager` class (CRUD, resolve, validate) | sdk | 1h | ✅ |
+| 18a.2 | Wire into `T2000` class + update `send()` | sdk | 45m | ✅ |
+| 18a.3 | `t2000 contacts` CLI command (add/remove/list) | cli | 1.5h | ✅ |
+| 18a.4 | Update send output to show contact name | cli | 15m | ✅ |
+| 18a.5 | MCP `t2000_contacts` tool + update `t2000_send` | mcp | 1h | ✅ |
+| 18a.6 | Tests (31 SDK + 5 MCP = 36 new tests) | all | 2h | ✅ |
+| 18a.7 | Agent Skill: `t2000-contacts` | skills | 30m | ✅ |
+| 18a.8 | Docs, READMEs, homepage, marketing, CLI_UX_SPEC, PRODUCT_FACTS | all | 1.5h | ✅ |
+| 18a.9 | Version bump (→ 0.13.0), build, publish | all | 15m | ✅ |
 
 **Estimated total:** 1–1.5 days
 
@@ -897,7 +897,7 @@ Phase 16: Safeguards          ✅ Shipped (v0.11.0)
     ↓
 Phase 11a: MCP Server         ✅ Shipped (v0.12.3)
     ↓
-Phase 18a: Contacts           ← quick win, send by name
+Phase 18a: Contacts           ✅ Shipped (v0.13.0)
     ↓
 Phase 17: Investment Account  ← major feature, needs safeguards
     ↓
@@ -920,7 +920,7 @@ Phase 20: On-ramp + Card      ← fiat rails, last mile
 | **11b** | Agent UI (local chat + dashboard) | **P0** | 1-2 weeks | ⬜ After 17 |
 | **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
 | **13** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
-| **18a** | Contacts (send by name) | **P0** | 1-1.5 days | ⬜ Next |
+| **18a** | Contacts (send by name) | **P0** | 1-1.5 days | ✅ Shipped (v0.13.0) |
 | **20a** | On-ramp (Moonpay deep link) | P1 | 2 days | ⬜ |
 | **20b** | Off-ramp / Virtual Card | P2 | 2-3 weeks | ⬜ Research needed |
 | **14** | Multi-Agent Profiles | P2 | 1 week | ⬜ |

@@ -3,8 +3,8 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server. Provides 16 tools
-  and 3 prompts for AI-driven banking operations.
+  client, set up MCP config, or start the MCP server. Provides 17 tools
+  and 5 prompts for AI-driven banking operations.
 license: MIT
 metadata:
   author: t2000
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 16 tools, 3 prompts, stdio transport, safeguard enforced.
+account. 17 tools, 5 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -40,9 +40,9 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (16)
+## Available Tools (17)
 
-### Read-only (7)
+### Read-only (8)
 | Tool | Description |
 |------|-------------|
 | `t2000_balance` | Current balance |
@@ -52,6 +52,7 @@ Paste into your AI platform's MCP settings:
 | `t2000_health` | Health factor |
 | `t2000_history` | Transaction history |
 | `t2000_earnings` | Yield earnings |
+| `t2000_contacts` | List saved contacts (name → address) |
 
 ### State-changing (7)
 All support `dryRun: true` for previews without signing.
@@ -72,7 +73,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (3)
+## Prompts (5)
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |

@@ -43,6 +43,16 @@ function createMockAgent() {
       getConfig: vi.fn().mockReturnValue({ locked: false, maxPerTx: 100, maxDailySend: 1000, dailyUsed: 0 }),
       isConfigured: vi.fn().mockReturnValue(true),
     },
+    contacts: {
+      list: vi.fn().mockReturnValue([
+        { name: 'Tom', address: '0x8b3etest' },
+        { name: 'Alice', address: '0x40cdtest' },
+      ]),
+      resolve: vi.fn().mockImplementation((nameOrAddress: string) => {
+        if (nameOrAddress.startsWith('0x')) return { address: nameOrAddress };
+        return { address: '0x8b3etest', contactName: 'Tom' };
+      }),
+    },
   } as any;
 }
 
@@ -67,8 +77,8 @@ describe('read tools', () => {
     registerReadTools(server, agent);
   });
 
-  it('should register 7 read tools', () => {
-    expect(tools.size).toBe(7);
+  it('should register 8 read tools', () => {
+    expect(tools.size).toBe(8);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
     expect(tools.has('t2000_positions')).toBe(true);
@@ -76,6 +86,7 @@ describe('read tools', () => {
     expect(tools.has('t2000_health')).toBe(true);
     expect(tools.has('t2000_history')).toBe(true);
     expect(tools.has('t2000_earnings')).toBe(true);
+    expect(tools.has('t2000_contacts')).toBe(true);
   });
 
   it('t2000_balance should return balance JSON', async () => {
@@ -137,6 +148,23 @@ describe('read tools', () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.totalYieldEarned).toBe(0.15);
     expect(data.currentApy).toBe(4.92);
+  });
+
+  it('t2000_contacts should return contacts list', async () => {
+    const handler = tools.get('t2000_contacts')!;
+    const result = await handler({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.contacts).toHaveLength(2);
+    expect(data.contacts[0].name).toBe('Tom');
+    expect(data.contacts[1].name).toBe('Alice');
+  });
+
+  it('t2000_contacts should return empty list when no contacts', async () => {
+    agent.contacts.list.mockReturnValue([]);
+    const handler = tools.get('t2000_contacts')!;
+    const result = await handler({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.contacts).toEqual([]);
   });
 
   it('should return error when SDK throws', async () => {

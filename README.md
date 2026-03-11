@@ -181,6 +181,11 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.enforcer.check(amount)` | Check if amount allowed |
 | | `agent.enforcer.recordUsage(amount)` | Record send for daily limit |
 | | `agent.enforcer.isConfigured()` | Whether safeguards are set up |
+| **Contacts** | `agent.contacts.list()` | List saved contacts |
+| | `agent.contacts.add(name, address)` | Add a contact |
+| | `agent.contacts.remove(name)` | Remove a contact |
+| | `agent.contacts.get(name)` | Get contact address |
+| | `agent.contacts.resolve(nameOrAddress)` | Resolve name → address |
 | **Sentinel** | `agent.sentinelList()` | Browse active sentinels |
 | | `agent.sentinelAttack(id, prompt)` | Full attack flow |
 
@@ -216,6 +221,11 @@ t2000 earn                         Show all earning opportunities
 t2000 sentinel list                Browse active sentinels
 t2000 sentinel attack <id> "..."   Attack a sentinel (costs SUI)
 t2000 sentinel info <id>           Sentinel details
+
+# Contacts
+t2000 contacts                     List saved contacts
+t2000 contacts add <name> <addr>   Save a named contact
+t2000 contacts remove <name>       Remove a contact
 
 # Safeguards
 t2000 config show                  View safeguard settings
@@ -296,7 +306,7 @@ Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 16 tools · 3 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 17 tools · 5 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 
@@ -320,6 +330,7 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-pay` | "call that paid API" |
 | `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |
+| `t2000-contacts` | "list contacts", "add contact" |
 
 Full reference → [Agent Skills README](t2000-skills)
 
@@ -339,7 +350,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 16 tools + 3 prompts |
+| MCP Server | — | ✓ 17 tools + 5 prompts |
 
 ## Security
 

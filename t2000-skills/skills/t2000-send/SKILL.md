@@ -20,15 +20,17 @@ self-funded from the agent's SUI reserve (auto-topped up if needed).
 
 ## Command
 ```bash
-t2000 send <amount> <asset> to <address>
-t2000 send <amount> <asset> <address>
+t2000 send <amount> <asset> to <address_or_contact>
+t2000 send <amount> <asset> <address_or_contact>
 
 # Examples:
 t2000 send 10 USDC to 0x8b3e...d412
+t2000 send 50 USDC to Tom
 t2000 send 50 USDC 0xabcd...1234
 ```
 
-The `to` keyword is optional.
+The `to` keyword is optional. The recipient can be a Sui address (0x...) or a
+saved contact name (e.g. "Tom"). Use `t2000 contacts` to list saved contacts.
 
 ## Pre-flight checks (automatic)
 1. Sufficient available USDC balance
@@ -45,4 +47,5 @@ The `to` keyword is optional.
 ## Error handling
 - `INSUFFICIENT_BALANCE`: available balance is less than the requested amount
 - `INVALID_ADDRESS`: destination is not a valid Sui address
+- `CONTACT_NOT_FOUND`: name is not a saved contact or valid address
 - `SIMULATION_FAILED`: transaction would fail on-chain; details in error message
