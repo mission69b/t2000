@@ -21,11 +21,13 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 3 prompts', () => {
-    expect(prompts.size).toBe(3);
+  it('should register 5 prompts', () => {
+    expect(prompts.size).toBe(5);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
+    expect(prompts.has('budget-check')).toBe(true);
+    expect(prompts.has('savings-strategy')).toBe(true);
   });
 
   it('financial-report should return valid message array', async () => {
@@ -57,5 +59,31 @@ describe('prompts', () => {
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_send');
+  });
+
+  it('budget-check should include balance and config tools', async () => {
+    const handler = prompts.get('budget-check')!;
+    const result = await handler({ amount: 50 });
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_balance');
+    expect(result.messages[0].content.text).toContain('t2000_config');
+    expect(result.messages[0].content.text).toContain('$50');
+  });
+
+  it('budget-check should work without amount', async () => {
+    const handler = prompts.get('budget-check')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('spending check');
+  });
+
+  it('savings-strategy should include balance, positions, and rates tools', async () => {
+    const handler = prompts.get('savings-strategy')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_balance');
+    expect(result.messages[0].content.text).toContain('t2000_positions');
+    expect(result.messages[0].content.text).toContain('t2000_rates');
+    expect(result.messages[0].content.text).toContain('t2000_save');
   });
 });

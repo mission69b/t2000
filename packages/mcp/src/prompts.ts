@@ -85,4 +85,65 @@ export function registerPrompts(server: McpServer): void {
       };
     },
   );
+
+  server.prompt(
+    'budget-check',
+    'Can I afford to spend $X? Checks balance, daily limit remaining, and whether spending would impact savings.',
+    {
+      amount: z.number().optional().describe('Amount in dollars to check'),
+    },
+    async ({ amount }) => ({
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: [
+            'You are a budget assistant for a t2000 AI agent bank account.',
+            '',
+            amount ? `The user wants to know if they can afford to spend $${amount}.` : 'The user wants a spending check.',
+            '',
+            'Analyze their financial situation:',
+            '1. Check current balance (t2000_balance)',
+            '2. Check safeguard limits (t2000_config with action: "show")',
+            '3. Calculate: available balance, daily limit remaining, what percentage of total this spend represents',
+            '',
+            'Give a clear yes/no answer with context:',
+            '- Can they afford it from checking?',
+            '- Would it hit their daily send limit?',
+            '- What balance would remain after?',
+            '- If it\'s a large % of their total, flag that.',
+          ].join('\n'),
+        },
+      }],
+    }),
+  );
+
+  server.prompt(
+    'savings-strategy',
+    'Analyze idle funds in checking and recommend a savings strategy — how much to save, expected yield, best rates.',
+    async () => ({
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: [
+            'You are a savings advisor for a t2000 AI agent bank account.',
+            '',
+            'Analyze the user\'s funds and recommend a savings strategy:',
+            '1. Check current balance (t2000_balance) — how much is idle in checking?',
+            '2. Check current positions (t2000_positions) — what\'s already in savings?',
+            '3. Compare rates across protocols (t2000_rates) — where\'s the best yield?',
+            '',
+            'Recommend:',
+            '- How much to move from checking to savings (keep a reasonable buffer for gas + daily spending)',
+            '- Which protocol offers the best rate right now',
+            '- Expected annual yield on the recommended amount',
+            '- If they should rebalance existing savings (t2000_rebalance with dryRun: true)',
+            '',
+            'If they want to proceed, use t2000_save to deposit. Always preview first.',
+          ].join('\n'),
+        },
+      }],
+    }),
+  );
 }

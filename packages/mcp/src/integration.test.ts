@@ -114,12 +114,12 @@ describe('integration: MCP client ↔ server', () => {
     ]);
   });
 
-  it('lists all 3 prompts', async () => {
+  it('lists all 5 prompts', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts).toHaveLength(3);
+    expect(prompts).toHaveLength(5);
 
     const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['financial-report', 'optimize-yield', 'send-money']);
+    expect(names).toEqual(['budget-check', 'financial-report', 'optimize-yield', 'savings-strategy', 'send-money']);
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {
