@@ -445,10 +445,10 @@ async function run() {
     { type: 'ai', tools: ['t2000_balance', 't2000_health', 't2000_borrow', 't2000_send'],
       html: `<div class="nt" style="margin:0 0 8px">Checking is $1.00. Borrowing $50 against savings collateral.</div>
       <table class="rt">
-        <tr><td>Resolved</td><td>Tom \u2192 tom.sui \u2192 0x8b3e\u2026f4a2</td></tr>
+        <tr><td>Resolved</td><td>Tom \u2192 0x8b3e\u2026f4a2</td></tr>
         <tr><td>Borrowed</td><td class="hi">$50.00 USDC from NAVI</td></tr>
         <tr><td>Collateral</td><td>$95.81 USDT \u00b7 health: 1.8</td></tr>
-        <tr><td>Sent</td><td class="hi">$50.00 \u2192 tom.sui</td></tr>
+        <tr><td>Sent</td><td class="hi">$50.00 \u2192 0x8b3e\u2026f4a2</td></tr>
         <tr><td>Tx</td><td><span style="color:var(--blue)">suiscan.xyz/tx/Hk9m\u2026</span></td></tr>
       </table>
       <div class="nt">Borrowed and sent in one step. Savings keep earning as collateral.</div>`,
@@ -471,7 +471,7 @@ async function run() {
         <span style="color:var(--danger);font-weight:600;font-size:12px">Transaction blocked</span>
       </div>
       <table class="rt">
-        <tr><td>Requested</td><td class="red">$200.00 \u2192 phil.sui</td></tr>
+        <tr><td>Requested</td><td class="red">$200.00 \u2192 0x7c4f\u2026d1b3</td></tr>
         <tr><td>Per-tx limit</td><td>$100.00</td></tr>
       </table>
       <div class="nt">Safeguard limit exceeded.</div>`,
