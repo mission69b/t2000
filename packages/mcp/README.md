@@ -7,24 +7,17 @@ MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or
 ## Quick Start
 
 ```bash
-# Install
-npm i -g @t2000/cli
-
-# Create wallet + configure safeguards
-t2000 init
-t2000 config set maxPerTx 100
-t2000 config set maxDailySend 500
-
-# Create session (saves PIN for MCP)
-t2000 balance
-
-# Start MCP server
-t2000 mcp
+npm i -g @t2000/cli          # install
+t2000 init                    # create wallet
+t2000 config set maxPerTx 100 # set safeguards
+t2000 mcp install             # auto-configure Claude Desktop + Cursor
 ```
 
-## Platform Config
+Restart your AI platform, then ask: **"What's my t2000 balance?"**
 
-Paste into your AI platform's MCP settings:
+To remove: `t2000 mcp uninstall`
+
+For other platforms, paste manually:
 
 ```json
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }

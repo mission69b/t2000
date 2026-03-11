@@ -169,7 +169,9 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
 | exchange | `t2000 exchange <amount> <from> <to>` | Exchange tokens via Cetus DEX (e.g. USDC ⇌ SUI). Options: `--slippage <pct>` (default: 3%) |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
-| mcp | `t2000 mcp` | Start MCP server (stdio transport) for Claude Desktop, Cursor, etc. |
+| mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
+| mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
+| mcp | `t2000 mcp` | Start MCP server (stdio transport, used by AI platforms) |
 
 ### Global Flags
 
@@ -592,6 +594,6 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Tools | 16 |
 | Prompts | 3 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
-| Start command | `t2000 mcp` |
-| Claude Desktop config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |
-| Cursor config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |
+| Auto-install | `t2000 mcp install` (configures Claude Desktop + Cursor automatically) |
+| Manual config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |
+| Remove | `t2000 mcp uninstall` |

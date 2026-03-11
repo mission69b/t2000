@@ -292,11 +292,11 @@ Full reference → [`@t2000/x402` README](packages/x402)
 
 Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
 
-```json
-{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
+```bash
+t2000 mcp install
 ```
 
-16 tools · 3 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 16 tools · 3 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 

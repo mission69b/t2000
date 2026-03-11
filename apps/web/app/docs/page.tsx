@@ -666,7 +666,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 earn" desc="Show all earning opportunities" onClick={() => scrollToCmd("earn")} />
         <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
-        <CmdCard name="t2000 mcp" desc="Start MCP server (stdio transport)" badge="NEW" onClick={() => scrollToCmd("mcp")} />
+        <CmdCard name="t2000 mcp" desc="MCP server — install, start, uninstall" badge="NEW" onClick={() => scrollToCmd("mcp")} />
       </div>
 
       <h2 id="cmd-init">t2000 init</h2>
@@ -951,21 +951,22 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>Start the MCP server for AI platform integration (Claude Desktop, Cursor, etc.). Uses stdio transport.</p>
+      <p>MCP server for AI platform integration. 16 tools, 3 prompts, safeguard enforced.</p>
+      <DocTable
+        headers={["Command", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000 mcp install</InlineCode>, "Auto-configure Claude Desktop + Cursor"],
+          [<InlineCode key="k">t2000 mcp uninstall</InlineCode>, "Remove MCP config from platforms"],
+          [<InlineCode key="k">t2000 mcp</InlineCode>, "Start MCP server (used by AI platforms)"],
+        ]}
+      />
       <CodeBlock lang="bash">
-        t2000 mcp [--key &lt;path&gt;]
+        {S.g("$")} t2000 mcp install{"\n\n"}
+        {"  "}{S.b("✓")} Claude Desktop  configured{"\n"}
+        {"  "}{S.b("✓")} Cursor (global)  configured{"\n\n"}
+        {"  "}Restart your AI platform to activate.{"\n"}
+        {"  "}Then ask: {S.b("\"what's my t2000 balance?\"")}
       </CodeBlock>
-      <Callout type="tip" label="Setup">
-        Configure safeguards before starting MCP — the server refuses to start without limits.
-        See the{" "}
-        <a
-          onClick={() => {}}
-          className="text-accent cursor-pointer hover:underline"
-        >
-          MCP Server guide
-        </a>{" "}
-        for full setup instructions.
-      </Callout>
 
       <h2 id="cmd-safeguards">Agent Safeguards</h2>
       <p>
@@ -1179,27 +1180,27 @@ function McpSection() {
         16 tools, 3 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
-      <h2 id="mcp-setup">Setup — 3 steps</h2>
+      <h2 id="mcp-setup">Setup — 4 commands</h2>
       <CodeBlock lang="bash">
-        {S.c("# 1. Install + create wallet")}{"\n"}
-        {S.g("$")} npm i -g @t2000/cli && t2000 init{"\n\n"}
-        {S.c("# 2. Configure safeguards (required)")}{"\n"}
-        {S.g("$")} t2000 config set maxPerTx 100{"\n"}
-        {S.g("$")} t2000 config set maxDailySend 500{"\n\n"}
-        {S.c("# 3. Create session (saves PIN for MCP)")}{"\n"}
-        {S.g("$")} t2000 balance
+        {S.g("$")} npm i -g @t2000/cli{S.c("          # install")}{"\n"}
+        {S.g("$")} t2000 init{S.c("                    # create wallet")}{"\n"}
+        {S.g("$")} t2000 config set maxPerTx 100{S.c(" # set safeguards")}{"\n"}
+        {S.g("$")} t2000 mcp install{S.c("             # auto-configure Claude Desktop + Cursor")}
       </CodeBlock>
       <p>
-        Then paste this into your AI platform&apos;s MCP config:
+        Restart your AI platform, then ask: <strong>&quot;What&apos;s my t2000 balance?&quot;</strong>
+      </p>
+      <Callout type="tip" label="Zero config">
+        <InlineCode>t2000 mcp install</InlineCode> auto-writes MCP configs
+        for Claude Desktop and Cursor. No JSON to paste, no files to find.
+        Run <InlineCode>t2000 mcp uninstall</InlineCode> to remove.
+      </Callout>
+      <p>
+        For other platforms, paste manually:
       </p>
       <CodeBlock lang="json" filename="MCP Config">
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
-      <Callout type="tip" label="Tip">
-        No PIN needed in the config — MCP reuses the session file created when you
-        ran <InlineCode>t2000 balance</InlineCode>. For CI/automation, set{" "}
-        <InlineCode>T2000_PIN</InlineCode> as an environment variable.
-      </Callout>
 
       <h2 id="mcp-tools">Available tools (16)</h2>
 
@@ -1275,22 +1276,23 @@ function McpSection() {
       </CodeBlock>
 
       <h2 id="mcp-platforms">Platform configs</h2>
-
-      <h3 id="mcp-claude">Claude Desktop</h3>
+      <Callout type="tip" label="Recommended">
+        Run <InlineCode>t2000 mcp install</InlineCode> to auto-configure
+        Claude Desktop and Cursor — no manual editing needed.
+      </Callout>
       <p>
-        File: <InlineCode>~/Library/Application Support/Claude/claude_desktop_config.json</InlineCode> (macOS)
+        For manual setup or other platforms, use this config:
       </p>
-      <CodeBlock lang="json" filename="claude_desktop_config.json">
+      <CodeBlock lang="json">
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
-
-      <h3 id="mcp-cursor">Cursor</h3>
-      <p>
-        File: <InlineCode>.cursor/mcp.json</InlineCode> (project root) or <InlineCode>~/.cursor/mcp.json</InlineCode> (global)
-      </p>
-      <CodeBlock lang="json" filename=".cursor/mcp.json">
-        {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
-      </CodeBlock>
+      <DocTable
+        headers={["Platform", "Config location"]}
+        rows={[
+          ["Claude Desktop", <><InlineCode key="k">~/Library/Application Support/Claude/claude_desktop_config.json</InlineCode> (macOS)</>],
+          ["Cursor", <><InlineCode key="k">~/.cursor/mcp.json</InlineCode> (global) or <InlineCode key="k2">.cursor/mcp.json</InlineCode> (project)</>],
+        ]}
+      />
 
       <h2 id="mcp-security">Security</h2>
       <DocTable

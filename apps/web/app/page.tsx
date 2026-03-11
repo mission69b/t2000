@@ -68,8 +68,8 @@ const STEPS = [
     badge: "MCP",
     badgeType: "new" as const,
     content:
-      "Paste one JSON config into Claude Desktop, Cursor, or any MCP client. 16 tools with safeguard enforcement — your AI can manage money autonomously.",
-    code: '{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }',
+      "One command auto-configures Claude Desktop and Cursor. 16 tools with safeguard enforcement — your AI manages money autonomously.",
+    code: "t2000 mcp install",
   },
   {
     num: "04",
@@ -551,13 +551,13 @@ export default function Home() {
 
             <div className="border border-border rounded-sm overflow-hidden">
               <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-                Setup · 3 steps
+                Setup · 4 commands
               </div>
               <div className="flex flex-col gap-px bg-border">
                 {[
                   { step: "1", cmd: "npm i -g @t2000/cli && t2000 init", label: "Install + create wallet" },
                   { step: "2", cmd: "t2000 config set maxPerTx 100", label: "Set safeguard limits" },
-                  { step: "3", cmd: "t2000 balance", label: "Enter PIN once (saves session)" },
+                  { step: "3", cmd: "t2000 mcp install", label: "Auto-configure Claude Desktop + Cursor" },
                 ].map((s) => (
                   <div key={s.step} className="bg-panel px-4 py-3 flex items-start gap-3">
                     <span className="text-accent text-xs font-mono shrink-0 mt-0.5">{s.step}</span>

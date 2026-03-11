@@ -174,11 +174,17 @@ t2000 init
 ### MCP Server
 
 ```bash
-# Start MCP server (stdio transport) for Claude Desktop, Cursor, etc.
+# Auto-configure Claude Desktop + Cursor
+t2000 mcp install
+
+# Remove MCP config
+t2000 mcp uninstall
+
+# Start MCP server (used by AI platforms, not typically run directly)
 t2000 mcp
 ```
 
-16 tools, 3 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for platform configs.
+16 tools, 3 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 

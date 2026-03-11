@@ -378,13 +378,36 @@ JSON: `{ "locked": true }`
 
 JSON: `{ "locked": false }`
 
-### `t2000 mcp`
+### `t2000 mcp install`
 
 ```
-  ✓ t2000 MCP server running (stdio)
-  Tools: 16  Prompts: 3
-  Safeguards: maxPerTx=$100, maxDailySend=$500
+  ✓ Claude Desktop  configured
+  ✓ Cursor (global)  configured
+
+  Restart your AI platform to activate.
+  Then ask: "what's my t2000 balance?"
 ```
+
+### `t2000 mcp install` (already configured)
+
+```
+  Claude Desktop  already configured
+  Cursor (global)  already configured
+
+  Restart your AI platform to activate.
+  Then ask: "what's my t2000 balance?"
+```
+
+### `t2000 mcp uninstall`
+
+```
+  ✓ Claude Desktop  removed
+  ✓ Cursor (global)  removed
+```
+
+### `t2000 mcp`
+
+Starts stdio server (used by AI platforms, not run directly by users).
 
 ---
 

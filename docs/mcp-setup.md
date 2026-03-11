@@ -2,76 +2,41 @@
 
 Connect your AI (Claude Desktop, Cursor, Claude Code, Windsurf, Codex) to your t2000 agent bank account.
 
-## Quick Start
-
-### 1. Install & create wallet
+## Quick Start — 4 commands
 
 ```bash
-npm i -g @t2000/cli
-t2000 init
+npm i -g @t2000/cli          # install
+t2000 init                    # create wallet
+t2000 config set maxPerTx 100 # set safeguards
+t2000 mcp install             # auto-configure Claude Desktop + Cursor
 ```
 
-### 2. Configure safeguards
+Restart your AI platform, then ask: **"What's my t2000 balance?"**
 
-Safeguards are required before the MCP server will start:
+That's it. No config files to edit, no JSON to paste.
 
-```bash
-t2000 config set maxPerTx 100
-t2000 config set maxDailySend 500
-```
-
-### 3. Create a session
-
-Run any command once to save your PIN for MCP to reuse:
-
-```bash
-t2000 balance
-```
-
-### 4. Add to your AI platform
-
-Paste the config into your AI platform's MCP settings:
-
-```json
-{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
-```
-
-### 5. Verify
-
-Ask your AI: **"What's my t2000 balance?"**
+> **Note:** The first time you run a command after `t2000 init`, you'll be prompted for your PIN. This creates a session that MCP reuses — no PIN needed in any config file.
 
 ---
 
-## Platform-Specific Config
+## What `t2000 mcp install` does
 
-### Claude Desktop
+Automatically writes the MCP config to:
+- **Claude Desktop** — `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Cursor** — `~/.cursor/mcp.json`
 
-**File:** `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
+It preserves any existing settings and is idempotent (safe to run multiple times).
 
-```json
-{
-  "mcpServers": {
-    "t2000": {
-      "command": "t2000",
-      "args": ["mcp"]
-    }
-  }
-}
-```
+To remove: `t2000 mcp uninstall`
 
-### Cursor
+---
 
-**File:** `.cursor/mcp.json` (project root) or `~/.cursor/mcp.json` (global)
+## Manual config (other platforms)
+
+For platforms not auto-detected, paste this into your MCP settings:
 
 ```json
-{
-  "mcpServers": {
-    "t2000": {
-      "command": "t2000",
-      "args": ["mcp"]
-    }
-  }
-}
+{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
 ### CI / Automation
