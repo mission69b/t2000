@@ -586,37 +586,52 @@ Before opening any leveraged position, verify safeguards are configured. Monitor
 
 ## Phase 18 — Global Payments (Checking Account)
 
-**Goal:** Position `t2000 send` as a first-class global payments feature. Free, instant, borderless stablecoin transfers — the "checking account" experience.
+**Goal:** Position `t2000 send` as a first-class global payments feature. Send by name, not by address.
 
-**Foundation:** `t2000 send` is already shipped and working. This phase adds UX polish and features that make it feel like a real payments product.
+**Foundation:** `t2000 send` is already shipped and working. This phase adds the contact book and name resolution.
 
-### Features
+### Phase 18a — Contacts (v1)
 
-| Feature | Description | CLI |
-|---------|-------------|-----|
-| Contact book | Named addresses for frequent recipients | `t2000 send 50 to @alice` |
-| Payment receipts | Shareable links after each send | Auto-generated on send |
-| Payment requests | Generate a "pay me" link | `t2000 request 50 from @bob` |
-| Recurring payments | Scheduled sends (via `t2000 serve`) | `t2000 send 50 to @alice --recurring monthly` |
+```bash
+t2000 contacts add Tom 0x8b3e...       # Save a contact
+t2000 send 50 USDC to Tom              # Send by name
+```
 
-### Design decisions
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Contact book | `~/.t2000/contacts.json` — name → address mappings | ⬜ |
+| Send by name | `t2000 send 50 to Tom` resolves from contacts | ⬜ |
+| MCP tool | `t2000_contacts` (list) + `t2000_send` contact resolution | ⬜ |
+| Agent Skill | `t2000-contacts` SKILL.md | ⬜ |
 
-- **Contact book**: Stored in `~/.t2000/contacts.json`. Aliases map to addresses. Managed via `t2000 contacts add @alice 0x...`.
-- **Keep it simple first**: Ship contact book + receipts. Defer recurring payments and payment requests to a later sub-phase.
-- **Receipt format**: Suiscan link + amount + timestamp + recipient — printable/shareable.
+**Design:** Case-insensitive lookup, alphanumeric names only, resolution in SDK (CLI + MCP both benefit), send output shows both name and address.
 
 ### Tasks
 
 | # | Task | Package | Est | Status |
 |---|------|---------|-----|--------|
-| 18.1 | Contact book (storage, add/remove/list) | sdk + cli | 3h | ⬜ |
-| 18.2 | `t2000 contacts` CLI command | cli | 2h | ⬜ |
-| 18.3 | Payment receipts (post-send shareable link) | cli | 2h | ⬜ |
-| 18.4 | Payment requests (`t2000 request`) | cli + sdk | 4h | ⬜ |
-| 18.5 | Recurring payments (scheduler in `t2000 serve`) | cli + sdk | 4h | ⬜ |
-| 18.6 | Tests + docs | all | 2h | ⬜ |
+| 18a.1 | `ContactManager` class (CRUD, resolve, validate) | sdk | 1h | ⬜ |
+| 18a.2 | Wire into `T2000` class + update `send()` | sdk | 45m | ⬜ |
+| 18a.3 | `t2000 contacts` CLI command (add/remove/list) | cli | 1.5h | ⬜ |
+| 18a.4 | Update send output to show contact name | cli | 15m | ⬜ |
+| 18a.5 | MCP `t2000_contacts` tool + update `t2000_send` | mcp | 1h | ⬜ |
+| 18a.6 | Tests (~20 tests across SDK + MCP) | all | 2h | ⬜ |
+| 18a.7 | Agent Skill: `t2000-contacts` | skills | 30m | ⬜ |
+| 18a.8 | Docs, READMEs, homepage, marketing, CLI_UX_SPEC, PRODUCT_FACTS | all | 1.5h | ⬜ |
+| 18a.9 | Version bump (→ 0.13.0), build, publish | all | 15m | ⬜ |
 
-**Estimated total:** 3-4 days
+**Estimated total:** 1–1.5 days
+
+**Detailed build plan:** `spec/phase18a-contacts-build-plan.md`
+
+### Phase 18b — Payments (v2, deferred)
+
+| Feature | Trigger to add |
+|---------|---------------|
+| SuiNS resolution (`.sui` names) | When SuiNS adoption grows |
+| Payment receipts | User feedback |
+| Payment requests | User feedback |
+| Recurring payments | User feedback |
 
 ---
 
@@ -878,9 +893,11 @@ t2000 agent
 The agreed execution sequence, reflecting "infra first" — safeguards unlock everything else:
 
 ```
-Phase 16: Safeguards          ← prerequisite for MCP + Investment
+Phase 16: Safeguards          ✅ Shipped (v0.11.0)
     ↓
-Phase 11a: MCP Server         ← quick win, massive distribution
+Phase 11a: MCP Server         ✅ Shipped (v0.12.3)
+    ↓
+Phase 18a: Contacts           ← quick win, send by name
     ↓
 Phase 17: Investment Account  ← major feature, needs safeguards
     ↓
@@ -903,7 +920,7 @@ Phase 20: On-ramp + Card      ← fiat rails, last mile
 | **11b** | Agent UI (local chat + dashboard) | **P0** | 1-2 weeks | ⬜ After 17 |
 | **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
 | **13** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
-| **18** | Global Payments (contacts, receipts) | P1 | 3-4 days | 🔶 Send shipped |
+| **18a** | Contacts (send by name) | **P0** | 1-1.5 days | ⬜ Next |
 | **20a** | On-ramp (Moonpay deep link) | P1 | 2 days | ⬜ |
 | **20b** | Off-ramp / Virtual Card | P2 | 2-3 weeks | ⬜ Research needed |
 | **14** | Multi-Agent Profiles | P2 | 1 week | ⬜ |
