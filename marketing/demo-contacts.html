@@ -238,12 +238,7 @@ body::after {
   <div class="card-main">No more copying<br>raw addresses.</div>
 </div>
 
-<!-- 4. Chat: Send to another contact -->
-<div id="s4" class="scene">
-  <div class="chat-frame" id="cf4"><div class="chat-body" id="cb4"></div></div>
-</div>
-
-<!-- 5. Outro -->
+<!-- 4. Outro -->
 <div id="outro" class="scene">
   <div class="logo">t2000</div>
   <div class="tagline">The first bank account for AI agents.</div>
@@ -344,7 +339,7 @@ async function run() {
   // 2. Chat: Add alice, show contacts, send to alice
   show('#s2');
   await showChat('#cf2', '#cb2', [
-    { type: 'user', text: "Add alice as a contact" },
+    { type: 'user', text: "Add alice as a contact \u2014 0x8b3e\u2026d412" },
     { type: 'think', ms: 800 },
     { type: 'ai', tools: ['t2000_contacts'],
       html: `<table class="rt">
@@ -353,13 +348,11 @@ async function run() {
       <div class="nt">You can now send money with just their name.</div>`,
       hold: 1200
     },
-    { type: 'user', text: "Who\u2019s in my contacts?" },
+    { type: 'user', text: "Show my contacts" },
     { type: 'think', ms: 600 },
     { type: 'ai', tools: ['t2000_contacts'],
       html: `<table class="rt">
         <tr><td>alice</td><td>0x8b3e\u2026d412</td></tr>
-        <tr><td>bob</td><td>0x40cd\u20263e62</td></tr>
-        <tr><td>tom</td><td>0x7c4f\u2026d1b3</td></tr>
       </table>`,
       hold: 1200
     },
@@ -371,7 +364,8 @@ async function run() {
         <tr><td>Amount</td><td class="hi">$5.00 USDC</td></tr>
         <tr><td>Balance after</td><td>$81.81</td></tr>
         <tr><td>Tx</td><td><span style="color:var(--blue)">suiscan.xyz/tx/Gd2n\u2026</span></td></tr>
-      </table>`,
+      </table>
+      <div class="nt">Resolved "alice" from contacts. No address needed.</div>`,
       hold: 2000
     },
   ]);
@@ -380,25 +374,7 @@ async function run() {
   // 3. No more copying raw addresses
   await showCard('#s3', 2500);
 
-  // 4. Chat: Send to another contact with balance check
-  show('#s4');
-  await showChat('#cf4', '#cb4', [
-    { type: 'user', text: "Send $20 to tom" },
-    { type: 'think', ms: 1000 },
-    { type: 'ai', tools: ['t2000_contacts', 't2000_send'],
-      html: `<table class="rt">
-        <tr><td>To</td><td class="hi">tom \u2192 0x7c4f\u2026d1b3</td></tr>
-        <tr><td>Amount</td><td class="hi">$20.00 USDC</td></tr>
-        <tr><td>Balance after</td><td>$61.81</td></tr>
-        <tr><td>Tx</td><td><span style="color:var(--blue)">suiscan.xyz/tx/Rw3n\u2026</span></td></tr>
-      </table>
-      <div class="nt">Resolved "tom" from your contacts. No address needed.</div>`,
-      hold: 2000
-    },
-  ]);
-  await sleep(1200);
-
-  // 5. Outro
+  // 4. Outro
   show('#outro');
   await sleep(300);
   $('#outro .logo').classList.add('in');
