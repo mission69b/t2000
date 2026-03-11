@@ -66,7 +66,7 @@
 - `name` preserves original casing (for display)
 - `address` is normalized via `normalizeSuiAddress()`
 - File created on first `contacts add`
-- File permissions: `0600` (user-only read/write, same as `wallet.key`)
+- File permissions: default (contact names + public addresses aren't secrets)
 
 ---
 
@@ -113,7 +113,7 @@ export class ContactManager {
   private save(): void {
     const dir = resolve(homedir(), '.t2000');
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(CONTACTS_PATH, JSON.stringify(this.contacts, null, 2), { mode: 0o600 });
+    writeFileSync(CONTACTS_PATH, JSON.stringify(this.contacts, null, 2));
   }
 
   add(name: string, address: string): { action: 'added' | 'updated' } {
@@ -165,9 +165,7 @@ export class ContactManager {
     );
   }
 
-  private static RESERVED_NAMES = new Set([
-    'usdc', 'usdt', 'sui', 'usde', 'usdsui', 'btc', 'eth', 'all', 'to',
-  ]);
+  private static RESERVED_NAMES = new Set(['to', 'all', 'address']);
 
   private validateName(name: string): void {
     if (name.startsWith('0x')) {
@@ -429,14 +427,15 @@ async ({ to, amount, asset, dryRun }) => {
 | 11 | **Send to non-existent contact** | Throws `CONTACT_NOT_FOUND` with `t2000 contacts add` hint |
 | 12 | **MCP dryRun with contact name** | Resolves before preview, returns `contactName` in response |
 | 13 | **Remove non-existent contact** | Returns false, CLI shows "Contact not found" |
-| 14 | **File permissions** | Created with `0600` (user-only) |
+| 14 | **File permissions** | Default — contact names + public addresses aren't secrets |
 | 15 | **Self-send via contact** | Not blocked — same as current address behavior |
 | 16 | **Contact address matches own address** | Allowed but unusual — no guard needed |
 | 17 | **Empty name** | Rejected by alphanumeric regex |
-| 18 | **Reserved names (USDC, SUI, etc.)** | Rejected: "is a reserved name" — prevents confusion with `t2000 send 50 USDC to USDC` |
+| 18 | **Reserved names (`to`, `all`, `address`)** | Rejected: "is a reserved name" — prevents CLI parsing conflicts |
 | 19 | **MCP server caching** | `load()` called on every `resolve()`, `list()`, `get()` — same fix as SafeguardEnforcer |
 | 20 | **No PIN needed** | `t2000 contacts` is file I/O only — no wallet access, no PIN prompt |
 | 21 | **JSON mode for add/remove** | `--json` returns structured output for all subcommands |
+| 22 | **MCP contacts tool is read-only** | AI can list + resolve contacts but cannot add/remove — human manages contacts via CLI |
 
 ---
 
@@ -495,28 +494,15 @@ Add a note: "The `to` field can be a contact name (e.g. 'Tom') or a Sui address 
 |---|------|-----|--------|
 | 18a.12 | Create `t2000-contacts` SKILL.md + update `t2000-send` skill | 30m | ⬜ |
 
-### Docs + Marketing (18a.13–18a.22)
+### Docs + Marketing + Release (18a.13–18a.15)
 
 | # | Task | Est | Status |
 |---|------|-----|--------|
-| 18a.13 | Docs page: add Contacts section (CLI commands, examples) | 30m | ⬜ |
-| 18a.14 | Docs page: add `t2000 contacts` to CLI commands table | 10m | ⬜ |
-| 18a.15 | Homepage: update comparison table "Contacts" → "✓ Send by name" | 5m | ⬜ |
-| 18a.16 | Homepage: update tool count 16 → 17 in Connect Your AI section | 5m | ⬜ |
-| 18a.17 | `CLI_UX_SPEC.md`: add `t2000 contacts` output spec | 15m | ⬜ |
-| 18a.18 | `PRODUCT_FACTS.md`: add contacts feature, update counts | 15m | ⬜ |
-| 18a.19 | Root README: mention contacts | 10m | ⬜ |
-| 18a.20 | CLI + SDK + MCP READMEs: update tool counts, mention contacts | 15m | ⬜ |
-| 18a.21 | `marketing/marketing-plan.md`: contacts launch tweet | 10m | ⬜ |
-| 18a.22 | Roadmap: mark Phase 18a as shipped | 5m | ⬜ |
+| 18a.13 | All docs: docs page (section + CLI table), homepage (comparison table + tool count), CLI_UX_SPEC, PRODUCT_FACTS, all READMEs | 1.5h | ⬜ |
+| 18a.14 | Marketing: launch tweet + roadmap update | 15m | ⬜ |
+| 18a.15 | Version bump (→ 0.13.0), build all packages, publish | 15m | ⬜ |
 
-### Release (18a.23)
-
-| # | Task | Est | Status |
-|---|------|-----|--------|
-| 18a.23 | Version bump (→ 0.13.0), build all packages, publish | 15m | ⬜ |
-
-**Total: 23 tasks · ~8 hours**
+**Total: 15 tasks · ~7 hours**
 
 ---
 
@@ -540,11 +526,10 @@ Add a note: "The `to` field can be a contact name (e.g. 'Tom') or a Sui address 
 9. Send resolution tests
 10. MCP tool tests
 
-### Block 5: Skill + Docs + Ship (18a.12–18a.23)
+### Block 5: Skill + Docs + Ship (18a.12–18a.15)
 11. Agent skill
-12. All docs + READMEs
-13. Homepage + marketing
-14. Version bump, build, publish
+12. All docs + READMEs + homepage + marketing
+13. Version bump, build, publish
 
 ---
 
