@@ -446,4 +446,38 @@ export const demos: Demo[] = [
       { type: "info", text: "Active safeguards: maxPerTx=$500, maxDailySend=$1000", delay: 200 },
     ],
   },
+  {
+    id: "contacts",
+    title: "Contacts — Send by Name",
+    description: "Add contacts, then send money by name instead of raw addresses. Locally stored, works everywhere.",
+    tweet: "Week 10 Monday — Contacts feature",
+    lines: [
+      { type: "command", text: "❯ t2000 contacts add alice 0x8b3e...d412", delay: 0 },
+      { type: "success", text: "  ✓ Contact saved: alice → 0x8b3e...d412", delay: 500 },
+
+      { type: "command", text: "❯ t2000 contacts add bob 0x40cd...3e62", delay: 1000 },
+      { type: "success", text: "  ✓ Contact saved: bob → 0x40cd...3e62", delay: 500 },
+
+      { type: "command", text: "❯ t2000 contacts", delay: 1000 },
+      { type: "output", text: "", delay: 200 },
+      { type: "output", text: "  Contacts", delay: 200 },
+      { type: "info", text: "─────────────────────────────────────────────────────", delay: 80 },
+      { type: "output", text: "  alice       0x8b3e...d412", delay: 150 },
+      { type: "output", text: "  bob         0x40cd...3e62", delay: 150 },
+
+      { type: "command", text: "❯ t2000 send 5 to alice", delay: 1200 },
+      { type: "success", text: "  ✓ Sent $5.00 USDC", delay: 600 },
+      { type: "output", text: "    To: alice (0x8b3e...d412)", delay: 200 },
+      { type: "info", text: "    Gas:  -0.0019 SUI (self-funded)", delay: 150 },
+      { type: "info", text: "    Balance:  $81.81 USDC", delay: 150 },
+      { type: "info", text: "    Tx:  suiscan.xyz/mainnet/tx/Gd2ntpMz...", delay: 150 },
+
+      { type: "command", text: "❯ t2000 send 10 to bob", delay: 1200 },
+      { type: "success", text: "  ✓ Sent $10.00 USDC", delay: 600 },
+      { type: "output", text: "    To: bob (0x40cd...3e62)", delay: 200 },
+      { type: "info", text: "    Gas:  -0.0019 SUI (self-funded)", delay: 150 },
+      { type: "info", text: "    Balance:  $71.81 USDC", delay: 150 },
+      { type: "info", text: "    Tx:  suiscan.xyz/mainnet/tx/Hk9mQp4w...", delay: 150 },
+    ],
+  },
 ];
