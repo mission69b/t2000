@@ -523,6 +523,9 @@ export default function Home() {
               <span className="text-muted">$</span> <span className="text-accent">t2000 mcp install</span>{"\n"}
               <span className="text-muted/50">{"\n"}  {"✓"} Claude Desktop  configured{"\n"}  {"✓"} Cursor (global)  configured</span>
             </pre>
+            <div className="px-4 sm:px-5 py-3 border-t border-border text-[11px] text-muted/60">
+              Restart your AI platform, then ask: <span className="text-muted">&quot;what&apos;s my t2000 balance?&quot;</span>
+            </div>
           </div>
 
           {/* Right: Categories + examples + platforms */}
@@ -546,7 +549,7 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-1.5 mb-6">
               {[
-                "What's my t2000 balance?",
+                "Show me a financial report",
                 "Send $5 USDC to 0x8b3e… — dry run first",
                 "Can I afford to spend $50?",
                 "Where should I put my idle funds?",
