@@ -525,6 +525,16 @@ async function run() {
   $('#outro .cmd').classList.add('in');
   await sleep(150);
   $('#outro .links').classList.add('in');
+
+  await sleep(5000);
+
+  document.querySelectorAll('.chat-body').forEach(b => b.innerHTML = '');
+  document.querySelectorAll('.chat-frame').forEach(f => f.classList.remove('in'));
+  document.querySelectorAll('[class*="in"]').forEach(el => {
+    if (el.closest('#outro')) el.classList.remove('in');
+  });
+
+  run();
 }
 
 run();
