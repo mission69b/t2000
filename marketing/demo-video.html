@@ -418,6 +418,7 @@ async function run() {
         <tr><td>Deposited</td><td class="hi">$95.81 USDC \u2192 savings</td></tr>
         <tr><td>Protocol</td><td>NAVI \u00b7 4.98% APY</td></tr>
         <tr><td>Projected</td><td class="hi">~$4.77 / year</td></tr>
+        <tr><td>Tx</td><td><span style="color:var(--blue)">suiscan.xyz/tx/Ae7q\u2026</span></td></tr>
       </table>`,
       hold: 1200
     },
@@ -425,10 +426,11 @@ async function run() {
     { type: 'think', ms: 1200 },
     { type: 'ai', tools: ['t2000_rebalance'],
       html: `<table class="rt">
-        <tr><td>Rebalanced</td><td class="hi">USDC \u2192 USDT on NAVI</td></tr>
-        <tr><td>APY</td><td>4.98% \u2192 <span class="hi">5.55% \u2191</span></td></tr>
-      </table>
-      <div class="nt">Now on the best available rate.</div>`,
+        <tr><td>Before</td><td>USDC \u00b7 4.98% APY \u00b7 ~$4.77/yr</td></tr>
+        <tr><td>After</td><td class="hi">USDT \u00b7 5.55% APY \u00b7 ~$5.32/yr \u2191</td></tr>
+        <tr><td>Extra yield</td><td class="hi">+$0.55/yr \u00b7 break-even 6 days</td></tr>
+        <tr><td>Tx</td><td><span style="color:var(--blue)">suiscan.xyz/tx/Rw3n\u2026</span></td></tr>
+      </table>`,
       hold: 2000
     },
   ]);
