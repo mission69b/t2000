@@ -308,6 +308,26 @@ emoji type(scope): subject
 
 ---
 
+## Ship Checklist — Update These Files for Every Feature
+
+- [ ] SDK implementation + tests (`packages/sdk/src/`)
+- [ ] CLI command + tests (`packages/cli/src/commands/`)
+- [ ] MCP tool/prompt + tests (`packages/mcp/src/`)
+- [ ] Agent Skill (`t2000-skills/skills/`)
+- [ ] Docs page (`apps/web/app/docs/page.tsx`)
+- [ ] Homepage (`apps/web/app/page.tsx` — comparison table, hero, Connect Your AI)
+- [ ] CLI UX spec (`CLI_UX_SPEC.md`)
+- [ ] Product facts (`PRODUCT_FACTS.md` — feature list, counts, versions)
+- [ ] Root README (`README.md`)
+- [ ] SDK README (`packages/sdk/README.md`)
+- [ ] CLI README (`packages/cli/README.md`)
+- [ ] MCP README (`packages/mcp/README.md`)
+- [ ] Marketing plan (`marketing/marketing-plan.md`)
+- [ ] Version bump + build all packages
+- [ ] Roadmap update (`spec/t2000-roadmap-v2.md`)
+
+---
+
 ## Workflow
 
 - Make one logical change at a time
