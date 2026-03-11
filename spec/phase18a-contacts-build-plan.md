@@ -98,6 +98,9 @@ export class ContactManager {
   }
 
   private load(): void {
+    // Re-reads from disk on every call — prevents stale state when
+    // contacts are added via CLI while MCP server is running
+    // (same pattern as SafeguardEnforcer)
     try {
       if (existsSync(CONTACTS_PATH)) {
         this.contacts = JSON.parse(readFileSync(CONTACTS_PATH, 'utf-8'));
@@ -132,14 +135,17 @@ export class ContactManager {
   }
 
   get(name: string): Contact | undefined {
+    this.load();
     return this.contacts[name.toLowerCase()];
   }
 
   list(): Contact[] {
+    this.load();
     return Object.values(this.contacts);
   }
 
   resolve(nameOrAddress: string): { address: string; contactName?: string } {
+    this.load();
     // 1. Looks like a Sui address? Use directly.
     if (nameOrAddress.startsWith('0x') && nameOrAddress.length >= 42) {
       return { address: validateAddress(nameOrAddress) };
@@ -159,6 +165,10 @@ export class ContactManager {
     );
   }
 
+  private static RESERVED_NAMES = new Set([
+    'usdc', 'usdt', 'sui', 'usde', 'usdsui', 'btc', 'eth', 'all', 'to',
+  ]);
+
   private validateName(name: string): void {
     if (name.startsWith('0x')) {
       throw new T2000Error('INVALID_CONTACT_NAME', 'Contact names cannot start with 0x');
@@ -168,6 +178,9 @@ export class ContactManager {
     }
     if (name.length > 32) {
       throw new T2000Error('INVALID_CONTACT_NAME', 'Contact names must be 32 characters or fewer');
+    }
+    if (ContactManager.RESERVED_NAMES.has(name.toLowerCase())) {
+      throw new T2000Error('INVALID_CONTACT_NAME', `"${name}" is a reserved name and cannot be used as a contact`);
     }
   }
 }
@@ -180,6 +193,14 @@ Add a `contacts` property to the `T2000` class:
 ```typescript
 // In T2000 class
 public readonly contacts = new ContactManager();
+```
+
+### SDK exports
+
+Export from `packages/sdk/src/index.ts`:
+
+```typescript
+export { ContactManager, type Contact, type ContactMap } from './contacts.js';
 ```
 
 ### Update `agent.send()` — resolve contacts before sending
@@ -225,6 +246,8 @@ export interface SendResult {
 
 **File:** `packages/cli/src/commands/contacts.ts`
 
+**No PIN required.** Contacts are local file I/O — no wallet access needed. Unlike `balance`, `send`, etc., this command should NOT prompt for PIN.
+
 ```bash
 # List all contacts
 t2000 contacts
@@ -250,9 +273,15 @@ t2000 contacts remove Tom
 t2000 contacts remove Bob
 #   ✗ Contact "Bob" not found
 
-# JSON mode
+# JSON mode (all subcommands)
 t2000 contacts --json
 #   [{ "name": "Tom", "address": "0x8b3e..." }, ...]
+
+t2000 contacts add Tom 0x8b3e... --json
+#   { "action": "added", "name": "Tom", "address": "0x8b3e..." }
+
+t2000 contacts remove Tom --json
+#   { "removed": true, "name": "Tom" }
 ```
 
 ### Update `send` command output
@@ -333,18 +362,53 @@ server.tool(
 }
 ```
 
-The MCP `t2000_send` validation also needs updating — replace the `validateAddress()` check with `contacts.resolve()`:
+The MCP `t2000_send` handler needs updating — resolve contacts at the top, before the dryRun branch:
 
 ```typescript
-// Before (current)
-if (!validateAddress(to)) {
-  return errorResult(new Error(`Invalid Sui address: ${to}`));
-}
+async ({ to, amount, asset, dryRun }) => {
+  try {
+    // Resolve contact name → address at the top (before dryRun branch)
+    const resolved = agent.contacts.resolve(to);
+    const resolvedAddress = resolved.address;
+    const contactName = resolved.contactName;
 
-// After
-// No manual validation needed — agent.send() now calls contacts.resolve()
-// which validates addresses and resolves contact names
+    if (dryRun) {
+      agent.enforcer.check({ operation: 'send', amount });
+      const balance = await agent.balance();
+      const config = agent.enforcer.getConfig();
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            preview: true,
+            canSend: balance.available >= amount,
+            amount,
+            to: resolvedAddress,
+            contactName,  // included if resolved from contacts
+            asset: asset ?? 'USDC',
+            currentBalance: balance.available,
+            balanceAfter: balance.available - amount,
+            safeguards: {
+              dailyUsedAfter: config.dailyUsed + amount,
+              dailyLimit: config.maxDailySend,
+            },
+          }),
+        }],
+      };
+    }
+
+    // agent.send() also resolves contacts internally, but we already
+    // resolved above — pass the address directly
+    const result = await mutex.run(() => agent.send({ to, amount, asset }));
+    return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+  } catch (err) {
+    return errorResult(err);
+  }
+}
 ```
+
+**Key:** Contact resolution happens once at the top of the handler. Both the dryRun preview and the execute path use the resolved address. The old `validateAddress(to)` check at the top is removed — `contacts.resolve()` handles both address validation and name resolution.
 
 ---
 
@@ -369,6 +433,10 @@ if (!validateAddress(to)) {
 | 15 | **Self-send via contact** | Not blocked — same as current address behavior |
 | 16 | **Contact address matches own address** | Allowed but unusual — no guard needed |
 | 17 | **Empty name** | Rejected by alphanumeric regex |
+| 18 | **Reserved names (USDC, SUI, etc.)** | Rejected: "is a reserved name" — prevents confusion with `t2000 send 50 USDC to USDC` |
+| 19 | **MCP server caching** | `load()` called on every `resolve()`, `list()`, `get()` — same fix as SafeguardEnforcer |
+| 20 | **No PIN needed** | `t2000 contacts` is file I/O only — no wallet access, no PIN prompt |
+| 21 | **JSON mode for add/remove** | `--json` returns structured output for all subcommands |
 
 ---
 
@@ -484,12 +552,12 @@ Add a note: "The `to` field can be a contact name (e.g. 'Tom') or a Sui address 
 
 | Test file | What it covers | Est count |
 |-----------|---------------|-----------|
-| `contacts.test.ts` | Add, remove, list, get, resolve, case insensitivity, name validation (0x prefix, special chars, length), corrupted file, missing file | ~12 |
+| `contacts.test.ts` | Add, remove, list, get, resolve, case insensitivity, name validation (0x prefix, special chars, length, reserved names), corrupted file, missing file, reload from disk | ~15 |
 | `send.test.ts` (update) | Send with contact name, send with address, send with unknown name | ~3 |
 | `tools/read.test.ts` (update) | `t2000_contacts` tool returns contact list | ~2 |
 | `tools/write.test.ts` (update) | `t2000_send` with contact name, dryRun with contact | ~3 |
 
-**Estimated: ~20 new tests**
+**Estimated: ~23 new tests**
 
 ---
 
