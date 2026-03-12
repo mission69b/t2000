@@ -72,8 +72,8 @@ check $? "invest sell shows transaction link"
 echo ""
 echo "   t2000 portfolio (empty after sell)"
 OUTPUT=$(t2000 portfolio 2>&1)
-echo "$OUTPUT" | grep -qi "no.*position\|empty\|─"
-check $? "portfolio empty or shows no positions"
+echo "$OUTPUT" | grep -q "No investments"
+check $? "portfolio shows no investments message"
 
 echo ""
 echo "════════════════════════════════════════════"
