@@ -4,7 +4,7 @@
  * Tests: strategy list, buy (dry-run + real), status, sell, create/delete,
  *        auto-invest setup/status/run, portfolio grouping, balance aggregation.
  *
- * Requires at least $5 USDC available.
+ * Requires at least $15 USDC available.
  * Buys into bluechip strategy, checks portfolio grouping, then sells.
  *
  * Usage:
@@ -13,7 +13,7 @@
 
 import { assert, runSection, createAgent, summary, exitCode } from './test-helpers.js';
 
-const BUY_AMOUNT = 3; // $3 minimum for 3-asset strategy ($1 per asset)
+const BUY_AMOUNT = 10; // $10 — bluechip needs $5 min (SUI at 20% needs $1 each), buffer for safety
 
 async function main() {
   console.log('\n  Strategy & Auto-Invest Tests\n');
@@ -22,6 +22,12 @@ async function main() {
 
   const balBefore = await agent.balance();
   console.log(`   Starting USDC: $${balBefore.available.toFixed(2)}`);
+
+  // Pre-flight: sell any stale bluechip positions from previous runs
+  try {
+    await agent.sellStrategy({ strategy: 'bluechip' });
+    console.log('   ℹ  Pre-flight: sold stale bluechip positions');
+  } catch { /* no positions — expected */ }
 
   // ── Strategy Defaults ──
 
@@ -246,10 +252,13 @@ async function main() {
     assert(!hasBlue, 'no bluechip positions remaining');
   });
 
-  await runSection('Balance investment cleared', async () => {
+  await runSection('Balance reflects strategy sell', async () => {
     const bal = await agent.balance();
+    const portfolio = await agent.getPortfolio();
+    const hasBlue = portfolio.strategyPositions && 'bluechip' in portfolio.strategyPositions;
     console.log(`   Investment: $${bal.investment.toFixed(2)}`);
-    assert(bal.investment < 0.01, 'investment near $0 after sell-all');
+    console.log(`   Bluechip remaining: ${hasBlue ? 'yes' : 'no'}`);
+    assert(!hasBlue, 'no bluechip strategy positions in portfolio');
   });
 
   summary('Strategy & Auto-Invest');

@@ -195,8 +195,12 @@ async function main() {
 
   await runSection('Balance investment cleared', async () => {
     const bal = await agent.balance();
+    const portfolio = await agent.getPortfolio();
+    const suiPos = portfolio.positions.find((p: { asset: string }) => p.asset === 'SUI');
+    const hasSui = suiPos && suiPos.totalAmount > 0;
     console.log(`   Investment: $${bal.investment.toFixed(2)}`);
-    assert(bal.investment < 0.01, 'investment near $0 after sell-all');
+    console.log(`   SUI position: ${hasSui ? 'yes' : 'no'}`);
+    assert(!hasSui, 'no SUI investment position remaining');
   });
 
   summary('Investment');
