@@ -7,6 +7,7 @@ export type {
   SwapQuote,
   LendingAdapter,
   SwapAdapter,
+  PerpsAdapter,
   ProtocolDescriptor,
 } from './types.js';
 export { ProtocolRegistry } from './registry.js';

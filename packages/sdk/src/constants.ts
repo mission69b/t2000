@@ -50,10 +50,22 @@ export const SUPPORTED_ASSETS = {
     symbol: 'SUI',
     displayName: 'SUI',
   },
+  BTC: {
+    type: '0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC',
+    decimals: 8,
+    symbol: 'BTC',
+    displayName: 'Bitcoin',
+  },
+  ETH: {
+    type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH',
+    decimals: 8,
+    symbol: 'ETH',
+    displayName: 'Ethereum',
+  },
 } as const;
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
-export type StableAsset = Exclude<SupportedAsset, 'SUI'>;
+export type StableAsset = Exclude<SupportedAsset, 'SUI' | 'BTC' | 'ETH'>;
 export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'] as const;
 
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
@@ -71,6 +83,24 @@ export const API_BASE_URL = process.env.T2000_API_URL ?? 'https://api.t2000.ai';
 export const CETUS_USDC_SUI_POOL = '0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab';
 export const CETUS_GLOBAL_CONFIG = '0xdaa46292632c3c4d8f31f23ea0f9b36a28ff3677e9684980e4438403a67a3d8f';
 export const CETUS_PACKAGE = '0x1eabed72c53feb3805120a081dc15963c204dc8d091542592abaf7a35689b2fb';
+
+// --- Investment ---
+
+export const INVESTMENT_ASSETS = {
+  SUI: SUPPORTED_ASSETS.SUI,
+  BTC: SUPPORTED_ASSETS.BTC,
+  ETH: SUPPORTED_ASSETS.ETH,
+} as const;
+
+export type InvestmentAsset = keyof typeof INVESTMENT_ASSETS;
+
+export const PERPS_MARKETS = ['SUI-PERP'] as const;
+export type PerpsMarket = (typeof PERPS_MARKETS)[number];
+
+export const DEFAULT_MAX_LEVERAGE = 5;
+export const DEFAULT_MAX_POSITION_SIZE = 1000;
+export const INVEST_FEE_BPS = 0n;
+export const GAS_RESERVE_MIN = 0.05; // minimum SUI to keep for gas
 
 export const SENTINEL = {
   PACKAGE: '0x88b83f36dafcd5f6dcdcf1d2cb5889b03f61264ab3cee9cae35db7aa940a21b7',

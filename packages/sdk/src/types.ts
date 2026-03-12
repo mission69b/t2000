@@ -19,6 +19,8 @@ export interface BalanceResponse {
   available: number;
   savings: number;
   debt: number;
+  investment: number;
+  investmentPnL: number;
   gasReserve: GasReserve;
   total: number;
   assets: Record<string, number>;
@@ -220,4 +222,91 @@ export interface SentinelAttackResult {
   settleTx: string;
   won: boolean;
   feePaid: number;
+}
+
+// --- Investment types ---
+
+export interface InvestmentTrade {
+  id: string;
+  type: 'buy' | 'sell';
+  asset: string;
+  amount: number;
+  price: number;
+  usdValue: number;
+  fee: number;
+  tx: string;
+  timestamp: string;
+}
+
+export interface InvestmentPosition {
+  asset: string;
+  totalAmount: number;
+  costBasis: number;
+  avgPrice: number;
+  currentPrice: number;
+  currentValue: number;
+  unrealizedPnL: number;
+  unrealizedPnLPct: number;
+  trades: InvestmentTrade[];
+}
+
+export interface PortfolioResult {
+  positions: InvestmentPosition[];
+  totalInvested: number;
+  totalValue: number;
+  unrealizedPnL: number;
+  unrealizedPnLPct: number;
+  realizedPnL: number;
+}
+
+export interface InvestResult {
+  success: boolean;
+  tx: string;
+  type: 'buy' | 'sell';
+  asset: string;
+  amount: number;
+  price: number;
+  usdValue: number;
+  fee: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+  realizedPnL?: number;
+  position: InvestmentPosition;
+}
+
+// --- Margin trading types ---
+
+export type PositionSide = 'long' | 'short';
+
+export interface PerpsPosition {
+  market: string;
+  side: PositionSide;
+  margin: number;
+  leverage: number;
+  size: number;
+  entryPrice: number;
+  markPrice: number;
+  liquidationPrice: number;
+  unrealizedPnL: number;
+  unrealizedPnLPct: number;
+}
+
+export interface TradeResult {
+  success: boolean;
+  action: 'open' | 'close';
+  market: string;
+  side: PositionSide;
+  margin: number;
+  leverage: number;
+  size: number;
+  entryPrice: number;
+  liquidationPrice?: number;
+  realizedPnL?: number;
+  tx?: string;
+}
+
+export interface TradePositionsResult {
+  positions: PerpsPosition[];
+  totalMargin: number;
+  totalUnrealizedPnL: number;
 }

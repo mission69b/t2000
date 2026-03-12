@@ -1,55 +1,94 @@
-# Phase 17 — Investment Account Build Plan
+# Phase 17a — Spot Investment Account Build Plan
 
-**Goal:** Add a 5th account tier — Investment — enabling spot investing and margin trading. Users can buy/sell crypto assets and open leveraged positions through natural language.
+**Goal:** Add a 5th account tier — Investment — enabling spot investing with portfolio tracking, cost-basis P&L, and unified balance display. Invested assets are logically locked — the only way to access value is to sell back to USDC.
 
-**Scope:** Phase 17a (Spot Investing) + Phase 17b (Margin Trading) shipped together.
+**Scope:** Spot investing only. Margin trading deferred to Phase 17e.
 
-**MVP Asset:** SUI only (spot). SUI-PERP (margin). BTC/ETH/XAUM added in Phase 17c.
+**MVP Asset:** SUI only for 17a. BTC (wBTC via SuiBridge) and ETH (wETH via SuiBridge) coin types added to registry — ready for Phase 17b activation.
 
-**Estimated total:** 2–3 weeks
+**Version bump:** v0.13.1 → v0.14.0 (minor — new feature, no breaking changes)
 
-**Version bump:** v0.13.0 → v0.14.0 (minor — new feature, no breaking changes)
+---
+
+## Product Vision — Investment Products
+
+t2000 offers three investment products, inspired by CBA's tiered investment offering. The AI agent is the differentiator — instead of separate products with separate UIs, these are different levels of agent autonomy on the same SDK infrastructure.
+
+### 1. Direct Investing ← **This is Phase 17a**
+
+> "Buy $100 of SUI" — user picks asset and amount
+
+- User controls what to buy, when, and how much
+- Full portfolio tracking with cost basis and P&L
+- Experience: Moderate to advanced
+- Minimum: $1
+- Agent autonomy: Low (user-directed)
+- **Status: Building now**
+
+### 2. Baskets (Phase 17d)
+
+> "Invest $200 in Layer 1s" — user picks a theme, agent fills the basket
+
+- Predefined themed baskets: "Bluechip/L1" (50% BTC, 30% ETH, 20% SUI), "DeFi", "Memecoin"
+- Agent splits investment across basket assets, auto-rebalances to target weights
+- Experience: Beginner to moderate
+- Minimum: $50
+- Agent autonomy: Medium (user picks theme, agent executes)
+- Implementation: Agent calls `investBuy` N times per basket allocation. Rebalancing = `investSell` + `investBuy` to adjust weights. Basket definitions stored in config.
+
+### 3. Auto-Invest (Phase 17d)
+
+> "Invest $50/week into a balanced crypto portfolio" — fully agent-managed
+
+- Agent picks allocation based on market conditions and user risk profile
+- DCA on schedule (weekly/monthly)
+- Auto-rebalances
+- Experience: Beginner
+- Minimum: $2
+- Agent autonomy: High (agent manages everything)
+- Implementation: Scheduled agent task + investment-strategy prompt. Agent decides allocation, calls `investBuy` with DCA amounts.
+
+**All three products use the same `investBuy`/`investSell`/`getPortfolio` SDK methods.** Baskets and Auto-Invest are agent behaviors (prompts + schedules), not new infrastructure.
 
 ---
 
 ## Design Principle
 
-**Think in dollars. Track everything. Zero friction.**
+**Think in dollars. Track everything. Zero friction. Locked like a real investment.**
 
 | Principle | Implementation |
 |-----------|---------------|
 | Dollar-denominated | `t2000 invest buy 100 SUI` = invest $100 in SUI |
 | Cost-basis tracking | Local `portfolio.json` tracks every buy/sell |
-| Live P&L | Real-time prices from Cetus pool |
+| Live P&L | Real-time prices via Cetus Aggregator quotes |
 | Unified balance | Investment shows alongside checking, savings, credit |
+| Investment locking | Invested assets cannot be sent or exchanged — must sell first |
 | Same safeguards | `maxPerTx`, lock, existing limits all apply |
-| Progressive disclosure | `invest` (simple spot) vs `trade` (advanced margin) |
+| Registry-driven assets | Adding a new asset = one line in `INVESTMENT_ASSETS`. Cetus Aggregator v3 handles routing |
 | Reuse infrastructure | Spot uses existing CetusAdapter — no new protocol integration |
-| Separate concerns | Spot = on-chain wallet. Margin = Bluefin exchange. |
 
 ---
 
 ## What's in vs what's deferred
 
-| Feature | v1 (this phase) | v2 (later) |
-|---------|-----------------|------------|
+| Feature | 17a (this phase) | Later |
+|---------|:---:|---|
 | Spot buy/sell SUI | ✅ | — |
+| Asset registry (scalable, coin type based) | ✅ | — |
 | Portfolio tracking (cost basis, P&L) | ✅ | — |
 | Balance tier integration (investment line) | ✅ | — |
-| Margin trading (Bluefin perps) | ✅ | — |
-| Position management (long/short/close) | ✅ | — |
-| Investment safeguards (maxLeverage, maxPositionSize) | ✅ | — |
-| MCP tools (`t2000_invest`, `t2000_portfolio`, `t2000_trade`) | ✅ | — |
-| Agent skill | ✅ | — |
-| Spot: BTC, ETH, XAUM | — | ⬜ Phase 17c (add to INVESTMENT_ASSETS) |
-| DCA (dollar-cost averaging) | — | ⬜ Agent-driven (agent schedules buys) |
-| Yield vaults (Ember) | — | ⬜ Phase 17d |
-| Earn on holdings (lend BTC/SUI) | — | ⬜ Phase 17d |
-| Funding rate display | — | ⬜ Add `getFundingRate()` when needed |
-| Bluefin ProtocolDescriptor (indexer) | — | ⬜ For proper tx classification |
-| Investment DB tracking (server) | — | ⬜ If we need cross-agent analytics |
-| Options / structured products | — | ⬜ Future |
-| RWA / equities | — | ⬜ Future |
+| Investment locking (send/exchange guard) | ✅ | — |
+| Portfolio wallet-clamping (desync protection) | ✅ | — |
+| MCP tools (`t2000_invest`, `t2000_portfolio`) | ✅ | — |
+| MCP prompt (`investment-strategy`) | ✅ | — |
+| Investment safeguard config (`maxLeverage`, `maxPositionSize`) | ✅ | — |
+| Agent skill (`t2000-invest`) | ✅ | — |
+| Multi-asset: BTC, ETH (coin types in registry) | — | ⬜ Phase 17b (enable, test routing, /invest page) |
+| Yield on investment assets (invest earn/unearn) | — | ⬜ Phase 17c (NAVI + Suilend + Bluefin Lending) |
+| Baskets + Auto-Invest (agent-driven) | — | ⬜ Phase 17d |
+| DCA (dollar-cost averaging) | — | ⬜ Phase 17d |
+| Margin trading (Bluefin perps) | — | ⬜ Phase 17e (BluefinPerpsAdapter) |
+| Securities-backed lending (borrow against investments) | — | ⬜ Phase 17f (15-20% LTV, auto-repay) |
 
 ---
 
@@ -60,20 +99,272 @@
 │  t2000 Balance                                      │
 ├─────────────────────────────────────────────────────┤
 │  Available:  $85.81  (checking — spendable)         │
-│  Savings:    $5.00   (earning 4.99% APY)            │
+│  Savings:    $5.00   (earning 4.99% APY)  🔒 locked │
 │  Credit:     -$1.00  (borrowed @ 7.73% APR)         │
-│  Investment: $100.00 (105 SUI, +2.1%)               │ ← NEW
+│  Investment: $100.00 (105 SUI, +2.1%)     🔒 locked │ ← NEW
 │  Gas:        0.81 SUI (~$0.78)                      │
 │  ──────────────────────────────────────              │
 │  Total:      $190.59                                │
 └─────────────────────────────────────────────────────┘
 ```
 
+**Savings and Investment follow the same locking model:**
+
+| Account | What's in it | Locked? | How to access value |
+|---------|-------------|---------|---------------------|
+| Checking | USDC (spendable) | No | `send`, `pay`, `exchange` |
+| Savings | USDC in NAVI (earning yield) | Yes | `withdraw` → USDC → checking |
+| Credit | USDC borrowed (debt) | — | `repay` to reduce debt |
+| Investment | SUI (price exposure) | Yes | `invest sell` → USDC → checking |
+| Gas | Free SUI (for tx fees) | No | Auto-used by transactions |
+
+---
+
+## Investment Locking Guard
+
+### Why
+
+Invested SUI should behave like stocks in Robinhood — you can't send Apple stock to someone. To access value, sell it back to cash. This prevents:
+- Portfolio tracking going out of sync
+- Users accidentally spending their investment
+- Agents moving invested assets without going through proper sell flow
+
+### How
+
+When `send()` or `exchange()` is called with SUI, calculate free (non-invested) SUI:
+
+```typescript
+const walletSUI = <actual on-chain SUI balance>;
+const investedSUI = portfolio.getPosition('SUI')?.totalAmount ?? 0;
+const freeSUI = Math.max(0, walletSUI - investedSUI - GAS_RESERVE_MIN);
+```
+
+Only `freeSUI` is available for send/exchange operations.
+
+### Error messages
+
+```bash
+# User tries to send invested SUI
+t2000 send 50 SUI to alice
+# Error: "Cannot send 50 SUI — 50 SUI is invested. Free SUI: 0.81
+#         To access invested funds: t2000 invest sell 50 SUI"
+
+# User tries to exchange invested SUI
+t2000 exchange 50 SUI USDC
+# Error: "Cannot exchange 50 SUI — 50 SUI is invested. Free SUI: 0.81
+#         To sell investment: t2000 invest sell 50 SUI"
+```
+
+### Edge cases
+
+| Scenario | freeSUI | Behavior |
+|----------|---------|----------|
+| 106 wallet, 105 invested, 0.05 reserve | 0.95 | Can send up to 0.95 SUI |
+| 105 wallet, 105 invested, 0.05 reserve | 0 | Can't send any SUI. Error with helpful message |
+| 110 wallet, 105 invested, 0.05 reserve | 4.95 | Can send up to 4.95 (received 5 SUI from someone) |
+| 100 wallet, 105 invested (gas ate some) | 0 | Can't send. Portfolio clamps to 100 in display |
+| 0 invested | All free | No guard — send/exchange work normally |
+| Sending USDC (not SUI) | N/A | No guard needed — USDC isn't an investment asset |
+
+### What the guard does NOT block
+
+- `invest sell` — this is the proper exit path, always allowed
+- `invest buy` — this is the entry path, always allowed
+- Sending/exchanging USDC or other stablecoins — unaffected
+- Sending SUI received from others (free SUI, not invested)
+- Gas consumption — unavoidable, may slowly reduce investment balance
+
+---
+
+## Portfolio Wallet Clamping
+
+### Problem
+
+If gas fees consume invested SUI over time, `portfolio.json` might track more SUI than the wallet actually holds. Without clamping, `getPortfolio()` would show phantom SUI.
+
+### Fix
+
+`getPortfolio()` fetches actual wallet SUI and clamps each position:
+
+```typescript
+const walletSUI = await getWalletSuiBalance();
+const trackedSUI = pos.totalAmount;
+const actualHeld = Math.min(trackedSUI, Math.max(0, walletSUI - GAS_RESERVE_MIN));
+
+// Adjust cost basis proportionally if clamped
+if (actualHeld < trackedSUI) {
+  const ratio = actualHeld / trackedSUI;
+  pos.costBasis *= ratio;
+}
+```
+
+`balance()` already does this clamping (line 250: `Math.min(pos.totalAmount, bal.gasReserve.sui)`).
+
+---
+
+## User Flows
+
+### Flow 1: First-time investor — buy, check, sell
+
+The most common journey. User has USDC in checking and wants price exposure to SUI.
+
+```
+User                          t2000                           On-chain
+─────────────────────────────────────────────────────────────────────────
+                              ┌─────────────────────────────┐
+1. "How much do I have?"      │ t2000 balance               │
+                              │                             │
+                              │ Available: $185.81          │
+                              │ Savings:   $5.00            │
+                              │ Investment: —               │  ← no investment yet
+                              │ Gas: 0.81 SUI              │
+                              │ Total: $191.59              │
+                              └─────────────────────────────┘
+                              ┌─────────────────────────────┐
+2. "Invest $100 in SUI"       │ t2000 invest buy 100 SUI    │──→ USDC→SUI swap
+                              │                             │    via Cetus Aggr v3
+                              │ ✓ Bought 105.26 SUI @ $0.95│
+                              │   Invested: $100.00         │
+                              │   Portfolio: 105.26 SUI     │
+                              │   Tx: suiscan.xyz/...       │
+                              └─────────────────────────────┘
+                              ┌─────────────────────────────┐
+3. "What's my balance now?"   │ t2000 balance               │
+                              │                             │
+                              │ Available: $85.81           │  ← $100 moved to investment
+                              │ Savings:   $5.00            │
+                              │ Investment: $100.00 (+2.1%) │  ← SUI price went up
+                              │ Gas: 0.81 SUI              │
+                              │ Total: $191.59              │
+                              └─────────────────────────────┘
+                              ┌─────────────────────────────┐
+4. "Show my portfolio"        │ t2000 portfolio             │
+                              │                             │
+                              │ SUI  105.26  Avg: $0.95     │
+                              │   Now: $0.97  +$2.10 (+2.1%)│
+                              │                             │
+                              │ Total invested: $100.00     │
+                              │ Current value:  $102.10     │
+                              │ Unrealized P&L: +$2.10      │
+                              └─────────────────────────────┘
+                              ┌─────────────────────────────┐
+5. "Take some profit"         │ t2000 invest sell 50 SUI    │──→ SUI→USDC swap
+                              │                             │
+                              │ ✓ Sold 52.63 SUI @ $0.97   │
+                              │   Proceeds: $51.05          │
+                              │   Realized P&L: +$1.05      │
+                              │   Remaining: 52.63 SUI      │
+                              └─────────────────────────────┘
+                              ┌─────────────────────────────┐
+6. "Final balance"            │ t2000 balance               │
+                              │                             │
+                              │ Available: $136.86          │  ← $51.05 returned
+                              │ Savings:   $5.00            │
+                              │ Investment: $51.05 (+2.1%)  │  ← remaining position
+                              │ Gas: 0.81 SUI              │
+                              │ Total: $193.69              │  ← grew from $191.59
+                              └─────────────────────────────┘
+```
+
+### Flow 2: Locking guard — user tries to send invested SUI
+
+The investment is locked. User must sell first.
+
+```
+User                          t2000
+───────────────────────────────────────────────────────
+1. Has 105 SUI invested        (portfolio: 105 SUI)
+   + 0.81 free SUI             (gas reserve)
+
+2. "Send 50 SUI to alice"     t2000 send 50 SUI to alice
+                              
+                              ✗ Cannot send 50 SUI
+                                50 SUI is invested. Free SUI: 0.76
+                                To access invested funds:
+                                  t2000 invest sell 50 SUI
+
+3. "Ok, sell first"            t2000 invest sell 50 SUI
+                              ✓ Sold 52.63 SUI @ $0.97
+                                Proceeds: $51.05 → checking
+
+4. "Now send from checking"   t2000 send 50 to alice
+                              ✓ Sent $50.00 USDC to alice
+```
+
+### Flow 3: Agent-driven investing (via Claude Desktop)
+
+```
+User (Claude Desktop):  "I have some idle USDC, should I invest?"
+
+Agent thinks:
+  1. Calls t2000_balance → Available: $500, Savings: $0, Investment: $0
+  2. Calls t2000_portfolio → Empty
+  3. Uses investment-strategy prompt → Suggests investing idle funds
+
+Agent responds: "You have $500 idle in checking. Based on current market
+conditions, I'd suggest investing $200 in SUI. Want me to go ahead?"
+
+User: "Yes, invest $200"
+
+Agent:
+  1. Calls t2000_invest(action: "buy", asset: "SUI", amount: 200, dryRun: true)
+     → Preview: buy ~210 SUI @ $0.95, checking balance: $500
+  2. Shows preview: "I'll invest $200, buying ~210 SUI at $0.95. Proceed?"
+  3. User confirms
+  4. Calls t2000_invest(action: "buy", asset: "SUI", amount: 200)
+     → Result: bought 210.53 SUI @ $0.95
+
+Agent responds: "Done! Invested $200 in SUI (210.53 SUI @ $0.95).
+Your checking balance is now $300. I'll keep an eye on the position."
+```
+
+### Flow 4: Portfolio with multiple assets (Phase 17b)
+
+```
+t2000 balance
+  Available:  $500.00
+  Savings:    $100.00  (earning 4.99% APY)
+  Investment: $650.00  (+5.2%)
+  Gas:        0.81 SUI
+  Total:      $1,250.81
+
+t2000 portfolio
+  Investment Portfolio
+  ─────────────────────────────────────────────────────
+  BTC     0.0052    Avg: $94,230    Now: $97,500    +$17.00 (+3.5%)
+  ETH     0.15      Avg: $3,100     Now: $3,250     +$22.50 (+4.8%)
+  SUI     105.26    Avg: $0.95      Now: $0.97      +$2.10  (+2.1%)
+  XAUM    2.00      Avg: $78.50     Now: $82.00     +$7.00  (+4.5%)
+  ─────────────────────────────────────────────────────
+  Total invested:   $618.00
+  Current value:    $648.60
+  Unrealized P&L:   +$30.60 (+5.0%)
+  Realized P&L:     $12.50
+```
+
+### Flow 5: Auto-Invest with DCA (Phase 17d — future)
+
+```
+User (Claude Desktop): "Set up a weekly $50 investment into a balanced portfolio"
+
+Agent:
+  1. Creates auto-invest schedule: $50/week
+  2. Picks allocation: 50% BTC, 30% ETH, 20% SUI
+  3. Every week, agent runs:
+     - t2000_invest(buy, BTC, $25)
+     - t2000_invest(buy, ETH, $15)
+     - t2000_invest(buy, SUI, $10)
+  4. Monthly rebalance: sells overweight, buys underweight
+
+Agent responds: "Auto-invest set up: $50/week into a balanced portfolio
+(50% BTC, 30% ETH, 20% SUI). First investment runs next Monday."
+```
+
 ---
 
 ## CLI UX
 
-### Spot Investing
+### Commands
 
 ```bash
 # Buy — amount is always USD (spend $X from checking to buy asset)
@@ -117,115 +408,73 @@ t2000 portfolio                   # Show all investment positions + P&L
   Realized P&L:     $0.00
 ```
 
-### Margin Trading
-
-```bash
-# Open positions — margin amount in USD, leverage as multiplier
-t2000 trade long SUI 100 3x      # Long SUI-PERP with $100 margin at 3x
-t2000 trade short SUI 200 2x     # Short SUI-PERP with $200 margin at 2x
-
-# Close
-t2000 trade close SUI             # Close SUI-PERP position
-
-# View
-t2000 trade positions             # Show all open perp positions
+#### Send guard error
+```
+  ✗ Cannot send 50 SUI — 50 SUI is invested. Free SUI: 0.81
+    To access invested funds: t2000 invest sell 50 SUI
 ```
 
-#### Trade long output
+#### Price unavailable
 ```
-  ✓ Opened SUI-PERP Long
-    Margin:         $100.00
-    Leverage:       3x
-    Position size:  $300.00
-    Entry price:    $0.95
-    Liq. price:     $0.63
-    Tx: https://suiscan.xyz/mainnet/tx/...
-```
-
-#### Trade positions output
-```
-  Margin Positions (Bluefin)
+  Investment Portfolio
   ─────────────────────────────────────────────────────
-  SUI-PERP   LONG   3x   Entry: $0.95   Mark: $0.97
-             Margin: $100   Size: $300   PnL: +$6.32 (+6.3%)
+  SUI     105.26    Avg: $0.95    Now: unavailable
   ─────────────────────────────────────────────────────
-  Total margin:     $100.00
-  Unrealized P&L:   +$6.32
+  ⚠ Price data unavailable. Values may be inaccurate.
+```
+
+#### Invalid input
+```
+  t2000 invest buy 0 SUI
+  ✗ Amount must be greater than $0
+
+  t2000 invest buy -50 SUI
+  ✗ Amount must be greater than $0
 ```
 
 ---
 
 ## Architecture
 
-### Phase 17a: Spot Investing
-
 **No new protocol integrations.** Reuses existing CetusAdapter for swaps. New code is:
 
 1. `PortfolioManager` — local file tracking (cost basis, trades, P&L)
 2. `investBuy()` / `investSell()` on `T2000` class — thin wrappers around `exchange()` + portfolio tracking
-3. `portfolio()` on `T2000` class — portfolio + live prices
-4. Updated `balance()` — adds investment tier
+3. `getPortfolio()` on `T2000` class — portfolio + live prices + wallet clamping
+4. Updated `balance()` — adds investment tier with SUI double-counting fix
+5. Investment locking guard on `send()` and `exchange()` — prevents moving invested SUI
 
 ```
 investBuy flow:
   1. enforcer.assertNotLocked()
   2. enforcer.check({ operation: 'invest', amount })
   3. Pre-check: query balance, verify available >= usdAmount
-  4. Get SUI price from CetusAdapter.getPoolPrice()
-  5. Execute swap via exchange() method (USDC → SUI) — reuses existing infrastructure
-  6. Record trade in PortfolioManager
-  7. Return InvestResult
+  4. Execute swap via exchange() method (USDC → SUI)
+  5. Record trade in PortfolioManager
+  6. Return InvestResult
 
 investSell flow:
   1. enforcer.assertNotLocked()
   2. Check portfolio has position for asset
   3. Query ACTUAL on-chain wallet SUI balance (not portfolio tracking)
   4. Guard: wallet_SUI - GAS_RESERVE_MIN (0.05) ≥ sell_amount_in_SUI
-  5. Execute swap via exchange() method (SUI → USDC) — reuses existing infrastructure
+  5. Execute swap via exchange() method (SUI → USDC)
   6. Record trade in PortfolioManager (with realized P&L via average cost)
   7. Return InvestResult
-```
 
-### Phase 17b: Margin Trading
+send/exchange guard (SUI only):
+  1. Query wallet SUI balance
+  2. Query portfolio invested SUI
+  3. freeSUI = max(0, walletSUI - investedSUI - GAS_RESERVE_MIN)
+  4. If requested > freeSUI → throw error with helpful message
+  5. Otherwise → proceed normally
 
-**New protocol integration:** Bluefin Pro exchange.
-
-#### ⚠️ Bluefin SDK Version Conflict
-
-Bluefin Pro SDK (`@bluefin-exchange/pro-sdk@1.13.0`) has peer dependency `@mysten/sui ^1.28.2` (v1.x).
-Our SDK uses `@mysten/sui ^2.6.0` (v2.x). These are **incompatible**.
-
-**Recommended approach — REST API direct:**
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| ~~SDK + override~~ | Less code | Version conflict, fragile, breaks on SDK updates |
-| **REST API direct** | Clean deps, full control, no version headaches | More upfront work, need to implement auth |
-| SDK in isolated pkg | Works for sure | Complex monorepo setup, duplicate Sui deps |
-
-The Bluefin SDK is an OpenAPI client wrapper. We implement:
-1. **Auth** — Sign requests with our Ed25519Keypair (replicate `BluefinRequestSigner` pattern)
-2. **Deposit/Withdraw** — Build Sui transactions directly (we already know how to do this)
-3. **Trading** — REST API calls via fetch/axios to Bluefin endpoints
-4. **Positions** — REST API calls for account data
-
-This gives us zero new dependencies and complete control.
-
-```
-tradeLong flow:
-  1. enforcer.assertNotLocked()
-  2. enforcer.check({ operation: 'trade', amount })
-  3. Check maxLeverage safeguard
-  4. Check Bluefin exchange balance, deposit more USDC if needed
-  5. Create order via Bluefin REST API (market order, long)
-  6. Return TradeResult with position details
-
-tradeClose flow:
-  1. enforcer.assertNotLocked()
-  2. Get position from Bluefin API
-  3. Place closing order
-  4. Withdraw USDC back to checking wallet
-  5. Return TradeResult with P&L
+Locking guard bypass for invest methods:
+  investBuy/investSell call exchange() internally.
+  The locking guard in exchange() must NOT fire for invest operations.
+  Implementation: pass internal option { _bypassInvestmentGuard: true }
+  to exchange(). This option is NOT exposed in the public API.
+  Only investBuy() and investSell() set this flag.
 ```
 
 ---
@@ -271,12 +520,10 @@ tradeClose flow:
 ### New types in `packages/sdk/src/types.ts`
 
 ```typescript
-export type InvestmentAsset = 'SUI'; // Expand: 'BTC' | 'ETH' | 'XAUM' in Phase 17c
-
 export interface InvestmentTrade {
   id: string;
   type: 'buy' | 'sell';
-  asset: InvestmentAsset;
+  asset: string;
   amount: number;        // asset units
   price: number;         // price per unit in USD
   usdValue: number;      // total USD
@@ -286,7 +533,7 @@ export interface InvestmentTrade {
 }
 
 export interface InvestmentPosition {
-  asset: InvestmentAsset;
+  asset: string;
   totalAmount: number;   // current units held (per tracking)
   costBasis: number;     // total USD spent (buys - sells cost)
   avgPrice: number;      // weighted average buy price
@@ -310,7 +557,7 @@ export interface InvestResult {
   success: boolean;
   tx: string;
   type: 'buy' | 'sell';
-  asset: InvestmentAsset;
+  asset: string;
   amount: number;        // asset units transacted
   price: number;         // per-unit price
   usdValue: number;      // total USD
@@ -320,165 +567,6 @@ export interface InvestResult {
   realizedPnL?: number;  // only on sell
   position: InvestmentPosition;
 }
-```
-
-### New types for margin trading
-
-```typescript
-export type PerpsMarket = 'SUI-PERP'; // Expand later
-
-export type PositionSide = 'long' | 'short';
-
-export interface PerpsPosition {
-  market: PerpsMarket;
-  side: PositionSide;
-  margin: number;        // USD margin
-  leverage: number;
-  size: number;          // notional size in USD
-  entryPrice: number;
-  markPrice: number;
-  liquidationPrice: number;
-  unrealizedPnL: number;
-  unrealizedPnLPct: number;
-}
-
-export interface TradeResult {
-  success: boolean;
-  action: 'open' | 'close';
-  market: PerpsMarket;
-  side: PositionSide;
-  margin: number;
-  leverage: number;
-  size: number;
-  entryPrice: number;
-  liquidationPrice?: number;
-  realizedPnL?: number;  // only on close
-  tx?: string;           // deposit/withdraw tx if applicable
-}
-
-export interface TradePositionsResult {
-  positions: PerpsPosition[];
-  totalMargin: number;
-  totalUnrealizedPnL: number;
-}
-```
-
-### Safeguard extensions
-
-```typescript
-export interface SafeguardConfig {
-  locked: boolean;
-  maxPerTx: number;
-  maxDailySend: number;
-  dailyUsed: number;
-  dailyResetDate: string;
-  maxLeverage?: number;       // default: 5 (max 5x leverage on perps)
-  maxPositionSize?: number;   // default: 1000 (max $1000 per perp position)
-}
-
-// TxMetadata.operation gets two new values:
-// 'invest' | 'trade'
-```
-
-`invest` and `trade` are NOT in `OUTBOUND_OPS` — they use `assertNotLocked()` + `maxPerTx` check only. They don't count against `maxDailySend` (which tracks outbound payments to other addresses).
-
----
-
-## New adapter: PerpsAdapter
-
-### `packages/sdk/src/adapters/types.ts`
-
-```typescript
-export type AdapterCapability = 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap' | 'perps';
-
-// FundingRate deferred to v2
-
-export interface PerpsAdapter {
-  readonly id: string;
-  readonly name: string;
-  readonly version: string;
-  readonly capabilities: readonly AdapterCapability[];
-  readonly supportedMarkets: readonly string[];
-
-  init(keypair: Ed25519Keypair, network: 'mainnet' | 'testnet'): Promise<void>;
-
-  getAccountBalance(address: string): Promise<number>;
-  getPositions(address: string): Promise<PerpsPosition[]>;
-  getMarketPrice(market: string): Promise<number>;
-
-  deposit(amount: number): Promise<string>;     // returns tx digest
-  withdraw(amount: number): Promise<string>;     // returns tx digest
-
-  openPosition(params: {
-    market: string;
-    side: PositionSide;
-    margin: number;
-    leverage: number;
-  }): Promise<TradeResult>;
-
-  closePosition(market: string): Promise<TradeResult>;
-
-  // v2: getFundingRate(market: string): Promise<FundingRate>;
-}
-```
-
-### ProtocolRegistry extension
-
-```typescript
-// registry.ts additions
-private perps: Map<string, PerpsAdapter> = new Map();
-
-registerPerps(adapter: PerpsAdapter): void
-getPerps(id: string): PerpsAdapter | undefined
-listPerps(): PerpsAdapter[]
-```
-
----
-
-## Constants
-
-### `packages/sdk/src/constants.ts`
-
-```typescript
-export const INVESTMENT_ASSETS = {
-  SUI: SUPPORTED_ASSETS.SUI,
-  // Phase 17c additions:
-  // BTC: { type: '0x...', decimals: 8, symbol: 'BTC', displayName: 'Bitcoin' },
-  // ETH: { type: '0x...', decimals: 8, symbol: 'ETH', displayName: 'Ethereum' },
-  // XAUM: { type: '0x...', decimals: 6, symbol: 'XAUM', displayName: 'Gold' },
-} as const;
-
-export type InvestmentAsset = keyof typeof INVESTMENT_ASSETS;
-
-export const PERPS_MARKETS = ['SUI-PERP'] as const;
-export type PerpsMarket = (typeof PERPS_MARKETS)[number];
-
-export const DEFAULT_MAX_LEVERAGE = 5;
-export const DEFAULT_MAX_POSITION_SIZE = 1000; // $1000
-
-export const INVEST_FEE_BPS = 0n; // no additional fee beyond Cetus swap fee
-```
-
----
-
-## SDK Methods
-
-### T2000 class additions
-
-```typescript
-// Properties
-readonly portfolio: PortfolioManager;
-
-// Spot investing
-async investBuy(params: { asset: InvestmentAsset; usdAmount: number; maxSlippage?: number }): Promise<InvestResult>
-async investSell(params: { asset: InvestmentAsset; usdAmount: number | 'all'; maxSlippage?: number }): Promise<InvestResult>
-async getPortfolio(): Promise<PortfolioResult>
-
-// Margin trading
-async tradeLong(params: { market: PerpsMarket; margin: number; leverage: number }): Promise<TradeResult>
-async tradeShort(params: { market: PerpsMarket; margin: number; leverage: number }): Promise<TradeResult>
-async tradeClose(params: { market: PerpsMarket }): Promise<TradeResult>
-async tradePositions(): Promise<TradePositionsResult>
 ```
 
 ### Balance extension
@@ -497,60 +585,92 @@ export interface BalanceResponse {
 }
 ```
 
----
-
-## MCP Tools
-
-### Read tools
-
-| Tool | Description |
-|------|-------------|
-| `t2000_portfolio` | Show investment portfolio positions and P&L |
-| `t2000_trade_positions` | Show open margin/perp positions |
-
-### Write tools
-
-| Tool | Description | dryRun |
-|------|-------------|--------|
-| `t2000_invest` | Buy or sell investment assets | ✅ |
-| `t2000_trade` | Open or close margin positions | ✅ |
-
-### `t2000_invest` schema
+### Safeguard extensions
 
 ```typescript
-{
-  action: z.enum(['buy', 'sell']),
-  asset: z.enum(['SUI']),         // expand with Phase 17c
-  amount: z.union([z.number(), z.literal('all')]),
-  dryRun: z.boolean().optional(),
+export interface SafeguardConfig {
+  // ...existing fields...
+  maxLeverage?: number;       // default: 5 (for Phase 17e)
+  maxPositionSize?: number;   // default: 1000 (for Phase 17e)
 }
+
+// TxMetadata.operation gets: 'invest' | 'trade'
+// Neither is in OUTBOUND_OPS — they don't count against maxDailySend
 ```
 
-### `t2000_trade` schema
+### Margin types (defined now, used in Phase 17e)
 
-```typescript
-{
-  action: z.enum(['long', 'short', 'close']),
-  market: z.enum(['SUI-PERP']),
-  margin: z.number().optional(),     // required for long/short
-  leverage: z.number().optional(),   // required for long/short
-  dryRun: z.boolean().optional(),
-}
-```
+Types for `PerpsPosition`, `TradeResult`, `TradePositionsResult`, `PositionSide` are already defined in `types.ts` and exported from `index.ts` — ready for 17e to use without type changes.
 
 ---
 
-## Safeguard Integration
+## Constants
 
-| Operation | assertNotLocked | maxPerTx | maxDailySend | maxLeverage | maxPositionSize |
-|-----------|:---:|:---:|:---:|:---:|:---:|
-| invest buy | ✅ | ✅ | — | — | — |
-| invest sell | ✅ | — | — | — | — |
-| trade long | ✅ | ✅ | — | ✅ | ✅ |
-| trade short | ✅ | ✅ | — | ✅ | ✅ |
-| trade close | ✅ | — | — | — | — |
+### `packages/sdk/src/constants.ts`
 
-Sell and close don't need `maxPerTx` — you're reducing exposure, not increasing it.
+```typescript
+// Asset registry — adding a new investment asset = adding one entry here.
+// Cetus Aggregator v3 handles USDC ↔ asset routing automatically.
+export const INVESTMENT_ASSETS = {
+  SUI: SUPPORTED_ASSETS.SUI,
+  BTC: SUPPORTED_ASSETS.BTC,   // wBTC (SuiBridge)
+  ETH: SUPPORTED_ASSETS.ETH,   // wETH (SuiBridge)
+  // Future: just add entries:
+  // XAUM: { type: '0x...xaum coin type...', decimals: 6, symbol: 'XAUM', displayName: 'Gold' },
+} as const;
+
+export type InvestmentAsset = keyof typeof INVESTMENT_ASSETS;
+
+export const PERPS_MARKETS = ['SUI-PERP'] as const;  // ready for 17e
+export type PerpsMarket = (typeof PERPS_MARKETS)[number];
+
+export const DEFAULT_MAX_LEVERAGE = 5;
+export const DEFAULT_MAX_POSITION_SIZE = 1000;
+export const INVEST_FEE_BPS = 0n;
+export const GAS_RESERVE_MIN = 0.05;
+```
+
+### Why this scales
+
+The Cetus Aggregator v3 (`@cetusprotocol/aggregator-sdk`) is already integrated. It takes any `from` and `target` coin type and finds the best multi-hop route.
+
+BTC and ETH are already in the registry (`SUPPORTED_ASSETS` + `INVESTMENT_ASSETS`). Once the registry-driven code (17.9h) is done, adding any future asset is just one line per constant — no adapter code, no routing logic.
+
+```
+investBuy("BTC", $500) flow:
+  1. Look up BTC coin type from INVESTMENT_ASSETS registry
+  2. Call exchange(USDC → BTC) → CetusAdapter → Aggregator v3 finds best route
+  3. Record trade in PortfolioManager (already multi-asset)
+  4. Return InvestResult
+```
+
+### Price lookups — generalized (not SUI-specific)
+
+Currently `getPoolPrice()` reads the SUI/USDC pool directly. For multi-asset, use `getQuote()` instead:
+
+```typescript
+// Current (SUI-specific):
+const suiPrice = await swapAdapter.getPoolPrice();
+
+// Generalized (any asset):
+async function getAssetPrice(asset: string): Promise<number> {
+  const quote = await swapAdapter.getQuote('USDC', asset, 1);
+  return quote.expectedOutput; // 1 USDC → X asset, so price = 1/X
+}
+```
+
+**For 17a:** We can keep `getPoolPrice()` since we only have SUI. But all code should be written to use the registry, not hardcode `'SUI'`, so 17b is a trivial change.
+
+### Hardcodes to avoid in 17a implementation
+
+| Location | Don't write | Write instead |
+|----------|-------------|---------------|
+| `getPortfolio()` | `pos.asset === 'SUI' ? suiPrice : 0` | `prices[pos.asset] ?? 0` (price map) |
+| `balance()` | `if (pos.asset === 'SUI')` | `if (pos.asset in INVESTMENT_ASSETS)` |
+| Locking guard | `asset === 'SUI'` | `asset in INVESTMENT_ASSETS` |
+| Gas reserve | `walletSUI - investedSUI` | Only SUI needs gas reserve logic (SUI is the gas token — BTC/ETH don't need this) |
+| MCP schema | `z.enum(['SUI'])` | `z.enum(Object.keys(INVESTMENT_ASSETS))` or dynamic |
+| `getSupportedPairs` | Hardcoded `['USDC', 'SUI']` | Generate from `INVESTMENT_ASSETS` + `STABLE_ASSETS` |
 
 ---
 
@@ -558,70 +678,17 @@ Sell and close don't need `maxPerTx` — you're reducing exposure, not increasin
 
 SUI is used for both investment and gas. Both live in the same wallet. **This creates a double-counting risk.**
 
-### The Problem
-
-`queryBalance()` in `wallet/balance.ts` puts ALL wallet SUI into `gasReserve`:
-
-```typescript
-// Current: queryBalance() treats ALL wallet SUI as gas
-gasReserve: { sui: suiAmount, usdEquiv: suiAmount * suiPriceUsd }
-total: totalStables + savings + usdEquiv  // ← SUI counted here via usdEquiv
-```
-
-If we naively add `investment = portfolio_SUI * price` to total, the same SUI gets counted **twice** — once in `gasReserve.usdEquiv` and again in `investment`.
-
 ### The Fix
 
-`T2000.balance()` must adjust `gasReserve` AFTER getting portfolio data:
+`T2000.balance()` adjusts `gasReserve` AFTER getting portfolio data:
 
 ```typescript
-async balance(): Promise<BalanceResponse> {
-  const bal = await queryBalance(this.client, this._address);
-
-  // 1. Merge lending positions (existing logic)
-  try {
-    const positions = await this.positions();
-    bal.savings = positions.positions.filter(p => p.type === 'save').reduce(...);
-    bal.debt = positions.positions.filter(p => p.type === 'borrow').reduce(...);
-  } catch { }
-
-  // 2. NEW: Merge investment positions
-  try {
-    const portfolio = this.portfolio.getPositions();
-    const suiPrice = bal.gasReserve.usdEquiv / bal.gasReserve.sui; // reuse fetched price
-    let investmentValue = 0;
-    let investmentPnL = 0;
-
-    for (const pos of portfolio) {
-      if (pos.asset === 'SUI') {
-        // Actual held = min(portfolio tracked, wallet SUI)
-        const actualHeld = Math.min(pos.totalAmount, bal.gasReserve.sui);
-        const value = actualHeld * suiPrice;
-        investmentValue += value;
-        investmentPnL += value - pos.costBasis;
-
-        // Adjust gas reserve: subtract investment SUI
-        const gasSui = Math.max(0, bal.gasReserve.sui - pos.totalAmount);
-        bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * suiPrice };
-      }
-      // Future: BTC/ETH/XAUM would need their own price sources
-    }
-
-    bal.investment = investmentValue;
-    bal.investmentPnL = investmentPnL;
-  } catch {
-    bal.investment = 0;
-    bal.investmentPnL = 0;
-  }
-
-  // 3. Recalculate total (investment replaces the SUI portion that was in gasReserve)
-  bal.total = bal.available + bal.savings - bal.debt + bal.investment + bal.gasReserve.usdEquiv;
-
-  return bal;
-}
+// Portfolio SUI gets separated from gas SUI
+const gasSui = Math.max(0, bal.gasReserve.sui - pos.totalAmount);
+bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * suiPrice };
+bal.investment = investmentValue;
+bal.total = available + savings - debt + investment + gasReserve.usdEquiv;
 ```
-
-**Key insight:** `queryBalance()` does NOT change. The adjustment happens in `T2000.balance()` which already overrides `savings` and `debt` from the base query. This pattern is consistent.
 
 ### Accounting model
 
@@ -631,88 +698,43 @@ async balance(): Promise<BalanceResponse> {
 | 104.50 | 105.26 | 0 | 104.50 × price (gas consumed some) |
 | 0.85 | 0 | 0.85 | $0 (no investment) |
 
-### investSell guard
-
-Before selling, query ACTUAL on-chain wallet SUI balance (not portfolio tracking):
-
-```typescript
-const walletSui = Number(await client.getBalance({ owner, coinType: SUI_TYPE })) / 1e9;
-const maxSellable = walletSui - GAS_RESERVE_MIN; // GAS_RESERVE_MIN = 0.05 SUI
-if (sellAmountSui > maxSellable) throw new T2000Error('INSUFFICIENT_INVESTMENT', ...);
-```
-
-### Edge case display
-
-If gas fees consume some investment SUI, portfolio shows actual held:
-
-```
-SUI   105.26 bought · 104.50 held · Avg $0.95 · ...
-      (0.76 SUI consumed by gas fees)
-```
-
-P&L is calculated on **actual held** amount — giving an honest view.
-
 ---
 
-## Bluefin REST API Integration
+## MCP Tools
 
-### Authentication
+### Read tools (17a adds 1)
 
-Bluefin uses Ed25519 signature-based auth:
-1. First-time: register on Bluefin exchange (on-chain tx or API call)
-2. Sign a login message with Ed25519 keypair → get session token
-3. Use session token as `Authorization: Bearer <token>` header for all API calls
+| Tool | Description |
+|------|-------------|
+| `t2000_portfolio` | Show investment portfolio positions and P&L |
 
-### Endpoints (from Bluefin API docs)
+### Write tools (17a adds 1)
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/auth/login` | Authenticate, get token |
-| GET | `/account` | Account details + balances |
-| GET | `/positions` | Open positions |
-| POST | `/orders` | Place order |
-| DELETE | `/orders/{id}` | Cancel order |
-| GET | `/ticker/{market}` | Market data |
-| ~~GET~~ | ~~`/funding-rate/{market}`~~ | ~~Funding rates~~ — deferred to v2 |
+| Tool | Description | dryRun |
+|------|-------------|--------|
+| `t2000_invest` | Buy or sell investment assets | ✅ |
 
-### On-chain operations
-
-| Operation | Method |
-|-----------|--------|
-| Deposit USDC | Build PTB: transfer USDC to Bluefin vault contract |
-| Withdraw USDC | Build PTB: call Bluefin withdraw function |
-
-Implementation detail: reference Bluefin SDK source for exact contract addresses and function signatures. The deposit/withdraw are standard Sui Move calls.
-
-### BluefinAdapter class
+### `t2000_invest` schema
 
 ```typescript
-export class BluefinAdapter implements PerpsAdapter {
-  readonly id = 'bluefin';
-  readonly name = 'Bluefin';
-  readonly version = '1.0.0';
-  readonly capabilities = ['perps'] as const;
-  readonly supportedMarkets = ['SUI-PERP'] as const;
-
-  private token: string | null = null;
-  private baseUrl: string;
-  private keypair: Ed25519Keypair;
-
-  async init(keypair, network): Promise<void>
-  private async authenticate(): Promise<void>
-  private async apiCall(method, path, body?): Promise<any>
-
-  async getAccountBalance(address): Promise<number>
-  async getPositions(address): Promise<PerpsPosition[]>
-  async getMarketPrice(market): Promise<number>
-
-  async deposit(amount): Promise<string>
-  async withdraw(amount): Promise<string>
-
-  async openPosition(params): Promise<TradeResult>
-  async closePosition(market): Promise<TradeResult>
+{
+  action: z.enum(['buy', 'sell']),
+  asset: z.enum(Object.keys(INVESTMENT_ASSETS)),  // dynamically generated: ['SUI', 'BTC', 'ETH', ...]
+  amount: z.union([z.number(), z.literal('all')]),
+  slippage: z.number().optional(),  // max slippage percent (default 3%)
+  dryRun: z.boolean().optional(),
 }
 ```
+
+**Tool count: 17 → 19** (9 read + 8 write + 2 safety)
+
+### Prompt updates
+
+- Updated `financial-report` — added "Check investment portfolio (t2000_portfolio)"
+- Updated `savings-strategy` — mention investing as alternative
+- Added `investment-strategy` prompt — portfolio analysis, allocation, risk
+
+**Prompt count: 5 → 6**
 
 ---
 
@@ -724,26 +746,25 @@ export class BluefinAdapter implements PerpsAdapter {
 
 **File:** `packages/sdk/src/types.ts`
 
-- [ ] Add `InvestmentAsset`, `InvestmentTrade`, `InvestmentPosition`, `PortfolioResult`, `InvestResult`
-- [ ] Add `PerpsMarket`, `PositionSide`, `PerpsPosition`, `TradeResult`, `TradePositionsResult`
-- [ ] ~~Add `FundingRate` to adapter types~~ — deferred to v2
-- [ ] Extend `BalanceResponse` with `investment` and `investmentPnL` fields (default to `0`)
-- [ ] Extend `TxMetadata.operation` with `'invest' | 'trade'`
+- [x] Add `InvestmentTrade`, `InvestmentPosition`, `PortfolioResult`, `InvestResult`
+- [x] Add `PositionSide`, `PerpsPosition`, `TradeResult`, `TradePositionsResult` (ready for 17e)
+- [x] Extend `BalanceResponse` with `investment` and `investmentPnL` fields (default to `0`)
+- [x] Extend `TxMetadata.operation` with `'invest' | 'trade'`
 
 **File:** `packages/sdk/src/errors.ts`
 
-- [ ] Add error codes: `INSUFFICIENT_INVESTMENT`, `MARKET_NOT_SUPPORTED`, `LEVERAGE_EXCEEDED`, `POSITION_SIZE_EXCEEDED`, `BLUEFIN_AUTH_FAILED`, `BLUEFIN_API_ERROR`, `POSITION_NOT_FOUND`
+- [x] Add error codes: `INSUFFICIENT_INVESTMENT`, `MARKET_NOT_SUPPORTED`, `LEVERAGE_EXCEEDED`, `POSITION_SIZE_EXCEEDED`, `BLUEFIN_AUTH_FAILED`, `BLUEFIN_API_ERROR`, `POSITION_NOT_FOUND`
+- [x] Add error code: `INVESTMENT_LOCKED` — for send/exchange guard on invested SUI
 
 #### 17.2 — Add investment constants
 
 **File:** `packages/sdk/src/constants.ts`
 
-- [ ] Add `INVESTMENT_ASSETS` constant (SUI only for MVP)
-- [ ] Add `PERPS_MARKETS` constant
-- [ ] Add `DEFAULT_MAX_LEVERAGE`, `DEFAULT_MAX_POSITION_SIZE`
-- [ ] Add `INVEST_FEE_BPS`
-- [ ] Add `GAS_RESERVE_MIN = 0.05` (minimum SUI to keep for gas — matches `AUTO_TOPUP_THRESHOLD`)
-- [ ] Export `InvestmentAsset`, `PerpsMarket` types
+- [x] Add `INVESTMENT_ASSETS` constant (SUI only for MVP)
+- [x] Add `PERPS_MARKETS` constant
+- [x] Add `DEFAULT_MAX_LEVERAGE`, `DEFAULT_MAX_POSITION_SIZE`
+- [x] Add `INVEST_FEE_BPS`, `GAS_RESERVE_MIN`
+- [x] Export `InvestmentAsset`, `PerpsMarket` types
 
 ### Layer 2: PerpsAdapter Interface (17.3)
 
@@ -751,10 +772,9 @@ export class BluefinAdapter implements PerpsAdapter {
 
 **File:** `packages/sdk/src/adapters/types.ts`
 
-- [ ] Add `'perps'` to `AdapterCapability`
-- [ ] Define `PerpsAdapter` interface (init, getPositions, deposit, withdraw, openPosition, closePosition, getMarketPrice, getAccountBalance)
-- [ ] Skip `getFundingRate` for v1 (defer to v2)
-- [ ] Export from `packages/sdk/src/adapters/index.ts`
+- [x] Add `'perps'` to `AdapterCapability`
+- [x] Define `PerpsAdapter` interface
+- [x] Export from `packages/sdk/src/adapters/index.ts`
 
 ### Layer 3: Portfolio Manager (17.4)
 
@@ -762,366 +782,849 @@ export class BluefinAdapter implements PerpsAdapter {
 
 **File:** `packages/sdk/src/portfolio.ts`
 
-- [ ] `PortfolioManager` class with constructor accepting optional `configDir`
-- [ ] `load()` / `save()` — read/write `portfolio.json`
-- [ ] `recordBuy(trade)` — add to position, update cost basis + avg price
-- [ ] `recordSell(trade)` — reduce position, calculate realized P&L (FIFO or average cost)
-- [ ] `getPosition(asset)` — single position by asset
-- [ ] `getPositions()` — all positions
-- [ ] `getRealizedPnL()` — total realized P&L
-- [ ] Fresh `load()` on every read (prevent stale state — same pattern as ContactManager)
-- [ ] Storage: `{configDir}/portfolio.json`
+- [x] `PortfolioManager` class with constructor accepting optional `configDir`
+- [x] `load()` / `save()` — read/write `portfolio.json`
+- [x] `recordBuy(trade)` — add to position, update cost basis + avg price
+- [x] `recordSell(trade)` — reduce position, calculate realized P&L (average cost)
+- [x] `getPosition(asset)` — single position by asset
+- [x] `getPositions()` — all positions with amount > 0
+- [x] `getRealizedPnL()` — total realized P&L
+- [x] Fresh `load()` on every read
 
-**Cost basis method:** Average cost (simpler than FIFO, good enough for MVP).
-
-```
-avgPrice = totalCostBasis / totalAmount
-On sell: realizedPnL = (sellPrice - avgPrice) × sellAmount
-```
-
-### Layer 4: Bluefin Adapter (17.5–17.6)
-
-#### 17.5 — Bluefin REST API client
-
-**File:** `packages/sdk/src/adapters/bluefin.ts`
-
-- [ ] Implement `BluefinAdapter` class
-- [ ] Auth: Ed25519 signature → session token flow
-- [ ] `init()` — set up keypair, network, base URL
-- [ ] `authenticate()` — sign login message, store token
-- [ ] `apiCall()` — generic REST caller with auth headers
-- [ ] Reference Bluefin API docs for exact endpoints and request/response shapes
-
-**Discovery task:** During implementation, review Bluefin SDK source at `github.com/fireflyprotocol/pro-sdk` to extract:
-- Login message format and signing scheme
-- Deposit/withdraw contract addresses and Move function signatures
-- Order placement request format (priceE9, quantityE9 encoding)
-
-#### 17.6 — Bluefin adapter: trading + positions
-
-**File:** `packages/sdk/src/adapters/bluefin.ts`
-
-- [ ] `getAccountBalance()` — GET account details
-- [ ] `getPositions()` — GET open positions, map to `PerpsPosition[]`
-- [ ] `getMarketPrice()` — GET ticker for market
-- [ ] `deposit()` — build Sui PTB to transfer USDC to Bluefin vault, execute, return tx digest
-- [ ] `withdraw()` — build Sui PTB to withdraw from Bluefin, execute, return tx digest
-- [ ] `openPosition()` — create market order via REST API
-- [ ] `closePosition()` — create closing order, optionally auto-withdraw proceeds
-
-### Layer 5: SDK Integration (17.7–17.9)
+### Layer 4: SDK Integration (17.7, 17.9)
 
 #### 17.7 — T2000 class: spot investing methods
 
 **File:** `packages/sdk/src/t2000.ts`
 
-- [ ] Add `portfolio: PortfolioManager` property, initialize in constructor (pass `configDir`)
-- [ ] `investBuy({ asset, usdAmount, maxSlippage })`:
-  1. `assertNotLocked()`
-  2. `enforcer.check({ operation: 'invest', amount: usdAmount })` (checks maxPerTx)
-  3. **Pre-check: verify `balance.available >= usdAmount`** (prevent unclear Cetus swap failure)
-  4. Get price from Cetus `getPoolPrice()`
-  5. Execute swap via existing `exchange()` method (USDC → SUI)
-  6. Record buy in PortfolioManager
-  7. Return InvestResult
-- [ ] `investSell({ asset, usdAmount | 'all', maxSlippage })`:
-  1. `assertNotLocked()`
-  2. Check portfolio has position for asset
-  3. **Query actual on-chain wallet SUI balance** (not portfolio tracking — gas may have consumed some)
-  4. Guard: `actual_wallet_SUI - GAS_RESERVE_MIN >= sell_amount_in_SUI`
-  5. Execute swap via existing `exchange()` method (SUI → USDC)
-  6. Record sell in PortfolioManager (compute realized P&L via average cost)
-  7. Return InvestResult
-- [ ] `getPortfolio()` — get portfolio positions, fetch live prices from Cetus, compute current values + P&L, return PortfolioResult
-
-#### 17.8 — T2000 class: margin trading methods
-
-**File:** `packages/sdk/src/t2000.ts`
-
-- [ ] `tradeLong({ market, margin, leverage })` — assertNotLocked, check safeguards (maxPerTx, maxLeverage, maxPositionSize), auto-deposit to Bluefin if needed, open long position, return TradeResult
-- [ ] `tradeShort({ market, margin, leverage })` — same flow but short side
-- [ ] `tradeClose({ market })` — close position, auto-withdraw to checking, return TradeResult
-- [ ] `tradePositions()` — get positions from Bluefin API, return TradePositionsResult
-- [ ] Emit `balanceChange` after Bluefin deposit (USDC leaving checking) and withdraw (USDC returning)
+- [x] Add `portfolio: PortfolioManager` property, initialize in constructor
+- [x] `investBuy({ asset, usdAmount, maxSlippage })` — safeguard check, balance pre-check, swap, record, return
+- [x] `investSell({ asset, usdAmount | 'all', maxSlippage })` — safeguard check, gas reserve guard, swap, record P&L, return
+- [x] `getPortfolio()` — enrich positions with live prices, compute P&L
 
 #### 17.9 — Balance and safeguard updates
 
-**Files:** `packages/sdk/src/t2000.ts`, `packages/sdk/src/safeguards/`
+**File:** `packages/sdk/src/t2000.ts`
 
-**Balance (`t2000.ts`):**
-- [ ] Update `balance()` — see "CRITICAL: SUI Investment vs Gas Reserve" section above
-- [ ] Adjust `gasReserve` to subtract portfolio SUI (prevent double-counting)
-- [ ] Add `investment` and `investmentPnL` fields to returned BalanceResponse
-- [ ] Recalculate `total = available + savings - debt + investment + gasReserve.usdEquiv`
-- [ ] Handle gracefully if portfolio is empty (investment = 0, gas unchanged)
+- [x] Update `balance()` — adjust gasReserve for portfolio SUI, add investment/investmentPnL fields
+- [x] Recalculate `total = available + savings - debt + investment + gasReserve.usdEquiv`
 
-**Safeguards (`safeguards/types.ts`, `safeguards/enforcer.ts`):**
-- [ ] Add `maxLeverage` and `maxPositionSize` to `SafeguardConfig` (optional, with defaults)
-- [ ] Add `'invest' | 'trade'` to `TxMetadata.operation`
-- [ ] Do NOT add `invest`/`trade` to `OUTBOUND_OPS` (they are internal, not sending to others)
-- [ ] Add leverage/position checks in `T2000.tradeLong/tradeShort` (not in enforcer — custom checks)
+**File:** `packages/sdk/src/wallet/balance.ts`
 
-**CLI config (`packages/cli/src/commands/config.ts`):**
-- [ ] Add `maxLeverage` and `maxPositionSize` to `SAFEGUARD_KEYS` array
-- [ ] `t2000 config set maxLeverage 3` and `t2000 config set maxPositionSize 500` should work
+- [x] Add `investment: 0` and `investmentPnL: 0` defaults to `queryBalance()` return
 
-### ~~Layer 6: Registry Update (17.10)~~ — SIMPLIFIED
+**File:** `packages/sdk/src/safeguards/types.ts`
 
-#### 17.10 — Wire BluefinAdapter directly (skip registry pattern)
+- [x] Add `maxLeverage` and `maxPositionSize` to `SafeguardConfig`
+- [x] Add `'invest' | 'trade'` to `TxMetadata.operation`
 
-**Why:** Only ONE perps provider (Bluefin). Full registry pattern (`registerPerps`/`getPerps`/`listPerps`) is over-engineering. Add registry when we need a second provider.
+**File:** `packages/cli/src/commands/config.ts`
+
+- [x] Add `maxLeverage` and `maxPositionSize` to `SAFEGUARD_KEYS`
+
+### Layer 4b: Bug Fixes Found in Review (17.9c–17.9g)
+
+> These were found during a deep code review of the existing implementation.
+> Must be fixed before shipping.
+
+#### 17.9c — Protect invested SUI from send/exchange (locking guard)
 
 **File:** `packages/sdk/src/t2000.ts`
 
-- [ ] Add `private bluefin: BluefinAdapter | null = null` property
-- [ ] Initialize in constructor: `this.bluefin = new BluefinAdapter()` + `this.bluefin.init(keypair, network)`
-- [ ] Trade methods call `this.bluefin.*` directly
-- [ ] No changes to `registry.ts` or `ProtocolRegistry`
+- [x] Add helper: `getFreeBalance(asset)` — returns `max(0, walletAmount - invested - gasReserve)` for any investment asset. Generalized beyond SUI-only.
+- [x] Update `send()` — when sending any investment asset, check `amount <= free`. If not, throw `INVESTMENT_LOCKED` with message pointing to `invest sell`
+- [x] Update `exchange()` — when exchanging FROM any investment asset, same check. Bypass with `_bypassInvestmentGuard` flag.
+- [x] No guard needed for USDC or other stablecoins — only assets in `INVESTMENT_ASSETS`
+- [x] `investBuy` and `investSell` bypass the guard — pass `_bypassInvestmentGuard: true` to `exchange()`. Not exposed in public API.
 
-### Layer 7: CLI Commands (17.11–17.14)
+**File:** `packages/sdk/src/errors.ts`
+
+- [x] Add `INVESTMENT_LOCKED` error code
+
+#### 17.9d — Portfolio wallet clamping in getPortfolio()
+
+**File:** `packages/sdk/src/t2000.ts`
+
+- [x] Update `getPortfolio()` — fetch actual wallet balance for each investment asset
+- [x] Clamp `totalAmount` to `min(tracked, max(0, walletAmount - gasReserve))` — gasReserve only for SUI
+- [x] Adjust `costBasis` proportionally if clamped (so P&L stays accurate)
+- [x] `balance()` also scales `costBasis` proportionally (see 17.9f)
+
+#### 17.9e — Input validation + division-by-zero guards
+
+**File:** `packages/sdk/src/t2000.ts`
+
+- [x] `investBuy`: validate `usdAmount > 0` at top of method — throw `INVALID_AMOUNT` for 0, negative, or NaN
+- [x] `investBuy`: guard `swapResult.toAmount === 0` after swap — throw `SWAP_FAILED` instead of computing `Infinity` price
+- [x] `investSell` (specific USD amount): cap `sellAmountAsset` to `Math.min(sellAmountAsset, pos.totalAmount)` — prevent selling more than portfolio tracks
+- [x] `investSell`: validate `usdAmount > 0` (when not `'all'`) — same validation as buy
+
+**File:** `packages/cli/src/commands/invest.ts`
+
+- [x] Validate `parseFloat(amount)` is a positive finite number before calling SDK — catch `NaN`, `0`, negatives at CLI level with clear error
+
+#### 17.9h — Registry-driven code (no hardcoded `'SUI'`)
+
+**File:** `packages/sdk/src/t2000.ts`
+
+- [x] `getPortfolio()`: build a price map `Record<string, number>` for all investment assets — `getPoolPrice()` for SUI, `getQuote('USDC', asset, 1)` for others
+- [x] `balance()`: loop over positions with `asset in INVESTMENT_ASSETS` check, fetch prices per-asset via `getQuote()`
+- [x] Locking guard: check `asset in INVESTMENT_ASSETS` not `asset === 'SUI'`
+
+**File:** `packages/sdk/src/adapters/cetus.ts`
+
+- [x] `getSupportedPairs()`: generate investment asset pairs from `INVESTMENT_ASSETS` — loop: for each asset, add `{ USDC → asset }` and `{ asset → USDC }`
+
+**File:** `packages/mcp/src/tools/write.ts`
+
+- [x] `t2000_invest` schema: generate asset enum from `Object.keys(INVESTMENT_ASSETS)` instead of `z.enum(['SUI'])`
+
+#### 17.9f — Fix `balance()` cost basis scaling when gas erodes investment
+
+**File:** `packages/sdk/src/t2000.ts`
+
+- [x] When `actualHeld < pos.totalAmount` in `balance()`, scale `costBasis` proportionally: `investmentCostBasis += pos.costBasis * (actualHeld / pos.totalAmount)`
+- [x] Without this fix: `investmentPnL` was always over-negative when gas consumed investment SUI
+
+#### 17.9g — Handle price fetch failure gracefully
+
+> Keep it simple: no type changes. Just handle `currentPrice === 0 && totalAmount > 0` in the display layer.
+
+**File:** `packages/cli/src/commands/portfolio.ts`
+
+- [x] When `currentPrice === 0` and `totalAmount > 0`, show "unavailable" instead of "$0.00 (-100%)"
+- [x] Added price unavailable warning banner when any position has missing price
+
+**File:** `packages/mcp/src/tools/read.ts`
+
+- [x] When `currentPrice === 0` and `totalAmount > 0`, add `"note": "price unavailable"` to portfolio response
+
+**File:** `packages/sdk/src/t2000.ts`
+
+- [x] `getPortfolio()`: when `currentPrice === 0`, set `unrealizedPnL` and `unrealizedPnLPct` to `0` (not negative costBasis)
+
+### Layer 5: CLI Commands (17.11–17.14)
 
 #### 17.11 — CLI: `t2000 invest` command
 
 **File:** `packages/cli/src/commands/invest.ts`
 
-- [ ] `invest buy <amount> <asset>` — resolve PIN, create agent, call investBuy, format output
-- [ ] `invest sell <amount|all> <asset>` — resolve PIN, create agent, call investSell, format output
-- [ ] `--slippage <pct>` option (default 3%)
-- [ ] `--json` mode support
-- [ ] Error handling: ASSET_NOT_SUPPORTED, INSUFFICIENT_BALANCE, INSUFFICIENT_INVESTMENT
+- [x] `invest buy <amount> <asset>` — resolve PIN, create agent, call investBuy, format output
+- [x] `invest sell <amount|all> <asset>` — resolve PIN, create agent, call investSell, format output
+- [x] `--slippage <pct>` option (default 3%)
+- [x] `--json` mode support
 
 #### 17.12 — CLI: `t2000 portfolio` command
 
 **File:** `packages/cli/src/commands/portfolio.ts`
 
-- [ ] Default: show all positions with P&L, color-coded (green = profit, red = loss)
-- [ ] `--json` mode support
-- [ ] Empty state: "No investments yet. Try: t2000 invest buy 100 SUI"
-
-#### 17.13 — CLI: `t2000 trade` command
-
-**File:** `packages/cli/src/commands/trade.ts`
-
-- [ ] `trade long <market> <margin> <leverage>` — resolve PIN, create agent, call tradeLong
-- [ ] `trade short <market> <margin> <leverage>` — resolve PIN, create agent, call tradeShort
-- [ ] `trade close <market>` — resolve PIN, create agent, call tradeClose
-- [ ] `trade positions` (default subcommand) — PIN required (Bluefin API needs keypair for auth)
-- [ ] Leverage format: `3x` or `3` both accepted
-- [ ] `--json` mode support
-- [ ] Error handling: MARKET_NOT_SUPPORTED, LEVERAGE_EXCEEDED, POSITION_NOT_FOUND
+- [x] Show all positions with P&L, color-coded (green = profit, red = loss)
+- [x] `--json` mode support
+- [x] Empty state: "No investments yet. Try: t2000 invest buy 100 SUI"
 
 #### 17.14 — CLI: update `t2000 balance` output
 
 **File:** `packages/cli/src/commands/balance.ts`
 
-- [ ] Add `Investment:` line showing total value and P&L percentage
-- [ ] Show even if $0 (greyed out or "—") for progressive disclosure
-- [ ] Update total to include investment value
+- [x] Add `Investment:` line showing total value and P&L percentage
+- [x] Show "—" when no investment (progressive disclosure)
+- [x] Update total to include investment value
 
-### Layer 8: MCP Tools & Prompts (17.15–17.16b)
+### Layer 6: MCP Tools & Prompts (17.15–17.16b)
 
 #### 17.15 — MCP: read tools
 
 **File:** `packages/mcp/src/tools/read.ts`
 
-- [ ] `t2000_portfolio` — calls `agent.getPortfolio()`, returns positions + P&L as JSON
-- [ ] `t2000_trade_positions` — calls `agent.tradePositions()`, returns open perp positions as JSON
-- [ ] Tool count: 8 → 10 read tools
+- [x] `t2000_portfolio` — calls `agent.getPortfolio()`, returns positions + P&L as JSON
+- [x] Tool count: 8 → 9 read tools
 
 #### 17.16 — MCP: write tools
 
 **File:** `packages/mcp/src/tools/write.ts`
 
-- [ ] `t2000_invest` — buy/sell with dryRun preview, includes portfolio summary in response
-- [ ] `t2000_trade` — long/short/close with dryRun preview, includes position details
-- [ ] Tool count: 7 → 9 write tools
+- [x] `t2000_invest` — buy/sell with dryRun preview
+- [x] Tool count: 7 → 8 write tools
 
-**Total MCP tools: 17 → 21** (10 read + 9 write + 2 safety)
+**Total MCP tools: 17 → 19** (9 read + 8 write + 2 safety)
 
 #### 17.16b — MCP: prompt updates
 
 **File:** `packages/mcp/src/prompts.ts`
 
-- [ ] Update `financial-report` — add step: "Check investment portfolio (t2000_portfolio)" and "Check margin positions (t2000_trade_positions)"
-- [ ] Update `budget-check` — mention investment value as part of net worth
-- [ ] Update `savings-strategy` — mention investing idle funds as alternative to savings
-- [ ] Add new `investment-strategy` prompt — analyze portfolio, suggest DCA, check margin positions, risk assessment
-- [ ] Prompt count: 5 → 6
+- [x] Update `financial-report` — added "Check investment portfolio (t2000_portfolio)"
+- [x] Update `savings-strategy` — mention investing as alternative
+- [x] Add `investment-strategy` prompt
+- [x] Prompt count: 5 → 6
 
-### Layer 9: Tests (17.17–17.19)
+### Layer 7: Tests (17.17–17.19c)
 
 #### 17.17 — SDK: PortfolioManager unit tests
 
 **File:** `packages/sdk/src/portfolio.test.ts`
 
-- [ ] CRUD: recordBuy, recordSell, getPosition, getPositions
-- [ ] Cost basis: average cost calculation on multiple buys
-- [ ] P&L: realized P&L on sell, unrealized P&L with mock prices
-- [ ] Edge cases: sell more than held, sell all, empty portfolio
-- [ ] Persistence: load/save cycle, corrupted file handling
-- [ ] Isolation: use temp dirs (same pattern as contacts tests)
+- [x] CRUD: recordBuy, recordSell, getPosition, getPositions (19 tests)
+- [x] Cost basis: average cost calculation on multiple buys
+- [x] P&L: realized P&L on sell, negative P&L, sell all
+- [x] Edge cases: sell more than held, empty portfolio
+- [x] Persistence: load/save cycle, corrupted file, missing file
+- [x] Isolation: temp dirs
 
-#### 17.18 — SDK: invest + trade method tests
+#### 17.18 — SDK: T2000 invest method tests (mocked adapters)
 
-**File:** `packages/sdk/src/t2000.integration.test.ts` (extend existing)
+**File:** `packages/sdk/src/invest.test.ts` ← NEW (25 tests)
 
-- [ ] investBuy: mock CetusAdapter swap, verify portfolio recording
-- [ ] investSell: verify P&L calculation, gas reserve guard
-- [ ] getPortfolio: verify live price enrichment
-- [ ] tradeLong/tradeShort: mock BluefinAdapter, verify safeguard checks
-- [ ] tradeClose: verify auto-withdraw
-- [ ] Balance: verify investment tier appears in balance response
+**investBuy validation tests:**
+- [x] Rejects amount = 0 (INVALID_AMOUNT)
+- [x] Rejects negative amount (INVALID_AMOUNT)
+- [x] Rejects NaN amount (INVALID_AMOUNT)
+- [x] Rejects Infinity amount (INVALID_AMOUNT)
+- [x] Accepts valid positive amount
 
-#### 17.19 — MCP: tool tests
+**investSell validation tests:**
+- [x] Rejects amount = 0 (INVALID_AMOUNT)
+- [x] Allows "all" without numeric validation
+- [x] Caps sell to portfolio position amount
 
-**File:** `packages/mcp/src/tools/read.test.ts`, `write.test.ts`
+**swap-returns-zero guard:**
+- [x] Detects toAmount = 0 (division by zero prevention)
 
-- [ ] t2000_portfolio: verify returns portfolio data
-- [ ] t2000_invest: verify buy/sell with dryRun
-- [ ] t2000_trade: verify long/short/close with dryRun
-- [ ] t2000_trade_positions: verify returns perp positions
-- [ ] Update mock agent with portfolio + trade mocks
-- [ ] Update expected tool counts
+**Locking guard tests:**
+- [x] Blocks sending invested SUI (freeSUI calculation)
+- [x] Allows sending free SUI (wallet > invested)
+- [x] No guard for USDC (not investment asset)
+- [x] Guard applies to all investment assets (SUI, BTC, ETH)
+- [x] Blocks exchange of invested SUI
+- [x] Allows exchange in buy direction (USDC→SUI unguarded)
 
-### Layer 10: SDK Exports (17.19b)
+**Portfolio wallet clamping tests:**
+- [x] Clamps totalAmount when wallet < tracked
+- [x] Scales costBasis proportionally when clamped
+- [x] No clamping when wallet has enough
+
+**balance() costBasis scaling tests:**
+- [x] Scales costBasis when gas erodes investment SUI
+- [x] Uses full costBasis when no gas erosion
+
+**Price unavailable tests:**
+- [x] Returns 0 P&L when price = 0 (not -100%)
+- [x] Calculates normal P&L when price available
+
+**Registry-driven assets tests:**
+- [x] INVESTMENT_ASSETS contains SUI, BTC, ETH
+- [x] Stablecoins are not investment assets
+- [x] Gas reserve only applies to SUI
+
+#### 17.19 — MCP: tool count + registration tests
+
+**File:** `packages/mcp/src/tools/read.test.ts`, `write.test.ts`, `integration.test.ts`
+
+- [x] Update mock agent with portfolio + getPortfolio mocks
+- [x] Update expected tool counts (17 → 19)
+- [x] Update expected prompt count (5 → 6)
+- [x] Integration test: verify all 19 tools listed
+
+#### 17.19c — MCP: tool behavior tests for invest/portfolio
+
+**File:** `packages/mcp/src/tools/read.test.ts` (3 new tests)
+
+- [x] `t2000_portfolio` — calls getPortfolio, returns positions + P&L JSON
+- [x] `t2000_portfolio` — handles empty portfolio
+- [x] `t2000_portfolio` — adds "price unavailable" note when currentPrice = 0
+
+**File:** `packages/mcp/src/tools/write.test.ts` (7 new tests)
+
+- [x] `t2000_invest` — buy dryRun returns preview (no execution)
+- [x] `t2000_invest` — buy executes investBuy, returns result
+- [x] `t2000_invest` — sell executes investSell, returns result
+- [x] `t2000_invest` — sell "all" calls investSell with 'all'
+- [x] `t2000_invest` — passes slippage to SDK when provided
+- [x] `t2000_invest` — sell "all" dryRun with no position returns clear error
+- [x] `t2000_invest` — buy with non-number amount returns error
+
+### Layer 8: SDK Exports (17.19b)
 
 #### 17.19b — Update SDK public API
 
 **File:** `packages/sdk/src/index.ts`
 
-- [ ] Export `PortfolioManager` class
-- [ ] Export new types: `InvestmentAsset`, `InvestmentTrade`, `InvestmentPosition`, `PortfolioResult`, `InvestResult`
-- [ ] Export new types: `PerpsMarket`, `PositionSide`, `PerpsPosition`, `TradeResult`, `TradePositionsResult`
-- [ ] Export new constants: `INVESTMENT_ASSETS`, `PERPS_MARKETS`, `DEFAULT_MAX_LEVERAGE`, `DEFAULT_MAX_POSITION_SIZE`
+- [x] Export `PortfolioManager` class
+- [x] Export new types: `InvestmentTrade`, `InvestmentPosition`, `PortfolioResult`, `InvestResult`
+- [x] Export new types: `PositionSide`, `PerpsPosition`, `TradeResult`, `TradePositionsResult`
+- [x] Export new constants: `INVESTMENT_ASSETS`, `PERPS_MARKETS`, `DEFAULT_MAX_LEVERAGE`, `DEFAULT_MAX_POSITION_SIZE`, `GAS_RESERVE_MIN`
+- [x] Export types: `InvestmentAsset`, `PerpsMarket`
 
-### Layer 11: Docs, Skills, Marketing (17.20–17.22)
+### Layer 8b: MCP Tool Fixes (17.19d)
+
+#### 17.19d — Fix MCP tool gaps
+
+**File:** `packages/mcp/src/tools/write.ts`
+
+- [x] Add `slippage` optional param to `t2000_invest` schema
+- [x] Pass `slippage` through to `investBuy`/`investSell` calls (converted from percent to decimal)
+- [x] Fix dryRun sell "all" with no position — return clear error text `"No {asset} position to sell"`
+
+### Layer 9: Skills, Docs, Website, Marketing, Release (17.20–17.24)
 
 #### 17.20 — Agent skill
 
-**File:** `t2000-skills/skills/t2000-invest/SKILL.md`
+**File:** `t2000-skills/skills/t2000-invest/SKILL.md` ← CREATE
 
-- [ ] Purpose, commands, examples for spot investing
-- [ ] Portfolio viewing
+- [ ] Purpose, commands, examples for spot investing + portfolio viewing
+- [ ] Note: invested assets are locked — must `invest sell` to access value
+- [ ] Triggers: "invest in SUI", "buy SUI", "portfolio", "how much is my SUI worth"
 
-**File:** `t2000-skills/skills/t2000-trade/SKILL.md`
+**File:** `t2000-skills/skills/t2000-check-balance/SKILL.md` ← UPDATE
 
-- [ ] Purpose, commands, examples for margin trading
-- [ ] Leverage, position management
+- [ ] Mention investment balance line in output
 
-#### 17.21 — Documentation updates (batched)
+**File:** `t2000-skills/skills/t2000-mcp/SKILL.md` ← UPDATE
 
-**Count updates across all docs:**
-- Tools: 17 → 21 (4 new: t2000_portfolio, t2000_trade_positions, t2000_invest, t2000_trade)
-- Prompts: 5 → 6 (1 new: investment-strategy)
-- CLI commands: 27 → 30 (3 new: invest, portfolio, trade)
-- Skills: 13 → 15 (2 new: t2000-invest, t2000-trade)
+- [ ] Add `t2000_invest`, `t2000_portfolio` to tool list
 
-**Files to update:**
-- [ ] `packages/sdk/README.md` — new methods, types, invest/trade examples
-- [ ] `packages/cli/README.md` — new commands
-- [ ] `packages/mcp/README.md` — new tools + prompts
-- [ ] `apps/web/app/page.tsx` — homepage: update tool counts (21), add Investment to comparison table, update account tiers
-- [ ] `apps/web/app/docs/page.tsx` — docs: new commands, tools, changelog entry (v0.14.0)
-- [ ] `PRODUCT_FACTS.md` — version 0.14.0, all counts above, investment feature description
-- [ ] `CLI_UX_SPEC.md` — new commands documentation
-- [ ] `spec/t2000-roadmap-v2.md` — mark Phase 17 as shipped
+#### 17.21 — Documentation updates
 
-#### 17.22 — Release
+**Global count updates:**
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Accounts | 4 | 5 (+ Investment) |
+| CLI commands | 27 | 29 (+ invest, portfolio) |
+| MCP tools | 17 | 19 (+ t2000_invest, t2000_portfolio) |
+| MCP prompts | 5 | 6 (+ investment-strategy) |
+| Agent skills | 13 | 14 (+ t2000-invest) |
+
+**Package READMEs:**
+- [ ] `README.md` (root) — add "Investment" to tagline, add invest examples, update counts
+- [ ] `packages/sdk/README.md` — add `investBuy()`, `investSell()`, `getPortfolio()` to API reference
+- [ ] `packages/cli/README.md` — add `invest`, `portfolio` commands to table
+- [ ] `packages/mcp/README.md` — add `t2000_invest`, `t2000_portfolio` to tools table, update "17 tools" → "19 tools"
+
+**Spec & product docs:**
+- [ ] `PRODUCT_FACTS.md` — version 0.14.0, all counts, add invest commands + SDK methods + MCP tools, add Investment to asset table
+- [ ] `CLI_UX_SPEC.md` — output specs for `invest buy`, `invest sell`, `portfolio`, updated `balance` output with Investment line, send guard error format
+- [ ] `spec/t2000-roadmap-v2.md` — mark Phase 17a as shipped
+
+#### 17.22 — Website updates
+
+**File:** `apps/web/app/page.tsx` — Homepage
+
+- [ ] Add 5th account: **Investment** (buy/sell SUI, portfolio tracking, cost-basis P&L)
+- [ ] Update account count "04 / 04" → "01 / 05" … "05 / 05"
+- [ ] Update "Four accounts. One agent." → "Five accounts. One agent."
+- [ ] Update MCP tool counts (17 → 19)
+- [ ] Add Investment row to comparison table vs Coinbase
+- [ ] Add "Invest $100 in SUI" to "Try asking" examples
+- [ ] Add Investment pill to hero section
+
+**File:** `apps/web/app/docs/page.tsx` — Docs Page
+
+- [ ] Add `invest buy`, `invest sell`, `portfolio` command cards
+- [ ] Add Investment row to "Concepts" accounts table (now 5 accounts)
+- [ ] Update "14 commands" badge to "16 commands"
+- [ ] Add `t2000_invest`, `t2000_portfolio` to MCP tools list
+- [ ] Add `investment-strategy` to prompts list
+- [ ] Add `t2000-invest` to skills list
+- [ ] Update QuickStart init output: add "✓ Investment"
+- [ ] Add v0.14.0 changelog entry
+- [ ] Update version badge
+
+**File:** `apps/web/app/demo/demoData.ts` — Demo Terminal
+
+- [ ] Add Investment demo flow: `t2000 invest buy 100 SUI` → `t2000 portfolio` → `t2000 invest sell 50 SUI`
+
+**File:** `apps/web/app/demo/page.tsx`
+
+- [ ] Add "investing" to page metadata description
+
+#### 17.23 — Marketing
+
+**File:** `marketing/marketing-plan.md`
+
+- [ ] Add Investment launch tweet: "Your agent can now invest in SUI. Portfolio tracking with cost-basis P&L. t2000 invest buy 100 SUI"
+- [ ] Update "4 accounts" references to "5 accounts"
+
+**File:** `marketing/demo-video.html`
+
+- [ ] Add Investment scene to demo video
+
+#### 17.24 — Release
 
 - [ ] Version bump: sdk, cli, mcp → v0.14.0
 - [ ] Build all packages
 - [ ] Publish to npm
+- [ ] `npm run lint && npm run typecheck` passes
 - [ ] Git commit + push
-- [ ] Marketing tweet / demo video
 
 ---
 
 ## Testing Strategy
 
-### Unit tests (PortfolioManager) — ~20 tests
+### Unit tests (PortfolioManager) — 19 tests ✅
+
 - CRUD: recordBuy, recordSell, getPosition, getPositions
 - Cost basis: average cost calculation on multiple buys at different prices
 - P&L: realized P&L on sell, unrealized P&L with mock prices
 - Edge cases: sell more than held, sell all, empty portfolio, negative P&L
-- Persistence: load/save cycle, corrupted file handling
-- Isolation: use temp dirs (same pattern as contacts tests)
+- Persistence: load/save cycle, corrupted file handling, missing file
+- Isolation: temp dirs (same pattern as contacts tests)
 
-### Integration tests (SDK methods) — ~18 tests
-- investBuy: mock CetusAdapter swap, verify portfolio recording
-- investBuy: fail if `available < usdAmount` (insufficient checking balance)
-- investSell: verify P&L calculation, gas reserve guard
-- investSell: fail if wallet SUI - gas reserve < sell amount
-- investSell: sell all (verify portfolio clears position)
-- getPortfolio: verify live price enrichment
-- **balance: verify SUI NOT double-counted** (gasReserve adjusted for portfolio SUI)
-- balance: verify investment = 0 when no portfolio
-- balance: verify total formula includes investment
-- tradeLong/tradeShort: mock BluefinAdapter, verify safeguard checks
-- tradeLong: fail if leverage > maxLeverage
-- tradeLong: fail if margin > maxPositionSize
-- tradeClose: verify auto-withdraw
+### SDK invest + locking + bug fix tests — ⬜ NOT YET WRITTEN (task 17.18)
 
-### MCP tests — ~10 tests
-- t2000_portfolio: returns portfolio data, handles empty portfolio
-- t2000_invest: buy/sell with dryRun preview
-- t2000_invest: sell with contact-like amount validation
-- t2000_trade: long/short/close with dryRun preview
-- t2000_trade_positions: returns perp positions, handles no positions
-- Update mock agent with portfolio + trade mocks
-- Update expected tool counts (17 → 21)
+- `investBuy`: exchange call, portfolio recording, InvestResult shape, input validation (0, negative, NaN), swap-returns-0 guard
+- `investSell`: exchange call, realized P&L, gas reserve guard, portfolio cap, input validation
+- `getPortfolio`: price enrichment, empty state, wallet clamping, costBasis scaling, price-unavailable handling
+- `balance()`: investment field, SUI double-counting fix, costBasis proportional scaling
+- `send()` locking: blocks invested SUI, allows free SUI, allows USDC
+- `exchange()` locking: blocks invested SUI, allows free SUI, allows USDC→SUI
+- Safeguards: locked rejection
+- ~25 tests estimated
 
-### Manual testing
+### MCP tool count tests — 75 tests ✅
+
+- Updated mock agents with portfolio mocks
+- Updated tool counts (17 → 19)
+- Updated prompt counts (5 → 6)
+- Integration test: all 19 tools and 6 prompts listed
+
+### MCP tool behavior tests — ⬜ NOT YET WRITTEN (task 17.19c)
+
+- `t2000_portfolio`: call + response shape, empty state
+- `t2000_invest`: dryRun buy/sell, execution buy/sell, sell-all no-position edge case
+- ~7 tests estimated
+
+### SDK tests — 444 tests ✅
+
+- All existing tests pass (no regressions)
+- PortfolioManager tests included
+
+### Manual testing (pre-release)
+
 - Full CLI flow: invest buy → portfolio → balance → invest sell → balance
-- Full trade flow: trade long → trade positions → trade close
-- Safeguard enforcement: locked, maxPerTx, maxLeverage, maxPositionSize
+- **Locking guard: try send invested SUI → should see helpful error**
+- **Locking guard: try exchange invested SUI → should see helpful error**
+- **Locking guard: send free SUI (received from others) → should work**
+- Safeguard enforcement: locked, maxPerTx
 - Balance display: verify SUI split between Investment and Gas tiers
-- `t2000 config set maxLeverage 3` → `trade long SUI 100 5x` → should fail
-- Claude Desktop: natural language invest and trade commands
+- Claude Desktop: natural language invest commands
 - Existing commands still work: send, save, exchange, rebalance, balance
-
-**Target: ~48 new tests**
 
 ---
 
-## Cross-cutting Concerns (won't break existing features)
+## Cross-cutting Concerns
 
 ### Existing `positions` command stays lending-only
 
-`t2000 positions` and `t2000_positions` continue to show savings/borrows only. Investment has its own `t2000 portfolio` / `t2000_portfolio`. No changes to the existing command.
+`t2000 positions` and `t2000_positions` continue to show savings/borrows only. Investment has its own `t2000 portfolio` / `t2000_portfolio`.
 
-### Existing `exchange` command remains unchanged
+### `exchange` command — guarded for SUI sells
 
-`t2000 exchange 100 USDC SUI` continues to work as a utility swap — no portfolio tracking. `t2000 invest buy 100 SUI` does the same swap but ALSO tracks in portfolio. Both use CetusAdapter under the hood. This is intentional: exchange = utility, invest = tracked position.
+`t2000 exchange 100 USDC SUI` — works normally (buying SUI via exchange, resulting SUI is free/untracked).
 
-### Existing `save` / `withdraw` / `borrow` / `repay` unaffected
+`t2000 exchange 50 SUI USDC` — **guarded**. If 50 SUI is invested, this is blocked with a message pointing to `invest sell`. Only free SUI can be exchanged.
 
-These only operate on stablecoin lending positions (NAVI, Suilend). Investment SUI in the wallet does not interact with lending. No changes needed.
+Why: `exchange` is a utility swap with no portfolio tracking. If we let users exchange invested SUI, the portfolio goes out of sync and the investment tracking becomes meaningless.
 
-### Existing `rebalance` stays stablecoin-only
+### `send` command — guarded for SUI
 
-Rebalance compares stablecoin lending rates and moves between protocols. It does NOT touch investment positions.
+`t2000 send 100 USDC to alice` — works normally. USDC is not an investment asset.
 
-### Existing `send` stays checking-only
+`t2000 send 5 SUI to alice` — **guarded**. Only free SUI (wallet - invested - gas reserve) can be sent. If the user tries to send more, they get a helpful error.
 
-`t2000 send` sends from checking (stablecoins). It does NOT send investment SUI. If user wants to liquidate investment to send, they must `invest sell` first, then `send`. The AI agent can suggest this workflow naturally.
+### `invest buy` vs `exchange` — intentional distinction
 
-### Gas auto-topup unaffected
+| Command | Swap | Portfolio tracked? | Resulting SUI |
+|---------|------|--------------------|---------------|
+| `t2000 invest buy 100 SUI` | USDC → SUI | Yes | Locked (invested) |
+| `t2000 exchange 100 USDC SUI` | USDC → SUI | No | Free (sendable) |
 
-Auto-topup triggers when wallet SUI < 0.05. With investment SUI, wallet SUI is HIGH, so auto-topup won't trigger. If investment is sold and SUI drops, auto-topup handles it normally.
+Both use CetusAdapter. The difference is intent: invest = tracked position with locking; exchange = utility swap.
+
+### Existing save/withdraw/borrow/repay/rebalance unaffected
+
+These only operate on stablecoins and lending positions. No interaction with investment SUI.
 
 ### BalanceResponse backward compatibility
 
-New fields `investment` and `investmentPnL` default to `0`. Existing consumers of `BalanceResponse` won't break — they just won't display the new fields. The `total` formula changes, but this is correct behavior (total should reflect net worth including investments).
+New fields `investment` and `investmentPnL` default to `0`. Existing consumers won't break. The `total` formula changes to include investment, which is correct.
 
-### MCP `t2000_balance` auto-includes investment
+### SDK events fire automatically
 
-The MCP tool just returns `agent.balance()` as JSON. Since `BalanceResponse` gets new fields, they automatically appear in the JSON. No tool code change needed — just the SDK `balance()` logic.
+`investBuy` and `investSell` call `exchange()` internally. The existing `balanceChange` event fires from the swap.
 
-### SDK events fire automatically for spot invest
+---
 
-`investBuy` and `investSell` call `exchange()` internally. The existing `balanceChange` event fires from the swap. No new event types needed. The `cause` field will show `'swap'` — fine for v1.
+## Investment Roadmap — All Phases
 
-For margin trading: emit `balanceChange` manually after Bluefin deposit/withdraw (USDC leaving/entering checking).
+```
+Phase 17a (now)     Direct Investing — SUI only                    ~done
+                    Buy/sell SUI, portfolio tracking, locking, P&L
+                    Foundation for everything else
+
+Phase 17b           Multi-Asset — BTC, ETH (+more later)             ~1 day
+                    Coin types already in INVESTMENT_ASSETS registry
+                    wBTC + wETH via SuiBridge, Cetus Aggregator v3 routing
+                    Enable in CLI/MCP, test routing, dedicated /invest page
+                    Future: XAUM, native BTC (Hashi), more assets
+
+Phase 17c           Yield on Investment Assets                      ~3-5 days
+                    invest earn / invest unearn commands
+                    Expand NAVI + Suilend adapters for SUI/ETH/XAUM
+                    Create BluefinLendingAdapter (stablecoins + assets)
+                    Rebalance expanded for investment asset yield
+                    Bluefin lending also benefits stablecoin savings
+                    Borrow guard: exclude investment collateral from borrow()
+
+Phase 17d           Baskets + Auto-Invest — Agent-driven            ~2-3 days
+                    Themed baskets (Bluechip/L1, DeFi, Memecoin, etc.)
+                    DCA scheduling ($50/week)
+                    Agent rebalancing to target weights
+                    Mostly prompt engineering + BasketConfig type
+                    Requires: multi-asset (17b)
+
+Phase 17e           Margin Trading — Bluefin perps                  ~1-2 weeks
+                    Long/short with leverage
+                    BluefinPerpsAdapter (separate from lending)
+                    Bluefin REST API integration (discovery first)
+                    Separate spec: phase17e-margin-build-plan.md
+
+Phase 17f           Securities-Backed Lending                       ~1 week
+                    Borrow USDC against investment portfolio
+                    Conservative 15-20% max LTV (vs protocol's 60-75%)
+                    Agent health monitoring + auto-repay trigger
+                    Must repay before selling (position lock)
+                    Premium feature — tradfi equivalent of margin lending
+```
+
+### Why this order
+
+1. **Multi-asset (17b)** — coin types for BTC (wBTC via SuiBridge) and ETH (wETH via SuiBridge) are already in the registry. 17b enables them in CLI/MCP, tests Cetus routing, and ships the /invest page. ~1 day. Future assets (XAUM, native BTC via Hashi, etc.) are one line each.
+2. **Yield on assets (17c)** — natural next step: "I bought SUI, now I want it earning." NAVI and Suilend already support SUI lending on-chain — we just expand `supportedAssets`. Bluefin Lending is a new `LendingAdapter` that also gives stablecoin savings a third yield source. Includes a critical borrow guard to prevent borrowing against investment collateral until 17f.
+3. **Baskets (17d)** — requires multi-asset. Showcases the AI agent's unique value: "invest in Layer 1s" with one command. Mostly prompt engineering, not new infrastructure.
+4. **Margin (17e)** — complex Bluefin *perps* integration (completely separate from Bluefin *lending*). API discovery, risk management. Smaller audience (advanced traders). Higher effort, lower reach.
+5. **Securities-backed lending (17f)** — unlocks borrow capacity against investments with strict guardrails. Conservative 15-20% LTV, agent health monitoring, auto-repay. Premium feature that requires yield infrastructure (17c) and careful risk management.
+
+### Bluefin — two separate integrations
+
+Bluefin offers two distinct products that map to two different adapter types:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         Bluefin                                  │
+├─────────────────────────────┬────────────────────────────────────┤
+│  Bluefin Lending            │  Bluefin Perps                     │
+│  ─────────────────          │  ─────────────────                 │
+│  Deposit assets, earn yield │  Leveraged long/short trading      │
+│  Stablecoins + SUI/BTC/ETH │  Perpetual futures                 │
+│                             │                                    │
+│  Adapter: LendingAdapter    │  Adapter: PerpsAdapter             │
+│  Same interface as NAVI     │  Different interface entirely      │
+│  Phase 17c                  │  Phase 17e                         │
+│                             │                                    │
+│  Benefits both:             │  Advanced traders only             │
+│  • Savings (stablecoins)    │                                    │
+│  • Investment (assets)      │                                    │
+└─────────────────────────────┴────────────────────────────────────┘
+```
+
+These are independent integrations. Bluefin Lending ships in 17c (yield). Bluefin Perps ships in 17e (margin). Neither depends on the other.
+
+### Multi-Asset Scaling (Phase 17b)
+
+> **Status:** Coin types for BTC and ETH already added to `SUPPORTED_ASSETS` and `INVESTMENT_ASSETS` in `constants.ts`. Phase 17b enables them in CLI/MCP and tests Cetus routing.
+
+**Assets in registry (today):**
+
+| Asset | Coin type | Source | Decimals |
+|-------|-----------|--------|----------|
+| SUI | `0x2::sui::SUI` | Native | 9 |
+| BTC | `0xaafb102d...::btc::BTC` | wBTC (SuiBridge) | 8 |
+| ETH | `0xd0e89b2a...::eth::ETH` | wETH (SuiBridge) | 8 |
+
+**What 17b needs to do (the registry-driven code in 17.9h handles the foundation):**
+
+```
+packages/sdk/src/adapters/cetus.ts:
+  getSupportedPairs() — already generates from INVESTMENT_ASSETS (done in 17.9h)
+
+packages/mcp/src/tools/write.ts:
+  t2000_invest schema — already uses z.enum(Object.keys(INVESTMENT_ASSETS)) (done in 17.9h)
+
+17b-specific:
+  Test Cetus Aggregator v3 routing for USDC↔BTC and USDC↔ETH
+  Update portfolio display for multi-asset (already multi-asset ready)
+  Dedicated /invest website page
+  Docs + marketing updates
+```
+
+**Adding future assets (XAUM, native BTC via Hashi, etc.):** one line in `SUPPORTED_ASSETS` + one line in `INVESTMENT_ASSETS`. Cetus Aggregator v3 `findRouters()` handles routing automatically.
+
+### Yield on Investment Assets (Phase 17c)
+
+#### How it works
+
+Yield on investment assets uses the **same `LendingAdapter` interface** as stablecoin savings. On-chain, NAVI and Suilend already support SUI lending — the adapters just restrict `supportedAssets` to `STABLE_ASSETS` today. The change is expanding what assets we allow through.
+
+```
+                    Stablecoins              Investment assets
+                    (USDC, USDT, etc.)       (SUI, ETH, XAUM)
+                    ─────────────────        ─────────────────
+save/unsave         ✅ Today                 ❌ Not applicable
+                    NAVI + Suilend           (use invest earn instead)
+
+invest earn/unearn  ❌ Not applicable        ✅ Phase 17c
+                    (use save instead)       NAVI + Suilend + Bluefin Lending
+
+rebalance           ✅ Today (stablecoins)   ✅ Phase 17c (investment assets too)
+                    Best APY across          Best APY across all 3
+                    NAVI + Suilend           protocols for each asset
+```
+
+`save` = stablecoins into lending (checking → savings). Unchanged.
+`invest earn` = investment assets into lending. New in 17c.
+`rebalance` evolves to optimize both.
+
+#### User flow
+
+```
+# Step 1: User buys SUI
+t2000 invest buy 100 SUI
+→ $100 USDC swapped to ~25 SUI via Cetus
+→ Portfolio: 25 SUI, cost basis $100, locked
+
+# Step 2: User earns yield on invested SUI
+t2000 invest earn SUI
+→ System queries NAVI, Suilend, Bluefin lending rates for SUI
+→ Picks best APY (e.g. Bluefin at 5.2%)
+→ Deposits invested SUI into Bluefin lending
+→ Portfolio: 25 SUI, earning 5.2% APY (Bluefin)
+→ SUI still "invested", still "locked" — now also earning
+
+# Step 3: User checks portfolio
+t2000 portfolio
+┌─────────┬──────────┬─────────┬──────────────────────┐
+│ Asset   │ Value    │ P&L     │ Yield                │
+├─────────┼──────────┼─────────┼──────────────────────┤
+│ SUI     │ $120.00  │ +20.0%  │ 5.2% APY (Bluefin)   │
+└─────────┴──────────┴─────────┴──────────────────────┘
+
+# Step 4a: User sells — auto-withdraws from lending
+t2000 invest sell 50 SUI
+→ Detects SUI is in Bluefin lending
+→ Auto-withdraws needed amount
+→ Swaps SUI → USDC
+→ Portfolio updated
+
+# Step 4b: Or user just stops earning
+t2000 invest unearn SUI
+→ Withdraw from lending, SUI back in wallet
+→ Still tracked as investment, still locked
+```
+
+#### What changes
+
+| Change | Details |
+|--------|---------|
+| **NAVI adapter** | Expand `supportedAssets` to include investment assets (SUI, ETH, XAUM). On-chain support already exists. |
+| **Suilend adapter** | Same — expand `supportedAssets`. On-chain support already exists. |
+| **BluefinLendingAdapter** (new) | Implements `LendingAdapter`. Supports stablecoins AND investment assets. Gives savings a third yield source too. |
+| **`invest earn` command** | Calls `buildSaveTx` on best-rate lending adapter for the investment asset. |
+| **`invest unearn` command** | Calls `buildWithdrawTx` to withdraw from lending, asset stays in investment. |
+| **PortfolioManager** | Tracks earning state: `{ earning: true, protocol: 'bluefin', apy: 5.2 }` per position. |
+| **`invest sell` auto-withdraw** | If asset is in lending, withdraw first, then swap to USDC. |
+| **`rebalance` expanded** | Optimizes yield across all lending protocols for both stablecoins AND investment assets. |
+| **Borrow guard** | `borrow()` must exclude investment collateral from available borrow capacity. Only savings (stablecoin) deposits count as borrowable collateral until Phase 17f explicitly unlocks securities-backed lending with guardrails. |
+
+#### Locking model
+
+Invested assets stay locked whether held or earning:
+
+```
+Investment (wallet)  ──invest earn──→  Investment (earning yield)
+       │                                      │
+       │ locked (can't send/exchange)         │ locked (can't send/exchange)
+       │                                      │
+       └──invest sell──→ USDC           ←──invest sell──┘
+                                         (auto-withdraws first)
+```
+
+The locking guard doesn't change — it checks portfolio tracked amounts, not where the asset physically sits.
+
+### Yield architecture — complete picture
+
+```
+Checking (USDC) ──save──→ Savings (stablecoin yield)
+                           ├─ NAVI          (today)
+                           ├─ Suilend       (today)
+                           └─ Bluefin Lend  (Phase 17c — also benefits savings)
+
+Investment (assets) ──invest earn──→ Earning (asset yield + price exposure)
+                                     ├─ NAVI SUI lending    (Phase 17c)
+                                     ├─ Suilend SUI lending (Phase 17c)
+                                     └─ Bluefin lending     (Phase 17c)
+```
+
+All three lending protocols serve both stablecoins and investment assets. `rebalance` optimizes yield across all of them for any asset type.
+
+### Borrow guard (Phase 17c — critical safety measure)
+
+When investment assets are deposited into NAVI/Suilend/Bluefin via `invest earn`, the user automatically gains borrow capacity on-chain. Without a guard, the existing `borrow` command could let users borrow against investment collateral — creating liquidation risk on a "banking" product.
+
+**The guard:** `borrow()` calculates available capacity based on **savings deposits only** (stablecoins), explicitly excluding any investment asset collateral. The on-chain capacity exists, but the SDK doesn't expose it.
+
+```
+# What the protocol sees (on-chain):
+Total collateral = $500 USDC (savings) + $1,000 SUI (investment)
+Available borrow = ~$900 (60% LTV)
+
+# What t2000 allows (SDK guard):
+Borrowable collateral = $500 USDC (savings only)
+Available borrow = ~$300 (60% LTV on savings only)
+Investment collateral = excluded until Phase 17f
+```
+
+**Implementation:** In `T2000.borrow()` and `T2000.maxBorrowable()`, filter `getPositions()` to only count stablecoin supplies when calculating available borrow capacity. Investment asset supplies are ignored for borrow math. The health factor display (`t2000 health`) should clarify which collateral is borrowable vs locked.
+
+### Securities-Backed Lending (Phase 17f — future)
+
+Borrow USDC against your investment portfolio without selling. The tradfi equivalent of margin lending / securities-backed lines of credit (Schwab Pledged Asset Line, Interactive Brokers margin).
+
+#### Guardrails
+
+| Guardrail | Value | Rationale |
+|-----------|-------|-----------|
+| **Max LTV** | 15-20% | Protocol allows 60-75%. Our conservative limit means SUI would need to drop 75%+ before liquidation risk. |
+| **Borrow asset** | Stablecoins only (USDC) | No borrowing volatile assets against volatile collateral. |
+| **Health floor** | 3.0+ | Agent warns at 3.0, blocks new borrows below 3.5. Protocol liquidates at 1.0. |
+| **Auto-repay trigger** | Health < 2.5 | Agent auto-repays from checking balance (USDC) if health drops. |
+| **Hard cap** | 20% of investment position value | Even if protocol allows more, SDK blocks it. |
+| **Position lock** | Can't `invest sell` while borrowed | Must repay first — like real margin accounts. |
+
+#### What 15-20% LTV means in practice
+
+```
+User has $1,000 of SUI invested and earning yield
+→ Max borrow: $150-200 USDC (15-20% LTV)
+→ SUI drops 50%: investment = $500, health still safe (~3.0)
+→ SUI drops 75%: investment = $250, auto-repay triggers
+→ Liquidation only if SUI drops ~85%+ AND auto-repay fails
+```
+
+#### User flow
+
+```
+# User has SUI earning yield
+t2000 portfolio
+│ SUI  │ $1,000  │ +15%  │ 4.8% APY (NAVI)  │
+
+# User borrows against investments
+t2000 borrow 150 --from investment
+→ "Borrowing $150 USDC against your $1,000 SUI investment"
+→ "Loan-to-value: 15% (max 20%)"
+→ "Your SUI stays invested and earning yield"
+→ "Auto-repay enabled if health drops below 2.5"
+
+# Agent monitors health continuously
+t2000 health
+→ Health factor: 4.2 (safe)
+→ Savings collateral: $500 USDC
+→ Investment collateral: $1,000 SUI (15% utilized)
+→ Total borrowed: $150 USDC
+→ Auto-repay: enabled (trigger at 2.5)
+
+# User must repay before selling
+t2000 invest sell 500 SUI
+→ "Cannot sell — $150 USDC borrowed against investment."
+→ "Run `t2000 repay 150` first, then sell."
+```
+
+#### Why this is separate from 17c
+
+The borrow guard in 17c (exclude investment collateral) is a safety wall. 17f carefully opens a door in that wall with strict guardrails. Shipping yield (17c) without securities-backed lending is the safe default — users earn yield, no liquidation risk. 17f is a premium feature that adds value but only when the guardrail infrastructure is properly built and tested.
+
+---
+
+## Website: Dedicated /invest Page vs Homepage Section
+
+**Decision: Add a prominent section to homepage for 17a. Dedicated /invest page for 17b+ (multi-asset + yield).**
+
+**Rationale:**
+- 17a has one asset (SUI) — a full page for one asset feels thin
+- The homepage already has the account tier cards — Investment is the 5th card
+- When 17b ships (BTC, ETH) and 17c adds yield, there's enough content for a dedicated page: listed assets, live prices, yield rates, risk levels
+- The docs page already serves as the deep-dive for commands/tools
+
+**Homepage Investment card content:**
+
+```
+05 / 05 — Investment
+
+Buy and sell crypto assets with full portfolio tracking.
+Cost-basis P&L, locked positions, and real-time pricing.
+
+t2000 invest buy 100 SUI
+
+Your agent tracks every trade — average cost, unrealized P&L,
+realized gains. Invested assets are locked until sold back to
+USDC, just like stocks in a brokerage.
+```
+
+**Future /invest page (17b+) would include:**
+- Listed assets with live prices and 24h change
+- Yield rates across NAVI / Suilend / Bluefin for each asset
+- Portfolio overview dashboard
+- "How it works" — buy → earn → sell flow
+- Risk disclosures
+- Comparison vs Coinbase/Robinhood
+
+---
+
+## Over-engineering Check
+
+> Things we intentionally kept simple for 17a:
+
+| Could over-engineer | What we're doing instead |
+|---------------------|--------------------------|
+| Add `priceAvailable: boolean` to `InvestmentPosition` type | Handle `currentPrice === 0` in display layer only (CLI + MCP). No type changes. |
+| Build full price service for multi-asset | Use `getPoolPrice()` for SUI (already exists). Price map pattern ready in code but only SUI for now. |
+| On-chain investment locking (smart contract) | Software guard in SDK. SUI stays in wallet, tracked locally. |
+| Basket/DCA infrastructure | Deferred to 17d. Just prompts + scheduling, not new SDK methods. |
+| Multi-protocol yield comparison for investment assets | Deferred to 17c. Savings already compares NAVI + Suilend. |
+| Transaction log / recovery for failed portfolio writes | Accept filesystem inconsistency for v1. No money lost on-chain. |
+| File locking on portfolio.json | Accept for v1 — single-user product. |
+| Rich dryRun with quote/price/impact | Keep simple preview: show amount, balance, current position. Enhancement for later. |
+
+---
+
+## Bugs Found in Code Review
+
+> Deep review of the existing implementation revealed these issues.
+> All must be fixed before v0.14.0 release (tasks 17.9c–17.9g).
+
+### HIGH severity
+
+| Bug | Location | Impact | Fix |
+|-----|----------|--------|-----|
+| **Division by zero** | `investBuy`: `price = usdAmount / swapResult.toAmount` | If swap returns 0 tokens, price = `Infinity`. Portfolio corrupted: `avgPrice` becomes `NaN`, cost basis inflates | Guard: throw `SWAP_FAILED` if `toAmount === 0` |
+| **No input validation** | `investBuy` + `investSell` | Amount `0`, `-100`, `NaN` all pass through to DEX with cryptic errors | Validate `amount > 0 && isFinite(amount)` at SDK level + CLI level |
+| **Send/exchange bypass** | `send()` and `exchange()` have no portfolio awareness | User can `send 50 SUI` or `exchange 50 SUI USDC` which desyncs portfolio permanently | Add locking guard (task 17.9c) |
+
+### MEDIUM severity
+
+| Bug | Location | Impact | Fix |
+|-----|----------|--------|-----|
+| **investSell exceeds position** | `investSell` specific USD amounts not bounded by `pos.totalAmount` | Can sell 200 SUI when portfolio tracks 50. P&L is wrong (proceeds from 200 vs cost of 50) | Cap: `sellAmountAsset = Math.min(sellAmountAsset, pos.totalAmount)` |
+| **balance() P&L wrong after gas erosion** | `balance()` uses full `costBasis` when `actualHeld < totalAmount` | If gas ate 50 of 100 invested SUI, P&L says `50*price - costBasis(100)` — always shows exaggerated loss | Scale: `costBasis *= (actualHeld / totalAmount)` |
+| **Price unavailable = -100% loss** | `getPortfolio()` sets `suiPrice = 0` on network error | Portfolio shows `currentValue: $0, unrealizedPnL: -$100` when price just couldn't be fetched | Distinguish "price unavailable" from "value is zero" |
+
+### LOW severity (defensive)
+
+| Bug | Location | Impact | Fix |
+|-----|----------|--------|-----|
+| **recordSell P&L mismatch** | `PortfolioManager.recordSell` caps `sellAmount` but uses full `trade.usdValue` | If defensive cap triggers, P&L is inflated. Won't trigger in practice (SDK pre-validates), but latent | Accepted risk — SDK prevents this path |
+| **Swap succeeds, portfolio write fails** | `investBuy`/`investSell` — swap is on-chain, `recordBuy()`/`recordSell()` is filesystem | If disk write fails after swap, portfolio is permanently desynced. No money lost on-chain. | Accept for v1 — could add tx-log recovery later |
+| **Portfolio.json file contention** | Concurrent MCP server + CLI could race on read/write | Could lose a trade record under concurrent access | Accept for v1 — single-user product |
+| **Trade ID collisions** | `inv_${Date.now()}` — two trades in same ms get same ID | IDs aren't used for dedup (array-appended), so no data corruption | Accept — cosmetic |
 
 ---
 
@@ -1130,94 +1633,33 @@ For margin trading: emit `balanceChange` manually after Bluefin deposit/withdraw
 | Component | Status | Why |
 |-----------|--------|-----|
 | **Prisma schema** | ✅ No change | Investment tracked in local `portfolio.json`, not DB |
-| **Indexer** | ✅ No change | Spot invest = Cetus swaps (already classified). Bluefin deposits = unknown transfers (fine for v1) |
-| **YieldSnapshotter** | ✅ No change | Investment SUI doesn't earn yield (that's Phase 17d) |
+| **Indexer** | ✅ No change | Spot invest = Cetus swaps (already classified) |
+| **YieldSnapshotter** | ✅ No change (17a) | Investment SUI doesn't earn yield until Phase 17c |
 | **EventParser** | ✅ No change | Cetus descriptor already handles swap classification |
-| **Stats API** | ✅ No change | Swaps appear as Cetus trades. Fine for v1 |
+| **Stats API** | ✅ No change | Swaps appear as Cetus trades |
 | **Gas Station** | ✅ No change | No impact on gas sponsorship |
-| **Sponsor** | ✅ No change | Agent creation unchanged |
-| **CLI `serve` SSE** | ✅ No change | Existing `balanceChange` event covers spot invest via exchange() |
-
-### Deferred infra (v2)
-
-- Add Bluefin `ProtocolDescriptor` for proper indexer classification of margin deposits/withdrawals
-- Extend stats API to show investment metrics (total invested, P&L across all agents)
-- Investment-specific events (e.g., `investmentPnL`, `positionClosed`)
-
----
-
-## Risk & Open Questions
-
-| Risk | Mitigation |
-|------|------------|
-| Bluefin API auth complexity | Discovery task in 17.5 — review SDK source for exact signing scheme |
-| Bluefin contract addresses | Extract from SDK source or Bluefin docs |
-| SUI double-counting in balance | Explicit adjustment in `T2000.balance()` — see critical section above |
-| Gas consumed from investment SUI | P&L calculated on actual held, not tracked. Honest portfolio display. |
-| investBuy with insufficient checking | Pre-check `available >= usdAmount` before swap attempt |
-| Price slippage on large spot trades | Default 3% slippage, configurable via `--slippage` |
-| Bluefin API rate limits | Cache market data, batch position queries |
-| Perps liquidation risk | Show liquidation price prominently, require confirmation for high leverage |
-| `BalanceResponse` change breaks consumers | New fields default to `0`, total formula change is correct. MCP auto-inherits. |
-| Existing `positions` command confusion | Stays lending-only. Investment gets its own `portfolio` command. Documented. |
-
-### Open questions (to resolve during implementation)
-
-1. **Bluefin auth**: Exact signing scheme TBD — need to read SDK source or API docs
-2. **Bluefin deposit contract**: Need exact Move package + function for USDC deposit
-3. **Market order vs limit**: v1 uses market orders for simplicity. Limit orders in v2.
-4. **Auto-close on liquidation risk**: Alert only, or auto-close at configurable threshold?
 
 ---
 
 ## Dependencies
 
-### No new npm dependencies for 17a (spot)
+### No new npm dependencies
 
-Reuses existing CetusAdapter.
-
-### 17b (margin) — zero new deps (REST API approach)
-
-We use `fetch` (built-in Node 18+) for Bluefin REST API calls. No SDK dependency.
-
-### If we need to fall back to SDK approach
-
-```
-@bluefin-exchange/pro-sdk@^1.13.0  ← version conflict with @mysten/sui
-```
-
-Resolution: isolate in separate workspace package with own dep tree, or use pnpm overrides.
+Reuses existing CetusAdapter. Zero new packages.
 
 ---
 
-## Order of Operations
+## Summary
 
-Recommended build sequence:
-
-```
-17.1–17.2   Types + constants + error codes      ┐
-17.3        PerpsAdapter interface                │ Foundation
-17.4        PortfolioManager                      ┘
-
-17.7        T2000: investBuy/Sell/getPortfolio    ┐
-17.9a       Balance update (SUI double-count fix) │ Spot investing
-17.11       CLI: t2000 invest                     │ (can ship independently)
-17.12       CLI: t2000 portfolio                  │
-17.14       CLI: balance update                   ┘
-
-17.5–17.6   BluefinAdapter (REST API)             ┐
-17.8        T2000: tradeLong/Short/Close          │ Margin trading
-17.9b       Safeguard extensions + CLI config     │
-17.10       Wire BluefinAdapter in constructor    │
-17.13       CLI: t2000 trade                      ┘
-
-17.15–17.16 MCP tools                             ┐
-17.16b      MCP prompts (update 3, add 1)         │ Integration
-17.17–17.19 Tests                                 │
-17.19b      SDK exports (index.ts)                │ Ship
-17.20–17.22 Docs, skills, release                 ┘
-```
-
-Spot investing (17a) can be built and tested first — zero external dependencies. Margin trading (17b) requires Bluefin API discovery and can proceed in parallel once types are defined.
-
-**Total tasks: 25** (17.1–17.22 + 17.16b + 17.19b — 17.10 simplified to direct wiring)
+| Metric | Before | After |
+|--------|--------|-------|
+| Account tiers | 4 | 5 (+ Investment) |
+| MCP tools | 17 | 19 |
+| MCP prompts | 5 | 6 |
+| CLI commands | 27 | 29 |
+| Agent skills | 13 | 14 |
+| SDK tests | 425 | ~469 (+19 portfolio + ~25 invest/locking) |
+| MCP tests | 72 | ~82 (+~7 behavior + count updates) |
+| Bugs fixed | — | 6 (3 high, 3 medium) |
+| Docs updated | — | 14 files |
+| Version | v0.13.1 | v0.14.0 |

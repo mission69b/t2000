@@ -47,13 +47,18 @@ import type {
   SentinelAttackResult,
   RebalanceResult,
   RebalanceStep,
+  InvestResult,
+  InvestmentPosition,
+  PortfolioResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
+import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, INVESTMENT_ASSETS, GAS_RESERVE_MIN, DEFAULT_MAX_LEVERAGE, DEFAULT_MAX_POSITION_SIZE } from './constants.js';
+import type { InvestmentAsset } from './constants.js';
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
 import type { TxMetadata } from './safeguards/types.js';
 import { ContactManager } from './contacts.js';
+import { PortfolioManager } from './portfolio.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -76,6 +81,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   private readonly registry: ProtocolRegistry;
   readonly enforcer: SafeguardEnforcer;
   readonly contacts: ContactManager;
+  readonly portfolio: PortfolioManager;
 
   private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry, configDir?: string) {
     super();
@@ -86,6 +92,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.enforcer = new SafeguardEnforcer(configDir);
     this.enforcer.load();
     this.contacts = new ContactManager(configDir);
+    this.portfolio = new PortfolioManager(configDir);
   }
 
   private static createDefaultRegistry(client: SuiJsonRpcClient): ProtocolRegistry {
@@ -186,6 +193,18 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
     }
 
+    if (asset in INVESTMENT_ASSETS) {
+      const free = await this.getFreeBalance(asset);
+      if (params.amount > free) {
+        const pos = this.portfolio.getPosition(asset);
+        const invested = pos?.totalAmount ?? 0;
+        throw new T2000Error('INVESTMENT_LOCKED',
+          `Cannot send ${params.amount} ${asset} — ${invested.toFixed(4)} ${asset} is invested. Free ${asset}: ${free.toFixed(4)}\nTo access invested funds: t2000 invest sell ${params.amount} ${asset}`,
+          { free, invested, requested: params.amount },
+        );
+      }
+    }
+
     const resolved = this.contacts.resolve(params.to);
     const sendAmount = params.amount;
     const sendTo = resolved.address;
@@ -226,11 +245,62 @@ export class T2000 extends EventEmitter<T2000Events> {
         .reduce((sum, p) => sum + p.amount, 0);
       bal.savings = savings;
       bal.debt = debt;
-      bal.total = bal.available + savings - debt + bal.gasReserve.usdEquiv;
     } catch {
       // NAVI unavailable — show basic balance
     }
 
+    try {
+      const portfolioPositions = this.portfolio.getPositions();
+      const suiPrice = bal.gasReserve.sui > 0
+        ? bal.gasReserve.usdEquiv / bal.gasReserve.sui
+        : 0;
+
+      const assetPrices: Record<string, number> = { SUI: suiPrice };
+      const swapAdapter = this.registry.listSwap()[0];
+      for (const pos of portfolioPositions) {
+        if (pos.asset !== 'SUI' && pos.asset in INVESTMENT_ASSETS && !(pos.asset in assetPrices)) {
+          try {
+            if (swapAdapter) {
+              const quote = await swapAdapter.getQuote('USDC', pos.asset, 1);
+              assetPrices[pos.asset] = quote.expectedOutput > 0 ? 1 / quote.expectedOutput : 0;
+            }
+          } catch { assetPrices[pos.asset] = 0; }
+        }
+      }
+
+      let investmentValue = 0;
+      let investmentCostBasis = 0;
+
+      for (const pos of portfolioPositions) {
+        if (!(pos.asset in INVESTMENT_ASSETS)) continue;
+        const price = assetPrices[pos.asset] ?? 0;
+
+        if (pos.asset === 'SUI') {
+          const actualHeld = Math.min(pos.totalAmount, bal.gasReserve.sui);
+          investmentValue += actualHeld * price;
+
+          if (actualHeld < pos.totalAmount && pos.totalAmount > 0) {
+            investmentCostBasis += pos.costBasis * (actualHeld / pos.totalAmount);
+          } else {
+            investmentCostBasis += pos.costBasis;
+          }
+
+          const gasSui = Math.max(0, bal.gasReserve.sui - pos.totalAmount);
+          bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * price };
+        } else {
+          investmentValue += pos.totalAmount * price;
+          investmentCostBasis += pos.costBasis;
+        }
+      }
+
+      bal.investment = investmentValue;
+      bal.investmentPnL = investmentValue - investmentCostBasis;
+    } catch {
+      bal.investment = 0;
+      bal.investmentPnL = 0;
+    }
+
+    bal.total = bal.available + bal.savings - bal.debt + bal.investment + bal.gasReserve.usdEquiv;
     return bal;
   }
 
@@ -877,7 +947,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Exchange --
 
-  async exchange(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
+  async exchange(params: { from: string; to: string; amount: number; maxSlippage?: number; _bypassInvestmentGuard?: boolean }): Promise<SwapResult> {
     this.enforcer.assertNotLocked();
     const fromAsset = params.from as keyof typeof SUPPORTED_ASSETS;
     const toAsset = params.to as keyof typeof SUPPORTED_ASSETS;
@@ -887,6 +957,18 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
     if (fromAsset === toAsset) {
       throw new T2000Error('INVALID_AMOUNT', 'Cannot swap same asset');
+    }
+
+    if (!params._bypassInvestmentGuard && fromAsset in INVESTMENT_ASSETS) {
+      const free = await this.getFreeBalance(fromAsset);
+      if (params.amount > free) {
+        const pos = this.portfolio.getPosition(fromAsset);
+        const invested = pos?.totalAmount ?? 0;
+        throw new T2000Error('INVESTMENT_LOCKED',
+          `Cannot exchange ${params.amount} ${fromAsset} — ${invested.toFixed(4)} ${fromAsset} is invested. Free ${fromAsset}: ${free.toFixed(4)}\nTo sell investment: t2000 invest sell ${params.amount} ${fromAsset}`,
+          { free, invested, requested: params.amount },
+        );
+      }
     }
 
     const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
@@ -962,6 +1044,252 @@ export class T2000 extends EventEmitter<T2000Events> {
     const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
     const fee = calculateFee('swap', params.amount);
     return { ...best.quote, fee: { amount: fee.amount, rate: fee.rate } };
+  }
+
+  // -- Investment --
+
+  async investBuy(params: { asset: InvestmentAsset; usdAmount: number; maxSlippage?: number }): Promise<InvestResult> {
+    this.enforcer.assertNotLocked();
+
+    if (!params.usdAmount || params.usdAmount <= 0 || !isFinite(params.usdAmount)) {
+      throw new T2000Error('INVALID_AMOUNT', 'Investment amount must be greater than $0');
+    }
+
+    this.enforcer.check({ operation: 'invest', amount: params.usdAmount });
+
+    if (!(params.asset in INVESTMENT_ASSETS)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `${params.asset} is not available for investment`);
+    }
+
+    const bal = await queryBalance(this.client, this._address);
+    if (bal.available < params.usdAmount) {
+      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient checking balance. Available: $${bal.available.toFixed(2)}, requested: $${params.usdAmount.toFixed(2)}`);
+    }
+
+    const swapResult = await this.exchange({
+      from: 'USDC',
+      to: params.asset,
+      amount: params.usdAmount,
+      maxSlippage: params.maxSlippage ?? 0.03,
+      _bypassInvestmentGuard: true,
+    });
+
+    if (swapResult.toAmount === 0) {
+      throw new T2000Error('SWAP_FAILED', 'Swap returned zero tokens — try a different amount or check liquidity');
+    }
+
+    const price = params.usdAmount / swapResult.toAmount;
+
+    this.portfolio.recordBuy({
+      id: `inv_${Date.now()}`,
+      type: 'buy',
+      asset: params.asset,
+      amount: swapResult.toAmount,
+      price,
+      usdValue: params.usdAmount,
+      fee: swapResult.fee,
+      tx: swapResult.tx,
+      timestamp: new Date().toISOString(),
+    });
+
+    const pos = this.portfolio.getPosition(params.asset);
+    const currentPrice = price;
+    const position: InvestmentPosition = {
+      asset: params.asset,
+      totalAmount: pos?.totalAmount ?? swapResult.toAmount,
+      costBasis: pos?.costBasis ?? params.usdAmount,
+      avgPrice: pos?.avgPrice ?? price,
+      currentPrice,
+      currentValue: (pos?.totalAmount ?? swapResult.toAmount) * currentPrice,
+      unrealizedPnL: 0,
+      unrealizedPnLPct: 0,
+      trades: pos?.trades ?? [],
+    };
+
+    return {
+      success: true,
+      tx: swapResult.tx,
+      type: 'buy',
+      asset: params.asset,
+      amount: swapResult.toAmount,
+      price,
+      usdValue: params.usdAmount,
+      fee: swapResult.fee,
+      gasCost: swapResult.gasCost,
+      gasMethod: swapResult.gasMethod,
+      position,
+    };
+  }
+
+  async investSell(params: { asset: InvestmentAsset; usdAmount: number | 'all'; maxSlippage?: number }): Promise<InvestResult> {
+    this.enforcer.assertNotLocked();
+
+    if (params.usdAmount !== 'all') {
+      if (!params.usdAmount || params.usdAmount <= 0 || !isFinite(params.usdAmount)) {
+        throw new T2000Error('INVALID_AMOUNT', 'Sell amount must be greater than $0');
+      }
+    }
+
+    if (!(params.asset in INVESTMENT_ASSETS)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `${params.asset} is not available for investment`);
+    }
+
+    const pos = this.portfolio.getPosition(params.asset);
+    if (!pos || pos.totalAmount <= 0) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${params.asset} position to sell`);
+    }
+
+    const assetInfo = SUPPORTED_ASSETS[params.asset as keyof typeof SUPPORTED_ASSETS];
+    const assetBalance = await this.client.getBalance({
+      owner: this._address,
+      coinType: assetInfo.type,
+    });
+    const walletAmount = Number(assetBalance.totalBalance) / (10 ** assetInfo.decimals);
+    const gasReserve = params.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+    const maxSellable = Math.max(0, walletAmount - gasReserve);
+
+    let sellAmountAsset: number;
+    if (params.usdAmount === 'all') {
+      sellAmountAsset = Math.min(pos.totalAmount, maxSellable);
+    } else {
+      const swapAdapter = this.registry.listSwap()[0];
+      if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
+      const quote = await swapAdapter.getQuote('USDC', params.asset, 1);
+      const assetPrice = 1 / quote.expectedOutput;
+      sellAmountAsset = params.usdAmount / assetPrice;
+      sellAmountAsset = Math.min(sellAmountAsset, pos.totalAmount);
+      if (sellAmountAsset > maxSellable) {
+        throw new T2000Error(
+          'INSUFFICIENT_INVESTMENT',
+          `Cannot sell $${params.usdAmount.toFixed(2)} — max sellable: $${(maxSellable * assetPrice).toFixed(2)} (gas reserve: ${gasReserve} ${params.asset})`,
+        );
+      }
+    }
+
+    if (sellAmountAsset <= 0) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', 'Nothing to sell after gas reserve');
+    }
+
+    const swapResult = await this.exchange({
+      from: params.asset,
+      to: 'USDC',
+      amount: sellAmountAsset,
+      maxSlippage: params.maxSlippage ?? 0.03,
+      _bypassInvestmentGuard: true,
+    });
+
+    const price = swapResult.toAmount / sellAmountAsset;
+
+    const realizedPnL = this.portfolio.recordSell({
+      id: `inv_${Date.now()}`,
+      type: 'sell',
+      asset: params.asset,
+      amount: sellAmountAsset,
+      price,
+      usdValue: swapResult.toAmount,
+      fee: swapResult.fee,
+      tx: swapResult.tx,
+      timestamp: new Date().toISOString(),
+    });
+
+    const updatedPos = this.portfolio.getPosition(params.asset);
+    const position: InvestmentPosition = {
+      asset: params.asset,
+      totalAmount: updatedPos?.totalAmount ?? 0,
+      costBasis: updatedPos?.costBasis ?? 0,
+      avgPrice: updatedPos?.avgPrice ?? 0,
+      currentPrice: price,
+      currentValue: (updatedPos?.totalAmount ?? 0) * price,
+      unrealizedPnL: 0,
+      unrealizedPnLPct: 0,
+      trades: updatedPos?.trades ?? [],
+    };
+
+    return {
+      success: true,
+      tx: swapResult.tx,
+      type: 'sell',
+      asset: params.asset,
+      amount: sellAmountAsset,
+      price,
+      usdValue: swapResult.toAmount,
+      fee: swapResult.fee,
+      gasCost: swapResult.gasCost,
+      gasMethod: swapResult.gasMethod,
+      realizedPnL,
+      position,
+    };
+  }
+
+  async getPortfolio(): Promise<PortfolioResult> {
+    const positions = this.portfolio.getPositions();
+    const realizedPnL = this.portfolio.getRealizedPnL();
+
+    const prices: Record<string, number> = {};
+    const swapAdapter = this.registry.listSwap()[0];
+    for (const asset of Object.keys(INVESTMENT_ASSETS)) {
+      try {
+        if (asset === 'SUI' && swapAdapter) {
+          prices[asset] = await swapAdapter.getPoolPrice();
+        } else if (swapAdapter) {
+          const quote = await swapAdapter.getQuote('USDC', asset, 1);
+          prices[asset] = quote.expectedOutput > 0 ? 1 / quote.expectedOutput : 0;
+        }
+      } catch { prices[asset] = 0; }
+    }
+
+    const enriched: InvestmentPosition[] = [];
+    for (const pos of positions) {
+      const currentPrice = prices[pos.asset] ?? 0;
+      let totalAmount = pos.totalAmount;
+      let costBasis = pos.costBasis;
+
+      if (pos.asset in INVESTMENT_ASSETS) {
+        try {
+          const assetInfo = SUPPORTED_ASSETS[pos.asset as keyof typeof SUPPORTED_ASSETS];
+          const bal = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
+          const walletAmount = Number(bal.totalBalance) / (10 ** assetInfo.decimals);
+          const gasReserve = pos.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+          const actualHeld = Math.max(0, walletAmount - gasReserve);
+
+          if (actualHeld < totalAmount) {
+            const ratio = totalAmount > 0 ? actualHeld / totalAmount : 0;
+            costBasis *= ratio;
+            totalAmount = actualHeld;
+          }
+        } catch { /* keep tracked values on RPC failure */ }
+      }
+
+      const currentValue = totalAmount * currentPrice;
+      const unrealizedPnL = currentPrice > 0 ? currentValue - costBasis : 0;
+      const unrealizedPnLPct = currentPrice > 0 && costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
+
+      enriched.push({
+        asset: pos.asset,
+        totalAmount,
+        costBasis,
+        avgPrice: pos.avgPrice,
+        currentPrice,
+        currentValue,
+        unrealizedPnL,
+        unrealizedPnLPct,
+        trades: pos.trades,
+      });
+    }
+
+    const totalInvested = enriched.reduce((sum, p) => sum + p.costBasis, 0);
+    const totalValue = enriched.reduce((sum, p) => sum + p.currentValue, 0);
+    const totalUnrealizedPnL = totalValue - totalInvested;
+    const totalUnrealizedPnLPct = totalInvested > 0 ? (totalUnrealizedPnL / totalInvested) * 100 : 0;
+
+    return {
+      positions: enriched,
+      totalInvested,
+      totalValue,
+      unrealizedPnL: totalUnrealizedPnL,
+      unrealizedPnLPct: totalUnrealizedPnLPct,
+      realizedPnL,
+    };
   }
 
   // -- Info --
@@ -1334,6 +1662,19 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   // -- Helpers --
+
+  private async getFreeBalance(asset: string): Promise<number> {
+    if (!(asset in INVESTMENT_ASSETS)) return Infinity;
+    const pos = this.portfolio.getPosition(asset);
+    const invested = pos?.totalAmount ?? 0;
+    if (invested <= 0) return Infinity;
+
+    const assetInfo = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS];
+    const balance = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
+    const walletAmount = Number(balance.totalBalance) / (10 ** assetInfo.decimals);
+    const gasReserve = asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+    return Math.max(0, walletAmount - invested - gasReserve);
+  }
 
   private async resolveLending(protocol: string | undefined, asset: string, capability: 'save' | 'withdraw' | 'borrow' | 'repay'): Promise<LendingAdapter> {
     if (protocol) {

@@ -78,6 +78,22 @@ function createMockAgent() {
         throw new T2000Error('CONTACT_NOT_FOUND', `"${nameOrAddress}" is not a valid Sui address or saved contact.`);
       }),
     },
+    investBuy: vi.fn().mockResolvedValue({
+      success: true, tx: '0xinvest', type: 'buy', asset: 'SUI',
+      amount: 25.5, price: 3.92, usdValue: 100, fee: 0.3,
+      gasCost: 0.001, gasMethod: 'self-funded',
+      position: { asset: 'SUI', totalAmount: 25.5, costBasis: 100, avgPrice: 3.92, currentPrice: 3.92, currentValue: 100, unrealizedPnL: 0, unrealizedPnLPct: 0, trades: [] },
+    }),
+    investSell: vi.fn().mockResolvedValue({
+      success: true, tx: '0xinvsell', type: 'sell', asset: 'SUI',
+      amount: 10, price: 4.0, usdValue: 40, fee: 0.12,
+      gasCost: 0.001, gasMethod: 'self-funded', realizedPnL: 0.8,
+      position: { asset: 'SUI', totalAmount: 15.5, costBasis: 60.78, avgPrice: 3.92, currentPrice: 4.0, currentValue: 62, unrealizedPnL: 1.22, unrealizedPnLPct: 2.0, trades: [] },
+    }),
+    getPortfolio: vi.fn().mockResolvedValue({
+      positions: [{ asset: 'SUI', totalAmount: 25.5, costBasis: 100, avgPrice: 3.92, currentPrice: 4.0, currentValue: 102, unrealizedPnL: 2, unrealizedPnLPct: 2.0, trades: [] }],
+      totalInvested: 100, totalValue: 102, unrealizedPnL: 2, unrealizedPnLPct: 2.0, realizedPnL: 0,
+    }),
   } as any;
 }
 
@@ -102,8 +118,8 @@ describe('write tools', () => {
     registerWriteTools(server, agent);
   });
 
-  it('should register 7 write tools', () => {
-    expect(tools.size).toBe(7);
+  it('should register 8 write tools', () => {
+    expect(tools.size).toBe(8);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_save')).toBe(true);
     expect(tools.has('t2000_withdraw')).toBe(true);
@@ -277,6 +293,66 @@ describe('write tools', () => {
       const handler = tools.get('t2000_rebalance')!;
       await handler({ dryRun: false });
       expect(agent.rebalance).toHaveBeenCalledWith(expect.objectContaining({ dryRun: false }));
+    });
+  });
+
+  describe('t2000_invest', () => {
+    it('should return preview with dryRun: true (buy)', async () => {
+      const handler = tools.get('t2000_invest')!;
+      const result = await handler({ action: 'buy', asset: 'SUI', amount: 100, dryRun: true });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.preview).toBe(true);
+      expect(data.action).toBe('buy');
+      expect(data.asset).toBe('SUI');
+      expect(data.amount).toBe(100);
+      expect(agent.investBuy).not.toHaveBeenCalled();
+    });
+
+    it('should execute buy', async () => {
+      const handler = tools.get('t2000_invest')!;
+      const result = await handler({ action: 'buy', asset: 'SUI', amount: 100 });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(true);
+      expect(data.type).toBe('buy');
+      expect(agent.investBuy).toHaveBeenCalled();
+    });
+
+    it('should execute sell', async () => {
+      const handler = tools.get('t2000_invest')!;
+      const result = await handler({ action: 'sell', asset: 'SUI', amount: 40 });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.success).toBe(true);
+      expect(data.type).toBe('sell');
+      expect(agent.investSell).toHaveBeenCalled();
+    });
+
+    it('should handle sell all', async () => {
+      const handler = tools.get('t2000_invest')!;
+      await handler({ action: 'sell', asset: 'SUI', amount: 'all' });
+      expect(agent.investSell).toHaveBeenCalledWith(expect.objectContaining({ usdAmount: 'all' }));
+    });
+
+    it('should pass slippage when provided', async () => {
+      const handler = tools.get('t2000_invest')!;
+      await handler({ action: 'buy', asset: 'SUI', amount: 100, slippage: 5 });
+      expect(agent.investBuy).toHaveBeenCalledWith(expect.objectContaining({ maxSlippage: 0.05 }));
+    });
+
+    it('should return error for sell all with no position in dryRun', async () => {
+      agent.getPortfolio.mockResolvedValue({
+        positions: [], totalInvested: 0, totalValue: 0,
+        unrealizedPnL: 0, unrealizedPnLPct: 0, realizedPnL: 0,
+      });
+      const handler = tools.get('t2000_invest')!;
+      const result = await handler({ action: 'sell', asset: 'SUI', amount: 'all', dryRun: true });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.error).toContain('No SUI position');
+    });
+
+    it('should reject buy with non-number amount', async () => {
+      const handler = tools.get('t2000_invest')!;
+      const result = await handler({ action: 'buy', asset: 'SUI', amount: 'all' });
+      expect(result.isError).toBe(true);
     });
   });
 });

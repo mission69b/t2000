@@ -4,6 +4,8 @@ export interface SafeguardConfig {
   maxDailySend: number;
   dailyUsed: number;
   dailyResetDate: string;
+  maxLeverage?: number;
+  maxPositionSize?: number;
 }
 
 export interface TxMetadata {
@@ -16,7 +18,9 @@ export interface TxMetadata {
     | 'exchange'
     | 'rebalance'
     | 'pay'
-    | 'sentinel';
+    | 'sentinel'
+    | 'invest'
+    | 'trade';
   amount?: number;
 }
 

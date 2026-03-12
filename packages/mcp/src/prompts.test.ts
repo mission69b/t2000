@@ -21,8 +21,8 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 5 prompts', () => {
-    expect(prompts.size).toBe(5);
+  it('should register 6 prompts', () => {
+    expect(prompts.size).toBe(6);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);

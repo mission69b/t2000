@@ -53,6 +53,10 @@ function createMockAgent() {
         return { address: '0x8b3etest', contactName: 'Tom' };
       }),
     },
+    getPortfolio: vi.fn().mockResolvedValue({
+      positions: [{ asset: 'SUI', totalAmount: 100, costBasis: 95, avgPrice: 0.95, currentPrice: 0.97, currentValue: 97, unrealizedPnL: 2, unrealizedPnLPct: 2.1, trades: [] }],
+      totalInvested: 95, totalValue: 97, unrealizedPnL: 2, unrealizedPnLPct: 2.1, realizedPnL: 0,
+    }),
   } as any;
 }
 
@@ -77,8 +81,8 @@ describe('read tools', () => {
     registerReadTools(server, agent);
   });
 
-  it('should register 8 read tools', () => {
-    expect(tools.size).toBe(8);
+  it('should register 9 read tools', () => {
+    expect(tools.size).toBe(9);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
     expect(tools.has('t2000_positions')).toBe(true);
@@ -175,5 +179,38 @@ describe('read tools', () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.code).toBe('UNKNOWN');
     expect(data.message).toBe('RPC timeout');
+  });
+
+  it('t2000_portfolio should return portfolio with P&L', async () => {
+    const handler = tools.get('t2000_portfolio')!;
+    const result = await handler({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.positions).toHaveLength(1);
+    expect(data.positions[0].asset).toBe('SUI');
+    expect(data.positions[0].unrealizedPnL).toBe(2);
+    expect(data.totalValue).toBe(97);
+  });
+
+  it('t2000_portfolio should return empty when no positions', async () => {
+    agent.getPortfolio.mockResolvedValue({
+      positions: [], totalInvested: 0, totalValue: 0,
+      unrealizedPnL: 0, unrealizedPnLPct: 0, realizedPnL: 0,
+    });
+    const handler = tools.get('t2000_portfolio')!;
+    const result = await handler({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.positions).toEqual([]);
+    expect(data.totalValue).toBe(0);
+  });
+
+  it('t2000_portfolio should add price unavailable note', async () => {
+    agent.getPortfolio.mockResolvedValue({
+      positions: [{ asset: 'SUI', totalAmount: 100, costBasis: 95, avgPrice: 0.95, currentPrice: 0, currentValue: 0, unrealizedPnL: 0, unrealizedPnLPct: 0, trades: [] }],
+      totalInvested: 95, totalValue: 0, unrealizedPnL: -95, unrealizedPnLPct: -100, realizedPnL: 0,
+    });
+    const handler = tools.get('t2000_portfolio')!;
+    const result = await handler({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data.positions[0].note).toBe('price unavailable');
   });
 });

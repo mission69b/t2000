@@ -53,6 +53,16 @@ await agent.rebalance(); // execute
 
 // Withdraw — always returns USDC (auto-swaps non-USDC positions)
 await agent.withdraw({ amount: 25 });
+
+// Invest in crypto assets
+await agent.investBuy({ asset: 'SUI', usdAmount: 100 });
+
+// Check portfolio
+const portfolio = await agent.getPortfolio();
+console.log(`P&L: ${portfolio.unrealizedPnL}`);
+
+// Sell position
+await agent.investSell({ asset: 'SUI', usdAmount: 'all' });
 ```
 
 ## API Reference
@@ -152,6 +162,14 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.enforcer.isConfigured()` | Whether safeguards are set up | `boolean` |
 
 **Types:** `SafeguardConfig` — `{ maxPerTx?, maxDailySend?, locked? }` · `SafeguardError` — thrown when limits exceeded or agent locked
+
+### Investment Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `agent.investBuy({ asset, usdAmount, maxSlippage? })` | Buy crypto asset with USD | `InvestResult` |
+| `agent.investSell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC | `InvestResult` |
+| `agent.getPortfolio()` | Investment positions + P&L | `PortfolioResult` |
 
 ### Key Management
 
@@ -278,13 +296,15 @@ Save auto-converts non-USDC wallet stablecoins, withdraw auto-swaps non-USDC
 positions back to USDC, and repay auto-swaps USDC to the borrowed asset if
 debt is non-USDC (from rebalance). Rebalance optimizes across all stablecoins internally.
 
-| Asset | Display | Type | Decimals | Save | Borrow | Withdraw | Rebalance (internal) |
-|-------|---------|------|----------|------|--------|----------|---------------------|
-| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ (always returns USDC) | ✅ |
-| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | — (via rebalance) | — | — | ✅ |
-| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | — (via rebalance) | — | — | ✅ |
-| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | — (via rebalance) | — | — | ✅ |
-| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — | — |
+| Asset | Display | Type | Decimals | Save | Borrow | Withdraw | Rebalance (internal) | Invest |
+|-------|---------|------|----------|------|--------|----------|---------------------|--------|
+| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ (always returns USDC) | ✅ | — |
+| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | — (via rebalance) | — | — | ✅ | — |
+| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | — (via rebalance) | — | — | ✅ | — |
+| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | — (via rebalance) | — | — | ✅ | — |
+| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — | — | ✅ |
+| BTC | Bitcoin | `0xaafb...::btc::BTC` | 8 | — | — | — | — | ✅ |
+| ETH | Ethereum | `0xd0e8...::eth::ETH` | 8 | — | — | — | — | ✅ |
 
 ## Error Handling
 
@@ -306,7 +326,7 @@ Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOU
 ## Testing
 
 ```bash
-# Run all SDK unit tests (367 tests)
+# Run all SDK unit tests (469 tests)
 pnpm --filter @t2000/sdk test
 ```
 
@@ -347,7 +367,7 @@ Fees are collected by the t2000 protocol treasury on-chain.
 
 ## MCP Server
 
-The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 17 tools and 5 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
+The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 19 tools and 6 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
 
 ## License
 

@@ -65,6 +65,26 @@ function createMockAgent() {
         throw new Error(`"${nameOrAddress}" is not a valid Sui address or saved contact.`);
       }),
     },
+    portfolio: {
+      getPositions: vi.fn().mockReturnValue([]),
+      getRealizedPnL: vi.fn().mockReturnValue(0),
+    },
+    getPortfolio: vi.fn().mockResolvedValue({
+      positions: [],
+      totalInvested: 0,
+      totalValue: 0,
+      unrealizedPnL: 0,
+      unrealizedPnLPct: 0,
+      realizedPnL: 0,
+    }),
+    investBuy: vi.fn().mockResolvedValue({
+      success: true, tx: '0xinvest123', type: 'buy', asset: 'SUI',
+      amount: 100, price: 0.95, usdValue: 95, fee: 0, gasCost: 0.001,
+    }),
+    investSell: vi.fn().mockResolvedValue({
+      success: true, tx: '0xinvest456', type: 'sell', asset: 'SUI',
+      amount: 50, price: 0.97, usdValue: 48.5, fee: 0, gasCost: 0.001,
+    }),
   } as any;
 }
 
@@ -96,9 +116,9 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 17 tools', async () => {
+  it('lists all 19 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(17);
+    expect(tools).toHaveLength(19);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -111,7 +131,9 @@ describe('integration: MCP client ↔ server', () => {
       't2000_exchange',
       't2000_health',
       't2000_history',
+      't2000_invest',
       't2000_lock',
+      't2000_portfolio',
       't2000_positions',
       't2000_rates',
       't2000_rebalance',
@@ -122,12 +144,12 @@ describe('integration: MCP client ↔ server', () => {
     ]);
   });
 
-  it('lists all 5 prompts', async () => {
+  it('lists all 6 prompts', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts).toHaveLength(5);
+    expect(prompts).toHaveLength(6);
 
     const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['budget-check', 'financial-report', 'optimize-yield', 'savings-strategy', 'send-money']);
+    expect(names).toEqual(['budget-check', 'financial-report', 'investment-strategy', 'optimize-yield', 'savings-strategy', 'send-money']);
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {

@@ -8,7 +8,7 @@ import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printSuc
 const CONFIG_DIR = join(homedir(), '.t2000');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 
-const SAFEGUARD_KEYS = new Set(['locked', 'maxPerTx', 'maxDailySend', 'dailyUsed', 'dailyResetDate', 'alertThreshold']);
+const SAFEGUARD_KEYS = new Set(['locked', 'maxPerTx', 'maxDailySend', 'dailyUsed', 'dailyResetDate', 'alertThreshold', 'maxLeverage', 'maxPositionSize']);
 
 function loadConfig(): Record<string, unknown> {
   try {

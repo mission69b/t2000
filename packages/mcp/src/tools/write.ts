@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { T2000 } from '@t2000/sdk';
+import { INVESTMENT_ASSETS } from '@t2000/sdk';
+import type { InvestmentAsset } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
@@ -238,6 +240,62 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
           agent.exchange({ from, to, amount, maxSlippage }),
         );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  const investAssets = Object.keys(INVESTMENT_ASSETS) as [string, ...string[]];
+  server.tool(
+    't2000_invest',
+    'Buy or sell investment assets (spot). Amount is in USD. Asset is the crypto to buy/sell (e.g. SUI, BTC, ETH). Set dryRun: true to preview.',
+    {
+      action: z.enum(['buy', 'sell']).describe("'buy' to invest USD into asset, 'sell' to convert asset back to USDC"),
+      asset: z.enum(investAssets).describe('Asset to invest in'),
+      amount: z.union([z.number(), z.literal('all')]).describe('USD amount, or "all" to sell entire position'),
+      slippage: z.number().optional().describe('Max slippage percent (default: 3)'),
+      dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
+    },
+    async ({ action, asset, amount, slippage, dryRun }) => {
+      try {
+        if (dryRun) {
+          agent.enforcer.assertNotLocked();
+          const balance = await agent.balance();
+          const portfolio = await agent.getPortfolio();
+          const position = portfolio.positions.find(p => p.asset === asset);
+
+          if (action === 'sell' && amount === 'all' && !position) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify({ preview: true, error: `No ${asset} position to sell` }) }],
+            };
+          }
+
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                preview: true,
+                action,
+                asset,
+                amount: amount === 'all' ? position?.currentValue ?? 0 : amount,
+                currentBalance: balance.available,
+                currentPosition: position ?? null,
+              }),
+            }],
+          };
+        }
+
+        const maxSlippage = slippage ? slippage / 100 : undefined;
+        if (action === 'buy') {
+          if (typeof amount !== 'number') throw new Error('Buy amount must be a number');
+          const result = await mutex.run(() => agent.investBuy({ asset: asset as InvestmentAsset, usdAmount: amount, maxSlippage }));
+          return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        } else {
+          const usdAmount = amount === 'all' ? 'all' as const : amount as number;
+          const result = await mutex.run(() => agent.investSell({ asset: asset as InvestmentAsset, usdAmount, maxSlippage }));
+          return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
       } catch (err) {
         return errorResult(err);
       }

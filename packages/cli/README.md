@@ -30,7 +30,7 @@ t2000 init
   ✓ Gas sponsorship  enabled
 
   Setting up accounts...
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ 402 Pay
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Investment  ✓ Exchange  ✓ 402 Pay
 
   🎉 Bank account created
   Address:  0x8b3e4f2a...
@@ -84,6 +84,20 @@ t2000 init
   Gas:        0.31 SUI     (~$0.28)
   ──────────────────────────────────────
   Total:      $85.28
+❯ t2000 invest buy 100 SUI
+  ✓ Bought 105.26 SUI at $0.95
+    Invested:       $100.00
+    Portfolio:      105.26 SUI (avg $0.95)
+    Tx:  https://suiscan.xyz/mainnet/tx/...
+
+❯ t2000 portfolio
+  Investment Portfolio
+  ─────────────────────────────────────────────────────
+  SUI     105.26    Avg: $0.95    Now: $0.97    +$2.10 (+2.1%)
+  ─────────────────────────────────────────────────────
+  Total invested:   $100.00
+  Current value:    $102.10
+  Unrealized P&L:   +$2.10 (+2.1%)
 ```
 
 30 seconds. Send → save → borrow → pay → repay → withdraw.
@@ -192,7 +206,7 @@ t2000 mcp uninstall
 t2000 mcp
 ```
 
-17 tools, 5 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
+19 tools, 6 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 

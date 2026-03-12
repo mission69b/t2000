@@ -76,6 +76,14 @@ export function registerBalance(program: Command) {
               : 0;
             printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}  ${pc.dim(`(${borrowApy.toFixed(2)}% APY)`)}`);
           }
+          if (bal.investment > 0.01) {
+            const pnlColor = bal.investmentPnL >= 0 ? pc.green : pc.red;
+            const pnlSign = bal.investmentPnL >= 0 ? '+' : '';
+            const pnlPct = bal.investment > 0 ? ((bal.investmentPnL / (bal.investment - bal.investmentPnL)) * 100) : 0;
+            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%)`)}`);
+          } else {
+            printKeyValue('Investment', pc.dim('—'));
+          }
           printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
           printSeparator();
           printKeyValue('Total', `${formatUsd(bal.total)}`);
@@ -87,6 +95,14 @@ export function registerBalance(program: Command) {
             printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}`);
           }
           printKeyValue('Savings', `${formatUsd(bal.savings)}`);
+          if (bal.investment > 0.01) {
+            const pnlColor = bal.investmentPnL >= 0 ? pc.green : pc.red;
+            const pnlSign = bal.investmentPnL >= 0 ? '+' : '';
+            const pnlPct = bal.investment > 0 ? ((bal.investmentPnL / (bal.investment - bal.investmentPnL)) * 100) : 0;
+            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%)`)}`);
+          } else {
+            printKeyValue('Investment', pc.dim('—'));
+          }
           printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
           printSeparator();
           printKeyValue('Total', `${formatUsd(bal.total)}`);

@@ -11,7 +11,7 @@ const DEMO_URL = "/demo";
 
 const ACCOUNTS = [
   {
-    num: "01 / 04",
+    num: "01 / 05",
     icon: "⟳",
     title: "Checking",
     subtitle: "Send · Receive · Balance",
@@ -19,7 +19,7 @@ const ACCOUNTS = [
     cmd: "t2000 send 10 USDC to 0x8b3e...",
   },
   {
-    num: "02 / 04",
+    num: "02 / 05",
     icon: "◈",
     title: "Savings",
     subtitle: "Earn · Yield · Multi-protocol",
@@ -27,7 +27,7 @@ const ACCOUNTS = [
     cmd: "t2000 save all",
   },
   {
-    num: "03 / 04",
+    num: "03 / 05",
     icon: "◎",
     title: "Credit",
     subtitle: "Borrow · Repay · DeFi",
@@ -35,12 +35,20 @@ const ACCOUNTS = [
     cmd: "t2000 borrow 40",
   },
   {
-    num: "04 / 04",
+    num: "04 / 05",
     icon: "⇌",
     title: "Exchange",
     subtitle: "Swap · Cetus DEX · On-chain",
     desc: "Swap between any supported tokens via Cetus DEX. Slippage is enforced on-chain. The agent can acquire gas, convert earnings, or exchange currencies — all autonomously.",
     cmd: "t2000 exchange 5 USDC SUI",
+  },
+  {
+    num: "05 / 05",
+    icon: "◆",
+    title: "Investment",
+    subtitle: "Buy · Sell · Portfolio · P&L",
+    desc: "Buy and sell SUI, BTC, and ETH with dollar-denominated commands. Cost-basis P&L tracking and investment locking guard. The agent builds a portfolio autonomously.",
+    cmd: "t2000 invest buy 100 SUI",
   },
 ];
 
@@ -68,7 +76,7 @@ const STEPS = [
     badge: "MCP",
     badgeType: "new" as const,
     content:
-      "One command auto-configures Claude Desktop and Cursor. 17 tools with safeguard enforcement — your AI manages money autonomously.",
+            "One command auto-configures Claude Desktop and Cursor. 19 tools with safeguard enforcement — your AI manages money autonomously.",
     code: "t2000 mcp install",
   },
   {
@@ -156,6 +164,7 @@ const COMPARE_ROWS: {
     t2000: "✓ Cetus DEX",
     bothCheck: true,
   },
+  { feature: "Investment (spot)", coinbase: "—", t2000: "✓ SUI, BTC, ETH + P&L tracking", coinbaseCross: true },
   {
     feature: "x402 client",
     coinbase: "✓ Base / Solana",
@@ -207,7 +216,7 @@ const COMPARE_ROWS: {
   {
     feature: "MCP Server",
     coinbase: "—",
-    t2000: "✓ 17 tools + 5 prompts",
+    t2000: "✓ 19 tools + 6 prompts",
     coinbaseCross: true,
   },
   {
@@ -288,6 +297,7 @@ export default function Home() {
               { icon: "⟳", label: "Checking" },
               { icon: "◈", label: "Savings" },
               { icon: "◎", label: "Credit" },
+              { icon: "◆", label: "Investment" },
               { icon: "⇌", label: "Exchange" },
               { icon: "⬡", label: "x402 Pay" },
               { icon: "⚙", label: "MCP" },
@@ -329,7 +339,7 @@ export default function Home() {
       {/* ── Divider ── */}
       <div className="relative z-1 px-6 sm:px-10 lg:px-20 border-t border-border">
         <div className="text-[10px] tracking-[0.2em] uppercase text-dim py-5 flex items-center gap-4">
-          Four accounts. One agent. Zero friction.
+          Five accounts. One agent. Zero friction.
           <span className="flex-1 h-px bg-border" />
         </div>
       </div>
@@ -342,7 +352,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
             <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-              Four accounts
+              Five accounts
             </div>
             <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Everything a bank offers.
@@ -357,7 +367,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-px bg-border border border-border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-px bg-border border border-border">
           {ACCOUNTS.map((account) => (
             <div
               key={account.title}
@@ -513,7 +523,7 @@ export default function Home() {
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
             One command connects Claude Desktop, Cursor, or any MCP client.
-            Your AI gets 17 tools with safeguard limits — no config files to edit.
+            Your AI gets 19 tools with safeguard limits — no config files to edit.
           </p>
         </div>
 
@@ -539,8 +549,8 @@ export default function Home() {
           <div>
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { count: "8", label: "Read", desc: "Balance, rates, positions, earnings, contacts" },
-                { count: "7", label: "Write", desc: "Send, save, borrow, swap, rebalance" },
+                { count: "9", label: "Read", desc: "Balance, rates, positions, earnings, contacts, portfolio" },
+                { count: "8", label: "Write", desc: "Send, save, borrow, swap, rebalance, invest" },
                 { count: "2", label: "Safety", desc: "Limits, emergency lock" },
               ].map((g) => (
                 <div key={g.label} className="border border-border rounded-sm p-3 sm:p-4">
@@ -559,6 +569,7 @@ export default function Home() {
                 "Move my idle USDC to the highest yield protocol",
                 "Send $50 to 0x8b3e… but borrow if I\u2019m short",
                 "Rebalance my savings to maximize APY",
+                "Invest $100 in SUI and show me my portfolio",
                 "Generate a full financial report with recommendations",
               ].map((q) => (
                 <p key={q} className="text-xs text-muted/70 italic">

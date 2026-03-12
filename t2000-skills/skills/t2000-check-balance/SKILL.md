@@ -29,9 +29,10 @@ t2000 balance --json          # machine-parseable JSON (works on all commands)
 ```
 Available:  $150.00  (checking — spendable)
 Savings:    $2,000.00  (earning 5.10% APY)
+Investment: $100.00  (+2.1%)
 Gas:        0.50 SUI    (~$0.50)
 ──────────────────────────────────────
-Total:      $2,150.50
+Total:      $2,250.50
 Earning ~$0.27/day
 ```
 

@@ -31,6 +31,8 @@ import { registerRebalance } from './commands/rebalance.js';
 import { registerExchange } from './commands/exchange.js';
 import { registerMcp } from './commands/mcp.js';
 import { registerContacts } from './commands/contacts.js';
+import { registerInvest } from './commands/invest.js';
+import { registerPortfolio } from './commands/portfolio.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -72,6 +74,8 @@ export function createProgram(): Command {
   registerExchange(program);
   registerMcp(program);
   registerContacts(program);
+  registerInvest(program);
+  registerPortfolio(program);
 
   return program;
 }

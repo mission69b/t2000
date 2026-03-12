@@ -14,11 +14,11 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.13.0` |
-| `@t2000/cli` | `0.13.0` |
+| `@t2000/sdk` | `0.14.0` |
+| `@t2000/cli` | `0.14.0` |
 | `@t2000/x402` | `0.3.0` |
-| `@t2000/mcp` | `0.13.0` |
-| Agent Skills | `1.5` |
+| `@t2000/mcp` | `0.14.0` |
+| Agent Skills | `1.6` |
 
 ---
 
@@ -28,8 +28,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 13 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts` |
+| Skill count | 14 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-invest` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -130,6 +130,15 @@ Rebalance optimizes across all stablecoins internally.
 | USDe | suiUSDe | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
 | USDsui | USDsui | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
 | SUI | SUI | 9 | ✅ (gas) | — | — | — | ✅ | — |
+| BTC | Bitcoin | 8 | — | — | — | — | ✅ (invest) | — |
+| ETH | Ethereum | 8 | — | — | — | — | ✅ (invest) | — |
+
+**Coin Types (investment assets):**
+
+| Symbol | Coin Type |
+|--------|-----------|
+| BTC | `0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC` |
+| ETH | `0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH` |
 
 Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
@@ -171,6 +180,9 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | contacts | `t2000 contacts` | List saved contacts |
 | contacts add | `t2000 contacts add <name> <address>` | Save a named contact |
 | contacts remove | `t2000 contacts remove <name>` | Remove a contact |
+| invest buy | `t2000 invest buy <amount> <asset>` | Buy crypto asset with USD |
+| invest sell | `t2000 invest sell <amount|all> <asset>` | Sell crypto back to USDC |
+| portfolio | `t2000 portfolio` | Show investment portfolio + P&L |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -286,6 +298,9 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | `rebalance()` | `{ dryRun?, minYieldDiff?, maxBreakEven? }` | `RebalanceResult` |
 | `exchange()` | `{ from, to, amount, maxSlippage? }` | `SwapResult` |
 | `exchangeQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice, fee }` |
+| `investBuy()` | `{ asset, usdAmount, maxSlippage? }` | `InvestBuyResult` |
+| `investSell()` | `{ asset, usdAmount \| 'all', maxSlippage? }` | `InvestSellResult` |
+| `getPortfolio()` | — | `PortfolioResult` |
 
 ### Sentinel
 
@@ -454,6 +469,7 @@ Source: `packages/sdk/src/types.ts`
 | `SENTINEL_TX_FAILED` | Sentinel transaction failed | No |
 | `SENTINEL_TEE_ERROR` | TEE attestation/prompt error | Yes |
 | `SAFEGUARD_BLOCKED` | Safeguard rule violated (locked, maxPerTx, maxDailySend) | No |
+| `INVESTMENT_LOCKED` | Attempted to send/exchange invested assets | No |
 | `UNKNOWN` | Unclassified error | Yes |
 
 Source: `packages/sdk/src/errors.ts`
@@ -592,10 +608,10 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.13.0` |
+| Version | `0.14.0` |
 | Transport | stdio |
-| Tools | 17 |
-| Prompts | 5 |
+| Tools | 19 |
+| Prompts | 6 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
 | Auto-install | `t2000 mcp install` (configures Claude Desktop + Cursor automatically) |
 | Manual config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |

@@ -48,9 +48,10 @@
 ```
   Available:  $78.91  (checking — spendable)
   Savings:    $80.00  (earning 4.94% APY)       ← only when savings > $0.01
+  Investment: $250.00  (0.05 BTC, 1.2 ETH)     ← only when invested > $0
   Gas:        0.62 SUI    (~$0.58)
   ──────────────────────────────────────
-  Total:      $159.49
+  Total:      $409.49
   Earning ~$0.01/day                            ← only when daily ≥ $0.005
 ```
 
@@ -437,6 +438,53 @@ Empty state:
 ### `t2000 mcp`
 
 Starts stdio server (used by AI platforms, not run directly by users).
+
+### `t2000 invest buy <amount> <asset>`
+
+```
+printBlank()
+printSuccess(`Bought ${amount} ${asset} at ${formatUsd(price)}`)
+printKeyValue('Invested', formatUsd(usdValue))
+printKeyValue('Portfolio', `${totalAmount} ${asset} (avg ${formatUsd(avgPrice)})`)
+printKeyValue('Tx', explorerUrl(digest))
+printBlank()
+```
+
+### `t2000 invest sell <amount|all> <asset>`
+
+```
+printBlank()
+printSuccess(`Sold ${amount} ${asset} at ${formatUsd(price)}`)
+printKeyValue('Proceeds', formatUsd(usdValue))
+printKeyValue('Realized P&L', coloredPnL)  // green if positive, red if negative
+printKeyValue('Remaining', `${remaining} ${asset} (avg ${formatUsd(avgPrice)})`)  // if any
+printKeyValue('Tx', explorerUrl(digest))
+printBlank()
+```
+
+### `t2000 portfolio`
+
+```
+printBlank()
+printHeader('Investment Portfolio')
+printSeparator()
+for each position:
+  printKeyValue(asset, `${amount}    Avg: ${avgPrice}    Now: ${currentPrice}    ${coloredPnL}`)
+  // If price unavailable: `${amount}    Avg: ${avgPrice}    Now: unavailable`
+printSeparator()
+printKeyValue('Total invested', formatUsd(totalInvested))
+printKeyValue('Current value', formatUsd(totalValue))
+printKeyValue('Unrealized P&L', coloredPnL)
+printKeyValue('Realized P&L', coloredPnL)  // if non-zero
+printBlank()
+```
+
+### Investment locking error
+
+```
+printError(`Cannot send ${amount} ${asset} — ${invested} ${asset} is invested. Free ${asset}: ${free}`)
+printInfo(`To access invested funds: t2000 invest sell ${amount} ${asset}`)
+```
 
 ---
 

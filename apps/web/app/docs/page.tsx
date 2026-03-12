@@ -88,7 +88,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Reference",
     items: [
-      { id: "cli", name: "CLI Commands", badge: "14" },
+      { id: "cli", name: "CLI Commands", badge: "16" },
       { id: "sdk", name: "SDK / API", badge: "TS", badgeGreen: true },
       { id: "config", name: "Configuration" },
       { id: "errors", name: "Error Codes" },
@@ -372,7 +372,7 @@ function QuickStart({
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 is a full bank account for AI agents on Sui — checking, savings,
-        credit, and currency exchange in one CLI command.
+        credit, currency exchange, and investment in one CLI command.
       </p>
 
       <h2 id="qs-install">1. Install t2000</h2>
@@ -392,7 +392,7 @@ function QuickStart({
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} 402 Pay{"\n\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment  {S.g("✓")} 402 Pay{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a1c2d3e4f...")}{"\n\n"}
         {"  "}Deposit USDC on Sui network only.{"\n"}
@@ -516,7 +516,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.11.0")}
+        {S.a("0.14.0")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -562,11 +562,11 @@ function ConceptsSection() {
         Core <em className="italic text-accent">Concepts</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Four accounts, one wallet. Everything runs on Sui via atomic
+        Five accounts, one wallet. Everything runs on Sui via atomic
         Programmable Transaction Blocks.
       </p>
 
-      <h2 id="con-accounts">The four accounts</h2>
+      <h2 id="con-accounts">The five accounts</h2>
       <DocTable
         headers={["Account", "What it is", "CLI"]}
         rows={[
@@ -574,6 +574,7 @@ function ConceptsSection() {
           [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI, Suilend), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
           [<InlineCode key="k">credit</InlineCode>, "USDC borrowed against savings collateral. Health factor enforced on-chain.", <><InlineCode>t2000 borrow</InlineCode> / <InlineCode>repay</InlineCode></>],
           [<InlineCode key="k">exchange</InlineCode>, "Currency exchange via Cetus DEX. Use t2000 exchange to swap between USDC, SUI, and stablecoins. Also used internally by rebalance and auto-swap.", <InlineCode key="v">t2000 exchange</InlineCode>],
+          [<InlineCode key="k">investment</InlineCode>, "Buy and sell SUI, BTC, ETH with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 invest</InlineCode> / <InlineCode>portfolio</InlineCode></>],
         ]}
       />
 
@@ -666,6 +667,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 earn" desc="Show all earning opportunities" onClick={() => scrollToCmd("earn")} />
         <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
+        <CmdCard name="t2000 invest buy" desc="Buy SUI, BTC, or ETH with USDC" onClick={() => scrollToCmd("invest")} />
+        <CmdCard name="t2000 invest sell" desc="Sell holdings back to USDC" onClick={() => scrollToCmd("invest")} />
+        <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
         <CmdCard name="t2000 contacts" desc="Manage named contacts for easy sends" onClick={() => scrollToCmd("contacts")} />
         <CmdCard name="t2000 mcp" desc="MCP server — install, start, uninstall" badge="NEW" onClick={() => scrollToCmd("mcp")} />
       </div>
@@ -683,7 +687,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {S.m("Setting up accounts...")}{"\n"}
-        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} 402 Pay{"\n\n"}
+        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment  {S.g("✓")} 402 Pay{"\n\n"}
         🎉 {S.g("Bank account created")}{"\n"}
         Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}{"\n\n"}
         Deposit USDC on Sui network only.{"\n"}
@@ -952,7 +956,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 17 tools, 5 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 19 tools, 6 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1178,7 +1182,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        17 tools, 5 prompts, stdio transport — your AI operates a full bank account.
+        19 tools, 6 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 4 commands</h2>
@@ -1203,9 +1207,9 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (17)</h2>
+      <h2 id="mcp-tools">Available tools (19)</h2>
 
-      <h3 id="mcp-tools-read">Read-only (8)</h3>
+      <h3 id="mcp-tools-read">Read-only (9)</h3>
       <DocTable
         headers={["Tool", "Description"]}
         rows={[
@@ -1217,10 +1221,11 @@ function McpSection() {
           [<InlineCode key="k">t2000_history</InlineCode>, "Recent transactions"],
           [<InlineCode key="k">t2000_earnings</InlineCode>, "Yield earnings from savings"],
           [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
+          [<InlineCode key="k">t2000_portfolio</InlineCode>, "View investment portfolio with cost-basis P&L"],
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (7)</h3>
+      <h3 id="mcp-tools-write">State-changing (8)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1235,6 +1240,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_repay</InlineCode>, "Repay borrowed USDC"],
           [<InlineCode key="k">t2000_exchange</InlineCode>, "Swap assets via DEX"],
           [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
+          [<InlineCode key="k">t2000_invest</InlineCode>, "Buy or sell SUI, BTC, ETH"],
         ]}
       />
 
@@ -1252,7 +1258,7 @@ function McpSection() {
         <InlineCode>t2000 unlock</InlineCode> in the terminal.
       </Callout>
 
-      <h2 id="mcp-prompts">Prompts (5)</h2>
+      <h2 id="mcp-prompts">Prompts (6)</h2>
       <p>
         Reusable conversation templates that help AI assistants interact with t2000 effectively.
       </p>
@@ -1264,6 +1270,7 @@ function McpSection() {
           [<InlineCode key="k">send-money</InlineCode>, "Guided send flow — validate, preview, confirm, execute"],
           [<InlineCode key="k">budget-check</InlineCode>, "Can I afford $X? — checks balance, daily limit, spending impact"],
           [<InlineCode key="k">savings-strategy</InlineCode>, "Analyze idle funds, recommend how much to save and where"],
+          [<InlineCode key="k">investment-strategy</InlineCode>, "Portfolio analysis — allocation, P&L, buy/sell recommendations"],
         ]}
       />
 
@@ -1353,6 +1360,7 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;call that paid API&#34;, &#34;pay for x402 service&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-sentinel</InlineCode>, <>&#34;attack a sentinel&#34;, &#34;earn bounties&#34;, &#34;red team&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
+          [<InlineCode key="k">t2000-invest</InlineCode>, <>&#34;buy SUI&#34;, &#34;invest $100 in BTC&#34;, &#34;sell my ETH&#34;, &#34;show portfolio&#34;</>, <Badge color="green" key="b">live</Badge>],
         ]}
       />
 
@@ -1574,7 +1582,15 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.13.0 <Badge color="green">current</Badge>
+        v0.14.0 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        Investment account: buy/sell SUI, BTC, ETH with portfolio tracking, cost-basis P&L,
+        and investment locking guard. 19 MCP tools, 6 prompts, 14 agent skills.
+      </p>
+
+      <h2 id="cl-0130">
+        v0.13.0
       </h2>
       <p>
         17 tools, contacts — send by name instead of raw addresses.
@@ -1827,7 +1843,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.12.0
+            v0.14.0
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

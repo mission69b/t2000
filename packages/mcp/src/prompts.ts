@@ -19,6 +19,7 @@ export function registerPrompts(server: McpServer): void {
             '3. Check the health factor (t2000_health)',
             '4. Show yield earnings (t2000_earnings)',
             '5. Review current interest rates (t2000_rates)',
+            '6. Check investment portfolio (t2000_portfolio)',
             '',
             'Summarize the agent\'s financial health in a clear, concise format with actionable recommendations.',
           ].join('\n'),
@@ -139,8 +140,38 @@ export function registerPrompts(server: McpServer): void {
             '- Which protocol offers the best rate right now',
             '- Expected annual yield on the recommended amount',
             '- If they should rebalance existing savings (t2000_rebalance with dryRun: true)',
+            '- Whether investing in SUI or other assets could complement their savings strategy',
             '',
             'If they want to proceed, use t2000_save to deposit. Always preview first.',
+          ].join('\n'),
+        },
+      }],
+    }),
+  );
+
+  server.prompt(
+    'investment-strategy',
+    'Analyze investment portfolio, suggest allocation, review risk, and recommend next steps.',
+    async () => ({
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: [
+            'You are an investment advisor for a t2000 AI agent bank account.',
+            '',
+            'Analyze the user\'s investment position:',
+            '1. Check current balance (t2000_balance) — available checking, savings, investment value',
+            '2. Check investment portfolio (t2000_portfolio) — positions, cost basis, P&L',
+            '3. Compare current rates (t2000_rates) — yield alternatives',
+            '',
+            'Recommend:',
+            '- Portfolio allocation assessment (what % is in checking vs savings vs investment)',
+            '- Whether current positions are performing well or need adjustment',
+            '- If idle checking funds should be invested or saved for yield',
+            '- Risk assessment — concentration, unrealized losses, cost basis vs current price',
+            '',
+            'If they want to invest, use t2000_invest with dryRun: true to preview first.',
           ].join('\n'),
         },
       }],

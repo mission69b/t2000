@@ -5,7 +5,7 @@
 <h3 align="center">The first bank account for AI agents.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Exchange · x402 Pay · MCP
+  Checking · Savings · Credit · Investment · Exchange · x402 Pay · MCP
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial
 </p>
@@ -29,6 +29,9 @@ await agent.save({ amount: 100 });    // earn ~2–8% APY (auto-selects best rat
 await agent.borrow({ amount: 20 });   // borrow against savings
 await agent.repay({ amount: 20 });    // repay debt
 await agent.withdraw({ amount: 50 }); // always returns USDC
+
+await agent.investBuy({ asset: 'SUI', usdAmount: 100 }); // invest $100 in SUI
+await agent.investSell({ asset: 'SUI', usdAmount: 'all' }); // sell all SUI
 ```
 
 ## See it work
@@ -38,7 +41,7 @@ await agent.withdraw({ amount: 50 }); // always returns USDC
   ✓ Keypair generated
   ✓ Network  Sui mainnet
   ✓ Gas sponsorship  enabled
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ 402 Pay
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Investment  ✓ Exchange  ✓ 402 Pay
   🎉 Bank account created
   Address: 0x8b3e...d412
 
@@ -113,6 +116,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) + [Suilend](https://suilend.fi) (auto-selected) |
 | **Credit** | Borrow USDC against savings | NAVI + Suilend collateralized loans |
 | **Exchange** | Swap between any supported tokens | [Cetus DEX](https://www.cetus.zone) CLMM pools |
+| **Investment** | Buy/sell SUI, BTC, ETH with cost-basis P&L | [Cetus DEX](https://www.cetus.zone) (spot swaps) |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
@@ -186,6 +190,9 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.contacts.remove(name)` | Remove a contact |
 | | `agent.contacts.get(name)` | Get contact address |
 | | `agent.contacts.resolve(nameOrAddress)` | Resolve name → address |
+| **Investment** | `agent.investBuy({ asset, usdAmount })` | Buy crypto asset with USD |
+| | `agent.investSell({ asset, usdAmount })` | Sell crypto asset back to USDC |
+| | `agent.getPortfolio()` | Investment positions + P&L |
 | **Sentinel** | `agent.sentinelList()` | Browse active sentinels |
 | | `agent.sentinelAttack(id, prompt)` | Full attack flow |
 
@@ -207,6 +214,9 @@ t2000 borrow 10                    Borrow USDC against collateral
 t2000 repay 10                     Repay debt
 t2000 rebalance                    Optimize yield across stablecoins
 t2000 exchange 5 USDC SUI         Exchange tokens via Cetus DEX
+t2000 invest buy 100 SUI             Invest $100 in SUI
+t2000 invest sell all SUI            Sell entire SUI position
+t2000 portfolio                      Investment portfolio + P&L
 t2000 earnings                     Yield earned
 t2000 health                       Health factor
 t2000 rates                        Current APYs
@@ -306,7 +316,7 @@ Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 17 tools · 5 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 19 tools · 6 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 
@@ -331,6 +341,7 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |
 | `t2000-contacts` | "list contacts", "add contact" |
+| `t2000-invest` | "invest in SUI", "buy BTC", "portfolio" |
 
 Full reference → [Agent Skills README](t2000-skills)
 
@@ -343,6 +354,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Earn yield on savings | — | ✓ NAVI + Suilend (~2–8% APY) |
 | Borrow / credit line | — | ✓ Collateralized |
 | Exchange / Token swap | ✓ Base tokens | ✓ Cetus DEX (any pair + rebalance) |
+| Investment (spot) | — | ✓ SUI, BTC, ETH with P&L tracking |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
 | Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
@@ -350,7 +362,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 17 tools + 5 prompts |
+| MCP Server | — | ✓ 19 tools + 6 prompts |
 
 ## Security
 
@@ -396,7 +408,7 @@ pnpm test         # All unit tests
 ### Testing
 
 ```bash
-pnpm --filter @t2000/sdk test     # 367 tests
+pnpm --filter @t2000/sdk test     # 469 tests
 pnpm --filter @t2000/x402 test    # 27 tests
 pnpm --filter @t2000/server test  # 10 tests
 ```

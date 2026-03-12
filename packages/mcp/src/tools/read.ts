@@ -115,4 +115,25 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
       }
     },
   );
+
+  server.tool(
+    't2000_portfolio',
+    'Show investment portfolio — positions, cost basis, current value, unrealized/realized P&L.',
+    {},
+    async () => {
+      try {
+        const result = await agent.getPortfolio();
+        const enriched = {
+          ...result,
+          positions: result.positions.map(p => ({
+            ...p,
+            ...(p.currentPrice === 0 && p.totalAmount > 0 ? { note: 'price unavailable' } : {}),
+          })),
+        };
+        return { content: [{ type: 'text', text: JSON.stringify(enriched) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
 }

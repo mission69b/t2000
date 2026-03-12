@@ -1,7 +1,7 @@
 import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
-export type AdapterCapability = 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap';
+export type AdapterCapability = 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap' | 'perps';
 
 /**
  * Describes a protocol for indexer event classification.
@@ -120,4 +120,30 @@ export interface SwapAdapter {
     amount: number,
     maxSlippageBps?: number,
   ): Promise<{ outputCoin: TransactionObjectArgument; estimatedOut: number; toDecimals: number }>;
+}
+
+export interface PerpsAdapter {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly capabilities: readonly AdapterCapability[];
+  readonly supportedMarkets: readonly string[];
+
+  init(keypair: unknown, network: 'mainnet' | 'testnet'): Promise<void>;
+
+  getAccountBalance(address: string): Promise<number>;
+  getPositions(address: string): Promise<import('../types.js').PerpsPosition[]>;
+  getMarketPrice(market: string): Promise<number>;
+
+  deposit(amount: number): Promise<string>;
+  withdraw(amount: number): Promise<string>;
+
+  openPosition(params: {
+    market: string;
+    side: import('../types.js').PositionSide;
+    margin: number;
+    leverage: number;
+  }): Promise<import('../types.js').TradeResult>;
+
+  closePosition(market: string): Promise<import('../types.js').TradeResult>;
 }

@@ -3,8 +3,8 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server. Provides 17 tools
-  and 5 prompts for AI-driven banking operations.
+  client, set up MCP config, or start the MCP server.   Provides 19 tools
+  and 6 prompts for AI-driven banking operations.
 license: MIT
 metadata:
   author: t2000
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 17 tools, 5 prompts, stdio transport, safeguard enforced.
+account. 19 tools, 6 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -40,9 +40,9 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (17)
+## Available Tools (19)
 
-### Read-only (8)
+### Read-only (9)
 | Tool | Description |
 |------|-------------|
 | `t2000_balance` | Current balance |
@@ -53,8 +53,9 @@ Paste into your AI platform's MCP settings:
 | `t2000_history` | Transaction history |
 | `t2000_earnings` | Yield earnings |
 | `t2000_contacts` | List saved contacts (name → address) |
+| `t2000_portfolio` | Investment portfolio positions + P&L |
 
-### State-changing (7)
+### State-changing (8)
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
@@ -66,6 +67,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_repay` | Repay debt |
 | `t2000_exchange` | Swap assets |
 | `t2000_rebalance` | Optimize yield |
+| `t2000_invest` | Buy/sell investment assets (spot) |
 
 ### Safety (2)
 | Tool | Description |
@@ -73,12 +75,13 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (5)
+## Prompts (6)
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |
 | `optimize-yield` | Yield optimization analysis |
 | `send-money` | Guided send with preview |
+| `investment-strategy` | Portfolio analysis and allocation |
 
 ## Security
 - Safeguard gate: server refuses to start without configured limits
