@@ -587,10 +587,15 @@ export class T2000 extends EventEmitter<T2000Events> {
   private async withdrawAllProtocols(): Promise<WithdrawResult> {
     const allPositions = await this.registry.allPositions(this._address);
 
+    // Skip positions that are investment-earning (managed via invest sell/unearn)
+    const earningAssets = new Set(
+      this.portfolio.getPositions().filter(p => p.earning).map(p => p.asset),
+    );
+
     const withdrawable: Array<{ protocolId: string; asset: string; amount: number }> = [];
     for (const pos of allPositions) {
       for (const supply of pos.positions.supplies) {
-        if (supply.amount > 0.01) {
+        if (supply.amount > 0.01 && !earningAssets.has(supply.asset)) {
           withdrawable.push({ protocolId: pos.protocolId, asset: supply.asset, amount: supply.amount });
         }
       }
@@ -1365,9 +1370,9 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('PROTOCOL_UNAVAILABLE', `Lending protocol ${pos.earningProtocol} not found`);
     }
 
-    const positions = await adapter.getPositions(this._address);
-    const supply = positions.supplies.find(s => s.asset === params.asset);
-    const withdrawAmount = supply?.amount ?? pos.totalAmount;
+    // Withdraw only the tracked investment amount, not the entire protocol position
+    // (the protocol may hold more from regular savings or previous runs)
+    const withdrawAmount = pos.totalAmount;
 
     const protocolName = adapter.name;
     let effectiveAmount = withdrawAmount;
@@ -2215,7 +2220,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     const balance = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
     const walletAmount = Number(balance.totalBalance) / (10 ** assetInfo.decimals);
     const gasReserve = asset === 'SUI' ? GAS_RESERVE_MIN : 0;
-    return Math.max(0, walletAmount - invested - gasReserve);
+    // When earning, invested tokens are in the lending protocol, not the wallet
+    const walletInvested = pos?.earning ? 0 : invested;
+    return Math.max(0, walletAmount - walletInvested - gasReserve);
   }
 
   private async resolveLending(protocol: string | undefined, asset: string, capability: 'save' | 'withdraw' | 'borrow' | 'repay'): Promise<LendingAdapter> {
