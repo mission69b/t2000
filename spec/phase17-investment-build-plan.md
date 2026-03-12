@@ -23,7 +23,7 @@ t2000 offers three investment products, inspired by CBA's tiered investment offe
 - Experience: Moderate to advanced
 - Minimum: $1
 - Agent autonomy: Low (user-directed)
-- **Status: Building now**
+- **Status: Shipped (v0.14.0)**
 
 ### 2. Baskets (Phase 17d)
 
@@ -1070,17 +1070,17 @@ bal.total = available + savings - debt + investment + gasReserve.usdEquiv;
 
 **File:** `t2000-skills/skills/t2000-invest/SKILL.md` ← CREATE
 
-- [ ] Purpose, commands, examples for spot investing + portfolio viewing
-- [ ] Note: invested assets are locked — must `invest sell` to access value
-- [ ] Triggers: "invest in SUI", "buy SUI", "portfolio", "how much is my SUI worth"
+- [x] Purpose, commands, examples for spot investing + portfolio viewing
+- [x] Note: invested assets are locked — must `invest sell` to access value
+- [x] Triggers: "invest in SUI", "buy SUI", "portfolio", "how much is my SUI worth"
 
 **File:** `t2000-skills/skills/t2000-check-balance/SKILL.md` ← UPDATE
 
-- [ ] Mention investment balance line in output
+- [x] Mention investment balance line in output
 
 **File:** `t2000-skills/skills/t2000-mcp/SKILL.md` ← UPDATE
 
-- [ ] Add `t2000_invest`, `t2000_portfolio` to tool list
+- [x] Add `t2000_invest`, `t2000_portfolio` to tool list
 
 #### 17.21 — Documentation updates
 
@@ -1095,66 +1095,66 @@ bal.total = available + savings - debt + investment + gasReserve.usdEquiv;
 | Agent skills | 13 | 14 (+ t2000-invest) |
 
 **Package READMEs:**
-- [ ] `README.md` (root) — add "Investment" to tagline, add invest examples, update counts
-- [ ] `packages/sdk/README.md` — add `investBuy()`, `investSell()`, `getPortfolio()` to API reference
-- [ ] `packages/cli/README.md` — add `invest`, `portfolio` commands to table
-- [ ] `packages/mcp/README.md` — add `t2000_invest`, `t2000_portfolio` to tools table, update "17 tools" → "19 tools"
+- [x] `README.md` (root) — add "Investment" to tagline, add invest examples, update counts
+- [x] `packages/sdk/README.md` — add `investBuy()`, `investSell()`, `getPortfolio()` to API reference
+- [x] `packages/cli/README.md` — add `invest`, `portfolio` commands to table
+- [x] `packages/mcp/README.md` — add `t2000_invest`, `t2000_portfolio` to tools table, update "17 tools" → "19 tools"
 
 **Spec & product docs:**
-- [ ] `PRODUCT_FACTS.md` — version 0.14.0, all counts, add invest commands + SDK methods + MCP tools, add Investment to asset table
-- [ ] `CLI_UX_SPEC.md` — output specs for `invest buy`, `invest sell`, `portfolio`, updated `balance` output with Investment line, send guard error format
-- [ ] `spec/t2000-roadmap-v2.md` — mark Phase 17a as shipped
+- [x] `PRODUCT_FACTS.md` — version 0.14.0, all counts, add invest commands + SDK methods + MCP tools, add Investment to asset table
+- [x] `CLI_UX_SPEC.md` — output specs for `invest buy`, `invest sell`, `portfolio`, updated `balance` output with Investment line, send guard error format
+- [x] `spec/t2000-roadmap-v2.md` — mark Phase 17a as shipped
 
 #### 17.22 — Website updates
 
 **File:** `apps/web/app/page.tsx` — Homepage
 
-- [ ] Add 5th account: **Investment** (buy/sell SUI, portfolio tracking, cost-basis P&L)
-- [ ] Update account count "04 / 04" → "01 / 05" … "05 / 05"
-- [ ] Update "Four accounts. One agent." → "Five accounts. One agent."
-- [ ] Update MCP tool counts (17 → 19)
-- [ ] Add Investment row to comparison table vs Coinbase
-- [ ] Add "Invest $100 in SUI" to "Try asking" examples
-- [ ] Add Investment pill to hero section
+- [x] Add 5th account: **Investment** (buy/sell SUI, portfolio tracking, cost-basis P&L)
+- [x] Update account count "04 / 04" → "01 / 05" … "05 / 05"
+- [x] Update "Four accounts. One agent." → "Five accounts. One agent."
+- [x] Update MCP tool counts (17 → 19)
+- [x] Add Investment row to comparison table vs Coinbase
+- [x] Add "Invest $100 in SUI" to "Try asking" examples
+- [x] Add Investment pill to hero section
 
 **File:** `apps/web/app/docs/page.tsx` — Docs Page
 
-- [ ] Add `invest buy`, `invest sell`, `portfolio` command cards
-- [ ] Add Investment row to "Concepts" accounts table (now 5 accounts)
-- [ ] Update "14 commands" badge to "16 commands"
-- [ ] Add `t2000_invest`, `t2000_portfolio` to MCP tools list
-- [ ] Add `investment-strategy` to prompts list
-- [ ] Add `t2000-invest` to skills list
-- [ ] Update QuickStart init output: add "✓ Investment"
-- [ ] Add v0.14.0 changelog entry
-- [ ] Update version badge
+- [x] Add `invest buy`, `invest sell`, `portfolio` command cards
+- [x] Add Investment row to "Concepts" accounts table (now 5 accounts)
+- [x] Update "14 commands" badge to "16 commands"
+- [x] Add `t2000_invest`, `t2000_portfolio` to MCP tools list
+- [x] Add `investment-strategy` to prompts list
+- [x] Add `t2000-invest` to skills list
+- [x] Update QuickStart init output: add "✓ Investment"
+- [x] Add v0.14.0 changelog entry
+- [x] Update version badge
 
 **File:** `apps/web/app/demo/demoData.ts` — Demo Terminal
 
-- [ ] Add Investment demo flow: `t2000 invest buy 100 SUI` → `t2000 portfolio` → `t2000 invest sell 50 SUI`
+- [x] Add Investment demo flow: `t2000 invest buy 100 SUI` → `t2000 portfolio` → `t2000 invest sell 50 SUI`
 
 **File:** `apps/web/app/demo/page.tsx`
 
-- [ ] Add "investing" to page metadata description
+- [x] Add "investing" to page metadata description
 
 #### 17.23 — Marketing
 
 **File:** `marketing/marketing-plan.md`
 
-- [ ] Add Investment launch tweet: "Your agent can now invest in SUI. Portfolio tracking with cost-basis P&L. t2000 invest buy 100 SUI"
-- [ ] Update "4 accounts" references to "5 accounts"
+- [x] Add Investment launch tweet: "Your agent can now invest in SUI. Portfolio tracking with cost-basis P&L. t2000 invest buy 100 SUI"
+- [x] Update "4 accounts" references to "5 accounts"
 
 **File:** `marketing/demo-video.html`
 
-- [ ] Add Investment scene to demo video
+- [x] Add Investment scene to demo video (added demo data in demoData.ts)
 
 #### 17.24 — Release
 
-- [ ] Version bump: sdk, cli, mcp → v0.14.0
-- [ ] Build all packages
-- [ ] Publish to npm
-- [ ] `npm run lint && npm run typecheck` passes
-- [ ] Git commit + push
+- [x] Version bump: sdk, cli, mcp → v0.14.0
+- [x] Build all packages
+- [x] Publish to npm
+- [x] `npm run lint && npm run typecheck` passes
+- [x] Git commit + push
 
 ---
 
