@@ -56,6 +56,8 @@ await agent.withdraw({ amount: 25 });
 
 // Invest in crypto assets
 await agent.investBuy({ asset: 'SUI', usdAmount: 100 });
+await agent.investBuy({ asset: 'BTC', usdAmount: 500 });
+await agent.investBuy({ asset: 'ETH', usdAmount: 200 });
 
 // Check portfolio
 const portfolio = await agent.getPortfolio();
@@ -246,6 +248,7 @@ import {
   rawToUsdc,
   formatUsd,
   formatSui,
+  formatAssetAmount,
   validateAddress,
   truncateAddress,
 } from '@t2000/sdk';
@@ -255,6 +258,11 @@ usdcToRaw(10.50);               // 10_500_000n
 formatUsd(1234.5);              // "$1234.50"
 truncateAddress('0xabcdef...1234'); // "0xabcd...1234"
 validateAddress('0x...');        // throws if invalid
+
+// Asset-aware decimal formatting
+formatAssetAmount('BTC', 0.00123456); // "0.00123456" (8 decimals)
+formatAssetAmount('ETH', 1.5);        // "1.50000000" (8 decimals)
+formatAssetAmount('SUI', 105.26);     // "105.260000000" (9 decimals)
 ```
 
 ### Advanced: Exposed Internals

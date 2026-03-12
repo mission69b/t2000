@@ -83,7 +83,7 @@ t2000 offers three investment products, inspired by CBA's tiered investment offe
 | MCP prompt (`investment-strategy`) | ✅ | — |
 | Investment safeguard config (`maxLeverage`, `maxPositionSize`) | ✅ | — |
 | Agent skill (`t2000-invest`) | ✅ | — |
-| Multi-asset: BTC, ETH (coin types in registry) | — | ⬜ Phase 17b (enable, test routing, /invest page) |
+| Multi-asset: BTC, ETH (coin types in registry) | ✅ | ✅ Phase 17b — Shipped (v0.14.1) |
 | Yield on investment assets (invest earn/unearn) | — | ⬜ Phase 17c (NAVI + Suilend + Bluefin Lending) |
 | Baskets + Auto-Invest (agent-driven) | — | ⬜ Phase 17d |
 | DCA (dollar-cost averaging) | — | ⬜ Phase 17d |
@@ -1261,10 +1261,10 @@ Phase 17a (now)     Direct Investing — SUI only                    ~done
                     Buy/sell SUI, portfolio tracking, locking, P&L
                     Foundation for everything else
 
-Phase 17b           Multi-Asset — BTC, ETH (+more later)             ~1 day
-                    Coin types already in INVESTMENT_ASSETS registry
+Phase 17b ✅        Multi-Asset — BTC, ETH — Shipped (v0.14.1)
                     wBTC + wETH via SuiBridge, Cetus Aggregator v3 routing
-                    Enable in CLI/MCP, test routing, dedicated /invest page
+                    formatAssetAmount() for asset-aware decimals
+                    CLI/SDK/MCP all support BTC and ETH
                     Future: XAUM, native BTC (Hashi), more assets
 
 Phase 17c           Yield on Investment Assets                      ~3-5 days
@@ -1331,7 +1331,7 @@ These are independent integrations. Bluefin Lending ships in 17c (yield). Bluefi
 
 ### Multi-Asset Scaling (Phase 17b)
 
-> **Status:** Coin types for BTC and ETH already added to `SUPPORTED_ASSETS` and `INVESTMENT_ASSETS` in `constants.ts`. Phase 17b enables them in CLI/MCP and tests Cetus routing.
+> **Status:** Shipped (v0.14.1). BTC and ETH fully enabled in CLI/SDK/MCP. Cetus Aggregator v3 routing tested. Asset-aware `formatAssetAmount()` utility added. Docs and marketing updated.
 
 **Assets in registry (today):**
 
@@ -1341,20 +1341,16 @@ These are independent integrations. Bluefin Lending ships in 17c (yield). Bluefi
 | BTC | `0xaafb102d...::btc::BTC` | wBTC (SuiBridge) | 8 |
 | ETH | `0xd0e89b2a...::eth::ETH` | wETH (SuiBridge) | 8 |
 
-**What 17b needs to do (the registry-driven code in 17.9h handles the foundation):**
+**What 17b shipped (v0.14.1):**
 
 ```
-packages/sdk/src/adapters/cetus.ts:
-  getSupportedPairs() — already generates from INVESTMENT_ASSETS (done in 17.9h)
-
-packages/mcp/src/tools/write.ts:
-  t2000_invest schema — already uses z.enum(Object.keys(INVESTMENT_ASSETS)) (done in 17.9h)
-
-17b-specific:
-  Test Cetus Aggregator v3 routing for USDC↔BTC and USDC↔ETH
-  Update portfolio display for multi-asset (already multi-asset ready)
-  Dedicated /invest website page
-  Docs + marketing updates
+[x] Cetus Aggregator v3 routing for USDC↔BTC and USDC↔ETH — tested and working
+[x] Portfolio display for multi-asset with asset-aware decimals
+[x] formatAssetAmount() utility — 8 decimals for BTC/ETH, 9 for SUI, 6 for stablecoins
+[x] CLI invest buy/sell supports BTC and ETH
+[x] SDK investBuy/investSell supports BTC and ETH
+[x] MCP t2000_invest schema dynamically includes BTC and ETH
+[x] Docs + marketing updates
 ```
 
 **Adding future assets (XAUM, native BTC via Hashi, etc.):** one line in `SUPPORTED_ASSETS` + one line in `INVESTMENT_ASSETS`. Cetus Aggregator v3 `findRouters()` handles routing automatically.

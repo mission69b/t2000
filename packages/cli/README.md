@@ -90,14 +90,28 @@ t2000 init
     Portfolio:      105.26 SUI (avg $0.95)
     Tx:  https://suiscan.xyz/mainnet/tx/...
 
+❯ t2000 invest buy 500 BTC
+  ✓ Bought 0.00512820 BTC at $97,500.00
+    Invested:       $500.00
+    Portfolio:      0.00512820 BTC (avg $97,500.00)
+    Tx:  https://suiscan.xyz/mainnet/tx/...
+
+❯ t2000 invest buy 200 ETH
+  ✓ Bought 0.10526316 ETH at $1,900.00
+    Invested:       $200.00
+    Portfolio:      0.10526316 ETH (avg $1,900.00)
+    Tx:  https://suiscan.xyz/mainnet/tx/...
+
 ❯ t2000 portfolio
   Investment Portfolio
   ─────────────────────────────────────────────────────
-  SUI     105.26    Avg: $0.95    Now: $0.97    +$2.10 (+2.1%)
+  SUI     105.26000000  Avg: $0.95    Now: $0.97    +$2.10 (+2.1%)
+  BTC     0.00512820    Avg: $97,500  Now: $98,200  +$3.59 (+0.7%)
+  ETH     0.10526316    Avg: $1,900   Now: $1,920   +$2.11 (+1.1%)
   ─────────────────────────────────────────────────────
-  Total invested:   $100.00
-  Current value:    $102.10
-  Unrealized P&L:   +$2.10 (+2.1%)
+  Total invested:   $800.00
+  Current value:    $807.80
+  Unrealized P&L:   +$7.80 (+1.0%)
 ```
 
 30 seconds. Send → save → borrow → pay → repay → withdraw.
@@ -175,6 +189,16 @@ t2000 init
 | `t2000 contacts` | List saved contacts |
 | `t2000 contacts add <name> <address>` | Save a named contact |
 | `t2000 contacts remove <name>` | Remove a contact |
+
+### Investment
+
+| Command | Description |
+|---------|-------------|
+| `t2000 invest buy <amount> <asset>` | Buy crypto with USDC (e.g. `t2000 invest buy 500 BTC`, `t2000 invest buy 200 ETH`) |
+| `t2000 invest sell <amount\|all> <asset>` | Sell crypto back to USDC |
+| `t2000 portfolio` | View investment portfolio with cost-basis P&L |
+
+Supported assets: SUI, BTC, ETH. Dollar-denominated — `amount` is in USD.
 
 ### Safeguards
 

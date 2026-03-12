@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-03-09
+> Last verified: 2026-03-12
 
 ---
 
@@ -14,10 +14,10 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.14.0` |
-| `@t2000/cli` | `0.14.0` |
+| `@t2000/sdk` | `0.14.1` |
+| `@t2000/cli` | `0.14.1` |
 | `@t2000/x402` | `0.3.0` |
-| `@t2000/mcp` | `0.14.0` |
+| `@t2000/mcp` | `0.14.1` |
 | Agent Skills | `1.6` |
 
 ---
@@ -140,7 +140,9 @@ Rebalance optimizes across all stablecoins internally.
 | BTC | `0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC` |
 | ETH | `0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH` |
 
-Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
+**Format utility:** `formatAssetAmount(asset, rawAmount)` returns human-readable display with asset-appropriate decimals: 8 for BTC (e.g. `0.00123456`), 8 for ETH (e.g. `0.12345678`), 9 for SUI, 6 for stablecoins. Exported from `@t2000/sdk`.
+
+Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/src/utils/format.ts` → `formatAssetAmount()`
 
 ---
 
@@ -608,7 +610,7 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.14.0` |
+| Version | `0.14.1` |
 | Transport | stdio |
 | Tools | 19 |
 | Prompts | 6 |

@@ -479,7 +479,7 @@ t2000 config show                   # Display all safeguards
 
 **Goal:** A separate product tier for leveraged trading and crypto asset exposure. Extends t2000 from "bank" to "bank + brokerage" — checking, savings, and now investments. Merges the previously separate "Bluefin Perps" and "Volatile Assets" concepts into one coherent phase.
 
-**Status:** Phase 17a (Direct Investing — SUI) shipped in v0.14.0. Phases 17b-f in progress. ProtocolDescriptor pattern ready for new adapter types.
+**Status:** Phase 17a (Direct Investing — SUI) shipped in v0.14.0. Phase 17b (Multi-Asset — BTC, ETH) shipped in v0.14.1. Phases 17c-f in progress. ProtocolDescriptor pattern ready for new adapter types.
 
 **Prerequisites:** Phase 16 (Agent Safeguards) — investment tier requires safeguards to be configured before any leveraged position.
 
@@ -916,7 +916,7 @@ Phase 20: On-ramp + Card      ← fiat rails, last mile
 | **10** | Yield Optimizer + Multi-Stable Infrastructure | **P0** | 3 days | ✅ Done (v0.10.4) |
 | **16** | Agent Safeguards (limits, controls, lock) | **P0** | 1.5 days | ✅ Done (v0.11.0) |
 | **11a** | MCP Server (16 tools, 5 prompts, mcp install, safeguard fix) | **P0** | 2-3 days | ✅ Done (v0.12.3) |
-| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | 🟡 17a shipped (spot investing), 17b-f in progress |
+| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | 🟡 17a shipped (v0.14.0), 17b shipped (v0.14.1), 17c-f in progress |
 | **11b** | Agent UI (local chat + dashboard) | **P0** | 1-2 weeks | ⬜ After 17 |
 | **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
 | **13** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
