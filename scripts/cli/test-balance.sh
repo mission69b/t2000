@@ -30,6 +30,9 @@ check $? "balance output contains Available"
 t2000 balance 2>&1 | grep -q "Savings"
 check $? "balance output contains Savings"
 
+t2000 balance 2>&1 | grep -q "Investment"
+check $? "balance output contains Investment"
+
 t2000 balance 2>&1 | grep -q "Gas"
 check $? "balance output contains Gas"
 

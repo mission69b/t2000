@@ -23,6 +23,7 @@ const tests = [
   { name: 'Suilend Protocol', file: 'test-suilend.ts' },
   { name: 'Swap', file: 'test-swap.ts' },
   { name: 'Earn', file: 'test-earn.ts' },
+  { name: 'Investment', file: 'test-invest.ts' },
   { name: 'Sentinel', file: 'test-sentinel.ts', args: LIVE ? '--live' : '' },
   { name: 'x402 Pay', file: 'test-pay.ts' },
   { name: 'Misc', file: 'test-misc.ts' },
