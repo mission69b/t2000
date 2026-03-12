@@ -1544,11 +1544,7 @@ The borrow guard in 17c (exclude investment collateral) is a safety wall. 17f ca
 
 **Decision: Add a prominent section to homepage for 17a. Dedicated /invest page for 17b+ (multi-asset + yield).**
 
-**Rationale:**
-- 17a has one asset (SUI) — a full page for one asset feels thin
-- The homepage already has the account tier cards — Investment is the 5th card
-- When 17b ships (BTC, ETH) and 17c adds yield, there's enough content for a dedicated page: listed assets, live prices, yield rates, risk levels
-- The docs page already serves as the deep-dive for commands/tools
+**Status: Done.** `/invest` page shipped with 17b (v0.14.1). Header nav and footer links added. Page covers supported assets (SUI, BTC, ETH), how-it-works, investment locking, balance integration, and MCP/SDK examples.
 
 **Homepage Investment card content:**
 

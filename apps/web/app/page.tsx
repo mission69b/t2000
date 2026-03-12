@@ -250,6 +250,12 @@ export default function Home() {
           >
             MCP
           </a>
+          <Link
+            href="/invest"
+            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+          >
+            Invest
+          </Link>
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -784,6 +790,12 @@ export default function Home() {
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
             Demos
+          </Link>
+          <Link
+            href="/invest"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Invest
           </Link>
           <Link
             href="/stats"
