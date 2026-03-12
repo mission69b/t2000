@@ -49,6 +49,7 @@ const ACCOUNTS = [
     subtitle: "Buy · Sell · Portfolio · P&L",
     desc: "Buy and sell SUI, BTC, and ETH with dollar-denominated commands. Cost-basis P&L tracking and investment locking guard. The agent builds a portfolio autonomously.",
     cmd: "t2000 invest buy 100 SUI",
+    href: "/invest",
   },
 ];
 
@@ -250,12 +251,6 @@ export default function Home() {
           >
             MCP
           </a>
-          <Link
-            href="/invest"
-            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
-          >
-            Invest
-          </Link>
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -303,19 +298,24 @@ export default function Home() {
               { icon: "⟳", label: "Checking" },
               { icon: "◈", label: "Savings" },
               { icon: "◎", label: "Credit" },
-              { icon: "◆", label: "Investment" },
+              { icon: "◆", label: "Investment", href: "/invest" },
               { icon: "⇌", label: "Exchange" },
               { icon: "⬡", label: "x402 Pay" },
               { icon: "⚙", label: "MCP" },
-            ].map((pill) => (
-              <div
-                key={pill.label}
-                className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim"
-              >
-                <span className="text-xs sm:text-sm">{pill.icon}</span>
-                {pill.label}
-              </div>
-            ))}
+            ].map((pill) => {
+              const cls = "px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim";
+              return pill.href ? (
+                <Link key={pill.label} href={pill.href} className={cls}>
+                  <span className="text-xs sm:text-sm">{pill.icon}</span>
+                  {pill.label}
+                </Link>
+              ) : (
+                <div key={pill.label} className={cls}>
+                  <span className="text-xs sm:text-sm">{pill.icon}</span>
+                  {pill.label}
+                </div>
+              );
+            })}
           </div>
 
           <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
@@ -374,30 +374,39 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-px bg-border border border-border">
-          {ACCOUNTS.map((account) => (
-            <div
-              key={account.title}
-              className="bg-panel p-6 sm:p-7 lg:p-9 relative overflow-hidden group transition-colors hover:bg-[rgba(0,214,143,0.03)]"
-            >
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent scale-x-0 origin-left transition-transform duration-400 group-hover:scale-x-100" />
-              <div className="text-[10px] tracking-[0.15em] text-dim mb-4 sm:mb-5">
-                {account.num}
+          {ACCOUNTS.map((account) => {
+            const inner = (
+              <>
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent scale-x-0 origin-left transition-transform duration-400 group-hover:scale-x-100" />
+                <div className="text-[10px] tracking-[0.15em] text-dim mb-4 sm:mb-5">
+                  {account.num}
+                </div>
+                <span className="text-[24px] sm:text-[28px] block mb-3 sm:mb-4">{account.icon}</span>
+                <div className="text-base font-medium text-foreground mb-2 tracking-tight">
+                  {account.title}
+                </div>
+                <div className="text-[11px] text-muted tracking-[0.05em] uppercase mb-4 sm:mb-5">
+                  {account.subtitle}
+                </div>
+                <p className="text-xs text-muted leading-[1.7] mb-5 sm:mb-6">
+                  {account.desc}
+                </p>
+                <div className="text-[11px] text-accent bg-accent-dim px-3 py-2 tracking-wide overflow-x-auto scrollbar-hide">
+                  {account.cmd}
+                </div>
+              </>
+            );
+            const cls = "bg-panel p-6 sm:p-7 lg:p-9 relative overflow-hidden group transition-colors hover:bg-[rgba(0,214,143,0.03)]";
+            return account.href ? (
+              <Link key={account.title} href={account.href} className={cls}>
+                {inner}
+              </Link>
+            ) : (
+              <div key={account.title} className={cls}>
+                {inner}
               </div>
-              <span className="text-[24px] sm:text-[28px] block mb-3 sm:mb-4">{account.icon}</span>
-              <div className="text-base font-medium text-foreground mb-2 tracking-tight">
-                {account.title}
-              </div>
-              <div className="text-[11px] text-muted tracking-[0.05em] uppercase mb-4 sm:mb-5">
-                {account.subtitle}
-              </div>
-              <p className="text-xs text-muted leading-[1.7] mb-5 sm:mb-6">
-                {account.desc}
-              </p>
-              <div className="text-[11px] text-accent bg-accent-dim px-3 py-2 tracking-wide overflow-x-auto scrollbar-hide">
-                {account.cmd}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -790,12 +799,6 @@ export default function Home() {
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
             Demos
-          </Link>
-          <Link
-            href="/invest"
-            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-          >
-            Invest
           </Link>
           <Link
             href="/stats"
