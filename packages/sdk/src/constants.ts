@@ -51,7 +51,7 @@ export const SUPPORTED_ASSETS = {
     displayName: 'SUI',
   },
   BTC: {
-    type: '0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC',
+    type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC',
     decimals: 8,
     symbol: 'BTC',
     displayName: 'Bitcoin',
