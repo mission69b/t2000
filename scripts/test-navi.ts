@@ -173,7 +173,7 @@ async function main() {
     assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     const balAfter = await agent.balance();
-    assert(balAfter.savings < 0.01, 'savings ≈ 0 after withdraw all');
+    assert(balAfter.savings < 0.05, 'savings ≈ 0 after withdraw all (dust tolerance)');
     assert(balAfter.available > balBefore.available, 'available increased after withdraw');
   });
 

@@ -20,7 +20,7 @@ async function main() {
 
   await runSection(`Swap $${SWAP_AMOUNT} USDC → SUI`, async () => {
     const suiBefore = (await agent.balance()).gasReserve.sui;
-    const result = await agent.swap({ from: 'USDC', to: 'SUI', amount: SWAP_AMOUNT });
+    const result = await agent.exchange({ from: 'USDC', to: 'SUI', amount: SWAP_AMOUNT });
     console.log(`   Tx:     ${result.tx}`);
     console.log(`   From:   ${result.fromAmount.toFixed(4)} ${result.fromAsset}`);
     console.log(`   To:     ${result.toAmount.toFixed(4)} ${result.toAsset}`);
@@ -41,7 +41,7 @@ async function main() {
   });
 
   await runSection('Swap Quote (read-only)', async () => {
-    const quote = await agent.swapQuote({ from: 'USDC', to: 'SUI', amount: 1 });
+    const quote = await agent.exchangeQuote({ from: 'USDC', to: 'SUI', amount: 1 });
     console.log(`   Expected: ${quote.expectedOutput.toFixed(4)} SUI`);
     console.log(`   Impact:   ${(quote.priceImpact * 100).toFixed(4)}%`);
     console.log(`   Pool $:   ${quote.poolPrice.toFixed(4)}`);
