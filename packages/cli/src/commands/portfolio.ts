@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd } from '@t2000/sdk';
+import { T2000, formatUsd, formatAssetAmount } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printInfo } from '../output.js';
 
@@ -31,14 +31,14 @@ export function registerPortfolio(program: Command) {
           if (pos.currentPrice === 0 && pos.totalAmount > 0) {
             printKeyValue(
               pos.asset,
-              `${pos.totalAmount.toFixed(4)}    Avg: ${formatUsd(pos.avgPrice)}    Now: ${pc.yellow('unavailable')}`,
+              `${formatAssetAmount(pos.totalAmount, pos.asset)}    Avg: ${formatUsd(pos.avgPrice)}    Now: ${pc.yellow('unavailable')}`,
             );
           } else {
             const pnlColor = pos.unrealizedPnL >= 0 ? pc.green : pc.red;
             const pnlSign = pos.unrealizedPnL >= 0 ? '+' : '';
             printKeyValue(
               pos.asset,
-              `${pos.totalAmount.toFixed(4)}    Avg: ${formatUsd(pos.avgPrice)}    Now: ${formatUsd(pos.currentPrice)}    ${pnlColor(`${pnlSign}${formatUsd(pos.unrealizedPnL)} (${pnlSign}${pos.unrealizedPnLPct.toFixed(1)}%)`)}`,
+              `${formatAssetAmount(pos.totalAmount, pos.asset)}    Avg: ${formatUsd(pos.avgPrice)}    Now: ${formatUsd(pos.currentPrice)}    ${pnlColor(`${pnlSign}${formatUsd(pos.unrealizedPnL)} (${pnlSign}${pos.unrealizedPnLPct.toFixed(1)}%)`)}`,
             );
           }
         }

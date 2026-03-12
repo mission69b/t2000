@@ -69,6 +69,7 @@ export {
   getDecimals,
   formatUsd,
   formatSui,
+  formatAssetAmount,
 } from './utils/format.js';
 export {
   generateKeypair,

@@ -56,6 +56,12 @@ export function formatLargeNumber(n: number): string {
   return n.toFixed(2);
 }
 
+export function formatAssetAmount(amount: number, asset: string): string {
+  if (asset === 'BTC') return amount.toFixed(8);
+  if (asset === 'ETH') return amount.toFixed(6);
+  return amount.toFixed(4);
+}
+
 const ASSET_LOOKUP: Map<string, string> = new Map();
 for (const [key, info] of Object.entries(SUPPORTED_ASSETS)) {
   ASSET_LOOKUP.set(key.toUpperCase(), key);

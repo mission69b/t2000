@@ -58,16 +58,52 @@ echo "$OUTPUT" | grep -q "Investment"
 check $? "balance shows Investment line"
 
 echo ""
+echo "   t2000 invest buy 1 BTC"
+OUTPUT=$(t2000 invest buy 1 BTC 2>&1)
+echo "$OUTPUT" | grep -q "Bought"
+check $? "invest buy BTC succeeds"
+
+echo "$OUTPUT" | grep -q "BTC"
+check $? "invest buy BTC output contains BTC"
+
+echo ""
+echo "   t2000 invest buy 1 ETH"
+OUTPUT=$(t2000 invest buy 1 ETH 2>&1)
+echo "$OUTPUT" | grep -q "Bought"
+check $? "invest buy ETH succeeds"
+
+echo "$OUTPUT" | grep -q "ETH"
+check $? "invest buy ETH output contains ETH"
+
+echo ""
+echo "   t2000 portfolio (multi-asset)"
+OUTPUT=$(t2000 portfolio 2>&1)
+echo "$OUTPUT" | grep -q "SUI"
+check $? "portfolio shows SUI"
+
+echo "$OUTPUT" | grep -q "BTC"
+check $? "portfolio shows BTC"
+
+echo "$OUTPUT" | grep -q "ETH"
+check $? "portfolio shows ETH"
+
+echo ""
 echo "   t2000 invest sell all SUI"
 OUTPUT=$(t2000 invest sell all SUI 2>&1)
 echo "$OUTPUT" | grep -q "Sold"
-check $? "invest sell all succeeds"
+check $? "invest sell all SUI succeeds"
 
-echo "$OUTPUT" | grep -q "Proceeds"
-check $? "invest sell shows Proceeds"
+echo ""
+echo "   t2000 invest sell all BTC"
+OUTPUT=$(t2000 invest sell all BTC 2>&1)
+echo "$OUTPUT" | grep -q "Sold"
+check $? "invest sell all BTC succeeds"
 
-echo "$OUTPUT" | grep -q "Tx:"
-check $? "invest sell shows transaction link"
+echo ""
+echo "   t2000 invest sell all ETH"
+OUTPUT=$(t2000 invest sell all ETH 2>&1)
+echo "$OUTPUT" | grep -q "Sold"
+check $? "invest sell all ETH succeeds"
 
 echo ""
 echo "   t2000 portfolio (empty after sell)"

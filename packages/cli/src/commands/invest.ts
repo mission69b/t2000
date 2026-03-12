@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd } from '@t2000/sdk';
+import { T2000, formatUsd, formatAssetAmount } from '@t2000/sdk';
 import type { InvestmentAsset } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
@@ -34,9 +34,10 @@ export function registerInvest(program: Command) {
         if (isJsonMode()) { printJson(result); return; }
 
         printBlank();
-        printSuccess(`Bought ${result.amount.toFixed(4)} ${asset.toUpperCase()} at ${formatUsd(result.price)}`);
+        const sym = asset.toUpperCase();
+        printSuccess(`Bought ${formatAssetAmount(result.amount, sym)} ${sym} at ${formatUsd(result.price)}`);
         printKeyValue('Invested', formatUsd(result.usdValue));
-        printKeyValue('Portfolio', `${result.position.totalAmount.toFixed(4)} ${asset.toUpperCase()} (avg ${formatUsd(result.position.avgPrice)})`);
+        printKeyValue('Portfolio', `${formatAssetAmount(result.position.totalAmount, sym)} ${sym} (avg ${formatUsd(result.position.avgPrice)})`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) { handleError(error); }
@@ -70,7 +71,8 @@ export function registerInvest(program: Command) {
         if (isJsonMode()) { printJson(result); return; }
 
         printBlank();
-        printSuccess(`Sold ${result.amount.toFixed(4)} ${asset.toUpperCase()} at ${formatUsd(result.price)}`);
+        const sym = asset.toUpperCase();
+        printSuccess(`Sold ${formatAssetAmount(result.amount, sym)} ${sym} at ${formatUsd(result.price)}`);
         printKeyValue('Proceeds', formatUsd(result.usdValue));
         if (result.realizedPnL !== undefined) {
           const pnlColor = result.realizedPnL >= 0 ? pc.green : pc.red;
@@ -78,7 +80,7 @@ export function registerInvest(program: Command) {
           printKeyValue('Realized P&L', pnlColor(`${pnlSign}${formatUsd(result.realizedPnL)}`));
         }
         if (result.position.totalAmount > 0) {
-          printKeyValue('Remaining', `${result.position.totalAmount.toFixed(4)} ${asset.toUpperCase()} (avg ${formatUsd(result.position.avgPrice)})`);
+          printKeyValue('Remaining', `${formatAssetAmount(result.position.totalAmount, sym)} ${sym} (avg ${formatUsd(result.position.avgPrice)})`);
         }
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
