@@ -39,18 +39,23 @@ export function registerEarn(program: Command) {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        const [positionsResult, portfolioResult, sentinels] = await Promise.allSettled([
+        const [positionsResult, portfolioResult, ratesResult, sentinels] = await Promise.allSettled([
           agent.positions(),
           agent.getPortfolio(),
+          agent.allRates('USDC'),
           listSentinels(),
         ]);
 
         const posData = positionsResult.status === 'fulfilled' ? positionsResult.value : null;
         const portfolio = portfolioResult.status === 'fulfilled' ? portfolioResult.value : null;
+        const ratesData = ratesResult.status === 'fulfilled' ? ratesResult.value : null;
         const agents = sentinels.status === 'fulfilled' ? sentinels.value : null;
         const savePositions = posData?.positions.filter((p) => p.type === 'save') ?? [];
         const totalSaved = savePositions.reduce((s, p) => s + p.amount, 0);
         const earningInvestments = portfolio?.positions.filter((p) => p.earning && p.currentValue > 0) ?? [];
+        const bestSaveApy = ratesData?.length
+          ? Math.max(...ratesData.map(r => r.rates.saveApy))
+          : 0;
 
         if (isJsonMode()) {
           const best = agents ? bestTarget(agents) : undefined;
@@ -69,6 +74,11 @@ export function registerEarn(program: Command) {
               apy: p.apy,
             })),
             totalSaved,
+            availableRates: ratesData?.map(r => ({
+              protocol: r.protocol,
+              asset: 'USDC',
+              saveApy: r.rates.saveApy,
+            })) ?? [],
             investments: earningInvestments.map((p) => ({
               asset: p.asset,
               amount: p.totalAmount,
@@ -116,8 +126,19 @@ export function registerEarn(program: Command) {
             printBlank();
             printKeyValue('Total Saved', formatUsd(totalSaved));
           }
+        } else if (ratesData && ratesData.length > 0) {
+          const sorted = [...ratesData].sort((a, b) => b.rates.saveApy - a.rates.saveApy);
+          for (const r of sorted) {
+            printKeyValue(r.protocol, `USDC @ ${r.rates.saveApy.toFixed(2)}% APY`);
+          }
+          const example = 100;
+          const daily = (example * bestSaveApy / 100) / 365;
+          const monthly = daily * 30;
+          printLine(pc.dim(`    Save $${example} → ~$${daily.toFixed(2)}/day · ~$${monthly.toFixed(2)}/month`));
+          printBlank();
+          printInfo('No savings yet — run `t2000 save <amount>` to start');
         } else if (posData) {
-          printInfo('No savings yet — run `t2000 save <amount>` to start earning yield');
+          printInfo('No savings yet — run `t2000 save <amount>` to start');
         } else {
           printInfo('Savings data unavailable');
         }
