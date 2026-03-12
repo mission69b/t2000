@@ -1,6 +1,6 @@
 {
   "name": "@t2000/sdk",
-  "version": "0.16.2",
+  "version": "0.16.6",
   "description": "TypeScript SDK for AI agent bank accounts on Sui — send, save, borrow, rebalance",
   "type": "module",
   "main": "./dist/index.cjs",
