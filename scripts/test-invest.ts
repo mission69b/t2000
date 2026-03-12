@@ -67,9 +67,12 @@ async function main() {
   });
 
   await runSection('Investment locking guard (send)', async () => {
-    const totalSui = boughtAmount + 10;
+    const bal = await agent.balance();
+    const totalWalletSui = bal.gasReserve.sui + boughtAmount;
+    const overAmount = totalWalletSui + 1;
+    console.log(`   Wallet SUI: ${totalWalletSui.toFixed(4)}, invested: ${boughtAmount.toFixed(4)}, sending: ${overAmount.toFixed(4)}`);
     try {
-      await agent.send({ to: agent.address(), amount: totalSui, asset: 'SUI' });
+      await agent.send({ to: agent.address(), amount: overAmount, asset: 'SUI' });
       assert(false, 'send should have been blocked');
     } catch (err: unknown) {
       const code = (err as { code?: string }).code;
