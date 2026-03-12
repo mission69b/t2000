@@ -275,15 +275,26 @@ export class T2000 extends EventEmitter<T2000Events> {
 
       const assetPrices: Record<string, number> = { SUI: suiPrice };
       const swapAdapter = this.registry.listSwap()[0];
+
+      // Collect all invested assets (direct + strategy) to fetch prices
+      const investedAssets = new Set<string>();
       for (const pos of portfolioPositions) {
-        if (pos.asset !== 'SUI' && pos.asset in INVESTMENT_ASSETS && !(pos.asset in assetPrices)) {
-          try {
-            if (swapAdapter) {
-              const quote = await swapAdapter.getQuote('USDC', pos.asset, 1);
-              assetPrices[pos.asset] = quote.expectedOutput > 0 ? 1 / quote.expectedOutput : 0;
-            }
-          } catch { assetPrices[pos.asset] = 0; }
+        if (pos.asset in INVESTMENT_ASSETS) investedAssets.add(pos.asset);
+      }
+      for (const key of this.portfolio.getAllStrategyKeys()) {
+        for (const sp of this.portfolio.getStrategyPositions(key)) {
+          if (sp.asset in INVESTMENT_ASSETS) investedAssets.add(sp.asset);
         }
+      }
+
+      for (const asset of investedAssets) {
+        if (asset === 'SUI' || asset in assetPrices) continue;
+        try {
+          if (swapAdapter) {
+            const quote = await swapAdapter.getQuote('USDC', asset, 1);
+            assetPrices[asset] = quote.expectedOutput > 0 ? 1 / quote.expectedOutput : 0;
+          }
+        } catch { assetPrices[asset] = 0; }
       }
 
       let investmentValue = 0;
@@ -318,13 +329,21 @@ export class T2000 extends EventEmitter<T2000Events> {
         }
       }
 
+      let strategySuiTotal = 0;
       for (const key of this.portfolio.getAllStrategyKeys()) {
         for (const sp of this.portfolio.getStrategyPositions(key)) {
           if (!(sp.asset in INVESTMENT_ASSETS)) continue;
           const price = assetPrices[sp.asset] ?? 0;
           investmentValue += sp.totalAmount * price;
           investmentCostBasis += sp.costBasis;
+          if (sp.asset === 'SUI') strategySuiTotal += sp.totalAmount;
         }
+      }
+
+      if (strategySuiTotal > 0) {
+        const suiPrice = assetPrices['SUI'] ?? 0;
+        const gasSui = Math.max(0, bal.gasReserve.sui - strategySuiTotal);
+        bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * suiPrice };
       }
 
       bal.investment = investmentValue;
@@ -2212,16 +2231,27 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   private async getFreeBalance(asset: string): Promise<number> {
     if (!(asset in INVESTMENT_ASSETS)) return Infinity;
+
+    // Sum all wallet-resident investment tokens (direct + strategy)
+    let walletInvested = 0;
     const pos = this.portfolio.getPosition(asset);
-    const invested = pos?.totalAmount ?? 0;
-    if (invested <= 0) return Infinity;
+    if (pos && pos.totalAmount > 0 && !pos.earning) {
+      walletInvested += pos.totalAmount;
+    }
+    for (const key of this.portfolio.getAllStrategyKeys()) {
+      for (const sp of this.portfolio.getStrategyPositions(key)) {
+        if (sp.asset === asset && sp.totalAmount > 0) {
+          walletInvested += sp.totalAmount;
+        }
+      }
+    }
+
+    if (walletInvested <= 0 && (!pos || pos.totalAmount <= 0)) return Infinity;
 
     const assetInfo = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS];
     const balance = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
     const walletAmount = Number(balance.totalBalance) / (10 ** assetInfo.decimals);
     const gasReserve = asset === 'SUI' ? GAS_RESERVE_MIN : 0;
-    // When earning, invested tokens are in the lending protocol, not the wallet
-    const walletInvested = pos?.earning ? 0 : invested;
     return Math.max(0, walletAmount - walletInvested - gasReserve);
   }
 

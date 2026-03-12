@@ -94,7 +94,6 @@ export function registerBalance(program: Command) {
           } else {
             printKeyValue('Investment', pc.dim('—'));
           }
-          printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
           printSeparator();
           printKeyValue('Total', `${formatUsd(bal.total)}`);
           if (dailyEarning >= 0.005) {
@@ -123,7 +122,6 @@ export function registerBalance(program: Command) {
           } else {
             printKeyValue('Investment', pc.dim('—'));
           }
-          printKeyValue('Gas', `${bal.gasReserve.sui.toFixed(2)} SUI    ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
           printSeparator();
           printKeyValue('Total', `${formatUsd(bal.total)}`);
         }
