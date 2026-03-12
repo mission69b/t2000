@@ -16,7 +16,8 @@ const ACCOUNTS = [
     title: "Checking",
     subtitle: "Send · Receive · Balance",
     desc: "The agent's operating account. Send USDC to any Sui address, receive funds, and check balances. Gas is self-funded and auto-topped up when needed.",
-    cmd: "t2000 send 10 USDC to 0x8b3e...",
+    prompt: "Send $10 to Alice",
+    cmd: "t2000 send 10 to alice",
   },
   {
     num: "02 / 05",
@@ -24,6 +25,7 @@ const ACCOUNTS = [
     title: "Savings",
     subtitle: "Earn · Yield · Multi-protocol",
     desc: "Idle USDC earns yield automatically via NAVI and Suilend (~2–8% APY). Auto-routed to the best rate. Deposits are non-custodial, composable, and withdrawable any time.",
+    prompt: "Put all my idle cash to work",
     cmd: "t2000 save all",
   },
   {
@@ -32,6 +34,7 @@ const ACCOUNTS = [
     title: "Credit",
     subtitle: "Borrow · Repay · DeFi",
     desc: "Borrow USDC against savings collateral without selling the position. Health factor is enforced on-chain. The agent can leverage, operate, and repay autonomously.",
+    prompt: "Borrow $40 against my savings",
     cmd: "t2000 borrow 40",
   },
   {
@@ -40,6 +43,7 @@ const ACCOUNTS = [
     title: "Exchange",
     subtitle: "Swap · Cetus DEX · On-chain",
     desc: "Swap between any supported tokens via Cetus DEX. Slippage is enforced on-chain. The agent can acquire gas, convert earnings, or exchange currencies — all autonomously.",
+    prompt: "Convert $5 to SUI",
     cmd: "t2000 exchange 5 USDC SUI",
   },
   {
@@ -48,6 +52,7 @@ const ACCOUNTS = [
     title: "Investment",
     subtitle: "Buy · Sell · Portfolio · P&L",
     desc: "Buy and sell SUI, BTC, and ETH with dollar-denominated commands. Cost-basis P&L tracking and investment locking guard. The agent builds a portfolio autonomously.",
+    prompt: "Invest $100 in SUI",
     cmd: "t2000 invest buy 100 SUI",
     href: "/invest",
   },
@@ -391,6 +396,9 @@ export default function Home() {
                 <p className="text-xs text-muted leading-[1.7] mb-5 sm:mb-6">
                   {account.desc}
                 </p>
+                <div className="text-[11px] italic text-muted/70 mb-1.5 tracking-wide">
+                  &ldquo;{account.prompt}&rdquo;
+                </div>
                 <div className="text-[11px] text-accent bg-accent-dim px-3 py-2 tracking-wide overflow-x-auto scrollbar-hide">
                   {account.cmd}
                 </div>
