@@ -669,6 +669,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
         <CmdCard name="t2000 invest buy" desc="Buy SUI, BTC, or ETH with USDC" onClick={() => scrollToCmd("invest")} />
         <CmdCard name="t2000 invest sell" desc="Sell holdings back to USDC" onClick={() => scrollToCmd("invest")} />
+        <CmdCard name="t2000 invest earn" desc="Deposit invested asset into best-rate lending for yield" onClick={() => scrollToCmd("invest-earn")} />
+        <CmdCard name="t2000 invest unearn" desc="Withdraw from lending, keep in portfolio" onClick={() => scrollToCmd("invest-unearn")} />
         <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
         <CmdCard name="t2000 contacts" desc="Manage named contacts for easy sends" onClick={() => scrollToCmd("contacts")} />
         <CmdCard name="t2000 mcp" desc="MCP server — install, start, uninstall" badge="NEW" onClick={() => scrollToCmd("mcp")} />
@@ -858,6 +860,31 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
       </CodeBlock>
 
+      <h2 id="cmd-invest-earn">t2000 invest earn</h2>
+      <p>Deposit an invested asset (SUI or ETH) into the best-rate lending protocol (NAVI or Suilend) to earn yield. You keep full price exposure — sell anytime. Auto-withdraw on sell brings funds back before the swap.</p>
+      <CodeBlock lang="bash">
+        t2000 invest earn &lt;asset&gt;{"\n\n"}
+        t2000 invest earn SUI   {S.c("# deposit SUI to best lending rate")}{"\n"}
+        t2000 invest earn ETH   {S.c("# deposit ETH to best lending rate")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Deposited {S.a("103.09")} SUI to best rate (NAVI){"\n"}
+        {S.g("✓")} Current APY: {S.g("2.45%")}{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
+      </CodeBlock>
+
+      <h2 id="cmd-invest-unearn">t2000 invest unearn</h2>
+      <p>Withdraw an invested asset from lending back into your portfolio. The asset stays invested — you can sell later or earn again.</p>
+      <CodeBlock lang="bash">
+        t2000 invest unearn &lt;asset&gt;{"\n\n"}
+        t2000 invest unearn SUI   {S.c("# withdraw SUI from lending")}{"\n"}
+        t2000 invest unearn ETH   {S.c("# withdraw ETH from lending")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Withdrew {S.a("103.09")} SUI from lending{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
+      </CodeBlock>
+
       <h2 id="cmd-health">t2000 health</h2>
       <p>Check your lending health factor. Color-coded by severity — green (healthy), yellow (moderate/low), red (critical).</p>
       <CodeBlock lang="bash">
@@ -956,7 +983,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 19 tools, 6 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 21 tools, 6 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1182,7 +1209,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        19 tools, 6 prompts, stdio transport — your AI operates a full bank account.
+        21 tools, 6 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 4 commands</h2>
@@ -1582,7 +1609,21 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.14.1 <Badge color="green">current</Badge>
+        v0.16.0 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        Strategies + Auto-Invest — <InlineCode>t2000 invest strategy buy bluechip 200</InlineCode> splits investment across a themed allocation in a single atomic PTB. Built-in strategies: bluechip (BTC/ETH/SUI), layer1 (ETH/SUI), sui-heavy. Custom strategies via <InlineCode>t2000 invest strategy create</InlineCode>. Dollar-cost averaging with <InlineCode>t2000 invest auto setup 50 weekly bluechip</InlineCode>. Strategy rebalancing, portfolio grouping by strategy, 21 MCP tools.
+      </p>
+
+      <h2 id="cl-0150">
+        v0.15.0
+      </h2>
+      <p>
+        Investment yield — <InlineCode>t2000 invest earn &lt;asset&gt;</InlineCode> deposits SUI or ETH into best-rate lending (NAVI/Suilend) for yield while keeping price exposure. <InlineCode>t2000 invest unearn &lt;asset&gt;</InlineCode> withdraws from lending. Auto-withdraw on sell, portfolio yield column, borrow guard, rebalance guard.
+      </p>
+
+      <h2 id="cl-0141">
+        v0.14.1
       </h2>
       <p>
         Multi-asset investing — BTC and ETH via SuiBridge. Asset-aware decimal display
@@ -1609,7 +1650,7 @@ function ChangelogSection() {
       </h2>
       <p>
         MCP Server — connect Claude Desktop, Cursor, or any MCP client to your
-        t2000 agent. 16 tools with <InlineCode>dryRun</InlineCode> previews, 3
+        t2000 agent. 21 tools with <InlineCode>dryRun</InlineCode> previews, 6
         prompts, safeguard enforcement, and stdio transport. New{" "}
         <InlineCode>@t2000/mcp</InlineCode> package and{" "}
         <InlineCode>t2000 mcp</InlineCode> CLI command. Setup in 3 steps, zero
@@ -1851,7 +1892,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.14.1
+            v0.16.5
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

@@ -32,6 +32,8 @@ await agent.withdraw({ amount: 50 }); // always returns USDC
 
 await agent.investBuy({ asset: 'SUI', usdAmount: 100 }); // invest $100 in SUI
 await agent.investSell({ asset: 'SUI', usdAmount: 'all' }); // sell all SUI
+await agent.investStrategy({ strategy: 'bluechip', usdAmount: 200 }); // atomic PTB
+await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluechip' });
 ```
 
 ## See it work
@@ -117,6 +119,8 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Credit** | Borrow USDC against savings | NAVI + Suilend collateralized loans |
 | **Exchange** | Swap between any supported tokens | [Cetus DEX](https://www.cetus.zone) CLMM pools |
 | **Investment** | Buy/sell SUI, BTC, ETH with cost-basis P&L | [Cetus DEX](https://www.cetus.zone) (spot swaps) |
+| **Strategies** | Themed allocations (bluechip, layer1) — single atomic PTB | Agent orchestration + Cetus |
+| **Auto-Invest** | Dollar-cost averaging (daily/weekly/monthly DCA) | Agent scheduling |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
@@ -193,6 +197,11 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | **Investment** | `agent.investBuy({ asset, usdAmount })` | Buy crypto asset with USD |
 | | `agent.investSell({ asset, usdAmount })` | Sell crypto asset back to USDC |
 | | `agent.getPortfolio()` | Investment positions + P&L |
+| **Strategies** | `agent.investStrategy({ strategy, usdAmount })` | Buy into a strategy (atomic PTB) |
+| | `agent.rebalanceStrategy({ strategy })` | Rebalance to target weights |
+| | `agent.getStrategies()` | List available strategies |
+| **Auto-Invest** | `agent.setupAutoInvest({ amount, frequency, strategy })` | Schedule DCA |
+| | `agent.runAutoInvest()` | Execute pending purchases |
 | **Sentinel** | `agent.sentinelList()` | Browse active sentinels |
 | | `agent.sentinelAttack(id, prompt)` | Full attack flow |
 
@@ -216,6 +225,10 @@ t2000 rebalance                    Optimize yield across stablecoins
 t2000 exchange 5 USDC SUI         Exchange tokens via Cetus DEX
 t2000 invest buy 100 SUI             Invest $100 in SUI
 t2000 invest sell all SUI            Sell entire SUI position
+t2000 invest strategy buy layer1 200 Buy into a strategy (1 atomic tx)
+t2000 invest strategy list           List available strategies
+t2000 invest auto setup 50 weekly bluechip   Set up DCA
+t2000 invest auto run                Execute pending DCA
 t2000 portfolio                      Investment portfolio + P&L
 t2000 earnings                     Yield earned
 t2000 health                       Health factor
@@ -316,7 +329,7 @@ Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 19 tools · 6 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 21 tools · 6 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 
@@ -355,6 +368,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Borrow / credit line | — | ✓ Collateralized |
 | Exchange / Token swap | ✓ Base tokens | ✓ Cetus DEX (any pair + rebalance) |
 | Investment (spot) | — | ✓ SUI, BTC, ETH with P&L tracking |
+| Strategies + DCA | — | ✓ Atomic PTB multi-asset buys, dollar-cost averaging |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
 | Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
@@ -362,7 +376,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 19 tools + 6 prompts |
+| MCP Server | — | ✓ 21 tools + 6 prompts |
 
 ## Security
 

@@ -116,13 +116,14 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 19 tools', async () => {
+  it('lists all 21 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(19);
+    expect(tools).toHaveLength(21);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
       't2000_address',
+      't2000_auto_invest',
       't2000_balance',
       't2000_borrow',
       't2000_config',
@@ -140,6 +141,7 @@ describe('integration: MCP client ↔ server', () => {
       't2000_repay',
       't2000_save',
       't2000_send',
+      't2000_strategy',
       't2000_withdraw',
     ]);
   });

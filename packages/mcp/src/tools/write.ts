@@ -249,12 +249,12 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
   const investAssets = Object.keys(INVESTMENT_ASSETS) as [string, ...string[]];
   server.tool(
     't2000_invest',
-    'Buy or sell investment assets (spot). Amount is in USD. Asset is the crypto to buy/sell (e.g. SUI, BTC, ETH). Set dryRun: true to preview.',
+    'Buy, sell, earn yield, or stop earning on investment assets. Actions: buy (invest USD), sell (convert to USDC), earn (deposit into best-rate lending for yield), unearn (withdraw from lending, keep in portfolio). Amount required for buy/sell only.',
     {
-      action: z.enum(['buy', 'sell']).describe("'buy' to invest USD into asset, 'sell' to convert asset back to USDC"),
+      action: z.enum(['buy', 'sell', 'earn', 'unearn']).describe("'buy' to invest, 'sell' to liquidate, 'earn' to deposit into lending for yield, 'unearn' to withdraw from lending"),
       asset: z.enum(investAssets).describe('Asset to invest in'),
-      amount: z.union([z.number(), z.literal('all')]).describe('USD amount, or "all" to sell entire position'),
-      slippage: z.number().optional().describe('Max slippage percent (default: 3)'),
+      amount: z.union([z.number(), z.literal('all')]).optional().describe('USD amount (required for buy/sell, ignored for earn/unearn)'),
+      slippage: z.number().optional().describe('Max slippage percent (default: 3, for buy/sell only)'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
     async ({ action, asset, amount, slippage, dryRun }) => {
@@ -278,9 +278,12 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
                 preview: true,
                 action,
                 asset,
-                amount: amount === 'all' ? position?.currentValue ?? 0 : amount,
+                amount: amount === 'all' ? position?.currentValue ?? 0 : amount ?? position?.totalAmount ?? 0,
                 currentBalance: balance.available,
                 currentPosition: position ?? null,
+                earning: position?.earning ?? false,
+                earningProtocol: position?.earningProtocol ?? null,
+                earningApy: position?.earningApy ?? null,
               }),
             }],
           };
@@ -291,10 +294,123 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
           if (typeof amount !== 'number') throw new Error('Buy amount must be a number');
           const result = await mutex.run(() => agent.investBuy({ asset: asset as InvestmentAsset, usdAmount: amount, maxSlippage }));
           return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-        } else {
+        } else if (action === 'sell') {
           const usdAmount = amount === 'all' ? 'all' as const : amount as number;
           const result = await mutex.run(() => agent.investSell({ asset: asset as InvestmentAsset, usdAmount, maxSlippage }));
           return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        } else if (action === 'earn') {
+          const result = await mutex.run(() => agent.investEarn({ asset: asset as InvestmentAsset }));
+          return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        } else {
+          const result = await mutex.run(() => agent.investUnearn({ asset: asset as InvestmentAsset }));
+          return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        }
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    't2000_strategy',
+    'Manage investment strategies — buy into predefined or custom allocations, sell entire strategies, check status, rebalance, or create/delete custom strategies.',
+    {
+      action: z.enum(['list', 'buy', 'sell', 'status', 'rebalance', 'create', 'delete']).describe("Strategy action to perform"),
+      name: z.string().optional().describe("Strategy name (required for all actions except 'list')"),
+      amount: z.number().optional().describe("USD amount (required for 'buy')"),
+      allocations: z.record(z.number()).optional().describe("Allocation map e.g. {SUI: 60, BTC: 20, ETH: 20} (for 'create')"),
+      description: z.string().optional().describe("Strategy description (for 'create')"),
+      dryRun: z.boolean().optional().describe("Preview without signing (for 'buy')"),
+    },
+    async ({ action, name, amount, allocations, description, dryRun }) => {
+      try {
+        if (action === 'list') {
+          const all = agent.strategies.getAll();
+          return { content: [{ type: 'text', text: JSON.stringify(all) }] };
+        }
+
+        if (!name) {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: 'Strategy name is required' }) }] };
+        }
+
+        switch (action) {
+          case 'buy': {
+            if (typeof amount !== 'number') {
+              return { content: [{ type: 'text', text: JSON.stringify({ error: 'Amount is required for buy' }) }] };
+            }
+            const result = await mutex.run(() => agent.investStrategy({ strategy: name, usdAmount: amount, dryRun }));
+            return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+          }
+          case 'sell': {
+            const result = await mutex.run(() => agent.sellStrategy({ strategy: name }));
+            return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+          }
+          case 'status': {
+            const result = await agent.getStrategyStatus(name);
+            return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+          }
+          case 'rebalance': {
+            const result = await mutex.run(() => agent.rebalanceStrategy({ strategy: name }));
+            return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+          }
+          case 'create': {
+            if (!allocations) {
+              return { content: [{ type: 'text', text: JSON.stringify({ error: 'Allocations required for create' }) }] };
+            }
+            const def = agent.strategies.create({ name, allocations, description });
+            return { content: [{ type: 'text', text: JSON.stringify(def) }] };
+          }
+          case 'delete': {
+            agent.strategies.delete(name);
+            return { content: [{ type: 'text', text: JSON.stringify({ deleted: name }) }] };
+          }
+          default:
+            return { content: [{ type: 'text', text: JSON.stringify({ error: `Unknown action: ${action}` }) }] };
+        }
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    't2000_auto_invest',
+    'Dollar-cost averaging (DCA) — set up recurring purchases into strategies or individual assets. Actions: setup, status, run, stop.',
+    {
+      action: z.enum(['setup', 'status', 'run', 'stop']).describe("Auto-invest action"),
+      amount: z.number().optional().describe("USD amount per purchase (for 'setup')"),
+      frequency: z.enum(['daily', 'weekly', 'monthly']).optional().describe("Purchase frequency (for 'setup')"),
+      strategy: z.string().optional().describe("Strategy name (for 'setup')"),
+      asset: z.string().optional().describe("Single asset (for 'setup', alternative to strategy)"),
+      scheduleId: z.string().optional().describe("Schedule ID (for 'stop')"),
+    },
+    async ({ action, amount, frequency, strategy, asset, scheduleId }) => {
+      try {
+        switch (action) {
+          case 'setup': {
+            if (!amount || !frequency) {
+              return { content: [{ type: 'text', text: JSON.stringify({ error: 'Amount and frequency required for setup' }) }] };
+            }
+            const schedule = agent.setupAutoInvest({ amount, frequency, strategy, asset });
+            return { content: [{ type: 'text', text: JSON.stringify(schedule) }] };
+          }
+          case 'status': {
+            const status = agent.getAutoInvestStatus();
+            return { content: [{ type: 'text', text: JSON.stringify(status) }] };
+          }
+          case 'run': {
+            const result = await mutex.run(() => agent.runAutoInvest());
+            return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+          }
+          case 'stop': {
+            if (!scheduleId) {
+              return { content: [{ type: 'text', text: JSON.stringify({ error: 'Schedule ID required for stop' }) }] };
+            }
+            agent.stopAutoInvest(scheduleId);
+            return { content: [{ type: 'text', text: JSON.stringify({ stopped: scheduleId }) }] };
+          }
+          default:
+            return { content: [{ type: 'text', text: JSON.stringify({ error: `Unknown action: ${action}` }) }] };
         }
       } catch (err) {
         return errorResult(err);

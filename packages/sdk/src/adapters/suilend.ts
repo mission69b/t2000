@@ -11,7 +11,6 @@ import type {
   ProtocolDescriptor,
 } from './types.js';
 import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
-import type { StableAsset } from '../constants.js';
 import { stableToRaw, usdcToRaw } from '../utils/format.js';
 import { T2000Error } from '../errors.js';
 import { addCollectFeeToTx } from '../protocols/protocolFee.js';
@@ -199,7 +198,7 @@ export class SuilendAdapter implements LendingAdapter {
   readonly name = 'Suilend';
   readonly version = '2.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw', 'borrow', 'repay'];
-  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS];
+  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS, 'SUI', 'ETH', 'BTC'];
   readonly supportsSameAssetBorrow = false;
 
   private client!: SuiJsonRpcClient;

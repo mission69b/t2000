@@ -1,7 +1,7 @@
 # t2000 Roadmap — v2.0
 
-**Last updated:** February 2026
-**Current version:** v0.12.3 (SDK v0.11.2, CLI v0.12.3, MCP v0.12.3, x402 v0.3.0)
+**Last updated:** March 2026
+**Current version:** v0.16.5 (SDK v0.16.2, CLI v0.16.5, MCP v0.16.4, x402 v0.3.0)
 
 ---
 
@@ -479,7 +479,19 @@ t2000 config show                   # Display all safeguards
 
 **Goal:** A separate product tier for leveraged trading and crypto asset exposure. Extends t2000 from "bank" to "bank + brokerage" — checking, savings, and now investments. Merges the previously separate "Bluefin Perps" and "Volatile Assets" concepts into one coherent phase.
 
-**Status:** Phase 17a (Direct Investing — SUI) shipped in v0.14.0. Phase 17b (Multi-Asset — BTC, ETH) shipped in v0.14.1. Phases 17c-f in progress. ProtocolDescriptor pattern ready for new adapter types.
+**Status:** Phase 17a (Direct Investing — SUI) shipped in v0.14.0. Phase 17b (Multi-Asset — BTC, ETH) shipped in v0.14.1. wBTC migrated to LayerZero. Phases 17c-f in progress.
+
+### Investment Sub-phases
+
+| Sub-phase | Scope | Status |
+|-----------|-------|--------|
+| **17a** | Direct Investing — SUI | ✅ Shipped (v0.14.0) |
+| **17b** | Multi-Asset — BTC, ETH | ✅ Shipped (v0.14.1) |
+| **17c** | Yield on Investments + Borrow Guard | ✅ Shipped (v0.15.0) — invest earn/unearn, NAVI + Suilend expansion, borrow/rebalance guards |
+| **17c-alpha** | AlphaLend Full Adapter | Speced — third lending protocol, BTC yield, stablecoin competition |
+| **17d** | Strategies + Auto-Invest | ✅ Shipped (v0.16.0) — PTB atomic strategy buys, DCA scheduling, portfolio grouping |
+| **17e** | Margin Trading | Speced — Bluefin perps, BluefinPerpsAdapter |
+| **17f** | Securities-Backed Lending | Speced — borrow USDC against portfolio, 15-20% LTV |
 
 **Prerequisites:** Phase 16 (Agent Safeguards) — investment tier requires safeguards to be configured before any leveraged position.
 
@@ -490,7 +502,7 @@ t2000 config show                   # Display all safeguards
 | Tier | What it is | Risk | Providers |
 |------|-----------|------|-----------|
 | **Checking** | USDC balance | None | Native |
-| **Savings** | Protocol deposits | Minimal (smart contract risk) | NAVI, Suilend |
+| **Savings** | Protocol deposits | Minimal (smart contract risk) | NAVI, Suilend, AlphaLend (17c-alpha) |
 | **Investment** | Perps + crypto exposure | High (liquidation, volatility) | Bluefin, Cetus |
 
 ### CLI
@@ -916,7 +928,7 @@ Phase 20: On-ramp + Card      ← fiat rails, last mile
 | **10** | Yield Optimizer + Multi-Stable Infrastructure | **P0** | 3 days | ✅ Done (v0.10.4) |
 | **16** | Agent Safeguards (limits, controls, lock) | **P0** | 1.5 days | ✅ Done (v0.11.0) |
 | **11a** | MCP Server (16 tools, 5 prompts, mcp install, safeguard fix) | **P0** | 2-3 days | ✅ Done (v0.12.3) |
-| **17** | Investment Account (Bluefin perps + crypto + spot) | **P0** | 2-3 weeks | 🟡 17a shipped (v0.14.0), 17b shipped (v0.14.1), 17c-f in progress |
+| **17** | Investment Account (crypto + yield + perps) | **P0** | 2-3 weeks | 🟡 17a–17d shipped (v0.14.0–v0.16.5). 17c-alpha, 17e, 17f remaining |
 | **11b** | Agent UI (local chat + dashboard) | **P0** | 1-2 weeks | ⬜ After 17 |
 | **12** | `t2000 monetize` (x402 server) | P1 | 2-3 days | ⬜ |
 | **13** | Dashboard + Agent Network | P1 | 2 weeks | 🔶 Foundation built |
@@ -929,4 +941,4 @@ Phase 20: On-ramp + Card      ← fiat rails, last mile
 ---
 
 *t2000 — The first bank account for AI agents.*
-*Roadmap v2.6*
+*Roadmap v2.7*

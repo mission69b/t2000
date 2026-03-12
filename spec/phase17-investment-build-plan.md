@@ -25,30 +25,31 @@ t2000 offers three investment products, inspired by CBA's tiered investment offe
 - Agent autonomy: Low (user-directed)
 - **Status: Shipped (v0.14.0)**
 
-### 2. Baskets (Phase 17d)
+### 2. Strategies (Phase 17d)
 
-> "Invest $200 in Layer 1s" — user picks a theme, agent fills the basket
+> "Invest $200 in Layer 1s" — user picks a strategy, agent fills the allocation
 
-- Predefined themed baskets: "Bluechip/L1" (50% BTC, 30% ETH, 20% SUI), "DeFi", "Memecoin"
-- Agent splits investment across basket assets, auto-rebalances to target weights
+- Predefined themed strategies: "Bluechip" (50% BTC, 30% ETH, 20% SUI), "Layer 1", "Sui-Heavy"
+- Agent splits investment across strategy assets, rebalances to target weights on demand
 - Experience: Beginner to moderate
-- Minimum: $50
-- Agent autonomy: Medium (user picks theme, agent executes)
-- Implementation: Agent calls `investBuy` N times per basket allocation. Rebalancing = `investSell` + `investBuy` to adjust weights. Basket definitions stored in config.
+- Minimum: $5
+- Agent autonomy: Medium (user picks strategy, agent executes)
+- Implementation: Agent calls `investBuy` N times per strategy allocation. Rebalancing = `investSell` + `investBuy` to adjust weights. Strategy definitions stored in `~/.t2000/strategies.json`.
+- **Detailed spec:** `spec/phase17d-baskets-build-plan.md`
 
 ### 3. Auto-Invest (Phase 17d)
 
-> "Invest $50/week into a balanced crypto portfolio" — fully agent-managed
+> "Invest $50/week into bluechip" — fully agent-managed DCA
 
-- Agent picks allocation based on market conditions and user risk profile
-- DCA on schedule (weekly/monthly)
-- Auto-rebalances
+- Agent stores DCA schedule and executes when due
+- DCA on schedule (daily/weekly/monthly)
+- Works with strategies or single assets
 - Experience: Beginner
 - Minimum: $2
 - Agent autonomy: High (agent manages everything)
-- Implementation: Scheduled agent task + investment-strategy prompt. Agent decides allocation, calls `investBuy` with DCA amounts.
+- Implementation: Schedule config in `~/.t2000/auto-invest.json`. Agent checks via MCP prompt, CLI users run `t2000 invest auto run`.
 
-**All three products use the same `investBuy`/`investSell`/`getPortfolio` SDK methods.** Baskets and Auto-Invest are agent behaviors (prompts + schedules), not new infrastructure.
+**All three products use the same `investBuy`/`investSell`/`getPortfolio` SDK methods.** Strategies and Auto-Invest are agent behaviors (config + orchestration), not new infrastructure.
 
 ---
 
@@ -84,9 +85,9 @@ t2000 offers three investment products, inspired by CBA's tiered investment offe
 | Investment safeguard config (`maxLeverage`, `maxPositionSize`) | ✅ | — |
 | Agent skill (`t2000-invest`) | ✅ | — |
 | Multi-asset: BTC, ETH (coin types in registry) | ✅ | ✅ Phase 17b — Shipped (v0.14.1) |
-| Yield on investment assets (invest earn/unearn) | — | ⬜ Phase 17c (NAVI + Suilend + Bluefin Lending) |
-| Baskets + Auto-Invest (agent-driven) | — | ⬜ Phase 17d |
-| DCA (dollar-cost averaging) | — | ⬜ Phase 17d |
+| Yield on investment assets (invest earn/unearn) | ✅ | ✅ Phase 17c — Shipped (v0.15.0, NAVI + Suilend) |
+| Strategies + Auto-Invest (agent-driven) | ✅ | ✅ Phase 17d — Shipped (v0.16.0, atomic PTB, DCA) |
+| DCA (dollar-cost averaging) | ✅ | ✅ Phase 17d — Shipped (v0.16.0, daily/weekly/monthly) |
 | Margin trading (Bluefin perps) | — | ⬜ Phase 17e (BluefinPerpsAdapter) |
 | Securities-backed lending (borrow against investments) | — | ⬜ Phase 17f (15-20% LTV, auto-repay) |
 
@@ -345,18 +346,17 @@ t2000 portfolio
 ### Flow 5: Auto-Invest with DCA (Phase 17d — future)
 
 ```
-User (Claude Desktop): "Set up a weekly $50 investment into a balanced portfolio"
+User (Claude Desktop): "Set up a weekly $50 investment into the bluechip strategy"
 
 Agent:
-  1. Creates auto-invest schedule: $50/week
-  2. Picks allocation: 50% BTC, 30% ETH, 20% SUI
-  3. Every week, agent runs:
-     - t2000_invest(buy, BTC, $25)
-     - t2000_invest(buy, ETH, $15)
-     - t2000_invest(buy, SUI, $10)
-  4. Monthly rebalance: sells overweight, buys underweight
+  1. Calls t2000_auto_invest(setup, $50, weekly, bluechip)
+  2. Schedule created: $50/week into bluechip (50% BTC, 30% ETH, 20% SUI)
+  3. Every week, agent checks auto-invest status and runs:
+     - t2000_auto_invest(run) → executes investStrategy()
+     - Which calls investBuy(BTC, $25), investBuy(ETH, $15), investBuy(SUI, $10)
+  4. On demand: t2000_strategy(rebalance, bluechip) — sells overweight, buys underweight
 
-Agent responds: "Auto-invest set up: $50/week into a balanced portfolio
+Agent responds: "Auto-invest set up: $50/week into bluechip strategy
 (50% BTC, 30% ETH, 20% SUI). First investment runs next Monday."
 ```
 
@@ -1275,11 +1275,11 @@ Phase 17c           Yield on Investment Assets                      ~3-5 days
                     Bluefin lending also benefits stablecoin savings
                     Borrow guard: exclude investment collateral from borrow()
 
-Phase 17d           Baskets + Auto-Invest — Agent-driven            ~2-3 days
-                    Themed baskets (Bluechip/L1, DeFi, Memecoin, etc.)
+Phase 17d           Strategies + Auto-Invest — Agent-driven          ~2-3 days
+                    Themed strategies (Bluechip, Layer 1, Sui-Heavy)
                     DCA scheduling ($50/week)
-                    Agent rebalancing to target weights
-                    Mostly prompt engineering + BasketConfig type
+                    Strategy rebalancing to target weights
+                    StrategyManager + AutoInvestManager classes
                     Requires: multi-asset (17b)
 
 Phase 17e           Margin Trading — Bluefin perps                  ~1-2 weeks
@@ -1300,7 +1300,7 @@ Phase 17f           Securities-Backed Lending                       ~1 week
 
 1. **Multi-asset (17b)** — coin types for BTC (wBTC via SuiBridge) and ETH (wETH via SuiBridge) are already in the registry. 17b enables them in CLI/MCP, tests Cetus routing, and ships the /invest page. ~1 day. Future assets (XAUM, native BTC via Hashi, etc.) are one line each.
 2. **Yield on assets (17c)** — natural next step: "I bought SUI, now I want it earning." NAVI and Suilend already support SUI lending on-chain — we just expand `supportedAssets`. Bluefin Lending is a new `LendingAdapter` that also gives stablecoin savings a third yield source. Includes a critical borrow guard to prevent borrowing against investment collateral until 17f.
-3. **Baskets (17d)** — requires multi-asset. Showcases the AI agent's unique value: "invest in Layer 1s" with one command. Mostly prompt engineering, not new infrastructure.
+3. **Strategies (17d)** — requires multi-asset. Showcases the AI agent's unique value: "invest in Layer 1s" with one command. StrategyManager + AutoInvestManager, not new protocol infrastructure.
 4. **Margin (17e)** — complex Bluefin *perps* integration (completely separate from Bluefin *lending*). API discovery, risk management. Smaller audience (advanced traders). Higher effort, lower reach.
 5. **Securities-backed lending (17f)** — unlocks borrow capacity against investments with strict guardrails. Conservative 15-20% LTV, agent health monitoring, auto-repay. Premium feature that requires yield infrastructure (17c) and careful risk management.
 
@@ -1580,7 +1580,7 @@ USDC, just like stocks in a brokerage.
 | Add `priceAvailable: boolean` to `InvestmentPosition` type | Handle `currentPrice === 0` in display layer only (CLI + MCP). No type changes. |
 | Build full price service for multi-asset | Use `getPoolPrice()` for SUI (already exists). Price map pattern ready in code but only SUI for now. |
 | On-chain investment locking (smart contract) | Software guard in SDK. SUI stays in wallet, tracked locally. |
-| Basket/DCA infrastructure | Deferred to 17d. Just prompts + scheduling, not new SDK methods. |
+| Strategy/DCA infrastructure | Deferred to 17d. StrategyManager + AutoInvestManager, orchestrating existing SDK methods. |
 | Multi-protocol yield comparison for investment assets | Deferred to 17c. Savings already compares NAVI + Suilend. |
 | Transaction log / recovery for failed portfolio writes | Accept filesystem inconsistency for v1. No money lost on-chain. |
 | File locking on portfolio.json | Accept for v1 — single-user product. |

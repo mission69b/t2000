@@ -14,11 +14,11 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.14.1` |
-| `@t2000/cli` | `0.14.1` |
+| `@t2000/sdk` | `0.16.2` |
+| `@t2000/cli` | `0.16.5` |
 | `@t2000/x402` | `0.3.0` |
-| `@t2000/mcp` | `0.14.1` |
-| Agent Skills | `1.6` |
+| `@t2000/mcp` | `0.16.4` |
+| Agent Skills | `3.0` |
 
 ---
 
@@ -101,9 +101,9 @@ t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
 
 | Adapter | Type | Capabilities | Status |
 |---------|------|-------------|--------|
-| NAVI (`navi`) | Lending | save, withdraw, borrow, repay | Built-in |
+| NAVI (`navi`) | Lending | save, withdraw, borrow, repay; SUI, ETH (invest earn) | Built-in |
 | Cetus (`cetus`) | Swap | swap | Built-in |
-| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay | Built-in |
+| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay; SUI, ETH, BTC (invest earn) | Built-in |
 
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth
 - `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
@@ -137,7 +137,7 @@ Rebalance optimizes across all stablecoins internally.
 
 | Symbol | Coin Type |
 |--------|-----------|
-| BTC | `0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC` |
+| BTC | `0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC` |
 | ETH | `0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH` |
 
 **Format utility:** `formatAssetAmount(asset, rawAmount)` returns human-readable display with asset-appropriate decimals: 8 for BTC (e.g. `0.00123456`), 8 for ETH (e.g. `0.12345678`), 9 for SUI, 6 for stablecoins. Exported from `@t2000/sdk`.
@@ -183,8 +183,23 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | contacts add | `t2000 contacts add <name> <address>` | Save a named contact |
 | contacts remove | `t2000 contacts remove <name>` | Remove a contact |
 | invest buy | `t2000 invest buy <amount> <asset>` | Buy crypto asset with USD |
-| invest sell | `t2000 invest sell <amount|all> <asset>` | Sell crypto back to USDC |
-| portfolio | `t2000 portfolio` | Show investment portfolio + P&L |
+| invest sell | `t2000 invest sell <amount|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
+| invest earn | `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
+| invest unearn | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
+| portfolio | `t2000 portfolio` | Show investment portfolio + P&L (APY column when earning, strategy grouping) |
+| invest strategy list | `t2000 invest strategy list` | List available strategies with allocations |
+| invest strategy buy | `t2000 invest strategy buy <name> <amount>` | Buy into a strategy (single atomic PTB). Options: `--dry-run` |
+| invest strategy sell | `t2000 invest strategy sell <name>` | Sell all positions in a strategy |
+| invest strategy status | `t2000 invest strategy status <name>` | Show strategy positions, weights, drift |
+| invest strategy rebalance | `t2000 invest strategy rebalance <name>` | Rebalance strategy to target weights |
+| invest strategy create | `t2000 invest strategy create <name> --alloc "BTC:40,ETH:60"` | Create custom strategy |
+| invest strategy delete | `t2000 invest strategy delete <name>` | Delete custom strategy (no active positions) |
+| invest auto setup | `t2000 invest auto setup <amount> <frequency> [strategy]` | Set up DCA schedule (daily/weekly/monthly) |
+| invest auto status | `t2000 invest auto status` | Show auto-invest schedules |
+| invest auto run | `t2000 invest auto run` | Execute pending DCA purchases |
+| invest auto stop | `t2000 invest auto stop [id]` | Stop auto-invest schedule |
+
+**Investment yield (v0.15.0):** SUI, ETH, and BTC positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC) from borrowable collateral. Rebalance skips earning investment positions.
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -204,6 +219,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 ```
   Available:  $4.00  (checking — spendable)
   Savings:    $1.00  (earning 3.31% APY)
+  Investment: $250.00  (0.05 BTC, 1.2 ETH)  (earning 2.10% APY on SUI)  ← APY shown when position is earning
   Gas:        1.04 SUI    (~$0.98)
   ──────────────────────────────────────
   Total:      $5.98
@@ -302,7 +318,20 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | `exchangeQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice, fee }` |
 | `investBuy()` | `{ asset, usdAmount, maxSlippage? }` | `InvestBuyResult` |
 | `investSell()` | `{ asset, usdAmount \| 'all', maxSlippage? }` | `InvestSellResult` |
+| `investEarn()` | `{ asset }` | `InvestEarnResult` |
+| `investUnearn()` | `{ asset }` | `InvestUnearnResult` |
 | `getPortfolio()` | — | `PortfolioResult` |
+| `investStrategy()` | `{ strategy, usdAmount, maxSlippage?, dryRun? }` | `StrategyBuyResult` |
+| `sellStrategy()` | `{ strategy, maxSlippage? }` | `StrategySellResult` |
+| `rebalanceStrategy()` | `{ strategy, maxSlippage?, driftThreshold? }` | `StrategyRebalanceResult` |
+| `getStrategyStatus()` | `{ strategy }` | `StrategyStatusResult` |
+| `getStrategies()` | — | `StrategyDefinition[]` |
+| `createStrategy()` | `{ name, allocations, description? }` | `StrategyDefinition` |
+| `deleteStrategy()` | `{ name }` | `void` |
+| `setupAutoInvest()` | `{ amount, frequency, strategy?, asset?, ... }` | `AutoInvestSchedule` |
+| `getAutoInvestStatus()` | — | `AutoInvestStatus` |
+| `runAutoInvest()` | — | `AutoInvestRunResult` |
+| `stopAutoInvest()` | `{ id? }` | `void` |
 
 ### Sentinel
 
@@ -472,6 +501,16 @@ Source: `packages/sdk/src/types.ts`
 | `SENTINEL_TEE_ERROR` | TEE attestation/prompt error | Yes |
 | `SAFEGUARD_BLOCKED` | Safeguard rule violated (locked, maxPerTx, maxDailySend) | No |
 | `INVESTMENT_LOCKED` | Attempted to send/exchange invested assets | No |
+| `INVEST_ALREADY_EARNING` | Asset is already earning via a protocol | No |
+| `INVEST_NOT_EARNING` | Asset is not currently earning | No |
+| `BORROW_GUARD_INVESTMENT` | Borrow blocked — investment collateral excluded | No |
+| `STRATEGY_NOT_FOUND` | Strategy name doesn't exist | No |
+| `STRATEGY_INVALID_ALLOCATIONS` | Allocations don't sum to 100, or contain non-investment assets | No |
+| `STRATEGY_HAS_POSITIONS` | Cannot delete strategy with active positions | No |
+| `STRATEGY_BUILTIN` | Cannot delete built-in strategy | No |
+| `STRATEGY_MIN_AMOUNT` | Per-asset allocation < $1 | No |
+| `AUTO_INVEST_NOT_FOUND` | Schedule ID doesn't exist | No |
+| `AUTO_INVEST_INSUFFICIENT` | Insufficient balance for DCA run | No |
 | `UNKNOWN` | Unclassified error | Yes |
 
 Source: `packages/sdk/src/errors.ts`
@@ -610,9 +649,9 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.14.1` |
+| Version | `0.16.4` |
 | Transport | stdio |
-| Tools | 19 |
+| Tools | 21 |
 | Prompts | 6 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
 | Auto-install | `t2000 mcp install` (configures Claude Desktop + Cursor automatically) |

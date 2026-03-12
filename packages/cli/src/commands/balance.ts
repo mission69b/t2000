@@ -80,7 +80,17 @@ export function registerBalance(program: Command) {
             const pnlColor = bal.investmentPnL >= 0 ? pc.green : pc.red;
             const pnlSign = bal.investmentPnL >= 0 ? '+' : '';
             const pnlPct = bal.investment > 0 ? ((bal.investmentPnL / (bal.investment - bal.investmentPnL)) * 100) : 0;
-            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%)`)}`);
+            let earningInfo = '';
+            try {
+              const portfolio = await agent.getPortfolio();
+              const earningPositions = portfolio.positions.filter(p => p.earning && p.earningApy);
+              if (earningPositions.length > 0) {
+                const avgApy = earningPositions.reduce((s, p) => s + (p.earningApy ?? 0) * p.currentValue, 0)
+                  / earningPositions.reduce((s, p) => s + p.currentValue, 0);
+                earningInfo = `, earning ${avgApy.toFixed(1)}% APY`;
+              }
+            } catch { /* skip */ }
+            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%${earningInfo})`)}`);
           } else {
             printKeyValue('Investment', pc.dim('—'));
           }
@@ -99,7 +109,17 @@ export function registerBalance(program: Command) {
             const pnlColor = bal.investmentPnL >= 0 ? pc.green : pc.red;
             const pnlSign = bal.investmentPnL >= 0 ? '+' : '';
             const pnlPct = bal.investment > 0 ? ((bal.investmentPnL / (bal.investment - bal.investmentPnL)) * 100) : 0;
-            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%)`)}`);
+            let earningInfo = '';
+            try {
+              const portfolio = await agent.getPortfolio();
+              const earningPositions = portfolio.positions.filter(p => p.earning && p.earningApy);
+              if (earningPositions.length > 0) {
+                const avgApy = earningPositions.reduce((s, p) => s + (p.earningApy ?? 0) * p.currentValue, 0)
+                  / earningPositions.reduce((s, p) => s + p.currentValue, 0);
+                earningInfo = `, earning ${avgApy.toFixed(1)}% APY`;
+              }
+            } catch { /* skip */ }
+            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%${earningInfo})`)}`);
           } else {
             printKeyValue('Investment', pc.dim('—'));
           }

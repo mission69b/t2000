@@ -48,7 +48,7 @@
 ```
   Available:  $78.91  (checking — spendable)
   Savings:    $80.00  (earning 4.94% APY)       ← only when savings > $0.01
-  Investment: $250.00  (0.05 BTC, 1.2 ETH)     ← only when invested > $0
+  Investment: $250.00  (0.05 BTC, 1.2 ETH)     ← only when invested > $0; append " (earning X.XX% APY)" when position is earning
   Gas:        0.62 SUI    (~$0.58)
   ──────────────────────────────────────
   Total:      $409.49
@@ -198,6 +198,11 @@ Empty state:
   suiUSDT
   ─────────────────────────────────────────────────────
   NAVI:  Save 5.47%  Borrow 8.20%
+
+  SUI / ETH (investment asset lending)
+  ─────────────────────────────────────────────────────
+  NAVI:     SUI Save 2.10%  ETH Save 1.85%
+  Suilend:  SUI Save 1.95%  ETH Save 1.72%  BTC Save 0.50%
 ```
 
 ### `t2000 earn`
@@ -450,7 +455,30 @@ printKeyValue('Tx', explorerUrl(digest))
 printBlank()
 ```
 
+### `t2000 invest earn <asset>`
+
+```
+printBlank()
+printSuccess(`Deposited ${amount} ${asset} into best-rate lending`)
+printKeyValue('APY', `${apy}%`)
+printKeyValue('Protocol', protocolName)
+printKeyValue('Tx', explorerUrl(digest))
+printBlank()
+```
+
+### `t2000 invest unearn <asset>`
+
+```
+printBlank()
+printSuccess(`Withdrew ${amount} ${asset} from lending`)
+printKeyValue('Portfolio', `${totalAmount} ${asset} (avg ${formatUsd(avgPrice)})`)
+printKeyValue('Tx', explorerUrl(digest))
+printBlank()
+```
+
 ### `t2000 invest sell <amount|all> <asset>`
+
+Auto-withdraws from lending first if position is earning.
 
 ```
 printBlank()
@@ -469,7 +497,8 @@ printBlank()
 printHeader('Investment Portfolio')
 printSeparator()
 for each position:
-  printKeyValue(asset, `${amount}    Avg: ${avgPrice}    Now: ${currentPrice}    ${coloredPnL}`)
+  apyCol = earning ? `APY: ${apy}%` : '—'
+  printKeyValue(asset, `${amount}    Avg: ${avgPrice}    Now: ${currentPrice}    ${apyCol}    ${coloredPnL}`)
   // If price unavailable: `${amount}    Avg: ${avgPrice}    Now: unavailable`
 printSeparator()
 printKeyValue('Total invested', formatUsd(totalInvested))
@@ -477,6 +506,175 @@ printKeyValue('Current value', formatUsd(totalValue))
 printKeyValue('Unrealized P&L', coloredPnL)
 printKeyValue('Realized P&L', coloredPnL)  // if non-zero
 printBlank()
+```
+
+### `t2000 invest strategy list`
+
+```
+  Investment Strategies
+  ──────────────────────────────────────
+  bluechip:   BTC 50%, ETH 30%, SUI 20%
+              Large-cap crypto index
+
+  layer1:     ETH 50%, SUI 50%
+              Smart contract platforms
+
+  sui-heavy:  BTC 20%, ETH 20%, SUI 60%
+              Sui-weighted portfolio
+  ──────────────────────────────────────
+  Buy into a strategy: t2000 invest strategy buy bluechip 100
+```
+
+### `t2000 invest strategy buy <name> <amount>`
+
+```
+  ✓ Invested $5.00 in layer1 strategy (1 atomic transaction)
+  ──────────────────────────────────────
+  ETH:  0.001222 @ $2,045.24
+  SUI:  2.5678 @ $0.97
+  ──────────────────────────────────────
+  Total invested:  $5.00
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+```
+
+When single PTB, show "(1 atomic transaction)" and one Tx link at the bottom.
+If multiple transactions, show per-asset Tx links.
+
+### `t2000 invest strategy buy <name> <amount> --dry-run`
+
+```
+  Strategy: layer1 — Dry Run ($5.00)
+  ──────────────────────────────────────
+  ETH:  $2.50 → ~0.001222 ETH @ $2,045.24
+  SUI:  $2.50 → ~2.5678 SUI @ $0.97
+  ──────────────────────────────────────
+  Run without --dry-run to execute
+```
+
+### `t2000 invest strategy sell <name>`
+
+```
+  ✓ Sold all layer1 positions
+  ──────────────────────────────────────
+  ETH:  0.001222 → $2.50    P&L: +$0.01 (+0.4%)
+  SUI:  2.5678 → $2.51      P&L: +$0.01 (+0.4%)
+  ──────────────────────────────────────
+  Total proceeds:  $5.01
+  Realized P&L:    +$0.01 (+0.2%)
+```
+
+### `t2000 invest strategy status <name>`
+
+```
+  Strategy: layer1 (Smart contract platforms)
+  ──────────────────────────────────────
+  Asset     Target    Current    Drift     Value
+  ETH       50.0%     51.2%     +1.2%     $2.56
+  SUI       50.0%     48.8%     -1.2%     $2.44
+  ──────────────────────────────────────
+  Total value:  $5.00
+  Max drift:    1.2% (within tolerance)
+```
+
+### `t2000 invest strategy rebalance <name>`
+
+```
+  ✓ Rebalanced layer1 strategy
+  ──────────────────────────────────────
+  Sold:    0.00003 ETH ($0.06)
+  Bought:  0.062 SUI ($0.06)
+  ──────────────────────────────────────
+  Before:  ETH 51.2%  SUI 48.8%
+  After:   ETH 50.0%  SUI 50.0%
+```
+
+### `t2000 invest strategy create <name> --alloc "ETH:60,SUI:40"`
+
+```
+  ✓ Created strategy: my-strategy
+  ETH 60%, SUI 40%
+```
+
+### `t2000 invest strategy delete <name>`
+
+```
+  ✓ Deleted strategy: my-strategy
+```
+
+### `t2000 invest auto setup <amount> <frequency> [strategy]`
+
+```
+  ✓ Auto-invest created
+  Strategy:   bluechip (Large-cap crypto index)
+  Amount:     $50.00 per week
+  Next run:   Feb 24, 2026
+  Status:     Active
+
+  Run manually: t2000 invest auto run
+  Stop:         t2000 invest auto stop
+```
+
+### `t2000 invest auto status`
+
+```
+  Auto-Invest Schedules
+  ──────────────────────────────────────
+  #1  $50/week into bluechip
+      Last run:   Feb 17, 2026
+      Next run:   Feb 24, 2026
+      Total:      $200 over 4 runs
+      Status:     Active
+  ──────────────────────────────────────
+```
+
+Empty state:
+```
+  No auto-invest schedules.
+  Set one up: t2000 invest auto setup 50 weekly bluechip
+```
+
+### `t2000 invest auto run`
+
+When pending:
+```
+  ✓ Auto-invest: $50.00 into bluechip (1 atomic transaction)
+  ──────────────────────────────────────
+  BTC:  0.00026 ($25.00)
+  ETH:  0.0056 ($15.00)
+  SUI:  10.204 ($10.00)
+  ──────────────────────────────────────
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+  Next run: Mar 3, 2026
+```
+
+Nothing pending:
+```
+  Auto-invest up to date. Next run: Feb 24, 2026
+```
+
+### `t2000 invest auto stop [id]`
+
+```
+  ✓ Stopped auto-invest: $50/week into bluechip
+```
+
+### `t2000 portfolio` (with strategy positions)
+
+```
+  Investment Portfolio
+  ──────────────────────────────────────
+
+  layer1 strategy
+  ETH:  0.001222    Avg: $2,045    Now: $2,050    +$0.01 (+0.2%)
+  SUI:  2.5678      Avg: $0.97     Now: $0.98     +$0.03 (+1.0%)
+
+  Direct
+  SUI:  5.1398      Avg: $0.97     Now: $0.98     2.6% APY (suilend)    +$0.05 (+1.0%)
+
+  ──────────────────────────────────────
+  Total invested:  $10.00
+  Current value:   $10.09
+  Unrealized P&L:  +$0.09 (+0.9%)
 ```
 
 ### Investment locking error

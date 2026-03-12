@@ -10,7 +10,6 @@ import type {
   ProtocolDescriptor,
 } from './types.js';
 import { STABLE_ASSETS } from '../constants.js';
-import type { StableAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { normalizeAsset } from '../utils/format.js';
 import * as naviProtocol from '../protocols/navi.js';
@@ -37,7 +36,7 @@ export class NaviAdapter implements LendingAdapter {
   readonly name = 'NAVI Protocol';
   readonly version = '1.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw', 'borrow', 'repay'];
-  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS];
+  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS, 'SUI', 'ETH'];
   readonly supportsSameAssetBorrow = true;
 
   private client!: SuiJsonRpcClient;
@@ -80,8 +79,8 @@ export class NaviAdapter implements LendingAdapter {
     asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    const stableAsset = normalizeAsset(asset) as StableAsset;
-    const tx = await naviProtocol.buildSaveTx(this.client, address, amount, { ...options, asset: stableAsset });
+    const normalized = normalizeAsset(asset);
+    const tx = await naviProtocol.buildSaveTx(this.client, address, amount, { ...options, asset: normalized });
     return { tx };
   }
 
@@ -90,8 +89,8 @@ export class NaviAdapter implements LendingAdapter {
     amount: number,
     asset: string,
   ): Promise<AdapterTxResult & { effectiveAmount: number }> {
-    const stableAsset = normalizeAsset(asset) as StableAsset;
-    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, { asset: stableAsset });
+    const normalized = normalizeAsset(asset);
+    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, { asset: normalized });
     return { tx: result.tx, effectiveAmount: result.effectiveAmount };
   }
 
@@ -101,8 +100,8 @@ export class NaviAdapter implements LendingAdapter {
     asset: string,
     options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
-    const stableAsset = normalizeAsset(asset) as StableAsset;
-    const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, { ...options, asset: stableAsset });
+    const normalized = normalizeAsset(asset);
+    const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, { ...options, asset: normalized });
     return { tx };
   }
 
@@ -111,8 +110,8 @@ export class NaviAdapter implements LendingAdapter {
     amount: number,
     asset: string,
   ): Promise<AdapterTxResult> {
-    const stableAsset = normalizeAsset(asset) as StableAsset;
-    const tx = await naviProtocol.buildRepayTx(this.client, address, amount, { asset: stableAsset });
+    const normalized = normalizeAsset(asset);
+    const tx = await naviProtocol.buildRepayTx(this.client, address, amount, { asset: normalized });
     return { tx };
   }
 
@@ -130,8 +129,8 @@ export class NaviAdapter implements LendingAdapter {
     amount: number,
     asset: string,
   ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
-    const stableAsset = normalizeAsset(asset) as StableAsset;
-    return naviProtocol.addWithdrawToTx(tx, this.client, address, amount, { asset: stableAsset });
+    const normalized = normalizeAsset(asset);
+    return naviProtocol.addWithdrawToTx(tx, this.client, address, amount, { asset: normalized });
   }
 
   async addSaveToTx(
@@ -141,8 +140,8 @@ export class NaviAdapter implements LendingAdapter {
     asset: string,
     options?: { collectFee?: boolean },
   ): Promise<void> {
-    const stableAsset = normalizeAsset(asset) as StableAsset;
-    return naviProtocol.addSaveToTx(tx, this.client, address, coin, { ...options, asset: stableAsset });
+    const normalized = normalizeAsset(asset);
+    return naviProtocol.addSaveToTx(tx, this.client, address, coin, { ...options, asset: normalized });
   }
 
   async addRepayToTx(
@@ -151,7 +150,7 @@ export class NaviAdapter implements LendingAdapter {
     coin: TransactionObjectArgument,
     asset: string,
   ): Promise<void> {
-    const stableAsset = normalizeAsset(asset) as StableAsset;
-    return naviProtocol.addRepayToTx(tx, this.client, address, coin, { asset: stableAsset });
+    const normalized = normalizeAsset(asset);
+    return naviProtocol.addRepayToTx(tx, this.client, address, coin, { asset: normalized });
   }
 }

@@ -248,6 +248,9 @@ export interface InvestmentPosition {
   unrealizedPnL: number;
   unrealizedPnLPct: number;
   trades: InvestmentTrade[];
+  earning?: boolean;
+  earningProtocol?: string;
+  earningApy?: number;
 }
 
 export interface PortfolioResult {
@@ -272,6 +275,110 @@ export interface InvestResult {
   gasMethod: GasMethod;
   realizedPnL?: number;
   position: InvestmentPosition;
+}
+
+export interface InvestEarnResult {
+  success: boolean;
+  tx: string;
+  asset: string;
+  amount: number;
+  protocol: string;
+  apy: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+// --- Strategy + Auto-Invest types ---
+
+export interface StrategyDefinition {
+  name: string;
+  allocations: Record<string, number>;
+  description: string;
+  custom: boolean;
+}
+
+export interface StrategyBuyResult {
+  success: boolean;
+  strategy: string;
+  totalInvested: number;
+  buys: Array<{
+    asset: string;
+    usdAmount: number;
+    amount: number;
+    price: number;
+    tx: string;
+  }>;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface StrategySellResult {
+  success: boolean;
+  strategy: string;
+  totalProceeds: number;
+  realizedPnL: number;
+  sells: Array<{
+    asset: string;
+    amount: number;
+    usdValue: number;
+    realizedPnL: number;
+    tx: string;
+  }>;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface StrategyRebalanceResult {
+  success: boolean;
+  strategy: string;
+  trades: Array<{
+    action: 'buy' | 'sell';
+    asset: string;
+    usdAmount: number;
+    amount: number;
+    tx: string;
+  }>;
+  beforeWeights: Record<string, number>;
+  afterWeights: Record<string, number>;
+  targetWeights: Record<string, number>;
+}
+
+export interface StrategyStatusResult {
+  definition: StrategyDefinition;
+  positions: InvestmentPosition[];
+  currentWeights: Record<string, number>;
+  totalValue: number;
+}
+
+export interface AutoInvestSchedule {
+  id: string;
+  strategy?: string;
+  asset?: string;
+  amount: number;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  lastRun?: string;
+  nextRun: string;
+  enabled: boolean;
+  totalInvested: number;
+  runCount: number;
+}
+
+export interface AutoInvestStatus {
+  schedules: AutoInvestSchedule[];
+  pendingRuns: AutoInvestSchedule[];
+}
+
+export interface AutoInvestRunResult {
+  executed: Array<{
+    scheduleId: string;
+    strategy?: string;
+    asset?: string;
+    amount: number;
+    result: StrategyBuyResult | InvestResult;
+  }>;
+  skipped: Array<{ scheduleId: string; reason: string }>;
 }
 
 // --- Margin trading types ---

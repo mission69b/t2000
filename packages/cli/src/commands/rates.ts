@@ -3,7 +3,8 @@ import pc from 'picocolors';
 import { T2000, SUPPORTED_ASSETS } from '@t2000/sdk';
 import type { SupportedAsset } from '@t2000/sdk';
 
-const STABLE_ASSETS = (Object.keys(SUPPORTED_ASSETS) as SupportedAsset[]).filter(k => k !== 'SUI');
+const STABLE_ASSETS = (Object.keys(SUPPORTED_ASSETS) as SupportedAsset[]).filter(k => !['SUI', 'BTC', 'ETH'].includes(k));
+const INVEST_ASSETS: SupportedAsset[] = ['SUI', 'ETH', 'BTC'];
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider } from '../output.js';
 
@@ -42,6 +43,21 @@ export function registerRates(program: Command) {
           printDivider();
           for (const entry of assetRates) {
             printKeyValue(entry.protocol, `Save ${entry.rates.saveApy.toFixed(2)}%  Borrow ${entry.rates.borrowApy.toFixed(2)}%`);
+          }
+          printBlank();
+        }
+
+        const investRates = allRates.filter(r => INVEST_ASSETS.includes(r.asset as SupportedAsset));
+        if (investRates.length > 0) {
+          printLine(pc.bold('Investment Assets'));
+          printDivider();
+          for (const asset of INVEST_ASSETS) {
+            const assetRates = investRates.filter(r => r.asset === asset);
+            if (assetRates.length === 0) continue;
+            const display = SUPPORTED_ASSETS[asset]?.displayName ?? asset;
+            for (const entry of assetRates) {
+              printKeyValue(`${display} (${entry.protocol})`, `Lend ${entry.rates.saveApy.toFixed(2)}%`);
+            }
           }
           printBlank();
         }

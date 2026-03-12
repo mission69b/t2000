@@ -2,6 +2,8 @@ export { T2000 } from './t2000.js';
 export { ContactManager } from './contacts.js';
 export type { Contact, ContactMap } from './contacts.js';
 export { PortfolioManager } from './portfolio.js';
+export { StrategyManager } from './strategy.js';
+export { AutoInvestManager } from './auto-invest.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';
 export type {
@@ -35,6 +37,15 @@ export type {
   InvestmentPosition,
   PortfolioResult,
   InvestResult,
+  InvestEarnResult,
+  StrategyDefinition,
+  StrategyBuyResult,
+  StrategySellResult,
+  StrategyRebalanceResult,
+  StrategyStatusResult,
+  AutoInvestSchedule,
+  AutoInvestStatus,
+  AutoInvestRunResult,
   PositionSide,
   PerpsPosition,
   TradeResult,
@@ -57,6 +68,7 @@ export {
   DEFAULT_MAX_LEVERAGE,
   DEFAULT_MAX_POSITION_SIZE,
   GAS_RESERVE_MIN,
+  DEFAULT_STRATEGIES,
 } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {

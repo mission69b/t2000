@@ -94,6 +94,27 @@ export const INVESTMENT_ASSETS = {
 
 export type InvestmentAsset = keyof typeof INVESTMENT_ASSETS;
 
+export const DEFAULT_STRATEGIES = {
+  bluechip: {
+    name: 'Bluechip / Large-Cap',
+    allocations: { BTC: 50, ETH: 30, SUI: 20 },
+    description: 'Large-cap crypto index',
+    custom: false,
+  },
+  layer1: {
+    name: 'Smart Contract Platforms',
+    allocations: { ETH: 50, SUI: 50 },
+    description: 'Smart contract platforms',
+    custom: false,
+  },
+  'sui-heavy': {
+    name: 'Sui-Weighted Portfolio',
+    allocations: { BTC: 20, ETH: 20, SUI: 60 },
+    description: 'Sui-weighted portfolio',
+    custom: false,
+  },
+} as const;
+
 export const PERPS_MARKETS = ['SUI-PERP'] as const;
 export type PerpsMarket = (typeof PERPS_MARKETS)[number];
 

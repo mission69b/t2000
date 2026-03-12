@@ -2,7 +2,6 @@
 # CLI Test: save command (multi-protocol)
 # Run: T2000_PIN=your-pin bash scripts/cli/test-save.sh
 
-set -e
 PASS=0
 FAIL=0
 
@@ -21,7 +20,7 @@ echo "── CLI: Save Command ──"
 
 echo ""
 echo "   t2000 save 0.1 (auto-route to best rate)"
-OUTPUT=$(t2000 save 0.1 2>&1)
+OUTPUT=$(t2000 save 0.1 2>&1) || true
 echo "$OUTPUT" | grep -q "Saved"
 check $? "save auto-route succeeds"
 
@@ -33,7 +32,7 @@ check $? "save output shows transaction link"
 
 echo ""
 echo "   t2000 save 0.1 --protocol suilend"
-OUTPUT=$(t2000 save 0.1 --protocol suilend 2>&1)
+OUTPUT=$(t2000 save 0.1 --protocol suilend 2>&1) || true
 echo "$OUTPUT" | grep -q "suilend"
 check $? "save --protocol suilend routes to suilend"
 
@@ -42,7 +41,7 @@ check $? "save to suilend succeeds"
 
 echo ""
 echo "   t2000 save 0.1 --protocol navi"
-OUTPUT=$(t2000 save 0.1 --protocol navi 2>&1)
+OUTPUT=$(t2000 save 0.1 --protocol navi 2>&1) || true
 echo "$OUTPUT" | grep -q "Saved"
 check $? "save --protocol navi succeeds"
 

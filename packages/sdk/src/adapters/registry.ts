@@ -6,7 +6,7 @@ import type {
   AdapterPositions,
   AdapterCapability,
 } from './types.js';
-import { STABLE_ASSETS } from '../constants.js';
+import { STABLE_ASSETS, INVESTMENT_ASSETS } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
 export class ProtocolRegistry {
@@ -112,7 +112,11 @@ export class ProtocolRegistry {
 
   async allRatesAcrossAssets(): Promise<Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }>> {
     const results: Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }> = [];
-    for (const asset of STABLE_ASSETS) {
+    const allAssets = [...STABLE_ASSETS, ...Object.keys(INVESTMENT_ASSETS)];
+    const seen = new Set<string>();
+    for (const asset of allAssets) {
+      if (seen.has(asset)) continue;
+      seen.add(asset);
       for (const adapter of this.lending.values()) {
         if (!adapter.supportedAssets.includes(asset)) continue;
         try {

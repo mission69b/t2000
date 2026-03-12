@@ -176,6 +176,56 @@ export default function InvestPage() {
           </div>
         </section>
 
+        {/* ── Yield on Investments ── */}
+        <section className="py-16 sm:py-24 border-b border-border">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+            Yield
+          </div>
+          <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
+            Earn yield. <em className="italic text-accent">Keep exposure.</em>
+          </h2>
+          <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-8">
+            Deposit invested SUI or ETH into NAVI or Suilend for lending yield.
+            You keep full price exposure — sell anytime. Auto-withdraw on sell
+            brings funds back before the swap.
+          </p>
+
+          <div className="flex flex-col">
+            {[
+              {
+                cmd: "t2000 invest earn SUI",
+                title: "Earn",
+                desc: "Deposit invested asset into best-rate lending protocol",
+              },
+              {
+                cmd: "t2000 invest unearn SUI",
+                title: "Unearn",
+                desc: "Withdraw from lending, keep in portfolio",
+              },
+            ].map((step, i) => (
+              <div
+                key={step.cmd}
+                className={`group grid grid-cols-[40px_1fr] gap-5 py-7 border-b border-border ${i === 0 ? "border-t" : ""}`}
+              >
+                <div className="text-[11px] text-muted/50 pt-1 tracking-wide">
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <div>
+                  <div className="text-sm text-foreground mb-2 font-medium tracking-tight">
+                    {step.title}
+                  </div>
+                  <div className="text-xs text-muted leading-[1.7] mb-3">
+                    {step.desc}
+                  </div>
+                  <code className="text-[11px] text-accent bg-accent-dim px-3 py-2 tracking-wide inline-block">
+                    {step.cmd}
+                  </code>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── Investment Locking ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
@@ -399,6 +449,61 @@ export default function InvestPage() {
                 {`();`}
               </pre>
             </div>
+          </div>
+        </section>
+
+        {/* ── Strategies ── */}
+        <section className="py-16 sm:py-24 border-b border-border">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
+            <span className="block w-8 h-px bg-accent" />
+            Strategies + Auto-Invest
+          </div>
+
+          <h2 className="font-serif text-[28px] sm:text-[36px] leading-[1.1] text-foreground mb-4 font-normal">
+            Themed allocations.{" "}
+            <em className="italic text-accent">One command.</em>
+          </h2>
+
+          <p className="font-mono text-[12px] text-muted leading-[1.7] max-w-[520px] mb-10">
+            Pick a strategy, set an amount — the agent splits your investment across
+            assets in a single atomic Programmable Transaction Block (PTB). No partial
+            fills, no intermediate states. Set up dollar-cost averaging to auto-invest
+            on a schedule.
+          </p>
+
+          <div className="grid sm:grid-cols-3 gap-6 mb-12">
+            {[
+              { name: "bluechip", alloc: "BTC 50% · ETH 30% · SUI 20%", desc: "Large-cap crypto index" },
+              { name: "layer1", alloc: "ETH 50% · SUI 50%", desc: "Smart contract platforms" },
+              { name: "sui-heavy", alloc: "BTC 20% · ETH 20% · SUI 60%", desc: "Sui-weighted portfolio" },
+            ].map((s) => (
+              <div key={s.name} className="border border-border-bright rounded-lg p-5">
+                <div className="font-mono text-sm text-accent mb-1">{s.name}</div>
+                <div className="font-mono text-[11px] text-muted mb-2">{s.alloc}</div>
+                <div className="font-mono text-[11px] text-muted/60">{s.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border border-border-bright rounded-lg p-5 bg-[#0a0f0a] max-w-xl">
+            <pre className="font-mono text-[11px] sm:text-xs text-muted leading-[1.8] overflow-x-auto whitespace-pre">
+{`❯ t2000 invest strategy buy layer1 200
+
+  ✓ Invested $200.00 in layer1 strategy (1 atomic transaction)
+  ──────────────────────────────────────
+  ETH:  0.0490 @ $2,040.00
+  SUI:  103.09 @ $0.97
+  ──────────────────────────────────────
+  Total invested:  $200.00
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+
+❯ t2000 invest auto setup 50 weekly bluechip
+
+  ✓ Auto-invest created
+  Strategy:   bluechip (Large-cap crypto index)
+  Amount:     $50.00 per week
+  Next run:   Feb 24, 2026`}
+            </pre>
           </div>
         </section>
 

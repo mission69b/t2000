@@ -3,7 +3,7 @@ import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
 import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
-import type { StableAsset } from '../constants.js';
+import type { StableAsset, SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { stableToRaw, usdcToRaw } from '../utils/format.js';
 import { addCollectFeeToTx } from './protocolFee.js';
@@ -169,9 +169,17 @@ function resolvePoolSymbol(pool: NaviPool): string {
   return pool.token?.symbol ?? 'UNKNOWN';
 }
 
-async function getPool(asset: StableAsset = 'USDC'): Promise<NaviPool> {
+function resolveAssetInfo(asset: string): { type: string; decimals: number; displayName: string } {
+  if (asset in SUPPORTED_ASSETS) {
+    const info = SUPPORTED_ASSETS[asset as SupportedAsset];
+    return { type: info.type, decimals: info.decimals, displayName: info.displayName };
+  }
+  throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown asset: ${asset}`);
+}
+
+async function getPool(asset: string = 'USDC'): Promise<NaviPool> {
   const pools = await getPools();
-  const targetType = SUPPORTED_ASSETS[asset].type;
+  const { type: targetType, displayName } = resolveAssetInfo(asset);
 
   const pool = pools.find(
     (p) => matchesCoinType(p.suiCoinType || p.coinType || '', targetType),
@@ -179,7 +187,7 @@ async function getPool(asset: StableAsset = 'USDC'): Promise<NaviPool> {
   if (!pool) {
     throw new T2000Error(
       'ASSET_NOT_SUPPORTED',
-      `${SUPPORTED_ASSETS[asset].displayName} pool not found on NAVI. Try: ${STABLE_ASSETS.filter(a => a !== asset).join(', ')}`,
+      `${displayName} pool not found on NAVI`,
     );
   }
   return pool;
@@ -214,23 +222,28 @@ function addOracleUpdate(tx: Transaction, config: NaviConfig, pool: NaviPool): v
 }
 
 /**
- * Updates NAVI oracles for our supported stablecoins (USDC, USDT, USDe, USDsui).
+ * Updates NAVI oracles for all supported assets that have active positions.
  * Adds on-chain oracle refresh commands to the PTB so NAVI reads fresh
- * Pyth price data maintained by keeper bots.
+ * price data maintained by keeper bots.
+ *
+ * For stablecoin-only operations, pass `assetFilter` to limit to stables.
+ * For investment assets (SUI/ETH), the full set is refreshed.
  */
-function refreshStableOracles(
+function refreshOracles(
   tx: Transaction,
   config: NaviConfig,
   pools: NaviPool[],
+  opts?: { assetsToRefresh?: readonly string[] },
 ): void {
-  const stableTypes = STABLE_ASSETS.map((a) => SUPPORTED_ASSETS[a].type);
+  const assetsToRefresh = opts?.assetsToRefresh ?? NAVI_SUPPORTED_ASSETS;
+  const targetTypes = assetsToRefresh.map((a) => SUPPORTED_ASSETS[a as keyof typeof SUPPORTED_ASSETS].type);
 
-  const stablePools = pools.filter((p) => {
+  const matchedPools = pools.filter((p) => {
     const ct = p.suiCoinType || p.coinType || '';
-    return stableTypes.some((t) => matchesCoinType(ct, t));
+    return targetTypes.some((t) => matchesCoinType(ct, t));
   });
 
-  for (const pool of stablePools) {
+  for (const pool of matchedPools) {
     addOracleUpdate(tx, config, pool);
   }
 }
@@ -349,13 +362,13 @@ export async function buildSaveTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { collectFee?: boolean; asset?: StableAsset } = {},
+  options: { collectFee?: boolean; asset?: string } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Save amount must be a positive number');
   }
   const asset = options.asset ?? 'USDC';
-  const assetInfo = SUPPORTED_ASSETS[asset];
+  const assetInfo = resolveAssetInfo(asset);
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
   const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
 
@@ -422,10 +435,10 @@ export async function buildWithdrawTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: StableAsset } = {},
+  options: { asset?: string } = {},
 ): Promise<{ tx: Transaction; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
-  const assetInfo = SUPPORTED_ASSETS[asset];
+  const assetInfo = resolveAssetInfo(asset);
   const [config, pool, pools, states] = await Promise.all([
     getConfig(),
     getPool(asset),
@@ -447,7 +460,7 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  refreshStableOracles(tx, config, pools);
+  refreshOracles(tx, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -485,10 +498,10 @@ export async function addWithdrawToTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: StableAsset } = {},
+  options: { asset?: string } = {},
 ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
-  const assetInfo = SUPPORTED_ASSETS[asset];
+  const assetInfo = resolveAssetInfo(asset);
   const [config, pool, pools, states] = await Promise.all([
     getConfig(),
     getPool(asset),
@@ -512,7 +525,7 @@ export async function addWithdrawToTx(
     return { coin, effectiveAmount: 0 };
   }
 
-  refreshStableOracles(tx, config, pools);
+  refreshOracles(tx, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::withdraw_v2`,
@@ -548,7 +561,7 @@ export async function addSaveToTx(
   _client: SuiJsonRpcClient,
   _address: string,
   coin: TransactionObjectArgument,
-  options: { asset?: StableAsset; collectFee?: boolean } = {},
+  options: { asset?: string; collectFee?: boolean } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
   const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
@@ -585,10 +598,10 @@ export async function addSaveToTx(
  */
 export async function addRepayToTx(
   tx: Transaction,
-  client: SuiJsonRpcClient,
+  _client: SuiJsonRpcClient,
   _address: string,
   coin: TransactionObjectArgument,
-  options: { asset?: StableAsset } = {},
+  options: { asset?: string } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
   const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
@@ -646,13 +659,13 @@ export async function buildBorrowTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { collectFee?: boolean; asset?: StableAsset } = {},
+  options: { collectFee?: boolean; asset?: string } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be a positive number');
   }
   const asset = options.asset ?? 'USDC';
-  const assetInfo = SUPPORTED_ASSETS[asset];
+  const assetInfo = resolveAssetInfo(asset);
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
   const [config, pool, pools] = await Promise.all([
     getConfig(), getPool(asset), getPools(),
@@ -661,7 +674,7 @@ export async function buildBorrowTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  refreshStableOracles(tx, config, pools);
+  refreshOracles(tx, config, pools);
 
   const [balance] = tx.moveCall({
     target: `${config.package}::incentive_v3::borrow_v2`,
@@ -726,13 +739,13 @@ export async function buildRepayTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: StableAsset } = {},
+  options: { asset?: string } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Repay amount must be a positive number');
   }
   const asset = options.asset ?? 'USDC';
-  const assetInfo = SUPPORTED_ASSETS[asset];
+  const assetInfo = resolveAssetInfo(asset);
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
   const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
 
@@ -890,13 +903,15 @@ export async function getHealthFactor(
   };
 }
 
+const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH'] as const;
+
 export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
   try {
     const pools = await getPools();
     const result: RatesResult = {};
 
-    for (const asset of STABLE_ASSETS) {
-      const targetType = SUPPORTED_ASSETS[asset].type;
+    for (const asset of NAVI_SUPPORTED_ASSETS) {
+      const targetType = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS].type;
       const pool = pools.find((p) => matchesCoinType(p.suiCoinType || p.coinType || '', targetType));
       if (!pool) continue;
 

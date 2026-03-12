@@ -63,8 +63,30 @@ await agent.investBuy({ asset: 'ETH', usdAmount: 200 });
 const portfolio = await agent.getPortfolio();
 console.log(`P&L: ${portfolio.unrealizedPnL}`);
 
-// Sell position
+// Earn yield on investment (deposit into best-rate lending)
+await agent.investEarn({ asset: 'SUI' });
+
+// Stop earning (withdraw from lending, keep in portfolio)
+await agent.investUnearn({ asset: 'SUI' });
+
+// Sell position (auto-withdraws if earning first)
 await agent.investSell({ asset: 'SUI', usdAmount: 'all' });
+
+// Buy into a strategy (single atomic PTB)
+await agent.investStrategy({ strategy: 'bluechip', usdAmount: 200 });
+
+// Check strategy status
+const status = await agent.getStrategyStatus({ strategy: 'bluechip' });
+console.log(`Total value: $${status.totalValue}`);
+
+// Rebalance strategy to target weights
+await agent.rebalanceStrategy({ strategy: 'bluechip' });
+
+// Set up dollar-cost averaging
+await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluechip' });
+
+// Run pending DCA purchases
+await agent.runAutoInvest();
 ```
 
 ## API Reference
@@ -170,8 +192,31 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | Method | Description | Returns |
 |--------|-------------|---------|
 | `agent.investBuy({ asset, usdAmount, maxSlippage? })` | Buy crypto asset with USD | `InvestResult` |
-| `agent.investSell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC | `InvestResult` |
-| `agent.getPortfolio()` | Investment positions + P&L | `PortfolioResult` |
+| `agent.investSell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC (auto-withdraws if earning) | `InvestResult` |
+| `agent.investEarn({ asset })` | Deposit invested asset into best-rate lending for yield | `InvestEarnResult` |
+| `agent.investUnearn({ asset })` | Withdraw from lending, keep in portfolio | `InvestUnearnResult` |
+| `agent.getPortfolio()` | Investment positions + P&L (grouped by strategy) | `PortfolioResult` |
+
+### Strategy Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `agent.investStrategy({ strategy, usdAmount, maxSlippage?, dryRun? })` | Buy into a strategy (single atomic PTB) | `StrategyBuyResult` |
+| `agent.sellStrategy({ strategy, maxSlippage? })` | Sell all positions in a strategy | `StrategySellResult` |
+| `agent.rebalanceStrategy({ strategy, maxSlippage?, driftThreshold? })` | Rebalance to target weights | `StrategyRebalanceResult` |
+| `agent.getStrategyStatus({ strategy })` | Positions, weights, drift for a strategy | `StrategyStatusResult` |
+| `agent.getStrategies()` | List all available strategies | `StrategyDefinition[]` |
+| `agent.createStrategy({ name, allocations, description? })` | Create a custom strategy | `StrategyDefinition` |
+| `agent.deleteStrategy({ name })` | Delete a custom strategy (no active positions) | `void` |
+
+### Auto-Invest (DCA) Methods
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `agent.setupAutoInvest({ amount, frequency, strategy?, asset? })` | Schedule recurring purchases | `AutoInvestSchedule` |
+| `agent.getAutoInvestStatus()` | View schedules and pending runs | `AutoInvestStatus` |
+| `agent.runAutoInvest()` | Execute all pending DCA purchases | `AutoInvestRunResult` |
+| `agent.stopAutoInvest({ id? })` | Stop one or all schedules | `void` |
 
 ### Key Management
 
@@ -375,7 +420,7 @@ Fees are collected by the t2000 protocol treasury on-chain.
 
 ## MCP Server
 
-The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 19 tools and 6 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
+The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 21 tools and 6 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
 
 ## License
 

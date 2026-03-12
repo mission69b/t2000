@@ -50,10 +50,10 @@ const ACCOUNTS = [
     num: "05 / 05",
     icon: "◆",
     title: "Investment",
-    subtitle: "Buy · Sell · Portfolio · P&L",
-    desc: "Buy and sell SUI, BTC, and ETH with dollar-denominated commands. Cost-basis P&L tracking and investment locking guard. The agent builds a portfolio autonomously.",
-    prompt: "Invest $100 in SUI",
-    cmd: "t2000 invest buy 100 SUI",
+    subtitle: "Buy · Sell · Strategies · DCA · P&L",
+    desc: "Buy crypto directly or use themed strategies (bluechip, layer1) with atomic PTB execution. Auto-invest with dollar-cost averaging. Cost-basis P&L tracking.",
+    prompt: "Invest $200 in layer1 strategy",
+    cmd: "t2000 invest strategy buy layer1 200",
     href: "/invest",
   },
 ];
@@ -82,7 +82,7 @@ const STEPS = [
     badge: "MCP",
     badgeType: "new" as const,
     content:
-            "One command auto-configures Claude Desktop and Cursor. 19 tools with safeguard enforcement — your AI manages money autonomously.",
+            "One command auto-configures Claude Desktop and Cursor. 21 tools with safeguard enforcement — your AI manages money autonomously.",
     code: "t2000 mcp install",
   },
   {
@@ -170,7 +170,7 @@ const COMPARE_ROWS: {
     t2000: "✓ Cetus DEX",
     bothCheck: true,
   },
-  { feature: "Investment (spot)", coinbase: "—", t2000: "✓ SUI, BTC, ETH + P&L tracking", coinbaseCross: true },
+  { feature: "Investment (spot)", coinbase: "—", t2000: "✓ SUI, BTC, ETH + strategies + DCA", coinbaseCross: true },
   {
     feature: "x402 client",
     coinbase: "✓ Base / Solana",
@@ -222,7 +222,7 @@ const COMPARE_ROWS: {
   {
     feature: "MCP Server",
     coinbase: "—",
-    t2000: "✓ 19 tools + 6 prompts",
+    t2000: "✓ 21 tools + 6 prompts",
     coinbaseCross: true,
   },
   {
@@ -546,7 +546,7 @@ export default function Home() {
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
             One command connects Claude Desktop, Cursor, or any MCP client.
-            Your AI gets 19 tools with safeguard limits — no config files to edit.
+            Your AI gets 21 tools with safeguard limits — no config files to edit.
           </p>
         </div>
 
@@ -573,7 +573,7 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
                 { count: "9", label: "Read", desc: "Balance, rates, positions, earnings, contacts, portfolio" },
-                { count: "8", label: "Write", desc: "Send, save, borrow, swap, rebalance, invest" },
+                { count: "10", label: "Write", desc: "Send, save, borrow, swap, rebalance, invest, strategy, auto-invest" },
                 { count: "2", label: "Safety", desc: "Limits, emergency lock" },
               ].map((g) => (
                 <div key={g.label} className="border border-border rounded-sm p-3 sm:p-4">

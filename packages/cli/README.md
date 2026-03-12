@@ -105,13 +105,30 @@ t2000 init
 ❯ t2000 portfolio
   Investment Portfolio
   ─────────────────────────────────────────────────────
-  SUI     105.26000000  Avg: $0.95    Now: $0.97    +$2.10 (+2.1%)
-  BTC     0.00512820    Avg: $97,500  Now: $98,200  +$3.59 (+0.7%)
-  ETH     0.10526316    Avg: $1,900   Now: $1,920   +$2.11 (+1.1%)
+  SUI     105.26000000  Avg: $0.95    Now: $0.97    APY: 2.10%    +$2.10 (+2.1%)
+  BTC     0.00512820    Avg: $97,500  Now: $98,200  —              +$3.59 (+0.7%)
+  ETH     0.10526316    Avg: $1,900   Now: $1,920   APY: 1.85%    +$2.11 (+1.1%)
   ─────────────────────────────────────────────────────
   Total invested:   $800.00
   Current value:    $807.80
   Unrealized P&L:   +$7.80 (+1.0%)
+```
+
+```
+❯ t2000 invest strategy buy layer1 5
+  ✓ Invested $5.00 in layer1 strategy (1 atomic transaction)
+  ──────────────────────────────────────
+  ETH:  0.001222 @ $2,045.24
+  SUI:  2.5678 @ $0.97
+  ──────────────────────────────────────
+  Total invested:  $5.00
+  Tx:  https://suiscan.xyz/mainnet/tx/BKYu8s...
+
+❯ t2000 invest auto setup 50 weekly bluechip
+  ✓ Auto-invest created
+  Strategy:   bluechip (Large-cap crypto index)
+  Amount:     $50.00 per week
+  Next run:   Feb 24, 2026
 ```
 
 30 seconds. Send → save → borrow → pay → repay → withdraw.
@@ -194,9 +211,34 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 invest buy <amount> <asset>` | Buy crypto with USDC (e.g. `t2000 invest buy 500 BTC`, `t2000 invest buy 200 ETH`) |
-| `t2000 invest sell <amount\|all> <asset>` | Sell crypto back to USDC |
-| `t2000 portfolio` | View investment portfolio with cost-basis P&L |
+| `t2000 invest buy <amount> <asset>` | Buy crypto with USDC (e.g. `t2000 invest buy 500 BTC`) |
+| `t2000 invest sell <amount\|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
+| `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
+| `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
+| `t2000 portfolio` | View investment portfolio with cost-basis P&L (strategy grouping) |
+
+### Strategies (PTB Atomic)
+
+| Command | Description |
+|---------|-------------|
+| `t2000 invest strategy list` | List available strategies with allocations |
+| `t2000 invest strategy buy <name> <amount>` | Buy into a strategy — single atomic transaction. Options: `--dry-run` |
+| `t2000 invest strategy sell <name>` | Sell all positions in a strategy |
+| `t2000 invest strategy status <name>` | Show positions, current weights, and drift |
+| `t2000 invest strategy rebalance <name>` | Rebalance to target weights |
+| `t2000 invest strategy create <name> --alloc "BTC:40,ETH:60"` | Create a custom strategy |
+| `t2000 invest strategy delete <name>` | Delete a custom strategy (must have no positions) |
+
+Built-in strategies: `bluechip` (BTC 50%, ETH 30%, SUI 20%), `layer1` (ETH 50%, SUI 50%), `sui-heavy` (BTC 20%, ETH 20%, SUI 60%).
+
+### Auto-Invest (DCA)
+
+| Command | Description |
+|---------|-------------|
+| `t2000 invest auto setup <amount> <frequency> [strategy]` | Set up DCA (daily/weekly/monthly) |
+| `t2000 invest auto status` | Show auto-invest schedules |
+| `t2000 invest auto run` | Execute pending DCA purchases |
+| `t2000 invest auto stop [id]` | Stop one or all schedules |
 
 Supported assets: SUI, BTC, ETH. Dollar-denominated — `amount` is in USD.
 
@@ -230,7 +272,7 @@ t2000 mcp uninstall
 t2000 mcp
 ```
 
-19 tools, 6 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
+21 tools, 6 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 

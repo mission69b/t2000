@@ -50,6 +50,13 @@ import type {
   InvestResult,
   InvestmentPosition,
   PortfolioResult,
+  StrategyBuyResult,
+  StrategySellResult,
+  StrategyRebalanceResult,
+  StrategyStatusResult,
+  AutoInvestSchedule,
+  AutoInvestStatus,
+  AutoInvestRunResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, INVESTMENT_ASSETS, GAS_RESERVE_MIN, DEFAULT_MAX_LEVERAGE, DEFAULT_MAX_POSITION_SIZE } from './constants.js';
@@ -59,6 +66,8 @@ import { SafeguardEnforcer } from './safeguards/enforcer.js';
 import type { TxMetadata } from './safeguards/types.js';
 import { ContactManager } from './contacts.js';
 import { PortfolioManager } from './portfolio.js';
+import { StrategyManager } from './strategy.js';
+import { AutoInvestManager } from './auto-invest.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -82,6 +91,8 @@ export class T2000 extends EventEmitter<T2000Events> {
   readonly enforcer: SafeguardEnforcer;
   readonly contacts: ContactManager;
   readonly portfolio: PortfolioManager;
+  readonly strategies: StrategyManager;
+  readonly autoInvest: AutoInvestManager;
 
   private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry, configDir?: string) {
     super();
@@ -93,6 +104,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.enforcer.load();
     this.contacts = new ContactManager(configDir);
     this.portfolio = new PortfolioManager(configDir);
+    this.strategies = new StrategyManager(configDir);
+    this.autoInvest = new AutoInvestManager(configDir);
   }
 
   private static createDefaultRegistry(client: SuiJsonRpcClient): ProtocolRegistry {
@@ -235,10 +248,15 @@ export class T2000 extends EventEmitter<T2000Events> {
   async balance(): Promise<BalanceResponse> {
     const bal = await queryBalance(this.client, this._address);
 
+    const earningAssets = new Set(
+      this.portfolio.getPositions().filter(p => p.earning).map(p => p.asset),
+    );
+
     try {
       const positions = await this.positions();
       const savings = positions.positions
         .filter((p) => p.type === 'save')
+        .filter((p) => !earningAssets.has(p.asset))
         .reduce((sum, p) => sum + p.amount, 0);
       const debt = positions.positions
         .filter((p) => p.type === 'borrow')
@@ -275,7 +293,14 @@ export class T2000 extends EventEmitter<T2000Events> {
         if (!(pos.asset in INVESTMENT_ASSETS)) continue;
         const price = assetPrices[pos.asset] ?? 0;
 
-        if (pos.asset === 'SUI') {
+        if (pos.earning) {
+          investmentValue += pos.totalAmount * price;
+          investmentCostBasis += pos.costBasis;
+          if (pos.asset === 'SUI') {
+            const gasSui = Math.max(0, bal.gasReserve.sui);
+            bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * price };
+          }
+        } else if (pos.asset === 'SUI') {
           const actualHeld = Math.min(pos.totalAmount, bal.gasReserve.sui);
           investmentValue += actualHeld * price;
 
@@ -290,6 +315,15 @@ export class T2000 extends EventEmitter<T2000Events> {
         } else {
           investmentValue += pos.totalAmount * price;
           investmentCostBasis += pos.costBasis;
+        }
+      }
+
+      for (const key of this.portfolio.getAllStrategyKeys()) {
+        for (const sp of this.portfolio.getStrategyPositions(key)) {
+          if (!(sp.asset in INVESTMENT_ASSETS)) continue;
+          const price = assetPrices[sp.asset] ?? 0;
+          investmentValue += sp.totalAmount * price;
+          investmentCostBasis += sp.costBasis;
         }
       }
 
@@ -729,17 +763,56 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Borrowing --
 
+  private async adjustMaxBorrowForInvestments(
+    adapter: import('./adapters/types.js').LendingAdapter,
+    maxResult: MaxBorrowResult,
+  ): Promise<MaxBorrowResult> {
+    const earningPositions = this.portfolio.getPositions().filter(p => p.earning);
+    if (earningPositions.length === 0) return maxResult;
+
+    let investmentCollateralUsd = 0;
+    const swapAdapter = this.registry.listSwap()[0];
+
+    for (const pos of earningPositions) {
+      if (pos.earningProtocol !== adapter.id) continue;
+      try {
+        let price = 0;
+        if (pos.asset === 'SUI' && swapAdapter) {
+          price = await swapAdapter.getPoolPrice();
+        } else if (swapAdapter) {
+          const quote = await swapAdapter.getQuote('USDC', pos.asset, 1);
+          price = quote.expectedOutput > 0 ? 1 / quote.expectedOutput : 0;
+        }
+        investmentCollateralUsd += pos.totalAmount * price;
+      } catch { /* keep zero */ }
+    }
+
+    if (investmentCollateralUsd <= 0) return maxResult;
+
+    const CONSERVATIVE_LTV = 0.60;
+    const investmentBorrowCapacity = investmentCollateralUsd * CONSERVATIVE_LTV;
+    const adjustedMax = Math.max(0, maxResult.maxAmount - investmentBorrowCapacity);
+
+    return { ...maxResult, maxAmount: adjustedMax };
+  }
+
   async borrow(params: { amount: number; protocol?: string }): Promise<BorrowResult> {
     this.enforcer.assertNotLocked();
     const asset = 'USDC';
     const adapter = await this.resolveLending(params.protocol, asset, 'borrow');
 
-    const maxResult = await adapter.maxBorrow(this._address, asset);
+    const rawMax = await adapter.maxBorrow(this._address, asset);
+    const maxResult = await this.adjustMaxBorrowForInvestments(adapter, rawMax);
     if (maxResult.maxAmount <= 0) {
+      const hasInvestmentEarning = this.portfolio.getPositions().some(p => p.earning && p.earningProtocol === adapter.id);
+      if (hasInvestmentEarning) {
+        throw new T2000Error('BORROW_GUARD_INVESTMENT',
+          'Max safe borrow: $0.00. Only savings deposits (stablecoins) count as borrowable collateral. Investment collateral (SUI, ETH, BTC) is excluded.');
+      }
       throw new T2000Error('NO_COLLATERAL', 'No collateral deposited. Save first with `t2000 save <amount>`.');
     }
     if (params.amount > maxResult.maxAmount) {
-      throw new T2000Error('HEALTH_FACTOR_TOO_LOW', `Max safe borrow: $${maxResult.maxAmount.toFixed(2)}`, {
+      throw new T2000Error('HEALTH_FACTOR_TOO_LOW', `Max safe borrow: $${maxResult.maxAmount.toFixed(2)}. Only savings deposits count as borrowable collateral.`, {
         maxBorrow: maxResult.maxAmount,
         currentHF: maxResult.currentHF,
       });
@@ -929,7 +1002,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async maxBorrow(): Promise<MaxBorrowResult> {
     const adapter = await this.resolveLending(undefined, 'USDC', 'borrow');
-    return adapter.maxBorrow(this._address, 'USDC');
+    const rawMax = await adapter.maxBorrow(this._address, 'USDC');
+    return this.adjustMaxBorrowForInvestments(adapter, rawMax);
   }
 
   async healthFactor(): Promise<HealthFactorResult> {
@@ -1139,6 +1213,10 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${params.asset} position to sell`);
     }
 
+    if (pos.earning && pos.earningProtocol) {
+      await this.investUnearn({ asset: params.asset });
+    }
+
     const assetInfo = SUPPORTED_ASSETS[params.asset as keyof typeof SUPPORTED_ASSETS];
     const assetBalance = await this.client.getBalance({
       owner: this._address,
@@ -1221,7 +1299,449 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async getPortfolio(): Promise<PortfolioResult> {
+  async investEarn(params: { asset: InvestmentAsset }): Promise<import('./types.js').InvestEarnResult> {
+    this.enforcer.assertNotLocked();
+
+    if (!(params.asset in INVESTMENT_ASSETS)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `${params.asset} is not available for investment`);
+    }
+
+    const pos = this.portfolio.getPosition(params.asset);
+    if (!pos || pos.totalAmount <= 0) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${params.asset} position to earn on`);
+    }
+    if (pos.earning) {
+      throw new T2000Error('INVEST_ALREADY_EARNING', `${params.asset} is already earning via ${pos.earningProtocol}`);
+    }
+
+    const { adapter, rate } = await this.registry.bestSaveRate(params.asset);
+
+    const assetInfo = SUPPORTED_ASSETS[params.asset as keyof typeof SUPPORTED_ASSETS];
+    const assetBalance = await this.client.getBalance({
+      owner: this._address,
+      coinType: assetInfo.type,
+    });
+    const walletAmount = Number(assetBalance.totalBalance) / (10 ** assetInfo.decimals);
+    const gasReserve = params.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+    const depositAmount = Math.max(0, walletAmount - gasReserve);
+
+    if (depositAmount <= 0) {
+      throw new T2000Error('INSUFFICIENT_BALANCE', `No ${params.asset} available to deposit (wallet: ${walletAmount}, gas reserve: ${gasReserve})`);
+    }
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const { tx } = await adapter.buildSaveTx(this._address, depositAmount, params.asset);
+      return tx;
+    });
+
+    this.portfolio.recordEarn(params.asset, adapter.id, rate.saveApy);
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      asset: params.asset,
+      amount: depositAmount,
+      protocol: adapter.name,
+      apy: rate.saveApy,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  async investUnearn(params: { asset: InvestmentAsset }): Promise<import('./types.js').InvestEarnResult> {
+    this.enforcer.assertNotLocked();
+
+    if (!(params.asset in INVESTMENT_ASSETS)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `${params.asset} is not available for investment`);
+    }
+
+    const pos = this.portfolio.getPosition(params.asset);
+    if (!pos || !pos.earning || !pos.earningProtocol) {
+      throw new T2000Error('INVEST_NOT_EARNING', `${params.asset} is not currently earning`);
+    }
+
+    const adapter = this.registry.getLending(pos.earningProtocol);
+    if (!adapter) {
+      throw new T2000Error('PROTOCOL_UNAVAILABLE', `Lending protocol ${pos.earningProtocol} not found`);
+    }
+
+    const positions = await adapter.getPositions(this._address);
+    const supply = positions.supplies.find(s => s.asset === params.asset);
+    const withdrawAmount = supply?.amount ?? pos.totalAmount;
+
+    const protocolName = adapter.name;
+    let effectiveAmount = withdrawAmount;
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const result = await adapter.buildWithdrawTx(this._address, withdrawAmount, params.asset);
+      effectiveAmount = result.effectiveAmount;
+      return result.tx;
+    });
+
+    this.portfolio.recordUnearn(params.asset);
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      asset: params.asset,
+      amount: effectiveAmount,
+      protocol: protocolName,
+      apy: 0,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  // -- Strategies --
+
+  async investStrategy(params: { strategy: string; usdAmount: number; dryRun?: boolean }): Promise<StrategyBuyResult> {
+    this.enforcer.assertNotLocked();
+    const definition = this.strategies.get(params.strategy);
+    this.strategies.validateMinAmount(definition.allocations, params.usdAmount);
+
+    if (!params.usdAmount || params.usdAmount <= 0) {
+      throw new T2000Error('INVALID_AMOUNT', 'Strategy investment must be > $0');
+    }
+
+    this.enforcer.check({ operation: 'invest', amount: params.usdAmount });
+
+    const bal = await queryBalance(this.client, this._address);
+    if (bal.available < params.usdAmount) {
+      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${bal.available.toFixed(2)}, requested: $${params.usdAmount.toFixed(2)}`);
+    }
+
+    const buys: StrategyBuyResult['buys'] = [];
+    const allocEntries = Object.entries(definition.allocations);
+
+    if (params.dryRun) {
+      const swapAdapter = this.registry.listSwap()[0];
+      for (const [asset, pct] of allocEntries) {
+        const assetUsd = params.usdAmount * (pct / 100);
+        let estAmount = 0;
+        let estPrice = 0;
+        try {
+          if (swapAdapter) {
+            const quote = await swapAdapter.getQuote('USDC', asset, assetUsd);
+            estAmount = quote.expectedOutput;
+            estPrice = assetUsd / estAmount;
+          }
+        } catch { /* price unavailable */ }
+        buys.push({ asset, usdAmount: assetUsd, amount: estAmount, price: estPrice, tx: '' });
+      }
+      return { success: true, strategy: params.strategy, totalInvested: params.usdAmount, buys, gasCost: 0, gasMethod: 'self-funded' };
+    }
+
+    const swapAdapter = this.registry.listSwap()[0];
+    if (!swapAdapter?.addSwapToTx) {
+      throw new T2000Error('PROTOCOL_UNAVAILABLE', 'Swap adapter does not support composable PTB');
+    }
+
+    const swapMetas: Array<{ asset: string; usdAmount: number; estimatedOut: number; toDecimals: number }> = [];
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      const tx = new Transaction();
+      tx.setSender(this._address);
+
+      const usdcCoins = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
+      if (usdcCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins found');
+      const mergedUsdc = this._mergeCoinsInTx(tx, usdcCoins);
+
+      const splitAmounts = allocEntries.map(([, pct]) =>
+        BigInt(Math.floor(params.usdAmount * (pct / 100) * 10 ** SUPPORTED_ASSETS.USDC.decimals)),
+      );
+
+      const splitCoins = tx.splitCoins(mergedUsdc, splitAmounts);
+      const outputCoins: TransactionObjectArgument[] = [];
+
+      for (let i = 0; i < allocEntries.length; i++) {
+        const [asset] = allocEntries[i];
+        const assetUsd = params.usdAmount * (allocEntries[i][1] / 100);
+
+        const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx!(
+          tx, this._address, splitCoins[i], 'USDC', asset, assetUsd,
+        );
+
+        outputCoins.push(outputCoin);
+        swapMetas.push({ asset, usdAmount: assetUsd, estimatedOut, toDecimals });
+      }
+
+      tx.transferObjects(outputCoins, this._address);
+      return tx;
+    });
+
+    const digest = gasResult.digest;
+    const now = new Date().toISOString();
+
+    for (const meta of swapMetas) {
+      const amount = meta.estimatedOut / (10 ** meta.toDecimals);
+      const price = meta.usdAmount / amount;
+
+      this.portfolio.recordBuy({
+        id: `inv_${Date.now()}_${meta.asset}`,
+        type: 'buy',
+        asset: meta.asset,
+        amount,
+        price,
+        usdValue: meta.usdAmount,
+        fee: 0,
+        tx: digest,
+        timestamp: now,
+      });
+
+      this.portfolio.recordStrategyBuy(params.strategy, {
+        id: `strat_${Date.now()}_${meta.asset}`,
+        type: 'buy',
+        asset: meta.asset,
+        amount,
+        price,
+        usdValue: meta.usdAmount,
+        fee: 0,
+        tx: digest,
+        timestamp: now,
+      });
+
+      buys.push({ asset: meta.asset, usdAmount: meta.usdAmount, amount, price, tx: digest });
+    }
+
+    return {
+      success: true,
+      strategy: params.strategy,
+      totalInvested: params.usdAmount,
+      buys,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  async sellStrategy(params: { strategy: string }): Promise<StrategySellResult> {
+    this.enforcer.assertNotLocked();
+    this.strategies.get(params.strategy);
+
+    const stratPositions = this.portfolio.getStrategyPositions(params.strategy);
+    if (stratPositions.length === 0) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', `No positions in strategy '${params.strategy}'`);
+    }
+
+    const sells: StrategySellResult['sells'] = [];
+    let totalProceeds = 0;
+    let totalPnL = 0;
+    let totalGas = 0;
+    let gasMethod: import('./types.js').GasMethod = 'self-funded';
+
+    for (const pos of stratPositions) {
+      const result = await this.investSell({ asset: pos.asset as InvestmentAsset, usdAmount: 'all' });
+
+      const pnl = this.portfolio.recordStrategySell(params.strategy, {
+        id: `strat_sell_${Date.now()}_${pos.asset}`,
+        type: 'sell',
+        asset: pos.asset,
+        amount: result.amount,
+        price: result.price,
+        usdValue: result.usdValue,
+        fee: result.fee,
+        tx: result.tx,
+        timestamp: new Date().toISOString(),
+      });
+
+      sells.push({ asset: pos.asset, amount: result.amount, usdValue: result.usdValue, realizedPnL: pnl, tx: result.tx });
+      totalProceeds += result.usdValue;
+      totalPnL += pnl;
+      totalGas += result.gasCost;
+      gasMethod = result.gasMethod;
+    }
+
+    return { success: true, strategy: params.strategy, totalProceeds, realizedPnL: totalPnL, sells, gasCost: totalGas, gasMethod };
+  }
+
+  async rebalanceStrategy(params: { strategy: string }): Promise<StrategyRebalanceResult> {
+    this.enforcer.assertNotLocked();
+    const definition = this.strategies.get(params.strategy);
+    const stratPositions = this.portfolio.getStrategyPositions(params.strategy);
+
+    if (stratPositions.length === 0) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', `No positions in strategy '${params.strategy}'`);
+    }
+
+    const swapAdapter = this.registry.listSwap()[0];
+    const prices: Record<string, number> = {};
+    for (const pos of stratPositions) {
+      try {
+        if (pos.asset === 'SUI' && swapAdapter) {
+          prices[pos.asset] = await swapAdapter.getPoolPrice();
+        } else if (swapAdapter) {
+          const q = await swapAdapter.getQuote('USDC', pos.asset, 1);
+          prices[pos.asset] = q.expectedOutput > 0 ? 1 / q.expectedOutput : 0;
+        }
+      } catch { prices[pos.asset] = 0; }
+    }
+
+    const totalValue = stratPositions.reduce((s, p) => s + p.totalAmount * (prices[p.asset] ?? 0), 0);
+    if (totalValue <= 0) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', 'Strategy has no value to rebalance');
+    }
+
+    const currentWeights: Record<string, number> = {};
+    const beforeWeights: Record<string, number> = {};
+    for (const pos of stratPositions) {
+      const w = ((pos.totalAmount * (prices[pos.asset] ?? 0)) / totalValue) * 100;
+      currentWeights[pos.asset] = w;
+      beforeWeights[pos.asset] = w;
+    }
+
+    const trades: StrategyRebalanceResult['trades'] = [];
+    const threshold = 3; // only rebalance if > 3% off
+
+    for (const [asset, targetPct] of Object.entries(definition.allocations)) {
+      const currentPct = currentWeights[asset] ?? 0;
+      const diff = targetPct - currentPct;
+
+      if (Math.abs(diff) < threshold) continue;
+
+      const usdDiff = totalValue * (Math.abs(diff) / 100);
+      if (usdDiff < 1) continue;
+
+      if (diff > 0) {
+        const result = await this.investBuy({ asset: asset as InvestmentAsset, usdAmount: usdDiff });
+        this.portfolio.recordStrategyBuy(params.strategy, {
+          id: `strat_rebal_${Date.now()}_${asset}`,
+          type: 'buy',
+          asset,
+          amount: result.amount,
+          price: result.price,
+          usdValue: usdDiff,
+          fee: result.fee,
+          tx: result.tx,
+          timestamp: new Date().toISOString(),
+        });
+        trades.push({ action: 'buy', asset, usdAmount: usdDiff, amount: result.amount, tx: result.tx });
+      } else {
+        const result = await this.investSell({ asset: asset as InvestmentAsset, usdAmount: usdDiff });
+        this.portfolio.recordStrategySell(params.strategy, {
+          id: `strat_rebal_${Date.now()}_${asset}`,
+          type: 'sell',
+          asset,
+          amount: result.amount,
+          price: result.price,
+          usdValue: result.usdValue,
+          fee: result.fee,
+          tx: result.tx,
+          timestamp: new Date().toISOString(),
+        });
+        trades.push({ action: 'sell', asset, usdAmount: result.usdValue, amount: result.amount, tx: result.tx });
+      }
+    }
+
+    const afterWeights: Record<string, number> = {};
+    const updatedPositions = this.portfolio.getStrategyPositions(params.strategy);
+    const newTotal = updatedPositions.reduce((s, p) => s + p.totalAmount * (prices[p.asset] ?? 0), 0);
+    for (const p of updatedPositions) {
+      afterWeights[p.asset] = newTotal > 0 ? ((p.totalAmount * (prices[p.asset] ?? 0)) / newTotal) * 100 : 0;
+    }
+
+    return { success: true, strategy: params.strategy, trades, beforeWeights, afterWeights, targetWeights: { ...definition.allocations } };
+  }
+
+  async getStrategyStatus(name: string): Promise<StrategyStatusResult> {
+    const definition = this.strategies.get(name);
+    const stratPositions = this.portfolio.getStrategyPositions(name);
+
+    const swapAdapter = this.registry.listSwap()[0];
+    const prices: Record<string, number> = {};
+    for (const asset of Object.keys(definition.allocations)) {
+      try {
+        if (asset === 'SUI' && swapAdapter) {
+          prices[asset] = await swapAdapter.getPoolPrice();
+        } else if (swapAdapter) {
+          const q = await swapAdapter.getQuote('USDC', asset, 1);
+          prices[asset] = q.expectedOutput > 0 ? 1 / q.expectedOutput : 0;
+        }
+      } catch { prices[asset] = 0; }
+    }
+
+    const positions: InvestmentPosition[] = stratPositions.map((sp) => {
+      const price = prices[sp.asset] ?? 0;
+      const currentValue = sp.totalAmount * price;
+      const pnl = currentValue - sp.costBasis;
+      return {
+        asset: sp.asset,
+        totalAmount: sp.totalAmount,
+        costBasis: sp.costBasis,
+        avgPrice: sp.avgPrice,
+        currentPrice: price,
+        currentValue,
+        unrealizedPnL: pnl,
+        unrealizedPnLPct: sp.costBasis > 0 ? (pnl / sp.costBasis) * 100 : 0,
+        trades: sp.trades,
+      };
+    });
+
+    const totalValue = positions.reduce((s, p) => s + p.currentValue, 0);
+    const currentWeights: Record<string, number> = {};
+    for (const p of positions) {
+      currentWeights[p.asset] = totalValue > 0 ? (p.currentValue / totalValue) * 100 : 0;
+    }
+
+    return { definition, positions, currentWeights, totalValue };
+  }
+
+  // -- Auto-Invest --
+
+  setupAutoInvest(params: {
+    amount: number;
+    frequency: 'daily' | 'weekly' | 'monthly';
+    strategy?: string;
+    asset?: string;
+    dayOfWeek?: number;
+    dayOfMonth?: number;
+  }): AutoInvestSchedule {
+    if (params.strategy) this.strategies.get(params.strategy);
+    if (params.asset && !(params.asset in INVESTMENT_ASSETS)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', `${params.asset} is not an investment asset`);
+    }
+    return this.autoInvest.setup(params);
+  }
+
+  getAutoInvestStatus(): AutoInvestStatus {
+    return this.autoInvest.getStatus();
+  }
+
+  async runAutoInvest(): Promise<AutoInvestRunResult> {
+    this.enforcer.assertNotLocked();
+    const status = this.autoInvest.getStatus();
+    const executed: AutoInvestRunResult['executed'] = [];
+    const skipped: AutoInvestRunResult['skipped'] = [];
+
+    for (const schedule of status.pendingRuns) {
+      try {
+        const bal = await queryBalance(this.client, this._address);
+        if (bal.available < schedule.amount) {
+          skipped.push({ scheduleId: schedule.id, reason: `Insufficient balance ($${bal.available.toFixed(2)} < $${schedule.amount})` });
+          continue;
+        }
+
+        if (schedule.strategy) {
+          const result = await this.investStrategy({ strategy: schedule.strategy, usdAmount: schedule.amount });
+          this.autoInvest.recordRun(schedule.id, schedule.amount);
+          executed.push({ scheduleId: schedule.id, strategy: schedule.strategy, amount: schedule.amount, result });
+        } else if (schedule.asset) {
+          const result = await this.investBuy({ asset: schedule.asset as InvestmentAsset, usdAmount: schedule.amount });
+          this.autoInvest.recordRun(schedule.id, schedule.amount);
+          executed.push({ scheduleId: schedule.id, asset: schedule.asset, amount: schedule.amount, result });
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        skipped.push({ scheduleId: schedule.id, reason: msg });
+      }
+    }
+
+    return { executed, skipped };
+  }
+
+  stopAutoInvest(id: string): void {
+    this.autoInvest.stop(id);
+  }
+
+  async getPortfolio(): Promise<PortfolioResult & { strategyPositions?: Record<string, InvestmentPosition[]> }> {
     const positions = this.portfolio.getPositions();
     const realizedPnL = this.portfolio.getRealizedPnL();
 
@@ -1238,51 +1758,60 @@ export class T2000 extends EventEmitter<T2000Events> {
       } catch { prices[asset] = 0; }
     }
 
-    const enriched: InvestmentPosition[] = [];
-    for (const pos of positions) {
+    const enrichPosition = async (pos: { asset: string; totalAmount: number; costBasis: number; avgPrice: number; trades: import('./types.js').InvestmentTrade[]; earning?: boolean; earningProtocol?: string; earningApy?: number }, adjustWallet: boolean): Promise<InvestmentPosition> => {
       const currentPrice = prices[pos.asset] ?? 0;
       let totalAmount = pos.totalAmount;
       let costBasis = pos.costBasis;
 
-      if (pos.asset in INVESTMENT_ASSETS) {
+      if (adjustWallet && pos.asset in INVESTMENT_ASSETS && !pos.earning) {
         try {
           const assetInfo = SUPPORTED_ASSETS[pos.asset as keyof typeof SUPPORTED_ASSETS];
           const bal = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
           const walletAmount = Number(bal.totalBalance) / (10 ** assetInfo.decimals);
           const gasReserve = pos.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
           const actualHeld = Math.max(0, walletAmount - gasReserve);
-
           if (actualHeld < totalAmount) {
             const ratio = totalAmount > 0 ? actualHeld / totalAmount : 0;
             costBasis *= ratio;
             totalAmount = actualHeld;
           }
-        } catch { /* keep tracked values on RPC failure */ }
+        } catch { /* keep tracked values */ }
       }
 
       const currentValue = totalAmount * currentPrice;
       const unrealizedPnL = currentPrice > 0 ? currentValue - costBasis : 0;
       const unrealizedPnLPct = currentPrice > 0 && costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
+      return {
+        asset: pos.asset, totalAmount, costBasis, avgPrice: pos.avgPrice,
+        currentPrice, currentValue, unrealizedPnL, unrealizedPnLPct,
+        trades: pos.trades, earning: pos.earning, earningProtocol: pos.earningProtocol, earningApy: pos.earningApy,
+      };
+    };
 
-      enriched.push({
-        asset: pos.asset,
-        totalAmount,
-        costBasis,
-        avgPrice: pos.avgPrice,
-        currentPrice,
-        currentValue,
-        unrealizedPnL,
-        unrealizedPnLPct,
-        trades: pos.trades,
-      });
+    const enriched: InvestmentPosition[] = [];
+    for (const pos of positions) {
+      enriched.push(await enrichPosition(pos, true));
     }
 
-    const totalInvested = enriched.reduce((sum, p) => sum + p.costBasis, 0);
-    const totalValue = enriched.reduce((sum, p) => sum + p.currentValue, 0);
+    const strategyPositions: Record<string, InvestmentPosition[]> = {};
+    for (const key of this.portfolio.getAllStrategyKeys()) {
+      const sps = this.portfolio.getStrategyPositions(key);
+      const enrichedStrat: InvestmentPosition[] = [];
+      for (const sp of sps) {
+        enrichedStrat.push(await enrichPosition(sp, false));
+      }
+      if (enrichedStrat.length > 0) {
+        strategyPositions[key] = enrichedStrat;
+      }
+    }
+
+    const allPositions = [...enriched, ...Object.values(strategyPositions).flat()];
+    const totalInvested = allPositions.reduce((sum, p) => sum + p.costBasis, 0);
+    const totalValue = allPositions.reduce((sum, p) => sum + p.currentValue, 0);
     const totalUnrealizedPnL = totalValue - totalInvested;
     const totalUnrealizedPnLPct = totalInvested > 0 ? (totalUnrealizedPnL / totalInvested) * 100 : 0;
 
-    return {
+    const result: PortfolioResult & { strategyPositions?: Record<string, InvestmentPosition[]> } = {
       positions: enriched,
       totalInvested,
       totalValue,
@@ -1290,6 +1819,12 @@ export class T2000 extends EventEmitter<T2000Events> {
       unrealizedPnLPct: totalUnrealizedPnLPct,
       realizedPnL,
     };
+
+    if (Object.keys(strategyPositions).length > 0) {
+      result.strategyPositions = strategyPositions;
+    }
+
+    return result;
   }
 
   // -- Info --
@@ -1352,14 +1887,21 @@ export class T2000 extends EventEmitter<T2000Events> {
       this.registry.allRatesAcrossAssets(),
     ]);
 
+    const earningAssets = new Set(
+      this.portfolio.getPositions().filter(p => p.earning).map(p => p.asset),
+    );
+
     const savePositions = allPositions.flatMap(p =>
-      p.positions.supplies.filter(s => s.amount > 0.01).map(s => ({
-        protocolId: p.protocolId,
-        protocol: p.protocol,
-        asset: s.asset,
-        amount: s.amount,
-        apy: s.apy,
-      })),
+      p.positions.supplies
+        .filter(s => s.amount > 0.01)
+        .filter(s => !earningAssets.has(s.asset))
+        .map(s => ({
+          protocolId: p.protocolId,
+          protocol: p.protocol,
+          asset: s.asset,
+          amount: s.amount,
+          apy: s.apy,
+        })),
     );
 
     if (savePositions.length === 0) {
