@@ -203,7 +203,7 @@ export function registerInvest(program: Command) {
         } else {
           const txDigests = [...new Set(result.buys.map(b => b.tx))];
           const isSingleTx = txDigests.length === 1;
-          printSuccess(`Invested ${formatUsd(parsed)} in ${name} strategy${isSingleTx ? ' (1 atomic transaction)' : ''}`);
+          printSuccess(`Invested ${formatUsd(parsed)} in ${name} strategy`);
           printSeparator();
           for (const buy of result.buys) {
             printKeyValue(buy.asset, `${formatAssetAmount(buy.amount, buy.asset)} @ ${formatUsd(buy.price)}`);

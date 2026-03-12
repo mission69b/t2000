@@ -283,7 +283,7 @@ export const demos: Demo[] = [
   {
     id: "rebalance",
     title: "Yield Optimizer — Auto-Rebalance",
-    description: "One command finds the best rate across all protocols and stablecoins, calculates break-even, then executes withdraw → swap → deposit as a single atomic transaction.",
+    description: "One command finds the best rate across all protocols and stablecoins, calculates break-even, then moves your money automatically.",
     tweet: "t2000 rebalance — one command, best yield wins",
     lines: [
       { type: "command", text: "❯ t2000 rates", delay: 0 },
@@ -561,9 +561,9 @@ export const demos: Demo[] = [
   },
   {
     id: "strategy-buy",
-    title: "Strategy Buy (PTB)",
-    description: "Buy into a themed strategy — single atomic transaction",
-    tweet: "t2000 invest strategy buy layer1 200 — split across ETH + SUI in one atomic PTB. 🎯",
+    title: "Strategy Buy",
+    description: "Buy into a themed strategy — one command, multiple assets",
+    tweet: "t2000 invest strategy buy layer1 200 — split across ETH + SUI in one transaction. 🎯",
     lines: [
       { type: "command", text: "❯ t2000 invest strategy list", delay: 0 },
       { type: "output", text: "", delay: 200 },
@@ -577,7 +577,7 @@ export const demos: Demo[] = [
       { type: "output", text: "              Sui-weighted portfolio", delay: 100 },
 
       { type: "command", text: "❯ t2000 invest strategy buy layer1 200", delay: 1200 },
-      { type: "success", text: "  ✓ Invested $200.00 in layer1 strategy (1 atomic transaction)", delay: 800 },
+      { type: "success", text: "  ✓ Invested $200.00 in layer1 strategy", delay: 800 },
       { type: "info", text: "  ──────────────────────────────────────", delay: 80 },
       { type: "output", text: "  ETH:  0.0490 @ $2,040.00", delay: 200 },
       { type: "output", text: "  SUI:  103.09 @ $0.97", delay: 200 },

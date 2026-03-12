@@ -39,15 +39,18 @@ export function registerEarn(program: Command) {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        const [positionsResult, sentinels] = await Promise.allSettled([
+        const [positionsResult, portfolioResult, sentinels] = await Promise.allSettled([
           agent.positions(),
+          agent.getPortfolio(),
           listSentinels(),
         ]);
 
         const posData = positionsResult.status === 'fulfilled' ? positionsResult.value : null;
+        const portfolio = portfolioResult.status === 'fulfilled' ? portfolioResult.value : null;
         const agents = sentinels.status === 'fulfilled' ? sentinels.value : null;
         const savePositions = posData?.positions.filter((p) => p.type === 'save') ?? [];
         const totalSaved = savePositions.reduce((s, p) => s + p.amount, 0);
+        const earningInvestments = portfolio?.positions.filter((p) => p.earning && p.currentValue > 0) ?? [];
 
         if (isJsonMode()) {
           const best = agents ? bestTarget(agents) : undefined;
@@ -66,6 +69,13 @@ export function registerEarn(program: Command) {
               apy: p.apy,
             })),
             totalSaved,
+            investments: earningInvestments.map((p) => ({
+              asset: p.asset,
+              amount: p.totalAmount,
+              value: p.currentValue,
+              protocol: p.earningProtocol,
+              apy: p.earningApy,
+            })),
             sentinel: agents
               ? {
                   activeSentinels: agents.length,
@@ -112,6 +122,34 @@ export function registerEarn(program: Command) {
           printInfo('Savings data unavailable');
         }
 
+        // --- Investment yield section ---
+        if (earningInvestments.length > 0) {
+          printBlank();
+          printLine(pc.bold('INVESTMENTS') + pc.dim(' — Earning Yield'));
+          printDivider();
+
+          let totalInvestValue = 0;
+          for (const pos of earningInvestments) {
+            const dailyYield = (pos.currentValue * (pos.earningApy ?? 0) / 100) / 365;
+            const apyStr = pos.earningApy ? `${pos.earningApy.toFixed(2)}%` : '—';
+            printKeyValue(
+              `${pos.asset} via ${pos.earningProtocol ?? 'unknown'}`,
+              `${formatUsd(pos.currentValue)} (${pos.totalAmount.toFixed(4)} ${pos.asset}) @ ${apyStr} APY`,
+            );
+            if (dailyYield > 0.0001) {
+              const dailyStr = dailyYield < 0.01 ? `$${dailyYield.toFixed(4)}` : formatUsd(dailyYield);
+              const monthlyStr = dailyYield * 30 < 0.01 ? `$${(dailyYield * 30).toFixed(4)}` : formatUsd(dailyYield * 30);
+              printLine(pc.dim(`    ~${dailyStr}/day · ~${monthlyStr}/month`));
+            }
+            totalInvestValue += pos.currentValue;
+          }
+
+          if (earningInvestments.length > 1) {
+            printBlank();
+            printKeyValue('Total Earning', formatUsd(totalInvestValue));
+          }
+        }
+
         printBlank();
 
         // --- Sentinel section ---
@@ -143,6 +181,7 @@ export function registerEarn(program: Command) {
         printLine(pc.bold('Quick Actions'));
         printDivider();
         printLine(`  ${pc.dim('t2000 save <amount> [asset]')}     Save stablecoins for yield`);
+        printLine(`  ${pc.dim('t2000 invest earn <asset>')}     Earn yield on investments`);
         printLine(`  ${pc.dim('t2000 sentinel list')}            Browse sentinel bounties`);
         printLine(`  ${pc.dim('t2000 sentinel attack <id>')}     Attack a sentinel`);
         printBlank();

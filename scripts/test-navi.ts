@@ -161,6 +161,12 @@ async function main() {
     assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
   });
 
+  // Clear any residual debt (accrued interest) before full withdrawal
+  try {
+    await agent.repay({ amount: 'all' });
+    console.log('   ℹ  Cleared residual borrow interest');
+  } catch { /* no debt — expected */ }
+
   await runSection('Withdraw All', async () => {
     const balBefore = await agent.balance();
     const result = await agent.withdraw({ amount: 'all' });

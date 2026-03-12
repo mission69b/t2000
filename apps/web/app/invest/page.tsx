@@ -465,10 +465,8 @@ export default function InvestPage() {
           </h2>
 
           <p className="font-mono text-[12px] text-muted leading-[1.7] max-w-[520px] mb-10">
-            Pick a strategy, set an amount — the agent splits your investment across
-            assets in a single atomic Programmable Transaction Block (PTB). No partial
-            fills, no intermediate states. Set up dollar-cost averaging to auto-invest
-            on a schedule.
+            Pick a strategy, set an amount — done. Auto-invest on a schedule
+            with dollar-cost averaging.
           </p>
 
           <div className="grid sm:grid-cols-3 gap-6 mb-12">
@@ -489,7 +487,7 @@ export default function InvestPage() {
             <pre className="font-mono text-[11px] sm:text-xs text-muted leading-[1.8] overflow-x-auto whitespace-pre">
 {`❯ t2000 invest strategy buy layer1 200
 
-  ✓ Invested $200.00 in layer1 strategy (1 atomic transaction)
+  ✓ Invested $200.00 in layer1 strategy
   ──────────────────────────────────────
   ETH:  0.0490 @ $2,040.00
   SUI:  103.09 @ $0.97

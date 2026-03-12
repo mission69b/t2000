@@ -498,13 +498,17 @@ export class SuilendAdapter implements LendingAdapter {
     const caps = await this.fetchObligationCaps(address);
     if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend position found');
 
-    const positions = await this.getPositions(address);
-    const deposited = positions.supplies.find((s) => s.asset === assetKey)?.amount ?? 0;
+    const obligation = await this.fetchObligation(caps[0].obligationId);
+    const dep = obligation.deposits.find(d => d.reserveIdx === reserve.arrayIndex);
+    const ratio = cTokenRatio(reserve);
+    const deposited = dep ? (dep.ctokenAmount * ratio) / 10 ** reserve.mintDecimals : 0;
     const effectiveAmount = Math.min(amount, deposited);
     if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
 
-    const ratio = cTokenRatio(reserve);
-    const ctokenAmount = Math.ceil(effectiveAmount * 10 ** reserve.mintDecimals / ratio);
+    // Full withdrawal: use exact raw ctoken balance to avoid floating-point overshoot
+    const ctokenAmount = (dep && effectiveAmount >= deposited * 0.999)
+      ? dep.ctokenAmount
+      : Math.floor(effectiveAmount * 10 ** reserve.mintDecimals / ratio);
 
     const tx = new Transaction();
     tx.setSender(address);
@@ -559,13 +563,16 @@ export class SuilendAdapter implements LendingAdapter {
     const caps = await this.fetchObligationCaps(address);
     if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend position found');
 
-    const positions = await this.getPositions(address);
-    const deposited = positions.supplies.find((s) => s.asset === assetKey)?.amount ?? 0;
+    const obligation = await this.fetchObligation(caps[0].obligationId);
+    const dep = obligation.deposits.find(d => d.reserveIdx === reserve.arrayIndex);
+    const ratio = cTokenRatio(reserve);
+    const deposited = dep ? (dep.ctokenAmount * ratio) / 10 ** reserve.mintDecimals : 0;
     const effectiveAmount = Math.min(amount, deposited);
     if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
 
-    const ratio = cTokenRatio(reserve);
-    const ctokenAmount = Math.ceil(effectiveAmount * 10 ** reserve.mintDecimals / ratio);
+    const ctokenAmount = (dep && effectiveAmount >= deposited * 0.999)
+      ? dep.ctokenAmount
+      : Math.floor(effectiveAmount * 10 ** reserve.mintDecimals / ratio);
 
     const [ctokens] = tx.moveCall({
       target: `${pkg}::lending_market::withdraw_ctokens`,

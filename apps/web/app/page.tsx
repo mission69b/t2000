@@ -51,7 +51,7 @@ const ACCOUNTS = [
     icon: "◆",
     title: "Investment",
     subtitle: "Buy · Sell · Strategies · DCA · P&L",
-    desc: "Buy crypto directly or use themed strategies (bluechip, layer1) with atomic PTB execution. Auto-invest with dollar-cost averaging. Cost-basis P&L tracking.",
+    desc: "Buy crypto directly or use themed strategies (bluechip, layer1). Auto-invest with dollar-cost averaging. Cost-basis P&L tracking.",
     prompt: "Invest $200 in layer1 strategy",
     cmd: "t2000 invest strategy buy layer1 200",
     href: "/invest",
@@ -192,7 +192,7 @@ const COMPARE_ROWS: {
   {
     feature: "DeFi composability",
     coinbase: "—",
-    t2000: "✓ Atomic PTB multi-step",
+    t2000: "✓ Multi-step, all-or-nothing",
     coinbaseCross: true,
   },
   {

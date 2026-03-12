@@ -85,11 +85,14 @@ async function main() {
 
   // ── Phase 17c: Earn Yield ──
 
-  // Pre-flight: unearn if already earning from a previous run
+  // Pre-flight: clear any stale earning state from a previous run
   try {
     await agent.investUnearn({ asset: 'SUI' });
     console.log('   ℹ  Pre-flight: unearn\'d stale earning position');
-  } catch { /* not earning — expected */ }
+  } catch {
+    // If on-chain unearn failed but portfolio still thinks it's earning, force-clear
+    try { agent.portfolio.recordUnearn('SUI'); } catch { /* already cleared */ }
+  }
 
   await runSection('Invest Earn SUI', async () => {
     const result = await agent.investEarn({ asset: 'SUI' });
