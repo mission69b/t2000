@@ -7,9 +7,9 @@ import {
   AUTO_TOPUP_MIN_USDC,
   MIST_PER_SUI,
 } from '../constants.js';
-import { T2000Error } from '../errors.js';
 import { buildSwapTx } from '../protocols/cetus.js';
-import { requestGasSponsorship, reportGasUsage } from './gasStation.js';
+
+const AUTO_TOPUP_MIN_SUI_FOR_GAS = 5_000_000n; // 0.005 SUI — minimum to self-fund the swap
 
 export interface AutoTopUpResult {
   success: boolean;
@@ -30,9 +30,16 @@ export async function shouldAutoTopUp(
   const suiRaw = BigInt(suiBalance.totalBalance);
   const usdcRaw = BigInt(usdcBalance.totalBalance);
 
-  return suiRaw < AUTO_TOPUP_THRESHOLD && usdcRaw >= AUTO_TOPUP_MIN_USDC;
+  return suiRaw < AUTO_TOPUP_THRESHOLD && suiRaw >= AUTO_TOPUP_MIN_SUI_FOR_GAS && usdcRaw >= AUTO_TOPUP_MIN_USDC;
 }
 
+/**
+ * Self-fund a USDC→SUI swap to replenish gas.
+ *
+ * Uses the agent's remaining SUI to pay for the swap gas (~0.007 SUI).
+ * This avoids the chicken-and-egg problem of needing gas station sponsorship
+ * to get gas, and works even when the gas station is down.
+ */
 export async function executeAutoTopUp(
   client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
@@ -40,7 +47,6 @@ export async function executeAutoTopUp(
   const address = keypair.getPublicKey().toSuiAddress();
   const topupAmountHuman = Number(AUTO_TOPUP_AMOUNT) / 1e6; // $1 USDC
 
-  // Build swap tx via Cetus SDK (handles package upgrades automatically)
   const { tx } = await buildSwapTx({
     client,
     address,
@@ -49,16 +55,9 @@ export async function executeAutoTopUp(
     amount: topupAmountHuman,
   });
 
-  const txJson = tx.serialize();
-  const sponsoredResult = await requestGasSponsorship(txJson, address, 'auto-topup');
-
-  // Sign with agent key and submit
-  const sponsoredTxBytes = Buffer.from(sponsoredResult.txBytes, 'base64');
-  const { signature: agentSig } = await keypair.signTransaction(sponsoredTxBytes);
-
-  const result = await client.executeTransactionBlock({
-    transactionBlock: sponsoredResult.txBytes,
-    signature: [agentSig, sponsoredResult.sponsorSignature],
+  const result = await client.signAndExecuteTransaction({
+    signer: keypair,
+    transaction: tx,
     options: { showEffects: true, showBalanceChanges: true },
   });
 
@@ -78,8 +77,6 @@ export async function executeAutoTopUp(
       }
     }
   }
-
-  reportGasUsage(address, result.digest, 0, 0, 'auto-topup');
 
   return {
     success: true,

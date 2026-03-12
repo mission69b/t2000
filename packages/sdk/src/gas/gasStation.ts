@@ -20,21 +20,27 @@ export interface GasStatusResponse {
 /**
  * Request gas sponsorship from the gas station.
  *
- * Sends both `txJson` (preferred, v0.2.0+ server) and `txBytes` (base64-encoded
- * JSON for backward compat with v0.1.9 server). The server uses whichever field
- * it understands.
+ * Sends `txJson` (preferred) or `txBcsBytes` (base64-encoded BCS from tx.build(),
+ * used when serialize() fails due to v1/v2 SDK mismatch with aggregator).
  */
 export async function requestGasSponsorship(
   txJson: string,
   sender: string,
   type?: GasRequestType,
+  txBcsBytes?: string,
 ): Promise<GasSponsorResponse> {
-  const txBytes = Buffer.from(txJson).toString('base64');
+  const payload: Record<string, unknown> = { sender, type };
+  if (txBcsBytes) {
+    payload.txBcsBytes = txBcsBytes;
+  } else {
+    payload.txJson = txJson;
+    payload.txBytes = Buffer.from(txJson).toString('base64');
+  }
 
   const res = await fetch(`${API_BASE_URL}/api/gas`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ txJson, txBytes, sender, type }),
+    body: JSON.stringify(payload),
   });
 
   const data = (await res.json()) as Record<string, unknown>;

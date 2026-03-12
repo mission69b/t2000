@@ -67,17 +67,17 @@ async function trySelfFunded(
 async function tryAutoTopUpThenSelfFund(
   client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
-  tx: Transaction,
+  buildTx: () => Transaction | Promise<Transaction>,
 ): Promise<GasExecutionResult | null> {
   const address = keypair.getPublicKey().toSuiAddress();
 
   const canTopUp = await shouldAutoTopUp(client, address);
   if (!canTopUp) return null;
 
-  // Let errors propagate so executeWithGas captures the real reason
   await executeAutoTopUp(client, keypair);
 
-  // After top-up, try self-funded again
+  // Rebuild the transaction with fresh object versions (auto-topup changed coin state)
+  const tx = await buildTx();
   tx.setSender(address);
 
   const result = await client.signAndExecuteTransaction({
@@ -103,8 +103,18 @@ async function trySponsored(
   const address = keypair.getPublicKey().toSuiAddress();
   tx.setSender(address);
 
-  const txJson = tx.serialize();
-  const sponsoredResult = await requestGasSponsorship(txJson, address);
+  // Use serialize() for pure v2 transactions, fall back to build() for
+  // mixed v1/v2 transactions (e.g. Cetus aggregator adds v1 commands).
+  let txJson: string | undefined;
+  let txBcsBase64: string | undefined;
+  try {
+    txJson = tx.serialize();
+  } catch {
+    const bcsBytes = await tx.build({ client });
+    txBcsBase64 = Buffer.from(bcsBytes).toString('base64');
+  }
+
+  const sponsoredResult = await requestGasSponsorship(txJson ?? '', address, undefined, txBcsBase64);
 
   const sponsoredTxBytes = Buffer.from(sponsoredResult.txBytes, 'base64');
   const { signature: agentSig } = await keypair.signTransaction(sponsoredTxBytes);
@@ -162,10 +172,9 @@ export async function executeWithGas(
     errors.push(`self-funded: ${msg}`);
   }
 
-  // Step 2: Try auto-topup then self-fund
+  // Step 2: Try auto-topup (self-fund swap for gas) then self-fund the main tx
   try {
-    const tx = await buildTx();
-    const result = await tryAutoTopUpThenSelfFund(client, keypair, tx);
+    const result = await tryAutoTopUpThenSelfFund(client, keypair, buildTx);
     if (result) return result;
     errors.push('auto-topup: not eligible (low USDC or sufficient SUI)');
   } catch (err) {

@@ -45,12 +45,14 @@ async function determineGasType(agentAddress: string): Promise<GasRequestType> {
 /**
  * Sponsor a transaction.
  *
- * Accepts the transaction as either:
- *   - txJson: a JSON string from Transaction.serialize() (preferred, v0.1.9+)
- *   - txBytes: base64-encoded BCS bytes (legacy, pre-v0.1.9)
+ * Accepts the transaction as:
+ *   - txJson: JSON string from Transaction.serialize() (preferred)
+ *   - txBytes: base64-encoded JSON bytes (legacy compat)
+ *   - txBcsBytes: base64-encoded BCS bytes from tx.build() (used when
+ *     serialize() fails due to v1/v2 SDK mismatch with aggregators)
  */
 export async function sponsorTransaction(
-  input: { txJson?: string; txBytes?: string },
+  input: { txJson?: string; txBytes?: string; txBcsBytes?: string },
   senderAddress: string,
   requestType?: GasRequestType,
 ): Promise<GasSponsorResult> {
@@ -73,13 +75,47 @@ export async function sponsorTransaction(
     const gasKeypair = getGasStationWallet();
     const gasAddress = gasKeypair.getPublicKey().toSuiAddress();
 
+    // When we receive pre-built BCS bytes (from tx.build()), the transaction
+    // is already fully resolved. We just need to dry-run and sign it.
+    if (input.txBcsBytes) {
+      const bcsBytes = Buffer.from(input.txBcsBytes, 'base64');
+      const b64 = input.txBcsBytes;
+
+      const dryRun = await client.dryRunTransactionBlock({
+        transactionBlock: b64,
+      });
+
+      const gasUsed = dryRun.effects?.gasUsed;
+      let gasCostSui = 0;
+      if (gasUsed) {
+        gasCostSui = (
+          Number(gasUsed.computationCost) +
+          Number(gasUsed.storageCost) -
+          Number(gasUsed.storageRebate)
+        ) / 1e9;
+      }
+
+      if (type === 'fallback' && exceedsGasFeeCeiling(gasCostSui)) {
+        throw new Error(`GAS_FEE_EXCEEDED: Gas cost $${gasCostToUsd(gasCostSui).toFixed(4)} exceeds $${GAS_FEE_CEILING} ceiling`);
+      }
+
+      const { signature } = await gasKeypair.signTransaction(bcsBytes);
+
+      return {
+        txBytes: b64,
+        sponsorSignature: signature,
+        gasEstimateUsd: gasCostToUsd(gasCostSui),
+        type,
+      };
+    }
+
     let tx: InstanceType<typeof Transaction>;
     if (input.txJson) {
       tx = Transaction.from(input.txJson);
     } else if (input.txBytes) {
       tx = Transaction.from(Buffer.from(input.txBytes, 'base64'));
     } else {
-      throw new Error('INVALID_REQUEST: txJson or txBytes required');
+      throw new Error('INVALID_REQUEST: txJson, txBytes, or txBcsBytes required');
     }
 
     tx.setSender(senderAddress);

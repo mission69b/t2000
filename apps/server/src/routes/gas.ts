@@ -27,13 +27,14 @@ gas.post('/api/gas', async (c) => {
   const body = await c.req.json<{
     txJson?: string;
     txBytes?: string;
+    txBcsBytes?: string;
     sender: string;
     type?: GasRequestType;
     proof?: string;
   }>();
 
-  if ((!body.txJson && !body.txBytes) || !body.sender) {
-    return c.json({ error: 'txJson (or txBytes) and sender are required' }, 400);
+  if ((!body.txJson && !body.txBytes && !body.txBcsBytes) || !body.sender) {
+    return c.json({ error: 'txJson, txBytes, txBcsBytes, or sender missing' }, 400);
   }
 
   if (!isValidSuiAddress(body.sender)) {
@@ -58,7 +59,7 @@ gas.post('/api/gas', async (c) => {
 
   try {
     const result = await sponsorTransaction(
-      { txJson: body.txJson, txBytes: body.txBytes },
+      { txJson: body.txJson, txBytes: body.txBytes, txBcsBytes: body.txBcsBytes },
       body.sender,
       body.type,
     );
