@@ -173,6 +173,7 @@ const COMPARE_ROWS: {
   { feature: "Investment (spot)", coinbase: "—", t2000: "✓ SUI, BTC, ETH + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn lending APY while holding", coinbaseCross: true },
   { feature: "Borrow against investments", coinbase: "—", t2000: "✓ Invested assets count as collateral", coinbaseCross: true },
+  { feature: "Margin trading", coinbase: "—", t2000: "Coming soon — leveraged positions on SUI, BTC, ETH", coinbaseCross: true, comingSoon: true },
   {
     feature: "x402 client",
     coinbase: "✓ Base / Solana",

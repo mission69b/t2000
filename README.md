@@ -377,6 +377,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Investment (spot) | — | ✓ SUI, BTC, ETH with cost-basis P&L |
 | Yield on investments | — | ✓ Earn lending APY on holdings while keeping price exposure |
 | Borrow against investments | — | ✓ Deposited investments count as collateral for credit |
+| Margin trading | — | 🔜 Coming soon — leveraged positions on SUI, BTC, ETH |
 | Strategies + DCA | — | ✓ Atomic PTB multi-asset buys, dollar-cost averaging |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
