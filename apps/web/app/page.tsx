@@ -474,16 +474,17 @@ export default function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20">
           {/* Left: Terminal showing setup */}
-          <div className="bg-panel border border-border-bright rounded-sm overflow-hidden max-h-[320px]">
+          <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
             <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
               Setup
             </div>
-            <pre className="px-4 sm:px-5 py-4 text-xs sm:text-sm overflow-x-auto scrollbar-hide leading-[1.9]">
+            <pre className="px-4 sm:px-5 py-5 text-xs sm:text-sm overflow-x-auto scrollbar-hide leading-[2]">
               <span className="text-muted/40">{`# macOS / Linux`}</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">curl -fsSL https://t2000.ai/install.sh | bash</span>{"\n\n"}
               <span className="text-muted/40">{`# or Node.js`}</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">npm i -g @t2000/cli</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">t2000 init</span>{"\n"}
+              <span className="text-muted">$</span> <span className="text-accent">t2000 config set maxPerTx 100</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">t2000 mcp install</span>{"\n"}
               <span className="text-muted/50">{"\n"}  {"✓"} Claude Desktop  configured{"\n"}  {"✓"} Cursor (global)  configured</span>
             </pre>
