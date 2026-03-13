@@ -25,17 +25,22 @@ export function HomeShowcase() {
 
   return (
     <section className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
-      <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-        See it in action
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-14">
+        <div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+            See it in action
+          </div>
+          <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
+            Talk to your money.
+            <br />
+            <em className="italic text-accent">Watch it work.</em>
+          </h2>
+        </div>
+        <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
+          Use natural language through any AI platform, or run CLI commands
+          directly. Every interaction below mirrors the real product.
+        </p>
       </div>
-      <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-3 tracking-tight">
-        Talk to your money.{" "}
-        <em className="italic text-accent">Watch it work.</em>
-      </h2>
-      <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-8">
-        Use natural language through any AI platform, or run CLI commands
-        directly. Every interaction below mirrors the real product.
-      </p>
 
       <div className="flex gap-3 mb-6">
         <button
@@ -78,7 +83,7 @@ export function HomeShowcase() {
             ))}
           </nav>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
             <div className="flex justify-center">
               <DemoChat
                 key={activeChatId}
@@ -89,10 +94,10 @@ export function HomeShowcase() {
             </div>
             <div className="space-y-6">
               <div>
-                <h3 className="text-base font-mono text-foreground mb-2">
+                <h3 className="text-lg font-mono text-foreground mb-2">
                   {activeChat.title}
                 </h3>
-                <p className="text-muted text-xs leading-relaxed">
+                <p className="text-muted text-sm leading-relaxed">
                   {activeChat.description}
                 </p>
               </div>
@@ -138,7 +143,7 @@ export function HomeShowcase() {
             ))}
           </nav>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
             <div className="flex justify-center">
               <DemoTerminal
                 key={activeCliId}
@@ -149,10 +154,10 @@ export function HomeShowcase() {
             </div>
             <div className="space-y-6">
               <div>
-                <h3 className="text-base font-mono text-foreground mb-2">
+                <h3 className="text-lg font-mono text-foreground mb-2">
                   {activeCli.title}
                 </h3>
-                <p className="text-muted text-xs leading-relaxed">
+                <p className="text-muted text-sm leading-relaxed">
                   {activeCli.description}
                 </p>
               </div>
