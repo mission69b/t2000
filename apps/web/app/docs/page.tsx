@@ -384,6 +384,10 @@ function QuickStart({
       </p>
 
       <h2 id="qs-install">1. Install t2000</h2>
+      <TryIt cmd="curl -fsSL https://t2000.ai/install.sh | bash" note="macOS / Linux" />
+      <p className="text-[12px] text-white/40 -mt-3 mb-6">
+        Or install manually with npm:
+      </p>
       <TryIt cmd="npm install -g @t2000/cli" note="Node.js 18+ required" />
 
       <h2 id="qs-init">2. Create your bank account</h2>
@@ -517,7 +521,14 @@ function InstallSection() {
         ]}
       />
 
-      <h2 id="inst-global">Global install</h2>
+      <h2 id="inst-curl">One-line install (recommended)</h2>
+      <CodeBlock lang="bash">
+        {S.g("$")} curl -fsSL https://t2000.ai/install.sh | bash{"\n\n"}
+        {S.m("Checks for Node.js 18+, installs @t2000/cli globally,")}{"\n"}
+        {S.m("runs t2000 init, and optionally configures MCP.")}
+      </CodeBlock>
+
+      <h2 id="inst-global">Manual install (npm)</h2>
       <CodeBlock lang="bash">
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
