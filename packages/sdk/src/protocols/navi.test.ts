@@ -62,7 +62,7 @@ describe('navi', () => {
         maxAmount = Math.max(0, supplied - (borrowed * MIN_HEALTH_FACTOR / ltv));
       }
       const remainingSupply = supplied - maxAmount;
-      const hfAfter = borrowed > 0 ? remainingSupply / borrowed : Infinity;
+      const hfAfter = borrowed > 0 ? (remainingSupply * ltv) / borrowed : Infinity;
       const currentHF = borrowed > 0 ? supplied / borrowed : Infinity;
       return { maxAmount, healthFactorAfter: hfAfter, currentHF };
     }
@@ -77,7 +77,7 @@ describe('navi', () => {
     it('limits withdrawal to maintain health factor', () => {
       const r = computeMaxWithdraw(100, 30);
       expect(r.maxAmount).toBe(40);
-      expect(r.healthFactorAfter).toBe(2);
+      expect(r.healthFactorAfter).toBe(1.5);
       expect(r.currentHF).toBeCloseTo(3.33, 1);
     });
 
@@ -90,6 +90,13 @@ describe('navi', () => {
     it('handles custom ltv', () => {
       const r = computeMaxWithdraw(100, 20, 0.8);
       expect(r.maxAmount).toBeCloseTo(62.5, 1);
+    });
+
+    it('healthFactorAfter includes ltv multiplier', () => {
+      const r = computeMaxWithdraw(200, 50, 0.75);
+      expect(r.maxAmount).toBe(100);
+      const remaining = 200 - 100;
+      expect(r.healthFactorAfter).toBeCloseTo((remaining * 0.75) / 50, 5);
     });
   });
 
@@ -216,6 +223,20 @@ describe('navi', () => {
   describe('NAVI balance decimals', () => {
     const NAVI_BALANCE_DECIMALS = 9;
 
+    function naviStorageDecimals(poolId: number, tokenDecimals: number): number {
+      if (poolId <= 10) return NAVI_BALANCE_DECIMALS;
+      return tokenDecimals;
+    }
+
+    function compoundBalance(rawBalance: bigint, currentIndex: string, pool?: { id: number; token: { decimals: number } }): number {
+      if (!rawBalance || !currentIndex || currentIndex === '0') return 0;
+      const scale = BigInt('1' + '0'.repeat(RATE_DECIMALS));
+      const half = scale / 2n;
+      const result = (rawBalance * BigInt(currentIndex) + half) / scale;
+      const decimals = pool ? naviStorageDecimals(pool.id, pool.token.decimals) : NAVI_BALANCE_DECIMALS;
+      return Number(result) / 10 ** decimals;
+    }
+
     it('parses USDC supply balance with 9 decimals', () => {
       const supplyBalance = 2_000_000_289;
       const usdc = supplyBalance / 10 ** NAVI_BALANCE_DECIMALS;
@@ -232,6 +253,71 @@ describe('navi', () => {
       const dustBalance = 1155;
       const usdc = dustBalance / 10 ** NAVI_BALANCE_DECIMALS;
       expect(usdc).toBeLessThan(0.0001);
+    });
+
+    describe('naviStorageDecimals', () => {
+      it('returns 9 for original pools (id <= 10)', () => {
+        expect(naviStorageDecimals(0, 9)).toBe(9);  // SUI
+        expect(naviStorageDecimals(1, 6)).toBe(9);  // wUSDC
+        expect(naviStorageDecimals(10, 6)).toBe(9); // USDC
+      });
+
+      it('returns native token decimals for newer pools (id >= 11)', () => {
+        expect(naviStorageDecimals(11, 8)).toBe(8);  // suiETH
+        expect(naviStorageDecimals(19, 6)).toBe(6);  // suiUSDT
+        expect(naviStorageDecimals(33, 6)).toBe(6);  // suiUSDe
+        expect(naviStorageDecimals(34, 6)).toBe(6);  // USDsui
+      });
+    });
+
+    describe('compoundBalance with pool-aware decimals', () => {
+      const index1x = BigInt('1' + '0'.repeat(RATE_DECIMALS));
+
+      it('old pool USDC (id=10, 6 dec) uses 9 storage decimals', () => {
+        const raw = 5_000_000_000n;
+        const pool = { id: 10, token: { decimals: 6 } };
+        const result = compoundBalance(raw, index1x.toString(), pool);
+        expect(result).toBeCloseTo(5.0, 1);
+      });
+
+      it('new pool suiUSDT (id=19, 6 dec) uses native 6 decimals', () => {
+        const raw = 1_000_000n;
+        const pool = { id: 19, token: { decimals: 6 } };
+        const result = compoundBalance(raw, index1x.toString(), pool);
+        expect(result).toBeCloseTo(1.0, 1);
+      });
+
+      it('new pool suiETH (id=11, 8 dec) uses native 8 decimals', () => {
+        const raw = 100_000_000n;
+        const pool = { id: 11, token: { decimals: 8 } };
+        const result = compoundBalance(raw, index1x.toString(), pool);
+        expect(result).toBeCloseTo(1.0, 1);
+      });
+
+      it('falls back to 9 decimals when pool is not provided', () => {
+        const raw = 5_000_000_000n;
+        const result = compoundBalance(raw, index1x.toString());
+        expect(result).toBeCloseTo(5.0, 1);
+      });
+
+      it('returns 0 for zero raw balance', () => {
+        const pool = { id: 19, token: { decimals: 6 } };
+        expect(compoundBalance(0n, index1x.toString(), pool)).toBe(0);
+      });
+
+      it('returns 0 for zero index', () => {
+        const pool = { id: 19, token: { decimals: 6 } };
+        expect(compoundBalance(1_000_000n, '0', pool)).toBe(0);
+      });
+
+      it('USDT with 1e9 divisor would give wrong value (verifies bug is gone)', () => {
+        const raw = 927_395n;
+        const index = (BigInt('1088') * BigInt('1' + '0'.repeat(RATE_DECIMALS - 3))).toString();
+        const wrongResult = compoundBalance(raw, index);
+        const correctResult = compoundBalance(raw, index, { id: 19, token: { decimals: 6 } });
+        expect(wrongResult).toBeLessThan(0.01);
+        expect(correctResult).toBeGreaterThan(0.5);
+      });
     });
   });
 

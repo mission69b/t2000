@@ -96,10 +96,26 @@ describe('PortfolioManager', () => {
 
     it('caps sell amount to available', () => {
       pm.recordBuy(makeTrade({ amount: 50, price: 1.0, usdValue: 50 }));
-      const pnl = pm.recordSell(makeTrade({ type: 'sell', amount: 100, price: 1.0, usdValue: 50 }));
+      const pnl = pm.recordSell(makeTrade({ type: 'sell', amount: 100, price: 1.0, usdValue: 100 }));
       expect(pnl).toBe(0);
       const pos = pm.getPosition('SUI')!;
       expect(pos.totalAmount).toBe(0);
+    });
+
+    it('scales usdValue proportionally when sell is capped', () => {
+      pm.recordBuy(makeTrade({ amount: 50, price: 2.0, usdValue: 100 }));
+      // Try to sell 200 units at $3 ($600) but only 50 available
+      // effectiveUsdValue = $600 * (50/200) = $150
+      // costOfSold = $2 * 50 = $100
+      // realizedPnL = $150 - $100 = $50
+      const pnl = pm.recordSell(makeTrade({ type: 'sell', amount: 200, price: 3.0, usdValue: 600 }));
+      expect(pnl).toBeCloseTo(50, 5);
+    });
+
+    it('does not scale usdValue when sell fits within position', () => {
+      pm.recordBuy(makeTrade({ amount: 100, price: 1.0, usdValue: 100 }));
+      const pnl = pm.recordSell(makeTrade({ type: 'sell', amount: 50, price: 2.0, usdValue: 100 }));
+      expect(pnl).toBe(50); // $100 - (50 * $1) = $50
     });
 
     it('accumulates realized P&L across sells', () => {
@@ -174,6 +190,60 @@ describe('PortfolioManager', () => {
       const pos = pm.getPosition('SUI')!;
       expect(pos.avgPrice).toBe(2.0); // avg price doesn't change on sell
       expect(pos.costBasis).toBe(100); // 50 remaining * $2 avg
+    });
+  });
+
+  describe('recordStrategyBuy / recordStrategySell', () => {
+    it('tracks strategy position separately', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      const positions = pm.getStrategyPositions('bluechip');
+      expect(positions).toHaveLength(1);
+      expect(positions[0].asset).toBe('ETH');
+      expect(positions[0].totalAmount).toBe(0.5);
+    });
+
+    it('scales usdValue proportionally when strategy sell is capped', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      // Try to sell 1 ETH at $3000 ($3000) but only 0.5 available
+      // effectiveUsdValue = $3000 * (0.5/1.0) = $1500
+      // costOfSold = $2000 * 0.5 = $1000
+      // realizedPnL = $1500 - $1000 = $500
+      const pnl = pm.recordStrategySell('bluechip', makeTrade({
+        type: 'sell', asset: 'ETH', amount: 1.0, price: 3000, usdValue: 3000,
+      }));
+      expect(pnl).toBeCloseTo(500, 5);
+    });
+
+    it('clears strategy when all positions reach zero', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      pm.recordStrategySell('bluechip', makeTrade({
+        type: 'sell', asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000,
+      }));
+      expect(pm.getStrategyPositions('bluechip')).toHaveLength(0);
+    });
+
+    it('throws when selling from nonexistent strategy', () => {
+      expect(() => pm.recordStrategySell('ghost', makeTrade({ type: 'sell', asset: 'ETH' }))).toThrow('No positions');
+    });
+  });
+
+  describe('closePosition / clearStrategy', () => {
+    it('closePosition zeroes out a direct position', () => {
+      pm.recordBuy(makeTrade({ amount: 100, price: 1.0, usdValue: 100 }));
+      pm.closePosition('SUI');
+      const pos = pm.getPosition('SUI')!;
+      expect(pos.totalAmount).toBe(0);
+      expect(pos.costBasis).toBe(0);
+    });
+
+    it('clearStrategy removes all strategy tracking data', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      pm.clearStrategy('bluechip');
+      expect(pm.getStrategyPositions('bluechip')).toHaveLength(0);
+    });
+
+    it('clearStrategy is safe on nonexistent strategy', () => {
+      expect(() => pm.clearStrategy('ghost')).not.toThrow();
     });
   });
 });
