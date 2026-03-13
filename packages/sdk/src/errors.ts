@@ -134,11 +134,14 @@ export function parseMoveAbortMessage(msg: string): string {
   if (abortMatch) {
     const code = parseInt(abortMatch[1], 10);
     const mapped = mapMoveAbortCode(code);
-    if (mapped.startsWith('Move abort code:')) {
-      const moduleMatch = msg.match(/in '([^']+)'/);
-      if (moduleMatch) return `${mapped} (in ${moduleMatch[1]})`;
-    }
-    return mapped;
+
+    const moduleMatch = msg.match(/Identifier\("([^"]+)"\)/) ?? msg.match(/in '([^']+)'/);
+    const fnMatch = msg.match(/function_name:\s*Some\("([^"]+)"\)/);
+    const suffix = moduleMatch
+      ? ` [${moduleMatch[1]}${fnMatch ? `::${fnMatch[1]}` : ''}]`
+      : '';
+
+    return `${mapped}${suffix}`;
   }
   return msg;
 }

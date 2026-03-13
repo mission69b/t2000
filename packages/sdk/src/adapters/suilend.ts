@@ -20,6 +20,7 @@ const USDC_TYPE = SUPPORTED_ASSETS.USDC.type;
 const WAD = 1e18;
 const MIN_HEALTH_FACTOR = 1.5;
 const CLOCK = '0x6';
+const SUI_SYSTEM_STATE = '0x5';
 
 const LENDING_MARKET_ID = '0x84030d26d85eaa7035084a057f2f11f701b7e2e4eda87551becbc7c97505ece1';
 const LENDING_MARKET_TYPE = '0xf95b06141ed4a174f239417323bde3f209b972f5930d8521ea38a52aff3a6ddf::suilend::MAIN_POOL';
@@ -37,6 +38,9 @@ export const descriptor: ProtocolDescriptor = {
     'lending_market::create_obligation': 'save',
     'lending_market::withdraw_ctokens': 'withdraw',
     'lending_market::redeem_ctokens_and_withdraw_liquidity': 'withdraw',
+    'lending_market::redeem_ctokens_and_withdraw_liquidity_request': 'withdraw',
+    'lending_market::fulfill_liquidity_request': 'withdraw',
+    'lending_market::unstake_sui_from_staker': 'withdraw',
     'lending_market::borrow': 'borrow',
     'lending_market::repay': 'repay',
   },
@@ -505,10 +509,11 @@ export class SuilendAdapter implements LendingAdapter {
     const effectiveAmount = Math.min(amount, deposited);
     if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
 
-    // Full withdrawal: use exact raw ctoken balance to avoid floating-point overshoot
-    const ctokenAmount = (dep && effectiveAmount >= deposited * 0.999)
-      ? dep.ctokenAmount
-      : Math.floor(effectiveAmount * 10 ** reserve.mintDecimals / ratio);
+    const U64_MAX = '18446744073709551615';
+    const isFullWithdraw = dep && effectiveAmount >= deposited * 0.999;
+    const withdrawArg = isFullWithdraw
+      ? U64_MAX
+      : String(Math.floor(effectiveAmount * 10 ** reserve.mintDecimals / ratio));
 
     const tx = new Transaction();
     tx.setSender(address);
@@ -521,28 +526,11 @@ export class SuilendAdapter implements LendingAdapter {
         tx.pure.u64(reserve.arrayIndex),
         tx.object(caps[0].id),
         tx.object(CLOCK),
-        tx.pure.u64(ctokenAmount),
+        tx.pure('u64', BigInt(withdrawArg)),
       ],
     });
 
-    const exemptionType = `${SUILEND_PACKAGE}::lending_market::RateLimiterExemption<${LENDING_MARKET_TYPE}, ${assetInfo.type}>`;
-    const [none] = tx.moveCall({
-      target: '0x1::option::none',
-      typeArguments: [exemptionType],
-    });
-
-    const [coin] = tx.moveCall({
-      target: `${pkg}::lending_market::redeem_ctokens_and_withdraw_liquidity`,
-      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
-      arguments: [
-        tx.object(LENDING_MARKET_ID),
-        tx.pure.u64(reserve.arrayIndex),
-        tx.object(CLOCK),
-        ctokens,
-        none,
-      ],
-    });
-
+    const coin = this.redeemCtokens(tx, pkg, reserve, assetInfo.type, assetKey, ctokens);
     tx.transferObjects([coin], address);
 
     return { tx, effectiveAmount };
@@ -586,15 +574,33 @@ export class SuilendAdapter implements LendingAdapter {
       ],
     });
 
-    const exemptionType = `${SUILEND_PACKAGE}::lending_market::RateLimiterExemption<${LENDING_MARKET_TYPE}, ${assetInfo.type}>`;
+    const coin = this.redeemCtokens(tx, pkg, reserve, assetInfo.type, assetKey, ctokens);
+    return { coin: coin as TransactionObjectArgument, effectiveAmount };
+  }
+
+  /**
+   * 3-step cToken redemption matching the official Suilend SDK flow:
+   * 1. redeem_ctokens_and_withdraw_liquidity_request — creates a LiquidityRequest
+   * 2. unstake_sui_from_staker — (SUI only) unstakes from validators to replenish available_liquidity
+   * 3. fulfill_liquidity_request — splits underlying tokens from the reserve
+   */
+  private redeemCtokens(
+    tx: Transaction,
+    pkg: string,
+    reserve: Reserve,
+    coinType: string,
+    assetKey: string,
+    ctokens: TransactionObjectArgument,
+  ): TransactionObjectArgument {
+    const exemptionType = `${SUILEND_PACKAGE}::lending_market::RateLimiterExemption<${LENDING_MARKET_TYPE}, ${coinType}>`;
     const [none] = tx.moveCall({
       target: '0x1::option::none',
       typeArguments: [exemptionType],
     });
 
-    const [coin] = tx.moveCall({
-      target: `${pkg}::lending_market::redeem_ctokens_and_withdraw_liquidity`,
-      typeArguments: [LENDING_MARKET_TYPE, assetInfo.type],
+    const [liquidityRequest] = tx.moveCall({
+      target: `${pkg}::lending_market::redeem_ctokens_and_withdraw_liquidity_request`,
+      typeArguments: [LENDING_MARKET_TYPE, coinType],
       arguments: [
         tx.object(LENDING_MARKET_ID),
         tx.pure.u64(reserve.arrayIndex),
@@ -604,7 +610,30 @@ export class SuilendAdapter implements LendingAdapter {
       ],
     });
 
-    return { coin: coin as TransactionObjectArgument, effectiveAmount };
+    if (assetKey === 'SUI') {
+      tx.moveCall({
+        target: `${pkg}::lending_market::unstake_sui_from_staker`,
+        typeArguments: [LENDING_MARKET_TYPE],
+        arguments: [
+          tx.object(LENDING_MARKET_ID),
+          tx.pure.u64(reserve.arrayIndex),
+          liquidityRequest,
+          tx.object(SUI_SYSTEM_STATE),
+        ],
+      });
+    }
+
+    const [coin] = tx.moveCall({
+      target: `${pkg}::lending_market::fulfill_liquidity_request`,
+      typeArguments: [LENDING_MARKET_TYPE, coinType],
+      arguments: [
+        tx.object(LENDING_MARKET_ID),
+        tx.pure.u64(reserve.arrayIndex),
+        liquidityRequest,
+      ],
+    });
+
+    return coin;
   }
 
   async addSaveToTx(

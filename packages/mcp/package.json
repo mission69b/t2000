@@ -1,6 +1,6 @@
 {
   "name": "@t2000/mcp",
-  "version": "0.16.15",
+  "version": "0.16.18",
   "description": "MCP server for AI agent bank accounts on Sui — 21 tools, 6 prompts, stdio transport",
   "type": "module",
   "main": "./dist/index.js",
@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
-    "@t2000/sdk": "workspace:*",
+    "@t2000/sdk": "^0.16.17",
     "zod": "^3.25.0"
   },
   "devDependencies": {

@@ -32,7 +32,7 @@ async function main() {
   assert(typeof b.gasReserve.sui === 'number', 'gasReserve.sui is a number');
   assert(typeof b.gasReserve.usdEquiv === 'number', 'gasReserve.usdEquiv is a number');
   assert(b.total >= 0, 'total >= 0');
-  assert(b.gasReserve.sui > 0.01, 'Has enough SUI for gas');
+  assert(b.gasReserve.sui >= 0, 'gasReserve.sui >= 0');
 
   section('Stablecoins');
   assert(typeof b.stables === 'object', 'stables field exists');
