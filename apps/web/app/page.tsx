@@ -161,7 +161,7 @@ const COMPARE_ROWS: {
   {
     feature: "Borrow / credit line",
     coinbase: "—",
-    t2000: "✓ Collateralized lending",
+    t2000: "✓ Borrow against savings + investments",
     coinbaseCross: true,
   },
   {
@@ -171,6 +171,8 @@ const COMPARE_ROWS: {
     bothCheck: true,
   },
   { feature: "Investment (spot)", coinbase: "—", t2000: "✓ SUI, BTC, ETH + strategies + DCA", coinbaseCross: true },
+  { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn lending APY while holding", coinbaseCross: true },
+  { feature: "Borrow against investments", coinbase: "—", t2000: "✓ Invested assets count as collateral", coinbaseCross: true },
   {
     feature: "x402 client",
     coinbase: "✓ Base / Solana",
@@ -222,7 +224,7 @@ const COMPARE_ROWS: {
   {
     feature: "MCP Server",
     coinbase: "—",
-    t2000: "✓ 21 tools + 12 prompts",
+    t2000: "✓ 21 tools + 12 AI advisor prompts",
     coinbaseCross: true,
   },
   {
