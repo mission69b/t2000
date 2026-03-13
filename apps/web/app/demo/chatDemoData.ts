@@ -264,4 +264,165 @@ export const chatDemos: ChatDemo[] = [
       },
     ],
   },
+
+  {
+    id: "chat-payday",
+    title: "I Just Got Paid",
+    description:
+      "Tell the AI you received money and it suggests the optimal split — savings, investments, debt repayment — based on your current financial position.",
+    messages: [
+      { role: "user", text: "I just got paid $500. What should I do with it?", delay: 0 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_balance", "t2000_health", "t2000_rates", "t2000_portfolio"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">💰 ALLOCATION PLAN — $500</div>` +
+          `<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:8px">Based on your current position:</div>` +
+          tbl([
+            ["1. Repay credit", "$1.00 → eliminate 7.67% interest", "red"],
+            ["2. Save", "$300.00 → NAVI · 4.86% APY", "hi"],
+            ["3. Invest", "$150.00 → bluechip strategy", "hi"],
+            ["4. Keep buffer", "$49.00 → checking (spending)", ""],
+          ]) +
+          `<div style="margin-top:10px;font-size:11px;font-weight:500">Why this split:</div>` +
+          note("• Repay first — $1 debt costs more than savings earn<br>• 60% savings — stable yield, no price risk<br>• 30% investment — growth exposure via diversified strategy<br>• 10% buffer — covers ~2 weeks of typical agent spending"),
+        delay: 300,
+      },
+      { role: "user", text: "Perfect — execute all of it", delay: 800 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_repay", "t2000_save", "t2000_strategy"],
+        html: tbl([
+          ["✓ Repaid", "$1.00 — debt cleared", "hi"],
+          ["✓ Saved", "$300.00 → NAVI · 4.86% APY", "hi"],
+          ["✓ Invested", "$150.00 → bluechip (BTC/ETH/SUI)", "hi"],
+          ["Checking", "$49.00 remaining", ""],
+          ["Tx", '<span style="color:#4a90e2">3 transactions confirmed</span>', ""],
+        ]) + note("All done. You're now earning on $359 in savings + $155 in investments."),
+        delay: 300,
+      },
+    ],
+  },
+
+  {
+    id: "chat-optimize",
+    title: "Optimize My Yield",
+    description:
+      "Ask the AI to find better rates. It compares protocols, calculates break-even economics, and moves your savings to the highest yield — all in one conversation.",
+    messages: [
+      { role: "user", text: "Am I getting the best yield on my savings?", delay: 0 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_positions", "t2000_rates", "t2000_rebalance"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">📊 YIELD ANALYSIS</div>` +
+          `<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px">Current: $9.26 USDC on NAVI @ 4.86% APY</div>` +
+          tbl([
+            ["Best available", "suiUSDT on NAVI · 5.37% APY", "hi"],
+            ["APY gain", "+0.51%", "hi"],
+            ["Extra yield", "+$0.05/year on $9.26", ""],
+            ["Swap cost", "~$0.00", ""],
+            ["Break-even", "6 days", ""],
+          ]) +
+          note("Small position so absolute gain is modest, but the rate is strictly better with a 6-day break-even. Worth it if you plan to keep saving."),
+        delay: 300,
+      },
+      { role: "user", text: "Do it", delay: 600 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_rebalance"],
+        html: tbl([
+          ["Rebalanced", "$9.26 USDC → suiUSDT", "hi"],
+          ["New APY", "5.37%", "hi"],
+          ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/HgXg…</span>', ""],
+        ]) + note("Savings now earning at the best available rate across all protocols."),
+        delay: 300,
+      },
+    ],
+  },
+
+  {
+    id: "chat-lock",
+    title: "Emergency Lock",
+    description:
+      "Panic button — lock your agent instantly. All operations freeze. Only a human with the PIN can unlock via the CLI. Shows the safety net in action.",
+    messages: [
+      { role: "user", text: "Something feels wrong. Lock everything now.", delay: 0 },
+      { role: "thinking", delay: 200 },
+      {
+        role: "ai",
+        tools: ["t2000_lock"],
+        html:
+          `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:15px">🔒</span>
+            <span style="font-weight:600;font-size:12px;color:#00d68f">Agent locked immediately</span>
+          </div>` +
+          tbl([
+            ["Status", "All operations frozen", "hi"],
+            ["Sends", "Blocked ✕", "red"],
+            ["Saves", "Blocked ✕", "red"],
+            ["Investments", "Blocked ✕", "red"],
+            ["Funds", "Safe — nothing moved", "hi"],
+          ]) +
+          note("Only you can unlock via the terminal: <span style='color:#e8e6e0'>t2000 unlock</span> (requires PIN). No AI — including me — can resume operations."),
+        delay: 200,
+      },
+      { role: "user", text: "Can you unlock it?", delay: 800 },
+      {
+        role: "ai",
+        html:
+          `<div style="font-size:12px">No — by design. Unlock is <strong>CLI-only</strong> and requires your PIN. This ensures no AI agent can circumvent a locked account, even if compromised.</div>` +
+          note("When you're ready: open a terminal and run <span style='color:#e8e6e0'>t2000 unlock</span>"),
+        delay: 300,
+      },
+    ],
+  },
+
+  {
+    id: "chat-x402",
+    title: "Pay & Analyze — x402",
+    description:
+      "The AI pays for premium data via x402 micropayment, gets the response, and analyzes it — all autonomously. No API key needed, no subscription, just USDC.",
+    messages: [
+      { role: "user", text: "Get me the latest crypto prices from the paid API", delay: 0 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_balance"],
+        html:
+          `<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px">Calling api.marketdata.dev — requires $0.01 USDC payment via x402</div>` +
+          tbl([
+            ["Checking", "$69.60 — sufficient", "hi"],
+            ["Cost", "$0.01 USDC", ""],
+          ]) +
+          note("Paying and fetching..."),
+        delay: 300,
+      },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_pay"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">📈 Market Prices (live)</div>` +
+          tbl([
+            ["BTC", "$97,421.50", "hi"],
+            ["ETH", "$3,201.80", "hi"],
+            ["SUI", "$1.03", "hi"],
+          ]) +
+          `<div style="margin-top:10px;font-size:11px;font-weight:500">Your portfolio context:</div>` +
+          tbl([
+            ["Your SUI", "4.85 tokens @ avg $1.03", ""],
+            ["Current P&L", "+$0.02 (+0.4%)", "hi"],
+            ["Paid", "$0.01 via x402", ""],
+            ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/8kPq…</span>', ""],
+          ]) +
+          note("Prices fetched and paid for automatically — no API key needed. SUI is near your cost basis."),
+        delay: 300,
+      },
+    ],
+  },
 ];
