@@ -296,6 +296,38 @@ describe('PortfolioManager', () => {
     });
   });
 
+  describe('getAllStrategyKeys / hasStrategyPositions', () => {
+    it('getAllStrategyKeys returns empty array initially', () => {
+      expect(pm.getAllStrategyKeys()).toEqual([]);
+    });
+
+    it('getAllStrategyKeys tracks added strategies', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      pm.recordStrategyBuy('layer1', makeTrade({ asset: 'SUI', amount: 100, price: 1.0, usdValue: 100 }));
+      const keys = pm.getAllStrategyKeys();
+      expect(keys).toContain('bluechip');
+      expect(keys).toContain('layer1');
+      expect(keys).toHaveLength(2);
+    });
+
+    it('hasStrategyPositions returns false for unknown strategy', () => {
+      expect(pm.hasStrategyPositions('ghost')).toBe(false);
+    });
+
+    it('hasStrategyPositions returns true when positions exist', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      expect(pm.hasStrategyPositions('bluechip')).toBe(true);
+    });
+
+    it('hasStrategyPositions returns false after all positions sold', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      pm.recordStrategySell('bluechip', makeTrade({
+        type: 'sell', asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000,
+      }));
+      expect(pm.hasStrategyPositions('bluechip')).toBe(false);
+    });
+  });
+
   describe('closePosition / clearStrategy', () => {
     it('closePosition zeroes out a direct position', () => {
       pm.recordBuy(makeTrade({ amount: 100, price: 1.0, usdValue: 100 }));
