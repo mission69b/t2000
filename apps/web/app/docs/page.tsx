@@ -1067,7 +1067,7 @@ function CliMoreSection() {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 21 tools, 6 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 21 tools, 12 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1268,7 +1268,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        21 tools, 6 prompts, stdio transport — your AI operates a full bank account.
+        21 tools, 12 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 4 commands</h2>
@@ -1346,7 +1346,7 @@ function McpSection() {
         <InlineCode>t2000 unlock</InlineCode> in the terminal.
       </Callout>
 
-      <h2 id="mcp-prompts">Prompts (6)</h2>
+      <h2 id="mcp-prompts">Prompts (12)</h2>
       <p>
         Reusable conversation templates that help AI assistants interact with t2000 effectively.
       </p>
@@ -1359,6 +1359,12 @@ function McpSection() {
           [<InlineCode key="k">budget-check</InlineCode>, "Can I afford $X? — checks balance, daily limit, spending impact"],
           [<InlineCode key="k">savings-strategy</InlineCode>, "Analyze idle funds, recommend how much to save and where"],
           [<InlineCode key="k">investment-strategy</InlineCode>, "Portfolio analysis — allocation, P&L, buy/sell recommendations"],
+          [<InlineCode key="k">morning-briefing</InlineCode>, "Daily snapshot — balances, yield earned, portfolio movement, alerts"],
+          [<InlineCode key="k">what-if</InlineCode>, "Scenario planning — model the impact of invest/save/borrow decisions"],
+          [<InlineCode key="k">sweep</InlineCode>, "Find idle checking funds and route to optimal earning positions"],
+          [<InlineCode key="k">risk-check</InlineCode>, "Full risk analysis — health factor, concentration, liquidation proximity"],
+          [<InlineCode key="k">weekly-recap</InlineCode>, "Week in review — activity, yield earned, portfolio P&L, highlights"],
+          [<InlineCode key="k">dca-advisor</InlineCode>, "Personalized DCA setup — budget → strategy, frequency, projected growth"],
         ]}
       />
 

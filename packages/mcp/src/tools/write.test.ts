@@ -118,8 +118,8 @@ describe('write tools', () => {
     registerWriteTools(server, agent);
   });
 
-  it('should register 8 write tools', () => {
-    expect(tools.size).toBe(8);
+  it('should register 10 write tools', () => {
+    expect(tools.size).toBe(10);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_save')).toBe(true);
     expect(tools.has('t2000_withdraw')).toBe(true);
@@ -127,6 +127,9 @@ describe('write tools', () => {
     expect(tools.has('t2000_repay')).toBe(true);
     expect(tools.has('t2000_exchange')).toBe(true);
     expect(tools.has('t2000_rebalance')).toBe(true);
+    expect(tools.has('t2000_invest')).toBe(true);
+    expect(tools.has('t2000_strategy')).toBe(true);
+    expect(tools.has('t2000_auto_invest')).toBe(true);
   });
 
   describe('t2000_send', () => {

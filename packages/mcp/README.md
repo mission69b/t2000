@@ -2,7 +2,7 @@
 
 MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
 
-**21 tools · 6 prompts · stdio transport · safeguard enforced**
+**21 tools · 12 prompts · stdio transport · safeguard enforced**
 
 ## Quick Start
 

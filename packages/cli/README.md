@@ -272,7 +272,7 @@ t2000 mcp uninstall
 t2000 mcp
 ```
 
-21 tools, 6 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
+21 tools, 12 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 

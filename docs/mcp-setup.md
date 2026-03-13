@@ -99,7 +99,9 @@ All support `dryRun: true` for previews without signing.
 
 > `unlock` is intentionally CLI-only — only a human can resume operations.
 
-## Prompts (6)
+## Prompts (12)
+
+### Utility (6)
 
 | Prompt | Description |
 |--------|-------------|
@@ -109,6 +111,17 @@ All support `dryRun: true` for previews without signing.
 | `budget-check` | Can I afford $X? — checks balance, limits, spending impact |
 | `savings-strategy` | Analyze idle funds, recommend how much to save and where |
 | `investment-strategy` | Portfolio analysis — allocation, P&L, buy/sell recommendations |
+
+### AI Financial Advisor (6)
+
+| Prompt | Description |
+|--------|-------------|
+| `morning-briefing` | Daily snapshot — balances, yield earned, portfolio movement, alerts |
+| `what-if` | Scenario planning — model impact of invest/save/borrow decisions |
+| `sweep` | Find idle checking funds and route to optimal earning positions |
+| `risk-check` | Full risk analysis — health factor, concentration, liquidation proximity |
+| `weekly-recap` | Week in review — activity, yield, portfolio P&L, highlights |
+| `dca-advisor` | Personalized DCA setup — budget → strategy, frequency, projected growth |
 
 ---
 

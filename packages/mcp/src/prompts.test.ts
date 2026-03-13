@@ -21,13 +21,19 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 6 prompts', () => {
-    expect(prompts.size).toBe(6);
+  it('should register 12 prompts', () => {
+    expect(prompts.size).toBe(12);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
     expect(prompts.has('budget-check')).toBe(true);
     expect(prompts.has('savings-strategy')).toBe(true);
+    expect(prompts.has('morning-briefing')).toBe(true);
+    expect(prompts.has('what-if')).toBe(true);
+    expect(prompts.has('sweep')).toBe(true);
+    expect(prompts.has('risk-check')).toBe(true);
+    expect(prompts.has('weekly-recap')).toBe(true);
+    expect(prompts.has('dca-advisor')).toBe(true);
   });
 
   it('financial-report should return valid message array', async () => {

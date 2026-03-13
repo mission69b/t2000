@@ -222,7 +222,7 @@ const COMPARE_ROWS: {
   {
     feature: "MCP Server",
     coinbase: "—",
-    t2000: "✓ 21 tools + 6 prompts",
+    t2000: "✓ 21 tools + 12 prompts",
     coinbaseCross: true,
   },
   {
