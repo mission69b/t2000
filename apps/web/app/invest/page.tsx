@@ -393,17 +393,17 @@ export default function InvestPage() {
             Margin <em className="italic text-amber-400/80">trading.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-8">
-            Leveraged positions on SUI, BTC, and ETH — using your savings and
-            investment deposits as collateral. Your agent will be able to take
-            amplified positions while the locking guard manages risk
+            Leveraged positions on SUI, BTC, and ETH — powered by Bluefin
+            with USDC collateral. Your agent will be able to take amplified
+            positions while an auto-liquidation guard manages risk
             automatically.
           </p>
 
           <div className="grid sm:grid-cols-3 gap-6">
             {[
-              { label: "Leverage", value: "Up to 3×", desc: "Amplify positions with collateral" },
-              { label: "Collateral", value: "Savings + Investments", desc: "Use existing deposits" },
-              { label: "Risk Management", value: "Auto-liquidation guard", desc: "Health factor enforced" },
+              { label: "Leverage", value: "Up to 3×", desc: "Amplify positions with USDC collateral" },
+              { label: "Collateral", value: "USDC", desc: "Deposit from checking or borrow from credit" },
+              { label: "Risk Management", value: "Auto-liquidation guard", desc: "Auto top-up collateral to avoid liquidation" },
             ].map((item) => (
               <div
                 key={item.label}
