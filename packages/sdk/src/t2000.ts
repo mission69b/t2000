@@ -627,15 +627,21 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
     }
 
-    // Pre-check maxWithdraw for each position (use per-asset amount, not aggregate)
+    // Pre-check maxWithdraw per protocol, then distribute across entries
+    const protocolMaxes = new Map<string, number>();
     const entries: Array<{ protocolId: string; asset: string; maxAmount: number; adapter: LendingAdapter }> = [];
     for (const entry of withdrawable) {
       const adapter = this.registry.getLending(entry.protocolId);
       if (!adapter) continue;
-      const maxResult = await adapter.maxWithdraw(this._address, entry.asset);
-      const perAssetMax = Math.min(entry.amount, maxResult.maxAmount);
+      if (!protocolMaxes.has(entry.protocolId)) {
+        const maxResult = await adapter.maxWithdraw(this._address, entry.asset);
+        protocolMaxes.set(entry.protocolId, maxResult.maxAmount);
+      }
+      const remaining = protocolMaxes.get(entry.protocolId)!;
+      const perAssetMax = Math.min(entry.amount, remaining);
       if (perAssetMax > 0.01) {
         entries.push({ ...entry, maxAmount: perAssetMax, adapter });
+        protocolMaxes.set(entry.protocolId, remaining - perAssetMax);
       }
     }
 
@@ -654,27 +660,31 @@ export class T2000 extends EventEmitter<T2000Events> {
         tx.setSender(this._address);
         const usdcCoins: TransactionObjectArgument[] = [];
 
+        const nonUsdcCoins: TransactionObjectArgument[] = [];
+
         for (const entry of entries) {
           const { coin, effectiveAmount } = await entry.adapter.addWithdrawToTx!(
             tx, this._address, entry.maxAmount, entry.asset,
           );
 
-          if (entry.asset !== 'USDC' && swapAdapter?.addSwapToTx) {
-            const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx(
-              tx, this._address, coin, entry.asset, 'USDC', effectiveAmount,
-            );
-            totalUsdcReceived += estimatedOut / 10 ** toDecimals;
-            usdcCoins.push(outputCoin);
-          } else {
+          if (entry.asset === 'USDC') {
             totalUsdcReceived += effectiveAmount;
             usdcCoins.push(coin);
+          } else {
+            totalUsdcReceived += effectiveAmount;
+            nonUsdcCoins.push(coin);
           }
         }
 
         if (usdcCoins.length > 1) {
           tx.mergeCoins(usdcCoins[0], usdcCoins.slice(1));
         }
-        tx.transferObjects([usdcCoins[0]], this._address);
+        if (usdcCoins.length > 0) {
+          tx.transferObjects([usdcCoins[0]], this._address);
+        }
+        for (const coin of nonUsdcCoins) {
+          tx.transferObjects([coin], this._address);
+        }
         return tx;
       }
 
