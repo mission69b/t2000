@@ -997,7 +997,7 @@ export async function maxWithdrawAmount(
   }
 
   const remainingSupply = hf.supplied - maxAmount;
-  const hfAfter = hf.borrowed > 0 ? remainingSupply / hf.borrowed : Infinity;
+  const hfAfter = hf.borrowed > 0 ? (remainingSupply * ltv) / hf.borrowed : Infinity;
 
   return { maxAmount, healthFactorAfter: hfAfter, currentHF: hf.healthFactor };
 }

@@ -72,8 +72,11 @@ export class PortfolioManager {
     }
 
     const sellAmount = Math.min(trade.amount, pos.totalAmount);
+    const effectiveUsdValue = trade.amount > 0 && sellAmount < trade.amount
+      ? trade.usdValue * (sellAmount / trade.amount)
+      : trade.usdValue;
     const costOfSold = pos.avgPrice * sellAmount;
-    const realizedPnL = trade.usdValue - costOfSold;
+    const realizedPnL = effectiveUsdValue - costOfSold;
 
     pos.totalAmount -= sellAmount;
     pos.costBasis -= costOfSold;
@@ -189,8 +192,11 @@ export class PortfolioManager {
     }
 
     const sellAmount = Math.min(trade.amount, pos.totalAmount);
+    const effectiveUsdValue = trade.amount > 0 && sellAmount < trade.amount
+      ? trade.usdValue * (sellAmount / trade.amount)
+      : trade.usdValue;
     const costOfSold = pos.avgPrice * sellAmount;
-    const realizedPnL = trade.usdValue - costOfSold;
+    const realizedPnL = effectiveUsdValue - costOfSold;
 
     pos.totalAmount -= sellAmount;
     pos.costBasis -= costOfSold;

@@ -3,6 +3,7 @@ import { SUPPORTED_ASSETS, STABLE_ASSETS, INVESTMENT_ASSETS, MIST_PER_SUI, CETUS
 import type { StableAsset, InvestmentAsset } from '../constants.js';
 import type { BalanceResponse } from '../types.js';
 
+const SUI_PRICE_FALLBACK = 1.0;
 let _cachedSuiPrice = 0;
 let _priceLastFetched = 0;
 const PRICE_CACHE_TTL_MS = 60_000;
@@ -51,7 +52,7 @@ async function fetchSuiPrice(client: SuiJsonRpcClient): Promise<number> {
     // Use cached/fallback price
   }
 
-  return _cachedSuiPrice;
+  return _cachedSuiPrice || SUI_PRICE_FALLBACK;
 }
 
 export async function queryBalance(
@@ -60,13 +61,15 @@ export async function queryBalance(
 ): Promise<BalanceResponse> {
   const stableBalancePromises = STABLE_ASSETS.map((asset) =>
     client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS[asset].type })
-      .then((b) => ({ asset, amount: Number(b.totalBalance) / 10 ** SUPPORTED_ASSETS[asset].decimals })),
+      .then((b) => ({ asset, amount: Number(b.totalBalance) / 10 ** SUPPORTED_ASSETS[asset].decimals }))
+      .catch(() => ({ asset, amount: 0 })),
   );
 
   const nonSuiInvestmentAssets = (Object.keys(INVESTMENT_ASSETS) as InvestmentAsset[]).filter(a => a !== 'SUI');
   const investBalancePromises = nonSuiInvestmentAssets.map((asset) =>
     client.getBalance({ owner: address, coinType: INVESTMENT_ASSETS[asset].type })
-      .then((b) => ({ asset, amount: Number(b.totalBalance) / 10 ** INVESTMENT_ASSETS[asset].decimals })),
+      .then((b) => ({ asset, amount: Number(b.totalBalance) / 10 ** INVESTMENT_ASSETS[asset].decimals }))
+      .catch(() => ({ asset, amount: 0 })),
   );
 
   const [suiBalance, suiPriceUsd, ...rest] = await Promise.all([
