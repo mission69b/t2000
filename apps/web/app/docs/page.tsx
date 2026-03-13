@@ -522,7 +522,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.14.1")}
+        {S.a("0.16.30")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -1670,7 +1670,7 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.16.0 <Badge color="green">current</Badge>
+        v0.16.30 <Badge color="green">current</Badge>
       </h2>
       <p>
         Strategies + Auto-Invest — <InlineCode>t2000 invest strategy buy bluechip 200</InlineCode> splits investment across a themed allocation in a single transaction. Built-in strategies: bluechip (BTC/ETH/SUI), layer1 (ETH/SUI), sui-heavy. Custom strategies via <InlineCode>t2000 invest strategy create</InlineCode>. Dollar-cost averaging with <InlineCode>t2000 invest auto setup 50 weekly bluechip</InlineCode>. Strategy rebalancing, portfolio grouping by strategy, 21 MCP tools.
