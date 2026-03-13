@@ -220,11 +220,11 @@ export default function Home() {
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
             {[
-              { icon: "⟳", label: "Checking" },
-              { icon: "◈", label: "Savings" },
-              { icon: "◎", label: "Credit" },
+              { icon: "⟳", label: "Checking", href: "/accounts" },
+              { icon: "◈", label: "Savings", href: "/accounts" },
+              { icon: "◎", label: "Credit", href: "/accounts" },
               { icon: "◆", label: "Investment", href: "/invest" },
-              { icon: "⇌", label: "Exchange" },
+              { icon: "⇌", label: "Exchange", href: "/accounts" },
             ].map((pill) => {
               const cls = "px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim";
               return pill.href ? (
@@ -714,6 +714,12 @@ export default function Home() {
           >
             Skills
           </a>
+          <Link
+            href="/accounts"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Accounts
+          </Link>
           <Link
             href={DEMO_URL}
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
