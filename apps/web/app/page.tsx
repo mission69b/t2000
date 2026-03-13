@@ -19,6 +19,7 @@ const ACCOUNTS = [
     desc: "The everyday account. Send USDC to anyone, receive funds, check balances. Gas is handled automatically.",
     prompt: "Send $10 to Alice",
     cmd: "t2000 send 10 to alice",
+    href: "/accounts",
   },
   {
     num: "02 / 05",
@@ -28,6 +29,7 @@ const ACCOUNTS = [
     desc: "Idle USDC earns interest automatically. Auto-routed to the best rate across lending protocols. Withdraw any time.",
     prompt: "Put all my idle cash to work",
     cmd: "t2000 save all",
+    href: "/accounts",
   },
   {
     num: "03 / 05",
@@ -37,6 +39,7 @@ const ACCOUNTS = [
     desc: "Borrow USDC against your savings — without selling. Repay when ready. Safety limits enforced automatically.",
     prompt: "Borrow $40 against my savings",
     cmd: "t2000 borrow 40",
+    href: "/accounts",
   },
   {
     num: "04 / 05",
@@ -46,6 +49,7 @@ const ACCOUNTS = [
     desc: "Swap between any supported tokens at market rates. The agent can convert currencies, acquire gas, or rebalance — all automatically.",
     prompt: "Convert $5 to SUI",
     cmd: "t2000 exchange 5 USDC SUI",
+    href: "/accounts",
   },
   {
     num: "05 / 05",
