@@ -7,7 +7,11 @@ const LINES: TerminalLine[] = [
   { type: "command", text: "❯ t2000 init", delay: 0 },
   { type: "output", text: "  Create PIN: ****", delay: 400 },
   { type: "info", text: "  Creating agent wallet...", delay: 500 },
-  { type: "success", text: "✓ Bank account created", delay: 400 },
+  { type: "success", text: "✓ Keypair generated", delay: 400 },
+  { type: "success", text: "✓ Network  Sui mainnet", delay: 200 },
+  { type: "success", text: "✓ Gas sponsorship  enabled", delay: 200 },
+  { type: "success", text: "✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment", delay: 300 },
+  { type: "info", text: "  🎉 Bank account created", delay: 300 },
   { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
   { type: "command", text: "❯ t2000 save 80", delay: 1200 },

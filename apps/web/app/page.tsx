@@ -4,7 +4,6 @@ import { InstallCommand } from "./components/InstallCommand";
 import { Ticker } from "./components/Ticker";
 import { BalanceWidget } from "./components/BalanceWidget";
 import { HomeShowcase } from "./components/HomeShowcase";
-import { McpLiveDemo } from "./components/McpLiveDemo";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 const SKILLS_URL = "https://github.com/mission69b/t2000-skills";
@@ -509,12 +508,24 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-              Live — AI optimizing yield
+            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-2">
+              Try asking
             </div>
-            <McpLiveDemo />
+            <div className="flex flex-col gap-1.5 mb-6">
+              {[
+                "Move my idle USDC to the highest yield",
+                "Send $50 to alice but borrow if I\u2019m short",
+                "Invest $100 in SUI and show my portfolio",
+                "What would happen if I invest $200 in bluechip?",
+                "Give me a full financial report",
+              ].map((q) => (
+                <p key={q} className="text-xs text-muted/70 italic">
+                  &ldquo;{q}&rdquo;
+                </p>
+              ))}
+            </div>
 
-            <div className="mt-6">
+            <div>
               <div className="text-[10px] tracking-[0.15em] uppercase text-muted mb-2">
                 Works with
               </div>
