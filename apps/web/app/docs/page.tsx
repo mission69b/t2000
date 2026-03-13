@@ -662,14 +662,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollToCmd("repay")} />
         <CmdCard name="t2000 rebalance" desc="Optimize yield across protocols" onClick={() => scrollToCmd("rebalance")} />
         <CmdCard name="t2000 exchange" desc="Exchange tokens (USDC ⇌ SUI)" onClick={() => scrollToCmd("exchange")} />
-        <CmdCard name="t2000 earn" desc="Show all earning opportunities" onClick={() => scrollToCmd("earn")} />
+        <CmdCard name="t2000 contacts" desc="Manage named contacts" onClick={() => scrollToCmd("more")} />
         <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
-        <CmdCard name="t2000 invest buy" desc="Buy SUI, BTC, or ETH with USDC" onClick={() => scrollToCmd("invest")} />
-        <CmdCard name="t2000 invest sell" desc="Sell holdings back to USDC" onClick={() => scrollToCmd("invest")} />
+        <CmdCard name="t2000 invest" desc="Buy, sell, earn yield on SUI/BTC/ETH" onClick={() => scrollToCmd("invest")} />
         <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
-        <CmdCard name="t2000 invest earn" desc="Deposit invested asset into best-rate lending for yield" onClick={() => scrollToCmd("invest-earn")} />
-        <CmdCard name="t2000 invest unearn" desc="Withdraw from lending, keep in portfolio" onClick={() => scrollToCmd("invest-unearn")} />
         <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
         <CmdCard name="t2000 contacts" desc="Manage named contacts for easy sends" onClick={() => scrollToCmd("contacts")} />
         <CmdCard name="t2000 mcp" desc="MCP server — install, start, uninstall" badge="NEW" onClick={() => scrollToCmd("mcp")} />
@@ -869,6 +866,16 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
       </CodeBlock>
 
+      <h3 id="cmd-invest-earn">invest earn / unearn</h3>
+      <p>Deposit an invested asset into the best-rate lending protocol to earn yield while keeping price exposure. <InlineCode>unearn</InlineCode> withdraws from lending but keeps the asset in your portfolio. Auto-withdraw on sell brings funds back before the swap.</p>
+      <CodeBlock lang="bash">
+        t2000 invest earn &lt;asset&gt;     {S.c("# deposit to best lending rate")}{"\n"}
+        t2000 invest unearn &lt;asset&gt;   {S.c("# withdraw from lending, keep invested")}{"\n\n"}
+        t2000 invest earn SUI         {S.c("# earn 2.6% APY on SUI via Suilend")}{"\n"}
+        t2000 invest earn ETH         {S.c("# earn 0.04% APY on ETH via NAVI")}{"\n"}
+        t2000 invest unearn SUI       {S.c("# pull SUI back from lending")}
+      </CodeBlock>
+
       <h2 id="cmd-portfolio">t2000 portfolio</h2>
       <p>View your investment portfolio with cost-basis P&L, strategy grouping, and earning status. Shows direct positions and strategy positions separately.</p>
       <CodeBlock lang="bash">
@@ -891,97 +898,6 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}Current value:  {S.a("$7.02")}{"\n"}
         {"  "}Unrealized P&L:  {S.g("+$0.02 (+0.3%)")}{"\n"}
         {"  "}Realized P&L:  {S.a("+$0.00")}
-      </CodeBlock>
-
-      <h2 id="cmd-invest-earn">t2000 invest earn</h2>
-      <p>Deposit an invested asset (SUI or ETH) into the best-rate lending protocol (NAVI or Suilend) to earn yield. You keep full price exposure — sell anytime. Auto-withdraw on sell brings funds back before the swap.</p>
-      <CodeBlock lang="bash">
-        t2000 invest earn &lt;asset&gt;{"\n\n"}
-        t2000 invest earn SUI   {S.c("# deposit SUI to best lending rate")}{"\n"}
-        t2000 invest earn ETH   {S.c("# deposit ETH to best lending rate")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("✓")} Deposited {S.a("103.09")} SUI to best rate (NAVI){"\n"}
-        {S.g("✓")} Current APY: {S.g("2.45%")}{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
-      </CodeBlock>
-
-      <h2 id="cmd-invest-unearn">t2000 invest unearn</h2>
-      <p>Withdraw an invested asset from lending back into your portfolio. The asset stays invested — you can sell later or earn again.</p>
-      <CodeBlock lang="bash">
-        t2000 invest unearn &lt;asset&gt;{"\n\n"}
-        t2000 invest unearn SUI   {S.c("# withdraw SUI from lending")}{"\n"}
-        t2000 invest unearn ETH   {S.c("# withdraw ETH from lending")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("✓")} Withdrew {S.a("103.09")} SUI from lending{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
-      </CodeBlock>
-
-      <h2 id="cmd-health">t2000 health</h2>
-      <p>Check your lending health factor. Color-coded by severity — green (healthy), yellow (moderate/low), red (critical).</p>
-      <CodeBlock lang="bash">
-        t2000 health
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("✓")} Health Factor: {S.g("2.50")} {S.c("(healthy)")}{"\n\n"}
-        Supplied:    {S.a("$500.00")} USDC{"\n"}
-        Borrowed:    {S.a("$200.00")} USDC{"\n"}
-        Max Borrow:  {S.a("$133.33")} USDC
-      </CodeBlock>
-
-      <h2 id="cmd-positions">t2000 positions</h2>
-      <p>View all open DeFi positions across protocols.</p>
-      <CodeBlock lang="bash">
-        t2000 positions
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}Savings{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}navi:  {S.a("$300.00")} USDC @ {S.g("5.50%")} APY{"\n"}
-        {"  "}suilend:  {S.a("$200.00")} USDC @ {S.g("2.20%")} APY{"\n\n"}
-        {"  "}Borrows{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}navi:  {S.a("$100.00")} USDC @ {S.m("3.80%")} APY
-      </CodeBlock>
-
-      <h2 id="cmd-history">t2000 history</h2>
-      <p>Show recent transaction history with action type and timestamp.</p>
-      <CodeBlock lang="bash">
-        t2000 history [--limit &lt;n&gt;]   {S.c("# default: 20")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.b("Transaction History")}{"\n\n"}
-        0x9f2c...a801  save {S.m("(sponsored)")}     2/19/2026, 3:45 PM{"\n"}
-        0xa1b2...c3d4  send {S.m("(self-funded)")}  2/19/2026, 2:30 PM{"\n"}
-        0xd5e6...f7a8  exchange {S.m("(self-funded)")}   2/18/2026, 1:15 PM
-      </CodeBlock>
-
-      <h2 id="cmd-earn">t2000 earn</h2>
-      <p>Show all earning opportunities in one dashboard — savings yield from NAVI and Suilend, plus sentinel bounties from Sui Sentinel.</p>
-      <CodeBlock lang="bash">
-        t2000 earn{"\n"}
-        t2000 earn {S.a("--json")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}Earning Opportunities{"\n\n"}
-        {"  "}SAVINGS — Passive Yield{"\n"}
-        {"  "}─────────────────────────────────────────────────────{"\n"}
-        {"  "}navi:  $300.00 USDC @ 5.60% APY{"\n"}
-        {"  "}suilend:  $200.00 USDC @ 2.20% APY{"\n"}
-        {"  "}    ~$0.06/day · ~$1.72/month{"\n\n"}
-        {"  "}Total Saved:  $500.00 USDC{"\n\n"}
-        {"  "}SENTINEL BOUNTIES — Active Red Teaming{"\n"}
-        {"  "}─────────────────────────────────────────────────────{"\n"}
-        {"  "}Active:         49 sentinels{"\n"}
-        {"  "}Prize Pools:    238.67 SUI available{"\n"}
-        {"  "}Cheapest Fee:   0.10 SUI{"\n"}
-        {"  "}Best Target:    NeonYieldCore — 20.90 SUI pool (116.1x ratio){"\n\n"}
-        {"  "}Quick Actions{"\n"}
-        {"  "}─────────────────────────────────────────────────────{"\n"}
-        {"  "}  t2000 save {"<amount>"}            Save USDC for yield{"\n"}
-        {"  "}  t2000 sentinel list            Browse sentinel bounties{"\n"}
-        {"  "}  t2000 sentinel attack {"<id>"}     Attack a sentinel
       </CodeBlock>
 
       <h2 id="cmd-sentinel">
@@ -1070,11 +986,13 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
           [<InlineCode key="k">t2000 health</InlineCode>, "Check lending health factor (color-coded by severity)"],
           [<InlineCode key="k">t2000 positions</InlineCode>, "View all open DeFi positions across protocols"],
           [<InlineCode key="k">t2000 history</InlineCode>, "Recent transaction history with action type and timestamp"],
+          [<InlineCode key="k">t2000 earn</InlineCode>, "Show all earning opportunities — savings yield + sentinel bounties"],
+          [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
+          [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from all protocols"],
+          [<InlineCode key="k">t2000 contacts</InlineCode>, "Manage named contacts — add, remove, list"],
           [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
           [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
-          [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
           [<InlineCode key="k">t2000 fund-status</InlineCode>, "Full savings summary with monthly projection"],
-          [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from all protocols"],
           [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
           [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
           [<InlineCode key="k">t2000 config get|set</InlineCode>, <>Read or write <InlineCode>~/.t2000/config.json</InlineCode></>],

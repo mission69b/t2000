@@ -13,7 +13,8 @@ export function BalanceWidget() {
   }, []);
 
   const investment = 5.02;
-  const total = (68.91 + savings + investment).toFixed(2);
+  const credit = -20.0;
+  const total = (68.91 + savings + investment + credit).toFixed(2);
 
   return (
     <div className="absolute -right-5 bottom-20 bg-panel border border-border-bright rounded-sm p-4 px-5 w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-float hidden lg:block">
@@ -27,6 +28,10 @@ export function BalanceWidget() {
       <div className="flex justify-between items-center py-1.5 border-b border-border text-xs">
         <span className="text-muted">Savings</span>
         <span className="text-accent">${savings.toFixed(2)}</span>
+      </div>
+      <div className="flex justify-between items-center py-1.5 border-b border-border text-xs">
+        <span className="text-muted">Credit</span>
+        <span className="text-danger">-$20.00</span>
       </div>
       <div className="flex justify-between items-center py-1.5 border-b border-border text-xs">
         <span className="text-muted">Investment</span>

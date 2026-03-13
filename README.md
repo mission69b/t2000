@@ -374,6 +374,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Borrow / credit line | — | ✓ Collateralized |
 | Exchange / Token swap | ✓ Base tokens | ✓ Cetus DEX (any pair + rebalance) |
 | Investment (spot) | — | ✓ SUI, BTC, ETH with P&L tracking |
+| Yield on holdings | — | ✓ Earn lending APY on invested assets while keeping price exposure |
 | Strategies + DCA | — | ✓ Atomic PTB multi-asset buys, dollar-cost averaging |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
