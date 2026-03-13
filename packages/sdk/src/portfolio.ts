@@ -201,7 +201,8 @@ export class PortfolioManager {
     }
 
     pos.trades.push(trade);
-    this.data.realizedPnL += realizedPnL;
+    // P&L is NOT added to global realizedPnL here — investSell already
+    // recorded it via recordSell to avoid double-counting.
 
     bucket[trade.asset] = pos;
 
