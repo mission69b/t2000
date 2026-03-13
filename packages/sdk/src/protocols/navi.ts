@@ -283,12 +283,20 @@ function normalizeHealthFactor(raw: number): number {
   return v > 1e5 ? Infinity : v;
 }
 
-function compoundBalance(rawBalance: bigint, currentIndex: string): number {
+function naviStorageDecimals(poolId: number, tokenDecimals: number): number {
+  // Original NAVI pools (id 0-10) normalize all balances to 9 decimals.
+  // Newer pools (id >= 11, e.g. suiETH, suiUSDT) use native token decimals.
+  if (poolId <= 10) return NAVI_BALANCE_DECIMALS;
+  return tokenDecimals;
+}
+
+function compoundBalance(rawBalance: bigint, currentIndex: string, pool?: NaviPool): number {
   if (!rawBalance || !currentIndex || currentIndex === '0') return 0;
   const scale = BigInt('1' + '0'.repeat(RATE_DECIMALS));
   const half = scale / 2n;
   const result = (rawBalance * BigInt(currentIndex) + half) / scale;
-  return Number(result) / 10 ** NAVI_BALANCE_DECIMALS;
+  const decimals = pool ? naviStorageDecimals(pool.id, pool.token.decimals) : NAVI_BALANCE_DECIMALS;
+  return Number(result) / 10 ** decimals;
 }
 
 // ---------------------------------------------------------------------------
@@ -447,7 +455,7 @@ export async function buildWithdrawTx(
   ]);
 
   const assetState = states.find((s) => s.assetId === pool.id);
-  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex) : 0;
+  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex, pool) : 0;
 
   const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
@@ -510,7 +518,7 @@ export async function addWithdrawToTx(
   ]);
 
   const assetState = states.find((s) => s.assetId === pool.id);
-  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex) : 0;
+  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex, pool) : 0;
 
   const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
@@ -799,7 +807,7 @@ export async function repay(
   for (const state of states) {
     const pool = pools.find((p) => p.id === state.assetId);
     if (!pool) continue;
-    remainingDebt += compoundBalance(state.borrowBalance, pool.currentBorrowIndex);
+    remainingDebt += compoundBalance(state.borrowBalance, pool.currentBorrowIndex, pool);
   }
 
   return {
@@ -835,8 +843,8 @@ export async function getHealthFactor(
     const pool = pools.find((p) => p.id === state.assetId);
     if (!pool) continue;
 
-    const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex);
-    const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex);
+    const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex, pool);
+    const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex, pool);
     const price = pool.token?.price ?? 1;
 
     supplied += supplyBal * price;
@@ -947,8 +955,8 @@ export async function getPositions(
     if (!pool) continue;
 
     const symbol = resolvePoolSymbol(pool);
-    const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex);
-    const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex);
+    const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex, pool);
+    const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex, pool);
 
     if (supplyBal > 0.0001) {
       positions.push({

@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "0.16.23",
+  "version": "0.16.24",
   "description": "CLI bank account for AI agents on Sui — send, save, borrow, rebalance from your terminal",
   "type": "module",
   "bin": {

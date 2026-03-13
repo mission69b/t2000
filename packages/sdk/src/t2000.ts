@@ -300,50 +300,49 @@ export class T2000 extends EventEmitter<T2000Events> {
       let investmentValue = 0;
       let investmentCostBasis = 0;
 
+      // Aggregate tracked amounts and cost basis per asset across direct + strategy positions
+      const trackedAmounts: Record<string, number> = {};
+      const trackedCostBasis: Record<string, number> = {};
+      const earningAssetSet = new Set<string>();
+
       for (const pos of portfolioPositions) {
         if (!(pos.asset in INVESTMENT_ASSETS)) continue;
-        const price = assetPrices[pos.asset] ?? 0;
-
-        if (pos.earning) {
-          investmentValue += pos.totalAmount * price;
-          investmentCostBasis += pos.costBasis;
-          if (pos.asset === 'SUI') {
-            const gasSui = Math.max(0, bal.gasReserve.sui);
-            bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * price };
-          }
-        } else if (pos.asset === 'SUI') {
-          const actualHeld = Math.min(pos.totalAmount, bal.gasReserve.sui);
-          investmentValue += actualHeld * price;
-
-          if (actualHeld < pos.totalAmount && pos.totalAmount > 0) {
-            investmentCostBasis += pos.costBasis * (actualHeld / pos.totalAmount);
-          } else {
-            investmentCostBasis += pos.costBasis;
-          }
-
-          const gasSui = Math.max(0, bal.gasReserve.sui - pos.totalAmount);
-          bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * price };
-        } else {
-          investmentValue += pos.totalAmount * price;
-          investmentCostBasis += pos.costBasis;
-        }
+        trackedAmounts[pos.asset] = (trackedAmounts[pos.asset] ?? 0) + pos.totalAmount;
+        trackedCostBasis[pos.asset] = (trackedCostBasis[pos.asset] ?? 0) + pos.costBasis;
+        if (pos.earning) earningAssetSet.add(pos.asset);
       }
-
-      let strategySuiTotal = 0;
       for (const key of this.portfolio.getAllStrategyKeys()) {
         for (const sp of this.portfolio.getStrategyPositions(key)) {
           if (!(sp.asset in INVESTMENT_ASSETS)) continue;
-          const price = assetPrices[sp.asset] ?? 0;
-          investmentValue += sp.totalAmount * price;
-          investmentCostBasis += sp.costBasis;
-          if (sp.asset === 'SUI') strategySuiTotal += sp.totalAmount;
+          trackedAmounts[sp.asset] = (trackedAmounts[sp.asset] ?? 0) + sp.totalAmount;
+          trackedCostBasis[sp.asset] = (trackedCostBasis[sp.asset] ?? 0) + sp.costBasis;
         }
       }
 
-      if (strategySuiTotal > 0) {
-        const suiPrice = assetPrices['SUI'] ?? 0;
-        const gasSui = Math.max(0, bal.gasReserve.sui - strategySuiTotal);
-        bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * suiPrice };
+      for (const asset of Object.keys(INVESTMENT_ASSETS)) {
+        const price = assetPrices[asset] ?? 0;
+        const tracked = trackedAmounts[asset] ?? 0;
+        const costBasis = trackedCostBasis[asset] ?? 0;
+
+        if (asset === 'SUI') {
+          const actualSui = earningAssetSet.has('SUI') ? tracked : Math.min(tracked, bal.gasReserve.sui);
+          investmentValue += actualSui * price;
+          if (actualSui < tracked && tracked > 0) {
+            investmentCostBasis += costBasis * (actualSui / tracked);
+          } else {
+            investmentCostBasis += costBasis;
+          }
+          if (!earningAssetSet.has('SUI')) {
+            const gasSui = Math.max(0, bal.gasReserve.sui - tracked);
+            bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * price };
+          }
+        } else {
+          // Use actual on-chain balance for non-SUI investment assets
+          const onChainAmount = bal.assets[asset] ?? 0;
+          const effectiveAmount = Math.max(tracked, onChainAmount);
+          investmentValue += effectiveAmount * price;
+          investmentCostBasis += costBasis;
+        }
       }
 
       bal.investment = investmentValue;
