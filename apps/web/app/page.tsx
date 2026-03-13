@@ -478,7 +478,7 @@ export default function Home() {
             <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
               Setup
             </div>
-            <pre className="px-4 sm:px-5 py-4 text-xs sm:text-[13px] overflow-x-auto scrollbar-hide leading-[1.7]">
+            <pre className="px-4 sm:px-5 py-5 text-xs sm:text-[13px] overflow-x-auto scrollbar-hide leading-[1.8]">
               <span className="text-muted/40">{`# macOS / Linux`}</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">curl -fsSL https://t2000.ai/install.sh | bash</span>{"\n\n"}
               <span className="text-muted/40">{`# or Node.js`}</span>{"\n"}
