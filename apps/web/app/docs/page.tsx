@@ -667,6 +667,7 @@ function CliWalletSection() {
         <CmdCard name="t2000 init" desc="Generate keypair, write config" onClick={() => scrollTo("cmd-init")} />
         <CmdCard name="t2000 balance" desc="View all accounts + limits" onClick={() => scrollTo("cmd-balance")} />
         <CmdCard name="t2000 send" desc="Transfer USDC to any address" onClick={() => scrollTo("cmd-send")} />
+        <CmdCard name="t2000 contacts" desc="Manage named contacts" onClick={() => scrollTo("cmd-contacts")} />
       </div>
 
       <h2 id="cmd-init">t2000 init</h2>
@@ -696,12 +697,12 @@ function CliWalletSection() {
         {"  "}{S.a("--json")}          Machine-readable JSON output
       </CodeBlock>
       <CodeBlock lang="output">
-        Available:  {S.a("$78.91")}  {S.c("(checking — spendable)")}{"\n"}
-        Savings:    {S.a("$80.00")}  {S.c("(earning 4.94% APY)")}{"\n"}
-        Credit:     {S.a("-$20.00")} {S.c("(7.67% APY)")}{"\n"}
-        Investment: {S.a("$5.02")}   {S.c("(+0.4%)")}{"\n"}
-        {S.m("──────────────────────────────────────")}{"\n"}
-        Total:      {S.a("$143.93")}
+        {"  "}Available:  {S.a("$69.60")}  {S.c("(checking — spendable)")}{"\n"}
+        {"  "}Savings:  {S.a("$9.26")}  {S.c("(earning 4.15% APY)")}{"\n"}
+        {"  "}Credit:  {S.r("-$1.00")}  {S.c("(7.67% APY)")}{"\n"}
+        {"  "}Investment:  {S.a("$5.01")}  {S.c("(+0.1%)")}{"\n"}
+        {"  "}{S.m("──────────────────────────────────────")}{"\n"}
+        {"  "}Total:  {S.a("$82.87")}
       </CodeBlock>
 
       <h2 id="cmd-send">t2000 send</h2>
@@ -712,9 +713,21 @@ function CliWalletSection() {
         t2000 send {S.a("50")} USDC to {S.a("alice")}   {S.c("# named contact")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Sent {S.a("$10.00")} USDC → 0x8b3e...d412{"\n"}
-        Balance:  {S.a("$90.00")} USDC{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xa1b2...")}
+        {"  "}{S.g("✓")} Sent {S.a("$10.00")} USDC → 0x8b3e...d412{"\n"}
+        {"  "}Balance:  {S.a("$90.00")} USDC{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xa1b2...")}{"\n"}
+        {"  "}Gas:  {S.a("0.0050")} SUI (self-funded)
+      </CodeBlock>
+
+      <h2 id="cmd-contacts">t2000 contacts</h2>
+      <p>Save named contacts for easy sends — no more pasting raw addresses.</p>
+      <CodeBlock lang="bash">
+        t2000 contacts                     {S.c("# list all contacts")}{"\n"}
+        t2000 contacts add alice {S.a("0x8b3e...d412")}{"\n"}
+        t2000 contacts remove alice
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Added alice (0x8b3e...d412)
       </CodeBlock>
 
       <h2 id="cmd-wallet-more">More wallet commands</h2>
@@ -724,7 +737,6 @@ function CliWalletSection() {
           [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
           [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
           [<InlineCode key="k">t2000 history</InlineCode>, "Recent transaction history with action type and timestamp"],
-          [<InlineCode key="k">t2000 contacts</InlineCode>, "Manage named contacts — add, remove, list"],
           [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
           [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
         ]}
@@ -753,6 +765,7 @@ function CliSavingsSection() {
         <CmdCard name="t2000 borrow" desc="Borrow against collateral" onClick={() => scrollTo("cmd-borrow")} />
         <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollTo("cmd-repay")} />
         <CmdCard name="t2000 rebalance" desc="Optimize yield across protocols" onClick={() => scrollTo("cmd-rebalance")} />
+        <CmdCard name="t2000 earn" desc="All earning opportunities" onClick={() => scrollTo("cmd-earn")} />
       </div>
 
       <h2 id="cmd-save">t2000 save</h2>
@@ -763,11 +776,11 @@ function CliSavingsSection() {
         t2000 save {S.a("80")} --protocol suilend  {S.c("# target a specific protocol")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Saved {S.a("$80.00")} USDC to best rate{"\n"}
-        {S.g("✓")} Protocol fee: {S.m("$0.08 USDC (0.1%)")}{"\n"}
-        {S.g("✓")} Current APY: {S.g("4.21%")}{"\n"}
-        {S.g("✓")} Savings balance: {S.a("$79.92")} USDC{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0x9f2c...")}
+        {"  "}{S.g("✓")} Saved {S.a("$80.00")} USDC to best rate{"\n"}
+        {"  "}{S.g("✓")} Protocol fee: {S.m("$0.08 USDC (0.1%)")}{"\n"}
+        {"  "}{S.g("✓")} Current APY: {S.g("4.86%")}{"\n"}
+        {"  "}{S.g("✓")} Savings balance: {S.a("$79.92")} USDC{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0x9f2c...")}
       </CodeBlock>
       <Callout type="note" label="Fee">
         A <strong>0.1% protocol fee</strong> applies to every deposit.{" "}
@@ -782,8 +795,8 @@ function CliSavingsSection() {
         t2000 withdraw all
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Withdrew {S.a("$50.00")} USDC{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xc3d4...")}
+        {"  "}{S.g("✓")} Withdrew {S.a("$50.00")} USDC{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xc3d4...")}
       </CodeBlock>
 
       <h2 id="cmd-borrow">t2000 borrow</h2>
@@ -793,9 +806,9 @@ function CliSavingsSection() {
         t2000 borrow {S.a("40")}    {S.c("# health factor enforced — must stay ≥ 1.5")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Borrowed {S.a("$40.00")} USDC{"\n"}
-        Health Factor:  {S.a("2.15")}{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xd5e6...")}
+        {"  "}{S.g("✓")} Borrowed {S.a("$40.00")} USDC{"\n"}
+        {"  "}Health Factor:  {S.a("2.15")}{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xd5e6...")}
       </CodeBlock>
 
       <h2 id="cmd-repay">t2000 repay</h2>
@@ -805,9 +818,9 @@ function CliSavingsSection() {
         t2000 repay all             {S.c("# includes accrued interest")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Repaid {S.a("$40.00")} USDC{"\n"}
-        Remaining Debt:  {S.a("$0.00")}{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xe7f8...")}
+        {"  "}{S.g("✓")} Repaid {S.a("$40.00")} USDC{"\n"}
+        {"  "}Remaining Debt:  {S.a("$0.00")}{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xe7f8...")}
       </CodeBlock>
 
       <h2 id="cmd-rebalance">t2000 rebalance</h2>
@@ -818,19 +831,41 @@ function CliSavingsSection() {
         t2000 rebalance             {S.c("# execute rebalance")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {"  "}Rebalance Plan{"\n"}
+        {"  "}{S.b("Rebalance Plan")}{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}From:  USDC on NAVI Protocol ({S.m("4.94%")} APY){"\n"}
-        {"  "}To:  suiUSDT on NAVI Protocol ({S.g("5.47%")} APY){"\n"}
-        {"  "}Amount:  {S.a("$19.98")}{"\n\n"}
-        {"  "}Economics{"\n"}
+        {"  "}From:  USDC on NAVI Protocol ({S.m("4.86%")} APY){"\n"}
+        {"  "}To:  suiUSDT on NAVI Protocol ({S.g("5.37%")} APY){"\n"}
+        {"  "}Amount:  {S.a("$5.10")}{"\n\n"}
+        {"  "}{S.b("Economics")}{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}APY Gain:  {S.g("+0.53%")}{"\n"}
-        {"  "}Annual Gain:  {S.a("$0.11")}/year{"\n"}
+        {"  "}APY Gain:  {S.g("+0.51%")}{"\n"}
+        {"  "}Annual Gain:  {S.a("$0.03")}/year{"\n"}
         {"  "}Swap Cost:  ~$0.00{"\n"}
         {"  "}Break-even:  6 days{"\n\n"}
-        {"  "}{S.g("✓")} Rebalanced {S.a("$19.98")} → {S.a("5.47%")} APY{"\n"}
+        {"  "}{S.g("✓")} Rebalanced {S.a("$5.10")} → {S.a("5.37%")} APY{"\n"}
         {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/84qXk...")}
+      </CodeBlock>
+
+      <h2 id="cmd-earn">t2000 earn</h2>
+      <p>Show all earning opportunities in one dashboard — savings yield, investment yield, and sentinel bounties.</p>
+      <CodeBlock lang="bash">
+        t2000 earn [--json]
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {"  "}Earning Opportunities{"\n\n"}
+        {"  "}{S.b("SAVINGS — Passive Yield")}{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}navi:  {S.a("$5.10")} USDC @ {S.g("4.86%")} APY{"\n"}
+        {"  "}suilend:  {S.a("$3.15")} SUI @ {S.g("2.61%")} APY{"\n"}
+        {"  "}    ~$0.00/day · ~$0.03/month{"\n\n"}
+        {"  "}Total Saved:  {S.a("$8.25")}{"\n\n"}
+        {"  "}{S.b("INVESTMENTS — Earning Yield")}{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}SUI via Suilend:  {S.a("$1.00")} (0.9734 SUI) @ {S.g("2.61%")} APY{"\n\n"}
+        {"  "}{S.b("SENTINEL BOUNTIES — Active Red Teaming")}{"\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}Active:  49 sentinels{"\n"}
+        {"  "}Prize Pools:  238.67 SUI available
       </CodeBlock>
 
       <h2 id="cmd-savings-more">More savings commands</h2>
@@ -842,7 +877,6 @@ function CliSavingsSection() {
           [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
           [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from all protocols"],
           [<InlineCode key="k">t2000 fund-status</InlineCode>, "Full savings summary with monthly projection"],
-          [<InlineCode key="k">t2000 earn</InlineCode>, "Show all earning opportunities — savings yield + sentinel bounties"],
         ]}
       />
     </>
@@ -882,10 +916,10 @@ function CliInvestSection() {
         t2000 invest sell all ETH       {S.c("# sell entire ETH position")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Bought {S.a("4.8500")} SUI at {S.a("$1.03")}{"\n"}
-        Invested:  {S.a("$5.00")}{"\n"}
-        Portfolio:  {S.a("4.8500")} SUI (avg {S.a("$1.03")}){"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
+        {"  "}{S.g("✓")} Bought {S.a("4.8500")} SUI at {S.a("$1.03")}{"\n"}
+        {"  "}Invested:  {S.a("$5.00")}{"\n"}
+        {"  "}Portfolio:  {S.a("4.8500")} SUI (avg {S.a("$1.03")}){"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
       </CodeBlock>
 
       <h2 id="cmd-invest-earn">invest earn / unearn</h2>
@@ -898,9 +932,11 @@ function CliInvestSection() {
         t2000 invest unearn SUI       {S.c("# pull SUI back from lending")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} SUI deposited into Suilend (2.6% APY){"\n"}
-        Amount:  {S.a("0.9734")} SUI{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
+        {"  "}{S.g("✓")} SUI deposited into Suilend (2.6% APY){"\n"}
+        {"  "}Amount:  {S.a("0.9734")} SUI{"\n"}
+        {"  "}Protocol:  Suilend{"\n"}
+        {"  "}APY:  {S.g("2.61%")}{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
       </CodeBlock>
 
       <h2 id="cmd-strategy">invest strategy</h2>
@@ -912,6 +948,13 @@ function CliInvestSection() {
         t2000 invest strategy status &lt;name&gt;{"\n\n"}
         t2000 invest strategy buy bluechip {S.a("10")}   {S.c("# $10 split across BTC/ETH/SUI")}{"\n"}
         t2000 invest strategy sell bluechip     {S.c("# sell all strategy positions")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {"  "}{S.g("✓")} Invested {S.a("$10.00")} in bluechip strategy{"\n"}
+        {"  "}BTC:  {S.a("0.00003505")} @ {S.a("$71,326")}{"\n"}
+        {"  "}ETH:  {S.a("0.000708")} @ {S.a("$2,119")}{"\n"}
+        {"  "}SUI:  {S.a("0.9783")} @ {S.a("$1.02")}{"\n"}
+        {"  "}Total invested:  {S.a("$10.00")}
       </CodeBlock>
 
       <h2 id="cmd-auto-invest">invest auto (DCA)</h2>
@@ -983,9 +1026,9 @@ function CliMoreSection() {
         t2000 exchange 10 USDC suiUSDT --slippage 0.5
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.g("✓")} Exchanged {S.a("5")} USDC → {S.a("4.8500")} SUI{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}{"\n"}
-        Gas:  {S.a("0.0050")} SUI (self-funded)
+        {"  "}{S.g("✓")} Exchanged {S.a("$5.00")} USDC → {S.a("4.8500")} SUI{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}{"\n"}
+        {"  "}Gas:  {S.a("0.0050")} SUI (self-funded)
       </CodeBlock>
 
       <h2 id="cmd-pay">
@@ -1003,11 +1046,11 @@ function CliMoreSection() {
         t2000 pay https://api.data.com/prices --max-price {S.a("0.05")}
       </CodeBlock>
       <CodeBlock lang="output">
-        → GET https://api.weather.com/forecast{"\n"}
-        ← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
-        {S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
-        ← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
-        {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
+        {"  "}→ GET https://api.weather.com/forecast{"\n"}
+        {"  "}← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
+        {"  "}{S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
+        {"  "}← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
+        {"  "}{`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
       </CodeBlock>
 
       <h2 id="cmd-sentinel">
