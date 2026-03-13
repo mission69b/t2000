@@ -164,6 +164,12 @@ export default function Home() {
           <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded">beta</span>
         </div>
         <nav className="flex items-center gap-4 sm:gap-8">
+          <Link
+            href="/accounts"
+            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+          >
+            Accounts
+          </Link>
           <a
             href="#how"
             className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
