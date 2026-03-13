@@ -299,6 +299,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
       let investmentValue = 0;
       let investmentCostBasis = 0;
+      let trackedValue = 0;
 
       // Aggregate tracked amounts and cost basis per asset across direct + strategy positions
       const trackedAmounts: Record<string, number> = {};
@@ -327,6 +328,7 @@ export class T2000 extends EventEmitter<T2000Events> {
         if (asset === 'SUI') {
           const actualSui = earningAssetSet.has('SUI') ? tracked : Math.min(tracked, bal.gasReserve.sui);
           investmentValue += actualSui * price;
+          trackedValue += actualSui * price;
           if (actualSui < tracked && tracked > 0) {
             investmentCostBasis += costBasis * (actualSui / tracked);
           } else {
@@ -337,16 +339,18 @@ export class T2000 extends EventEmitter<T2000Events> {
             bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * price };
           }
         } else {
-          // Use actual on-chain balance for non-SUI investment assets
+          // Use on-chain balance for total value (balance accuracy)
+          // but tracked amount for P&L (so untracked tokens don't inflate P&L)
           const onChainAmount = bal.assets[asset] ?? 0;
           const effectiveAmount = Math.max(tracked, onChainAmount);
           investmentValue += effectiveAmount * price;
+          trackedValue += tracked * price;
           investmentCostBasis += costBasis;
         }
       }
 
       bal.investment = investmentValue;
-      bal.investmentPnL = investmentValue - investmentCostBasis;
+      bal.investmentPnL = trackedValue - investmentCostBasis;
     } catch {
       bal.investment = 0;
       bal.investmentPnL = 0;
