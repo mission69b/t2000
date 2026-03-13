@@ -53,7 +53,7 @@ const ACCOUNTS = [
     icon: "◆",
     title: "Investment",
     subtitle: "Buy · Sell · Strategies · DCA",
-    desc: "Buy SUI, BTC, and ETH. Use pre-built strategies or set up recurring investments. Track P&L automatically.",
+    desc: "Invest in crypto, commodities, and more. Use pre-built strategies or set up recurring investments. Track P&L automatically.",
     prompt: "Invest $200 in layer1 strategy",
     cmd: "t2000 invest strategy buy layer1 200",
     href: "/invest",
@@ -472,7 +472,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-start">
           {/* Left: Terminal showing setup */}
           <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
             <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">

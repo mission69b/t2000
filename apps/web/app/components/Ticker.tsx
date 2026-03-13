@@ -6,6 +6,8 @@ const DEFI_ITEMS = [
   { name: "BTC", value: "$97,421", change: "+0.8%", up: true },
   { name: "ETH", value: "$3,201", change: "+0.3%", up: true },
   { name: "Borrow Rate", value: "7.83%", change: "-0.1%", up: false },
+  { name: "USDC/SUI", value: "1.0989", change: "+0.42%", up: true },
+  { name: "Gold", value: "$2,934", change: "+0.2%", up: true },
 ];
 
 const AGENT_ITEMS = [
