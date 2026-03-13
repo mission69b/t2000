@@ -7,7 +7,7 @@ import { HomeShowcase } from "./components/HomeShowcase";
 import { McpLiveDemo } from "./components/McpLiveDemo";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
-const NPM_ORG_URL = "https://www.npmjs.com/org/t2000";
+const SKILLS_URL = "https://github.com/mission69b/t2000-skills";
 const DOCS_URL = "/docs";
 const DEMO_URL = "/demo";
 
@@ -17,7 +17,7 @@ const ACCOUNTS = [
     icon: "⟳",
     title: "Checking",
     subtitle: "Send · Receive · Balance",
-    desc: "The agent's operating account. Send USDC to any Sui address, receive funds, and check balances. Gas is self-funded and auto-topped up when needed.",
+    desc: "The everyday account. Send USDC to anyone, receive funds, check balances. Gas is handled automatically.",
     prompt: "Send $10 to Alice",
     cmd: "t2000 send 10 to alice",
   },
@@ -25,8 +25,8 @@ const ACCOUNTS = [
     num: "02 / 05",
     icon: "◈",
     title: "Savings",
-    subtitle: "Earn · Yield · Multi-protocol",
-    desc: "Idle USDC earns yield automatically via NAVI and Suilend (~2–8% APY). Auto-routed to the best rate. Deposits are non-custodial, composable, and withdrawable any time.",
+    subtitle: "Earn 2–8% APY",
+    desc: "Idle USDC earns interest automatically. Auto-routed to the best rate across lending protocols. Withdraw any time.",
     prompt: "Put all my idle cash to work",
     cmd: "t2000 save all",
   },
@@ -34,8 +34,8 @@ const ACCOUNTS = [
     num: "03 / 05",
     icon: "◎",
     title: "Credit",
-    subtitle: "Borrow · Repay · DeFi",
-    desc: "Borrow USDC against savings collateral without selling the position. Health factor is enforced on-chain. The agent can leverage, operate, and repay autonomously.",
+    subtitle: "Borrow · Repay",
+    desc: "Borrow USDC against your savings — without selling. Repay when ready. Safety limits enforced automatically.",
     prompt: "Borrow $40 against my savings",
     cmd: "t2000 borrow 40",
   },
@@ -43,8 +43,8 @@ const ACCOUNTS = [
     num: "04 / 05",
     icon: "⇌",
     title: "Exchange",
-    subtitle: "Swap · Cetus DEX · On-chain",
-    desc: "Swap between any supported tokens via Cetus DEX. Slippage is enforced on-chain. The agent can acquire gas, convert earnings, or exchange currencies — all autonomously.",
+    subtitle: "Swap any pair",
+    desc: "Swap between any supported tokens at market rates. The agent can convert currencies, acquire gas, or rebalance — all automatically.",
     prompt: "Convert $5 to SUI",
     cmd: "t2000 exchange 5 USDC SUI",
   },
@@ -52,8 +52,8 @@ const ACCOUNTS = [
     num: "05 / 05",
     icon: "◆",
     title: "Investment",
-    subtitle: "Buy · Sell · Strategies · DCA · P&L",
-    desc: "Buy crypto directly or use themed strategies (bluechip, layer1). Auto-invest with dollar-cost averaging. Cost-basis P&L tracking.",
+    subtitle: "Buy · Sell · Strategies · DCA",
+    desc: "Buy SUI, BTC, and ETH. Use pre-built strategies or set up recurring investments. Track P&L automatically.",
     prompt: "Invest $200 in layer1 strategy",
     cmd: "t2000 invest strategy buy layer1 200",
     href: "/invest",
@@ -63,37 +63,33 @@ const ACCOUNTS = [
 const STEPS = [
   {
     num: "01",
-    title: "Install & init",
+    title: "Install",
     badge: "30s",
     badgeType: "done" as const,
-    content:
-      "Generates an Ed25519 keypair, encrypts it with AES-256-GCM, and deposits SUI for gas via the Gas Station.",
-    code: "npm install -g @t2000/cli",
+    content: "One command creates a secure wallet, sets up gas, and opens all five accounts.",
+    code: "npm install -g @t2000/cli && t2000 init",
   },
   {
     num: "02",
-    title: "Fund with USDC",
+    title: "Fund",
     badge: "1 min",
     badgeType: "done" as const,
-    content:
-      "Deposit any amount of USDC to the wallet address. The first send auto-tops up the gas reserve ($1 USDC → SUI). All subsequent transactions are self-funded.",
+    content: "Send USDC to the wallet address. Everything else — gas, fees, protocol routing — is automatic.",
   },
   {
     num: "03",
     title: "Connect your AI",
-    badge: "MCP",
+    badge: "1 cmd",
     badgeType: "new" as const,
-    content:
-            "One command auto-configures Claude Desktop and Cursor. 21 tools with safeguard enforcement — your AI manages money autonomously.",
+    content: "One command connects Claude, Cursor, or any AI platform. Your agent gets 21 tools with built-in safety limits.",
     code: "t2000 mcp install",
   },
   {
     num: "04",
-    title: "Operate autonomously",
+    title: "Let it work",
     badge: "∞",
     badgeType: "new" as const,
-    content:
-      "The agent checks rates, moves money to savings, borrows when needed, pays for APIs via x402 — all without human approval. You set the rules once; the agent executes.",
+    content: "Your agent earns yield, borrows when needed, invests, and pays for APIs — without asking you. Set the rules once.",
   },
 ];
 
@@ -101,34 +97,27 @@ const X402_STEPS = [
   {
     icon: "→",
     active: true,
-    title: "Agent requests API",
+    title: "Agent requests a paid API",
     detail: "GET https://data.api.com/prices",
     isCode: true,
   },
   {
     icon: "402",
     active: false,
-    title: "Server responds: Payment Required",
-    detail: "Amount: $0.01 USDC · Network: Sui · Expires: 60s",
+    title: "Server says: pay $0.01 USDC",
+    detail: "Standard HTTP 402 response — no API key needed",
   },
   {
     icon: "✓",
     active: true,
-    title: "t2000 signs & broadcasts payment",
-    detail: "Sui Payment Kit · 0.01 USDC → 0x8b3e... · ~380ms finality",
-  },
-  {
-    icon: "⬡",
-    active: false,
-    title: "Facilitator verifies on-chain",
-    detail:
-      "api.t2000.ai/x402/verify · checks PaymentReceipt · Move enforces no replay",
+    title: "t2000 pays automatically",
+    detail: "$0.01 USDC sent on-chain · confirmed in ~380ms",
   },
   {
     icon: "200",
     active: true,
-    title: "API returns data",
-    detail: "Total round-trip: ~820ms · balance: -$0.01",
+    title: "API returns the data",
+    detail: "Total round-trip: ~820ms · no subscription required",
   },
 ];
 
@@ -152,90 +141,17 @@ const COMPARE_ROWS: {
   coinbaseCross?: boolean;
   comingSoon?: boolean;
 }[] = [
-  { feature: "Chain", coinbase: "Base only", t2000: "Sui" },
+  { feature: "Chain", coinbase: "Base", t2000: "Sui" },
   { feature: "Send / receive", coinbase: "✓", t2000: "✓", bothCheck: true },
-  {
-    feature: "Earn yield on savings",
-    coinbase: "—",
-    t2000: "✓ NAVI + Suilend (~2–8% APY)",
-    coinbaseCross: true,
-  },
-  {
-    feature: "Borrow / credit line",
-    coinbase: "—",
-    t2000: "✓ Borrow against savings + investments",
-    coinbaseCross: true,
-  },
-  {
-    feature: "Token swap / exchange",
-    coinbase: "✓ Base tokens",
-    t2000: "✓ Cetus DEX",
-    bothCheck: true,
-  },
-  { feature: "Investment (spot)", coinbase: "—", t2000: "✓ SUI, BTC, ETH + strategies + DCA", coinbaseCross: true },
-  { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn lending APY while holding", coinbaseCross: true },
-  { feature: "Borrow against investments", coinbase: "—", t2000: "✓ Invested assets count as collateral", coinbaseCross: true },
-  { feature: "Margin trading", coinbase: "—", t2000: "Coming soon — leveraged positions on SUI, BTC, ETH", coinbaseCross: true, comingSoon: true },
-  {
-    feature: "x402 client",
-    coinbase: "✓ Base / Solana",
-    t2000: "✓ Sui (first on Sui)",
-    bothCheck: true,
-  },
-  {
-    feature: "Agent Skills",
-    coinbase: "✓",
-    t2000: "✓",
-    bothCheck: true,
-  },
-  {
-    feature: "Gas abstraction",
-    coinbase: "✓ Gasless (Base)",
-    t2000: "✓ Auto-topup (Sui)",
-    bothCheck: true,
-  },
-  {
-    feature: "DeFi composability",
-    coinbase: "—",
-    t2000: "✓ Multi-step, all-or-nothing",
-    coinbaseCross: true,
-  },
-  {
-    feature: "Health factor protection",
-    coinbase: "—",
-    t2000: "✓ On-chain enforcement",
-    coinbaseCross: true,
-  },
-  {
-    feature: "Move-level nonce enforcement",
-    coinbase: "— (EIP-3009)",
-    t2000: "✓ Sui Payment Kit",
-    coinbaseCross: true,
-  },
-  {
-    feature: "Yield Optimizer",
-    coinbase: "—",
-    t2000: "✓ Auto-rebalance across 4 stablecoins",
-    coinbaseCross: true,
-  },
-  {
-    feature: "Agent Safeguards",
-    coinbase: "—",
-    t2000: "✓ Per-tx + daily limits + lock",
-    coinbaseCross: true,
-  },
-  {
-    feature: "MCP Server",
-    coinbase: "—",
-    t2000: "✓ 21 tools + 12 AI advisor prompts",
-    coinbaseCross: true,
-  },
-  {
-    feature: "Contacts",
-    coinbase: "—",
-    t2000: "✓ Send by name",
-    coinbaseCross: true,
-  },
+  { feature: "Savings account", coinbase: "—", t2000: "✓ Earn 2–8% APY automatically", coinbaseCross: true },
+  { feature: "Credit line", coinbase: "—", t2000: "✓ Borrow against savings + investments", coinbaseCross: true },
+  { feature: "Token exchange", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
+  { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
+  { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
+  { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
+  { feature: "AI integration", coinbase: "—", t2000: "✓ 21 tools + 12 AI prompts", coinbaseCross: true },
+  { feature: "Safety limits + lock", coinbase: "—", t2000: "✓ Per-tx limits, daily caps, emergency lock", coinbaseCross: true },
+  { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
 ];
 
 export default function Home() {
@@ -259,7 +175,7 @@ export default function Home() {
             href="#mcp"
             className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
           >
-            MCP
+            Connect AI
           </a>
           <a
             href={GITHUB_URL}
@@ -298,9 +214,9 @@ export default function Home() {
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
-            Your agent can hold money, earn yield, borrow against savings,
-            exchange currencies, and pay for APIs. Connect any AI via MCP — no
-            human in the loop.
+            Five accounts — checking, savings, credit, investment, and
+            exchange. Your AI earns yield, borrows, invests, and pays for
+            services. Connect any AI platform. No human in the loop.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
@@ -310,8 +226,6 @@ export default function Home() {
               { icon: "◎", label: "Credit" },
               { icon: "◆", label: "Investment", href: "/invest" },
               { icon: "⇌", label: "Exchange" },
-              { icon: "⬡", label: "x402 Pay" },
-              { icon: "⚙", label: "MCP" },
             ].map((pill) => {
               const cls = "px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim";
               return pill.href ? (
@@ -441,8 +355,8 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            t2000 handles gas sponsorship, key management, DeFi protocol
-            integration, and x402 commerce. The agent just calls commands.
+            Install, fund, connect your AI, and walk away. t2000 handles
+            everything else — security, gas, protocol routing, safety limits.
           </p>
         </div>
 
@@ -488,10 +402,10 @@ export default function Home() {
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <span className="text-[11px] tracking-[0.1em] text-muted uppercase">
-                  x402 payment flow · live
+                  How agents pay for APIs
                 </span>
                 <span className="text-[10px] px-2 py-0.5 bg-[rgba(74,144,226,0.15)] text-blue tracking-[0.08em]">
-                  Sui · USDC
+                  x402
                 </span>
               </div>
               <div className="p-6">
@@ -527,7 +441,7 @@ export default function Home() {
                 <div className="mt-6 pt-5 border-t border-border">
                   <div className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.1em] uppercase text-accent px-2.5 py-1 border border-accent/30 bg-accent-dim">
                     <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot" />
-                    First x402 client on Sui
+                    No API keys. No subscriptions. Just pay per request.
                   </div>
                 </div>
               </div>
@@ -553,8 +467,8 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            One command connects Claude Desktop, Cursor, or any MCP client.
-            Your AI gets 21 tools with safeguard limits — no config files to edit.
+            One command connects Claude, Cursor, or any AI platform. Your agent
+            gets 21 tools with built-in safety limits — no config files to edit.
           </p>
         </div>
 
@@ -562,27 +476,24 @@ export default function Home() {
           {/* Left: Terminal showing setup */}
           <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
             <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-              Setup
+              Setup — two commands
             </div>
             <pre className="px-4 sm:px-5 py-4 text-xs sm:text-sm overflow-x-auto scrollbar-hide leading-[2]">
-              <span className="text-muted">$</span> <span className="text-accent">npm i -g @t2000/cli</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 init</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 config set maxPerTx 100</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">t2000 mcp install</span>{"\n"}
               <span className="text-muted/50">{"\n"}  {"✓"} Claude Desktop  configured{"\n"}  {"✓"} Cursor (global)  configured</span>
             </pre>
             <div className="px-4 sm:px-5 py-3 border-t border-border text-[11px] text-muted/60">
-              Restart your AI platform, then ask: <span className="text-muted">&quot;what&apos;s my t2000 balance?&quot;</span>
+              Then ask your AI: <span className="text-muted">&quot;what&apos;s my balance?&quot;</span>
             </div>
           </div>
 
           {/* Right: Categories + examples + platforms */}
           <div>
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-8">
               {[
-                { count: "9", label: "Read", desc: "Balance, rates, positions, earnings, contacts, portfolio" },
-                { count: "10", label: "Write", desc: "Send, save, borrow, swap, rebalance, invest, strategy, auto-invest" },
-                { count: "2", label: "Safety", desc: "Limits, emergency lock" },
+                { count: "9", label: "Read", desc: "Balance, rates, earnings, portfolio" },
+                { count: "10", label: "Write", desc: "Send, save, invest, swap, borrow" },
+                { count: "2", label: "Safety", desc: "Limits + emergency lock" },
               ].map((g) => (
                 <div key={g.label} className="border border-border rounded-sm p-3 sm:p-4">
                   <div className="text-accent text-lg sm:text-xl font-mono">{g.count}</div>
@@ -597,24 +508,21 @@ export default function Home() {
             </div>
             <McpLiveDemo />
 
-            <div className="flex flex-wrap gap-2">
-              {MCP_PLATFORMS.map((p) => (
-                <span
-                  key={p}
-                  className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
-                >
-                  {p}
-                </span>
-              ))}
+            <div className="mt-6">
+              <div className="text-[10px] tracking-[0.15em] uppercase text-muted mb-2">
+                Works with
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {MCP_PLATFORMS.map((p) => (
+                  <span
+                    key={p}
+                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
             </div>
-
-            <p className="text-[11px] text-muted/50 mt-6">
-              Also available as{" "}
-              <a href="https://github.com/mission69b/t2000-skills" className="underline hover:text-accent transition-colors">
-                Agent Skills
-              </a>{" "}
-              for platforms without MCP.
-            </p>
           </div>
         </div>
       </section>
@@ -636,9 +544,8 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Coinbase Agentic Wallet is excellent for Base. t2000 is the only
-            option with a complete banking stack on Sui — including yield,
-            credit, and x402 commerce.
+            Most agent wallets let you send money. t2000 gives your agent a
+            full banking stack — savings, credit, investments, and more.
           </p>
         </div>
 
@@ -750,14 +657,6 @@ export default function Home() {
             >
               GitHub →
             </a>
-            <a
-              href={"https://github.com/mission69b/t2000-skills"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
-            >
-              Skills package →
-            </a>
             <Link
               href={DEMO_URL}
               className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
@@ -791,7 +690,7 @@ export default function Home() {
             npm
           </a>
           <a
-            href={"https://github.com/mission69b/t2000-skills"}
+            href={SKILLS_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
