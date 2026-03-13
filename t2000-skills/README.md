@@ -2,7 +2,7 @@
 
 Agent Skills for the [t2000](https://t2000.ai) bank account on Sui. Install once and your AI
 agent gains the ability to check balances, send payments, earn yield,
-borrow, and pay for x402 API services — all on Sui.
+borrow, invest in SUI/BTC/ETH, and pay for x402 API services — all on Sui.
 
 ## Install
 
@@ -37,9 +37,14 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 | `t2000-withdraw` | "withdraw from savings", "access my deposits" |
 | `t2000-borrow` | "borrow 40 USDC", "take out a loan" |
 | `t2000-repay` | "repay my loan", "pay back..." |
+| `t2000-exchange` | "swap USDC to SUI", "exchange tokens", "convert to..." |
 | `t2000-pay` | "call that paid API", "pay for x402 service" |
 | `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |
+| `t2000-invest` | "buy SUI", "invest $100 in BTC", "sell my ETH", "show portfolio" |
+| `t2000-contacts` | "add contact", "send to alice", "list contacts" |
+| `t2000-safeguards` | "set spending limit", "lock agent", "show config" |
+| `t2000-mcp` | "install MCP server", "connect to Claude" |
 
 ## Prerequisites
 
@@ -75,7 +80,8 @@ Write it as a list of natural language triggers the agent should match against.
 ## What is t2000?
 
 t2000 is the first bank account for AI agents on Sui — checking (send/receive),
-savings (earn yield via NAVI + Suilend), and credit (borrow against deposits)
+savings (earn yield via NAVI + Suilend), credit (borrow against deposits),
+currency exchange (Cetus DEX), and investment (SUI, BTC, ETH with cost-basis P&L)
 in one CLI command. USDC in, USDC out — multi-stablecoin optimization happens
 internally via rebalance.
 

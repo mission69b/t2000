@@ -11,7 +11,7 @@ const LINES: TerminalLine[] = [
   { type: "success", text: "✓ Network  Sui mainnet", delay: 200 },
   { type: "success", text: "✓ Gas sponsorship  enabled", delay: 200 },
   { type: "info", text: "  Setting up accounts...", delay: 400 },
-  { type: "success", text: "✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ 402 Pay", delay: 300 },
+  { type: "success", text: "✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment  ✓ 402 Pay", delay: 300 },
   { type: "info", text: "  🎉 Bank account created", delay: 300 },
   { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
@@ -44,11 +44,11 @@ const LINES: TerminalLine[] = [
   { type: "info", text: "  ← 200 OK  [820ms]", delay: 300 },
 
   { type: "command", text: "❯ t2000 balance", delay: 1200 },
-  { type: "output", text: "  Available:  $85.00 USDC  (checking — spendable)", delay: 400 },
-  { type: "output", text: "  Savings:    $80.00 USDC  (earning 5.57% APY)", delay: 120 },
-  { type: "output", text: "  Gas:        0.31 SUI     (~$0.28)", delay: 120 },
+  { type: "output", text: "  Available:  $85.00  (checking — spendable)", delay: 400 },
+  { type: "output", text: "  Savings:    $80.00  (earning 5.57% APY)", delay: 120 },
+  { type: "output", text: "  Investment: $5.02   (+0.4%)", delay: 120 },
   { type: "output", text: "  ──────────────────────", delay: 80 },
-  { type: "output", text: "  Total:      $165.28 USDC", delay: 120 },
+  { type: "output", text: "  Total:      $170.02", delay: 120 },
 ];
 
 export function TerminalDemo() {

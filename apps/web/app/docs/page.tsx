@@ -88,7 +88,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Reference",
     items: [
-      { id: "cli", name: "CLI Commands", badge: "16" },
+      { id: "cli", name: "CLI Commands", badge: "21" },
       { id: "sdk", name: "SDK / API", badge: "TS", badgeGreen: true },
       { id: "config", name: "Configuration" },
       { id: "errors", name: "Error Codes" },
@@ -422,10 +422,8 @@ function QuickStart({
             <CodeBlock lang="bash">
               {S.g("$")} t2000 balance{"\n\n"}
               Available:  {S.a("$100.00")}  {S.c("(checking — spendable)")}{"\n"}
-              Savings:    {S.a("$0.00")}{"\n"}
-              Gas:        {S.a("0.05")} SUI    {S.c("(~$0.18)")}{"\n"}
               {S.m("──────────────────────────────────────")}{"\n"}
-              Total:      {S.a("$100.18")}
+              Total:      {S.a("$100.00")}
             </CodeBlock>
           </div>
         </li>
@@ -669,6 +667,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
         <CmdCard name="t2000 invest buy" desc="Buy SUI, BTC, or ETH with USDC" onClick={() => scrollToCmd("invest")} />
         <CmdCard name="t2000 invest sell" desc="Sell holdings back to USDC" onClick={() => scrollToCmd("invest")} />
+        <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
         <CmdCard name="t2000 invest earn" desc="Deposit invested asset into best-rate lending for yield" onClick={() => scrollToCmd("invest-earn")} />
         <CmdCard name="t2000 invest unearn" desc="Withdraw from lending, keep in portfolio" onClick={() => scrollToCmd("invest-unearn")} />
         <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
@@ -711,15 +710,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="output">
         Available:  {S.a("$78.91")}  {S.c("(checking — spendable)")}{"\n"}
         Savings:    {S.a("$80.00")}  {S.c("(earning 4.94% APY)")}{"\n"}
-        Gas:        {S.a("0.12")} SUI    {S.c("(~$0.11)")}{"\n"}
+        Investment: {S.a("$5.02")}   {S.c("(+0.4%)")}{"\n"}
         {S.m("──────────────────────────────────────")}{"\n"}
-        Total:      {S.a("$159.02")}{"\n"}
-        {S.m("Earning ~$0.01/day")}{"\n\n"}
-        {S.c("# With --show-limits:")}{"\n"}
-        Limits:{"\n"}
-        {"  "}Max withdraw:   {S.a("$80.00")} USDC{"\n"}
-        {"  "}Max borrow:     {S.a("$40.00")} USDC{"\n"}
-        {"  "}Health factor:  {S.g("∞")}  {S.c("(no active loan)")}
+        Total:      {S.a("$163.93")}
       </CodeBlock>
 
       <h2 id="cmd-send">t2000 send</h2>
@@ -860,6 +853,46 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
       </CodeBlock>
 
+      <h2 id="cmd-invest">t2000 invest buy / sell</h2>
+      <p>Buy or sell SUI, BTC, or ETH using dollar-denominated commands. Portfolio tracks cost basis, average price, and realized P&L. Investment assets are locked from <InlineCode>send</InlineCode> and <InlineCode>exchange</InlineCode> — use <InlineCode>invest sell</InlineCode> to liquidate.</p>
+      <CodeBlock lang="bash">
+        t2000 invest buy &lt;amount&gt; &lt;asset&gt;{"\n"}
+        t2000 invest sell &lt;amount|all&gt; &lt;asset&gt;{"\n\n"}
+        t2000 invest buy {S.a("5")} SUI            {S.c("# buy $5 of SUI")}{"\n"}
+        t2000 invest buy {S.a("10")} BTC           {S.c("# buy $10 of BTC")}{"\n"}
+        t2000 invest sell all ETH       {S.c("# sell entire ETH position")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Bought {S.a("4.8500")} SUI at {S.a("$1.03")}{"\n"}
+        Invested:  {S.a("$5.00")}{"\n"}
+        Portfolio:  {S.a("4.8500")} SUI (avg {S.a("$1.03")}){"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
+      </CodeBlock>
+
+      <h2 id="cmd-portfolio">t2000 portfolio</h2>
+      <p>View your investment portfolio with cost-basis P&L, strategy grouping, and earning status. Shows direct positions and strategy positions separately.</p>
+      <CodeBlock lang="bash">
+        t2000 portfolio [--json]
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {"  "}Investment Portfolio{"\n\n"}
+        {"    "}▸ Bluechip / Large-Cap{"\n"}
+        {"  "}{S.m("──────────────────────────────────────")}{"\n"}
+        {"  "}BTC:  {S.a("0.00003500")}    Avg: $71,000    Now: $71,200    {S.g("+$0.01 (+0.3%)")}{"\n"}
+        {"  "}ETH:  {S.a("0.000700")}    Avg: $2,100    Now: $2,120    {S.g("+$0.01 (+1.0%)")}{"\n"}
+        {"  "}SUI:  {S.a("0.9700")}    Avg: $1.03    Now: $1.03    {S.g("+$0.00 (+0.1%)")}{"\n"}
+        {"    "}Subtotal: {S.a("$5.01")}{"\n\n"}
+        {"    "}▸ Direct{"\n"}
+        {"  "}{S.m("──────────────────────────────────────")}{"\n"}
+        {"  "}ETH:  {S.a("0.000950")}    Avg: $2,115    Now: $2,120    {S.g("+$0.00 (+0.2%)")}{"\n"}
+        {"    "}Subtotal: {S.a("$2.01")}{"\n"}
+        {"  "}{S.m("──────────────────────────────────────")}{"\n"}
+        {"  "}Total invested:  {S.a("$7.00")}{"\n"}
+        {"  "}Current value:  {S.a("$7.02")}{"\n"}
+        {"  "}Unrealized P&L:  {S.g("+$0.02 (+0.3%)")}{"\n"}
+        {"  "}Realized P&L:  {S.a("+$0.00")}
+      </CodeBlock>
+
       <h2 id="cmd-invest-earn">t2000 invest earn</h2>
       <p>Deposit an invested asset (SUI or ETH) into the best-rate lending protocol (NAVI or Suilend) to earn yield. You keep full price exposure — sell anytime. Auto-withdraw on sell brings funds back before the swap.</p>
       <CodeBlock lang="bash">
@@ -983,7 +1016,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 21 tools, 6 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 21 tools, 6 prompts, safeguard enforced. Investment features fully integrated.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1234,7 +1267,7 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (19)</h2>
+      <h2 id="mcp-tools">Available tools (21)</h2>
 
       <h3 id="mcp-tools-read">Read-only (9)</h3>
       <DocTable
@@ -1252,7 +1285,7 @@ function McpSection() {
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (8)</h3>
+      <h3 id="mcp-tools-write">State-changing (10)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1260,14 +1293,16 @@ function McpSection() {
       <DocTable
         headers={["Tool", "Description"]}
         rows={[
-          [<InlineCode key="k">t2000_send</InlineCode>, "Send USDC to a Sui address"],
+          [<InlineCode key="k">t2000_send</InlineCode>, "Send USDC to a Sui address or contact"],
           [<InlineCode key="k">t2000_save</InlineCode>, "Deposit to savings (earn yield)"],
           [<InlineCode key="k">t2000_withdraw</InlineCode>, "Withdraw from savings"],
           [<InlineCode key="k">t2000_borrow</InlineCode>, "Borrow against collateral"],
           [<InlineCode key="k">t2000_repay</InlineCode>, "Repay borrowed USDC"],
           [<InlineCode key="k">t2000_exchange</InlineCode>, "Swap assets via DEX"],
           [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
-          [<InlineCode key="k">t2000_invest</InlineCode>, "Buy or sell SUI, BTC, ETH"],
+          [<InlineCode key="k">t2000_invest</InlineCode>, "Buy, sell, earn, or unearn SUI, BTC, ETH"],
+          [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
+          [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
         ]}
       />
 

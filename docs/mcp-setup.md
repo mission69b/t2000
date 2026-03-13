@@ -57,33 +57,38 @@ When no session file exists, pass PIN via environment variable:
 
 ---
 
-## Available Tools (16)
+## Available Tools (21)
 
-### Read-Only (7)
+### Read-Only (9)
 
 | Tool | Description |
 |------|-------------|
-| `t2000_balance` | Current balance — checking, savings, gas, total |
+| `t2000_balance` | Current balance — checking, savings, investment, total |
 | `t2000_address` | Agent's Sui wallet address |
 | `t2000_positions` | Lending positions across protocols |
 | `t2000_rates` | Best interest rates per asset |
 | `t2000_health` | Health factor for borrows |
 | `t2000_history` | Recent transactions |
 | `t2000_earnings` | Yield earnings from savings |
+| `t2000_contacts` | List and resolve named contacts |
+| `t2000_portfolio` | Investment portfolio — positions, cost basis, P&L |
 
-### State-Changing (7)
+### State-Changing (10)
 
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
 |------|-------------|
-| `t2000_send` | Send USDC to a Sui address |
+| `t2000_send` | Send USDC to a Sui address or contact |
 | `t2000_save` | Deposit to savings (earn yield) |
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay borrowed USDC |
 | `t2000_exchange` | Swap assets via DEX |
 | `t2000_rebalance` | Optimize yield across protocols |
+| `t2000_invest` | Buy, sell, earn, or unearn investment assets (SUI, BTC, ETH) |
+| `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |
+| `t2000_auto_invest` | DCA scheduling — setup, status, run, stop |
 
 ### Safety (2)
 
@@ -94,13 +99,16 @@ All support `dryRun: true` for previews without signing.
 
 > `unlock` is intentionally CLI-only — only a human can resume operations.
 
-## Prompts (3)
+## Prompts (6)
 
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Comprehensive financial summary |
 | `optimize-yield` | Yield optimization analysis |
 | `send-money` | Guided send flow with preview |
+| `budget-check` | Can I afford $X? — checks balance, limits, spending impact |
+| `savings-strategy` | Analyze idle funds, recommend how much to save and where |
+| `investment-strategy` | Portfolio analysis — allocation, P&L, buy/sell recommendations |
 
 ---
 
