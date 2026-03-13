@@ -73,11 +73,12 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
   ← 200 OK  [820ms]
 
 ❯ t2000 balance
-  Available:  $85.00  (checking — spendable)
-  Savings:    $80.00  (earning 4.21% APY)
-  Investment: $5.02   (+0.4%)
+  Available:  $85.00   (checking — spendable)
+  Savings:    $80.00   (earning 4.86% APY)
+  Credit:     -$20.00  (7.67% APY)
+  Investment: $5.02    (+0.4%)
   ──────────────────────────────────────
-  Total:      $170.02
+  Total:      $150.02
 ```
 
 ## Why t2000?
@@ -371,10 +372,11 @@ Full reference → [Agent Skills README](t2000-skills)
 | Chain | Base only | Sui |
 | Send / receive | ✓ | ✓ |
 | Earn yield on savings | — | ✓ NAVI + Suilend (~2–8% APY) |
-| Borrow / credit line | — | ✓ Collateralized |
+| Borrow / credit line | — | ✓ Borrow against savings + investment collateral |
 | Exchange / Token swap | ✓ Base tokens | ✓ Cetus DEX (any pair + rebalance) |
-| Investment (spot) | — | ✓ SUI, BTC, ETH with P&L tracking |
-| Yield on holdings | — | ✓ Earn lending APY on invested assets while keeping price exposure |
+| Investment (spot) | — | ✓ SUI, BTC, ETH with cost-basis P&L |
+| Yield on investments | — | ✓ Earn lending APY on holdings while keeping price exposure |
+| Borrow against investments | — | ✓ Deposited investments count as collateral for credit |
 | Strategies + DCA | — | ✓ Atomic PTB multi-asset buys, dollar-cost averaging |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
@@ -383,7 +385,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 21 tools + 12 prompts |
+| MCP Server | — | ✓ 21 tools + 12 AI advisor prompts |
 
 ## Security
 
