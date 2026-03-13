@@ -86,9 +86,17 @@ const NAV: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
+    label: "CLI",
+    items: [
+      { id: "cli-wallet", name: "Wallet" },
+      { id: "cli-savings", name: "Savings & Credit" },
+      { id: "cli-invest", name: "Investment" },
+      { id: "cli-more", name: "Exchange & More" },
+    ],
+  },
+  {
     label: "Reference",
     items: [
-      { id: "cli", name: "CLI Commands", badge: "21" },
       { id: "sdk", name: "SDK / API", badge: "TS", badgeGreen: true },
       { id: "config", name: "Configuration" },
       { id: "errors", name: "Error Codes" },
@@ -637,40 +645,19 @@ function ConceptsSection() {
   );
 }
 
-function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
+function CliWalletSection() {
   return (
     <>
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
-        Reference
+        CLI
       </div>
       <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        CLI <em className="italic text-accent">Commands</em>
+        <em className="italic text-accent">Wallet</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        All commands follow the same output contract: structured key-value
-        output for state changes, <InlineCode>--json</InlineCode> for agent
-        consumption.
+        Create your bank account, check balances, and send USDC. All commands
+        support <InlineCode>--json</InlineCode> for agent consumption.
       </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
-        <CmdCard name="t2000 init" desc="Generate keypair, write config" onClick={() => scrollToCmd("init")} />
-        <CmdCard name="t2000 balance" desc="View all accounts + limits" onClick={() => scrollToCmd("balance")} />
-        <CmdCard name="t2000 send" desc="Transfer USDC to any address" onClick={() => scrollToCmd("send")} />
-        <CmdCard name="t2000 save" desc="Deposit to savings (best rate)" onClick={() => scrollToCmd("save")} />
-        <CmdCard name="t2000 withdraw" desc="Pull funds from savings" onClick={() => scrollToCmd("withdraw")} />
-        <CmdCard name="t2000 borrow" desc="Borrow against collateral" onClick={() => scrollToCmd("borrow")} />
-        <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollToCmd("repay")} />
-        <CmdCard name="t2000 rebalance" desc="Optimize yield across protocols" onClick={() => scrollToCmd("rebalance")} />
-        <CmdCard name="t2000 exchange" desc="Exchange tokens (USDC ⇌ SUI)" onClick={() => scrollToCmd("exchange")} />
-        <CmdCard name="t2000 contacts" desc="Manage named contacts" onClick={() => scrollToCmd("more")} />
-        <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollToCmd("pay")} />
-        <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollToCmd("sentinel")} />
-        <CmdCard name="t2000 invest" desc="Buy, sell, earn yield on SUI/BTC/ETH" onClick={() => scrollToCmd("invest")} />
-        <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
-        <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollToCmd("portfolio")} />
-        <CmdCard name="t2000 contacts" desc="Manage named contacts for easy sends" onClick={() => scrollToCmd("contacts")} />
-        <CmdCard name="t2000 mcp" desc="MCP server — install, start, uninstall" badge="NEW" onClick={() => scrollToCmd("mcp")} />
-      </div>
 
       <h2 id="cmd-init">t2000 init</h2>
       <p>Generate a new Ed25519 keypair, encrypt it with AES-256-GCM, and set up all accounts.</p>
@@ -688,17 +675,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment  {S.g("✓")} 402 Pay{"\n\n"}
         🎉 {S.g("Bank account created")}{"\n"}
         Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}{"\n\n"}
-        Deposit USDC on Sui network only.{"\n"}
-        {S.m("───────────────────────────────────")}{"\n\n"}
-        {S.m("Install globally for persistent use:")}{"\n"}
-        {S.b("npm install -g @t2000/cli")}{"\n\n"}
-        {S.b("t2000 balance")}    check for funds{"\n"}
-        {S.b("t2000 save all")}           start earning yield{"\n"}
-        {S.b("t2000 address")}            show address again
+        Deposit USDC on Sui network only.
       </CodeBlock>
 
       <h2 id="cmd-balance">t2000 balance</h2>
-      <p>Returns balances across all four accounts. Use <InlineCode>--show-limits</InlineCode> before any borrow or withdrawal with an active loan.</p>
+      <p>Returns balances across all accounts. Use <InlineCode>--show-limits</InlineCode> before any borrow or withdrawal with an active loan.</p>
       <CodeBlock lang="bash">
         t2000 balance [flags]{"\n\n"}
         {"  "}{S.a("--show-limits")}   Include maxWithdraw, maxBorrow, healthFactor{"\n"}
@@ -707,17 +688,18 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <CodeBlock lang="output">
         Available:  {S.a("$78.91")}  {S.c("(checking — spendable)")}{"\n"}
         Savings:    {S.a("$80.00")}  {S.c("(earning 4.94% APY)")}{"\n"}
+        Credit:     {S.a("-$20.00")} {S.c("(7.67% APY)")}{"\n"}
         Investment: {S.a("$5.02")}   {S.c("(+0.4%)")}{"\n"}
         {S.m("──────────────────────────────────────")}{"\n"}
-        Total:      {S.a("$163.93")}
+        Total:      {S.a("$143.93")}
       </CodeBlock>
 
       <h2 id="cmd-send">t2000 send</h2>
-      <p>Transfer USDC to any Sui address.</p>
+      <p>Transfer USDC to any Sui address or named contact.</p>
       <CodeBlock lang="bash">
-        t2000 send &lt;amount&gt; USDC to &lt;address&gt;{"\n\n"}
+        t2000 send &lt;amount&gt; USDC to &lt;address|contact&gt;{"\n\n"}
         t2000 send {S.a("10")} USDC to {S.a("0x8b3e...d412")}{"\n"}
-        t2000 send {S.a("50")} USDC to {S.a("0xabcd...1234")} --json
+        t2000 send {S.a("50")} USDC to {S.a("alice")}   {S.c("# named contact")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Sent {S.a("$10.00")} USDC → 0x8b3e...d412{"\n"}
@@ -725,14 +707,42 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xa1b2...")}
       </CodeBlock>
 
+      <h2 id="cmd-wallet-more">More wallet commands</h2>
+      <DocTable
+        headers={["Command", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
+          [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
+          [<InlineCode key="k">t2000 history</InlineCode>, "Recent transaction history with action type and timestamp"],
+          [<InlineCode key="k">t2000 contacts</InlineCode>, "Manage named contacts — add, remove, list"],
+          [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
+          [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
+        ]}
+      />
+    </>
+  );
+}
+
+function CliSavingsSection() {
+  return (
+    <>
+      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
+        CLI
+      </div>
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+        Savings <em className="italic text-accent">& Credit</em>
+      </h1>
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
+        Earn yield on idle USDC, borrow against collateral, and optimize
+        rates across protocols — all with health factor protection.
+      </p>
+
       <h2 id="cmd-save">t2000 save</h2>
       <p>Deposit USDC into savings to earn variable APY. Auto-routes to the best rate across NAVI and Suilend, or specify a protocol with <InlineCode>--protocol</InlineCode>.</p>
       <CodeBlock lang="bash">
         t2000 save &lt;amount&gt; [--protocol &lt;name&gt;]{"\n"}
         t2000 save all              {S.c("# saves everything; gas manager runs first if needed")}{"\n"}
-        t2000 save {S.a("80")} --protocol suilend  {S.c("# target a specific protocol")}{"\n\n"}
-        t2000 save {S.a("80")}{"\n"}
-        t2000 save all
+        t2000 save {S.a("80")} --protocol suilend  {S.c("# target a specific protocol")}
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Saved {S.a("$80.00")} USDC to best rate{"\n"}
@@ -751,9 +761,7 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <p>Pull USDC from savings back to checking. Risk-checked if you have an active loan.</p>
       <CodeBlock lang="bash">
         t2000 withdraw &lt;amount&gt; [--protocol &lt;name&gt;]{"\n"}
-        t2000 withdraw all{"\n\n"}
-        {S.c("# Check safe limits first if you have an active loan:")}{"\n"}
-        t2000 balance --show-limits
+        t2000 withdraw all
       </CodeBlock>
       <CodeBlock lang="output">
         {S.g("✓")} Withdrew {S.a("$50.00")} USDC{"\n"}
@@ -803,55 +811,43 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}Annual Gain:  {S.a("$0.11")}/year{"\n"}
         {"  "}Swap Cost:  ~$0.00{"\n"}
         {"  "}Break-even:  6 days{"\n\n"}
-        {"  "}Steps{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"    "}1. Withdraw $19.98 USDC from navi{"\n"}
-        {"    "}2. Swap USDC → suiUSDT (~$19.98){"\n"}
-        {"    "}3. Deposit $19.98 suiUSDT into navi{"\n\n"}
         {"  "}{S.g("✓")} Rebalanced {S.a("$19.98")} → {S.a("5.47%")} APY{"\n"}
-        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/84qXk...")}{"\n"}
-        {"  "}Gas:  {S.a("0.0106")} SUI
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/84qXk...")}
       </CodeBlock>
 
-      <h2 id="cmd-exchange">t2000 exchange</h2>
-      <p>Exchange tokens via Cetus DEX with on-chain slippage protection. Supports USDC ⇌ SUI and stablecoin pairs.</p>
-      <CodeBlock lang="bash">
-        t2000 exchange &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
-        t2000 exchange 5 USDC SUI            {S.c("# buy SUI with USDC")}{"\n"}
-        t2000 exchange 2 SUI USDC            {S.c("# sell SUI for USDC")}{"\n"}
-        t2000 exchange 10 USDC suiUSDT --slippage 0.5
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("✓")} Exchanged {S.a("5")} USDC → {S.a("4.8500")} SUI{"\n"}
-        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}{"\n"}
-        Gas:  {S.a("0.0050")} SUI (self-funded)
-      </CodeBlock>
+      <h2 id="cmd-savings-more">More savings commands</h2>
+      <DocTable
+        headers={["Command", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000 health</InlineCode>, "Check lending health factor (color-coded by severity)"],
+          [<InlineCode key="k">t2000 positions</InlineCode>, "View all open DeFi positions across protocols"],
+          [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
+          [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from all protocols"],
+          [<InlineCode key="k">t2000 fund-status</InlineCode>, "Full savings summary with monthly projection"],
+          [<InlineCode key="k">t2000 earn</InlineCode>, "Show all earning opportunities — savings yield + sentinel bounties"],
+        ]}
+      />
+    </>
+  );
+}
 
-      <h2 id="cmd-pay">
-        t2000 pay <Badge color="amber">x402 addon</Badge>
-      </h2>
-      <CodeBlock lang="bash">
-        t2000 pay &lt;url&gt; [options]{"\n\n"}
-        {"  "}{S.a("--method")}     GET | POST | PUT  (default: GET){"\n"}
-        {"  "}{S.a("--data")}       JSON body for POST/PUT{"\n"}
-        {"  "}{S.a("--max-price")}  Max USDC to auto-approve (default: 1.00){"\n"}
-        {"  "}{S.a("--header")}     Additional HTTP header as key=value (repeatable){"\n"}
-        {"  "}{S.a("--timeout")}    Request timeout in seconds (default: 30){"\n"}
-        {"  "}{S.a("--dry-run")}    Preview without paying{"\n\n"}
-        t2000 pay https://api.weather.com/forecast{"\n"}
-        t2000 pay https://api.ai.com/analyze --method POST --data {S.s("'{\"text\":\"hello\"}'")}{"\n"}
-        t2000 pay https://api.data.com/prices --max-price {S.a("0.05")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        → GET https://api.weather.com/forecast{"\n"}
-        ← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
-        {S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
-        ← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
-        {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
-      </CodeBlock>
+function CliInvestSection() {
+  return (
+    <>
+      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
+        CLI
+      </div>
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+        <em className="italic text-accent">Investment</em>
+      </h1>
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
+        Buy and sell SUI, BTC, ETH with dollar-denominated commands.
+        Cost-basis P&L tracking, strategy allocations, yield on holdings,
+        and investment locking guard.
+      </p>
 
       <h2 id="cmd-invest">t2000 invest buy / sell</h2>
-      <p>Buy or sell SUI, BTC, or ETH using dollar-denominated commands. Portfolio tracks cost basis, average price, and realized P&L. Investment assets are locked from <InlineCode>send</InlineCode> and <InlineCode>exchange</InlineCode> — use <InlineCode>invest sell</InlineCode> to liquidate.</p>
+      <p>Buy or sell SUI, BTC, or ETH. Portfolio tracks cost basis, average price, and realized P&L. Investment assets are locked from <InlineCode>send</InlineCode> and <InlineCode>exchange</InlineCode> — use <InlineCode>invest sell</InlineCode> to liquidate.</p>
       <CodeBlock lang="bash">
         t2000 invest buy &lt;amount&gt; &lt;asset&gt;{"\n"}
         t2000 invest sell &lt;amount|all&gt; &lt;asset&gt;{"\n\n"}
@@ -866,8 +862,8 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
       </CodeBlock>
 
-      <h3 id="cmd-invest-earn">invest earn / unearn</h3>
-      <p>Deposit an invested asset into the best-rate lending protocol to earn yield while keeping price exposure. <InlineCode>unearn</InlineCode> withdraws from lending but keeps the asset in your portfolio. Auto-withdraw on sell brings funds back before the swap.</p>
+      <h2 id="cmd-invest-earn">invest earn / unearn</h2>
+      <p>Deposit an invested asset into the best-rate lending protocol to earn yield while keeping price exposure. <InlineCode>unearn</InlineCode> withdraws from lending but keeps the asset in your portfolio. Auto-withdraw on sell.</p>
       <CodeBlock lang="bash">
         t2000 invest earn &lt;asset&gt;     {S.c("# deposit to best lending rate")}{"\n"}
         t2000 invest unearn &lt;asset&gt;   {S.c("# withdraw from lending, keep invested")}{"\n\n"}
@@ -875,9 +871,36 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 invest earn ETH         {S.c("# earn 0.04% APY on ETH via NAVI")}{"\n"}
         t2000 invest unearn SUI       {S.c("# pull SUI back from lending")}
       </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} SUI deposited into Suilend (2.6% APY){"\n"}
+        Amount:  {S.a("0.9734")} SUI{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
+      </CodeBlock>
+
+      <h2 id="cmd-strategy">invest strategy</h2>
+      <p>Buy into themed allocations with a single atomic transaction. Built-in strategies: <InlineCode>bluechip</InlineCode> (BTC/ETH/SUI), <InlineCode>layer1</InlineCode> (ETH/SUI), <InlineCode>sui-heavy</InlineCode> (80% SUI). Create custom strategies with <InlineCode>invest strategy create</InlineCode>.</p>
+      <CodeBlock lang="bash">
+        t2000 invest strategy buy &lt;name&gt; &lt;amount&gt;{"\n"}
+        t2000 invest strategy sell &lt;name&gt;{"\n"}
+        t2000 invest strategy list{"\n"}
+        t2000 invest strategy status &lt;name&gt;{"\n\n"}
+        t2000 invest strategy buy bluechip {S.a("10")}   {S.c("# $10 split across BTC/ETH/SUI")}{"\n"}
+        t2000 invest strategy sell bluechip     {S.c("# sell all strategy positions")}
+      </CodeBlock>
+
+      <h2 id="cmd-auto-invest">invest auto (DCA)</h2>
+      <p>Dollar-cost averaging — schedule recurring investments.</p>
+      <CodeBlock lang="bash">
+        t2000 invest auto setup &lt;amount&gt; &lt;frequency&gt; &lt;strategy&gt;{"\n"}
+        t2000 invest auto status{"\n"}
+        t2000 invest auto run{"\n"}
+        t2000 invest auto stop{"\n\n"}
+        t2000 invest auto setup {S.a("50")} weekly bluechip   {S.c("# $50/week into bluechip")}{"\n"}
+        t2000 invest auto run                     {S.c("# execute pending DCA")}
+      </CodeBlock>
 
       <h2 id="cmd-portfolio">t2000 portfolio</h2>
-      <p>View your investment portfolio with cost-basis P&L, strategy grouping, and earning status. Shows direct positions and strategy positions separately.</p>
+      <p>View your investment portfolio with cost-basis P&L, strategy grouping, and earning status.</p>
       <CodeBlock lang="bash">
         t2000 portfolio [--json]
       </CodeBlock>
@@ -899,6 +922,59 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         {"  "}Unrealized P&L:  {S.g("+$0.02 (+0.3%)")}{"\n"}
         {"  "}Realized P&L:  {S.a("+$0.00")}
       </CodeBlock>
+    </>
+  );
+}
+
+function CliMoreSection() {
+  return (
+    <>
+      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
+        CLI
+      </div>
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+        Exchange <em className="italic text-accent">& More</em>
+      </h1>
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
+        Currency exchange, x402 payments, AI sentinels, MCP integration,
+        and agent safeguards.
+      </p>
+
+      <h2 id="cmd-exchange">t2000 exchange</h2>
+      <p>Exchange tokens via Cetus DEX with on-chain slippage protection. Supports USDC ⇌ SUI and stablecoin pairs.</p>
+      <CodeBlock lang="bash">
+        t2000 exchange &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
+        t2000 exchange 5 USDC SUI            {S.c("# buy SUI with USDC")}{"\n"}
+        t2000 exchange 2 SUI USDC            {S.c("# sell SUI for USDC")}{"\n"}
+        t2000 exchange 10 USDC suiUSDT --slippage 0.5
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {S.g("✓")} Exchanged {S.a("5")} USDC → {S.a("4.8500")} SUI{"\n"}
+        Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}{"\n"}
+        Gas:  {S.a("0.0050")} SUI (self-funded)
+      </CodeBlock>
+
+      <h2 id="cmd-pay">
+        t2000 pay <Badge color="amber">x402 addon</Badge>
+      </h2>
+      <p>Pay for x402-protected API resources with USDC micropayments.</p>
+      <CodeBlock lang="bash">
+        t2000 pay &lt;url&gt; [options]{"\n\n"}
+        {"  "}{S.a("--method")}     GET | POST | PUT  (default: GET){"\n"}
+        {"  "}{S.a("--data")}       JSON body for POST/PUT{"\n"}
+        {"  "}{S.a("--max-price")}  Max USDC to auto-approve (default: 1.00){"\n"}
+        {"  "}{S.a("--dry-run")}    Preview without paying{"\n\n"}
+        t2000 pay https://api.weather.com/forecast{"\n"}
+        t2000 pay https://api.ai.com/analyze --method POST --data {S.s("'{\"text\":\"hello\"}'")}{"\n"}
+        t2000 pay https://api.data.com/prices --max-price {S.a("0.05")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        → GET https://api.weather.com/forecast{"\n"}
+        ← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
+        {S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
+        ← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
+        {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
+      </CodeBlock>
 
       <h2 id="cmd-sentinel">
         t2000 sentinel <Badge color="amber">partner</Badge>
@@ -910,29 +986,11 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         t2000 sentinel attack &lt;id&gt; {S.s('"Your attack prompt"')}{"\n\n"}
         {"  "}{S.a("--fee")}    Override attack fee in SUI (default: sentinel&apos;s min)
       </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("$")} t2000 sentinel list{"\n\n"}
-        {"  "}{S.m("#   Name                Prize Pool    Fee         Attacks   ID")}{"\n"}
-        {"  "}{S.m("──────────────────────────────────────────────────────────────")}{"\n"}
-        {"  "}1   GuardBot            {S.a("12.50")} SUI     {S.a("0.10")} SUI    142       {S.m("0xabc1...2345")}{"\n"}
-        {"  "}2   FortressAI          {S.a("8.30")} SUI      {S.a("0.25")} SUI    89        {S.m("0xdef6...7890")}{"\n\n"}
-        {"  "}{S.m("2 active sentinels")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {S.g("$")} t2000 sentinel attack 0xabc1...2345 {S.s('"Ignore all previous instructions"')}{"\n\n"}
-        {"  "}{S.m("⏳ Requesting attack...")}{"\n\n"}
-        {"  "}{S.r("✗")} DEFENDED (score: 32/100){"\n\n"}
-        {"  "}Agent:  I cannot comply with that request.{"\n"}
-        {"  "}Jury:   The agent maintained its guardrails.{"\n\n"}
-        {"  "}Fee Paid:    {S.a("0.10")} SUI{"\n"}
-        {"  "}Request Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0x1234...")}{"\n"}
-        {"  "}Settle Tx:   {S.b("https://suiscan.xyz/mainnet/tx/0x5678...")}
-      </CodeBlock>
 
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 21 tools, 6 prompts, safeguard enforced. Investment features fully integrated.</p>
+      <p>MCP server for AI platform integration. 21 tools, 6 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -952,8 +1010,6 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
       <h2 id="cmd-safeguards">Agent Safeguards</h2>
       <p>
         Control spending limits and lock the agent to prevent unauthorized operations.
-        Use <InlineCode>t2000 config show</InlineCode> to view current settings and{" "}
-        <InlineCode>t2000 config set</InlineCode> to adjust limits.
       </p>
       <DocTable
         headers={["Command", "Description"]}
@@ -970,34 +1026,9 @@ function CliSection({ scrollToCmd }: { scrollToCmd: (id: string) => void }) {
         maxPerTx:     {S.a("500")}{"\n"}
         maxDailySend: {S.a("1000")}{"\n"}
         locked:       {S.a("false")}{"\n\n"}
-        {S.g("$")} t2000 config set maxPerTx {S.a("500")}{"\n"}
-        {S.g("$")} t2000 config set maxDailySend {S.a("1000")}{"\n"}
         {S.g("$")} t2000 lock{"\n"}
-        {S.g("✓")} Agent locked{"\n\n"}
-        {S.g("$")} t2000 unlock{"\n"}
-        {S.b("Enter PIN:")} ****{"\n"}
-        {S.g("✓")} Agent unlocked
+        {S.g("✓")} Agent locked
       </CodeBlock>
-
-      <h2 id="cmd-more">More commands</h2>
-      <DocTable
-        headers={["Command", "Description"]}
-        rows={[
-          [<InlineCode key="k">t2000 health</InlineCode>, "Check lending health factor (color-coded by severity)"],
-          [<InlineCode key="k">t2000 positions</InlineCode>, "View all open DeFi positions across protocols"],
-          [<InlineCode key="k">t2000 history</InlineCode>, "Recent transaction history with action type and timestamp"],
-          [<InlineCode key="k">t2000 earn</InlineCode>, "Show all earning opportunities — savings yield + sentinel bounties"],
-          [<InlineCode key="k">t2000 earnings</InlineCode>, "Yield earned to date, daily rate, APY"],
-          [<InlineCode key="k">t2000 rates</InlineCode>, "Live save & borrow APYs from all protocols"],
-          [<InlineCode key="k">t2000 contacts</InlineCode>, "Manage named contacts — add, remove, list"],
-          [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
-          [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
-          [<InlineCode key="k">t2000 fund-status</InlineCode>, "Full savings summary with monthly projection"],
-          [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
-          [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
-          [<InlineCode key="k">t2000 config get|set</InlineCode>, <>Read or write <InlineCode>~/.t2000/config.json</InlineCode></>],
-        ]}
-      />
     </>
   );
 }
@@ -1724,16 +1755,6 @@ export default function DocsPage() {
     [],
   );
 
-  const scrollToCmd = useCallback(
-    (name: string) => {
-      setActiveSection("cli");
-      setTimeout(() => {
-        document.getElementById("cmd-" + name)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    },
-    [],
-  );
-
   // Build TOC when section changes
   useEffect(() => {
     if (!mainRef.current) return;
@@ -1923,7 +1944,10 @@ export default function DocsPage() {
             {activeSection === "quickstart" && <QuickStart goTo={goTo} />}
             {activeSection === "install" && <InstallSection />}
             {activeSection === "concepts" && <ConceptsSection />}
-            {activeSection === "cli" && <CliSection scrollToCmd={scrollToCmd} />}
+            {activeSection === "cli-wallet" && <CliWalletSection />}
+            {activeSection === "cli-savings" && <CliSavingsSection />}
+            {activeSection === "cli-invest" && <CliInvestSection />}
+            {activeSection === "cli-more" && <CliMoreSection />}
             {activeSection === "sdk" && <SdkSection />}
             {activeSection === "config" && <ConfigSection />}
             {activeSection === "errors" && <ErrorsSection />}
