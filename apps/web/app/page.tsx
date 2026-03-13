@@ -3,6 +3,8 @@ import { TerminalDemo } from "./components/TerminalDemo";
 import { InstallCommand } from "./components/InstallCommand";
 import { Ticker } from "./components/Ticker";
 import { BalanceWidget } from "./components/BalanceWidget";
+import { HomeShowcase } from "./components/HomeShowcase";
+import { McpLiveDemo } from "./components/McpLiveDemo";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 const NPM_ORG_URL = "https://www.npmjs.com/org/t2000";
@@ -421,6 +423,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── See It In Action (demos) ── */}
+      <HomeShowcase />
+
       {/* ── How It Works + x402 Panel ── */}
       <section id="how" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
@@ -587,22 +592,10 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-2">
-              Try asking
+            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+              Live — AI optimizing yield
             </div>
-            <div className="flex flex-col gap-1.5 mb-6">
-              {[
-                "Move my idle USDC to the highest yield protocol",
-                "Send $50 to 0x8b3e… but borrow if I\u2019m short",
-                "Rebalance my savings to maximize APY",
-                "Invest $100 in SUI and show me my portfolio",
-                "Generate a full financial report with recommendations",
-              ].map((q) => (
-                <p key={q} className="text-xs text-muted/70 italic">
-                  &ldquo;{q}&rdquo;
-                </p>
-              ))}
-            </div>
+            <McpLiveDemo />
 
             <div className="flex flex-wrap gap-2">
               {MCP_PLATFORMS.map((p) => (
