@@ -1236,7 +1236,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async investSell(params: { asset: InvestmentAsset; usdAmount: number | 'all'; maxSlippage?: number }): Promise<InvestResult> {
+  async investSell(params: { asset: InvestmentAsset; usdAmount: number | 'all'; maxSlippage?: number; _strategyOnly?: boolean }): Promise<InvestResult> {
     this.enforcer.assertNotLocked();
 
     if (params.usdAmount !== 'all') {
@@ -1284,7 +1284,9 @@ export class T2000 extends EventEmitter<T2000Events> {
       const quote = await swapAdapter.getQuote('USDC', params.asset, 1);
       const assetPrice = 1 / quote.expectedOutput;
       sellAmountAsset = params.usdAmount / assetPrice;
-      sellAmountAsset = Math.min(sellAmountAsset, pos.totalAmount);
+      // For strategy sells, cap to wallet balance; for direct sells, cap to tracked position
+      const maxPosition = params._strategyOnly ? maxSellable : pos.totalAmount;
+      sellAmountAsset = Math.min(sellAmountAsset, maxPosition);
       if (sellAmountAsset > maxSellable) {
         throw new T2000Error(
           'INSUFFICIENT_INVESTMENT',
@@ -1319,7 +1321,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       timestamp: new Date().toISOString(),
     });
 
-    if (params.usdAmount === 'all') {
+    if (params.usdAmount === 'all' && !params._strategyOnly) {
       this.portfolio.closePosition(params.asset);
     }
 
@@ -1584,7 +1586,28 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     for (const pos of stratPositions) {
       const fullAmount = pos.totalAmount;
-      const result = await this.investSell({ asset: pos.asset as InvestmentAsset, usdAmount: 'all' });
+
+      // Sell only the strategy's tracked amount, not the entire wallet balance.
+      // Get current price to convert asset amount → USD amount.
+      const swapAdapter = this.registry.listSwap()[0];
+      let assetPrice = 1;
+      try {
+        if (swapAdapter) {
+          if (pos.asset === 'SUI') {
+            assetPrice = await swapAdapter.getPoolPrice();
+          } else {
+            const q = await swapAdapter.getQuote('USDC', pos.asset, 1);
+            assetPrice = q.expectedOutput > 0 ? 1 / q.expectedOutput : 1;
+          }
+        }
+      } catch { /* use fallback price */ }
+      const strategyUsdValue = fullAmount * assetPrice;
+
+      const result = await this.investSell({
+        asset: pos.asset as InvestmentAsset,
+        usdAmount: strategyUsdValue,
+        _strategyOnly: true,
+      });
 
       const pnl = this.portfolio.recordStrategySell(params.strategy, {
         id: `strat_sell_${Date.now()}_${pos.asset}`,
@@ -1950,6 +1973,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       p.positions.supplies
         .filter(s => s.amount > 0.01)
         .filter(s => !earningAssets.has(s.asset))
+        .filter(s => !(s.asset in INVESTMENT_ASSETS))
         .map(s => ({
           protocolId: p.protocolId,
           protocol: p.protocol,
@@ -2263,21 +2287,23 @@ export class T2000 extends EventEmitter<T2000Events> {
   private async getFreeBalance(asset: string): Promise<number> {
     if (!(asset in INVESTMENT_ASSETS)) return Infinity;
 
-    // Sum all wallet-resident investment tokens (direct + strategy)
-    let walletInvested = 0;
+    // Strategy buys record to BOTH direct and strategy positions, so use
+    // max(direct, strategyTotal) to avoid double-counting the overlap.
     const pos = this.portfolio.getPosition(asset);
-    if (pos && pos.totalAmount > 0 && !pos.earning) {
-      walletInvested += pos.totalAmount;
-    }
+    const directAmount = (pos && pos.totalAmount > 0 && !pos.earning) ? pos.totalAmount : 0;
+
+    let strategyTotal = 0;
     for (const key of this.portfolio.getAllStrategyKeys()) {
       for (const sp of this.portfolio.getStrategyPositions(key)) {
         if (sp.asset === asset && sp.totalAmount > 0) {
-          walletInvested += sp.totalAmount;
+          strategyTotal += sp.totalAmount;
         }
       }
     }
 
-    if (walletInvested <= 0 && (!pos || pos.totalAmount <= 0)) return Infinity;
+    const walletInvested = Math.max(directAmount, strategyTotal);
+
+    if (walletInvested <= 0) return Infinity;
 
     const assetInfo = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS];
     const balance = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });

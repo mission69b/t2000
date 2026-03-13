@@ -50,7 +50,7 @@ export function registerBalance(program: Command) {
         printBlank();
 
         const stables = bal.stables ?? {};
-        const stableEntries = Object.entries(stables).filter(([, v]) => v > 0.001);
+        const stableEntries = Object.entries(stables).filter(([, v]) => v >= 0.01);
 
         if (stableEntries.length <= 1) {
           printKeyValue('Available', `${formatUsd(bal.available)}  ${pc.dim('(checking — spendable)')}`);

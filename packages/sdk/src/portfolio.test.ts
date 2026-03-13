@@ -227,6 +227,75 @@ describe('PortfolioManager', () => {
     });
   });
 
+  describe('direct + strategy coexistence', () => {
+    it('strategy sell should not affect direct positions', () => {
+      // User buys 1 ETH direct, then buys 0.5 ETH via strategy
+      pm.recordBuy(makeTrade({ asset: 'ETH', amount: 1, price: 2000, usdValue: 2000 }));
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      // Strategy buy also records to direct (as the real code does)
+      pm.recordBuy(makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+
+      // Direct: 1.5 ETH, Strategy: 0.5 ETH
+      expect(pm.getPosition('ETH')!.totalAmount).toBe(1.5);
+      expect(pm.getStrategyPositions('bluechip')[0].totalAmount).toBe(0.5);
+
+      // Sell strategy amount from strategy tracking
+      pm.recordStrategySell('bluechip', makeTrade({
+        type: 'sell', asset: 'ETH', amount: 0.5, price: 2100, usdValue: 1050,
+      }));
+      // Also record from direct (as investSell does)
+      pm.recordSell(makeTrade({
+        type: 'sell', asset: 'ETH', amount: 0.5, price: 2100, usdValue: 1050,
+      }));
+
+      // Strategy should be empty
+      expect(pm.getStrategyPositions('bluechip')).toHaveLength(0);
+      // Direct should still have 1.0 ETH (original direct buy)
+      expect(pm.getPosition('ETH')!.totalAmount).toBe(1.0);
+    });
+
+    it('clearStrategy should not affect direct positions', () => {
+      pm.recordBuy(makeTrade({ asset: 'SUI', amount: 100, price: 1.0, usdValue: 100 }));
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'SUI', amount: 50, price: 1.0, usdValue: 50 }));
+
+      pm.clearStrategy('bluechip');
+
+      expect(pm.getStrategyPositions('bluechip')).toHaveLength(0);
+      expect(pm.getPosition('SUI')!.totalAmount).toBe(100);
+    });
+
+    it('multiple strategies on same asset track independently', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000 }));
+      pm.recordStrategyBuy('layer1', makeTrade({ asset: 'ETH', amount: 0.3, price: 2000, usdValue: 600 }));
+
+      const bc = pm.getStrategyPositions('bluechip');
+      const l1 = pm.getStrategyPositions('layer1');
+      expect(bc).toHaveLength(1);
+      expect(bc[0].totalAmount).toBe(0.5);
+      expect(l1).toHaveLength(1);
+      expect(l1[0].totalAmount).toBe(0.3);
+
+      // Selling bluechip doesn't affect layer1
+      pm.recordStrategySell('bluechip', makeTrade({
+        type: 'sell', asset: 'ETH', amount: 0.5, price: 2000, usdValue: 1000,
+      }));
+      expect(pm.getStrategyPositions('bluechip')).toHaveLength(0);
+      expect(pm.getStrategyPositions('layer1')[0].totalAmount).toBe(0.3);
+    });
+
+    it('strategy P&L is accurate when selling only strategy amount', () => {
+      pm.recordStrategyBuy('bluechip', makeTrade({ asset: 'BTC', amount: 0.001, price: 50000, usdValue: 50 }));
+
+      // Sell at higher price — only strategy amount
+      const pnl = pm.recordStrategySell('bluechip', makeTrade({
+        type: 'sell', asset: 'BTC', amount: 0.001, price: 55000, usdValue: 55,
+      }));
+
+      // P&L: $55 - (0.001 * $50000) = $55 - $50 = $5
+      expect(pnl).toBeCloseTo(5, 2);
+    });
+  });
+
   describe('closePosition / clearStrategy', () => {
     it('closePosition zeroes out a direct position', () => {
       pm.recordBuy(makeTrade({ amount: 100, price: 1.0, usdValue: 100 }));

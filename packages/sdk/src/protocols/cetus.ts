@@ -74,12 +74,19 @@ export async function buildSwapTx(params: {
 
   const aggClient = createAggregatorClient(client, address);
 
-  const result = await aggClient.findRouters({
-    from: fromInfo.type,
-    target: toInfo.type,
-    amount: rawAmount,
-    byAmountIn: true,
-  });
+  const _origLog = console.log;
+  console.log = () => {};
+  let result;
+  try {
+    result = await aggClient.findRouters({
+      from: fromInfo.type,
+      target: toInfo.type,
+      amount: rawAmount,
+      byAmountIn: true,
+    });
+  } finally {
+    console.log = _origLog;
+  }
 
   if (!result || result.insufficientLiquidity) {
     throw new T2000Error(
@@ -91,11 +98,16 @@ export async function buildSwapTx(params: {
   const tx = new Transaction();
   const slippage = maxSlippageBps / 10000;
 
-  await aggClient.fastRouterSwap({
-    router: result,
-    txb: tx as never,
-    slippage,
-  });
+  console.log = () => {};
+  try {
+    await aggClient.fastRouterSwap({
+      router: result,
+      txb: tx as never,
+      slippage,
+    });
+  } finally {
+    console.log = _origLog;
+  }
 
   const estimatedOut = Number(result.amountOut.toString());
 
@@ -132,12 +144,19 @@ export async function addSwapToTx(params: {
 
   const aggClient = createAggregatorClient(client, address);
 
-  const result = await aggClient.findRouters({
-    from: fromInfo.type,
-    target: toInfo.type,
-    amount: rawAmount,
-    byAmountIn: true,
-  });
+  const _origLog = console.log;
+  console.log = () => {};
+  let result;
+  try {
+    result = await aggClient.findRouters({
+      from: fromInfo.type,
+      target: toInfo.type,
+      amount: rawAmount,
+      byAmountIn: true,
+    });
+  } finally {
+    console.log = _origLog;
+  }
 
   if (!result || result.insufficientLiquidity) {
     throw new T2000Error(
@@ -148,12 +167,18 @@ export async function addSwapToTx(params: {
 
   const slippage = maxSlippageBps / 10000;
 
-  const outputCoin = await aggClient.routerSwap({
-    router: result,
-    txb: tx as never,
-    inputCoin: inputCoin as never,
-    slippage,
-  });
+  console.log = () => {};
+  let outputCoin;
+  try {
+    outputCoin = await aggClient.routerSwap({
+      router: result,
+      txb: tx as never,
+      inputCoin: inputCoin as never,
+      slippage,
+    });
+  } finally {
+    console.log = _origLog;
+  }
 
   const estimatedOut = Number(result.amountOut.toString());
 
