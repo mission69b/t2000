@@ -5,11 +5,11 @@ import { InvestShowcase } from "./InvestShowcase";
 export const metadata: Metadata = {
   title: "t2000 — Investment Account",
   description:
-    "Buy SUI, BTC, and ETH with dollar-denominated commands. Portfolio tracking with cost-basis P&L, lending yield on holdings, strategies, and DCA.",
+    "Invest in crypto, earn yield while holding, and automate with strategies and DCA. All from natural language or CLI.",
   openGraph: {
     title: "t2000 — Investment Account",
     description:
-      "Buy SUI, BTC, and ETH. Earn yield while holding. Strategies + DCA. Cost-basis P&L tracking.",
+      "Invest in crypto, earn yield while holding, and automate with strategies and DCA.",
     type: "website",
   },
 };
@@ -17,9 +17,9 @@ export const metadata: Metadata = {
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 
 const ASSETS = [
-  { symbol: "SUI", name: "Sui native", desc: "The Layer 1 powering t2000", icon: "◆" },
-  { symbol: "BTC", name: "Bitcoin via SuiBridge", desc: "The original cryptocurrency", icon: "₿" },
-  { symbol: "ETH", name: "Ethereum via SuiBridge", desc: "The smart contract pioneer", icon: "Ξ" },
+  { symbol: "SUI", name: "Sui", desc: "The L1 powering your bank account", icon: "◆" },
+  { symbol: "BTC", name: "Bitcoin", desc: "The world's largest digital asset", icon: "₿" },
+  { symbol: "ETH", name: "Ethereum", desc: "The leading smart contract network", icon: "Ξ" },
 ];
 
 export default function InvestPage() {
@@ -43,15 +43,15 @@ export default function InvestPage() {
           </div>
 
           <h1 className="font-serif text-[36px] sm:text-[clamp(42px,5vw,64px)] leading-[1.05] text-foreground mb-4 font-normal tracking-tight">
-            Your agent builds
+            Invest. Earn.
             <br />
-            a <em className="italic text-accent">portfolio.</em>
+            <em className="italic text-accent">Grow.</em>
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] max-w-[520px] mt-5">
-            Buy SUI, BTC, and ETH. Earn lending yield while holding. Track
-            cost-basis P&L. Use strategies for diversified allocation. Set up DCA
-            for automated investing. All from natural language or CLI.
+            Build a portfolio with one command. Your holdings earn yield
+            automatically while you keep full price exposure. Diversify with
+            strategies, automate with DCA.
           </p>
 
           <div className="flex items-center gap-3 sm:gap-5 mt-8 sm:mt-10 flex-wrap">
@@ -73,12 +73,17 @@ export default function InvestPage() {
         {/* ── Supported Assets ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-            Supported Assets
+            What you can invest in
           </div>
-          <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-10 sm:mb-14 tracking-tight">
-            Three assets.{" "}
-            <em className="italic text-accent">Dollar-denominated.</em>
+          <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-4 tracking-tight">
+            Crypto today.{" "}
+            <em className="italic text-accent">More tomorrow.</em>
           </h2>
+          <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-10 sm:mb-14">
+            Say how much in dollars — t2000 handles the rest. No wallet
+            complexity, no manual swaps. Commodities, stocks, and RWA on the
+            roadmap.
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-border border border-border">
             {ASSETS.map((asset) => (
@@ -111,21 +116,21 @@ export default function InvestPage() {
                 Yield
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-                Earn yield.
+                Earn while
                 <br />
-                <em className="italic text-accent">Keep exposure.</em>
+                <em className="italic text-accent">you hold.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Deposit invested SUI or ETH into NAVI or Suilend for lending
-                yield. You keep full price exposure — sell anytime.
-                Auto-withdraw on sell brings funds back before the swap.
+                Your holdings earn lending yield automatically while you keep
+                full price exposure. Sell anytime — funds withdraw from
+                lending first, then swap back to USDC.
               </p>
 
               <div className="space-y-4">
                 {[
-                  { cmd: "t2000 invest earn SUI", desc: "Deposit into best-rate lending" },
-                  { cmd: "t2000 invest unearn SUI", desc: "Withdraw from lending, keep invested" },
-                  { cmd: "t2000 invest sell all SUI", desc: "Sell — auto-withdraws from lending first" },
+                  { cmd: "t2000 invest earn <asset>", desc: "Start earning yield on any holding" },
+                  { cmd: "t2000 invest unearn <asset>", desc: "Stop earning, keep the investment" },
+                  { cmd: "t2000 invest sell all <asset>", desc: "Sell — auto-withdraws from lending first" },
                 ].map((step) => (
                   <div key={step.cmd} className="flex items-start gap-3">
                     <span className="text-accent text-xs mt-0.5">▸</span>
@@ -151,27 +156,45 @@ export default function InvestPage() {
                 {"\n"}
                 <span className="text-foreground">SUI:</span>
                 {"  "}
-                <span className="text-muted">4.8500</span>
+                <span className="text-muted">4.85</span>
                 {"    "}
                 <span className="text-muted">Avg: $1.03</span>
                 {"    "}
                 <span className="text-muted">Now: $1.05</span>
                 {"    "}
-                <span className="text-accent">+$0.10 (+2.0%)</span>
+                <span className="text-accent">+2.0%</span>
                 {"    "}
                 <span className="text-accent">2.61% APY</span>
-                {"\n\n"}
-                <span className="text-muted">Total invested:</span>
-                {"  "}
-                <span className="text-foreground">$5.00</span>
                 {"\n"}
-                <span className="text-muted">Current value:</span>
+                <span className="text-foreground">BTC:</span>
                 {"  "}
-                <span className="text-foreground">$5.09</span>
+                <span className="text-muted">0.00035</span>
+                {"  "}
+                <span className="text-muted">Avg: $71k</span>
+                {"     "}
+                <span className="text-muted">Now: $72k</span>
+                {"    "}
+                <span className="text-accent">+1.4%</span>
                 {"\n"}
-                <span className="text-accent">Unrealized P&L:</span>
+                <span className="text-foreground">ETH:</span>
                 {"  "}
-                <span className="text-accent">+$0.10 (+2.0%)</span>
+                <span className="text-muted">0.00070</span>
+                {"  "}
+                <span className="text-muted">Avg: $2.1k</span>
+                {"    "}
+                <span className="text-muted">Now: $2.2k</span>
+                {"   "}
+                <span className="text-accent">+0.9%</span>
+                {"    "}
+                <span className="text-accent">0.04% APY</span>
+                {"\n"}
+                <span className="text-muted/30">─────────────────────────────────────────────</span>
+                {"\n"}
+                <span className="text-muted">Total:</span>
+                {"  "}
+                <span className="text-foreground">$32.40</span>
+                {"  "}
+                <span className="text-accent">+$0.82 (+2.6%)</span>
               </pre>
             </div>
           </div>
@@ -210,9 +233,9 @@ export default function InvestPage() {
           </div>
 
           <p className="text-[11px] text-muted mb-6">
-            Create custom strategies with{" "}
+            Or create your own with{" "}
             <code className="text-accent bg-accent-dim px-1.5 py-0.5">
-              t2000 invest strategy create myplan SUI:60 BTC:25 ETH:15
+              t2000 invest strategy create
             </code>
           </p>
 
@@ -257,7 +280,7 @@ export default function InvestPage() {
           </div>
         </section>
 
-        {/* ── Investment Locking ── */}
+        {/* ── Investment Protection ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
@@ -265,35 +288,35 @@ export default function InvestPage() {
                 Safety
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-                Investment{" "}
-                <em className="italic text-accent">locking guard.</em>
+                Protected{" "}
+                <em className="italic text-accent">by default.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px]">
-                Invested assets are locked. Your agent can&apos;t accidentally
-                send or swap them during routine operations. To access value,
-                sell back to USDC through the investment account.
+                Your investments can&apos;t be accidentally sent or swapped
+                during routine operations. To access value, sell through the
+                investment account — everything else is blocked.
               </p>
             </div>
 
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
               <div className="px-5 py-3 border-b border-border flex items-center gap-2">
                 <span className="text-[11px] tracking-[0.1em] text-muted uppercase">
-                  Guard behavior
+                  How it works
                 </span>
               </div>
               <div className="p-5 space-y-3">
                 {[
-                  { icon: "✗", ok: false, label: "t2000 send 1 SUI to 0x...", status: "Blocked — INVESTMENT_LOCKED" },
-                  { icon: "✗", ok: false, label: "t2000 exchange 1 SUI USDC", status: "Blocked — use invest sell" },
-                  { icon: "✓", ok: true, label: "t2000 invest sell all SUI", status: "Allowed" },
-                  { icon: "✓", ok: true, label: "t2000 invest earn SUI", status: "Allowed" },
+                  { icon: "✗", ok: false, label: "Send invested assets", status: "Blocked" },
+                  { icon: "✗", ok: false, label: "Swap invested assets", status: "Blocked" },
+                  { icon: "✓", ok: true, label: "Sell through invest account", status: "Allowed" },
+                  { icon: "✓", ok: true, label: "Earn yield on holdings", status: "Allowed" },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center gap-3 text-xs">
                     <span className={`font-mono ${row.ok ? "text-accent" : "text-red-400"}`}>
                       {row.icon}
                     </span>
-                    <code className="text-[11px] text-muted flex-1">{row.label}</code>
-                    <span className={`text-[10px] tracking-[0.06em] ${row.ok ? "text-accent" : "text-red-400"}`}>
+                    <span className="text-[12px] text-muted flex-1">{row.label}</span>
+                    <span className={`text-[11px] tracking-[0.06em] ${row.ok ? "text-accent" : "text-red-400"}`}>
                       {row.status}
                     </span>
                   </div>
@@ -303,160 +326,59 @@ export default function InvestPage() {
           </div>
         </section>
 
-        {/* ── Unified Balance ── */}
+        {/* ── MCP ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
               <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-                Unified Balance
+                AI-Powered
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-                Four accounts.{" "}
-                <em className="italic text-accent">One command.</em>
+                Just ask{" "}
+                <em className="italic text-accent">your AI.</em>
               </h2>
-              <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px]">
-                Checking, savings, credit, and investment — your full financial
-                picture in a single command. Investment value with P&L
-                percentage, credit with interest rate.
+              <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-6">
+                Connect any AI platform and invest through natural conversation.
+                Your AI previews every trade before executing, and you confirm
+                before anything moves.
               </p>
-            </div>
-
-            <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-                t2000 balance
+              <div className="flex flex-wrap gap-2">
+                {["Claude", "Cursor", "Copilot", "Codex"].map((p) => (
+                  <span
+                    key={p}
+                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
+                  >
+                    {p}
+                  </span>
+                ))}
               </div>
-              <pre className="px-5 py-5 text-[12px] sm:text-[13px] font-mono leading-[1.9] overflow-x-auto scrollbar-hide">
-                <span className="text-muted">Available:</span>
-                {"  "}
-                <span className="text-accent">$69.60</span>
-                {"  "}
-                <span className="text-muted/50">(checking — spendable)</span>
-                {"\n"}
-                <span className="text-muted">Savings:</span>
-                {"  "}
-                <span className="text-accent">$9.26</span>
-                {"  "}
-                <span className="text-muted/50">(earning 4.15% APY)</span>
-                {"\n"}
-                <span className="text-muted">Credit:</span>
-                {"  "}
-                <span className="text-red-400">-$1.00</span>
-                {"  "}
-                <span className="text-muted/50">(7.67% APY)</span>
-                {"\n"}
-                <span className="text-muted">Investment:</span>
-                {"  "}
-                <span className="text-accent">$5.01</span>
-                {"  "}
-                <span className="text-accent/70">(+0.1%)</span>
-                {"\n"}
-                <span className="text-muted/30">──────────────────────────────────────</span>
-                {"\n"}
-                <span className="text-muted">Total:</span>
-                {"  "}
-                <span className="text-accent">$82.87</span>
-              </pre>
             </div>
-          </div>
-        </section>
 
-        {/* ── MCP + SDK ── */}
-        <section className="py-16 sm:py-24 border-b border-border">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-            Programmatic Access
-          </div>
-          <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-            Natural language.{" "}
-            <em className="italic text-accent">Or code.</em>
-          </h2>
-          <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-10">
-            Your AI invests autonomously via 21 MCP tools and 12 prompts.
-            Or integrate directly with the TypeScript SDK for full control.
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
               <div className="px-4 py-3 bg-white/[0.02] border-b border-border flex items-center justify-between">
                 <span className="text-[10px] tracking-[0.1em] text-muted uppercase">
-                  MCP — Natural language
+                  Natural language
                 </span>
                 <span className="text-[10px] px-2 py-0.5 bg-accent-dim text-accent tracking-[0.08em]">
-                  Claude / Cursor
+                  MCP
                 </span>
               </div>
               <pre className="px-5 py-5 text-[12px] sm:text-[13px] font-mono leading-[1.8] overflow-x-auto scrollbar-hide">
-                <span className="text-accent">User:</span>
+                <span className="text-accent">You:</span>
                 {" "}
                 <span className="text-foreground">&quot;Invest $100 in the bluechip strategy&quot;</span>
                 {"\n\n"}
-                <span className="text-muted/50">→ AI calls t2000_strategy</span>
+                <span className="text-muted/50">→ Previews allocation</span>
                 {"\n"}
-                <span className="text-muted/50">→ Previews allocation (dryRun: true)</span>
+                <span className="text-muted/50">→ Asks for your confirmation</span>
                 {"\n"}
-                <span className="text-muted/50">→ Asks for confirmation</span>
-                {"\n"}
-                <span className="text-muted/50">→ Executes atomic PTB</span>
+                <span className="text-muted/50">→ Executes in one transaction</span>
                 {"\n\n"}
                 <span className="text-accent">AI:</span>
                 {" "}
                 <span className="text-foreground">&quot;Done — invested $100 across</span>
                 {"\n"}
                 <span className="text-foreground">{"     "}BTC, ETH, and SUI.&quot;</span>
-              </pre>
-            </div>
-
-            <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-white/[0.02] border-b border-border flex items-center justify-between">
-                <span className="text-[10px] tracking-[0.1em] text-muted uppercase">
-                  SDK
-                </span>
-                <span className="text-[10px] px-2 py-0.5 bg-accent-dim text-accent tracking-[0.08em]">
-                  TypeScript
-                </span>
-              </div>
-              <pre className="px-5 py-5 text-[12px] sm:text-[13px] font-mono leading-[1.8] overflow-x-auto scrollbar-hide">
-                <span className="text-purple-400">const</span>
-                {` agent = `}
-                <span className="text-purple-400">await</span>
-                {` T2000.`}
-                <span className="text-accent">create</span>
-                {`({ pin });`}
-                {"\n\n"}
-                <span className="text-purple-400">await</span>
-                {` agent.`}
-                <span className="text-accent">investBuy</span>
-                {`({ asset: `}
-                <span className="text-amber-300">&apos;SUI&apos;</span>
-                {`, usdAmount: `}
-                <span className="text-amber-400">100</span>
-                {` });`}
-                {"\n"}
-                <span className="text-purple-400">await</span>
-                {` agent.`}
-                <span className="text-accent">investEarn</span>
-                {`({ asset: `}
-                <span className="text-amber-300">&apos;SUI&apos;</span>
-                {` });`}
-                {"\n"}
-                <span className="text-purple-400">await</span>
-                {` agent.`}
-                <span className="text-accent">investStrategy</span>
-                {`({`}
-                {"\n"}
-                {"  "}
-                {`strategy: `}
-                <span className="text-amber-300">&apos;bluechip&apos;</span>
-                {`, usdAmount: `}
-                <span className="text-amber-400">200</span>
-                {"\n"}
-                {`});`}
-                {"\n"}
-                <span className="text-purple-400">const</span>
-                {` pf = `}
-                <span className="text-purple-400">await</span>
-                {` agent.`}
-                <span className="text-accent">getPortfolio</span>
-                {`();`}
               </pre>
             </div>
           </div>
@@ -538,7 +460,7 @@ export default function InvestPage() {
         <footer className="pt-8 pb-10 border-t border-border text-center">
           <p className="text-muted text-xs">
             t2000 — The first bank account for AI agents.{" "}
-            <a href="/" className="text-accent hover:underline">Home</a>
+            <Link href="/" className="text-accent hover:underline">Home</Link>
             {" · "}
             <Link href="/docs" className="text-accent hover:underline">Docs</Link>
             {" · "}
