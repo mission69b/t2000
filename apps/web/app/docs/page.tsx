@@ -645,6 +645,10 @@ function ConceptsSection() {
   );
 }
 
+function scrollTo(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function CliWalletSection() {
   return (
     <>
@@ -658,6 +662,12 @@ function CliWalletSection() {
         Create your bank account, check balances, and send USDC. All commands
         support <InlineCode>--json</InlineCode> for agent consumption.
       </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
+        <CmdCard name="t2000 init" desc="Generate keypair, write config" onClick={() => scrollTo("cmd-init")} />
+        <CmdCard name="t2000 balance" desc="View all accounts + limits" onClick={() => scrollTo("cmd-balance")} />
+        <CmdCard name="t2000 send" desc="Transfer USDC to any address" onClick={() => scrollTo("cmd-send")} />
+      </div>
 
       <h2 id="cmd-init">t2000 init</h2>
       <p>Generate a new Ed25519 keypair, encrypt it with AES-256-GCM, and set up all accounts.</p>
@@ -736,6 +746,14 @@ function CliSavingsSection() {
         Earn yield on idle USDC, borrow against collateral, and optimize
         rates across protocols — all with health factor protection.
       </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
+        <CmdCard name="t2000 save" desc="Deposit to savings (best rate)" onClick={() => scrollTo("cmd-save")} />
+        <CmdCard name="t2000 withdraw" desc="Pull funds from savings" onClick={() => scrollTo("cmd-withdraw")} />
+        <CmdCard name="t2000 borrow" desc="Borrow against collateral" onClick={() => scrollTo("cmd-borrow")} />
+        <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollTo("cmd-repay")} />
+        <CmdCard name="t2000 rebalance" desc="Optimize yield across protocols" onClick={() => scrollTo("cmd-rebalance")} />
+      </div>
 
       <h2 id="cmd-save">t2000 save</h2>
       <p>Deposit USDC into savings to earn variable APY. Auto-routes to the best rate across NAVI and Suilend, or specify a protocol with <InlineCode>--protocol</InlineCode>.</p>
@@ -846,6 +864,14 @@ function CliInvestSection() {
         and investment locking guard.
       </p>
 
+      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
+        <CmdCard name="t2000 invest buy / sell" desc="Buy or sell SUI, BTC, ETH" onClick={() => scrollTo("cmd-invest")} />
+        <CmdCard name="t2000 invest earn" desc="Earn yield on holdings" onClick={() => scrollTo("cmd-invest-earn")} />
+        <CmdCard name="t2000 invest strategy" desc="Themed allocations (bluechip, layer1)" onClick={() => scrollTo("cmd-strategy")} />
+        <CmdCard name="t2000 invest auto" desc="Dollar-cost averaging (DCA)" onClick={() => scrollTo("cmd-auto-invest")} />
+        <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollTo("cmd-portfolio")} />
+      </div>
+
       <h2 id="cmd-invest">t2000 invest buy / sell</h2>
       <p>Buy or sell SUI, BTC, or ETH. Portfolio tracks cost basis, average price, and realized P&L. Investment assets are locked from <InlineCode>send</InlineCode> and <InlineCode>exchange</InlineCode> — use <InlineCode>invest sell</InlineCode> to liquidate.</p>
       <CodeBlock lang="bash">
@@ -939,6 +965,14 @@ function CliMoreSection() {
         Currency exchange, x402 payments, AI sentinels, MCP integration,
         and agent safeguards.
       </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
+        <CmdCard name="t2000 exchange" desc="Swap tokens (USDC ⇌ SUI)" onClick={() => scrollTo("cmd-exchange")} />
+        <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollTo("cmd-pay")} />
+        <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollTo("cmd-sentinel")} />
+        <CmdCard name="t2000 mcp" desc="MCP server for AI platforms" badge="NEW" onClick={() => scrollTo("cmd-mcp")} />
+        <CmdCard name="t2000 safeguards" desc="Spending limits, lock/unlock" onClick={() => scrollTo("cmd-safeguards")} />
+      </div>
 
       <h2 id="cmd-exchange">t2000 exchange</h2>
       <p>Exchange tokens via Cetus DEX with on-chain slippage protection. Supports USDC ⇌ SUI and stablecoin pairs.</p>
