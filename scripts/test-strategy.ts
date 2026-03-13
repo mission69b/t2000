@@ -27,7 +27,12 @@ async function main() {
   try {
     await agent.sellStrategy({ strategy: 'bluechip' });
     console.log('   ℹ  Pre-flight: sold stale bluechip positions');
-  } catch { /* no positions — expected */ }
+  } catch {
+    if (agent.portfolio.hasStrategyPositions('bluechip')) {
+      agent.portfolio.clearStrategy('bluechip');
+      console.log('   ℹ  Pre-flight: cleared stale bluechip tracking (sell failed)');
+    }
+  }
 
   // ── Strategy Defaults ──
 

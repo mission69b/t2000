@@ -181,8 +181,14 @@ check $? "invest sell all ETH succeeds"
 echo ""
 echo "   t2000 portfolio (empty after sell)"
 OUTPUT=$(t2000 portfolio 2>&1) || true
-echo "$OUTPUT" | grep -q "No investments"
-check $? "portfolio shows no investments message"
+# Strategy positions may persist from previous runs, so check direct positions are cleared
+if echo "$OUTPUT" | grep -q "No investments"; then
+  check 0 "portfolio cleared after sell-all"
+elif ! echo "$OUTPUT" | grep -q "BTC\|ETH"; then
+  check 0 "portfolio cleared after sell-all"
+else
+  check 1 "portfolio cleared after sell-all"
+fi
 
 echo ""
 echo "════════════════════════════════════════════"

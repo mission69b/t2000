@@ -61,6 +61,12 @@ export function registerBalance(program: Command) {
           }
         }
 
+        if (bal.gasReserve.sui > 0.001) {
+          printKeyValue('Gas Reserve', `${bal.gasReserve.sui.toFixed(4)} SUI  ${pc.dim(`(~${formatUsd(bal.gasReserve.usdEquiv)})`)}`);
+        } else {
+          printKeyValue('Gas Reserve', pc.dim('—'));
+        }
+
         if (bal.savings > 0.01) {
           const positions = await agent.positions();
           const saves = positions.positions.filter(p => p.type === 'save');

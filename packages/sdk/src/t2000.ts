@@ -1237,17 +1237,25 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${params.asset} position to sell`);
     }
 
-    if (pos.earning && pos.earningProtocol) {
+    const didAutoWithdraw = !!(pos.earning && pos.earningProtocol);
+    if (didAutoWithdraw) {
       await this.investUnearn({ asset: params.asset });
     }
 
     const assetInfo = SUPPORTED_ASSETS[params.asset as keyof typeof SUPPORTED_ASSETS];
-    const assetBalance = await this.client.getBalance({
-      owner: this._address,
-      coinType: assetInfo.type,
-    });
-    const walletAmount = Number(assetBalance.totalBalance) / (10 ** assetInfo.decimals);
     const gasReserve = params.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+
+    let walletAmount = 0;
+    for (let attempt = 0; ; attempt++) {
+      const assetBalance = await this.client.getBalance({
+        owner: this._address,
+        coinType: assetInfo.type,
+      });
+      walletAmount = Number(assetBalance.totalBalance) / (10 ** assetInfo.decimals);
+      if (!didAutoWithdraw || walletAmount > gasReserve || attempt >= 3) break;
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
     const maxSellable = Math.max(0, walletAmount - gasReserve);
 
     let sellAmountAsset: number;
@@ -1293,6 +1301,10 @@ export class T2000 extends EventEmitter<T2000Events> {
       tx: swapResult.tx,
       timestamp: new Date().toISOString(),
     });
+
+    if (params.usdAmount === 'all') {
+      this.portfolio.closePosition(params.asset);
+    }
 
     const updatedPos = this.portfolio.getPosition(params.asset);
     const position: InvestmentPosition = {
@@ -1460,9 +1472,10 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('PROTOCOL_UNAVAILABLE', 'Swap adapter does not support composable PTB');
     }
 
-    const swapMetas: Array<{ asset: string; usdAmount: number; estimatedOut: number; toDecimals: number }> = [];
+    let swapMetas: Array<{ asset: string; usdAmount: number; estimatedOut: number; toDecimals: number }> = [];
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      swapMetas = [];
       const tx = new Transaction();
       tx.setSender(this._address);
 
@@ -1553,13 +1566,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     let gasMethod: import('./types.js').GasMethod = 'self-funded';
 
     for (const pos of stratPositions) {
+      const fullAmount = pos.totalAmount;
       const result = await this.investSell({ asset: pos.asset as InvestmentAsset, usdAmount: 'all' });
 
       const pnl = this.portfolio.recordStrategySell(params.strategy, {
         id: `strat_sell_${Date.now()}_${pos.asset}`,
         type: 'sell',
         asset: pos.asset,
-        amount: result.amount,
+        amount: fullAmount,
         price: result.price,
         usdValue: result.usdValue,
         fee: result.fee,

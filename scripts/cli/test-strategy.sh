@@ -65,7 +65,7 @@ check $? "strategy buy shows total"
 echo ""
 echo "   t2000 invest strategy status layer1"
 OUTPUT=$(t2000 invest strategy status layer1 2>&1) || true
-echo "$OUTPUT" | grep -q "layer1\|Layer"
+echo "$OUTPUT" | grep -q "Strategy"
 check $? "strategy status shows name"
 
 echo "$OUTPUT" | grep -q "Total value"

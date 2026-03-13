@@ -133,14 +133,22 @@ export function parseMoveAbortMessage(msg: string): string {
   const abortMatch = msg.match(/abort code:\s*(\d+)/i) ?? msg.match(/MoveAbort[^,]*,\s*(\d+)/);
   if (abortMatch) {
     const code = parseInt(abortMatch[1], 10);
-    const mapped = mapMoveAbortCode(code);
 
     const moduleMatch = msg.match(/Identifier\("([^"]+)"\)/) ?? msg.match(/in '([^']+)'/);
     const fnMatch = msg.match(/function_name:\s*Some\("([^"]+)"\)/);
+    const context = `${moduleMatch?.[1] ?? ''}${fnMatch ? `::${fnMatch[1]}` : ''}`.toLowerCase();
     const suffix = moduleMatch
       ? ` [${moduleMatch[1]}${fnMatch ? `::${fnMatch[1]}` : ''}]`
       : '';
 
+    if (context.includes('slippage')) {
+      return `Swap slippage too high — price moved during execution${suffix}`;
+    }
+    if (context.includes('balance::split') || context.includes('balance::ENotEnough')) {
+      return `Insufficient on-chain balance${suffix}`;
+    }
+
+    const mapped = mapMoveAbortCode(code);
     return `${mapped}${suffix}`;
   }
   return msg;

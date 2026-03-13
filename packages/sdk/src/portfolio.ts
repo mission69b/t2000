@@ -132,6 +132,21 @@ export class PortfolioManager {
     this.save();
   }
 
+  closePosition(asset: string): void {
+    this.load();
+    const pos = this.data.positions[asset];
+    if (pos) {
+      pos.totalAmount = 0;
+      pos.costBasis = 0;
+      pos.avgPrice = 0;
+      pos.earning = false;
+      pos.earningProtocol = undefined;
+      pos.earningApy = undefined;
+      this.data.positions[asset] = pos;
+      this.save();
+    }
+  }
+
   isEarning(asset: string): boolean {
     this.load();
     const pos = this.data.positions[asset];
@@ -211,6 +226,12 @@ export class PortfolioManager {
   getAllStrategyKeys(): string[] {
     this.load();
     return Object.keys(this.data.strategies);
+  }
+
+  clearStrategy(strategyKey: string): void {
+    this.load();
+    delete this.data.strategies[strategyKey];
+    this.save();
   }
 
   hasStrategyPositions(strategyKey: string): boolean {
