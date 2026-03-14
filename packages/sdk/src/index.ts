@@ -50,6 +50,8 @@ export type {
   PerpsPosition,
   TradeResult,
   TradePositionsResult,
+  PendingReward,
+  ClaimRewardsResult,
 } from './types.js';
 export {
   MIST_PER_SUI,

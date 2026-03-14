@@ -5,7 +5,7 @@ import type { InvestmentPosition } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printHeader, printSeparator, printInfo, printLine } from '../output.js';
 
-function printPositionLine(pos: InvestmentPosition) {
+function printPositionLine(pos: InvestmentPosition, rewardKeys?: Set<string>) {
   if (pos.currentPrice === 0 && pos.totalAmount > 0) {
     printKeyValue(
       pos.asset,
@@ -14,9 +14,12 @@ function printPositionLine(pos: InvestmentPosition) {
   } else {
     const pnlColor = pos.unrealizedPnL >= 0 ? pc.green : pc.red;
     const pnlSign = pos.unrealizedPnL >= 0 ? '+' : '';
-    const yieldSuffix = pos.earning && pos.earningApy
-      ? `    ${pc.cyan(`${pos.earningApy.toFixed(1)}% APY (${pos.earningProtocol})`)}`
-      : '';
+    let yieldSuffix = '';
+    if (pos.earning && pos.earningApy) {
+      const hasRewards = rewardKeys?.has(`${pos.earningProtocol}:${pos.asset}`);
+      const rewardTag = hasRewards ? ` ${pc.yellow('+rewards')}` : '';
+      yieldSuffix = `    ${pc.cyan(`${pos.earningApy.toFixed(1)}% APY (${pos.earningProtocol})`)}${rewardTag}`;
+    }
     printKeyValue(
       pos.asset,
       `${formatAssetAmount(pos.totalAmount, pos.asset)}    Avg: ${formatUsd(pos.avgPrice)}    Now: ${formatUsd(pos.currentPrice)}    ${pnlColor(`${pnlSign}${formatUsd(pos.unrealizedPnL)} (${pnlSign}${pos.unrealizedPnLPct.toFixed(1)}%)`)}${yieldSuffix}`,
@@ -36,6 +39,12 @@ export function registerPortfolio(program: Command) {
         const portfolio = await agent.getPortfolio();
 
         if (isJsonMode()) { printJson(portfolio); return; }
+
+        const rewardKeys = new Set<string>();
+        try {
+          const pending = await agent.getPendingRewards();
+          for (const r of pending) rewardKeys.add(`${r.protocol}:${r.asset}`);
+        } catch { /* skip */ }
 
         printBlank();
 
@@ -60,7 +69,7 @@ export function registerPortfolio(program: Command) {
             printLine(`  ${pc.bold(pc.cyan(`▸ ${stratLabel}`))}`);
             printSeparator();
             for (const pos of positions) {
-              printPositionLine(pos);
+              printPositionLine(pos, rewardKeys);
             }
             const stratValue = positions.reduce((s, p) => s + p.currentValue, 0);
             printLine(`  ${pc.dim(`Subtotal: ${formatUsd(stratValue)}`)}`);
@@ -74,7 +83,7 @@ export function registerPortfolio(program: Command) {
           }
           printSeparator();
           for (const pos of portfolio.positions) {
-            printPositionLine(pos);
+            printPositionLine(pos, rewardKeys);
           }
           if (hasStrategyPositions) {
             const directValue = portfolio.positions.reduce((s, p) => s + p.currentValue, 0);

@@ -441,4 +441,18 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
       }
     },
   );
+
+  server.tool(
+    't2000_claim_rewards',
+    'Claim pending protocol rewards from lending positions and auto-convert to USDC.',
+    {},
+    async () => {
+      try {
+        const result = await mutex.run(() => agent.claimRewards());
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
 }

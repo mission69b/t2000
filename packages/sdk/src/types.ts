@@ -21,6 +21,7 @@ export interface BalanceResponse {
   debt: number;
   investment: number;
   investmentPnL: number;
+  pendingRewards: number;
   gasReserve: GasReserve;
   total: number;
   assets: Record<string, number>;
@@ -380,6 +381,27 @@ export interface AutoInvestRunResult {
     result: StrategyBuyResult | InvestResult;
   }>;
   skipped: Array<{ scheduleId: string; reason: string }>;
+}
+
+// --- Claim rewards types ---
+
+export interface PendingReward {
+  protocol: string;
+  asset: string;
+  coinType: string;
+  symbol: string;
+  amount: number;
+  estimatedValueUsd: number;
+}
+
+export interface ClaimRewardsResult {
+  success: boolean;
+  tx: string;
+  rewards: PendingReward[];
+  totalValueUsd: number;
+  usdcReceived: number;
+  gasCost: number;
+  gasMethod: GasMethod;
 }
 
 // --- Margin trading types ---

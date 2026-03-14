@@ -33,6 +33,7 @@ import { registerMcp } from './commands/mcp.js';
 import { registerContacts } from './commands/contacts.js';
 import { registerInvest } from './commands/invest.js';
 import { registerPortfolio } from './commands/portfolio.js';
+import { registerClaimRewards } from './commands/claimRewards.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -76,6 +77,7 @@ export function createProgram(): Command {
   registerContacts(program);
   registerInvest(program);
   registerPortfolio(program);
+  registerClaimRewards(program);
 
   return program;
 }

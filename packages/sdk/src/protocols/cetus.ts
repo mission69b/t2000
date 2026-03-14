@@ -245,6 +245,63 @@ export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
   };
 }
 
+/**
+ * Build a swap TX from an arbitrary coin type to USDC (or another
+ * SUPPORTED_ASSET). Used for converting reward tokens after claiming.
+ */
+export async function buildRawSwapTx(params: {
+  client: SuiJsonRpcClient;
+  address: string;
+  fromCoinType: string;
+  fromDecimals: number;
+  toCoinType: string;
+  toDecimals: number;
+  amount: bigint;
+  maxSlippageBps?: number;
+}): Promise<SwapBuildResult> {
+  const { client, address, fromCoinType, toCoinType, amount, toDecimals, maxSlippageBps = 500 } = params;
+
+  const aggClient = createAggregatorClient(client, address);
+
+  const _origLog = console.log;
+  console.log = () => {};
+  let result;
+  try {
+    result = await aggClient.findRouters({
+      from: fromCoinType,
+      target: toCoinType,
+      amount,
+      byAmountIn: true,
+    });
+  } finally {
+    console.log = _origLog;
+  }
+
+  if (!result || result.insufficientLiquidity) {
+    throw new T2000Error('ASSET_NOT_SUPPORTED', `No swap route for reward token → USDC`);
+  }
+
+  const tx = new Transaction();
+  const slippage = maxSlippageBps / 10000;
+
+  console.log = () => {};
+  try {
+    await aggClient.fastRouterSwap({
+      router: result,
+      txb: tx as never,
+      slippage,
+    });
+  } finally {
+    console.log = _origLog;
+  }
+
+  return {
+    tx,
+    estimatedOut: Number(result.amountOut.toString()),
+    toDecimals,
+  };
+}
+
 export async function getPoolPrice(client: SuiJsonRpcClient): Promise<number> {
   try {
     const pool = await client.getObject({

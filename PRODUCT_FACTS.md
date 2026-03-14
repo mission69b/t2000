@@ -101,11 +101,11 @@ t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
 
 | Adapter | Type | Capabilities | Status |
 |---------|------|-------------|--------|
-| NAVI (`navi`) | Lending | save, withdraw, borrow, repay; SUI, ETH, GOLD (invest earn) | Built-in |
-| Cetus (`cetus`) | Swap | swap | Built-in |
-| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay; SUI, ETH, BTC, GOLD (invest earn) | Built-in |
+| NAVI (`navi`) | Lending | save, withdraw, borrow, repay; SUI, ETH, GOLD (invest earn); claim rewards | Built-in |
+| Cetus (`cetus`) | Swap | swap, reward-token-to-USDC conversion | Built-in |
+| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay; SUI, ETH, BTC, GOLD (invest earn); claim rewards | Built-in |
 
-- `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth
+- `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth, getPendingRewards, addClaimRewardsToTx
 - `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
 - `ProtocolRegistry` auto-selects best rates/quotes across registered adapters
 - CLI `--protocol <name>` flag on save/withdraw/borrow/repay to pin a specific protocol
@@ -188,6 +188,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | invest sell | `t2000 invest sell <amount|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
 | invest earn | `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
 | invest unearn | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
+| claim-rewards | `t2000 claim-rewards` | Claim protocol rewards and auto-convert to USDC |
 | portfolio | `t2000 portfolio` | Show investment portfolio + P&L (APY column when earning, strategy grouping) |
 | invest strategy list | `t2000 invest strategy list` | List available strategies with allocations (5 built-in) |
 | invest strategy buy | `t2000 invest strategy buy <name> <amount>` | Buy into a strategy (single atomic PTB). Options: `--dry-run` |
@@ -201,7 +202,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | invest auto run | `t2000 invest auto run` | Execute pending DCA purchases |
 | invest auto stop | `t2000 invest auto stop [id]` | Stop auto-invest schedule |
 
-**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Rebalance skips earning investment positions.
+**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Rebalance skips earning investment positions. `claim-rewards` claims DeFi incentive rewards from all protocols and auto-converts to USDC in a single operation.
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |

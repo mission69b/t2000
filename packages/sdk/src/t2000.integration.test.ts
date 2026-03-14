@@ -997,6 +997,100 @@ describe('withdraw — auto-swap non-USDC to USDC', () => {
   });
 });
 
+// ─── claim rewards: multi-protocol orchestration ──────────────
+
+describe('claim rewards — orchestration', () => {
+  it('aggregates pending rewards across multiple adapters', async () => {
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      getPendingRewards: vi.fn().mockResolvedValue([
+        { protocol: 'navi', asset: 'USDC', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+        { protocol: 'navi', asset: 'ETH', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+      ]),
+    });
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      getPendingRewards: vi.fn().mockResolvedValue([
+        { protocol: 'suilend', asset: 'SUI', coinType: '0x835::spring_sui::SPRING_SUI', symbol: 'sSUI', amount: 0, estimatedValueUsd: 0 },
+      ]),
+    });
+
+    const registry = new ProtocolRegistry();
+    registry.registerLending(navi);
+    registry.registerLending(suilend);
+
+    const allRewards = [];
+    for (const adapter of registry.listLending()) {
+      if (adapter.getPendingRewards) {
+        const rewards = await adapter.getPendingRewards('0xaddr');
+        allRewards.push(...rewards);
+      }
+    }
+
+    expect(allRewards).toHaveLength(3);
+    expect(allRewards.filter(r => r.protocol === 'navi')).toHaveLength(2);
+    expect(allRewards.filter(r => r.protocol === 'suilend')).toHaveLength(1);
+  });
+
+  it('skips adapters without getPendingRewards', async () => {
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      getPendingRewards: vi.fn().mockResolvedValue([
+        { protocol: 'navi', asset: 'USDC', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+      ]),
+    });
+    const legacyAdapter = createMockLending({
+      id: 'legacy',
+      name: 'Legacy Protocol',
+    });
+
+    const registry = new ProtocolRegistry();
+    registry.registerLending(navi);
+    registry.registerLending(legacyAdapter);
+
+    const allRewards = [];
+    for (const adapter of registry.listLending()) {
+      if (adapter.getPendingRewards) {
+        const rewards = await adapter.getPendingRewards('0xaddr');
+        allRewards.push(...rewards);
+      }
+    }
+
+    expect(allRewards).toHaveLength(1);
+    expect(allRewards[0].protocol).toBe('navi');
+  });
+
+  it('deduplicates reward tokens for swap', () => {
+    const rewards = [
+      { protocol: 'navi', asset: 'USDC', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+      { protocol: 'navi', asset: 'ETH', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+      { protocol: 'navi', asset: 'GOLD', coinType: '0xdeeb::deep::DEEP', symbol: 'DEEP', amount: 0, estimatedValueUsd: 0 },
+    ];
+
+    const uniqueTokens = [...new Set(rewards.map(r => r.coinType))];
+    expect(uniqueTokens).toHaveLength(2);
+    expect(uniqueTokens).toContain('0x549::cert::CERT');
+    expect(uniqueTokens).toContain('0xdeeb::deep::DEEP');
+  });
+
+  it('builds correct reward-by-asset mapping for positions display', () => {
+    const rewards = [
+      { protocol: 'navi', asset: 'USDC', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+      { protocol: 'navi', asset: 'ETH', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+      { protocol: 'suilend', asset: 'SUI', coinType: '0x835::spring_sui::SPRING_SUI', symbol: 'sSUI', amount: 0, estimatedValueUsd: 0 },
+    ];
+
+    const rewardKeys = new Set(rewards.map(r => `${r.protocol}:${r.asset}`));
+    expect(rewardKeys.has('navi:USDC')).toBe(true);
+    expect(rewardKeys.has('navi:ETH')).toBe(true);
+    expect(rewardKeys.has('suilend:SUI')).toBe(true);
+    expect(rewardKeys.has('navi:GOLD')).toBe(false);
+  });
+});
+
 describe('SUPPORTED_ASSETS', () => {
   it('includes all 4 stables and SUI', async () => {
     const { SUPPORTED_ASSETS, STABLE_ASSETS } = await import('./constants.js');

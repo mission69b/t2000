@@ -40,7 +40,7 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (19)
+## Available Tools (22)
 
 ### Read-only (9)
 | Tool | Description |
@@ -55,7 +55,7 @@ Paste into your AI platform's MCP settings:
 | `t2000_contacts` | List saved contacts (name → address) |
 | `t2000_portfolio` | Investment portfolio positions + P&L |
 
-### State-changing (8)
+### State-changing (11)
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
@@ -68,6 +68,9 @@ All support `dryRun: true` for previews without signing.
 | `t2000_exchange` | Swap assets |
 | `t2000_rebalance` | Optimize yield |
 | `t2000_invest` | Buy/sell investment assets (spot) |
+| `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |
+| `t2000_auto_invest` | DCA scheduling — setup, status, run, stop |
+| `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
 
 ### Safety (2)
 | Tool | Description |

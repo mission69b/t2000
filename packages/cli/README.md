@@ -170,6 +170,7 @@ t2000 init
 | `t2000 health` | Check savings health factor |
 | `t2000 rates` | Best save/borrow APYs across protocols and all stablecoins |
 | `t2000 positions` | Open savings & borrow positions across all assets |
+| `t2000 claim-rewards` | Claim protocol rewards and auto-convert to USDC |
 | `t2000 earnings` | Yield earned to date |
 | `t2000 fund-status` | Full savings summary |
 
@@ -272,7 +273,7 @@ t2000 mcp uninstall
 t2000 mcp
 ```
 
-21 tools, 12 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
+22 tools, 12 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 

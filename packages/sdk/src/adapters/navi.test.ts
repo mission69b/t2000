@@ -14,6 +14,8 @@ vi.mock('../protocols/navi.js', () => ({
   buildRepayTx: vi.fn(),
   maxWithdrawAmount: vi.fn(),
   maxBorrowAmount: vi.fn(),
+  getPendingRewards: vi.fn(),
+  addClaimRewardsToTx: vi.fn(),
 }));
 
 describe('NaviAdapter', () => {
@@ -173,5 +175,36 @@ describe('NaviAdapter', () => {
 
     const result = await adapter.maxBorrow('0xaddr', 'USDC');
     expect(result.maxAmount).toBe(40);
+  });
+
+  it('getPendingRewards delegates to navi protocol', async () => {
+    const mockRewards = [
+      { protocol: 'navi', asset: 'USDC', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+    ];
+    vi.mocked(naviProtocol.getPendingRewards).mockResolvedValue(mockRewards);
+
+    const result = await adapter.getPendingRewards!('0xaddr');
+    expect(result).toHaveLength(1);
+    expect(result[0].protocol).toBe('navi');
+    expect(result[0].asset).toBe('USDC');
+  });
+
+  it('getPendingRewards returns empty when no incentives', async () => {
+    vi.mocked(naviProtocol.getPendingRewards).mockResolvedValue([]);
+
+    const result = await adapter.getPendingRewards!('0xaddr');
+    expect(result).toHaveLength(0);
+  });
+
+  it('addClaimRewardsToTx delegates to navi protocol', async () => {
+    const mockClaimed = [
+      { protocol: 'navi', asset: 'USDC', coinType: '0x549::cert::CERT', symbol: 'vSUI', amount: 0, estimatedValueUsd: 0 },
+    ];
+    vi.mocked(naviProtocol.addClaimRewardsToTx).mockResolvedValue(mockClaimed);
+
+    const tx = new Transaction();
+    const result = await adapter.addClaimRewardsToTx!(tx, '0xaddr');
+    expect(result).toHaveLength(1);
+    expect(result[0].symbol).toBe('vSUI');
   });
 });

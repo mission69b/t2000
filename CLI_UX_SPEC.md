@@ -690,6 +690,27 @@ printError(`Cannot send ${amount} ${asset} — ${invested} ${asset} is invested.
 printInfo(`To access invested funds: t2000 invest sell ${amount} ${asset}`)
 ```
 
+### Claim Rewards
+
+`t2000 claim-rewards` — claims protocol incentive rewards from all lending protocols and auto-converts to USDC.
+
+```
+  ✓ Claimed and converted rewards to USDC
+  ──────────────────────────────────────
+  Received:  $0.12 USDC
+  Source:  navi, suilend
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+```
+
+No rewards:
+```
+  No rewards to claim
+```
+
+Reward indicators appear in other commands:
+- `positions`: `navi: $5.30 USDC @ 4.09% APY +rewards`
+- `portfolio`: `3.9% APY (navi) +rewards`
+
 ---
 
 ## Error Output

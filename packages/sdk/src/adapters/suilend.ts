@@ -9,6 +9,7 @@ import type {
   AdapterTxResult,
   AdapterCapability,
   ProtocolDescriptor,
+  PendingReward,
 } from './types.js';
 import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
 import { stableToRaw, usdcToRaw } from '../utils/format.js';
@@ -46,6 +47,14 @@ export const descriptor: ProtocolDescriptor = {
   },
 };
 
+interface PoolReward {
+  coinType: string;
+  totalRewards: number;
+  startTimeMs: number;
+  endTimeMs: number;
+  rewardIndex: number;
+}
+
 interface Reserve {
   coinType: string;
   mintDecimals: number;
@@ -60,6 +69,9 @@ interface Reserve {
   interestRateUtils: number[];
   interestRateAprs: number[];
   arrayIndex: number;
+  price: number;
+  depositTotalShares: number;
+  depositPoolRewards: PoolReward[];
 }
 
 interface ObligationCap {
@@ -117,6 +129,32 @@ function computeRates(reserve: Reserve): { borrowAprPct: number; depositAprPct: 
   return { borrowAprPct, depositAprPct };
 }
 
+const MS_PER_YEAR = 365.25 * 24 * 3600 * 1000;
+
+function computeDepositRewardApr(reserve: Reserve, allReserves: Reserve[]): number {
+  if (reserve.depositTotalShares <= 0 || reserve.price <= 0) return 0;
+  const totalDepositValue =
+    (reserve.depositTotalShares / 10 ** reserve.mintDecimals) * reserve.price;
+  if (totalDepositValue <= 0) return 0;
+
+  const priceMap = new Map<string, { price: number; decimals: number }>();
+  for (const r of allReserves) {
+    if (r.price > 0) priceMap.set(r.coinType, { price: r.price, decimals: r.mintDecimals });
+  }
+
+  let rewardApr = 0;
+  for (const rw of reserve.depositPoolRewards) {
+    const info = priceMap.get(rw.coinType);
+    if (!info || info.price <= 0) continue;
+    const durationMs = rw.endTimeMs - rw.startTimeMs;
+    if (durationMs <= 0) continue;
+    const annualTokens =
+      (rw.totalRewards / 10 ** info.decimals) * (MS_PER_YEAR / durationMs);
+    rewardApr += (annualTokens * info.price) / totalDepositValue * 100;
+  }
+  return rewardApr;
+}
+
 function cTokenRatio(reserve: Reserve): number {
   if (reserve.ctokenSupply === 0) return 1;
   const totalSupply =
@@ -145,6 +183,23 @@ function parseReserve(raw: unknown, index: number): Reserve {
   const coinTypeField = f(r.coin_type);
   const config = f(f(r.config)?.element);
 
+  const dMgr = f(r.deposits_pool_reward_manager);
+  const rawRewards = Array.isArray(dMgr?.pool_rewards) ? (dMgr.pool_rewards as unknown[]) : [];
+  const now = Date.now();
+  const depositPoolRewards: PoolReward[] = rawRewards
+    .map((rw, idx): PoolReward | null => {
+      if (rw === null) return null;
+      const rwf = f(rw as Record<string, unknown>);
+      return {
+        coinType: str(f(rwf.coin_type)?.name),
+        totalRewards: num(rwf.total_rewards),
+        startTimeMs: num(rwf.start_time_ms),
+        endTimeMs: num(rwf.end_time_ms),
+        rewardIndex: idx,
+      };
+    })
+    .filter((rw): rw is PoolReward => rw !== null && rw.endTimeMs > now && rw.totalRewards > 0);
+
   return {
     coinType: str(coinTypeField?.name),
     mintDecimals: num(r.mint_decimals),
@@ -159,6 +214,9 @@ function parseReserve(raw: unknown, index: number): Reserve {
     interestRateUtils: Array.isArray(config?.interest_rate_utils) ? (config.interest_rate_utils as unknown[]).map(num) : [],
     interestRateAprs: Array.isArray(config?.interest_rate_aprs) ? (config.interest_rate_aprs as unknown[]).map(num) : [],
     arrayIndex: index,
+    price: num(f(r.price)?.value) / WAD,
+    depositTotalShares: num(dMgr?.total_shares),
+    depositPoolRewards,
   };
 }
 
@@ -333,7 +391,8 @@ export class SuilendAdapter implements LendingAdapter {
     if (!reserve) throw new T2000Error('ASSET_NOT_SUPPORTED', `Suilend does not support ${asset}`);
 
     const { borrowAprPct, depositAprPct } = computeRates(reserve);
-    return { asset, saveApy: depositAprPct, borrowApy: borrowAprPct };
+    const rewardApr = computeDepositRewardApr(reserve, reserves);
+    return { asset, saveApy: depositAprPct + rewardApr, borrowApy: borrowAprPct };
   }
 
   async getPositions(address: string): Promise<AdapterPositions> {
@@ -354,7 +413,8 @@ export class SuilendAdapter implements LendingAdapter {
       const ratio = cTokenRatio(reserve);
       const amount = (dep.ctokenAmount * ratio) / 10 ** reserve.mintDecimals;
       const { depositAprPct } = computeRates(reserve);
-      supplies.push({ asset: this.resolveSymbol(dep.coinType), amount, apy: depositAprPct });
+      const rewardApr = computeDepositRewardApr(reserve, reserves);
+      supplies.push({ asset: this.resolveSymbol(dep.coinType), amount, apy: depositAprPct + rewardApr });
     }
 
     for (const bor of obligation.borrows) {
@@ -852,5 +912,114 @@ export class SuilendAdapter implements LendingAdapter {
     }
 
     return all;
+  }
+
+  // -- Claim Rewards --------------------------------------------------------
+
+  private isClaimableReward(coinType: string): boolean {
+    const ct = coinType.toLowerCase();
+    return ct.includes('spring_sui') || ct.includes('deep::deep') || ct.includes('cert::cert');
+  }
+
+  async getPendingRewards(address: string): Promise<PendingReward[]> {
+    const caps = await this.fetchObligationCaps(address);
+    if (caps.length === 0) return [];
+
+    const [reserves, obligation] = await Promise.all([
+      this.loadReserves(true),
+      this.fetchObligation(caps[0].obligationId),
+    ]);
+
+    const rewards: PendingReward[] = [];
+
+    for (const dep of obligation.deposits) {
+      const reserve = reserves[dep.reserveIdx];
+      if (!reserve) continue;
+
+      for (const rw of reserve.depositPoolRewards) {
+        if (!this.isClaimableReward(rw.coinType)) continue;
+
+        const durationMs = rw.endTimeMs - rw.startTimeMs;
+        if (durationMs <= 0) continue;
+
+        const assetSymbol = this.resolveSymbol(dep.coinType);
+        if (!(assetSymbol in SUPPORTED_ASSETS)) continue;
+
+        rewards.push({
+          protocol: 'suilend',
+          asset: assetSymbol,
+          coinType: rw.coinType,
+          symbol: rw.coinType.includes('spring_sui') ? 'sSUI'
+            : rw.coinType.includes('deep::') ? 'DEEP'
+            : rw.coinType.split('::').pop() ?? 'UNKNOWN',
+          amount: 0,
+          estimatedValueUsd: 0,
+        });
+      }
+    }
+
+    return rewards;
+  }
+
+  async addClaimRewardsToTx(tx: Transaction, address: string): Promise<PendingReward[]> {
+    const caps = await this.fetchObligationCaps(address);
+    if (caps.length === 0) return [];
+
+    const [pkg, reserves, obligation] = await Promise.all([
+      this.resolvePackage(),
+      this.loadReserves(true),
+      this.fetchObligation(caps[0].obligationId),
+    ]);
+
+    const claimsByToken = new Map<string, TransactionObjectArgument[]>();
+    const claimed: PendingReward[] = [];
+
+    for (const dep of obligation.deposits) {
+      const reserve = reserves[dep.reserveIdx];
+      if (!reserve) continue;
+
+      for (const rw of reserve.depositPoolRewards) {
+        if (!this.isClaimableReward(rw.coinType)) continue;
+
+        const [coin] = tx.moveCall({
+          target: `${pkg}::lending_market::claim_rewards`,
+          typeArguments: [LENDING_MARKET_TYPE, rw.coinType],
+          arguments: [
+            tx.object(LENDING_MARKET_ID),
+            tx.object(caps[0].id),
+            tx.object(CLOCK),
+            tx.pure.u64(reserve.arrayIndex),
+            tx.pure.u64(rw.rewardIndex),
+            tx.pure.bool(true),
+          ],
+        });
+
+        const existing = claimsByToken.get(rw.coinType) ?? [];
+        existing.push(coin);
+        claimsByToken.set(rw.coinType, existing);
+      }
+    }
+
+    for (const [coinType, coins] of claimsByToken) {
+      if (coins.length > 1) {
+        tx.mergeCoins(coins[0], coins.slice(1));
+      }
+      tx.transferObjects([coins[0]], address);
+
+      const symbol = coinType.includes('spring_sui') ? 'SPRING_SUI'
+        : coinType.includes('deep::') ? 'DEEP'
+        : coinType.split('::').pop() ?? 'UNKNOWN';
+
+      claimed.push({
+        protocol: 'suilend',
+        asset: '',
+        coinType,
+        symbol,
+        amount: 0,
+        estimatedValueUsd: 0,
+      });
+    }
+
+    return claimed;
   }
 }

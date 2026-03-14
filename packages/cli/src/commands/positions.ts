@@ -21,6 +21,16 @@ export function registerPositions(program: Command) {
           return;
         }
 
+        let hasRewards = false;
+        const rewardsByKey = new Map<string, boolean>();
+        try {
+          const pending = await agent.getPendingRewards();
+          for (const r of pending) {
+            rewardsByKey.set(`${r.protocol}:${r.asset}`, true);
+            hasRewards = true;
+          }
+        } catch { /* skip */ }
+
         printBlank();
         if (result.positions.length === 0) {
           printInfo('No positions. Use `t2000 save <amount>` to start earning.');
@@ -32,11 +42,17 @@ export function registerPositions(program: Command) {
             printLine(pc.bold('Savings'));
             printDivider();
             for (const pos of saves) {
-              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY`);
+              const earning = rewardsByKey.has(`${pos.protocol}:${pos.asset}`)
+                ? `  ${pc.yellow('+rewards')}`
+                : '';
+              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY${earning}`);
             }
             const totalSaved = saves.reduce((s, p) => s + p.amount, 0);
             if (saves.length > 1) {
               printKeyValue('Total', formatUsd(totalSaved));
+            }
+            if (hasRewards) {
+              printLine(`  ${pc.dim('Run claim-rewards to collect and convert to USDC')}`);
             }
             printBlank();
           }

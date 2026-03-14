@@ -7,6 +7,7 @@ import type { StableAsset, SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { stableToRaw, usdcToRaw } from '../utils/format.js';
 import { addCollectFeeToTx } from './protocolFee.js';
+import type { PendingReward } from '../adapters/types.js';
 import type {
   SaveResult,
   WithdrawResult,
@@ -73,6 +74,7 @@ interface NaviIncentiveApy {
   vaultApr: string;
   boostedApr: string;
   apy: string;
+  rewardCoin?: string[];
 }
 
 interface NaviPool {
@@ -1034,4 +1036,228 @@ export async function maxBorrowAmount(
   const maxAmount = Math.max(0, hf.supplied * ltv / MIN_HEALTH_FACTOR - hf.borrowed);
 
   return { maxAmount, healthFactorAfter: MIN_HEALTH_FACTOR, currentHF: hf.healthFactor };
+}
+
+// ---------------------------------------------------------------------------
+// Claim Rewards
+// ---------------------------------------------------------------------------
+
+const CERT_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
+const DEEP_TYPE = '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP';
+
+const REWARD_FUNDS: Record<string, string> = {
+  [CERT_TYPE]: '0x7093cf7549d5e5b35bfde2177223d1050f71655c7f676a5e610ee70eb4d93b5c',
+  [DEEP_TYPE]: '0xc889d78b634f954979e80e622a2ae0fece824c0f6d9590044378a2563035f32f',
+};
+
+const REWARD_SYMBOLS: Record<string, string> = {
+  [CERT_TYPE]: 'vSUI',
+  [DEEP_TYPE]: 'DEEP',
+};
+
+const REWARD_DECIMALS: Record<string, number> = {
+  [CERT_TYPE]: 9,
+  [DEEP_TYPE]: 6,
+};
+
+interface IncentiveRuleData {
+  ruleIds: string[];
+  rewardCoinType: string | null;
+}
+
+let incentiveRulesCache: { data: Map<string, IncentiveRuleData>; ts: number } | null = null;
+
+async function getIncentiveRules(client: SuiJsonRpcClient): Promise<Map<string, IncentiveRuleData>> {
+  if (incentiveRulesCache && Date.now() - incentiveRulesCache.ts < CACHE_TTL) {
+    return incentiveRulesCache.data;
+  }
+
+  const [pools, obj] = await Promise.all([
+    getPools(),
+    client.getObject({
+      id: '0x62982dad27fb10bb314b3384d5de8d2ac2d72ab2dbeae5d801dbdb9efa816c80',
+      options: { showContent: true },
+    }),
+  ]);
+
+  const rewardCoinMap = new Map<string, string>();
+  for (const pool of pools) {
+    const ct = (pool.suiCoinType || pool.coinType || '').toLowerCase();
+    const suffix = ct.split('::').slice(1).join('::');
+    const coins = pool.supplyIncentiveApyInfo?.rewardCoin;
+    if (Array.isArray(coins) && coins.length > 0) {
+      rewardCoinMap.set(suffix, coins[0]);
+    }
+  }
+
+  const result = new Map<string, IncentiveRuleData>();
+
+  if (obj.data?.content?.dataType !== 'moveObject') {
+    incentiveRulesCache = { data: result, ts: Date.now() };
+    return result;
+  }
+
+  const fields = obj.data.content.fields as Record<string, unknown>;
+  const poolsObj = fields.pools as { fields?: { contents?: unknown[] } } | undefined;
+  const entries = poolsObj?.fields?.contents;
+  if (!Array.isArray(entries)) {
+    incentiveRulesCache = { data: result, ts: Date.now() };
+    return result;
+  }
+
+  for (const entry of entries) {
+    const ef = (entry as { fields?: Record<string, unknown> })?.fields;
+    if (!ef) continue;
+    const key = String(ef.key ?? '');
+    const value = ef.value as { fields?: Record<string, unknown> } | undefined;
+    const rules = value?.fields?.rules as { fields?: { contents?: unknown[] } } | undefined;
+    const ruleEntries = rules?.fields?.contents;
+    if (!Array.isArray(ruleEntries)) continue;
+
+    const ruleIds = ruleEntries.map((re) => {
+      const rf = (re as { fields?: Record<string, unknown> })?.fields;
+      return String(rf?.key ?? '');
+    }).filter(Boolean);
+
+    const suffix = key.split('::').slice(1).join('::').toLowerCase();
+    const full = key.toLowerCase();
+    const rewardCoin = rewardCoinMap.get(suffix) ?? rewardCoinMap.get(full) ?? null;
+
+    result.set(key, { ruleIds, rewardCoinType: rewardCoin });
+  }
+
+  incentiveRulesCache = { data: result, ts: Date.now() };
+  return result;
+}
+
+function stripPrefix(coinType: string): string {
+  return coinType.replace(/^0x0*/, '');
+}
+
+export async function getPendingRewards(
+  client: SuiJsonRpcClient,
+  address: string,
+): Promise<PendingReward[]> {
+  const [pools, states] = await Promise.all([
+    getPools(),
+    getUserState(client, address),
+  ]);
+
+  const rewards: PendingReward[] = [];
+  const deposited = states.filter((s) => s.supplyBalance > 0n);
+  if (deposited.length === 0) return rewards;
+
+  for (const state of deposited) {
+    const pool = pools.find((p) => p.id === state.assetId);
+    if (!pool) continue;
+
+    const boostedApr = parseFloat(pool.supplyIncentiveApyInfo?.boostedApr ?? '0');
+    if (boostedApr <= 0) continue;
+
+    const rewardCoins = pool.supplyIncentiveApyInfo?.rewardCoin;
+    if (!Array.isArray(rewardCoins) || rewardCoins.length === 0) continue;
+
+    const rewardType = rewardCoins[0];
+    const assetSymbol = resolvePoolSymbol(pool);
+
+    rewards.push({
+      protocol: 'navi',
+      asset: assetSymbol,
+      coinType: rewardType,
+      symbol: REWARD_SYMBOLS[rewardType] ?? rewardType.split('::').pop() ?? 'UNKNOWN',
+      amount: 0,
+      estimatedValueUsd: 0,
+    });
+  }
+
+  return rewards;
+}
+
+export async function addClaimRewardsToTx(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  address: string,
+): Promise<PendingReward[]> {
+  const [config, pools, states, rules] = await Promise.all([
+    getConfig(),
+    getPools(),
+    getUserState(client, address),
+    getIncentiveRules(client),
+  ]);
+
+  const deposited = states.filter((s) => s.supplyBalance > 0n);
+  if (deposited.length === 0) return [];
+
+  const claimGroups = new Map<string, { assets: string[]; ruleIds: string[] }>();
+
+  for (const state of deposited) {
+    const pool = pools.find((p) => p.id === state.assetId);
+    if (!pool) continue;
+
+    const boostedApr = parseFloat(pool.supplyIncentiveApyInfo?.boostedApr ?? '0');
+    if (boostedApr <= 0) continue;
+
+    const rewardCoins = pool.supplyIncentiveApyInfo?.rewardCoin;
+    if (!Array.isArray(rewardCoins) || rewardCoins.length === 0) continue;
+
+    const rewardType = rewardCoins[0];
+    const fundId = REWARD_FUNDS[rewardType];
+    if (!fundId) continue;
+
+    const coinType = pool.suiCoinType || pool.coinType || '';
+    const strippedType = stripPrefix(coinType);
+
+    const ruleData = Array.from(rules.entries()).find(([key]) =>
+      stripPrefix(key) === strippedType ||
+      key.split('::').slice(1).join('::').toLowerCase() ===
+        coinType.split('::').slice(1).join('::').toLowerCase()
+    );
+
+    if (!ruleData || ruleData[1].ruleIds.length === 0) continue;
+
+    const group = claimGroups.get(rewardType) ?? { assets: [], ruleIds: [] };
+    for (const ruleId of ruleData[1].ruleIds) {
+      group.assets.push(strippedType);
+      group.ruleIds.push(ruleId);
+    }
+    claimGroups.set(rewardType, group);
+  }
+
+  const claimed: PendingReward[] = [];
+
+  for (const [rewardType, { assets, ruleIds }] of claimGroups) {
+    const fundId = REWARD_FUNDS[rewardType]!;
+
+    const [balance] = tx.moveCall({
+      target: `${config.package}::incentive_v3::claim_reward`,
+      typeArguments: [rewardType],
+      arguments: [
+        tx.object(CLOCK),
+        tx.object(config.incentiveV3),
+        tx.object(config.storage),
+        tx.object(fundId),
+        tx.pure(bcs.vector(bcs.string()).serialize(assets)),
+        tx.pure(bcs.vector(bcs.Address).serialize(ruleIds)),
+      ],
+    });
+
+    const [coin] = tx.moveCall({
+      target: '0x2::coin::from_balance',
+      typeArguments: [rewardType],
+      arguments: [balance],
+    });
+
+    tx.transferObjects([coin], address);
+
+    claimed.push({
+      protocol: 'navi',
+      asset: assets.join(', '),
+      coinType: rewardType,
+      symbol: REWARD_SYMBOLS[rewardType] ?? 'UNKNOWN',
+      amount: 0,
+      estimatedValueUsd: 0,
+    });
+  }
+
+  return claimed;
 }

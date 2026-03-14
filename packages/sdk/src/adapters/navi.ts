@@ -8,6 +8,7 @@ import type {
   AdapterTxResult,
   AdapterCapability,
   ProtocolDescriptor,
+  PendingReward,
 } from './types.js';
 import { STABLE_ASSETS } from '../constants.js';
 import { T2000Error } from '../errors.js';
@@ -152,5 +153,13 @@ export class NaviAdapter implements LendingAdapter {
   ): Promise<void> {
     const normalized = normalizeAsset(asset);
     return naviProtocol.addRepayToTx(tx, this.client, address, coin, { asset: normalized });
+  }
+
+  async getPendingRewards(address: string): Promise<PendingReward[]> {
+    return naviProtocol.getPendingRewards(this.client, address);
+  }
+
+  async addClaimRewardsToTx(tx: Transaction, address: string): Promise<PendingReward[]> {
+    return naviProtocol.addClaimRewardsToTx(tx, this.client, address);
   }
 }

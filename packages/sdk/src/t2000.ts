@@ -21,6 +21,7 @@ import * as sentinel from './protocols/sentinel.js';
 import { ProtocolRegistry } from './adapters/registry.js';
 import { NaviAdapter } from './adapters/navi.js';
 import { CetusAdapter } from './adapters/cetus.js';
+import { buildRawSwapTx } from './protocols/cetus.js';
 import { SuilendAdapter } from './adapters/suilend.js';
 import type { LendingAdapter, SwapAdapter } from './adapters/types.js';
 import { solveHashcash } from './utils/hashcash.js';
@@ -57,12 +58,20 @@ import type {
   AutoInvestSchedule,
   AutoInvestStatus,
   AutoInvestRunResult,
+  ClaimRewardsResult,
+  PendingReward,
 } from './types.js';
 import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, INVESTMENT_ASSETS, GAS_RESERVE_MIN, DEFAULT_MAX_LEVERAGE, DEFAULT_MAX_POSITION_SIZE } from './constants.js';
 import type { InvestmentAsset } from './constants.js';
 
 const LOW_LIQUIDITY_ASSETS = new Set(['GOLD']);
+
+const REWARD_TOKEN_DECIMALS: Record<string, number> = {
+  '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT': 9,
+  '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP': 6,
+  '0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::spring_sui::SPRING_SUI': 9,
+};
 function defaultSlippage(asset: string): number {
   return LOW_LIQUIDITY_ASSETS.has(asset) ? 0.05 : 0.03;
 }
@@ -360,6 +369,13 @@ export class T2000 extends EventEmitter<T2000Events> {
     } catch {
       bal.investment = 0;
       bal.investmentPnL = 0;
+    }
+
+    try {
+      const pendingRewards = await this.getPendingRewards();
+      bal.pendingRewards = pendingRewards.reduce((s, r) => s + r.estimatedValueUsd, 0);
+    } catch {
+      bal.pendingRewards = 0;
     }
 
     bal.total = bal.available + bal.savings - bal.debt + bal.investment + bal.gasReserve.usdEquiv;
@@ -1493,6 +1509,101 @@ export class T2000 extends EventEmitter<T2000Events> {
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
     };
+  }
+
+  // -- Claim Rewards --
+
+  async getPendingRewards(): Promise<PendingReward[]> {
+    const adapters = this.registry.listLending();
+    const results = await Promise.allSettled(
+      adapters
+        .filter((a) => a.getPendingRewards)
+        .map((a) => a.getPendingRewards!(this._address)),
+    );
+
+    const all: PendingReward[] = [];
+    for (const r of results) {
+      if (r.status === 'fulfilled') all.push(...r.value);
+    }
+    return all;
+  }
+
+  async claimRewards(): Promise<ClaimRewardsResult> {
+    this.enforcer.assertNotLocked();
+
+    const adapters = this.registry.listLending().filter((a) => a.addClaimRewardsToTx);
+    if (adapters.length === 0) {
+      return { success: true, tx: '', rewards: [], totalValueUsd: 0, usdcReceived: 0, gasCost: 0, gasMethod: 'none' };
+    }
+
+    const tx = new Transaction();
+    tx.setSender(this._address);
+
+    const allRewards: PendingReward[] = [];
+    for (const adapter of adapters) {
+      try {
+        const claimed = await adapter.addClaimRewardsToTx!(tx, this._address);
+        allRewards.push(...claimed);
+      } catch { /* skip unavailable adapters */ }
+    }
+
+    if (allRewards.length === 0) {
+      return { success: true, tx: '', rewards: [], totalValueUsd: 0, usdcReceived: 0, gasCost: 0, gasMethod: 'none' };
+    }
+
+    const claimResult = await executeWithGas(this.client, this.keypair, async () => tx);
+    await this.client.waitForTransaction({ digest: claimResult.digest });
+
+    const usdcReceived = await this.swapRewardTokensToUsdc(allRewards);
+
+    return {
+      success: true,
+      tx: claimResult.digest,
+      rewards: allRewards,
+      totalValueUsd: usdcReceived,
+      usdcReceived,
+      gasCost: claimResult.gasCostSui,
+      gasMethod: claimResult.gasMethod,
+    };
+  }
+
+  private async swapRewardTokensToUsdc(rewards: PendingReward[]): Promise<number> {
+    const uniqueTokens = [...new Set(rewards.map(r => r.coinType))];
+    const usdcType = SUPPORTED_ASSETS.USDC.type;
+    const usdcDecimals = SUPPORTED_ASSETS.USDC.decimals;
+    let totalUsdc = 0;
+
+    for (const coinType of uniqueTokens) {
+      try {
+        const balResult = await this.client.getBalance({
+          owner: this._address,
+          coinType,
+        });
+        const rawBalance = BigInt(balResult.totalBalance);
+        if (rawBalance <= 0n) continue;
+
+        const decimals = REWARD_TOKEN_DECIMALS[coinType] ?? 9;
+
+        const swapResult = await buildRawSwapTx({
+          client: this.client,
+          address: this._address,
+          fromCoinType: coinType,
+          fromDecimals: decimals,
+          toCoinType: usdcType,
+          toDecimals: usdcDecimals,
+          amount: rawBalance,
+        });
+
+        const gasResult = await executeWithGas(this.client, this.keypair, async () => swapResult.tx);
+        await this.client.waitForTransaction({ digest: gasResult.digest });
+
+        totalUsdc += swapResult.estimatedOut / 10 ** usdcDecimals;
+      } catch {
+        // If swap fails for a token (e.g. no liquidity), skip it
+      }
+    }
+
+    return totalUsdc;
   }
 
   // -- Strategies --

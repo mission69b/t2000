@@ -57,7 +57,7 @@ When no session file exists, pass PIN via environment variable:
 
 ---
 
-## Available Tools (21)
+## Available Tools (22)
 
 ### Read-Only (9)
 
@@ -73,7 +73,7 @@ When no session file exists, pass PIN via environment variable:
 | `t2000_contacts` | List and resolve named contacts |
 | `t2000_portfolio` | Investment portfolio — positions, cost basis, P&L |
 
-### State-Changing (10)
+### State-Changing (11)
 
 All support `dryRun: true` for previews without signing.
 
@@ -89,6 +89,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_invest` | Buy, sell, earn, or unearn investment assets (SUI, BTC, ETH) |
 | `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |
 | `t2000_auto_invest` | DCA scheduling — setup, status, run, stop |
+| `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
 
 ### Safety (2)
 

@@ -90,6 +90,18 @@ export interface LendingAdapter {
   addWithdrawToTx?(tx: Transaction, address: string, amount: number, asset: string): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }>;
   addSaveToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string, options?: { collectFee?: boolean }): Promise<void>;
   addRepayToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string): Promise<void>;
+
+  getPendingRewards?(address: string): Promise<PendingReward[]>;
+  addClaimRewardsToTx?(tx: Transaction, address: string): Promise<PendingReward[]>;
+}
+
+export interface PendingReward {
+  protocol: string;
+  asset: string;
+  coinType: string;
+  symbol: string;
+  amount: number;
+  estimatedValueUsd: number;
 }
 
 export interface SwapAdapter {
