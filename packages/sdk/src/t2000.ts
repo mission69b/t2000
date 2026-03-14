@@ -1539,19 +1539,29 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     for (const pos of positions) {
       const currentProtocol = pos.earningProtocol!;
-      const currentApy = pos.earningApy ?? 0;
 
       let best: { adapter: import('./adapters/types.js').LendingAdapter; rate: import('./adapters/types.js').LendingRates };
       try {
         best = await this.registry.bestSaveRate(pos.asset);
       } catch {
+        const currentApy = pos.earningApy ?? 0;
         skipped.push({ asset: pos.asset, protocol: currentProtocol, apy: currentApy, bestApy: currentApy, reason: 'no_rates' });
         continue;
       }
 
+      // Use live rate for current protocol instead of stale stored rate
+      let currentApy = pos.earningApy ?? 0;
+      try {
+        const currentAdapter = this.registry.getLending(currentProtocol);
+        if (currentAdapter) {
+          const liveRate = await currentAdapter.getRates(pos.asset);
+          currentApy = liveRate.saveApy;
+        }
+      } catch { /* fall back to stored rate */ }
+
       const apyGain = best.rate.saveApy - currentApy;
 
-      if (best.adapter.id === currentProtocol) {
+      if (best.adapter.id === currentProtocol || apyGain <= 0) {
         skipped.push({ asset: pos.asset, protocol: currentProtocol, apy: currentApy, bestApy: best.rate.saveApy, reason: 'already_best' });
         continue;
       }
