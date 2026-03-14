@@ -407,7 +407,7 @@ export default function InvestPage() {
             Margin <em className="italic text-amber-400/80">trading.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-8">
-            Leveraged positions on SUI, BTC, ETH, and GOLD — powered by Bluefin
+            Leveraged positions on SUI, BTC, and ETH — powered by Bluefin
             with USDC collateral. Your agent will be able to take amplified
             positions while an auto-liquidation guard manages risk
             automatically.

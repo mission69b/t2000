@@ -23,13 +23,13 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-morning",
     title: "Morning Briefing",
     description:
-      "Start your day with a personalized financial snapshot — balances, overnight yield, portfolio performance, and action items. The AI gathers data from 6 tools and delivers a concise briefing.",
+      "Start your day with a personalized financial snapshot — balances, overnight yield, portfolio performance, claimable rewards, and action items.",
     messages: [
       { role: "user", text: "Good morning — how's my account?", delay: 0 },
       { role: "thinking", delay: 400 },
       {
         role: "ai",
-        tools: ["t2000_balance", "t2000_earnings", "t2000_portfolio", "t2000_health", "t2000_auto_invest"],
+        tools: ["t2000_balance", "t2000_earnings", "t2000_portfolio", "t2000_health", "t2000_auto_invest", "t2000_claim_rewards"],
         html:
           `<div style="font-size:11px;font-weight:600;margin-bottom:10px">☀️ MORNING BRIEFING</div>` +
           tbl([
@@ -37,6 +37,7 @@ export const chatDemos: ChatDemo[] = [
             ["Savings", "$9.26 · 4.15% APY", ""],
             ["Credit", "-$1.00", "red"],
             ["Investment", "$5.01 · +0.1%", "hi"],
+            ["Rewards", "claimable", "hi"],
             ["Net Worth", "$82.87", "hi"],
           ]) +
           `<div style="margin-top:10px;font-size:11px;font-weight:600">📈 Portfolio</div>` +
@@ -45,7 +46,7 @@ export const chatDemos: ChatDemo[] = [
             ["Yield", "2.61% APY via Suilend", ""],
           ]) +
           `<div style="margin-top:10px;font-size:11px;font-weight:600">📋 Action Items</div>` +
-          note("1. $69.60 idle in checking — consider sweeping to savings<br>2. Pending DCA run — execute with <span style='color:#e8e6e0'>t2000 invest auto run</span><br>3. Repay $1.00 credit to stop accruing 7.67% interest"),
+          note("1. $69.60 idle in checking — consider sweeping to savings<br>2. Claim rewards — run <span style='color:#e8e6e0'>t2000 claim-rewards</span> to collect and convert to USDC<br>3. Pending DCA run — execute with <span style='color:#e8e6e0'>t2000 invest auto run</span><br>4. Repay $1.00 credit to stop accruing 7.67% interest"),
         delay: 300,
       },
     ],
@@ -184,7 +185,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-send",
     title: "Send Money — Natural Language",
     description:
-      "Send money by just saying who and how much. The AI resolves contacts, previews the transaction, and asks for confirmation before executing.",
+      "Send money by just saying who and how much. The AI resolves contacts, previews the transaction, and enforces safety limits automatically.",
     messages: [
       { role: "user", text: "Send $25 to alice", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -212,6 +213,25 @@ export const chatDemos: ChatDemo[] = [
           ["Balance", "$44.60 USDC", ""],
           ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/Gd2n…</span>', ""],
         ]),
+        delay: 300,
+      },
+      { role: "user", text: "Actually send $600 to bob", delay: 800 },
+      { role: "thinking", delay: 300 },
+      {
+        role: "ai",
+        tools: ["t2000_send"],
+        html:
+          `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:15px">🛡️</span>
+            <span style="font-weight:600;font-size:12px;color:#ff4757">Blocked by safeguard</span>
+          </div>` +
+          tbl([
+            ["Reason", "Exceeds per-transaction limit", "red"],
+            ["Requested", "$600.00", ""],
+            ["Max per tx", "$500.00", "hi"],
+            ["Daily used", "$25 of $1,000", ""],
+          ]) +
+          note("Your safeguard limits prevented this transaction. To adjust: <span style='color:#e8e6e0'>t2000 config set maxPerTx 1000</span>"),
         delay: 300,
       },
     ],
@@ -347,11 +367,28 @@ export const chatDemos: ChatDemo[] = [
 
   {
     id: "chat-lock",
-    title: "Emergency Lock",
+    title: "Safeguards",
     description:
-      "Panic button — lock your agent instantly. All operations freeze. Only a human with the PIN can unlock via the CLI. Shows the safety net in action.",
+      "Built-in safety limits protect every transaction — per-tx caps, daily limits, and emergency lock. No AI can override them.",
     messages: [
-      { role: "user", text: "Something feels wrong. Lock everything now.", delay: 0 },
+      { role: "user", text: "What safeguards are active on my account?", delay: 0 },
+      { role: "thinking", delay: 300 },
+      {
+        role: "ai",
+        tools: ["t2000_balance"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">🛡️ SAFEGUARDS</div>` +
+          tbl([
+            ["Per-transaction limit", "$500.00", "hi"],
+            ["Daily send limit", "$1,000.00", "hi"],
+            ["Daily used", "$25.00", ""],
+            ["Emergency lock", "Unlocked", "hi"],
+            ["PIN required", "Unlock, export key, config changes", ""],
+          ]) +
+          note("These limits apply to all AI operations. No agent — including me — can bypass them."),
+        delay: 300,
+      },
+      { role: "user", text: "Something feels wrong. Lock everything now.", delay: 800 },
       { role: "thinking", delay: 200 },
       {
         role: "ai",

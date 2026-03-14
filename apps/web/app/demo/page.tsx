@@ -33,6 +33,28 @@ export default function DemoPage() {
           </p>
         </header>
 
+        {/* ── Cinematic Walkthrough ── */}
+        <section className="mb-16 sm:mb-20">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+            Product Walkthrough
+          </div>
+          <h2 className="text-xl sm:text-2xl font-serif italic text-foreground mb-3 tracking-tight">
+            The full story in 60 seconds.
+          </h2>
+          <p className="text-muted text-[12px] sm:text-[13px] max-w-lg leading-relaxed mb-6">
+            Watch the cinematic demo — balance checks, savings, borrowing,
+            safeguards, x402 payments, and more. All real interactions.
+          </p>
+          <div className="relative w-full aspect-video max-w-4xl border border-border-bright rounded-sm overflow-hidden bg-[#040406]">
+            <iframe
+              src="/demo-video.html"
+              title="t2000 Product Walkthrough"
+              className="w-full h-full border-0"
+              loading="lazy"
+            />
+          </div>
+        </section>
+
         <DemoShowcase />
 
         <footer className="mt-20 pt-8 border-t border-border text-center">

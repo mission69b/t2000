@@ -389,6 +389,68 @@ export default function AccountsPage() {
           </div>
         </section>
 
+        {/* ── Claim Rewards ── */}
+        <section className="py-16 sm:py-24 border-b border-border">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-xl">✦</span>
+                <div className="text-[10px] tracking-[0.2em] uppercase text-accent">
+                  Rewards
+                </div>
+              </div>
+              <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
+                Claim. Convert.{" "}
+                <em className="italic text-accent">Done.</em>
+              </h2>
+              <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-6">
+                DeFi protocols reward you with various tokens — vSUI, sSUI,
+                DEEP, and more. One command claims everything across all
+                protocols and auto-converts to USDC. Zero friction.
+              </p>
+              <div className="space-y-3">
+                {[
+                  { step: "Positions accrue reward tokens automatically", icon: "◈" },
+                  { step: "claim-rewards collects from all protocols at once", icon: "⟳" },
+                  { step: "Reward tokens auto-convert to USDC", icon: "⇌" },
+                ].map((item) => (
+                  <div key={item.step} className="flex items-start gap-3">
+                    <span className="text-accent text-xs mt-0.5">{item.icon}</span>
+                    <span className="text-[12px] text-muted leading-[1.6]">{item.step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
+              <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
+                t2000 claim-rewards
+              </div>
+              <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
+                <span className="text-foreground">❯ t2000 positions</span>
+                {"\n"}
+                <span className="text-muted">  navi:  $5.30 USDC @ 4.09% APY  </span>
+                <span className="text-accent">+rewards</span>
+                {"\n"}
+                <span className="text-muted">  suilend:  $6.15 SUI @ 2.61% APY  </span>
+                <span className="text-accent">+rewards</span>
+                {"\n\n"}
+                <span className="text-foreground">❯ t2000 claim-rewards</span>
+                {"\n\n"}
+                <span className="text-accent">  ✓ Claimed and converted rewards to USDC</span>
+                {"\n"}
+                <span className="text-muted">  Received:  </span>
+                <span className="text-accent">$0.42 USDC</span>
+                {"\n"}
+                <span className="text-muted">  Source:  navi, suilend</span>
+                {"\n"}
+                <span className="text-muted">  Tx:  </span>
+                <span className="text-accent/50">https://suiscan.xyz/mainnet/tx/0xd9f2...</span>
+              </pre>
+            </div>
+          </div>
+        </section>
+
         {/* ── How they work together ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">

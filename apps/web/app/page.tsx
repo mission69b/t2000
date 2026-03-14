@@ -225,7 +225,7 @@ export default function Home() {
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
             Five accounts — checking, savings, credit, investment, and
             exchange. Your AI earns yield, borrows, invests, and pays for
-            services. Connect any AI platform. No human in the loop.
+            services. One command to set up. Connect any AI platform.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
