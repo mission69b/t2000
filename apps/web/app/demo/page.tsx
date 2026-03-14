@@ -29,8 +29,7 @@ export default function DemoPage() {
             Live Demos
           </h1>
           <p className="text-muted text-sm max-w-lg leading-relaxed">
-            Every demo below runs with real CLI output and real transaction
-            digests from Sui mainnet. Click any terminal to replay.
+            Real CLI output. Real transactions on Sui mainnet.
           </p>
         </header>
 
@@ -39,13 +38,9 @@ export default function DemoPage() {
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
             Product Walkthrough
           </div>
-          <h2 className="text-xl sm:text-2xl font-serif italic text-foreground mb-3 tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-serif italic text-foreground mb-6 tracking-tight">
             The full story in 60 seconds.
           </h2>
-          <p className="text-muted text-[12px] sm:text-[13px] max-w-lg leading-relaxed mb-6">
-            Watch the cinematic demo — balance checks, savings, borrowing,
-            safeguards, x402 payments, and more. All real interactions.
-          </p>
           <CinematicWalkthrough />
         </section>
 

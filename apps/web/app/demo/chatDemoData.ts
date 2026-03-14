@@ -23,7 +23,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-morning",
     title: "Morning Briefing",
     description:
-      "Start your day with a personalized financial snapshot — balances, overnight yield, portfolio performance, claimable rewards, and action items.",
+      "Balances, yield, portfolio, rewards, and action items — one prompt.",
     messages: [
       { role: "user", text: "Good morning — how's my account?", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -56,7 +56,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-sweep",
     title: "Sweep — Idle Fund Optimizer",
     description:
-      "AI finds money sitting idle in checking and routes it to the highest-earning positions — keeping a spending buffer. Like a financial autopilot.",
+      "AI routes idle funds to the highest yield, keeps a spending buffer.",
     messages: [
       { role: "user", text: "Sweep my idle funds — keep $20 buffer", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -98,7 +98,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-whatif",
     title: "What If — Scenario Planning",
     description:
-      "Model the impact of any financial decision before committing. The AI previews allocation changes, risk exposure, and projected outcomes.",
+      "Preview any financial decision before committing.",
     messages: [
       {
         role: "user",
@@ -158,7 +158,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-risk",
     title: "Risk Check",
     description:
-      "Full risk analysis — liquidation proximity, concentration risk, protocol exposure, unrealized losses. The AI rates your overall risk and suggests fixes.",
+      "Liquidation risk, concentration, protocol exposure — scored and actionable.",
     messages: [
       { role: "user", text: "Am I at risk? Run a full check.", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -185,7 +185,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-send",
     title: "Send Money — Natural Language",
     description:
-      "Send money by just saying who and how much. The AI resolves contacts, previews the transaction, and enforces safety limits automatically.",
+      "Say who and how much. Contacts, preview, and safety limits handled.",
     messages: [
       { role: "user", text: "Send $25 to alice", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -241,7 +241,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-dca",
     title: "DCA Advisor",
     description:
-      "Tell the AI your monthly budget and it recommends the optimal DCA strategy — frequency, asset allocation, and projected accumulation.",
+      "Set a budget, get optimal DCA frequency and allocation.",
     messages: [
       {
         role: "user",
@@ -289,7 +289,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-payday",
     title: "I Just Got Paid",
     description:
-      "Tell the AI you received money and it suggests the optimal split — savings, investments, debt repayment — based on your current financial position.",
+      "AI suggests the optimal split across savings, investments, and debt.",
     messages: [
       { role: "user", text: "I just got paid $500. What should I do with it?", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -330,7 +330,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-optimize",
     title: "Optimize My Yield",
     description:
-      "Ask the AI to find better rates. It compares protocols, calculates break-even economics, and moves your savings to the highest yield — all in one conversation.",
+      "Compare rates, calculate break-even, move to highest yield.",
     messages: [
       { role: "user", text: "Am I getting the best yield on my savings?", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -369,7 +369,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-lock",
     title: "Safeguards",
     description:
-      "Built-in safety limits protect every transaction — per-tx caps, daily limits, and emergency lock. No AI can override them.",
+      "Per-tx caps, daily limits, emergency lock. No AI can override.",
     messages: [
       { role: "user", text: "What safeguards are active on my account?", delay: 0 },
       { role: "thinking", delay: 300 },
@@ -423,7 +423,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-x402",
     title: "Pay & Analyze — x402",
     description:
-      "The AI pays for premium data via x402 micropayment, gets the response, and analyzes it — all autonomously. No API key needed, no subscription, just USDC.",
+      "AI pays for data via x402 micropayment. No API key, just USDC.",
     messages: [
       { role: "user", text: "Get me the latest crypto prices from the paid API", delay: 0 },
       { role: "thinking", delay: 400 },
@@ -467,7 +467,7 @@ export const chatDemos: ChatDemo[] = [
     id: "chat-claim",
     title: "Claim Rewards",
     description:
-      "Collect pending protocol rewards from lending positions and auto-convert to USDC. Zero friction — one command, all protocols.",
+      "Claim all protocol rewards, auto-convert to USDC.",
     messages: [
       {
         role: "user",

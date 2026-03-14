@@ -100,8 +100,7 @@ export function DemoShowcase() {
                 </div>
               </div>
               <div className="text-[10px] text-muted leading-relaxed border-t border-border pt-4">
-                Works with Claude Desktop, Cursor, iMessage via OpenClaw, or any
-                MCP-compatible AI platform.
+                Works with any MCP-compatible AI platform.
               </div>
             </div>
           </div>

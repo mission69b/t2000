@@ -14,7 +14,7 @@ export const demos: Demo[] = [
     id: "invest",
     title: "Investment — Buy, Earn Yield & Sell",
     description:
-      "The full investment lifecycle: buy SUI with USDC, deposit into lending to earn yield while holding, check your portfolio with P&L, then sell back to USDC. Price exposure + passive yield in four commands.",
+      "Buy, earn yield while holding, check P&L, sell. Four commands.",
     tweet: "t2000 invest — buy, earn yield, track P&L, sell. All from the CLI.",
     lines: [
       { type: "command", text: "❯ t2000 invest buy 5 SUI", delay: 0 },
@@ -58,7 +58,7 @@ export const demos: Demo[] = [
     id: "strategy",
     title: "Strategies & DCA",
     description:
-      "Buy into a themed multi-asset strategy with one command — bluechip, all-weather, safe-haven, and more. Set up dollar-cost averaging for automated recurring purchases. One atomic transaction, multiple assets.",
+      "One command, multiple assets. Strategies and DCA built in.",
     tweet: "t2000 invest strategy buy all-weather 500 — BTC + ETH + SUI + GOLD in one atomic tx. Crypto and commodities.",
     lines: [
       { type: "command", text: "❯ t2000 invest strategy list", delay: 0 },
@@ -102,7 +102,7 @@ export const demos: Demo[] = [
     id: "save",
     title: "Savings — Earn Yield",
     description:
-      "Deposit idle USDC into savings and start earning APY immediately. Auto-selects the best rate across NAVI and Suilend protocols.",
+      "Deposit USDC, earn APY. Auto-selects the best rate.",
     tweet: "Week 2 Monday — Savings feature",
     lines: [
       { type: "command", text: "❯ t2000 rates", delay: 0 },
@@ -139,7 +139,7 @@ export const demos: Demo[] = [
     id: "borrow",
     title: "Credit — Borrow & Repay",
     description:
-      "Borrow USDC against your savings collateral. Health factor enforced on-chain — if it drops too low, the CLI warns you. Repay anytime.",
+      "Borrow against savings. Health factor enforced on-chain.",
     tweet: "t2000 credit line — borrow against savings, health factor enforced",
     lines: [
       { type: "command", text: "❯ t2000 balance", delay: 0 },
@@ -178,7 +178,7 @@ export const demos: Demo[] = [
     id: "dashboard",
     title: "Dashboard — Full Financial View",
     description:
-      "Your agent's complete financial picture in one screen — checking, savings, credit, investment, limits, rates, and daily yield. The morning-briefing prompt uses all of this.",
+      "All accounts, rates, limits, and yield — one screen.",
     tweet: "t2000 balance — the complete banking dashboard for AI agents",
     lines: [
       { type: "command", text: "❯ t2000 balance --show-limits", delay: 0 },
@@ -232,7 +232,7 @@ export const demos: Demo[] = [
     id: "rebalance",
     title: "Yield Optimizer — Auto-Rebalance",
     description:
-      "One command finds the best rate across all protocols and stablecoins, calculates break-even, then moves your money in a single atomic transaction.",
+      "Find the best rate, calculate break-even, move — one transaction.",
     tweet: "t2000 rebalance — one command, best yield wins",
     lines: [
       { type: "command", text: "❯ t2000 rates", delay: 0 },
@@ -279,7 +279,7 @@ export const demos: Demo[] = [
     id: "x402",
     title: "x402 Pay — Machine Payments",
     description:
-      "Pay for API resources with USDC. Server returns 402, agent pays automatically, gets the data. No API key, no subscription, no human.",
+      "Server returns 402, agent pays with USDC, gets the data.",
     tweet: "Week 2 Friday — x402 payments on Sui",
     lines: [
       { type: "command", text: "❯ t2000 pay https://api.marketdata.dev/prices", delay: 0 },
@@ -309,7 +309,7 @@ export const demos: Demo[] = [
     id: "safeguards",
     title: "Safeguards — Spending Controls",
     description:
-      "Set per-transaction limits, daily caps, and emergency lock. Outbound sends are enforced — the agent physically cannot exceed its guardrails.",
+      "Per-tx limits, daily caps, emergency lock. Enforced on every send.",
     tweet: "t2000 safeguards — spending limits + emergency lock for autonomous agents",
     lines: [
       { type: "command", text: "❯ t2000 config show", delay: 0 },
@@ -354,7 +354,7 @@ export const demos: Demo[] = [
     id: "sentinel",
     title: "Sentinel — Red Team for Bounties",
     description:
-      "Browse AI sentinels, pick a target, attack with an adversarial prompt. If you break through the defenses, you win the SUI prize pool. AI vs AI on-chain.",
+      "Pick a target, attack with a prompt. Break through, win SUI.",
     tweet: "t2000 sentinel — AI agents attacking AI agents for bounties on Sui",
     lines: [
       { type: "command", text: "❯ t2000 sentinel list", delay: 0 },
@@ -393,7 +393,7 @@ export const demos: Demo[] = [
     id: "contacts",
     title: "Contacts — Send by Name",
     description:
-      "Save named contacts, then send money by name instead of pasting raw hex addresses. Stored locally, works everywhere.",
+      "Send by name, not hex addresses. Stored locally.",
     tweet: "t2000 contacts — send money by name, not address",
     lines: [
       { type: "command", text: "❯ t2000 contacts add alice 0x8b3e...d412", delay: 0 },
@@ -418,7 +418,7 @@ export const demos: Demo[] = [
     id: "exchange",
     title: "Exchange — Swap Any Pair",
     description:
-      "Swap between any supported tokens via Cetus DEX. USDC ↔ SUI, stablecoin conversions, or any pair the aggregator supports.",
+      "Any token pair via Cetus DEX aggregator.",
     tweet: "t2000 exchange — swap any token pair from the CLI",
     lines: [
       { type: "command", text: "❯ t2000 exchange 5 USDC SUI", delay: 0 },
@@ -445,7 +445,7 @@ export const demos: Demo[] = [
     id: "claim-rewards",
     title: "Claim Rewards",
     description:
-      "Claim pending protocol rewards from lending positions across NAVI and Suilend. Auto-converts reward tokens to USDC.",
+      "Claim all protocol rewards, auto-convert to USDC.",
     tweet: "t2000 claim-rewards — collect and convert protocol rewards to USDC",
     lines: [
       { type: "command", text: "❯ t2000 positions", delay: 0 },

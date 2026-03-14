@@ -37,8 +37,7 @@ export function HomeShowcase() {
           </h2>
         </div>
         <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-          Use natural language through any AI platform, or run CLI commands
-          directly. Every interaction below mirrors the real product.
+          Natural language or CLI. Every interaction mirrors the real product.
         </p>
       </div>
 

@@ -32,8 +32,7 @@ export function InvestShowcase() {
         Try it. <em className="italic text-accent">Live.</em>
       </h2>
       <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-8">
-        Talk to your AI in natural language or use the CLI directly. Every demo
-        below runs exactly like the real thing.
+        Natural language or CLI. Every demo mirrors the real product.
       </p>
 
       <div className="flex gap-3 mb-6">
