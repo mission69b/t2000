@@ -1187,13 +1187,28 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient checking balance. Available: $${bal.available.toFixed(2)}, requested: $${params.usdAmount.toFixed(2)}`);
     }
 
-    const swapResult = await this.exchange({
-      from: 'USDC',
-      to: params.asset,
-      amount: params.usdAmount,
-      maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
-      _bypassInvestmentGuard: true,
-    });
+    let swapResult: Awaited<ReturnType<typeof this.exchange>>;
+    const maxRetries = 3;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        swapResult = await this.exchange({
+          from: 'USDC',
+          to: params.asset,
+          amount: params.usdAmount,
+          maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
+          _bypassInvestmentGuard: true,
+        });
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isSlippage = msg.includes('slippage') || msg.includes('amount_out_slippage');
+        if (isSlippage && attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
 
     if (swapResult.toAmount === 0) {
       throw new T2000Error('SWAP_FAILED', 'Swap returned zero tokens — try a different amount or check liquidity');
@@ -1262,7 +1277,10 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const didAutoWithdraw = !!(pos.earning && pos.earningProtocol);
     if (didAutoWithdraw) {
-      await this.investUnearn({ asset: params.asset });
+      const unearnResult = await this.investUnearn({ asset: params.asset });
+      if (unearnResult.tx) {
+        await this.client.waitForTransaction({ digest: unearnResult.tx, options: { showEffects: true } });
+      }
     }
 
     const assetInfo = SUPPORTED_ASSETS[params.asset as keyof typeof SUPPORTED_ASSETS];
@@ -1275,8 +1293,8 @@ export class T2000 extends EventEmitter<T2000Events> {
         coinType: assetInfo.type,
       });
       walletAmount = Number(assetBalance.totalBalance) / (10 ** assetInfo.decimals);
-      if (!didAutoWithdraw || walletAmount > gasReserve || attempt >= 3) break;
-      await new Promise(r => setTimeout(r, 1000));
+      if (!didAutoWithdraw || walletAmount > gasReserve || attempt >= 5) break;
+      await new Promise(r => setTimeout(r, 1500));
     }
 
     const maxSellable = Math.max(0, walletAmount - gasReserve);
@@ -1305,13 +1323,28 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INSUFFICIENT_INVESTMENT', 'Nothing to sell after gas reserve');
     }
 
-    const swapResult = await this.exchange({
-      from: params.asset,
-      to: 'USDC',
-      amount: sellAmountAsset,
-      maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
-      _bypassInvestmentGuard: true,
-    });
+    let swapResult: Awaited<ReturnType<typeof this.exchange>>;
+    const maxRetries = 3;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        swapResult = await this.exchange({
+          from: params.asset,
+          to: 'USDC',
+          amount: sellAmountAsset,
+          maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
+          _bypassInvestmentGuard: true,
+        });
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isSlippage = msg.includes('slippage') || msg.includes('amount_out_slippage');
+        if (isSlippage && attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
 
     const price = swapResult.toAmount / sellAmountAsset;
 
@@ -1598,9 +1631,19 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('PROTOCOL_UNAVAILABLE', 'Swap adapter does not support composable PTB');
     }
 
+    // Phase 0: Unearn any earning assets so coins are in the wallet
+    for (const pos of stratPositions) {
+      const directPos = this.portfolio.getPosition(pos.asset);
+      if (directPos?.earning && directPos.earningProtocol) {
+        await this.investUnearn({ asset: pos.asset as InvestmentAsset });
+        // Wait for coins to settle
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+
     let swapMetas: Array<{ asset: string; amount: number; estimatedOut: number; toDecimals: number }> = [];
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const buildSellPtb = async () => {
       swapMetas = [];
       const tx = new Transaction();
       tx.setSender(this._address);
@@ -1639,13 +1682,34 @@ export class T2000 extends EventEmitter<T2000Events> {
         swapMetas.push({ asset: pos.asset, amount: sellAmount, estimatedOut, toDecimals });
       }
 
+      if (usdcOutputs.length === 0) {
+        throw new T2000Error('INSUFFICIENT_BALANCE', 'No assets available to sell');
+      }
+
       if (usdcOutputs.length > 1) {
         tx.mergeCoins(usdcOutputs[0], usdcOutputs.slice(1));
       }
       tx.transferObjects([usdcOutputs[0]], this._address);
 
       return tx;
-    });
+    };
+
+    let gasResult: import('./gas/index.js').GasExecutionResult;
+    const MAX_RETRIES = 3;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        gasResult = await executeWithGas(this.client, this.keypair, buildSellPtb);
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isSlippage = msg.includes('slippage') || msg.includes('amount_out_slippage');
+        if (isSlippage && attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
 
     const digest = gasResult.digest;
     const now = new Date().toISOString();
@@ -1684,6 +1748,11 @@ export class T2000 extends EventEmitter<T2000Events> {
       sells.push({ asset: meta.asset, amount: meta.amount, usdValue, realizedPnL: pnl, tx: digest });
       totalProceeds += usdValue;
       totalPnL += pnl;
+    }
+
+    // Clear any residual dust left in the strategy (gas/rounding differences)
+    if (this.portfolio.hasStrategyPositions(params.strategy)) {
+      this.portfolio.clearStrategy(params.strategy);
     }
 
     return {
