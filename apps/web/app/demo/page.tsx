@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CinematicWalkthrough } from "./CinematicWalkthrough";
 import { DemoShowcase } from "./DemoShowcase";
 
 export const metadata: Metadata = {
@@ -45,14 +46,7 @@ export default function DemoPage() {
             Watch the cinematic demo — balance checks, savings, borrowing,
             safeguards, x402 payments, and more. All real interactions.
           </p>
-          <div className="relative w-full aspect-video max-w-4xl border border-border-bright rounded-sm overflow-hidden bg-[#040406]">
-            <iframe
-              src="/demo-video.html"
-              title="t2000 Product Walkthrough"
-              className="w-full h-full border-0"
-              loading="lazy"
-            />
-          </div>
+          <CinematicWalkthrough />
         </section>
 
         <DemoShowcase />
