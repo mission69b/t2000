@@ -473,7 +473,7 @@ export default function InvestPage() {
         {/* ── Footer ── */}
         <footer className="pt-8 pb-10 border-t border-border text-center">
           <p className="text-muted text-xs">
-            t2000 — The first bank account for AI agents.{" "}
+            t2000 — A bank account for the AI economy.{" "}
             <Link href="/" className="text-accent hover:underline">Home</Link>
             {" · "}
             <Link href="/docs" className="text-accent hover:underline">Docs</Link>

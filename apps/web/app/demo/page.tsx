@@ -53,7 +53,7 @@ export default function DemoPage() {
 
         <footer className="mt-20 pt-8 border-t border-border text-center">
           <p className="text-muted text-xs">
-            t2000 — The first bank account for AI agents.{" "}
+            t2000 — A bank account for the AI economy.{" "}
             <a href="/" className="text-accent hover:underline">
               Home
             </a>{" "}

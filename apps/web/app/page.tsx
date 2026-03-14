@@ -16,7 +16,7 @@ const ACCOUNTS = [
     icon: "⟳",
     title: "Checking",
     subtitle: "Send · Receive · Balance",
-    desc: "The everyday account. Send USDC to anyone, receive funds, check balances. Gas is handled automatically.",
+    desc: "Send and receive USDC. Gas handled automatically.",
     prompt: "Send $10 to Alice",
     cmd: "t2000 send 10 to alice",
     href: "/accounts",
@@ -26,7 +26,7 @@ const ACCOUNTS = [
     icon: "◈",
     title: "Savings",
     subtitle: "Earn 2–8% APY",
-    desc: "Idle USDC earns interest automatically. Auto-routed to the best rate across lending protocols. Withdraw any time.",
+    desc: "Idle funds earn yield automatically. Best rate, any time.",
     prompt: "Put all my idle cash to work",
     cmd: "t2000 save all",
     href: "/accounts",
@@ -36,7 +36,7 @@ const ACCOUNTS = [
     icon: "◎",
     title: "Credit",
     subtitle: "Borrow · Repay",
-    desc: "Borrow USDC against your savings — without selling. Repay when ready. Safety limits enforced automatically.",
+    desc: "Borrow against savings without selling. Repay anytime.",
     prompt: "Borrow $40 against my savings",
     cmd: "t2000 borrow 40",
     href: "/accounts",
@@ -46,7 +46,7 @@ const ACCOUNTS = [
     icon: "⇌",
     title: "Exchange",
     subtitle: "Swap any pair",
-    desc: "Swap between any supported tokens at market rates. The agent can convert currencies, acquire gas, or rebalance — all automatically.",
+    desc: "Swap any token pair at market rates. Automatic routing.",
     prompt: "Convert $5 to SUI",
     cmd: "t2000 exchange 5 USDC SUI",
     href: "/accounts",
@@ -56,7 +56,7 @@ const ACCOUNTS = [
     icon: "◆",
     title: "Investment",
     subtitle: "Buy · Sell · Strategies · DCA",
-    desc: "Invest in crypto, commodities, and more. Use pre-built strategies or set up recurring investments. Track P&L automatically.",
+    desc: "Buy, sell, earn yield. Strategies and DCA built in.",
     prompt: "Invest $200 in layer1 strategy",
     cmd: "t2000 invest strategy buy layer1 200",
     href: "/invest",
@@ -69,7 +69,7 @@ const STEPS = [
     title: "Install",
     badge: "30s",
     badgeType: "done" as const,
-    content: "One command creates a secure wallet, sets up gas, and opens all five accounts.",
+    content: "One command. Wallet, gas, five accounts.",
     code: "npm install -g @t2000/cli && t2000 init",
   },
   {
@@ -77,14 +77,14 @@ const STEPS = [
     title: "Fund",
     badge: "1 min",
     badgeType: "done" as const,
-    content: "Send USDC to the wallet address. Everything else — gas, fees, protocol routing — is automatic.",
+    content: "Send USDC to the wallet. Gas and routing are automatic.",
   },
   {
     num: "03",
     title: "Connect your AI",
     badge: "1 cmd",
     badgeType: "new" as const,
-    content: "One command connects Claude, Cursor, or any AI platform. Your agent gets 22 tools with built-in safety limits.",
+    content: "22 tools with built-in safety limits. Any AI platform.",
     code: "t2000 mcp install",
   },
   {
@@ -92,7 +92,7 @@ const STEPS = [
     title: "Let it work",
     badge: "∞",
     badgeType: "new" as const,
-    content: "Your agent earns yield, borrows when needed, invests, and pays for APIs — without asking you. Set the rules once.",
+    content: "Set the rules once. Your agent handles the rest.",
   },
 ];
 
@@ -216,16 +216,14 @@ export default function Home() {
           </div>
 
           <h1 className="font-serif text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">
-            The first{" "}
+            A{" "}
             <em className="italic text-accent">bank account</em>
             <br />
-            for AI agents.
+            for the AI economy.
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
-            Five accounts — checking, savings, credit, investment, and
-            exchange. Your AI earns yield, borrows, invests, and pays for
-            services. One command to set up. Connect any AI platform.
+            Your AI earns, borrows, invests, and pays — autonomously.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
@@ -300,9 +298,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Traditional wallets let agents spend. t2000 lets agents build
-            wealth — earning yield on idle capital, accessing credit without
-            selling positions, and exchanging currencies at market rates.
+            Not just spending. Earning, borrowing, investing, exchanging.
           </p>
         </div>
 
@@ -364,8 +360,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Install, fund, connect your AI, and walk away. t2000 handles
-            everything else — security, gas, protocol routing, safety limits.
+            Install. Fund. Connect your AI. Walk away.
           </p>
         </div>
 
@@ -476,8 +471,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            One command connects Claude, Cursor, or any AI platform. Your agent
-            gets 22 tools with built-in safety limits — no config files to edit.
+            One command. 22 tools. Built-in safety limits.
           </p>
         </div>
 
@@ -571,8 +565,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Most agent wallets let you send money. t2000 gives your agent a
-            full banking stack — savings, credit, investments, and more.
+            Wallets let agents spend. t2000 lets agents bank.
           </p>
         </div>
 
@@ -667,8 +660,7 @@ export default function Home() {
             <em className="italic text-accent">financial life.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.8]">
-            Install t2000, fund with USDC, and your agent is operating in under
-            a minute. Open source, non-custodial, built on Sui.
+            Open source. Non-custodial. Built on Sui.
           </p>
 
           <div className="mb-6 overflow-x-auto scrollbar-hide">
