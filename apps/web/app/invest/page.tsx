@@ -20,6 +20,7 @@ const ASSETS = [
   { symbol: "SUI", name: "Sui", desc: "The L1 powering your bank account", icon: "◆" },
   { symbol: "BTC", name: "Bitcoin", desc: "The world's largest digital asset", icon: "₿" },
   { symbol: "ETH", name: "Ethereum", desc: "The leading smart contract network", icon: "Ξ" },
+  { symbol: "GOLD", name: "Gold", desc: "Tokenized physical gold by Matrixdock", icon: "◉" },
 ];
 
 export default function InvestPage() {
@@ -76,16 +77,15 @@ export default function InvestPage() {
             What you can invest in
           </div>
           <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-4 tracking-tight">
-            Crypto today.{" "}
-            <em className="italic text-accent">More tomorrow.</em>
+            Crypto and commodities.{" "}
+            <em className="italic text-accent">More coming.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-10 sm:mb-14">
             Say how much in dollars — t2000 handles the rest. No wallet
-            complexity, no manual swaps. Commodities, stocks, and RWA on the
-            roadmap.
+            complexity, no manual swaps. Stocks and RWA on the roadmap.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-border border border-border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
             {ASSETS.map((asset) => (
               <div
                 key={asset.symbol}
@@ -188,13 +188,23 @@ export default function InvestPage() {
                 {"    "}
                 <span className="text-accent">0.04% APY</span>
                 {"\n"}
+                <span className="text-foreground">GOLD:</span>
+                {" "}
+                <span className="text-muted">0.01005</span>
+                {"  "}
+                <span className="text-muted">Avg: $4.9k</span>
+                {"    "}
+                <span className="text-muted">Now: $5.0k</span>
+                {"   "}
+                <span className="text-accent">+1.2%</span>
+                {"\n"}
                 <span className="text-muted/30">─────────────────────────────────────────────</span>
                 {"\n"}
                 <span className="text-muted">Total:</span>
                 {"  "}
-                <span className="text-foreground">$32.40</span>
+                <span className="text-foreground">$82.60</span>
                 {"  "}
-                <span className="text-accent">+$0.82 (+2.6%)</span>
+                <span className="text-accent">+$3.32 (+4.2%)</span>
               </pre>
             </div>
           </div>
@@ -218,11 +228,13 @@ export default function InvestPage() {
             recurring purchases.
           </p>
 
-          <div className="grid sm:grid-cols-3 gap-6 mb-12">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {[
-              { name: "bluechip", alloc: "BTC 40% · ETH 40% · SUI 20%", desc: "Large-cap crypto index" },
+              { name: "bluechip", alloc: "BTC 50% · ETH 30% · SUI 20%", desc: "Large-cap crypto index" },
+              { name: "all-weather", alloc: "BTC 30% · ETH 20% · SUI 20% · GOLD 30%", desc: "Crypto and commodities" },
+              { name: "safe-haven", alloc: "BTC 50% · GOLD 50%", desc: "Store-of-value assets" },
               { name: "layer1", alloc: "ETH 50% · SUI 50%", desc: "Smart contract platforms" },
-              { name: "sui-heavy", alloc: "SUI 70% · BTC 15% · ETH 15%", desc: "Sui-weighted portfolio" },
+              { name: "sui-heavy", alloc: "SUI 60% · BTC 20% · ETH 20%", desc: "Sui-weighted portfolio" },
             ].map((s) => (
               <div key={s.name} className="border border-border-bright rounded-lg p-5 hover:border-accent/30 transition-colors">
                 <div className="font-mono text-sm text-accent mb-1">{s.name}</div>
@@ -245,17 +257,19 @@ export default function InvestPage() {
                 Strategy buy — one atomic transaction
               </div>
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[1.9] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">❯ t2000 invest strategy buy bluechip 100</span>
+                <span className="text-foreground">❯ t2000 invest strategy buy all-weather 500</span>
                 {"\n\n"}
-                <span className="text-accent">  ✓ Invested $100.00 in bluechip strategy</span>
+                <span className="text-accent">  ✓ Invested $500.00 in all-weather strategy</span>
                 {"\n"}
-                <span className="text-muted">  BTC:  0.00056000 @ $71,326</span>
+                <span className="text-muted">  BTC:   0.00155 @ $96,420</span>
                 {"\n"}
-                <span className="text-muted">  ETH:  0.01890 @ $2,119</span>
+                <span className="text-muted">  ETH:   0.03780 @ $2,640</span>
                 {"\n"}
-                <span className="text-muted">  SUI:  19.4170 @ $1.03</span>
+                <span className="text-muted">  SUI:   26.3100 @ $3.80</span>
                 {"\n"}
-                <span className="text-muted">  Total invested:  $100.00</span>
+                <span className="text-muted">  GOLD:  0.03017 @ $4,974</span>
+                {"\n"}
+                <span className="text-muted">  Total invested:  $500.00</span>
               </pre>
             </div>
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
@@ -378,7 +392,7 @@ export default function InvestPage() {
                 {" "}
                 <span className="text-foreground">&quot;Done — invested $100 across</span>
                 {"\n"}
-                <span className="text-foreground">{"     "}BTC, ETH, and SUI.&quot;</span>
+                <span className="text-foreground">{"     "}BTC, ETH, SUI, and GOLD.&quot;</span>
               </pre>
             </div>
           </div>
@@ -393,7 +407,7 @@ export default function InvestPage() {
             Margin <em className="italic text-amber-400/80">trading.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-8">
-            Leveraged positions on SUI, BTC, and ETH — powered by Bluefin
+            Leveraged positions on SUI, BTC, ETH, and GOLD — powered by Bluefin
             with USDC collateral. Your agent will be able to take amplified
             positions while an auto-liquidation guard manages risk
             automatically.

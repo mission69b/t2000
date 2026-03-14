@@ -41,7 +41,7 @@ For other platforms, paste manually:
 | `t2000_repay` | write | Repay debt |
 | `t2000_exchange` | write | Swap assets |
 | `t2000_rebalance` | write | Optimize yield |
-| `t2000_invest` | write | Buy/sell investment assets; earn/unearn yield on SUI, ETH, BTC |
+| `t2000_invest` | write | Buy/sell investment assets; earn/unearn yield on SUI, ETH, BTC, GOLD |
 | `t2000_contacts` | read | List saved contacts (name → address) |
 | `t2000_portfolio` | read | Investment portfolio + P&L |
 | `t2000_strategy` | write | Investment strategies — list, buy (PTB), sell, status, rebalance, create, delete |

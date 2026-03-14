@@ -25,7 +25,9 @@ const USDC_TYPE = SUPPORTED_ASSETS.USDC.type;
 const RATE_DECIMALS = 27;
 const LTV_DECIMALS = 27;
 const MIN_HEALTH_FACTOR = 1.5;
-const WITHDRAW_DUST_BUFFER = 0.001;
+function withdrawDustBuffer(decimals: number): number {
+  return 1000 / 10 ** decimals;
+}
 const CLOCK = '0x06';
 const SUI_SYSTEM_STATE = '0x05';
 const NAVI_BALANCE_DECIMALS = 9;
@@ -67,6 +69,12 @@ interface NaviConfig {
 
 // Oracle package ID comes from config.oracle.packageId (not hardcoded)
 
+interface NaviIncentiveApy {
+  vaultApr: string;
+  boostedApr: string;
+  apy: string;
+}
+
 interface NaviPool {
   id: number;
   coinType: string;
@@ -79,6 +87,8 @@ interface NaviPool {
   liquidationFactor: { bonus: string; ratio: string; threshold: string };
   contract: { reserveId: string; pool: string };
   token: { symbol: string; decimals: number; price: number };
+  supplyIncentiveApyInfo?: NaviIncentiveApy;
+  borrowIncentiveApyInfo?: NaviIncentiveApy;
 }
 
 interface UserState {
@@ -264,6 +274,18 @@ function extractGasCost(effects: { gasUsed?: { computationCost: string; storageC
 function rateToApy(rawRate: string): number {
   if (!rawRate || rawRate === '0') return 0;
   return Number(BigInt(rawRate)) / 10 ** RATE_DECIMALS * 100;
+}
+
+function poolSaveApy(pool: NaviPool): number {
+  const incentive = parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0');
+  if (incentive > 0) return incentive;
+  return rateToApy(pool.currentSupplyRate);
+}
+
+function poolBorrowApy(pool: NaviPool): number {
+  const incentive = parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0');
+  if (incentive > 0) return incentive;
+  return rateToApy(pool.currentBorrowRate);
 }
 
 function parseLtv(rawLtv: string): number {
@@ -457,7 +479,7 @@ export async function buildWithdrawTx(
   const assetState = states.find((s) => s.assetId === pool.id);
   const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex, pool) : 0;
 
-  const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
+  const effectiveAmount = Math.min(amount, Math.max(0, deposited - withdrawDustBuffer(assetInfo.decimals)));
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
@@ -520,7 +542,7 @@ export async function addWithdrawToTx(
   const assetState = states.find((s) => s.assetId === pool.id);
   const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex, pool) : 0;
 
-  const effectiveAmount = Math.min(amount, Math.max(0, deposited - WITHDRAW_DUST_BUFFER));
+  const effectiveAmount = Math.min(amount, Math.max(0, deposited - withdrawDustBuffer(assetInfo.decimals)));
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
@@ -911,7 +933,7 @@ export async function getHealthFactor(
   };
 }
 
-const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH'] as const;
+const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'] as const;
 
 export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
   try {
@@ -923,11 +945,11 @@ export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
       const pool = pools.find((p) => matchesCoinType(p.suiCoinType || p.coinType || '', targetType));
       if (!pool) continue;
 
-      let saveApy = rateToApy(pool.currentSupplyRate);
-      let borrowApy = rateToApy(pool.currentBorrowRate);
+      let saveApy = poolSaveApy(pool);
+      let borrowApy = poolBorrowApy(pool);
 
-      if (saveApy <= 0 || saveApy > 100) saveApy = 0;
-      if (borrowApy <= 0 || borrowApy > 100) borrowApy = 0;
+      if (saveApy <= 0 || saveApy > 200) saveApy = 0;
+      if (borrowApy <= 0 || borrowApy > 200) borrowApy = 0;
 
       result[asset] = { saveApy, borrowApy };
     }
@@ -964,7 +986,7 @@ export async function getPositions(
         asset: symbol,
         type: 'save',
         amount: supplyBal,
-        apy: rateToApy(pool.currentSupplyRate),
+        apy: poolSaveApy(pool),
       });
     }
 
@@ -974,7 +996,7 @@ export async function getPositions(
         asset: symbol,
         type: 'borrow',
         amount: borrowBal,
-        apy: rateToApy(pool.currentBorrowRate),
+        apy: poolBorrowApy(pool),
       });
     }
   }

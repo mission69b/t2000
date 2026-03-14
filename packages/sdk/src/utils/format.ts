@@ -58,6 +58,7 @@ export function formatLargeNumber(n: number): string {
 
 export function formatAssetAmount(amount: number, asset: string): string {
   if (asset === 'BTC') return amount.toFixed(8);
+  if (asset === 'GOLD') return amount.toFixed(6);
   if (asset === 'ETH') return amount.toFixed(6);
   return amount.toFixed(4);
 }

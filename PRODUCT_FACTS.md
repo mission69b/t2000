@@ -101,9 +101,9 @@ t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
 
 | Adapter | Type | Capabilities | Status |
 |---------|------|-------------|--------|
-| NAVI (`navi`) | Lending | save, withdraw, borrow, repay; SUI, ETH (invest earn) | Built-in |
+| NAVI (`navi`) | Lending | save, withdraw, borrow, repay; SUI, ETH, GOLD (invest earn) | Built-in |
 | Cetus (`cetus`) | Swap | swap | Built-in |
-| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay; SUI, ETH, BTC (invest earn) | Built-in |
+| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay; SUI, ETH, BTC, GOLD (invest earn) | Built-in |
 
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth
 - `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
@@ -132,6 +132,7 @@ Rebalance optimizes across all stablecoins internally.
 | SUI | SUI | 9 | ✅ (gas) | — | — | — | ✅ | — |
 | BTC | Bitcoin | 8 | — | — | — | — | ✅ (invest) | — |
 | ETH | Ethereum | 8 | — | — | — | — | ✅ (invest) | — |
+| GOLD | Gold | 9 | — | — | — | — | ✅ (invest) | — |
 
 **Coin Types (investment assets):**
 
@@ -139,8 +140,9 @@ Rebalance optimizes across all stablecoins internally.
 |--------|-----------|
 | BTC | `0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC` |
 | ETH | `0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH` |
+| GOLD | `0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM` |
 
-**Format utility:** `formatAssetAmount(asset, rawAmount)` returns human-readable display with asset-appropriate decimals: 8 for BTC (e.g. `0.00123456`), 8 for ETH (e.g. `0.12345678`), 9 for SUI, 6 for stablecoins. Exported from `@t2000/sdk`.
+**Format utility:** `formatAssetAmount(asset, rawAmount)` returns human-readable display with asset-appropriate decimals: 8 for BTC (e.g. `0.00123456`), 8 for ETH (e.g. `0.12345678`), 9 for SUI, 9 for GOLD, 6 for stablecoins. Exported from `@t2000/sdk`.
 
 Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/src/utils/format.ts` → `formatAssetAmount()`
 
@@ -187,19 +189,19 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | invest earn | `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
 | invest unearn | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
 | portfolio | `t2000 portfolio` | Show investment portfolio + P&L (APY column when earning, strategy grouping) |
-| invest strategy list | `t2000 invest strategy list` | List available strategies with allocations |
+| invest strategy list | `t2000 invest strategy list` | List available strategies with allocations (5 built-in) |
 | invest strategy buy | `t2000 invest strategy buy <name> <amount>` | Buy into a strategy (single atomic PTB). Options: `--dry-run` |
 | invest strategy sell | `t2000 invest strategy sell <name>` | Sell all positions in a strategy |
 | invest strategy status | `t2000 invest strategy status <name>` | Show strategy positions, weights, drift |
 | invest strategy rebalance | `t2000 invest strategy rebalance <name>` | Rebalance strategy to target weights |
-| invest strategy create | `t2000 invest strategy create <name> --alloc "BTC:40,ETH:60"` | Create custom strategy |
+| invest strategy create | `t2000 invest strategy create <name> --alloc "BTC:40,ETH:40,GOLD:20"` | Create custom strategy |
 | invest strategy delete | `t2000 invest strategy delete <name>` | Delete custom strategy (no active positions) |
 | invest auto setup | `t2000 invest auto setup <amount> <frequency> [strategy]` | Set up DCA schedule (daily/weekly/monthly) |
 | invest auto status | `t2000 invest auto status` | Show auto-invest schedules |
 | invest auto run | `t2000 invest auto run` | Execute pending DCA purchases |
 | invest auto stop | `t2000 invest auto stop [id]` | Stop auto-invest schedule |
 
-**Investment yield (v0.15.0):** SUI, ETH, and BTC positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC) from borrowable collateral. Rebalance skips earning investment positions.
+**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Rebalance skips earning investment positions.
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |

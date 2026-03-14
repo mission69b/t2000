@@ -15,11 +15,14 @@ describe('StrategyManager', () => {
   });
 
   describe('seed defaults', () => {
-    it('seeds three built-in strategies on first load', () => {
+    it('seeds five built-in strategies on first load', () => {
       const all = sm.getAll();
       expect(Object.keys(all)).toContain('bluechip');
       expect(Object.keys(all)).toContain('layer1');
       expect(Object.keys(all)).toContain('sui-heavy');
+      expect(Object.keys(all)).toContain('all-weather');
+      expect(Object.keys(all)).toContain('safe-haven');
+      expect(Object.keys(all)).toHaveLength(5);
     });
 
     it('persists defaults to disk', () => {
@@ -52,6 +55,19 @@ describe('StrategyManager', () => {
       expect(s.name).toBe('Bluechip / Large-Cap');
       expect(s.custom).toBe(false);
       expect(s.allocations).toHaveProperty('BTC');
+    });
+
+    it('returns the all-weather strategy with GOLD', () => {
+      const s = sm.get('all-weather');
+      expect(s.name).toBe('All-Weather Portfolio');
+      expect(s.allocations).toHaveProperty('GOLD');
+      expect(s.allocations.GOLD).toBe(30);
+    });
+
+    it('returns the safe-haven strategy', () => {
+      const s = sm.get('safe-haven');
+      expect(s.name).toBe('Safe Haven');
+      expect(s.allocations).toEqual({ BTC: 50, GOLD: 50 });
     });
 
     it('throws STRATEGY_NOT_FOUND for unknown name', () => {
@@ -144,6 +160,10 @@ describe('StrategyManager', () => {
   describe('validateAllocations', () => {
     it('accepts allocations summing to 100', () => {
       expect(() => sm.validateAllocations({ BTC: 50, ETH: 30, SUI: 20 })).not.toThrow();
+    });
+
+    it('accepts GOLD in allocations', () => {
+      expect(() => sm.validateAllocations({ BTC: 30, ETH: 20, SUI: 20, GOLD: 30 })).not.toThrow();
     });
 
     it('accepts single-asset 100%', () => {

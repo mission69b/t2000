@@ -62,10 +62,16 @@ export const SUPPORTED_ASSETS = {
     symbol: 'ETH',
     displayName: 'Ethereum',
   },
+  GOLD: {
+    type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM',
+    decimals: 9,
+    symbol: 'GOLD',
+    displayName: 'Gold',
+  },
 } as const;
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
-export type StableAsset = Exclude<SupportedAsset, 'SUI' | 'BTC' | 'ETH'>;
+export type StableAsset = Exclude<SupportedAsset, 'SUI' | 'BTC' | 'ETH' | 'GOLD'>;
 export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'] as const;
 
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
@@ -90,6 +96,7 @@ export const INVESTMENT_ASSETS = {
   SUI: SUPPORTED_ASSETS.SUI,
   BTC: SUPPORTED_ASSETS.BTC,
   ETH: SUPPORTED_ASSETS.ETH,
+  GOLD: SUPPORTED_ASSETS.GOLD,
 } as const;
 
 export type InvestmentAsset = keyof typeof INVESTMENT_ASSETS;
@@ -111,6 +118,18 @@ export const DEFAULT_STRATEGIES = {
     name: 'Sui-Weighted Portfolio',
     allocations: { BTC: 20, ETH: 20, SUI: 60 },
     description: 'Sui-weighted portfolio',
+    custom: false,
+  },
+  'all-weather': {
+    name: 'All-Weather Portfolio',
+    allocations: { BTC: 30, ETH: 20, SUI: 20, GOLD: 30 },
+    description: 'Crypto and commodities',
+    custom: false,
+  },
+  'safe-haven': {
+    name: 'Safe Haven',
+    allocations: { BTC: 50, GOLD: 50 },
+    description: 'Store-of-value assets',
     custom: false,
   },
 } as const;

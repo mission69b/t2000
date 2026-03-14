@@ -125,6 +125,7 @@ describe('investment locking guard', () => {
     expect('SUI' in INVESTMENT_ASSETS).toBe(true);
     expect('BTC' in INVESTMENT_ASSETS).toBe(true);
     expect('ETH' in INVESTMENT_ASSETS).toBe(true);
+    expect('GOLD' in INVESTMENT_ASSETS).toBe(true);
   });
 
   it('blocks exchange of invested SUI', () => {
@@ -273,10 +274,11 @@ describe('price unavailable handling', () => {
 });
 
 describe('registry-driven assets', () => {
-  it('INVESTMENT_ASSETS contains SUI, BTC, ETH', () => {
+  it('INVESTMENT_ASSETS contains SUI, BTC, ETH, GOLD', () => {
     expect(Object.keys(INVESTMENT_ASSETS)).toContain('SUI');
     expect(Object.keys(INVESTMENT_ASSETS)).toContain('BTC');
     expect(Object.keys(INVESTMENT_ASSETS)).toContain('ETH');
+    expect(Object.keys(INVESTMENT_ASSETS)).toContain('GOLD');
   });
 
   it('stablecoins are not investment assets', () => {

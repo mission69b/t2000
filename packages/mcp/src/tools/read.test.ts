@@ -70,7 +70,7 @@ describe('read tools', () => {
     agent = createMockAgent();
     tools = new Map();
 
-    const origTool = server.tool.bind(server);
+    const origTool = server.tool.bind(server) as (...args: any[]) => any;
     server.tool = ((...args: any[]) => {
       const name = args[0] as string;
       const handler = args[args.length - 1] as Function;

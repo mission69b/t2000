@@ -30,7 +30,7 @@ await agent.borrow({ amount: 20 });   // borrow against savings
 await agent.repay({ amount: 20 });    // repay debt
 await agent.withdraw({ amount: 50 }); // always returns USDC
 
-await agent.investBuy({ asset: 'SUI', usdAmount: 100 }); // invest $100 in SUI
+await agent.investBuy({ asset: 'SUI', usdAmount: 100 }); // invest $100 in SUI (or BTC, ETH, GOLD)
 await agent.investSell({ asset: 'SUI', usdAmount: 'all' }); // sell all SUI
 await agent.investEarn({ asset: 'SUI' });                    // deposit to lending for yield
 await agent.investUnearn({ asset: 'SUI' });                  // withdraw from lending
@@ -120,9 +120,9 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) + [Suilend](https://suilend.fi) (auto-selected) |
 | **Credit** | Borrow USDC against savings | NAVI + Suilend collateralized loans |
 | **Exchange** | Swap between any supported tokens | [Cetus DEX](https://www.cetus.zone) CLMM pools |
-| **Investment** | Buy/sell SUI, BTC, ETH with cost-basis P&L | [Cetus DEX](https://www.cetus.zone) (spot swaps) |
+| **Investment** | Buy/sell SUI, BTC, ETH, GOLD with cost-basis P&L | [Cetus DEX](https://www.cetus.zone) (spot swaps) |
 | **Investment Yield** | Earn yield on invested assets via lending | NAVI + Suilend (auto-selected best rate) |
-| **Strategies** | Themed allocations (bluechip, layer1, sui-heavy) — single atomic PTB | Agent orchestration + Cetus |
+| **Strategies** | Themed allocations (bluechip, all-weather, safe-haven, layer1, sui-heavy) — single atomic PTB | Agent orchestration + Cetus |
 | **Auto-Invest** | Dollar-cost averaging (daily/weekly/monthly DCA) | Agent scheduling |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
@@ -228,7 +228,7 @@ t2000 borrow 10                    Borrow USDC against collateral
 t2000 repay 10                     Repay debt
 t2000 rebalance                    Optimize yield across stablecoins
 t2000 exchange 5 USDC SUI         Exchange tokens via Cetus DEX
-t2000 invest buy 100 SUI             Invest $100 in SUI
+t2000 invest buy 100 SUI             Invest $100 in SUI (or BTC, ETH, GOLD)
 t2000 invest sell all SUI            Sell entire SUI position
 t2000 invest earn SUI                Deposit SUI to lending for yield
 t2000 invest unearn SUI              Withdraw from lending, keep invested
@@ -374,10 +374,10 @@ Full reference → [Agent Skills README](t2000-skills)
 | Earn yield on savings | — | ✓ NAVI + Suilend (~2–8% APY) |
 | Borrow / credit line | — | ✓ Borrow against savings + investment collateral |
 | Exchange / Token swap | ✓ Base tokens | ✓ Cetus DEX (any pair + rebalance) |
-| Investment (spot) | — | ✓ SUI, BTC, ETH with cost-basis P&L |
+| Investment (spot) | — | ✓ SUI, BTC, ETH, GOLD with cost-basis P&L |
 | Yield on investments | — | ✓ Earn lending APY on holdings while keeping price exposure |
 | Borrow against investments | — | ✓ Deposited investments count as collateral for credit |
-| Margin trading | — | 🔜 Coming soon — leveraged positions on SUI, BTC, ETH |
+| Margin trading | — | 🔜 Coming soon — leveraged positions on SUI, BTC, ETH, GOLD |
 | Strategies + DCA | — | ✓ Atomic PTB multi-asset buys, dollar-cost averaging |
 | x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 
 vi.mock('./unlock.js', () => ({
   createAgent: vi.fn(),
@@ -19,8 +19,8 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
 import { createAgent } from './unlock.js';
 
 describe('safeguard gate', () => {
-  let exitSpy: ReturnType<typeof vi.spyOn>;
-  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let exitSpy: MockInstance;
+  let errorSpy: MockInstance;
 
   beforeEach(() => {
     exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);

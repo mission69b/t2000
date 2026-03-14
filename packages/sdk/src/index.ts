@@ -61,8 +61,9 @@ export {
   DEFAULT_NETWORK,
   SENTINEL,
 } from './constants.js';
-export type { SupportedAsset, InvestmentAsset, PerpsMarket } from './constants.js';
+export type { SupportedAsset, StableAsset, InvestmentAsset, PerpsMarket } from './constants.js';
 export {
+  STABLE_ASSETS,
   INVESTMENT_ASSETS,
   PERPS_MARKETS,
   DEFAULT_MAX_LEVERAGE,

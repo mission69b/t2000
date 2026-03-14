@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd, formatAssetAmount, DEFAULT_STRATEGIES } from '@t2000/sdk';
+import { T2000, formatUsd, formatAssetAmount, DEFAULT_STRATEGIES, INVESTMENT_ASSETS } from '@t2000/sdk';
 import type { InvestmentAsset } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl, printHeader, printSeparator, printInfo, printLine } from '../output.js';
@@ -103,11 +103,15 @@ export function registerInvest(program: Command) {
 
         printBlank();
         const sym = asset.toUpperCase();
-        printSuccess(`${sym} deposited into ${result.protocol} (${result.apy.toFixed(1)}% APY)`);
-        printKeyValue('Amount', `${formatAssetAmount(result.amount, sym)} ${sym}`);
-        printKeyValue('Protocol', result.protocol);
-        printKeyValue('APY', `${result.apy.toFixed(2)}%`);
-        printKeyValue('Tx', explorerUrl(result.tx));
+        if (result.amount === 0 && !result.tx) {
+          printSuccess(`${sym} is already fully earning via ${result.protocol} (${result.apy.toFixed(1)}% APY)`);
+        } else {
+          printSuccess(`${sym} deposited into ${result.protocol} (${result.apy.toFixed(1)}% APY)`);
+          printKeyValue('Amount', `${formatAssetAmount(result.amount, sym)} ${sym}`);
+          printKeyValue('Protocol', result.protocol);
+          printKeyValue('APY', `${result.apy.toFixed(2)}%`);
+          printKeyValue('Tx', explorerUrl(result.tx));
+        }
         printBlank();
       } catch (error) { handleError(error); }
     });
@@ -321,7 +325,7 @@ export function registerInvest(program: Command) {
   strategyCmd
     .command('create <name>')
     .description('Create a custom strategy')
-    .requiredOption('--alloc <pairs...>', 'Allocations e.g. SUI:60 BTC:20 ETH:20')
+    .requiredOption('--alloc <pairs...>', 'Allocations e.g. SUI:40 BTC:20 ETH:20 GOLD:20')
     .option('--description <desc>', 'Strategy description')
     .action(async (name: string, opts: { alloc: string[]; description?: string }) => {
       try {
@@ -404,7 +408,7 @@ export function registerInvest(program: Command) {
 
         const allStrategies = agent.strategies.getAll();
         const isStrategy = target ? target.toLowerCase() in allStrategies : false;
-        const isAsset = target ? ['SUI', 'BTC', 'ETH'].includes(target.toUpperCase()) : false;
+        const isAsset = target ? target.toUpperCase() in INVESTMENT_ASSETS : false;
 
         if (target && !isStrategy && !isAsset) {
           console.error(pc.red(`  ✗ '${target}' is not a valid strategy or asset`));

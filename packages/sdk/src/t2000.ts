@@ -1365,11 +1365,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     if (!pos || pos.totalAmount <= 0) {
       throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${params.asset} position to earn on`);
     }
-    if (pos.earning) {
-      throw new T2000Error('INVEST_ALREADY_EARNING', `${params.asset} is already earning via ${pos.earningProtocol}`);
-    }
-
-    const { adapter, rate } = await this.registry.bestSaveRate(params.asset);
 
     const assetInfo = SUPPORTED_ASSETS[params.asset as keyof typeof SUPPORTED_ASSETS];
     const assetBalance = await this.client.getBalance({
@@ -1380,9 +1375,23 @@ export class T2000 extends EventEmitter<T2000Events> {
     const gasReserve = params.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
     const depositAmount = Math.max(0, walletAmount - gasReserve);
 
+    if (pos.earning && depositAmount <= 0) {
+      return {
+        success: true,
+        tx: '',
+        asset: params.asset,
+        amount: 0,
+        protocol: pos.earningProtocol ?? 'unknown',
+        apy: pos.earningApy ?? 0,
+        gasCost: 0,
+        gasMethod: 'none',
+      };
+    }
     if (depositAmount <= 0) {
       throw new T2000Error('INSUFFICIENT_BALANCE', `No ${params.asset} available to deposit (wallet: ${walletAmount}, gas reserve: ${gasReserve})`);
     }
+
+    const { adapter, rate } = await this.registry.bestSaveRate(params.asset);
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
       const { tx } = await adapter.buildSaveTx(this._address, depositAmount, params.asset);

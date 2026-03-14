@@ -202,7 +202,7 @@ export class SuilendAdapter implements LendingAdapter {
   readonly name = 'Suilend';
   readonly version = '2.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw', 'borrow', 'repay'];
-  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS, 'SUI', 'ETH', 'BTC'];
+  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS, 'SUI', 'ETH', 'BTC', 'GOLD'];
   readonly supportsSameAssetBorrow = false;
 
   private client!: SuiJsonRpcClient;

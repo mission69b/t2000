@@ -229,7 +229,7 @@ t2000 init
 | `t2000 invest strategy create <name> --alloc "BTC:40,ETH:60"` | Create a custom strategy |
 | `t2000 invest strategy delete <name>` | Delete a custom strategy (must have no positions) |
 
-Built-in strategies: `bluechip` (BTC 50%, ETH 30%, SUI 20%), `layer1` (ETH 50%, SUI 50%), `sui-heavy` (BTC 20%, ETH 20%, SUI 60%).
+Built-in strategies: `bluechip` (BTC 50%, ETH 30%, SUI 20%), `all-weather` (BTC 30%, ETH 20%, SUI 20%, GOLD 30%), `safe-haven` (BTC 50%, GOLD 50%), `layer1` (ETH 50%, SUI 50%), `sui-heavy` (BTC 20%, ETH 20%, SUI 60%).
 
 ### Auto-Invest (DCA)
 
@@ -240,7 +240,7 @@ Built-in strategies: `bluechip` (BTC 50%, ETH 30%, SUI 20%), `layer1` (ETH 50%, 
 | `t2000 invest auto run` | Execute pending DCA purchases |
 | `t2000 invest auto stop [id]` | Stop one or all schedules |
 
-Supported assets: SUI, BTC, ETH. Dollar-denominated — `amount` is in USD.
+Supported assets: SUI, BTC, ETH, GOLD. Dollar-denominated — `amount` is in USD.
 
 ### Safeguards
 

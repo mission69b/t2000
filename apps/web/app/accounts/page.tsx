@@ -369,13 +369,21 @@ export default function AccountsPage() {
                 {"  "}
                 <span className="text-accent">+0.9%</span>
                 {"\n"}
+                <span className="text-foreground">GOLD:</span>
+                {" "}
+                <span className="text-muted">0.01005</span>
+                {"  "}
+                <span className="text-muted">Avg: $4.9k</span>
+                {"  "}
+                <span className="text-accent">+1.2%</span>
+                {"\n"}
                 <span className="text-muted/30">─────────────────────────────────────────</span>
                 {"\n"}
                 <span className="text-muted">Total:</span>
                 {"  "}
-                <span className="text-foreground">$32.40</span>
+                <span className="text-foreground">$82.60</span>
                 {"  "}
-                <span className="text-accent">+$0.82 (+2.6%)</span>
+                <span className="text-accent">+$3.32 (+4.2%)</span>
               </pre>
             </div>
           </div>

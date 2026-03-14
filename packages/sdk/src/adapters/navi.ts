@@ -36,7 +36,7 @@ export class NaviAdapter implements LendingAdapter {
   readonly name = 'NAVI Protocol';
   readonly version = '1.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw', 'borrow', 'repay'];
-  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS, 'SUI', 'ETH'];
+  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'];
   readonly supportsSameAssetBorrow = true;
 
   private client!: SuiJsonRpcClient;

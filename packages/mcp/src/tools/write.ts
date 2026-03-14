@@ -318,7 +318,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
       action: z.enum(['list', 'buy', 'sell', 'status', 'rebalance', 'create', 'delete']).describe("Strategy action to perform"),
       name: z.string().optional().describe("Strategy name (required for all actions except 'list')"),
       amount: z.number().optional().describe("USD amount (required for 'buy')"),
-      allocations: z.record(z.number()).optional().describe("Allocation map e.g. {SUI: 60, BTC: 20, ETH: 20} (for 'create')"),
+      allocations: z.record(z.number()).optional().describe("Allocation map e.g. {SUI: 40, BTC: 20, ETH: 20, GOLD: 20} (for 'create')"),
       description: z.string().optional().describe("Strategy description (for 'create')"),
       dryRun: z.boolean().optional().describe("Preview without signing (for 'buy')"),
     },

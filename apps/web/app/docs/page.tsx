@@ -591,7 +591,7 @@ function ConceptsSection() {
           [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI, Suilend), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
           [<InlineCode key="k">credit</InlineCode>, "USDC borrowed against savings collateral. Health factor enforced on-chain.", <><InlineCode>t2000 borrow</InlineCode> / <InlineCode>repay</InlineCode></>],
           [<InlineCode key="k">exchange</InlineCode>, "Currency exchange via Cetus DEX. Use t2000 exchange to swap between USDC, SUI, and stablecoins. Also used internally by rebalance and auto-swap.", <InlineCode key="v">t2000 exchange</InlineCode>],
-          [<InlineCode key="k">investment</InlineCode>, "Buy and sell SUI, BTC, ETH with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 invest</InlineCode> / <InlineCode>portfolio</InlineCode></>],
+          [<InlineCode key="k">investment</InlineCode>, "Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 invest</InlineCode> / <InlineCode>portfolio</InlineCode></>],
         ]}
       />
 
@@ -904,13 +904,13 @@ function CliInvestSection() {
         <em className="italic text-accent">Investment</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Buy and sell SUI, BTC, ETH with dollar-denominated commands.
+        Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands.
         Cost-basis P&L tracking, strategy allocations, yield on holdings,
         and investment locking guard.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
-        <CmdCard name="t2000 invest buy / sell" desc="Buy or sell SUI, BTC, ETH" onClick={() => scrollTo("cmd-invest")} />
+        <CmdCard name="t2000 invest buy / sell" desc="Buy or sell SUI, BTC, ETH, GOLD" onClick={() => scrollTo("cmd-invest")} />
         <CmdCard name="t2000 invest earn" desc="Earn yield on holdings" onClick={() => scrollTo("cmd-invest-earn")} />
         <CmdCard name="t2000 invest strategy" desc="Themed allocations (bluechip, layer1)" onClick={() => scrollTo("cmd-strategy")} />
         <CmdCard name="t2000 invest auto" desc="Dollar-cost averaging (DCA)" onClick={() => scrollTo("cmd-auto-invest")} />
@@ -1337,7 +1337,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_repay</InlineCode>, "Repay borrowed USDC"],
           [<InlineCode key="k">t2000_exchange</InlineCode>, "Swap assets via DEX"],
           [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
-          [<InlineCode key="k">t2000_invest</InlineCode>, "Buy, sell, earn, or unearn SUI, BTC, ETH"],
+          [<InlineCode key="k">t2000_invest</InlineCode>, "Buy, sell, earn, or unearn SUI, BTC, ETH, GOLD"],
           [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
           [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
         ]}
@@ -1687,7 +1687,14 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.16.30 <Badge color="green">current</Badge>
+        v0.17.0 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        Gold (XAUm) — tokenized physical gold is now the fourth investment asset. New built-in strategies: all-weather (BTC/ETH/SUI/GOLD) and safe-haven (BTC/GOLD). GOLD earns yield via NAVI and Suilend. Crypto and commodities in one portfolio.
+      </p>
+
+      <h2 id="cl-0163">
+        v0.16.30
       </h2>
       <p>
         Strategies + Auto-Invest — <InlineCode>t2000 invest strategy buy bluechip 200</InlineCode> splits investment across a themed allocation in a single transaction. Built-in strategies: bluechip (BTC/ETH/SUI), layer1 (ETH/SUI), sui-heavy. Custom strategies via <InlineCode>t2000 invest strategy create</InlineCode>. Dollar-cost averaging with <InlineCode>t2000 invest auto setup 50 weekly bluechip</InlineCode>. Strategy rebalancing, portfolio grouping by strategy, 21 MCP tools.
@@ -1712,7 +1719,7 @@ function ChangelogSection() {
         v0.14.0
       </h2>
       <p>
-        Investment account: buy/sell SUI, BTC, ETH with portfolio tracking, cost-basis P&L,
+        Investment account: buy/sell SUI, BTC, ETH, GOLD with portfolio tracking, cost-basis P&L,
         and investment locking guard. 19 MCP tools, 6 prompts, 14 agent skills.
       </p>
 

@@ -48,7 +48,7 @@
 ```
   Available:  $78.91  (checking — spendable)
   Savings:    $80.00  (earning 4.94% APY)       ← only when savings > $0.01
-  Investment: $250.00  (0.05 BTC, 1.2 ETH)     ← only when invested > $0; append " (earning X.XX% APY)" when position is earning
+  Investment: $250.00  (0.05 BTC, 1.2 ETH, 0.01 GOLD)     ← only when invested > $0; append " (earning X.XX% APY)" when position is earning
   Gas:        0.62 SUI    (~$0.58)
   ──────────────────────────────────────
   Total:      $409.49
@@ -199,10 +199,10 @@ Empty state:
   ─────────────────────────────────────────────────────
   NAVI:  Save 5.47%  Borrow 8.20%
 
-  SUI / ETH (investment asset lending)
+  SUI / ETH / BTC / GOLD (investment asset lending)
   ─────────────────────────────────────────────────────
-  NAVI:     SUI Save 2.10%  ETH Save 1.85%
-  Suilend:  SUI Save 1.95%  ETH Save 1.72%  BTC Save 0.50%
+  NAVI:     SUI Save 2.10%  ETH Save 1.85%  GOLD Save 1.20%
+  Suilend:  SUI Save 1.95%  ETH Save 1.72%  BTC Save 0.50%  GOLD Save 1.10%
 ```
 
 ### `t2000 earn`
@@ -521,6 +521,12 @@ printBlank()
 
   sui-heavy:  BTC 20%, ETH 20%, SUI 60%
               Sui-weighted portfolio
+
+  all-weather:  BTC 30%, ETH 20%, SUI 20%, GOLD 30%
+                Crypto and commodities
+
+  safe-haven:   BTC 50%, GOLD 50%
+                Store-of-value assets
   ──────────────────────────────────────
   Buy into a strategy: t2000 invest strategy buy bluechip 100
 ```
@@ -588,7 +594,7 @@ If multiple transactions, show per-asset Tx links.
   After:   ETH 50.0%  SUI 50.0%
 ```
 
-### `t2000 invest strategy create <name> --alloc "ETH:60,SUI:40"`
+### `t2000 invest strategy create <name> --alloc "ETH:60,SUI:30,GOLD:10"`
 
 ```
   ✓ Created strategy: my-strategy

@@ -112,9 +112,6 @@ export class PortfolioManager {
     if (!pos || pos.totalAmount <= 0) {
       throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${asset} position to earn on`);
     }
-    if (pos.earning) {
-      throw new T2000Error('INVEST_ALREADY_EARNING', `${asset} is already earning via ${pos.earningProtocol}`);
-    }
     pos.earning = true;
     pos.earningProtocol = protocol;
     pos.earningApy = apy;

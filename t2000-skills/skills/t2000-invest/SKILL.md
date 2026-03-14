@@ -1,7 +1,7 @@
 ---
 name: t2000-invest
 description: >-
-  Buy, sell, and earn yield on crypto assets (SUI, BTC, ETH) through the t2000 agent.
+  Buy, sell, and earn yield on crypto assets (SUI, BTC, ETH, GOLD) through the t2000 agent.
   Supports investment strategies (predefined portfolios) and auto-invest (DCA).
   Use when asked about investing, buying crypto, portfolio performance,
   unrealized P&L, selling positions, earning yield, strategies, or DCA.
@@ -53,6 +53,8 @@ t2000 invest auto stop <id>                    # Stop a schedule
 
 ## Predefined Strategies
 - **bluechip** — BTC 50%, ETH 30%, SUI 20% (large-cap crypto index)
+- **all-weather** — BTC 30%, ETH 20%, SUI 20%, GOLD 30% (crypto + commodities)
+- **safe-haven** — BTC 50%, GOLD 50% (store-of-value assets)
 - **layer1** — ETH 50%, SUI 50% (smart contract platforms)
 - **sui-heavy** — SUI 60%, BTC 20%, ETH 20% (Sui-weighted portfolio)
 
@@ -125,6 +127,7 @@ t2000 invest auto stop <id>                    # Stop a schedule
 - **SUI** — Sui native token (yield via NAVI, Suilend)
 - **BTC** — Bitcoin (wBTC LayerZero, yield via Suilend)
 - **ETH** — Ethereum (wETH, yield via NAVI, Suilend)
+- **GOLD** — Tokenized gold (XAUm, yield via NAVI, Suilend)
 
 ## Notes
 - Amounts are always in USD: `invest buy 100 SUI` means "spend $100 to buy SUI"

@@ -58,6 +58,7 @@ await agent.withdraw({ amount: 25 });
 await agent.investBuy({ asset: 'SUI', usdAmount: 100 });
 await agent.investBuy({ asset: 'BTC', usdAmount: 500 });
 await agent.investBuy({ asset: 'ETH', usdAmount: 200 });
+await agent.investBuy({ asset: 'GOLD', usdAmount: 100 });
 
 // Check portfolio
 const portfolio = await agent.getPortfolio();
@@ -73,6 +74,7 @@ await agent.investUnearn({ asset: 'SUI' });
 await agent.investSell({ asset: 'SUI', usdAmount: 'all' });
 
 // Buy into a strategy (single atomic PTB)
+// bluechip: BTC 50%, ETH 30%, SUI 20%; all-weather: BTC 30%, ETH 20%, SUI 20%, GOLD 30%; safe-haven: BTC 50%, GOLD 50%
 await agent.investStrategy({ strategy: 'bluechip', usdAmount: 200 });
 
 // Check strategy status
@@ -358,6 +360,7 @@ debt is non-USDC (from rebalance). Rebalance optimizes across all stablecoins in
 | SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — | — | ✅ |
 | BTC | Bitcoin | `0xaafb...::btc::BTC` | 8 | — | — | — | — | ✅ |
 | ETH | Ethereum | `0xd0e8...::eth::ETH` | 8 | — | — | — | — | ✅ |
+| GOLD | Gold (XAUm) | `0x9d29...::xaum::XAUM` | 9 | — | — | — | — | ✅ |
 
 ## Error Handling
 

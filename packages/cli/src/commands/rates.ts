@@ -1,10 +1,9 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, SUPPORTED_ASSETS } from '@t2000/sdk';
+import { T2000, SUPPORTED_ASSETS, INVESTMENT_ASSETS, STABLE_ASSETS } from '@t2000/sdk';
 import type { SupportedAsset } from '@t2000/sdk';
 
-const STABLE_ASSETS = (Object.keys(SUPPORTED_ASSETS) as SupportedAsset[]).filter(k => !['SUI', 'BTC', 'ETH'].includes(k));
-const INVEST_ASSETS: SupportedAsset[] = ['SUI', 'ETH', 'BTC'];
+const INVEST_ASSETS = Object.keys(INVESTMENT_ASSETS) as SupportedAsset[];
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider } from '../output.js';
 

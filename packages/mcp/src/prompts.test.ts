@@ -10,7 +10,7 @@ describe('prompts', () => {
     server = new McpServer({ name: 'test', version: '0.0.1' });
     prompts = new Map();
 
-    const origPrompt = server.prompt.bind(server);
+    const origPrompt = server.prompt.bind(server) as (...args: any[]) => any;
     server.prompt = ((...args: any[]) => {
       const name = args[0] as string;
       const handler = args[args.length - 1] as Function;

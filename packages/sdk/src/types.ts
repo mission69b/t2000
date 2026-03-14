@@ -27,7 +27,7 @@ export interface BalanceResponse {
   stables: Record<string, number>;
 }
 
-export type GasMethod = 'self-funded' | 'sponsored' | 'auto-topup';
+export type GasMethod = 'self-funded' | 'sponsored' | 'auto-topup' | 'none';
 
 export interface SendResult {
   success: boolean;
