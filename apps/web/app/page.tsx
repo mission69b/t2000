@@ -84,7 +84,7 @@ const STEPS = [
     title: "Connect your AI",
     badge: "1 cmd",
     badgeType: "new" as const,
-    content: "One command connects Claude, Cursor, or any AI platform. Your agent gets 21 tools with built-in safety limits.",
+    content: "One command connects Claude, Cursor, or any AI platform. Your agent gets 22 tools with built-in safety limits.",
     code: "t2000 mcp install",
   },
   {
@@ -152,7 +152,7 @@ const COMPARE_ROWS: {
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
-  { feature: "AI integration", coinbase: "—", t2000: "✓ 21 tools + 15 AI prompts", coinbaseCross: true },
+  { feature: "AI integration", coinbase: "—", t2000: "✓ 22 tools + 15 AI prompts", coinbaseCross: true },
   { feature: "Safety limits + lock", coinbase: "—", t2000: "✓ Per-tx limits, daily caps, emergency lock", coinbaseCross: true },
   { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
 ];
@@ -477,7 +477,7 @@ export default function Home() {
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
             One command connects Claude, Cursor, or any AI platform. Your agent
-            gets 21 tools with built-in safety limits — no config files to edit.
+            gets 22 tools with built-in safety limits — no config files to edit.
           </p>
         </div>
 

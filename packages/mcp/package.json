@@ -1,7 +1,7 @@
 {
   "name": "@t2000/mcp",
   "version": "0.17.22",
-  "description": "MCP server for AI agent bank accounts on Sui — 21 tools, 15 prompts, stdio transport",
+  "description": "MCP server for AI agent bank accounts on Sui — 22 tools, 15 prompts, stdio transport",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -100,7 +100,7 @@ All support `dryRun: true` for previews without signing.
 
 > `unlock` is intentionally CLI-only — only a human can resume operations.
 
-## Prompts (12)
+## Prompts (15)
 
 ### Utility (6)
 

@@ -1078,7 +1078,7 @@ function CliMoreSection() {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 21 tools, 15 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 22 tools, 15 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1279,7 +1279,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        21 tools, 15 prompts, stdio transport — your AI operates a full bank account.
+        22 tools, 15 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 4 commands</h2>
@@ -1304,7 +1304,7 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (21)</h2>
+      <h2 id="mcp-tools">Available tools (22)</h2>
 
       <h3 id="mcp-tools-read">Read-only (9)</h3>
       <DocTable
@@ -1322,7 +1322,7 @@ function McpSection() {
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (10)</h3>
+      <h3 id="mcp-tools-write">State-changing (11)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1340,6 +1340,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_invest</InlineCode>, "Buy, sell, earn, or unearn SUI, BTC, ETH, GOLD"],
           [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
           [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
+          [<InlineCode key="k">t2000_claim_rewards</InlineCode>, "Claim protocol rewards and auto-convert to USDC"],
         ]}
       />
 
@@ -1357,7 +1358,7 @@ function McpSection() {
         <InlineCode>t2000 unlock</InlineCode> in the terminal.
       </Callout>
 
-      <h2 id="mcp-prompts">Prompts (12)</h2>
+      <h2 id="mcp-prompts">Prompts (15)</h2>
       <p>
         Reusable conversation templates that help AI assistants interact with t2000 effectively.
       </p>
@@ -1376,6 +1377,9 @@ function McpSection() {
           [<InlineCode key="k">risk-check</InlineCode>, "Full risk analysis — health factor, concentration, liquidation proximity"],
           [<InlineCode key="k">weekly-recap</InlineCode>, "Week in review — activity, yield earned, portfolio P&L, highlights"],
           [<InlineCode key="k">dca-advisor</InlineCode>, "Personalized DCA setup — budget → strategy, frequency, projected growth"],
+          [<InlineCode key="k">claim-rewards</InlineCode>, "Check and claim pending protocol rewards — auto-converts to USDC"],
+          [<InlineCode key="k">safeguards</InlineCode>, "Review safety settings — per-tx limits, daily caps, emergency lock"],
+          [<InlineCode key="k">quick-exchange</InlineCode>, "Guided token swap — preview rate, slippage, impact before executing"],
         ]}
       />
 
@@ -1735,7 +1739,7 @@ function ChangelogSection() {
       </h2>
       <p>
         MCP Server — connect Claude Desktop, Cursor, or any MCP client to your
-        t2000 agent. 21 tools with <InlineCode>dryRun</InlineCode> previews, 6
+        t2000 agent. 22 tools with <InlineCode>dryRun</InlineCode> previews, 6
         prompts, safeguard enforcement, and stdio transport. New{" "}
         <InlineCode>@t2000/mcp</InlineCode> package and{" "}
         <InlineCode>t2000 mcp</InlineCode> CLI command. Setup in 3 steps, zero

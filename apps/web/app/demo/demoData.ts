@@ -439,4 +439,29 @@ export const demos: Demo[] = [
       { type: "output", text: "  Total:  $85.93", delay: 120 },
     ],
   },
+
+  // ── 12. Claim Rewards ─────────────────────────────────────────────────
+  {
+    id: "claim-rewards",
+    title: "Claim Rewards",
+    description:
+      "Claim pending protocol rewards from lending positions across NAVI and Suilend. Auto-converts reward tokens to USDC.",
+    tweet: "t2000 claim-rewards — collect and convert protocol rewards to USDC",
+    lines: [
+      { type: "command", text: "❯ t2000 positions", delay: 0 },
+      { type: "output", text: "  Savings", delay: 400 },
+      { type: "info", text: "  ─────────────────────────────────────────────────────", delay: 100 },
+      { type: "output", text: "  navi:  $5.30 USDC @ 4.09% APY  +rewards", delay: 200 },
+      { type: "output", text: "  suilend:  $6.15 SUI @ 2.61% APY  +rewards", delay: 200 },
+      { type: "output", text: "  Total:  $11.45", delay: 200 },
+      { type: "info", text: "    Run claim-rewards to collect and convert to USDC", delay: 200 },
+
+      { type: "command", text: "❯ t2000 claim-rewards", delay: 1200 },
+      { type: "success", text: "  ✓ Claimed and converted rewards to USDC", delay: 800 },
+      { type: "info", text: "  ──────────────────────────────────────", delay: 100 },
+      { type: "output", text: "  Received:  $0.42 USDC", delay: 200 },
+      { type: "output", text: "  Source:  navi, suilend", delay: 200 },
+      { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/D9fLH5h...", delay: 200 },
+    ],
+  },
 ];

@@ -654,8 +654,8 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Package | `@t2000/mcp` |
 | Version | `0.16.4` |
 | Transport | stdio |
-| Tools | 21 |
-| Prompts | 6 |
+| Tools | 22 |
+| Prompts | 15 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
 | Auto-install | `t2000 mcp install` (configures Claude Desktop + Cursor automatically) |
 | Manual config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |

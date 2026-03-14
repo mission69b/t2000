@@ -462,4 +462,45 @@ export const chatDemos: ChatDemo[] = [
       },
     ],
   },
+
+  {
+    id: "chat-claim",
+    title: "Claim Rewards",
+    description:
+      "Collect pending protocol rewards from lending positions and auto-convert to USDC. Zero friction — one command, all protocols.",
+    messages: [
+      {
+        role: "user",
+        text: "Do I have any rewards to claim?",
+        delay: 0,
+      },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_positions"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">🎁 PENDING REWARDS</div>` +
+          tbl([
+            ["NAVI · USDC", "+rewards accruing", "hi"],
+            ["NAVI · ETH", "+rewards accruing", "hi"],
+            ["Suilend · SUI", "+rewards accruing", "hi"],
+          ]) +
+          note("Your lending positions are earning protocol incentive tokens (vSUI, sSUI, DEEP). Want me to claim and convert them to USDC?"),
+        delay: 300,
+      },
+      { role: "user", text: "Yes, claim everything", delay: 800 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_claim_rewards"],
+        html: tbl([
+          ["Status", "Claimed and converted to USDC", "hi"],
+          ["Received", "$0.42 USDC", "hi"],
+          ["Source", "NAVI, Suilend", ""],
+          ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/D9fL…</span>', ""],
+        ]) + note("Reward tokens auto-converted to USDC and deposited to your checking account. Rewards accrue continuously — claim again anytime."),
+        delay: 300,
+      },
+    ],
+  },
 ];
