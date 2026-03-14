@@ -212,7 +212,7 @@ export default function Home() {
         <div className="flex flex-col justify-center px-6 sm:px-8 lg:px-16 xl:px-20 py-12 sm:py-16 lg:py-20">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
-            Built for Sui · Open source · Non-custodial
+            Agentic finance
           </div>
 
           <h1 className="font-serif text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">

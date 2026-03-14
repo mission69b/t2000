@@ -50,9 +50,7 @@ export default function InvestPage() {
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] max-w-[520px] mt-5">
-            Build a portfolio with one command. Your holdings earn yield
-            automatically while you keep full price exposure. Diversify with
-            strategies, automate with DCA.
+            One command. Earn yield while holding. Full price exposure.
           </p>
 
           <div className="flex items-center gap-3 sm:gap-5 mt-8 sm:mt-10 flex-wrap">
@@ -81,8 +79,7 @@ export default function InvestPage() {
             <em className="italic text-accent">More coming.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-10 sm:mb-14">
-            Say how much in dollars — t2000 handles the rest. No wallet
-            complexity, no manual swaps. Stocks and RWA on the roadmap.
+            Say how much in dollars — t2000 handles the rest.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
@@ -121,9 +118,7 @@ export default function InvestPage() {
                 <em className="italic text-accent">you hold.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Your holdings earn lending yield automatically while you keep
-                full price exposure. Sell anytime — funds withdraw from
-                lending first, then swap back to USDC.
+                Holdings earn lending yield automatically. Sell anytime.
               </p>
 
               <div className="space-y-4">
@@ -223,9 +218,7 @@ export default function InvestPage() {
           </h2>
 
           <p className="font-mono text-[12px] text-muted leading-[1.7] max-w-[520px] mb-10">
-            Pick a strategy, set an amount — one atomic transaction buys
-            multiple assets. Dollar-cost average with weekly or monthly
-            recurring purchases.
+            Pick a strategy, set an amount. One transaction. DCA built in.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
@@ -306,9 +299,7 @@ export default function InvestPage() {
                 <em className="italic text-accent">by default.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px]">
-                Your investments can&apos;t be accidentally sent or swapped
-                during routine operations. To access value, sell through the
-                investment account — everything else is blocked.
+                Investments can&apos;t be accidentally sent or swapped. Sell to access value.
               </p>
             </div>
 
@@ -352,9 +343,7 @@ export default function InvestPage() {
                 <em className="italic text-accent">your AI.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-6">
-                Connect any AI platform and invest through natural conversation.
-                Your AI previews every trade before executing, and you confirm
-                before anything moves.
+                Invest through natural conversation. Preview before executing.
               </p>
               <div className="flex flex-wrap gap-2">
                 {["Claude", "Cursor", "Copilot", "Codex"].map((p) => (
@@ -407,10 +396,7 @@ export default function InvestPage() {
             Margin <em className="italic text-amber-400/80">trading.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-8">
-            Leveraged positions on SUI, BTC, and ETH — powered by Bluefin
-            with USDC collateral. Your agent will be able to take amplified
-            positions while an auto-liquidation guard manages risk
-            automatically.
+            Leveraged positions on SUI, BTC, and ETH — powered by Bluefin.
           </p>
 
           <div className="grid sm:grid-cols-3 gap-6">
@@ -446,8 +432,7 @@ export default function InvestPage() {
             <em className="italic text-accent">investment account.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[460px] mx-auto mb-8 sm:mb-10 leading-[1.8]">
-            Install t2000, fund with USDC, and start building a portfolio.
-            Open source, non-custodial, built on Sui.
+            Open source. Non-custodial. Built on Sui.
           </p>
 
           <div className="flex justify-center gap-3 sm:gap-4 flex-wrap">

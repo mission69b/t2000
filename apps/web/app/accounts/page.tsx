@@ -42,9 +42,7 @@ export default function AccountsPage() {
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] max-w-[520px] mt-5">
-            Everything your agent needs to manage money — spend, save, borrow,
-            swap, and invest. Each account has a clear purpose. They work
-            together seamlessly.
+            Spend, save, borrow, swap, and invest — all from one wallet.
           </p>
 
           <div className="flex items-center gap-3 sm:gap-5 mt-8 sm:mt-10 flex-wrap">
@@ -78,9 +76,7 @@ export default function AccountsPage() {
                 <em className="italic text-accent">ready to use.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                USDC that&apos;s immediately available. Send to anyone, fund
-                other accounts, or let your agent spend it. This is your
-                working balance.
+                USDC that&apos;s immediately available — your working balance.
               </p>
 
               <div className="space-y-4">
@@ -135,9 +131,7 @@ export default function AccountsPage() {
                 <em className="italic text-accent">earns yield.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Deposit USDC into savings and earn variable APY automatically.
-                Your funds are routed to the best rate across lending
-                protocols. Withdraw anytime.
+                Auto-routed to the best rate across protocols. Withdraw anytime.
               </p>
 
               <div className="space-y-4">
@@ -198,9 +192,7 @@ export default function AccountsPage() {
                 <em className="italic text-accent">without selling.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Need liquidity but don&apos;t want to withdraw? Borrow USDC
-                against your savings. Health factor is enforced automatically
-                — your agent can&apos;t over-borrow.
+                Borrow USDC against your savings — your agent can&apos;t over-borrow.
               </p>
 
               <div className="space-y-4">
@@ -262,9 +254,7 @@ export default function AccountsPage() {
                 <em className="italic text-accent">anything.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Convert between any supported tokens at market rates with
-                on-chain slippage protection. Also used internally by the gas
-                manager and rebalancer — your agent never gets stuck.
+                Any token pair at market rates with on-chain slippage protection.
               </p>
 
               <div className="space-y-4">
@@ -320,10 +310,7 @@ export default function AccountsPage() {
                 <em className="italic text-accent">Grow.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Build a portfolio across crypto and beyond. Earn yield while
-                holding, diversify with strategies, and automate with DCA.
-                Protected by default — investments can&apos;t be accidentally
-                sent or swapped.
+                Earn yield while holding. Protected by default.
               </p>
 
               <Link
@@ -404,9 +391,7 @@ export default function AccountsPage() {
                 <em className="italic text-accent">Done.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-6">
-                DeFi protocols reward you with various tokens — vSUI, sSUI,
-                DEEP, and more. One command claims everything across all
-                protocols and auto-converts to USDC. Zero friction.
+                One command claims all protocol rewards and converts to USDC.
               </p>
               <div className="space-y-3">
                 {[
@@ -461,35 +446,34 @@ export default function AccountsPage() {
             <em className="italic text-accent">one.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[520px] mb-10">
-            Accounts aren&apos;t siloed — they flow into each other. Your AI
-            can chain operations in a single atomic transaction.
+            Accounts flow into each other. One atomic transaction.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
                 title: "Save all → auto gas",
-                desc: "Saving everything? The gas manager converts $1 USDC to SUI first, then deposits the rest.",
+                desc: "Gas manager reserves SUI first, deposits the rest.",
               },
               {
                 title: "Borrow → spend → repay",
-                desc: "Need liquidity without withdrawing? Borrow from credit, spend from checking, repay when ready.",
+                desc: "Borrow from credit, spend from checking, repay when ready.",
               },
               {
                 title: "Sell → save → earn",
-                desc: "Sell an investment, route proceeds to savings, and start earning yield — all in one flow.",
+                desc: "Sell an investment, route proceeds to savings automatically.",
               },
               {
                 title: "Rebalance across protocols",
-                desc: "Move savings to the highest-yield protocol automatically. Withdraw, swap if needed, deposit — one transaction.",
+                desc: "Move savings to the highest-yield protocol in one transaction.",
               },
               {
                 title: "Investment locking",
-                desc: "Invested assets are protected from send and swap. Only the investment account can access them.",
+                desc: "Invested assets are protected from send and swap.",
               },
               {
                 title: "Unified balance",
-                desc: "One command shows everything — checking, savings, credit, investment — with APY and P&L.",
+                desc: "One command shows all accounts with APY and P&L.",
               },
             ].map((item) => (
               <div
@@ -518,8 +502,7 @@ export default function AccountsPage() {
             <em className="italic text-accent">in 30 seconds.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[460px] mx-auto mb-8 sm:mb-10 leading-[1.8]">
-            One command. No KYC. Non-custodial. Your agent gets checking,
-            savings, credit, exchange, and investment — ready to go.
+            One command. Non-custodial. Ready to go.
           </p>
 
           <div className="flex justify-center gap-3 sm:gap-4 flex-wrap">
