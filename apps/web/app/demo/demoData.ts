@@ -308,6 +308,83 @@ export const demos: Demo[] = [
     ],
   },
 
+  // ── Thread Demos: BTC-focused for marketing screenshots ─────────────
+
+  {
+    id: "buy-btc",
+    title: "Buy Bitcoin — One Command",
+    description:
+      "Buy BTC with one command. Portfolio updated instantly.",
+    tweet: "t2000 invest buy 500 BTC — Bitcoin in one command",
+    lines: [
+      { type: "command", text: "❯ t2000 invest buy 500 BTC", delay: 0 },
+      { type: "success", text: "  ✓ Bought 0.0070 BTC at $71,298", delay: 600 },
+      { type: "info", text: "  Invested:  $500.00", delay: 200 },
+      { type: "info", text: "  Portfolio:  0.0070 BTC (avg $71,298)", delay: 150 },
+      { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/Kx9fVw3nRt...", delay: 200 },
+
+      { type: "command", text: "❯ t2000 portfolio", delay: 1200 },
+      { type: "output", text: "  Investment Portfolio", delay: 400 },
+      { type: "info", text: "  ──────────────────────────────────────────────────────────────────", delay: 80 },
+      { type: "output", text: "  BTC:  0.0070    Avg: $71,298    Now: $71,298    $0.00 (0.0%)", delay: 200 },
+      { type: "info", text: "", delay: 80 },
+      { type: "info", text: "  Total invested:  $500.00", delay: 150 },
+      { type: "info", text: "  Current value:  $500.00", delay: 150 },
+    ],
+  },
+
+  {
+    id: "earn-rebalance-btc",
+    title: "Earn + Rebalance — Bitcoin Yield",
+    description:
+      "Earn yield on BTC, then rebalance to a better rate. Two commands.",
+    tweet: "t2000 invest earn BTC — your Bitcoin earns yield while you hold",
+    lines: [
+      { type: "command", text: "❯ t2000 invest earn BTC", delay: 0 },
+      { type: "success", text: "  ✓ BTC deposited into NAVI Protocol (1.85% APY)", delay: 600 },
+      { type: "info", text: "  Amount:  0.0070 BTC", delay: 200 },
+      { type: "info", text: "  Protocol:  NAVI Protocol", delay: 150 },
+      { type: "info", text: "  APY:  1.85%", delay: 150 },
+      { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/7CAugsDaPvMM...", delay: 200 },
+
+      { type: "command", text: "❯ t2000 invest rebalance --dry-run", delay: 1200 },
+      { type: "output", text: "", delay: 400 },
+      { type: "output", text: "  Rebalance Preview", delay: 200 },
+      { type: "info", text: "", delay: 80 },
+      { type: "output", text: "    BTC: NAVI Protocol (1.85%) → Suilend (2.48%)", delay: 200 },
+      { type: "success", text: "    Gain: +0.63% APY", delay: 150 },
+
+      { type: "command", text: "❯ t2000 invest rebalance", delay: 1200 },
+      { type: "success", text: "  ✓ Rebalanced earning positions", delay: 600 },
+      { type: "info", text: "  ──────────────────────────────────────────────────────", delay: 80 },
+      { type: "output", text: "    BTC: NAVI Protocol (1.85%) → Suilend (2.48%)", delay: 200 },
+      { type: "info", text: "  Amount:  0.0070 BTC", delay: 150 },
+      { type: "success", text: "  APY gain:  +0.63%", delay: 150 },
+      { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/Hf2DxZF3uvSS...", delay: 200 },
+      { type: "info", text: "  Gas:  0.015 SUI", delay: 150 },
+    ],
+  },
+
+  {
+    id: "portfolio-multi",
+    title: "Portfolio — Multi-Asset P&L",
+    description:
+      "Full portfolio with BTC, SUI, and GOLD. Cost basis, P&L, yield APY.",
+    tweet: "t2000 portfolio — every position, every APY, real-time",
+    lines: [
+      { type: "command", text: "❯ t2000 portfolio", delay: 0 },
+      { type: "output", text: "  Investment Portfolio", delay: 400 },
+      { type: "info", text: "  ──────────────────────────────────────────────────────────────────", delay: 80 },
+      { type: "output", text: "  BTC:   0.0070    Avg: $71,298    Now: $71,850    +$3.86 (+0.8%)    2.5% APY (suilend)", delay: 200 },
+      { type: "output", text: "  SUI:   26.32     Avg: $3.80      Now: $3.85      +$1.32 (+1.0%)    2.6% APY (suilend)", delay: 200 },
+      { type: "output", text: "  GOLD:  0.0510    Avg: $2,940     Now: $2,955     +$0.77 (+0.5%)    3.7% APY (navi)", delay: 200 },
+      { type: "info", text: "", delay: 80 },
+      { type: "info", text: "  Total invested:  $800.00", delay: 150 },
+      { type: "info", text: "  Current value:  $805.95", delay: 150 },
+      { type: "success", text: "  Unrealized P&L:  +$5.95 (+0.7%)", delay: 150 },
+    ],
+  },
+
   // ── 8. x402 Pay ────────────────────────────────────────────────────────
   {
     id: "x402",

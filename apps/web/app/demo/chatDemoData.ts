@@ -458,6 +458,32 @@ export const chatDemos: ChatDemo[] = [
   },
 
   {
+    id: "chat-margin",
+    title: "Margin Trading — Coming Soon",
+    description:
+      "Leveraged positions on BTC, ETH, SUI. Powered by Bluefin.",
+    messages: [
+      { role: "user", text: "Open a 3x long on BTC", delay: 0 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_margin"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px;color:rgba(255,200,50,0.9)">⚡ MARGIN TRADING — COMING SOON</div>` +
+          tbl([
+            ["Leverage", "Up to 3×", "hi"],
+            ["Collateral", "USDC", ""],
+            ["Markets", "BTC · ETH · SUI", ""],
+            ["Risk mgmt", "Auto-liquidation guard", "hi"],
+            ["Powered by", "Bluefin", ""],
+          ]) +
+          note("Margin trading is not yet available. You'll be able to open long and short positions with USDC collateral and automatic liquidation protection."),
+        delay: 300,
+      },
+    ],
+  },
+
+  {
     id: "chat-x402",
     title: "Pay & Analyze — x402",
     description:
