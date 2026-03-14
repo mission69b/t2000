@@ -4,7 +4,7 @@ description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
   client, set up MCP config, or start the MCP server.   Provides 21 tools
-  and 12 prompts for AI-driven banking operations.
+  and 15 prompts for AI-driven banking operations.
 license: MIT
 metadata:
   author: t2000
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 21 tools, 12 prompts, stdio transport, safeguard enforced.
+account. 21 tools, 15 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -78,7 +78,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (12)
+## Prompts (15)
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |
@@ -87,12 +87,15 @@ All support `dryRun: true` for previews without signing.
 | `budget-check` | Can I afford $X? |
 | `savings-strategy` | Recommend how much to save and where |
 | `investment-strategy` | Portfolio analysis and allocation |
-| `morning-briefing` | Daily snapshot — balances, yield, portfolio, alerts |
+| `morning-briefing` | Daily snapshot — balances, yield, portfolio, rewards, alerts |
 | `what-if` | Scenario planning — model impact before acting |
 | `sweep` | Route idle funds to optimal earning positions |
 | `risk-check` | Health factor, concentration, liquidation risk |
 | `weekly-recap` | Week in review — activity, yield, P&L |
 | `dca-advisor` | Personalized DCA setup from budget |
+| `claim-rewards` | Check and claim protocol rewards — auto-converts to USDC |
+| `safeguards` | Review safety settings — limits, lock, PIN-protected operations |
+| `quick-exchange` | Guided token swap — preview rate, slippage, impact |
 
 ## Security
 - Safeguard gate: server refuses to start without configured limits

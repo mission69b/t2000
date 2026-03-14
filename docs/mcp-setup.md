@@ -117,12 +117,20 @@ All support `dryRun: true` for previews without signing.
 
 | Prompt | Description |
 |--------|-------------|
-| `morning-briefing` | Daily snapshot — balances, yield earned, portfolio movement, alerts |
+| `morning-briefing` | Daily snapshot — balances, yield earned, portfolio movement, rewards, alerts |
 | `what-if` | Scenario planning — model impact of invest/save/borrow decisions |
 | `sweep` | Find idle checking funds and route to optimal earning positions |
 | `risk-check` | Full risk analysis — health factor, concentration, liquidation proximity |
 | `weekly-recap` | Week in review — activity, yield, portfolio P&L, highlights |
 | `dca-advisor` | Personalized DCA setup — budget → strategy, frequency, projected growth |
+
+### Operational (3)
+
+| Prompt | Description |
+|--------|-------------|
+| `claim-rewards` | Check and claim pending protocol rewards — auto-converts to USDC |
+| `safeguards` | Review safety settings — per-tx limits, daily caps, emergency lock |
+| `quick-exchange` | Guided token swap — preview rate, slippage, impact before executing |
 
 ---
 

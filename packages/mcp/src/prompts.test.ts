@@ -21,8 +21,8 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 12 prompts', () => {
-    expect(prompts.size).toBe(12);
+  it('should register 15 prompts', () => {
+    expect(prompts.size).toBe(15);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
@@ -34,6 +34,9 @@ describe('prompts', () => {
     expect(prompts.has('risk-check')).toBe(true);
     expect(prompts.has('weekly-recap')).toBe(true);
     expect(prompts.has('dca-advisor')).toBe(true);
+    expect(prompts.has('claim-rewards')).toBe(true);
+    expect(prompts.has('safeguards')).toBe(true);
+    expect(prompts.has('quick-exchange')).toBe(true);
   });
 
   it('financial-report should return valid message array', async () => {
@@ -91,5 +94,47 @@ describe('prompts', () => {
     expect(result.messages[0].content.text).toContain('t2000_positions');
     expect(result.messages[0].content.text).toContain('t2000_rates');
     expect(result.messages[0].content.text).toContain('t2000_save');
+  });
+
+  it('claim-rewards should reference claim tool and positions', async () => {
+    const handler = prompts.get('claim-rewards')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_claim_rewards');
+    expect(result.messages[0].content.text).toContain('t2000_positions');
+  });
+
+  it('safeguards should reference config and lock tools', async () => {
+    const handler = prompts.get('safeguards')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_config');
+    expect(result.messages[0].content.text).toContain('t2000_lock');
+  });
+
+  it('quick-exchange should work with and without args', async () => {
+    const handler = prompts.get('quick-exchange')!;
+    const withArgs = await handler({ from: 'USDC', to: 'SUI', amount: 10 });
+    expect(withArgs.messages).toHaveLength(1);
+    expect(withArgs.messages[0].content.text).toContain('USDC');
+    expect(withArgs.messages[0].content.text).toContain('SUI');
+
+    const withoutArgs = await handler({});
+    expect(withoutArgs.messages).toHaveLength(1);
+    expect(withoutArgs.messages[0].content.text).toContain('t2000_exchange');
+  });
+
+  it('morning-briefing should mention claim rewards', async () => {
+    const handler = prompts.get('morning-briefing')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_claim_rewards');
+  });
+
+  it('financial-report should mention claim rewards', async () => {
+    const handler = prompts.get('financial-report')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_claim_rewards');
   });
 });

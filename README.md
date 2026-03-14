@@ -336,7 +336,7 @@ Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 21 tools · 12 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 21 tools · 15 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 

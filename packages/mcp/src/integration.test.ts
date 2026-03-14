@@ -116,9 +116,9 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 21 tools', async () => {
+  it('lists all 22 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(21);
+    expect(tools).toHaveLength(22);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -126,6 +126,7 @@ describe('integration: MCP client ↔ server', () => {
       't2000_auto_invest',
       't2000_balance',
       't2000_borrow',
+      't2000_claim_rewards',
       't2000_config',
       't2000_contacts',
       't2000_earnings',
@@ -146,12 +147,12 @@ describe('integration: MCP client ↔ server', () => {
     ]);
   });
 
-  it('lists all 12 prompts', async () => {
+  it('lists all 15 prompts', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts).toHaveLength(12);
+    expect(prompts).toHaveLength(15);
 
     const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['budget-check', 'dca-advisor', 'financial-report', 'investment-strategy', 'morning-briefing', 'optimize-yield', 'risk-check', 'savings-strategy', 'send-money', 'sweep', 'weekly-recap', 'what-if']);
+    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'financial-report', 'investment-strategy', 'morning-briefing', 'optimize-yield', 'quick-exchange', 'risk-check', 'safeguards', 'savings-strategy', 'send-money', 'sweep', 'weekly-recap', 'what-if']);
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {

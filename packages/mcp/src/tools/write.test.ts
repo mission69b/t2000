@@ -118,8 +118,8 @@ describe('write tools', () => {
     registerWriteTools(server, agent);
   });
 
-  it('should register 10 write tools', () => {
-    expect(tools.size).toBe(10);
+  it('should register 11 write tools', () => {
+    expect(tools.size).toBe(11);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_save')).toBe(true);
     expect(tools.has('t2000_withdraw')).toBe(true);

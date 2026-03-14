@@ -152,7 +152,7 @@ const COMPARE_ROWS: {
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
-  { feature: "AI integration", coinbase: "—", t2000: "✓ 21 tools + 12 AI prompts", coinbaseCross: true },
+  { feature: "AI integration", coinbase: "—", t2000: "✓ 21 tools + 15 AI prompts", coinbaseCross: true },
   { feature: "Safety limits + lock", coinbase: "—", t2000: "✓ Per-tx limits, daily caps, emergency lock", coinbaseCross: true },
   { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
 ];
