@@ -38,6 +38,8 @@ export type {
   PortfolioResult,
   InvestResult,
   InvestEarnResult,
+  InvestRebalanceResult,
+  InvestRebalanceMove,
   StrategyDefinition,
   StrategyBuyResult,
   StrategySellResult,

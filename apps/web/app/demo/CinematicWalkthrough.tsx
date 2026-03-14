@@ -48,6 +48,20 @@ const scenes: Scene[] = [
       },
     ],
   },
+  { kind: "card", text: "Your yield follows\nthe best rate.", hold: 2500 },
+  {
+    kind: "chat",
+    messages: [
+      { type: "user", text: "Is my SUI earning the best rate?" },
+      { type: "think", ms: 1000 },
+      {
+        type: "ai",
+        tools: ["t2000_invest_rebalance"],
+        html: `<table><tr><td>Current</td><td>NAVI \u00b7 2.42% APY</td></tr><tr><td>Best available</td><td class="hi">Suilend \u00b7 2.61% APY</td></tr><tr><td>Moved</td><td class="hi">4.85 SUI \u2192 Suilend</td></tr><tr><td>APY gain</td><td class="hi">+0.20%</td></tr><tr><td>Tx</td><td class="tx">suiscan.xyz/tx/Hf2D\u2026</td></tr></table>`,
+        hold: 2000,
+      },
+    ],
+  },
   { kind: "card", text: "Borrows when\nit needs to.", hold: 2500 },
   {
     kind: "chat",

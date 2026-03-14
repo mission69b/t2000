@@ -27,6 +27,8 @@ t2000 invest sell 50 SUI           # Sell $50 worth of SUI
 t2000 invest sell all ETH          # Sell entire ETH position
 t2000 invest earn SUI              # Deposit SUI into best lending protocol for yield
 t2000 invest unearn SUI            # Withdraw from lending (stays in portfolio)
+t2000 invest rebalance             # Move earning positions to better-rate protocols
+t2000 invest rebalance --dry-run   # Preview rebalance moves without executing
 t2000 portfolio                    # Show all positions + P&L + yield
 ```
 
@@ -121,6 +123,8 @@ t2000 invest auto stop <id>                    # Stop a schedule
 - Compares NAVI vs Suilend rates and picks the highest APY
 - SUI, ETH supported on both; BTC on Suilend
 - `invest unearn <asset>` withdraws from lending — asset stays in portfolio
+- `invest rebalance` checks all earning positions and moves any where another protocol offers a higher APY
+- Rebalance uses a 0.1% minimum difference threshold by default (`--min-diff` to override)
 - Earning applies to direct positions only (V1)
 
 ## Available Assets

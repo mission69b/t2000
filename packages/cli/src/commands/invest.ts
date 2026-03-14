@@ -91,12 +91,14 @@ export function registerInvest(program: Command) {
     .command('earn <asset>')
     .description('Deposit invested asset into best-rate lending protocol')
     .option('--key <path>', 'Key file path')
-    .action(async (asset: string, opts: { key?: string }) => {
+    .option('--protocol <name>', 'Force a specific protocol (navi, suilend)')
+    .action(async (asset: string, opts: { key?: string; protocol?: string }) => {
       try {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
         const result = await agent.investEarn({
           asset: asset.toUpperCase() as InvestmentAsset,
+          protocol: opts.protocol?.toLowerCase(),
         });
 
         if (isJsonMode()) { printJson(result); return; }
@@ -135,6 +137,68 @@ export function registerInvest(program: Command) {
         printSuccess(`Withdrew ${formatAssetAmount(result.amount, sym)} ${sym} from ${result.protocol}`);
         printKeyValue('Status', `${sym} remains in investment portfolio (locked)`);
         printKeyValue('Tx', explorerUrl(result.tx));
+        printBlank();
+      } catch (error) { handleError(error); }
+    });
+
+  investCmd
+    .command('rebalance')
+    .description('Move earning positions to better-rate protocols')
+    .option('--key <path>', 'Key file path')
+    .option('--dry-run', 'Preview moves without executing')
+    .option('--min-diff <pct>', 'Minimum APY difference to trigger move', '0.1')
+    .action(async (opts: { key?: string; dryRun?: boolean; minDiff?: string }) => {
+      try {
+        const pin = await resolvePin();
+        const agent = await T2000.create({ pin, keyPath: opts.key });
+        const result = await agent.investRebalance({
+          dryRun: opts.dryRun,
+          minYieldDiff: opts.minDiff ? parseFloat(opts.minDiff) : undefined,
+        });
+
+        if (isJsonMode()) { printJson(result); return; }
+
+        printBlank();
+
+        if (result.moves.length === 0) {
+          printInfo('All earning positions are already on the best rate');
+          if (result.skipped.length > 0) {
+            for (const s of result.skipped) {
+              printLine(`  ${s.asset}: ${s.apy.toFixed(2)}% on ${s.protocol} (best: ${s.bestApy.toFixed(2)}% — ${s.reason.replace(/_/g, ' ')})`);
+            }
+          }
+          printBlank();
+          return;
+        }
+
+        if (opts.dryRun) {
+          printHeader('Rebalance Preview');
+          for (const m of result.moves) {
+            printLine(`  ${m.asset}: ${m.fromProtocol} (${m.oldApy.toFixed(2)}%) → ${m.toProtocol} (${m.newApy.toFixed(2)}%)`);
+            printLine(`  Gain: +${(m.newApy - m.oldApy).toFixed(2)}% APY`);
+          }
+        } else {
+          printSuccess('Rebalanced earning positions');
+          printSeparator();
+          for (const m of result.moves) {
+            printLine(`  ${m.asset}: ${m.fromProtocol} (${m.oldApy.toFixed(2)}%) → ${m.toProtocol} (${m.newApy.toFixed(2)}%)`);
+            printKeyValue('Amount', `${formatAssetAmount(m.amount, m.asset)} ${m.asset}`);
+            printKeyValue('APY gain', `+${(m.newApy - m.oldApy).toFixed(2)}%`);
+            if (m.txDigests.length > 0) {
+              printKeyValue('Tx', explorerUrl(m.txDigests[m.txDigests.length - 1]));
+            }
+          }
+          printSeparator();
+          printKeyValue('Gas', `${result.totalGasCost.toFixed(6)} SUI`);
+        }
+
+        if (result.skipped.length > 0) {
+          printBlank();
+          for (const s of result.skipped) {
+            printLine(`  ${s.asset}: kept on ${s.protocol} (${s.reason.replace(/_/g, ' ')})`);
+          }
+        }
+
         printBlank();
       } catch (error) { handleError(error); }
     });

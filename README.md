@@ -34,6 +34,7 @@ await agent.investBuy({ asset: 'SUI', usdAmount: 100 }); // invest $100 in SUI (
 await agent.investSell({ asset: 'SUI', usdAmount: 'all' }); // sell all SUI
 await agent.investEarn({ asset: 'SUI' });                    // deposit to lending for yield
 await agent.investUnearn({ asset: 'SUI' });                  // withdraw from lending
+await agent.investRebalance();                               // move earning to better-rate protocol
 await agent.investStrategy({ strategy: 'bluechip', usdAmount: 200 }); // atomic PTB
 await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluechip' });
 ```
@@ -121,7 +122,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Credit** | Borrow USDC against savings | NAVI + Suilend collateralized loans |
 | **Exchange** | Swap between any supported tokens | [Cetus DEX](https://www.cetus.zone) CLMM pools |
 | **Investment** | Buy/sell SUI, BTC, ETH, GOLD with cost-basis P&L | [Cetus DEX](https://www.cetus.zone) (spot swaps) |
-| **Investment Yield** | Earn yield on invested assets via lending | NAVI + Suilend (auto-selected best rate) |
+| **Investment Yield** | Earn yield on invested assets via lending | NAVI + Suilend (auto-selected best rate, auto-rebalance) |
 | **Strategies** | Themed allocations (bluechip, all-weather, safe-haven, layer1, sui-heavy) — single atomic PTB | Agent orchestration + Cetus |
 | **Auto-Invest** | Dollar-cost averaging (daily/weekly/monthly DCA) | Agent scheduling |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
@@ -201,6 +202,7 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.investSell({ asset, usdAmount })` | Sell crypto asset back to USDC |
 | | `agent.investEarn({ asset })` | Deposit invested asset to lending for yield |
 | | `agent.investUnearn({ asset })` | Withdraw from lending, keep in portfolio |
+| | `agent.investRebalance({ dryRun? })` | Move earning positions to better-rate protocols |
 | | `agent.getPortfolio()` | Investment positions + P&L |
 | **Strategies** | `agent.investStrategy({ strategy, usdAmount })` | Buy into a strategy (atomic PTB) |
 | | `agent.rebalanceStrategy({ strategy })` | Rebalance to target weights |
@@ -232,6 +234,7 @@ t2000 invest buy 100 SUI             Invest $100 in SUI (or BTC, ETH, GOLD)
 t2000 invest sell all SUI            Sell entire SUI position
 t2000 invest earn SUI                Deposit SUI to lending for yield
 t2000 invest unearn SUI              Withdraw from lending, keep invested
+t2000 invest rebalance               Move earning to better-rate protocol
 t2000 invest strategy buy layer1 200 Buy into a strategy (1 atomic tx)
 t2000 invest strategy list           List available strategies
 t2000 invest auto setup 50 weekly bluechip   Set up DCA
@@ -336,7 +339,7 @@ Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 22 tools · 15 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 23 tools · 15 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 
@@ -386,7 +389,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 22 tools + 15 AI advisor prompts |
+| MCP Server | — | ✓ 23 tools + 15 AI advisor prompts |
 
 ## Security
 

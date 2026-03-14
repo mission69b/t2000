@@ -1409,7 +1409,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async investEarn(params: { asset: InvestmentAsset }): Promise<import('./types.js').InvestEarnResult> {
+  async investEarn(params: { asset: InvestmentAsset; protocol?: string }): Promise<import('./types.js').InvestEarnResult> {
     this.enforcer.assertNotLocked();
 
     if (!(params.asset in INVESTMENT_ASSETS)) {
@@ -1446,7 +1446,17 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INSUFFICIENT_BALANCE', `No ${params.asset} available to deposit (wallet: ${walletAmount}, gas reserve: ${gasReserve})`);
     }
 
-    const { adapter, rate } = await this.registry.bestSaveRate(params.asset);
+    let adapter: import('./adapters/types.js').LendingAdapter;
+    let rate: import('./adapters/types.js').LendingRates;
+
+    if (params.protocol) {
+      const specific = this.registry.getLending(params.protocol);
+      if (!specific) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${params.protocol} not found`);
+      adapter = specific;
+      rate = await specific.getRates(params.asset);
+    } else {
+      ({ adapter, rate } = await this.registry.bestSaveRate(params.asset));
+    }
 
     const gasResult = await executeWithGas(this.client, this.keypair, async () => {
       const { tx } = await adapter.buildSaveTx(this._address, depositAmount, params.asset);
@@ -1509,6 +1519,107 @@ export class T2000 extends EventEmitter<T2000Events> {
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
     };
+  }
+
+  // -- Invest Rebalance --
+
+  async investRebalance(opts: { dryRun?: boolean; minYieldDiff?: number } = {}): Promise<import('./types.js').InvestRebalanceResult> {
+    this.enforcer.assertNotLocked();
+
+    const minDiff = opts.minYieldDiff ?? 0.1;
+    const positions = this.portfolio.getPositions().filter((p) => p.earning && p.earningProtocol);
+
+    if (positions.length === 0) {
+      return { executed: false, moves: [], totalGasCost: 0, skipped: [] };
+    }
+
+    const moves: import('./types.js').InvestRebalanceMove[] = [];
+    const skipped: import('./types.js').InvestRebalanceResult['skipped'] = [];
+    let totalGasCost = 0;
+
+    for (const pos of positions) {
+      const currentProtocol = pos.earningProtocol!;
+      const currentApy = pos.earningApy ?? 0;
+
+      let best: { adapter: import('./adapters/types.js').LendingAdapter; rate: import('./adapters/types.js').LendingRates };
+      try {
+        best = await this.registry.bestSaveRate(pos.asset);
+      } catch {
+        skipped.push({ asset: pos.asset, protocol: currentProtocol, apy: currentApy, bestApy: currentApy, reason: 'no_rates' });
+        continue;
+      }
+
+      const apyGain = best.rate.saveApy - currentApy;
+
+      if (best.adapter.id === currentProtocol) {
+        skipped.push({ asset: pos.asset, protocol: currentProtocol, apy: currentApy, bestApy: best.rate.saveApy, reason: 'already_best' });
+        continue;
+      }
+
+      if (apyGain < minDiff) {
+        skipped.push({ asset: pos.asset, protocol: currentProtocol, apy: currentApy, bestApy: best.rate.saveApy, reason: 'below_threshold' });
+        continue;
+      }
+
+      if (opts.dryRun) {
+        moves.push({
+          asset: pos.asset,
+          fromProtocol: this.registry.getLending(currentProtocol)?.name ?? currentProtocol,
+          toProtocol: best.adapter.name,
+          amount: pos.totalAmount,
+          oldApy: currentApy,
+          newApy: best.rate.saveApy,
+          txDigests: [],
+          gasCost: 0,
+        });
+        continue;
+      }
+
+      const txDigests: string[] = [];
+      let moveGasCost = 0;
+
+      const fromAdapter = this.registry.getLending(currentProtocol);
+      if (!fromAdapter) {
+        skipped.push({ asset: pos.asset, protocol: currentProtocol, apy: currentApy, bestApy: best.rate.saveApy, reason: 'protocol_unavailable' });
+        continue;
+      }
+
+      const withdrawResult = await executeWithGas(this.client, this.keypair, async () => {
+        const result = await fromAdapter.buildWithdrawTx(this._address, pos.totalAmount, pos.asset);
+        return result.tx;
+      });
+      txDigests.push(withdrawResult.digest);
+      moveGasCost += withdrawResult.gasCostSui;
+
+      const depositResult = await executeWithGas(this.client, this.keypair, async () => {
+        const assetInfo = SUPPORTED_ASSETS[pos.asset as keyof typeof SUPPORTED_ASSETS];
+        const balance = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
+        const available = Number(balance.totalBalance) / (10 ** assetInfo.decimals);
+        const gasReserve = pos.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+        const depositAmount = Math.max(0, available - gasReserve);
+        const { tx } = await best.adapter.buildSaveTx(this._address, depositAmount, pos.asset);
+        return tx;
+      });
+      txDigests.push(depositResult.digest);
+      moveGasCost += depositResult.gasCostSui;
+
+      this.portfolio.recordUnearn(pos.asset);
+      this.portfolio.recordEarn(pos.asset, best.adapter.id, best.rate.saveApy);
+
+      moves.push({
+        asset: pos.asset,
+        fromProtocol: fromAdapter.name,
+        toProtocol: best.adapter.name,
+        amount: pos.totalAmount,
+        oldApy: currentApy,
+        newApy: best.rate.saveApy,
+        txDigests,
+        gasCost: moveGasCost,
+      });
+      totalGasCost += moveGasCost;
+    }
+
+    return { executed: !opts.dryRun && moves.length > 0, moves, totalGasCost, skipped };
   }
 
   // -- Claim Rewards --

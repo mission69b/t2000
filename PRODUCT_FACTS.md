@@ -188,6 +188,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | invest sell | `t2000 invest sell <amount|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
 | invest earn | `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
 | invest unearn | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
+| invest rebalance | `t2000 invest rebalance` | Move earning positions to better-rate protocols |
 | claim-rewards | `t2000 claim-rewards` | Claim protocol rewards and auto-convert to USDC |
 | portfolio | `t2000 portfolio` | Show investment portfolio + P&L (APY column when earning, strategy grouping) |
 | invest strategy list | `t2000 invest strategy list` | List available strategies with allocations (5 built-in) |
@@ -202,7 +203,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | invest auto run | `t2000 invest auto run` | Execute pending DCA purchases |
 | invest auto stop | `t2000 invest auto stop [id]` | Stop auto-invest schedule |
 
-**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Rebalance skips earning investment positions. `claim-rewards` claims DeFi incentive rewards from all protocols and auto-converts to USDC in a single operation.
+**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Savings rebalance skips earning investment positions. `invest rebalance` moves earning positions to better-rate protocols (0.1% minimum APY difference). `claim-rewards` claims DeFi incentive rewards from all protocols and auto-converts to USDC in a single operation.
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -323,6 +324,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | `investSell()` | `{ asset, usdAmount \| 'all', maxSlippage? }` | `InvestSellResult` |
 | `investEarn()` | `{ asset }` | `InvestEarnResult` |
 | `investUnearn()` | `{ asset }` | `InvestUnearnResult` |
+| `investRebalance()` | `{ dryRun?, minYieldDiff? }` | `InvestRebalanceResult` |
 | `getPortfolio()` | — | `PortfolioResult` |
 | `investStrategy()` | `{ strategy, usdAmount, maxSlippage?, dryRun? }` | `StrategyBuyResult` |
 | `sellStrategy()` | `{ strategy, maxSlippage? }` | `StrategySellResult` |
@@ -654,7 +656,7 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Package | `@t2000/mcp` |
 | Version | `0.16.4` |
 | Transport | stdio |
-| Tools | 22 |
+| Tools | 23 |
 | Prompts | 15 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
 | Auto-install | `t2000 mcp install` (configures Claude Desktop + Cursor automatically) |

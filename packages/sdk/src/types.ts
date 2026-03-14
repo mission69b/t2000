@@ -289,6 +289,24 @@ export interface InvestEarnResult {
   gasMethod: GasMethod;
 }
 
+export interface InvestRebalanceMove {
+  asset: string;
+  fromProtocol: string;
+  toProtocol: string;
+  amount: number;
+  oldApy: number;
+  newApy: number;
+  txDigests: string[];
+  gasCost: number;
+}
+
+export interface InvestRebalanceResult {
+  executed: boolean;
+  moves: InvestRebalanceMove[];
+  totalGasCost: number;
+  skipped: Array<{ asset: string; protocol: string; apy: number; bestApy: number; reason: string }>;
+}
+
 // --- Strategy + Auto-Invest types ---
 
 export interface StrategyDefinition {

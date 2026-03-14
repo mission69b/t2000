@@ -312,6 +312,23 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
+    't2000_invest_rebalance',
+    'Move earning investment positions to better-rate protocols. Checks all earning assets and moves any where another protocol offers a higher APY.',
+    {
+      dryRun: z.boolean().optional().describe('Preview moves without executing (default: false)'),
+      minYieldDiff: z.number().optional().describe('Minimum APY difference to trigger a move (default: 0.1)'),
+    },
+    async ({ dryRun, minYieldDiff }) => {
+      try {
+        const result = await mutex.run(() => agent.investRebalance({ dryRun, minYieldDiff }));
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
     't2000_strategy',
     'Manage investment strategies — buy into predefined or custom allocations, sell entire strategies, check status, rebalance, or create/delete custom strategies.',
     {

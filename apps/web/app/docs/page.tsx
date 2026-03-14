@@ -912,6 +912,7 @@ function CliInvestSection() {
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
         <CmdCard name="t2000 invest buy / sell" desc="Buy or sell SUI, BTC, ETH, GOLD" onClick={() => scrollTo("cmd-invest")} />
         <CmdCard name="t2000 invest earn" desc="Earn yield on holdings" onClick={() => scrollTo("cmd-invest-earn")} />
+        <CmdCard name="t2000 invest rebalance" desc="Move earning to better rate" onClick={() => scrollTo("cmd-invest-rebalance")} />
         <CmdCard name="t2000 invest strategy" desc="Themed allocations (bluechip, layer1)" onClick={() => scrollTo("cmd-strategy")} />
         <CmdCard name="t2000 invest auto" desc="Dollar-cost averaging (DCA)" onClick={() => scrollTo("cmd-auto-invest")} />
         <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollTo("cmd-portfolio")} />
@@ -947,6 +948,22 @@ function CliInvestSection() {
         {"  "}Amount:  {S.a("0.9734")} SUI{"\n"}
         {"  "}Protocol:  Suilend{"\n"}
         {"  "}APY:  {S.g("2.61%")}{"\n"}
+        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
+      </CodeBlock>
+
+      <h2 id="cmd-invest-rebalance">invest rebalance</h2>
+      <p>Move earning investment positions to higher-rate protocols. Compares APY across NAVI and Suilend and moves any position where a better rate is available (0.1% minimum difference).</p>
+      <CodeBlock lang="bash">
+        t2000 invest rebalance            {S.c("# move earning positions to best rate")}{"\n"}
+        t2000 invest rebalance --dry-run  {S.c("# preview moves without executing")}{"\n"}
+        t2000 invest rebalance --min-diff 0.5  {S.c("# only move if 0.5%+ APY gain")}
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {"  "}{S.g("✓")} Rebalanced earning positions{"\n"}
+        {"  "}──────────────────────────────────────{"\n"}
+        {"    "}SUI: NAVI Protocol (2.42%) → Suilend (2.61%){"\n"}
+        {"  "}Amount:  {S.a("1.0639")} SUI{"\n"}
+        {"  "}APY gain:  {S.g("+0.20%")}{"\n"}
         {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
       </CodeBlock>
 
@@ -1078,7 +1095,7 @@ function CliMoreSection() {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 22 tools, 15 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 23 tools, 15 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1279,7 +1296,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        22 tools, 15 prompts, stdio transport — your AI operates a full bank account.
+        23 tools, 15 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 4 commands</h2>
@@ -1338,6 +1355,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_exchange</InlineCode>, "Swap assets via DEX"],
           [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
           [<InlineCode key="k">t2000_invest</InlineCode>, "Buy, sell, earn, or unearn SUI, BTC, ETH, GOLD"],
+          [<InlineCode key="k">t2000_invest_rebalance</InlineCode>, "Move earning positions to better-rate protocols"],
           [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
           [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
           [<InlineCode key="k">t2000_claim_rewards</InlineCode>, "Claim protocol rewards and auto-convert to USDC"],
@@ -1708,7 +1726,7 @@ function ChangelogSection() {
         v0.15.0
       </h2>
       <p>
-        Investment yield — <InlineCode>t2000 invest earn &lt;asset&gt;</InlineCode> deposits SUI or ETH into best-rate lending (NAVI/Suilend) for yield while keeping price exposure. <InlineCode>t2000 invest unearn &lt;asset&gt;</InlineCode> withdraws from lending. Auto-withdraw on sell, portfolio yield column, borrow guard, rebalance guard.
+        Investment yield — <InlineCode>t2000 invest earn &lt;asset&gt;</InlineCode> deposits SUI or ETH into best-rate lending (NAVI/Suilend) for yield while keeping price exposure. <InlineCode>t2000 invest unearn &lt;asset&gt;</InlineCode> withdraws from lending. <InlineCode>t2000 invest rebalance</InlineCode> moves earning positions to better-rate protocols. Auto-withdraw on sell, portfolio yield column, borrow guard, rebalance guard.
       </p>
 
       <h2 id="cl-0141">
@@ -1739,7 +1757,7 @@ function ChangelogSection() {
       </h2>
       <p>
         MCP Server — connect Claude Desktop, Cursor, or any MCP client to your
-        t2000 agent. 22 tools with <InlineCode>dryRun</InlineCode> previews, 6
+        t2000 agent. 23 tools with <InlineCode>dryRun</InlineCode> previews, 6
         prompts, safeguard enforcement, and stdio transport. New{" "}
         <InlineCode>@t2000/mcp</InlineCode> package and{" "}
         <InlineCode>t2000 mcp</InlineCode> CLI command. Setup in 3 steps, zero

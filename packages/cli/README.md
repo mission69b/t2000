@@ -216,6 +216,7 @@ t2000 init
 | `t2000 invest sell <amount\|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
 | `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
 | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
+| `t2000 invest rebalance` | Move earning positions to better-rate protocols |
 | `t2000 portfolio` | View investment portfolio with cost-basis P&L (strategy grouping) |
 
 ### Strategies (PTB Atomic)
@@ -273,7 +274,7 @@ t2000 mcp uninstall
 t2000 mcp
 ```
 
-22 tools, 15 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
+23 tools, 15 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 

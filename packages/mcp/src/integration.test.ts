@@ -116,9 +116,9 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 22 tools', async () => {
+  it('lists all 23 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(22);
+    expect(tools).toHaveLength(23);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -134,6 +134,7 @@ describe('integration: MCP client ↔ server', () => {
       't2000_health',
       't2000_history',
       't2000_invest',
+      't2000_invest_rebalance',
       't2000_lock',
       't2000_portfolio',
       't2000_positions',

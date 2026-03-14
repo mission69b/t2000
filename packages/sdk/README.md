@@ -70,6 +70,10 @@ await agent.investEarn({ asset: 'SUI' });
 // Stop earning (withdraw from lending, keep in portfolio)
 await agent.investUnearn({ asset: 'SUI' });
 
+// Rebalance earning positions to better-rate protocols
+await agent.investRebalance();                  // execute
+await agent.investRebalance({ dryRun: true });  // preview only
+
 // Sell position (auto-withdraws if earning first)
 await agent.investSell({ asset: 'SUI', usdAmount: 'all' });
 
@@ -197,6 +201,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.investSell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC (auto-withdraws if earning) | `InvestResult` |
 | `agent.investEarn({ asset })` | Deposit invested asset into best-rate lending for yield | `InvestEarnResult` |
 | `agent.investUnearn({ asset })` | Withdraw from lending, keep in portfolio | `InvestUnearnResult` |
+| `agent.investRebalance({ dryRun?, minYieldDiff? })` | Move earning positions to better-rate protocols | `InvestRebalanceResult` |
 | `agent.getPortfolio()` | Investment positions + P&L (grouped by strategy) | `PortfolioResult` |
 
 ### Strategy Methods
@@ -423,7 +428,7 @@ Fees are collected by the t2000 protocol treasury on-chain.
 
 ## MCP Server
 
-The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 22 tools and 15 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
+The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 23 tools and 15 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
 
 ## License
 

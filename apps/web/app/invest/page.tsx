@@ -125,6 +125,7 @@ export default function InvestPage() {
                 {[
                   { cmd: "t2000 invest earn <asset>", desc: "Start earning yield on any holding" },
                   { cmd: "t2000 invest unearn <asset>", desc: "Stop earning, keep the investment" },
+                  { cmd: "t2000 invest rebalance", desc: "Move earning to better-rate protocol" },
                   { cmd: "t2000 invest sell all <asset>", desc: "Sell — auto-withdraws from lending first" },
                 ].map((step) => (
                   <div key={step.cmd} className="flex items-start gap-3">

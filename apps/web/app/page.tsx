@@ -84,7 +84,7 @@ const STEPS = [
     title: "Connect your AI",
     badge: "1 cmd",
     badgeType: "new" as const,
-    content: "22 tools with built-in safety limits. Any AI platform.",
+    content: "23 tools with built-in safety limits. Any AI platform.",
     code: "t2000 mcp install",
   },
   {
@@ -152,7 +152,7 @@ const COMPARE_ROWS: {
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
-  { feature: "AI integration", coinbase: "—", t2000: "✓ 22 tools + 15 AI prompts", coinbaseCross: true },
+  { feature: "AI integration", coinbase: "—", t2000: "✓ 23 tools + 15 AI prompts", coinbaseCross: true },
   { feature: "Safety limits + lock", coinbase: "—", t2000: "✓ Per-tx limits, daily caps, emergency lock", coinbaseCross: true },
   { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
 ];
@@ -471,7 +471,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            One command. 22 tools. Built-in safety limits.
+            One command. 23 tools. Built-in safety limits.
           </p>
         </div>
 
@@ -501,7 +501,7 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-3 mb-8">
               {[
                 { count: "9", label: "Read", desc: "Balance, rates, earnings, portfolio" },
-                { count: "10", label: "Write", desc: "Send, save, invest, swap, borrow" },
+                { count: "12", label: "Write", desc: "Send, save, invest, swap, borrow" },
                 { count: "2", label: "Safety", desc: "Limits + emergency lock" },
               ].map((g) => (
                 <div key={g.label} className="border border-border rounded-sm p-3 sm:p-4">

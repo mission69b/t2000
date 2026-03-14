@@ -53,6 +53,7 @@ describe('prompts', () => {
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_rebalance');
+    expect(result.messages[0].content.text).toContain('t2000_invest_rebalance');
   });
 
   it('send-money should return valid message with context', async () => {
@@ -124,17 +125,19 @@ describe('prompts', () => {
     expect(withoutArgs.messages[0].content.text).toContain('t2000_exchange');
   });
 
-  it('morning-briefing should mention claim rewards', async () => {
+  it('morning-briefing should mention claim rewards and invest rebalance', async () => {
     const handler = prompts.get('morning-briefing')!;
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_claim_rewards');
+    expect(result.messages[0].content.text).toContain('t2000_invest_rebalance');
   });
 
-  it('financial-report should mention claim rewards', async () => {
+  it('financial-report should mention claim rewards and invest rebalance', async () => {
     const handler = prompts.get('financial-report')!;
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_claim_rewards');
+    expect(result.messages[0].content.text).toContain('t2000_invest_rebalance');
   });
 });

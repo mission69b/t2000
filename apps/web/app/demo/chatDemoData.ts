@@ -366,6 +366,44 @@ export const chatDemos: ChatDemo[] = [
   },
 
   {
+    id: "chat-invest-rebalance",
+    title: "Rebalance Investment Yield",
+    description:
+      "AI finds a better lending rate and moves your earning position automatically.",
+    messages: [
+      { role: "user", text: "Is my SUI earning the best rate?", delay: 0 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_portfolio", "t2000_rates", "t2000_invest_rebalance"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">📊 INVESTMENT YIELD CHECK</div>` +
+          `<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px">SUI earning 2.42% APY on NAVI Protocol</div>` +
+          tbl([
+            ["Current", "NAVI · 2.42% APY", ""],
+            ["Best available", "Suilend · 2.61% APY", "hi"],
+            ["APY gain", "+0.20%", "hi"],
+          ]) +
+          note("Suilend is offering a better rate right now. I can move your SUI over — one transaction."),
+        delay: 300,
+      },
+      { role: "user", text: "Yes, move it", delay: 600 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_invest_rebalance"],
+        html: tbl([
+          ["Rebalanced", "SUI: NAVI → Suilend", "hi"],
+          ["New APY", "2.61%", "hi"],
+          ["Amount", "4.8500 SUI", ""],
+          ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/Hf2D…</span>', ""],
+        ]) + note("Your SUI is now earning at the best available rate across all protocols."),
+        delay: 300,
+      },
+    ],
+  },
+
+  {
     id: "chat-lock",
     title: "Safeguards",
     description:

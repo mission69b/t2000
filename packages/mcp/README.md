@@ -2,7 +2,7 @@
 
 MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
 
-**22 tools · 15 prompts · stdio transport · safeguard enforced**
+**23 tools · 15 prompts · stdio transport · safeguard enforced**
 
 ## Quick Start
 
@@ -42,6 +42,7 @@ For other platforms, paste manually:
 | `t2000_exchange` | write | Swap assets |
 | `t2000_rebalance` | write | Optimize yield |
 | `t2000_invest` | write | Buy/sell investment assets; earn/unearn yield on SUI, ETH, BTC, GOLD |
+| `t2000_invest_rebalance` | write | Move earning positions to better-rate protocols |
 | `t2000_contacts` | read | List saved contacts (name → address) |
 | `t2000_portfolio` | read | Investment portfolio + P&L |
 | `t2000_strategy` | write | Investment strategies — list, buy (PTB), sell, status, rebalance, create, delete |

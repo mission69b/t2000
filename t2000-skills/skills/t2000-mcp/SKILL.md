@@ -3,7 +3,7 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server.   Provides 22 tools
+  client, set up MCP config, or start the MCP server.   Provides 23 tools
   and 15 prompts for AI-driven banking operations.
 license: MIT
 metadata:
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 22 tools, 15 prompts, stdio transport, safeguard enforced.
+account. 23 tools, 15 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -68,6 +68,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_exchange` | Swap assets |
 | `t2000_rebalance` | Optimize yield |
 | `t2000_invest` | Buy/sell investment assets (spot) |
+| `t2000_invest_rebalance` | Move earning positions to better-rate protocols |
 | `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |
 | `t2000_auto_invest` | DCA scheduling — setup, status, run, stop |
 | `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |

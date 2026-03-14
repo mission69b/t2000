@@ -274,7 +274,41 @@ export const demos: Demo[] = [
     ],
   },
 
-  // ── 7. x402 Pay ────────────────────────────────────────────────────────
+  // ── 7. Investment Yield Optimizer ──────────────────────────────────────
+  {
+    id: "invest-rebalance",
+    title: "Investment Rebalance — Better Rate",
+    description:
+      "Earning on the wrong protocol? One command moves to the best rate.",
+    tweet: "t2000 invest rebalance — your yield follows the best rate",
+    lines: [
+      { type: "command", text: "❯ t2000 portfolio", delay: 0 },
+      { type: "output", text: "  Investment Portfolio", delay: 400 },
+      { type: "info", text: "  ──────────────────────────────────────────────────────────────────", delay: 80 },
+      { type: "output", text: "  SUI:  4.8500    Avg: $1.03    Now: $1.05    +$0.10 (+2.0%)    2.42% APY (NAVI)", delay: 200 },
+      { type: "info", text: "", delay: 80 },
+      { type: "info", text: "  Total invested:  $5.00", delay: 150 },
+      { type: "info", text: "  Current value:  $5.09", delay: 150 },
+
+      { type: "command", text: "❯ t2000 invest rebalance --dry-run", delay: 1200 },
+      { type: "output", text: "", delay: 400 },
+      { type: "output", text: "  Rebalance Preview", delay: 200 },
+      { type: "info", text: "", delay: 80 },
+      { type: "output", text: "    SUI: NAVI Protocol (2.42%) → Suilend (2.61%)", delay: 200 },
+      { type: "success", text: "    Gain: +0.20% APY", delay: 150 },
+
+      { type: "command", text: "❯ t2000 invest rebalance", delay: 1200 },
+      { type: "success", text: "  ✓ Rebalanced earning positions", delay: 600 },
+      { type: "info", text: "  ──────────────────────────────────────────────────────", delay: 80 },
+      { type: "output", text: "    SUI: NAVI Protocol (2.42%) → Suilend (2.61%)", delay: 200 },
+      { type: "info", text: "  Amount:  4.8500 SUI", delay: 150 },
+      { type: "success", text: "  APY gain:  +0.20%", delay: 150 },
+      { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/Hf2DxZF3uvSS...", delay: 200 },
+      { type: "info", text: "  Gas:  0.015 SUI", delay: 150 },
+    ],
+  },
+
+  // ── 8. x402 Pay ────────────────────────────────────────────────────────
   {
     id: "x402",
     title: "x402 Pay — Machine Payments",
