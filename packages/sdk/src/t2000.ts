@@ -61,6 +61,12 @@ import type {
 import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, INVESTMENT_ASSETS, GAS_RESERVE_MIN, DEFAULT_MAX_LEVERAGE, DEFAULT_MAX_POSITION_SIZE } from './constants.js';
 import type { InvestmentAsset } from './constants.js';
+
+const LOW_LIQUIDITY_ASSETS = new Set(['GOLD']);
+function defaultSlippage(asset: string): number {
+  return LOW_LIQUIDITY_ASSETS.has(asset) ? 0.05 : 0.03;
+}
+
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
 import type { TxMetadata } from './safeguards/types.js';
@@ -1185,7 +1191,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       from: 'USDC',
       to: params.asset,
       amount: params.usdAmount,
-      maxSlippage: params.maxSlippage ?? 0.03,
+      maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
       _bypassInvestmentGuard: true,
     });
 
@@ -1303,7 +1309,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       from: params.asset,
       to: 'USDC',
       amount: sellAmountAsset,
-      maxSlippage: params.maxSlippage ?? 0.03,
+      maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
       _bypassInvestmentGuard: true,
     });
 
@@ -1587,57 +1593,108 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INSUFFICIENT_INVESTMENT', `No positions in strategy '${params.strategy}'`);
     }
 
+    const swapAdapter = this.registry.listSwap()[0];
+    if (!swapAdapter?.addSwapToTx) {
+      throw new T2000Error('PROTOCOL_UNAVAILABLE', 'Swap adapter does not support composable PTB');
+    }
+
+    let swapMetas: Array<{ asset: string; amount: number; estimatedOut: number; toDecimals: number }> = [];
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      swapMetas = [];
+      const tx = new Transaction();
+      tx.setSender(this._address);
+
+      const usdcOutputs: TransactionObjectArgument[] = [];
+
+      for (const pos of stratPositions) {
+        const assetInfo = SUPPORTED_ASSETS[pos.asset as keyof typeof SUPPORTED_ASSETS];
+
+        const bal = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
+        const walletAmount = Number(bal.totalBalance) / (10 ** assetInfo.decimals);
+        const gasReserve = pos.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+        const sellAmount = Math.max(0, Math.min(pos.totalAmount, walletAmount) - gasReserve);
+
+        if (sellAmount <= 0) continue;
+
+        const rawAmount = BigInt(Math.floor(sellAmount * 10 ** assetInfo.decimals));
+
+        let splitCoin: TransactionObjectArgument;
+        if (pos.asset === 'SUI') {
+          [splitCoin] = tx.splitCoins(tx.gas, [rawAmount]);
+        } else {
+          const coins = await this._fetchCoins(assetInfo.type);
+          if (coins.length === 0) continue;
+          const merged = this._mergeCoinsInTx(tx, coins);
+          [splitCoin] = tx.splitCoins(merged, [rawAmount]);
+        }
+
+        const slippageBps = LOW_LIQUIDITY_ASSETS.has(pos.asset) ? 500 : 300;
+
+        const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx!(
+          tx, this._address, splitCoin, pos.asset, 'USDC', sellAmount, slippageBps,
+        );
+
+        usdcOutputs.push(outputCoin);
+        swapMetas.push({ asset: pos.asset, amount: sellAmount, estimatedOut, toDecimals });
+      }
+
+      if (usdcOutputs.length > 1) {
+        tx.mergeCoins(usdcOutputs[0], usdcOutputs.slice(1));
+      }
+      tx.transferObjects([usdcOutputs[0]], this._address);
+
+      return tx;
+    });
+
+    const digest = gasResult.digest;
+    const now = new Date().toISOString();
     const sells: StrategySellResult['sells'] = [];
     let totalProceeds = 0;
     let totalPnL = 0;
-    let totalGas = 0;
-    let gasMethod: import('./types.js').GasMethod = 'self-funded';
 
-    for (const pos of stratPositions) {
-      const fullAmount = pos.totalAmount;
-
-      // Sell only the strategy's tracked amount, not the entire wallet balance.
-      // Get current price to convert asset amount → USD amount.
-      const swapAdapter = this.registry.listSwap()[0];
-      let assetPrice = 1;
-      try {
-        if (swapAdapter) {
-          if (pos.asset === 'SUI') {
-            assetPrice = await swapAdapter.getPoolPrice();
-          } else {
-            const q = await swapAdapter.getQuote('USDC', pos.asset, 1);
-            assetPrice = q.expectedOutput > 0 ? 1 / q.expectedOutput : 1;
-          }
-        }
-      } catch { /* use fallback price */ }
-      const strategyUsdValue = fullAmount * assetPrice;
-
-      const result = await this.investSell({
-        asset: pos.asset as InvestmentAsset,
-        usdAmount: strategyUsdValue,
-        _strategyOnly: true,
-      });
+    for (const meta of swapMetas) {
+      const usdValue = meta.estimatedOut / (10 ** meta.toDecimals);
+      const price = meta.amount > 0 ? usdValue / meta.amount : 0;
 
       const pnl = this.portfolio.recordStrategySell(params.strategy, {
-        id: `strat_sell_${Date.now()}_${pos.asset}`,
+        id: `strat_sell_${Date.now()}_${meta.asset}`,
         type: 'sell',
-        asset: pos.asset,
-        amount: fullAmount,
-        price: result.price,
-        usdValue: result.usdValue,
-        fee: result.fee,
-        tx: result.tx,
-        timestamp: new Date().toISOString(),
+        asset: meta.asset,
+        amount: meta.amount,
+        price,
+        usdValue,
+        fee: 0,
+        tx: digest,
+        timestamp: now,
       });
 
-      sells.push({ asset: pos.asset, amount: result.amount, usdValue: result.usdValue, realizedPnL: pnl, tx: result.tx });
-      totalProceeds += result.usdValue;
+      this.portfolio.recordSell({
+        id: `inv_sell_${Date.now()}_${meta.asset}`,
+        type: 'sell',
+        asset: meta.asset,
+        amount: meta.amount,
+        price,
+        usdValue,
+        fee: 0,
+        tx: digest,
+        timestamp: now,
+      });
+
+      sells.push({ asset: meta.asset, amount: meta.amount, usdValue, realizedPnL: pnl, tx: digest });
+      totalProceeds += usdValue;
       totalPnL += pnl;
-      totalGas += result.gasCost;
-      gasMethod = result.gasMethod;
     }
 
-    return { success: true, strategy: params.strategy, totalProceeds, realizedPnL: totalPnL, sells, gasCost: totalGas, gasMethod };
+    return {
+      success: true,
+      strategy: params.strategy,
+      totalProceeds,
+      realizedPnL: totalPnL,
+      sells,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
   }
 
   async rebalanceStrategy(params: { strategy: string }): Promise<StrategyRebalanceResult> {
@@ -1675,46 +1732,182 @@ export class T2000 extends EventEmitter<T2000Events> {
       beforeWeights[pos.asset] = w;
     }
 
-    const trades: StrategyRebalanceResult['trades'] = [];
     const threshold = 3; // only rebalance if > 3% off
+
+    // Classify each asset as a buy or sell
+    const sellOps: Array<{ asset: string; usdAmount: number; assetAmount: number }> = [];
+    const buyOps: Array<{ asset: string; usdAmount: number }> = [];
 
     for (const [asset, targetPct] of Object.entries(definition.allocations)) {
       const currentPct = currentWeights[asset] ?? 0;
       const diff = targetPct - currentPct;
-
       if (Math.abs(diff) < threshold) continue;
 
       const usdDiff = totalValue * (Math.abs(diff) / 100);
       if (usdDiff < 1) continue;
 
       if (diff > 0) {
-        const result = await this.investBuy({ asset: asset as InvestmentAsset, usdAmount: usdDiff });
-        this.portfolio.recordStrategyBuy(params.strategy, {
-          id: `strat_rebal_${Date.now()}_${asset}`,
-          type: 'buy',
-          asset,
-          amount: result.amount,
-          price: result.price,
-          usdValue: usdDiff,
-          fee: result.fee,
-          tx: result.tx,
-          timestamp: new Date().toISOString(),
-        });
-        trades.push({ action: 'buy', asset, usdAmount: usdDiff, amount: result.amount, tx: result.tx });
+        buyOps.push({ asset, usdAmount: usdDiff });
       } else {
-        const result = await this.investSell({ asset: asset as InvestmentAsset, usdAmount: usdDiff });
+        const price = prices[asset] ?? 1;
+        const assetAmount = price > 0 ? usdDiff / price : 0;
+        sellOps.push({ asset, usdAmount: usdDiff, assetAmount });
+      }
+    }
+
+    if (sellOps.length === 0 && buyOps.length === 0) {
+      return { success: true, strategy: params.strategy, trades: [], beforeWeights, afterWeights: { ...beforeWeights }, targetWeights: { ...definition.allocations } };
+    }
+
+    if (!swapAdapter?.addSwapToTx) {
+      throw new T2000Error('PROTOCOL_UNAVAILABLE', 'Swap adapter does not support composable PTB');
+    }
+
+    // Execute all sells and buys in a single PTB
+    const tradeMetas: Array<{ action: 'buy' | 'sell'; asset: string; usdAmount: number; estimatedOut: number; toDecimals: number }> = [];
+
+    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+      tradeMetas.length = 0;
+      const tx = new Transaction();
+      tx.setSender(this._address);
+
+      const usdcCoins: TransactionObjectArgument[] = [];
+
+      // Phase 1: Sells (asset → USDC), collecting USDC output coins
+      for (const sell of sellOps) {
+        const assetInfo = SUPPORTED_ASSETS[sell.asset as keyof typeof SUPPORTED_ASSETS];
+
+        const bal = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
+        const walletAmount = Number(bal.totalBalance) / (10 ** assetInfo.decimals);
+        const gasReserve = sell.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
+        const sellAmount = Math.max(0, Math.min(sell.assetAmount, walletAmount) - gasReserve);
+
+        if (sellAmount <= 0) continue;
+
+        const rawAmount = BigInt(Math.floor(sellAmount * 10 ** assetInfo.decimals));
+
+        let splitCoin: TransactionObjectArgument;
+        if (sell.asset === 'SUI') {
+          [splitCoin] = tx.splitCoins(tx.gas, [rawAmount]);
+        } else {
+          const coins = await this._fetchCoins(assetInfo.type);
+          if (coins.length === 0) continue;
+          const merged = this._mergeCoinsInTx(tx, coins);
+          [splitCoin] = tx.splitCoins(merged, [rawAmount]);
+        }
+        const slippageBps = LOW_LIQUIDITY_ASSETS.has(sell.asset) ? 500 : 300;
+
+        const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx!(
+          tx, this._address, splitCoin, sell.asset, 'USDC', sellAmount, slippageBps,
+        );
+
+        usdcCoins.push(outputCoin);
+        tradeMetas.push({ action: 'sell', asset: sell.asset, usdAmount: sell.usdAmount, estimatedOut, toDecimals });
+      }
+
+      // Phase 2: Merge sell proceeds with wallet USDC for buys
+      if (buyOps.length > 0) {
+        const walletUsdc = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
+        if (walletUsdc.length > 0) {
+          usdcCoins.push(this._mergeCoinsInTx(tx, walletUsdc));
+        }
+
+        if (usdcCoins.length === 0) {
+          throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC available for rebalance buys');
+        }
+
+        // Merge all USDC into one coin
+        if (usdcCoins.length > 1) {
+          tx.mergeCoins(usdcCoins[0], usdcCoins.slice(1));
+        }
+        const mergedUsdc = usdcCoins[0];
+
+        // Phase 3: Buys (USDC → asset)
+        const splitAmounts = buyOps.map(b =>
+          BigInt(Math.floor(b.usdAmount * 10 ** SUPPORTED_ASSETS.USDC.decimals)),
+        );
+        const splitCoins = tx.splitCoins(mergedUsdc, splitAmounts);
+        const outputCoins: TransactionObjectArgument[] = [];
+
+        for (let i = 0; i < buyOps.length; i++) {
+          const buy = buyOps[i];
+          const slippageBps = LOW_LIQUIDITY_ASSETS.has(buy.asset) ? 500 : 300;
+
+          const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx!(
+            tx, this._address, splitCoins[i], 'USDC', buy.asset, buy.usdAmount, slippageBps,
+          );
+
+          outputCoins.push(outputCoin);
+          tradeMetas.push({ action: 'buy', asset: buy.asset, usdAmount: buy.usdAmount, estimatedOut, toDecimals });
+        }
+
+        tx.transferObjects(outputCoins, this._address);
+      }
+
+      return tx;
+    });
+
+    const digest = gasResult.digest;
+    const now = new Date().toISOString();
+    const trades: StrategyRebalanceResult['trades'] = [];
+
+    for (const meta of tradeMetas) {
+      const rawAmount = meta.estimatedOut / (10 ** meta.toDecimals);
+
+      if (meta.action === 'sell') {
+        const price = meta.usdAmount > 0 && rawAmount > 0 ? meta.usdAmount / rawAmount : prices[meta.asset] ?? 0;
+        const assetAmount = prices[meta.asset] > 0 ? meta.usdAmount / prices[meta.asset] : 0;
+
         this.portfolio.recordStrategySell(params.strategy, {
-          id: `strat_rebal_${Date.now()}_${asset}`,
+          id: `strat_rebal_${Date.now()}_${meta.asset}`,
           type: 'sell',
-          asset,
-          amount: result.amount,
-          price: result.price,
-          usdValue: result.usdValue,
-          fee: result.fee,
-          tx: result.tx,
-          timestamp: new Date().toISOString(),
+          asset: meta.asset,
+          amount: assetAmount,
+          price,
+          usdValue: meta.usdAmount,
+          fee: 0,
+          tx: digest,
+          timestamp: now,
         });
-        trades.push({ action: 'sell', asset, usdAmount: result.usdValue, amount: result.amount, tx: result.tx });
+        this.portfolio.recordSell({
+          id: `inv_rebal_${Date.now()}_${meta.asset}`,
+          type: 'sell',
+          asset: meta.asset,
+          amount: assetAmount,
+          price,
+          usdValue: meta.usdAmount,
+          fee: 0,
+          tx: digest,
+          timestamp: now,
+        });
+        trades.push({ action: 'sell', asset: meta.asset, usdAmount: meta.usdAmount, amount: assetAmount, tx: digest });
+      } else {
+        const amount = rawAmount;
+        const price = meta.usdAmount / amount;
+
+        this.portfolio.recordBuy({
+          id: `inv_rebal_${Date.now()}_${meta.asset}`,
+          type: 'buy',
+          asset: meta.asset,
+          amount,
+          price,
+          usdValue: meta.usdAmount,
+          fee: 0,
+          tx: digest,
+          timestamp: now,
+        });
+        this.portfolio.recordStrategyBuy(params.strategy, {
+          id: `strat_rebal_${Date.now()}_${meta.asset}`,
+          type: 'buy',
+          asset: meta.asset,
+          amount,
+          price,
+          usdValue: meta.usdAmount,
+          fee: 0,
+          tx: digest,
+          timestamp: now,
+        });
+        trades.push({ action: 'buy', asset: meta.asset, usdAmount: meta.usdAmount, amount, tx: digest });
       }
     }
 

@@ -324,6 +324,7 @@ export interface StrategySellResult {
     realizedPnL: number;
     tx: string;
   }>;
+  failed?: Array<{ asset: string; reason: string }>;
   gasCost: number;
   gasMethod: GasMethod;
 }

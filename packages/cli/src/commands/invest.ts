@@ -246,6 +246,11 @@ export function registerInvest(program: Command) {
           const pnlSign = sell.realizedPnL >= 0 ? '+' : '';
           printKeyValue(sell.asset, `${formatAssetAmount(sell.amount, sell.asset)} → ${formatUsd(sell.usdValue)}  ${pnlColor(`${pnlSign}${formatUsd(sell.realizedPnL)}`)}`);
         }
+        if (result.failed && result.failed.length > 0) {
+          for (const f of result.failed) {
+            console.error(pc.yellow(`  ⚠ ${f.asset}: ${f.reason}`));
+          }
+        }
         printSeparator();
         printKeyValue('Total proceeds', formatUsd(result.totalProceeds));
         const rpnlColor = result.realizedPnL >= 0 ? pc.green : pc.red;
