@@ -656,7 +656,7 @@
 
 ## Investment Account Launch — Announcement Strategy
 
-### Format: Video + Thread (11 tweets)
+### Format: Video + Thread (8 tweets)
 
 Interleaves CLI power (terminal screenshots) with AI intelligence (screen-recorded demos from t2000.ai/demo or `demo-video-invest.html`). Every tweet has an attachment.
 
@@ -726,20 +726,9 @@ AI: ☀️ MORNING BRIEFING
 
 ---
 
-**Tweet 4 — Portfolio P&L (terminal)**
+**Tweet 4 — Portfolio + Yield (web page screenshot)**
 
-**Attachment:** Terminal screenshot. Run `t2000 portfolio`. Screenshot showing:
-```
-  Investment Portfolio
-  ──────────────────────────────────────
-  BTC:  0.0070   Avg: $71,298  Now: $71,850  +$3.86 (+0.8%)    2.5% APY (suilend)
-  SUI:  26.32    Avg: $3.80    Now: $3.85    +$1.32 (+1.0%)    2.6% APY (suilend)
-  GOLD: 0.0510   Avg: $2,940   Now: $2,955   +$0.77 (+0.5%)    3.7% APY (navi)
-  ──────────────────────────────────────
-  Total invested:  $800.00
-  Current value:   $805.95
-  Unrealized P&L:  +$5.95 (+0.7%)
-```
+**Attachment:** Screenshot the "Earn while you hold" section from t2000.ai/invest — shows the portfolio terminal with yield APY columns (SUI, BTC, ETH, GOLD with prices + APY). Captures the full left panel (commands) + right panel (portfolio output).
 
 **@t2000ai:**
 > Cost basis. Unrealized P&L. Yield APY. Real-time.
@@ -781,114 +770,23 @@ AI: ✓ Repaid · ✓ Saved · ✓ Invested · Checking: $49
 
 ---
 
-**Tweet 6 — Strategies (terminal)**
+**Tweet 6 — Strategies + DCA (web page screenshot)**
 
-**Attachment:** Terminal screenshot. Run `t2000 invest strategy buy all-weather 500`. Screenshot showing:
-```
-  ✓ Strategy buy: all-weather ($500.00)
-  ──────────────────────────────────────
-  BTC:   $150.00 → 0.0021 BTC    (30%)
-  ETH:   $100.00 → 0.0385 ETH    (20%)
-  SUI:   $100.00 → 26.32 SUI     (20%)
-  GOLD:  $150.00 → 0.051 oz      (30%)
-  ──────────────────────────────────────
-  Tx:  https://suiscan.xyz/mainnet/tx/...
-```
+**Attachment:** Screenshot the full "Strategies + Auto-Invest" section from t2000.ai/invest — shows the 5 strategy cards (bluechip, all-weather, safe-haven, layer1, sui-heavy) with allocations, plus the strategy buy and auto-invest terminal examples below. One screenshot captures both features.
 
 **@t2000ai:**
-> `t2000 invest strategy buy all-weather 500`
+> Strategies. DCA. One section, one command.
 >
-> BTC 30%. ETH 20%. SUI 20%. GOLD 30%.
->
-> Four assets. One transaction.
+> Pick all-weather, bluechip, or build your own. Set a schedule. Your agent runs it every week.
 
 **@funkii QT:**
-> Crypto and commodities in one command. No rebalancing app. No manual splits. The agent does it atomically.
+> Crypto and commodities in one command. DCA on autopilot. No rebalancing app. The agent does it atomically.
 
 ---
 
-**Tweet 7 — DCA Advisor (AI demo)**
+**Tweet 7 — Margin Trading (coming soon teaser)**
 
-**Attachment:** Screen-record the "DCA Advisor" chat demo from t2000.ai/demo (15-20s). Shows:
-```
-User: "I want to invest $100/month. What do you recommend?"
-AI: Strategy: all-weather
-    Allocation: BTC 30% · ETH 20% · SUI 20% · GOLD 30%
-    Frequency: Weekly · $25/week
-User: "Set it up"
-AI: ✓ Created: $25/week → all-weather · Active ✓
-```
-
-**@t2000ai:**
-> "I want to invest $100/month."
->
-> AI picks the strategy, sets the schedule, runs it.
->
-> Your agent invests while you sleep.
-
-**@funkii QT:**
-> DCA shouldn't require an app. Tell the agent what you want. It sets it up. It runs it. Every week.
-
----
-
-**Tweet 8 — Yield + Rebalance (terminal)**
-
-**Attachment:** Terminal screenshot. Run both commands, screenshot together:
-```
-❯ t2000 invest earn BTC
-  ✓ BTC deposited into NAVI Protocol (1.85% APY)
-  Amount:  0.0070 BTC
-  APY:  1.85%
-
-❯ t2000 invest rebalance --dry-run
-  Rebalance Preview
-    BTC: NAVI Protocol (1.85%) → Suilend (2.48%)
-    Gain: +0.63% APY
-```
-Or screen-record the "Earn + Rebalance BTC" CLI demo from t2000.ai/demo.
-
-**@t2000ai:**
-> Earn yield while you hold. Rates change? One command moves to the best protocol.
->
-> `t2000 invest earn BTC`
-> `t2000 invest rebalance`
-
-**@funkii QT:**
-> Price exposure + lending yield + auto-optimization. Your investment works twice.
-
----
-
-**Tweet 9 — Auto-invest (terminal)**
-
-**Attachment:** Terminal screenshot. Run both commands, screenshot together:
-```
-❯ t2000 invest auto setup 50 weekly bluechip
-  ✓ Auto-invest created
-  Strategy:  bluechip
-  Amount:    $50/week
-  Next run:  Feb 24, 2026
-
-❯ t2000 invest auto status
-  Active DCA Schedules
-  ──────────────────────────────────────
-  bluechip  $50/week  Next: Feb 24  Status: active
-```
-
-**@t2000ai:**
-> `t2000 invest auto setup 50 weekly bluechip`
->
-> $50/week. Bluechip strategy. Automated.
->
-> Your agent never forgets to invest.
-
-**@funkii QT:**
-> Set it once. The agent runs it forever. Dollar-cost averaging without a single manual trade.
-
----
-
-**Tweet 10 — Margin Trading (coming soon teaser)**
-
-**Attachment:** Screenshot from t2000.ai/invest (margin section) showing "Margin trading — coming soon" with Leverage / Collateral / Risk Management cards. Or screenshot the margin title card from `demo-video-invest.html` (scene 10).
+**Attachment:** Screenshot the "Margin trading — Coming Soon" section from t2000.ai/invest — the amber-accented section with 3 feature cards (Leverage, Collateral, Risk Management). Or screen-record the "Margin Trading" AI chat demo from t2000.ai/demo.
 
 **@t2000ai:**
 > What's next? Margin trading.
@@ -902,7 +800,7 @@ Or screen-record the "Earn + Rebalance BTC" CLI demo from t2000.ai/demo.
 
 ---
 
-**Tweet 11 — CTA**
+**Tweet 8 — CTA**
 
 **Attachment:** None (text only — clean CTA).
 
@@ -944,16 +842,13 @@ AI: ⚠️ That drops your savings buffer below $50.
 | Tweet | Type | Source | How to produce |
 |-------|------|--------|---------------|
 | 1 | Video (60s) | `marketing/demo-video-invest.html` | Open in browser, screen-record at 1280×720 |
-| 2 | Terminal screenshot | `t2000 invest buy 500 BTC` | Run in terminal, screenshot output |
+| 2 | Terminal screenshot | `t2000 invest buy 500 BTC` or demo → Buy Bitcoin | Run in terminal or screen-record demo |
 | 3 | Video (15-20s) | t2000.ai/demo → Morning Briefing | Screen-record the live AI demo |
-| 4 | Terminal screenshot | `t2000 portfolio` | Run in terminal, screenshot output |
+| 4 | Web page screenshot | t2000.ai/invest → "Earn while you hold" section | Screenshot the yield section with portfolio |
 | 5 | Video (15-20s) | t2000.ai/demo → I Just Got Paid | Screen-record the live AI demo |
-| 6 | Terminal screenshot | `t2000 invest strategy buy all-weather 500` | Run in terminal, screenshot output |
-| 7 | Video (15-20s) | t2000.ai/demo → DCA Advisor | Screen-record the live AI demo |
-| 8 | Terminal screenshot | `t2000 invest earn BTC` + `t2000 invest rebalance --dry-run` | Run both, screenshot together |
-| 9 | Terminal screenshot | `t2000 invest auto setup` + `auto status` | Run both, screenshot together |
-| 10 | Screenshot | t2000.ai/invest margin section or demo → Margin Trading | Screenshot the margin card or AI demo |
-| 11 | None | — | Text-only CTA |
+| 6 | Web page screenshot | t2000.ai/invest → "Strategies + Auto-Invest" section | Screenshot full section (cards + terminals) |
+| 7 | Web page screenshot | t2000.ai/invest → Margin "Coming Soon" section | Screenshot the amber margin cards |
+| 8 | None | — | Text-only CTA |
 | What If | Video (20s) | t2000.ai/demo → What If | Screen-record the live AI demo |
 
 ### Timing & Distribution
