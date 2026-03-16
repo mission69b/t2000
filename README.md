@@ -47,7 +47,13 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
   │  Welcome to t2000                       │
   │  Your personal AI financial advisor     │
   └─────────────────────────────────────────┘
-  ✓ Wallet created · 5 accounts
+  Creating agent wallet...
+  ✓ Keypair generated
+  ✓ Network  Sui mainnet
+  ✓ Gas sponsorship  enabled
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment
+  🎉 Bank account created
+  Address: 0x8b3e...d412
   ✓ Claude connected
   ✓ Telegram connected
   ✓ Safeguards set

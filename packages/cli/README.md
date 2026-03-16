@@ -27,9 +27,15 @@ t2000 init
   └─────────────────────────────────────────┘
 
   Step 1 of 5 — Create wallet
+
+  Creating agent wallet...
   ✓ Keypair generated
-  ✓ Sui mainnet
-  ✓ 5 accounts: Checking, Savings, Credit, Exchange, Investment
+  ✓ Network  Sui mainnet
+  ✓ Gas sponsorship  enabled
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment
+
+  🎉 Bank account created
+  Address: 0x8b3e...d412
 
   Step 3 of 5 — Connect AI
   Which LLM provider? ❯ Claude (Anthropic)

@@ -409,7 +409,13 @@ function QuickStart({
         {"  │  "}{S.b("Welcome to t2000")}{"                       │\n"}
         {"  │  Your personal AI financial advisor     │\n"}
         {"  └─────────────────────────────────────────┘\n\n"}
-        {"  "}{S.g("✓")} Wallet created · 5 accounts{"\n"}
+        {"  "}{S.m("Creating agent wallet...")}{"\n"}
+        {"  "}{S.g("✓")} Keypair generated{"\n"}
+        {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
+        {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
+        {"  "}🎉 {S.g("Bank account created")}{"\n"}
+        {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
         {"  "}{S.g("✓")} Claude connected{"\n"}
         {"  "}{S.g("✓")} Telegram connected{"\n"}
         {"  "}{S.g("✓")} Safeguards set{"\n\n"}
@@ -696,7 +702,13 @@ function CliWalletSection() {
         {"│  "}{S.b("Welcome to t2000")}{"                       │\n"}
         {"│  Your personal AI financial advisor     │\n"}
         {"└─────────────────────────────────────────┘\n\n"}
-        {S.g("✓")} Wallet created · 5 accounts{"\n"}
+        {S.m("Creating agent wallet...")}{"\n"}
+        {S.g("✓")} Keypair generated{"\n"}
+        {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
+        {S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n"}
+        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
+        {"🎉 "}{S.g("Bank account created")}{"\n"}
+        {"Address: "}{S.a("0x8b3e...d412")}{"\n\n"}
         {S.g("✓")} Claude connected{"\n"}
         {S.g("✓")} Telegram connected{"\n"}
         {S.g("✓")} Safeguards set{"\n\n"}

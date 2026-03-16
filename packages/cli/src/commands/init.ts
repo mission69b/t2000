@@ -73,13 +73,30 @@ export function registerInit(program: Command) {
           const pinConfirm = await password({ message: 'Confirm PIN:' });
           if (pin !== pinConfirm) throw new Error('PINs do not match');
 
-          const { agent, address: addr } = await T2000.init({ pin, keyPath: opts.key, sponsored: true });
+          printBlank();
+          printInfo('Creating agent wallet...');
+
+          const { agent, address: addr, sponsored } = await T2000.init({ pin, keyPath: opts.key, sponsored: opts.sponsor });
           address = addr;
           await saveSession(pin);
 
           printSuccess('Keypair generated');
-          printSuccess('Sui mainnet');
-          printSuccess('5 accounts: Checking, Savings, Credit, Exchange, Investment');
+          printSuccess(`Network ${pc.dim('Sui mainnet')}`);
+          printSuccess(`Gas sponsorship ${pc.dim(sponsored ? 'enabled' : 'disabled')}`);
+
+          printBlank();
+          printInfo('Setting up accounts...');
+          printLine(
+            `  ${pc.green('✓')} Checking  ` +
+            `${pc.green('✓')} Savings  ` +
+            `${pc.green('✓')} Credit  ` +
+            `${pc.green('✓')} Exchange  ` +
+            `${pc.green('✓')} Investment`
+          );
+
+          printBlank();
+          printLine(`  🎉 ${pc.green('Bank account created')}`);
+          printLine(`  Address: ${pc.yellow(address.slice(0, 6) + '...' + address.slice(-4))}`);
           printBlank();
         }
 

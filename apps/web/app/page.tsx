@@ -489,7 +489,7 @@ export default function Home() {
               <span className="text-muted/40">{`# Install + guided setup`}</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">npm i -g @t2000/cli</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">t2000 init</span>{"\n"}
-              <span className="text-muted/50">{"\n"}  {"✓"} Wallet created{"\n"}  {"✓"} Claude connected{"\n"}  {"✓"} Telegram connected{"\n"}  {"✓"} Safeguards set</span>{"\n\n"}
+              <span className="text-muted/50">{"\n"}  Creating agent wallet...{"\n"}  {"✓"} Keypair generated{"\n"}  {"✓"} Gas sponsorship enabled{"\n"}  {"✓"} Checking  {"✓"} Savings  {"✓"} Credit  {"✓"} Exchange  {"✓"} Investment{"\n"}  🎉 Bank account created{"\n"}  {"✓"} Claude connected{"\n"}  {"✓"} Safeguards set</span>{"\n\n"}
               <span className="text-muted/40">{`# Start your advisor`}</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">t2000 gateway</span>{"\n"}
               <span className="text-muted/50">{"\n"}  {"✓"} WebChat at localhost:2000{"\n"}  {"✓"} Telegram connected{"\n"}  {"✓"} Heartbeat started</span>{"\n\n"}

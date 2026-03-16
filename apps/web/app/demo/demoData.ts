@@ -592,9 +592,13 @@ export const demos: Demo[] = [
 
       { type: "info", text: "", delay: 200 },
       { type: "output", text: "  Step 1 of 5 — Create wallet", delay: 400 },
+      { type: "info", text: "  Creating agent wallet...", delay: 400 },
       { type: "success", text: "  ✓ Keypair generated", delay: 300 },
-      { type: "success", text: "  ✓ Sui mainnet", delay: 200 },
-      { type: "success", text: "  ✓ 5 accounts: Checking, Savings, Credit, Exchange, Investment", delay: 200 },
+      { type: "success", text: "  ✓ Network  Sui mainnet", delay: 200 },
+      { type: "success", text: "  ✓ Gas sponsorship  enabled", delay: 200 },
+      { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment", delay: 300 },
+      { type: "info", text: "  🎉 Bank account created", delay: 300 },
+      { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
       { type: "info", text: "", delay: 400 },
       { type: "output", text: "  Step 3 of 5 — Connect AI", delay: 400 },

@@ -705,9 +705,17 @@ Guided setup wizard. Browser auto-opens API key dashboards and BotFather.
   Step 1 of 5 — Create wallet
   Create PIN (min 4 chars): ****
   Confirm PIN: ****
+
+  Creating agent wallet...
   ✓ Keypair generated
-  ✓ Sui mainnet
-  ✓ 5 accounts: Checking, Savings, Credit, Exchange, Investment
+  ✓ Network  Sui mainnet
+  ✓ Gas sponsorship  enabled
+
+  Setting up accounts...
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment
+
+  🎉 Bank account created
+  Address: 0x8b3e...d412
 
   Step 3 of 5 — Connect AI
   Which LLM provider? (use arrow keys)
