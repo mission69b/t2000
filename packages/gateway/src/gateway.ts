@@ -169,12 +169,6 @@ export class Gateway {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
 
-    this.logger.info('Gateway ready', {
-      webchat: results.webchatUrl,
-      telegram: results.telegramConnected,
-      heartbeat: results.heartbeatTasks,
-    });
-
     return results;
   }
 

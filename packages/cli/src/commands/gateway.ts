@@ -72,11 +72,15 @@ export function registerGateway(program: Command) {
 
         console.log('');
         const truncAddr = info.address.slice(0, 6) + '...' + info.address.slice(-4);
-        printSuccess(`Agent: ${truncAddr}`);
-        printSuccess(`LLM: ${info.llmProvider === 'anthropic' ? 'Claude' : 'GPT'} (${info.llmModel})`);
-        if (info.webchatUrl) printSuccess(`WebChat: ${pc.underline(info.webchatUrl)}`);
-        if (info.telegramConnected) printSuccess('Telegram: connected');
-        if (info.heartbeatTasks > 0) printSuccess(`Heartbeat: ${info.heartbeatTasks} tasks`);
+        printSuccess(`Agent unlocked (${truncAddr})`);
+        printSuccess(`${info.llmProvider === 'anthropic' ? 'Claude' : 'GPT'} connected (${info.llmModel})`);
+        if (info.webchatUrl) printSuccess(`WebChat at ${pc.underline(info.webchatUrl)}`);
+        if (info.telegramConnected) {
+          printSuccess('Telegram connected');
+        } else if (opts.telegram) {
+          printWarning('Telegram not connected');
+        }
+        if (info.heartbeatTasks > 0) printSuccess(`Heartbeat started (${info.heartbeatTasks} tasks)`);
         console.log('');
         printSuccess(pc.bold('Ready — talk to your agent'));
         console.log('');
