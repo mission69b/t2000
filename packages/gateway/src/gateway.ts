@@ -223,9 +223,15 @@ export class Gateway {
       }
     });
 
+    const TELEGRAM_TIMEOUT_MS = 15_000;
+
     const attemptConnect = async (): Promise<boolean> => {
+      this.logger.info('Connecting to Telegram...');
       try {
-        await telegram.start();
+        await Promise.race([
+          telegram.start(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timed out (15s)')), TELEGRAM_TIMEOUT_MS)),
+        ]);
         this.channels.push(telegram);
         this.agentLoops.set(telegram.id, loop);
         results.telegramConnected = true;
