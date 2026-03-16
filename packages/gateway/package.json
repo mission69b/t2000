@@ -1,6 +1,6 @@
 {
   "name": "@t2000/gateway",
-  "version": "0.18.5",
+  "version": "0.18.6",
   "description": "Personal AI financial advisor — local gateway with Telegram, WebChat, and heartbeat",
   "type": "module",
   "main": "./dist/index.js",
