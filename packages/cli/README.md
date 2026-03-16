@@ -1,6 +1,6 @@
 # @t2000/cli
 
-Your personal AI financial advisor on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, invest, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
+A bank account for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, invest, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -23,7 +23,7 @@ t2000 init
 
   ┌─────────────────────────────────────────┐
   │  Welcome to t2000                       │
-  │  Your personal AI financial advisor     │
+  │  A bank account for AI agents           │
   └─────────────────────────────────────────┘
 
   Step 1 of 5 — Create wallet

@@ -7,7 +7,7 @@ const LINES: TerminalLine[] = [
   { type: "command", text: "❯ t2000 init", delay: 0 },
   { type: "output", text: "", delay: 400 },
   { type: "output", text: "  Welcome to t2000", delay: 80 },
-  { type: "info", text: "  Your personal AI financial advisor", delay: 80 },
+  { type: "info", text: "  A bank account for AI agents", delay: 80 },
   { type: "output", text: "", delay: 80 },
   { type: "info", text: "  Creating agent wallet...", delay: 400 },
   { type: "success", text: "  ✓ Keypair generated", delay: 300 },

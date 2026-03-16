@@ -311,7 +311,7 @@ function OutroScene() {
       <div
         className={`font-serif italic text-base sm:text-lg text-[var(--cw-muted)] mt-3 transition-opacity duration-700 delay-300 ${visible ? "opacity-100" : "opacity-0"}`}
       >
-        Your personal AI financial advisor.
+        A bank account for AI agents.
       </div>
       <div
         className={`font-mono text-sm text-accent bg-[rgba(0,214,143,0.12)] px-5 py-3 rounded-lg border border-[rgba(0,214,143,0.1)] mt-6 transition-opacity duration-700 delay-500 ${visible ? "opacity-100" : "opacity-0"}`}

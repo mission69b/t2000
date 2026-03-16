@@ -39,7 +39,7 @@ export function createProgram(): Command {
 
   program
     .name('t2000')
-    .description('Your personal AI financial advisor')
+    .description('A bank account for AI agents')
     .version(`${CLI_VERSION} (beta)`)
     .option('--json', 'Output in JSON format')
     .hook('preAction', (thisCommand) => {

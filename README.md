@@ -2,7 +2,7 @@
   <strong>t2000</strong>
 </p>
 
-<h3 align="center">Your personal AI financial advisor.</h3>
+<h3 align="center">A bank account for AI agents.</h3>
 
 <p align="center">
   Checking · Savings · Credit · Investment · Exchange · x402 Pay · MCP
@@ -45,7 +45,7 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
 ❯ t2000 init
   ┌─────────────────────────────────────────┐
   │  Welcome to t2000                       │
-  │  Your personal AI financial advisor     │
+  │  A bank account for AI agents           │
   └─────────────────────────────────────────┘
   Creating agent wallet...
   ✓ Keypair generated
@@ -120,7 +120,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
-| **MCP** | Personal AI financial advisor — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
+| **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
 

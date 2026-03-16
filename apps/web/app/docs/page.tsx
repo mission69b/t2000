@@ -385,7 +385,7 @@ function QuickStart({
         Up and running <em className="italic text-accent">in 45 seconds.</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        t2000 is your personal AI financial advisor on Sui — checking, savings,
+        t2000 is a bank account for AI agents on Sui — checking, savings,
         credit, and investment via MCP. Works with Claude Desktop, Cursor, and Windsurf.
       </p>
 
@@ -405,7 +405,7 @@ function QuickStart({
         {S.g("$")} t2000 init{"\n\n"}
         {"  ┌─────────────────────────────────────────┐\n"}
         {"  │  "}{S.b("Welcome to t2000")}{"                       │\n"}
-        {"  │  Your personal AI financial advisor     │\n"}
+        {"  │  A bank account for AI agents           │\n"}
         {"  └─────────────────────────────────────────┘\n\n"}
         {"  "}{S.m("Creating agent wallet...")}{"\n"}
         {"  "}{S.g("✓")} Keypair generated{"\n"}
@@ -698,7 +698,7 @@ function CliWalletSection() {
       <CodeBlock lang="output">
         {"┌─────────────────────────────────────────┐\n"}
         {"│  "}{S.b("Welcome to t2000")}{"                       │\n"}
-        {"│  Your personal AI financial advisor     │\n"}
+        {"│  A bank account for AI agents           │\n"}
         {"└─────────────────────────────────────────┘\n\n"}
         {S.m("Creating agent wallet...")}{"\n"}
         {S.g("✓")} Keypair generated{"\n"}

@@ -84,7 +84,7 @@ export function registerInit(program: Command) {
         console.log('');
         console.log(`  ┌─────────────────────────────────────────┐`);
         console.log(`  │  ${pc.bold('Welcome to t2000')}                       │`);
-        console.log(`  │  Your personal AI financial advisor     │`);
+        console.log(`  │  A bank account for AI agents           │`);
         console.log(`  └─────────────────────────────────────────┘`);
         console.log('');
 

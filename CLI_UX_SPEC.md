@@ -699,7 +699,7 @@ Guided setup wizard. Browser auto-opens API key dashboards.
 ```
   ┌─────────────────────────────────────────┐
   │  Welcome to t2000                       │
-  │  Your personal AI financial advisor     │
+  │  A bank account for AI agents           │
   └─────────────────────────────────────────┘
 
   Step 1 of 4 — Create wallet

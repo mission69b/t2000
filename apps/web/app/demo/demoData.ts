@@ -582,12 +582,12 @@ export const demos: Demo[] = [
     title: "Init — Guided Setup",
     description:
       "Wallet, AI, MCP, safeguards — one wizard. Browser opens API key pages.",
-    tweet: "t2000 init — zero friction setup for your personal AI financial advisor",
+    tweet: "t2000 init — zero friction setup for your AI agent's bank account",
     lines: [
       { type: "command", text: "❯ t2000 init", delay: 0 },
       { type: "output", text: "  ┌─────────────────────────────────────────┐", delay: 400 },
       { type: "output", text: "  │  Welcome to t2000                       │", delay: 100 },
-      { type: "output", text: "  │  Your personal AI financial advisor     │", delay: 100 },
+      { type: "output", text: "  │  A bank account for AI agents           │", delay: 100 },
       { type: "output", text: "  └─────────────────────────────────────────┘", delay: 100 },
 
       { type: "info", text: "", delay: 200 },

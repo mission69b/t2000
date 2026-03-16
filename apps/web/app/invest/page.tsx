@@ -459,7 +459,7 @@ export default function InvestPage() {
         {/* ── Footer ── */}
         <footer className="pt-8 pb-10 border-t border-border text-center">
           <p className="text-muted text-xs">
-            t2000 — Your personal AI financial advisor.{" "}
+            t2000 — A bank account for AI agents.{" "}
             <Link href="/" className="text-accent hover:underline">Home</Link>
             {" · "}
             <Link href="/docs" className="text-accent hover:underline">Docs</Link>

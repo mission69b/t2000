@@ -79,7 +79,7 @@ Write it as a list of natural language triggers the agent should match against.
 
 ## What is t2000?
 
-t2000 is your personal AI financial advisor on Sui — checking (send/receive),
+t2000 is a bank account for AI agents on Sui — checking (send/receive),
 savings (earn yield via NAVI + Suilend), credit (borrow against deposits),
 currency exchange (Cetus DEX), investment (SUI, BTC, ETH, GOLD with cost-basis P&L),
 and MCP-first messaging in one CLI command. USDC in, USDC out — multi-stablecoin optimization happens
