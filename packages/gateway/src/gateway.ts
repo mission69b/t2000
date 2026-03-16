@@ -118,9 +118,11 @@ export class Gateway {
       }
     }
 
-    // Start Telegram (with retry)
+    // Start Telegram in background — don't block WebChat or CLI output
     if (!this.options.noTelegram && this.config.channels.telegram?.enabled && this.config.channels.telegram.botToken) {
-      await this.startTelegram(tools, toolDefs, results);
+      this.startTelegram(tools, toolDefs, results).catch((err) => {
+        this.logger.error(`Telegram startup error: ${err instanceof Error ? err.message : String(err)}`);
+      });
     }
 
     // Start Heartbeat
@@ -223,15 +225,10 @@ export class Gateway {
       }
     });
 
-    const TELEGRAM_TIMEOUT_MS = 15_000;
-
     const attemptConnect = async (): Promise<boolean> => {
       this.logger.info('Connecting to Telegram...');
       try {
-        await Promise.race([
-          telegram.start(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timed out (15s)')), TELEGRAM_TIMEOUT_MS)),
-        ]);
+        await telegram.start();
         this.channels.push(telegram);
         this.agentLoops.set(telegram.id, loop);
         results.telegramConnected = true;
