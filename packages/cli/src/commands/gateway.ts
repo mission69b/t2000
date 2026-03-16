@@ -78,7 +78,7 @@ export function registerGateway(program: Command) {
         if (info.telegramConnected) {
           printSuccess('Telegram connected');
         } else if (opts.telegram) {
-          printInfo('Telegram connecting...');
+          printWarning('Telegram not connected');
         }
         if (info.heartbeatTasks > 0) printSuccess(`Heartbeat started (${info.heartbeatTasks} tasks)`);
         console.log('');

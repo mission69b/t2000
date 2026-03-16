@@ -118,11 +118,9 @@ export class Gateway {
       }
     }
 
-    // Start Telegram in background — don't block WebChat or CLI output
+    // Start Telegram
     if (!this.options.noTelegram && this.config.channels.telegram?.enabled && this.config.channels.telegram.botToken) {
-      this.startTelegram(tools, toolDefs, results).catch((err) => {
-        this.logger.error(`Telegram startup error: ${err instanceof Error ? err.message : String(err)}`);
-      });
+      await this.startTelegram(tools, toolDefs, results);
     }
 
     // Start Heartbeat

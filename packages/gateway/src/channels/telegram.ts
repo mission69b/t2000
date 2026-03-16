@@ -30,9 +30,11 @@ export class TelegramChannel implements Channel {
   }
 
   async start(): Promise<void> {
-    await this.bot.start({
-      onStart: () => {},
-      drop_pending_updates: true,
+    return new Promise<void>((resolve) => {
+      this.bot.start({
+        onStart: () => resolve(),
+        drop_pending_updates: true,
+      });
     });
   }
 
