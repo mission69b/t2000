@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type Anthropic from '@anthropic-ai/sdk';
 
 vi.mock('@anthropic-ai/sdk', () => {
   const mockCreate = vi.fn();
@@ -26,7 +25,15 @@ function createProvider(model?: string): AnthropicProvider {
   return new AnthropicProvider('sk-ant-test-key', model);
 }
 
-function anthropicResponse(content: Anthropic.ContentBlock[], usage = { input_tokens: 10, output_tokens: 5 }): Anthropic.Message {
+function textBlock(text: string) {
+  return { type: 'text' as const, text };
+}
+
+function toolUseBlock(id: string, name: string, input: Record<string, unknown>) {
+  return { type: 'tool_use' as const, id, name, input };
+}
+
+function anthropicResponse(content: unknown[], usage = { input_tokens: 10, output_tokens: 5 }) {
   return {
     id: 'msg_test',
     type: 'message',
@@ -35,7 +42,7 @@ function anthropicResponse(content: Anthropic.ContentBlock[], usage = { input_to
     model: 'claude-sonnet-4-20250514',
     stop_reason: 'end_turn',
     usage,
-  } as Anthropic.Message;
+  };
 }
 
 describe('AnthropicProvider', () => {
@@ -56,7 +63,7 @@ describe('AnthropicProvider', () => {
 
   it('extracts system message and passes separately', async () => {
     const provider = createProvider();
-    const response = anthropicResponse([{ type: 'text', text: 'Hello' }]);
+    const response = anthropicResponse([textBlock('Hello')]);
     __mockCreate.mockResolvedValueOnce(response);
 
     const messages: ChatMessage[] = [
@@ -77,7 +84,7 @@ describe('AnthropicProvider', () => {
   it('parses text-only response', async () => {
     const provider = createProvider();
     const response = anthropicResponse([
-      { type: 'text', text: 'Your balance is $100' },
+      textBlock('Your balance is $100'),
     ]);
     __mockCreate.mockResolvedValueOnce(response);
 
@@ -93,8 +100,8 @@ describe('AnthropicProvider', () => {
   it('parses tool_use blocks into toolCalls', async () => {
     const provider = createProvider();
     const response = anthropicResponse([
-      { type: 'text', text: 'Checking...' },
-      { type: 'tool_use', id: 'call_1', name: 't2000_balance', input: {} },
+      textBlock('Checking...'),
+      toolUseBlock('call_1', 't2000_balance', {}),
     ]);
     __mockCreate.mockResolvedValueOnce(response);
 
@@ -114,8 +121,8 @@ describe('AnthropicProvider', () => {
   it('handles multiple tool calls', async () => {
     const provider = createProvider();
     const response = anthropicResponse([
-      { type: 'tool_use', id: 'call_1', name: 't2000_balance', input: {} },
-      { type: 'tool_use', id: 'call_2', name: 't2000_rates', input: {} },
+      toolUseBlock('call_1', 't2000_balance', {}),
+      toolUseBlock('call_2', 't2000_rates', {}),
     ]);
     __mockCreate.mockResolvedValueOnce(response);
 
@@ -132,7 +139,7 @@ describe('AnthropicProvider', () => {
   it('converts tools to Anthropic format', async () => {
     const provider = createProvider();
     __mockCreate.mockResolvedValueOnce(
-      anthropicResponse([{ type: 'text', text: 'ok' }]),
+      anthropicResponse([textBlock('ok')]),
     );
 
     const tools: ToolDefinition[] = [{
@@ -160,7 +167,7 @@ describe('AnthropicProvider', () => {
   it('maps tool result messages to Anthropic tool_result format', async () => {
     const provider = createProvider();
     __mockCreate.mockResolvedValueOnce(
-      anthropicResponse([{ type: 'text', text: 'Done' }]),
+      anthropicResponse([textBlock('Done')]),
     );
 
     const messages: ChatMessage[] = [
@@ -184,7 +191,7 @@ describe('AnthropicProvider', () => {
   it('maps assistant messages with tool calls to Anthropic format', async () => {
     const provider = createProvider();
     __mockCreate.mockResolvedValueOnce(
-      anthropicResponse([{ type: 'text', text: 'ok' }]),
+      anthropicResponse([textBlock('ok')]),
     );
 
     const messages: ChatMessage[] = [
@@ -216,7 +223,7 @@ describe('AnthropicProvider', () => {
   it('omits tools param when no tools provided', async () => {
     const provider = createProvider();
     __mockCreate.mockResolvedValueOnce(
-      anthropicResponse([{ type: 'text', text: 'hi' }]),
+      anthropicResponse([textBlock('hi')]),
     );
 
     await provider.chat({
@@ -231,7 +238,7 @@ describe('AnthropicProvider', () => {
   it('uses streaming when stream=true and onToken provided', async () => {
     const provider = createProvider();
     const tokens: string[] = [];
-    const finalMessage = anthropicResponse([{ type: 'text', text: 'Hello world' }]);
+    const finalMessage = anthropicResponse([textBlock('Hello world')]);
 
     const mockStreamObj = {
       on: vi.fn(),

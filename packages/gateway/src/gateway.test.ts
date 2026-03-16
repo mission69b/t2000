@@ -101,19 +101,19 @@ import type { GatewayConfig } from './config.js';
 
 function defaultConfig(overrides: Partial<GatewayConfig> = {}): GatewayConfig {
   return {
-    llm: { provider: 'anthropic', apiKey: 'sk-ant-test', model: null, ...overrides.llm },
+    llm: { provider: 'anthropic', apiKey: 'sk-ant-test', ...overrides.llm },
     channels: {
       webchat: { enabled: true, port: 2000, ...overrides.channels?.webchat },
       telegram: { enabled: false, botToken: '', allowedUsers: [], ...overrides.channels?.telegram },
     },
     heartbeat: {
-      morningBriefing: { enabled: true, cron: '0 8 * * *', timezone: 'UTC' },
-      yieldMonitor: { enabled: true, cron: '0 */4 * * *', timezone: 'UTC' },
-      dcaExecutor: { enabled: true, cron: '0 9 * * 1', timezone: 'UTC' },
-      healthCheck: { enabled: true, cron: '*/30 * * * *', timezone: 'UTC' },
+      morningBriefing: { enabled: true, schedule: '0 8 * * *' },
+      yieldMonitor: { enabled: true, schedule: '0 */4 * * *' },
+      dcaExecutor: { enabled: true, schedule: '0 9 * * 1' },
+      healthCheck: { enabled: true, schedule: '*/30 * * * *' },
+      timezone: 'UTC',
       ...overrides.heartbeat,
     },
-    safeguards: { maxPerTx: 500, maxDailySend: 1000, ...overrides.safeguards },
   } as GatewayConfig;
 }
 
@@ -132,7 +132,7 @@ describe('Gateway.create', () => {
   });
 
   it('throws if no LLM API key configured', async () => {
-    (loadGatewayConfig as any).mockResolvedValueOnce(defaultConfig({ llm: { provider: 'anthropic', apiKey: '', model: null } }));
+    (loadGatewayConfig as any).mockResolvedValueOnce(defaultConfig({ llm: { provider: 'anthropic', apiKey: '' } }));
 
     await expect(Gateway.create({ agent: mockAgent })).rejects.toThrow('LLM API key not configured');
   });
@@ -147,7 +147,7 @@ describe('Gateway.create', () => {
 
   it('creates OpenAI provider when configured', async () => {
     (loadGatewayConfig as any).mockResolvedValueOnce(
-      defaultConfig({ llm: { provider: 'openai', apiKey: 'sk-openai-test', model: null } }),
+      defaultConfig({ llm: { provider: 'openai', apiKey: 'sk-openai-test' } }),
     );
 
     const gw = await Gateway.create({ agent: mockAgent });
