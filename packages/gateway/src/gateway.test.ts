@@ -45,9 +45,13 @@ vi.mock('./channels/telegram.js', () => ({
     start: vi.fn(async () => {}),
     stop: vi.fn(async () => {}),
     send: vi.fn(async () => {}),
+    sendWithConfirmation: vi.fn(async () => {}),
     onMessage: vi.fn(),
     onPinUnlock: vi.fn(),
+    onStart: vi.fn(),
     requestPin: vi.fn(),
+    startTyping: vi.fn(),
+    stopTyping: vi.fn(),
   })),
 }));
 

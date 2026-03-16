@@ -34,7 +34,7 @@ export class Logger {
     if (!existsSync(this.logDir)) mkdirSync(this.logDir, { recursive: true });
     this.logPath = join(this.logDir, LOG_FILE);
     this.level = opts?.level ?? 'info';
-    this.toConsole = opts?.verbose ?? false;
+    this.toConsole = true;
   }
 
   debug(msg: string, data?: Record<string, unknown>): void {

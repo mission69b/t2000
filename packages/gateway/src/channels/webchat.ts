@@ -223,6 +223,17 @@ function getInlineHTML(): string {
   .confirm-bar .accept { background: var(--green); color: white; }
   .confirm-bar .cancel { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
   .typing { align-self: flex-start; color: var(--text-muted); font-size: 13px; padding: 8px 16px; }
+  #welcome { padding: 40px 20px; text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; }
+  #welcome h2 { font-size: 18px; font-weight: 600; color: var(--text); }
+  #welcome p { font-size: 14px; color: var(--text-muted); max-width: 320px; }
+  .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 380px; }
+  .quick-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; color: var(--text); font-size: 13px; cursor: pointer; transition: border-color 0.15s; }
+  .quick-btn:hover { border-color: var(--accent); }
+  .msg a { color: var(--accent); text-decoration: none; }
+  .msg a:hover { text-decoration: underline; }
+  .msg code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.9em; }
+  .msg ul, .msg ol { margin: 4px 0; padding-left: 20px; }
+  .msg li { margin: 2px 0; }
   footer { padding: 16px 20px; border-top: 1px solid var(--border); }
   #input-form { display: flex; gap: 8px; }
   #input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text); font-size: 14px; outline: none; font-family: inherit; }
@@ -237,7 +248,17 @@ function getInlineHTML(): string {
   <div class="status" id="status"></div>
   <h1>t2000</h1>
 </header>
-<div id="messages"></div>
+<div id="welcome">
+  <h2>t2000</h2>
+  <p>Your AI financial advisor. Ask me anything about your accounts.</p>
+  <div class="quick-actions">
+    <button class="quick-btn" onclick="quickAction('What\\'s my balance?')">💰 Balance</button>
+    <button class="quick-btn" onclick="quickAction('Show my portfolio')">📊 Portfolio</button>
+    <button class="quick-btn" onclick="quickAction('What are the best rates?')">📈 Rates</button>
+    <button class="quick-btn" onclick="quickAction('Show recent transactions')">💸 Transactions</button>
+  </div>
+</div>
+<div id="messages" style="display:none"></div>
 <footer>
   <form id="input-form">
     <input id="input" placeholder="Message your AI financial advisor..." autocomplete="off" />
@@ -246,11 +267,25 @@ function getInlineHTML(): string {
 </footer>
 <script>
 const messages = document.getElementById('messages');
+const welcome = document.getElementById('welcome');
 const input = document.getElementById('input');
 const form = document.getElementById('input-form');
 const statusDot = document.getElementById('status');
 let currentAssistantMsg = null;
 let connected = false;
+let welcomeVisible = true;
+
+function hideWelcome() {
+  if (!welcomeVisible) return;
+  welcomeVisible = false;
+  welcome.style.display = 'none';
+  messages.style.display = 'flex';
+}
+
+function quickAction(text) {
+  hideWelcome();
+  sendMsg(text);
+}
 
 function connect() {
   const es = new EventSource('/api/events');
@@ -259,12 +294,14 @@ function connect() {
   es.onmessage = (e) => {
     const data = JSON.parse(e.data);
     if (data.type === 'token') {
+      hideWelcome();
       if (!currentAssistantMsg) {
         currentAssistantMsg = addMessage('', 'assistant');
       }
       currentAssistantMsg.textContent += data.text;
       scrollToBottom();
     } else if (data.type === 'message') {
+      hideWelcome();
       if (currentAssistantMsg) {
         currentAssistantMsg.innerHTML = renderMarkdown(data.text);
       } else {
@@ -273,6 +310,7 @@ function connect() {
       }
       currentAssistantMsg = null;
     } else if (data.type === 'tool_call') {
+      hideWelcome();
       if (!currentAssistantMsg) currentAssistantMsg = addMessage('', 'assistant');
       const badge = document.createElement('span');
       badge.className = 'tool-badge';
@@ -301,20 +339,30 @@ function addMessage(text, role) {
 function scrollToBottom() { messages.scrollTop = messages.scrollHeight; }
 
 function renderMarkdown(text) {
-  return text
-    .replace(/\\|(.+?)\\|/g, (match) => {
-      const rows = match.trim().split('\\n').filter(r => r.trim());
-      if (rows.length < 2) return match;
-      const headers = rows[0].split('|').filter(c => c.trim()).map(c => '<th>' + c.trim() + '</th>');
-      const body = rows.slice(2).map(r => '<tr>' + r.split('|').filter(c => c.trim()).map(c => '<td>' + c.trim() + '</td>').join('') + '</tr>');
-      return '<table><tr>' + headers.join('') + '</tr>' + body.join('') + '</table>';
-    })
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>')
-    .replace(/\\n/g, '<br>');
+    .replace(/\`([^\`]+)\`/g, '<code>$1</code>');
+  const lines = html.split('\\n');
+  let result = [];
+  let inList = false;
+  for (const line of lines) {
+    if (line.match(/^\\s*[-*]\\s+/)) {
+      if (!inList) { result.push('<ul>'); inList = true; }
+      result.push('<li>' + line.replace(/^\\s*[-*]\\s+/, '') + '</li>');
+    } else {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(line);
+    }
+  }
+  if (inList) result.push('</ul>');
+  return result.join('<br>').replace(/<br><ul>/g, '<ul>').replace(/<\\/ul><br>/g, '</ul>');
 }
 
 function sendMsg(text) {
   if (!text.trim()) return;
+  hideWelcome();
   addMessage(text, 'user');
   input.value = '';
   currentAssistantMsg = null;

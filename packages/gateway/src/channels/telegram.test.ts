@@ -1,44 +1,32 @@
 import { describe, it, expect } from 'vitest';
+import { markdownToTelegramHTML } from './telegram.js';
 
-// We can't easily test the full Bot class (it requires a real token + network),
-// but we can test the exported utility functions and the splitMessage logic.
-// The TelegramChannel class itself is tested via the agent loop integration.
-
-// Import the splitMessage utility by extracting it. Since it's not exported,
-// we test it through the formatMarkdownTable export and by testing the class behavior patterns.
-
-import { formatMarkdownTable } from './telegram.js';
-
-describe('formatMarkdownTable', () => {
-  it('formats a simple table', () => {
-    const result = formatMarkdownTable(['Asset', 'APY'], [['USDC', '3.5%'], ['SUI', '1.2%']]);
-    const lines = result.split('\n');
-    expect(lines).toHaveLength(4); // header + separator + 2 rows
-    expect(lines[0]).toContain('Asset');
-    expect(lines[0]).toContain('APY');
-    expect(lines[1]).toMatch(/^[|-]+$/);
-    expect(lines[2]).toContain('USDC');
-    expect(lines[3]).toContain('SUI');
+describe('markdownToTelegramHTML', () => {
+  it('converts bold markdown to HTML', () => {
+    expect(markdownToTelegramHTML('**hello**')).toBe('<b>hello</b>');
   });
 
-  it('pads columns to align', () => {
-    const result = formatMarkdownTable(['Name', 'Value'], [['a', 'bb'], ['ccc', 'd']]);
-    const lines = result.split('\n');
-    // All rows should have the same pipe positions
-    const pipePositions = (line: string) => [...line].reduce((acc, c, i) => c === '|' ? [...acc, i] : acc, [] as number[]);
-    expect(pipePositions(lines[0])).toEqual(pipePositions(lines[2]));
+  it('converts inline code to HTML', () => {
+    expect(markdownToTelegramHTML('`0xabc`')).toBe('<code>0xabc</code>');
   });
 
-  it('handles empty rows', () => {
-    const result = formatMarkdownTable(['A', 'B'], []);
-    const lines = result.split('\n');
-    expect(lines).toHaveLength(2); // header + separator only
+  it('converts markdown links to HTML', () => {
+    expect(markdownToTelegramHTML('[View](https://example.com)')).toBe('<a href="https://example.com">View</a>');
   });
 
-  it('handles long values without breaking', () => {
-    const longAddress = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
-    const result = formatMarkdownTable(['Address', 'Amount'], [[longAddress, '$100']]);
-    expect(result).toContain(longAddress);
+  it('escapes HTML entities in plain text', () => {
+    expect(markdownToTelegramHTML('a < b & c > d')).toBe('a &lt; b &amp; c &gt; d');
+  });
+
+  it('handles mixed formatting', () => {
+    const result = markdownToTelegramHTML('**$50.00** sent to `0xabc` [View](https://suiscan.xyz/tx/123)');
+    expect(result).toContain('<b>$50.00</b>');
+    expect(result).toContain('<code>0xabc</code>');
+    expect(result).toContain('<a href="https://suiscan.xyz/tx/123">View</a>');
+  });
+
+  it('handles text with no formatting', () => {
+    expect(markdownToTelegramHTML('plain text')).toBe('plain text');
   });
 });
 

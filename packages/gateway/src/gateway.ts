@@ -1,4 +1,4 @@
-import type { T2000 } from '@t2000/sdk';
+import { type T2000, T2000Error } from '@t2000/sdk';
 import type { LLMProvider } from './llm/types.js';
 import type { Channel, IncomingMessage } from './channels/types.js';
 import { AnthropicProvider } from './llm/anthropic.js';
@@ -190,13 +190,33 @@ export class Gateway {
     });
     const loop = new AgentLoop({ agent: this.agent, llm: this.llm, tools, toolDefinitions: toolDefs });
 
+    telegram.onStart(async (_userId: string) => {
+      try {
+        const balance = await this.agent.balance();
+        return [
+          'Welcome to t2000 — your AI financial advisor.\n',
+          `💳 Checking: $${balance.available.toFixed(2)}`,
+          `🏦 Savings: $${balance.savings.toFixed(2)}`,
+          `Net: $${(balance.available + balance.savings - balance.debt).toFixed(2)}`,
+          '\nAsk me anything, or tap a button below.',
+        ].join('\n');
+      } catch {
+        return 'Welcome to t2000 — your AI financial advisor.\n\nAsk me anything about your accounts.';
+      }
+    });
+
     telegram.onMessage(async (msg: IncomingMessage) => {
       if (this.agent.enforcer.getConfig().locked) {
         telegram.requestPin(msg.userId);
         await telegram.send(msg.userId, 'Agent is locked. Enter your PIN to unlock.');
         return;
       }
-      await this.handleMessage(msg, loop, telegram);
+      telegram.startTyping(msg.userId);
+      try {
+        await this.handleMessage(msg, loop, telegram);
+      } finally {
+        telegram.stopTyping(msg.userId);
+      }
     });
 
     telegram.onPinUnlock(async (_pin: string) => {
@@ -249,6 +269,9 @@ export class Gateway {
 
   private async handleMessage(msg: IncomingMessage, loop: AgentLoop, channel: Channel): Promise<void> {
     const isWebChat = channel instanceof WebChatChannel;
+    const isTelegram = channel instanceof TelegramChannel;
+    const startTime = Date.now();
+    const queryPreview = msg.text.length > 40 ? msg.text.slice(0, 40) + '...' : msg.text;
 
     try {
       const response = await loop.processMessage(msg.text, {
@@ -265,35 +288,67 @@ export class Gateway {
         }
       }
 
-      await channel.send(msg.userId, response.text);
-
-      const cost = this.estimateCost(response.usage);
-      this.logger.debug(`Message handled`, {
-        channel: channel.name,
-        tools: response.toolCalls.length,
-        inputTokens: response.usage.inputTokens,
-        outputTokens: response.usage.outputTokens,
-        cost: `$${cost.toFixed(4)}`,
-      });
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Internal error';
-
-      if (this.isLLMError(err)) {
-        this.logger.error('LLM call failed', { error: errorMsg });
-        await channel.send(msg.userId, 'AI is temporarily unavailable. Please try again in a moment.');
+      if (isTelegram && response.needsConfirmation) {
+        await (channel as TelegramChannel).sendWithConfirmation(msg.userId, response.text);
       } else {
-        this.logger.error(`Message error: ${errorMsg}`);
-        await channel.send(msg.userId, `Sorry, something went wrong: ${errorMsg}`);
+        await channel.send(msg.userId, response.text);
       }
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const toolCount = response.toolCalls.length;
+      const suffix = response.needsConfirmation ? 'confirmation pending' : `${toolCount} tool${toolCount !== 1 ? 's' : ''}, ${elapsed}s`;
+
+      this.logger.info(`${channel.id} · "${queryPreview}" → ${suffix}`);
+
+      if (this.options.verbose) {
+        const cost = this.estimateCost(response.usage);
+        this.logger.debug(`  tokens: ${response.usage.inputTokens}in/${response.usage.outputTokens}out, ~$${cost.toFixed(4)}`);
+      }
+    } catch (err) {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const friendlyMsg = this.friendlyError(err);
+
+      this.logger.error(`${channel.id} · "${queryPreview}" → error (${elapsed}s): ${err instanceof Error ? err.message : String(err)}`);
+      await channel.send(msg.userId, friendlyMsg);
     }
   }
 
-  private isLLMError(err: unknown): boolean {
-    if (!(err instanceof Error)) return false;
+  private friendlyError(err: unknown): string {
+    if (!(err instanceof Error)) return 'Something went wrong. Try again?';
+
     const msg = err.message.toLowerCase();
-    return msg.includes('api') || msg.includes('rate limit') ||
-      msg.includes('429') || msg.includes('500') || msg.includes('503') ||
-      msg.includes('overloaded') || msg.includes('timeout');
+
+    if (msg.includes('rate limit') || msg.includes('429') || msg.includes('overloaded')) {
+      return 'AI is busy. Try again in a moment.';
+    }
+    if (msg.includes('api') || msg.includes('500') || msg.includes('503') || msg.includes('timeout')) {
+      return 'AI is temporarily unavailable. Please try again in a moment.';
+    }
+
+    if (err instanceof T2000Error) {
+      switch (err.code) {
+        case 'INSUFFICIENT_BALANCE':
+        case 'INSUFFICIENT_GAS':
+          return `Not enough funds. ${err.message}`;
+        case 'SAFEGUARD_BLOCKED':
+          return `${err.message}`;
+        case 'HEALTH_FACTOR_TOO_LOW':
+        case 'WITHDRAW_WOULD_LIQUIDATE':
+          return 'That would put your health factor below safe levels. Try a smaller amount.';
+        case 'SLIPPAGE_EXCEEDED':
+          return 'Price moved too much during the swap. Try again or increase slippage.';
+        case 'PROTOCOL_PAUSED':
+          return 'The protocol is temporarily paused. Try again later.';
+        case 'INVALID_ADDRESS':
+          return 'That address doesn\'t look right. Check it and try again.';
+        case 'INVALID_AMOUNT':
+          return 'Invalid amount. Please enter a positive number.';
+        default:
+          return `${err.message}`;
+      }
+    }
+
+    return `Something went wrong: ${err.message}`;
   }
 
   private estimateCost(usage: { inputTokens: number; outputTokens: number }): number {
