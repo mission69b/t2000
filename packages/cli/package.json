@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "0.18.1",
+  "version": "0.18.2",
   "description": "Your personal AI financial advisor on Sui — guided setup, AI gateway, Telegram, send, save, borrow, rebalance",
   "type": "module",
   "bin": {
