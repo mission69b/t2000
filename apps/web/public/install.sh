@@ -8,11 +8,9 @@
 #   1. Checks for Node.js (v18+)
 #   2. Installs @t2000/cli globally via npm
 #   3. Runs t2000 init (guided setup: wallet, AI, MCP, safeguards)
-#   4. Optionally connects your AI via MCP
 #
 # Environment variables:
 #   T2000_SKIP_INIT  - Skip t2000 init (default: false)
-#   T2000_SKIP_MCP   - Skip MCP setup prompt (default: false)
 
 main() {
 
@@ -59,7 +57,7 @@ bold() {
 
 echo ""
 bold "  ┌──────────────────────────────────────────┐"
-bold "  │  ${Green}t2000${Color_Off}${Bold} — your personal AI financial advisor  │"
+bold "  │  ${Green}t2000${Color_Off}${Bold} — a bank account for AI agents        │"
 bold "  └──────────────────────────────────────────┘"
 echo ""
 
@@ -123,20 +121,6 @@ if [[ "${T2000_SKIP_INIT:-}" != "true" ]]; then
   bold "  Starting guided setup..."
   echo ""
   t2000 init
-fi
-
-# ─── MCP setup ──────────────────────────────────────────────────────────────
-
-if [[ "${T2000_SKIP_MCP:-}" != "true" ]] && [[ -t 0 ]]; then
-  echo ""
-  printf "%b" "${Bold}  Connect your AI via MCP? (Claude, Cursor, etc.) [Y/n] ${Color_Off}"
-  read -r mcp_answer
-  mcp_answer="${mcp_answer:-Y}"
-
-  if [[ "$mcp_answer" =~ ^[Yy]$ ]]; then
-    echo ""
-    t2000 mcp install
-  fi
 fi
 
 # ─── Done ────────────────────────────────────────────────────────────────────
