@@ -8,7 +8,7 @@ export class AnthropicProvider implements LLMProvider {
 
   constructor(apiKey: string, model?: string) {
     this.model = model ?? 'claude-sonnet-4-20250514';
-    this.client = new Anthropic({ apiKey });
+    this.client = new Anthropic({ apiKey, maxRetries: 3 });
   }
 
   async chat(params: ChatParams): Promise<LLMResponse> {

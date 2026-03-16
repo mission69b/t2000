@@ -8,7 +8,7 @@ export class OpenAIProvider implements LLMProvider {
 
   constructor(apiKey: string, model?: string) {
     this.model = model ?? 'gpt-4o';
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, maxRetries: 3 });
   }
 
   async chat(params: ChatParams): Promise<LLMResponse> {

@@ -224,7 +224,7 @@ export class AgentLoop {
             const result = await tool.handler(this.agent, tc.arguments);
             allToolCalls.push({ name: tc.name, arguments: tc.arguments, result, dryRun: false });
             this.context.addMessage({
-              role: 'tool', content: JSON.stringify(result), toolCallId: tc.id,
+              role: 'tool', content: this.truncateResult(result), toolCallId: tc.id,
             });
           } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err);
@@ -297,5 +297,11 @@ export class AgentLoop {
   clearHistory(): void {
     this.context.clear();
     this.pendingConfirmation = null;
+  }
+
+  private truncateResult(result: unknown, maxLen = 2000): string {
+    const json = JSON.stringify(result);
+    if (json.length <= maxLen) return json;
+    return json.slice(0, maxLen) + '...[truncated]';
   }
 }

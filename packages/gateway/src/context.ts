@@ -1,9 +1,9 @@
 import type { ChatMessage } from './llm/types.js';
 
 const ESTIMATED_TOKENS_PER_CHAR = 0.25;
-const MAX_TOKEN_BUDGET = 80_000;
-const COMPACTION_THRESHOLD = 0.8;
-const MIN_RECENT_PAIRS = 5;
+const MAX_TOKEN_BUDGET = 20_000;
+const COMPACTION_THRESHOLD = 0.75;
+const MIN_RECENT_PAIRS = 3;
 
 export class ContextManager {
   private history: ChatMessage[] = [];

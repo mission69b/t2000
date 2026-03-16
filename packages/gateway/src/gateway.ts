@@ -302,8 +302,9 @@ export class Gateway {
     } catch (err) {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       const friendlyMsg = this.friendlyError(err);
+      const logMsg = this.cleanErrorForLog(err);
 
-      this.logger.error(`${channel.id} · "${queryPreview}" → error (${elapsed}s): ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.error(`${channel.id} · "${queryPreview}" → ${logMsg} (${elapsed}s)`);
       await channel.send(msg.userId, friendlyMsg);
     }
   }
@@ -314,7 +315,7 @@ export class Gateway {
     const msg = err.message.toLowerCase();
 
     if (msg.includes('rate limit') || msg.includes('429') || msg.includes('overloaded')) {
-      return 'AI is busy. Try again in a moment.';
+      return '⏳ AI rate limit hit — wait a minute and try again.';
     }
     if (msg.includes('api') || msg.includes('500') || msg.includes('503') || msg.includes('timeout')) {
       return 'AI is temporarily unavailable. Please try again in a moment.';
@@ -344,6 +345,22 @@ export class Gateway {
     }
 
     return `Something went wrong: ${err.message}`;
+  }
+
+  private cleanErrorForLog(err: unknown): string {
+    if (!(err instanceof Error)) return 'unknown error';
+    const msg = err.message;
+
+    if (msg.includes('rate_limit') || msg.includes('429')) {
+      const limitMatch = msg.match(/(\d[\d,]+)\s*input tokens per minute/);
+      return limitMatch ? `rate limited (${limitMatch[1]} tokens/min)` : 'rate limited';
+    }
+    if (msg.includes('overloaded') || msg.includes('503')) return 'API overloaded';
+    if (msg.includes('timeout')) return 'timeout';
+    if (msg.includes('500')) return 'API error (500)';
+
+    const short = msg.length > 80 ? msg.slice(0, 80) + '...' : msg;
+    return short;
   }
 
   private estimateCost(usage: { inputTokens: number; outputTokens: number }): number {
