@@ -24,13 +24,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "t2000 — Your Personal AI Financial Advisor",
+  title: "t2000 — A Bank Account for AI Agents",
   description:
-    "Connect your AI to a full bank account. It earns, invests, borrows, and pays — autonomously. Built on Sui.",
+    "A bank account for AI agents. Five accounts — checking, savings, credit, exchange, investment. Built on Sui.",
   openGraph: {
-    title: "t2000 — Your Personal AI Financial Advisor",
+    title: "t2000 — A Bank Account for AI Agents",
     description:
-      "Connect your AI to a full bank account. It earns, invests, borrows, and pays — autonomously.",
+      "A bank account for AI agents. Five accounts — checking, savings, credit, exchange, investment. Built on Sui.",
     type: "website",
   },
 };

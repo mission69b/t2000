@@ -217,13 +217,13 @@ export default function Home() {
           </div>
 
           <h1 className="font-serif text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">
-            Your personal AI
+            A bank account
             <br />
-            <em className="italic text-accent">financial advisor.</em>
+            for <em className="italic text-accent">AI agents.</em>
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
-            Your AI earns, borrows, invests, and pays — autonomously.
+            Five accounts. Earn, borrow, invest, exchange — autonomously.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
@@ -453,54 +453,124 @@ export default function Home() {
       {/* ── Works With Everything ── */}
       <section
         id="integrations"
-        className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface"
+        className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface overflow-hidden"
       >
-        <div className="max-w-[800px] mx-auto text-center mb-10 sm:mb-16">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-            Works with everything
-          </div>
-          <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
-            Talk to your agent
-            <br />
-            <em className="italic text-accent">anywhere.</em>
-          </h2>
-          <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mx-auto">
-            Your IDE, Claude Desktop, or any MCP-compatible AI. 23 tools. One agent.
-          </p>
-        </div>
+        {/* Glow effect */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(0,214,143,0.06)_0%,transparent_70%)] pointer-events-none" />
 
-        <div className="flex flex-wrap justify-center gap-3 sm:gap-4 max-w-[700px] mx-auto mb-12 sm:mb-16">
-          {INTEGRATIONS.map((item) => (
-            <span
-              key={item.name}
-              className={`text-[12px] sm:text-[13px] px-4 sm:px-5 py-2 sm:py-2.5 border tracking-wide transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim ${
-                item.name === "Claude Desktop"
-                  ? "border-accent/30 text-foreground bg-accent-dim"
-                  : "border-border-bright text-muted"
-              }`}
-            >
-              {item.name}
-            </span>
-          ))}
-        </div>
-
-        <div className="max-w-[600px] mx-auto">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4 text-center">
-            Try asking
+        <div className="relative max-w-[900px] mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+              One protocol
+            </div>
+            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
+              Any AI that speaks{" "}
+              <em className="italic text-accent">MCP.</em>
+            </h2>
+            <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[480px] mx-auto">
+              Every new AI platform that supports MCP gets t2000 for free.
+              No adapters. No plugins. No code changes.
+            </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
-            {[
-              "Move my idle USDC to the highest yield",
-              "Send $50 to alice",
-              "Invest $100 in SUI",
-              "Give me a full financial report",
-              "Borrow $40 against my savings",
-              "What\u2019s my portfolio performance?",
-            ].map((q) => (
-              <p key={q} className="text-xs text-muted/70 italic text-center sm:text-left">
-                &ldquo;{q}&rdquo;
-              </p>
+
+          {/* Architecture flow */}
+          <div className="mb-12 sm:mb-16">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-4 sm:gap-0 max-w-[700px] mx-auto">
+              {/* AI Platforms */}
+              <div className="bg-panel border border-border-bright p-5 sm:p-6 text-center">
+                <div className="text-[10px] tracking-[0.15em] uppercase text-dim mb-3">Your AI</div>
+                <div className="flex flex-col gap-1.5">
+                  {["Claude Desktop", "Cursor", "Windsurf", "Any MCP client"].map((name) => (
+                    <div key={name} className="text-[11px] text-muted">{name}</div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div className="hidden sm:flex flex-col items-center px-2">
+                <div className="w-8 h-px bg-accent/40" />
+                <div className="text-[9px] text-accent/60 mt-1">stdio</div>
+              </div>
+              <div className="sm:hidden flex justify-center">
+                <div className="h-6 w-px bg-accent/40" />
+              </div>
+
+              {/* MCP Server */}
+              <div className="bg-panel border border-accent/30 p-5 sm:p-6 text-center relative">
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] px-2 py-0.5 bg-accent text-background tracking-[0.1em] uppercase font-semibold">
+                  MCP
+                </div>
+                <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-3">@t2000/mcp</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-accent-dim px-2.5 py-1.5">
+                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">23</div>
+                    <div className="text-[9px] text-accent/70 tracking-wider uppercase">tools</div>
+                  </div>
+                  <div className="bg-accent-dim px-2.5 py-1.5">
+                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">15</div>
+                    <div className="text-[9px] text-accent/70 tracking-wider uppercase">prompts</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div className="hidden sm:flex flex-col items-center px-2">
+                <div className="w-8 h-px bg-accent/40" />
+                <div className="text-[9px] text-accent/60 mt-1">SDK</div>
+              </div>
+              <div className="sm:hidden flex justify-center">
+                <div className="h-6 w-px bg-accent/40" />
+              </div>
+
+              {/* Sui */}
+              <div className="bg-panel border border-border-bright p-5 sm:p-6 text-center">
+                <div className="text-[10px] tracking-[0.15em] uppercase text-dim mb-3">On-chain</div>
+                <div className="flex flex-col gap-1.5">
+                  {["5 accounts", "DeFi protocols", "Safeguards", "Sui mainnet"].map((item) => (
+                    <div key={item} className="text-[11px] text-muted">{item}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Integration pills */}
+          <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3 mb-12 sm:mb-16">
+            {INTEGRATIONS.map((item, i) => (
+              <span
+                key={item.name}
+                className={`text-[11px] sm:text-[12px] px-3.5 sm:px-4 py-1.5 sm:py-2 border tracking-wide transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim ${
+                  i < 2
+                    ? "border-accent/30 text-foreground bg-accent-dim"
+                    : "border-border-bright text-muted"
+                }`}
+              >
+                {item.name}
+              </span>
             ))}
+          </div>
+
+          {/* Try asking */}
+          <div className="bg-panel border border-border-bright p-6 sm:p-8 max-w-[700px] mx-auto">
+            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-5 flex items-center gap-3">
+              <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot" />
+              Try asking your AI
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+              {[
+                "Move my idle USDC to the highest yield",
+                "Send $50 to alice",
+                "Invest $200 in the all-weather strategy",
+                "Give me a full financial report",
+                "Borrow $40 against my savings",
+                "What\u2019s my portfolio performance?",
+              ].map((q) => (
+                <p key={q} className="text-[11px] sm:text-xs text-muted/80 italic flex items-start gap-2">
+                  <span className="text-accent/50 text-[10px] mt-px shrink-0">&gt;</span>
+                  {q}
+                </p>
+              ))}
+            </div>
           </div>
         </div>
       </section>
