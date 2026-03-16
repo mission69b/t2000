@@ -261,7 +261,7 @@
 
 ### Monday
 **@t2000ai:**
-> `t2000 save 100` — finds the best yield across @navi_protocol and @Suilend automatically.
+> `t2000 save 100` — finds the best yield across @navi_protocol and @Suilendprotocol automatically.
 >
 > Or pick your own: `t2000 save 100 --protocol suilend`
 >
@@ -276,7 +276,7 @@
 
 ### Wednesday
 **@t2000ai:**
-> Partnership: t2000 × @Suilend
+> Partnership: t2000 × @Suilendprotocol
 >
 > The largest lending protocol on @SuiNetwork is now a native t2000 destination.
 >

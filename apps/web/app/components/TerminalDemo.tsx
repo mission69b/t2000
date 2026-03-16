@@ -5,23 +5,19 @@ import type { TerminalLine } from "./DemoTerminal";
 
 const LINES: TerminalLine[] = [
   { type: "command", text: "❯ t2000 init", delay: 0 },
-  { type: "output", text: "  Create PIN: ****", delay: 400 },
-  { type: "info", text: "  Creating agent wallet...", delay: 500 },
-  { type: "success", text: "✓ Keypair generated", delay: 400 },
-  { type: "success", text: "✓ Network  Sui mainnet", delay: 200 },
-  { type: "success", text: "✓ Gas sponsorship  enabled", delay: 200 },
-  { type: "success", text: "✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment", delay: 300 },
-  { type: "info", text: "  🎉 Bank account created", delay: 300 },
-  { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
+  { type: "output", text: "  ┌─────────────────────────────────────────┐", delay: 400 },
+  { type: "output", text: "  │  Welcome to t2000                       │", delay: 80 },
+  { type: "output", text: "  │  Your personal AI financial advisor     │", delay: 80 },
+  { type: "output", text: "  └─────────────────────────────────────────┘", delay: 80 },
+  { type: "success", text: "  ✓ Wallet created · 5 accounts", delay: 400 },
+  { type: "success", text: "  ✓ Claude connected", delay: 300 },
+  { type: "success", text: "  ✓ Telegram connected", delay: 300 },
+  { type: "success", text: "  ✓ Safeguards set", delay: 300 },
 
-  { type: "command", text: "❯ t2000 save 80", delay: 1200 },
-  { type: "success", text: "✓ Saved $80.00 — earning 5.57% APY", delay: 600 },
-
-  { type: "command", text: "❯ t2000 invest buy 5 SUI", delay: 1200 },
-  { type: "success", text: "✓ Bought 4.85 SUI at $1.03", delay: 600 },
-
-  { type: "command", text: "❯ t2000 send 25 to alice", delay: 1200 },
-  { type: "success", text: "✓ Sent $25.00 USDC → alice", delay: 600 },
+  { type: "command", text: "❯ t2000 gateway", delay: 1000 },
+  { type: "success", text: "  ✓ WebChat at localhost:2000", delay: 400 },
+  { type: "success", text: "  ✓ Heartbeat started (4 tasks)", delay: 300 },
+  { type: "success", text: "  ✓ Ready — talk to your agent", delay: 300 },
 
   { type: "command", text: "❯ t2000 balance", delay: 1200 },
   { type: "output", text: "  Available:   $60.00  (checking)", delay: 400 },

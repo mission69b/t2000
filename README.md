@@ -2,16 +2,16 @@
   <strong>t2000</strong>
 </p>
 
-<h3 align="center">The first bank account for AI agents.</h3>
+<h3 align="center">Your personal AI financial advisor.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Investment · Exchange · x402 Pay · MCP
+  Checking · Savings · Credit · Investment · Exchange · x402 Pay · AI Gateway · Telegram
   <br />
-  Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial
+  Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial · BYOK LLM
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a> · <a href="packages/gateway">Gateway</a>
 </p>
 
 ---
@@ -43,43 +43,29 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
 
 ```
 ❯ t2000 init
-  ✓ Keypair generated
-  ✓ Network  Sui mainnet
-  ✓ Gas sponsorship  enabled
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Investment  ✓ Exchange  ✓ 402 Pay
-  🎉 Bank account created
-  Address: 0x8b3e...d412
+  ┌─────────────────────────────────────────┐
+  │  Welcome to t2000                       │
+  │  Your personal AI financial advisor     │
+  └─────────────────────────────────────────┘
+  ✓ Wallet created · 5 accounts
+  ✓ Claude connected
+  ✓ Telegram connected
+  ✓ Safeguards set
 
-❯ t2000 save 80
-  ✓ Saved $80.00 USDC to best rate
-  ✓ Protocol fee: $0.08 USDC (0.1%)
-  ✓ Current APY: 4.21%
-  ✓ Savings balance: $80.00 USDC
-  Tx:  https://suiscan.xyz/mainnet/tx/7CAugsDaPvM...
-
-❯ t2000 borrow 20
-  ✓ Borrowed $20.00 USDC
-  Health Factor:  3.39
-  Tx:  https://suiscan.xyz/mainnet/tx/46MX3cMyF4f...
-
-❯ t2000 repay 20
-  ✓ Repaid $20.00 USDC
-  Remaining Debt:  $0.00
-  Tx:  https://suiscan.xyz/mainnet/tx/4sKw22wL3mS...
-
-❯ t2000 pay https://api.marketdata.dev/prices
-  → GET https://api.marketdata.dev/prices
-  ← 402 Payment Required: $0.01 USDC (Sui)
-  ✓ Paid $0.01 USDC (tx: 8kPq3RvN...)
-  ← 200 OK  [820ms]
+❯ t2000 gateway
+  ✓ Agent unlocked (0x8b3e...d412)
+  ✓ Claude connected (claude-sonnet-4-20250514)
+  ✓ Telegram connected
+  ✓ WebChat at http://localhost:2000
+  ✓ Heartbeat started (4 tasks)
+  ✓ Ready — talk to your agent
 
 ❯ t2000 balance
   Available:  $85.00   (checking — spendable)
   Savings:    $80.00   (earning 4.86% APY)
-  Credit:     -$20.00  (7.67% APY)
   Investment: $5.02    (+0.4%)
   ──────────────────────────────────────
-  Total:      $150.02
+  Total:      $170.02
 ```
 
 ## Why t2000?
@@ -97,16 +83,21 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 | No standard payment protocol | x402 client — first implementation on Sui |
 | No standard wallet interface | SDK + CLI + HTTP API for any language |
 
-## Quickstart
+## Getting Started
 
 ```bash
 npm install -g @t2000/cli           # Install
-t2000 init                          # Create a bank account
-npm install -g @t2000/cli          # Install globally for persistent use
+t2000 init                          # Guided setup: wallet, AI, Telegram, safeguards
+t2000 gateway                      # Start your AI financial advisor
+```
 
+Open `http://localhost:2000` for WebChat, or message your Telegram bot. Or use the CLI directly:
+
+```bash
 t2000 balance                      # Check balance
 t2000 send 10 USDC to 0x...       # Send USDC
 t2000 save all                     # Earn yield on idle funds
+t2000 invest buy 100 SUI          # Invest $100 in SUI
 t2000 exchange 5 USDC SUI         # Currency exchange via Cetus DEX
 t2000 pay https://api.example.com  # Pay for x402 APIs
 ```
@@ -128,6 +119,9 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
+| **AI Gateway** | Personal AI financial advisor — natural language | Claude or GPT (BYOK) via local [gateway](packages/gateway) |
+| **Telegram** | Chat with your agent from your phone | grammY bot, allowlisted users, PIN unlock |
+| **Heartbeat** | Morning briefings, yield alerts, auto-DCA | Scheduled tasks, 24/7 via `t2000 gateway install` |
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
 
@@ -162,6 +156,7 @@ At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the
 |---------|-------------|---------|
 | [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
 | [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
+| [`@t2000/gateway`](packages/gateway) | AI financial advisor — Telegram, WebChat, heartbeat | Included with CLI |
 | [`@t2000/x402`](packages/x402) | x402 payment client (first on Sui) | `npm install @t2000/x402` |
 
 ## SDK
@@ -218,7 +213,7 @@ Full API reference → [`@t2000/sdk` README](packages/sdk)
 
 ```bash
 # Wallet
-t2000 init                         Create bank account
+t2000 init                         Guided setup (wallet, AI, Telegram, safeguards)
 t2000 balance                      Check balance
 t2000 send 10 USDC to 0x...       Send USDC
 t2000 history                      Transaction history

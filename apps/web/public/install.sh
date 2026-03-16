@@ -7,7 +7,7 @@
 # What this does:
 #   1. Checks for Node.js (v18+)
 #   2. Installs @t2000/cli globally via npm
-#   3. Runs t2000 init (creates wallet + PIN)
+#   3. Runs t2000 init (guided setup: wallet, AI, Telegram, safeguards)
 #   4. Optionally connects your AI via MCP
 #
 # Environment variables:
@@ -58,9 +58,9 @@ bold() {
 # ─── Banner ──────────────────────────────────────────────────────────────────
 
 echo ""
-bold "  ┌─────────────────────────────────────┐"
-bold "  │  ${Green}t2000${Color_Off}${Bold} — bank account for AI agents  │"
-bold "  └─────────────────────────────────────┘"
+bold "  ┌──────────────────────────────────────────┐"
+bold "  │  ${Green}t2000${Color_Off}${Bold} — your personal AI financial advisor  │"
+bold "  └──────────────────────────────────────────┘"
 echo ""
 
 # ─── Check Node.js ───────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ success "  ✓ t2000 ${INSTALLED_VERSION} installed"
 
 if [[ "${T2000_SKIP_INIT:-}" != "true" ]]; then
   echo ""
-  bold "  Setting up your agent wallet..."
+  bold "  Starting guided setup..."
   echo ""
   t2000 init
 fi

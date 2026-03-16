@@ -567,4 +567,66 @@ export const chatDemos: ChatDemo[] = [
       },
     ],
   },
+
+  {
+    id: "chat-telegram",
+    title: "Telegram — AI Financial Advisor",
+    description:
+      "Chat with your agent on Telegram. Natural language, real actions.",
+    messages: [
+      {
+        role: "user",
+        text: "Morning — how's everything looking?",
+        delay: 0,
+      },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_balance", "t2000_earnings", "t2000_portfolio", "t2000_health"],
+        html:
+          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">☀️ MORNING BRIEFING</div>` +
+          tbl([
+            ["Net Worth", "$1,247.82", "hi"],
+            ["Checking", "$69.60", ""],
+            ["Savings", "$978.22 · 4.15% APY", ""],
+            ["Investment", "$200.00 · +2.3%", "hi"],
+            ["Yield (week)", "+$1.32", "hi"],
+            ["AI cost (week)", "-$0.04", ""],
+          ]) +
+          note("Yield is 33x AI cost this week. Your agent is self-funding. SUI up 4.2% — your investment position is outperforming."),
+        delay: 300,
+      },
+      {
+        role: "user",
+        text: "Save another $50",
+        delay: 800,
+      },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_save"],
+        html: tbl([
+          ["Action", "Save $50.00 USDC", ""],
+          ["Protocol", "Suilend (4.15% APY)", "hi"],
+          ["Fee", "$0.05 (0.1%)", ""],
+          ["Balance after", "$19.60 checking", ""],
+        ]) +
+          `<div style="margin-top:10px;font-size:11px;padding:8px 10px;border:1px solid rgba(0,214,143,0.15);border-radius:4px;background:rgba(0,214,143,0.05)">⚡ Confirm? Reply <b>yes</b> to execute.</div>`,
+        delay: 300,
+      },
+      { role: "user", text: "yes", delay: 600 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_save"],
+        html: tbl([
+          ["Status", "Saved $50.00 USDC", "hi"],
+          ["APY", "4.15% (Suilend)", "hi"],
+          ["Savings total", "$1,028.22", ""],
+          ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/7CAu…</span>', ""],
+        ]) + note("Savings growing — at this rate you'll earn ~$3.50/month in yield."),
+        delay: 300,
+      },
+    ],
+  },
 ];

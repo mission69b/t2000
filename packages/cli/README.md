@@ -1,6 +1,6 @@
 # @t2000/cli
 
-Terminal bank account for AI agents on Sui. One command to create a bank account, send USDC, earn yield, borrow, auto-rebalance for optimal yield, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
+Your personal AI financial advisor on Sui. Guided setup, AI gateway with Telegram + WebChat, heartbeat tasks, send USDC, earn yield, borrow, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -21,29 +21,42 @@ t2000 init
 ```
 ❯ t2000 init
 
-  Create PIN (min 4 chars): ****
-  Confirm PIN: ****
+  ┌─────────────────────────────────────────┐
+  │  Welcome to t2000                       │
+  │  Your personal AI financial advisor     │
+  └─────────────────────────────────────────┘
 
-  Creating agent wallet...
+  Step 1 of 5 — Create wallet
   ✓ Keypair generated
-  ✓ Network  Sui mainnet
-  ✓ Gas sponsorship  enabled
+  ✓ Sui mainnet
+  ✓ 5 accounts: Checking, Savings, Credit, Exchange, Investment
 
-  Setting up accounts...
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Investment  ✓ Exchange  ✓ 402 Pay
+  Step 3 of 5 — Connect AI
+  Which LLM provider? ❯ Claude (Anthropic)
+  Opening Anthropic API keys page in your browser...
+  Paste your Anthropic API key: ****
+  ✓ Claude connected — model: claude-sonnet-4-20250514
 
-  🎉 Bank account created
-  Address:  0x8b3e4f2a...
+  Step 4 of 5 — Connect Telegram (optional)
+  Opening BotFather in Telegram...
+  Paste the bot token: ****
+  ✓ Telegram connected
 
-  Deposit USDC on Sui network only.
-  ─────────────────────────────────────────────────────
+  Step 5 of 5 — Set safeguards
+  ✓ Safeguards configured
 
-  Install globally for persistent use:
-  npm install -g @t2000/cli
+  ┌─────────────────────────────────────────┐
+  │  ✓ You're all set                       │
+  │  Start your agent:  t2000 gateway       │
+  └─────────────────────────────────────────┘
 
-  t2000 balance            check for funds
-  t2000 save all           start earning yield
-  t2000 address            show address again
+❯ t2000 gateway
+  ✓ Agent unlocked (0x8b3e...d412)
+  ✓ Claude connected (claude-sonnet-4-20250514)
+  ✓ Telegram connected
+  ✓ WebChat at http://localhost:2000
+  ✓ Heartbeat started (4 tasks)
+  ✓ Ready — talk to your agent
 
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
@@ -134,6 +147,36 @@ t2000 init
 30 seconds. Send → save → borrow → pay → repay → withdraw.
 
 ## Commands
+
+### Setup
+
+| Command | Description |
+|---------|-------------|
+| `t2000 init` | Guided setup wizard — wallet, PIN, AI (Claude/GPT), Telegram, safeguards. Browser auto-opens API key pages. |
+
+### AI Gateway
+
+| Command | Description |
+|---------|-------------|
+| `t2000 gateway` | Start the AI financial advisor (foreground) |
+| `t2000 gateway --port 3000` | Custom WebChat port |
+| `t2000 gateway --no-telegram` | Skip Telegram channel |
+| `t2000 gateway --no-heartbeat` | Skip heartbeat tasks |
+| `t2000 gateway --verbose` | Debug logging |
+| `t2000 gateway install` | Install as background daemon (launchd on macOS, systemd on Linux) |
+| `t2000 gateway uninstall` | Remove the daemon |
+| `t2000 gateway status` | Check if the gateway is running |
+| `t2000 gateway logs` | Tail gateway logs (structured JSON) |
+| `t2000 gateway logs -f` | Follow log output |
+
+### Config (dot-notation)
+
+| Command | Description |
+|---------|-------------|
+| `t2000 config set llm.provider anthropic` | Set LLM provider |
+| `t2000 config set llm.apiKey sk-ant-...` | Set LLM API key |
+| `t2000 config set channels.telegram.botToken <token>` | Set Telegram bot token |
+| `t2000 config get llm.provider` | Read a nested config value |
 
 ### Wallet
 

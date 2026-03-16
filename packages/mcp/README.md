@@ -4,11 +4,13 @@ MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or
 
 **23 tools · 15 prompts · stdio transport · safeguard enforced**
 
+> **Prefer Telegram or a chat UI?** The same tools power the [t2000 Gateway](../gateway) — run `t2000 init` then `t2000 gateway` for a personal AI financial advisor on Telegram or WebChat. No MCP configuration needed.
+
 ## Quick Start
 
 ```bash
 npm i -g @t2000/cli          # install
-t2000 init                    # create wallet
+t2000 init                    # guided setup
 t2000 config set maxPerTx 100 # set safeguards
 t2000 mcp install             # auto-configure Claude Desktop + Cursor
 ```

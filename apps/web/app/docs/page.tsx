@@ -103,9 +103,17 @@ const NAV: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
+    label: "AI Advisor",
+    items: [
+      { id: "gateway", name: "Gateway", badge: "NEW", badgeGreen: true },
+      { id: "telegram", name: "Telegram Setup", badge: "NEW", badgeGreen: true },
+      { id: "init-wizard", name: "Init Wizard" },
+    ],
+  },
+  {
     label: "Guides",
     items: [
-      { id: "mcp", name: "MCP Server", badge: "NEW", badgeGreen: true },
+      { id: "mcp", name: "MCP Server" },
       { id: "skills", name: "Agent Skills" },
       { id: "x402", name: "x402 Payments" },
       { id: "defi", name: "DeFi & Yield" },
@@ -379,8 +387,8 @@ function QuickStart({
         Up and running <em className="italic text-accent">in 45 seconds.</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        t2000 is a full bank account for AI agents on Sui — checking, savings,
-        credit, currency exchange, and investment in one CLI command.
+        t2000 is your personal AI financial advisor on Sui — checking, savings,
+        credit, investment, and AI gateway with Telegram in one CLI command.
       </p>
 
       <h2 id="qs-install">1. Install t2000</h2>
@@ -390,28 +398,25 @@ function QuickStart({
       </p>
       <TryIt cmd="npm install -g @t2000/cli" note="Node.js 18+ required" />
 
-      <h2 id="qs-init">2. Create your bank account</h2>
+      <h2 id="qs-init">2. Set up your agent</h2>
       <p>
-        The init command generates a new Sui keypair, encrypts it,
-        and configures your bank account.
+        The init wizard creates your wallet, connects an AI provider,
+        sets up Telegram, and configures safeguards.
       </p>
       <CodeBlock lang="bash">
         {S.g("$")} t2000 init{"\n\n"}
-        {"  "}{S.b("Create PIN (min 4 chars):")} ****{"\n"}
-        {"  "}{S.b("Confirm PIN:")} ****{"\n\n"}
-        {"  "}{S.m("Creating agent wallet...")}{"\n"}
-        {"  "}{S.g("✓")} Keypair generated{"\n"}
-        {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
-        {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
-        {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment  {S.g("✓")} 402 Pay{"\n\n"}
-        {"  "}🎉 {S.g("Bank account created")}{"\n"}
-        {"  "}Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a1c2d3e4f...")}{"\n\n"}
-        {"  "}Deposit USDC on Sui network only.{"\n"}
-        {"  "}{S.m("───────────────────────────────────")}{"\n\n"}
-        {"  "}{S.b("t2000 balance ")}{"  "}check for funds{"\n"}
-        {"  "}{S.b("t2000 save all")}{"  "}start earning yield{"\n"}
-        {"  "}{S.b("t2000 address ")}{"  "}show address again
+        {"  ┌─────────────────────────────────────────┐\n"}
+        {"  │  "}{S.b("Welcome to t2000")}{"                       │\n"}
+        {"  │  Your personal AI financial advisor     │\n"}
+        {"  └─────────────────────────────────────────┘\n\n"}
+        {"  "}{S.g("✓")} Wallet created · 5 accounts{"\n"}
+        {"  "}{S.g("✓")} Claude connected{"\n"}
+        {"  "}{S.g("✓")} Telegram connected{"\n"}
+        {"  "}{S.g("✓")} Safeguards set{"\n\n"}
+        {"  ┌─────────────────────────────────────────┐\n"}
+        {"  │  "}{S.g("✓ You're all set")}{"                        │\n"}
+        {"  │  Start your agent:  "}{S.b("t2000 gateway")}{"       │\n"}
+        {"  └─────────────────────────────────────────┘"}
       </CodeBlock>
       <Callout type="tip" label="Tip">
         Your encrypted key lives at <InlineCode>~/.t2000/wallet.key</InlineCode>.
@@ -533,7 +538,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.16.30")}
+        {S.a("0.18.0")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -675,29 +680,27 @@ function CliWalletSection() {
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
-        <CmdCard name="t2000 init" desc="Generate keypair, write config" onClick={() => scrollTo("cmd-init")} />
+        <CmdCard name="t2000 init" desc="Guided setup wizard" onClick={() => scrollTo("cmd-init")} />
         <CmdCard name="t2000 balance" desc="View all accounts + limits" onClick={() => scrollTo("cmd-balance")} />
         <CmdCard name="t2000 send" desc="Transfer USDC to any address" onClick={() => scrollTo("cmd-send")} />
         <CmdCard name="t2000 contacts" desc="Manage named contacts" onClick={() => scrollTo("cmd-contacts")} />
       </div>
 
       <h2 id="cmd-init">t2000 init</h2>
-      <p>Generate a new Ed25519 keypair, encrypt it with AES-256-GCM, and set up all accounts.</p>
+      <p>Guided setup wizard — creates wallet, connects AI provider (Claude/GPT), sets up Telegram, and configures safeguards.</p>
       <CodeBlock lang="bash">
-        t2000 init [--key &lt;path&gt;] [--name &lt;name&gt;] [--no-sponsor]
+        t2000 init [--key &lt;path&gt;] [--no-sponsor]
       </CodeBlock>
       <CodeBlock lang="output">
-        {S.b("Create PIN (min 4 chars):")} ****{"\n"}
-        {S.b("Confirm PIN:")} ****{"\n\n"}
-        {S.m("Creating agent wallet...")}{"\n"}
-        {S.g("✓")} Keypair generated{"\n"}
-        {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
-        {S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
-        {S.m("Setting up accounts...")}{"\n"}
-        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment  {S.g("✓")} 402 Pay{"\n\n"}
-        🎉 {S.g("Bank account created")}{"\n"}
-        Address:  {S.a("0x8b3e4f2a1c9d7b5e3f1a8c2d4e6f9b0a...")}{"\n\n"}
-        Deposit USDC on Sui network only.
+        {"┌─────────────────────────────────────────┐\n"}
+        {"│  "}{S.b("Welcome to t2000")}{"                       │\n"}
+        {"│  Your personal AI financial advisor     │\n"}
+        {"└─────────────────────────────────────────┘\n\n"}
+        {S.g("✓")} Wallet created · 5 accounts{"\n"}
+        {S.g("✓")} Claude connected{"\n"}
+        {S.g("✓")} Telegram connected{"\n"}
+        {S.g("✓")} Safeguards set{"\n\n"}
+        {"Start your agent:  "}{S.b("t2000 gateway")}
       </CodeBlock>
 
       <h2 id="cmd-balance">t2000 balance</h2>
@@ -1285,6 +1288,186 @@ function ErrorsSection() {
   );
 }
 
+function GatewaySection() {
+  return (
+    <>
+      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
+        AI Advisor
+      </div>
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+        AI <em className="italic text-accent">Gateway</em>
+      </h1>
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
+        Your personal AI financial advisor. Runs locally, talks to you on Telegram or WebChat,
+        uses your own LLM API key. Morning briefings, yield alerts, auto-DCA — all 24/7.
+      </p>
+
+      <h2 id="gateway-arch">Architecture</h2>
+      <CodeBlock lang="text">
+{`User (Telegram/WebChat) → Gateway → LLM (Claude/GPT) → t2000 SDK → Sui`}
+      </CodeBlock>
+      <DocTable
+        headers={["Component", "Description"]}
+        rows={[
+          ["Agent Loop", "Processes messages, calls LLM, executes tools, manages confirmation flow"],
+          ["WebChat", "Hono-powered local web UI at localhost:2000 with SSE streaming"],
+          ["Telegram", "grammY-powered bot with allowlisted users, PIN unlock, message splitting"],
+          ["Heartbeat", "Cron scheduler: morning briefings, yield monitor, DCA executor, health checks"],
+          ["Logger", "Structured JSON logs to ~/.t2000/logs/ with auto-rotation (10MB, 5 files)"],
+        ]}
+      />
+
+      <h2 id="gateway-start">Start the Gateway</h2>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 gateway{S.c("                    # foreground")}{"\n"}
+        {S.g("$")} t2000 gateway --port 3000{S.c("        # custom WebChat port")}{"\n"}
+        {S.g("$")} t2000 gateway --no-telegram{S.c("      # skip Telegram channel")}{"\n"}
+        {S.g("$")} t2000 gateway --verbose{S.c("          # debug logging")}
+      </CodeBlock>
+
+      <h2 id="gateway-daemon">Daemon Mode (24/7)</h2>
+      <p>
+        For morning briefings, yield alerts, and Telegram availability around the clock:
+      </p>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 gateway install{S.c("            # launchd (macOS) / systemd (Linux)")}{"\n"}
+        {S.g("$")} t2000 gateway status{S.c("             # check if running")}{"\n"}
+        {S.g("$")} t2000 gateway logs -f{S.c("             # follow structured logs")}{"\n"}
+        {S.g("$")} t2000 gateway uninstall{S.c("           # remove daemon")}
+      </CodeBlock>
+
+      <h2 id="gateway-heartbeat">Heartbeat Tasks</h2>
+      <DocTable
+        headers={["Task", "Schedule", "What it does"]}
+        rows={[
+          ["Morning Briefing", "8:00 AM daily", "Net worth, portfolio, yield earned, AI cost, action items"],
+          ["Yield Monitor", "Every 30 min", "Alerts if better APY found for savings or investments"],
+          ["DCA Executor", "9:00 AM Monday", "Runs pending auto-invest schedules"],
+          ["Health Check", "Every 15 min", "Warns if health factor drops below safe thresholds"],
+        ]}
+      />
+
+      <h2 id="gateway-security">Security</h2>
+      <DocTable
+        headers={["Control", "How"]}
+        rows={[
+          ["Non-custodial", "Private keys stay on your machine, encrypted with PIN"],
+          ["BYOK LLM", "Your own API key — no data passes through t2000 servers"],
+          ["Telegram allowlist", "Only your user ID can talk to the bot"],
+          ["Confirmation flow", "All state-changing actions require explicit approval"],
+          ["Safeguards", "Per-tx and daily limits enforced on all channels"],
+        ]}
+      />
+
+      <h2 id="gateway-config">Configuration</h2>
+      <p>All gateway config lives at <InlineCode>~/.t2000/config.json</InlineCode>. Use dot-notation:</p>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 config set llm.provider anthropic{"\n"}
+        {S.g("$")} t2000 config set llm.apiKey sk-ant-...{"\n"}
+        {S.g("$")} t2000 config set channels.telegram.botToken 123456:ABC...{"\n"}
+        {S.g("$")} t2000 config set channels.webchat.port 2000{"\n"}
+        {S.g("$")} t2000 config set heartbeat.morningBriefing.schedule {S.s("\"0 8 * * *\"")}
+      </CodeBlock>
+    </>
+  );
+}
+
+function TelegramSection() {
+  return (
+    <>
+      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
+        AI Advisor
+      </div>
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+        Telegram <em className="italic text-accent">Setup</em>
+      </h1>
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
+        Chat with your AI financial advisor from your phone. Set up in 2 minutes.
+      </p>
+
+      <h2 id="telegram-create">1. Create a Telegram bot</h2>
+      <p>Open <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@BotFather</a> in Telegram and:</p>
+      <ul className="list-disc pl-6 text-[13px] text-white/55 leading-[1.8] mb-6">
+        <li>Send <InlineCode>/newbot</InlineCode></li>
+        <li>Pick a name (e.g. &ldquo;My t2000 Agent&rdquo;)</li>
+        <li>Copy the bot token</li>
+      </ul>
+
+      <h2 id="telegram-userid">2. Get your user ID</h2>
+      <p>Open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@userinfobot</a> and send any message — it replies with your numeric user ID.</p>
+
+      <h2 id="telegram-config">3. Configure t2000</h2>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 config set channels.telegram.enabled true{"\n"}
+        {S.g("$")} t2000 config set channels.telegram.botToken {S.s("\"123456:ABC...\"")}{"\n"}
+        {S.g("$")} t2000 config set channels.telegram.allowedUsers {S.s("'[\"12345\"]'")}
+      </CodeBlock>
+      <Callout type="tip" label="Easier">
+        Run <InlineCode>t2000 init</InlineCode> instead — it opens BotFather and @userinfobot
+        in your browser and walks you through each step.
+      </Callout>
+
+      <h2 id="telegram-start">4. Start</h2>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 gateway
+      </CodeBlock>
+      <p>Message your bot on Telegram. It will ask for your PIN to unlock, then you can chat naturally.</p>
+
+      <h2 id="telegram-security">Security</h2>
+      <DocTable
+        headers={["Feature", "How"]}
+        rows={[
+          ["Allowlist", "Only configured user IDs can interact with the bot"],
+          ["PIN unlock", "First message must be your PIN. Message is auto-deleted."],
+          ["Confirmation", "State-changing actions show a dry-run preview and ask for confirmation"],
+          ["Message splitting", "Long responses are split into Telegram-safe chunks (< 4096 chars)"],
+        ]}
+      />
+    </>
+  );
+}
+
+function InitWizardSection() {
+  return (
+    <>
+      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
+        AI Advisor
+      </div>
+      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
+        Init <em className="italic text-accent">Wizard</em>
+      </h1>
+      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
+        Guided setup: wallet, AI, Telegram, safeguards. Browser auto-opens API key pages.
+        Inspired by <InlineCode>gh auth login</InlineCode>.
+      </p>
+
+      <h2 id="init-wizard-run">Run the wizard</h2>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 init
+      </CodeBlock>
+
+      <h2 id="init-wizard-steps">What it does</h2>
+      <DocTable
+        headers={["Step", "What happens"]}
+        rows={[
+          ["1. Create wallet", "Generates Ed25519 keypair, creates 5 bank accounts on Sui"],
+          ["2. Set PIN", "AES-256-GCM encryption for private key"],
+          ["3. Connect AI", "Choose Claude or GPT. Browser opens API key dashboard. Paste key."],
+          ["4. Connect Telegram", "Browser opens BotFather → create bot → paste token. Opens @userinfobot → paste user ID."],
+          ["5. Set safeguards", "Per-transaction and daily send limits"],
+        ]}
+      />
+
+      <h2 id="init-wizard-after">After init</h2>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 gateway{S.c("       # start your AI financial advisor")}{"\n"}
+        {S.g("$")} t2000 balance{S.c("       # or use CLI directly")}{"\n"}
+        {S.g("$")} t2000 mcp install{S.c("   # or connect to Claude Desktop / Cursor")}
+      </CodeBlock>
+    </>
+  );
+}
+
 function McpSection() {
   return (
     <>
@@ -1299,11 +1482,10 @@ function McpSection() {
         23 tools, 15 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
-      <h2 id="mcp-setup">Setup — 4 commands</h2>
+      <h2 id="mcp-setup">Setup — 3 commands</h2>
       <CodeBlock lang="bash">
         {S.g("$")} npm i -g @t2000/cli{S.c("          # install")}{"\n"}
-        {S.g("$")} t2000 init{S.c("                    # create wallet")}{"\n"}
-        {S.g("$")} t2000 config set maxPerTx 100{S.c(" # set safeguards")}{"\n"}
+        {S.g("$")} t2000 init{S.c("                    # guided setup (wallet + safeguards)")}{"\n"}
         {S.g("$")} t2000 mcp install{S.c("             # auto-configure Claude Desktop + Cursor")}
       </CodeBlock>
       <p>
@@ -1709,7 +1891,20 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.17.0 <Badge color="green">current</Badge>
+        v0.18.0 <Badge color="green">current</Badge>
+      </h2>
+      <p>
+        AI Gateway — your personal AI financial advisor. <InlineCode>t2000 init</InlineCode> walks
+        you through setup (wallet, AI, Telegram, safeguards) with browser auto-open for API keys
+        and BotFather. <InlineCode>t2000 gateway</InlineCode> starts the advisor — chat on Telegram
+        or WebChat (localhost:2000). Heartbeat tasks: morning briefings, yield monitoring, auto-DCA,
+        health checks. BYOK LLM (Claude/GPT). 24/7 daemon mode via{" "}
+        <InlineCode>t2000 gateway install</InlineCode>. New <InlineCode>@t2000/gateway</InlineCode> package.
+        80 unit tests covering agent loop, context, tools, heartbeat, Telegram, and logging.
+      </p>
+
+      <h2 id="cl-0170">
+        v0.17.0
       </h2>
       <p>
         Gold (XAUm) — tokenized physical gold is now the fourth investment asset. New built-in strategies: all-weather (BTC/ETH/SUI/GOLD) and safe-haven (BTC/GOLD). GOLD earns yield via NAVI and Suilend. Crypto and commodities in one portfolio.
@@ -1989,7 +2184,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.16.5
+            v0.18.0
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home
@@ -2074,6 +2269,9 @@ export default function DocsPage() {
             {activeSection === "sdk" && <SdkSection />}
             {activeSection === "config" && <ConfigSection />}
             {activeSection === "errors" && <ErrorsSection />}
+            {activeSection === "gateway" && <GatewaySection />}
+            {activeSection === "telegram" && <TelegramSection />}
+            {activeSection === "init-wizard" && <InitWizardSection />}
             {activeSection === "mcp" && <McpSection />}
             {activeSection === "skills" && <SkillsSection />}
             {activeSection === "x402" && <X402Section />}

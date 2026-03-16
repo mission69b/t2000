@@ -24,13 +24,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "t2000 — A Bank Account for the AI Economy",
+  title: "t2000 — Your Personal AI Financial Advisor",
   description:
-    "Send, save, borrow, invest, and pay — autonomously. The complete financial stack for AI agents on Sui.",
+    "Talk to your agent on Telegram. It earns, invests, borrows, and pays — autonomously. Built on Sui.",
   openGraph: {
-    title: "t2000 — A Bank Account for the AI Economy",
+    title: "t2000 — Your Personal AI Financial Advisor",
     description:
-      "Your AI earns, borrows, invests, and pays — autonomously.",
+      "Talk to your agent on Telegram. It earns, invests, borrows, and pays — autonomously.",
     type: "website",
   },
 };

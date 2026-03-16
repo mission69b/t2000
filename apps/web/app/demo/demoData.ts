@@ -575,4 +575,89 @@ export const demos: Demo[] = [
       { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/D9fLH5h...", delay: 200 },
     ],
   },
+
+  // ── 13. Init Wizard ──────────────────────────────────────────────────
+  {
+    id: "init",
+    title: "Init — Guided Setup",
+    description:
+      "Wallet, AI, Telegram, safeguards — one wizard. Browser opens API key pages.",
+    tweet: "t2000 init — zero friction setup for your personal AI financial advisor",
+    lines: [
+      { type: "command", text: "❯ t2000 init", delay: 0 },
+      { type: "output", text: "  ┌─────────────────────────────────────────┐", delay: 400 },
+      { type: "output", text: "  │  Welcome to t2000                       │", delay: 100 },
+      { type: "output", text: "  │  Your personal AI financial advisor     │", delay: 100 },
+      { type: "output", text: "  └─────────────────────────────────────────┘", delay: 100 },
+
+      { type: "info", text: "", delay: 200 },
+      { type: "output", text: "  Step 1 of 5 — Create wallet", delay: 400 },
+      { type: "success", text: "  ✓ Keypair generated", delay: 300 },
+      { type: "success", text: "  ✓ Sui mainnet", delay: 200 },
+      { type: "success", text: "  ✓ 5 accounts: Checking, Savings, Credit, Exchange, Investment", delay: 200 },
+
+      { type: "info", text: "", delay: 400 },
+      { type: "output", text: "  Step 3 of 5 — Connect AI", delay: 400 },
+      { type: "output", text: "  Which LLM provider? ❯ Claude (Anthropic)", delay: 300 },
+      { type: "info", text: "  Opening Anthropic API keys page in your browser...", delay: 400 },
+      { type: "info", text: "    https://console.anthropic.com/settings/keys", delay: 200 },
+      { type: "output", text: "  Paste your Anthropic API key: ****", delay: 600 },
+      { type: "success", text: "  ✓ Claude connected — model: claude-sonnet-4-20250514", delay: 400 },
+
+      { type: "info", text: "", delay: 400 },
+      { type: "output", text: "  Step 4 of 5 — Connect Telegram", delay: 400 },
+      { type: "info", text: "  Opening BotFather in Telegram...", delay: 300 },
+      { type: "success", text: "  ✓ Telegram connected", delay: 600 },
+
+      { type: "info", text: "", delay: 400 },
+      { type: "output", text: "  Step 5 of 5 — Set safeguards", delay: 400 },
+      { type: "success", text: "  ✓ Safeguards configured", delay: 300 },
+
+      { type: "info", text: "", delay: 300 },
+      { type: "output", text: "  ┌─────────────────────────────────────────┐", delay: 300 },
+      { type: "output", text: "  │  ✓ You're all set                       │", delay: 100 },
+      { type: "output", text: "  │  Start your agent:  t2000 gateway       │", delay: 100 },
+      { type: "output", text: "  └─────────────────────────────────────────┘", delay: 100 },
+    ],
+  },
+
+  // ── 14. Gateway ───────────────────────────────────────────────────────
+  {
+    id: "gateway",
+    title: "Gateway — AI Financial Advisor",
+    description:
+      "Start your personal AI advisor. Telegram, WebChat, heartbeat — all in one.",
+    tweet: "t2000 gateway — your personal AI financial advisor on Telegram",
+    lines: [
+      { type: "command", text: "❯ t2000 gateway", delay: 0 },
+      { type: "success", text: "  ✓ Agent unlocked (0x8b3e...d412)", delay: 500 },
+      { type: "success", text: "  ✓ Claude connected (claude-sonnet-4-20250514)", delay: 400 },
+      { type: "success", text: "  ✓ Telegram connected", delay: 400 },
+      { type: "success", text: "  ✓ WebChat at http://localhost:2000", delay: 300 },
+      { type: "success", text: "  ✓ Heartbeat started (4 tasks)", delay: 300 },
+      { type: "success", text: "  ✓ Ready — talk to your agent", delay: 400 },
+
+      { type: "info", text: "", delay: 1000 },
+      { type: "info", text: "  ── Heartbeat: Morning Briefing ──", delay: 600 },
+      { type: "info", text: "", delay: 200 },
+      { type: "output", text: "  ☀️ MORNING BRIEFING — Feb 19, 2026", delay: 400 },
+      { type: "info", text: "  ──────────────────────────────────────", delay: 100 },
+      { type: "output", text: "  Net Worth:     $1,247.82", delay: 200 },
+      { type: "output", text: "  Checking:      $69.60", delay: 150 },
+      { type: "output", text: "  Savings:       $978.22 (4.15% APY)", delay: 150 },
+      { type: "output", text: "  Investment:    $200.00 (+2.3%)", delay: 150 },
+      { type: "info", text: "", delay: 100 },
+      { type: "output", text: "  Yield earned:  $1.32 this week", delay: 200 },
+      { type: "output", text: "  AI cost:       $0.04 this week", delay: 200 },
+      { type: "success", text: "  ✓ Net positive — yield covers AI costs", delay: 300 },
+
+      { type: "info", text: "", delay: 800 },
+      { type: "info", text: "  ── Telegram: incoming message ──", delay: 400 },
+      { type: "output", text: "  User: What's my balance?", delay: 400 },
+      { type: "output", text: "  Agent: Your current balance:", delay: 400 },
+      { type: "output", text: "    Checking: $69.60 (spendable)", delay: 200 },
+      { type: "output", text: "    Savings: $978.22 (earning 4.15% APY)", delay: 200 },
+      { type: "output", text: "    Investment: $200.00 (+2.3%)", delay: 200 },
+    ],
+  },
 ];

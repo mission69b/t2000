@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "0.17.29",
+  "version": "0.18.0",
   "description": "CLI bank account for AI agents on Sui — send, save, borrow, rebalance from your terminal",
   "type": "module",
   "bin": {
@@ -48,7 +48,8 @@
     "picocolors": "^1"
   },
   "optionalDependencies": {
-    "@t2000/mcp": "workspace:*"
+    "@t2000/mcp": "workspace:*",
+    "@t2000/gateway": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",

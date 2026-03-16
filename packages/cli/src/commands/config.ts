@@ -10,6 +10,29 @@ const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 
 const SAFEGUARD_KEYS = new Set(['locked', 'maxPerTx', 'maxDailySend', 'dailyUsed', 'dailyResetDate', 'alertThreshold', 'maxLeverage', 'maxPositionSize']);
 
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split('.');
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current == null || typeof current !== 'object') return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split('.');
+  let current = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
+      current[part] = {};
+    }
+    current = current[part] as Record<string, unknown>;
+  }
+  current[parts[parts.length - 1]] = value;
+}
+
 function loadConfig(): Record<string, unknown> {
   try {
     return JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
@@ -68,25 +91,32 @@ export function registerConfig(program: Command) {
 
   configCmd
     .command('get')
-    .argument('[key]', 'Config key to get (omit for all)')
+    .argument('[key]', 'Config key to get, supports dot notation (e.g. llm.provider)')
     .action((key?: string) => {
       try {
         const config = loadConfig();
 
-        if (isJsonMode()) {
-          printJson(key ? { [key]: config[key] } : config);
-          return;
-        }
-
-        printBlank();
         if (key) {
-          printKeyValue(key, String(config[key] ?? '(not set)'));
+          const value = key.includes('.') ? getNestedValue(config, key) : config[key];
+          if (isJsonMode()) {
+            printJson({ [key]: value });
+            return;
+          }
+          printBlank();
+          const display = typeof value === 'object' ? JSON.stringify(value) : String(value ?? '(not set)');
+          printKeyValue(key, display);
         } else {
+          if (isJsonMode()) {
+            printJson(config);
+            return;
+          }
+          printBlank();
           if (Object.keys(config).length === 0) {
             printInfo('No configuration set.');
           } else {
             for (const [k, v] of Object.entries(config)) {
-              printKeyValue(k, String(v));
+              const display = typeof v === 'object' ? JSON.stringify(v) : String(v);
+              printKeyValue(k, display);
             }
           }
         }
@@ -98,11 +128,13 @@ export function registerConfig(program: Command) {
 
   configCmd
     .command('set')
-    .argument('<key>', 'Config key')
+    .argument('<key>', 'Config key, supports dot notation (e.g. llm.provider, channels.telegram.botToken)')
     .argument('<value>', 'Config value')
     .action((key: string, value: string) => {
       try {
-        if (SAFEGUARD_KEYS.has(key)) {
+        const leafKey = key.includes('.') ? key.split('.').pop()! : key;
+
+        if (SAFEGUARD_KEYS.has(leafKey) && !key.includes('.')) {
           const enforcer = new SafeguardEnforcer(CONFIG_DIR);
           enforcer.load();
 
@@ -130,8 +162,16 @@ export function registerConfig(program: Command) {
         if (value === 'true') parsed = true;
         else if (value === 'false') parsed = false;
         else if (!isNaN(Number(value)) && value.trim() !== '') parsed = Number(value);
+        // Handle JSON arrays (e.g. allowedUsers)
+        if (value.startsWith('[') || value.startsWith('{')) {
+          try { parsed = JSON.parse(value); } catch { /* keep as string */ }
+        }
 
-        config[key] = parsed;
+        if (key.includes('.')) {
+          setNestedValue(config, key, parsed);
+        } else {
+          config[key] = parsed;
+        }
         saveConfig(config);
 
         if (isJsonMode()) {

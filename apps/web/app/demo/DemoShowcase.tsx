@@ -65,7 +65,7 @@ export function DemoShowcase() {
               <DemoChat
                 key={activeChatId}
                 messages={activeChatDemo.messages}
-                title="Claude — t2000 MCP"
+                title={activeChatDemo.id === "chat-telegram" ? "t2000 — Telegram" : "Claude — t2000 MCP"}
                 height="440px"
               />
             </div>
@@ -100,7 +100,7 @@ export function DemoShowcase() {
                 </div>
               </div>
               <div className="text-[10px] text-muted leading-relaxed border-t border-border pt-4">
-                Works with any MCP-compatible AI platform.
+                Works via Telegram, WebChat, or any MCP-compatible AI platform.
               </div>
             </div>
           </div>

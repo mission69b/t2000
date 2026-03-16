@@ -69,8 +69,8 @@ const STEPS = [
     title: "Install",
     badge: "30s",
     badgeType: "done" as const,
-    content: "One command. Wallet, gas, five accounts.",
-    code: "npm install -g @t2000/cli && t2000 init",
+    content: "One command. Wallet, AI, Telegram — all guided.",
+    code: "npm i -g @t2000/cli && t2000 init",
   },
   {
     num: "02",
@@ -81,18 +81,18 @@ const STEPS = [
   },
   {
     num: "03",
-    title: "Connect your AI",
+    title: "Start your advisor",
     badge: "1 cmd",
     badgeType: "new" as const,
-    content: "23 tools with built-in safety limits. Any AI platform.",
-    code: "t2000 mcp install",
+    content: "Chat on Telegram or WebChat. Morning briefings, yield alerts, auto-DCA.",
+    code: "t2000 gateway",
   },
   {
     num: "04",
     title: "Let it work",
     badge: "∞",
     badgeType: "new" as const,
-    content: "Set the rules once. Your agent handles the rest.",
+    content: "Set the rules once. Your agent handles the rest — 24/7.",
   },
 ];
 
@@ -125,6 +125,8 @@ const X402_STEPS = [
 ];
 
 const MCP_PLATFORMS = [
+  "Telegram",
+  "WebChat",
   "Claude Desktop",
   "Cursor",
   "OpenClaw",
@@ -152,8 +154,9 @@ const COMPARE_ROWS: {
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
-  { feature: "AI integration", coinbase: "—", t2000: "✓ 23 tools + 15 AI prompts", coinbaseCross: true },
-  { feature: "Safety limits + lock", coinbase: "—", t2000: "✓ Per-tx limits, daily caps, emergency lock", coinbaseCross: true },
+  { feature: "AI integration", coinbase: "—", t2000: "✓ 23 tools + 15 AI prompts + MCP", coinbaseCross: true },
+  { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ Telegram + WebChat + heartbeat", coinbaseCross: true },
+  { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
   { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
 ];
 
@@ -216,14 +219,13 @@ export default function Home() {
           </div>
 
           <h1 className="font-serif text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">
-            A{" "}
-            <em className="italic text-accent">bank account</em>
+            Your personal AI
             <br />
-            for the AI economy.
+            <em className="italic text-accent">financial advisor.</em>
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
-            Your AI earns, borrows, invests, and pays — autonomously.
+            Talk to your agent on Telegram. It earns, invests, borrows, and pays — autonomously.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
@@ -233,6 +235,8 @@ export default function Home() {
               { icon: "◎", label: "Credit", href: "/accounts" },
               { icon: "◆", label: "Investment", href: "/invest" },
               { icon: "⇌", label: "Exchange", href: "/accounts" },
+              { icon: "✦", label: "AI Gateway" },
+              { icon: "◇", label: "Telegram" },
             ].map((pill) => {
               const cls = "px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim";
               return pill.href ? (
@@ -467,11 +471,11 @@ export default function Home() {
             <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Your AI already has a
               <br />
-              <em className="italic text-accent">bank account.</em>
+              <em className="italic text-accent">financial advisor.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            One command. 23 tools. Built-in safety limits.
+            Talk on Telegram, ask in Claude Desktop, or use the CLI. 23 tools. Built-in safety.
           </p>
         </div>
 
@@ -482,12 +486,14 @@ export default function Home() {
               Setup
             </div>
             <pre className="px-4 sm:px-5 py-5 text-xs sm:text-[13px] overflow-x-auto scrollbar-hide leading-[1.8]">
-              <span className="text-muted/40">{`# macOS / Linux`}</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">curl -fsSL https://t2000.ai/install.sh | bash</span>{"\n\n"}
-              <span className="text-muted/40">{`# or Node.js`}</span>{"\n"}
+              <span className="text-muted/40">{`# Install + guided setup`}</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">npm i -g @t2000/cli</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">t2000 init</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 config set maxPerTx 100</span>{"\n"}
+              <span className="text-muted/50">{"\n"}  {"✓"} Wallet created{"\n"}  {"✓"} Claude connected{"\n"}  {"✓"} Telegram connected{"\n"}  {"✓"} Safeguards set</span>{"\n\n"}
+              <span className="text-muted/40">{`# Start your advisor`}</span>{"\n"}
+              <span className="text-muted">$</span> <span className="text-accent">t2000 gateway</span>{"\n"}
+              <span className="text-muted/50">{"\n"}  {"✓"} WebChat at localhost:2000{"\n"}  {"✓"} Telegram connected{"\n"}  {"✓"} Heartbeat started</span>{"\n\n"}
+              <span className="text-muted/40">{`# Or connect to Claude Desktop / Cursor`}</span>{"\n"}
               <span className="text-muted">$</span> <span className="text-accent">t2000 mcp install</span>{"\n"}
               <span className="text-muted/50">{"\n"}  {"✓"} Claude Desktop  configured{"\n"}  {"✓"} Cursor (global)  configured</span>
             </pre>
@@ -561,11 +567,11 @@ export default function Home() {
             <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Not a wallet.
               <br />A{" "}
-              <em className="italic text-accent">bank account.</em>
+              <em className="italic text-accent">financial advisor.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Wallets let agents spend. t2000 lets agents bank.
+            Wallets let agents spend. t2000 gives agents a personal financial advisor.
           </p>
         </div>
 
