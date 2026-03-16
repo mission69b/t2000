@@ -59,7 +59,7 @@ async function installMcpForPlatforms(platforms: McpPlatform[]): Promise<void> {
 
     const servers = (config.mcpServers as Record<string, unknown>) ?? {};
     if (servers['t2000']) {
-      printInfo(`${p.name}  already configured`);
+      printSuccess(`${p.name}  already configured`);
       continue;
     }
 
