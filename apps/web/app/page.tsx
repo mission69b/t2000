@@ -124,18 +124,18 @@ const X402_STEPS = [
   },
 ];
 
-const MCP_PLATFORMS = [
-  "Telegram",
-  "WebChat",
-  "Claude Desktop",
-  "Cursor",
-  "OpenClaw",
-  "Claude Code",
-  "Windsurf",
-  "OpenAI Codex",
-  "GitHub Copilot",
-  "Amp",
-  "+ any MCP client",
+const INTEGRATIONS = [
+  { name: "Telegram", type: "channel" },
+  { name: "WebChat", type: "channel" },
+  { name: "Claude Desktop", type: "ai" },
+  { name: "Cursor", type: "ai" },
+  { name: "Claude Code", type: "ai" },
+  { name: "Windsurf", type: "ai" },
+  { name: "OpenAI Codex", type: "ai" },
+  { name: "GitHub Copilot", type: "ai" },
+  { name: "Amp", type: "ai" },
+  { name: "OpenClaw", type: "ai" },
+  { name: "Any MCP client", type: "ai" },
 ];
 
 const COMPARE_ROWS: {
@@ -184,10 +184,10 @@ export default function Home() {
             How it works
           </a>
           <a
-            href="#mcp"
+            href="#integrations"
             className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
           >
-            Connect AI
+            Integrations
           </a>
           <a
             href={GITHUB_URL}
@@ -225,7 +225,7 @@ export default function Home() {
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
-            Talk to your agent on Telegram. It earns, invests, borrows, and pays — autonomously.
+            Your AI earns, borrows, invests, and pays — autonomously.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
@@ -235,22 +235,16 @@ export default function Home() {
               { icon: "◎", label: "Credit", href: "/accounts" },
               { icon: "◆", label: "Investment", href: "/invest" },
               { icon: "⇌", label: "Exchange", href: "/accounts" },
-              { icon: "✦", label: "AI Gateway" },
-              { icon: "◇", label: "Telegram" },
-            ].map((pill) => {
-              const cls = "px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim";
-              return pill.href ? (
-                <Link key={pill.label} href={pill.href} className={cls}>
-                  <span className="text-xs sm:text-sm">{pill.icon}</span>
-                  {pill.label}
-                </Link>
-              ) : (
-                <div key={pill.label} className={cls}>
-                  <span className="text-xs sm:text-sm">{pill.icon}</span>
-                  {pill.label}
-                </div>
-              );
-            })}
+            ].map((pill) => (
+              <Link
+                key={pill.label}
+                href={pill.href}
+                className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 border border-border-bright text-[10px] sm:text-[11px] tracking-[0.06em] flex items-center gap-1.5 sm:gap-2 text-muted transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim"
+              >
+                <span className="text-xs sm:text-sm">{pill.icon}</span>
+                {pill.label}
+              </Link>
+            ))}
           </div>
 
           <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
@@ -458,98 +452,57 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Connect Your AI ── */}
+      {/* ── Works With Everything ── */}
       <section
-        id="mcp"
+        id="integrations"
         className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
-          <div>
-            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-              Connect Your AI
-            </div>
-            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
-              Your AI already has a
-              <br />
-              <em className="italic text-accent">financial advisor.</em>
-            </h2>
+        <div className="max-w-[800px] mx-auto text-center mb-10 sm:mb-16">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+            Works with everything
           </div>
-          <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Talk on Telegram, ask in Claude Desktop, or use the CLI. 23 tools. Built-in safety.
+          <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
+            Talk to your agent
+            <br />
+            <em className="italic text-accent">anywhere.</em>
+          </h2>
+          <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mx-auto">
+            Telegram, your IDE, or any MCP-compatible AI. 23 tools. One agent.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-start">
-          {/* Left: Terminal showing setup */}
-          <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
-            <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-              Setup
-            </div>
-            <pre className="px-4 sm:px-5 py-5 text-xs sm:text-[13px] overflow-x-auto scrollbar-hide leading-[1.8]">
-              <span className="text-muted/40">{`# Install + guided setup`}</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">npm i -g @t2000/cli</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 init</span>{"\n"}
-              <span className="text-muted/50">{"\n"}  Creating agent wallet...{"\n"}  {"✓"} Keypair generated{"\n"}  {"✓"} Gas sponsorship enabled{"\n"}  {"✓"} Checking  {"✓"} Savings  {"✓"} Credit  {"✓"} Exchange  {"✓"} Investment{"\n"}  🎉 Bank account created{"\n"}  {"✓"} Claude connected{"\n"}  {"✓"} Safeguards set</span>{"\n\n"}
-              <span className="text-muted/40">{`# Start your advisor`}</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 gateway</span>{"\n"}
-              <span className="text-muted/50">{"\n"}  {"✓"} WebChat at localhost:2000{"\n"}  {"✓"} Telegram connected{"\n"}  {"✓"} Heartbeat started</span>{"\n\n"}
-              <span className="text-muted/40">{`# Or connect to Claude Desktop / Cursor`}</span>{"\n"}
-              <span className="text-muted">$</span> <span className="text-accent">t2000 mcp install</span>{"\n"}
-              <span className="text-muted/50">{"\n"}  {"✓"} Claude Desktop  configured{"\n"}  {"✓"} Cursor (global)  configured</span>
-            </pre>
-            <div className="px-4 sm:px-5 py-3 border-t border-border text-[11px] text-muted/60">
-              Then ask your AI: <span className="text-muted">&quot;what&apos;s my balance?&quot;</span>
-            </div>
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4 max-w-[700px] mx-auto mb-12 sm:mb-16">
+          {INTEGRATIONS.map((item) => (
+            <span
+              key={item.name}
+              className={`text-[12px] sm:text-[13px] px-4 sm:px-5 py-2 sm:py-2.5 border tracking-wide transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim ${
+                item.type === "channel"
+                  ? "border-accent/30 text-foreground bg-accent-dim"
+                  : "border-border-bright text-muted"
+              }`}
+            >
+              {item.name}
+            </span>
+          ))}
+        </div>
+
+        <div className="max-w-[600px] mx-auto">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4 text-center">
+            Try asking
           </div>
-
-          {/* Right: Categories + examples + platforms */}
-          <div>
-            <div className="grid grid-cols-3 gap-3 mb-8">
-              {[
-                { count: "9", label: "Read", desc: "Balance, rates, earnings, portfolio" },
-                { count: "12", label: "Write", desc: "Send, save, invest, swap, borrow" },
-                { count: "2", label: "Safety", desc: "Limits + emergency lock" },
-              ].map((g) => (
-                <div key={g.label} className="border border-border rounded-sm p-3 sm:p-4">
-                  <div className="text-accent text-lg sm:text-xl font-mono">{g.count}</div>
-                  <div className="text-[10px] tracking-[0.15em] uppercase text-muted mt-1">{g.label}</div>
-                  <p className="text-[11px] text-muted/60 mt-2 leading-[1.5]">{g.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-2">
-              Try asking
-            </div>
-            <div className="flex flex-col gap-1.5 mb-6">
-              {[
-                "Move my idle USDC to the highest yield",
-                "Send $50 to alice but borrow if I\u2019m short",
-                "Invest $100 in SUI and show my portfolio",
-                "What would happen if I invest $200 in bluechip?",
-                "Give me a full financial report",
-              ].map((q) => (
-                <p key={q} className="text-xs text-muted/70 italic">
-                  &ldquo;{q}&rdquo;
-                </p>
-              ))}
-            </div>
-
-            <div>
-              <div className="text-[10px] tracking-[0.15em] uppercase text-muted mb-2">
-                Works with
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {MCP_PLATFORMS.map((p) => (
-                  <span
-                    key={p}
-                    className="text-[11px] px-3 py-1.5 border border-border-bright text-muted tracking-wide"
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+            {[
+              "Move my idle USDC to the highest yield",
+              "Send $50 to alice",
+              "Invest $100 in SUI",
+              "Give me a full financial report",
+              "Borrow $40 against my savings",
+              "What\u2019s my portfolio performance?",
+            ].map((q) => (
+              <p key={q} className="text-xs text-muted/70 italic text-center sm:text-left">
+                &ldquo;{q}&rdquo;
+              </p>
+            ))}
           </div>
         </div>
       </section>
@@ -567,11 +520,11 @@ export default function Home() {
             <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
               Not a wallet.
               <br />A{" "}
-              <em className="italic text-accent">financial advisor.</em>
+              <em className="italic text-accent">bank account.</em>
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Wallets let agents spend. t2000 gives agents a personal financial advisor.
+            Wallets let agents spend. t2000 gives them a full bank account.
           </p>
         </div>
 
@@ -670,7 +623,7 @@ export default function Home() {
           </p>
 
           <div className="mb-6 overflow-x-auto scrollbar-hide">
-            <InstallCommand />
+            <InstallCommand command="curl -fsSL https://t2000.sh/install | bash" />
           </div>
 
           <div className="flex justify-center gap-3 sm:gap-4 mt-6 flex-wrap">
