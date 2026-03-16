@@ -1,7 +1,7 @@
 {
   "name": "@t2000/cli",
-  "version": "0.18.0",
-  "description": "CLI bank account for AI agents on Sui — send, save, borrow, rebalance from your terminal",
+  "version": "0.18.1",
+  "description": "Your personal AI financial advisor on Sui — guided setup, AI gateway, Telegram, send, save, borrow, rebalance",
   "type": "module",
   "bin": {
     "t2000": "./dist/index.js"
@@ -52,6 +52,8 @@
     "@t2000/gateway": "workspace:*"
   },
   "devDependencies": {
+    "@t2000/gateway": "workspace:*",
+    "@t2000/mcp": "workspace:*",
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",

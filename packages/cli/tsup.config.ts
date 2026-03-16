@@ -6,5 +6,10 @@ export default defineConfig({
   dts: false,
   clean: true,
   sourcemap: true,
-  banner: { js: '#!/usr/bin/env node' },
+  onSuccess: `node -e "
+    const fs = require('fs');
+    const f = 'dist/index.js';
+    const code = fs.readFileSync(f, 'utf8').replace(/^#!.*\\n/gm, '');
+    fs.writeFileSync(f, '#!/usr/bin/env node\\n' + code);
+  "`,
 });
