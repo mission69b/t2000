@@ -9,17 +9,17 @@
 
 ---
 
-## Principles
+## 🧭 Principles
 
-1. **Show data + insight + next action** — Never dump a table. Always notice something and suggest a move.
-2. **Lead with the number** — Users scan for amounts. Put the number first, context second.
-3. **Zero dead air** — User should always see something happening (typing, tool badges, progress).
-4. **Mobile-first** — Telegram is the primary channel. Everything must read well on a phone screen.
-5. **Opinionated advisor** — Not a neutral bot. "Your debt costs more than it earns. Pay it off?"
+1. 📊 **Show data + insight + next action** — Never dump a table. Always notice something and suggest a move.
+2. 💰 **Lead with the number** — Users scan for amounts. Put the number first, context second.
+3. ⚡ **Zero dead air** — User should always see something happening (typing, tool badges, progress).
+4. 📱 **Mobile-first** — Telegram is the primary channel. Everything must read well on a phone screen.
+5. 🧠 **Opinionated advisor** — Not a neutral bot. "Your debt costs more than it earns. Pay it off?"
 
 ---
 
-## Task 1: System Prompt Rewrite ✅ `HIGH IMPACT` `LOW EFFORT`
+## 🎯 Task 1: System Prompt Rewrite — `🔴 HIGH IMPACT` `🟢 LOW EFFORT`
 
 **File:** `packages/gateway/src/system-prompt.ts`
 
@@ -94,7 +94,7 @@ ETH   0.025          $15.00   -0.5%
 
 ---
 
-## Task 2: Telegram /start + Typing Indicator ✅ `HIGH IMPACT` `LOW EFFORT`
+## 🤖 Task 2: Telegram /start + Typing Indicator — `🔴 HIGH IMPACT` `🟢 LOW EFFORT`
 
 **File:** `packages/gateway/src/channels/telegram.ts`
 
@@ -129,7 +129,7 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Task 3: Gateway Default Verbose Output ✅ `MEDIUM IMPACT` `TINY EFFORT`
+## 🖥️ Task 3: Gateway Default Verbose Output — `🟠 MEDIUM IMPACT` `🟢 TINY EFFORT`
 
 **File:** `packages/gateway/src/gateway.ts`, `packages/cli/src/commands/gateway.ts`
 
@@ -146,7 +146,7 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Task 4: Telegram HTML Parse Mode ✅ `MEDIUM IMPACT` `LOW EFFORT`
+## 🔤 Task 4: Telegram HTML Parse Mode — `🟠 MEDIUM IMPACT` `🟢 LOW EFFORT`
 
 **File:** `packages/gateway/src/channels/telegram.ts`
 
@@ -166,7 +166,7 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Task 5: Telegram Inline Keyboards for Confirmations ✅ `MEDIUM IMPACT` `MEDIUM EFFORT`
+## ⌨️ Task 5: Telegram Inline Keyboards for Confirmations — `🟠 MEDIUM IMPACT` `🟡 MEDIUM EFFORT`
 
 **File:** `packages/gateway/src/channels/telegram.ts`, `packages/gateway/src/gateway.ts`
 
@@ -186,7 +186,7 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Task 6: WebChat Welcome State + Quick Actions ✅ `MEDIUM IMPACT` `LOW EFFORT`
+## 👋 Task 6: WebChat Welcome State + Quick Actions — `🟠 MEDIUM IMPACT` `🟢 LOW EFFORT`
 
 **File:** `packages/gateway/src/channels/webchat.ts` (inline HTML)
 
@@ -209,7 +209,7 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Task 7: WebChat Markdown Rendering (marked CDN) ✅ `MEDIUM IMPACT` `LOW EFFORT`
+## ✍️ Task 7: WebChat Markdown Rendering (marked CDN) — `🟠 MEDIUM IMPACT` `🟢 LOW EFFORT`
 
 **File:** `packages/gateway/src/channels/webchat.ts` (inline HTML)
 
@@ -230,7 +230,7 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Task 8: Activity Feed in Gateway CLI ✅ `LOW IMPACT` `LOW EFFORT`
+## 📡 Task 8: Activity Feed in Gateway CLI — `🟢 LOW IMPACT` `🟢 LOW EFFORT`
 
 **File:** `packages/gateway/src/gateway.ts`
 
@@ -253,7 +253,7 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Task 9: Actionable Error Messages ✅ `LOW IMPACT` `LOW EFFORT`
+## 🚨 Task 9: Actionable Error Messages — `🟢 LOW IMPACT` `🟢 LOW EFFORT`
 
 **File:** `packages/gateway/src/system-prompt.ts`, `packages/gateway/src/gateway.ts`
 
@@ -266,7 +266,7 @@ Ask me anything, or tap a button below.
   - Example: "Not enough funds. You have $52.67 available. Try a smaller amount?"
 - Gateway error handler maps common SDK errors to friendly messages before sending
 
-### Error mapping:
+### ⚠️ Error mapping:
 | SDK Error | User Message |
 |-----------|-------------|
 | `INSUFFICIENT_BALANCE` | "Not enough funds. You have $X available." |
@@ -282,16 +282,16 @@ Ask me anything, or tap a button below.
 
 ---
 
-## Implementation Order
+## 🗺️ Implementation Order
 
 ```
-Phase 1 (wow factor):     Task 1 → Task 2 → Task 3
-Phase 2 (Telegram polish): Task 4 → Task 5
-Phase 3 (WebChat polish):  Task 6 → Task 7
-Phase 4 (details):         Task 8 → Task 9
+🚀 Phase 1 (wow factor):      Task 1 → Task 2 → Task 3
+💬 Phase 2 (Telegram polish):  Task 4 → Task 5
+🌐 Phase 3 (WebChat polish):   Task 6 → Task 7
+🔧 Phase 4 (details):          Task 8 → Task 9
 ```
 
-## Test Plan
+## 🧪 Test Plan
 
 - [ ] Run gateway with each channel and verify response formatting
 - [ ] Test Telegram /start with authorized and unauthorized users
