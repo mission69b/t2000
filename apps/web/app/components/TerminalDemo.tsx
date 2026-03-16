@@ -5,10 +5,10 @@ import type { TerminalLine } from "./DemoTerminal";
 
 const LINES: TerminalLine[] = [
   { type: "command", text: "❯ t2000 init", delay: 0 },
-  { type: "output", text: "  ┌──────────────────────────────────────┐", delay: 400 },
-  { type: "output", text: "  │ Welcome to t2000                     │", delay: 80 },
-  { type: "output", text: "  │ Your personal AI financial advisor   │", delay: 80 },
-  { type: "output", text: "  └──────────────────────────────────────┘", delay: 80 },
+  { type: "output", text: "  ┌───────────────────────────┐", delay: 400 },
+  { type: "output", text: "  │ Welcome to t2000          │", delay: 80 },
+  { type: "output", text: "  │ Your AI financial advisor │", delay: 80 },
+  { type: "output", text: "  └───────────────────────────┘", delay: 80 },
   { type: "info", text: "  Creating agent wallet...", delay: 400 },
   { type: "success", text: "  ✓ Keypair generated", delay: 300 },
   { type: "success", text: "  ✓ Gas sponsorship enabled", delay: 200 },
