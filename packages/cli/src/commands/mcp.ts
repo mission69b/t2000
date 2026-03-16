@@ -23,8 +23,12 @@ function getPlatformConfigs(): { name: string; path: string }[] {
       path: join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
     },
     {
-      name: 'Cursor (global)',
+      name: 'Cursor',
       path: join(home, '.cursor', 'mcp.json'),
+    },
+    {
+      name: 'Windsurf',
+      path: join(home, '.codeium', 'windsurf', 'mcp_config.json'),
     },
   ];
 }
@@ -70,7 +74,7 @@ export function registerMcp(program: Command) {
 
   mcp
     .command('install')
-    .description('Auto-configure MCP in Claude Desktop and Cursor')
+    .description('Auto-configure MCP in Claude Desktop, Cursor, and Windsurf')
     .action(async () => {
       try {
         const platforms = getPlatformConfigs();
@@ -117,7 +121,7 @@ export function registerMcp(program: Command) {
 
   mcp
     .command('uninstall')
-    .description('Remove t2000 MCP config from Claude Desktop and Cursor')
+    .description('Remove t2000 MCP config from Claude Desktop, Cursor, and Windsurf')
     .action(async () => {
       try {
         const platforms = getPlatformConfigs();

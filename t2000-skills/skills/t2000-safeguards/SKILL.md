@@ -19,9 +19,8 @@ Configure spending limits and safety guardrails for autonomous agent
 operation. Three controls: agent lock (kill switch), per-transaction
 limit, and daily send limit.
 
-> Safeguards are enforced on all channels: CLI, MCP, and the AI Gateway
-> (Telegram/WebChat). The gateway's confirmation flow is an additional
-> layer — all state-changing actions require explicit "yes" before execution.
+> Safeguards are enforced on CLI and MCP. All state-changing actions
+> require explicit confirmation before execution.
 
 ## Commands
 ```bash

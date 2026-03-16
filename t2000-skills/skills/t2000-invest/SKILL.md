@@ -18,10 +18,7 @@ metadata:
 Buy, sell, and earn yield on crypto assets with dollar-denominated commands.
 Supports predefined strategies (multi-asset portfolios) and auto-invest (DCA).
 Full portfolio tracking with cost basis, P&L, yield APY, and strategy grouping.
-
-> All investment commands work via CLI, MCP (Claude Desktop/Cursor), or
-> the AI Gateway (Telegram/WebChat). Use natural language on Telegram:
-> "invest $100 in SUI" or "show my portfolio".
+All investment commands work via CLI and MCP.
 
 ## Commands — Direct Investment
 ```bash

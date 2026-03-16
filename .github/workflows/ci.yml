@@ -23,12 +23,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/x402 build
-      - run: pnpm --filter @t2000/gateway build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/x402 typecheck
-      - run: pnpm --filter @t2000/gateway typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/server typecheck
       - run: pnpm --filter @t2000/cli typecheck
@@ -46,13 +44,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/x402 build
-      - run: pnpm --filter @t2000/gateway build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/x402 test
       - run: pnpm --filter @t2000/server test
-      - run: pnpm --filter @t2000/gateway test
       - run: pnpm --filter @t2000/mcp test
 
   adapters:

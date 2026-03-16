@@ -569,10 +569,10 @@ export const chatDemos: ChatDemo[] = [
   },
 
   {
-    id: "chat-telegram",
-    title: "Telegram — AI Financial Advisor",
+    id: "chat-advisor",
+    title: "AI Financial Advisor",
     description:
-      "Chat with your agent on Telegram. Natural language, real actions.",
+      "Chat with your agent via Claude Desktop, Cursor, or any MCP client. Natural language, real actions.",
     messages: [
       {
         role: "user",

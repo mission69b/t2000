@@ -82,8 +82,7 @@ Write it as a list of natural language triggers the agent should match against.
 t2000 is your personal AI financial advisor on Sui — checking (send/receive),
 savings (earn yield via NAVI + Suilend), credit (borrow against deposits),
 currency exchange (Cetus DEX), investment (SUI, BTC, ETH, GOLD with cost-basis P&L),
-and an AI gateway with Telegram, WebChat, and heartbeat tasks
-in one CLI command. USDC in, USDC out — multi-stablecoin optimization happens
+and MCP-first messaging in one CLI command. USDC in, USDC out — multi-stablecoin optimization happens
 internally via rebalance.
 
 - **SDK**: `npm install @t2000/sdk`

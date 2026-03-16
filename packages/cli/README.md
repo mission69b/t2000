@@ -1,6 +1,6 @@
 # @t2000/cli
 
-Your personal AI financial advisor on Sui. Guided setup, AI gateway with Telegram + WebChat, heartbeat tasks, send USDC, earn yield, borrow, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
+Your personal AI financial advisor on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, invest, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -37,32 +37,25 @@ t2000 init
   🎉 Bank account created
   Address: 0x8b3e...d412
 
-  Step 3 of 5 — Connect AI
-  Which LLM provider? ❯ Claude (Anthropic)
-  Opening Anthropic API keys page in your browser...
-  Paste your Anthropic API key: ****
-  ✓ Claude connected — model: claude-sonnet-4-20250514
+  Step 2 of 3 — Connect AI platforms
+  Which AI platforms do you use? (space to select)
+  ◉ Claude Desktop
+  ◉ Cursor
+  ◯ Windsurf
 
-  Step 4 of 5 — Connect Telegram (optional)
-  Opening BotFather in Telegram...
-  Paste the bot token: ****
-  ✓ Telegram connected
+  Adding t2000 to your AI platforms...
+  ✓ Claude Desktop  configured
+  ✓ Cursor  configured
 
-  Step 5 of 5 — Set safeguards
+  Step 3 of 3 — Set safeguards
   ✓ Safeguards configured
 
   ┌─────────────────────────────────────────┐
   │  ✓ You're all set                       │
-  │  Start your agent:  t2000 gateway       │
+  │  Next steps:                            │
+  │    1. Restart Claude Desktop / Cursor   │
+  │    2. Ask: "What's my t2000 balance?"   │
   └─────────────────────────────────────────┘
-
-❯ t2000 gateway
-  ✓ Agent unlocked (0x8b3e...d412)
-  ✓ Claude connected (claude-sonnet-4-20250514)
-  ✓ Telegram connected
-  ✓ WebChat at http://localhost:2000
-  ✓ Heartbeat started (4 tasks)
-  ✓ Ready — talk to your agent
 
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
@@ -158,31 +151,23 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 init` | Guided setup wizard — wallet, PIN, AI (Claude/GPT), Telegram, safeguards. Browser auto-opens API key pages. |
+| `t2000 init` | Guided setup wizard — wallet, PIN, MCP platforms (Claude Desktop/Cursor/Windsurf), safeguards. |
 
-### AI Gateway
+### MCP (AI Integration)
 
 | Command | Description |
 |---------|-------------|
-| `t2000 gateway` | Start the AI financial advisor (foreground) |
-| `t2000 gateway --port 3000` | Custom WebChat port |
-| `t2000 gateway --no-telegram` | Skip Telegram channel |
-| `t2000 gateway --no-heartbeat` | Skip heartbeat tasks |
-| `t2000 gateway --verbose` | Debug logging |
-| `t2000 gateway install` | Install as background daemon (launchd on macOS, systemd on Linux) |
-| `t2000 gateway uninstall` | Remove the daemon |
-| `t2000 gateway status` | Check if the gateway is running |
-| `t2000 gateway logs` | Tail gateway logs (structured JSON) |
-| `t2000 gateway logs -f` | Follow log output |
+| `t2000 mcp install` | Auto-configure MCP in Claude Desktop, Cursor, and Windsurf |
+| `t2000 mcp uninstall` | Remove MCP config from AI platforms |
+| `t2000 mcp` | Start MCP server (stdio — used by AI platforms, not run manually) |
 
 ### Config (dot-notation)
 
 | Command | Description |
 |---------|-------------|
-| `t2000 config set llm.provider anthropic` | Set LLM provider |
-| `t2000 config set llm.apiKey sk-ant-...` | Set LLM API key |
-| `t2000 config set channels.telegram.botToken <token>` | Set Telegram bot token |
-| `t2000 config get llm.provider` | Read a nested config value |
+| `t2000 config set maxPerTx 100` | Set max per transaction |
+| `t2000 config set maxDailySend 500` | Set max daily sends |
+| `t2000 config get maxPerTx` | Read a config value |
 
 ### Wallet
 

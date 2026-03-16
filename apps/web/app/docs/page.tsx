@@ -105,15 +105,13 @@ const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "AI Advisor",
     items: [
-      { id: "gateway", name: "Gateway", badge: "NEW", badgeGreen: true },
-      { id: "telegram", name: "Telegram Setup", badge: "NEW", badgeGreen: true },
+      { id: "mcp", name: "MCP Server", badge: "NEW", badgeGreen: true },
       { id: "init-wizard", name: "Init Wizard" },
     ],
   },
   {
     label: "Guides",
     items: [
-      { id: "mcp", name: "MCP Server" },
       { id: "skills", name: "Agent Skills" },
       { id: "x402", name: "x402 Payments" },
       { id: "defi", name: "DeFi & Yield" },
@@ -388,7 +386,7 @@ function QuickStart({
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 is your personal AI financial advisor on Sui — checking, savings,
-        credit, investment, and AI gateway with Telegram in one CLI command.
+        credit, and investment via MCP. Works with Claude Desktop, Cursor, and Windsurf.
       </p>
 
       <h2 id="qs-install">1. Install t2000</h2>
@@ -400,8 +398,8 @@ function QuickStart({
 
       <h2 id="qs-init">2. Set up your agent</h2>
       <p>
-        The init wizard creates your wallet, connects an AI provider,
-        sets up Telegram, and configures safeguards.
+        The init wizard creates your wallet, configures MCP platforms,
+        and sets up safeguards.
       </p>
       <CodeBlock lang="bash">
         {S.g("$")} t2000 init{"\n\n"}
@@ -416,12 +414,12 @@ function QuickStart({
         {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
-        {"  "}{S.g("✓")} Claude connected{"\n"}
-        {"  "}{S.g("✓")} Telegram connected{"\n"}
+        {"  "}{S.g("✓")} MCP configured (Claude Desktop, Cursor){"\n"}
         {"  "}{S.g("✓")} Safeguards set{"\n\n"}
         {"  ┌─────────────────────────────────────────┐\n"}
         {"  │  "}{S.g("✓ You're all set")}{"                        │\n"}
-        {"  │  Start your agent:  "}{S.b("t2000 gateway")}{"       │\n"}
+        {"  │  Open Claude Desktop or Cursor and ask: │\n"}
+        {"  │  "}{S.b("\"What's my t2000 balance?\"")}{"          │\n"}
         {"  └─────────────────────────────────────────┘"}
       </CodeBlock>
       <Callout type="tip" label="Tip">
@@ -693,7 +691,7 @@ function CliWalletSection() {
       </div>
 
       <h2 id="cmd-init">t2000 init</h2>
-      <p>Guided setup wizard — creates wallet, connects AI provider (Claude/GPT), sets up Telegram, and configures safeguards.</p>
+      <p>Guided setup wizard — creates wallet, configures MCP platforms (Claude Desktop, Cursor, Windsurf), and sets up safeguards.</p>
       <CodeBlock lang="bash">
         t2000 init [--key &lt;path&gt;] [--no-sponsor]
       </CodeBlock>
@@ -709,10 +707,9 @@ function CliWalletSection() {
         {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
         {"🎉 "}{S.g("Bank account created")}{"\n"}
         {"Address: "}{S.a("0x8b3e...d412")}{"\n\n"}
-        {S.g("✓")} Claude connected{"\n"}
-        {S.g("✓")} Telegram connected{"\n"}
+        {S.g("✓")} MCP configured (Claude Desktop, Cursor){"\n"}
         {S.g("✓")} Safeguards set{"\n\n"}
-        {"Start your agent:  "}{S.b("t2000 gateway")}
+        {"Open Claude Desktop or Cursor → "}{S.b("\"What's my t2000 balance?\"")}
       </CodeBlock>
 
       <h2 id="cmd-balance">t2000 balance</h2>
@@ -1300,144 +1297,9 @@ function ErrorsSection() {
   );
 }
 
-function GatewaySection() {
-  return (
-    <>
-      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
-        AI Advisor
-      </div>
-      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        AI <em className="italic text-accent">Gateway</em>
-      </h1>
-      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Your personal AI financial advisor. Runs locally, talks to you on Telegram or WebChat,
-        uses your own LLM API key. Morning briefings, yield alerts, auto-DCA — all 24/7.
-      </p>
+/* GatewaySection removed — replaced by MCP Server (see McpSection) */
 
-      <h2 id="gateway-arch">Architecture</h2>
-      <CodeBlock lang="text">
-{`User (Telegram/WebChat) → Gateway → LLM (Claude/GPT) → t2000 SDK → Sui`}
-      </CodeBlock>
-      <DocTable
-        headers={["Component", "Description"]}
-        rows={[
-          ["Agent Loop", "Processes messages, calls LLM, executes tools, manages confirmation flow"],
-          ["WebChat", "Hono-powered local web UI at localhost:2000 with SSE streaming"],
-          ["Telegram", "grammY-powered bot with allowlisted users, PIN unlock, message splitting"],
-          ["Heartbeat", "Cron scheduler: morning briefings, yield monitor, DCA executor, health checks"],
-          ["Logger", "Structured JSON logs to ~/.t2000/logs/ with auto-rotation (10MB, 5 files)"],
-        ]}
-      />
-
-      <h2 id="gateway-start">Start the Gateway</h2>
-      <CodeBlock lang="bash">
-        {S.g("$")} t2000 gateway{S.c("                    # foreground")}{"\n"}
-        {S.g("$")} t2000 gateway --port 3000{S.c("        # custom WebChat port")}{"\n"}
-        {S.g("$")} t2000 gateway --no-telegram{S.c("      # skip Telegram channel")}{"\n"}
-        {S.g("$")} t2000 gateway --verbose{S.c("          # debug logging")}
-      </CodeBlock>
-
-      <h2 id="gateway-daemon">Daemon Mode (24/7)</h2>
-      <p>
-        For morning briefings, yield alerts, and Telegram availability around the clock:
-      </p>
-      <CodeBlock lang="bash">
-        {S.g("$")} t2000 gateway install{S.c("            # launchd (macOS) / systemd (Linux)")}{"\n"}
-        {S.g("$")} t2000 gateway status{S.c("             # check if running")}{"\n"}
-        {S.g("$")} t2000 gateway logs -f{S.c("             # follow structured logs")}{"\n"}
-        {S.g("$")} t2000 gateway uninstall{S.c("           # remove daemon")}
-      </CodeBlock>
-
-      <h2 id="gateway-heartbeat">Heartbeat Tasks</h2>
-      <DocTable
-        headers={["Task", "Schedule", "What it does"]}
-        rows={[
-          ["Morning Briefing", "8:00 AM daily", "Net worth, portfolio, yield earned, AI cost, action items"],
-          ["Yield Monitor", "Every 30 min", "Alerts if better APY found for savings or investments"],
-          ["DCA Executor", "9:00 AM Monday", "Runs pending auto-invest schedules"],
-          ["Health Check", "Every 15 min", "Warns if health factor drops below safe thresholds"],
-        ]}
-      />
-
-      <h2 id="gateway-security">Security</h2>
-      <DocTable
-        headers={["Control", "How"]}
-        rows={[
-          ["Non-custodial", "Private keys stay on your machine, encrypted with PIN"],
-          ["BYOK LLM", "Your own API key — no data passes through t2000 servers"],
-          ["Telegram allowlist", "Only your user ID can talk to the bot"],
-          ["Confirmation flow", "All state-changing actions require explicit approval"],
-          ["Safeguards", "Per-tx and daily limits enforced on all channels"],
-        ]}
-      />
-
-      <h2 id="gateway-config">Configuration</h2>
-      <p>All gateway config lives at <InlineCode>~/.t2000/config.json</InlineCode>. Use dot-notation:</p>
-      <CodeBlock lang="bash">
-        {S.g("$")} t2000 config set llm.provider anthropic{"\n"}
-        {S.g("$")} t2000 config set llm.apiKey sk-ant-...{"\n"}
-        {S.g("$")} t2000 config set channels.telegram.botToken 123456:ABC...{"\n"}
-        {S.g("$")} t2000 config set channels.webchat.port 2000{"\n"}
-        {S.g("$")} t2000 config set heartbeat.morningBriefing.schedule {S.s("\"0 8 * * *\"")}
-      </CodeBlock>
-    </>
-  );
-}
-
-function TelegramSection() {
-  return (
-    <>
-      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
-        AI Advisor
-      </div>
-      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        Telegram <em className="italic text-accent">Setup</em>
-      </h1>
-      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Chat with your AI financial advisor from your phone. Set up in 2 minutes.
-      </p>
-
-      <h2 id="telegram-create">1. Create a Telegram bot</h2>
-      <p>Open <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@BotFather</a> in Telegram and:</p>
-      <ul className="list-disc pl-6 text-[13px] text-white/55 leading-[1.8] mb-6">
-        <li>Send <InlineCode>/newbot</InlineCode></li>
-        <li>Pick a name (e.g. &ldquo;My t2000 Agent&rdquo;)</li>
-        <li>Copy the bot token</li>
-      </ul>
-
-      <h2 id="telegram-userid">2. Get your user ID</h2>
-      <p>Open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@userinfobot</a> and send any message — it replies with your numeric user ID.</p>
-
-      <h2 id="telegram-config">3. Configure t2000</h2>
-      <CodeBlock lang="bash">
-        {S.g("$")} t2000 config set channels.telegram.enabled true{"\n"}
-        {S.g("$")} t2000 config set channels.telegram.botToken {S.s("\"123456:ABC...\"")}{"\n"}
-        {S.g("$")} t2000 config set channels.telegram.allowedUsers {S.s("'[\"12345\"]'")}
-      </CodeBlock>
-      <Callout type="tip" label="Easier">
-        Run <InlineCode>t2000 init</InlineCode> instead — it opens BotFather and @userinfobot
-        in your browser and walks you through each step.
-      </Callout>
-
-      <h2 id="telegram-start">4. Start</h2>
-      <CodeBlock lang="bash">
-        {S.g("$")} t2000 gateway
-      </CodeBlock>
-      <p>Message your bot on Telegram. It will ask for your PIN to unlock, then you can chat naturally.</p>
-
-      <h2 id="telegram-security">Security</h2>
-      <DocTable
-        headers={["Feature", "How"]}
-        rows={[
-          ["Allowlist", "Only configured user IDs can interact with the bot"],
-          ["PIN unlock", "First message must be your PIN. Message is auto-deleted."],
-          ["Confirmation", "State-changing actions show a dry-run preview and ask for confirmation"],
-          ["Message splitting", "Long responses are split into Telegram-safe chunks (< 4096 chars)"],
-        ]}
-      />
-    </>
-  );
-}
+/* TelegramSection removed — replaced by MCP-first setup (see McpSection) */
 
 function InitWizardSection() {
   return (
@@ -1449,7 +1311,7 @@ function InitWizardSection() {
         Init <em className="italic text-accent">Wizard</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Guided setup: wallet, AI, Telegram, safeguards. Browser auto-opens API key pages.
+        Guided setup: wallet, MCP platforms, safeguards. Auto-configures Claude Desktop + Cursor.
         Inspired by <InlineCode>gh auth login</InlineCode>.
       </p>
 
@@ -1464,17 +1326,15 @@ function InitWizardSection() {
         rows={[
           ["1. Create wallet", "Generates Ed25519 keypair, creates 5 bank accounts on Sui"],
           ["2. Set PIN", "AES-256-GCM encryption for private key"],
-          ["3. Connect AI", "Choose Claude or GPT. Browser opens API key dashboard. Paste key."],
-          ["4. Connect Telegram", "Browser opens BotFather → create bot → paste token. Opens @userinfobot → paste user ID."],
-          ["5. Set safeguards", "Per-transaction and daily send limits"],
+          ["3. Configure MCP", "Auto-writes MCP configs for Claude Desktop + Cursor. Detects installed platforms."],
+          ["4. Set safeguards", "Per-transaction and daily send limits"],
         ]}
       />
 
       <h2 id="init-wizard-after">After init</h2>
       <CodeBlock lang="bash">
-        {S.g("$")} t2000 gateway{S.c("       # start your AI financial advisor")}{"\n"}
-        {S.g("$")} t2000 balance{S.c("       # or use CLI directly")}{"\n"}
-        {S.g("$")} t2000 mcp install{S.c("   # or connect to Claude Desktop / Cursor")}
+        {S.g("$")} t2000 mcp install{S.c("   # auto-configure Claude Desktop + Cursor")}{"\n"}
+        {S.g("$")} t2000 balance{S.c("       # or use CLI directly")}
       </CodeBlock>
     </>
   );
@@ -1484,7 +1344,7 @@ function McpSection() {
   return (
     <>
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
-        Guides
+        AI Advisor
       </div>
       <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
         MCP <em className="italic text-accent">Server</em>
@@ -1906,13 +1766,12 @@ function ChangelogSection() {
         v0.18.0 <Badge color="green">current</Badge>
       </h2>
       <p>
-        AI Gateway — your personal AI financial advisor. <InlineCode>t2000 init</InlineCode> walks
-        you through setup (wallet, AI, Telegram, safeguards) with browser auto-open for API keys
-        and BotFather. <InlineCode>t2000 gateway</InlineCode> starts the advisor — chat on Telegram
-        or WebChat (localhost:2000). Heartbeat tasks: morning briefings, yield monitoring, auto-DCA,
-        health checks. BYOK LLM (Claude/GPT). 24/7 daemon mode via{" "}
-        <InlineCode>t2000 gateway install</InlineCode>. New <InlineCode>@t2000/gateway</InlineCode> package.
-        80 unit tests covering agent loop, context, tools, heartbeat, Telegram, and logging.
+        MCP-first AI advisor — connect Claude Desktop, Cursor, or Windsurf to your
+        t2000 agent. <InlineCode>t2000 init</InlineCode> walks you through setup (wallet, MCP
+        platforms, safeguards) and auto-configures your AI platform.{" "}
+        <InlineCode>t2000 mcp install</InlineCode> writes MCP configs for Claude Desktop + Cursor.
+        23 tools, 15 prompts, stdio transport. New <InlineCode>@t2000/mcp</InlineCode> package.
+        Gateway deprecated in favor of MCP.
       </p>
 
       <h2 id="cl-0170">
@@ -2281,8 +2140,6 @@ export default function DocsPage() {
             {activeSection === "sdk" && <SdkSection />}
             {activeSection === "config" && <ConfigSection />}
             {activeSection === "errors" && <ErrorsSection />}
-            {activeSection === "gateway" && <GatewaySection />}
-            {activeSection === "telegram" && <TelegramSection />}
             {activeSection === "init-wizard" && <InitWizardSection />}
             {activeSection === "mcp" && <McpSection />}
             {activeSection === "skills" && <SkillsSection />}

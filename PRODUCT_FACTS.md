@@ -16,7 +16,6 @@
 |---------|---------|
 | `@t2000/sdk` | `0.18.0` |
 | `@t2000/cli` | `0.18.0` |
-| `@t2000/gateway` | `0.18.0` |
 | `@t2000/x402` | `0.3.0` |
 | `@t2000/mcp` | `0.18.0` |
 | Agent Skills | `3.0` |
@@ -29,8 +28,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 15 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-invest`, `t2000-gateway` |
+| Skill count | 14 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-invest` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -650,38 +649,19 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 
 ---
 
-## AI Gateway
-
-| Fact | Value |
-|------|-------|
-| Package | `@t2000/gateway` |
-| Version | `0.18.0` |
-| Description | Personal AI financial advisor — local-first, non-custodial |
-| Setup | `t2000 init` (guided wizard with browser auto-open) |
-| Start | `t2000 gateway` (foreground) or `t2000 gateway install` (daemon) |
-| LLM | BYOK — Anthropic (Claude) or OpenAI (GPT). User provides own API key. |
-| Default model | Claude: `claude-sonnet-4-20250514`, GPT: `gpt-4o` |
-| Channels | WebChat (localhost:2000) + Telegram (grammY) |
-| Heartbeat tasks | Morning briefing, yield monitor, DCA executor, health check |
-| Daemon | launchd (macOS), systemd (Linux) — auto-restarts on failure |
-| Logging | `~/.t2000/logs/gateway.log` — structured JSON, 10MB rotation, 5 files max |
-| Security | Allowlisted Telegram users, confirmation before state-changing actions, PIN unlock via Telegram (message deleted after submit) |
-| Config | `~/.t2000/config.json` — set via `t2000 config set llm.provider anthropic` (dot-notation) |
-| Onboarding | 5-step wizard: create wallet → set PIN → connect AI (browser auto-opens API key page) → connect Telegram (browser auto-opens BotFather) → set safeguards |
-
----
-
-## MCP Server
+## MCP Server (AI Integration)
 
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
 | Version | `0.18.0` |
+| Description | Personal AI financial advisor — local-first, non-custodial. MCP-first integration for AI platforms. |
 | Transport | stdio |
 | Tools | 23 |
 | Prompts | 15 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
+| Setup | `t2000 init` (guided wizard with browser auto-open) |
 | Auto-install | `t2000 mcp install` (configures Claude Desktop + Cursor automatically) |
 | Manual config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |
 | Remove | `t2000 mcp uninstall` |
-| Alternative | For non-developers: use the AI Gateway (`t2000 gateway`) instead — same tools, chat via Telegram/WebChat |
+| Start server | `t2000 mcp` (stdio transport, used by AI platforms) |

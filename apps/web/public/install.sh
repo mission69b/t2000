@@ -7,7 +7,7 @@
 # What this does:
 #   1. Checks for Node.js (v18+)
 #   2. Installs @t2000/cli globally via npm
-#   3. Runs t2000 init (guided setup: wallet, AI, Telegram, safeguards)
+#   3. Runs t2000 init (guided setup: wallet, AI, MCP, safeguards)
 #   4. Optionally connects your AI via MCP
 #
 # Environment variables:

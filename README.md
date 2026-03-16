@@ -5,13 +5,13 @@
 <h3 align="center">Your personal AI financial advisor.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Investment · Exchange · x402 Pay · AI Gateway · Telegram
+  Checking · Savings · Credit · Investment · Exchange · x402 Pay · MCP
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial · BYOK LLM
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a> · <a href="packages/gateway">Gateway</a>
+  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a> · <a href="packages/mcp">MCP Package</a>
 </p>
 
 ---
@@ -54,17 +54,12 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
   ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment
   🎉 Bank account created
   Address: 0x8b3e...d412
-  ✓ Claude connected
-  ✓ Telegram connected
+  ✓ MCP configured
   ✓ Safeguards set
 
-❯ t2000 gateway
-  ✓ Agent unlocked (0x8b3e...d412)
-  ✓ Claude connected (claude-sonnet-4-20250514)
-  ✓ Telegram connected
-  ✓ WebChat at http://localhost:2000
-  ✓ Heartbeat started (4 tasks)
-  ✓ Ready — talk to your agent
+❯ t2000 mcp install
+  ✓ MCP server configured for Claude Desktop, Cursor, Windsurf
+  ✓ 23 tools · 15 prompts · safeguard enforced
 
 ❯ t2000 balance
   Available:  $85.00   (checking — spendable)
@@ -93,11 +88,11 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 
 ```bash
 npm install -g @t2000/cli           # Install
-t2000 init                          # Guided setup: wallet, AI, Telegram, safeguards
-t2000 gateway                      # Start your AI financial advisor
+t2000 init                          # Guided setup: wallet, AI, safeguards
+t2000 mcp install                   # Connect Claude Desktop, Cursor, Windsurf
 ```
 
-Open `http://localhost:2000` for WebChat, or message your Telegram bot. Or use the CLI directly:
+Use the CLI directly or connect your AI via MCP:
 
 ```bash
 t2000 balance                      # Check balance
@@ -125,9 +120,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
-| **AI Gateway** | Personal AI financial advisor — natural language | Claude or GPT (BYOK) via local [gateway](packages/gateway) |
-| **Telegram** | Chat with your agent from your phone | grammY bot, allowlisted users, PIN unlock |
-| **Heartbeat** | Morning briefings, yield alerts, auto-DCA | Scheduled tasks, 24/7 via `t2000 gateway install` |
+| **MCP** | Personal AI financial advisor — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
 
@@ -162,7 +155,7 @@ At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the
 |---------|-------------|---------|
 | [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
 | [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
-| [`@t2000/gateway`](packages/gateway) | AI financial advisor — Telegram, WebChat, heartbeat | Included with CLI |
+| [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
 | [`@t2000/x402`](packages/x402) | x402 payment client (first on Sui) | `npm install @t2000/x402` |
 
 ## SDK
@@ -219,7 +212,7 @@ Full API reference → [`@t2000/sdk` README](packages/sdk)
 
 ```bash
 # Wallet
-t2000 init                         Guided setup (wallet, AI, Telegram, safeguards)
+t2000 init                         Guided setup (wallet, AI, safeguards)
 t2000 balance                      Check balance
 t2000 send 10 USDC to 0x...       Send USDC
 t2000 history                      Transaction history
@@ -334,11 +327,13 @@ Full reference → [`@t2000/x402` README](packages/x402)
 
 ## MCP Server
 
-Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent:
+Connect Claude Desktop, Cursor, Windsurf, or any MCP client to your t2000 agent:
 
 ```bash
 t2000 mcp install
 ```
+
+**Architecture:** User → MCP Client (Claude/Cursor/Windsurf) → @t2000/mcp → @t2000/sdk → Sui
 
 Auto-configures Claude Desktop + Cursor. 23 tools · 15 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
@@ -410,6 +405,7 @@ t2000/
 ├── packages/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
 │   ├── cli/              @t2000/cli — Terminal bank account
+│   ├── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
 │   └── x402/             @t2000/x402 — x402 payment client
 │
 ├── apps/

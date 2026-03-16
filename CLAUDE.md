@@ -294,7 +294,7 @@ emoji type(scope): subject
 - Subject lowercase
 - ALWAYS use emoji
 - Do NOT add "Generated with Claude"
-- Scopes: `listing`, `marketplace`, `loans`, `wallet`, `api`
+- Scopes: `sdk`, `mcp`, `cli`, `web`, `wallet`, `api`
 
 ---
 

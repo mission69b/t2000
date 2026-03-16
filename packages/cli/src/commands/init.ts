@@ -9,17 +9,6 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { homedir, platform } from 'node:os';
-import { exec } from 'node:child_process';
-
-const LLM_KEY_URLS: Record<string, string> = {
-  anthropic: 'https://console.anthropic.com/settings/keys',
-  openai: 'https://platform.openai.com/api-keys',
-};
-
-function openBrowser(url: string): void {
-  const cmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start' : 'xdg-open';
-  exec(`${cmd} "${url}"`, () => {});
-}
 
 const CONFIG_DIR = join(homedir(), '.t2000');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
@@ -33,21 +22,34 @@ function saveConfig(config: Record<string, unknown>): void {
   writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
 }
 
-type ChannelChoice = 'mcp' | 'telegram' | 'both' | 'cli';
+interface McpPlatform {
+  name: string;
+  path: string;
+}
 
-async function installMcp(): Promise<void> {
-  const mcpConfig = { command: 't2000', args: ['mcp'] };
-
-  const platforms = [
+function getMcpPlatforms(): McpPlatform[] {
+  const home = homedir();
+  const isMac = platform() === 'darwin';
+  return [
     {
       name: 'Claude Desktop',
-      path: join(homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
+      path: isMac
+        ? join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json')
+        : join(home, 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json'),
     },
     {
       name: 'Cursor',
-      path: join(homedir(), '.cursor', 'mcp.json'),
+      path: join(home, '.cursor', 'mcp.json'),
+    },
+    {
+      name: 'Windsurf',
+      path: join(home, '.codeium', 'windsurf', 'mcp_config.json'),
     },
   ];
+}
+
+async function installMcpForPlatforms(platforms: McpPlatform[]): Promise<void> {
+  const mcpConfig = { command: 't2000', args: ['mcp'] };
 
   for (const p of platforms) {
     let config: Record<string, unknown> = {};
@@ -72,12 +74,12 @@ async function installMcp(): Promise<void> {
 export function registerInit(program: Command) {
   program
     .command('init')
-    .description('Create a new agent bank account — guided setup with AI + Telegram + safeguards')
+    .description('Create a new agent bank account — guided setup with MCP + safeguards')
     .option('--key <path>', 'Key file path')
     .option('--no-sponsor', 'Skip gas sponsorship')
     .action(async (opts: { key?: string; sponsor?: boolean }) => {
       try {
-        const { select, input, password, confirm } = await import('@inquirer/prompts');
+        const { checkbox, input, password } = await import('@inquirer/prompts');
 
         console.log('');
         console.log(`  ┌─────────────────────────────────────────┐`);
@@ -89,8 +91,8 @@ export function registerInit(program: Command) {
         const hasWallet = await walletExists(opts.key);
         let address = '';
         const isReturning = hasWallet;
+        const totalSteps = isReturning ? 2 : 3;
         let step = 1;
-        const totalSteps = isReturning ? 3 : 5;
 
         // ── Step 1: Wallet ──
         if (isReturning) {
@@ -115,7 +117,7 @@ export function registerInit(program: Command) {
           printBlank();
           printInfo('Creating agent wallet...');
 
-          const { agent, address: addr, sponsored } = await T2000.init({ pin, keyPath: opts.key, sponsored: opts.sponsor });
+          const { address: addr, sponsored } = await T2000.init({ pin, keyPath: opts.key, sponsored: opts.sponsor });
           address = addr;
           await saveSession(pin);
 
@@ -137,123 +139,39 @@ export function registerInit(program: Command) {
           printLine(`  🎉 ${pc.green('Bank account created')}`);
           printLine(`  Address: ${pc.yellow(address.slice(0, 6) + '...' + address.slice(-4))}`);
           printBlank();
-        }
-
-        step++;
-
-        // ── Step 2: Channel choice ──
-        console.log(`  ${pc.bold(`Step ${step} of ${totalSteps}`)} — How to talk to your agent`);
-        printBlank();
-
-        const channelChoice = await select({
-          message: 'How do you want to use t2000?',
-          choices: [
-            { name: `${pc.bold('Claude Desktop / Cursor')} (MCP) — smartest AI, no API key needed`, value: 'mcp' },
-            { name: `${pc.bold('Telegram')} — mobile, message your agent anywhere`, value: 'telegram' },
-            { name: `${pc.bold('Both')} — MCP + Telegram`, value: 'both' },
-            { name: `${pc.bold('CLI only')} — just use commands`, value: 'cli' },
-          ],
-        }) as ChannelChoice;
-
-        const wantsMcp = channelChoice === 'mcp' || channelChoice === 'both';
-        const wantsGateway = channelChoice === 'telegram' || channelChoice === 'both';
-        let llmProvider: 'anthropic' | 'openai' | 'skip' = 'skip';
-
-        printBlank();
-        step++;
-
-        // ── Step 3: LLM (only if Gateway) ──
-        if (wantsGateway) {
-          console.log(`  ${pc.bold(`Step ${step} of ${totalSteps}`)} — Connect AI for Telegram`);
-          printBlank();
-
-          llmProvider = await select({
-            message: 'Which LLM provider for Telegram?',
-            choices: [
-              { name: 'Claude (Anthropic)', value: 'anthropic' },
-              { name: 'GPT (OpenAI)', value: 'openai' },
-            ],
-          }) as 'anthropic' | 'openai';
-
-          const providerName = llmProvider === 'anthropic' ? 'Anthropic' : 'OpenAI';
-          const keyUrl = LLM_KEY_URLS[llmProvider];
-
-          printBlank();
-          printInfo(`Opening ${providerName} API keys page in your browser...`);
-          openBrowser(keyUrl);
-          printLine(`  ${pc.dim(keyUrl)}`);
-          printBlank();
-
-          const apiKey = await password({
-            message: `Paste your ${providerName} API key:`,
-          });
-
-          if (!apiKey) throw new Error('API key is required');
-
-          const config = loadConfig();
-          config.llm = { provider: llmProvider, apiKey };
-          saveConfig(config);
-
-          const modelName = llmProvider === 'anthropic' ? 'claude-sonnet-4-20250514' : 'gpt-4o';
-          printSuccess(`${providerName} connected — model: ${modelName}`);
-          printBlank();
-          step++;
-
-          // ── Telegram setup ──
-          console.log(`  ${pc.bold(`Step ${step} of ${totalSteps}`)} — Connect Telegram`);
-          printBlank();
-
-          printInfo('Opening BotFather in Telegram...');
-          openBrowser('https://t.me/BotFather');
-          printBlank();
-          printLine(`1. Send ${pc.cyan('/newbot')} to BotFather`);
-          printLine(`2. Pick a name (e.g. "My t2000 Agent")`);
-          printLine(`3. Copy the bot token`);
-          printBlank();
-
-          const botToken = await input({ message: 'Paste the bot token:' });
-          if (!botToken) throw new Error('Bot token is required');
-
-          printBlank();
-          printInfo('Opening @userinfobot to get your Telegram user ID...');
-          openBrowser('https://t.me/userinfobot');
-          printBlank();
-          printLine(`Send any message to ${pc.cyan('@userinfobot')} — it will reply with your ID.`);
-          printBlank();
-
-          const userId = await input({ message: 'Paste your Telegram user ID:' });
-
-          const config2 = loadConfig();
-          config2.channels = {
-            ...(config2.channels as Record<string, unknown> ?? {}),
-            telegram: {
-              enabled: true,
-              botToken,
-              allowedUsers: userId ? [userId] : [],
-            },
-            webchat: { enabled: true, port: 2000 },
-          };
-          saveConfig(config2);
-
-          printSuccess('Telegram connected');
-          printBlank();
           step++;
         }
 
-        // ── MCP install ──
-        if (wantsMcp) {
-          console.log(`  ${pc.bold(`Step ${step} of ${totalSteps}`)} — Install MCP`);
-          printBlank();
+        // ── Step 2: MCP platforms ──
+        console.log(`  ${pc.bold(`Step ${step} of ${totalSteps}`)} — Connect AI platforms`);
+        printBlank();
+
+        const allPlatforms = getMcpPlatforms();
+
+        const selectedNames = await checkbox({
+          message: 'Which AI platforms do you use? (space to select)',
+          choices: allPlatforms.map(p => ({
+            name: p.name,
+            value: p.name,
+            checked: p.name !== 'Windsurf',
+          })),
+        });
+
+        const selectedPlatforms = allPlatforms.filter(p => selectedNames.includes(p.name));
+
+        printBlank();
+        if (selectedPlatforms.length > 0) {
           printInfo('Adding t2000 to your AI platforms...');
           printBlank();
-
-          await installMcp();
-
-          printBlank();
-          step++;
+          await installMcpForPlatforms(selectedPlatforms);
+        } else {
+          printInfo('Skipped — you can add MCP later with: t2000 mcp install');
         }
 
-        // ── Safeguards ──
+        printBlank();
+        step++;
+
+        // ── Step 3: Safeguards ──
         console.log(`  ${pc.bold(`Step ${step} of ${totalSteps}`)} — Set safeguards`);
         printBlank();
 
@@ -275,24 +193,18 @@ export function registerInit(program: Command) {
         printBlank();
 
         // ── Done ──
+        const platformList = selectedPlatforms.map(p => p.name).join(' / ');
+
         console.log(`  ┌─────────────────────────────────────────┐`);
         console.log(`  │  ${pc.green('✓ You\'re all set')}                        │`);
         console.log(`  │                                         │`);
 
-        if (wantsMcp) {
-          console.log(`  │  ${pc.bold('MCP (Claude Desktop / Cursor):')}          │`);
-          console.log(`  │    Restart your AI platform, then ask: │`);
-          console.log(`  │    ${pc.cyan('"What\'s my t2000 balance?"')}             │`);
+        if (selectedPlatforms.length > 0) {
+          console.log(`  │  ${pc.bold('Next steps:')}                             │`);
+          console.log(`  │    1. Restart ${platformList.length > 20 ? 'your AI platform' : platformList}${' '.repeat(Math.max(0, 23 - Math.min(platformList.length, 20)))}│`);
+          console.log(`  │    2. Ask: ${pc.cyan('"What\'s my t2000 balance?"')}   │`);
           console.log(`  │                                         │`);
-        }
-
-        if (wantsGateway) {
-          console.log(`  │  ${pc.bold('Telegram:')}                               │`);
-          console.log(`  │    ${pc.cyan('t2000 gateway')}                        │`);
-          console.log(`  │                                         │`);
-        }
-
-        if (!wantsMcp && !wantsGateway) {
+        } else {
           console.log(`  │  Use the CLI directly:                 │`);
           console.log(`  │    ${pc.cyan('t2000 balance')}                        │`);
           console.log(`  │    ${pc.cyan('t2000 invest buy 100 SUI')}             │`);

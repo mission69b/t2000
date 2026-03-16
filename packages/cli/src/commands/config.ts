@@ -128,7 +128,7 @@ export function registerConfig(program: Command) {
 
   configCmd
     .command('set')
-    .argument('<key>', 'Config key, supports dot notation (e.g. llm.provider, channels.telegram.botToken)')
+    .argument('<key>', 'Config key, supports dot notation (e.g. llm.provider)')
     .argument('<value>', 'Config value')
     .action((key: string, value: string) => {
       try {

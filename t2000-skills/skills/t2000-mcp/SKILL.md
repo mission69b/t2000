@@ -18,10 +18,6 @@ metadata:
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
 account. 23 tools, 15 prompts, stdio transport, safeguard enforced.
 
-> **For users who prefer Telegram or WebChat instead of Claude Desktop/Cursor,**
-> see the `t2000-gateway` skill. Same tools, chat via Telegram or localhost UI.
-> Run `t2000 init` then `t2000 gateway`.
-
 ## Setup
 ```bash
 # 1. Install + create wallet

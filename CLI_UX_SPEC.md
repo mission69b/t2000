@@ -694,7 +694,7 @@ Reward indicators appear in other commands:
 
 ## `t2000 init` (interactive wizard)
 
-Guided setup wizard. Browser auto-opens API key dashboards and BotFather.
+Guided setup wizard. Browser auto-opens API key dashboards.
 
 ```
   ┌─────────────────────────────────────────┐
@@ -702,7 +702,7 @@ Guided setup wizard. Browser auto-opens API key dashboards and BotFather.
   │  Your personal AI financial advisor     │
   └─────────────────────────────────────────┘
 
-  Step 1 of 5 — Create wallet
+  Step 1 of 4 — Create wallet
   Create PIN (min 4 chars): ****
   Confirm PIN: ****
 
@@ -717,7 +717,7 @@ Guided setup wizard. Browser auto-opens API key dashboards and BotFather.
   🎉 Bank account created
   Address: 0x8b3e...d412
 
-  Step 3 of 5 — Connect AI
+  Step 3 of 4 — Connect AI
   Which LLM provider? (use arrow keys)
   ❯ Claude (Anthropic)
     GPT (OpenAI)
@@ -728,67 +728,20 @@ Guided setup wizard. Browser auto-opens API key dashboards and BotFather.
   Paste your Anthropic API key: ****
   ✓ Claude connected — model: claude-sonnet-4-20250514
 
-  Step 4 of 5 — Connect Telegram (optional)
-  Want to chat with your agent on Telegram? Yes
-  Opening BotFather in Telegram...
-  1. Send /newbot to BotFather
-  2. Pick a name (e.g. "My t2000 Agent")
-  3. Copy the bot token
-  Paste the bot token: ****
-  Opening @userinfobot to get your Telegram user ID...
-  Paste your Telegram user ID: 12345
-  ✓ Telegram connected
-
-  Step 5 of 5 — Set safeguards
+  Step 4 of 4 — Set safeguards
   Max per transaction ($): 500
   Max daily sends ($): 1000
   ✓ Safeguards configured
 
   ┌─────────────────────────────────────────┐
   │  ✓ You're all set                       │
-  │  Start your agent:  t2000 gateway       │
+  │  Connect your AI:   t2000 mcp install   │
   │  Or use the CLI:    t2000 balance       │
   │  Deposit USDC:      0xYourAddress...    │
   └─────────────────────────────────────────┘
 ```
 
-**Existing users:** If a wallet is detected, the wizard skips wallet creation and goes directly to AI + Telegram + safeguards setup.
-
----
-
-## `t2000 gateway`
-
-```
-  t2000 gateway
-
-  ✓ Agent unlocked (0x1a2b...3c4d)
-  ✓ Claude connected (claude-sonnet-4-20250514)
-  ✓ Telegram connected
-  ✓ WebChat at http://localhost:2000
-  ✓ Heartbeat started (4 tasks)
-  ✓ Ready — talk to your agent
-```
-
-### `t2000 gateway install`
-
-```
-  ✓ Gateway daemon installed
-  ✓ Starts on boot — runs in background
-    Logs:  ~/.t2000/logs/gateway.log
-    Stop:  t2000 gateway uninstall
-```
-
-### `t2000 gateway logs`
-
-```
-  Log file: ~/.t2000/logs/gateway.log
-
-  18:30:02 info  Starting gateway
-  18:30:03 info  WebChat started at http://localhost:2000
-  18:30:04 info  Telegram connected
-  18:30:04 info  Heartbeat started (4 tasks)
-  18:30:04 info  Gateway ready
-```
+**Existing users:** If a wallet is detected, the wizard skips wallet creation and goes directly to AI + safeguards setup.
 
 ---
 

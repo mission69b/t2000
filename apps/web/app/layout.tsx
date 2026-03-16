@@ -26,11 +26,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "t2000 — Your Personal AI Financial Advisor",
   description:
-    "Talk to your agent on Telegram. It earns, invests, borrows, and pays — autonomously. Built on Sui.",
+    "Connect your AI to a full bank account. It earns, invests, borrows, and pays — autonomously. Built on Sui.",
   openGraph: {
     title: "t2000 — Your Personal AI Financial Advisor",
     description:
-      "Talk to your agent on Telegram. It earns, invests, borrows, and pays — autonomously.",
+      "Connect your AI to a full bank account. It earns, invests, borrows, and pays — autonomously.",
     type: "website",
   },
 };

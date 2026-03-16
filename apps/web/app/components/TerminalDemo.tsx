@@ -16,7 +16,7 @@ const LINES: TerminalLine[] = [
   { type: "info", text: "  🎉 Bank account created", delay: 300 },
   { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
   { type: "success", text: "  ✓ Claude connected", delay: 400 },
-  { type: "success", text: "  ✓ Telegram connected", delay: 300 },
+  { type: "success", text: "  ✓ MCP server ready", delay: 300 },
   { type: "success", text: "  ✓ Safeguards set", delay: 300 },
 
   { type: "command", text: "❯ t2000 save 80", delay: 1000 },

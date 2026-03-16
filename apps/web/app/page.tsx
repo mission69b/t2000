@@ -69,7 +69,7 @@ const STEPS = [
     title: "Install",
     badge: "30s",
     badgeType: "done" as const,
-    content: "One command. Wallet, AI, Telegram — all guided.",
+    content: "One command. Wallet, AI, MCP — all guided.",
     code: "npm i -g @t2000/cli && t2000 init",
   },
   {
@@ -84,8 +84,8 @@ const STEPS = [
     title: "Start your advisor",
     badge: "1 cmd",
     badgeType: "new" as const,
-    content: "Chat on Telegram or WebChat. Morning briefings, yield alerts, auto-DCA.",
-    code: "t2000 gateway",
+    content: "Connect Claude Desktop, Cursor, or any MCP client. 23 tools, 15 prompts.",
+    code: "t2000 mcp install",
   },
   {
     num: "04",
@@ -125,8 +125,6 @@ const X402_STEPS = [
 ];
 
 const INTEGRATIONS = [
-  { name: "Telegram", type: "channel" },
-  { name: "WebChat", type: "channel" },
   { name: "Claude Desktop", type: "ai" },
   { name: "Cursor", type: "ai" },
   { name: "Claude Code", type: "ai" },
@@ -155,7 +153,7 @@ const COMPARE_ROWS: {
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 23 tools + 15 AI prompts + MCP", coinbaseCross: true },
-  { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ Telegram + WebChat + heartbeat", coinbaseCross: true },
+  { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 15 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
   { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
 ];
@@ -467,7 +465,7 @@ export default function Home() {
             <em className="italic text-accent">anywhere.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mx-auto">
-            Telegram, your IDE, or any MCP-compatible AI. 23 tools. One agent.
+            Your IDE, Claude Desktop, or any MCP-compatible AI. 23 tools. One agent.
           </p>
         </div>
 
@@ -476,7 +474,7 @@ export default function Home() {
             <span
               key={item.name}
               className={`text-[12px] sm:text-[13px] px-4 sm:px-5 py-2 sm:py-2.5 border tracking-wide transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim ${
-                item.type === "channel"
+                item.name === "Claude Desktop"
                   ? "border-accent/30 text-foreground bg-accent-dim"
                   : "border-border-bright text-muted"
               }`}
