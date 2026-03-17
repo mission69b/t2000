@@ -101,7 +101,7 @@ export const demos: Demo[] = [
     id: "init",
     title: "Init — Setup in 30 Seconds",
     description:
-      "Wallet, MCP, safeguards — one wizard.",
+      "Wallet, MCP, safeguards — one wizard. Your AI has a bank account.",
     tweet: "t2000 init — zero to bank account in 30 seconds.",
     lines: [
       { type: "command", text: "❯ t2000 init", delay: 0 },
@@ -112,16 +112,20 @@ export const demos: Demo[] = [
 
       { type: "info", text: "", delay: 200 },
       { type: "output", text: "  Step 1 of 3 — Create wallet", delay: 400 },
+      { type: "info", text: "  Creating agent wallet...", delay: 400 },
       { type: "success", text: "  ✓ Keypair generated", delay: 300 },
       { type: "success", text: "  ✓ Network  Sui mainnet", delay: 200 },
       { type: "success", text: "  ✓ Gas sponsorship  enabled", delay: 200 },
       { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment", delay: 300 },
+      { type: "info", text: "", delay: 200 },
+      { type: "output", text: "  🎉 Bank account created", delay: 300 },
       { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
       { type: "info", text: "", delay: 400 },
       { type: "output", text: "  Step 2 of 3 — Connect AI platforms", delay: 400 },
-      { type: "success", text: "  ✓ Claude Desktop — configured", delay: 400 },
-      { type: "success", text: "  ✓ Cursor — configured", delay: 300 },
+      { type: "info", text: "  Adding t2000 to your AI platforms...", delay: 300 },
+      { type: "success", text: "  ✓ Claude Desktop  configured", delay: 400 },
+      { type: "success", text: "  ✓ Cursor  configured", delay: 300 },
 
       { type: "info", text: "", delay: 400 },
       { type: "output", text: "  Step 3 of 3 — Set safeguards", delay: 400 },
@@ -130,25 +134,11 @@ export const demos: Demo[] = [
       { type: "info", text: "", delay: 300 },
       { type: "output", text: "  ┌─────────────────────────────────────────┐", delay: 300 },
       { type: "output", text: "  │  ✓ You're all set                       │", delay: 100 },
+      { type: "output", text: "  │                                         │", delay: 50 },
+      { type: "output", text: "  │  Next steps:                            │", delay: 100 },
+      { type: "output", text: '  │    1. Restart Claude Desktop / Cursor   │', delay: 100 },
+      { type: "output", text: '  │    2. Ask: "What\'s my t2000 balance?"   │', delay: 100 },
       { type: "output", text: "  └─────────────────────────────────────────┘", delay: 100 },
-    ],
-  },
-
-  {
-    id: "mcp",
-    title: "MCP — Connect Your AI",
-    description:
-      "Auto-configure Claude Desktop, Cursor, or Windsurf. 23 tools, 15 prompts.",
-    tweet: "t2000 mcp install — your AI has a bank account.",
-    lines: [
-      { type: "command", text: "❯ t2000 mcp install", delay: 0 },
-      { type: "info", text: "  Detecting AI platforms...", delay: 500 },
-      { type: "success", text: "  ✓ Claude Desktop — configured", delay: 400 },
-      { type: "success", text: "  ✓ Cursor — configured", delay: 300 },
-      { type: "info", text: "", delay: 200 },
-      { type: "output", text: "  MCP server registered:", delay: 300 },
-      { type: "info", text: "  23 tools · 15 prompts · stdio transport", delay: 200 },
-      { type: "success", text: "  ✓ Restart your AI to activate", delay: 400 },
     ],
   },
 ];
