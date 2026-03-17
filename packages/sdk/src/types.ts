@@ -127,6 +127,7 @@ export interface PositionEntry {
   asset: string;
   type: 'save' | 'borrow';
   amount: number;
+  amountUsd?: number;
   apy: number;
 }
 

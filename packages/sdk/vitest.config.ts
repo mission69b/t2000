@@ -4,7 +4,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
-    testTimeout: 30_000,
+    include: process.env.SMOKE
+      ? ['src/__smoke__/**/*.test.ts']
+      : ['src/**/*.test.ts'],
+    exclude: process.env.SMOKE
+      ? []
+      : ['src/__smoke__/**'],
+    testTimeout: process.env.SMOKE ? 60_000 : 30_000,
   },
 });

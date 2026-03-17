@@ -285,20 +285,21 @@ export class T2000 extends EventEmitter<T2000Events> {
       } catch { assetPrices[asset] = 0; }
     }
 
-    const toUsd = (asset: string, amount: number): number =>
-      (asset in INVESTMENT_ASSETS) ? amount * (assetPrices[asset] ?? 0) : amount;
-
     // --- Phase 2: Chain-derived total (wallet + protocol supplies - borrows) ---
+    // Wallet value: stablecoins + SUI + investment assets (all in USD)
     let chainTotal = bal.available + bal.gasReserve.usdEquiv;
     for (const asset of Object.keys(INVESTMENT_ASSETS)) {
       if (asset === 'SUI') continue;
       chainTotal += (bal.assets[asset] ?? 0) * (assetPrices[asset] ?? 0);
     }
 
+    // Protocol positions: adapters return amounts in asset units.
+    // Stablecoins are ~1:1 USD. Non-stablecoins are approximate until
+    // adapters return proper USD values.
     try {
       const positions = await this.positions();
       for (const pos of positions.positions) {
-        const usdValue = toUsd(pos.asset, pos.amount);
+        const usdValue = pos.amountUsd ?? pos.amount;
         if (pos.type === 'save') {
           chainTotal += usdValue;
           if (!earningAssets.has(pos.asset)) {
@@ -561,8 +562,13 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw');
     }
 
-    // Withdraw from lowest-APY position first
-    supplies.sort((a, b) => a.apy - b.apy);
+    // Prefer USDC positions to avoid unnecessary swaps, then lowest-APY first
+    supplies.sort((a, b) => {
+      const aIsUsdc = a.asset === 'USDC' ? 0 : 1;
+      const bIsUsdc = b.asset === 'USDC' ? 0 : 1;
+      if (aIsUsdc !== bIsUsdc) return aIsUsdc - bIsUsdc;
+      return a.apy - b.apy;
+    });
     const target = supplies[0]!;
     const adapter = this.registry.getLending(target.protocolId);
     if (!adapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${target.protocolId} not found`);
@@ -610,7 +616,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
         if (target.asset !== 'USDC' && swapAdapter?.addSwapToTx) {
           const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx(
-            tx, this._address, coin, target.asset, 'USDC', effectiveAmount,
+            tx, this._address, coin, target.asset, 'USDC', effectiveAmount, 500,
           );
           finalAmount = estimatedOut / 10 ** toDecimals;
           tx.transferObjects([outputCoin], this._address);
@@ -679,9 +685,12 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
     }
 
-    const hasNonUsdc = entries.some(e => e.asset !== 'USDC');
+    const DUST_SWAP_THRESHOLD = 1.0;
+    const swappableEntries = entries.filter(e => e.asset === 'USDC' || e.maxAmount >= DUST_SWAP_THRESHOLD);
+    const dustEntries = entries.filter(e => e.asset !== 'USDC' && e.maxAmount < DUST_SWAP_THRESHOLD);
+    const hasNonUsdc = swappableEntries.some(e => e.asset !== 'USDC');
     const swapAdapter = hasNonUsdc ? this.registry.listSwap()[0] : undefined;
-    const canPTB = entries.every(e => e.adapter.addWithdrawToTx) && (!swapAdapter || swapAdapter.addSwapToTx);
+    const canPTB = swappableEntries.every(e => e.adapter.addWithdrawToTx) && (!swapAdapter || swapAdapter.addSwapToTx);
 
     let totalUsdcReceived = 0;
 
@@ -691,7 +700,7 @@ export class T2000 extends EventEmitter<T2000Events> {
         tx.setSender(this._address);
         const usdcCoins: TransactionObjectArgument[] = [];
 
-        for (const entry of entries) {
+        for (const entry of swappableEntries) {
           const { coin, effectiveAmount } = await entry.adapter.addWithdrawToTx!(
             tx, this._address, entry.maxAmount, entry.asset,
           );
@@ -701,11 +710,21 @@ export class T2000 extends EventEmitter<T2000Events> {
             usdcCoins.push(coin);
           } else if (swapAdapter?.addSwapToTx) {
             const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx(
-              tx, this._address, coin, entry.asset, 'USDC', effectiveAmount,
+              tx, this._address, coin, entry.asset, 'USDC', effectiveAmount, 500,
             );
             totalUsdcReceived += estimatedOut / 10 ** toDecimals;
             usdcCoins.push(outputCoin);
           } else {
+            totalUsdcReceived += effectiveAmount;
+            tx.transferObjects([coin], this._address);
+          }
+        }
+
+        for (const dust of dustEntries) {
+          if (dust.adapter.addWithdrawToTx) {
+            const { coin, effectiveAmount } = await dust.adapter.addWithdrawToTx!(
+              tx, this._address, dust.maxAmount, dust.asset,
+            );
             totalUsdcReceived += effectiveAmount;
             tx.transferObjects([coin], this._address);
           }
@@ -2430,6 +2449,7 @@ export class T2000 extends EventEmitter<T2000Events> {
             asset: s.asset,
             type: 'save' as const,
             amount: s.amount,
+            amountUsd: s.amountUsd,
             apy: s.apy,
           })),
         ...p.positions.borrows
@@ -2439,6 +2459,7 @@ export class T2000 extends EventEmitter<T2000Events> {
             asset: b.asset,
             type: 'borrow' as const,
             amount: b.amount,
+            amountUsd: b.amountUsd,
             apy: b.apy,
           })),
       ],

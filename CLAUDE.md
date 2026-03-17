@@ -132,8 +132,14 @@ import {
 - `SuiClient` → `SuiJsonRpcClient` (import from `@mysten/sui/jsonRpc`)
 - `getFullnodeUrl` → `getJsonRpcFullnodeUrl`
 - Constructor requires `network` parameter: `new SuiJsonRpcClient({ url, network: 'mainnet' })`
-- Protocol integrations (NAVI, Suilend) are **contract-first** — no external SDK deps
-- Cetus aggregator SDK bundles its own v1 internally; use `as never` cast for type bridge
+- Protocol integrations use **official SDKs**: `@naviprotocol/lending`, `@suilend/sdk`, `@cetusprotocol/aggregator-sdk` (V3)
+- NAVI adapter: thin wrapper around SDK functions (`getLendingPositions`, `depositCoinPTB`, `withdrawCoinPTB`, etc.)
+- Suilend adapter: uses `SuilendClient.initialize`, `initializeSuilend`, `initializeObligations` for all position/rate data
+- Cetus aggregator SDK V3 handles routing internally; no hardcoded endpoints
+- `PositionEntry.amountUsd` provides USD values directly from protocol SDKs — used for `balance()` totals
+- Pass `SuiJsonRpcClient` as `any` to SDK functions expecting old `SuiClient` type (runtime compatible)
+- Use `as never` cast for `TransactionObjectArgument` → SDK `CoinObject` type bridges
+- `pnpm.overrides` in root `package.json` forces `@mysten/sui@^2.6.0` across all dependencies
 
 ### Providers
 

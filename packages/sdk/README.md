@@ -384,11 +384,26 @@ try {
 
 Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `SLIPPAGE_EXCEEDED` · `ASSET_NOT_SUPPORTED` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE`
 
+## Protocol SDKs
+
+t2000 uses official protocol SDKs for reliable on-chain data. All position amounts, USD values, and rates come directly from the SDKs — no hand-rolled contract parsing.
+
+| Protocol | SDK | Used for |
+|----------|-----|----------|
+| NAVI | `@naviprotocol/lending` | Lending positions, deposits, withdrawals, borrows, rewards |
+| Suilend | `@suilend/sdk` | Lending positions, obligation management, rewards |
+| Cetus | `@cetusprotocol/aggregator-sdk` (V3) | DEX aggregation, token swaps |
+
+Each `PositionEntry` includes an `amountUsd` field populated by the SDK, giving accurate USD valuations for all assets including non-stablecoins (ETH, SUI, BTC, GOLD).
+
 ## Testing
 
 ```bash
-# Run all SDK unit tests (469 tests)
+# Run all SDK unit tests (568 tests)
 pnpm --filter @t2000/sdk test
+
+# Run smoke tests against mainnet RPC (read-only, no transactions)
+SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 ```
 
 | Test File | Coverage |
@@ -406,7 +421,7 @@ pnpm --filter @t2000/sdk test
 | `compliance.test.ts` | Adapter contract compliance (49 checks across all adapters) |
 | `registry.test.ts` | Best rates, multi-protocol routing, quote aggregation |
 | `cetus.test.ts` | Cetus swap adapter (metadata, quotes, transaction building) |
-| `suilend.test.ts` | Suilend adapter (rates, positions, obligation lifecycle) |
+| `suilend.test.ts` | Suilend adapter (rates, positions, health, SDK mocks) |
 | `t2000.integration.test.ts` | End-to-end flows (save, withdraw, borrow, repay, rebalance, auto-swap) |
 | `protocolFee.test.ts` | Protocol fee calculation and collection |
 | `sentinel.test.ts` | Sentinel attack flow, listing, fee parsing |

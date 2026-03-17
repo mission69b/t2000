@@ -1,11 +1,23 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
-import { bcs } from '@mysten/sui/bcs';
+import {
+  getLendingPositions,
+  getPools as naviGetPools,
+  getHealthFactor as naviGetHealthFactor,
+  depositCoinPTB,
+  withdrawCoinPTB,
+  borrowCoinPTB,
+  repayCoinPTB,
+  getUserAvailableLendingRewards,
+  claimLendingRewardsPTB,
+  summaryLendingRewards,
+  type Pool,
+} from '@naviprotocol/lending';
 import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
-import type { StableAsset, SupportedAsset } from '../constants.js';
+import type { SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
-import { stableToRaw, usdcToRaw } from '../utils/format.js';
+import { stableToRaw } from '../utils/format.js';
 import { addCollectFeeToTx } from './protocolFee.js';
 import type { PendingReward } from '../adapters/types.js';
 import type {
@@ -22,163 +34,38 @@ import type {
   MaxBorrowResult,
 } from '../types.js';
 
-const USDC_TYPE = SUPPORTED_ASSETS.USDC.type;
-const RATE_DECIMALS = 27;
-const LTV_DECIMALS = 27;
 const MIN_HEALTH_FACTOR = 1.5;
-function withdrawDustBuffer(decimals: number): number {
-  return 1000 / 10 ** decimals;
-}
-const CLOCK = '0x06';
-const SUI_SYSTEM_STATE = '0x05';
-const NAVI_BALANCE_DECIMALS = 9;
-const CONFIG_API = 'https://open-api.naviprotocol.io/api/navi/config?env=prod';
-const POOLS_API = 'https://open-api.naviprotocol.io/api/navi/pools?env=prod';
+const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'] as const;
 
-const PACKAGE_API = 'https://open-api.naviprotocol.io/api/package';
-let packageCache: { id: string; ts: number } | null = null;
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface OracleFeed {
-  oracleId: number;
-  assetId: number;
-  feedId: string;
-  pythPriceFeedId: string;
-  pythPriceInfoObject: string;
+// NAVI SDK expects SuiClient (v1 name), our code uses SuiJsonRpcClient (v2 name).
+// They're the same runtime class, so the cast is safe.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sdkOptions(client: SuiJsonRpcClient): { env: 'prod'; client: any } {
+  return { env: 'prod', client };
 }
 
-interface NaviConfig {
-  package: string;
-  storage: string;
-  incentiveV2: string;
-  incentiveV3: string;
-  uiGetter: string;
-  oracle: {
-    packageId: string;
-    priceOracle: string;
-    oracleConfig: string;
-    supraOracleHolder: string;
-    switchboardAggregator: string;
-    pythStateId: string;
-    wormholeStateId: string;
-    feeds: OracleFeed[];
-  };
-}
+const NAVI_SYMBOL_MAP: Record<string, string> = {
+  nUSDC: 'USDC',
+  suiUSDT: 'USDT',
+  suiUSDe: 'USDe',
+  XAUM: 'GOLD',
+  WBTC: 'BTC',
+  suiETH: 'ETH',
+  WETH: 'ETH',
+  SUI: 'SUI',
+  USDC: 'USDC',
+  USDT: 'USDT',
+  USDe: 'USDe',
+  USDsui: 'USDsui',
+};
 
-// Oracle package ID comes from config.oracle.packageId (not hardcoded)
-
-interface NaviIncentiveApy {
-  vaultApr: string;
-  boostedApr: string;
-  apy: string;
-  rewardCoin?: string[];
-}
-
-interface NaviPool {
-  id: number;
-  coinType: string;
-  suiCoinType: string;
-  currentSupplyRate: string;
-  currentBorrowRate: string;
-  currentSupplyIndex: string;
-  currentBorrowIndex: string;
-  ltv: string;
-  liquidationFactor: { bonus: string; ratio: string; threshold: string };
-  contract: { reserveId: string; pool: string };
-  token: { symbol: string; decimals: number; price: number };
-  supplyIncentiveApyInfo?: NaviIncentiveApy;
-  borrowIncentiveApyInfo?: NaviIncentiveApy;
-}
-
-interface UserState {
-  assetId: number;
-  supplyBalance: bigint;
-  borrowBalance: bigint;
-}
-
-function toBigInt(v: unknown): bigint {
-  if (typeof v === 'bigint') return v;
-  return BigInt(String(v));
-}
-
-// ---------------------------------------------------------------------------
-// BCS
-// ---------------------------------------------------------------------------
-
-const UserStateInfo = bcs.struct('UserStateInfo', {
-  asset_id: bcs.u8(),
-  borrow_balance: bcs.u256(),
-  supply_balance: bcs.u256(),
-});
-
-function decodeDevInspect<T>(
-  result: { results?: Array<{ returnValues?: Array<[number[], string]> }> | null; error?: string | null },
-  schema: { parse: (data: Uint8Array) => T },
-): T | undefined {
-  const rv = result.results?.[0]?.returnValues?.[0];
-  if (result.error || !rv) return undefined;
-  const bytes = Uint8Array.from(rv[0]);
-  return schema.parse(bytes);
-}
-
-// ---------------------------------------------------------------------------
-// Config + Pool cache
-// ---------------------------------------------------------------------------
-
-let configCache: { data: NaviConfig; ts: number } | null = null;
-let poolsCache: { data: NaviPool[]; ts: number } | null = null;
-const CACHE_TTL = 5 * 60_000;
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI API error: ${res.status}`);
-  const json = (await res.json()) as { data?: T; code?: number };
-  return (json.data ?? json) as T;
-}
-
-async function getLatestPackageId(): Promise<string> {
-  if (packageCache && Date.now() - packageCache.ts < CACHE_TTL) return packageCache.id;
-  const res = await fetch(PACKAGE_API);
-  if (!res.ok) throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI package API error: ${res.status}`);
-  const json = (await res.json()) as { packageId?: string };
-  if (!json.packageId) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'NAVI package API returned no packageId');
-  packageCache = { id: json.packageId, ts: Date.now() };
-  return json.packageId;
-}
-
-async function getConfig(fresh = false): Promise<NaviConfig> {
-  if (configCache && !fresh && Date.now() - configCache.ts < CACHE_TTL) return configCache.data;
-  const [data, latestPkg] = await Promise.all([
-    fetchJson<NaviConfig>(CONFIG_API),
-    getLatestPackageId(),
-  ]);
-  data.package = latestPkg;
-  configCache = { data, ts: Date.now() };
-  return data;
-}
-
-async function getPools(fresh = false): Promise<NaviPool[]> {
-  if (poolsCache && !fresh && Date.now() - poolsCache.ts < CACHE_TTL) return poolsCache.data;
-  const data = await fetchJson<NaviPool[]>(POOLS_API);
-  poolsCache = { data, ts: Date.now() };
-  return data;
-}
-
-function matchesCoinType(poolType: string, targetType: string): boolean {
-  const poolSuffix = poolType.split('::').slice(1).join('::').toLowerCase();
-  const targetSuffix = targetType.split('::').slice(1).join('::').toLowerCase();
-  return poolSuffix === targetSuffix;
-}
-
-function resolvePoolSymbol(pool: NaviPool): string {
-  const coinType = pool.suiCoinType || pool.coinType || '';
+function resolveNaviSymbol(sdkSymbol: string, coinType: string): string {
   for (const [key, info] of Object.entries(SUPPORTED_ASSETS)) {
-    if (matchesCoinType(coinType, info.type)) return key;
+    const poolSuffix = coinType.split('::').slice(1).join('::').toLowerCase();
+    const targetSuffix = info.type.split('::').slice(1).join('::').toLowerCase();
+    if (poolSuffix === targetSuffix) return key;
   }
-  return pool.token?.symbol ?? 'UNKNOWN';
+  return NAVI_SYMBOL_MAP[sdkSymbol] ?? sdkSymbol;
 }
 
 function resolveAssetInfo(asset: string): { type: string; decimals: number; displayName: string } {
@@ -189,81 +76,6 @@ function resolveAssetInfo(asset: string): { type: string; decimals: number; disp
   throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown asset: ${asset}`);
 }
 
-async function getPool(asset: string = 'USDC'): Promise<NaviPool> {
-  const pools = await getPools();
-  const { type: targetType, displayName } = resolveAssetInfo(asset);
-
-  const pool = pools.find(
-    (p) => matchesCoinType(p.suiCoinType || p.coinType || '', targetType),
-  );
-  if (!pool) {
-    throw new T2000Error(
-      'ASSET_NOT_SUPPORTED',
-      `${displayName} pool not found on NAVI`,
-    );
-  }
-  return pool;
-}
-
-async function getUsdcPool(): Promise<NaviPool> {
-  return getPool('USDC');
-}
-
-// ---------------------------------------------------------------------------
-// Oracle price update (required before withdraw/borrow)
-// ---------------------------------------------------------------------------
-
-function addOracleUpdate(tx: Transaction, config: NaviConfig, pool: NaviPool): void {
-  const feed = config.oracle.feeds?.find((f) => f.assetId === pool.id);
-  if (!feed) {
-    throw new T2000Error('PROTOCOL_UNAVAILABLE', `Oracle feed not found for asset ${pool.token?.symbol ?? pool.id}`);
-  }
-
-  tx.moveCall({
-    target: `${config.oracle.packageId}::oracle_pro::update_single_price_v2`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.oracle.oracleConfig),
-      tx.object(config.oracle.priceOracle),
-      tx.object(config.oracle.supraOracleHolder),
-      tx.object(feed.pythPriceInfoObject),
-      tx.object(config.oracle.switchboardAggregator),
-      tx.pure.address(feed.feedId),
-    ],
-  });
-}
-
-/**
- * Updates NAVI oracles for all supported assets that have active positions.
- * Adds on-chain oracle refresh commands to the PTB so NAVI reads fresh
- * price data maintained by keeper bots.
- *
- * For stablecoin-only operations, pass `assetFilter` to limit to stables.
- * For investment assets (SUI/ETH), the full set is refreshed.
- */
-function refreshOracles(
-  tx: Transaction,
-  config: NaviConfig,
-  pools: NaviPool[],
-  opts?: { assetsToRefresh?: readonly string[] },
-): void {
-  const assetsToRefresh = opts?.assetsToRefresh ?? NAVI_SUPPORTED_ASSETS;
-  const targetTypes = assetsToRefresh.map((a) => SUPPORTED_ASSETS[a as keyof typeof SUPPORTED_ASSETS].type);
-
-  const matchedPools = pools.filter((p) => {
-    const ct = p.suiCoinType || p.coinType || '';
-    return targetTypes.some((t) => matchesCoinType(ct, t));
-  });
-
-  for (const pool of matchedPools) {
-    addOracleUpdate(tx, config, pool);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function extractGasCost(effects: { gasUsed?: { computationCost: string; storageCost: string; storageRebate: string } } | undefined | null): number {
   if (!effects?.gasUsed) return 0;
   return Math.abs(
@@ -271,86 +83,6 @@ function extractGasCost(effects: { gasUsed?: { computationCost: string; storageC
       Number(effects.gasUsed.storageCost) -
       Number(effects.gasUsed.storageRebate)) / 1e9,
   );
-}
-
-function rateToApy(rawRate: string): number {
-  if (!rawRate || rawRate === '0') return 0;
-  return Number(BigInt(rawRate)) / 10 ** RATE_DECIMALS * 100;
-}
-
-function poolSaveApy(pool: NaviPool): number {
-  const incentive = parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0');
-  if (incentive > 0) return incentive;
-  return rateToApy(pool.currentSupplyRate);
-}
-
-function poolBorrowApy(pool: NaviPool): number {
-  const incentive = parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0');
-  if (incentive > 0) return incentive;
-  return rateToApy(pool.currentBorrowRate);
-}
-
-function parseLtv(rawLtv: string): number {
-  if (!rawLtv || rawLtv === '0') return 0.75;
-  return Number(BigInt(rawLtv)) / 10 ** LTV_DECIMALS;
-}
-
-function parseLiqThreshold(val: string | number): number {
-  if (typeof val === 'number') return val;
-  const n = Number(val);
-  if (n > 1) return Number(BigInt(val)) / 10 ** LTV_DECIMALS;
-  return n;
-}
-
-function normalizeHealthFactor(raw: number): number {
-  const v = raw / 10 ** RATE_DECIMALS;
-  return v > 1e5 ? Infinity : v;
-}
-
-function naviStorageDecimals(poolId: number, tokenDecimals: number): number {
-  // Original NAVI pools (id 0-10) normalize all balances to 9 decimals.
-  // Newer pools (id >= 11, e.g. suiETH, suiUSDT) use native token decimals.
-  if (poolId <= 10) return NAVI_BALANCE_DECIMALS;
-  return tokenDecimals;
-}
-
-function compoundBalance(rawBalance: bigint, currentIndex: string, pool?: NaviPool): number {
-  if (!rawBalance || !currentIndex || currentIndex === '0') return 0;
-  const scale = BigInt('1' + '0'.repeat(RATE_DECIMALS));
-  const half = scale / 2n;
-  const result = (rawBalance * BigInt(currentIndex) + half) / scale;
-  const decimals = pool ? naviStorageDecimals(pool.id, pool.token.decimals) : NAVI_BALANCE_DECIMALS;
-  return Number(result) / 10 ** decimals;
-}
-
-// ---------------------------------------------------------------------------
-// On-chain reads
-// ---------------------------------------------------------------------------
-
-async function getUserState(client: SuiJsonRpcClient, address: string): Promise<UserState[]> {
-  const config = await getConfig();
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${config.uiGetter}::getter_unchecked::get_user_state`,
-    arguments: [tx.object(config.storage), tx.pure.address(address)],
-  });
-
-  const result = await client.devInspectTransactionBlock({
-    transactionBlock: tx,
-    sender: address,
-  });
-
-  const decoded = decodeDevInspect(result, bcs.vector(UserStateInfo));
-  if (!decoded) return [];
-
-  const mapped = (decoded as Array<{ asset_id: number; supply_balance: unknown; borrow_balance: unknown }>)
-    .map((s) => ({
-      assetId: s.asset_id,
-      supplyBalance: toBigInt(s.supply_balance),
-      borrowBalance: toBigInt(s.borrow_balance),
-    }));
-
-  return mapped.filter((s) => s.supplyBalance !== 0n || s.borrowBalance !== 0n);
 }
 
 async function fetchCoins(
@@ -361,14 +93,12 @@ async function fetchCoins(
   const all: Array<{ coinObjectId: string; balance: string }> = [];
   let cursor: string | null | undefined;
   let hasNext = true;
-
   while (hasNext) {
     const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
     all.push(...page.data.map((c) => ({ coinObjectId: c.coinObjectId, balance: c.balance })));
     cursor = page.nextCursor;
     hasNext = page.hasNextPage;
   }
-
   return all;
 }
 
@@ -377,18 +107,136 @@ function mergeCoins(
   coins: Array<{ coinObjectId: string; balance: string }>,
 ): TransactionObjectArgument {
   if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No coins to merge');
-
   const primary = tx.object(coins[0].coinObjectId);
   if (coins.length > 1) {
     tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
   }
-
   return primary;
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+export async function getPositions(
+  client: SuiJsonRpcClient,
+  addressOrKeypair: string | Ed25519Keypair,
+): Promise<PositionsResult> {
+  const address = typeof addressOrKeypair === 'string'
+    ? addressOrKeypair
+    : addressOrKeypair.getPublicKey().toSuiAddress();
+
+  try {
+    const naviPositions = await getLendingPositions(address, {
+      ...sdkOptions(client),
+      markets: ['main'],
+    });
+
+    const positions: PositionEntry[] = [];
+
+    for (const pos of naviPositions) {
+      const data = pos['navi-lending-supply']
+        ?? pos['navi-lending-emode-supply']
+        ?? pos['navi-lending-borrow']
+        ?? pos['navi-lending-emode-borrow'];
+      if (!data) continue;
+
+      const isBorrow = pos.type.includes('borrow');
+      const symbol = resolveNaviSymbol(data.token.symbol, data.token.coinType);
+      const amount = parseFloat(data.amount);
+      const amountUsd = parseFloat(data.valueUSD);
+      const pool = data.pool;
+
+      const apy = isBorrow
+        ? parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0')
+        : parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0');
+
+      if (amount > 0.0001 || amountUsd > 0.001) {
+        positions.push({
+          protocol: 'navi',
+          asset: symbol,
+          type: isBorrow ? 'borrow' : 'save',
+          amount,
+          amountUsd,
+          apy,
+        });
+      }
+    }
+
+    return { positions };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('not found') || msg.includes('404')) return { positions: [] };
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI getPositions failed: ${msg}`);
+  }
+}
+
+export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
+  try {
+    const pools = await naviGetPools(sdkOptions(client));
+    const result: RatesResult = {};
+
+    for (const asset of NAVI_SUPPORTED_ASSETS) {
+      const targetType = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS].type;
+      const pool = pools.find((p: Pool) => {
+        const poolSuffix = (p.suiCoinType || p.coinType || '').split('::').slice(1).join('::').toLowerCase();
+        const targetSuffix = targetType.split('::').slice(1).join('::').toLowerCase();
+        return poolSuffix === targetSuffix;
+      });
+      if (!pool) continue;
+
+      const saveApy = parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0');
+      const borrowApy = parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0');
+
+      if (saveApy >= 0 && saveApy < 200) {
+        result[asset] = { saveApy, borrowApy: borrowApy >= 0 && borrowApy < 200 ? borrowApy : 0 };
+      }
+    }
+
+    if (!result.USDC) result.USDC = { saveApy: 4.0, borrowApy: 6.0 };
+    return result;
+  } catch {
+    return { USDC: { saveApy: 4.0, borrowApy: 6.0 } };
+  }
+}
+
+export async function getHealthFactor(
+  client: SuiJsonRpcClient,
+  addressOrKeypair: string | Ed25519Keypair,
+): Promise<HealthFactorResult> {
+  const address = typeof addressOrKeypair === 'string'
+    ? addressOrKeypair
+    : addressOrKeypair.getPublicKey().toSuiAddress();
+
+  const posResult = await getPositions(client, address);
+  let supplied = 0;
+  let borrowed = 0;
+
+  for (const pos of posResult.positions) {
+    const usd = pos.amountUsd ?? pos.amount;
+    if (pos.type === 'save') supplied += usd;
+    else if (pos.type === 'borrow') borrowed += usd;
+  }
+
+  let healthFactor: number;
+  try {
+    const hf = await naviGetHealthFactor(address, sdkOptions(client));
+    healthFactor = hf > 1e5 ? Infinity : hf;
+  } catch {
+    healthFactor = borrowed > 0 ? (supplied * 0.75) / borrowed : Infinity;
+  }
+
+  const ltv = 0.75;
+  const maxBorrow = Math.max(0, supplied * ltv - borrowed);
+
+  return {
+    healthFactor,
+    supplied,
+    borrowed,
+    maxBorrow,
+    liquidationThreshold: ltv,
+  };
+}
 
 export async function buildSaveTx(
   client: SuiJsonRpcClient,
@@ -401,8 +249,6 @@ export async function buildSaveTx(
   }
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
-  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
-  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
 
   const coins = await fetchCoins(client, address, assetInfo.type);
   if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
@@ -416,20 +262,17 @@ export async function buildSaveTx(
     addCollectFeeToTx(tx, coinObj, 'save');
   }
 
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_deposit`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      coinObj,
-      tx.pure.u64(rawAmount),
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-    ],
-    typeArguments: [pool.suiCoinType],
-  });
+  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+
+  try {
+    await depositCoinPTB(tx, assetInfo.type, coinObj as never, {
+      ...sdkOptions(client),
+      amount: rawAmount,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI deposit failed: ${msg}`);
+  }
 
   return tx;
 }
@@ -455,7 +298,7 @@ export async function save(
     success: true,
     tx: result.digest,
     amount,
-    apy: rates.USDC.saveApy,
+    apy: rates.USDC?.saveApy ?? 4.0,
     fee: 0,
     gasCost: extractGasCost(result.effects),
     gasMethod: 'self-funded' as GasMethod,
@@ -471,60 +314,41 @@ export async function buildWithdrawTx(
 ): Promise<{ tx: Transaction; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
-  const [config, pool, pools, states] = await Promise.all([
-    getConfig(),
-    getPool(asset),
-    getPools(),
-    getUserState(client, address),
-  ]);
 
-  const assetState = states.find((s) => s.assetId === pool.id);
-  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex, pool) : 0;
+  const posResult = await getPositions(client, address);
+  const supply = posResult.positions.find(
+    (p) => p.type === 'save' && p.asset === asset,
+  );
+  const deposited = supply?.amount ?? 0;
 
-  const effectiveAmount = Math.min(amount, Math.max(0, deposited - withdrawDustBuffer(assetInfo.decimals)));
+  const dustBuffer = 1000 / 10 ** assetInfo.decimals;
+  const effectiveAmount = Math.min(amount, Math.max(0, deposited - dustBuffer));
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
   if (rawAmount <= 0) {
-    throw new T2000Error('INVALID_AMOUNT', `Withdrawal amount rounds to zero — balance is dust`);
+    throw new T2000Error('INVALID_AMOUNT', 'Withdrawal amount rounds to zero — balance is dust');
   }
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  refreshOracles(tx, config, pools);
-
-  const [balance] = tx.moveCall({
-    target: `${config.package}::incentive_v3::withdraw_v2`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.oracle.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      tx.pure.u64(rawAmount),
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-      tx.object(SUI_SYSTEM_STATE),
-    ],
-    typeArguments: [pool.suiCoinType],
-  });
-
-  const [coin] = tx.moveCall({
-    target: '0x2::coin::from_balance',
-    arguments: [balance],
-    typeArguments: [pool.suiCoinType],
-  });
-
-  tx.transferObjects([coin], address);
+  try {
+    const coinResult = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
+    const [coin] = tx.moveCall({
+      target: '0x2::coin::from_balance',
+      arguments: [coinResult as TransactionObjectArgument],
+      typeArguments: [assetInfo.type],
+    });
+    tx.transferObjects([coin], address);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI withdraw failed: ${msg}`);
+  }
 
   return { tx, effectiveAmount };
 }
 
-/**
- * Composable variant: adds withdraw commands to an existing PTB and
- * returns the coin object for chaining (no transferObjects).
- */
 export async function addWithdrawToTx(
   tx: Transaction,
   client: SuiJsonRpcClient,
@@ -534,60 +358,40 @@ export async function addWithdrawToTx(
 ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
-  const [config, pool, pools, states] = await Promise.all([
-    getConfig(),
-    getPool(asset),
-    getPools(),
-    getUserState(client, address),
-  ]);
 
-  const assetState = states.find((s) => s.assetId === pool.id);
-  const deposited = assetState ? compoundBalance(assetState.supplyBalance, pool.currentSupplyIndex, pool) : 0;
+  const posResult = await getPositions(client, address);
+  const supply = posResult.positions.find(
+    (p) => p.type === 'save' && p.asset === asset,
+  );
+  const deposited = supply?.amount ?? 0;
 
-  const effectiveAmount = Math.min(amount, Math.max(0, deposited - withdrawDustBuffer(assetInfo.decimals)));
+  const dustBuffer = 1000 / 10 ** assetInfo.decimals;
+  const effectiveAmount = Math.min(amount, Math.max(0, deposited - dustBuffer));
   if (effectiveAmount <= 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on NAVI`);
 
   const rawAmount = Number(stableToRaw(effectiveAmount, assetInfo.decimals));
   if (rawAmount <= 0) {
-    // Dust position — create a zero-value coin instead of calling on-chain withdraw
     const [coin] = tx.moveCall({
       target: '0x2::coin::zero',
-      typeArguments: [pool.suiCoinType],
+      typeArguments: [assetInfo.type],
     });
     return { coin, effectiveAmount: 0 };
   }
 
-  refreshOracles(tx, config, pools);
-
-  const [balance] = tx.moveCall({
-    target: `${config.package}::incentive_v3::withdraw_v2`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.oracle.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      tx.pure.u64(rawAmount),
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-      tx.object(SUI_SYSTEM_STATE),
-    ],
-    typeArguments: [pool.suiCoinType],
-  });
-
-  const [coin] = tx.moveCall({
-    target: '0x2::coin::from_balance',
-    arguments: [balance],
-    typeArguments: [pool.suiCoinType],
-  });
-
-  return { coin, effectiveAmount };
+  try {
+    const coinResult = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
+    const [coin] = tx.moveCall({
+      target: '0x2::coin::from_balance',
+      arguments: [coinResult as TransactionObjectArgument],
+      typeArguments: [assetInfo.type],
+    });
+    return { coin, effectiveAmount };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI withdraw failed: ${msg}`);
+  }
 }
 
-/**
- * Composable variant: adds deposit commands to an existing PTB
- * using a coin object from a prior step (withdraw/swap).
- */
 export async function addSaveToTx(
   tx: Transaction,
   _client: SuiJsonRpcClient,
@@ -596,38 +400,20 @@ export async function addSaveToTx(
   options: { asset?: string; collectFee?: boolean } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
-  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
+  const assetInfo = resolveAssetInfo(asset);
 
   if (options.collectFee) {
     addCollectFeeToTx(tx, coin, 'save');
   }
 
-  const [coinValue] = tx.moveCall({
-    target: '0x2::coin::value',
-    typeArguments: [pool.suiCoinType],
-    arguments: [coin],
-  });
-
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_deposit`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      coin,
-      coinValue,
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-    ],
-    typeArguments: [pool.suiCoinType],
-  });
+  try {
+    await depositCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI deposit failed: ${msg}`);
+  }
 }
 
-/**
- * Composable variant: adds repay commands to an existing PTB
- * using a coin object from a prior step (swap).
- */
 export async function addRepayToTx(
   tx: Transaction,
   _client: SuiJsonRpcClient,
@@ -636,31 +422,14 @@ export async function addRepayToTx(
   options: { asset?: string } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
-  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
+  const assetInfo = resolveAssetInfo(asset);
 
-  addOracleUpdate(tx, config, pool);
-
-  const [coinValue] = tx.moveCall({
-    target: '0x2::coin::value',
-    typeArguments: [pool.suiCoinType],
-    arguments: [coin],
-  });
-
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_repay`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.oracle.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      coin,
-      coinValue,
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-    ],
-    typeArguments: [pool.suiCoinType],
-  });
+  try {
+    await repayCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI repay failed: ${msg}`);
+  }
 }
 
 export async function withdraw(
@@ -699,42 +468,27 @@ export async function buildBorrowTx(
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
-  const [config, pool, pools] = await Promise.all([
-    getConfig(), getPool(asset), getPools(),
-  ]);
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  refreshOracles(tx, config, pools);
+  try {
+    const coinResult = await borrowCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
+    const [borrowedCoin] = tx.moveCall({
+      target: '0x2::coin::from_balance',
+      arguments: [coinResult as TransactionObjectArgument],
+      typeArguments: [assetInfo.type],
+    });
 
-  const [balance] = tx.moveCall({
-    target: `${config.package}::incentive_v3::borrow_v2`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.oracle.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      tx.pure.u64(rawAmount),
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-      tx.object(SUI_SYSTEM_STATE),
-    ],
-    typeArguments: [pool.suiCoinType],
-  });
+    if (options.collectFee) {
+      addCollectFeeToTx(tx, borrowedCoin, 'borrow');
+    }
 
-  const [borrowedCoin] = tx.moveCall({
-    target: '0x2::coin::from_balance',
-    arguments: [balance],
-    typeArguments: [pool.suiCoinType],
-  });
-
-  if (options.collectFee) {
-    addCollectFeeToTx(tx, borrowedCoin, 'borrow');
+    tx.transferObjects([borrowedCoin], address);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI borrow failed: ${msg}`);
   }
-
-  tx.transferObjects([borrowedCoin], address);
 
   return tx;
 }
@@ -778,8 +532,6 @@ export async function buildRepayTx(
   }
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
-  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
-  const [config, pool] = await Promise.all([getConfig(), getPool(asset)]);
 
   const coins = await fetchCoins(client, address, assetInfo.type);
   if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins to repay with`);
@@ -787,25 +539,20 @@ export async function buildRepayTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  addOracleUpdate(tx, config, pool);
-
   const coinObj = mergeCoins(tx, coins);
 
-  tx.moveCall({
-    target: `${config.package}::incentive_v3::entry_repay`,
-    arguments: [
-      tx.object(CLOCK),
-      tx.object(config.oracle.priceOracle),
-      tx.object(config.storage),
-      tx.object(pool.contract.pool),
-      tx.pure.u8(pool.id),
-      coinObj,
-      tx.pure.u64(rawAmount),
-      tx.object(config.incentiveV2),
-      tx.object(config.incentiveV3),
-    ],
-    typeArguments: [pool.suiCoinType],
-  });
+  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+  const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
+
+  try {
+    await repayCoinPTB(tx, assetInfo.type, repayCoin as never, {
+      ...sdkOptions(client),
+      amount: rawAmount,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI repay failed: ${msg}`);
+  }
 
   return tx;
 }
@@ -825,13 +572,10 @@ export async function repay(
   });
   await client.waitForTransaction({ digest: result.digest });
 
-  const states = await getUserState(client, address);
-  const pools = await getPools();
+  const posResult = await getPositions(client, address);
   let remainingDebt = 0;
-  for (const state of states) {
-    const pool = pools.find((p) => p.id === state.assetId);
-    if (!pool) continue;
-    remainingDebt += compoundBalance(state.borrowBalance, pool.currentBorrowIndex, pool);
+  for (const pos of posResult.positions) {
+    if (pos.type === 'borrow') remainingDebt += pos.amountUsd ?? pos.amount;
   }
 
   return {
@@ -842,178 +586,6 @@ export async function repay(
     gasCost: extractGasCost(result.effects),
     gasMethod: 'self-funded' as GasMethod,
   };
-}
-
-export async function getHealthFactor(
-  client: SuiJsonRpcClient,
-  addressOrKeypair: string | Ed25519Keypair,
-): Promise<HealthFactorResult> {
-  const address = typeof addressOrKeypair === 'string'
-    ? addressOrKeypair
-    : addressOrKeypair.getPublicKey().toSuiAddress();
-
-  const [config, pools, states] = await Promise.all([
-    getConfig(),
-    getPools(),
-    getUserState(client, address),
-  ]);
-
-  let supplied = 0;
-  let borrowed = 0;
-  let weightedLtv = 0;
-  let weightedLiqThreshold = 0;
-
-  for (const state of states) {
-    const pool = pools.find((p) => p.id === state.assetId);
-    if (!pool) continue;
-
-    const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex, pool);
-    const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex, pool);
-    const price = pool.token?.price ?? 1;
-
-    supplied += supplyBal * price;
-    borrowed += borrowBal * price;
-
-    if (supplyBal > 0) {
-      weightedLtv += supplyBal * price * parseLtv(pool.ltv);
-      weightedLiqThreshold += supplyBal * price * parseLiqThreshold(pool.liquidationFactor.threshold);
-    }
-  }
-
-  const ltv = supplied > 0 ? weightedLtv / supplied : 0.75;
-  const liqThreshold = supplied > 0 ? weightedLiqThreshold / supplied : 0.75;
-  const maxBorrowVal = Math.max(0, supplied * ltv - borrowed);
-
-  const usdcPool = pools.find((p) => matchesCoinType(p.suiCoinType || p.coinType || '', SUPPORTED_ASSETS.USDC.type));
-
-  let healthFactor: number;
-  if (borrowed <= 0) {
-    healthFactor = Infinity;
-  } else if (usdcPool) {
-    try {
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${config.uiGetter}::calculator_unchecked::dynamic_health_factor`,
-        arguments: [
-          tx.object(CLOCK),
-          tx.object(config.storage),
-          tx.object(config.oracle.priceOracle),
-          tx.pure.u8(usdcPool.id),
-          tx.pure.address(address),
-          tx.pure.u8(usdcPool.id),
-          tx.pure.u64(0),
-          tx.pure.u64(0),
-          tx.pure.bool(false),
-        ],
-        typeArguments: [usdcPool.suiCoinType],
-      });
-
-      const result = await client.devInspectTransactionBlock({
-        transactionBlock: tx,
-        sender: address,
-      });
-
-      const decoded = decodeDevInspect(result, bcs.u256());
-      if (decoded !== undefined) {
-        healthFactor = normalizeHealthFactor(Number(decoded));
-      } else {
-        healthFactor = (supplied * liqThreshold) / borrowed;
-      }
-    } catch {
-      healthFactor = (supplied * liqThreshold) / borrowed;
-    }
-  } else {
-    healthFactor = (supplied * liqThreshold) / borrowed;
-  }
-
-  return {
-    healthFactor,
-    supplied,
-    borrowed,
-    maxBorrow: maxBorrowVal,
-    liquidationThreshold: liqThreshold,
-  };
-}
-
-const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'] as const;
-
-export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
-  try {
-    const pools = await getPools();
-    const result: RatesResult = {};
-
-    for (const asset of NAVI_SUPPORTED_ASSETS) {
-      const targetType = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS].type;
-      const pool = pools.find((p) => matchesCoinType(p.suiCoinType || p.coinType || '', targetType));
-      if (!pool) continue;
-
-      let saveApy = poolSaveApy(pool);
-      let borrowApy = poolBorrowApy(pool);
-
-      if (saveApy <= 0 || saveApy > 200) saveApy = 0;
-      if (borrowApy <= 0 || borrowApy > 200) borrowApy = 0;
-
-      result[asset] = { saveApy, borrowApy };
-    }
-
-    if (!result.USDC) result.USDC = { saveApy: 4.0, borrowApy: 6.0 };
-    return result;
-  } catch {
-    return { USDC: { saveApy: 4.0, borrowApy: 6.0 } };
-  }
-}
-
-export async function getPositions(
-  client: SuiJsonRpcClient,
-  addressOrKeypair: string | Ed25519Keypair,
-): Promise<PositionsResult> {
-  const address = typeof addressOrKeypair === 'string'
-    ? addressOrKeypair
-    : addressOrKeypair.getPublicKey().toSuiAddress();
-
-  const [states, cachedPools] = await Promise.all([getUserState(client, address), getPools()]);
-
-  let pools = cachedPools;
-  const unmatchedIds = states.filter(s => !pools.find(p => p.id === s.assetId)).map(s => s.assetId);
-  if (unmatchedIds.length > 0) {
-    pools = await getPools(true);
-  }
-
-  const positions: PositionEntry[] = [];
-
-  for (const state of states) {
-    const pool = pools.find((p) => p.id === state.assetId);
-    if (!pool) {
-      console.warn(`[NAVI] No pool found for assetId=${state.assetId} (supply=${state.supplyBalance}, borrow=${state.borrowBalance}) — funds may be invisible`);
-      continue;
-    }
-
-    const symbol = resolvePoolSymbol(pool);
-    const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex, pool);
-    const borrowBal = compoundBalance(state.borrowBalance, pool.currentBorrowIndex, pool);
-
-    if (supplyBal > 0.0001) {
-      positions.push({
-        protocol: 'navi',
-        asset: symbol,
-        type: 'save',
-        amount: supplyBal,
-        apy: poolSaveApy(pool),
-      });
-    }
-
-    if (borrowBal > 0.0001) {
-      positions.push({
-        protocol: 'navi',
-        asset: symbol,
-        type: 'borrow',
-        amount: borrowBal,
-        apy: poolBorrowApy(pool),
-      });
-    }
-  }
-
-  return { positions };
 }
 
 export async function maxWithdrawAmount(
@@ -1049,138 +621,44 @@ export async function maxBorrowAmount(
 }
 
 // ---------------------------------------------------------------------------
-// Claim Rewards
+// Rewards
 // ---------------------------------------------------------------------------
-
-const CERT_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
-const DEEP_TYPE = '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP';
-
-const REWARD_FUNDS: Record<string, string> = {
-  [CERT_TYPE]: '0x7093cf7549d5e5b35bfde2177223d1050f71655c7f676a5e610ee70eb4d93b5c',
-  [DEEP_TYPE]: '0xc889d78b634f954979e80e622a2ae0fece824c0f6d9590044378a2563035f32f',
-};
-
-const REWARD_SYMBOLS: Record<string, string> = {
-  [CERT_TYPE]: 'vSUI',
-  [DEEP_TYPE]: 'DEEP',
-};
-
-const REWARD_DECIMALS: Record<string, number> = {
-  [CERT_TYPE]: 9,
-  [DEEP_TYPE]: 6,
-};
-
-interface IncentiveRuleData {
-  ruleIds: string[];
-  rewardCoinType: string | null;
-}
-
-let incentiveRulesCache: { data: Map<string, IncentiveRuleData>; ts: number } | null = null;
-
-async function getIncentiveRules(client: SuiJsonRpcClient): Promise<Map<string, IncentiveRuleData>> {
-  if (incentiveRulesCache && Date.now() - incentiveRulesCache.ts < CACHE_TTL) {
-    return incentiveRulesCache.data;
-  }
-
-  const [pools, obj] = await Promise.all([
-    getPools(),
-    client.getObject({
-      id: '0x62982dad27fb10bb314b3384d5de8d2ac2d72ab2dbeae5d801dbdb9efa816c80',
-      options: { showContent: true },
-    }),
-  ]);
-
-  const rewardCoinMap = new Map<string, string>();
-  for (const pool of pools) {
-    const ct = (pool.suiCoinType || pool.coinType || '').toLowerCase();
-    const suffix = ct.split('::').slice(1).join('::');
-    const coins = pool.supplyIncentiveApyInfo?.rewardCoin;
-    if (Array.isArray(coins) && coins.length > 0) {
-      rewardCoinMap.set(suffix, coins[0]);
-    }
-  }
-
-  const result = new Map<string, IncentiveRuleData>();
-
-  if (obj.data?.content?.dataType !== 'moveObject') {
-    incentiveRulesCache = { data: result, ts: Date.now() };
-    return result;
-  }
-
-  const fields = obj.data.content.fields as Record<string, unknown>;
-  const poolsObj = fields.pools as { fields?: { contents?: unknown[] } } | undefined;
-  const entries = poolsObj?.fields?.contents;
-  if (!Array.isArray(entries)) {
-    incentiveRulesCache = { data: result, ts: Date.now() };
-    return result;
-  }
-
-  for (const entry of entries) {
-    const ef = (entry as { fields?: Record<string, unknown> })?.fields;
-    if (!ef) continue;
-    const key = String(ef.key ?? '');
-    const value = ef.value as { fields?: Record<string, unknown> } | undefined;
-    const rules = value?.fields?.rules as { fields?: { contents?: unknown[] } } | undefined;
-    const ruleEntries = rules?.fields?.contents;
-    if (!Array.isArray(ruleEntries)) continue;
-
-    const ruleIds = ruleEntries.map((re) => {
-      const rf = (re as { fields?: Record<string, unknown> })?.fields;
-      return String(rf?.key ?? '');
-    }).filter(Boolean);
-
-    const suffix = key.split('::').slice(1).join('::').toLowerCase();
-    const full = key.toLowerCase();
-    const rewardCoin = rewardCoinMap.get(suffix) ?? rewardCoinMap.get(full) ?? null;
-
-    result.set(key, { ruleIds, rewardCoinType: rewardCoin });
-  }
-
-  incentiveRulesCache = { data: result, ts: Date.now() };
-  return result;
-}
-
-function stripPrefix(coinType: string): string {
-  return coinType.replace(/^0x0*/, '');
-}
 
 export async function getPendingRewards(
   client: SuiJsonRpcClient,
   address: string,
 ): Promise<PendingReward[]> {
-  const [pools, states] = await Promise.all([
-    getPools(),
-    getUserState(client, address),
-  ]);
-
-  const rewards: PendingReward[] = [];
-  const deposited = states.filter((s) => s.supplyBalance > 0n);
-  if (deposited.length === 0) return rewards;
-
-  for (const state of deposited) {
-    const pool = pools.find((p) => p.id === state.assetId);
-    if (!pool) continue;
-
-    const boostedApr = parseFloat(pool.supplyIncentiveApyInfo?.boostedApr ?? '0');
-    if (boostedApr <= 0) continue;
-
-    const rewardCoins = pool.supplyIncentiveApyInfo?.rewardCoin;
-    if (!Array.isArray(rewardCoins) || rewardCoins.length === 0) continue;
-
-    const rewardType = rewardCoins[0];
-    const assetSymbol = resolvePoolSymbol(pool);
-
-    rewards.push({
-      protocol: 'navi',
-      asset: assetSymbol,
-      coinType: rewardType,
-      symbol: REWARD_SYMBOLS[rewardType] ?? rewardType.split('::').pop() ?? 'UNKNOWN',
-      amount: 0,
-      estimatedValueUsd: 0,
+  try {
+    const rewards = await getUserAvailableLendingRewards(address, {
+      ...sdkOptions(client),
+      markets: ['main'],
     });
-  }
 
-  return rewards;
+    if (!rewards || rewards.length === 0) return [];
+
+    const summary = summaryLendingRewards(rewards);
+    const result: PendingReward[] = [];
+
+    for (const s of summary) {
+      for (const rw of s.rewards) {
+        const available = Number(rw.available);
+        if (available <= 0) continue;
+        const symbol = rw.coinType.split('::').pop() ?? 'UNKNOWN';
+        result.push({
+          protocol: 'navi',
+          asset: String(s.assetId),
+          coinType: rw.coinType,
+          symbol,
+          amount: available,
+          estimatedValueUsd: 0,
+        });
+      }
+    }
+
+    return result;
+  } catch {
+    return [];
+  }
 }
 
 export async function addClaimRewardsToTx(
@@ -1188,86 +666,33 @@ export async function addClaimRewardsToTx(
   client: SuiJsonRpcClient,
   address: string,
 ): Promise<PendingReward[]> {
-  const [config, pools, states, rules] = await Promise.all([
-    getConfig(),
-    getPools(),
-    getUserState(client, address),
-    getIncentiveRules(client),
-  ]);
+  try {
+    const rewards = await getUserAvailableLendingRewards(address, {
+      ...sdkOptions(client),
+      markets: ['main'],
+    });
 
-  const deposited = states.filter((s) => s.supplyBalance > 0n);
-  if (deposited.length === 0) return [];
+    if (!rewards || rewards.length === 0) return [];
 
-  const claimGroups = new Map<string, { assets: string[]; ruleIds: string[] }>();
-
-  for (const state of deposited) {
-    const pool = pools.find((p) => p.id === state.assetId);
-    if (!pool) continue;
-
-    const boostedApr = parseFloat(pool.supplyIncentiveApyInfo?.boostedApr ?? '0');
-    if (boostedApr <= 0) continue;
-
-    const rewardCoins = pool.supplyIncentiveApyInfo?.rewardCoin;
-    if (!Array.isArray(rewardCoins) || rewardCoins.length === 0) continue;
-
-    const rewardType = rewardCoins[0];
-    const fundId = REWARD_FUNDS[rewardType];
-    if (!fundId) continue;
-
-    const coinType = pool.suiCoinType || pool.coinType || '';
-    const strippedType = stripPrefix(coinType);
-
-    const ruleData = Array.from(rules.entries()).find(([key]) =>
-      stripPrefix(key) === strippedType ||
-      key.split('::').slice(1).join('::').toLowerCase() ===
-        coinType.split('::').slice(1).join('::').toLowerCase()
+    const claimable = rewards.filter(
+      (r) => Number(r.userClaimableReward) > 0,
     );
+    if (claimable.length === 0) return [];
 
-    if (!ruleData || ruleData[1].ruleIds.length === 0) continue;
-
-    const group = claimGroups.get(rewardType) ?? { assets: [], ruleIds: [] };
-    for (const ruleId of ruleData[1].ruleIds) {
-      group.assets.push(strippedType);
-      group.ruleIds.push(ruleId);
-    }
-    claimGroups.set(rewardType, group);
-  }
-
-  const claimed: PendingReward[] = [];
-
-  for (const [rewardType, { assets, ruleIds }] of claimGroups) {
-    const fundId = REWARD_FUNDS[rewardType]!;
-
-    const [balance] = tx.moveCall({
-      target: `${config.package}::incentive_v3::claim_reward`,
-      typeArguments: [rewardType],
-      arguments: [
-        tx.object(CLOCK),
-        tx.object(config.incentiveV3),
-        tx.object(config.storage),
-        tx.object(fundId),
-        tx.pure(bcs.vector(bcs.string()).serialize(assets)),
-        tx.pure(bcs.vector(bcs.Address).serialize(ruleIds)),
-      ],
+    const claimed = await claimLendingRewardsPTB(tx, claimable, {
+      env: 'prod',
+      customCoinReceive: { type: 'transfer', transfer: address },
     });
 
-    const [coin] = tx.moveCall({
-      target: '0x2::coin::from_balance',
-      typeArguments: [rewardType],
-      arguments: [balance],
-    });
-
-    tx.transferObjects([coin], address);
-
-    claimed.push({
+    return claimed.map((c) => ({
       protocol: 'navi',
-      asset: assets.join(', '),
-      coinType: rewardType,
-      symbol: REWARD_SYMBOLS[rewardType] ?? 'UNKNOWN',
+      asset: '',
+      coinType: '',
+      symbol: 'REWARD',
       amount: 0,
       estimatedValueUsd: 0,
-    });
+    }));
+  } catch {
+    return [];
   }
-
-  return claimed;
 }

@@ -488,6 +488,146 @@ describe('positions — multi-protocol flattening', () => {
   });
 });
 
+// ─── balance() with amountUsd — unit mismatch fix ─────────────
+
+describe('balance — amountUsd handling', () => {
+  it('sums amountUsd for non-stablecoin positions', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      supportedAssets: ['USDC', 'ETH', 'SUI'] as readonly string[],
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [
+          { asset: 'ETH', amount: 0.02, amountUsd: 46.20, apy: 1.7 },
+          { asset: 'USDC', amount: 55.25, amountUsd: 55.25, apy: 4.18 },
+        ],
+        borrows: [],
+      }),
+    });
+    registry.registerLending(navi);
+
+    const allPos = await registry.allPositions('0xtest');
+    const totalUsd = allPos.flatMap(p => p.positions.supplies).reduce(
+      (sum, s) => sum + (s.amountUsd ?? s.amount), 0,
+    );
+
+    expect(totalUsd).toBeCloseTo(101.45, 1);
+  });
+
+  it('uses amount as fallback when amountUsd is missing', async () => {
+    const registry = new ProtocolRegistry();
+    const adapter = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 100, apy: 4.0 }],
+        borrows: [],
+      }),
+    });
+    registry.registerLending(adapter);
+
+    const allPos = await registry.allPositions('0xtest');
+    const totalUsd = allPos.flatMap(p => p.positions.supplies).reduce(
+      (sum, s) => sum + (s.amountUsd ?? s.amount), 0,
+    );
+
+    expect(totalUsd).toBe(100);
+  });
+
+  it('subtracts borrow amountUsd from total', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [
+          { asset: 'SUI', amount: 13.53, amountUsd: 13.93, apy: 2.7 },
+          { asset: 'USDC', amount: 55.25, amountUsd: 55.25, apy: 4.18 },
+        ],
+        borrows: [
+          { asset: 'USDC', amount: 10.0, amountUsd: 10.0, apy: 6.0 },
+        ],
+      }),
+    });
+    registry.registerLending(navi);
+
+    const allPos = await registry.allPositions('0xtest');
+    const totalSupply = allPos.flatMap(p => p.positions.supplies).reduce(
+      (sum, s) => sum + (s.amountUsd ?? s.amount), 0,
+    );
+    const totalBorrow = allPos.flatMap(p => p.positions.borrows).reduce(
+      (sum, b) => sum + (b.amountUsd ?? b.amount), 0,
+    );
+    const net = totalSupply - totalBorrow;
+
+    expect(totalSupply).toBeCloseTo(69.18, 1);
+    expect(totalBorrow).toBe(10.0);
+    expect(net).toBeCloseTo(59.18, 1);
+  });
+
+  it('handles mixed: some positions with amountUsd, some without', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [
+          { asset: 'ETH', amount: 0.02, amountUsd: 46.20, apy: 1.7 },
+        ],
+        borrows: [],
+      }),
+    });
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 100, apy: 2.2 }],
+        borrows: [],
+      }),
+    });
+    registry.registerLending(navi);
+    registry.registerLending(suilend);
+
+    const allPos = await registry.allPositions('0xtest');
+    const totalUsd = allPos.flatMap(p => p.positions.supplies).reduce(
+      (sum, s) => sum + (s.amountUsd ?? s.amount), 0,
+    );
+
+    // ETH: uses amountUsd (46.20), USDC: falls back to amount (100)
+    expect(totalUsd).toBeCloseTo(146.20, 1);
+  });
+
+  it('amountUsd flows through positions flattening', async () => {
+    const registry = new ProtocolRegistry();
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [
+          { asset: 'GOLD', amount: 0.5, amountUsd: 1200.00, apy: 0.5 },
+        ],
+        borrows: [],
+      }),
+    });
+    registry.registerLending(navi);
+
+    const allPos = await registry.allPositions('0xtest');
+    const flattened = allPos.flatMap(p =>
+      p.positions.supplies.map(s => ({
+        protocol: p.protocolId,
+        asset: s.asset,
+        amount: s.amount,
+        amountUsd: s.amountUsd,
+      })),
+    );
+
+    expect(flattened).toHaveLength(1);
+    expect(flattened[0].amount).toBe(0.5);
+    expect(flattened[0].amountUsd).toBe(1200.00);
+  });
+});
+
 // ─── withdraw all --protocol (single protocol "all") ──────────
 
 describe('withdraw all --protocol (single protocol path)', () => {

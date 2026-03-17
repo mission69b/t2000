@@ -63,10 +63,10 @@ export class NaviAdapter implements LendingAdapter {
     return {
       supplies: result.positions
         .filter(p => p.type === 'save')
-        .map(p => ({ asset: p.asset, amount: p.amount, apy: p.apy })),
+        .map(p => ({ asset: p.asset, amount: p.amount, amountUsd: p.amountUsd, apy: p.apy })),
       borrows: result.positions
         .filter(p => p.type === 'borrow')
-        .map(p => ({ asset: p.asset, amount: p.amount, apy: p.apy })),
+        .map(p => ({ asset: p.asset, amount: p.amount, amountUsd: p.amountUsd, apy: p.apy })),
     };
   }
 

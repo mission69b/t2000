@@ -74,19 +74,33 @@ describe('NaviAdapter', () => {
     await expect(adapter.getRates('FAKE')).rejects.toThrow('NAVI does not support');
   });
 
-  it('getPositions maps navi positions to adapter format', async () => {
+  it('getPositions maps navi positions to adapter format with amountUsd', async () => {
     vi.mocked(naviProtocol.getPositions).mockResolvedValue({
       positions: [
-        { asset: 'USDC', type: 'save', amount: 100, apy: 4.5 },
-        { asset: 'USDC', type: 'borrow', amount: 20, apy: 6.2 },
+        { asset: 'USDC', type: 'save', amount: 100, amountUsd: 100, apy: 4.5 },
+        { asset: 'USDC', type: 'borrow', amount: 20, amountUsd: 20, apy: 6.2 },
       ],
     } as Awaited<ReturnType<typeof naviProtocol.getPositions>>);
 
     const result = await adapter.getPositions('0xaddr');
     expect(result.supplies).toHaveLength(1);
-    expect(result.supplies[0]).toEqual({ asset: 'USDC', amount: 100, apy: 4.5 });
+    expect(result.supplies[0]).toEqual({ asset: 'USDC', amount: 100, amountUsd: 100, apy: 4.5 });
     expect(result.borrows).toHaveLength(1);
-    expect(result.borrows[0]).toEqual({ asset: 'USDC', amount: 20, apy: 6.2 });
+    expect(result.borrows[0]).toEqual({ asset: 'USDC', amount: 20, amountUsd: 20, apy: 6.2 });
+  });
+
+  it('getPositions passes through amountUsd for non-stablecoin assets', async () => {
+    vi.mocked(naviProtocol.getPositions).mockResolvedValue({
+      positions: [
+        { asset: 'ETH', type: 'save', amount: 0.02, amountUsd: 46.20, apy: 1.7 },
+        { asset: 'SUI', type: 'save', amount: 13.5, amountUsd: 13.93, apy: 2.7 },
+      ],
+    } as Awaited<ReturnType<typeof naviProtocol.getPositions>>);
+
+    const result = await adapter.getPositions('0xaddr');
+    expect(result.supplies).toHaveLength(2);
+    expect(result.supplies[0].amountUsd).toBe(46.20);
+    expect(result.supplies[1].amountUsd).toBe(13.93);
   });
 
   it('getHealth delegates to navi', async () => {

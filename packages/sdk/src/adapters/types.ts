@@ -47,8 +47,8 @@ export interface LendingRates {
 }
 
 export interface AdapterPositions {
-  supplies: Array<{ asset: string; amount: number; apy: number }>;
-  borrows: Array<{ asset: string; amount: number; apy: number }>;
+  supplies: Array<{ asset: string; amount: number; amountUsd?: number; apy: number }>;
+  borrows: Array<{ asset: string; amount: number; amountUsd?: number; apy: number }>;
 }
 
 export interface HealthInfo {

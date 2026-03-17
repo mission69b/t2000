@@ -1,5 +1,13 @@
 import type { Command } from 'commander';
 import { T2000, formatUsd, SUPPORTED_ASSETS } from '@t2000/sdk';
+
+function resolveAssetName(input: string): string {
+  const upper = input.toUpperCase();
+  for (const key of Object.keys(SUPPORTED_ASSETS)) {
+    if (key.toUpperCase() === upper) return key;
+  }
+  return input;
+}
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
@@ -14,8 +22,8 @@ export function registerExchange(program: Command) {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        const fromAsset = from.toUpperCase();
-        const toAsset = to.toUpperCase();
+        const fromAsset = resolveAssetName(from);
+        const toAsset = resolveAssetName(to);
         const parsedAmount = parseFloat(amount);
 
         if (isNaN(parsedAmount) || parsedAmount <= 0) {

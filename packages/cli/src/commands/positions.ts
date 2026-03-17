@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd } from '@t2000/sdk';
+import { T2000, formatUsd, formatAssetAmount } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine, printDivider } from '../output.js';
 
@@ -45,9 +45,10 @@ export function registerPositions(program: Command) {
               const earning = rewardsByKey.has(`${pos.protocol}:${pos.asset}`)
                 ? `  ${pc.yellow('+rewards')}`
                 : '';
-              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY${earning}`);
+              const usd = formatUsd(pos.amountUsd ?? pos.amount);
+              printKeyValue(pos.protocol, `${formatAssetAmount(pos.amount, pos.asset)} ${pos.asset} (${usd}) @ ${pos.apy.toFixed(2)}% APY${earning}`);
             }
-            const totalSaved = saves.reduce((s, p) => s + p.amount, 0);
+            const totalSaved = saves.reduce((s, p) => s + (p.amountUsd ?? p.amount), 0);
             if (saves.length > 1) {
               printKeyValue('Total', formatUsd(totalSaved));
             }
@@ -61,9 +62,10 @@ export function registerPositions(program: Command) {
             printLine(pc.bold('Borrows'));
             printDivider();
             for (const pos of borrows) {
-              printKeyValue(pos.protocol, `${formatUsd(pos.amount)} ${pos.asset} @ ${pos.apy.toFixed(2)}% APY`);
+              const usd = formatUsd(pos.amountUsd ?? pos.amount);
+              printKeyValue(pos.protocol, `${formatAssetAmount(pos.amount, pos.asset)} ${pos.asset} (${usd}) @ ${pos.apy.toFixed(2)}% APY`);
             }
-            const totalBorrowed = borrows.reduce((s, p) => s + p.amount, 0);
+            const totalBorrowed = borrows.reduce((s, p) => s + (p.amountUsd ?? p.amount), 0);
             if (borrows.length > 1) {
               printKeyValue('Total', formatUsd(totalBorrowed));
             }

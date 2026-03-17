@@ -1,107 +1,93 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SuilendAdapter } from './suilend.js';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import { Transaction } from '@mysten/sui/transactions';
 import { SUPPORTED_ASSETS } from '../constants.js';
 
-const USDC_TYPE = SUPPORTED_ASSETS.USDC.type;
 const TEST_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000001';
 
-function makeReserveRpc(overrides: Record<string, unknown> = {}) {
+const mockSdkInstance = {
+  createObligation: vi.fn(() => 'new-cap-ref'),
+  depositIntoObligation: vi.fn(),
+  withdrawAndSendToUser: vi.fn(),
+  withdraw: vi.fn(() => 'coin-ref'),
+  deposit: vi.fn(),
+  borrowAndSendToUser: vi.fn(),
+  borrow: vi.fn(() => 'borrow-coin-ref'),
+  repayIntoObligation: vi.fn(),
+  repay: vi.fn(),
+  claimRewardsAndSendToUser: vi.fn(),
+};
+
+const mockReserveMap: Record<string, unknown> = {};
+const mockRefreshedRawReserves: unknown[] = [];
+let mockObligations: unknown[] = [];
+let mockObligationOwnerCaps: Array<{ id: string; obligationId: string }> = [];
+
+vi.mock('@suilend/sdk/client', () => ({
+  SuilendClient: {
+    initialize: vi.fn(async () => mockSdkInstance),
+    getObligationOwnerCaps: vi.fn(async () => mockObligationOwnerCaps),
+  },
+  LENDING_MARKET_ID: '0xlending_market',
+  LENDING_MARKET_TYPE: '0xlending_market_type',
+}));
+
+vi.mock('@suilend/sdk/lib/initialize', () => ({
+  initializeSuilend: vi.fn(async () => ({
+    reserveMap: mockReserveMap,
+    refreshedRawReserves: mockRefreshedRawReserves,
+  })),
+  initializeObligations: vi.fn(async () => ({
+    obligations: mockObligations,
+    obligationOwnerCaps: mockObligationOwnerCaps,
+  })),
+}));
+
+vi.mock('@suilend/sdk/lib/types', () => ({
+  Side: { DEPOSIT: 0, BORROW: 1 },
+}));
+
+function makeReserve(coinType: string, depositApr = 4.5, borrowApr = 6.2) {
   return {
-    type: '0x...::reserve::Reserve',
-    fields: {
-      coin_type: { type: '0x1::type_name::TypeName', fields: { name: USDC_TYPE } },
-      mint_decimals: 6,
-      available_amount: '800000000',
-      borrowed_amount: { type: '0x...::decimal::Decimal', fields: { value: String(Math.round(200_000_000 * 1e18)) } },
-      ctoken_supply: '1000000000',
-      unclaimed_spread_fees: { type: '0x...::decimal::Decimal', fields: { value: '0' } },
-      cumulative_borrow_rate: { type: '0x...::decimal::Decimal', fields: { value: String(Math.round(1.05 * 1e18)) } },
-      config: {
-        type: '0x...::config::Config',
-        fields: {
-          element: {
-            type: '0x...::config::Element',
-            fields: {
-              open_ltv_pct: 70,
-              close_ltv_pct: 75,
-              spread_fee_bps: '2000',
-              interest_rate_utils: ['0', '80', '100'],
-              interest_rate_aprs: ['200', '800', '5000'],
-            },
-          },
-        },
-      },
-      ...overrides,
-    },
+    coinType,
+    depositAprPercent: { toNumber: () => depositApr },
+    borrowAprPercent: { toNumber: () => borrowApr },
+    depositsPoolRewardManager: { poolRewards: [] },
+    borrowsPoolRewardManager: { poolRewards: [] },
   };
 }
 
-function makeObligationRpc(deposits: unknown[] = [], borrows: unknown[] = []) {
+function makeObligation(
+  deposits: Array<{ coinType: string; amount: number; amountUsd: number; reserve?: unknown }> = [],
+  borrows: Array<{ coinType: string; amount: number; amountUsd: number; reserve?: unknown }> = [],
+) {
+  const usdcReserve = makeReserve(SUPPORTED_ASSETS.USDC.type);
   return {
-    dataType: 'moveObject' as const,
-    type: '0x...::obligation::Obligation',
-    fields: { deposits, borrows },
-  };
-}
-
-function makeObligationDeposit(ctokenAmount: number, reserveIdx = 0) {
-  return {
-    type: '0x...::obligation::Deposit',
-    fields: {
-      coin_type: { type: '0x1::type_name::TypeName', fields: { name: USDC_TYPE } },
-      deposited_ctoken_amount: String(ctokenAmount),
-      reserve_array_index: String(reserveIdx),
-    },
-  };
-}
-
-function makeObligationBorrow(borrowedWad: number, cumRateWad: number, reserveIdx = 0) {
-  return {
-    type: '0x...::obligation::Borrow',
-    fields: {
-      coin_type: { type: '0x1::type_name::TypeName', fields: { name: USDC_TYPE } },
-      borrowed_amount: { fields: { value: String(borrowedWad) } },
-      cumulative_borrow_rate: { fields: { value: String(cumRateWad) } },
-      reserve_array_index: String(reserveIdx),
-    },
+    deposits: deposits.map((d) => ({
+      coinType: d.coinType,
+      depositedAmount: { toNumber: () => d.amount },
+      depositedAmountUsd: { toNumber: () => d.amountUsd },
+      reserve: d.reserve ?? usdcReserve,
+      reserveArrayIndex: 0n,
+    })),
+    borrows: borrows.map((b) => ({
+      coinType: b.coinType,
+      borrowedAmount: { toNumber: () => b.amount },
+      borrowedAmountUsd: { toNumber: () => b.amountUsd },
+      reserve: b.reserve ?? usdcReserve,
+    })),
+    depositedAmountUsd: { toNumber: () => deposits.reduce((s, d) => s + d.amountUsd, 0) },
+    borrowedAmountUsd: { toNumber: () => borrows.reduce((s, b) => s + b.amountUsd, 0) },
+    borrowLimitUsd: { toNumber: () => deposits.reduce((s, d) => s + d.amountUsd, 0) * 0.7 },
+    unhealthyBorrowValueUsd: { toNumber: () => deposits.reduce((s, d) => s + d.amountUsd, 0) * 0.75 },
   };
 }
 
 function createMockClient() {
   return {
-    getObject: vi.fn(async ({ id }: { id: string }) => {
-      if (id.includes('3d4ef1859c3ee9fc72858f588b56a09da5466e64f8cc4e90a7b3b909fba8a7ae')) {
-        return {
-          data: {
-            content: {
-              dataType: 'moveObject',
-              fields: { package: '0xpkg_latest' },
-            },
-          },
-        };
-      }
-      if (id.includes('84030d26d85eaa7035084a057f2f11f701b7e2e4eda87551becbc7c97505ece1')) {
-        return {
-          data: {
-            content: {
-              dataType: 'moveObject',
-              fields: { reserves: [makeReserveRpc()] },
-            },
-          },
-        };
-      }
-      return {
-        data: {
-          content: makeObligationRpc(),
-        },
-      };
-    }),
-    getOwnedObjects: vi.fn(async () => ({
-      data: [],
-      nextCursor: null,
-      hasNextPage: false,
-    })),
+    getObject: vi.fn(),
+    getOwnedObjects: vi.fn(),
     getCoins: vi.fn(async () => ({
       data: [{ coinObjectId: '0xusdc1', balance: '5000000' }],
       nextCursor: null,
@@ -110,39 +96,19 @@ function createMockClient() {
   } as unknown as SuiJsonRpcClient;
 }
 
-function withObligationCaps(client: SuiJsonRpcClient, caps: Array<{ objectId: string; obligationId: string }>) {
-  (client.getOwnedObjects as ReturnType<typeof vi.fn>).mockResolvedValue({
-    data: caps.map((c) => ({
-      data: {
-        objectId: c.objectId,
-        content: {
-          dataType: 'moveObject',
-          fields: { obligation_id: c.obligationId },
-        },
-      },
-    })),
-    nextCursor: null,
-    hasNextPage: false,
-  });
-}
-
-function withObligation(client: SuiJsonRpcClient, deposits: unknown[] = [], borrows: unknown[] = []) {
-  const originalGetObject = client.getObject as ReturnType<typeof vi.fn>;
-  const originalImpl = originalGetObject.getMockImplementation();
-  originalGetObject.mockImplementation(async (args: { id: string }) => {
-    if (!args.id.includes('3d4ef') && !args.id.includes('84030d')) {
-      return { data: { content: makeObligationRpc(deposits, borrows) } };
-    }
-    return originalImpl?.(args);
-  });
-}
-
 describe('SuilendAdapter', () => {
   let adapter: SuilendAdapter;
   let mockClient: SuiJsonRpcClient;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockObligations = [];
+    mockObligationOwnerCaps = [];
+    Object.keys(mockReserveMap).forEach((k) => delete mockReserveMap[k]);
+
+    const usdcReserve = makeReserve(SUPPORTED_ASSETS.USDC.type);
+    mockReserveMap['USDC'] = usdcReserve;
+
     mockClient = createMockClient();
     adapter = new SuilendAdapter();
     await adapter.init(mockClient);
@@ -152,7 +118,6 @@ describe('SuilendAdapter', () => {
     it('has correct identity', () => {
       expect(adapter.id).toBe('suilend');
       expect(adapter.name).toBe('Suilend');
-      expect(adapter.version).toBe('2.0.0');
     });
 
     it('supports save, withdraw, borrow, and repay', () => {
@@ -171,38 +136,16 @@ describe('SuilendAdapter', () => {
     });
   });
 
-  describe('init', () => {
-    it('works with initSync (lazy init)', async () => {
-      const lazyAdapter = new SuilendAdapter();
-      lazyAdapter.initSync(mockClient);
-      const rates = await lazyAdapter.getRates('USDC');
-      expect(rates.asset).toBe('USDC');
-      expect(rates.saveApy).toBeGreaterThan(0);
-    });
-
-    it('resolves package from upgrade cap', async () => {
-      const rates = await adapter.getRates('USDC');
-      expect(rates.saveApy).toBeGreaterThan(0);
-      expect(mockClient.getObject).toHaveBeenCalled();
-    });
-  });
-
   describe('getRates', () => {
-    it('returns computed rates for USDC', async () => {
+    it('returns rates from SDK reserve', async () => {
       const rates = await adapter.getRates('USDC');
       expect(rates.asset).toBe('USDC');
-      expect(rates.saveApy).toBeGreaterThan(0);
-      expect(rates.borrowApy).toBeGreaterThan(0);
-      expect(rates.borrowApy).toBeGreaterThan(rates.saveApy);
+      expect(rates.saveApy).toBe(4.5);
+      expect(rates.borrowApy).toBe(6.2);
     });
 
     it('throws for unsupported asset', async () => {
-      await expect(adapter.getRates('BTC')).rejects.toThrow('does not support');
-    });
-
-    it('computes utilization-based rates correctly', async () => {
-      const rates = await adapter.getRates('USDC');
-      expect(rates.borrowApy).toBeCloseTo(3.5, 0);
+      await expect(adapter.getRates('FAKECOIN')).rejects.toThrow('does not support');
     });
   });
 
@@ -213,29 +156,55 @@ describe('SuilendAdapter', () => {
       expect(positions.borrows).toHaveLength(0);
     });
 
-    it('parses deposits correctly', async () => {
-      withObligationCaps(mockClient, [{ objectId: 'cap-1', obligationId: 'obligation-1' }]);
-      withObligation(mockClient, [makeObligationDeposit(100_000_000)]);
+    it('parses deposits with USD values', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 100, amountUsd: 100 }],
+      )];
 
       const positions = await adapter.getPositions(TEST_ADDRESS);
       expect(positions.supplies).toHaveLength(1);
       expect(positions.supplies[0].asset).toBe('USDC');
-      expect(positions.supplies[0].amount).toBeGreaterThan(0);
-      expect(positions.supplies[0].apy).toBeGreaterThan(0);
+      expect(positions.supplies[0].amount).toBe(100);
+      expect(positions.supplies[0].amountUsd).toBe(100);
+      expect(positions.supplies[0].apy).toBe(4.5);
     });
 
-    it('parses borrows with compounded interest', async () => {
-      withObligationCaps(mockClient, [{ objectId: 'cap-1', obligationId: 'obligation-1' }]);
-      withObligation(
-        mockClient,
+    it('parses borrows with USD values', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
         [],
-        [makeObligationBorrow(Math.round(50_000_000 * 1e18), Math.round(1.0 * 1e18))],
-      );
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 50, amountUsd: 50 }],
+      )];
 
       const positions = await adapter.getPositions(TEST_ADDRESS);
       expect(positions.borrows).toHaveLength(1);
       expect(positions.borrows[0].asset).toBe('USDC');
-      expect(positions.borrows[0].amount).toBeCloseTo(52.5, 0);
+      expect(positions.borrows[0].amount).toBe(50);
+      expect(positions.borrows[0].amountUsd).toBe(50);
+    });
+
+    it('filters dust positions', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 0.00001, amountUsd: 0.00001 }],
+      )];
+
+      const positions = await adapter.getPositions(TEST_ADDRESS);
+      expect(positions.supplies).toHaveLength(0);
+    });
+
+    it('resolves non-USDC assets by coin type', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      const suiReserve = makeReserve(SUPPORTED_ASSETS.SUI.type, 2.5, 5.0);
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.SUI.type, amount: 13.5, amountUsd: 13.93, reserve: suiReserve }],
+      )];
+
+      const positions = await adapter.getPositions(TEST_ADDRESS);
+      expect(positions.supplies).toHaveLength(1);
+      expect(positions.supplies[0].asset).toBe('SUI');
+      expect(positions.supplies[0].amountUsd).toBe(13.93);
     });
   });
 
@@ -247,74 +216,87 @@ describe('SuilendAdapter', () => {
       expect(health.borrowed).toBe(0);
     });
 
-    it('computes health factor from positions', async () => {
-      withObligationCaps(mockClient, [{ objectId: 'cap-1', obligationId: 'obligation-1' }]);
-      withObligation(
-        mockClient,
-        [makeObligationDeposit(200_000_000)],
-        [makeObligationBorrow(Math.round(50_000_000 * 1e18), Math.round(1.0 * 1e18))],
-      );
+    it('computes health factor from obligation', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 200, amountUsd: 200 }],
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 50, amountUsd: 50 }],
+      )];
 
       const health = await adapter.getHealth(TEST_ADDRESS);
-      expect(health.healthFactor).toBeGreaterThan(1);
-      expect(health.supplied).toBeGreaterThan(0);
-      expect(health.borrowed).toBeGreaterThan(0);
+      expect(health.healthFactor).toBe(3.0);
+      expect(health.supplied).toBe(200);
+      expect(health.borrowed).toBe(50);
       expect(health.liquidationThreshold).toBe(0.75);
     });
   });
 
   describe('buildSaveTx', () => {
+    it('creates a deposit transaction', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      const result = await adapter.buildSaveTx(TEST_ADDRESS, 10, 'USDC');
+      expect(result.tx).toBeInstanceOf(Transaction);
+      expect(mockSdkInstance.depositIntoObligation).toHaveBeenCalled();
+    });
+
     it('creates obligation when none exists', async () => {
-      const result = await adapter.buildSaveTx(TEST_ADDRESS, 10, 'USDC');
-      expect(result.tx).toBeDefined();
-    });
+      mockObligationOwnerCaps = [];
+      const { SuilendClient } = await import('@suilend/sdk/client');
+      vi.mocked(SuilendClient.getObligationOwnerCaps).mockResolvedValueOnce([]);
 
-    it('uses existing obligation cap when available', async () => {
-      withObligationCaps(mockClient, [{ objectId: 'cap-1', obligationId: 'obligation-1' }]);
       const result = await adapter.buildSaveTx(TEST_ADDRESS, 10, 'USDC');
-      expect(result.tx).toBeDefined();
-    });
-
-    it('throws when no USDC coins available', async () => {
-      (mockClient.getCoins as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        data: [],
-        nextCursor: null,
-        hasNextPage: false,
-      });
-      await expect(adapter.buildSaveTx(TEST_ADDRESS, 10, 'USDC')).rejects.toThrow('No USDC coins');
+      expect(result.tx).toBeInstanceOf(Transaction);
+      expect(mockSdkInstance.createObligation).toHaveBeenCalled();
     });
   });
 
   describe('buildWithdrawTx', () => {
     it('withdraws from existing position', async () => {
-      withObligationCaps(mockClient, [{ objectId: 'cap-1', obligationId: 'obligation-1' }]);
-      withObligation(mockClient, [makeObligationDeposit(100_000_000)]);
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 100, amountUsd: 100 }],
+      )];
+      const { SuilendClient } = await import('@suilend/sdk/client');
+      vi.mocked(SuilendClient.getObligationOwnerCaps).mockResolvedValueOnce([
+        { id: 'cap-1', obligationId: 'ob-1' } as never,
+      ]);
 
       const result = await adapter.buildWithdrawTx(TEST_ADDRESS, 50, 'USDC');
-      expect(result.tx).toBeDefined();
-      expect(result.effectiveAmount).toBeGreaterThan(0);
-    });
-
-    it('throws when no obligation exists', async () => {
-      await expect(adapter.buildWithdrawTx(TEST_ADDRESS, 10, 'USDC')).rejects.toThrow('No Suilend position');
+      expect(result.tx).toBeInstanceOf(Transaction);
+      expect(result.effectiveAmount).toBe(50);
     });
 
     it('caps withdrawal at deposited amount', async () => {
-      withObligationCaps(mockClient, [{ objectId: 'cap-1', obligationId: 'obligation-1' }]);
-      withObligation(mockClient, [makeObligationDeposit(5_000_000)]);
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 5, amountUsd: 5 }],
+      )];
+      const { SuilendClient } = await import('@suilend/sdk/client');
+      vi.mocked(SuilendClient.getObligationOwnerCaps).mockResolvedValueOnce([
+        { id: 'cap-1', obligationId: 'ob-1' } as never,
+      ]);
 
       const result = await adapter.buildWithdrawTx(TEST_ADDRESS, 100, 'USDC');
-      expect(result.effectiveAmount).toBeLessThanOrEqual(5.1);
+      expect(result.effectiveAmount).toBe(5);
+    });
+
+    it('throws when no obligation cap exists', async () => {
+      const { SuilendClient } = await import('@suilend/sdk/client');
+      vi.mocked(SuilendClient.getObligationOwnerCaps).mockResolvedValueOnce([]);
+
+      await expect(adapter.buildWithdrawTx(TEST_ADDRESS, 10, 'USDC')).rejects.toThrow('No Suilend position');
     });
   });
 
   describe('maxWithdraw', () => {
     it('returns full supply when no borrows', async () => {
-      withObligationCaps(mockClient, [{ objectId: 'cap-1', obligationId: 'obligation-1' }]);
-      withObligation(mockClient, [makeObligationDeposit(100_000_000)]);
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 100, amountUsd: 100 }],
+      )];
 
       const result = await adapter.maxWithdraw(TEST_ADDRESS, 'USDC');
-      expect(result.maxAmount).toBeGreaterThan(0);
+      expect(result.maxAmount).toBe(100);
       expect(result.healthFactorAfter).toBe(Infinity);
     });
 
@@ -323,14 +305,32 @@ describe('SuilendAdapter', () => {
       expect(result.maxAmount).toBe(0);
       expect(result.currentHF).toBe(Infinity);
     });
+
+    it('limits withdrawal to maintain health factor', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 200, amountUsd: 200 }],
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 50, amountUsd: 50 }],
+      )];
+
+      const result = await adapter.maxWithdraw(TEST_ADDRESS, 'USDC');
+      expect(result.maxAmount).toBe(100);
+      expect(result.currentHF).toBe(3.0);
+    });
   });
 
   describe('borrow and repay', () => {
-    it('buildBorrowTx throws when no obligation', async () => {
+    it('buildBorrowTx throws when no obligation cap', async () => {
+      const { SuilendClient } = await import('@suilend/sdk/client');
+      vi.mocked(SuilendClient.getObligationOwnerCaps).mockResolvedValueOnce([]);
+
       await expect(adapter.buildBorrowTx(TEST_ADDRESS, 100, 'USDC')).rejects.toThrow('No Suilend position');
     });
 
-    it('buildRepayTx throws when no obligation', async () => {
+    it('buildRepayTx throws when no obligation cap', async () => {
+      const { SuilendClient } = await import('@suilend/sdk/client');
+      vi.mocked(SuilendClient.getObligationOwnerCaps).mockResolvedValueOnce([]);
+
       await expect(adapter.buildRepayTx(TEST_ADDRESS, 100, 'USDC')).rejects.toThrow('No Suilend obligation');
     });
 
@@ -338,6 +338,17 @@ describe('SuilendAdapter', () => {
       const result = await adapter.maxBorrow(TEST_ADDRESS, 'USDC');
       expect(result.maxAmount).toBe(0);
       expect(result.currentHF).toBe(Infinity);
+    });
+
+    it('maxBorrow returns available borrow capacity', async () => {
+      mockObligationOwnerCaps = [{ id: 'cap-1', obligationId: 'ob-1' }];
+      mockObligations = [makeObligation(
+        [{ coinType: SUPPORTED_ASSETS.USDC.type, amount: 200, amountUsd: 200 }],
+      )];
+
+      const result = await adapter.maxBorrow(TEST_ADDRESS, 'USDC');
+      expect(result.maxAmount).toBe(140);
+      expect(result.healthFactorAfter).toBe(1.5);
     });
   });
 });

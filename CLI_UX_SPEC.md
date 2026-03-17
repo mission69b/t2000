@@ -158,13 +158,14 @@ Already optimized:
 ```
   Savings
   ─────────────────────────────────────────────────────
-  navi:     $300.00 USDC @ 5.50% APY
-  suilend:  $200.00 USDC @ 2.20% APY
-  Total:    $500.00
+  navi:     0.0013 ETH ($3.06) @ 1.71% APY  +rewards
+  navi:     55.2500 USDC ($55.25) @ 4.18% APY  +rewards
+  suilend:  13.5300 SUI ($13.93) @ 2.70% APY
+  Total:    $72.24
 
   Borrows
   ─────────────────────────────────────────────────────
-  navi:  $100.00 USDC @ 3.80% APY
+  navi:  100.0000 USDC ($100.00) @ 3.80% APY
 ```
 
 Empty state:
@@ -687,7 +688,7 @@ No rewards:
 ```
 
 Reward indicators appear in other commands:
-- `positions`: `navi: $5.30 USDC @ 4.09% APY +rewards`
+- `positions`: `navi: 5.3000 USDC ($5.30) @ 4.09% APY +rewards`
 - `portfolio`: `3.9% APY (navi) +rewards`
 
 ---

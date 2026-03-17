@@ -55,8 +55,7 @@ export function registerBalance(program: Command) {
 
         printKeyValue('Available', `${formatUsd(usdcAmount)}  ${pc.dim('(checking — USDC)')}`);
         for (const [symbol, amount] of otherStables) {
-          const sweepAmount = amount < 1 ? amount.toFixed(2) : Math.floor(amount);
-          printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}  ${pc.dim(`(sweep: t2000 exchange ${sweepAmount} ${symbol} USDC)`)}`);
+          printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}  ${pc.dim(`(use: t2000 save all — auto-converts to USDC)`)}`);
         }
 
         if (bal.savings > 0.01) {
@@ -64,13 +63,13 @@ export function registerBalance(program: Command) {
           const saves = positions.positions.filter(p => p.type === 'save');
           const borrows = positions.positions.filter(p => p.type === 'borrow');
           const weightedApy = saves.length > 0
-            ? saves.reduce((sum, p) => sum + p.amount * p.apy, 0) / saves.reduce((sum, p) => sum + p.amount, 0)
+            ? saves.reduce((sum, p) => sum + (p.amountUsd ?? p.amount) * p.apy, 0) / saves.reduce((sum, p) => sum + (p.amountUsd ?? p.amount), 0)
             : 0;
           const dailyEarning = bal.savings * (weightedApy / 100) / 365;
           printKeyValue('Savings', `${formatUsd(bal.savings)}  ${pc.dim(`(earning ${weightedApy.toFixed(2)}% APY)`)}`);
           if (bal.debt > 0.01) {
             const borrowApy = borrows.length > 0
-              ? borrows.reduce((sum, p) => sum + p.amount * p.apy, 0) / borrows.reduce((sum, p) => sum + p.amount, 0)
+              ? borrows.reduce((sum, p) => sum + (p.amountUsd ?? p.amount) * p.apy, 0) / borrows.reduce((sum, p) => sum + (p.amountUsd ?? p.amount), 0)
               : 0;
             printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}  ${pc.dim(`(${borrowApy.toFixed(2)}% APY)`)}`);
           }

@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { T2000, formatUsd } from '@t2000/sdk';
+import { T2000, formatUsd, formatAssetAmount } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printInfo, printLine } from '../output.js';
 
@@ -34,7 +34,7 @@ export function registerFundStatus(program: Command) {
 
         if (savePositions.length > 0) {
           for (const p of savePositions) {
-            printLine(`  ${pc.dim('•')} ${formatUsd(p.amount)} ${p.asset} on ${p.protocol} @ ${p.apy.toFixed(2)}% APY`);
+            printLine(`  ${pc.dim('•')} ${formatAssetAmount(p.amount, p.asset)} ${p.asset} (${formatUsd(p.amountUsd ?? p.amount)}) on ${p.protocol} @ ${p.apy.toFixed(2)}% APY`);
           }
         }
 
