@@ -145,7 +145,7 @@ describe.skipIf(!SMOKE)('Smoke: Cetus adapter (mainnet)', () => {
   });
 
   it('returns pool price for USDC/SUI', async () => {
-    const price = await adapter.getPoolPrice('USDC', 'SUI');
+    const price = await adapter.getPoolPrice();
     expect(price).toBeGreaterThan(0);
   });
 
