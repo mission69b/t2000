@@ -8,4 +8,10 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   treeshake: true,
+  noExternal: [
+    /^@suilend/,
+    /^@naviprotocol/,
+    /^@cetusprotocol/,
+    /^@pythnetwork/,
+  ],
 });

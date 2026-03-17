@@ -209,12 +209,16 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@cetusprotocol/aggregator-sdk':
-        specifier: ^1.4.5
-        version: 1.4.5(typescript@5.9.3)
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
+      eventemitter3:
+        specifier: ^5
+        version: 5.0.4
+    devDependencies:
+      '@cetusprotocol/aggregator-sdk':
+        specifier: ^1.4.5
+        version: 1.4.5(typescript@5.9.3)
       '@naviprotocol/lending':
         specifier: ^1.4.0
         version: 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.6.0(typescript@5.9.3))(typescript@5.9.3)
@@ -227,10 +231,6 @@ importers:
       '@suilend/sui-fe':
         specifier: ^2.0.6
         version: 2.0.10(@mysten/sui@2.6.0(typescript@5.9.3))
-      eventemitter3:
-        specifier: ^5
-        version: 5.0.4
-    devDependencies:
       '@types/node':
         specifier: ^20
         version: 20.19.37

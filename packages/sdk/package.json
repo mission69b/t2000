@@ -1,6 +1,6 @@
 {
   "name": "@t2000/sdk",
-  "version": "0.18.11",
+  "version": "0.18.12",
   "description": "TypeScript SDK for AI agent bank accounts on Sui — send, save, borrow, rebalance",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -50,15 +50,15 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@cetusprotocol/aggregator-sdk": "^1.4.5",
     "@mysten/sui": "^2.6.0",
+    "eventemitter3": "^5"
+  },
+  "devDependencies": {
+    "@cetusprotocol/aggregator-sdk": "^1.4.5",
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.2.0",
     "@suilend/sdk": "^2.0.2",
     "@suilend/sui-fe": "^2.0.6",
-    "eventemitter3": "^5"
-  },
-  "devDependencies": {
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",
