@@ -62,7 +62,7 @@ import type {
   PendingReward,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, INVESTMENT_ASSETS, GAS_RESERVE_MIN, DEFAULT_MAX_LEVERAGE, DEFAULT_MAX_POSITION_SIZE } from './constants.js';
+import { SUPPORTED_ASSETS, STABLE_ASSETS, DEFAULT_NETWORK, API_BASE_URL, INVESTMENT_ASSETS, GAS_RESERVE_MIN, DEFAULT_MAX_LEVERAGE, DEFAULT_MAX_POSITION_SIZE } from './constants.js';
 import type { InvestmentAsset } from './constants.js';
 
 const LOW_LIQUIDITY_ASSETS = new Set(['GOLD']);
@@ -1438,7 +1438,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     });
     const walletAmount = Number(assetBalance.totalBalance) / (10 ** assetInfo.decimals);
     const gasReserve = params.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
-    const depositAmount = Math.max(0, walletAmount - gasReserve);
+    const depositAmount = Math.min(pos.totalAmount, Math.max(0, walletAmount - gasReserve));
 
     if (pos.earning && depositAmount <= 0) {
       return {
@@ -2524,7 +2524,12 @@ export class T2000 extends EventEmitter<T2000Events> {
       }
     }
 
-    const bestRate = allRates.reduce((best, r) =>
+    const stableSet = new Set<string>(STABLE_ASSETS);
+    const stableRates = allRates.filter(r => stableSet.has(r.asset));
+    if (stableRates.length === 0) {
+      throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No stablecoin lending rates available for rebalance');
+    }
+    const bestRate = stableRates.reduce((best, r) =>
       r.rates.saveApy > best.rates.saveApy ? r : best,
     );
 
