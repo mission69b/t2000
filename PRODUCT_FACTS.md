@@ -14,10 +14,10 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.18.0` |
-| `@t2000/cli` | `0.18.0` |
+| `@t2000/sdk` | `0.18.3` |
+| `@t2000/cli` | `0.20.2` |
 | `@t2000/x402` | `0.3.0` |
-| `@t2000/mcp` | `0.18.0` |
+| `@t2000/mcp` | `0.20.1` |
 | Agent Skills | `3.0` |
 
 ---
@@ -654,14 +654,15 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.18.0` |
-| Description | Personal AI financial advisor — local-first, non-custodial. MCP-first integration for AI platforms. |
+| Version | `0.20.1` |
+| Description | A bank account for AI agents — MCP-first integration for AI platforms. Non-custodial. |
 | Transport | stdio |
 | Tools | 23 |
 | Prompts | 15 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
-| Setup | `t2000 init` (guided wizard with browser auto-open) |
-| Auto-install | `t2000 mcp install` (configures Claude Desktop + Cursor automatically) |
+| Setup | `t2000 init` (guided wizard — wallet + MCP + safeguards in one command) |
+| MCP auto-configured during init | Yes — Step 2 of init wizard auto-writes configs for Claude Desktop, Cursor, Windsurf |
+| Standalone MCP install | `t2000 mcp install` (for reconfiguring or adding platforms after init) |
 | Manual config | `{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }` |
 | Remove | `t2000 mcp uninstall` |
 | Start server | `t2000 mcp` (stdio transport, used by AI platforms) |

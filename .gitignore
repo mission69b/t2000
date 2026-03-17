@@ -42,5 +42,8 @@ spec/
 marketing/
 GROWTH_PLAN.md
 
+# MCP registry tokens
+.mcpregistry_*
+
 # pnpm store
 .pnpm-store/

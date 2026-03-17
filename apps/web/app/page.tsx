@@ -69,7 +69,7 @@ const STEPS = [
     title: "Install",
     badge: "30s",
     badgeType: "done" as const,
-    content: "One command. Wallet, AI, MCP — all guided.",
+    content: "One command. Wallet, MCP, safeguards — all guided.",
     code: "npm i -g @t2000/cli && t2000 init",
   },
   {
@@ -81,18 +81,10 @@ const STEPS = [
   },
   {
     num: "03",
-    title: "Start your advisor",
-    badge: "1 cmd",
-    badgeType: "new" as const,
-    content: "Connect Claude Desktop, Cursor, or any MCP client. 23 tools, 15 prompts.",
-    code: "t2000 mcp install",
-  },
-  {
-    num: "04",
     title: "Let it work",
     badge: "∞",
     badgeType: "new" as const,
-    content: "Set the rules once. Your agent handles the rest — 24/7.",
+    content: "Restart your AI platform and ask: \"What's my t2000 balance?\" Your agent handles the rest — 24/7.",
   },
 ];
 

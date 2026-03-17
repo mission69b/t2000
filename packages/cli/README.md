@@ -26,7 +26,7 @@ t2000 init
   │  A bank account for AI agents           │
   └─────────────────────────────────────────┘
 
-  Step 1 of 5 — Create wallet
+  Step 1 of 3 — Create wallet
 
   Creating agent wallet...
   ✓ Keypair generated

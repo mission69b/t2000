@@ -399,28 +399,39 @@ function QuickStart({
       <h2 id="qs-init">2. Set up your agent</h2>
       <p>
         The init wizard creates your wallet, configures MCP platforms,
-        and sets up safeguards.
+        and sets up safeguards — all in one command.
       </p>
       <CodeBlock lang="bash">
         {S.g("$")} t2000 init{"\n\n"}
-        {"  ┌─────────────────────────────────────────┐\n"}
-        {"  │  "}{S.b("Welcome to t2000")}{"                       │\n"}
-        {"  │  A bank account for AI agents           │\n"}
-        {"  └─────────────────────────────────────────┘\n\n"}
+        {"  "}{S.b("Step 1 of 3")} — Create wallet{"\n"}
+        {"  Create PIN (min 4 chars): ****\n"}
+        {"  Confirm PIN: ****\n\n"}
         {"  "}{S.m("Creating agent wallet...")}{"\n"}
         {"  "}{S.g("✓")} Keypair generated{"\n"}
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
-        {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n"}
+        {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
+        {"  "}{S.m("Setting up accounts...")}{"\n"}
         {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
-        {"  "}{S.g("✓")} MCP configured (Claude Desktop, Cursor){"\n"}
-        {"  "}{S.g("✓")} Safeguards set{"\n\n"}
-        {"  ┌─────────────────────────────────────────┐\n"}
-        {"  │  "}{S.g("✓ You're all set")}{"                        │\n"}
-        {"  │  Open Claude Desktop or Cursor and ask: │\n"}
-        {"  │  "}{S.b("\"What's my t2000 balance?\"")}{"          │\n"}
-        {"  └─────────────────────────────────────────┘"}
+        {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
+        {"  Which AI platforms do you use? (space to select)\n"}
+        {"  "}{S.g("◉")} Claude Desktop{"\n"}
+        {"  "}{S.g("◉")} Cursor{"\n"}
+        {"  ◯ Windsurf\n\n"}
+        {"  "}{S.m("Adding t2000 to your AI platforms...")}{"\n"}
+        {"  "}{S.g("✓")} Claude Desktop  configured{"\n"}
+        {"  "}{S.g("✓")} Cursor  configured{"\n\n"}
+        {"  "}{S.b("Step 3 of 3")} — Set safeguards{"\n"}
+        {"  Max per transaction ($): 500\n"}
+        {"  Max daily sends ($): 1000\n"}
+        {"  "}{S.g("✓")} Safeguards configured{"\n\n"}
+        {"  "}{S.g("✓ You're all set")}{"\n\n"}
+        {"  Next steps:\n"}
+        {"    1. Restart Claude Desktop / Cursor\n"}
+        {"    2. Ask: "}{S.b("\"What's my t2000 balance?\"")}{"\n\n"}
+        {"  Deposit USDC to get started:\n"}
+        {"    "}{S.a("0x8b3e...d412")}
       </CodeBlock>
       <Callout type="tip" label="Tip">
         Your encrypted key lives at <InlineCode>~/.t2000/wallet.key</InlineCode>.
@@ -468,29 +479,19 @@ function QuickStart({
             </CodeBlock>
           </div>
         </li>
-        <li className="flex gap-4 mb-6 relative">
-          <div className="w-8 h-8 border border-accent rounded-md flex items-center justify-center text-xs text-accent bg-accent-dim shrink-0 relative z-1 shadow-[0_0_8px_var(--accent-glow)]">
-            ✓
-          </div>
-          <div className="flex-1 min-w-0 pt-1">
-            <div className="text-[13.5px] font-medium text-white/85 mb-1.5">
-              Install agent skills <Badge color="muted">optional</Badge>
-            </div>
-            <p>
-              Let any Claude, Codex, or Copilot agent discover and use t2000
-              automatically.
-            </p>
-            <CodeBlock lang="bash">
-              {S.g("$")} npx skills add mission69b/t2000-skills{"\n\n"}
-              {S.g("✓")} Installed 10 skills{"\n"}
-              {S.m("  t2000-check-balance, t2000-send, t2000-save,")}{"\n"}
-              {S.m("  t2000-withdraw, t2000-exchange, t2000-borrow,")}{"\n"}
-              {S.m("  t2000-repay, t2000-pay, t2000-sentinel, t2000-rebalance")}{"\n\n"}
-              {S.c("# Your agent now knows how to use t2000 automatically.")}
-            </CodeBlock>
-          </div>
-        </li>
       </ol>
+      <Callout type="note" label="Agent Skills (optional)">
+        For Claude Code, Codex, or Copilot — run{" "}
+        <InlineCode>npx skills add mission69b/t2000-skills</InlineCode>{" "}
+        to let agents discover t2000 automatically. See the{" "}
+        <a
+          onClick={() => goTo("skills")}
+          className="text-accent cursor-pointer hover:underline"
+        >
+          Agent Skills
+        </a>{" "}
+        docs.
+      </Callout>
 
       <Callout type="note" label="Next step">
         Want your agent to pay for APIs autonomously? See the{" "}
@@ -542,7 +543,7 @@ function InstallSection() {
         {S.g("$")} npm install -g @t2000/cli{"\n\n"}
         {S.c("# Verify")}{"\n"}
         {S.g("$")} t2000 --version{"\n"}
-        {S.a("0.18.0")}
+        {S.a("0.20.2")}
       </CodeBlock>
 
       <h2 id="inst-config">File locations</h2>
@@ -1111,7 +1112,7 @@ function CliMoreSection() {
       <DocTable
         headers={["Command", "Description"]}
         rows={[
-          [<InlineCode key="k">t2000 mcp install</InlineCode>, "Auto-configure Claude Desktop + Cursor"],
+          [<InlineCode key="k">t2000 mcp install</InlineCode>, "Reconfigure MCP for Claude Desktop, Cursor, Windsurf (also done during init)"],
           [<InlineCode key="k">t2000 mcp uninstall</InlineCode>, "Remove MCP config from platforms"],
           [<InlineCode key="k">t2000 mcp</InlineCode>, "Start MCP server (used by AI platforms)"],
         ]}
@@ -1311,8 +1312,8 @@ function InitWizardSection() {
         Init <em className="italic text-accent">Wizard</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Guided setup: wallet, MCP platforms, safeguards. Auto-configures Claude Desktop + Cursor.
-        Inspired by <InlineCode>gh auth login</InlineCode>.
+        Guided setup: wallet, MCP platforms, safeguards — all in one command.
+        Auto-configures Claude Desktop, Cursor, and Windsurf.
       </p>
 
       <h2 id="init-wizard-run">Run the wizard</h2>
@@ -1324,17 +1325,63 @@ function InitWizardSection() {
       <DocTable
         headers={["Step", "What happens"]}
         rows={[
-          ["1. Create wallet", "Generates Ed25519 keypair, creates 5 bank accounts on Sui"],
-          ["2. Set PIN", "AES-256-GCM encryption for private key"],
-          ["3. Configure MCP", "Auto-writes MCP configs for Claude Desktop + Cursor. Detects installed platforms."],
-          ["4. Set safeguards", "Per-transaction and daily send limits"],
+          ["1. Create wallet", "Create PIN, generate Ed25519 keypair (AES-256-GCM encrypted), create 5 bank accounts on Sui with gas sponsorship"],
+          ["2. Connect AI platforms", "Multi-select checkbox: Claude Desktop, Cursor, Windsurf. Auto-writes MCP configs for selected platforms."],
+          ["3. Set safeguards", "Per-transaction and daily send limits"],
         ]}
       />
 
+      <h2 id="init-wizard-flow">Full wizard output</h2>
+      <CodeBlock lang="bash">
+        {S.g("$")} t2000 init{"\n\n"}
+        {"  ┌─────────────────────────────────────────┐\n"}
+        {"  │  "}{S.b("Welcome to t2000")}{"                       │\n"}
+        {"  │  A bank account for AI agents           │\n"}
+        {"  └─────────────────────────────────────────┘\n\n"}
+        {"  "}{S.b("Step 1 of 3")} — Create wallet{"\n"}
+        {"  Create PIN (min 4 chars): ****\n"}
+        {"  Confirm PIN: ****\n\n"}
+        {"  "}{S.m("Creating agent wallet...")}{"\n"}
+        {"  "}{S.g("✓")} Keypair generated{"\n"}
+        {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
+        {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
+        {"  "}{S.m("Setting up accounts...")}{"\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
+        {"  "}🎉 {S.g("Bank account created")}{"\n"}
+        {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
+        {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
+        {"  Which AI platforms do you use? (space to select)\n"}
+        {"  "}{S.g("◉")} Claude Desktop{"\n"}
+        {"  "}{S.g("◉")} Cursor{"\n"}
+        {"  ◯ Windsurf\n\n"}
+        {"  "}{S.m("Adding t2000 to your AI platforms...")}{"\n"}
+        {"  "}{S.g("✓")} Claude Desktop  configured{"\n"}
+        {"  "}{S.g("✓")} Cursor  configured{"\n\n"}
+        {"  "}{S.b("Step 3 of 3")} — Set safeguards{"\n"}
+        {"  Max per transaction ($): 500\n"}
+        {"  Max daily sends ($): 1000\n"}
+        {"  "}{S.g("✓")} Safeguards configured{"\n\n"}
+        {"  ┌─────────────────────────────────────────┐\n"}
+        {"  │  "}{S.g("✓ You're all set")}{"                        │\n"}
+        {"  │                                         │\n"}
+        {"  │  Next steps:                             │\n"}
+        {"  │    1. Restart Claude Desktop / Cursor    │\n"}
+        {"  │    2. Ask: "}{S.b("\"What's my t2000 balance?\"")}{" │\n"}
+        {"  │                                         │\n"}
+        {"  │  Deposit USDC to get started:           │\n"}
+        {"  │    "}{S.a("0x8b3e...d412")}{"                     │\n"}
+        {"  └─────────────────────────────────────────┘"}
+      </CodeBlock>
+
+      <h2 id="init-wizard-returning">Returning users</h2>
+      <p>
+        If a wallet is detected, the wizard skips wallet creation (Step 1)
+        and goes directly to MCP + safeguards setup (2 steps total).
+      </p>
+
       <h2 id="init-wizard-after">After init</h2>
       <CodeBlock lang="bash">
-        {S.g("$")} t2000 mcp install{S.c("   # auto-configure Claude Desktop + Cursor")}{"\n"}
-        {S.g("$")} t2000 balance{S.c("       # or use CLI directly")}
+        {S.g("$")} t2000 balance{S.c("   # use CLI directly, or ask your AI")}
       </CodeBlock>
     </>
   );
@@ -1354,19 +1401,19 @@ function McpSection() {
         23 tools, 15 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
-      <h2 id="mcp-setup">Setup — 3 commands</h2>
+      <h2 id="mcp-setup">Setup — 2 commands</h2>
       <CodeBlock lang="bash">
-        {S.g("$")} npm i -g @t2000/cli{S.c("          # install")}{"\n"}
-        {S.g("$")} t2000 init{S.c("                    # guided setup (wallet + safeguards)")}{"\n"}
-        {S.g("$")} t2000 mcp install{S.c("             # auto-configure Claude Desktop + Cursor")}
+        {S.g("$")} npm i -g @t2000/cli{S.c("   # install")}{"\n"}
+        {S.g("$")} t2000 init{S.c("             # wallet + MCP + safeguards")}
       </CodeBlock>
       <p>
+        The init wizard configures MCP for your AI platforms automatically.
         Restart your AI platform, then ask: <strong>&quot;What&apos;s my t2000 balance?&quot;</strong>
       </p>
       <Callout type="tip" label="Zero config">
-        <InlineCode>t2000 mcp install</InlineCode> auto-writes MCP configs
-        for Claude Desktop and Cursor. No JSON to paste, no files to find.
-        Run <InlineCode>t2000 mcp uninstall</InlineCode> to remove.
+        <InlineCode>t2000 init</InlineCode> auto-writes MCP configs
+        for Claude Desktop, Cursor, and Windsurf. No JSON to paste, no files to find.
+        Run <InlineCode>t2000 mcp uninstall</InlineCode> to remove later.
       </Callout>
       <p>
         For other platforms, paste manually:
@@ -1468,9 +1515,10 @@ function McpSection() {
       </CodeBlock>
 
       <h2 id="mcp-platforms">Platform configs</h2>
-      <Callout type="tip" label="Recommended">
-        Run <InlineCode>t2000 mcp install</InlineCode> to auto-configure
-        Claude Desktop and Cursor — no manual editing needed.
+      <Callout type="tip" label="Auto-configured">
+        <InlineCode>t2000 init</InlineCode> configures MCP for Claude Desktop,
+        Cursor, and Windsurf automatically. Use <InlineCode>t2000 mcp install</InlineCode> to
+        reconfigure later if needed.
       </Callout>
       <p>
         For manual setup or other platforms, use this config:
@@ -1763,15 +1811,13 @@ function ChangelogSection() {
       </h1>
 
       <h2 id="cl-current">
-        v0.18.0 <Badge color="green">current</Badge>
+        v0.20.0 <Badge color="green">current</Badge>
       </h2>
       <p>
         MCP-first AI advisor — connect Claude Desktop, Cursor, or Windsurf to your
         t2000 agent. <InlineCode>t2000 init</InlineCode> walks you through setup (wallet, MCP
-        platforms, safeguards) and auto-configures your AI platform.{" "}
-        <InlineCode>t2000 mcp install</InlineCode> writes MCP configs for Claude Desktop + Cursor.
-        23 tools, 15 prompts, stdio transport. New <InlineCode>@t2000/mcp</InlineCode> package.
-        Gateway deprecated in favor of MCP.
+        platforms, safeguards) and auto-configures your AI platform.
+        23 tools, 15 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
       </p>
 
       <h2 id="cl-0170">
@@ -2055,7 +2101,7 @@ export default function DocsPage() {
 
         <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <span className="text-[11px] text-warning bg-[rgba(245,166,35,0.10)] border border-[rgba(245,166,35,0.2)] rounded px-2 py-px tracking-[0.05em] hidden sm:inline">
-            v0.18.0
+            v0.20.0
           </span>
           <Link href="/" className="text-xs text-white/35 no-underline hover:text-white/80 transition-colors hidden sm:inline">
             Home

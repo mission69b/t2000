@@ -4,18 +4,18 @@ MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or
 
 **23 tools · 15 prompts · stdio transport · safeguard enforced**
 
-> **New to t2000?** Run `t2000 init` for guided setup, then `t2000 mcp install` to auto-configure Claude Desktop, Cursor, and Windsurf.
+> **New to t2000?** Run `t2000 init` — it creates your wallet, configures MCP for your AI platforms, and sets safeguards in one command.
 
 ## Quick Start
 
 ```bash
-npm i -g @t2000/cli          # install
-t2000 init                    # guided setup
-t2000 config set maxPerTx 100 # set safeguards
-t2000 mcp install             # auto-configure Claude Desktop + Cursor
+npm i -g @t2000/cli   # install
+t2000 init             # wallet + MCP + safeguards
 ```
 
 Restart your AI platform, then ask: **"What's my t2000 balance?"**
+
+> `t2000 mcp install` can reconfigure MCP platforms later if needed.
 
 To remove: `t2000 mcp uninstall`
 

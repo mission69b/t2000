@@ -43,10 +43,8 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
 
 ```
 ❯ t2000 init
-  ┌─────────────────────────────────────────┐
-  │  Welcome to t2000                       │
-  │  A bank account for AI agents           │
-  └─────────────────────────────────────────┘
+
+  Step 1 of 3 — Create wallet
   Creating agent wallet...
   ✓ Keypair generated
   ✓ Network  Sui mainnet
@@ -54,12 +52,16 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
   ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment
   🎉 Bank account created
   Address: 0x8b3e...d412
-  ✓ MCP configured
-  ✓ Safeguards set
 
-❯ t2000 mcp install
-  ✓ MCP server configured for Claude Desktop, Cursor, Windsurf
-  ✓ 23 tools · 15 prompts · safeguard enforced
+  Step 2 of 3 — Connect AI platforms
+  ✓ Claude Desktop  configured
+  ✓ Cursor  configured
+
+  Step 3 of 3 — Set safeguards
+  ✓ Safeguards configured
+
+  ✓ You're all set
+  Restart Claude Desktop / Cursor and ask: "What's my t2000 balance?"
 
 ❯ t2000 balance
   Available:  $85.00   (checking — spendable)
@@ -88,8 +90,7 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 
 ```bash
 npm install -g @t2000/cli           # Install
-t2000 init                          # Guided setup: wallet, AI, safeguards
-t2000 mcp install                   # Connect Claude Desktop, Cursor, Windsurf
+t2000 init                          # Wallet + MCP + safeguards — one command
 ```
 
 Use the CLI directly or connect your AI via MCP:

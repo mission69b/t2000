@@ -694,7 +694,7 @@ Reward indicators appear in other commands:
 
 ## `t2000 init` (interactive wizard)
 
-Guided setup wizard. Browser auto-opens API key dashboards.
+Guided setup wizard. Creates wallet, configures MCP for AI platforms, sets safeguards — all in one command.
 
 ```
   ┌─────────────────────────────────────────┐
@@ -702,7 +702,7 @@ Guided setup wizard. Browser auto-opens API key dashboards.
   │  A bank account for AI agents           │
   └─────────────────────────────────────────┘
 
-  Step 1 of 4 — Create wallet
+  Step 1 of 3 — Create wallet
   Create PIN (min 4 chars): ****
   Confirm PIN: ****
 
@@ -717,31 +717,34 @@ Guided setup wizard. Browser auto-opens API key dashboards.
   🎉 Bank account created
   Address: 0x8b3e...d412
 
-  Step 3 of 4 — Connect AI
-  Which LLM provider? (use arrow keys)
-  ❯ Claude (Anthropic)
-    GPT (OpenAI)
-    Skip (CLI only, no chat)
+  Step 2 of 3 — Connect AI platforms
+  Which AI platforms do you use? (space to select)
+  ◉ Claude Desktop
+  ◉ Cursor
+  ◯ Windsurf
 
-  Opening Anthropic API keys page in your browser...
-    https://console.anthropic.com/settings/keys
-  Paste your Anthropic API key: ****
-  ✓ Claude connected — model: claude-sonnet-4-20250514
+  Adding t2000 to your AI platforms...
+  ✓ Claude Desktop  configured
+  ✓ Cursor  configured
 
-  Step 4 of 4 — Set safeguards
+  Step 3 of 3 — Set safeguards
   Max per transaction ($): 500
   Max daily sends ($): 1000
   ✓ Safeguards configured
 
   ┌─────────────────────────────────────────┐
   │  ✓ You're all set                       │
-  │  Connect your AI:   t2000 mcp install   │
-  │  Or use the CLI:    t2000 balance       │
-  │  Deposit USDC:      0xYourAddress...    │
+  │                                         │
+  │  Next steps:                            │
+  │    1. Restart Claude Desktop / Cursor   │
+  │    2. Ask: "What's my t2000 balance?"   │
+  │                                         │
+  │  Deposit USDC to get started:           │
+  │    0x8b3e...d412                        │
   └─────────────────────────────────────────┘
 ```
 
-**Existing users:** If a wallet is detected, the wizard skips wallet creation and goes directly to AI + safeguards setup.
+**Existing users:** If a wallet is detected, the wizard skips wallet creation (Step 1) and goes directly to MCP + safeguards setup (2 steps total).
 
 ---
 
