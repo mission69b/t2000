@@ -14,4 +14,11 @@ export default defineConfig({
     /^@cetusprotocol/,
     /^@pythnetwork/,
   ],
+  esbuildOptions(options) {
+    if (options.format === 'esm') {
+      options.banner = {
+        js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+      };
+    }
+  },
 });
