@@ -272,7 +272,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       const savings = positions.positions
         .filter((p) => p.type === 'save')
         .filter((p) => !earningAssets.has(p.asset))
-        .filter((p) => !(p.asset in INVESTMENT_ASSETS))
         .reduce((sum, p) => sum + p.amount, 0);
       const debt = positions.positions
         .filter((p) => p.type === 'borrow')
@@ -292,7 +291,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       const assetPrices: Record<string, number> = { SUI: suiPrice };
       const swapAdapter = this.registry.listSwap()[0];
 
-      // Collect all invested assets (direct + strategy) to fetch prices
+      // Collect all invested assets (direct + strategy + wallet-held) to fetch prices
       const investedAssets = new Set<string>();
       for (const pos of portfolioPositions) {
         if (pos.asset in INVESTMENT_ASSETS) investedAssets.add(pos.asset);
@@ -301,6 +300,9 @@ export class T2000 extends EventEmitter<T2000Events> {
         for (const sp of this.portfolio.getStrategyPositions(key)) {
           if (sp.asset in INVESTMENT_ASSETS) investedAssets.add(sp.asset);
         }
+      }
+      for (const asset of Object.keys(INVESTMENT_ASSETS)) {
+        if ((bal.assets[asset] ?? 0) > 0) investedAssets.add(asset);
       }
 
       for (const asset of investedAssets) {
@@ -540,15 +542,17 @@ export class T2000 extends EventEmitter<T2000Events> {
       return this.withdrawAllProtocols();
     }
 
-    // Find the actual position to withdraw from (may be non-USDC after rebalance)
-    // Only consider stablecoin savings — investment assets (SUI, ETH, BTC) are
-    // managed via invest sell/unearn and should not be touched by withdraw.
+    // Find the actual position to withdraw from (may be non-USDC after rebalance).
+    // Exclude assets tracked as earning in portfolio (managed via invest unearn).
     const allPositions = await this.registry.allPositions(this._address);
+    const earningAssets = new Set(
+      this.portfolio.getPositions().filter(p => p.earning).map(p => p.asset),
+    );
     const supplies: Array<{ protocolId: string; asset: string; amount: number; apy: number }> = [];
     for (const pos of allPositions) {
       if (params.protocol && pos.protocolId !== params.protocol) continue;
       for (const s of pos.positions.supplies) {
-        if (s.amount > 0.001 && !(s.asset in INVESTMENT_ASSETS)) {
+        if (s.amount > 0.001 && !earningAssets.has(s.asset)) {
           supplies.push({ protocolId: pos.protocolId, asset: s.asset, amount: s.amount, apy: s.apy });
         }
       }
@@ -644,7 +648,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const withdrawable: Array<{ protocolId: string; asset: string; amount: number }> = [];
     for (const pos of allPositions) {
       for (const supply of pos.positions.supplies) {
-        if (supply.amount > 0.01 && !earningAssets.has(supply.asset) && !(supply.asset in INVESTMENT_ASSETS)) {
+        if (supply.amount > 0.01 && !earningAssets.has(supply.asset)) {
           withdrawable.push({ protocolId: pos.protocolId, asset: supply.asset, amount: supply.amount });
         }
       }

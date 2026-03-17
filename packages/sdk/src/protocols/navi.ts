@@ -971,12 +971,22 @@ export async function getPositions(
     ? addressOrKeypair
     : addressOrKeypair.getPublicKey().toSuiAddress();
 
-  const [states, pools] = await Promise.all([getUserState(client, address), getPools()]);
+  const [states, cachedPools] = await Promise.all([getUserState(client, address), getPools()]);
+
+  let pools = cachedPools;
+  const unmatchedIds = states.filter(s => !pools.find(p => p.id === s.assetId)).map(s => s.assetId);
+  if (unmatchedIds.length > 0) {
+    pools = await getPools(true);
+  }
+
   const positions: PositionEntry[] = [];
 
   for (const state of states) {
     const pool = pools.find((p) => p.id === state.assetId);
-    if (!pool) continue;
+    if (!pool) {
+      console.warn(`[NAVI] No pool found for assetId=${state.assetId} (supply=${state.supplyBalance}, borrow=${state.borrowBalance}) — funds may be invisible`);
+      continue;
+    }
 
     const symbol = resolvePoolSymbol(pool);
     const supplyBal = compoundBalance(state.supplyBalance, pool.currentSupplyIndex, pool);
