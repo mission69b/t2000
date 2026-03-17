@@ -105,19 +105,13 @@ export const demos: Demo[] = [
     tweet: "t2000 init — zero to bank account in 30 seconds.",
     lines: [
       { type: "command", text: "❯ t2000 init", delay: 0 },
-      { type: "output", text: "  ┌─────────────────────────────────────────┐", delay: 400 },
-      { type: "output", text: "  │  Welcome to t2000                       │", delay: 100 },
-      { type: "output", text: "  │  A bank account for AI agents           │", delay: 100 },
-      { type: "output", text: "  └─────────────────────────────────────────┘", delay: 100 },
 
-      { type: "info", text: "", delay: 200 },
       { type: "output", text: "  Step 1 of 3 — Create wallet", delay: 400 },
       { type: "info", text: "  Creating agent wallet...", delay: 400 },
       { type: "success", text: "  ✓ Keypair generated", delay: 300 },
       { type: "success", text: "  ✓ Network  Sui mainnet", delay: 200 },
       { type: "success", text: "  ✓ Gas sponsorship  enabled", delay: 200 },
       { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment", delay: 300 },
-      { type: "info", text: "", delay: 200 },
       { type: "output", text: "  🎉 Bank account created", delay: 300 },
       { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
@@ -132,13 +126,8 @@ export const demos: Demo[] = [
       { type: "success", text: "  ✓ Safeguards configured", delay: 300 },
 
       { type: "info", text: "", delay: 300 },
-      { type: "output", text: "  ┌─────────────────────────────────────────┐", delay: 300 },
-      { type: "output", text: "  │  ✓ You're all set                       │", delay: 100 },
-      { type: "output", text: "  │                                         │", delay: 50 },
-      { type: "output", text: "  │  Next steps:                            │", delay: 100 },
-      { type: "output", text: '  │    1. Restart Claude Desktop / Cursor   │', delay: 100 },
-      { type: "output", text: '  │    2. Ask: "What\'s my t2000 balance?"   │', delay: 100 },
-      { type: "output", text: "  └─────────────────────────────────────────┘", delay: 100 },
+      { type: "success", text: "  ✓ You're all set", delay: 300 },
+      { type: "info", text: "  Restart Claude Desktop / Cursor to activate", delay: 200 },
     ],
   },
 ];
