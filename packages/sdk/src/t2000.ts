@@ -631,6 +631,15 @@ export class T2000 extends EventEmitter<T2000Events> {
       return built.tx;
     });
 
+    if (target.asset !== 'USDC') {
+      try {
+        const postBal = await queryBalance(this.client, this._address);
+        await this._convertWalletStablesToUsdc(postBal);
+      } catch {
+        // Best-effort: if swap fails the user still has the stablecoins
+      }
+    }
+
     this.emitBalanceChange('USDC', finalAmount, 'withdraw', gasResult.digest);
 
     return {
@@ -746,11 +755,17 @@ export class T2000 extends EventEmitter<T2000Events> {
         totalUsdcReceived += built.effectiveAmount;
         lastTx = built.tx;
       }
-      if (hasNonUsdc && swapAdapter) {
-        await this._convertWalletStablesToUsdc(await queryBalance(this.client, this._address));
-      }
       return lastTx!;
     });
+
+    if (hasNonUsdc) {
+      try {
+        const postBal = await queryBalance(this.client, this._address);
+        await this._convertWalletStablesToUsdc(postBal);
+      } catch {
+        // Best-effort: if swap fails the user still has the stablecoins
+      }
+    }
 
     if (totalUsdcReceived <= 0) {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
@@ -1141,7 +1156,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const fee = calculateFee('swap', params.amount);
     const swapAmount = params.amount;
-    const slippageBps = params.maxSlippage ? params.maxSlippage * 100 : undefined;
+    const slippageBps = params.maxSlippage ? Math.round(params.maxSlippage * 10000) : undefined;
 
     let swapMeta: { estimatedOut: number; toDecimals: number } = { estimatedOut: 0, toDecimals: 0 };
 
@@ -1458,17 +1473,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     const gasReserve = params.asset === 'SUI' ? GAS_RESERVE_MIN : 0;
     const depositAmount = Math.min(pos.totalAmount, Math.max(0, walletAmount - gasReserve));
 
-    if (pos.earning && depositAmount <= 0) {
-      return {
-        success: true,
-        tx: '',
-        asset: params.asset,
-        amount: 0,
-        protocol: pos.earningProtocol ?? 'unknown',
-        apy: pos.earningApy ?? 0,
-        gasCost: 0,
-        gasMethod: 'none',
-      };
+    if (pos.earning) {
+      throw new T2000Error('INVEST_ALREADY_EARNING', `${params.asset} is already earning via ${pos.earningProtocol ?? 'lending'}`);
     }
     if (depositAmount <= 0) {
       throw new T2000Error('INSUFFICIENT_BALANCE', `No ${params.asset} available to deposit (wallet: ${walletAmount}, gas reserve: ${gasReserve})`);

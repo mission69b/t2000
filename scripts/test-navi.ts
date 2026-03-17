@@ -65,16 +65,17 @@ async function main() {
 
     const balAfter = await agent.balance();
     assert(balAfter.available < balBefore.available, 'available decreased after save');
-    assert(balAfter.savings > balBefore.savings, 'savings increased after save');
+    const savingsDelta = balAfter.savings - balBefore.savings;
+    assert(savingsDelta > SAVE_AMOUNT * 0.5, `savings increased after save (delta: $${savingsDelta.toFixed(2)})`);
   });
 
   await runSection('Positions (after save)', async () => {
     const pos = await agent.positions();
-    const savePos = pos.positions.find(p => p.type === 'save');
-    console.log(`   Save position: $${savePos?.amount.toFixed(2) ?? '0.00'} USDC`);
-    assert(savePos !== undefined, 'save position exists');
-    assert((savePos?.amount ?? 0) > 0, 'save position has value');
-    assert(savePos?.protocol === 'navi', 'protocol is navi');
+    const naviPos = pos.positions.find(p => p.type === 'save' && p.protocol === 'navi');
+    console.log(`   NAVI save position: $${naviPos?.amount.toFixed(2) ?? '0.00'} ${naviPos?.asset ?? 'USDC'}`);
+    assert(naviPos !== undefined, 'navi save position exists');
+    assert((naviPos?.amount ?? 0) > 0, 'navi save position has value');
+    assert(naviPos?.protocol === 'navi', 'protocol is navi');
   });
 
   await runSection('Max Withdraw', async () => {

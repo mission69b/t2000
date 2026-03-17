@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.mission69b/t2000",
-  "description": "MCP server for AI agent bank accounts on Sui — 23 tools, 15 prompts, stdio transport",
+  "description": "MCP server for AI agent bank accounts on Sui — 33 tools, 20 prompts, stdio transport",
   "repository": {
     "url": "https://github.com/mission69b/t2000",
     "source": "github",

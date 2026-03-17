@@ -472,4 +472,64 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
       }
     },
   );
+
+  // ---------------------------------------------------------------------------
+  // Sentinel
+  // ---------------------------------------------------------------------------
+
+  server.tool(
+    't2000_sentinel_attack',
+    'Attack a Sui Sentinel with a prompt to try to breach its defenses and win the prize pool. Costs SUI (the attack fee). Use t2000_sentinel_list to find targets first.',
+    {
+      id: z.string().describe('Sentinel agent ID or object ID to attack'),
+      prompt: z.string().describe('Your attack prompt — try to make the AI do something its system prompt forbids'),
+      fee: z.number().optional().describe('Override attack fee in SUI (default: sentinel\'s listed fee)'),
+    },
+    async ({ id, prompt, fee }) => {
+      try {
+        const feeMist = fee ? BigInt(Math.round(fee * 1e9)) : undefined;
+        const result = await mutex.run(() => agent.sentinelAttack(id, prompt, feeMist));
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Contact management
+  // ---------------------------------------------------------------------------
+
+  server.tool(
+    't2000_contact_add',
+    'Save a contact name → Sui address mapping. After saving, use the name with t2000_send instead of pasting addresses. Example: save "Tom" as 0x1234... then send to "Tom".',
+    {
+      name: z.string().describe('Contact name (e.g. "Tom", "Alice")'),
+      address: z.string().describe('Sui wallet address (0x...)'),
+    },
+    async ({ name, address }) => {
+      try {
+        const result = agent.contacts.add(name, address);
+        return { content: [{ type: 'text', text: JSON.stringify({ success: true, name, address, ...result }) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    't2000_contact_remove',
+    'Remove a saved contact by name.',
+    {
+      name: z.string().describe('Contact name to remove'),
+    },
+    async ({ name }) => {
+      try {
+        const removed = agent.contacts.remove(name);
+        return { content: [{ type: 'text', text: JSON.stringify({ success: removed, name }) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
 }

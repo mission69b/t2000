@@ -1108,7 +1108,7 @@ function CliMoreSection() {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 23 tools, 15 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 33 tools, 20 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1398,7 +1398,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        23 tools, 15 prompts, stdio transport — your AI operates a full bank account.
+        33 tools, 20 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 2 commands</h2>
@@ -1422,25 +1422,32 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (22)</h2>
+      <h2 id="mcp-tools">Available tools (33)</h2>
 
-      <h3 id="mcp-tools-read">Read-only (9)</h3>
+      <h3 id="mcp-tools-read">Read-only (16)</h3>
       <DocTable
         headers={["Tool", "Description"]}
         rows={[
+          [<InlineCode key="k">t2000_overview</InlineCode>, "Complete account snapshot — balance, positions, portfolio, health, earnings, rewards in one call"],
           [<InlineCode key="k">t2000_balance</InlineCode>, "Current balance — checking, savings, gas, total"],
           [<InlineCode key="k">t2000_address</InlineCode>, "Agent's Sui wallet address"],
           [<InlineCode key="k">t2000_positions</InlineCode>, "Lending positions across protocols"],
           [<InlineCode key="k">t2000_rates</InlineCode>, "Best interest rates per asset"],
+          [<InlineCode key="k">t2000_all_rates</InlineCode>, "Per-protocol rate comparison (NAVI vs Suilend)"],
           [<InlineCode key="k">t2000_health</InlineCode>, "Health factor for borrows"],
           [<InlineCode key="k">t2000_history</InlineCode>, "Recent transactions"],
           [<InlineCode key="k">t2000_earnings</InlineCode>, "Yield earnings from savings"],
+          [<InlineCode key="k">t2000_fund_status</InlineCode>, "Savings fund status — supplied, APY, projections"],
+          [<InlineCode key="k">t2000_pending_rewards</InlineCode>, "Pending protocol rewards"],
+          [<InlineCode key="k">t2000_deposit_info</InlineCode>, "Deposit instructions — address, network, supported assets"],
+          [<InlineCode key="k">t2000_sentinel_list</InlineCode>, "List active sentinels with prize pools"],
+          [<InlineCode key="k">t2000_sentinel_info</InlineCode>, "Sentinel details — model, system prompt, attack history"],
           [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
           [<InlineCode key="k">t2000_portfolio</InlineCode>, "View investment portfolio with cost-basis P&L"],
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (11)</h3>
+      <h3 id="mcp-tools-write">State-changing (15)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1460,6 +1467,9 @@ function McpSection() {
           [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
           [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
           [<InlineCode key="k">t2000_claim_rewards</InlineCode>, "Claim protocol rewards and auto-convert to USDC"],
+          [<InlineCode key="k">t2000_sentinel_attack</InlineCode>, "Attack a sentinel to win its prize pool"],
+          [<InlineCode key="k">t2000_contact_add</InlineCode>, "Save a contact name → Sui address"],
+          [<InlineCode key="k">t2000_contact_remove</InlineCode>, "Remove a saved contact"],
         ]}
       />
 
@@ -1477,7 +1487,7 @@ function McpSection() {
         <InlineCode>t2000 unlock</InlineCode> in the terminal.
       </Callout>
 
-      <h2 id="mcp-prompts">Prompts (15)</h2>
+      <h2 id="mcp-prompts">Prompts (20)</h2>
       <p>
         Reusable conversation templates that help AI assistants interact with t2000 effectively.
       </p>
@@ -1499,6 +1509,11 @@ function McpSection() {
           [<InlineCode key="k">claim-rewards</InlineCode>, "Check and claim pending protocol rewards — auto-converts to USDC"],
           [<InlineCode key="k">safeguards</InlineCode>, "Review safety settings — per-tx limits, daily caps, emergency lock"],
           [<InlineCode key="k">quick-exchange</InlineCode>, "Guided token swap — preview rate, slippage, impact before executing"],
+          [<InlineCode key="k">sentinel-hunt</InlineCode>, "Guided bounty hunting — find targets, craft attacks, win prizes"],
+          [<InlineCode key="k">onboarding</InlineCode>, "New user setup — deposit, first save, explore features"],
+          [<InlineCode key="k">emergency</InlineCode>, "Lock account, assess damage, recovery guidance"],
+          [<InlineCode key="k">optimize-all</InlineCode>, "One-shot full optimization — sweep, rebalance, claim, earn"],
+          [<InlineCode key="k">savings-goal</InlineCode>, "Goal-based savings — save $X by date Y with yield projections"],
         ]}
       />
 
@@ -1817,7 +1832,7 @@ function ChangelogSection() {
         MCP-first AI advisor — connect Claude Desktop, Cursor, or Windsurf to your
         t2000 agent. <InlineCode>t2000 init</InlineCode> walks you through setup (wallet, MCP
         platforms, safeguards) and auto-configures your AI platform.
-        23 tools, 15 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
+        33 tools, 20 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
       </p>
 
       <h2 id="cl-0170">

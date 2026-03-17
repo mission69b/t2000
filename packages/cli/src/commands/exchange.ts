@@ -34,7 +34,7 @@ export function registerExchange(program: Command) {
           from: fromAsset,
           to: toAsset,
           amount: parsedAmount,
-          maxSlippage: parseFloat(opts.slippage ?? '3'),
+          maxSlippage: parseFloat(opts.slippage ?? '3') / 100,
         });
 
         if (isJsonMode()) {

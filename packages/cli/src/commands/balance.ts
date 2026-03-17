@@ -100,7 +100,9 @@ export function registerBalance(program: Command) {
           if (bal.debt > 0.01) {
             printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}`);
           }
-          printKeyValue('Savings', `${formatUsd(bal.savings)}`);
+          if (bal.savings > 0.005) {
+            printKeyValue('Savings', `${formatUsd(bal.savings)}`);
+          }
           if (bal.investment > 0.01) {
             const pnlColor = bal.investmentPnL >= 0 ? pc.green : pc.red;
             const pnlSign = bal.investmentPnL >= 0 ? '+' : '';

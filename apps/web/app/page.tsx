@@ -144,8 +144,8 @@ const COMPARE_ROWS: {
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
-  { feature: "AI integration", coinbase: "—", t2000: "✓ 23 tools + 15 AI prompts + MCP", coinbaseCross: true },
-  { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 15 AI prompts", coinbaseCross: true },
+  { feature: "AI integration", coinbase: "—", t2000: "✓ 33 tools + 20 AI prompts + MCP", coinbaseCross: true },
+  { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
   { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
 ];
@@ -495,11 +495,11 @@ export default function Home() {
                 <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-3">@t2000/mcp</div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-accent-dim px-2.5 py-1.5">
-                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">23</div>
+                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">33</div>
                     <div className="text-[9px] text-accent/70 tracking-wider uppercase">tools</div>
                   </div>
                   <div className="bg-accent-dim px-2.5 py-1.5">
-                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">15</div>
+                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">20</div>
                     <div className="text-[9px] text-accent/70 tracking-wider uppercase">prompts</div>
                   </div>
                 </div>

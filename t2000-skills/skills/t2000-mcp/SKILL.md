@@ -3,8 +3,8 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server.   Provides 23 tools
-  and 15 prompts for AI-driven banking operations.
+  client, set up MCP config, or start the MCP server.   Provides 33 tools
+  and 20 prompts for AI-driven banking operations.
 license: MIT
 metadata:
   author: t2000
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 23 tools, 15 prompts, stdio transport, safeguard enforced.
+account. 33 tools, 20 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -40,22 +40,29 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (22)
+## Available Tools (33)
 
-### Read-only (9)
+### Read-only (16)
 | Tool | Description |
 |------|-------------|
+| `t2000_overview` | Complete account snapshot in one call |
 | `t2000_balance` | Current balance |
 | `t2000_address` | Wallet address |
 | `t2000_positions` | Lending positions |
-| `t2000_rates` | Interest rates |
+| `t2000_rates` | Best interest rates per asset |
+| `t2000_all_rates` | Per-protocol rate comparison (NAVI vs Suilend) |
 | `t2000_health` | Health factor |
 | `t2000_history` | Transaction history |
 | `t2000_earnings` | Yield earnings |
+| `t2000_fund_status` | Savings fund status |
+| `t2000_pending_rewards` | Pending protocol rewards |
+| `t2000_deposit_info` | Deposit instructions |
+| `t2000_sentinel_list` | List active sentinels with prize pools |
+| `t2000_sentinel_info` | Sentinel details — model, prompt, history |
 | `t2000_contacts` | List saved contacts (name → address) |
 | `t2000_portfolio` | Investment portfolio positions + P&L |
 
-### State-changing (11)
+### State-changing (15)
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
@@ -72,6 +79,9 @@ All support `dryRun: true` for previews without signing.
 | `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |
 | `t2000_auto_invest` | DCA scheduling — setup, status, run, stop |
 | `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
+| `t2000_sentinel_attack` | Attack a sentinel to win prize pool |
+| `t2000_contact_add` | Save a contact name → address |
+| `t2000_contact_remove` | Remove a saved contact |
 
 ### Safety (2)
 | Tool | Description |
@@ -79,7 +89,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (15)
+## Prompts (20)
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |
@@ -97,6 +107,11 @@ All support `dryRun: true` for previews without signing.
 | `claim-rewards` | Check and claim protocol rewards — auto-converts to USDC |
 | `safeguards` | Review safety settings — limits, lock, PIN-protected operations |
 | `quick-exchange` | Guided token swap — preview rate, slippage, impact |
+| `sentinel-hunt` | Guided bounty hunting — find targets, craft attacks, win prizes |
+| `onboarding` | New user setup — deposit, first save, explore features |
+| `emergency` | Lock account, assess damage, recovery guidance |
+| `optimize-all` | One-shot full optimization — sweep, rebalance, claim, earn |
+| `savings-goal` | Goal-based savings — "save $X by date Y" with projections |
 
 ## Security
 - Safeguard gate: server refuses to start without configured limits

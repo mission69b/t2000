@@ -21,8 +21,8 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 15 prompts', () => {
-    expect(prompts.size).toBe(15);
+  it('should register 20 prompts', () => {
+    expect(prompts.size).toBe(20);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
@@ -37,6 +37,11 @@ describe('prompts', () => {
     expect(prompts.has('claim-rewards')).toBe(true);
     expect(prompts.has('safeguards')).toBe(true);
     expect(prompts.has('quick-exchange')).toBe(true);
+    expect(prompts.has('sentinel-hunt')).toBe(true);
+    expect(prompts.has('onboarding')).toBe(true);
+    expect(prompts.has('emergency')).toBe(true);
+    expect(prompts.has('optimize-all')).toBe(true);
+    expect(prompts.has('savings-goal')).toBe(true);
   });
 
   it('financial-report should return valid message array', async () => {
@@ -44,16 +49,16 @@ describe('prompts', () => {
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].role).toBe('user');
-    expect(result.messages[0].content.text).toContain('t2000_balance');
-    expect(result.messages[0].content.text).toContain('t2000_positions');
+    expect(result.messages[0].content.text).toContain('t2000_overview');
+    expect(result.messages[0].content.text).toContain('t2000_rates');
   });
 
   it('optimize-yield should return valid message array', async () => {
     const handler = prompts.get('optimize-yield')!;
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_overview');
     expect(result.messages[0].content.text).toContain('t2000_rebalance');
-    expect(result.messages[0].content.text).toContain('t2000_invest_rebalance');
   });
 
   it('send-money should return valid message with context', async () => {
@@ -87,13 +92,12 @@ describe('prompts', () => {
     expect(result.messages[0].content.text).toContain('spending check');
   });
 
-  it('savings-strategy should include balance, positions, and rates tools', async () => {
+  it('savings-strategy should use t2000_overview and t2000_all_rates', async () => {
     const handler = prompts.get('savings-strategy')!;
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].content.text).toContain('t2000_balance');
-    expect(result.messages[0].content.text).toContain('t2000_positions');
-    expect(result.messages[0].content.text).toContain('t2000_rates');
+    expect(result.messages[0].content.text).toContain('t2000_overview');
+    expect(result.messages[0].content.text).toContain('t2000_all_rates');
     expect(result.messages[0].content.text).toContain('t2000_save');
   });
 
@@ -125,19 +129,61 @@ describe('prompts', () => {
     expect(withoutArgs.messages[0].content.text).toContain('t2000_exchange');
   });
 
-  it('morning-briefing should mention claim rewards and invest rebalance', async () => {
+  it('morning-briefing should use t2000_overview and mention action items', async () => {
     const handler = prompts.get('morning-briefing')!;
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].content.text).toContain('t2000_claim_rewards');
-    expect(result.messages[0].content.text).toContain('t2000_invest_rebalance');
+    expect(result.messages[0].content.text).toContain('t2000_overview');
+    expect(result.messages[0].content.text).toContain('Action Items');
   });
 
-  it('financial-report should mention claim rewards and invest rebalance', async () => {
+  it('financial-report should use t2000_overview', async () => {
     const handler = prompts.get('financial-report')!;
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].content.text).toContain('t2000_claim_rewards');
+    expect(result.messages[0].content.text).toContain('t2000_overview');
+    expect(result.messages[0].content.text).toContain('t2000_rates');
+  });
+
+  it('sentinel-hunt should reference sentinel tools', async () => {
+    const handler = prompts.get('sentinel-hunt')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_sentinel_list');
+    expect(result.messages[0].content.text).toContain('t2000_sentinel_attack');
+  });
+
+  it('onboarding should reference t2000_overview and t2000_deposit_info', async () => {
+    const handler = prompts.get('onboarding')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_overview');
+    expect(result.messages[0].content.text).toContain('t2000_deposit_info');
+  });
+
+  it('emergency should reference t2000_lock immediately', async () => {
+    const handler = prompts.get('emergency')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_lock');
+    expect(result.messages[0].content.text).toContain('EMERGENCY');
+  });
+
+  it('optimize-all should reference all optimization levers', async () => {
+    const handler = prompts.get('optimize-all')!;
+    const result = await handler({});
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('t2000_overview');
+    expect(result.messages[0].content.text).toContain('t2000_rebalance');
     expect(result.messages[0].content.text).toContain('t2000_invest_rebalance');
+  });
+
+  it('savings-goal should accept target and months parameters', async () => {
+    const handler = prompts.get('savings-goal')!;
+    const result = await handler({ target: 1000, months: 6 });
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].content.text).toContain('$1000');
+    expect(result.messages[0].content.text).toContain('6 months');
+    expect(result.messages[0].content.text).toContain('t2000_overview');
   });
 });

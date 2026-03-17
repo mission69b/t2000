@@ -35,6 +35,13 @@ function createMockAgent() {
     earnings: vi.fn().mockResolvedValue({
       totalYieldEarned: 0.15, currentApy: 4.92, dailyEarning: 0.0007,
     }),
+    fundStatus: vi.fn().mockResolvedValue({
+      supplied: 5.10, apy: 4.92, earnedToday: 0.0007, earnedAllTime: 0.15, projectedMonthly: 0.021,
+    }),
+    getPendingRewards: vi.fn().mockResolvedValue([]),
+    deposit: vi.fn().mockReturnValue({
+      address: '0xtest123', network: 'Sui (mainnet)', supportedAssets: ['USDC'], instructions: 'Send USDC to address.',
+    }),
     send: vi.fn().mockResolvedValue({
       digest: '0xsend123', amount: 10, to: '0xrecipient',
     }),
@@ -64,6 +71,8 @@ function createMockAgent() {
         if (nameOrAddress.startsWith('0x')) return { address: nameOrAddress };
         throw new Error(`"${nameOrAddress}" is not a valid Sui address or saved contact.`);
       }),
+      add: vi.fn().mockReturnValue({ action: 'added' }),
+      remove: vi.fn().mockReturnValue(true),
     },
     portfolio: {
       getPositions: vi.fn().mockReturnValue([]),
@@ -84,6 +93,16 @@ function createMockAgent() {
     investSell: vi.fn().mockResolvedValue({
       success: true, tx: '0xinvest456', type: 'sell', asset: 'SUI',
       amount: 50, price: 0.97, usdValue: 48.5, fee: 0, gasCost: 0.001,
+    }),
+    allRatesAcrossAssets: vi.fn().mockResolvedValue([
+      { protocol: 'navi', asset: 'USDC', rates: { saveApy: 4.08, borrowApy: 4.94 } },
+    ]),
+    sentinelList: vi.fn().mockResolvedValue([]),
+    sentinelInfo: vi.fn().mockResolvedValue({
+      id: '1', objectId: '0xsentinel', name: 'Test', model: 'gpt-4', systemPrompt: '', attackFee: 100000000n, prizePool: 1000000000n, totalAttacks: 0, successfulBreaches: 0, state: 'active',
+    }),
+    sentinelAttack: vi.fn().mockResolvedValue({
+      attackObjectId: '0x1', sentinelId: '1', prompt: 'test', verdict: { success: false, score: 20, agentResponse: 'No', juryResponse: 'Defended' }, requestTx: '0x1', settleTx: '0x2', won: false, feePaid: 0.1,
     }),
   } as any;
 }
@@ -116,26 +135,33 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 23 tools', async () => {
+  it('lists all 33 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(23);
+    expect(tools).toHaveLength(33);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
       't2000_address',
+      't2000_all_rates',
       't2000_auto_invest',
       't2000_balance',
       't2000_borrow',
       't2000_claim_rewards',
       't2000_config',
+      't2000_contact_add',
+      't2000_contact_remove',
       't2000_contacts',
+      't2000_deposit_info',
       't2000_earnings',
       't2000_exchange',
+      't2000_fund_status',
       't2000_health',
       't2000_history',
       't2000_invest',
       't2000_invest_rebalance',
       't2000_lock',
+      't2000_overview',
+      't2000_pending_rewards',
       't2000_portfolio',
       't2000_positions',
       't2000_rates',
@@ -143,17 +169,20 @@ describe('integration: MCP client ↔ server', () => {
       't2000_repay',
       't2000_save',
       't2000_send',
+      't2000_sentinel_attack',
+      't2000_sentinel_info',
+      't2000_sentinel_list',
       't2000_strategy',
       't2000_withdraw',
     ]);
   });
 
-  it('lists all 15 prompts', async () => {
+  it('lists all 20 prompts', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts).toHaveLength(15);
+    expect(prompts).toHaveLength(20);
 
     const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'financial-report', 'investment-strategy', 'morning-briefing', 'optimize-yield', 'quick-exchange', 'risk-check', 'safeguards', 'savings-strategy', 'send-money', 'sweep', 'weekly-recap', 'what-if']);
+    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'emergency', 'financial-report', 'investment-strategy', 'morning-briefing', 'onboarding', 'optimize-all', 'optimize-yield', 'quick-exchange', 'risk-check', 'safeguards', 'savings-goal', 'savings-strategy', 'send-money', 'sentinel-hunt', 'sweep', 'weekly-recap', 'what-if']);
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {
@@ -232,7 +261,7 @@ describe('integration: MCP client ↔ server', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content).toMatchObject({
       type: 'text',
-      text: expect.stringContaining('t2000_balance'),
+      text: expect.stringContaining('t2000_overview'),
     });
   });
 });

@@ -58,6 +58,15 @@ function makeReserve(coinType: string, depositApr = 4.5, borrowApr = 6.2) {
   };
 }
 
+function mockBigNumber(val: number) {
+  return {
+    toNumber: () => val,
+    toFixed: (dp: number) => val.toFixed(dp),
+    times: (n: number) => mockBigNumber(val * n),
+    integerValue: () => mockBigNumber(Math.floor(val)),
+  };
+}
+
 function makeObligation(
   deposits: Array<{ coinType: string; amount: number; amountUsd: number; reserve?: unknown }> = [],
   borrows: Array<{ coinType: string; amount: number; amountUsd: number; reserve?: unknown }> = [],
@@ -68,6 +77,7 @@ function makeObligation(
       coinType: d.coinType,
       depositedAmount: { toNumber: () => d.amount },
       depositedAmountUsd: { toNumber: () => d.amountUsd },
+      depositedCtokenAmount: mockBigNumber(d.amount * 1e6),
       reserve: d.reserve ?? usdcReserve,
       reserveArrayIndex: 0n,
     })),

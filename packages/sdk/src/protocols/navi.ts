@@ -12,6 +12,7 @@ import {
   getUserAvailableLendingRewards,
   claimLendingRewardsPTB,
   summaryLendingRewards,
+  updateOraclePriceBeforeUserOperationPTB,
   type Pool,
 } from '@naviprotocol/lending';
 import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
@@ -42,6 +43,42 @@ const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'] as const;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sdkOptions(client: SuiJsonRpcClient): { env: 'prod'; client: any } {
   return { env: 'prod', client };
+}
+
+/**
+ * Refresh Pyth oracle prices in the PTB before price-dependent NAVI operations.
+ * NAVI's on-chain contract requires fresh oracle prices (within 15s) for
+ * withdraw, borrow, and repay. Unlike Suilend (which auto-refreshes), NAVI's
+ * PTB builders don't update prices — the caller must do it via this SDK helper.
+ */
+async function refreshOracle(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  address: string,
+): Promise<void> {
+  const origInfo = console.info;
+  const origWarn = console.warn;
+  console.info = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('stale price feed')) return;
+    origInfo.apply(console, args);
+  };
+  console.warn = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('price feed')) return;
+    origWarn.apply(console, args);
+  };
+  try {
+    const pools = await naviGetPools(sdkOptions(client));
+    await updateOraclePriceBeforeUserOperationPTB(tx, address, pools, {
+      ...sdkOptions(client),
+      throws: false,
+    });
+  } catch {
+    // Best-effort: if oracle refresh fails (network issue), the operation
+    // may still succeed if on-chain prices are fresh enough.
+  } finally {
+    console.info = origInfo;
+    console.warn = origWarn;
+  }
 }
 
 const NAVI_SYMBOL_MAP: Record<string, string> = {
@@ -333,14 +370,11 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
+  await refreshOracle(tx, client, address);
+
   try {
-    const coinResult = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
-    const [coin] = tx.moveCall({
-      target: '0x2::coin::from_balance',
-      arguments: [coinResult as TransactionObjectArgument],
-      typeArguments: [assetInfo.type],
-    });
-    tx.transferObjects([coin], address);
+    const coin = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
+    tx.transferObjects([coin as TransactionObjectArgument], address);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI withdraw failed: ${msg}`);
@@ -378,14 +412,11 @@ export async function addWithdrawToTx(
     return { coin, effectiveAmount: 0 };
   }
 
+  await refreshOracle(tx, client, address);
+
   try {
-    const coinResult = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
-    const [coin] = tx.moveCall({
-      target: '0x2::coin::from_balance',
-      arguments: [coinResult as TransactionObjectArgument],
-      typeArguments: [assetInfo.type],
-    });
-    return { coin, effectiveAmount };
+    const coin = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
+    return { coin: coin as TransactionObjectArgument, effectiveAmount };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI withdraw failed: ${msg}`);
@@ -416,13 +447,15 @@ export async function addSaveToTx(
 
 export async function addRepayToTx(
   tx: Transaction,
-  _client: SuiJsonRpcClient,
-  _address: string,
+  client: SuiJsonRpcClient,
+  address: string,
   coin: TransactionObjectArgument,
   options: { asset?: string } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
+
+  await refreshOracle(tx, client, address);
 
   try {
     await repayCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });
@@ -472,19 +505,16 @@ export async function buildBorrowTx(
   const tx = new Transaction();
   tx.setSender(address);
 
+  await refreshOracle(tx, client, address);
+
   try {
-    const coinResult = await borrowCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
-    const [borrowedCoin] = tx.moveCall({
-      target: '0x2::coin::from_balance',
-      arguments: [coinResult as TransactionObjectArgument],
-      typeArguments: [assetInfo.type],
-    });
+    const borrowedCoin = await borrowCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
 
     if (options.collectFee) {
-      addCollectFeeToTx(tx, borrowedCoin, 'borrow');
+      addCollectFeeToTx(tx, borrowedCoin as TransactionObjectArgument, 'borrow');
     }
 
-    tx.transferObjects([borrowedCoin], address);
+    tx.transferObjects([borrowedCoin as TransactionObjectArgument], address);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI borrow failed: ${msg}`);
@@ -543,6 +573,8 @@ export async function buildRepayTx(
 
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
   const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
+
+  await refreshOracle(tx, client, address);
 
   try {
     await repayCoinPTB(tx, assetInfo.type, repayCoin as never, {

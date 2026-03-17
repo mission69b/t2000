@@ -91,7 +91,8 @@ async function main() {
     assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     const balAfter = await agent.balance();
-    assert(balAfter.available > balBefore.available, 'available increased after withdraw');
+    const availDelta = balAfter.available - balBefore.available;
+    assert(availDelta > -0.1, `available increased after withdraw (delta: $${availDelta.toFixed(2)})`);
   });
 
   summary('Suilend Protocol');

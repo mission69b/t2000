@@ -57,7 +57,7 @@ When no session file exists, pass PIN via environment variable:
 
 ---
 
-## Available Tools (22)
+## Available Tools (33)
 
 ### Read-Only (9)
 
