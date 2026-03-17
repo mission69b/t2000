@@ -55,7 +55,8 @@ export function registerBalance(program: Command) {
 
         printKeyValue('Available', `${formatUsd(usdcAmount)}  ${pc.dim('(checking — USDC)')}`);
         for (const [symbol, amount] of otherStables) {
-          printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}  ${pc.dim('(sweep: t2000 exchange ' + symbol + ' USDC)')}`);
+          const sweepAmount = amount < 1 ? amount.toFixed(2) : Math.floor(amount);
+          printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}  ${pc.dim(`(sweep: t2000 exchange ${sweepAmount} ${symbol} USDC)`)}`);
         }
 
         if (bal.savings > 0.01) {
