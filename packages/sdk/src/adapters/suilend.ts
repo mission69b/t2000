@@ -27,6 +27,16 @@ import type { TransactionObjectArgument } from '@mysten/sui/transactions';
 const SUILEND_PACKAGE = '0xf95b06141ed4a174f239417323bde3f209b972f5930d8521ea38a52aff3a6ddf';
 const MIN_HEALTH_FACTOR = 1.5;
 
+async function quietSuilend<T>(fn: () => Promise<T>): Promise<T> {
+  const origLog = console.log;
+  const origWarn = console.warn;
+  const filter = (...args: unknown[]) =>
+    typeof args[0] === 'string' && (args[0].includes('PythEndpoint') || args[0].includes('PythConnection'));
+  console.log = (...args: unknown[]) => { if (!filter(...args)) origLog.apply(console, args); };
+  console.warn = (...args: unknown[]) => { if (!filter(...args)) origWarn.apply(console, args); };
+  return fn().finally(() => { console.log = origLog; console.warn = origWarn; });
+}
+
 export const descriptor: ProtocolDescriptor = {
   id: 'suilend',
   name: 'Suilend',
@@ -92,7 +102,7 @@ export class SuilendAdapter implements LendingAdapter {
   async getRates(asset: string): Promise<LendingRates> {
     try {
       const sdk = await this.getSdkClient();
-      const { reserveMap } = await initializeSuilend(this.client, sdk);
+      const { reserveMap } = await quietSuilend(() => initializeSuilend(this.client, sdk));
 
       const assetInfo = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS];
       if (!assetInfo) throw new T2000Error('ASSET_NOT_SUPPORTED', `Suilend does not support ${asset}`);
@@ -123,7 +133,7 @@ export class SuilendAdapter implements LendingAdapter {
 
     try {
       const sdk = await this.getSdkClient();
-      const { reserveMap, refreshedRawReserves } = await initializeSuilend(this.client, sdk);
+      const { reserveMap, refreshedRawReserves } = await quietSuilend(() => initializeSuilend(this.client, sdk));
 
       const { obligations, obligationOwnerCaps } = await initializeObligations(
         this.client, sdk, refreshedRawReserves, reserveMap, address,
@@ -166,7 +176,7 @@ export class SuilendAdapter implements LendingAdapter {
   async getHealth(address: string): Promise<HealthInfo> {
     try {
       const sdk = await this.getSdkClient();
-      const { reserveMap, refreshedRawReserves } = await initializeSuilend(this.client, sdk);
+      const { reserveMap, refreshedRawReserves } = await quietSuilend(() => initializeSuilend(this.client, sdk));
 
       const { obligations, obligationOwnerCaps } = await initializeObligations(
         this.client, sdk, refreshedRawReserves, reserveMap, address,
@@ -427,7 +437,7 @@ export class SuilendAdapter implements LendingAdapter {
   async getPendingRewards(address: string): Promise<PendingReward[]> {
     try {
       const sdk = await this.getSdkClient();
-      const { reserveMap, refreshedRawReserves } = await initializeSuilend(this.client, sdk);
+      const { reserveMap, refreshedRawReserves } = await quietSuilend(() => initializeSuilend(this.client, sdk));
       const { obligations, obligationOwnerCaps } = await initializeObligations(
         this.client, sdk, refreshedRawReserves, reserveMap, address,
       );
@@ -464,7 +474,7 @@ export class SuilendAdapter implements LendingAdapter {
       const caps = await SuilendClient.getObligationOwnerCaps(address, [LENDING_MARKET_TYPE], this.client);
       if (caps.length === 0) return [];
 
-      const { reserveMap, refreshedRawReserves } = await initializeSuilend(this.client, sdk);
+      const { reserveMap, refreshedRawReserves } = await quietSuilend(() => initializeSuilend(this.client, sdk));
       const { obligations } = await initializeObligations(
         this.client, sdk, refreshedRawReserves, reserveMap, address,
       );
