@@ -1,0 +1,95 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  ci:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/x402 build
+      - run: pnpm --filter @t2000/mcp build
+      - run: pnpm --filter @t2000/server exec prisma generate
+      - run: pnpm --filter @t2000/sdk typecheck
+      - run: pnpm --filter @t2000/x402 typecheck
+      - run: pnpm --filter @t2000/mcp typecheck
+      - run: pnpm --filter @t2000/server typecheck
+      - run: pnpm --filter @t2000/cli typecheck
+      - run: pnpm --filter @t2000/sdk test
+      - run: pnpm --filter @t2000/x402 test
+      - run: pnpm --filter @t2000/server test
+      - run: pnpm --filter @t2000/mcp test
+
+  publish:
+    name: Publish to npm
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/x402 build
+      - run: pnpm --filter @t2000/mcp build
+      - run: pnpm --filter @t2000/cli build
+
+      - name: Publish @t2000/sdk
+        run: pnpm --filter @t2000/sdk publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish @t2000/x402
+        run: pnpm --filter @t2000/x402 publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish @t2000/mcp
+        run: pnpm --filter @t2000/mcp publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish @t2000/cli
+        run: pnpm --filter @t2000/cli publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+  release:
+    name: GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" --generate-notes
