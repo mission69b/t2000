@@ -40,6 +40,7 @@ spec/
 
 # marketing (private)
 marketing/
+GROWTH_PLAN.md
 
 # pnpm store
 .pnpm-store/
