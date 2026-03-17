@@ -263,63 +263,58 @@ export class T2000 extends EventEmitter<T2000Events> {
   async balance(): Promise<BalanceResponse> {
     const bal = await queryBalance(this.client, this._address);
 
+    const portfolioPositions = this.portfolio.getPositions();
     const earningAssets = new Set(
-      this.portfolio.getPositions().filter(p => p.earning).map(p => p.asset),
+      portfolioPositions.filter(p => p.earning).map(p => p.asset),
     );
 
-    try {
-      const positions = await this.positions();
-      const savings = positions.positions
-        .filter((p) => p.type === 'save')
-        .filter((p) => !earningAssets.has(p.asset))
-        .reduce((sum, p) => sum + p.amount, 0);
-      const debt = positions.positions
-        .filter((p) => p.type === 'borrow')
-        .reduce((sum, p) => sum + p.amount, 0);
-      bal.savings = savings;
-      bal.debt = debt;
-    } catch {
-      // NAVI unavailable — show basic balance
+    // --- Phase 1: Fetch prices for all investment assets upfront ---
+    const suiPrice = bal.gasReserve.sui > 0
+      ? bal.gasReserve.usdEquiv / bal.gasReserve.sui
+      : 0;
+    const assetPrices: Record<string, number> = { SUI: suiPrice };
+    const swapAdapter = this.registry.listSwap()[0];
+
+    for (const asset of Object.keys(INVESTMENT_ASSETS)) {
+      if (asset === 'SUI') continue;
+      try {
+        if (swapAdapter) {
+          const quote = await swapAdapter.getQuote('USDC', asset, 1);
+          assetPrices[asset] = quote.expectedOutput > 0 ? 1 / quote.expectedOutput : 0;
+        }
+      } catch { assetPrices[asset] = 0; }
+    }
+
+    const toUsd = (asset: string, amount: number): number =>
+      (asset in INVESTMENT_ASSETS) ? amount * (assetPrices[asset] ?? 0) : amount;
+
+    // --- Phase 2: Chain-derived total (wallet + protocol supplies - borrows) ---
+    let chainTotal = bal.available + bal.gasReserve.usdEquiv;
+    for (const asset of Object.keys(INVESTMENT_ASSETS)) {
+      if (asset === 'SUI') continue;
+      chainTotal += (bal.assets[asset] ?? 0) * (assetPrices[asset] ?? 0);
     }
 
     try {
-      const portfolioPositions = this.portfolio.getPositions();
-      const suiPrice = bal.gasReserve.sui > 0
-        ? bal.gasReserve.usdEquiv / bal.gasReserve.sui
-        : 0;
-
-      const assetPrices: Record<string, number> = { SUI: suiPrice };
-      const swapAdapter = this.registry.listSwap()[0];
-
-      // Collect all invested assets (direct + strategy + wallet-held) to fetch prices
-      const investedAssets = new Set<string>();
-      for (const pos of portfolioPositions) {
-        if (pos.asset in INVESTMENT_ASSETS) investedAssets.add(pos.asset);
-      }
-      for (const key of this.portfolio.getAllStrategyKeys()) {
-        for (const sp of this.portfolio.getStrategyPositions(key)) {
-          if (sp.asset in INVESTMENT_ASSETS) investedAssets.add(sp.asset);
+      const positions = await this.positions();
+      for (const pos of positions.positions) {
+        const usdValue = toUsd(pos.asset, pos.amount);
+        if (pos.type === 'save') {
+          chainTotal += usdValue;
+          if (!earningAssets.has(pos.asset)) {
+            bal.savings += usdValue;
+          }
+        } else if (pos.type === 'borrow') {
+          chainTotal -= usdValue;
+          bal.debt += usdValue;
         }
       }
-      for (const asset of Object.keys(INVESTMENT_ASSETS)) {
-        if ((bal.assets[asset] ?? 0) > 0) investedAssets.add(asset);
-      }
+    } catch {
+      // Protocol unavailable — chain total limited to wallet
+    }
 
-      for (const asset of investedAssets) {
-        if (asset === 'SUI' || asset in assetPrices) continue;
-        try {
-          if (swapAdapter) {
-            const quote = await swapAdapter.getQuote('USDC', asset, 1);
-            assetPrices[asset] = quote.expectedOutput > 0 ? 1 / quote.expectedOutput : 0;
-          }
-        } catch { assetPrices[asset] = 0; }
-      }
-
-      let investmentValue = 0;
-      let investmentCostBasis = 0;
-      let trackedValue = 0;
-
-      // Aggregate tracked amounts and cost basis per asset across direct + strategy positions
+    // --- Phase 3: Investment P&L breakdown (display only, does not affect total) ---
+    try {
       const trackedAmounts: Record<string, number> = {};
       const trackedCostBasis: Record<string, number> = {};
       const earningAssetSet = new Set<string>();
@@ -337,6 +332,10 @@ export class T2000 extends EventEmitter<T2000Events> {
           trackedCostBasis[sp.asset] = (trackedCostBasis[sp.asset] ?? 0) + sp.costBasis;
         }
       }
+
+      let investmentValue = 0;
+      let investmentCostBasis = 0;
+      let trackedValue = 0;
 
       for (const asset of Object.keys(INVESTMENT_ASSETS)) {
         const price = assetPrices[asset] ?? 0;
@@ -357,8 +356,6 @@ export class T2000 extends EventEmitter<T2000Events> {
             bal.gasReserve = { sui: gasSui, usdEquiv: gasSui * price };
           }
         } else {
-          // Use on-chain balance for total value (balance accuracy)
-          // but tracked amount for P&L (so untracked tokens don't inflate P&L)
           const onChainAmount = bal.assets[asset] ?? 0;
           const effectiveAmount = Math.max(tracked, onChainAmount);
           investmentValue += effectiveAmount * price;
@@ -374,6 +371,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       bal.investmentPnL = 0;
     }
 
+    // --- Phase 4: Pending rewards ---
     try {
       const pendingRewards = await this.getPendingRewards();
       bal.pendingRewards = pendingRewards.reduce((s, r) => s + r.estimatedValueUsd, 0);
@@ -381,7 +379,8 @@ export class T2000 extends EventEmitter<T2000Events> {
       bal.pendingRewards = 0;
     }
 
-    bal.total = bal.available + bal.savings - bal.debt + bal.investment + bal.gasReserve.usdEquiv;
+    // Total is chain-derived — always accurate regardless of categorization
+    bal.total = chainTotal;
     return bal;
   }
 
