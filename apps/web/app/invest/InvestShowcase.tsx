@@ -6,8 +6,8 @@ import { DemoChat } from "../components/DemoChat";
 import { demos } from "../demo/demoData";
 import { chatDemos } from "../demo/chatDemoData";
 
-const investCliIds = ["invest", "strategy"];
-const investChatIds = ["chat-whatif", "chat-dca", "chat-payday", "chat-morning"];
+const investCliIds = ["invest"];
+const investChatIds = ["chat-whatif", "chat-payday", "chat-morning"];
 
 const cliDemos = demos.filter((d) => investCliIds.includes(d.id));
 const chatDemoList = chatDemos.filter((d) => investChatIds.includes(d.id));

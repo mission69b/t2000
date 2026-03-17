@@ -111,19 +111,20 @@ export const demos: Demo[] = [
       { type: "output", text: "  └─────────────────────────────────────────┘", delay: 100 },
 
       { type: "info", text: "", delay: 200 },
-      { type: "output", text: "  Step 1 — Create wallet", delay: 400 },
+      { type: "output", text: "  Step 1 of 3 — Create wallet", delay: 400 },
       { type: "success", text: "  ✓ Keypair generated", delay: 300 },
       { type: "success", text: "  ✓ Network  Sui mainnet", delay: 200 },
+      { type: "success", text: "  ✓ Gas sponsorship  enabled", delay: 200 },
       { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment", delay: 300 },
       { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 
       { type: "info", text: "", delay: 400 },
-      { type: "output", text: "  Step 2 — Connect AI", delay: 400 },
-      { type: "success", text: "  ✓ Claude Desktop configured", delay: 400 },
-      { type: "success", text: "  ✓ Cursor configured", delay: 300 },
+      { type: "output", text: "  Step 2 of 3 — Connect AI platforms", delay: 400 },
+      { type: "success", text: "  ✓ Claude Desktop — configured", delay: 400 },
+      { type: "success", text: "  ✓ Cursor — configured", delay: 300 },
 
       { type: "info", text: "", delay: 400 },
-      { type: "output", text: "  Step 3 — Set safeguards", delay: 400 },
+      { type: "output", text: "  Step 3 of 3 — Set safeguards", delay: 400 },
       { type: "success", text: "  ✓ Safeguards configured", delay: 300 },
 
       { type: "info", text: "", delay: 300 },
