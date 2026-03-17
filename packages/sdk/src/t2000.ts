@@ -272,6 +272,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       const savings = positions.positions
         .filter((p) => p.type === 'save')
         .filter((p) => !earningAssets.has(p.asset))
+        .filter((p) => !(p.asset in INVESTMENT_ASSETS))
         .reduce((sum, p) => sum + p.amount, 0);
       const debt = positions.positions
         .filter((p) => p.type === 'borrow')
@@ -675,7 +676,8 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
     }
 
-    const swapAdapter = this.registry.listSwap()[0];
+    const hasNonUsdc = entries.some(e => e.asset !== 'USDC');
+    const swapAdapter = hasNonUsdc ? this.registry.listSwap()[0] : undefined;
     const canPTB = entries.every(e => e.adapter.addWithdrawToTx) && (!swapAdapter || swapAdapter.addSwapToTx);
 
     let totalUsdcReceived = 0;
@@ -686,8 +688,6 @@ export class T2000 extends EventEmitter<T2000Events> {
         tx.setSender(this._address);
         const usdcCoins: TransactionObjectArgument[] = [];
 
-        const nonUsdcCoins: TransactionObjectArgument[] = [];
-
         for (const entry of entries) {
           const { coin, effectiveAmount } = await entry.adapter.addWithdrawToTx!(
             tx, this._address, entry.maxAmount, entry.asset,
@@ -696,9 +696,15 @@ export class T2000 extends EventEmitter<T2000Events> {
           if (entry.asset === 'USDC') {
             totalUsdcReceived += effectiveAmount;
             usdcCoins.push(coin);
+          } else if (swapAdapter?.addSwapToTx) {
+            const { outputCoin, estimatedOut, toDecimals } = await swapAdapter.addSwapToTx(
+              tx, this._address, coin, entry.asset, 'USDC', effectiveAmount,
+            );
+            totalUsdcReceived += estimatedOut / 10 ** toDecimals;
+            usdcCoins.push(outputCoin);
           } else {
             totalUsdcReceived += effectiveAmount;
-            nonUsdcCoins.push(coin);
+            tx.transferObjects([coin], this._address);
           }
         }
 
@@ -708,18 +714,18 @@ export class T2000 extends EventEmitter<T2000Events> {
         if (usdcCoins.length > 0) {
           tx.transferObjects([usdcCoins[0]], this._address);
         }
-        for (const coin of nonUsdcCoins) {
-          tx.transferObjects([coin], this._address);
-        }
         return tx;
       }
 
-      // Fallback: multi-tx (shouldn't happen with current adapters)
+      // Fallback: sequential withdraw + swap per entry
       let lastTx: Transaction | undefined;
       for (const entry of entries) {
         const built = await entry.adapter.buildWithdrawTx(this._address, entry.maxAmount, entry.asset);
         totalUsdcReceived += built.effectiveAmount;
         lastTx = built.tx;
+      }
+      if (hasNonUsdc && swapAdapter) {
+        await this._convertWalletStablesToUsdc(await queryBalance(this.client, this._address));
       }
       return lastTx!;
     });

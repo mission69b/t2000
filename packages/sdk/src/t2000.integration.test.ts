@@ -995,6 +995,94 @@ describe('withdraw — auto-swap non-USDC to USDC', () => {
     expect(supplies[0].apy).toBe(2.2);
     expect(supplies[0].protocolId).toBe('suilend');
   });
+
+  it('withdraw all: non-USDC stables require swap to USDC (rebalance scenario)', async () => {
+    const registry = new ProtocolRegistry();
+
+    const navi = createMockLending({
+      id: 'navi',
+      name: 'NAVI Protocol',
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDC', amount: 13.54, apy: 4.47 }],
+        borrows: [],
+      }),
+      maxWithdraw: vi.fn().mockResolvedValue({ maxAmount: 13.54, healthFactorAfter: 999, currentHF: 999 }),
+    });
+
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      supportedAssets: ['USDC', 'USDe'],
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDe', amount: 54.32, apy: 12.79 }],
+        borrows: [],
+      }),
+      maxWithdraw: vi.fn().mockResolvedValue({ maxAmount: 54.32, healthFactorAfter: 999, currentHF: 999 }),
+    });
+
+    registry.registerLending(navi);
+    registry.registerLending(suilend);
+
+    const positions = await registry.allPositions('0xtest');
+    expect(positions).toHaveLength(2);
+
+    const withdrawable = positions.flatMap(p =>
+      p.positions.supplies
+        .filter(s => s.amount > 0.01)
+        .map(s => ({ protocolId: p.protocolId, asset: s.asset, amount: s.amount })),
+    );
+
+    expect(withdrawable).toHaveLength(2);
+    const naviPos = withdrawable.find(w => w.protocolId === 'navi');
+    const suilendPos = withdrawable.find(w => w.protocolId === 'suilend');
+    expect(naviPos?.asset).toBe('USDC');
+    expect(suilendPos?.asset).toBe('USDe');
+
+    const nonUsdc = withdrawable.filter(w => w.asset !== 'USDC');
+    expect(nonUsdc).toHaveLength(1);
+    expect(nonUsdc[0].asset).toBe('USDe');
+    expect(nonUsdc[0].amount).toBeCloseTo(54.32);
+  });
+
+  it('withdraw all: non-USDC positions should be swapped via swap adapter', async () => {
+    const registry = new ProtocolRegistry();
+
+    const suilend = createMockLending({
+      id: 'suilend',
+      name: 'Suilend',
+      supportedAssets: ['USDe'],
+      getPositions: vi.fn().mockResolvedValue({
+        supplies: [{ asset: 'USDe', amount: 50.0, apy: 12.0 }],
+        borrows: [],
+      }),
+      maxWithdraw: vi.fn().mockResolvedValue({ maxAmount: 50.0, healthFactorAfter: 999, currentHF: 999 }),
+      addWithdrawToTx: vi.fn().mockResolvedValue({ coin: 'mockCoin', effectiveAmount: 50.0 }),
+    });
+
+    const addSwapToTxMock = vi.fn().mockResolvedValue({
+      outputCoin: 'mockUsdcCoin',
+      estimatedOut: 49_800_000,
+      toDecimals: 6,
+    });
+    const swapAdapter = createMockSwap({ addSwapToTx: addSwapToTxMock });
+
+    registry.registerLending(suilend);
+    registry.registerSwap(swapAdapter);
+
+    const positions = await registry.allPositions('0xtest');
+    const entries = positions.flatMap(p =>
+      p.positions.supplies
+        .filter(s => s.amount > 0.01)
+        .map(s => ({ protocolId: p.protocolId, asset: s.asset, amount: s.amount })),
+    );
+
+    const hasNonUsdc = entries.some(e => e.asset !== 'USDC');
+    expect(hasNonUsdc).toBe(true);
+
+    const swap = registry.listSwap()[0];
+    expect(swap).toBeDefined();
+    expect(swap.addSwapToTx).toBeDefined();
+  });
 });
 
 // ─── claim rewards: multi-protocol orchestration ──────────────

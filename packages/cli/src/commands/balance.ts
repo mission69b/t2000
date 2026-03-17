@@ -50,15 +50,12 @@ export function registerBalance(program: Command) {
         printBlank();
 
         const stables = bal.stables ?? {};
-        const stableEntries = Object.entries(stables).filter(([, v]) => v >= 0.01);
+        const usdcAmount = stables.USDC ?? 0;
+        const otherStables = Object.entries(stables).filter(([k, v]) => k !== 'USDC' && v >= 0.01);
 
-        if (stableEntries.length <= 1) {
-          printKeyValue('Available', `${formatUsd(bal.available)}  ${pc.dim('(checking — spendable)')}`);
-        } else {
-          printKeyValue('Available', `${formatUsd(bal.available)}  ${pc.dim('(total stablecoins)')}`);
-          for (const [symbol, amount] of stableEntries) {
-            printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}`);
-          }
+        printKeyValue('Available', `${formatUsd(usdcAmount)}  ${pc.dim('(checking — USDC)')}`);
+        for (const [symbol, amount] of otherStables) {
+          printLine(`    ${pc.dim(symbol)}  ${formatUsd(amount)}  ${pc.dim('(sweep: t2000 exchange ' + symbol + ' USDC)')}`);
         }
 
         if (bal.savings > 0.01) {

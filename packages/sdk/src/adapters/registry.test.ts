@@ -183,6 +183,57 @@ describe('ProtocolRegistry', () => {
       expect(result).toHaveLength(1);
       expect(result[0].protocolId).toBe('has');
     });
+
+    it('skips adapter that throws but keeps working adapter results', async () => {
+      const working = mockLending({
+        id: 'ok',
+        name: 'Working',
+        getPositions: vi.fn().mockResolvedValue({
+          supplies: [{ asset: 'USDC', amount: 50, apy: 3 }],
+          borrows: [],
+        }),
+      });
+      const failing = mockLending({
+        id: 'fail',
+        name: 'Failing',
+        getPositions: vi.fn().mockRejectedValue(new Error('RPC timeout')),
+      });
+      registry.registerLending(working);
+      registry.registerLending(failing);
+
+      const result = await registry.allPositions('0xabc');
+      expect(result).toHaveLength(1);
+      expect(result[0].protocolId).toBe('ok');
+    });
+
+    it('throws when all adapters fail', async () => {
+      const a = mockLending({
+        id: 'a',
+        name: 'Alpha',
+        getPositions: vi.fn().mockRejectedValue(new Error('RPC timeout')),
+      });
+      const b = mockLending({
+        id: 'b',
+        name: 'Beta',
+        getPositions: vi.fn().mockRejectedValue(new Error('Rate limited')),
+      });
+      registry.registerLending(a);
+      registry.registerLending(b);
+
+      await expect(registry.allPositions('0xabc')).rejects.toThrow('Protocol queries failed');
+    });
+
+    it('returns empty when all adapters succeed with no positions', async () => {
+      const a = mockLending({
+        id: 'a',
+        name: 'Alpha',
+        getPositions: vi.fn().mockResolvedValue({ supplies: [], borrows: [] }),
+      });
+      registry.registerLending(a);
+
+      const result = await registry.allPositions('0xabc');
+      expect(result).toHaveLength(0);
+    });
   });
 
   describe('bestSaveRateAcrossAssets', () => {

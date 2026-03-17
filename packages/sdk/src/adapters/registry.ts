@@ -146,15 +146,19 @@ export class ProtocolRegistry {
 
   async allPositions(address: string): Promise<Array<{ protocol: string; protocolId: string; positions: AdapterPositions }>> {
     const results: Array<{ protocol: string; protocolId: string; positions: AdapterPositions }> = [];
+    const errors: string[] = [];
     for (const adapter of this.lending.values()) {
       try {
         const positions = await adapter.getPositions(address);
         if (positions.supplies.length > 0 || positions.borrows.length > 0) {
           results.push({ protocol: adapter.name, protocolId: adapter.id, positions });
         }
-      } catch {
-        // skip
+      } catch (err) {
+        errors.push(`${adapter.name}: ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+    if (results.length === 0 && errors.length > 0) {
+      throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol queries failed (${errors.length}/${this.lending.size}): ${errors.join('; ')}`);
     }
     return results;
   }
