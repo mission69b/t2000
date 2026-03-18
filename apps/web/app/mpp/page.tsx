@@ -352,13 +352,11 @@ export default function MppPage() {
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[1.9] overflow-x-auto scrollbar-hide">
                 <span className="text-foreground">{"❯ t2000 pay \\"}</span>
                 {"\n"}
-                <span className="text-muted">{"    openai.mpp.t2000.ai/v1/chat/completions \\"}</span>
-                {"\n"}
-                <span className="text-muted">{`    --data '{"model":"gpt-4o",...}' \\`}</span>
+                <span className="text-muted">{"    openai.mpp.t2000.ai \\"}</span>
                 {"\n"}
                 <span className="text-muted">{"    --max-price 0.05"}</span>
                 {"\n\n"}
-                <span className="text-accent">{"  ✓ Paid $0.03 USDC"}</span>
+                <span className="text-accent">{"  ✓ Paid $0.01 USDC"}</span>
                 {"\n"}
                 <span className="text-muted">{"  tx: 7xK2m...9fQ3"}</span>
                 {"\n"}
