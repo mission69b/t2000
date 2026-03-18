@@ -1339,6 +1339,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     const bal = await queryBalance(this.client, this._address);
+    const totalFunds = bal.available + bal.savings;
+    if (params.usdAmount > totalFunds * 1.05) {
+      throw new T2000Error(
+        'INSUFFICIENT_BALANCE',
+        `Insufficient funds. You have $${totalFunds.toFixed(2)} total (checking: $${bal.available.toFixed(2)}, savings: $${bal.savings.toFixed(2)}) but need $${params.usdAmount.toFixed(2)}.`,
+      );
+    }
+
     if (bal.available < params.usdAmount) {
       await this._autoFundFromSavings(params.usdAmount - bal.available);
     }
@@ -1872,6 +1880,14 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.enforcer.check({ operation: 'invest', amount: params.usdAmount });
 
     const bal = await queryBalance(this.client, this._address);
+    const totalFunds = bal.available + bal.savings;
+    if (params.usdAmount > totalFunds * 1.05) {
+      throw new T2000Error(
+        'INSUFFICIENT_BALANCE',
+        `Insufficient funds. You have $${totalFunds.toFixed(2)} total (checking: $${bal.available.toFixed(2)}, savings: $${bal.savings.toFixed(2)}) but need $${params.usdAmount.toFixed(2)}.`,
+      );
+    }
+
     if (bal.available < params.usdAmount && !params.dryRun) {
       await this._autoFundFromSavings(params.usdAmount - bal.available);
     }
