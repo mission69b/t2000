@@ -249,7 +249,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
   const investAssets = Object.keys(INVESTMENT_ASSETS) as [string, ...string[]];
   server.tool(
     't2000_invest',
-    'Buy, sell, earn yield, or stop earning on investment assets. Actions: buy (invest USD), sell (convert to USDC), earn (deposit into best-rate lending for yield), unearn (withdraw from lending, keep in portfolio). Amount required for buy/sell only.',
+    'Buy, sell, earn yield, or stop earning on investment assets. Actions: buy (invest USD), sell (convert to USDC), earn (deposit into best-rate lending for yield), unearn (withdraw from lending, keep in portfolio). Amount required for buy/sell only. If checking balance is insufficient for a buy, the SDK will auto-withdraw from savings — no manual withdraw needed.',
     {
       action: z.enum(['buy', 'sell', 'earn', 'unearn']).describe("'buy' to invest, 'sell' to liquidate, 'earn' to deposit into lending for yield, 'unearn' to withdraw from lending"),
       asset: z.enum(investAssets).describe('Asset to invest in'),
@@ -330,7 +330,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_strategy',
-    'Manage investment strategies — buy into predefined or custom allocations, sell entire strategies, check status, rebalance, or create/delete custom strategies.',
+    'Manage investment strategies — buy into predefined or custom allocations, sell entire strategies, check status, rebalance, or create/delete custom strategies. IMPORTANT: Before buying, ALWAYS call with action "list" first to show the user the strategy allocations (e.g. All-Weather = 30% BTC, 20% ETH, 20% SUI, 30% GOLD), then use dryRun: true to preview estimated amounts and prices. Only execute after the user confirms. If checking balance is insufficient, the SDK will auto-withdraw from savings — no manual withdraw needed.',
     {
       action: z.enum(['list', 'buy', 'sell', 'status', 'rebalance', 'create', 'delete']).describe("Strategy action to perform"),
       name: z.string().optional().describe("Strategy name (required for all actions except 'list')"),

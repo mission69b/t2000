@@ -846,6 +846,34 @@ export class T2000 extends EventEmitter<T2000Events> {
     return { received, digest: gasResult.digest, gasCost: gasResult.gasCostSui };
   }
 
+  /**
+   * Auto-withdraw from savings when checking balance is insufficient for an
+   * operation. Handles non-USDC savings (e.g. USDe) via the standard withdraw
+   * path which swaps back to USDC. Throws if savings are also insufficient.
+   */
+  private async _autoFundFromSavings(shortfall: number): Promise<void> {
+    const positions = await this.positions();
+    const savingsTotal = positions.positions
+      .filter(p => p.type === 'save')
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    if (savingsTotal < shortfall * 0.95) {
+      const bal = await queryBalance(this.client, this._address);
+      throw new T2000Error(
+        'INSUFFICIENT_BALANCE',
+        `Insufficient funds. Available: $${bal.available.toFixed(2)}, savings: $${savingsTotal.toFixed(2)}, requested shortfall: $${shortfall.toFixed(2)}`,
+      );
+    }
+
+    const result = await this.withdraw({ amount: shortfall });
+    if (result.amount < shortfall * 0.5) {
+      throw new T2000Error(
+        'WITHDRAW_FAILED',
+        `Auto-withdraw from savings returned $${result.amount.toFixed(2)} — expected ~$${shortfall.toFixed(2)}. Try withdrawing manually first.`,
+      );
+    }
+  }
+
   private async _convertWalletStablesToUsdc(bal: BalanceResponse, amountNeeded?: number): Promise<void> {
     const nonUsdcStables: Array<{ asset: string; amount: number }> = [];
     for (const [asset, amount] of Object.entries(bal.stables)) {
@@ -1251,7 +1279,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const bal = await queryBalance(this.client, this._address);
     if (bal.available < params.usdAmount) {
-      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient checking balance. Available: $${bal.available.toFixed(2)}, requested: $${params.usdAmount.toFixed(2)}`);
+      await this._autoFundFromSavings(params.usdAmount - bal.available);
     }
 
     let swapResult: Awaited<ReturnType<typeof this.exchange>>;
@@ -1783,8 +1811,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.enforcer.check({ operation: 'invest', amount: params.usdAmount });
 
     const bal = await queryBalance(this.client, this._address);
-    if (bal.available < params.usdAmount) {
-      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${bal.available.toFixed(2)}, requested: $${params.usdAmount.toFixed(2)}`);
+    if (bal.available < params.usdAmount && !params.dryRun) {
+      await this._autoFundFromSavings(params.usdAmount - bal.available);
     }
 
     const buys: StrategyBuyResult['buys'] = [];
