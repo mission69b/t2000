@@ -9,6 +9,7 @@ import {
 } from '../constants.js';
 import { buildSwapTx } from '../protocols/cetus.js';
 import { requestGasSponsorship, reportGasUsage } from './gasStation.js';
+import { T2000Error } from '../errors.js';
 
 export interface AutoTopUpResult {
   success: boolean;
@@ -91,6 +92,14 @@ export async function executeAutoTopUp(
   }
 
   await client.waitForTransaction({ digest: result.digest });
+
+  const eff = result.effects as { status?: { status: string; error?: string } } | undefined;
+  if (eff?.status?.status === 'failure') {
+    throw new T2000Error(
+      'TRANSACTION_FAILED',
+      `Auto-topup swap failed on-chain: ${eff.status.error ?? 'unknown'}`,
+    );
+  }
 
   let suiReceived = 0;
   if (result.balanceChanges) {

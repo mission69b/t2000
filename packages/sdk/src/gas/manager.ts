@@ -221,6 +221,7 @@ async function resolveGas(
     }
     errors.push('self-funded: SUI below threshold');
   } catch (err) {
+    if (err instanceof T2000Error && err.code === 'TRANSACTION_FAILED') throw err;
     const msg = err instanceof Error ? err.message : String(err);
     if (isMoveAbort(msg)) {
       throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
@@ -238,6 +239,7 @@ async function resolveGas(
     }
     errors.push('auto-topup: not eligible (low USDC or sufficient SUI)');
   } catch (err) {
+    if (err instanceof T2000Error && err.code === 'TRANSACTION_FAILED') throw err;
     errors.push(`auto-topup: ${err instanceof Error ? err.message : String(err)}`);
   }
 
@@ -251,6 +253,7 @@ async function resolveGas(
       return result;
     }
   } catch (err) {
+    if (err instanceof T2000Error && err.code === 'TRANSACTION_FAILED') throw err;
     const msg = err instanceof Error ? err.message : String(err);
     if (isMoveAbort(msg)) {
       throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
@@ -269,6 +272,7 @@ async function resolveGas(
     }
     errors.push('sponsored: returned null');
   } catch (err) {
+    if (err instanceof T2000Error && err.code === 'TRANSACTION_FAILED') throw err;
     if (err instanceof T2000Error && err.code !== 'INSUFFICIENT_GAS') lastBuildError = err;
     errors.push(`sponsored: ${err instanceof Error ? err.message : String(err)}`);
   }
