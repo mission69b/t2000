@@ -2010,13 +2010,21 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('PROTOCOL_UNAVAILABLE', 'Swap adapter does not support composable PTB');
     }
 
-    // Phase 0: Unearn any earning assets so coins are in the wallet
+    // Phase 0: Unearn any earning assets so coins are in the wallet.
+    // Continue on failure so sellable assets aren't blocked by one stuck asset.
+    const unearnFailures: Array<{ asset: string; error: string }> = [];
     for (const pos of stratPositions) {
       const directPos = this.portfolio.getPosition(pos.asset);
       if (directPos?.earning && directPos.earningProtocol) {
-        await this.investUnearn({ asset: pos.asset as InvestmentAsset });
-        // Wait for coins to settle
-        await new Promise(r => setTimeout(r, 1500));
+        try {
+          await this.investUnearn({ asset: pos.asset as InvestmentAsset });
+          await new Promise(r => setTimeout(r, 1500));
+        } catch (err) {
+          unearnFailures.push({
+            asset: pos.asset,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
     }
 
@@ -2129,10 +2137,12 @@ export class T2000 extends EventEmitter<T2000Events> {
       totalPnL += pnl;
     }
 
-    // Clear any residual dust left in the strategy (gas/rounding differences)
-    if (this.portfolio.hasStrategyPositions(params.strategy)) {
+    // Clear residual dust unless some assets failed to unearn (still in lending)
+    if (unearnFailures.length === 0 && this.portfolio.hasStrategyPositions(params.strategy)) {
       this.portfolio.clearStrategy(params.strategy);
     }
+
+    const failed = unearnFailures.map(f => ({ asset: f.asset, reason: f.error }));
 
     return {
       success: true,
@@ -2140,6 +2150,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       totalProceeds,
       realizedPnL: totalPnL,
       sells,
+      failed: failed.length > 0 ? failed : undefined,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
     };

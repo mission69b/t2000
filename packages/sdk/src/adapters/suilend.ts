@@ -393,7 +393,15 @@ export class SuilendAdapter implements LendingAdapter {
     );
     if (obligations.length === 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
 
-    const dep = obligations[0].deposits.find(d => this.resolveSymbol(d.coinType) === assetKey);
+    const dep = obligations[0].deposits.find(d => {
+      const resolved = this.resolveSymbol(d.coinType);
+      if (resolved === assetKey) return true;
+      // Fallback: direct coin type comparison (handles cases where
+      // resolveSymbol returns the module name like 'WBTC' instead of 'BTC')
+      try {
+        return normalizeStructTag(d.coinType) === normalizeStructTag(assetInfo.type);
+      } catch { return false; }
+    });
     if (!dep || dep.depositedAmount.toNumber() <= 0.0001) {
       throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
     }
