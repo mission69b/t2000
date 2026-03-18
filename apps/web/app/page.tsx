@@ -92,27 +92,27 @@ const MPP_STEPS = [
   {
     icon: "→",
     active: true,
-    title: "Agent requests a paid API",
-    detail: "GET https://data.api.com/prices",
+    title: "Agent calls OpenAI via MPP",
+    detail: "POST openai.mpp.t2000.ai/v1/chat/completions",
     isCode: true,
   },
   {
     icon: "402",
     active: false,
     title: "Server says: pay $0.01 USDC",
-    detail: "Standard HTTP 402 response — no API key needed",
+    detail: "HTTP 402 — no API key, no account, just pay",
   },
   {
     icon: "✓",
     active: true,
-    title: "t2000 pays automatically",
-    detail: "$0.01 USDC sent on-chain · confirmed in ~380ms",
+    title: "t2000 pays on Sui",
+    detail: "$0.01 USDC transferred · finalized in ~400ms",
   },
   {
     icon: "200",
     active: true,
-    title: "API returns the data",
-    detail: "Total round-trip: ~820ms · no subscription required",
+    title: "GPT-4o responds",
+    detail: "No subscription needed — agent paid per request",
   },
 ];
 
