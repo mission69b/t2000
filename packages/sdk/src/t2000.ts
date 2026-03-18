@@ -223,10 +223,13 @@ export class T2000 extends EventEmitter<T2000Events> {
       methods: [sui({ client: this.client, signer: this.keypair })],
     });
 
+    const method = (options.method ?? 'GET').toUpperCase();
+    const canHaveBody = method !== 'GET' && method !== 'HEAD';
+
     const response = await mppx.fetch(options.url, {
-      method: options.method,
+      method,
       headers: options.headers,
-      body: options.body,
+      body: canHaveBody ? options.body : undefined,
     });
 
     const contentType = response.headers.get('content-type') ?? '';

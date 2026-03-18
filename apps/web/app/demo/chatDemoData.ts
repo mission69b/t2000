@@ -190,6 +190,45 @@ export const chatDemos: ChatDemo[] = [
   },
 
   {
+    id: "chat-pay",
+    title: "Pay for API",
+    description:
+      "Agent pays for an MPP-protected API with Sui USDC — automatically.",
+    messages: [
+      { role: "user", text: "Generate me a logo using Fal.ai", delay: 0 },
+      { role: "thinking", delay: 400 },
+      {
+        role: "ai",
+        tools: ["t2000_pay"],
+        html:
+          tbl([
+            ["API", "api.fal.ai/generate", ""],
+            ["Status", "402 → paid automatically", "hi"],
+            ["Cost", "$0.03 USDC", "hi"],
+            ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/Ae7q…</span>', ""],
+          ]) +
+          `<div style="margin-top:10px;text-align:center"><div style="width:100%;height:120px;background:linear-gradient(135deg,rgba(0,214,143,0.08),rgba(0,214,143,0.02));border:1px solid rgba(0,214,143,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,0.3)">🖼️ generated logo — sunset.png</div></div>` +
+          note("Paid $0.03 from your t2000 balance. No API key needed."),
+        delay: 300,
+      },
+      { role: "user", text: "How much have I spent on APIs today?", delay: 800 },
+      { role: "thinking", delay: 300 },
+      {
+        role: "ai",
+        tools: ["t2000_balance"],
+        html:
+          tbl([
+            ["Today", "3 API calls · $0.11 USDC", ""],
+            ["This week", "12 calls · $0.47 USDC", ""],
+            ["Daily limit", "$5.00 remaining", "hi"],
+          ]) +
+          note("All payments settled on Sui. No pending charges."),
+        delay: 300,
+      },
+    ],
+  },
+
+  {
     id: "chat-optimize",
     title: "Optimize Yield",
     description:

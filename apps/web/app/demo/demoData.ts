@@ -98,6 +98,32 @@ export const demos: Demo[] = [
   },
 
   {
+    id: "pay",
+    title: "Pay — MPP Payments",
+    description:
+      "Pay for any MPP-protected API. 402 challenge, Sui USDC payment, content delivered.",
+    tweet: "t2000 pay — your agent pays for APIs with USDC on Sui.",
+    lines: [
+      { type: "command", text: "❯ t2000 pay https://api.example.com/generate --data '{\"prompt\":\"a sunset\"}' --max-price 0.10", delay: 0 },
+      { type: "info", text: "  → GET https://api.example.com/generate", delay: 400 },
+      { type: "info", text: "  ← 402 Payment Required", delay: 600 },
+      { type: "info", text: "  Amount: $0.03 USDC · Recipient: 0x7a2f…c1b8", delay: 300 },
+      { type: "info", text: "  $0.03 ≤ $0.10 max — paying...", delay: 400 },
+      { type: "info", text: "  Building Sui USDC transfer...", delay: 300 },
+      { type: "success", text: "  ✓ Paid $0.03 USDC", delay: 600 },
+      { type: "info", text: "  Tx: suiscan.xyz/mainnet/tx/7xK2m9fQ3...", delay: 200 },
+      { type: "info", text: "  → Retrying with x-payment-credential...", delay: 400 },
+      { type: "success", text: "  ← 200 OK (1.2s)", delay: 500 },
+      { type: "output", text: "", delay: 80 },
+      { type: "output", text: "  {", delay: 100 },
+      { type: "output", text: '    "image": "https://cdn.example.com/sunset-a8f2.png",', delay: 100 },
+      { type: "output", text: '    "model": "flux-pro",', delay: 100 },
+      { type: "output", text: '    "cost": "$0.03"', delay: 100 },
+      { type: "output", text: "  }", delay: 100 },
+    ],
+  },
+
+  {
     id: "init",
     title: "Init — Setup in 30 Seconds",
     description:

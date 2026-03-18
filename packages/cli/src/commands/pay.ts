@@ -32,10 +32,11 @@ export function registerPay(program: Command) {
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
         const startTime = Date.now();
+        const method = opts.data && opts.method === 'GET' ? 'POST' : opts.method;
 
         if (!isJsonMode()) {
           printBlank();
-          printInfo(`→ ${opts.method} ${url}`);
+          printInfo(`→ ${method} ${url}`);
         }
 
         const maxPrice = parseFloat(opts.maxPrice);
@@ -45,7 +46,7 @@ export function registerPay(program: Command) {
 
         const result = await agent.pay({
           url,
-          method: opts.method,
+          method,
           headers: opts.header,
           body: opts.data,
           maxPrice,
