@@ -150,7 +150,7 @@ export class SuilendAdapter implements LendingAdapter {
         const amount = dep.depositedAmount.toNumber();
         const amountUsd = dep.depositedAmountUsd.toNumber();
         const apy = dep.reserve.depositAprPercent.toNumber();
-        if (amount > 0.0001) {
+        if (amountUsd > 0.01) {
           supplies.push({ asset: symbol, amount, amountUsd, apy });
         }
       }
@@ -160,7 +160,7 @@ export class SuilendAdapter implements LendingAdapter {
         const amount = bor.borrowedAmount.toNumber();
         const amountUsd = bor.borrowedAmountUsd.toNumber();
         const apy = bor.reserve.borrowAprPercent.toNumber();
-        if (amount > 0.0001) {
+        if (amountUsd > 0.01) {
           borrows.push({ asset: symbol, amount, amountUsd, apy });
         }
       }
@@ -406,7 +406,7 @@ export class SuilendAdapter implements LendingAdapter {
           return normalizeStructTag(d.coinType) === normalizeStructTag(assetInfo.type);
         } catch { return false; }
       });
-      if (dep && dep.depositedAmount.toNumber() > 0.0001) {
+      if (dep && dep.depositedAmount.toNumber() > 1e-10) {
         matchedObligation = oi;
         break;
       }
@@ -415,7 +415,7 @@ export class SuilendAdapter implements LendingAdapter {
 
     if (!dep) {
       const foundDeposits = obligations.flatMap((o, i) =>
-        o.deposits.map(d => `ob${i}:${this.resolveSymbol(d.coinType)}=${d.depositedAmount.toFixed(4)}`),
+        o.deposits.map(d => `ob${i}:${this.resolveSymbol(d.coinType)}=${d.depositedAmount.toFixed(8)}`),
       );
       throw new T2000Error(
         'NO_COLLATERAL',

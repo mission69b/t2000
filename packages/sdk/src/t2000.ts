@@ -1434,17 +1434,16 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `${params.asset} is not available for investment`);
     }
 
-    const pos = this.portfolio.getPosition(params.asset);
-    if (!pos || pos.totalAmount <= 0) {
-      throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${params.asset} position to sell`);
-    }
+    let pos = this.portfolio.getPosition(params.asset);
 
-    const didAutoWithdraw = !!(pos.earning && pos.earningProtocol);
+    // Auto-unearn if the position is currently earning
+    const didAutoWithdraw = !!(pos?.earning && pos.earningProtocol);
     if (didAutoWithdraw) {
       const unearnResult = await this.investUnearn({ asset: params.asset });
       if (unearnResult.tx) {
         await this.client.waitForTransaction({ digest: unearnResult.tx, options: { showEffects: true } });
       }
+      pos = this.portfolio.getPosition(params.asset);
     }
 
     const assetInfo = SUPPORTED_ASSETS[params.asset as keyof typeof SUPPORTED_ASSETS];
@@ -1463,17 +1462,26 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const maxSellable = Math.max(0, walletAmount - gasReserve);
 
+    // If local portfolio is empty but wallet has the asset (stale portfolio),
+    // use wallet balance as the tracked amount so the sell can proceed.
+    const trackedAmount = (pos && pos.totalAmount > 0)
+      ? pos.totalAmount
+      : maxSellable;
+
+    if (trackedAmount <= 0) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${params.asset} position to sell`);
+    }
+
     let sellAmountAsset: number;
     if (params.usdAmount === 'all') {
-      sellAmountAsset = Math.min(pos.totalAmount, maxSellable);
+      sellAmountAsset = Math.min(trackedAmount, maxSellable);
     } else {
       const swapAdapter = this.registry.listSwap()[0];
       if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
       const quote = await swapAdapter.getQuote('USDC', params.asset, 1);
       const assetPrice = 1 / quote.expectedOutput;
       sellAmountAsset = params.usdAmount / assetPrice;
-      // For strategy sells, cap to wallet balance; for direct sells, cap to tracked position
-      const maxPosition = params._strategyOnly ? maxSellable : pos.totalAmount;
+      const maxPosition = params._strategyOnly ? maxSellable : trackedAmount;
       sellAmountAsset = Math.min(sellAmountAsset, maxPosition);
       if (sellAmountAsset > maxSellable) {
         throw new T2000Error(
@@ -1512,17 +1520,22 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const price = swapResult.toAmount / sellAmountAsset;
 
-    const realizedPnL = this.portfolio.recordSell({
-      id: `inv_${Date.now()}`,
-      type: 'sell',
-      asset: params.asset,
-      amount: sellAmountAsset,
-      price,
-      usdValue: swapResult.toAmount,
-      fee: swapResult.fee,
-      tx: swapResult.tx,
-      timestamp: new Date().toISOString(),
-    });
+    let realizedPnL = 0;
+    try {
+      realizedPnL = this.portfolio.recordSell({
+        id: `inv_${Date.now()}`,
+        type: 'sell',
+        asset: params.asset,
+        amount: sellAmountAsset,
+        price,
+        usdValue: swapResult.toAmount,
+        fee: swapResult.fee,
+        tx: swapResult.tx,
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      // Position already zeroed in local portfolio (stale state) — sell still valid
+    }
 
     if (params.usdAmount === 'all' && !params._strategyOnly) {
       this.portfolio.closePosition(params.asset);
@@ -1623,19 +1636,34 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `${params.asset} is not available for investment`);
     }
 
-    const pos = this.portfolio.getPosition(params.asset);
-    if (!pos || !pos.earning || !pos.earningProtocol) {
-      throw new T2000Error('INVEST_NOT_EARNING', `${params.asset} is not currently earning`);
+    let pos = this.portfolio.getPosition(params.asset);
+    let adapter: import('./adapters/types.js').LendingAdapter | undefined;
+    let withdrawAmount: number;
+
+    if (pos?.earning && pos.earningProtocol) {
+      adapter = this.registry.getLending(pos.earningProtocol);
+      withdrawAmount = pos.totalAmount;
+    } else {
+      // Local portfolio disagrees — check on-chain to recover from stale state.
+      const onChain = await this.registry.allPositions(this._address);
+      let found: { protocolId: string; amount: number } | undefined;
+      for (const entry of onChain) {
+        const supply = entry.positions.supplies.find(s => s.asset === params.asset);
+        if (supply && supply.amount > 1e-10) {
+          found = { protocolId: entry.protocolId, amount: supply.amount };
+          break;
+        }
+      }
+      if (!found) {
+        throw new T2000Error('INVEST_NOT_EARNING', `${params.asset} is not currently earning (checked on-chain)`);
+      }
+      adapter = this.registry.getLending(found.protocolId);
+      withdrawAmount = found.amount;
     }
 
-    const adapter = this.registry.getLending(pos.earningProtocol);
     if (!adapter) {
-      throw new T2000Error('PROTOCOL_UNAVAILABLE', `Lending protocol ${pos.earningProtocol} not found`);
+      throw new T2000Error('PROTOCOL_UNAVAILABLE', `Lending protocol not found for ${params.asset}`);
     }
-
-    // Withdraw only the tracked investment amount, not the entire protocol position
-    // (the protocol may hold more from regular savings or previous runs)
-    const withdrawAmount = pos.totalAmount;
 
     const protocolName = adapter.name;
     let effectiveAmount = withdrawAmount;
@@ -1646,7 +1674,11 @@ export class T2000 extends EventEmitter<T2000Events> {
       return result.tx;
     });
 
-    this.portfolio.recordUnearn(params.asset);
+    try {
+      this.portfolio.recordUnearn(params.asset);
+    } catch {
+      // Portfolio may not have the position tracked — safe to ignore
+    }
 
     return {
       success: true,
@@ -2011,19 +2043,18 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     // Phase 0: Unearn any earning assets so coins are in the wallet.
-    // Continue on failure so sellable assets aren't blocked by one stuck asset.
+    // Always attempt unearn — investUnearn checks on-chain state as fallback
+    // when local portfolio is stale.
     const unearnFailures: Array<{ asset: string; error: string }> = [];
     for (const pos of stratPositions) {
-      const directPos = this.portfolio.getPosition(pos.asset);
-      if (directPos?.earning && directPos.earningProtocol) {
-        try {
-          await this.investUnearn({ asset: pos.asset as InvestmentAsset });
-          await new Promise(r => setTimeout(r, 1500));
-        } catch (err) {
-          unearnFailures.push({
-            asset: pos.asset,
-            error: err instanceof Error ? err.message : String(err),
-          });
+      try {
+        await this.investUnearn({ asset: pos.asset as InvestmentAsset });
+        await new Promise(r => setTimeout(r, 1500));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // "not currently earning" is expected for assets already in wallet — not a failure
+        if (!msg.includes('not currently earning')) {
+          unearnFailures.push({ asset: pos.asset, error: msg });
         }
       }
     }
@@ -2108,38 +2139,55 @@ export class T2000 extends EventEmitter<T2000Events> {
       const usdValue = meta.estimatedOut / (10 ** meta.toDecimals);
       const price = meta.amount > 0 ? usdValue / meta.amount : 0;
 
-      const pnl = this.portfolio.recordStrategySell(params.strategy, {
-        id: `strat_sell_${Date.now()}_${meta.asset}`,
-        type: 'sell',
-        asset: meta.asset,
-        amount: meta.amount,
-        price,
-        usdValue,
-        fee: 0,
-        tx: digest,
-        timestamp: now,
-      });
+      let pnl = 0;
+      try {
+        pnl = this.portfolio.recordStrategySell(params.strategy, {
+          id: `strat_sell_${Date.now()}_${meta.asset}`,
+          type: 'sell',
+          asset: meta.asset,
+          amount: meta.amount,
+          price,
+          usdValue,
+          fee: 0,
+          tx: digest,
+          timestamp: now,
+        });
+      } catch {
+        // Portfolio position already zeroed (stale state) — still a valid sell
+      }
 
-      this.portfolio.recordSell({
-        id: `inv_sell_${Date.now()}_${meta.asset}`,
-        type: 'sell',
-        asset: meta.asset,
-        amount: meta.amount,
-        price,
-        usdValue,
-        fee: 0,
-        tx: digest,
-        timestamp: now,
-      });
+      try {
+        this.portfolio.recordSell({
+          id: `inv_sell_${Date.now()}_${meta.asset}`,
+          type: 'sell',
+          asset: meta.asset,
+          amount: meta.amount,
+          price,
+          usdValue,
+          fee: 0,
+          tx: digest,
+          timestamp: now,
+        });
+      } catch {
+        // Portfolio position already zeroed (stale state) — still a valid sell
+      }
 
       sells.push({ asset: meta.asset, amount: meta.amount, usdValue, realizedPnL: pnl, tx: digest });
       totalProceeds += usdValue;
       totalPnL += pnl;
     }
 
-    // Clear residual dust unless some assets failed to unearn (still in lending)
-    if (unearnFailures.length === 0 && this.portfolio.hasStrategyPositions(params.strategy)) {
-      this.portfolio.clearStrategy(params.strategy);
+    // Clear strategy tracking. If some assets failed to unearn they're still in
+    // lending and we keep the strategy so the user can retry, otherwise wipe it.
+    if (this.portfolio.hasStrategyPositions(params.strategy)) {
+      if (unearnFailures.length === 0) {
+        this.portfolio.clearStrategy(params.strategy);
+      } else {
+        // Remove only the positions that were successfully sold
+        for (const s of sells) {
+          this.portfolio.closeStrategyPosition(params.strategy, s.asset);
+        }
+      }
     }
 
     const failed = unearnFailures.map(f => ({ asset: f.asset, reason: f.error }));

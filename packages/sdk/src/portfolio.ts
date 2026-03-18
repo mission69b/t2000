@@ -244,4 +244,18 @@ export class PortfolioManager {
     if (!bucket) return false;
     return Object.values(bucket).some((p) => p.totalAmount > 0);
   }
+
+  closeStrategyPosition(strategyKey: string, asset: string): void {
+    this.load();
+    const bucket = this.data.strategies[strategyKey];
+    if (!bucket?.[asset]) return;
+    bucket[asset].totalAmount = 0;
+    bucket[asset].costBasis = 0;
+    bucket[asset].avgPrice = 0;
+    const hasPositions = Object.values(bucket).some((p) => p.totalAmount > 0);
+    if (!hasPositions) {
+      delete this.data.strategies[strategyKey];
+    }
+    this.save();
+  }
 }

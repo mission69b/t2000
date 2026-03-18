@@ -192,7 +192,7 @@ export async function getPositions(
         ? parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0')
         : parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0');
 
-      if (amount > 0.0001 || amountUsd > 0.001) {
+      if (amountUsd > 0.01 || amount > 1e-10) {
         positions.push({
           protocol: 'navi',
           asset: symbol,
