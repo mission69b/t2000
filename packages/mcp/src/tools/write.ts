@@ -58,7 +58,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_save',
-    'Deposit USDC to savings (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview.',
+    'Deposit USDC to savings (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview. After a successful save, funds move from checking to savings — if you check balance immediately and savings shows $0, wait 3 seconds and retry (on-chain propagation delay, funds are safe).',
     {
       amount: z.union([z.number(), z.literal('all')]).describe('Dollar amount to save, or "all"'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
@@ -437,7 +437,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_rebalance',
-    'Optimize yield by moving funds to the highest-rate protocol. Always previews first — set dryRun: false to execute. Shows plan with expected APY gain and break-even period.',
+    'Optimize savings yield — automatically finds the best rate across ALL assets and protocols, then handles everything: withdraw → swap → re-deposit. Works across different assets (e.g. USDC → USDe for higher APY). Always previews first — set dryRun: false to execute. Shows plan with APY gain, annual earnings increase, and break-even period. This is the ONE tool to use when the user asks "am I getting the best yield?" or "rebalance my savings".',
     {
       dryRun: z.boolean().optional().describe('Preview without executing (default: true)'),
       minYieldDiff: z.number().optional().describe('Min APY difference to rebalance (default: 0.5%)'),
