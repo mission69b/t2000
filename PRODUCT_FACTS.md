@@ -14,10 +14,10 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.18.3` |
-| `@t2000/cli` | `0.20.2` |
-| `@t2000/mpp-sui` | `0.3.0` |
-| `@t2000/mcp` | `0.20.1` |
+| `@t2000/sdk` | `0.19.0` |
+| `@t2000/cli` | `0.21.0` |
+| `@t2000/mpp-sui` | `0.1.0` |
+| `@t2000/mcp` | `0.21.0` |
 | Agent Skills | `3.0` |
 
 ---
@@ -653,7 +653,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.20.1` |
+| Version | `0.21.0` |
 | Description | A bank account for AI agents — MCP-first integration for AI platforms. Non-custodial. |
 | Transport | stdio |
 | Tools | 23 |
