@@ -8,8 +8,7 @@ import {
   MIST_PER_SUI,
 } from '../constants.js';
 import { buildSwapTx } from '../protocols/cetus.js';
-
-const AUTO_TOPUP_MIN_SUI_FOR_GAS = 5_000_000n; // 0.005 SUI — minimum to self-fund the swap
+import { requestGasSponsorship, reportGasUsage } from './gasStation.js';
 
 export interface AutoTopUpResult {
   success: boolean;
@@ -30,22 +29,20 @@ export async function shouldAutoTopUp(
   const suiRaw = BigInt(suiBalance.totalBalance);
   const usdcRaw = BigInt(usdcBalance.totalBalance);
 
-  return suiRaw < AUTO_TOPUP_THRESHOLD && suiRaw >= AUTO_TOPUP_MIN_SUI_FOR_GAS && usdcRaw >= AUTO_TOPUP_MIN_USDC;
+  return suiRaw < AUTO_TOPUP_THRESHOLD && usdcRaw >= AUTO_TOPUP_MIN_USDC;
 }
 
 /**
- * Self-fund a USDC→SUI swap to replenish gas.
- *
- * Uses the agent's remaining SUI to pay for the swap gas (~0.007 SUI).
- * This avoids the chicken-and-egg problem of needing gas station sponsorship
- * to get gas, and works even when the gas station is down.
+ * Swap USDC→SUI to replenish gas. Tries self-funding first; if the agent
+ * doesn't have enough SUI to pay for the swap itself, falls back to
+ * gas station sponsorship — eliminating the chicken-and-egg problem.
  */
 export async function executeAutoTopUp(
   client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
 ): Promise<AutoTopUpResult> {
   const address = keypair.getPublicKey().toSuiAddress();
-  const topupAmountHuman = Number(AUTO_TOPUP_AMOUNT) / 1e6; // $1 USDC
+  const topupAmountHuman = Number(AUTO_TOPUP_AMOUNT) / 1e6;
 
   const { tx } = await buildSwapTx({
     client,
@@ -54,12 +51,44 @@ export async function executeAutoTopUp(
     toAsset: 'SUI',
     amount: topupAmountHuman,
   });
+  tx.setSender(address);
 
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true, showBalanceChanges: true },
-  });
+  let result;
+  try {
+    result = await client.signAndExecuteTransaction({
+      signer: keypair,
+      transaction: tx,
+      options: { showEffects: true, showBalanceChanges: true },
+    });
+  } catch {
+    // Not enough SUI to self-fund the swap — sponsor it via gas station
+    const { tx: freshTx } = await buildSwapTx({
+      client, address, fromAsset: 'USDC', toAsset: 'SUI', amount: topupAmountHuman,
+    });
+    freshTx.setSender(address);
+
+    let txJson: string | undefined;
+    let txBcsBase64: string | undefined;
+    try {
+      txJson = freshTx.serialize();
+    } catch {
+      const bcsBytes = await freshTx.build({ client });
+      txBcsBase64 = Buffer.from(bcsBytes).toString('base64');
+    }
+
+    const sponsored = await requestGasSponsorship(
+      txJson ?? '', address, 'auto-topup', txBcsBase64,
+    );
+    const sponsoredTxBytes = Buffer.from(sponsored.txBytes, 'base64');
+    const { signature: agentSig } = await keypair.signTransaction(sponsoredTxBytes);
+
+    result = await client.executeTransactionBlock({
+      transactionBlock: sponsored.txBytes,
+      signature: [agentSig, sponsored.sponsorSignature],
+      options: { showEffects: true, showBalanceChanges: true },
+    });
+    reportGasUsage(address, result.digest, 0, 0, 'auto-topup');
+  }
 
   await client.waitForTransaction({ digest: result.digest });
 

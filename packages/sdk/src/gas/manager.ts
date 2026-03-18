@@ -162,6 +162,9 @@ async function waitForIndexer(client: SuiJsonRpcClient, digest: string): Promise
  * 2. Auto-topup (swap USDC→SUI, then self-fund)
  * 3. Gas Station sponsored (fallback)
  * 4. Fail with INSUFFICIENT_GAS
+ *
+ * After every successful transaction, proactively tops up SUI if it
+ * dropped below threshold — so the user never hits a "no gas" wall.
  */
 export async function executeWithGas(
   client: SuiJsonRpcClient,
@@ -173,6 +176,24 @@ export async function executeWithGas(
     options.enforcer.check(options.metadata);
   }
 
+  const result = await resolveGas(client, keypair, buildTx);
+
+  // Proactive gas maintenance — ensure SUI reserve for future transactions
+  try {
+    const address = keypair.getPublicKey().toSuiAddress();
+    if (await shouldAutoTopUp(client, address)) {
+      await executeAutoTopUp(client, keypair);
+    }
+  } catch { /* best-effort — don't fail the main operation */ }
+
+  return result;
+}
+
+async function resolveGas(
+  client: SuiJsonRpcClient,
+  keypair: Ed25519Keypair,
+  buildTx: () => Transaction | Promise<Transaction>,
+): Promise<GasExecutionResult> {
   const errors: string[] = [];
 
   // Step 1: Try self-funded
