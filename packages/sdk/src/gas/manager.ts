@@ -140,32 +140,19 @@ async function trySponsored(
 }
 
 /**
- * Wait for the Sui indexer to fully propagate after transaction finalization.
- *
- * `waitForTransaction` confirms the TX is finalized, but aggregate indices
- * (getBalance, getDynamicFields used by NAVI's getLendingPositions) are
- * updated asynchronously and typically lag 1-3 seconds behind.
- *
- * getTransactionBlock with showObjectChanges confirms the TX effects are
- * indexed, but balance/position queries use separate index paths that may
- * not be caught up yet. A minimum 2-second post-settlement wait is standard
- * practice for Sui dApps that read back state after writes.
+ * Best-effort indexer readiness check after transaction finalization.
+ * Verifies the TX effects are queryable. Note: aggregate indices
+ * (getBalance, getDynamicFields) may still lag — callers that need
+ * consistent reads should poll their expected state separately.
  */
 async function waitForIndexer(client: SuiJsonRpcClient, digest: string): Promise<void> {
-  const start = Date.now();
-
   for (let i = 0; i < 3; i++) {
     try {
       await client.getTransactionBlock({ digest, options: { showObjectChanges: true } });
-      break;
+      return;
     } catch {
       await new Promise(r => setTimeout(r, 500));
     }
-  }
-
-  const elapsed = Date.now() - start;
-  if (elapsed < 2000) {
-    await new Promise(r => setTimeout(r, 2000 - elapsed));
   }
 }
 

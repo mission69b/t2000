@@ -514,14 +514,23 @@ export class T2000 extends EventEmitter<T2000Events> {
     reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(asset, saveAmount, 'save', gasResult.digest);
 
+    // Poll until the savings position is queryable on-chain.
+    // The Sui indexer can lag 3-10s behind transaction finalization for
+    // getDynamicFields queries. We don't return until we can verify the
+    // deposit landed — this guarantees subsequent reads see consistent state.
     let savingsBalance = saveAmount;
-    try {
-      const positions = await this.positions();
-      savingsBalance = positions.positions
-        .filter((p) => p.type === 'save' && p.asset === asset)
-        .reduce((sum, p) => sum + p.amount, 0);
-    } catch {
-      // query failed — fall back to deposit amount
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const positions = await this.positions();
+        const actual = positions.positions
+          .filter((p) => p.type === 'save' && p.asset === asset)
+          .reduce((sum, p) => sum + p.amount, 0);
+        if (actual > 0) {
+          savingsBalance = actual;
+          break;
+        }
+      } catch { /* retry */ }
+      await new Promise(r => setTimeout(r, 2000));
     }
 
     return {
@@ -641,6 +650,16 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     this.emitBalanceChange('USDC', finalAmount, 'withdraw', gasResult.digest);
+
+    // Poll until the withdrawal is reflected in balance — ensures
+    // subsequent reads don't show stale savings positions.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const bal = await queryBalance(this.client, this._address);
+        if ((bal.stables.USDC ?? 0) > 0.5) break;
+      } catch { /* retry */ }
+      await new Promise(r => setTimeout(r, 2000));
+    }
 
     return {
       success: true,
@@ -769,6 +788,15 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     if (totalUsdcReceived <= 0) {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
+    }
+
+    // Poll until withdrawal is reflected in balance
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const bal = await queryBalance(this.client, this._address);
+        if ((bal.stables.USDC ?? 0) > 0.5) break;
+      } catch { /* retry */ }
+      await new Promise(r => setTimeout(r, 2000));
     }
 
     return {
@@ -2795,6 +2823,19 @@ export class T2000 extends EventEmitter<T2000Events> {
       });
       txDigests.push(depositResult.digest);
       totalGasCost += depositResult.gasCostSui;
+    }
+
+    // Poll until the new position is queryable — ensures subsequent reads
+    // see consistent state after the rebalance.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const positions = await this.positions();
+        const newPos = positions.positions.find(
+          p => p.type === 'save' && p.asset === bestRate.asset && p.amount > 0.01,
+        );
+        if (newPos) break;
+      } catch { /* retry */ }
+      await new Promise(r => setTimeout(r, 2000));
     }
 
     return {
