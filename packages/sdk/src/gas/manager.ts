@@ -4,6 +4,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import {
   SUPPORTED_ASSETS,
   AUTO_TOPUP_THRESHOLD,
+  AUTO_TOPUP_MIN_USDC,
   MIST_PER_SUI,
 } from '../constants.js';
 import type { GasMethod } from '../types.js';
@@ -18,6 +19,8 @@ export interface GasExecutionResult {
   effects: unknown;
   gasMethod: GasMethod;
   gasCostSui: number;
+  /** Pre-TX SUI balance in MIST — used internally for proactive gas maintenance. */
+  preTxSuiMist?: bigint;
 }
 
 function extractGasCost(
@@ -73,6 +76,7 @@ async function trySelfFunded(
     effects: result.effects,
     gasMethod: 'self-funded',
     gasCostSui: extractGasCost(result.effects as Parameters<typeof extractGasCost>[0]),
+    preTxSuiMist: suiBalance,
   };
 }
 
@@ -92,6 +96,8 @@ async function tryAutoTopUpThenSelfFund(
   const tx = await buildTx();
   tx.setSender(address);
 
+  const suiAfterTopUp = await getSuiBalance(client, address);
+
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
     transaction: tx,
@@ -105,6 +111,7 @@ async function tryAutoTopUpThenSelfFund(
     effects: result.effects,
     gasMethod: 'auto-topup',
     gasCostSui: extractGasCost(result.effects as Parameters<typeof extractGasCost>[0]),
+    preTxSuiMist: suiAfterTopUp,
   };
 }
 
@@ -114,6 +121,7 @@ async function trySponsored(
   tx: Transaction,
 ): Promise<GasExecutionResult | null> {
   const address = keypair.getPublicKey().toSuiAddress();
+  const suiBalance = await getSuiBalance(client, address);
   tx.setSender(address);
 
   // Use serialize() for pure v2 transactions, fall back to build() for
@@ -150,6 +158,7 @@ async function trySponsored(
     effects: result.effects,
     gasMethod: 'sponsored',
     gasCostSui: gasCost,
+    preTxSuiMist: suiBalance,
   };
 }
 
@@ -192,11 +201,24 @@ export async function executeWithGas(
 
   const result = await resolveGas(client, keypair, buildTx);
 
-  // Proactive gas maintenance — ensure SUI reserve for future transactions
+  // Proactive gas maintenance — compute remaining SUI from the TX result
+  // instead of querying the indexer (which may still show stale balances).
   try {
-    const address = keypair.getPublicKey().toSuiAddress();
-    if (await shouldAutoTopUp(client, address)) {
-      await executeAutoTopUp(client, keypair);
+    if (result.preTxSuiMist !== undefined) {
+      const gasCostMist = result.gasMethod === 'sponsored'
+        ? 0n
+        : BigInt(Math.round(result.gasCostSui * 1e9));
+      const estimatedRemaining = result.preTxSuiMist - gasCostMist;
+      if (estimatedRemaining < AUTO_TOPUP_THRESHOLD) {
+        const address = keypair.getPublicKey().toSuiAddress();
+        const usdcBal = await client.getBalance({
+          owner: address,
+          coinType: SUPPORTED_ASSETS.USDC.type,
+        });
+        if (BigInt(usdcBal.totalBalance) >= AUTO_TOPUP_MIN_USDC) {
+          await executeAutoTopUp(client, keypair);
+        }
+      }
     }
   } catch { /* best-effort — don't fail the main operation */ }
 
