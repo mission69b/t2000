@@ -195,20 +195,20 @@ export const chatDemos: ChatDemo[] = [
     description:
       "Agent pays for an MPP-protected API with Sui USDC — automatically.",
     messages: [
-      { role: "user", text: "Generate me a logo using Fal.ai", delay: 0 },
+      { role: "user", text: "Ask GPT-4o what it thinks about Sui", delay: 0 },
       { role: "thinking", delay: 400 },
       {
         role: "ai",
         tools: ["t2000_pay"],
         html:
           tbl([
-            ["API", "api.fal.ai/generate", ""],
+            ["API", "openai.mpp.t2000.ai", ""],
             ["Status", "402 → paid automatically", "hi"],
-            ["Cost", "$0.03 USDC", "hi"],
+            ["Cost", "$0.01 USDC", "hi"],
             ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/Ae7q…</span>', ""],
           ]) +
-          `<div style="margin-top:10px;text-align:center"><div style="width:100%;height:120px;background:linear-gradient(135deg,rgba(0,214,143,0.08),rgba(0,214,143,0.02));border:1px solid rgba(0,214,143,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,0.3)">🖼️ generated logo — sunset.png</div></div>` +
-          note("Paid $0.03 from your t2000 balance. No API key needed."),
+          `<div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;font-size:11px;color:rgba(255,255,255,0.6);line-height:1.6">"Sui is a Layer 1 blockchain designed for speed and scalability, with sub-second finality and native USDC support..."</div>` +
+          note("Paid $0.01 from your t2000 balance. No API key needed."),
         delay: 300,
       },
       { role: "user", text: "How much have I spent on APIs today?", delay: 800 },

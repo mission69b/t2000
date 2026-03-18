@@ -22,7 +22,7 @@ const HOW_IT_WORKS = [
     step: "1",
     title: "Agent requests a resource",
     desc: "Any HTTP request — GET, POST, whatever. The agent doesn't know if it costs money yet.",
-    code: "GET https://api.example.com/generate",
+    code: "POST https://openai.mpp.t2000.ai/v1/chat/completions",
   },
   {
     step: "2",
@@ -40,7 +40,7 @@ const HOW_IT_WORKS = [
     step: "4",
     title: "Agent retries with proof",
     desc: "The credential (Sui transaction digest) is sent back. Server verifies on-chain, delivers content.",
-    code: "GET /generate + x-payment-credential: { digest: '...' } → 200 OK",
+    code: "POST /v1/chat/completions + x-payment-credential: { digest: '...' } → 200 OK",
   },
 ];
 
@@ -235,12 +235,12 @@ export default function MppPage() {
                   <span className="text-muted">{"({"}</span>
                   {"\n"}
                   <span className="text-muted">{"  url: "}</span>
-                  <span className="text-accent">{`'https://api.example.com/generate'`}</span>
+                  <span className="text-accent">{`'https://openai.mpp.t2000.ai/v1/chat/completions'`}</span>
                   <span className="text-muted">{","}</span>
                   {"\n"}
-                  <span className="text-muted">{"  body: { prompt: "}</span>
-                  <span className="text-accent">{`'a sunset'`}</span>
-                  <span className="text-muted">{" },"}</span>
+                  <span className="text-muted">{"  body: { model: "}</span>
+                  <span className="text-accent">{`'gpt-4o'`}</span>
+                  <span className="text-muted">{", ... },"}</span>
                   {"\n"}
                   <span className="text-muted">{"  maxPrice: "}</span>
                   <span className="text-foreground">{"0.05"}</span>
@@ -274,7 +274,7 @@ export default function MppPage() {
                 <pre className="px-5 py-5 text-[12px] sm:text-[13px] font-mono leading-[1.8] overflow-x-auto scrollbar-hide">
                   <span className="text-accent">You:</span>
                   {" "}
-                  <span className="text-foreground">&quot;Generate me a logo using Fal.ai&quot;</span>
+                  <span className="text-foreground">&quot;Ask GPT-4o to summarize this PDF&quot;</span>
                   {"\n\n"}
                   <span className="text-accent">Claude:</span>
                   {" "}
@@ -352,9 +352,9 @@ export default function MppPage() {
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[1.9] overflow-x-auto scrollbar-hide">
                 <span className="text-foreground">{"❯ t2000 pay \\"}</span>
                 {"\n"}
-                <span className="text-muted">{"    https://api.fal.ai/gen \\"}</span>
+                <span className="text-muted">{"    openai.mpp.t2000.ai/v1/chat/completions \\"}</span>
                 {"\n"}
-                <span className="text-muted">{`    --data '{"prompt":"sunset"}' \\`}</span>
+                <span className="text-muted">{`    --data '{"model":"gpt-4o",...}' \\`}</span>
                 {"\n"}
                 <span className="text-muted">{"    --max-price 0.05"}</span>
                 {"\n\n"}
@@ -402,9 +402,9 @@ export default function MppPage() {
               <pre className="px-5 py-5 text-[12px] sm:text-[13px] font-mono leading-[1.8] overflow-x-auto scrollbar-hide">
                 <span className="text-accent">You:</span>
                 {"\n"}
-                <span className="text-foreground">&quot;Use Fal.ai to</span>
+                <span className="text-foreground">&quot;Ask GPT-4o what</span>
                 {"\n"}
-                <span className="text-foreground">{"  generate a sunset&quot;"}</span>
+                <span className="text-foreground">{"  it thinks about Sui&quot;"}</span>
                 {"\n\n"}
                 <span className="text-accent">Claude:</span>
                 {"\n"}
