@@ -4,6 +4,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import {
   SUPPORTED_ASSETS,
   AUTO_TOPUP_THRESHOLD,
+  GAS_RESERVE_TARGET,
   AUTO_TOPUP_MIN_USDC,
   MIST_PER_SUI,
 } from '../constants.js';
@@ -209,7 +210,7 @@ export async function executeWithGas(
         ? 0n
         : BigInt(Math.round(result.gasCostSui * 1e9));
       const estimatedRemaining = result.preTxSuiMist - gasCostMist;
-      if (estimatedRemaining < AUTO_TOPUP_THRESHOLD) {
+      if (estimatedRemaining < GAS_RESERVE_TARGET) {
         const address = keypair.getPublicKey().toSuiAddress();
         const usdcBal = await client.getBalance({
           owner: address,

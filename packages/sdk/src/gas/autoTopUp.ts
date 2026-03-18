@@ -2,7 +2,7 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   SUPPORTED_ASSETS,
-  AUTO_TOPUP_THRESHOLD,
+  GAS_RESERVE_TARGET,
   AUTO_TOPUP_AMOUNT,
   AUTO_TOPUP_MIN_USDC,
   MIST_PER_SUI,
@@ -30,7 +30,7 @@ export async function shouldAutoTopUp(
   const suiRaw = BigInt(suiBalance.totalBalance);
   const usdcRaw = BigInt(usdcBalance.totalBalance);
 
-  return suiRaw < AUTO_TOPUP_THRESHOLD && usdcRaw >= AUTO_TOPUP_MIN_USDC;
+  return suiRaw < GAS_RESERVE_TARGET && usdcRaw >= AUTO_TOPUP_MIN_USDC;
 }
 
 /**

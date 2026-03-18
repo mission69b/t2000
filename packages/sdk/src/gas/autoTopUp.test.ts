@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AUTO_TOPUP_THRESHOLD, AUTO_TOPUP_MIN_USDC, SUPPORTED_ASSETS } from '../constants.js';
+import { AUTO_TOPUP_THRESHOLD, GAS_RESERVE_TARGET, AUTO_TOPUP_MIN_USDC, SUPPORTED_ASSETS } from '../constants.js';
 
 vi.mock('./gasStation.js', () => ({
   requestGasSponsorship: vi.fn(),
@@ -25,18 +25,18 @@ describe('shouldAutoTopUp', () => {
     vi.clearAllMocks();
   });
 
-  it('returns true when SUI < threshold AND USDC >= min', async () => {
+  it('returns true when SUI < reserve target AND USDC >= min', async () => {
     const client = mockClient(
-      AUTO_TOPUP_THRESHOLD - 1n,  // just under 0.05 SUI
+      GAS_RESERVE_TARGET - 1n,    // just under 0.15 SUI
       AUTO_TOPUP_MIN_USDC,        // exactly $2 USDC
     );
     const result = await shouldAutoTopUp(client, '0x' + 'a'.repeat(64));
     expect(result).toBe(true);
   });
 
-  it('returns false when SUI >= threshold', async () => {
+  it('returns false when SUI >= reserve target', async () => {
     const client = mockClient(
-      AUTO_TOPUP_THRESHOLD,       // exactly 0.05 SUI
+      GAS_RESERVE_TARGET,         // exactly 0.15 SUI
       10_000_000n,                // $10 USDC
     );
     const result = await shouldAutoTopUp(client, '0x' + 'a'.repeat(64));
@@ -54,7 +54,7 @@ describe('shouldAutoTopUp', () => {
 
   it('returns false when both SUI and USDC are sufficient', async () => {
     const client = mockClient(
-      100_000_000n,               // 0.1 SUI (plenty)
+      200_000_000n,               // 0.2 SUI (above reserve target)
       10_000_000n,                // $10 USDC
     );
     const result = await shouldAutoTopUp(client, '0x' + 'a'.repeat(64));
