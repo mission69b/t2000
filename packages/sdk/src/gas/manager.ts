@@ -193,7 +193,7 @@ export async function executeWithGas(
     errors.push(`self-funded: ${msg}`);
   }
 
-  // Step 2: Try auto-topup (self-fund swap for gas) then self-fund the main tx
+  // Step 2: Try auto-topup (swap USDC→SUI) then self-fund the main tx
   try {
     const result = await tryAutoTopUpThenSelfFund(client, keypair, buildTx);
     if (result) {
@@ -203,6 +203,23 @@ export async function executeWithGas(
     errors.push('auto-topup: not eligible (low USDC or sufficient SUI)');
   } catch (err) {
     errors.push(`auto-topup: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // Step 2.5: Retry self-funded — auto-topup may have deposited SUI
+  // even if the combined operation failed
+  try {
+    const tx = await buildTx();
+    const result = await trySelfFunded(client, keypair, tx);
+    if (result) {
+      await waitForIndexer(client, result.digest);
+      return result;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isMoveAbort(msg)) {
+      throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
+    }
+    errors.push(`self-funded-retry: ${msg}`);
   }
 
   // Step 3: Try gas station sponsored

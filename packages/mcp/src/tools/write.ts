@@ -58,7 +58,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_save',
-    'Deposit USDC to savings (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview.',
+    'Deposit USDC to savings at the best USDC rate (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview. This saves USDC as USDC — do NOT suggest swapping to other assets first. If the user later wants to chase higher yields on other assets (e.g. USDe), use t2000_rebalance AFTER saving.',
     {
       amount: z.union([z.number(), z.literal('all')]).describe('Dollar amount to save, or "all"'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),

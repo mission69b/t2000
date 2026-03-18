@@ -195,7 +195,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_all_rates',
-    'Compare interest rates across ALL protocols side-by-side for every asset. Shows NAVI vs Suilend rates per asset. Use when the user asks "am I getting the best rate?" or wants to compare protocols.',
+    'Compare interest rates across ALL protocols side-by-side for every asset. Shows NAVI vs Suilend rates per asset. Use when the user asks "am I getting the best rate?" or wants to compare protocols. NOTE: Do NOT use this to decide where to save — t2000_save always saves USDC at the best USDC rate. This tool is for informational comparisons and for deciding whether to t2000_rebalance into a different asset.',
     {},
     async () => {
       try {
