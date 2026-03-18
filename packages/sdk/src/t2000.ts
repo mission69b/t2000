@@ -514,8 +514,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(asset, saveAmount, 'save', gasResult.digest);
 
-    // Verify the deposit is queryable before returning — guarantees
-    // subsequent reads (balance, rebalance) see consistent state.
+    // Verify the deposit is visible on-chain before returning.
+    // With NAVI cache disabled this usually succeeds on the first try;
+    // the retry handles rare indexer propagation lag.
     let savingsBalance = saveAmount;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -649,16 +650,6 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     this.emitBalanceChange('USDC', finalAmount, 'withdraw', gasResult.digest);
 
-    // Poll until the withdrawal is reflected in balance — ensures
-    // subsequent reads don't show stale savings positions.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        const bal = await queryBalance(this.client, this._address);
-        if ((bal.stables.USDC ?? 0) > 0.5) break;
-      } catch { /* retry */ }
-      await new Promise(r => setTimeout(r, 2000));
-    }
-
     return {
       success: true,
       tx: gasResult.digest,
@@ -786,15 +777,6 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     if (totalUsdcReceived <= 0) {
       throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw across any protocol');
-    }
-
-    // Poll until withdrawal is reflected in balance
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        const bal = await queryBalance(this.client, this._address);
-        if ((bal.stables.USDC ?? 0) > 0.5) break;
-      } catch { /* retry */ }
-      await new Promise(r => setTimeout(r, 2000));
     }
 
     return {
@@ -2534,7 +2516,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       this.portfolio.getPositions().filter(p => p.earning).map(p => p.asset),
     );
 
-    let savePositions = allPositions.flatMap(p =>
+    const savePositions = allPositions.flatMap(p =>
       p.positions.supplies
         .filter(s => s.amount > 0.01)
         .filter(s => !earningAssets.has(s.asset))
@@ -2549,30 +2531,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     );
 
     if (savePositions.length === 0) {
-      // Positions may be stale if a save just completed — the Sui indexer
-      // can lag several seconds behind transaction finalization. Retry twice
-      // with 3s gaps before giving up.
-      for (let retry = 0; retry < 2 && savePositions.length === 0; retry++) {
-        await new Promise(r => setTimeout(r, 3000));
-        const freshPositions = await this.registry.allPositions(this._address);
-        savePositions = freshPositions.flatMap(p =>
-          p.positions.supplies
-            .filter(s => s.amount > 0.01)
-            .filter(s => !earningAssets.has(s.asset))
-            .filter(s => !(s.asset in INVESTMENT_ASSETS))
-            .map(s => ({
-              protocolId: p.protocolId,
-              protocol: p.protocol,
-              asset: s.asset,
-              amount: s.amount,
-              apy: s.apy,
-            })),
-        );
-      }
-
-      if (savePositions.length === 0) {
-        throw new T2000Error('NO_COLLATERAL', 'No savings positions to rebalance. Use `t2000 save <amount>` first.');
-      }
+      throw new T2000Error('NO_COLLATERAL', 'No savings positions to rebalance. Use `t2000 save <amount>` first.');
     }
 
     const borrowPositions = allPositions.flatMap(p =>
@@ -2821,19 +2780,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       });
       txDigests.push(depositResult.digest);
       totalGasCost += depositResult.gasCostSui;
-    }
-
-    // Poll until the new position is queryable — ensures subsequent reads
-    // see consistent state after the rebalance.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        const positions = await this.positions();
-        const newPos = positions.positions.find(
-          p => p.type === 'save' && p.asset === bestRate.asset && p.amount > 0.01,
-        );
-        if (newPos) break;
-      } catch { /* retry */ }
-      await new Promise(r => setTimeout(r, 2000));
     }
 
     return {
