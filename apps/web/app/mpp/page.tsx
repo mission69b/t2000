@@ -34,7 +34,7 @@ const HOW_IT_WORKS = [
     step: "3",
     title: "Agent pays on Sui",
     desc: "The mppx client builds a USDC transfer, signs it with the agent's keypair, and broadcasts to Sui.",
-    code: "tx.splitCoins(usdc, [10000n]) → tx.transferObjects → sign → broadcast",
+    code: "build USDC transfer → sign → broadcast → finalized in ~400ms",
   },
   {
     step: "4",
@@ -278,9 +278,9 @@ export default function MppPage() {
                   {"\n\n"}
                   <span className="text-accent">Claude:</span>
                   {" "}
-                  <span className="text-foreground">&quot;Done. Paid $0.03 USDC from your</span>
+                  <span className="text-foreground">&quot;Done. Paid $0.03 USDC.</span>
                   {"\n"}
-                  <span className="text-foreground">{"        "}t2000 balance. Here&apos;s your logo.&quot;</span>
+                  <span className="text-foreground">{"  "}Here&apos;s your logo.&quot;</span>
                 </pre>
               </div>
             </div>
@@ -548,7 +548,7 @@ export default function MppPage() {
               href={GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright rounded-sm transition-all hover:text-foreground hover:border-foreground"
+              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
             >
               View on GitHub →
             </a>
