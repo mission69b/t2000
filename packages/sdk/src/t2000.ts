@@ -867,6 +867,20 @@ export class T2000 extends EventEmitter<T2000Events> {
         `Auto-withdraw from savings returned $${result.amount.toFixed(2)} — expected ~$${shortfall.toFixed(2)}. Try withdrawing manually first.`,
       );
     }
+
+    // Wait for the Sui indexer to reflect the new USDC coins before the
+    // caller builds a follow-up transaction. The withdraw (and possible
+    // proactive gas auto-topup) changed coin state; without this wait,
+    // _fetchCoins may return stale or empty results.
+    const minExpected = BigInt(Math.floor(shortfall * 0.5 * 10 ** SUPPORTED_ASSETS.USDC.decimals));
+    for (let i = 0; i < 12; i++) {
+      const bal = await this.client.getBalance({
+        owner: this._address,
+        coinType: SUPPORTED_ASSETS.USDC.type,
+      });
+      if (BigInt(bal.totalBalance) >= minExpected) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
   }
 
   private async _convertWalletStablesToUsdc(bal: BalanceResponse, amountNeeded?: number): Promise<void> {

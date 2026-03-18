@@ -195,6 +195,7 @@ async function resolveGas(
   buildTx: () => Transaction | Promise<Transaction>,
 ): Promise<GasExecutionResult> {
   const errors: string[] = [];
+  let lastBuildError: T2000Error | undefined;
 
   // Step 1: Try self-funded
   try {
@@ -210,6 +211,7 @@ async function resolveGas(
     if (isMoveAbort(msg)) {
       throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
     }
+    if (err instanceof T2000Error && err.code !== 'INSUFFICIENT_GAS') lastBuildError = err;
     errors.push(`self-funded: ${msg}`);
   }
 
@@ -239,6 +241,7 @@ async function resolveGas(
     if (isMoveAbort(msg)) {
       throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
     }
+    if (err instanceof T2000Error && err.code !== 'INSUFFICIENT_GAS') lastBuildError = err;
     errors.push(`self-funded-retry: ${msg}`);
   }
 
@@ -252,10 +255,15 @@ async function resolveGas(
     }
     errors.push('sponsored: returned null');
   } catch (err) {
+    if (err instanceof T2000Error && err.code !== 'INSUFFICIENT_GAS') lastBuildError = err;
     errors.push(`sponsored: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Step 4: All methods failed
+  // If buildTx() consistently threw a non-gas T2000Error (e.g.
+  // INSUFFICIENT_BALANCE), surface that instead of misleading INSUFFICIENT_GAS.
+  if (lastBuildError) throw lastBuildError;
+
   throw new T2000Error(
     'INSUFFICIENT_GAS',
     `No SUI for gas and Gas Station unavailable. Fund your wallet with SUI or USDC. [${errors.join(' | ')}]`,
