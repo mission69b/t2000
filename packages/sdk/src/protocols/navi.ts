@@ -41,11 +41,12 @@ const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'] as const;
 // NAVI SDK expects SuiClient (v1 name), our code uses SuiJsonRpcClient (v2 name).
 // They're the same runtime class, so the cast is safe.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sdkOptions(client: SuiJsonRpcClient): { env: 'prod'; client: any; cacheTime: number } {
-  // Disable NAVI SDK's built-in 5-minute response cache. The cache is
-  // designed for frontend apps but breaks agent workflows where we write
-  // (save/withdraw) then immediately read (positions/balance).
-  return { env: 'prod', client, cacheTime: 0 };
+function sdkOptions(client: SuiJsonRpcClient): { env: 'prod'; client: any; cacheTime: number; disableCache: boolean } {
+  // Fully disable NAVI SDK's built-in caching. cacheTime: 0 bypasses the
+  // top-level withCache check, but internal SDK calls override it via
+  // spread order ({ ...opts, cacheTime: w }). disableCache: true is the
+  // only flag the SDK never overrides — it short-circuits the cache check.
+  return { env: 'prod', client, cacheTime: 0, disableCache: true };
 }
 
 /**

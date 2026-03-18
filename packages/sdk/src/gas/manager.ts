@@ -36,6 +36,17 @@ async function getSuiBalance(client: SuiJsonRpcClient, address: string): Promise
   return BigInt(bal.totalBalance);
 }
 
+async function assertTxSuccess(effects: unknown, digest: string): Promise<void> {
+  const eff = effects as { status?: { status: string; error?: string } } | undefined;
+  if (eff?.status?.status === 'failure') {
+    const errMsg = eff.status.error ?? 'unknown on-chain error';
+    if (isMoveAbort(errMsg)) {
+      throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(errMsg));
+    }
+    throw new T2000Error('TRANSACTION_FAILED', `Transaction ${digest} failed on-chain: ${errMsg}`);
+  }
+}
+
 async function trySelfFunded(
   client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
@@ -55,6 +66,7 @@ async function trySelfFunded(
     options: { showEffects: true },
   });
   await client.waitForTransaction({ digest: result.digest });
+  await assertTxSuccess(result.effects, result.digest);
 
   return {
     digest: result.digest,
@@ -86,6 +98,7 @@ async function tryAutoTopUpThenSelfFund(
     options: { showEffects: true },
   });
   await client.waitForTransaction({ digest: result.digest });
+  await assertTxSuccess(result.effects, result.digest);
 
   return {
     digest: result.digest,
@@ -126,6 +139,7 @@ async function trySponsored(
   });
 
   await client.waitForTransaction({ digest: result.digest });
+  await assertTxSuccess(result.effects, result.digest);
 
   // Report gas usage (best-effort)
   const gasCost = extractGasCost(result.effects as Parameters<typeof extractGasCost>[0]);
