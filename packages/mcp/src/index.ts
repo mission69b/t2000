@@ -6,6 +6,12 @@ import { registerWriteTools } from './tools/write.js';
 import { registerSafetyTools } from './tools/safety.js';
 import { registerPrompts } from './prompts.js';
 
+// Redirect console.log/warn to stderr so dependency debug output
+// (e.g. NAVI SDK's "[getWorkingPythEndpoint]") doesn't pollute the
+// stdio JSON-RPC channel that MCP uses for communication.
+console.log = (...args: unknown[]) => console.error('[log]', ...args);
+console.warn = (...args: unknown[]) => console.error('[warn]', ...args);
+
 export async function startMcpServer(opts?: { keyPath?: string }): Promise<void> {
   const agent = await createAgent(opts?.keyPath);
 
