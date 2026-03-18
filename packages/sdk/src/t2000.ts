@@ -514,12 +514,10 @@ export class T2000 extends EventEmitter<T2000Events> {
     reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(asset, saveAmount, 'save', gasResult.digest);
 
-    // Poll until the savings position is queryable on-chain.
-    // The Sui indexer can lag 3-10s behind transaction finalization for
-    // getDynamicFields queries. We don't return until we can verify the
-    // deposit landed — this guarantees subsequent reads see consistent state.
+    // Verify the deposit is queryable before returning — guarantees
+    // subsequent reads (balance, rebalance) see consistent state.
     let savingsBalance = saveAmount;
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const positions = await this.positions();
         const actual = positions.positions
