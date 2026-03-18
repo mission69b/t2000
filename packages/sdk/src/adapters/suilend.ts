@@ -258,11 +258,12 @@ export class SuilendAdapter implements LendingAdapter {
     const caps = await SuilendClient.getObligationOwnerCaps(address, [LENDING_MARKET_TYPE], this.client);
     if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend position found');
 
-    const { ctokenRaw, effectiveAmount } = await this.resolveWithdrawCTokens(sdk, address, assetKey, assetInfo, amount);
+    const { ctokenRaw, effectiveAmount, obligationIndex } = await this.resolveWithdrawCTokens(sdk, address, assetKey, assetInfo, amount);
+    const cap = caps[obligationIndex] ?? caps[0];
     const tx = new Transaction();
     tx.setSender(address);
 
-    await sdk.withdrawAndSendToUser(address, caps[0].id, caps[0].obligationId, assetInfo.type, ctokenRaw, tx);
+    await sdk.withdrawAndSendToUser(address, cap.id, cap.obligationId, assetInfo.type, ctokenRaw, tx);
 
     return { tx, effectiveAmount };
   }
@@ -280,8 +281,9 @@ export class SuilendAdapter implements LendingAdapter {
     const caps = await SuilendClient.getObligationOwnerCaps(address, [LENDING_MARKET_TYPE], this.client);
     if (caps.length === 0) throw new T2000Error('NO_COLLATERAL', 'No Suilend position found');
 
-    const { ctokenRaw, effectiveAmount } = await this.resolveWithdrawCTokens(sdk, address, assetKey, assetInfo, amount);
-    const coin = await sdk.withdraw(caps[0].id, caps[0].obligationId, assetInfo.type, ctokenRaw, tx);
+    const { ctokenRaw, effectiveAmount, obligationIndex } = await this.resolveWithdrawCTokens(sdk, address, assetKey, assetInfo, amount);
+    const cap = caps[obligationIndex] ?? caps[0];
+    const coin = await sdk.withdraw(cap.id, cap.obligationId, assetInfo.type, ctokenRaw, tx);
 
     return { coin: coin as TransactionObjectArgument, effectiveAmount };
   }
@@ -386,24 +388,39 @@ export class SuilendAdapter implements LendingAdapter {
     assetKey: string,
     assetInfo: (typeof SUPPORTED_ASSETS)[keyof typeof SUPPORTED_ASSETS],
     amount: number,
-  ): Promise<{ ctokenRaw: string; effectiveAmount: number }> {
+  ): Promise<{ ctokenRaw: string; effectiveAmount: number; obligationIndex: number }> {
     const { reserveMap, refreshedRawReserves } = await quietSuilend(() => initializeSuilend(this.client, sdk));
     const { obligations } = await initializeObligations(
       this.client, sdk, refreshedRawReserves, reserveMap, address,
     );
-    if (obligations.length === 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
+    if (obligations.length === 0) throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend — no obligations found`);
 
-    const dep = obligations[0].deposits.find(d => {
-      const resolved = this.resolveSymbol(d.coinType);
-      if (resolved === assetKey) return true;
-      // Fallback: direct coin type comparison (handles cases where
-      // resolveSymbol returns the module name like 'WBTC' instead of 'BTC')
-      try {
-        return normalizeStructTag(d.coinType) === normalizeStructTag(assetInfo.type);
-      } catch { return false; }
-    });
-    if (!dep || dep.depositedAmount.toNumber() <= 0.0001) {
-      throw new T2000Error('NO_COLLATERAL', `Nothing to withdraw for ${assetInfo.displayName} on Suilend`);
+    // Search ALL obligations, not just the first (user may have multiple obligation caps)
+    let dep: (typeof obligations)[0]['deposits'][0] | undefined;
+    let matchedObligation = 0;
+    for (let oi = 0; oi < obligations.length; oi++) {
+      dep = obligations[oi].deposits.find(d => {
+        const resolved = this.resolveSymbol(d.coinType);
+        if (resolved === assetKey) return true;
+        try {
+          return normalizeStructTag(d.coinType) === normalizeStructTag(assetInfo.type);
+        } catch { return false; }
+      });
+      if (dep && dep.depositedAmount.toNumber() > 0.0001) {
+        matchedObligation = oi;
+        break;
+      }
+      dep = undefined;
+    }
+
+    if (!dep) {
+      const foundDeposits = obligations.flatMap((o, i) =>
+        o.deposits.map(d => `ob${i}:${this.resolveSymbol(d.coinType)}=${d.depositedAmount.toFixed(4)}`),
+      );
+      throw new T2000Error(
+        'NO_COLLATERAL',
+        `Nothing to withdraw for ${assetInfo.displayName} (${assetKey}) on Suilend. Found deposits: [${foundDeposits.join(', ')}]`,
+      );
     }
 
     const deposited = dep.depositedAmount.toNumber();
@@ -414,7 +431,7 @@ export class SuilendAdapter implements LendingAdapter {
       ? dep.depositedCtokenAmount.toFixed(0)
       : dep.depositedCtokenAmount.times(proportion).integerValue(1).toFixed(0);
 
-    return { ctokenRaw, effectiveAmount };
+    return { ctokenRaw, effectiveAmount, obligationIndex: matchedObligation };
   }
 
   async maxWithdraw(
