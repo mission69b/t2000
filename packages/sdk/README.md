@@ -5,7 +5,7 @@ The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn y
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[CLI](https://www.npmjs.com/package/@t2000/cli)** · **[x402](https://www.npmjs.com/package/@t2000/x402)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
+**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[CLI](https://www.npmjs.com/package/@t2000/cli)** · **[MPP](https://www.npmjs.com/package/@t2000/mpp-sui)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
 
 ## Installation
 
@@ -319,7 +319,7 @@ formatAssetAmount('SUI', 105.26);     // "105.260000000" (9 decimals)
 
 ### Advanced: Exposed Internals
 
-For integrations (like `@t2000/x402`), the agent exposes:
+For integrations (like `@t2000/mpp-sui`), the agent exposes:
 
 ```typescript
 agent.suiClient;   // SuiJsonRpcClient instance
@@ -437,7 +437,7 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
-| Pay (x402) | Free | Agent pays the API price, no t2000 surcharge |
+| Pay (MPP) | Free | Agent pays the API price, no t2000 surcharge |
 
 Fees are collected by the t2000 protocol treasury on-chain.
 

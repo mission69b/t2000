@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "0.20.44",
+  "version": "0.21.0",
   "description": "A bank account for AI agents on Sui — guided setup, MCP, send, save, borrow, invest, rebalance",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
     "cli",
     "defi",
     "usdc",
-    "x402",
+    "mpp",
     "t2000",
     "navi",
     "cetus"
@@ -42,7 +42,6 @@
     "@inquirer/prompts": "^7",
     "@mysten/sui": "^2.6.0",
     "@t2000/sdk": "workspace:*",
-    "@t2000/x402": "workspace:*",
     "commander": "^13",
     "hono": "^4",
     "picocolors": "^1"

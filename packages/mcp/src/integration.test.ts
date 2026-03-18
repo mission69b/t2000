@@ -104,6 +104,10 @@ function createMockAgent() {
     sentinelAttack: vi.fn().mockResolvedValue({
       attackObjectId: '0x1', sentinelId: '1', prompt: 'test', verdict: { success: false, score: 20, agentResponse: 'No', juryResponse: 'Defended' }, requestTx: '0x1', settleTx: '0x2', won: false, feePaid: 0.1,
     }),
+    pay: vi.fn().mockResolvedValue({
+      status: 200, body: { data: 'paid content' }, paid: true, cost: 0.01,
+      receipt: { reference: '0xdigest123', timestamp: new Date().toISOString() },
+    }),
   } as any;
 }
 
@@ -135,9 +139,9 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 33 tools', async () => {
+  it('lists all 34 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(33);
+    expect(tools).toHaveLength(34);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -161,6 +165,7 @@ describe('integration: MCP client ↔ server', () => {
       't2000_invest_rebalance',
       't2000_lock',
       't2000_overview',
+      't2000_pay',
       't2000_pending_rewards',
       't2000_portfolio',
       't2000_positions',

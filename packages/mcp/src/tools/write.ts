@@ -474,6 +474,32 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
   );
 
   // ---------------------------------------------------------------------------
+  // MPP Payments
+  // ---------------------------------------------------------------------------
+
+  server.tool(
+    't2000_pay',
+    'Make a paid API request. Automatically handles MPP 402 payment challenges using the agent\'s USDC balance. Enforces safeguards. Returns the API response and payment receipt.',
+    {
+      url: z.string().describe('URL of the MPP-protected resource'),
+      method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('GET').describe('HTTP method'),
+      body: z.string().optional().describe('JSON request body'),
+      headers: z.record(z.string()).optional().describe('Additional HTTP headers'),
+      maxPrice: z.number().default(1.0).describe('Max USD to pay (default: $1.00)'),
+    },
+    async ({ url, method, body, headers, maxPrice }) => {
+      try {
+        const result = await mutex.run(() =>
+          agent.pay({ url, method, body, headers, maxPrice }),
+        );
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------------
   // Sentinel
   // ---------------------------------------------------------------------------
 

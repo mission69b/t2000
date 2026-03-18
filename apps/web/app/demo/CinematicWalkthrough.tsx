@@ -102,7 +102,7 @@ const scenes: Scene[] = [
   {
     kind: "card",
     text: "Pays for intelligence\nautonomously.",
-    sub: "x402 \u00b7 agent-to-agent micropayments",
+    sub: "MPP \u00b7 agent-to-service payments",
     hold: 2800,
   },
   {
@@ -113,7 +113,7 @@ const scenes: Scene[] = [
       {
         type: "ai",
         tools: ["t2000_positions", "t2000_pay"],
-        html: `<div class="nt" style="margin:0 0 8px">Paid <span class="hi">$0.05</span> via x402 to DeFi Risk API.</div><table><tr><td>Risk score</td><td class="hi">Low \u00b7 82/100</td></tr><tr><td>Health factor</td><td>1.8 (liquidation below 1.0)</td></tr><tr><td>Utilization</td><td>52% of borrowing capacity</td></tr><tr><td>Exposure</td><td>Single-protocol (NAVI)</td></tr></table><div class="nt">Position is healthy. Consider splitting across NAVI + Suilend to reduce single-protocol risk.</div>`,
+        html: `<div class="nt" style="margin:0 0 8px">Paid <span class="hi">$0.05</span> via MPP to DeFi Risk API.</div><table><tr><td>Risk score</td><td class="hi">Low \u00b7 82/100</td></tr><tr><td>Health factor</td><td>1.8 (liquidation below 1.0)</td></tr><tr><td>Utilization</td><td>52% of borrowing capacity</td></tr><tr><td>Exposure</td><td>Single-protocol (NAVI)</td></tr></table><div class="nt">Position is healthy. Consider splitting across NAVI + Suilend to reduce single-protocol risk.</div>`,
         hold: 2800,
       },
     ],

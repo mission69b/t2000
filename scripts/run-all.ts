@@ -27,7 +27,7 @@ const tests = [
   { name: 'Strategies', file: 'test-strategy.ts' },
   { name: 'Claim Rewards', file: 'test-claim-rewards.ts' },
   { name: 'Sentinel', file: 'test-sentinel.ts', args: LIVE ? '--live' : '' },
-  { name: 'x402 Pay', file: 'test-pay.ts' },
+  { name: 'MPP Pay', file: 'test-pay.ts' },
   { name: 'Misc', file: 'test-misc.ts' },
 ];
 

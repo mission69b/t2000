@@ -35,7 +35,7 @@ If you discover a security vulnerability in t2000, please report it responsibly.
 The following are in scope:
 - `@t2000/sdk` — Key management, transaction building, adapter routing
 - `@t2000/cli` — Input validation, PIN handling
-- `@t2000/x402` — Payment verification and settlement
+- `@t2000/mpp-sui` — MPP payment method (Sui USDC)
 - Server API — Gas sponsorship, fee ledger, sponsor endpoint
 - Move contracts — On-chain fee collection, admin controls
 - Website — XSS, injection, authentication bypass

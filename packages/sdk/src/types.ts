@@ -459,3 +459,22 @@ export interface TradePositionsResult {
   totalMargin: number;
   totalUnrealizedPnL: number;
 }
+
+export interface PayOptions {
+  url: string;
+  method?: string;
+  body?: string;
+  headers?: Record<string, string>;
+  maxPrice?: number;
+}
+
+export interface PayResult {
+  status: number;
+  body: unknown;
+  paid: boolean;
+  cost?: number;
+  receipt?: {
+    reference: string;
+    timestamp: string;
+  };
+}

@@ -301,7 +301,7 @@ export function StatsView() {
         </div>
       </section>
 
-      {/* Fee Breakdown + x402 Payments */}
+      {/* Fee Breakdown + MPP Payments */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-panel border border-border rounded-md p-5">
           <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4">
@@ -339,7 +339,7 @@ export function StatsView() {
 
         <div className="bg-panel border border-border rounded-md p-5">
           <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4">
-            x402 Payments
+            MPP Payments
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>

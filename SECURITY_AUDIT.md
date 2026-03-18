@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-09
 **Auditor:** Automated Full-Stack Security Audit
-**Scope:** All packages (`sdk`, `cli`, `contracts`, `x402`, `server`, `web`), CI/CD, infrastructure
+**Scope:** All packages (`sdk`, `cli`, `contracts`, `mpp-sui`, `server`, `web`), CI/CD, infrastructure
 **Severity Levels:** CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL
 
 ---
@@ -91,7 +91,7 @@ app.use('*', cors({ origin: ['https://t2000.ai', 'https://api.t2000.ai'] }));
 - Total agent count, recent agent addresses and registration timestamps.
 - Gas ledger totals, fee ledger totals.
 - Complete transaction volume breakdowns.
-- x402 payment totals.
+- MPP payment totals.
 
 This data is served without any authentication and could be used for competitive intelligence or to plan targeted attacks (e.g., timing gas draining when the pool is low).
 
@@ -135,13 +135,13 @@ This data is served without any authentication and could be used for competitive
 
 ---
 
-### H-5: /x402/settle Has No Authentication — Anyone Can Mark Payments as Settled — ✅ REMEDIATED
+### H-5: MPP Payment Settlement — ✅ REMEDIATED
 
-**Location:** `apps/server/src/routes/x402.ts:97-131`
+**Location:** `apps/server/src/routes/mpp.ts` (formerly `x402.ts`)
 
-**Status:** Fixed. Settlement now requires the payment to have been previously verified via `/x402/verify`. Unverified nonces return 404. Error responses sanitized.
+**Status:** Fixed. MPP uses peer-to-peer verification via mppx. Settlement now requires the payment to have been previously verified. Unverified nonces return 404. Error responses sanitized.
 
-**Description:** The `/x402/settle` endpoint marks payments as settled in the database with no authentication. Any caller who knows (or guesses) a payment nonce can mark it as settled. This could be exploited by:
+**Description:** The MPP settle endpoint marks payments as settled in the database with no authentication. Any caller who knows (or guesses) a payment nonce can mark it as settled. This could be exploited by:
 - A resource server marking a payment settled before actually delivering the resource.
 - An attacker replaying settlement requests.
 
@@ -155,15 +155,15 @@ This data is served without any authentication and could be used for competitive
 
 ### M-1: In-Memory Rate Limiting Does Not Persist Across Restarts — ✅ REMEDIATED
 
-**Location:** `apps/server/src/routes/x402.ts:9-28` (x402 rate limit), `apps/server/src/services/sponsor.ts:14-19` (sponsor rate limit uses DB)
+**Location:** `apps/server/src/routes/mpp.ts` (MPP rate limit), `apps/server/src/services/sponsor.ts:14-19` (sponsor rate limit uses DB)
 
-**Status:** Fixed. x402 rate limiter replaced with DB-backed count query. Gas endpoint now uses DB-backed per-sender rate limiting.
+**Status:** Fixed. MPP rate limiter replaced with DB-backed count query. Gas endpoint now uses DB-backed per-sender rate limiting.
 
-**Description:** The x402 rate limiter uses an in-memory `Map<string, { count, resetAt }>`. This state is lost on server restart or redeployment, allowing rate limit bypass. The sponsor endpoint correctly uses database-backed rate limiting, but the x402 endpoint does not.
+**Description:** The MPP rate limiter previously used an in-memory `Map<string, { count, resetAt }>`. This state is lost on server restart or redeployment, allowing rate limit bypass. The sponsor endpoint correctly uses database-backed rate limiting.
 
 Additionally, neither rate limiter is protected against `x-forwarded-for` header spoofing. An attacker can cycle through arbitrary IPs by setting `x-forwarded-for` to any value.
 
-**Impact:** Rate limits on the x402 verify endpoint can be bypassed by restarting the server or spoofing IP headers.
+**Impact:** Rate limits on the MPP verify endpoint can be bypassed by restarting the server or spoofing IP headers.
 
 **Recommendation:**
 - Use database-backed rate limiting (like the sponsor endpoint) or Redis.
@@ -334,7 +334,7 @@ export const T2000_UPGRADE_CAP_ID = '0xef28...';
 
 ### L-3: Error Messages May Leak Internal Details — ✅ REMEDIATED
 
-**Location:** Multiple routes (e.g., `apps/server/src/routes/gas.ts:44`, `apps/server/src/routes/x402.ts:93`)
+**Location:** Multiple routes (e.g., `apps/server/src/routes/gas.ts:44`, `apps/server/src/routes/mpp.ts:93`)
 
 **Status:** Fixed. All error responses now return generic error codes only. Raw error messages are logged server-side but not sent to clients.
 
@@ -450,7 +450,7 @@ The price cache (`apps/server/src/lib/priceCache.ts`) implements a circuit break
 - `index.ts` — Hono app setup, CORS, logging
 - `routes/sponsor.ts` — Wallet init sponsorship
 - `routes/gas.ts` — Gas sponsorship + reporting
-- `routes/x402.ts` — Payment verification + settlement
+- `routes/mpp.ts` — MPP payment verification + settlement
 - `routes/fees.ts` — Fee ledger
 - `routes/health.ts` — Health check
 - `services/gasStation.ts` — Gas sponsorship logic
@@ -487,8 +487,8 @@ The price cache (`apps/server/src/lib/priceCache.ts`) implements a circuit break
 - `exportKey.ts` — Private key export
 - `importKey.ts` — Private key import
 
-### x402 (`packages/x402/src/`)
-- `facilitator.ts` — Payment verification logic
+### MPP (`packages/mpp-sui/src/`)
+- Client/server — MPP payment flow via mppx
 
 ### Web (`apps/web/`)
 - `app/api/stats/route.ts` — Stats API

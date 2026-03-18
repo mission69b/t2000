@@ -54,6 +54,8 @@ export type {
   TradePositionsResult,
   PendingReward,
   ClaimRewardsResult,
+  PayOptions,
+  PayResult,
 } from './types.js';
 export {
   MIST_PER_SUI,

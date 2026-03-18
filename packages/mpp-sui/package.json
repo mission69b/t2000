@@ -1,7 +1,7 @@
 {
-  "name": "@t2000/sdk",
-  "version": "0.19.0",
-  "description": "TypeScript SDK for AI agent bank accounts on Sui — send, save, borrow, rebalance",
+  "name": "@t2000/mpp-sui",
+  "version": "0.1.0",
+  "description": "Sui USDC payment method for the Machine Payments Protocol (MPP)",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -12,10 +12,15 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./adapters": {
-      "types": "./dist/adapters/index.d.ts",
-      "import": "./dist/adapters/index.js",
-      "require": "./dist/adapters/index.cjs"
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js",
+      "require": "./dist/client.cjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
     }
   },
   "files": [
@@ -23,23 +28,22 @@
     "README.md"
   ],
   "keywords": [
+    "mpp",
     "sui",
-    "wallet",
+    "payment",
+    "usdc",
     "ai",
     "agent",
-    "defi",
-    "sdk",
-    "usdc",
-    "navi",
-    "cetus"
+    "402",
+    "machine-payments"
   ],
   "author": "t2000",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mission69b/t2000.git",
-    "directory": "packages/sdk"
+    "directory": "packages/mpp-sui"
   },
-  "homepage": "https://t2000.ai",
+  "homepage": "https://t2000.ai/mpp",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -50,17 +54,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@mysten/sui": "^2.6.0",
-    "@t2000/mpp-sui": "workspace:*",
-    "eventemitter3": "^5",
-    "mppx": "^0.4.7"
+    "@mysten/sui": "^2",
+    "mppx": "^0.4.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@cetusprotocol/aggregator-sdk": "^1.4.5",
-    "@naviprotocol/lending": "^1.4.0",
-    "@pythnetwork/pyth-sui-js": "^2.2.0",
-    "@suilend/sdk": "^2.0.2",
-    "@suilend/sui-fe": "^2.0.6",
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",

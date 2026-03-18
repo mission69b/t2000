@@ -2,7 +2,7 @@
 
 Agent Skills for the [t2000](https://t2000.ai) bank account on Sui. Install once and your AI
 agent gains the ability to check balances, send payments, earn yield,
-borrow, invest in SUI/BTC/ETH/GOLD, and pay for x402 API services — all on Sui.
+borrow, invest in SUI/BTC/ETH/GOLD, and pay for MPP API services — all on Sui.
 
 ## Install
 
@@ -38,7 +38,7 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 | `t2000-borrow` | "borrow 40 USDC", "take out a loan" |
 | `t2000-repay` | "repay my loan", "pay back..." |
 | `t2000-exchange` | "swap USDC to SUI", "exchange tokens", "convert to..." |
-| `t2000-pay` | "call that paid API", "pay for x402 service" |
+| `t2000-pay` | "call that paid API", "pay for MPP service" |
 | `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |
 | `t2000-invest` | "buy SUI", "invest $100 in BTC", "sell my ETH", "buy GOLD", "show portfolio" |

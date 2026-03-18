@@ -274,7 +274,7 @@ Empty state:
 
 ```
   → GET https://api.example.com/resource
-  ← 402 Payment Required: $0.01 USDC (Sui)
+  ← 402 Payment Required (MPP): $0.01 USDC (Sui)
   ✓ Paid $0.01 USDC (tx: 8kPq3RvN...)
   ← 200 OK  [820ms]
 

@@ -88,7 +88,7 @@ const STEPS = [
   },
 ];
 
-const X402_STEPS = [
+const MPP_STEPS = [
   {
     icon: "→",
     active: true,
@@ -143,7 +143,7 @@ const COMPARE_ROWS: {
   { feature: "Token exchange", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
-  { feature: "Pay-per-use APIs (x402)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
+  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 33 tools + 20 AI prompts + MCP", coinbaseCross: true },
   { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
@@ -333,7 +333,7 @@ export default function Home() {
       {/* ── See It In Action (demos) ── */}
       <HomeShowcase />
 
-      {/* ── How It Works + x402 Panel ── */}
+      {/* ── How It Works + MPP Panel ── */}
       <section id="how" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
           <div>
@@ -389,7 +389,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* x402 Panel */}
+          {/* MPP Panel */}
           <div className="lg:sticky lg:top-[120px]">
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
@@ -397,14 +397,14 @@ export default function Home() {
                   How agents pay for APIs
                 </span>
                 <span className="text-[10px] px-2 py-0.5 bg-[rgba(74,144,226,0.15)] text-blue tracking-[0.08em]">
-                  x402
+                  MPP
                 </span>
               </div>
               <div className="p-6">
                 <div className="flex flex-col">
-                  {X402_STEPS.map((step, i) => (
+                  {MPP_STEPS.map((step, i) => (
                     <div key={i} className="flex gap-4 pb-5 relative">
-                      {i < X402_STEPS.length - 1 && (
+                      {i < MPP_STEPS.length - 1 && (
                         <div className="absolute left-[15px] top-8 bottom-0 w-px bg-border" />
                       )}
                       <div
@@ -740,6 +740,12 @@ export default function Home() {
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
             Accounts
+          </Link>
+          <Link
+            href="/mpp"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            MPP
           </Link>
           <Link
             href={DEMO_URL}

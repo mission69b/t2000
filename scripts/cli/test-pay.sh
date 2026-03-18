@@ -23,8 +23,8 @@ echo "   t2000 pay --help"
 t2000 pay --help > /dev/null 2>&1 || true
 check $? "pay --help exits 0"
 
-t2000 pay --help 2>&1 | grep -q "x402"
-check $? "pay help mentions x402"
+t2000 pay --help 2>&1 | grep -q "MPP"
+check $? "pay help mentions MPP"
 
 t2000 pay --help 2>&1 | grep -q "dry-run"
 check $? "pay help mentions dry-run"

@@ -60,6 +60,8 @@ import type {
   AutoInvestRunResult,
   ClaimRewardsResult,
   PendingReward,
+  PayOptions,
+  PayResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
 import { SUPPORTED_ASSETS, STABLE_ASSETS, DEFAULT_NETWORK, API_BASE_URL, INVESTMENT_ASSETS, GAS_RESERVE_MIN, DEFAULT_MAX_LEVERAGE, DEFAULT_MAX_POSITION_SIZE } from './constants.js';
@@ -197,14 +199,62 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Gas --
 
-  /** SuiJsonRpcClient used by this agent — exposed for x402 and other integrations. */
+  /** SuiJsonRpcClient used by this agent — exposed for integrations. */
   get suiClient(): SuiJsonRpcClient {
     return this.client;
   }
 
-  /** Ed25519Keypair used by this agent — exposed for x402 and other integrations. */
+  /** Ed25519Keypair used by this agent — exposed for integrations. */
   get signer(): Ed25519Keypair {
     return this.keypair;
+  }
+
+  // -- MPP Payments --
+
+  async pay(options: PayOptions): Promise<PayResult> {
+    this.enforcer.assertNotLocked();
+    this.enforcer.check({ operation: 'pay', amount: options.maxPrice ?? 1.0 });
+
+    const { Mppx } = await import('mppx/client');
+    const { sui } = await import('@t2000/mpp-sui/client');
+
+    const mppx = Mppx.create({
+      polyfill: false,
+      methods: [sui({ client: this.client, signer: this.keypair })],
+    });
+
+    const response = await mppx.fetch(options.url, {
+      method: options.method,
+      headers: options.headers,
+      body: options.body,
+    });
+
+    const contentType = response.headers.get('content-type') ?? '';
+    let body: unknown;
+    try {
+      body = contentType.includes('application/json')
+        ? await response.json()
+        : await response.text();
+    } catch {
+      body = null;
+    }
+
+    const receiptHeader = response.headers.get('x-payment-receipt');
+    const paid = !!receiptHeader;
+
+    if (paid) {
+      this.enforcer.recordUsage(options.maxPrice ?? 1.0);
+    }
+
+    return {
+      status: response.status,
+      body,
+      paid,
+      cost: paid ? (options.maxPrice ?? undefined) : undefined,
+      receipt: receiptHeader
+        ? { reference: receiptHeader, timestamp: new Date().toISOString() }
+        : undefined,
+    };
   }
 
   // -- Wallet --

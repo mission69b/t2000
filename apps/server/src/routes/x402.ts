@@ -25,7 +25,7 @@ x402.get('/x402', (c) => {
       verify: 'POST /x402/verify',
       settle: 'POST /x402/settle',
     },
-    docs: 'https://t2000.ai/docs#x402',
+    docs: 'https://t2000.ai/docs#mpp',
     npm: 'https://www.npmjs.com/package/@t2000/x402',
   });
 });

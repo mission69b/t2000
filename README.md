@@ -5,13 +5,13 @@
 <h3 align="center">A bank account for AI agents.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Investment · Exchange · x402 Pay · MCP
+  Checking · Savings · Credit · Investment · Exchange · MPP Pay · MCP
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial · BYOK LLM
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/x402">x402</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a> · <a href="packages/mcp">MCP Package</a>
+  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mpp-sui">MPP</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a> · <a href="packages/mcp">MCP Package</a>
 </p>
 
 ---
@@ -83,7 +83,7 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 | Gas tokens are confusing | Auto-managed — agent never sees SUI |
 | Idle funds lose value | Automatic yield via NAVI + Suilend (~2–8% APY) |
 | DeFi is complex | `save()`, `borrow()`, `repay()`, `withdraw()` — four methods |
-| No standard payment protocol | x402 client — first implementation on Sui |
+| No standard payment protocol | MPP client (@t2000/mpp-sui) |
 | No standard wallet interface | SDK + CLI + HTTP API for any language |
 
 ## Getting Started
@@ -101,7 +101,7 @@ t2000 send 10 USDC to 0x...       # Send USDC
 t2000 save all                     # Earn yield on idle funds
 t2000 invest buy 100 SUI          # Invest $100 in SUI
 t2000 exchange 5 USDC SUI         # Currency exchange via Cetus DEX
-t2000 pay https://api.example.com  # Pay for x402 APIs
+t2000 pay https://api.example.com  # Pay for MPP-protected APIs
 ```
 
 ## How it works
@@ -119,7 +119,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Strategies** | Themed allocations (bluechip, all-weather, safe-haven, layer1, sui-heavy) — single atomic PTB | Agent orchestration + Cetus |
 | **Auto-Invest** | Dollar-cost averaging (daily/weekly/monthly DCA) | Agent scheduling |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
-| **x402 Pay** | Pay for API resources with USDC | [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) |
+| **MPP Pay** | Pay for API resources with USDC | Sui USDC transfers |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
@@ -137,7 +137,7 @@ All multi-step operations (save with auto-convert, withdraw with auto-swap, reba
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
-| Pay (x402) | Free | Agent pays the API price, no t2000 surcharge |
+| Pay (MPP) | Free | Agent pays the API price, no t2000 surcharge |
 
 ### The self-funding loop
 
@@ -157,7 +157,7 @@ At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the
 | [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
 | [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
 | [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
-| [`@t2000/x402`](packages/x402) | x402 payment client (first on Sui) | `npm install @t2000/x402` |
+| [`@t2000/mpp-sui`](packages/mpp-sui) | MPP payment client (Sui USDC) | `npm install @t2000/mpp-sui` |
 
 ## SDK
 
@@ -239,7 +239,7 @@ t2000 earnings                     Yield earned
 t2000 health                       Health factor
 t2000 rates                        Current APYs
 
-# x402 Payments
+# MPP Payments
 t2000 pay https://api.example.com  Pay for API resource
 
 # Earn (directory)
@@ -299,32 +299,20 @@ curl -X POST -H "Authorization: Bearer t2k_..." \
 | POST | `/v1/repay` | Repay debt |
 | GET | `/v1/events` | SSE stream (yield, balance changes) |
 
-## x402 Payments
+## MPP Payments
 
-t2000 is the first [x402 protocol](https://www.x402.org/) client on Sui. When a server returns `402 Payment Required`, t2000 automatically pays with USDC and retries — no API keys, no subscriptions, no human approval.
+t2000 supports [MPP (Machine Payments Protocol)](https://mpp.dev) for paid APIs. When a server returns `402 Payment Required`, t2000 automatically pays with USDC and retries — no API keys, no subscriptions, no human approval.
 
 ```typescript
-import { x402Client } from '@t2000/x402';
-import type { X402Wallet } from '@t2000/x402';
-
-const wallet: X402Wallet = {
-  client: agent.suiClient,
-  keypair: agent.signer,
-  address: () => agent.address(),
-  signAndExecute: async (tx) => {
-    const r = await agent.suiClient.signAndExecuteTransaction({
-      signer: agent.signer, transaction: tx,
-    });
-    return { digest: r.digest };
-  },
-};
-const client = new x402Client(wallet);
-const response = await client.fetch('https://api.example.com/data');
+const result = await agent.pay({
+  url: 'https://api.example.com/data',
+  maxPrice: 1.0,
+});
+// result.paid === true if payment was required and completed
+// result.body contains the API response
 ```
 
-Built on the [Sui Payment Kit](https://docs.sui.io/standards/payment-kit) with Move-level replay protection.
-
-Full reference → [`@t2000/x402` README](packages/x402)
+Full reference → [`@t2000/mpp-sui` README](packages/mpp-sui)
 
 ## MCP Server
 
@@ -379,7 +367,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Borrow against investments | — | ✓ Deposited investments count as collateral for credit |
 | Margin trading | — | 🔜 Coming soon — leveraged positions on SUI, BTC, ETH, GOLD |
 | Strategies + DCA | — | ✓ Atomic PTB multi-asset buys, dollar-cost averaging |
-| x402 client | ✓ Base / Solana | ✓ Sui (first on Sui) |
+| MPP client | ✓ Base / Solana | ✓ Sui (first on Sui) |
 | Agent Skills | ✓ | ✓ |
 | Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
 | DeFi composability | — | ✓ Atomic PTB multi-step |
@@ -407,7 +395,7 @@ t2000/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
 │   ├── cli/              @t2000/cli — Terminal bank account
 │   ├── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
-│   └── x402/             @t2000/x402 — x402 payment client
+│   └── mpp-sui/          @t2000/mpp-sui — MPP payment client
 │
 ├── apps/
 │   ├── server/           Gas station + checkpoint indexer
@@ -434,7 +422,7 @@ pnpm test         # All unit tests
 
 ```bash
 pnpm --filter @t2000/sdk test     # 469 tests
-pnpm --filter @t2000/x402 test    # 27 tests
+pnpm --filter @t2000/mpp-sui test
 pnpm --filter @t2000/server test  # 10 tests
 ```
 

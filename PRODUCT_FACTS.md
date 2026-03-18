@@ -16,7 +16,7 @@
 |---------|---------|
 | `@t2000/sdk` | `0.18.3` |
 | `@t2000/cli` | `0.20.2` |
-| `@t2000/x402` | `0.3.0` |
+| `@t2000/mpp-sui` | `0.3.0` |
 | `@t2000/mcp` | `0.20.1` |
 | Agent Skills | `3.0` |
 
@@ -45,7 +45,7 @@
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
-| Pay (x402) | — | Free | Agent pays the API price, no t2000 surcharge |
+| Pay (MPP) | — | Free | Agent pays the API price, no t2000 surcharge |
 
 Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `SWAP_FEE_BPS`, `BORROW_FEE_BPS`
 
@@ -494,10 +494,10 @@ Source: `packages/sdk/src/types.ts`
 | `PROTOCOL_UNAVAILABLE` | NAVI/Suilend/Cetus unavailable | Yes |
 | `RPC_ERROR` | Sui RPC error | Yes |
 | `RPC_UNREACHABLE` | Sui RPC unreachable | Yes |
-| `PRICE_EXCEEDS_LIMIT` | x402 price > maxPrice | No |
-| `UNSUPPORTED_NETWORK` | x402 server not on Sui | No |
-| `PAYMENT_EXPIRED` | x402 payment window expired | Yes |
-| `DUPLICATE_PAYMENT` | x402 nonce already used | No |
+| `PRICE_EXCEEDS_LIMIT` | MPP price > maxPrice | No |
+| `UNSUPPORTED_NETWORK` | MPP server not on Sui | No |
+| `PAYMENT_EXPIRED` | MPP payment window expired | Yes |
+| `DUPLICATE_PAYMENT` | MPP nonce already used | No |
 | `FACILITATOR_REJECTION` | Facilitator rejected payment | No |
 | `FACILITATOR_TIMEOUT` | Facilitator timed out | Yes |
 | `SENTINEL_API_ERROR` | Sentinel API request failed | Yes |
@@ -589,12 +589,14 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | `withdraw_fees<T>()` | Admin withdraw from treasury balance (requires AdminCap) |
 | `migrate_treasury<T>()` | Version bump guard — call after package upgrade (requires AdminCap) |
 
-### x402 Payment Kit (Sui Payment Kit)
+### MPP Payments (Sui Payment Kit)
 
 | Object | ID |
 |--------|----|
 | Package | `0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6` |
 | Payment Registry | `0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291` |
+
+MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle endpoints.
 
 ### Sui Sentinel (Partner — Red Teaming)
 
@@ -617,10 +619,9 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Website | `https://t2000.ai` (Vercel) |
 | Docs | `https://t2000.ai/docs` |
 | API | `https://api.t2000.ai` (ECS Fargate, ALB) |
-| x402 Facilitator | `https://api.t2000.ai/x402` |
 | npm (SDK) | `https://www.npmjs.com/package/@t2000/sdk` |
 | npm (CLI) | `https://www.npmjs.com/package/@t2000/cli` |
-| npm (x402) | `https://www.npmjs.com/package/@t2000/x402` |
+| npm (MPP) | `https://www.npmjs.com/package/@t2000/mpp-sui` |
 | GitHub | `https://github.com/mission69b/t2000` |
 | Network | Sui mainnet |
 
@@ -634,18 +635,16 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 
 ---
 
-## x402 Protocol
+## MPP Payments
 
 | Fact | Value |
 |------|-------|
-| Import | `import { x402Client } from '@t2000/x402'` |
-| Wallet type | `X402Wallet` (custom interface, NOT the T2000 class directly) |
-| Facilitator URL | `https://api.t2000.ai/x402` |
-| Verify endpoint | `POST /x402/verify` |
-| Settle endpoint | `POST /x402/settle` |
-| Info endpoint | `GET /x402` (returns JSON with facilitator info) |
+| Package | `@t2000/mpp-sui` |
+| SDK method | `agent.pay()` |
+| CLI command | `t2000 pay <url>` |
+| MCP tool | `t2000_pay` |
+| Flow | request → 402 → mppx pays via Sui USDC → credential → retry → response |
 | Replay protection | On-chain nonce via Sui Payment Kit |
-| Payment event | `PaymentReceipt` (from Payment Kit) |
 
 ---
 

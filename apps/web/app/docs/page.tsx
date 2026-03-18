@@ -113,7 +113,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
     label: "Guides",
     items: [
       { id: "skills", name: "Agent Skills" },
-      { id: "x402", name: "x402 Payments" },
+      { id: "mpp", name: "MPP Payments" },
       { id: "defi", name: "DeFi & Yield" },
       { id: "gas", name: "Gas Management" },
     ],
@@ -496,10 +496,10 @@ function QuickStart({
       <Callout type="note" label="Next step">
         Want your agent to pay for APIs autonomously? See the{" "}
         <a
-          onClick={() => goTo("x402")}
+          onClick={() => goTo("mpp")}
           className="text-accent cursor-pointer hover:underline"
         >
-          x402 Payments guide
+          MPP Payments guide
         </a>{" "}
         to set up <InlineCode>t2000 pay</InlineCode>.
       </Callout>
@@ -643,7 +643,7 @@ function ConceptsSection() {
           ["Withdraw", <strong key="f">Free</strong>, ""],
           ["Repay", <strong key="f">Free</strong>, ""],
           ["Send", <strong key="f">Free</strong>, ""],
-          ["Pay (x402)", <strong key="f">Free</strong>, "Agent pays the API price, no t2000 surcharge"],
+          ["Pay (MPP)", <strong key="f">Free</strong>, "Agent pays the API price, no t2000 surcharge"],
         ]}
       />
       <p>
@@ -1046,13 +1046,13 @@ function CliMoreSection() {
         Exchange <em className="italic text-accent">& More</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Currency exchange, x402 payments, AI sentinels, MCP integration,
+        Currency exchange, MPP payments, AI sentinels, MCP integration,
         and agent safeguards.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
         <CmdCard name="t2000 exchange" desc="Swap tokens (USDC ⇌ SUI)" onClick={() => scrollTo("cmd-exchange")} />
-        <CmdCard name="t2000 pay" desc="Pay for x402-protected APIs" badge="addon" onClick={() => scrollTo("cmd-pay")} />
+        <CmdCard name="t2000 pay" desc="Pay for MPP-protected APIs" badge="addon" onClick={() => scrollTo("cmd-pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollTo("cmd-sentinel")} />
         <CmdCard name="t2000 mcp" desc="MCP server for AI platforms" badge="NEW" onClick={() => scrollTo("cmd-mcp")} />
         <CmdCard name="t2000 safeguards" desc="Spending limits, lock/unlock" onClick={() => scrollTo("cmd-safeguards")} />
@@ -1073,9 +1073,9 @@ function CliMoreSection() {
       </CodeBlock>
 
       <h2 id="cmd-pay">
-        t2000 pay <Badge color="amber">x402 addon</Badge>
+        t2000 pay <Badge color="amber">MPP</Badge>
       </h2>
-      <p>Pay for x402-protected API resources with USDC micropayments.</p>
+      <p>Pay for MPP-protected API resources with USDC micropayments.</p>
       <CodeBlock lang="bash">
         t2000 pay &lt;url&gt; [options]{"\n\n"}
         {"  "}{S.a("--method")}     GET | POST | PUT  (default: GET){"\n"}
@@ -1281,7 +1281,7 @@ function ErrorsSection() {
         ]}
       />
 
-      <h2 id="err-x402">x402 errors</h2>
+      <h2 id="err-mpp">MPP errors</h2>
       <DocTable
         headers={["Code", "Layer", "Cause"]}
         rows={[
@@ -1601,7 +1601,7 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-borrow</InlineCode>, <>&#34;borrow 40 USDC&#34;, &#34;take out a loan&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-exchange</InlineCode>, <>&#34;swap USDC to SUI&#34;, &#34;exchange tokens&#34;, &#34;convert to...&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;call that paid API&#34;, &#34;pay for x402 service&#34;</>, <Badge color="green" key="b">live</Badge>],
+          [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;call that paid API&#34;, &#34;pay for MPP service&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-sentinel</InlineCode>, <>&#34;attack a sentinel&#34;, &#34;earn bounties&#34;, &#34;red team&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-invest</InlineCode>, <>&#34;buy SUI&#34;, &#34;invest $100 in BTC&#34;, &#34;sell my ETH&#34;, &#34;show portfolio&#34;</>, <Badge color="green" key="b">live</Badge>],
@@ -1626,28 +1626,28 @@ function SkillsSection() {
   );
 }
 
-function X402Section() {
+function MppSection() {
   return (
     <>
       <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
         Guides
       </div>
       <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        x402 <em className="italic text-accent">Payments</em>
+        MPP <em className="italic text-accent">Payments</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        t2000 is the first x402 implementation on Sui. Your agent can
+        t2000 is the first MPP implementation on Sui. Your agent can
         autonomously pay for API services using USDC micropayments.
       </p>
 
-      <h2 id="x402-how">How the handshake works</h2>
+      <h2 id="mpp-how">How the handshake works</h2>
       <div className="flex flex-col border border-[var(--border)] rounded-lg overflow-hidden my-5 mb-7">
         {[
           { num: "1", dir: "→ GET", dirClass: "text-warning", desc: <>Agent requests <InlineCode>/api/resource</InlineCode> — no payment header</> },
-          { num: "2", dir: "← 402", dirClass: "text-accent", desc: <>Server returns <InlineCode>402 Payment Required</InlineCode> with amount, payTo, nonce, expiresAt</> },
-          { num: "3", dir: "→ PTB", dirClass: "text-warning", desc: <>t2000 calls <InlineCode>process_registry_payment</InlineCode> via Sui Payment Kit — nonce enforced by Move, replay impossible</> },
-          { num: "4", dir: "→ GET", dirClass: "text-warning", desc: <>Retries with <InlineCode>X-PAYMENT: &#123;txHash, network, amount, nonce&#125;</InlineCode> header</> },
-          { num: "5", dir: "← 200", dirClass: "text-accent", desc: <>Facilitator verifies <InlineCode>PaymentReceipt</InlineCode> on-chain → server returns the resource</> },
+          { num: "2", dir: "← 402", dirClass: "text-accent", desc: <>Server returns <InlineCode>402 Payment Required</InlineCode> with MPP challenge: amount, currency, recipient</> },
+          { num: "3", dir: "→ TX", dirClass: "text-warning", desc: <>mppx builds a USDC transfer on Sui, signs with agent keypair, broadcasts — settles in ~400ms</> },
+          { num: "4", dir: "→ GET", dirClass: "text-warning", desc: <>Retries with <InlineCode>x-payment-credential</InlineCode> containing the Sui transaction digest</> },
+          { num: "5", dir: "← 200", dirClass: "text-accent", desc: <>Server verifies the transaction on-chain via RPC → returns the resource</> },
         ].map((step, i, arr) => (
           <div key={i} className={`flex items-start gap-2.5 sm:gap-3.5 px-3 sm:px-4.5 py-3 sm:py-3.5 bg-[var(--surface)] transition-colors hover:bg-white/[0.02] ${i < arr.length - 1 ? "border-b border-[var(--border)]" : ""}`}>
             <span className="text-[11px] text-[var(--doc-muted)] shrink-0 mt-0.5 w-4">{step.num}</span>
@@ -1657,7 +1657,7 @@ function X402Section() {
         ))}
       </div>
 
-      <h2 id="x402-cli">CLI usage</h2>
+      <h2 id="mpp-cli">CLI usage</h2>
       <CodeBlock lang="bash">
         {S.g("$")} t2000 pay https://weather.api.com/forecast{"\n\n"}
         → GET https://weather.api.com/forecast{"\n"}
@@ -1667,42 +1667,28 @@ function X402Section() {
         {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
       </CodeBlock>
 
-      <h2 id="x402-sdk">SDK usage</h2>
+      <h2 id="mpp-sdk">SDK usage</h2>
       <CodeBlock lang="typescript">
-        {S.p("import")} {"{ x402Client }"} {S.p("from")} {S.s("'@t2000/x402'")};{"\n"}
-        {S.p("import")} {S.p("type")} {"{ X402Wallet }"} {S.p("from")} {S.s("'@t2000/x402'")};{"\n\n"}
-        {S.c("// Create x402 wallet wrapper from t2000 agent")}{"\n"}
-        {S.p("const")} wallet: {S.b("X402Wallet")} = {"{"}{"\n"}
-        {"  "}client: agent.{S.a("suiClient")},{"\n"}
-        {"  "}keypair: agent.{S.a("signer")},{"\n"}
-        {"  "}address: () {"=>"} agent.{S.g("address")}(),{"\n"}
-        {"  "}signAndExecute: {S.p("async")} (tx) {"=>"} {"{"}{"\n"}
-        {"    "}{S.p("const")} r = {S.p("await")} agent.suiClient.{S.g("signAndExecuteTransaction")}({"{"}{"\n"}
-        {"      "}signer: agent.signer, transaction: tx,{"\n"}
-        {"    }"});{"\n"}
-        {"    "}{S.p("return")} {"{"} digest: r.digest {"}"};{"\n"}
-        {"  }"},{"\n"}
-        {"}"};{"\n\n"}
-        {S.p("const")} client = {S.p("new")} {S.b("x402Client")}(wallet);{"\n\n"}
-        {S.p("const")} res = {S.p("await")} client.{S.g("fetch")}({S.s("'https://api.example.com/data'")}, {"{"}{"\n"}
-        {"  "}maxPrice: {S.a("0.05")},        {S.c("// refuse if price > $0.05 USDC")}{"\n"}
+        {S.c("// agent.pay() uses mppx + @t2000/mpp-sui under the hood")}{"\n"}
+        {S.p("const")} result = {S.p("await")} agent.{S.g("pay")}({"{"}{"\n"}
+        {"  "}url: {S.s("'https://api.example.com/data'")},{"\n"}
+        {"  "}maxPrice: {S.a("0.05")},  {S.c("// refuse if price > $0.05 USDC")}{"\n"}
         {"}"});{"\n\n"}
-        {S.p("const")} data = {S.p("await")} res.{S.g("json")}();
+        {S.p("const")} data = result.{S.a("body")};  {S.c("// JSON or text depending on content-type")}
       </CodeBlock>
 
-      <h2 id="x402-why-sui">Why Sui x402 is different</h2>
+      <h2 id="mpp-why-sui">Why Sui MPP is different</h2>
       <p>
-        EVM x402 uses plain signed transfers. Duplicate prevention is handled in
-        the facilitator database — which has a race condition window between the
-        check and write.
+        EVM MPP typically uses signed transfers verified by a facilitator.
+        On Sui, <InlineCode>@t2000/mpp-sui</InlineCode> uses direct USDC
+        transfers verified peer-to-peer via Sui RPC — no intermediary needed.
       </p>
       <p>
-        On Sui, t2000 calls <InlineCode>process_registry_payment</InlineCode>{" "}
-        from the Sui Payment Kit. The nonce is part of a composite key enforced
-        at the Move contract level. If a duplicate nonce is attempted, the
-        contract throws <InlineCode>EDuplicatePayment</InlineCode> and the
-        transaction fails before landing on-chain.{" "}
-        <strong>Replay attacks are structurally impossible.</strong>
+        Sui transactions are final in ~400ms, gas costs are under $0.001,
+        and USDC is Circle-issued natively on Sui. The server verifies
+        the transaction digest on-chain: correct recipient, correct amount,
+        success status.{" "}
+        <strong>No facilitator. No webhook. Just on-chain proof.</strong>
       </p>
     </>
   );
@@ -1972,7 +1958,7 @@ function ChangelogSection() {
       <p>
         Full bank account model: checking, savings, credit, and currency
         exchange. Programmable Transaction Block architecture for atomic
-        multi-step operations. Gas manager with auto-topup. x402 payment support
+        multi-step operations. Gas manager with auto-topup. MPP payment support
         on Sui. Agent Skills integration.
       </p>
     </>
@@ -2012,7 +1998,7 @@ export default function DocsPage() {
     const items: { id: string; text: string; level: number }[] = [];
     headings.forEach((h) => {
       const text = (h.textContent ?? "")
-        .replace(/\s*(NEW|live|current|addon|TS|x402 addon|optional)\s*/g, "")
+        .replace(/\s*(NEW|live|current|addon|TS|MPP|optional)\s*/g, "")
         .trim();
       items.push({ id: h.id, text, level: h.tagName === "H3" ? 3 : 2 });
     });
@@ -2204,7 +2190,7 @@ export default function DocsPage() {
             {activeSection === "init-wizard" && <InitWizardSection />}
             {activeSection === "mcp" && <McpSection />}
             {activeSection === "skills" && <SkillsSection />}
-            {activeSection === "x402" && <X402Section />}
+            {activeSection === "mpp" && <MppSection />}
             {activeSection === "defi" && <DefiSection />}
             {activeSection === "gas" && <GasSection />}
             {activeSection === "changelog" && <ChangelogSection />}

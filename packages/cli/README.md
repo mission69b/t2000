@@ -5,7 +5,7 @@ A bank account for AI agents on Sui. Guided setup, MCP integration for Claude De
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[x402](https://www.npmjs.com/package/@t2000/x402)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
+**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[MPP](https://www.npmjs.com/package/@t2000/mpp-sui)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
 
 ## Installation
 
@@ -208,11 +208,11 @@ t2000 init
 | `t2000 earnings` | Yield earned to date |
 | `t2000 fund-status` | Full savings summary |
 
-### x402 Payments
+### MPP Payments
 
 | Command | Description |
 |---------|-------------|
-| `t2000 pay <url>` | Pay for an x402-protected API resource |
+| `t2000 pay <url>` | Pay for an MPP-protected API resource |
 | `t2000 pay <url> --max-price 0.10` | Set max USDC per request (default: $1.00) |
 | `t2000 pay <url> --method POST --data '{...}'` | POST with JSON body |
 | `t2000 pay <url> --header 'key=value'` | Add custom HTTP headers (repeatable) |
@@ -382,7 +382,7 @@ All multi-step operations (save with auto-convert, withdraw with auto-swap, reba
 | Withdraw | Free |
 | Repay | Free |
 | Send | Free |
-| Pay (x402) | Free |
+| Pay (MPP) | Free |
 
 ## File Locations
 
