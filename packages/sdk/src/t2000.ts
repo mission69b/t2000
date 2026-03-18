@@ -2508,7 +2508,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       this.portfolio.getPositions().filter(p => p.earning).map(p => p.asset),
     );
 
-    const savePositions = allPositions.flatMap(p =>
+    let savePositions = allPositions.flatMap(p =>
       p.positions.supplies
         .filter(s => s.amount > 0.01)
         .filter(s => !earningAssets.has(s.asset))
@@ -2523,7 +2523,30 @@ export class T2000 extends EventEmitter<T2000Events> {
     );
 
     if (savePositions.length === 0) {
-      throw new T2000Error('NO_COLLATERAL', 'No savings positions to rebalance. Use `t2000 save <amount>` first.');
+      // Positions may be stale if a save just completed — the Sui indexer
+      // can lag several seconds behind transaction finalization. Retry twice
+      // with 3s gaps before giving up.
+      for (let retry = 0; retry < 2 && savePositions.length === 0; retry++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const freshPositions = await this.registry.allPositions(this._address);
+        savePositions = freshPositions.flatMap(p =>
+          p.positions.supplies
+            .filter(s => s.amount > 0.01)
+            .filter(s => !earningAssets.has(s.asset))
+            .filter(s => !(s.asset in INVESTMENT_ASSETS))
+            .map(s => ({
+              protocolId: p.protocolId,
+              protocol: p.protocol,
+              asset: s.asset,
+              amount: s.amount,
+              apy: s.apy,
+            })),
+        );
+      }
+
+      if (savePositions.length === 0) {
+        throw new T2000Error('NO_COLLATERAL', 'No savings positions to rebalance. Use `t2000 save <amount>` first.');
+      }
     }
 
     const borrowPositions = allPositions.flatMap(p =>
