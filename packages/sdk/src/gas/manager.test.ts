@@ -105,7 +105,9 @@ describe('executeWithGas', () => {
       const client = mockClient(1_000_000n); // low SUI
       const keypair = mockKeypair();
 
-      vi.mocked(shouldAutoTopUp).mockResolvedValue(true);
+      vi.mocked(shouldAutoTopUp)
+        .mockResolvedValueOnce(true)   // step 2: triggers auto-topup
+        .mockResolvedValueOnce(false); // proactive maintenance: no-op
       vi.mocked(executeAutoTopUp).mockResolvedValue({
         success: true,
         tx: 'topup-digest',
