@@ -793,6 +793,52 @@ export class T2000 extends EventEmitter<T2000Events> {
       cursor = page.nextCursor;
       hasNext = page.hasNextPage;
     }
+
+    if (all.length > 0) {
+      this._lastFundDigest = undefined;
+      return all;
+    }
+
+    // Chain-direct fallback: getCoins (indexer) returned nothing but we
+    // recently did an auto-fund. Read the TX's objectChanges to discover
+    // coin IDs, then fetch their current state via multiGetObjects — both
+    // are chain-direct queries unaffected by indexer lag.
+    // Keeps _lastFundDigest for subsequent resolveGas retries.
+    if (this._lastFundDigest && coinType === SUPPORTED_ASSETS.USDC.type) {
+      const txInfo = await this.client.getTransactionBlock({
+        digest: this._lastFundDigest,
+        options: { showObjectChanges: true },
+      });
+      const coinIds = (txInfo.objectChanges ?? [])
+        .filter((c): c is typeof c & { objectId: string } =>
+          (c.type === 'created' || c.type === 'mutated') &&
+          'objectType' in c &&
+          typeof c.objectType === 'string' &&
+          c.objectType.includes('0x2::coin::Coin') &&
+          c.objectType.includes(coinType),
+        )
+        .map(c => c.objectId);
+
+      if (coinIds.length > 0) {
+        const objects = await this.client.multiGetObjects({
+          ids: coinIds,
+          options: { showContent: true, showOwner: true },
+        });
+        for (const obj of objects) {
+          if (
+            obj.data?.content?.dataType === 'moveObject' &&
+            obj.data.owner &&
+            typeof obj.data.owner === 'object' &&
+            'AddressOwner' in obj.data.owner &&
+            obj.data.owner.AddressOwner === this._address
+          ) {
+            const fields = obj.data.content.fields as Record<string, unknown>;
+            all.push({ coinObjectId: obj.data.objectId!, balance: String(fields.balance ?? '0') });
+          }
+        }
+      }
+    }
+
     return all;
   }
 
@@ -846,6 +892,8 @@ export class T2000 extends EventEmitter<T2000Events> {
    * operation. Handles non-USDC savings (e.g. USDe) via the standard withdraw
    * path which swaps back to USDC. Throws if savings are also insufficient.
    */
+  private _lastFundDigest: string | undefined;
+
   private async _autoFundFromSavings(shortfall: number): Promise<void> {
     const positions = await this.positions();
     const savingsTotal = positions.positions
@@ -868,19 +916,23 @@ export class T2000 extends EventEmitter<T2000Events> {
       );
     }
 
-    // Wait for the Sui indexer to reflect the new USDC coins before the
-    // caller builds a follow-up transaction. The withdraw (and possible
-    // proactive gas auto-topup) changed coin state; without this wait,
-    // _fetchCoins may return stale or empty results.
-    const minExpected = BigInt(Math.floor(shortfall * 0.5 * 10 ** SUPPORTED_ASSETS.USDC.decimals));
-    for (let i = 0; i < 12; i++) {
-      const bal = await this.client.getBalance({
-        owner: this._address,
-        coinType: SUPPORTED_ASSETS.USDC.type,
-      });
-      if (BigInt(bal.totalBalance) >= minExpected) break;
-      await new Promise(r => setTimeout(r, 500));
+    // Verify via chain query (not indexer) that the withdraw TX produced
+    // USDC. Store the digest so _fetchCoins can fall back to reading the
+    // TX's objectChanges directly if the indexer hasn't caught up yet.
+    const txInfo = await this.client.getTransactionBlock({
+      digest: result.tx,
+      options: { showBalanceChanges: true },
+    });
+    const usdcReceived = (txInfo.balanceChanges ?? []).some(
+      c => c.coinType === SUPPORTED_ASSETS.USDC.type &&
+           Number(c.amount) > 0 &&
+           typeof c.owner === 'object' && 'AddressOwner' in c.owner &&
+           c.owner.AddressOwner === this._address,
+    );
+    if (!usdcReceived) {
+      throw new T2000Error('WITHDRAW_FAILED', 'Withdraw TX did not produce USDC');
     }
+    this._lastFundDigest = result.tx;
   }
 
   private async _convertWalletStablesToUsdc(bal: BalanceResponse, amountNeeded?: number): Promise<void> {
