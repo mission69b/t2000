@@ -278,9 +278,9 @@ export default function MppPage() {
                   {"\n\n"}
                   <span className="text-accent">Claude:</span>
                   {" "}
-                  <span className="text-foreground">&quot;Done. Paid $0.03 USDC.</span>
+                  <span className="text-foreground">&quot;Done. Paid $0.03 USDC from your</span>
                   {"\n"}
-                  <span className="text-foreground">{"  "}Here&apos;s your logo.&quot;</span>
+                  <span className="text-foreground">{"        "}t2000 balance. Here&apos;s your logo.&quot;</span>
                 </pre>
               </div>
             </div>
