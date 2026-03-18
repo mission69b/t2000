@@ -108,7 +108,6 @@ export class T2000 extends EventEmitter<T2000Events> {
   readonly portfolio: PortfolioManager;
   readonly strategies: StrategyManager;
   readonly autoInvest: AutoInvestManager;
-  private _lastTxTime = 0;
 
   private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry, configDir?: string) {
     super();
@@ -122,17 +121,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.portfolio = new PortfolioManager(configDir);
     this.strategies = new StrategyManager(configDir);
     this.autoInvest = new AutoInvestManager(configDir);
-  }
-
-  private _markTx(): void {
-    this._lastTxTime = Date.now();
-  }
-
-  private async _waitForRpcIfNeeded(): Promise<void> {
-    const elapsed = Date.now() - this._lastTxTime;
-    if (this._lastTxTime > 0 && elapsed < 5000) {
-      await new Promise(r => setTimeout(r, Math.min(3000, 5000 - elapsed)));
-    }
   }
 
   private static createDefaultRegistry(client: SuiJsonRpcClient): ProtocolRegistry {
@@ -273,7 +261,6 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async balance(): Promise<BalanceResponse> {
-    await this._waitForRpcIfNeeded();
     const bal = await queryBalance(this.client, this._address);
 
     const portfolioPositions = this.portfolio.getPositions();
@@ -1126,7 +1113,6 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async healthFactor(): Promise<HealthFactorResult> {
-    await this._waitForRpcIfNeeded();
     const adapter = await this.resolveLending(undefined, 'USDC', 'save');
     const hf = await adapter.getHealth(this._address);
 
@@ -2459,7 +2445,6 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Info --
 
   async positions(): Promise<PositionsResult> {
-    await this._waitForRpcIfNeeded();
     const allPositions = await this.registry.allPositions(this._address);
     const positions = allPositions.flatMap(p =>
       [
@@ -2510,7 +2495,6 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async rebalance(opts: { dryRun?: boolean; minYieldDiff?: number; maxBreakEven?: number } = {}): Promise<RebalanceResult> {
     this.enforcer.assertNotLocked();
-    await this._waitForRpcIfNeeded();
     const dryRun = opts.dryRun ?? false;
     const minYieldDiff = opts.minYieldDiff ?? 0.5;
     const maxBreakEven = opts.maxBreakEven ?? 30;
@@ -2922,7 +2906,6 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   private emitBalanceChange(asset: string, amount: number, cause: string, tx?: string): void {
-    this._markTx();
     this.emit('balanceChange', { asset, previous: 0, current: 0, cause, tx });
   }
 }

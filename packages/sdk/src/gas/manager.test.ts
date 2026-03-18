@@ -39,6 +39,7 @@ function mockClient(suiBalance: bigint) {
       effects: MOCK_EFFECTS,
     }),
     waitForTransaction: vi.fn().mockResolvedValue({}),
+    getTransactionBlock: vi.fn().mockResolvedValue({ objectChanges: [] }),
   } as unknown as Parameters<typeof executeWithGas>[0];
 }
 

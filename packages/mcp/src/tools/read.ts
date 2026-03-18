@@ -11,7 +11,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_overview',
-    'Complete account snapshot in ONE call — balance, savings positions, investment portfolio, health factor, yield earnings, fund status, and pending rewards. Use this for morning briefings, general account questions, or any time you need the full picture. Prefer this over calling individual tools. IMPORTANT: If called immediately after a save/withdraw/rebalance and savings shows $0 unexpectedly, wait 3 seconds and call again — on-chain data may need a moment to propagate.',
+    'Complete account snapshot in ONE call — balance, savings positions, investment portfolio, health factor, yield earnings, fund status, and pending rewards. Use this for morning briefings, general account questions, or any time you need the full picture. Prefer this over calling individual tools.',
     {},
     async () => {
       try {
@@ -55,7 +55,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_balance',
-    "Get agent's current balance — available (checking), savings, credit (debt), gas reserve, and net total. All values in USD. For a full account snapshot, prefer t2000_overview instead. NOTE: After a save or withdraw, on-chain data may take a few seconds to update. If savings shows $0 right after a save transaction succeeded, wait 3 seconds and retry — funds are NOT missing, just RPC propagation delay.",
+    "Get agent's current balance — available (checking), savings, credit (debt), gas reserve, and net total. All values in USD. For a full account snapshot, prefer t2000_overview instead.",
     {},
     async () => {
       try {
@@ -83,7 +83,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_positions',
-    'View current lending positions across protocols (NAVI, Suilend) — deposits, borrows, APYs. For a full account snapshot, prefer t2000_overview instead. NOTE: After a save/withdraw, positions may take a few seconds to update on-chain. If positions shows empty right after a save succeeded, wait 3 seconds and retry.',
+    'View current lending positions across protocols (NAVI, Suilend) — deposits, borrows, APYs. For a full account snapshot, prefer t2000_overview instead.',
     {},
     async () => {
       try {

@@ -140,6 +140,24 @@ async function trySponsored(
 }
 
 /**
+ * Wait for the Sui indexer to catch up after transaction finalization.
+ * `waitForTransaction` confirms the TX is finalized, but indexer-backed
+ * queries (getBalance, NAVI getLendingPositions) may lag behind.
+ * We verify by re-fetching the TX with showObjectChanges — once the
+ * indexer can return object changes, subsequent reads are consistent.
+ */
+async function waitForIndexer(client: SuiJsonRpcClient, digest: string): Promise<void> {
+  for (let i = 0; i < 3; i++) {
+    try {
+      await client.getTransactionBlock({ digest, options: { showObjectChanges: true } });
+      return;
+    } catch {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+}
+
+/**
  * Gas resolution chain:
  * 1. Self-funded (agent has enough SUI)
  * 2. Auto-topup (swap USDC→SUI, then self-fund)
@@ -162,7 +180,10 @@ export async function executeWithGas(
   try {
     const tx = await buildTx();
     const result = await trySelfFunded(client, keypair, tx);
-    if (result) return result;
+    if (result) {
+      await waitForIndexer(client, result.digest);
+      return result;
+    }
     errors.push('self-funded: SUI below threshold');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -175,7 +196,10 @@ export async function executeWithGas(
   // Step 2: Try auto-topup (self-fund swap for gas) then self-fund the main tx
   try {
     const result = await tryAutoTopUpThenSelfFund(client, keypair, buildTx);
-    if (result) return result;
+    if (result) {
+      await waitForIndexer(client, result.digest);
+      return result;
+    }
     errors.push('auto-topup: not eligible (low USDC or sufficient SUI)');
   } catch (err) {
     errors.push(`auto-topup: ${err instanceof Error ? err.message : String(err)}`);
@@ -185,7 +209,10 @@ export async function executeWithGas(
   try {
     const tx = await buildTx();
     const result = await trySponsored(client, keypair, tx);
-    if (result) return result;
+    if (result) {
+      await waitForIndexer(client, result.digest);
+      return result;
+    }
     errors.push('sponsored: returned null');
   } catch (err) {
     errors.push(`sponsored: ${err instanceof Error ? err.message : String(err)}`);

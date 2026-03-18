@@ -58,7 +58,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_save',
-    'Deposit USDC to savings (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview. After a successful save, funds move from checking to savings — if you check balance immediately and savings shows $0, wait 3 seconds and retry (on-chain propagation delay, funds are safe).',
+    'Deposit USDC to savings (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview.',
     {
       amount: z.union([z.number(), z.literal('all')]).describe('Dollar amount to save, or "all"'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
