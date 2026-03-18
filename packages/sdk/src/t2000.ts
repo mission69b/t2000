@@ -320,18 +320,13 @@ export class T2000 extends EventEmitter<T2000Events> {
       const trackedCostBasis: Record<string, number> = {};
       const earningAssetSet = new Set<string>();
 
+      // Direct positions already include strategy buy amounts — don't add
+      // strategy positions again or the investment total will be double-counted.
       for (const pos of portfolioPositions) {
         if (!(pos.asset in INVESTMENT_ASSETS)) continue;
         trackedAmounts[pos.asset] = (trackedAmounts[pos.asset] ?? 0) + pos.totalAmount;
         trackedCostBasis[pos.asset] = (trackedCostBasis[pos.asset] ?? 0) + pos.costBasis;
         if (pos.earning) earningAssetSet.add(pos.asset);
-      }
-      for (const key of this.portfolio.getAllStrategyKeys()) {
-        for (const sp of this.portfolio.getStrategyPositions(key)) {
-          if (!(sp.asset in INVESTMENT_ASSETS)) continue;
-          trackedAmounts[sp.asset] = (trackedAmounts[sp.asset] ?? 0) + sp.totalAmount;
-          trackedCostBasis[sp.asset] = (trackedCostBasis[sp.asset] ?? 0) + sp.costBasis;
-        }
       }
 
       let investmentValue = 0;
@@ -2456,14 +2451,47 @@ export class T2000 extends EventEmitter<T2000Events> {
       }
     }
 
-    const allPositions = [...enriched, ...Object.values(strategyPositions).flat()];
-    const totalInvested = allPositions.reduce((sum, p) => sum + p.costBasis, 0);
-    const totalValue = allPositions.reduce((sum, p) => sum + p.currentValue, 0);
+    // Direct positions already include strategy buy amounts.
+    // Use direct as the source of truth for totals; subtract strategy
+    // amounts from direct to show only non-strategy "Direct" holdings.
+    const strategyAmountByAsset: Record<string, { amount: number; costBasis: number }> = {};
+    for (const strats of Object.values(strategyPositions)) {
+      for (const sp of strats) {
+        const prev = strategyAmountByAsset[sp.asset] ?? { amount: 0, costBasis: 0 };
+        strategyAmountByAsset[sp.asset] = {
+          amount: prev.amount + sp.totalAmount,
+          costBasis: prev.costBasis + sp.costBasis,
+        };
+      }
+    }
+
+    const directOnly = enriched
+      .map(pos => {
+        const strat = strategyAmountByAsset[pos.asset];
+        if (!strat) return pos;
+        const directAmt = pos.totalAmount - strat.amount;
+        if (directAmt <= 0.000001) return null;
+        const directCost = pos.costBasis - strat.costBasis;
+        const currentValue = directAmt * (pos.currentPrice ?? 0);
+        return {
+          ...pos,
+          totalAmount: directAmt,
+          costBasis: directCost,
+          currentValue,
+          unrealizedPnL: currentValue - directCost,
+          unrealizedPnLPct: directCost > 0 ? ((currentValue - directCost) / directCost) * 100 : 0,
+        };
+      })
+      .filter((p): p is InvestmentPosition => p !== null);
+
+    // Totals from direct (source of truth — includes strategy amounts)
+    const totalInvested = enriched.reduce((sum, p) => sum + p.costBasis, 0);
+    const totalValue = enriched.reduce((sum, p) => sum + p.currentValue, 0);
     const totalUnrealizedPnL = totalValue - totalInvested;
     const totalUnrealizedPnLPct = totalInvested > 0 ? (totalUnrealizedPnL / totalInvested) * 100 : 0;
 
     const result: PortfolioResult & { strategyPositions?: Record<string, InvestmentPosition[]> } = {
-      positions: enriched,
+      positions: directOnly,
       totalInvested,
       totalValue,
       unrealizedPnL: totalUnrealizedPnL,
@@ -2867,21 +2895,9 @@ export class T2000 extends EventEmitter<T2000Events> {
   private async getFreeBalance(asset: string): Promise<number> {
     if (!(asset in INVESTMENT_ASSETS)) return Infinity;
 
-    // Strategy buys record to BOTH direct and strategy positions, so use
-    // max(direct, strategyTotal) to avoid double-counting the overlap.
+    // Direct positions are the source of truth (include strategy amounts).
     const pos = this.portfolio.getPosition(asset);
-    const directAmount = (pos && pos.totalAmount > 0 && !pos.earning) ? pos.totalAmount : 0;
-
-    let strategyTotal = 0;
-    for (const key of this.portfolio.getAllStrategyKeys()) {
-      for (const sp of this.portfolio.getStrategyPositions(key)) {
-        if (sp.asset === asset && sp.totalAmount > 0) {
-          strategyTotal += sp.totalAmount;
-        }
-      }
-    }
-
-    const walletInvested = Math.max(directAmount, strategyTotal);
+    const walletInvested = (pos && pos.totalAmount > 0 && !pos.earning) ? pos.totalAmount : 0;
 
     if (walletInvested <= 0) return Infinity;
 
