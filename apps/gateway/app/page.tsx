@@ -31,6 +31,7 @@ function ServiceRow({ service, isOpen, onToggle }: {
               </span>
             ))}
           </div>
+          <p className="text-[11px] text-muted mb-0.5">{service.description}</p>
           <code className="text-[11px] text-dim font-mono">{service.serviceUrl}</code>
         </div>
         <div className="text-xs text-muted font-mono shrink-0">
