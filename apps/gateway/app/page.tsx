@@ -19,6 +19,12 @@ function ServiceRow({ service, isOpen, onToggle }: {
         onClick={onToggle}
         className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-surface/60 transition-colors cursor-pointer"
       >
+        <img
+          src={service.logo}
+          alt={service.name}
+          className="w-6 h-6 shrink-0 opacity-70"
+          style={{ filter: 'brightness(0) invert(1)' }}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
             <span className="text-foreground font-medium">{service.name}</span>

@@ -13,6 +13,7 @@ export interface Service {
   chain: string;
   currency: string;
   categories: string[];
+  logo: string;
   endpoints: Endpoint[];
 }
 
@@ -27,6 +28,7 @@ export const services: Service[] = [
     chain: 'sui',
     currency: 'USDC',
     categories: ['ai', 'media'],
+    logo: '/logos/openai.svg',
     endpoints: [
       { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (GPT-4o, o1, etc.)', price: '0.01' },
       { method: 'POST', path: '/v1/embeddings', description: 'Create embeddings', price: '0.001' },
@@ -43,6 +45,7 @@ export const services: Service[] = [
     chain: 'sui',
     currency: 'USDC',
     categories: ['ai'],
+    logo: '/logos/anthropic.svg',
     endpoints: [
       { method: 'POST', path: '/v1/messages', description: 'Chat completions (Sonnet, Opus, Haiku)', price: '0.01' },
     ],
@@ -51,10 +54,11 @@ export const services: Service[] = [
     id: 'fal',
     name: 'fal.ai',
     serviceUrl: `${BASE_URL}/fal`,
-    description: 'Image generation with Flux models.',
+    description: 'Image and audio generation — Flux, Recraft, Whisper.',
     chain: 'sui',
     currency: 'USDC',
     categories: ['ai', 'media'],
+    logo: '/logos/fal.svg',
     endpoints: [
       { method: 'POST', path: '/fal-ai/flux/dev', description: 'Flux Dev image generation', price: '0.03' },
       { method: 'POST', path: '/fal-ai/flux-pro', description: 'Flux Pro image generation', price: '0.05' },
@@ -67,10 +71,11 @@ export const services: Service[] = [
     id: 'firecrawl',
     name: 'Firecrawl',
     serviceUrl: `${BASE_URL}/firecrawl`,
-    description: 'Scrape and crawl any website.',
+    description: 'Scrape, crawl, map, and extract from any website.',
     chain: 'sui',
     currency: 'USDC',
     categories: ['web', 'data'],
+    logo: '/logos/firecrawl.svg',
     endpoints: [
       { method: 'POST', path: '/v1/scrape', description: 'Scrape a URL to structured data', price: '0.01' },
       { method: 'POST', path: '/v1/crawl', description: 'Crawl a website', price: '0.05' },
@@ -86,6 +91,7 @@ export const services: Service[] = [
     chain: 'sui',
     currency: 'USDC',
     categories: ['ai'],
+    logo: '/logos/gemini.svg',
     endpoints: [
       { method: 'POST', path: '/v1beta/models/gemini-2.0-flash', description: 'Gemini 2.0 Flash (fast, multimodal)', price: '0.005' },
       { method: 'POST', path: '/v1beta/models/gemini-2.5-pro', description: 'Gemini 2.5 Pro (reasoning)', price: '0.02' },
@@ -100,6 +106,7 @@ export const services: Service[] = [
     chain: 'sui',
     currency: 'USDC',
     categories: ['ai'],
+    logo: '/logos/groq.svg',
     endpoints: [
       { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Llama 3, Mixtral, Gemma)', price: '0.005' },
       { method: 'POST', path: '/v1/audio/transcriptions', description: 'Audio transcription (Whisper)', price: '0.005' },
@@ -113,6 +120,7 @@ export const services: Service[] = [
     chain: 'sui',
     currency: 'USDC',
     categories: ['ai', 'search'],
+    logo: '/logos/perplexity.svg',
     endpoints: [
       { method: 'POST', path: '/v1/chat/completions', description: 'Sonar search (web-grounded answers)', price: '0.01' },
     ],
@@ -121,10 +129,11 @@ export const services: Service[] = [
     id: 'brave',
     name: 'Brave Search',
     serviceUrl: `${BASE_URL}/brave`,
-    description: 'Web search and AI summarization.',
+    description: 'Web, image, news, and video search with AI summaries.',
     chain: 'sui',
     currency: 'USDC',
     categories: ['search'],
+    logo: '/logos/brave.svg',
     endpoints: [
       { method: 'POST', path: '/v1/web/search', description: 'Web search results', price: '0.005' },
       { method: 'POST', path: '/v1/images/search', description: 'Image search', price: '0.005' },
@@ -137,10 +146,11 @@ export const services: Service[] = [
     id: 'resend',
     name: 'Resend',
     serviceUrl: `${BASE_URL}/resend`,
-    description: 'Transactional email delivery.',
+    description: 'Transactional and batch email delivery.',
     chain: 'sui',
     currency: 'USDC',
     categories: ['communication'],
+    logo: '/logos/resend.svg',
     endpoints: [
       { method: 'POST', path: '/v1/emails', description: 'Send an email', price: '0.005' },
       { method: 'POST', path: '/v1/emails/batch', description: 'Send batch emails (up to 100)', price: '0.01' },
