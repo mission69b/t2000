@@ -241,4 +241,33 @@ export const services: Service[] = [
       { method: 'POST', path: '/v1/languages', description: 'List supported languages', price: '0.001' },
     ],
   },
+  {
+    id: 'reloadly',
+    name: 'Reloadly Gift Cards',
+    serviceUrl: `${BASE_URL}/reloadly`,
+    description: 'Buy gift cards (Amazon, Steam, Netflix, 800+ brands) with USDC.',
+    chain: 'sui',
+    currency: 'USDC',
+    categories: ['commerce'],
+    logo: '/logos/reloadly.svg',
+    endpoints: [
+      { method: 'POST', path: '/v1/products', description: 'Browse gift card catalog by country', price: '0.005' },
+      { method: 'POST', path: '/v1/order', description: 'Purchase a gift card (dynamic price: face value + 5%)', price: 'dynamic' },
+    ],
+  },
+  {
+    id: 'lob',
+    name: 'Lob',
+    serviceUrl: `${BASE_URL}/lob`,
+    description: 'Send physical mail — postcards, letters, and address verification.',
+    chain: 'sui',
+    currency: 'USDC',
+    categories: ['commerce'],
+    logo: '/logos/lob.svg',
+    endpoints: [
+      { method: 'POST', path: '/v1/postcards', description: 'Send a physical postcard', price: '1.00' },
+      { method: 'POST', path: '/v1/letters', description: 'Send a physical letter', price: '1.50' },
+      { method: 'POST', path: '/v1/verify', description: 'Verify a US address', price: '0.01' },
+    ],
+  },
 ];
