@@ -93,7 +93,7 @@ export const services: Service[] = [
     categories: ['ai'],
     logo: '/logos/gemini.svg',
     endpoints: [
-      { method: 'POST', path: '/v1beta/models/gemini-2.0-flash', description: 'Gemini 2.0 Flash (fast, multimodal)', price: '0.005' },
+      { method: 'POST', path: '/v1beta/models/gemini-2.5-flash', description: 'Gemini 2.5 Flash (fast, multimodal)', price: '0.005' },
       { method: 'POST', path: '/v1beta/models/gemini-2.5-pro', description: 'Gemini 2.5 Pro (reasoning)', price: '0.02' },
       { method: 'POST', path: '/v1beta/models/embedding-001', description: 'Text embeddings', price: '0.001' },
     ],

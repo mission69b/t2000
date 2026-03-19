@@ -11,6 +11,8 @@ export { SUI_USDC_TYPE } from './utils.js';
 export interface SuiChargeOptions {
   client: SuiJsonRpcClient;
   signer: Ed25519Keypair;
+  /** Override transaction execution (e.g. to route through a gas manager). */
+  execute?: (tx: Transaction) => Promise<{ digest: string; effects: unknown }>;
 }
 
 export function sui(options: SuiChargeOptions) {
@@ -56,11 +58,15 @@ export function sui(options: SuiChargeOptions) {
 
       let result;
       try {
-        result = await options.client.signAndExecuteTransaction({
-          signer: options.signer,
-          transaction: tx,
-          options: { showEffects: true },
-        });
+        if (options.execute) {
+          result = await options.execute(tx);
+        } else {
+          result = await options.client.signAndExecuteTransaction({
+            signer: options.signer,
+            transaction: tx,
+            options: { showEffects: true },
+          });
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(`Payment transaction failed: ${msg}`);

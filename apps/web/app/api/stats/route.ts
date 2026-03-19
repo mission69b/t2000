@@ -200,36 +200,29 @@ async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
 async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
   const payFilter = { action: "pay" };
 
-  const [indexedTotal, indexed24h, indexed7d, legacyTotal, legacySettled, legacyPayments] =
-    await Promise.all([
-      prisma.transaction.count({ where: payFilter }),
-      prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: oneDayAgo } } }),
-      prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: sevenDaysAgo } } }),
-      prisma.x402Payment.count(),
-      prisma.x402Payment.count({ where: { settled: true } }),
-      prisma.x402Payment.findMany({ select: { amount: true } }),
-    ]);
+  const [
+    indexedTotal,
+    indexed24h,
+    indexed7d,
+    indexedVolume,
+    legacyTotal,
+    legacySettled,
+    legacyPayments,
+  ] = await Promise.all([
+    prisma.transaction.count({ where: payFilter }),
+    prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: oneDayAgo } } }),
+    prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: sevenDaysAgo } } }),
+    prisma.transaction.aggregate({ where: payFilter, _sum: { amount: true } }),
+    prisma.x402Payment.count(),
+    prisma.x402Payment.count({ where: { settled: true } }),
+    prisma.x402Payment.findMany({ select: { amount: true } }),
+  ]);
 
   const legacyAmount = legacyPayments.reduce((s, p) => s + Number(p.amount), 0);
-
-  let onChainVolume = 0;
-  let gatewayAddress: string | undefined;
-  if (MPP_GATEWAY_TREASURY) {
-    gatewayAddress = MPP_GATEWAY_TREASURY;
-    try {
-      const USDC_TYPE =
-        "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
-      const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
-      const bal = await client.getBalance({
-        owner: MPP_GATEWAY_TREASURY,
-        coinType: USDC_TYPE,
-      });
-      onChainVolume = Number(bal.totalBalance) / 1e6;
-    } catch { /* non-critical */ }
-  }
+  const indexedAmount = Number(indexedVolume._sum.amount ?? 0);
 
   const total = indexedTotal + legacyTotal;
-  const totalAmount = onChainVolume > 0 ? onChainVolume : legacyAmount;
+  const totalAmount = indexedAmount + legacyAmount;
 
   return {
     total,
@@ -237,7 +230,7 @@ async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
     totalAmount: +totalAmount.toFixed(4),
     last24h: indexed24h,
     last7d: indexed7d,
-    gatewayAddress,
+    gatewayAddress: MPP_GATEWAY_TREASURY || undefined,
   };
 }
 

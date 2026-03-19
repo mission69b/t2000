@@ -218,9 +218,19 @@ export class T2000 extends EventEmitter<T2000Events> {
     const { Mppx } = await import('mppx/client');
     const { sui } = await import('@t2000/mpp-sui/client');
 
+    const client = this.client;
+    const keypair = this.keypair;
+
     const mppx = Mppx.create({
       polyfill: false,
-      methods: [sui({ client: this.client, signer: this.keypair })],
+      methods: [sui({
+        client,
+        signer: keypair,
+        execute: async (tx) => {
+          const result = await executeWithGas(client, keypair, () => tx);
+          return { digest: result.digest, effects: result.effects };
+        },
+      })],
     });
 
     const method = (options.method ?? 'GET').toUpperCase();
