@@ -100,8 +100,8 @@ describe('read tools', () => {
     registerReadTools(server, agent);
   });
 
-  it('should register 16 read tools', () => {
-    expect(tools.size).toBe(16);
+  it('should register 17 read tools', () => {
+    expect(tools.size).toBe(17);
     expect(tools.has('t2000_overview')).toBe(true);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
@@ -114,6 +114,7 @@ describe('read tools', () => {
     expect(tools.has('t2000_pending_rewards')).toBe(true);
     expect(tools.has('t2000_deposit_info')).toBe(true);
     expect(tools.has('t2000_all_rates')).toBe(true);
+    expect(tools.has('t2000_services')).toBe(true);
     expect(tools.has('t2000_sentinel_list')).toBe(true);
     expect(tools.has('t2000_sentinel_info')).toBe(true);
     expect(tools.has('t2000_contacts')).toBe(true);
@@ -295,6 +296,30 @@ describe('read tools', () => {
     expect(data).toHaveLength(2);
     expect(data[0].protocol).toBe('navi');
     expect(data[1].protocol).toBe('suilend');
+  });
+
+  it('t2000_services should return service catalog', async () => {
+    const mockServices = [
+      { id: 'openai', name: 'OpenAI', endpoints: [{ path: '/v1/chat/completions', price: '0.01' }] },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(mockServices),
+    }));
+    const handler = tools.get('t2000_services')!;
+    const result = await handler({});
+    const data = JSON.parse(result.content[0].text);
+    expect(data).toHaveLength(1);
+    expect(data[0].id).toBe('openai');
+    vi.unstubAllGlobals();
+  });
+
+  it('t2000_services should return error on fetch failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    const handler = tools.get('t2000_services')!;
+    const result = await handler({});
+    expect(result.isError).toBe(true);
+    vi.unstubAllGlobals();
   });
 
   it('t2000_sentinel_list should return sentinels with SUI values', async () => {

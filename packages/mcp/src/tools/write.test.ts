@@ -387,6 +387,39 @@ describe('write tools', () => {
     });
   });
 
+  describe('t2000_pay', () => {
+    it('should make a paid API request', async () => {
+      const handler = tools.get('t2000_pay')!;
+      const result = await handler({
+        url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+        method: 'POST',
+        body: '{"model":"gpt-4o","messages":[]}',
+        maxPrice: 0.05,
+      });
+      const data = JSON.parse(result.content[0].text);
+      expect(data.paid).toBe(true);
+      expect(data.cost).toBe(0.01);
+      expect(data.status).toBe(200);
+      expect(agent.pay).toHaveBeenCalledWith({
+        url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+        method: 'POST',
+        body: '{"model":"gpt-4o","messages":[]}',
+        headers: undefined,
+        maxPrice: 0.05,
+      });
+    });
+
+    it('should return error when pay fails', async () => {
+      agent.pay.mockRejectedValue(new Error('PRICE_EXCEEDS_LIMIT'));
+      const handler = tools.get('t2000_pay')!;
+      const result = await handler({
+        url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+        maxPrice: 0.001,
+      });
+      expect(result.isError).toBe(true);
+    });
+  });
+
   describe('t2000_contact_add', () => {
     it('should add a contact', async () => {
       agent.contacts.add = vi.fn().mockReturnValue({ action: 'added' });
