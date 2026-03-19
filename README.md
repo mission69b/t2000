@@ -5,13 +5,13 @@
 <h3 align="center">A bank account for AI agents.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Investment · Exchange · MPP Pay · MCP
+  Checking · Savings · Credit · Investment · Exchange · Payments · MCP
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial · BYOK LLM
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mpp-sui">MPP</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a> · <a href="packages/mcp">MCP Package</a>
+  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mpp-sui">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 ---
@@ -83,7 +83,7 @@ AI agents need money. They need to pay for APIs, receive payments, hold funds, a
 | Gas tokens are confusing | Auto-managed — agent never sees SUI |
 | Idle funds lose value | Automatic yield via NAVI + Suilend (~2–8% APY) |
 | DeFi is complex | `save()`, `borrow()`, `repay()`, `withdraw()` — four methods |
-| No standard payment protocol | MPP client (@t2000/mpp-sui) |
+| No standard payment protocol | [MPP](https://mpp.dev) client + [gateway](https://mpp.t2000.ai) — pay per request with Sui USDC |
 | No standard wallet interface | SDK + CLI + HTTP API for any language |
 
 ## Getting Started
@@ -119,7 +119,7 @@ t2000 wraps six DeFi primitives into a single interface that any AI agent can us
 | **Strategies** | Themed allocations (bluechip, all-weather, safe-haven, layer1, sui-heavy) — single atomic PTB | Agent orchestration + Cetus |
 | **Auto-Invest** | Dollar-cost averaging (daily/weekly/monthly DCA) | Agent scheduling |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
-| **MPP Pay** | Pay for API resources with USDC | Sui USDC transfers |
+| **Payments (MPP)** | Pay for API resources with USDC | [@t2000/mpp-sui](packages/mpp-sui) + [MPP Gateway](https://mpp.t2000.ai) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
@@ -188,6 +188,7 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.enforcer.check(amount)` | Check if amount allowed |
 | | `agent.enforcer.recordUsage(amount)` | Record send for daily limit |
 | | `agent.enforcer.isConfigured()` | Whether safeguards are set up |
+| **Payments** | `agent.pay({ url, maxPrice })` | Pay for MPP-protected API (auto 402 handling) |
 | **Contacts** | `agent.contacts.list()` | List saved contacts |
 | | `agent.contacts.add(name, address)` | Add a contact |
 | | `agent.contacts.remove(name)` | Remove a contact |
@@ -301,16 +302,23 @@ curl -X POST -H "Authorization: Bearer t2k_..." \
 
 ## MPP Payments
 
-t2000 supports [MPP (Machine Payments Protocol)](https://mpp.dev) for paid APIs. When a server returns `402 Payment Required`, t2000 automatically pays with USDC and retries — no API keys, no subscriptions, no human approval.
+t2000 supports [MPP (Machine Payments Protocol)](https://mpp.dev) for paid APIs. When a server returns `402 Payment Required`, t2000 automatically pays with Sui USDC and retries — no API keys, no subscriptions, no human approval.
 
 ```typescript
 const result = await agent.pay({
-  url: 'https://api.example.com/data',
-  maxPrice: 1.0,
+  url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
+  body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'Hello' }] },
+  maxPrice: 0.05,
 });
-// result.paid === true if payment was required and completed
-// result.body contains the API response
 ```
+
+```bash
+t2000 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
+  --data '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}]}' \
+  --max-price 0.05
+```
+
+The [MPP Gateway](https://mpp.t2000.ai) proxies OpenAI, Anthropic, fal.ai, and Firecrawl — all payable with Sui USDC.
 
 Full reference → [`@t2000/mpp-sui` README](packages/mpp-sui)
 
@@ -367,7 +375,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Borrow against investments | — | ✓ Deposited investments count as collateral for credit |
 | Margin trading | — | 🔜 Coming soon — leveraged positions on SUI, BTC, ETH, GOLD |
 | Strategies + DCA | — | ✓ Atomic PTB multi-asset buys, dollar-cost averaging |
-| MPP client | ✓ Base / Solana | ✓ Sui (first on Sui) |
+| MPP client | ✓ Base / Solana | ✓ Sui · OpenAI, Anthropic, fal, Firecrawl |
 | Agent Skills | ✓ | ✓ |
 | Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
 | DeFi composability | — | ✓ Atomic PTB multi-step |
@@ -398,8 +406,9 @@ t2000/
 │   └── mpp-sui/          @t2000/mpp-sui — MPP payment client
 │
 ├── apps/
-│   ├── server/           Gas station + checkpoint indexer
-│   └── web/              Landing page + docs (Next.js)
+│   ├── gateway/           MPP Gateway — proxied AI APIs (mpp.t2000.ai)
+│   ├── server/            Gas station + checkpoint indexer
+│   └── web/               Landing page + docs (Next.js)
 │
 ├── t2000-skills/         Agent Skills for AI coding assistants
 ├── infra/                AWS ECS deployment scripts

@@ -33,7 +33,7 @@ interface Stats {
     last24h: { count: number; usdc: number };
     last7d: { count: number; usdc: number };
   };
-  x402: {
+  mpp: {
     total: number;
     settled: number;
     totalAmount: number;
@@ -344,7 +344,7 @@ export function StatsView() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <div className="text-2xl font-mono text-foreground">
-                {stats.x402.total}
+                {stats.mpp.total}
               </div>
               <div className="text-[10px] text-muted uppercase tracking-wider mt-1">
                 Total
@@ -352,7 +352,7 @@ export function StatsView() {
             </div>
             <div>
               <div className="text-2xl font-mono text-foreground">
-                {stats.x402.settled}
+                {stats.mpp.settled}
               </div>
               <div className="text-[10px] text-muted uppercase tracking-wider mt-1">
                 Settled
@@ -360,7 +360,7 @@ export function StatsView() {
             </div>
             <div>
               <div className="text-2xl font-mono text-foreground">
-                ${stats.x402.totalAmount.toFixed(2)}
+                ${stats.mpp.totalAmount.toFixed(2)}
               </div>
               <div className="text-[10px] text-muted uppercase tracking-wider mt-1">
                 Volume

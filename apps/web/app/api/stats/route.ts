@@ -13,12 +13,12 @@ export async function GET() {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [wallets, agents, gas, fees, x402, transactions] = await Promise.all([
+  const [wallets, agents, gas, fees, mpp, transactions] = await Promise.all([
     getWalletBalances(),
     getAgentStats(oneDayAgo, sevenDaysAgo, thirtyDaysAgo),
     getGasStats(oneDayAgo, sevenDaysAgo),
     getFeeStats(oneDayAgo, sevenDaysAgo),
-    getX402Stats(oneDayAgo, sevenDaysAgo),
+    getMppStats(oneDayAgo, sevenDaysAgo),
     getTransactionStats(oneDayAgo, sevenDaysAgo),
   ]);
 
@@ -28,7 +28,7 @@ export async function GET() {
     agents,
     gas,
     fees,
-    x402,
+    mpp,
     transactions,
   });
 }
@@ -194,7 +194,7 @@ async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
   };
 }
 
-async function getX402Stats(oneDayAgo: Date, sevenDaysAgo: Date) {
+async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
   const [total, settled, last24h, last7d] = await Promise.all([
     prisma.x402Payment.count(),
     prisma.x402Payment.count({ where: { settled: true } }),

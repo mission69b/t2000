@@ -6,7 +6,6 @@ import { BalanceWidget } from "./components/BalanceWidget";
 import { HomeShowcase } from "./components/HomeShowcase";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
-const SKILLS_URL = "https://github.com/mission69b/t2000-skills";
 const DOCS_URL = "/docs";
 const DEMO_URL = "/demo";
 
@@ -143,7 +142,7 @@ const COMPARE_ROWS: {
   { feature: "Token exchange", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
-  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ First on Sui", bothCheck: true },
+  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · OpenAI, Anthropic, fal, Firecrawl", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 33 tools + 20 AI prompts + MCP", coinbaseCross: true },
   { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
@@ -734,14 +733,6 @@ export default function Home() {
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
           >
             npm
-          </a>
-          <a
-            href={SKILLS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-          >
-            Skills
           </a>
           <Link
             href="/accounts"
