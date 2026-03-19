@@ -93,7 +93,7 @@ const MPP_STEPS = [
     icon: "→",
     active: true,
     title: "Agent calls OpenAI via MPP",
-    detail: "POST openai.mpp.t2000.ai/v1/chat/completions",
+    detail: "POST mpp.t2000.ai/openai/v1/chat/completions",
     isCode: true,
   },
   {
@@ -178,6 +178,14 @@ export default function Home() {
             className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
           >
             Integrations
+          </a>
+          <a
+            href="https://mpp.t2000.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+          >
+            Services
           </a>
           <a
             href={GITHUB_URL}
@@ -747,6 +755,14 @@ export default function Home() {
           >
             MPP
           </Link>
+          <a
+            href="https://mpp.t2000.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Services
+          </a>
           <Link
             href={DEMO_URL}
             className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"

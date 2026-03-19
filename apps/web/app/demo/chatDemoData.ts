@@ -202,7 +202,7 @@ export const chatDemos: ChatDemo[] = [
         tools: ["t2000_pay"],
         html:
           tbl([
-            ["API", "openai.mpp.t2000.ai", ""],
+            ["API", "mpp.t2000.ai/openai", ""],
             ["Status", "402 → paid automatically", "hi"],
             ["Cost", "$0.01 USDC", "hi"],
             ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/Ae7q…</span>', ""],

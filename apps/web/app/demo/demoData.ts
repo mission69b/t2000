@@ -104,8 +104,8 @@ export const demos: Demo[] = [
       "Pay for any MPP-protected API. 402 challenge, Sui USDC payment, content delivered.",
     tweet: "t2000 pay — your agent pays for APIs with USDC on Sui.",
     lines: [
-      { type: "command", text: "❯ t2000 pay https://openai.mpp.t2000.ai/v1/chat/completions --data '{\"model\":\"gpt-4o\",...}' --max-price 0.10", delay: 0 },
-      { type: "info", text: "  → POST https://openai.mpp.t2000.ai/v1/chat/completions", delay: 400 },
+      { type: "command", text: "❯ t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions --data '{\"model\":\"gpt-4o\",...}' --max-price 0.10", delay: 0 },
+      { type: "info", text: "  → POST https://mpp.t2000.ai/openai/v1/chat/completions", delay: 400 },
       { type: "info", text: "  ← 402 Payment Required", delay: 600 },
       { type: "info", text: "  Amount: $0.01 USDC · Recipient: 0x7a2f…c1b8", delay: 300 },
       { type: "info", text: "  $0.01 ≤ $0.10 max — paying...", delay: 400 },

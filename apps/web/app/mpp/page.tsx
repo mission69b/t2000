@@ -22,7 +22,7 @@ const HOW_IT_WORKS = [
     step: "1",
     title: "Agent requests a resource",
     desc: "Any HTTP request — GET, POST, whatever. The agent doesn't know if it costs money yet.",
-    code: "POST https://openai.mpp.t2000.ai/v1/chat/completions",
+    code: "POST https://mpp.t2000.ai/openai/v1/chat/completions",
   },
   {
     step: "2",
@@ -235,7 +235,7 @@ export default function MppPage() {
                   <span className="text-muted">{"({"}</span>
                   {"\n"}
                   <span className="text-muted">{"  url: "}</span>
-                  <span className="text-accent">{`'https://openai.mpp.t2000.ai/v1/chat/completions'`}</span>
+                  <span className="text-accent">{`'https://mpp.t2000.ai/openai/v1/chat/completions'`}</span>
                   <span className="text-muted">{","}</span>
                   {"\n"}
                   <span className="text-muted">{"  body: { model: "}</span>
@@ -352,7 +352,7 @@ export default function MppPage() {
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[1.9] overflow-x-auto scrollbar-hide">
                 <span className="text-foreground">{"❯ t2000 pay \\"}</span>
                 {"\n"}
-                <span className="text-muted">{"    openai.mpp.t2000.ai \\"}</span>
+                <span className="text-muted">{"    mpp.t2000.ai/openai/v1/chat/completions \\"}</span>
                 {"\n"}
                 <span className="text-muted">{"    --max-price 0.05"}</span>
                 {"\n\n"}
@@ -536,9 +536,17 @@ export default function MppPage() {
           </div>
 
           <div className="flex justify-center gap-3 sm:gap-4 flex-wrap">
+            <a
+              href="https://mpp.t2000.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-accent text-background font-mono text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+            >
+              Browse services →
+            </a>
             <Link
               href="/docs"
-              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-accent text-background font-mono text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+              className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
             >
               Read the docs →
             </Link>
