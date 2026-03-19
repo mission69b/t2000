@@ -58,6 +58,9 @@ export const services: Service[] = [
     endpoints: [
       { method: 'POST', path: '/fal-ai/flux/dev', description: 'Flux Dev image generation', price: '0.03' },
       { method: 'POST', path: '/fal-ai/flux-pro', description: 'Flux Pro image generation', price: '0.05' },
+      { method: 'POST', path: '/fal-ai/flux-realism', description: 'Flux Realism (photorealistic)', price: '0.03' },
+      { method: 'POST', path: '/fal-ai/recraft-20b', description: 'Recraft 20B image generation', price: '0.03' },
+      { method: 'POST', path: '/fal-ai/whisper', description: 'Speech-to-text transcription', price: '0.01' },
     ],
   },
   {
@@ -71,6 +74,8 @@ export const services: Service[] = [
     endpoints: [
       { method: 'POST', path: '/v1/scrape', description: 'Scrape a URL to structured data', price: '0.01' },
       { method: 'POST', path: '/v1/crawl', description: 'Crawl a website', price: '0.05' },
+      { method: 'POST', path: '/v1/map', description: 'Discover URLs on a site', price: '0.01' },
+      { method: 'POST', path: '/v1/extract', description: 'Extract structured data with LLM', price: '0.02' },
     ],
   },
   {
@@ -122,6 +127,9 @@ export const services: Service[] = [
     categories: ['search'],
     endpoints: [
       { method: 'POST', path: '/v1/web/search', description: 'Web search results', price: '0.005' },
+      { method: 'POST', path: '/v1/images/search', description: 'Image search', price: '0.005' },
+      { method: 'POST', path: '/v1/news/search', description: 'News search', price: '0.005' },
+      { method: 'POST', path: '/v1/videos/search', description: 'Video search', price: '0.005' },
       { method: 'POST', path: '/v1/summarizer/search', description: 'AI-summarized search', price: '0.01' },
     ],
   },
@@ -135,6 +143,7 @@ export const services: Service[] = [
     categories: ['communication'],
     endpoints: [
       { method: 'POST', path: '/v1/emails', description: 'Send an email', price: '0.005' },
+      { method: 'POST', path: '/v1/emails/batch', description: 'Send batch emails (up to 100)', price: '0.01' },
     ],
   },
 ];
