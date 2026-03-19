@@ -143,6 +143,19 @@ export const services: Service[] = [
     ],
   },
   {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    serviceUrl: `${BASE_URL}/deepseek`,
+    description: 'DeepSeek reasoning and chat models.',
+    chain: 'sui',
+    currency: 'USDC',
+    categories: ['ai'],
+    logo: '/logos/deepseek.svg',
+    endpoints: [
+      { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (DeepSeek-V3, R1 reasoning)', price: '0.005' },
+    ],
+  },
+  {
     id: 'resend',
     name: 'Resend',
     serviceUrl: `${BASE_URL}/resend`,
