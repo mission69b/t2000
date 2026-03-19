@@ -9,11 +9,6 @@ overrides:
   '@mysten/bcs': ^2.0.1
   '@pythnetwork/pyth-sui-js': 2.2.0
 
-patchedDependencies:
-  '@naviprotocol/lending@1.4.0':
-    hash: f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400
-    path: patches/@naviprotocol__lending@1.4.0.patch
-
 importers:
 
   .:
@@ -289,7 +284,7 @@ importers:
         version: 1.4.5(typescript@5.9.3)
       '@naviprotocol/lending':
         specifier: ^1.4.0
-        version: 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.6.0(typescript@5.9.3))(typescript@5.9.3)
+        version: 1.4.0(@mysten/sui@2.6.0(typescript@5.9.3))(typescript@5.9.3)
       '@pythnetwork/pyth-sui-js':
         specifier: 2.2.0
         version: 2.2.0(typescript@5.9.3)
@@ -4875,7 +4870,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
-  '@naviprotocol/lending@1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.6.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@naviprotocol/lending@1.4.0(@mysten/sui@2.6.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@mysten/bcs': 2.0.2
       '@mysten/sui': 2.6.0(typescript@5.9.3)
