@@ -1,7 +1,5 @@
-import { charge, proxy } from '@/lib/gateway';
+import { chargeProxy } from '@/lib/gateway';
 
-export const POST = charge('0.03',
-  proxy('https://fal.run/fal-ai/flux/dev', {
-    authorization: `Key ${process.env.FAL_KEY}`,
-  })
-);
+export const POST = chargeProxy('0.03', 'https://fal.run/fal-ai/flux/dev', {
+  authorization: `Key ${process.env.FAL_KEY}`,
+});

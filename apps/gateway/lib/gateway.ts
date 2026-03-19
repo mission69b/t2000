@@ -21,42 +21,32 @@ function getGateway() {
   return _mppx;
 }
 
-export function charge(amount: string, handler: RouteHandler): RouteHandler {
+export function chargeProxy(
+  amount: string,
+  upstream: string,
+  upstreamHeaders: Record<string, string>,
+): RouteHandler {
   return async (req: Request) => {
     const mppx = getGateway();
     const bodyText = await req.text();
 
-    const innerHandler: RouteHandler = () =>
-      handler(new Request(req.url, {
-        method: req.method,
-        headers: req.headers,
+    const handler: RouteHandler = async () => {
+      const res = await fetch(upstream, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...upstreamHeaders,
+        },
         body: bodyText || undefined,
-      }));
+      });
+      return new Response(res.body, {
+        status: res.status,
+        headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
+      });
+    };
 
-    return mppx.charge({ amount })(innerHandler)(
-      new Request(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: bodyText || undefined,
-      })
+    return mppx.charge({ amount })(handler)(
+      new Request(req.url, { method: req.method, headers: req.headers })
     );
-  };
-}
-
-export function proxy(upstream: string, headers: Record<string, string>): RouteHandler {
-  return async (req: Request) => {
-    const res = await fetch(upstream, {
-      method: req.method,
-      headers: {
-        'content-type': req.headers.get('content-type') ?? 'application/json',
-        ...headers,
-      },
-      body: req.method !== 'GET' && req.method !== 'HEAD' ? await req.text() : undefined,
-    });
-
-    return new Response(res.body, {
-      status: res.status,
-      headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
-    });
   };
 }

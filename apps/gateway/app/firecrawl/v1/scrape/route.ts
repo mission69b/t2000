@@ -1,7 +1,5 @@
-import { charge, proxy } from '@/lib/gateway';
+import { chargeProxy } from '@/lib/gateway';
 
-export const POST = charge('0.01',
-  proxy('https://api.firecrawl.dev/v1/scrape', {
-    authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
-  })
-);
+export const POST = chargeProxy('0.01', 'https://api.firecrawl.dev/v1/scrape', {
+  authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+});

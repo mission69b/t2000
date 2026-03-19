@@ -1,7 +1,5 @@
-import { charge, proxy } from '@/lib/gateway';
+import { chargeProxy } from '@/lib/gateway';
 
-export const POST = charge('0.001',
-  proxy('https://api.openai.com/v1/embeddings', {
-    authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-  })
-);
+export const POST = chargeProxy('0.001', 'https://api.openai.com/v1/embeddings', {
+  authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+});
