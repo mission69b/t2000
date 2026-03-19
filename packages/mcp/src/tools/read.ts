@@ -208,6 +208,26 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
   );
 
   // ---------------------------------------------------------------------------
+  // MPP Service Discovery
+  // ---------------------------------------------------------------------------
+
+  server.tool(
+    't2000_services',
+    'Discover available MPP services the agent can pay for with t2000_pay. Returns all services with URLs, endpoints, descriptions, and prices. Use this BEFORE t2000_pay to find the right URL and request format. Includes AI models, search, media, weather, maps, code execution, email, gift cards, physical mail, and more.',
+    {},
+    async () => {
+      try {
+        const res = await fetch('https://mpp.t2000.ai/api/services');
+        if (!res.ok) throw new Error(`Service discovery failed (${res.status})`);
+        const services = await res.json();
+        return { content: [{ type: 'text', text: JSON.stringify(services) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------------
   // Sentinel tools
   // ---------------------------------------------------------------------------
 

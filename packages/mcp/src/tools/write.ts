@@ -479,13 +479,26 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_pay',
-    'Make a paid API request. Automatically handles MPP 402 payment challenges using the agent\'s USDC balance. Enforces safeguards. Returns the API response and payment receipt.',
+    `Make a paid API request using MPP (Machine Payments Protocol). Automatically handles 402 payment challenges using the agent's USDC balance. Enforces safeguards. Returns the API response and payment receipt.
+
+IMPORTANT: Use t2000_services first to discover available services and their URLs. All services are at https://mpp.t2000.ai/.
+
+Common examples:
+- Chat: POST https://mpp.t2000.ai/openai/v1/chat/completions {"model":"gpt-4o","messages":[...]}
+- Search: POST https://mpp.t2000.ai/brave/v1/web/search {"q":"query"}
+- Image: POST https://mpp.t2000.ai/fal/fal-ai/flux/dev {"prompt":"..."}
+- Weather: POST https://mpp.t2000.ai/openweather/v1/weather {"q":"Tokyo"}
+- Email: POST https://mpp.t2000.ai/resend/v1/emails {"from":"...","to":"...","subject":"...","text":"..."}
+- Gift card: POST https://mpp.t2000.ai/reloadly/v1/order {"productId":120,"unitPrice":20,"recipientEmail":"..."}
+- Postcard: POST https://mpp.t2000.ai/lob/v1/postcards {"to":{"name":"...","address_line1":"...","address_city":"...","address_state":"...","address_zip":"..."},...}
+- Letter: POST https://mpp.t2000.ai/lob/v1/letters {similar to postcards}
+- Code exec: POST https://mpp.t2000.ai/judge0/v1/submissions {"source_code":"...","language_id":71}`,
     {
-      url: z.string().describe('URL of the MPP-protected resource'),
-      method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('GET').describe('HTTP method'),
-      body: z.string().optional().describe('JSON request body'),
+      url: z.string().describe('Full URL of the MPP service endpoint (use t2000_services to discover available URLs)'),
+      method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('POST').describe('HTTP method (most services use POST)'),
+      body: z.string().optional().describe('JSON request body (required for POST endpoints)'),
       headers: z.record(z.string()).optional().describe('Additional HTTP headers'),
-      maxPrice: z.number().default(1.0).describe('Max USD to pay (default: $1.00)'),
+      maxPrice: z.number().default(1.0).describe('Max USD to pay (default: $1.00). Set higher for gift cards/commerce.'),
     },
     async ({ url, method, body, headers, maxPrice }) => {
       try {
