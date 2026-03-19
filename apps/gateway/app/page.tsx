@@ -260,6 +260,29 @@ const result = await agent.pay({
               </pre>
             </div>
 
+            {/* MCP */}
+            <div className="px-5 py-4 border-b border-border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase tracking-wider text-muted">MCP (Claude / Cursor)</span>
+              </div>
+              <p className="text-[11px] text-muted mb-3 leading-relaxed">
+                35 tools including <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_services</code> and <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_pay</code>. Just ask naturally:
+              </p>
+              <div className="space-y-2">
+                {[
+                  '"Search the web for Sui news"',
+                  '"Generate an image of a sunset"',
+                  '"Buy a $20 Netflix gift card"',
+                  '"Send a postcard to 123 Main St"',
+                  '"What\'s the weather in Tokyo?"',
+                ].map((q) => (
+                  <div key={q} className="text-[11px] text-foreground/70 bg-panel border border-border rounded px-3 py-1.5">
+                    {q}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Links */}
             <div className="px-5 py-4 space-y-2">
               <a
@@ -271,11 +294,26 @@ const result = await agent.pay({
                 <span className="text-[10px] text-dim ml-auto">agent discovery</span>
               </a>
               <a
-                href="https://t2000.ai/docs"
+                href="https://t2000.ai/docs#mpp"
                 className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
               >
                 <span className="text-accent">→</span>
                 Documentation
+              </a>
+              <a
+                href="https://t2000.ai/mpp"
+                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <span className="text-accent">→</span>
+                MPP on Sui
+              </a>
+              <a
+                href="https://www.npmjs.com/package/@t2000/cli"
+                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <span className="text-accent">→</span>
+                @t2000/cli
+                <span className="text-[10px] text-dim ml-auto">npm</span>
               </a>
               <a
                 href="https://www.npmjs.com/package/@t2000/mpp-sui"
@@ -283,6 +321,22 @@ const result = await agent.pay({
               >
                 <span className="text-accent">→</span>
                 @t2000/mpp-sui
+                <span className="text-[10px] text-dim ml-auto">npm</span>
+              </a>
+              <a
+                href="https://github.com/mission69b/t2000"
+                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <span className="text-accent">→</span>
+                GitHub
+              </a>
+              <a
+                href="https://mpp.dev"
+                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <span className="text-accent">→</span>
+                MPP Standard
+                <span className="text-[10px] text-dim ml-auto">mpp.dev</span>
               </a>
             </div>
           </div>

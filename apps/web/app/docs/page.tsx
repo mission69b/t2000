@@ -1075,23 +1075,35 @@ function CliMoreSection() {
       <h2 id="cmd-pay">
         t2000 pay <Badge color="amber">MPP</Badge>
       </h2>
-      <p>Pay for MPP-protected API resources with USDC micropayments.</p>
+      <p>
+        Pay for MPP-protected API resources with USDC micropayments.
+        17 services available at{" "}
+        <a href="https://mpp.t2000.ai" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai</a>.
+        See the{" "}
+        <a onClick={() => document.getElementById("mpp")?.scrollIntoView({ behavior: "smooth" })} className="text-accent hover:underline cursor-pointer">MPP Payments guide</a>{" "}
+        for the full service catalog.
+      </p>
       <CodeBlock lang="bash">
         t2000 pay &lt;url&gt; [options]{"\n\n"}
-        {"  "}{S.a("--method")}     GET | POST | PUT  (default: GET){"\n"}
+        {"  "}{S.a("--method")}     GET | POST | PUT  (default: POST){"\n"}
         {"  "}{S.a("--data")}       JSON body for POST/PUT{"\n"}
         {"  "}{S.a("--max-price")}  Max USDC to auto-approve (default: 1.00){"\n"}
         {"  "}{S.a("--dry-run")}    Preview without paying{"\n\n"}
-        t2000 pay https://api.weather.com/forecast{"\n"}
-        t2000 pay https://api.ai.com/analyze --method POST --data {S.s("'{\"text\":\"hello\"}'")}{"\n"}
-        t2000 pay https://api.data.com/prices --max-price {S.a("0.05")}
+        {S.c("# Ask ChatGPT")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \{"\n"}
+        {"  "}--data {S.s("'{\"model\":\"gpt-4o\",\"messages\":[...]}'")}{"\n\n"}
+        {S.c("# Search the web")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/brave/v1/web/search \{"\n"}
+        {"  "}--data {S.s("'{\"q\":\"latest Sui news\"}'")}{"\n\n"}
+        {S.c("# Buy a gift card (set higher max-price)")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/reloadly/v1/order \{"\n"}
+        {"  "}--max-price {S.a("25")} --data {S.s("'{\"productId\":120,\"unitPrice\":20,...}'")}
       </CodeBlock>
       <CodeBlock lang="output">
-        {"  "}→ GET https://api.weather.com/forecast{"\n"}
+        {"  "}→ POST https://mpp.t2000.ai/openai/v1/chat/completions{"\n"}
         {"  "}← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
         {"  "}{S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
-        {"  "}← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
-        {"  "}{`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
+        {"  "}← {S.g("200 OK")}  {S.m("[820ms]")}
       </CodeBlock>
 
       <h2 id="cmd-sentinel">
@@ -1108,7 +1120,7 @@ function CliMoreSection() {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 33 tools, 20 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 35 tools, 20 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1398,7 +1410,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        33 tools, 20 prompts, stdio transport — your AI operates a full bank account.
+        35 tools, 20 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 2 commands</h2>
@@ -1424,7 +1436,7 @@ function McpSection() {
 
       <h2 id="mcp-tools">Available tools (33)</h2>
 
-      <h3 id="mcp-tools-read">Read-only (16)</h3>
+      <h3 id="mcp-tools-read">Read-only (17)</h3>
       <DocTable
         headers={["Tool", "Description"]}
         rows={[
@@ -1444,10 +1456,11 @@ function McpSection() {
           [<InlineCode key="k">t2000_sentinel_info</InlineCode>, "Sentinel details — model, system prompt, attack history"],
           [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
           [<InlineCode key="k">t2000_portfolio</InlineCode>, "View investment portfolio with cost-basis P&L"],
+          [<InlineCode key="k">t2000_services</InlineCode>, "Discover all MPP services, endpoints, and prices"],
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (15)</h3>
+      <h3 id="mcp-tools-write">State-changing (16)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1468,6 +1481,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
           [<InlineCode key="k">t2000_claim_rewards</InlineCode>, "Claim protocol rewards and auto-convert to USDC"],
           [<InlineCode key="k">t2000_sentinel_attack</InlineCode>, "Attack a sentinel to win its prize pool"],
+          [<InlineCode key="k">t2000_pay</InlineCode>, "Pay for an MPP-protected API (handles 402 challenge automatically)"],
           [<InlineCode key="k">t2000_contact_add</InlineCode>, "Save a contact name → Sui address"],
           [<InlineCode key="k">t2000_contact_remove</InlineCode>, "Remove a saved contact"],
         ]}
@@ -1601,7 +1615,7 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-borrow</InlineCode>, <>&#34;borrow 40 USDC&#34;, &#34;take out a loan&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-exchange</InlineCode>, <>&#34;swap USDC to SUI&#34;, &#34;exchange tokens&#34;, &#34;convert to...&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;call that paid API&#34;, &#34;pay for MPP service&#34;</>, <Badge color="green" key="b">live</Badge>],
+          [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;search the web&#34;, &#34;generate an image&#34;, &#34;buy a gift card&#34;, &#34;send mail&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-sentinel</InlineCode>, <>&#34;attack a sentinel&#34;, &#34;earn bounties&#34;, &#34;red team&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-invest</InlineCode>, <>&#34;buy SUI&#34;, &#34;invest $100 in BTC&#34;, &#34;sell my ETH&#34;, &#34;show portfolio&#34;</>, <Badge color="green" key="b">live</Badge>],
@@ -1636,18 +1650,45 @@ function MppSection() {
         MPP <em className="italic text-accent">Payments</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        t2000 is the first MPP implementation on Sui. Your agent can
-        autonomously pay for API services using USDC micropayments.
+        t2000 is the first{" "}
+        <a href="https://mpp.dev" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">MPP</a>{" "}
+        implementation on Sui. Your agent can pay for 17 API services
+        across AI, search, media, commerce, and more — all with USDC micropayments.
       </p>
+
+      <Callout type="tip" label="MPP Gateway">
+        Browse all available services at{" "}
+        <a href="https://mpp.t2000.ai" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai</a>.
+        Machine-readable catalog at{" "}
+        <a href="https://mpp.t2000.ai/llms.txt" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">/llms.txt</a>{" "}
+        and{" "}
+        <a href="https://mpp.t2000.ai/api/services" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">/api/services</a>.
+      </Callout>
+
+      <h2 id="mpp-services">Available services</h2>
+      <p>17 services, 46 endpoints. No API keys, no accounts — just USDC on Sui.</p>
+      <DocTable
+        headers={["Category", "Services", "From"]}
+        rows={[
+          ["AI Models", "OpenAI, Anthropic, Gemini, DeepSeek, Groq, Together AI, Perplexity", "$0.005"],
+          ["Media", "Fal.ai (Flux), ElevenLabs (TTS, SFX), OpenAI (DALL-E)", "$0.02"],
+          ["Search", "Brave Search (web, images, news, video, AI summary)", "$0.005"],
+          ["Data", "OpenWeather, Google Maps (geocode, places, directions)", "$0.005"],
+          ["Web", "Firecrawl (scrape, crawl, map, extract)", "$0.01"],
+          ["Compute", "Judge0 (code execution — 70+ languages)", "$0.005"],
+          ["Communication", "Resend (email)", "$0.005"],
+          [<><strong key="c">Commerce</strong></>, <>Reloadly (gift cards — 800+ brands), Lob (physical mail)</>, "$0.005"],
+        ]}
+      />
 
       <h2 id="mpp-how">How the handshake works</h2>
       <div className="flex flex-col border border-[var(--border)] rounded-lg overflow-hidden my-5 mb-7">
         {[
-          { num: "1", dir: "→ GET", dirClass: "text-warning", desc: <>Agent requests <InlineCode>/api/resource</InlineCode> — no payment header</> },
+          { num: "1", dir: "→ POST", dirClass: "text-warning", desc: <>Agent requests an endpoint — no payment header</> },
           { num: "2", dir: "← 402", dirClass: "text-accent", desc: <>Server returns <InlineCode>402 Payment Required</InlineCode> with MPP challenge: amount, currency, recipient</> },
           { num: "3", dir: "→ TX", dirClass: "text-warning", desc: <>mppx builds a USDC transfer on Sui, signs with agent keypair, broadcasts — settles in ~400ms</> },
-          { num: "4", dir: "→ GET", dirClass: "text-warning", desc: <>Retries with <InlineCode>x-payment-credential</InlineCode> containing the Sui transaction digest</> },
-          { num: "5", dir: "← 200", dirClass: "text-accent", desc: <>Server verifies the transaction on-chain via RPC → returns the resource</> },
+          { num: "4", dir: "→ POST", dirClass: "text-warning", desc: <>Retries with <InlineCode>x-payment-credential</InlineCode> containing the Sui transaction digest</> },
+          { num: "5", dir: "← 200", dirClass: "text-accent", desc: <>Server verifies the transaction on-chain via RPC → returns the response</> },
         ].map((step, i, arr) => (
           <div key={i} className={`flex items-start gap-2.5 sm:gap-3.5 px-3 sm:px-4.5 py-3 sm:py-3.5 bg-[var(--surface)] transition-colors hover:bg-white/[0.02] ${i < arr.length - 1 ? "border-b border-[var(--border)]" : ""}`}>
             <span className="text-[11px] text-[var(--doc-muted)] shrink-0 mt-0.5 w-4">{step.num}</span>
@@ -1659,22 +1700,64 @@ function MppSection() {
 
       <h2 id="mpp-cli">CLI usage</h2>
       <CodeBlock lang="bash">
-        {S.g("$")} t2000 pay https://weather.api.com/forecast{"\n\n"}
-        → GET https://weather.api.com/forecast{"\n"}
+        {S.g("$")} t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \{"\n"}
+        {"  "}--data {S.s("'{\"model\":\"gpt-4o\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]}'")}{"\n\n"}
+        → POST https://mpp.t2000.ai/openai/v1/chat/completions{"\n"}
         ← {S.a("402 Payment Required:")} $0.01 USDC (Sui){"\n"}
         {S.g("✓")} Paid $0.01 USDC {S.m("(tx: 0x9f2c...a801)")}{"\n"}
-        ← {S.g("200 OK")}  {S.m("[342ms]")}{"\n\n"}
-        {`{"city":"Sydney","temp":22,"condition":"partly cloudy"}`}
+        ← {S.g("200 OK")}  {S.m("[820ms]")}
+      </CodeBlock>
+      <p>More examples:</p>
+      <CodeBlock lang="bash">
+        {S.c("# Search the web")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/brave/v1/web/search \{"\n"}
+        {"  "}--data {S.s("'{\"q\":\"Sui blockchain news\"}'")}{"\n\n"}
+        {S.c("# Buy a gift card")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/reloadly/v1/order \{"\n"}
+        {"  "}--max-price {S.a("25")} \{"\n"}
+        {"  "}--data {S.s("'{\"productId\":120,\"unitPrice\":20,\"recipientEmail\":\"...\"}'")}{"\n\n"}
+        {S.c("# Send physical mail")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/lob/v1/postcards \{"\n"}
+        {"  "}--max-price {S.a("2")} \{"\n"}
+        {"  "}--data {S.s("'{\"to\":{\"name\":\"...\",\"address_line1\":\"...\"},\"from\":{...}}'")}{"\n\n"}
+        {S.c("# Check weather")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/openweather/v1/weather \{"\n"}
+        {"  "}--data {S.s("'{\"q\":\"Tokyo\"}'")}{"\n\n"}
+        {S.c("# Execute code")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/judge0/v1/submissions \{"\n"}
+        {"  "}--data {S.s("'{\"source_code\":\"print(42)\",\"language_id\":71}'")}
       </CodeBlock>
 
       <h2 id="mpp-sdk">SDK usage</h2>
       <CodeBlock lang="typescript">
-        {S.c("// agent.pay() uses mppx + @t2000/mpp-sui under the hood")}{"\n"}
         {S.p("const")} result = {S.p("await")} agent.{S.g("pay")}({"{"}{"\n"}
-        {"  "}url: {S.s("'https://api.example.com/data'")},{"\n"}
-        {"  "}maxPrice: {S.a("0.05")},  {S.c("// refuse if price > $0.05 USDC")}{"\n"}
+        {"  "}url: {S.s("'https://mpp.t2000.ai/openai/v1/chat/completions'")},{"\n"}
+        {"  "}body: JSON.{S.g("stringify")}({"{"} model: {S.s("'gpt-4o'")}, messages: [...] {"}"}),{"\n"}
+        {"  "}maxPrice: {S.a("0.05")},{"\n"}
         {"}"});{"\n\n"}
-        {S.p("const")} data = result.{S.a("body")};  {S.c("// JSON or text depending on content-type")}
+        {S.p("const")} data = result.{S.a("body")};  {S.c("// API response")}
+      </CodeBlock>
+
+      <h2 id="mpp-mcp">MCP tools</h2>
+      <p>
+        When using t2000 via MCP (Claude Desktop, Cursor, Windsurf), your agent
+        has two tools for MPP:
+      </p>
+      <DocTable
+        headers={["Tool", "Description"]}
+        rows={[
+          [<InlineCode key="k">t2000_services</InlineCode>, "Discover all available MPP services, endpoints, and prices. Call this first."],
+          [<InlineCode key="k">t2000_pay</InlineCode>, "Make a paid API request. Handles the 402 challenge automatically."],
+        ]}
+      />
+      <p>
+        Just ask naturally — your AI will discover the right service and pay for it:
+      </p>
+      <CodeBlock lang="output">
+        {S.m("You:")} Generate an image of a sunset using Fal.ai{"\n"}
+        {S.m("Claude:")} {S.c("→ t2000_services (discovers fal.ai endpoints)")}{"\n"}
+        {S.m("Claude:")} {S.c("→ t2000_pay (POST mpp.t2000.ai/fal/fal-ai/flux/dev)")}{"\n"}
+        {S.g("✓")} Image generated — paid $0.03 USDC
       </CodeBlock>
 
       <h2 id="mpp-why-sui">Why Sui MPP is different</h2>
@@ -1690,6 +1773,18 @@ function MppSection() {
         success status.{" "}
         <strong>No facilitator. No webhook. Just on-chain proof.</strong>
       </p>
+
+      <h2 id="mpp-links">Links</h2>
+      <DocTable
+        headers={["Resource", "URL"]}
+        rows={[
+          ["MPP Gateway (service directory)", <a key="l" href="https://mpp.t2000.ai" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai</a>],
+          ["MPP Standard", <a key="l" href="https://mpp.dev" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.dev</a>],
+          ["Sui payment method (npm)", <a key="l" href="https://www.npmjs.com/package/@t2000/mpp-sui" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">@t2000/mpp-sui</a>],
+          ["Agent discovery", <a key="l" href="https://mpp.t2000.ai/llms.txt" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai/llms.txt</a>],
+          ["JSON service catalog", <a key="l" href="https://mpp.t2000.ai/api/services" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai/api/services</a>],
+        ]}
+      />
     </>
   );
 }
@@ -1818,7 +1913,7 @@ function ChangelogSection() {
         MCP-first AI advisor — connect Claude Desktop, Cursor, or Windsurf to your
         t2000 agent. <InlineCode>t2000 init</InlineCode> walks you through setup (wallet, MCP
         platforms, safeguards) and auto-configures your AI platform.
-        33 tools, 20 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
+        35 tools, 20 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
       </p>
 
       <h2 id="cl-0170">
