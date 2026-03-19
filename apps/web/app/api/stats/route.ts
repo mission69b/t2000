@@ -5,6 +5,7 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
 const TREASURY_ID = "0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91";
 const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
+const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY ?? "";
 
 export async function GET() {
 
@@ -41,15 +42,15 @@ async function getWalletBalances() {
 
   try {
     const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
-    const results: Record<string, { balanceSui: number; balanceUsdc?: number }> = {};
+    const results: Record<string, { address?: string; balanceSui: number; balanceUsdc?: number }> = {};
 
     if (sponsorAddr) {
       const bal = await client.getBalance({ owner: sponsorAddr });
-      results.sponsor = { balanceSui: Number(bal.totalBalance) / 1e9 };
+      results.sponsor = { address: sponsorAddr, balanceSui: Number(bal.totalBalance) / 1e9 };
     }
     if (gasAddr) {
       const bal = await client.getBalance({ owner: gasAddr });
-      results.gasStation = { balanceSui: Number(bal.totalBalance) / 1e9 };
+      results.gasStation = { address: gasAddr, balanceSui: Number(bal.totalBalance) / 1e9 };
     }
 
     const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
@@ -89,11 +90,13 @@ async function getWalletBalances() {
     }
 
     results.treasury = {
+      address: TREASURY_ID,
       balanceSui: 0,
       balanceUsdc: +treasuryUsdc.toFixed(6),
     };
 
     results.rebate = {
+      address: REBATE_ADDRESS,
       balanceSui: Number(rebateSui.totalBalance) / 1e9,
       balanceUsdc: Number(rebateUsdc.totalBalance) / 1e6,
     };
@@ -195,17 +198,47 @@ async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
 }
 
 async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
-  const [total, settled, last24h, last7d] = await Promise.all([
-    prisma.x402Payment.count(),
-    prisma.x402Payment.count({ where: { settled: true } }),
-    prisma.x402Payment.count({ where: { verifiedAt: { gte: oneDayAgo } } }),
-    prisma.x402Payment.count({ where: { verifiedAt: { gte: sevenDaysAgo } } }),
-  ]);
+  const payFilter = { action: "pay" };
 
-  const allPayments = await prisma.x402Payment.findMany({ select: { amount: true } });
-  const totalAmount = allPayments.reduce((s, p) => s + Number(p.amount), 0);
+  const [indexedTotal, indexed24h, indexed7d, legacyTotal, legacySettled, legacyPayments] =
+    await Promise.all([
+      prisma.transaction.count({ where: payFilter }),
+      prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: oneDayAgo } } }),
+      prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: sevenDaysAgo } } }),
+      prisma.x402Payment.count(),
+      prisma.x402Payment.count({ where: { settled: true } }),
+      prisma.x402Payment.findMany({ select: { amount: true } }),
+    ]);
 
-  return { total, settled, totalAmount: +totalAmount.toFixed(4), last24h, last7d };
+  const legacyAmount = legacyPayments.reduce((s, p) => s + Number(p.amount), 0);
+
+  let onChainVolume = 0;
+  let gatewayAddress: string | undefined;
+  if (MPP_GATEWAY_TREASURY) {
+    gatewayAddress = MPP_GATEWAY_TREASURY;
+    try {
+      const USDC_TYPE =
+        "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
+      const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
+      const bal = await client.getBalance({
+        owner: MPP_GATEWAY_TREASURY,
+        coinType: USDC_TYPE,
+      });
+      onChainVolume = Number(bal.totalBalance) / 1e6;
+    } catch { /* non-critical */ }
+  }
+
+  const total = indexedTotal + legacyTotal;
+  const totalAmount = onChainVolume > 0 ? onChainVolume : legacyAmount;
+
+  return {
+    total,
+    settled: legacySettled + indexedTotal,
+    totalAmount: +totalAmount.toFixed(4),
+    last24h: indexed24h,
+    last7d: indexed7d,
+    gatewayAddress,
+  };
 }
 
 async function getTransactionStats(oneDayAgo: Date, sevenDaysAgo: Date) {

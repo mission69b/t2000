@@ -4,6 +4,10 @@ import { allDescriptors, type ProtocolDescriptor } from '@t2000/sdk/adapters';
 
 const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
 
+const MPP_GATEWAY_TREASURIES = new Set(
+  (process.env.MPP_GATEWAY_TREASURIES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+);
+
 /**
  * Protocol detection rules — auto-built from SDK adapter descriptors.
  *
@@ -194,14 +198,27 @@ export function parseTransfers(
     }
   }
 
-  // Step 2: Override with event-based classification (medium priority)
+  // Step 2: Detect MPP payments — USDC outflow to a known gateway treasury
+  if (MPP_GATEWAY_TREASURIES.size > 0 && (action === 'send' || action === 'unknown')) {
+    for (const bc of tx.balanceChanges) {
+      const owner = 'AddressOwner' in bc.owner ? bc.owner.AddressOwner : null;
+      if (!owner || !MPP_GATEWAY_TREASURIES.has(owner)) continue;
+      if (bc.coinType.toLowerCase().includes('usdc') && Number(bc.amount) > 0) {
+        action = 'pay';
+        protocol = 'mpp';
+        break;
+      }
+    }
+  }
+
+  // Step 3: Override with event-based classification (medium priority)
   const eventResult = classifyFromEvents(tx.events);
   if (eventResult.action !== 'unknown') {
     action = eventResult.action;
     protocol = eventResult.protocol;
   }
 
-  // Step 3: Override with Move call target classification (highest priority)
+  // Step 4: Override with Move call target classification (highest priority)
   const moveCallResult = classifyFromMoveCallTargets(tx.moveCallTargets);
   if (moveCallResult.action !== 'unknown') {
     action = moveCallResult.action;

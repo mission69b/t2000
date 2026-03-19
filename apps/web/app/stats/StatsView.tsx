@@ -39,6 +39,7 @@ interface Stats {
     totalAmount: number;
     last24h: number;
     last7d: number;
+    gatewayAddress?: string;
   };
   transactions: {
     total: number;
@@ -341,7 +342,7 @@ export function StatsView() {
           <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4">
             MPP Payments
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
               <div className="text-2xl font-mono text-foreground">
                 {stats.mpp.total}
@@ -363,9 +364,32 @@ export function StatsView() {
                 ${stats.mpp.totalAmount.toFixed(2)}
               </div>
               <div className="text-[10px] text-muted uppercase tracking-wider mt-1">
-                Volume
+                Volume (USDC)
               </div>
             </div>
+          </div>
+          <div className="border-t border-border pt-3 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-muted">24h</span>
+              <span className="text-foreground">{stats.mpp.last24h} payments</span>
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-muted">7d</span>
+              <span className="text-foreground">{stats.mpp.last7d} payments</span>
+            </div>
+            {stats.mpp.gatewayAddress && (
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-muted">Gateway</span>
+                <a
+                  href={`https://suiscan.xyz/mainnet/account/${stats.mpp.gatewayAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground hover:text-accent transition-colors"
+                >
+                  {truncateAddress(stats.mpp.gatewayAddress)}
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </section>
