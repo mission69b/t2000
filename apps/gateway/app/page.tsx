@@ -31,7 +31,6 @@ function ServiceRow({ service, isOpen, onToggle }: {
               </span>
             ))}
           </div>
-          <p className="text-xs text-muted truncate">{service.description}</p>
           <code className="text-[11px] text-dim font-mono">{service.serviceUrl}</code>
         </div>
         <div className="text-xs text-muted font-mono shrink-0">
@@ -74,12 +73,6 @@ function ServiceRow({ service, isOpen, onToggle }: {
                 ))}
               </tbody>
             </table>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-muted">
-            <span>Base URL:</span>
-            <code className="bg-panel border border-border px-2 py-0.5 rounded text-foreground">
-              {service.serviceUrl}
-            </code>
           </div>
         </div>
       )}
@@ -131,7 +124,7 @@ const result = await agent.pay({
               t2000
             </a>
             <span className="text-dim">/</span>
-            <span className="text-muted">mpp gateway</span>
+            <span className="text-muted">services</span>
           </div>
           <div className="flex items-center gap-4 text-xs text-muted">
             <a href="/api/services" className="hover:text-foreground transition-colors">
@@ -155,14 +148,13 @@ const result = await agent.pay({
         <main className="flex-1 min-w-0">
           <div className="mb-8">
             <h1 className="text-xl font-medium text-foreground mb-2">
-              MPP Gateway
+              Services
               <span className="text-accent ml-2 text-sm font-normal">Sui USDC</span>
             </h1>
             <p className="text-sm text-muted max-w-xl">
-              Pay-per-request AI and web APIs. No API keys. No accounts.
-              Agents pay with Sui USDC via the{' '}
+              Pay-per-request APIs. No keys, no accounts — agents pay with{' '}
               <a href="https://mpp.dev" className="text-accent hover:underline">
-                Machine Payments Protocol
+                MPP
               </a>.
             </p>
           </div>
@@ -201,27 +193,20 @@ const result = await agent.pay({
             ))}
           </div>
 
-          {/* Payment info */}
+          {/* How it works */}
           <div className="mt-8 p-5 border border-border rounded-lg bg-surface/40">
-            <h3 className="text-sm font-medium text-foreground mb-3">How it works</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div>
-                <div className="text-accent font-medium mb-1">1. Call the endpoint</div>
-                <p className="text-muted">
-                  Send a request to any endpoint above. You&apos;ll receive a 402 with a payment challenge.
-                </p>
+                <div className="text-accent font-medium mb-1">1. Request</div>
+                <p className="text-muted">Call any endpoint. Get a 402 payment challenge.</p>
               </div>
               <div>
-                <div className="text-accent font-medium mb-1">2. Pay with USDC</div>
-                <p className="text-muted">
-                  Your agent signs a USDC transfer on Sui. Settlement in ~400ms, gas under $0.001.
-                </p>
+                <div className="text-accent font-medium mb-1">2. Pay</div>
+                <p className="text-muted">USDC on Sui. ~400ms settlement, &lt;$0.001 gas.</p>
               </div>
               <div>
-                <div className="text-accent font-medium mb-1">3. Get the response</div>
-                <p className="text-muted">
-                  The gateway verifies payment, proxies to the upstream API, and returns the result.
-                </p>
+                <div className="text-accent font-medium mb-1">3. Receive</div>
+                <p className="text-muted">Payment verified, upstream API called, response returned.</p>
               </div>
             </div>
           </div>
@@ -232,9 +217,6 @@ const result = await agent.pay({
           <div className="border border-border rounded-lg bg-surface/40 sticky top-6">
             <div className="px-5 py-4 border-b border-border">
               <h2 className="text-sm font-medium text-foreground">Use with t2000</h2>
-              <p className="text-[11px] text-muted mt-1">
-                Install the CLI and fund your agent&apos;s Sui wallet.
-              </p>
             </div>
 
             {/* Install */}
@@ -293,14 +275,7 @@ const result = await agent.pay({
                 className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
               >
                 <span className="text-accent">→</span>
-                npm install @t2000/mpp-sui
-              </a>
-              <a
-                href="https://t2000.ai/mpp"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">→</span>
-                What is MPP?
+                @t2000/mpp-sui
               </a>
             </div>
           </div>
@@ -310,7 +285,7 @@ const result = await agent.pay({
       {/* Footer */}
       <footer className="border-t border-border mt-16">
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between text-xs text-muted">
-          <span>t2000 MPP Gateway — Sui USDC</span>
+          <span>t2000 — Sui USDC</span>
           <span>
             Powered by{' '}
             <a href="https://mpp.dev" className="text-accent hover:underline">
