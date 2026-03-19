@@ -22,9 +22,24 @@ function getGateway() {
 }
 
 export function charge(amount: string, handler: RouteHandler): RouteHandler {
-  return (req: Request) => {
+  return async (req: Request) => {
     const mppx = getGateway();
-    return mppx.charge({ amount })(handler)(req);
+    const body = await req.arrayBuffer();
+
+    const innerHandler: RouteHandler = () =>
+      handler(new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: body.byteLength > 0 ? body : undefined,
+      }));
+
+    return mppx.charge({ amount })(innerHandler)(
+      new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: body.byteLength > 0 ? body : undefined,
+      })
+    );
   };
 }
 
