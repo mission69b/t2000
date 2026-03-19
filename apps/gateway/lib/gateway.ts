@@ -113,7 +113,12 @@ export async function fetchWithRetry(
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const res = await fetch(url, init);
-      if (res.status < 500 || attempt === retries - 1) return res;
+      if (res.status < 500 || attempt === retries - 1) {
+        return new Response(res.body, {
+          status: res.status,
+          headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
+        });
+      }
       await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
