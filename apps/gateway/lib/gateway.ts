@@ -21,23 +21,38 @@ function getGateway() {
   return _mppx;
 }
 
+interface ProxyOptions {
+  upstreamMethod?: 'GET' | 'POST';
+  bodyToQuery?: boolean;
+}
+
 export function chargeProxy(
   amount: string,
   upstream: string,
   upstreamHeaders: Record<string, string>,
+  options?: ProxyOptions,
 ): RouteHandler {
   return async (req: Request) => {
     const mppx = getGateway();
     const bodyText = await req.text();
+    const method = options?.upstreamMethod ?? 'POST';
 
     const handler: RouteHandler = async () => {
-      const res = await fetch(upstream, {
-        method: 'POST',
+      let url = upstream;
+
+      if (options?.bodyToQuery && bodyText) {
+        const params = JSON.parse(bodyText) as Record<string, string>;
+        const qs = new URLSearchParams(params).toString();
+        url = `${upstream}?${qs}`;
+      }
+
+      const res = await fetch(url, {
+        method,
         headers: {
-          'content-type': 'application/json',
+          ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
           ...upstreamHeaders,
         },
-        body: bodyText || undefined,
+        body: method === 'POST' ? (bodyText || undefined) : undefined,
       });
       return new Response(res.body, {
         status: res.status,
