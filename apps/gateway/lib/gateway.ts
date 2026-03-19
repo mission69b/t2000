@@ -24,20 +24,20 @@ function getGateway() {
 export function charge(amount: string, handler: RouteHandler): RouteHandler {
   return async (req: Request) => {
     const mppx = getGateway();
-    const body = await req.arrayBuffer();
+    const bodyText = await req.text();
 
     const innerHandler: RouteHandler = () =>
       handler(new Request(req.url, {
         method: req.method,
         headers: req.headers,
-        body: body.byteLength > 0 ? body : undefined,
+        body: bodyText || undefined,
       }));
 
     return mppx.charge({ amount })(innerHandler)(
       new Request(req.url, {
         method: req.method,
         headers: req.headers,
-        body: body.byteLength > 0 ? body : undefined,
+        body: bodyText || undefined,
       })
     );
   };
