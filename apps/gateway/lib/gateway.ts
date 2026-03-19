@@ -43,7 +43,8 @@ export function chargeProxy(
       if (options?.bodyToQuery && bodyText) {
         const params = JSON.parse(bodyText) as Record<string, string>;
         const qs = new URLSearchParams(params).toString();
-        url = `${upstream}?${qs}`;
+        const sep = upstream.includes('?') ? '&' : '?';
+        url = `${upstream}${sep}${qs}`;
       }
 
       const res = await fetch(url, {
