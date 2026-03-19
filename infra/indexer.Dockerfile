@@ -8,6 +8,7 @@ COPY apps/server/package.json apps/server/
 COPY packages/sdk/package.json packages/sdk/
 COPY packages/x402/package.json packages/x402/
 COPY packages/mpp-sui/package.json packages/mpp-sui/
+COPY patches/ patches/
 
 RUN pnpm install --frozen-lockfile
 

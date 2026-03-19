@@ -62,10 +62,10 @@ export async function fetchCheckpoints(
     const transactions: ParsedTransaction[] = txBlocks.map((tx) => {
       const moveCallTargets: string[] = [];
       const txKind = tx.transaction?.data?.transaction;
-      if (txKind && 'transactions' in txKind) {
-        for (const cmd of (txKind as { transactions: Array<Record<string, unknown>> }).transactions) {
-          if ('MoveCall' in cmd) {
-            const mc = cmd.MoveCall as { package: string; module: string; function: string };
+      if (txKind && typeof txKind === 'object' && 'transactions' in txKind) {
+        for (const cmd of (txKind as { transactions: unknown[] }).transactions) {
+          if (typeof cmd === 'object' && cmd !== null && 'MoveCall' in cmd) {
+            const mc = (cmd as Record<string, unknown>).MoveCall as { package: string; module: string; function: string };
             moveCallTargets.push(`${mc.package}::${mc.module}::${mc.function}`);
           }
         }
