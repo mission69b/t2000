@@ -32,6 +32,7 @@ function ServiceRow({ service, isOpen, onToggle }: {
             ))}
           </div>
           <p className="text-xs text-muted truncate">{service.description}</p>
+          <code className="text-[11px] text-dim font-mono">{service.serviceUrl}</code>
         </div>
         <div className="text-xs text-muted font-mono shrink-0">
           {service.endpoints.length} endpoint{service.endpoints.length > 1 ? 's' : ''}
