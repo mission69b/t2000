@@ -30,10 +30,23 @@ export function sui(options: SuiServerOptions) {
     },
 
     async verify({ credential }) {
-      const tx = await client.getTransactionBlock({
-        digest: credential.payload.digest,
-        options: { showEffects: true, showBalanceChanges: true },
-      });
+      const digest = credential.payload.digest;
+
+      let tx: Awaited<ReturnType<typeof client.getTransactionBlock>> | null = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          tx = await client.getTransactionBlock({
+            digest,
+            options: { showEffects: true, showBalanceChanges: true },
+          });
+          break;
+        } catch {
+          if (attempt === 4) throw new Error(`Could not find the referenced transaction [${digest}]`);
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+
+      if (!tx) throw new Error(`Could not find the referenced transaction [${digest}]`);
 
       if (tx.effects?.status?.status !== 'success') {
         throw new Error('Transaction failed on-chain');
