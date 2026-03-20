@@ -51,7 +51,7 @@ t2000 pay <url> [options]
 | `--timeout <seconds>` | Request timeout in seconds | 30 |
 | `--dry-run` | Show what would be paid without paying | — |
 
-## Available Services (38 services, 83 endpoints)
+## Available Services (36 services, 80 endpoints)
 
 ### AI Models
 | Service | Endpoint | Price |
@@ -128,8 +128,6 @@ t2000 pay <url> [options]
 | Hunter.io (domain search) | `/hunter/v1/search` | $0.01 |
 | Hunter.io (verify email) | `/hunter/v1/verify` | $0.01 |
 | IPinfo (IP lookup) | `/ipinfo/v1/lookup` | $0.005 |
-| Abstract API (email) | `/abstractapi/v1/email` | $0.005 |
-| Abstract API (phone) | `/abstractapi/v1/phone` | $0.005 |
 | SerpAPI (Google search) | `/serpapi/v1/search` | $0.01 |
 
 ### Tools & Compute
@@ -138,7 +136,6 @@ t2000 pay <url> [options]
 | Judge0 Code Exec | `/judge0/v1/submissions` | $0.005 |
 | E2B (cloud sandbox) | `/e2b/v1/execute` | $0.01 |
 | Resend Email | `/resend/v1/emails` | $0.005 |
-| Twilio SMS | `/twilio/v1/sms` | $0.02 |
 
 ### Commerce
 | Service | Endpoint | Price |
@@ -301,12 +298,6 @@ t2000 pay https://mpp.t2000.ai/pdfshift/v1/convert \
 ```bash
 t2000 pay https://mpp.t2000.ai/replicate/v1/predictions \
   --data '{"model":"meta/llama-3-70b-instruct","input":{"prompt":"Explain DeFi in 3 sentences"}}'
-```
-
-### Send an SMS
-```bash
-t2000 pay https://mpp.t2000.ai/twilio/v1/sms \
-  --data '{"to":"+14155551234","body":"Your health factor is below 2.0 — consider adding collateral."}'
 ```
 
 ### Find emails for a domain

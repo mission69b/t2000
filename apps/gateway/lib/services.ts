@@ -518,20 +518,6 @@ export const services: Service[] = [
     ],
   },
   {
-    id: 'abstractapi',
-    name: 'Abstract API',
-    serviceUrl: `${BASE_URL}/abstractapi`,
-    description: 'Email validation, phone validation, and data enrichment.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['data'],
-    logo: '/logos/abstractapi.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/email', description: 'Validate and verify an email address', price: '0.005' },
-      { method: 'POST', path: '/v1/phone', description: 'Validate a phone number (carrier, type, location)', price: '0.005' },
-    ],
-  },
-  {
     id: 'printful',
     name: 'Printful',
     serviceUrl: `${BASE_URL}/printful`,
@@ -544,19 +530,6 @@ export const services: Service[] = [
       { method: 'POST', path: '/v1/products', description: 'Browse catalog — all products, or by ID for sizes/colors', price: '0.005' },
       { method: 'POST', path: '/v1/estimate', description: 'Get shipping and cost estimate for an order', price: '0.005' },
       { method: 'POST', path: '/v1/order', description: 'Place a print-on-demand order (dynamic price: cost + 5%)', price: 'dynamic' },
-    ],
-  },
-  {
-    id: 'twilio',
-    name: 'Twilio SMS',
-    serviceUrl: `${BASE_URL}/twilio`,
-    description: 'Send text messages to any phone number worldwide.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['communication'],
-    logo: '/logos/twilio.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/sms', description: 'Send an SMS message', price: '0.02' },
     ],
   },
 ];
