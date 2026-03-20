@@ -168,32 +168,6 @@ const MPP_SERVICES = [
   { name: "Printful", id: "printful", detail: "Print-on-demand" },
 ];
 
-const SERVICE_CATEGORIES = [
-  {
-    label: "AI & LLMs",
-    ids: ["openai", "anthropic", "gemini", "deepseek", "groq", "perplexity", "together", "replicate"],
-  },
-  {
-    label: "Media & Voice",
-    ids: ["fal", "stability", "elevenlabs", "assemblyai"],
-  },
-  {
-    label: "Search & Web",
-    ids: ["brave", "exa", "serper", "serpapi", "firecrawl", "jina", "newsapi"],
-  },
-  {
-    label: "Data & Intelligence",
-    ids: ["coingecko", "alphavantage", "openweather", "googlemaps", "ipinfo", "hunter"],
-  },
-  {
-    label: "Utilities & Compute",
-    ids: ["screenshot", "pdfshift", "qrcode", "deepl", "translate", "judge0", "e2b"],
-  },
-  {
-    label: "Commerce",
-    ids: ["resend", "reloadly", "lob", "printful"],
-  },
-];
 
 const COMPARE_ROWS: {
   feature: string;
@@ -627,41 +601,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Category grid */}
+        {/* CTA */}
         <div className="px-6 sm:px-8 lg:px-20">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border border border-border">
-            {SERVICE_CATEGORIES.map((cat) => (
-              <div key={cat.label} className="bg-panel p-5 sm:p-6">
-                <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4 flex items-center gap-2">
-                  <span className="w-1 h-1 bg-accent rounded-full" />
-                  {cat.label}
-                </div>
-                <div className="flex flex-col gap-2">
-                  {cat.ids.map((id) => {
-                    const svc = MPP_SERVICES.find((s) => s.id === id);
-                    if (!svc) return null;
-                    return (
-                      <div key={id} className="service-grid-item flex items-center gap-2.5 px-3 py-2 border border-transparent rounded-sm">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`https://mpp.t2000.ai/logos/${id}.svg`}
-                          alt=""
-                          width={16}
-                          height={16}
-                          className="opacity-60"
-                        />
-                        <span className="text-[11px] sm:text-xs text-foreground">{svc.name}</span>
-                        <span className="text-[10px] text-dim ml-auto hidden sm:inline">{svc.detail}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href="https://mpp.t2000.ai"
               target="_blank"
