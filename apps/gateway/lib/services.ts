@@ -541,8 +541,8 @@ export const services: Service[] = [
     categories: ['commerce'],
     logo: '/logos/printful.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/products', description: 'List store products and variants', price: '0.005' },
-      { method: 'POST', path: '/v1/estimate', description: 'Get shipping and cost estimate', price: '0.005' },
+      { method: 'POST', path: '/v1/products', description: 'Browse catalog — all products, or by ID for sizes/colors', price: '0.005' },
+      { method: 'POST', path: '/v1/estimate', description: 'Get shipping and cost estimate for an order', price: '0.005' },
       { method: 'POST', path: '/v1/order', description: 'Place a print-on-demand order (dynamic price: cost + 5%)', price: 'dynamic' },
     ],
   },
