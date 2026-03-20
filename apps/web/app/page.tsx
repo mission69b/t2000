@@ -6,6 +6,8 @@ import { BalanceWidget } from "./components/BalanceWidget";
 import { HomeShowcase } from "./components/HomeShowcase";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
+const TWITTER_URL = "https://x.com/t2000ai";
+const DISCORD_URL = "https://discord.gg/qtVJR5eH";
 const DOCS_URL = "/docs";
 const DEMO_URL = "/demo";
 
@@ -193,6 +195,22 @@ export default function Home() {
             className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
           >
             GitHub
+          </a>
+          <a
+            href={TWITTER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+          >
+            X
+          </a>
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+          >
+            Discord
           </a>
           <a
             href="#install"
@@ -790,6 +808,30 @@ export default function Home() {
           >
             Privacy
           </Link>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            GitHub
+          </a>
+          <a
+            href={TWITTER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            X
+          </a>
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
+          >
+            Discord
+          </a>
         </div>
       </footer>
     </div>

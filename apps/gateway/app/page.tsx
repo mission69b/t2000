@@ -331,6 +331,21 @@ const result = await agent.pay({
                 GitHub
               </a>
               <a
+                href="https://x.com/t2000ai"
+                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <span className="text-accent">→</span>
+                X
+                <span className="text-[10px] text-dim ml-auto">@t2000ai</span>
+              </a>
+              <a
+                href="https://discord.gg/qtVJR5eH"
+                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <span className="text-accent">→</span>
+                Discord
+              </a>
+              <a
                 href="https://mpp.dev"
                 className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
               >
