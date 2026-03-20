@@ -7,8 +7,7 @@ export const POST = chargeCustom('0.02', async (bodyText) => {
   }
 
   const payload = {
-    audio_url: body.audio_url,
-    speech_model: body.speech_model ?? 'universal-2',
+    speech_models: ['universal-2'],
     ...body,
   };
 

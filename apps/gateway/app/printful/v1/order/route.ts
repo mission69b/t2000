@@ -1,14 +1,16 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
 
+const storeHeaders = () => ({
+  authorization: `Bearer ${process.env.PRINTFUL_API_KEY}`,
+  'content-type': 'application/json',
+  'x-pf-store-id': process.env.PRINTFUL_STORE_ID ?? '',
+});
+
 export const POST = chargeCustom(
   async (bodyText) => {
-    const body = JSON.parse(bodyText);
-    const estimateRes = await fetch('https://api.printful.com/orders/estimate', {
+    const estimateRes = await fetch('https://api.printful.com/orders/estimate-costs', {
       method: 'POST',
-      headers: {
-        authorization: `Bearer ${process.env.PRINTFUL_API_KEY}`,
-        'content-type': 'application/json',
-      },
+      headers: storeHeaders(),
       body: bodyText,
     });
     if (!estimateRes.ok) return '5.00';
@@ -19,10 +21,7 @@ export const POST = chargeCustom(
   async (bodyText) => {
     return fetchWithRetry('https://api.printful.com/orders', {
       method: 'POST',
-      headers: {
-        authorization: `Bearer ${process.env.PRINTFUL_API_KEY}`,
-        'content-type': 'application/json',
-      },
+      headers: storeHeaders(),
       body: bodyText,
     });
   },
