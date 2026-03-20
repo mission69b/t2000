@@ -214,6 +214,8 @@ async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
 
   let gatewayBalance = 0;
   let gatewayTxCount = 0;
+  let gateway24h = 0;
+  let gateway7d = 0;
 
   if (MPP_GATEWAY_TREASURY) {
     try {
@@ -229,10 +231,19 @@ async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
         filter: { ToAddress: MPP_GATEWAY_TREASURY },
         limit: 50,
         order: "descending",
+        options: { showRawEffects: false },
       });
       gatewayTxCount = txs.data.length;
       if (txs.hasNextPage) {
         gatewayTxCount = Math.max(gatewayTxCount, 50);
+      }
+
+      const oneDayMs = oneDayAgo.getTime();
+      const sevenDayMs = sevenDaysAgo.getTime();
+      for (const tx of txs.data) {
+        const ts = Number(tx.timestampMs ?? 0);
+        if (ts >= oneDayMs) gateway24h++;
+        if (ts >= sevenDayMs) gateway7d++;
       }
     } catch {
       /* RPC failure — fall through with 0s */
@@ -246,8 +257,8 @@ async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
     total,
     settled: legacySettled + gatewayTxCount,
     totalAmount: +totalAmount.toFixed(4),
-    last24h: 0,
-    last7d: 0,
+    last24h: gateway24h,
+    last7d: gateway7d,
     gatewayAddress: MPP_GATEWAY_TREASURY || undefined,
     gatewayBalance: +gatewayBalance.toFixed(4),
   };
