@@ -51,7 +51,7 @@ t2000 pay <url> [options]
 | `--timeout <seconds>` | Request timeout in seconds | 30 |
 | `--dry-run` | Show what would be paid without paying | — |
 
-## Available Services (17 services, 46 endpoints)
+## Available Services (38 services, 83 endpoints)
 
 ### AI Models
 | Service | Endpoint | Price |
@@ -73,21 +73,72 @@ t2000 pay <url> [options]
 | ElevenLabs TTS | `/elevenlabs/v1/text-to-speech/:voiceId` | $0.02 |
 | ElevenLabs SFX | `/elevenlabs/v1/sound-generation` | $0.03 |
 
-### Search & Data
+### Search
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | Brave Web Search | `/brave/v1/web/search` | $0.005 |
+| Exa (semantic search) | `/exa/v1/search` | $0.01 |
+| Exa (content extract) | `/exa/v1/contents` | $0.01 |
+| Serper (Google search) | `/serper/v1/search` | $0.005 |
+| Serper (image search) | `/serper/v1/images` | $0.005 |
+| NewsAPI (headlines) | `/newsapi/v1/headlines` | $0.005 |
+| NewsAPI (article search) | `/newsapi/v1/search` | $0.005 |
+
+### Data
+| Service | Endpoint | Price |
+|---------|----------|-------|
 | OpenWeather | `/openweather/v1/weather` | $0.005 |
 | Google Maps Geocode | `/googlemaps/v1/geocode` | $0.005 |
 | Google Maps Places | `/googlemaps/v1/places` | $0.01 |
 | Google Maps Directions | `/googlemaps/v1/directions` | $0.01 |
+| CoinGecko (price) | `/coingecko/v1/price` | $0.005 |
+| CoinGecko (markets) | `/coingecko/v1/markets` | $0.005 |
+| CoinGecko (trending) | `/coingecko/v1/trending` | $0.005 |
+| Alpha Vantage (quote) | `/alphavantage/v1/quote` | $0.005 |
+| Alpha Vantage (daily) | `/alphavantage/v1/daily` | $0.005 |
+| Alpha Vantage (search) | `/alphavantage/v1/search` | $0.005 |
 
-### Tools
+### Web & Documents
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| Firecrawl Scrape | `/firecrawl/v1/scrape` | $0.01 |
+| Jina Reader | `/jina/v1/read` | $0.005 |
+| ScreenshotOne | `/screenshot/v1/capture` | $0.01 |
+| PDFShift (HTML to PDF) | `/pdfshift/v1/convert` | $0.01 |
+| QR Code | `/qrcode/v1/generate` | $0.005 |
+
+### Translation
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| DeepL (translate) | `/deepl/v1/translate` | $0.005 |
+| Google Translate | `/translate/v1/translate` | $0.005 |
+| Google Detect Language | `/translate/v1/detect` | $0.005 |
+
+### Media & Transcription
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| Replicate (any model) | `/replicate/v1/predictions` | $0.02 |
+| Stability AI (generate) | `/stability/v1/generate` | $0.03 |
+| Stability AI (edit) | `/stability/v1/edit` | $0.03 |
+| AssemblyAI (transcribe) | `/assemblyai/v1/transcribe` | $0.02 |
+
+### Intelligence & Validation
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| Hunter.io (domain search) | `/hunter/v1/search` | $0.01 |
+| Hunter.io (verify email) | `/hunter/v1/verify` | $0.01 |
+| IPinfo (IP lookup) | `/ipinfo/v1/lookup` | $0.005 |
+| Abstract API (email) | `/abstractapi/v1/email` | $0.005 |
+| Abstract API (phone) | `/abstractapi/v1/phone` | $0.005 |
+| SerpAPI (Google search) | `/serpapi/v1/search` | $0.01 |
+
+### Tools & Compute
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | Judge0 Code Exec | `/judge0/v1/submissions` | $0.005 |
-| Firecrawl Scrape | `/firecrawl/v1/scrape` | $0.01 |
+| E2B (cloud sandbox) | `/e2b/v1/execute` | $0.01 |
 | Resend Email | `/resend/v1/emails` | $0.005 |
+| Twilio SMS | `/twilio/v1/sms` | $0.02 |
 
 ### Commerce
 | Service | Endpoint | Price |
@@ -97,6 +148,9 @@ t2000 pay <url> [options]
 | Lob Postcards | `/lob/v1/postcards` | $1.00 |
 | Lob Letters | `/lob/v1/letters` | $1.50 |
 | Lob Address Verify | `/lob/v1/verify` | $0.01 |
+| Printful (browse) | `/printful/v1/products` | $0.005 |
+| Printful (estimate) | `/printful/v1/estimate` | $0.005 |
+| Printful (order) | `/printful/v1/order` | dynamic |
 
 ## Example Commands
 
@@ -181,6 +235,103 @@ t2000 pay https://mpp.t2000.ai/lob/v1/verify \
 ```bash
 t2000 pay https://mpp.t2000.ai/googlemaps/v1/directions \
   --data '{"origin":"San Francisco, CA","destination":"Palo Alto, CA"}'
+```
+
+### Get crypto prices
+```bash
+t2000 pay https://mpp.t2000.ai/coingecko/v1/price \
+  --data '{"ids":"sui,bitcoin,ethereum","vs_currencies":"usd"}'
+```
+
+### Get a stock quote
+```bash
+t2000 pay https://mpp.t2000.ai/alphavantage/v1/quote \
+  --data '{"symbol":"AAPL"}'
+```
+
+### Get breaking news
+```bash
+t2000 pay https://mpp.t2000.ai/newsapi/v1/headlines \
+  --data '{"country":"us","category":"technology"}'
+```
+
+### Translate text
+```bash
+t2000 pay https://mpp.t2000.ai/deepl/v1/translate \
+  --data '{"text":["Hello, how are you?"],"target_lang":"ES"}'
+```
+
+### Semantic search
+```bash
+t2000 pay https://mpp.t2000.ai/exa/v1/search \
+  --data '{"query":"best practices for AI agent payments","numResults":5}'
+```
+
+### Read a URL as markdown
+```bash
+t2000 pay https://mpp.t2000.ai/jina/v1/read \
+  --data '{"url":"https://docs.sui.io/concepts/tokenomics"}'
+```
+
+### Google search (structured)
+```bash
+t2000 pay https://mpp.t2000.ai/serper/v1/search \
+  --data '{"q":"Sui blockchain TVL 2026"}'
+```
+
+### Screenshot a webpage
+```bash
+t2000 pay https://mpp.t2000.ai/screenshot/v1/capture \
+  --data '{"url":"https://example.com","format":"png","viewport_width":"1280"}'
+```
+
+### Generate a QR code
+```bash
+t2000 pay https://mpp.t2000.ai/qrcode/v1/generate \
+  --data '{"data":"https://t2000.ai","size":"400x400"}'
+```
+
+### Convert HTML to PDF
+```bash
+t2000 pay https://mpp.t2000.ai/pdfshift/v1/convert \
+  --data '{"source":"https://t2000.ai/docs"}'
+```
+
+### Run a Replicate model
+```bash
+t2000 pay https://mpp.t2000.ai/replicate/v1/predictions \
+  --data '{"model":"meta/llama-3-70b-instruct","input":{"prompt":"Explain DeFi in 3 sentences"}}'
+```
+
+### Send an SMS
+```bash
+t2000 pay https://mpp.t2000.ai/twilio/v1/sms \
+  --data '{"to":"+14155551234","body":"Your health factor is below 2.0 — consider adding collateral."}'
+```
+
+### Find emails for a domain
+```bash
+t2000 pay https://mpp.t2000.ai/hunter/v1/search \
+  --data '{"domain":"mystenlabs.com"}'
+```
+
+### Look up an IP address
+```bash
+t2000 pay https://mpp.t2000.ai/ipinfo/v1/lookup \
+  --data '{"ip":"8.8.8.8"}'
+```
+
+### Execute code in a sandbox
+```bash
+t2000 pay https://mpp.t2000.ai/e2b/v1/execute \
+  --data '{"code":"import math; print(math.pi)","language":"python"}'
+```
+
+### Order print-on-demand merchandise
+```bash
+t2000 pay https://mpp.t2000.ai/printful/v1/order \
+  --max-price 30 \
+  --data '{"recipient":{"name":"Jane Doe","address1":"123 Main St","city":"SF","state_code":"CA","country_code":"US","zip":"94105"},"items":[{"variant_id":4012,"quantity":1,"files":[{"url":"https://example.com/design.png"}]}]}'
 ```
 
 ## Flow (automatic)
