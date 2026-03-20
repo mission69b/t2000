@@ -439,7 +439,9 @@ No API keys. No credit cards. Just money.
 
 ---
 
-### Announcement tweet
+### Announcement thread (3 tweets)
+
+**Tweet 1:**
 ```
 We just 2x'd the t2000 service catalog.
 
@@ -448,30 +450,28 @@ We just 2x'd the t2000 service catalog.
 Your AI calls the API. t2000 pays with USDC on Sui. Done.
 
 mpp.t2000.ai
+```
+*[attach: homepage stats + marquee screenshot]*
 
-[attach: card view screenshot]
+**Tweet 2:**
+```
+New services:
+
+OpenAI, Anthropic, Gemini, DeepSeek, Stability AI, Replicate, CoinGecko, Brave Search, DeepL, Printful, and 25 more.
+
+Your AI can now generate images, search the web, get stock quotes, translate text, and order t-shirts — all pay-per-use.
+```
+*[attach: mpp.t2000.ai card view with category pills]*
+
+**Tweet 3:**
+```
+New on the directory: search, category filters, card/list view.
+
+Browse all 35 services at mpp.t2000.ai
 ```
 
-### Thread (reply to announcement)
-```
-What's new:
-
-AI — Gemini, DeepSeek, Replicate, Together AI
-Media — Stability AI, AssemblyAI
-Search — Exa, Serper, SerpAPI
-Data — CoinGecko, Alpha Vantage, NewsAPI
-Web — Jina Reader, ScreenshotOne, PDFShift
-Commerce — Printful (your AI can order t-shirts)
-Translation — DeepL, Google Translate
-```
-
-```
-Also shipped: search, category filters, card/list toggle.
-
-mpp.t2000.ai
-
-[attach: search UI screenshot]
-```
+**@funkii QT (on tweet 1):**
+> An AI agent shouldn't need 35 API keys to use 35 services. It should need one USDC balance.
 
 ---
 
