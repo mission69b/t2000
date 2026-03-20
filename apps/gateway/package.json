@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@t2000/mpp-sui": "workspace:*",
+    "@vercel/analytics": "^1.6.1",
     "mppx": "^0.4.1",
     "next": "16.1.6",
     "react": "19.2.4",
