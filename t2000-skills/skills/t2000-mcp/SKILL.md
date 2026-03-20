@@ -3,8 +3,8 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server.   Provides 33 tools
-  and 20 prompts for AI-driven banking operations.
+  client, set up MCP config, or start the MCP server. Provides 35 tools
+  and 20 prompts for AI-driven banking and MPP service operations.
 license: MIT
 metadata:
   author: t2000
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 33 tools, 20 prompts, stdio transport, safeguard enforced.
+account. 35 tools, 20 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -40,7 +40,13 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (33)
+## Available Tools (35)
+
+### MPP Services (2)
+| Tool | Description |
+|------|-------------|
+| `t2000_services` | List all MPP services and endpoints (35 services, 79 endpoints) |
+| `t2000_pay` | Pay for and call any MPP API service with USDC |
 
 ### Read-only (16)
 | Tool | Description |

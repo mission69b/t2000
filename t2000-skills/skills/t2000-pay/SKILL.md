@@ -53,41 +53,68 @@ t2000 pay <url> [options]
 
 ## Available Services (35 services, 79 endpoints)
 
+> For the live, canonical list use `t2000_services` (MCP) or GET `https://mpp.t2000.ai/api/services`.
+> The table below is a quick reference.
+
 ### AI Models
 | Service | Endpoint | Price |
 |---------|----------|-------|
-| OpenAI | `/openai/v1/chat/completions` | $0.01 |
+| OpenAI Chat | `/openai/v1/chat/completions` | $0.01 |
+| OpenAI Embeddings | `/openai/v1/embeddings` | $0.005 |
+| OpenAI Audio Transcription | `/openai/v1/audio/transcriptions` | $0.01 |
+| OpenAI Text-to-Speech | `/openai/v1/audio/speech` | $0.02 |
 | Anthropic | `/anthropic/v1/messages` | $0.01 |
-| Google Gemini | `/gemini/v1beta/models/gemini-2.5-flash` | $0.005 |
+| Google Gemini Flash | `/gemini/v1beta/models/gemini-2.5-flash` | $0.005 |
+| Google Gemini Pro | `/gemini/v1beta/models/gemini-2.5-pro` | $0.01 |
+| Google Gemini Embeddings | `/gemini/v1beta/models/embedding-001` | $0.005 |
 | DeepSeek | `/deepseek/v1/chat/completions` | $0.005 |
-| Groq | `/groq/v1/chat/completions` | $0.005 |
-| Together AI | `/together/v1/chat/completions` | $0.005 |
+| Groq Chat | `/groq/v1/chat/completions` | $0.005 |
+| Groq Audio Transcription | `/groq/v1/audio/transcriptions` | $0.005 |
+| Together AI Chat | `/together/v1/chat/completions` | $0.005 |
+| Together AI Embeddings | `/together/v1/embeddings` | $0.005 |
 | Perplexity | `/perplexity/v1/chat/completions` | $0.01 |
 
 ### Media & Generation
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | OpenAI DALL-E | `/openai/v1/images/generations` | $0.05 |
-| Fal.ai Flux | `/fal/fal-ai/flux/dev` | $0.03 |
+| Fal.ai Flux Dev | `/fal/fal-ai/flux/dev` | $0.03 |
+| Fal.ai Flux Pro | `/fal/fal-ai/flux-pro` | $0.05 |
+| Fal.ai Flux Realism | `/fal/fal-ai/flux-realism` | $0.05 |
+| Fal.ai Recraft 20B | `/fal/fal-ai/recraft-20b` | $0.05 |
+| Fal.ai Whisper | `/fal/fal-ai/whisper` | $0.01 |
 | Together AI Images | `/together/v1/images/generations` | $0.03 |
 | ElevenLabs TTS | `/elevenlabs/v1/text-to-speech/:voiceId` | $0.02 |
 | ElevenLabs SFX | `/elevenlabs/v1/sound-generation` | $0.03 |
+| Replicate (any model) | `/replicate/v1/predictions` | $0.02 |
+| Replicate (check status) | `/replicate/v1/predictions/status` | $0.005 |
+| Stability AI (generate) | `/stability/v1/generate` | $0.03 |
+| Stability AI (edit) | `/stability/v1/edit` | $0.03 |
+| AssemblyAI (transcribe) | `/assemblyai/v1/transcribe` | $0.02 |
+| AssemblyAI (get result) | `/assemblyai/v1/result` | $0.005 |
 
 ### Search
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | Brave Web Search | `/brave/v1/web/search` | $0.005 |
+| Brave Image Search | `/brave/v1/images/search` | $0.005 |
+| Brave News Search | `/brave/v1/news/search` | $0.005 |
+| Brave Video Search | `/brave/v1/videos/search` | $0.005 |
+| Brave Summarizer | `/brave/v1/summarizer/search` | $0.01 |
 | Exa (semantic search) | `/exa/v1/search` | $0.01 |
 | Exa (content extract) | `/exa/v1/contents` | $0.01 |
 | Serper (Google search) | `/serper/v1/search` | $0.005 |
 | Serper (image search) | `/serper/v1/images` | $0.005 |
+| SerpAPI (Google search) | `/serpapi/v1/search` | $0.01 |
+| SerpAPI (locations) | `/serpapi/v1/locations` | $0.005 |
 | NewsAPI (headlines) | `/newsapi/v1/headlines` | $0.005 |
 | NewsAPI (article search) | `/newsapi/v1/search` | $0.005 |
 
 ### Data
 | Service | Endpoint | Price |
 |---------|----------|-------|
-| OpenWeather | `/openweather/v1/weather` | $0.005 |
+| OpenWeather Current | `/openweather/v1/weather` | $0.005 |
+| OpenWeather Forecast | `/openweather/v1/forecast` | $0.005 |
 | Google Maps Geocode | `/googlemaps/v1/geocode` | $0.005 |
 | Google Maps Places | `/googlemaps/v1/places` | $0.01 |
 | Google Maps Directions | `/googlemaps/v1/directions` | $0.01 |
@@ -102,6 +129,9 @@ t2000 pay <url> [options]
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | Firecrawl Scrape | `/firecrawl/v1/scrape` | $0.01 |
+| Firecrawl Crawl | `/firecrawl/v1/crawl` | $0.02 |
+| Firecrawl Map | `/firecrawl/v1/map` | $0.01 |
+| Firecrawl Extract | `/firecrawl/v1/extract` | $0.02 |
 | Jina Reader | `/jina/v1/read` | $0.005 |
 | ScreenshotOne | `/screenshot/v1/capture` | $0.01 |
 | PDFShift (HTML to PDF) | `/pdfshift/v1/convert` | $0.01 |
@@ -114,27 +144,20 @@ t2000 pay <url> [options]
 | Google Translate | `/translate/v1/translate` | $0.005 |
 | Google Detect Language | `/translate/v1/detect` | $0.005 |
 
-### Media & Transcription
-| Service | Endpoint | Price |
-|---------|----------|-------|
-| Replicate (any model) | `/replicate/v1/predictions` | $0.02 |
-| Stability AI (generate) | `/stability/v1/generate` | $0.03 |
-| Stability AI (edit) | `/stability/v1/edit` | $0.03 |
-| AssemblyAI (transcribe) | `/assemblyai/v1/transcribe` | $0.02 |
-
-### Intelligence & Validation
+### Intelligence
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | Hunter.io (domain search) | `/hunter/v1/search` | $0.01 |
 | Hunter.io (verify email) | `/hunter/v1/verify` | $0.01 |
 | IPinfo (IP lookup) | `/ipinfo/v1/lookup` | $0.005 |
-| SerpAPI (Google search) | `/serpapi/v1/search` | $0.01 |
 
 ### Tools & Compute
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | Judge0 Code Exec | `/judge0/v1/submissions` | $0.005 |
+| Judge0 Languages | `/judge0/v1/languages` | $0.005 |
 | Resend Email | `/resend/v1/emails` | $0.005 |
+| Resend Batch Email | `/resend/v1/emails/batch` | $0.01 |
 
 ### Commerce
 | Service | Endpoint | Price |
