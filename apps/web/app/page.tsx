@@ -129,6 +129,72 @@ const INTEGRATIONS = [
   { name: "Any MCP client", type: "ai" },
 ];
 
+const MPP_SERVICES = [
+  { name: "OpenAI", id: "openai", detail: "GPT-4o · DALL-E · Whisper" },
+  { name: "Anthropic", id: "anthropic", detail: "Claude Sonnet · Opus" },
+  { name: "Google Gemini", id: "gemini", detail: "2.5 Flash · Pro" },
+  { name: "DeepSeek", id: "deepseek", detail: "V3 · R1 Reasoning" },
+  { name: "Groq", id: "groq", detail: "Ultra-fast inference" },
+  { name: "Perplexity", id: "perplexity", detail: "Web-grounded answers" },
+  { name: "Together AI", id: "together", detail: "Open-source models" },
+  { name: "Replicate", id: "replicate", detail: "1000s of ML models" },
+  { name: "fal.ai", id: "fal", detail: "Flux · Recraft images" },
+  { name: "Stability AI", id: "stability", detail: "Stable Diffusion 3" },
+  { name: "ElevenLabs", id: "elevenlabs", detail: "Voice synthesis" },
+  { name: "AssemblyAI", id: "assemblyai", detail: "Transcription + AI" },
+  { name: "Brave Search", id: "brave", detail: "Web · News · Video" },
+  { name: "Exa", id: "exa", detail: "Semantic search" },
+  { name: "Serper", id: "serper", detail: "Google SERP JSON" },
+  { name: "SerpAPI", id: "serpapi", detail: "Multi-engine search" },
+  { name: "Firecrawl", id: "firecrawl", detail: "Scrape · Crawl" },
+  { name: "Jina Reader", id: "jina", detail: "URL to markdown" },
+  { name: "NewsAPI", id: "newsapi", detail: "150k+ news sources" },
+  { name: "CoinGecko", id: "coingecko", detail: "Crypto market data" },
+  { name: "Alpha Vantage", id: "alphavantage", detail: "Stock quotes" },
+  { name: "OpenWeather", id: "openweather", detail: "Weather forecasts" },
+  { name: "Google Maps", id: "googlemaps", detail: "Geocode · Places" },
+  { name: "IPinfo", id: "ipinfo", detail: "IP geolocation" },
+  { name: "Hunter.io", id: "hunter", detail: "Email finder" },
+  { name: "ScreenshotOne", id: "screenshot", detail: "Page screenshots" },
+  { name: "PDFShift", id: "pdfshift", detail: "HTML to PDF" },
+  { name: "QR Code", id: "qrcode", detail: "Generate QR codes" },
+  { name: "DeepL", id: "deepl", detail: "AI translation" },
+  { name: "Google Translate", id: "translate", detail: "130+ languages" },
+  { name: "Judge0", id: "judge0", detail: "Code execution" },
+  { name: "E2B", id: "e2b", detail: "Cloud sandboxes" },
+  { name: "Resend", id: "resend", detail: "Transactional email" },
+  { name: "Reloadly", id: "reloadly", detail: "800+ gift cards" },
+  { name: "Lob", id: "lob", detail: "Physical mail API" },
+  { name: "Printful", id: "printful", detail: "Print-on-demand" },
+];
+
+const SERVICE_CATEGORIES = [
+  {
+    label: "AI & LLMs",
+    ids: ["openai", "anthropic", "gemini", "deepseek", "groq", "perplexity", "together", "replicate"],
+  },
+  {
+    label: "Media & Voice",
+    ids: ["fal", "stability", "elevenlabs", "assemblyai"],
+  },
+  {
+    label: "Search & Web",
+    ids: ["brave", "exa", "serper", "serpapi", "firecrawl", "jina", "newsapi"],
+  },
+  {
+    label: "Data & Intelligence",
+    ids: ["coingecko", "alphavantage", "openweather", "googlemaps", "ipinfo", "hunter"],
+  },
+  {
+    label: "Utilities & Compute",
+    ids: ["screenshot", "pdfshift", "qrcode", "deepl", "translate", "judge0", "e2b"],
+  },
+  {
+    label: "Commerce",
+    ids: ["resend", "reloadly", "lob", "printful"],
+  },
+];
+
 const COMPARE_ROWS: {
   feature: string;
   coinbase: string;
@@ -144,7 +210,7 @@ const COMPARE_ROWS: {
   { feature: "Token exchange", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
-  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · OpenAI, Anthropic, fal, Firecrawl", bothCheck: true },
+  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 36 services, 80 endpoints", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 33 tools + 20 AI prompts + MCP", coinbaseCross: true },
   { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
@@ -181,9 +247,7 @@ export default function Home() {
             Integrations
           </a>
           <a
-            href="https://mpp.t2000.ai"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#services"
             className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
           >
             Services
@@ -462,6 +526,152 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Services Showcase ── */}
+      <section
+        id="services"
+        className="relative z-1 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,214,143,0.04)_0%,transparent_60%)] pointer-events-none" />
+
+        <div className="relative px-6 sm:px-8 lg:px-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-14">
+            <div>
+              <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+                Pay-per-use APIs
+              </div>
+              <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
+                36 services.
+                <br />
+                <em className="italic text-accent">No API keys.</em>
+              </h2>
+            </div>
+            <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
+              Your agent calls MPP. MPP handles auth, billing, and routing.
+              From $0.001 per request.
+            </p>
+          </div>
+
+          {/* Stats bar */}
+          <div className="grid grid-cols-3 gap-px bg-border border border-border mb-10 sm:mb-14">
+            {[
+              { value: "36", label: "Services" },
+              { value: "80", label: "Endpoints" },
+              { value: "$0.001", label: "Starting price" },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-panel px-5 py-5 sm:py-6 text-center">
+                <div className="text-[24px] sm:text-[32px] font-semibold text-accent leading-none mb-1.5">
+                  {stat.value}
+                </div>
+                <div className="text-[10px] sm:text-[11px] tracking-[0.1em] uppercase text-muted">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Scrolling marquee — row 1 */}
+        <div className="relative mb-2.5 overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-[var(--surface)] to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-[var(--surface)] to-transparent z-10 pointer-events-none" />
+          <div className="flex animate-marquee w-max">
+            {[...MPP_SERVICES.slice(0, 18), ...MPP_SERVICES.slice(0, 18)].map((svc, i) => (
+              <div
+                key={`m1-${svc.id}-${i}`}
+                className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-panel mx-1 sm:mx-1.5 shrink-0"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://mpp.t2000.ai/logos/${svc.id}.svg`}
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="opacity-70"
+                />
+                <span className="text-[11px] sm:text-xs text-foreground whitespace-nowrap tracking-wide">
+                  {svc.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Scrolling marquee — row 2 (reverse) */}
+        <div className="relative mb-10 sm:mb-14 overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-[var(--surface)] to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-[var(--surface)] to-transparent z-10 pointer-events-none" />
+          <div className="flex animate-marquee-reverse w-max">
+            {[...MPP_SERVICES.slice(18), ...MPP_SERVICES.slice(18)].map((svc, i) => (
+              <div
+                key={`m2-${svc.id}-${i}`}
+                className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-panel mx-1 sm:mx-1.5 shrink-0"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://mpp.t2000.ai/logos/${svc.id}.svg`}
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="opacity-70"
+                />
+                <span className="text-[11px] sm:text-xs text-foreground whitespace-nowrap tracking-wide">
+                  {svc.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Category grid */}
+        <div className="px-6 sm:px-8 lg:px-20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border border border-border">
+            {SERVICE_CATEGORIES.map((cat) => (
+              <div key={cat.label} className="bg-panel p-5 sm:p-6">
+                <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4 flex items-center gap-2">
+                  <span className="w-1 h-1 bg-accent rounded-full" />
+                  {cat.label}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {cat.ids.map((id) => {
+                    const svc = MPP_SERVICES.find((s) => s.id === id);
+                    if (!svc) return null;
+                    return (
+                      <div key={id} className="service-grid-item flex items-center gap-2.5 px-3 py-2 border border-transparent rounded-sm">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`https://mpp.t2000.ai/logos/${id}.svg`}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="opacity-60"
+                        />
+                        <span className="text-[11px] sm:text-xs text-foreground">{svc.name}</span>
+                        <span className="text-[10px] text-dim ml-auto hidden sm:inline">{svc.detail}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href="https://mpp.t2000.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 sm:px-8 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+            >
+              Explore all services →
+            </a>
+            <div className="text-[11px] text-dim tracking-wide">
+              No signup required · Pay per request with USDC
             </div>
           </div>
         </div>

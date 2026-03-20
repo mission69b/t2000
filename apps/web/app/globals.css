@@ -150,6 +150,20 @@ body::after {
   animation: tickerScroll 40s linear infinite reverse;
 }
 
+.animate-marquee {
+  animation: tickerScroll 45s linear infinite;
+}
+.animate-marquee-reverse {
+  animation: tickerScroll 50s linear infinite reverse;
+}
+.service-grid-item {
+  transition: all 0.25s ease;
+}
+.service-grid-item:hover {
+  background: rgba(0, 214, 143, 0.04);
+  border-color: rgba(0, 214, 143, 0.25);
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
