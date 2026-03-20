@@ -51,7 +51,7 @@ t2000 pay <url> [options]
 | `--timeout <seconds>` | Request timeout in seconds | 30 |
 | `--dry-run` | Show what would be paid without paying | — |
 
-## Available Services (36 services, 80 endpoints)
+## Available Services (35 services, 79 endpoints)
 
 ### AI Models
 | Service | Endpoint | Price |
@@ -134,7 +134,6 @@ t2000 pay <url> [options]
 | Service | Endpoint | Price |
 |---------|----------|-------|
 | Judge0 Code Exec | `/judge0/v1/submissions` | $0.005 |
-| E2B (cloud sandbox) | `/e2b/v1/execute` | $0.01 |
 | Resend Email | `/resend/v1/emails` | $0.005 |
 
 ### Commerce
@@ -310,12 +309,6 @@ t2000 pay https://mpp.t2000.ai/hunter/v1/search \
 ```bash
 t2000 pay https://mpp.t2000.ai/ipinfo/v1/lookup \
   --data '{"ip":"8.8.8.8"}'
-```
-
-### Execute code in a sandbox
-```bash
-t2000 pay https://mpp.t2000.ai/e2b/v1/execute \
-  --data '{"code":"import math; print(math.pi)","language":"python"}'
 ```
 
 ### Order print-on-demand merchandise

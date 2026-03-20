@@ -161,7 +161,6 @@ const MPP_SERVICES = [
   { name: "DeepL", id: "deepl", detail: "AI translation" },
   { name: "Google Translate", id: "translate", detail: "130+ languages" },
   { name: "Judge0", id: "judge0", detail: "Code execution" },
-  { name: "E2B", id: "e2b", detail: "Cloud sandboxes" },
   { name: "Resend", id: "resend", detail: "Transactional email" },
   { name: "Reloadly", id: "reloadly", detail: "800+ gift cards" },
   { name: "Lob", id: "lob", detail: "Physical mail API" },
@@ -184,7 +183,7 @@ const COMPARE_ROWS: {
   { feature: "Token exchange", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
-  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 36 services, 80 endpoints", bothCheck: true },
+  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 35 services, 79 endpoints", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 33 tools + 20 AI prompts + MCP", coinbaseCross: true },
   { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
@@ -519,7 +518,7 @@ export default function Home() {
                 Pay-per-use APIs
               </div>
               <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
-                36 services.
+                35 services.
                 <br />
                 <em className="italic text-accent">No API keys.</em>
               </h2>
@@ -533,8 +532,8 @@ export default function Home() {
           {/* Stats bar */}
           <div className="grid grid-cols-3 gap-px bg-border border border-border mb-10 sm:mb-14">
             {[
-              { value: "36", label: "Services" },
-              { value: "80", label: "Endpoints" },
+              { value: "35", label: "Services" },
+              { value: "79", label: "Endpoints" },
               { value: "$0.001", label: "Starting price" },
             ].map((stat) => (
               <div key={stat.label} className="bg-panel px-5 py-5 sm:py-6 text-center">

@@ -1079,7 +1079,7 @@ function CliMoreSection() {
       </h2>
       <p>
         Pay for MPP-protected API resources with USDC micropayments.
-        36 services available at{" "}
+        35 services available at{" "}
         <a href="https://mpp.t2000.ai" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai</a>.
         See the{" "}
         <a onClick={() => document.getElementById("mpp")?.scrollIntoView({ behavior: "smooth" })} className="text-accent hover:underline cursor-pointer">MPP Payments guide</a>{" "}
@@ -1668,7 +1668,7 @@ function MppSection() {
       </Callout>
 
       <h2 id="mpp-services">Available services</h2>
-      <p>36 services, 80 endpoints. No API keys, no accounts — just USDC on Sui.</p>
+      <p>35 services, 79 endpoints. No API keys, no accounts — just USDC on Sui.</p>
       <DocTable
         headers={["Category", "Services", "From"]}
         rows={[
@@ -1678,7 +1678,7 @@ function MppSection() {
           ["Data", "OpenWeather, Google Maps, CoinGecko, Alpha Vantage, IPinfo, Hunter.io", "$0.005"],
           ["Web", "Firecrawl, Jina Reader, ScreenshotOne, PDFShift, QR Code", "$0.005"],
           ["Translation", "DeepL, Google Translate (130+ languages)", "$0.005"],
-          ["Compute", "Judge0, E2B (cloud sandboxes)", "$0.005"],
+          ["Compute", "Judge0", "$0.005"],
           ["Communication", "Resend (email)", "$0.005"],
           [<><strong key="c">Commerce</strong></>, <>Reloadly (gift cards), Lob (physical mail), Printful (print-on-demand)</>, "$0.005"],
         ]}

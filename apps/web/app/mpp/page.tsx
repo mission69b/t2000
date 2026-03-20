@@ -103,7 +103,7 @@ export default function MppPage() {
             <span className="text-muted/20">·</span>
             <span>Sui USDC</span>
             <span className="text-muted/20">·</span>
-            <span>36 services, 80 endpoints</span>
+            <span>35 services, 79 endpoints</span>
             <span className="text-muted/20">·</span>
             <span>Open source</span>
           </div>

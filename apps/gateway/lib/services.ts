@@ -450,19 +450,6 @@ export const services: Service[] = [
     ],
   },
   {
-    id: 'e2b',
-    name: 'E2B',
-    serviceUrl: `${BASE_URL}/e2b`,
-    description: 'Cloud sandboxes — run arbitrary code safely in isolation.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['compute'],
-    logo: '/logos/e2b.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/execute', description: 'Execute code in an isolated sandbox', price: '0.01' },
-    ],
-  },
-  {
     id: 'hunter',
     name: 'Hunter.io',
     serviceUrl: `${BASE_URL}/hunter`,
