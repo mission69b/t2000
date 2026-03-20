@@ -1,7 +1,7 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
 
-const E2B_API = 'https://api.e2b.dev';
-const headers = () => ({
+const E2B_API = 'https://api.e2b.app';
+const apiHeaders = () => ({
   'x-api-key': process.env.E2B_API_KEY!,
   'content-type': 'application/json',
 });
@@ -16,7 +16,7 @@ export const POST = chargeCustom('0.01', async (bodyText) => {
 
   const createRes = await fetchWithRetry(`${E2B_API}/sandboxes`, {
     method: 'POST',
-    headers: headers(),
+    headers: apiHeaders(),
     body: JSON.stringify({ templateID: templateId, timeout: 30 }),
   });
   if (!createRes.ok) {
@@ -26,17 +26,21 @@ export const POST = chargeCustom('0.01', async (bodyText) => {
   const sandbox = await createRes.json() as { sandboxID: string };
 
   try {
-    const execRes = await fetch(`${E2B_API}/sandboxes/${sandbox.sandboxID}/code/executions`, {
+    const cmd = language === 'python'
+      ? `python3 -c ${JSON.stringify(code)}`
+      : code;
+
+    const execRes = await fetch(`https://49982-${sandbox.sandboxID}.e2b.app/commands`, {
       method: 'POST',
-      headers: headers(),
-      body: JSON.stringify({ code }),
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ cmd, timeout: 25 }),
     });
     const result = await execRes.json();
     return Response.json(result);
   } finally {
     fetch(`${E2B_API}/sandboxes/${sandbox.sandboxID}`, {
       method: 'DELETE',
-      headers: headers(),
+      headers: apiHeaders(),
     }).catch(() => {});
   }
 });
