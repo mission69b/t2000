@@ -5,7 +5,7 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
 const TREASURY_ID = "0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91";
 const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
-const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY ?? "";
+const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY ?? "0x703284465d889aa19cbd6806f5e60445d40f558ba1470e96240abf6b65509d2f";
 
 export async function GET() {
 
@@ -198,39 +198,58 @@ async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
 }
 
 async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
-  const payFilter = { action: "pay" };
+  const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
   const [
-    indexedTotal,
-    indexed24h,
-    indexed7d,
-    indexedVolume,
     legacyTotal,
     legacySettled,
     legacyPayments,
   ] = await Promise.all([
-    prisma.transaction.count({ where: payFilter }),
-    prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: oneDayAgo } } }),
-    prisma.transaction.count({ where: { ...payFilter, executedAt: { gte: sevenDaysAgo } } }),
-    prisma.transaction.aggregate({ where: payFilter, _sum: { amount: true } }),
     prisma.x402Payment.count(),
     prisma.x402Payment.count({ where: { settled: true } }),
     prisma.x402Payment.findMany({ select: { amount: true } }),
   ]);
 
   const legacyAmount = legacyPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const indexedAmount = Number(indexedVolume._sum.amount ?? 0);
 
-  const total = indexedTotal + legacyTotal;
-  const totalAmount = indexedAmount + legacyAmount;
+  let gatewayBalance = 0;
+  let gatewayTxCount = 0;
+
+  if (MPP_GATEWAY_TREASURY) {
+    try {
+      const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
+
+      const usdcBal = await client.getBalance({
+        owner: MPP_GATEWAY_TREASURY,
+        coinType: USDC_TYPE,
+      });
+      gatewayBalance = Number(usdcBal.totalBalance) / 1e6;
+
+      const txs = await client.queryTransactionBlocks({
+        filter: { ToAddress: MPP_GATEWAY_TREASURY },
+        limit: 50,
+        order: "descending",
+      });
+      gatewayTxCount = txs.data.length;
+      if (txs.hasNextPage) {
+        gatewayTxCount = Math.max(gatewayTxCount, 50);
+      }
+    } catch {
+      /* RPC failure — fall through with 0s */
+    }
+  }
+
+  const total = gatewayTxCount + legacyTotal;
+  const totalAmount = gatewayBalance + legacyAmount;
 
   return {
     total,
-    settled: legacySettled + indexedTotal,
+    settled: legacySettled + gatewayTxCount,
     totalAmount: +totalAmount.toFixed(4),
-    last24h: indexed24h,
-    last7d: indexed7d,
+    last24h: 0,
+    last7d: 0,
     gatewayAddress: MPP_GATEWAY_TREASURY || undefined,
+    gatewayBalance: +gatewayBalance.toFixed(4),
   };
 }
 
