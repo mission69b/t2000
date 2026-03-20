@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
-  <rect width="40" height="40" rx="8" fill="#EF6C00"/>
-  <text x="20" y="26" text-anchor="middle" font-family="system-ui" font-weight="700" font-size="14" fill="#fff">PF</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.9 1.01L8.1 1c-.56 0-1.05.31-1.31.78L5.03 5H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-2.03l-1.76-3.22c-.26-.47-.76-.78-1.31-.77zM8.1 3h7.8l1.1 2H7l1.1-2zM21 19H3V7h18v12zm-9-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>

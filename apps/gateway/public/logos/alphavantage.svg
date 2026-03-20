@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
-  <rect width="40" height="40" rx="8" fill="#1E3A5F"/>
-  <text x="20" y="26" text-anchor="middle" font-family="system-ui" font-weight="700" font-size="20" fill="#fff">AV</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3zm4-4h2v12H7zm4-4h2v16h-2zm4 6h2v10h-2zm4-2h2v12h-2zM3 11l4-4 4 2 4-6 4 4 2-2v2l-2 2-4-4-4 6-4-2-4 4v-2z"/></svg>
