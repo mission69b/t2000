@@ -1,0 +1,83 @@
+name: Discord Dev Log
+
+on:
+  push:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  devlog:
+    name: Post to Dev Log
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Get commit info
+        id: info
+        run: |
+          AUTHOR=$(git log -1 --format='%an')
+          MESSAGE=$(git log -1 --format='%s')
+          SHORT_SHA=$(git log -1 --format='%h')
+          FILES_CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l | tr -d ' ')
+          DIFF_STAT=$(git diff --stat HEAD~1 HEAD 2>/dev/null | tail -1 | sed 's/^ *//')
+
+          echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
+          echo "message=$MESSAGE" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "files_changed=$FILES_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "diff_stat=$DIFF_STAT" >> "$GITHUB_OUTPUT"
+
+      - name: Determine commit type
+        id: type
+        run: |
+          MSG="${{ steps.info.outputs.message }}"
+          if echo "$MSG" | grep -qE "^✨|^feat"; then
+            echo "color=5763719" >> "$GITHUB_OUTPUT"
+            echo "label=feature" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qE "^🐛|^fix"; then
+            echo "color=15548997" >> "$GITHUB_OUTPUT"
+            echo "label=fix" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qE "^⚡|^perf"; then
+            echo "color=16776960" >> "$GITHUB_OUTPUT"
+            echo "label=perf" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qE "^♻️|^refactor"; then
+            echo "color=3447003" >> "$GITHUB_OUTPUT"
+            echo "label=refactor" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qE "^📦|^build"; then
+            echo "color=10181046" >> "$GITHUB_OUTPUT"
+            echo "label=build" >> "$GITHUB_OUTPUT"
+          else
+            echo "color=9807270" >> "$GITHUB_OUTPUT"
+            echo "label=commit" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post to Discord
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_DEVLOG_WEBHOOK }}
+        run: |
+          COMMIT_URL="https://github.com/mission69b/t2000/commit/${{ github.sha }}"
+          MESSAGE=$(echo "${{ steps.info.outputs.message }}" | sed 's/"/\\"/g')
+
+          curl -s -H "Content-Type: application/json" -d "{
+            \"embeds\": [{
+              \"title\": \"${MESSAGE}\",
+              \"url\": \"${COMMIT_URL}\",
+              \"color\": ${{ steps.type.outputs.color }},
+              \"fields\": [
+                {
+                  \"name\": \"Changes\",
+                  \"value\": \"${{ steps.info.outputs.files_changed }} files — ${{ steps.info.outputs.diff_stat }}\",
+                  \"inline\": true
+                }
+              ],
+              \"footer\": {
+                \"text\": \"${{ steps.type.outputs.label }} · ${{ steps.info.outputs.short_sha }} · ${{ steps.info.outputs.author }}\"
+              },
+              \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+            }]
+          }" "$WEBHOOK_URL"

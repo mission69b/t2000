@@ -103,3 +103,55 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${{ github.ref_name }}" --generate-notes
+
+  discord:
+    name: Discord Release Notification
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Get release info
+        id: info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          NOTES=$(gh release view "$VERSION" --json body -q .body | head -c 1800)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "notes<<$EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "$EOF" >> "$GITHUB_OUTPUT"
+      - name: Post to Discord
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+        run: |
+          VERSION="${{ steps.info.outputs.version }}"
+          NOTES=$(echo '${{ steps.info.outputs.notes }}' | sed 's/"/\\"/g' | head -c 1500)
+
+          curl -s -H "Content-Type: application/json" -d "{
+            \"embeds\": [{
+              \"title\": \"t2000 ${VERSION} released\",
+              \"url\": \"https://github.com/mission69b/t2000/releases/tag/${VERSION}\",
+              \"color\": 55951,
+              \"description\": \"${NOTES}\",
+              \"fields\": [
+                {
+                  \"name\": \"Update\",
+                  \"value\": \"\`\`\`npm update @t2000/cli -g\`\`\`\",
+                  \"inline\": false
+                },
+                {
+                  \"name\": \"Links\",
+                  \"value\": \"[npm](https://www.npmjs.com/package/@t2000/cli) · [GitHub](https://github.com/mission69b/t2000/releases/tag/${VERSION}) · [Docs](https://t2000.ai/docs)\",
+                  \"inline\": false
+                }
+              ],
+              \"footer\": {
+                \"text\": \"t2000.ai\"
+              },
+              \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+            }]
+          }" "$WEBHOOK_URL"
