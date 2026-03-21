@@ -209,14 +209,14 @@ function ServiceUrlCopy({ url }: { url: string }) {
       tabIndex={0}
       onClick={(e) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(`https://mpp.t2000.ai${url}`);
+        navigator.clipboard.writeText(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.stopPropagation();
-          navigator.clipboard.writeText(`https://mpp.t2000.ai${url}`);
+          navigator.clipboard.writeText(url);
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         }
