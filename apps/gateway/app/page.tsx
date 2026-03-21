@@ -533,16 +533,47 @@ const result = await agent.pay({
               </p>
               <div className="space-y-2">
                 {[
-                  '"Search the web for Sui news"',
-                  '"Generate an image of a sunset"',
-                  '"Buy a $20 Netflix gift card"',
-                  '"Send a postcard to 123 Main St"',
-                  '"What\'s the weather in Tokyo?"',
+                  '"Use t2000 to get the latest tech headlines"',
+                  '"Use t2000 to generate an image of a sunset"',
+                  '"Use t2000 to buy a $20 Netflix gift card"',
+                  '"Use t2000 to send a postcard to 123 Main St"',
+                  '"Use t2000 to check the weather in Tokyo"',
                 ].map((q) => (
                   <div key={q} className="text-[11px] text-foreground/70 bg-panel border border-border rounded px-3 py-1.5">
                     {q}
                   </div>
                 ))}
+              </div>
+
+              {/* Chain showcase */}
+              <div className="mt-4 pt-4 border-t border-border/50">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-[10px] uppercase tracking-wider text-accent">Chain services together</span>
+                </div>
+                <div className="bg-panel border border-border rounded-lg p-3">
+                  <p className="text-[11px] text-foreground/80 italic mb-3">
+                    &ldquo;Send 100 postcards to the top VC firms&rdquo;
+                  </p>
+                  <div className="space-y-1.5">
+                    {[
+                      { step: '1', service: 'Brave Search', action: 'Find top VC firms', cost: '$0.005' },
+                      { step: '2', service: 'Firecrawl', action: 'Scrape addresses from websites', cost: '$0.10' },
+                      { step: '3', service: 'OpenAI', action: 'Structure data into mailing format', cost: '$0.01' },
+                      { step: '4', service: 'Lob', action: 'Print & mail 100 postcards', cost: '$100' },
+                    ].map((s) => (
+                      <div key={s.step} className="flex items-center gap-2 text-[10px]">
+                        <span className="text-accent font-mono w-3">{s.step}</span>
+                        <span className="text-foreground font-medium w-20">{s.service}</span>
+                        <span className="text-muted flex-1">{s.action}</span>
+                        <span className="text-dim font-mono">{s.cost}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
+                    <span className="text-[10px] text-muted">One prompt. Four APIs. Real postcards in real mailboxes.</span>
+                    <span className="text-[10px] text-accent font-mono">$100.12</span>
+                  </div>
+                </div>
               </div>
             </div>
 

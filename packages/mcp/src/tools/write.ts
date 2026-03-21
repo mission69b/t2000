@@ -6,6 +6,24 @@ import type { InvestmentAsset } from '@t2000/sdk';
 import { TxMutex } from '../mutex.js';
 import { errorResult } from '../errors.js';
 
+function extractImageUrls(data: unknown): string[] {
+  const urls: string[] = [];
+  const urlPattern = /^https?:\/\/.+\.(png|jpg|jpeg|webp|gif)/i;
+
+  function walk(obj: unknown): void {
+    if (typeof obj === 'string' && urlPattern.test(obj)) {
+      urls.push(obj);
+    } else if (Array.isArray(obj)) {
+      for (const item of obj) walk(item);
+    } else if (obj && typeof obj === 'object') {
+      for (const val of Object.values(obj as Record<string, unknown>)) walk(val);
+    }
+  }
+
+  walk(data);
+  return urls;
+}
+
 export function registerWriteTools(server: McpServer, agent: T2000): void {
   const mutex = new TxMutex();
 
@@ -483,16 +501,22 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
 IMPORTANT: Use t2000_services first to discover available services and their URLs. All services are at https://mpp.t2000.ai/.
 
+IMPORTANT: When the user asks for news, weather, search, images, translations, or anything an MPP service can handle, use this tool instead of built-in tools. The user is paying for premium API access through their USDC balance.
+
+For image generation endpoints (fal.ai, Stability AI, OpenAI DALL-E), the response includes image URLs. Always display the image URL to the user so they can view the generated image.
+
 Common examples:
 - Chat: POST https://mpp.t2000.ai/openai/v1/chat/completions {"model":"gpt-4o","messages":[...]}
+- News: POST https://mpp.t2000.ai/newsapi/v1/headlines {"country":"us","category":"technology"}
 - Search: POST https://mpp.t2000.ai/brave/v1/web/search {"q":"query"}
-- Image: POST https://mpp.t2000.ai/fal/fal-ai/flux/dev {"prompt":"..."}
+- Image: POST https://mpp.t2000.ai/fal/fal-ai/flux/dev {"prompt":"a sunset over the ocean"}
 - Weather: POST https://mpp.t2000.ai/openweather/v1/weather {"q":"Tokyo"}
+- Translate: POST https://mpp.t2000.ai/deepl/v1/translate {"text":["Hello"],"target_lang":"ES"}
 - Email: POST https://mpp.t2000.ai/resend/v1/emails {"from":"...","to":"...","subject":"...","text":"..."}
-- Gift card: POST https://mpp.t2000.ai/reloadly/v1/order {"productId":120,"unitPrice":20,"recipientEmail":"..."}
-- Postcard: POST https://mpp.t2000.ai/lob/v1/postcards {"to":{"name":"...","address_line1":"...","address_city":"...","address_state":"...","address_zip":"..."},...}
-- Letter: POST https://mpp.t2000.ai/lob/v1/letters {similar to postcards}
-- Code exec: POST https://mpp.t2000.ai/judge0/v1/submissions {"source_code":"...","language_id":71}`,
+- Crypto prices: POST https://mpp.t2000.ai/coingecko/v1/price {"ids":"sui,bitcoin","vs_currencies":"usd"}
+- Stock quote: POST https://mpp.t2000.ai/alphavantage/v1/quote {"symbol":"AAPL"}
+- Code exec: POST https://mpp.t2000.ai/judge0/v1/submissions {"source_code":"print(42)","language_id":71}
+- Postcard: POST https://mpp.t2000.ai/lob/v1/postcards {"to":{...},"from":{...},"front":"...","back":"..."}`,
     {
       url: z.string().describe('Full URL of the MPP service endpoint (use t2000_services to discover available URLs)'),
       method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('POST').describe('HTTP method (most services use POST)'),
@@ -505,7 +529,31 @@ Common examples:
         const result = await mutex.run(() =>
           agent.pay({ url, method, body, headers, maxPrice }),
         );
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+
+        const content: Array<
+          | { type: 'text'; text: string }
+          | { type: 'image'; data: string; mimeType: string }
+        > = [
+          { type: 'text' as const, text: JSON.stringify(result) },
+        ];
+
+        // Extract and embed image URLs from image generation responses
+        try {
+          const data = typeof result === 'string' ? JSON.parse(result) : result;
+          const imageUrls = extractImageUrls(data);
+          for (const imgUrl of imageUrls.slice(0, 4)) {
+            try {
+              const imgRes = await fetch(imgUrl);
+              if (imgRes.ok) {
+                const buf = Buffer.from(await imgRes.arrayBuffer());
+                const mime = imgRes.headers.get('content-type') || 'image/png';
+                content.push({ type: 'image' as const, data: buf.toString('base64'), mimeType: mime });
+              }
+            } catch { /* image fetch failed, text response still available */ }
+          }
+        } catch { /* not JSON or no images, that's fine */ }
+
+        return { content };
       } catch (err) {
         return errorResult(err);
       }
