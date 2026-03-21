@@ -484,7 +484,7 @@ const result = await agent.pay({
 
         {/* Sidebar — Use with t2000 */}
         <aside className="lg:w-[340px] shrink-0 mt-10 lg:mt-0">
-          <div className="border border-border rounded-lg bg-surface/40 sticky top-6">
+          <div className="border border-border rounded-lg bg-surface/40 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
             <div className="px-5 py-4 border-b border-border">
               <h2 className="text-sm font-medium text-foreground">Use with t2000</h2>
             </div>
@@ -531,15 +531,13 @@ const result = await agent.pay({
               <p className="text-[11px] text-muted mb-3 leading-relaxed">
                 35 tools including <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_services</code> and <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_pay</code>. Just ask naturally:
               </p>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {[
                   '"Use t2000 to get the latest tech headlines"',
                   '"Use t2000 to generate an image of a sunset"',
-                  '"Use t2000 to buy a $20 Netflix gift card"',
                   '"Use t2000 to send a postcard to 123 Main St"',
-                  '"Use t2000 to check the weather in Tokyo"',
                 ].map((q) => (
-                  <div key={q} className="text-[11px] text-foreground/70 bg-panel border border-border rounded px-3 py-1.5">
+                  <div key={q} className="text-[11px] text-foreground/70 bg-panel border border-border rounded px-2.5 py-1">
                     {q}
                   </div>
                 ))}
@@ -578,75 +576,20 @@ const result = await agent.pay({
             </div>
 
             {/* Links */}
-            <div className="px-5 py-4 space-y-2">
-              <a
-                href="/llms.txt"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                llms.txt
-                <span className="text-[10px] text-dim ml-auto">agent discovery</span>
-              </a>
-              <a
-                href="https://t2000.ai/docs#mpp"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                Documentation
-              </a>
-              <a
-                href="https://t2000.ai/mpp"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                MPP on Sui
-              </a>
-              <a
-                href="https://www.npmjs.com/package/@t2000/cli"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                @t2000/cli
-                <span className="text-[10px] text-dim ml-auto">npm</span>
-              </a>
-              <a
-                href="https://www.npmjs.com/package/@t2000/mpp-sui"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                @t2000/mpp-sui
-                <span className="text-[10px] text-dim ml-auto">npm</span>
-              </a>
-              <a
-                href="https://github.com/mission69b/t2000"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                GitHub
-              </a>
-              <a
-                href="https://x.com/t2000ai"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                X
-                <span className="text-[10px] text-dim ml-auto">@t2000ai</span>
-              </a>
-              <a
-                href="https://discord.gg/qtVJR5eH"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                Discord
-              </a>
-              <a
-                href="https://mpp.dev"
-                className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
-              >
-                <span className="text-accent">&rarr;</span>
-                MPP Standard
-                <span className="text-[10px] text-dim ml-auto">mpp.dev</span>
-              </a>
+            <div className="px-5 py-3 flex flex-wrap gap-x-3 gap-y-1">
+              {[
+                { href: '/llms.txt', label: 'llms.txt' },
+                { href: 'https://t2000.ai/docs#mpp', label: 'Docs' },
+                { href: 'https://t2000.ai/mpp', label: 'MPP' },
+                { href: 'https://www.npmjs.com/package/@t2000/cli', label: 'npm' },
+                { href: 'https://github.com/mission69b/t2000', label: 'GitHub' },
+                { href: 'https://x.com/t2000ai', label: '@t2000ai' },
+                { href: 'https://discord.gg/qtVJR5eH', label: 'Discord' },
+              ].map((l) => (
+                <a key={l.href} href={l.href} className="text-[10px] text-muted hover:text-accent transition-colors">
+                  {l.label}
+                </a>
+              ))}
             </div>
           </div>
         </aside>
