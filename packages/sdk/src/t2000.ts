@@ -1525,9 +1525,11 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const maxSellable = Math.max(0, walletAmount - gasReserve);
 
-    // If local portfolio is empty but wallet has the asset (stale portfolio),
-    // use wallet balance as the tracked amount so the sell can proceed.
-    const trackedAmount = (pos && pos.totalAmount > 0)
+    // If no position record exists at all (stale/missing portfolio file),
+    // fall back to wallet balance so the sell can still proceed.
+    // But if a position record exists with totalAmount 0, the user already
+    // sold everything — don't fall back to wallet balance.
+    const trackedAmount = pos
       ? pos.totalAmount
       : maxSellable;
 

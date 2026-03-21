@@ -58,15 +58,20 @@ export async function clearSession(): Promise<void> {
   }
 }
 
-export async function resolvePin(opts?: { confirm?: boolean }): Promise<string> {
+export async function resolvePin(opts?: { confirm?: boolean; skipSession?: boolean }): Promise<string> {
   const envPin = getPinFromEnv();
   if (envPin) return envPin;
 
-  const sessionPin = await readSession();
-  if (sessionPin) return sessionPin;
+  if (!opts?.skipSession) {
+    const sessionPin = await readSession();
+    if (sessionPin) return sessionPin;
+  }
 
   const pin = opts?.confirm ? await askPinConfirm() : await askPin();
-  await saveSession(pin);
+
+  if (!opts?.skipSession) {
+    await saveSession(pin);
+  }
   return pin;
 }
 
