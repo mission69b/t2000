@@ -24,7 +24,7 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
     process.exit(1);
   }
 
-  const server = new McpServer({ name: 't2000', version: '0.22.1' });
+  const server = new McpServer({ name: 't2000', version: '0.22.4' });
 
   registerReadTools(server, agent);
   registerWriteTools(server, agent);
