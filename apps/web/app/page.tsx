@@ -859,7 +859,7 @@ export default function Home() {
           </p>
 
           <div className="mb-6 overflow-x-auto scrollbar-hide">
-            <InstallCommand command="curl -fsSL https://t2000.sh/install | bash" />
+            <InstallCommand command="curl -fsSL https://t2000.ai/install.sh | bash" />
           </div>
 
           <div className="flex justify-center gap-3 sm:gap-4 mt-6 flex-wrap">
