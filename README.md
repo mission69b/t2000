@@ -14,6 +14,10 @@
   <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mpp-sui">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
+<p align="center">
+  <a href="https://glama.ai/mcp/servers/mission69b/t2000"><img src="https://glama.ai/mcp/servers/mission69b/t2000/badges/score.svg" alt="t2000 MCP server" /></a>
+</p>
+
 ---
 
 Your agent can hold money, earn yield, borrow against savings, exchange currencies, and pay for APIs — all in one CLI command. No human in the loop.
@@ -332,7 +336,7 @@ t2000 mcp install
 
 **Architecture:** User → MCP Client (Claude/Cursor/Windsurf) → @t2000/mcp → @t2000/sdk → Sui
 
-Auto-configures Claude Desktop + Cursor. 33 tools · 20 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 35 tools · 20 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 
@@ -382,7 +386,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 33 tools + 20 AI advisor prompts |
+| MCP Server | — | ✓ 35 tools + 20 AI advisor prompts |
 
 ## Security
 
