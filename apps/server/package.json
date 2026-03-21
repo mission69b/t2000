@@ -20,7 +20,6 @@
     "@mysten/sui": "^2.6.0",
     "@prisma/client": "^6",
     "@t2000/sdk": "workspace:*",
-    "@t2000/x402": "workspace:*",
     "eventemitter3": "^5",
     "hono": "^4"
   },

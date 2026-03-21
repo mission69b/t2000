@@ -119,17 +119,3 @@ model YieldSnapshot {
   @@index([agentAddress, snapshotAt(sort: Desc)])
   @@map("yield_snapshots")
 }
-
-model X402Payment {
-  nonce      String   @id
-  txHash     String   @map("tx_hash")
-  payTo      String   @map("pay_to")
-  amount     String
-  verifiedAt DateTime @default(now()) @map("verified_at")
-  expiresAt  DateTime @map("expires_at")
-  settled    Boolean  @default(false)
-
-  @@index([expiresAt])
-  @@index([payTo])
-  @@map("x402_payments")
-}

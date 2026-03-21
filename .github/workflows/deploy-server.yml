@@ -15,7 +15,6 @@ on:
       - "apps/server/prisma/**"
       - "apps/server/Dockerfile"
       - "infra/server-task-definition.json"
-      - "packages/x402/src/**"
       - "packages/mpp-sui/src/**"
 
 concurrency:
@@ -41,7 +40,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @t2000/mpp-sui build
       - run: pnpm --filter @t2000/sdk build
-      - run: pnpm --filter @t2000/x402 build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/server typecheck
 

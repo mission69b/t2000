@@ -200,17 +200,9 @@ async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
 async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
   const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
-  const [
-    legacyTotal,
-    legacySettled,
-    legacyPayments,
-  ] = await Promise.all([
-    prisma.x402Payment.count(),
-    prisma.x402Payment.count({ where: { settled: true } }),
-    prisma.x402Payment.findMany({ select: { amount: true } }),
-  ]);
-
-  const legacyAmount = legacyPayments.reduce((s, p) => s + Number(p.amount), 0);
+  const legacyTotal = 0;
+  const legacySettled = 0;
+  const legacyAmount = 0;
 
   let gatewayBalance = 0;
   let gatewayTxCount = 0;

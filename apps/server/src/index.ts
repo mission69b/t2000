@@ -6,7 +6,6 @@ import { sponsor } from './routes/sponsor.js';
 import { health } from './routes/health.js';
 import { gas } from './routes/gas.js';
 import { fees } from './routes/fees.js';
-import { x402 } from './routes/x402.js';
 import { startPriceCache } from './lib/priceCache.js';
 import { testDatabaseConnection } from './db/prisma.js';
 
@@ -49,7 +48,6 @@ app.route('/', sponsor);
 app.route('/', health);
 app.route('/', gas);
 app.route('/', fees);
-app.route('/', x402);
 
 app.get('/', (c) => c.json({ service: 't2000-server', version: '0.1.0' }));
 
