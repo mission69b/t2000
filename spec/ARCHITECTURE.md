@@ -69,7 +69,90 @@
 
 ---
 
-## MPP Payment Flow
+## Agent Init (`t2000 init`)
+
+Three-step guided setup that takes a new user from zero to a fully operational AI agent:
+
+```
+t2000 init
+  │
+  ├─ Step 1: Wallet
+  │   ├─ Generate Ed25519 keypair
+  │   ├─ User sets a PIN (passphrase)
+  │   ├─ Encrypt with AES-256-GCM (scrypt-derived key)
+  │   ├─ Write to ~/.t2000/wallet.key (mode 0600)
+  │   ├─ Cache PIN in ~/.t2000/.session (mode 0600)
+  │   └─ POST /api/sponsor → receive 0.05 SUI bootstrap
+  │
+  ├─ Step 2: MCP platforms
+  │   ├─ Detect installed: Claude Desktop / Cursor / Windsurf
+  │   ├─ Add mcpServers.t2000 = { command: 't2000', args: ['mcp'] }
+  │   └─ Skip platforms already configured
+  │
+  └─ Step 3: Safeguards
+      ├─ Set maxPerTx (default $500)
+      ├─ Set maxDailySend (default $1000)
+      └─ Write to ~/.t2000/config.json
+```
+
+### Key encryption
+
+| Parameter | Value |
+|-----------|-------|
+| Algorithm | AES-256-GCM |
+| Key derivation | scrypt (N=2¹⁴, r=8, p=1) |
+| Salt | 32 bytes random |
+| IV | 16 bytes random |
+| Auth tag | 16 bytes |
+| File format | JSON: `{ version, algorithm, salt, iv, tag, ciphertext }` |
+| File path | `~/.t2000/wallet.key` (mode `0600`) |
+| Key format | Sui bech32 (`suiprivkey...`) |
+
+### PIN resolution chain
+
+When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
+
+1. `T2000_PIN` or `T2000_PASSPHRASE` env var
+2. `~/.t2000/.session` file (cached after first use)
+3. Interactive terminal prompt (CLI only)
+
+`t2000 lock` deletes `.session`, forcing re-entry on next use.
+
+### MCP config paths
+
+| Platform | Config file |
+|----------|------------|
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Windows) | `~/AppData/Roaming/Claude/claude_desktop_config.json` |
+| Cursor | `~/.cursor/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+
+### Bootstrap sponsorship
+
+- `POST https://api.t2000.ai/api/sponsor` with `{ address, name? }`
+- Server splits 0.05 SUI from sponsor wallet → transfers to new agent
+- Records in `SponsorRequest` + `GasLedger` (txType: `bootstrap`)
+- Upserts agent in DB (makes address "known" to the indexer)
+- Rate limited: 10 per IP per hour, hashcash proof above limit
+
+### What exists after init
+
+```
+~/.t2000/
+  ├── wallet.key       # AES-256-GCM encrypted Ed25519 keypair
+  ├── config.json      # Safeguard limits + daily usage tracking
+  └── .session         # Cached PIN (deleted on lock)
+```
+
+The agent now has:
+- A Sui address with 0.05 SUI for gas
+- Safeguard limits configured
+- MCP server registered in AI clients
+- Ready for `t2000 save`, `t2000 pay`, or any MCP tool call
+
+---
+
+## MPP Payment 
 
 When a user runs `t2000 pay <url>` or an AI agent calls `t2000_pay`:
 
@@ -395,12 +478,143 @@ Tag v0.22.3
 
 ## Security Model
 
+### Overview
+
 | Layer | Mechanism |
 |-------|----------|
-| **Keys** | Ed25519 keypair stored locally, encrypted with user PIN |
-| **Non-custodial** | Server never sees private keys |
-| **Gas station** | Rate limits, circuit breaker, hashcash, fee ceiling |
-| **Safeguards** | Local spending limits, emergency lock |
-| **On-chain** | Move-level fee collection, AdminCap for config changes |
-| **MPP** | HMAC-bound challenges (stateless), on-chain verification |
+| **Keys** | Ed25519 keypair, AES-256-GCM encrypted at rest with scrypt-derived key |
+| **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it |
+| **Gas station** | Rate limits, circuit breaker, hashcash, fee ceiling, tx simulation |
+| **Safeguards** | Local spending limits, emergency lock, daily budgets |
+| **On-chain** | Move-level fee collection, AdminCap-gated config, pause flag |
+| **MPP** | HMAC-bound challenges (stateless), on-chain USDC verification |
 | **API keys** | Upstream keys stored as Vercel env vars, never exposed to agents |
+
+### Key management
+
+- **Algorithm**: Ed25519 (`@mysten/sui/keypairs/ed25519`)
+- **Encryption at rest**: AES-256-GCM with scrypt(PIN, salt) → 256-bit key
+- **No mnemonic**: Raw keypair only — no seed phrase to leak
+- **Import/export**: `t2000 importKey` / `t2000 exportKey` for migration
+
+### Safeguard enforcement
+
+```
+Any write operation (send, save, pay, etc.)
+  │
+  ├── SafeguardEnforcer.assertNotLocked()
+  │   └── If locked: reject immediately
+  │
+  ├── SafeguardEnforcer.check(metadata)
+  │   ├── Is this an outbound op? (send / pay / sentinel only)
+  │   ├── Amount ≤ maxPerTx? ($500 default)
+  │   └── dailyUsed + amount ≤ maxDailySend? ($1000 default)
+  │
+  ├── TxMutex.acquire()  ← serializes all writes
+  │
+  ├── Build + sign + execute TX
+  │
+  ├── SafeguardEnforcer.recordUsage(amount)  ← outbound ops only
+  │
+  └── TxMutex.release()
+```
+
+**Outbound ops** (guarded by daily limit): `send`, `pay`, `sentinel`
+**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`, `exchange`, `rebalance`, `invest`
+
+The daily budget resets automatically when the date changes.
+
+### Emergency lock
+
+```
+t2000 lock
+  → sets config.locked = true
+  → deletes ~/.t2000/.session (forces PIN re-entry)
+  → all operations blocked immediately
+
+t2000 unlock
+  → requires valid PIN (env var, or interactive prompt)
+  → sets config.locked = false
+  → restores .session
+
+MCP: t2000_lock tool
+  → AI can lock (emergency protection)
+  → AI cannot unlock (requires human with PIN)
+```
+
+The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can freeze the wallet in an emergency but cannot unfreeze it — only a human with the PIN can.
+
+### Gas station security
+
+| Protection | How it works |
+|-----------|-------------|
+| **Rate limiting** | 20 gas requests per address per hour |
+| **Hashcash proof-of-work** | When rate limited, client must solve 20-bit PoW (~1–2s) |
+| **TX simulation** | `dryRunTransactionBlock` before signing — rejects if gas estimate > $0.05 |
+| **Circuit breaker** | Polls Cetus USDC/SUI pool every 30s, trips if >20% price swing in 1 hour |
+| **Pool minimum** | Rejects sponsorship when gas wallet < 100 SUI |
+| **Serialized signing** | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts |
+| **Sponsor rate limit** | 10 bootstrap requests per IP per hour |
+
+### Hashcash flow
+
+```
+Client                                  Server
+  │                                       │
+  │── POST /api/gas ─────────────────────>│
+  │                                       │── Rate check: over limit
+  │<── 200 { error: 'RATE_LIMITED',  ─────│
+  │         challenge: 'abc...' }         │
+  │                                       │
+  │── Compute SHA-256 until 20 leading ─  │
+  │   zero bits found (~1M hashes)        │
+  │                                       │
+  │── POST /api/gas { proof: '...' } ────>│
+  │                                       │── Verify PoW, check stamp reuse
+  │<── 200 { signedTx: '...' } ──────────│
+```
+
+Stamps are tracked in memory with 24h TTL to prevent reuse.
+
+### MPP verification (stateless)
+
+The gateway verifies payments without a database:
+
+1. **Challenge**: HMAC-sign a challenge ID with `MPP_SECRET_KEY`
+2. **Verify origin**: Recompute HMAC to confirm challenge was issued by this server
+3. **Verify payment**: `getTransactionBlock(digest)` on Sui RPC
+   - TX status: success
+   - USDC transfer amount ≥ requested amount
+   - Recipient = treasury address
+4. No replay protection needed — each challenge is single-use via HMAC binding
+
+### Upstream API key isolation
+
+```
+Agent (local)                    Gateway (Vercel)              Upstream API
+  │                                │                              │
+  │── Pay USDC on Sui ──────────>│                              │
+  │── POST /openai/... ─────────>│                              │
+  │   (no API key)                │── Add Authorization header ─>│
+  │                                │   (from env: OPENAI_API_KEY) │
+  │<── Response ─────────────────│<── Response ──────────────────│
+```
+
+- Agents never see upstream API keys
+- Keys live as Vercel environment variables
+- `chargeProxy()` injects headers server-side via `upstreamHeaders`
+- Response is proxied back without exposing internal headers
+
+### Transaction serialization (TxMutex)
+
+All write operations go through a `TxMutex` that ensures only one transaction executes at a time per agent. This prevents Sui object version conflicts that occur when concurrent transactions try to use the same coin objects.
+
+### What the server knows vs doesn't
+
+| Server knows | Server does NOT know |
+|-------------|---------------------|
+| Agent Sui address (public) | Private key |
+| Gas usage amounts | Wallet balance |
+| Sponsored TX digests | What the TX does (opaque bytes) |
+| Bootstrap requests (IP, address) | CLI usage, local commands |
+| Protocol fee events (from chain) | Which AI client is used |
