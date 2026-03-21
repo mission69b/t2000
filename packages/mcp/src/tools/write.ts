@@ -530,30 +530,25 @@ Common examples:
           agent.pay({ url, method, body, headers, maxPrice }),
         );
 
-        const content: Array<
-          | { type: 'text'; text: string }
-          | { type: 'image'; data: string; mimeType: string }
-        > = [
-          { type: 'text' as const, text: JSON.stringify(result) },
-        ];
+        let text = JSON.stringify(result);
 
-        // Extract and embed image URLs from image generation responses
+        // Extract image URLs and prepend them for visibility
         try {
           const data = typeof result === 'string' ? JSON.parse(result) : result;
           const imageUrls = extractImageUrls(data);
-          for (const imgUrl of imageUrls.slice(0, 4)) {
-            try {
-              const imgRes = await fetch(imgUrl);
-              if (imgRes.ok) {
-                const buf = Buffer.from(await imgRes.arrayBuffer());
-                const mime = imgRes.headers.get('content-type') || 'image/png';
-                content.push({ type: 'image' as const, data: buf.toString('base64'), mimeType: mime });
-              }
-            } catch { /* image fetch failed, text response still available */ }
+          if (imageUrls.length > 0) {
+            const urlList = imageUrls.slice(0, 4).map((u) => `- ${u}`).join('\n');
+            text = `Generated images:\n${urlList}\n\n${text}`;
           }
-        } catch { /* not JSON or no images, that's fine */ }
+        } catch { /* not JSON or no images */ }
 
-        return { content };
+        // Cap response at 800KB to stay under Claude Desktop's 1MB tool result limit
+        const MAX_BYTES = 800_000;
+        if (text.length > MAX_BYTES) {
+          text = text.slice(0, MAX_BYTES) + '\n\n[Response truncated — exceeded size limit]';
+        }
+
+        return { content: [{ type: 'text' as const, text }] };
       } catch (err) {
         return errorResult(err);
       }
