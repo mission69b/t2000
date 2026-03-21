@@ -90,7 +90,7 @@ function ServiceRow({ service, isOpen, onToggle }: {
             ))}
           </div>
           <p className="text-[11px] text-muted mb-0.5">{service.description}</p>
-          <code className="text-[11px] text-dim font-mono">{service.serviceUrl}</code>
+          <ServiceUrlCopy url={service.serviceUrl} />
         </div>
         <div className="text-xs text-muted font-mono shrink-0 hidden sm:block">
           {service.endpoints.length} endpoint{service.endpoints.length > 1 ? 's' : ''}
@@ -173,8 +173,9 @@ function ServiceCard({ service, isOpen, onToggle }: {
             </div>
           </div>
         </div>
-        <p className="text-[11px] text-muted leading-relaxed mb-3">{service.description}</p>
-        <div className="flex items-center justify-between text-[11px]">
+        <p className="text-[11px] text-muted leading-relaxed mb-2">{service.description}</p>
+        <ServiceUrlCopy url={service.serviceUrl} />
+        <div className="flex items-center justify-between text-[11px] mt-3">
           <span className="text-dim font-mono">{service.endpoints.length} endpoint{service.endpoints.length > 1 ? 's' : ''}</span>
           <span className="text-accent font-medium">{getPriceRange(service)}</span>
         </div>
@@ -196,6 +197,38 @@ function ServiceCard({ service, isOpen, onToggle }: {
         </div>
       )}
     </div>
+  );
+}
+
+function ServiceUrlCopy({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(`https://mpp.t2000.ai${url}`);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.stopPropagation();
+          navigator.clipboard.writeText(`https://mpp.t2000.ai${url}`);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      }}
+      className="inline-flex items-center gap-1.5 text-[11px] text-dim font-mono hover:text-accent transition-colors cursor-pointer group"
+      title="Copy full URL"
+    >
+      {url}
+      <span className={`text-[9px] transition-colors ${copied ? 'text-accent' : 'text-transparent group-hover:text-muted'}`}>
+        {copied ? '✓' : 'copy'}
+      </span>
+    </span>
   );
 }
 
