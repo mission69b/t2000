@@ -533,11 +533,11 @@ const result = await agent.pay({
               </p>
               <div className="space-y-2">
                 {[
-                  '"Use t2000 to get the latest tech headlines"',
-                  '"Use t2000 to generate an image of a sunset"',
-                  '"Use t2000 to buy a $20 Netflix gift card"',
-                  '"Use t2000 to send a postcard to 123 Main St"',
-                  '"Use t2000 to check the weather in Tokyo"',
+                  '"Use t2000 to get the latest headlines"',
+                  '"Use t2000 to generate a sunset image"',
+                  '"Use t2000 to buy a Netflix gift card"',
+                  '"Use t2000 to mail a postcard to NYC"',
+                  '"Use t2000 to check weather in Tokyo"',
                 ].map((q) => (
                   <div key={q} className="text-[11px] text-foreground/70 bg-panel border border-border rounded px-3 py-1.5">
                     {q}
