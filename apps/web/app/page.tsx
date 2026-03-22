@@ -165,6 +165,12 @@ const MPP_SERVICES = [
   { name: "Reloadly", id: "reloadly", detail: "800+ gift cards" },
   { name: "Lob", id: "lob", detail: "Physical mail API" },
   { name: "Printful", id: "printful", detail: "Print-on-demand" },
+  { name: "Pushover", id: "pushover", detail: "Push notifications" },
+  { name: "Mistral", id: "mistral", detail: "Mistral Large · Codestral" },
+  { name: "Cohere", id: "cohere", detail: "Chat · Embed · Rerank" },
+  { name: "VirusTotal", id: "virustotal", detail: "Security scanning" },
+  { name: "ExchangeRate", id: "exchangerate", detail: "Forex 160+ currencies" },
+  { name: "Short.io", id: "shortio", detail: "URL shortener" },
 ];
 
 
@@ -184,7 +190,7 @@ const COMPARE_ROWS: {
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 41 services, 90 endpoints", bothCheck: true },
-  { feature: "AI integration", coinbase: "—", t2000: "✓ 33 tools + 20 AI prompts + MCP", coinbaseCross: true },
+  { feature: "AI integration", coinbase: "—", t2000: "✓ 35 tools + 20 AI prompts + MCP", coinbaseCross: true },
   { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
   { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
@@ -532,8 +538,8 @@ export default function Home() {
           {/* Stats bar */}
           <div className="grid grid-cols-3 gap-px bg-border border border-border mb-10 sm:mb-14">
             {[
-              { value: "35", label: "Services" },
-              { value: "79", label: "Endpoints" },
+              { value: "41", label: "Services" },
+              { value: "90", label: "Endpoints" },
               { value: "$0.001", label: "Starting price" },
             ].map((stat) => (
               <div key={stat.label} className="bg-panel px-5 py-5 sm:py-6 text-center">
@@ -553,7 +559,7 @@ export default function Home() {
           <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-[var(--surface)] to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-[var(--surface)] to-transparent z-10 pointer-events-none" />
           <div className="flex animate-marquee w-max">
-            {[...MPP_SERVICES.slice(0, 18), ...MPP_SERVICES.slice(0, 18)].map((svc, i) => (
+            {[...MPP_SERVICES.slice(0, 21), ...MPP_SERVICES.slice(0, 21)].map((svc, i) => (
               <div
                 key={`m1-${svc.id}-${i}`}
                 className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-panel mx-1 sm:mx-1.5 shrink-0"
@@ -579,7 +585,7 @@ export default function Home() {
           <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-[var(--surface)] to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-[var(--surface)] to-transparent z-10 pointer-events-none" />
           <div className="flex animate-marquee-reverse w-max">
-            {[...MPP_SERVICES.slice(18), ...MPP_SERVICES.slice(18)].map((svc, i) => (
+            {[...MPP_SERVICES.slice(21), ...MPP_SERVICES.slice(21)].map((svc, i) => (
               <div
                 key={`m2-${svc.id}-${i}`}
                 className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-panel mx-1 sm:mx-1.5 shrink-0"
@@ -671,7 +677,7 @@ export default function Home() {
                 <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-3">@t2000/mcp</div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-accent-dim px-2.5 py-1.5">
-                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">33</div>
+                    <div className="text-[18px] sm:text-[20px] font-semibold text-accent leading-none">35</div>
                     <div className="text-[9px] text-accent/70 tracking-wider uppercase">tools</div>
                   </div>
                   <div className="bg-accent-dim px-2.5 py-1.5">
