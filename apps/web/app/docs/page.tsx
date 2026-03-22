@@ -690,6 +690,7 @@ function CliWalletSection() {
         <CmdCard name="t2000 init" desc="Guided setup wizard" onClick={() => scrollTo("cmd-init")} />
         <CmdCard name="t2000 balance" desc="View all accounts + limits" onClick={() => scrollTo("cmd-balance")} />
         <CmdCard name="t2000 send" desc="Transfer USDC to any address" onClick={() => scrollTo("cmd-send")} />
+        <CmdCard name="t2000 history" desc="Transaction history with Suiscan links" onClick={() => scrollTo("cmd-history")} />
         <CmdCard name="t2000 contacts" desc="Manage named contacts" onClick={() => scrollTo("cmd-contacts")} />
       </div>
 
@@ -745,6 +746,28 @@ function CliWalletSection() {
         {"  "}Gas:  {S.a("0.0050")} SUI (self-funded)
       </CodeBlock>
 
+      <h2 id="cmd-history">t2000 history</h2>
+      <p>View recent transactions with action classification, amounts, recipients, and Suiscan links. Recognizes sends, lending, swaps, and MPP (paid API) payments.</p>
+      <CodeBlock lang="bash">
+        t2000 history [--limit &lt;n&gt;]{"\n\n"}
+        {"  "}{S.a("--limit")}   Number of transactions (default: 20){"\n"}
+        {"  "}{S.a("--json")}    Machine-readable JSON output
+      </CodeBlock>
+      <CodeBlock lang="output">
+        {"  "}{S.b("Transaction History")}{"\n\n"}
+        {"  "}↗ send  {S.b("10.00 USDC")}  {S.m("→ 0x8b3e...d412")}{"\n"}
+        {"    "}{S.m("EXJvQd...sygq")}  {S.m("2h ago")}{"\n"}
+        {"    "}{S.m("https://suiscan.xyz/mainnet/tx/EXJvQd...sygq")}{"\n\n"}
+        {"  "}💳 mpp  {S.b("0.01 USDC")}{"\n"}
+        {"    "}{S.m("FjhtzF...R5AC")}  {S.m("3h ago")}{"\n"}
+        {"    "}{S.m("https://suiscan.xyz/mainnet/tx/FjhtzF...R5AC")}{"\n\n"}
+        {"  "}🏦 lend  {S.b("50.00 USDC")}{"\n"}
+        {"    "}{S.m("HnqYvR...k4Lm")}  {S.m("1d ago")}{"\n"}
+        {"    "}{S.m("https://suiscan.xyz/mainnet/tx/HnqYvR...k4Lm")}{"\n\n"}
+        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
+        {"  "}{S.m("3 transactions shown")}
+      </CodeBlock>
+
       <h2 id="cmd-contacts">t2000 contacts</h2>
       <p>Save named contacts for easy sends — no more pasting raw addresses.</p>
       <CodeBlock lang="bash">
@@ -762,7 +785,7 @@ function CliWalletSection() {
         rows={[
           [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
           [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
-          [<InlineCode key="k">t2000 history</InlineCode>, "Recent transaction history with action type and timestamp"],
+          [<InlineCode key="k">t2000 history</InlineCode>, "Transaction history — sends, lending, swaps, MPP payments, amounts, recipients, Suiscan links"],
           [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
           [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
         ]}
@@ -1449,7 +1472,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_rates</InlineCode>, "Best interest rates per asset"],
           [<InlineCode key="k">t2000_all_rates</InlineCode>, "Per-protocol rate comparison (NAVI vs Suilend)"],
           [<InlineCode key="k">t2000_health</InlineCode>, "Health factor for borrows"],
-          [<InlineCode key="k">t2000_history</InlineCode>, "Recent transactions"],
+          [<InlineCode key="k">t2000_history</InlineCode>, "Transaction history — sends, lending, swaps, MPP payments + Suiscan digests"],
           [<InlineCode key="k">t2000_earnings</InlineCode>, "Yield earnings from savings"],
           [<InlineCode key="k">t2000_fund_status</InlineCode>, "Savings fund status — supplied, APY, projections"],
           [<InlineCode key="k">t2000_pending_rewards</InlineCode>, "Pending protocol rewards"],
