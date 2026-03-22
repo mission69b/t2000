@@ -543,6 +543,7 @@ export const services: Service[] = [
     logo: '/logos/mistral.svg',
     endpoints: [
       { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (Mistral Large, Codestral, Mixtral)', price: '0.005' },
+      { method: 'POST', path: '/v1/embeddings', description: 'Generate text embeddings', price: '0.005' },
     ],
   },
   {
@@ -597,6 +598,7 @@ export const services: Service[] = [
     logo: '/logos/exchangerate.svg',
     endpoints: [
       { method: 'POST', path: '/v1/rates', description: 'Get exchange rates for a base currency', price: '0.005' },
+      { method: 'POST', path: '/v1/convert', description: 'Convert an amount between two currencies', price: '0.005' },
     ],
   },
   {
@@ -623,6 +625,7 @@ export const services: Service[] = [
     logo: '/logos/amadeus.svg',
     endpoints: [
       { method: 'POST', path: '/v1/flights', description: 'Search flights between airports', price: '0.01' },
+      { method: 'POST', path: '/v1/hotels', description: 'Search hotel offers in a city', price: '0.01' },
     ],
   },
 ];
