@@ -676,36 +676,35 @@ Services · Explorer · Spec · Docs
 
 ## Phase 4: Expand Track A Services — Ongoing
 
-**Goal:** 35 → 50+ services. Prioritize services that tell compelling real-world stories on Twitter/X over generic API proxies.
+**Goal:** 35 → 43 services. Prioritize reliable, low-friction services over flashy ones that create operational risk.
 
-### Wave 7a: Viral-worthy services (priority)
+### Wave 7a: Shipped
 
-Services that make people say "wait, an AI agent did THAT?"
+| # | Service | What it unlocks | API | Price | Status |
+|---|---------|----------------|-----|-------|--------|
+| 36 | **Pushover** | Instant push notifications to any device | `api.pushover.net` | $0.005/msg | ✅ Live |
+| 37 | **Amadeus** | Flight search + pricing (OAuth2, token cached) | `api.amadeus.com` | $0.01/search | ✅ Live |
 
-| # | Service | The tweet | What actually happens | API | Price | Difficulty |
-|---|---------|-----------|----------------------|-----|-------|------------|
-| 36 | **Suno** | "My agent composed a song about Sui" | AI music generation — full tracks from text prompts | `api.suno.ai` | $0.05/song | Medium |
-| 37 | **Heygen** | "My agent made a video of me presenting" | AI avatar video from text script | `api.heygen.com` | $0.10/video | Medium |
-| 38 | **Runway** | "My agent turned my photo into a video" | Image-to-video, text-to-video generation | `api.runwayml.com` | $0.05/gen | Medium |
-| 39 | **Twilio SMS** | "My agent texts me when my portfolio hits $1K" | Real SMS to user's phone | `api.twilio.com` | $0.02/msg | Medium |
-| 40 | **Pushover** | "My agent sends push notifications to my phone" | Instant push notifications | `api.pushover.net` | $0.005/msg | Easy |
-| 41 | **Amadeus** | "My agent found me flights to Tokyo for $400" | Flight search + pricing (not booking) | `api.amadeus.com` | $0.01/search | Medium |
+### Wave 7b: Shipped
 
-**Twilio revisit:** Phone provisioning was the blocker before. Solution: provision a single shared sender number for the gateway. Users provide their own phone number in the request. No per-user provisioning needed.
+| # | Service | What it unlocks | API | Price | Status |
+|---|---------|----------------|-----|-------|--------|
+| 38 | **Mistral** | European AI models (Mistral Large, Codestral) | `api.mistral.ai` | $0.005/req | ✅ Live |
+| 39 | **Cohere** | Chat, embeddings, reranking | `api.cohere.com` | $0.005/req | ✅ Live |
+| 40 | **Remove.bg** | Background removal from any image | `api.remove.bg` | $0.01/req | ✅ Live |
+| 41 | **VirusTotal** | URL/file security scanning | `virustotal.com/api` | $0.01/req | ✅ Live |
+| 42 | **ExchangeRate** | Forex rates for 160+ currencies | `v6.exchangerate-api.com` | $0.005/req | ✅ Live |
+| 43 | **Short.io** | URL shortening with analytics | `api.short.io` | $0.005/req | ✅ Live |
 
-### Wave 7b: Utility services (fill gaps)
+### Deferred (operational risk)
 
-Useful capabilities, less flashy but agents need them.
-
-| # | Service | What it unlocks | API | Price | Difficulty |
-|---|---------|----------------|-----|-------|------------|
-| 42 | **Mistral** | European AI models (Mistral Large, Codestral) | `api.mistral.ai` | $0.005/req | Easy |
-| 43 | **Cohere** | Embeddings, reranking, RAG-optimized | `api.cohere.com` | $0.005/req | Easy |
-| 44 | **Remove.bg** | Background removal from any image | `api.remove.bg` | $0.01/req | Easy |
-| 45 | **VirusTotal** | URL/file security scanning | `virustotal.com/api` | $0.01/req | Easy |
-| 46 | **ExchangeRate** | Forex rates for 140+ currencies | `v6.exchangerate-api.com` | $0.005/req | Easy |
-| 47 | **Postmark** | Transactional email (high deliverability) | `api.postmarkapp.com` | $0.005/email | Easy |
-| 48 | **Short.io** | URL shortening with analytics | `api.short.io` | $0.005/req | Easy |
+| Service | Issue | Revisit when |
+|---------|-------|-------------|
+| **Twilio SMS** | A2P 10DLC compliance, carrier filtering, spam/abuse risk | Dedicated sender setup |
+| **Suno** | Third-party API wrapper (not official), Vercel 60s timeout | Official API + job queue |
+| **HeyGen** | Video generation takes 2-5 min, exceeds Vercel timeout | Job queue infra |
+| **Runway** | Same timeout issue as HeyGen | Job queue infra |
+| **Postmark** | Requires verified sender domain, users can't send from arbitrary addresses | Domain setup |
 
 ### Reloadly storytelling (already live — needs better UX)
 

@@ -520,19 +520,6 @@ export const services: Service[] = [
     ],
   },
   {
-    id: 'twilio',
-    name: 'Twilio',
-    serviceUrl: `${BASE_URL}/twilio`,
-    description: 'Send SMS messages to any phone number worldwide.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['messaging'],
-    logo: '/logos/twilio.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/sms', description: 'Send an SMS message', price: '0.02' },
-    ],
-  },
-  {
     id: 'pushover',
     name: 'Pushover',
     serviceUrl: `${BASE_URL}/pushover`,
@@ -613,19 +600,6 @@ export const services: Service[] = [
     ],
   },
   {
-    id: 'postmark',
-    name: 'Postmark',
-    serviceUrl: `${BASE_URL}/postmark`,
-    description: 'Transactional email with high deliverability.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['messaging'],
-    logo: '/logos/postmark.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/send', description: 'Send a transactional email', price: '0.005' },
-    ],
-  },
-  {
     id: 'shortio',
     name: 'Short.io',
     serviceUrl: `${BASE_URL}/shortio`,
@@ -636,45 +610,6 @@ export const services: Service[] = [
     logo: '/logos/shortio.svg',
     endpoints: [
       { method: 'POST', path: '/v1/shorten', description: 'Shorten a URL', price: '0.005' },
-    ],
-  },
-  {
-    id: 'suno',
-    name: 'Suno',
-    serviceUrl: `${BASE_URL}/suno`,
-    description: 'AI music generation — full songs from text prompts.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['ai', 'media'],
-    logo: '/logos/suno.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/generate', description: 'Generate a song from a text prompt', price: '0.05' },
-    ],
-  },
-  {
-    id: 'heygen',
-    name: 'HeyGen',
-    serviceUrl: `${BASE_URL}/heygen`,
-    description: 'AI avatar videos — realistic presenters from text scripts.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['ai', 'media'],
-    logo: '/logos/heygen.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/video', description: 'Generate an AI avatar video from a script', price: '0.10' },
-    ],
-  },
-  {
-    id: 'runway',
-    name: 'Runway',
-    serviceUrl: `${BASE_URL}/runway`,
-    description: 'AI video generation — text-to-video and image-to-video.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['ai', 'media'],
-    logo: '/logos/runway.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/generate', description: 'Generate video from text or image prompt', price: '0.05' },
     ],
   },
   {
