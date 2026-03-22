@@ -42,6 +42,9 @@ importers:
 
   apps/gateway:
     dependencies:
+      '@prisma/client':
+        specifier: ^6
+        version: 6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3)
       '@t2000/mpp-sui':
         specifier: workspace:*
         version: link:../../packages/mpp-sui
@@ -73,6 +76,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.14)
+      prisma:
+        specifier: ^6
+        version: 6.19.2(typescript@5.9.3)
       tailwindcss:
         specifier: ^4
         version: 4.2.1

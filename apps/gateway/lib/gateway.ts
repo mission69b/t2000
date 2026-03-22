@@ -1,6 +1,8 @@
 import { Mppx } from 'mppx/nextjs';
 import { sui } from '@t2000/mpp-sui/server';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
+import { logPayment } from './log-payment';
+import { parseReceiptDigest } from './receipt';
 
 type RouteHandler = (request: Request) => Promise<Response> | Response;
 
@@ -19,6 +21,19 @@ let _mppx: ReturnType<typeof createMppx> | undefined;
 function getGateway() {
   if (!_mppx) _mppx = createMppx();
   return _mppx;
+}
+
+function inferServiceEndpoint(rawUrl: string): { service: string; endpoint: string } {
+  try {
+    const url = new URL(rawUrl);
+    const parts = url.pathname.split('/').filter(Boolean);
+    return {
+      service: parts[0] ?? 'unknown',
+      endpoint: '/' + parts.slice(1).join('/'),
+    };
+  } catch {
+    return { service: 'unknown', endpoint: '/' };
+  }
 }
 
 interface ProxyOptions {
@@ -65,9 +80,22 @@ export function chargeProxy(
       });
     };
 
-    return mppx.charge({ amount })(handler)(
+    const response = await mppx.charge({ amount })(handler)(
       new Request(req.url, { method: req.method, headers: req.headers })
     );
+
+    if (response.status !== 402) {
+      const { service, endpoint } = inferServiceEndpoint(req.url);
+      const receipt = response.headers.get('Payment-Receipt');
+      logPayment({
+        service,
+        endpoint,
+        amount,
+        digest: parseReceiptDigest(receipt),
+      }).catch(() => {});
+    }
+
+    return response;
   };
 }
 
@@ -93,9 +121,22 @@ export function chargeCustom(
 
     const wrappedHandler: RouteHandler = async () => handler(bodyText);
 
-    return mppx.charge({ amount: resolvedAmount })(wrappedHandler)(
+    const response = await mppx.charge({ amount: resolvedAmount })(wrappedHandler)(
       new Request(req.url, { method: req.method, headers: req.headers })
     );
+
+    if (response.status !== 402) {
+      const { service, endpoint } = inferServiceEndpoint(req.url);
+      const receipt = response.headers.get('Payment-Receipt');
+      logPayment({
+        service,
+        endpoint,
+        amount: resolvedAmount,
+        digest: parseReceiptDigest(receipt),
+      }).catch(() => {});
+    }
+
+    return response;
   };
 }
 

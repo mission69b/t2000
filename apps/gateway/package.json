@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo --port 4402",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@prisma/client": "^6",
     "@t2000/mpp-sui": "workspace:*",
     "@vercel/analytics": "^1.6.1",
     "mppx": "^0.4.1",
@@ -22,6 +23,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "prisma": "^6",
     "tailwindcss": "^4",
     "typescript": "^5.9"
   }

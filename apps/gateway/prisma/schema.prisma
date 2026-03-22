@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MppPayment {
+  id        Int      @id @default(autoincrement())
+  service   String
+  endpoint  String
+  amount    String
+  digest    String?
+  sender    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([service])
+  @@map("mpp_payments")
+}
