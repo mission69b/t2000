@@ -106,11 +106,8 @@ export function LiveFeed() {
                 <span className="text-dim w-14 shrink-0 text-[11px]">
                   {formatRelativeTime(p.createdAt)}
                 </span>
-                <span className="text-foreground font-medium w-24 shrink-0 truncate capitalize">
-                  {p.service}
-                </span>
                 <span className="text-muted font-mono truncate flex-1 text-[11px]">
-                  {p.endpoint}
+                  https://mpp.t2000.ai/{p.service}{p.endpoint}
                 </span>
                 <span className="text-accent font-medium shrink-0">
                   {p.amount} USDC
@@ -135,7 +132,6 @@ export function LiveFeed() {
               className="px-4 py-2.5 flex items-center gap-3 text-xs"
             >
               <span className="text-dim/40 w-14 shrink-0 text-[11px]">—</span>
-              <span className="text-dim/40 w-24 shrink-0">—</span>
               <span className="text-dim/40 font-mono flex-1 text-[11px]">—</span>
               <span className="text-dim/40 shrink-0">—</span>
             </div>
