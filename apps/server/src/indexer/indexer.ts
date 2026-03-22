@@ -183,12 +183,16 @@ async function pollLoop(): Promise<void> {
       consecutiveErrors = 0;
       writeHeartbeat();
 
-      if (lag <= CATCHUP_THRESHOLD) {
-        await sleep(POLL_INTERVAL_MS);
-      }
+      const sleepMs = lag > CATCHUP_THRESHOLD ? 500 : POLL_INTERVAL_MS;
+      await sleep(sleepMs);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('effect is empty') || msg.includes('balance/object changes')) {
+
+      if (msg.includes('429') || msg.includes('Too Many Requests')) {
+        console.warn(`[indexer] Rate limited — backing off 10s`);
+        await sleep(10_000);
+        writeHeartbeat();
+      } else if (msg.includes('effect is empty') || msg.includes('balance/object changes')) {
         skipCount++;
         const advanced = BigInt(cursor!) + 1n;
         console.warn(`[indexer] Skipping checkpoint ${cursor} (empty effects, ${skipCount} total skips)`);

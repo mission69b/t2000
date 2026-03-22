@@ -88,17 +88,18 @@ async function takeSnapshots(): Promise<void> {
   }
 }
 
+const INITIAL_DELAY_MS = 30 * 60 * 1000; // 30 min — let indexer catch up first
+
 export function startYieldSnapshotter(): void {
   if (timer) return;
-  console.log('[yield] Starting yield snapshotter (hourly)');
+  console.log(`[yield] Starting yield snapshotter (first run in ${INITIAL_DELAY_MS / 60_000}min, then hourly)`);
 
   setTimeout(() => {
     takeSnapshots().catch(console.error);
-  }, 5 * 60 * 1000);
-
-  timer = setInterval(() => {
-    takeSnapshots().catch(console.error);
-  }, SNAPSHOT_INTERVAL_MS);
+    timer = setInterval(() => {
+      takeSnapshots().catch(console.error);
+    }, SNAPSHOT_INTERVAL_MS);
+  }, INITIAL_DELAY_MS);
 }
 
 export function stopYieldSnapshotter(): void {
