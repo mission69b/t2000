@@ -194,8 +194,8 @@ export const services: Service[] = [
     categories: ['ai', 'media'],
     logo: '/logos/elevenlabs.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/text-to-speech/:voiceId', description: 'Text-to-speech (any voice)', price: '0.02' },
-      { method: 'POST', path: '/v1/sound-generation', description: 'AI sound effects generation', price: '0.03' },
+      { method: 'POST', path: '/v1/text-to-speech/:voiceId', description: 'Text-to-speech (any voice)', price: '0.05' },
+      { method: 'POST', path: '/v1/sound-generation', description: 'AI sound effects generation', price: '0.05' },
     ],
   },
   {
@@ -222,7 +222,7 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/googlemaps.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/geocode', description: 'Address to coordinates (and reverse)', price: '0.005' },
+      { method: 'POST', path: '/v1/geocode', description: 'Address to coordinates (and reverse)', price: '0.01' },
       { method: 'POST', path: '/v1/places', description: 'Text-based places search', price: '0.01' },
       { method: 'POST', path: '/v1/directions', description: 'Route directions between locations', price: '0.01' },
     ],
@@ -459,8 +459,8 @@ export const services: Service[] = [
     categories: ['data'],
     logo: '/logos/hunter.svg',
     endpoints: [
-      { method: 'POST', path: '/v1/search', description: 'Find emails by domain name', price: '0.01' },
-      { method: 'POST', path: '/v1/verify', description: 'Verify an email address', price: '0.01' },
+      { method: 'POST', path: '/v1/search', description: 'Find emails by domain name', price: '0.02' },
+      { method: 'POST', path: '/v1/verify', description: 'Verify an email address', price: '0.02' },
     ],
   },
   {
@@ -559,19 +559,6 @@ export const services: Service[] = [
       { method: 'POST', path: '/v1/chat', description: 'Chat with Command models', price: '0.005' },
       { method: 'POST', path: '/v1/embed', description: 'Generate text embeddings', price: '0.005' },
       { method: 'POST', path: '/v1/rerank', description: 'Rerank search results by relevance', price: '0.005' },
-    ],
-  },
-  {
-    id: 'removebg',
-    name: 'Remove.bg',
-    serviceUrl: `${BASE_URL}/removebg`,
-    description: 'AI background removal from any image.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['media'],
-    logo: '/logos/removebg.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/remove', description: 'Remove background from an image URL', price: '0.01' },
     ],
   },
   {
