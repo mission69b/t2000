@@ -1,10 +1,11 @@
-export function parseReceiptDigest(receipt: string | null): string | null {
-  if (!receipt) return null;
+import { Receipt } from 'mppx';
+
+export function parseReceiptDigest(header: string | null): string | null {
+  if (!header) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(receipt, 'base64').toString());
-    return parsed.digest ?? parsed.txDigest ?? null;
+    const receipt = Receipt.deserialize(header);
+    return receipt.reference ?? null;
   } catch {
-    if (/^[A-Za-z0-9+/=]{43,44}$/.test(receipt)) return receipt;
     return null;
   }
 }
