@@ -14,14 +14,14 @@ export function CopyInstall() {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      className="w-full text-left cursor-pointer group"
+      className="w-full text-left cursor-pointer group flex items-center gap-2"
     >
-      <code className="text-[11px] text-foreground/70 font-mono group-hover:text-foreground transition-colors">
+      <code className="text-[11px] text-foreground/70 font-mono group-hover:text-foreground transition-colors truncate">
         $ {SNIPPET}
       </code>
-      <div className="text-[10px] text-dim mt-1 group-hover:text-muted transition-colors">
-        {copied ? '✓ copied' : 'click to copy'}
-      </div>
+      <span className={`text-[9px] shrink-0 transition-colors ${copied ? 'text-accent' : 'text-transparent group-hover:text-muted'}`}>
+        {copied ? '✓' : 'copy'}
+      </span>
     </button>
   );
 }

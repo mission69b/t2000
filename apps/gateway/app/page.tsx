@@ -35,30 +35,24 @@ export default function HomePage() {
           <TerminalDemo />
 
           {/* Bottom CTA */}
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Quick stats */}
-            <div className="border border-border rounded-lg bg-surface/40 px-5 py-4">
-              <div className="text-foreground font-medium text-sm">
-                {services.length} services
-              </div>
-              <div className="text-xs text-muted mt-1">
-                {categories.size} categories
-              </div>
+          <section className="flex flex-col sm:flex-row items-stretch gap-3">
+            <div className="border border-border rounded-lg bg-surface/40 px-4 py-2.5 flex items-center gap-2 text-xs">
+              <span className="text-foreground font-medium">{services.length} services</span>
+              <span className="text-dim">·</span>
+              <span className="text-muted">{categories.size} categories</span>
             </div>
 
-            {/* Browse all */}
             <Link
               href="/services"
-              className="border border-border rounded-lg bg-surface/40 px-5 py-4 flex items-center justify-center gap-2 hover:border-accent/40 hover:bg-accent-dim transition-all group"
+              className="border border-border rounded-lg bg-surface/40 px-4 py-2.5 flex items-center justify-center gap-2 hover:border-accent/40 hover:bg-accent-dim transition-all group"
             >
-              <span className="text-foreground font-medium text-sm group-hover:text-accent transition-colors">
+              <span className="text-foreground font-medium text-xs group-hover:text-accent transition-colors">
                 Browse all
               </span>
-              <span className="text-accent">→</span>
+              <span className="text-accent text-xs">→</span>
             </Link>
 
-            {/* Install */}
-            <div className="border border-border rounded-lg bg-surface/40 px-5 py-4">
+            <div className="border border-border rounded-lg bg-surface/40 px-4 py-2.5 flex-1">
               <CopyInstall />
             </div>
           </section>
