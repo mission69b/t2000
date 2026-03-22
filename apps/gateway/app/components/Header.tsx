@@ -23,12 +23,18 @@ export function Header() {
           >
             Explorer
           </Link>
-          <a
-            href="https://t2000.ai/docs"
+          <Link
+            href="/spec"
+            className="hover:text-foreground transition-colors"
+          >
+            Spec
+          </Link>
+          <Link
+            href="/docs"
             className="hover:text-foreground transition-colors"
           >
             Docs
-          </a>
+          </Link>
         </nav>
       </div>
     </header>

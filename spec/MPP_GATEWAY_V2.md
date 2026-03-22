@@ -662,12 +662,12 @@ Services · Explorer · Spec · Docs
 
 ### Checklist
 
-- [ ] `/spec` page — render MPP charge method spec (MDX)
-- [ ] `/docs` page — two-track developer guide
-- [ ] Code examples with copy buttons
-- [ ] Update nav with Spec + Docs links
-- [ ] Mobile responsive
-- [ ] Deploy
+- [x] `/spec` page — render MPP charge method spec
+- [x] `/docs` page — two-track developer guide
+- [x] Code examples with copy buttons
+- [x] Update nav with Spec + Docs links
+- [x] Mobile responsive
+- [x] Deploy
 
 ---
 
