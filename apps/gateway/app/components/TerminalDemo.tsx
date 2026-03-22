@@ -12,7 +12,7 @@ interface Example {
 const EXAMPLES: Example[] = [
   {
     label: 'Mail a postcard',
-    command: `$ t2000 pay https://mpp.t2000.ai/lob/v1/postcards \\
+    command: `$ t2000 pay mpp.t2000.ai/lob/v1/postcards \\
     --data '{
       "to": { "name": "Mom", "address": "379 University Ave..." },
       "message": "Miss you!"
@@ -26,7 +26,7 @@ const EXAMPLES: Example[] = [
   },
   {
     label: 'Buy a gift card',
-    command: `$ t2000 pay https://mpp.t2000.ai/reloadly/v1/order \\
+    command: `$ t2000 pay mpp.t2000.ai/reloadly/v1/order \\
     --data '{
       "productId": 4521,
       "unitPrice": 25,
@@ -41,7 +41,7 @@ const EXAMPLES: Example[] = [
   },
   {
     label: 'Generate an image',
-    command: `$ t2000 pay https://mpp.t2000.ai/fal/v1/image \\
+    command: `$ t2000 pay mpp.t2000.ai/fal/v1/image \\
     --data '{
       "prompt": "a neon-lit Tokyo alley in the rain, cyberpunk"
     }'`,
@@ -53,7 +53,7 @@ const EXAMPLES: Example[] = [
   },
   {
     label: 'Order a custom t-shirt',
-    command: `$ t2000 pay https://mpp.t2000.ai/printful/v1/orders \\
+    command: `$ t2000 pay mpp.t2000.ai/printful/v1/orders \\
     --data '{
       "product_id": 71,
       "design_url": "https://...",
