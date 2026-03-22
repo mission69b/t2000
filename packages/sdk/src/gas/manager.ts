@@ -226,6 +226,18 @@ export async function executeWithGas(
   return result;
 }
 
+const GAS_RESOLUTION_CODES: Set<string> = new Set([
+  'INSUFFICIENT_GAS',
+  'GAS_STATION_UNAVAILABLE',
+  'GAS_FEE_EXCEEDED',
+  'AUTO_TOPUP_FAILED',
+  'SPONSOR_UNAVAILABLE',
+]);
+
+function isBuildError(err: unknown): err is T2000Error {
+  return err instanceof T2000Error && !GAS_RESOLUTION_CODES.has(err.code);
+}
+
 async function resolveGas(
   client: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
@@ -249,7 +261,7 @@ async function resolveGas(
     if (isMoveAbort(msg)) {
       throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
     }
-    if (err instanceof T2000Error && err.code !== 'INSUFFICIENT_GAS') lastBuildError = err;
+    if (isBuildError(err)) lastBuildError = err;
     errors.push(`self-funded: ${msg}`);
   }
 
@@ -281,7 +293,7 @@ async function resolveGas(
     if (isMoveAbort(msg)) {
       throw new T2000Error('TRANSACTION_FAILED', parseMoveAbortMessage(msg));
     }
-    if (err instanceof T2000Error && err.code !== 'INSUFFICIENT_GAS') lastBuildError = err;
+    if (isBuildError(err)) lastBuildError = err;
     errors.push(`self-funded-retry: ${msg}`);
   }
 
@@ -296,7 +308,7 @@ async function resolveGas(
     errors.push('sponsored: returned null');
   } catch (err) {
     if (err instanceof T2000Error && err.code === 'TRANSACTION_FAILED') throw err;
-    if (err instanceof T2000Error && err.code !== 'INSUFFICIENT_GAS') lastBuildError = err;
+    if (isBuildError(err)) lastBuildError = err;
     errors.push(`sponsored: ${err instanceof Error ? err.message : String(err)}`);
   }
 
@@ -307,7 +319,7 @@ async function resolveGas(
 
   throw new T2000Error(
     'INSUFFICIENT_GAS',
-    `No SUI for gas and Gas Station unavailable. Fund your wallet with SUI or USDC. [${errors.join(' | ')}]`,
+    `No SUI for gas and sponsorship unavailable. Fund your wallet with SUI or USDC. [${errors.join(' | ')}]`,
     { reason: 'all_gas_methods_exhausted', errors },
   );
 }

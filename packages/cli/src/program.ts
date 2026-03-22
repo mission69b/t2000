@@ -34,6 +34,7 @@ import { registerContacts } from './commands/contacts.js';
 import { registerInvest } from './commands/invest.js';
 import { registerPortfolio } from './commands/portfolio.js';
 import { registerClaimRewards } from './commands/claimRewards.js';
+import { registerGas } from './commands/gas.js';
 export function createProgram(): Command {
   const program = new Command();
 
@@ -77,6 +78,7 @@ export function createProgram(): Command {
   registerInvest(program);
   registerPortfolio(program);
   registerClaimRewards(program);
+  registerGas(program);
 
   return program;
 }

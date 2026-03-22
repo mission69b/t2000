@@ -68,17 +68,20 @@ gas.post('/api/gas', async (c) => {
     const msg = error instanceof Error ? error.message : 'Gas sponsorship failed';
 
     if (msg.startsWith('CIRCUIT_BREAKER')) {
-      return c.json({ error: 'CIRCUIT_BREAKER', retryAfter: 300 }, 503);
+      return c.json({ error: 'CIRCUIT_BREAKER', message: 'SUI price unstable — sponsorship paused', retryAfter: 300 }, 503);
     }
     if (msg.startsWith('POOL_DEPLETED')) {
-      return c.json({ error: 'POOL_DEPLETED', retryAfter: 600 }, 503);
+      return c.json({ error: 'POOL_DEPLETED', message: 'Gas station balance low — try again later', retryAfter: 600 }, 503);
     }
     if (msg.startsWith('GAS_FEE_EXCEEDED')) {
-      return c.json({ error: 'GAS_FEE_EXCEEDED', retryAfter: 60 }, 429);
+      return c.json({ error: 'GAS_FEE_EXCEEDED', message: 'Gas fee exceeds ceiling — try again when network is less congested', retryAfter: 60 }, 429);
+    }
+    if (msg.startsWith('PRICE_STALE')) {
+      return c.json({ error: 'PRICE_STALE', message: 'Price data outdated — sponsorship temporarily paused', retryAfter: 60 }, 503);
     }
 
     console.error('[gas] Error:', msg);
-    return c.json({ error: 'GAS_SPONSOR_FAILED' }, 500);
+    return c.json({ error: 'GAS_SPONSOR_FAILED', message: msg }, 500);
   }
 });
 

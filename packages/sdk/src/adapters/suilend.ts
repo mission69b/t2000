@@ -216,31 +216,42 @@ export class SuilendAdapter implements LendingAdapter {
     const tx = new Transaction();
     tx.setSender(address);
 
-    let capRef: string;
-    if (caps.length === 0) {
-      const newCap = sdk.createObligation(tx);
-      tx.transferObjects([newCap], address);
-      // Need to execute in two steps: create obligation, then deposit
-      // For simplicity, create then deposit in same PTB using depositIntoObligation
-    }
-
     const rawValue = stableToRaw(amount, assetInfo.decimals).toString();
 
-    if (options?.collectFee) {
-      const allCoins = await this.fetchAllCoins(address, assetInfo.type);
-      if (allCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
-      const primaryCoinId = allCoins[0].coinObjectId;
-      if (allCoins.length > 1) {
-        tx.mergeCoins(tx.object(primaryCoinId), allCoins.slice(1).map((c) => tx.object(c.coinObjectId)));
-      }
-      const [depositCoin] = tx.splitCoins(tx.object(primaryCoinId), [rawValue]);
-      addCollectFeeToTx(tx, depositCoin as TransactionObjectArgument, 'save');
-    }
-
     if (caps.length > 0) {
+      if (options?.collectFee) {
+        const allCoins = await this.fetchAllCoins(address, assetInfo.type);
+        if (allCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
+        const primaryCoinId = allCoins[0].coinObjectId;
+        if (allCoins.length > 1) {
+          tx.mergeCoins(tx.object(primaryCoinId), allCoins.slice(1).map((c) => tx.object(c.coinObjectId)));
+        }
+        const [depositCoin] = tx.splitCoins(tx.object(primaryCoinId), [rawValue]);
+        addCollectFeeToTx(tx, depositCoin as TransactionObjectArgument, 'save');
+      }
       await sdk.depositIntoObligation(address, assetInfo.type, rawValue, tx, caps[0].id);
     } else {
-      await sdk.depositIntoObligation(address, assetInfo.type, rawValue, tx, tx.object(caps[0]?.id ?? ''));
+      const newCap = sdk.createObligation(tx);
+
+      let depositCoin: TransactionObjectArgument;
+      if (assetKey === 'SUI') {
+        [depositCoin] = tx.splitCoins(tx.gas, [rawValue]);
+      } else {
+        const allCoins = await this.fetchAllCoins(address, assetInfo.type);
+        if (allCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
+        const primaryCoin = tx.object(allCoins[0].coinObjectId);
+        if (allCoins.length > 1) {
+          tx.mergeCoins(primaryCoin, allCoins.slice(1).map((c) => tx.object(c.coinObjectId)));
+        }
+        [depositCoin] = tx.splitCoins(primaryCoin, [rawValue]);
+      }
+
+      if (options?.collectFee) {
+        addCollectFeeToTx(tx, depositCoin, 'save');
+      }
+
+      sdk.deposit(depositCoin, assetInfo.type, newCap as unknown as string, tx);
+      tx.transferObjects([newCap], address);
     }
 
     return { tx };

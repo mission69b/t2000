@@ -48,11 +48,11 @@ export async function requestGasSponsorship(
   if (!res.ok) {
     const errorCode = data.error as string;
 
-    if (errorCode === 'CIRCUIT_BREAKER' || errorCode === 'POOL_DEPLETED') {
+    if (errorCode === 'CIRCUIT_BREAKER' || errorCode === 'POOL_DEPLETED' || errorCode === 'PRICE_STALE') {
       throw new T2000Error(
         'GAS_STATION_UNAVAILABLE',
         (data.message as string) ?? 'Gas station temporarily unavailable',
-        { retryAfter: data.retryAfter },
+        { retryAfter: data.retryAfter, reason: errorCode },
         true,
       );
     }
@@ -68,7 +68,7 @@ export async function requestGasSponsorship(
     throw new T2000Error(
       'GAS_STATION_UNAVAILABLE',
       (data.message as string) ?? 'Gas sponsorship request failed',
-      undefined,
+      { reason: errorCode },
       true,
     );
   }
