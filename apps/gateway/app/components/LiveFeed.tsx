@@ -11,7 +11,8 @@ interface Payment {
   createdAt: string;
 }
 
-const SUISCAN_TX = 'https://suiscan.xyz/testnet/tx/';
+const NETWORK = process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet';
+const SUISCAN_TX = `https://suiscan.xyz/${NETWORK}/tx/`;
 const MIN_ROWS = 4;
 
 export function LiveFeed() {
