@@ -501,6 +501,7 @@ export const services: Service[] = [
     logo: '/logos/serpapi.svg',
     endpoints: [
       { method: 'POST', path: '/v1/search', description: 'Google search with rich structured results', price: '0.01' },
+      { method: 'POST', path: '/v1/flights', description: 'Google Flights search — routes, prices, airlines', price: '0.01' },
       { method: 'POST', path: '/v1/locations', description: 'Search locations for geo-targeted queries', price: '0.005' },
     ],
   },
@@ -599,20 +600,6 @@ export const services: Service[] = [
     logo: '/logos/shortio.svg',
     endpoints: [
       { method: 'POST', path: '/v1/shorten', description: 'Shorten a URL', price: '0.005' },
-    ],
-  },
-  {
-    id: 'amadeus',
-    name: 'Amadeus',
-    serviceUrl: `${BASE_URL}/amadeus`,
-    description: 'Flight search and pricing — real airline data worldwide.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['travel'],
-    logo: '/logos/amadeus.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/flights', description: 'Search flights between airports', price: '0.01' },
-      { method: 'POST', path: '/v1/hotels', description: 'Search hotel offers in a city', price: '0.01' },
     ],
   },
 ];
