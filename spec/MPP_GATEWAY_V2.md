@@ -621,7 +621,7 @@ Explorer link already added to header nav in Phase 1 (`Services · Explorer · D
 - [x] Payment detail view (click to expand)
 - [x] Add Explorer to nav
 - [x] Mobile responsive
-- [ ] Deploy
+- [x] Deploy
 
 ---
 
