@@ -7,12 +7,12 @@
     "source": "github",
     "subfolder": "packages/mcp"
   },
-  "version": "0.20.1",
+  "version": "0.22.5",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@t2000/mcp",
-      "version": "0.20.1",
+      "version": "0.22.5",
       "transport": {
         "type": "stdio"
       }
