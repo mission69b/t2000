@@ -1,16 +1,26 @@
+import { writeFileSync } from 'node:fs';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { prisma } from '../db/prisma.js';
 import { fetchCheckpoints, getLatestCheckpoint } from './checkpoint.js';
 import { parseFeeEvents, parseTransfers } from './eventParser.js';
 
 const POLL_INTERVAL_MS = parseInt(process.env.INDEXER_POLL_INTERVAL_MS ?? '2000', 10);
-const BATCH_SIZE = 10;
+const BATCH_SIZE = parseInt(process.env.INDEXER_BATCH_SIZE ?? '10', 10);
+const CATCHUP_BATCH_SIZE = 50;
+const CATCHUP_THRESHOLD = 1000;
+const HEARTBEAT_PATH = '/tmp/indexer-heartbeat';
 
 let running = false;
 
 function getClient(): SuiJsonRpcClient {
   const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
   return new SuiJsonRpcClient({ url, network: 'mainnet' });
+}
+
+function writeHeartbeat(): void {
+  try {
+    writeFileSync(HEARTBEAT_PATH, Date.now().toString());
+  } catch { /* non-critical */ }
 }
 
 async function getOrCreateCursor(): Promise<string | null> {
@@ -44,8 +54,9 @@ async function processCheckpoints(
   client: SuiJsonRpcClient,
   cursor: string,
   knownAgents: Set<string>,
+  batchSize: number = BATCH_SIZE,
 ): Promise<string> {
-  const batch = await fetchCheckpoints(client, cursor, BATCH_SIZE);
+  const batch = await fetchCheckpoints(client, cursor, batchSize);
 
   if (batch.checkpoints.length === 0) return cursor;
 
@@ -135,6 +146,7 @@ async function pollLoop(): Promise<void> {
   let knownAgents = await getKnownAgents();
   let agentRefreshCounter = 0;
   let consecutiveErrors = 0;
+  let skipCount = 0;
 
   console.log(`[indexer] Starting from checkpoint ${cursor}`);
 
@@ -144,23 +156,48 @@ async function pollLoop(): Promise<void> {
         knownAgents = await getKnownAgents();
       }
 
-      cursor = await processCheckpoints(client, cursor!, knownAgents);
+      const latest = await getLatestCheckpoint(client);
+      const lag = Number(BigInt(latest) - BigInt(cursor!));
+      const batchSize = lag > CATCHUP_THRESHOLD ? CATCHUP_BATCH_SIZE : BATCH_SIZE;
+
+      if (lag > CATCHUP_THRESHOLD && agentRefreshCounter % 50 === 1) {
+        console.log(`[indexer] Catch-up mode: ${lag} checkpoints behind (batch=${batchSize})`);
+      }
+
+      cursor = await processCheckpoints(client, cursor!, knownAgents, batchSize);
       consecutiveErrors = 0;
+      writeHeartbeat();
+
+      if (lag <= CATCHUP_THRESHOLD) {
+        await sleep(POLL_INTERVAL_MS);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('effect is empty') || msg.includes('balance/object changes')) {
-        console.warn(`[indexer] Skipping checkpoint (empty effects) — cursor: ${cursor}`);
+        skipCount++;
+        const advanced = BigInt(cursor!) + 1n;
+        console.warn(`[indexer] Skipping checkpoint ${cursor} (empty effects, ${skipCount} total skips)`);
+        await prisma.indexerCursor.update({
+          where: { cursorName: 'main' },
+          data: { lastCheckpoint: advanced, lastProcessedAt: new Date() },
+        });
+        cursor = advanced.toString();
+        writeHeartbeat();
       } else {
         consecutiveErrors++;
         console.error(`[indexer] Error (${consecutiveErrors}x): ${msg}`);
-        if (consecutiveErrors >= 10) {
-          console.error('[indexer] 10 consecutive errors — backing off 30s');
-          await sleep(30_000);
+        if (consecutiveErrors >= 20) {
+          console.error('[indexer] 20 consecutive errors — exiting for ECS restart');
+          process.exit(1);
+        }
+        if (consecutiveErrors >= 5) {
+          const backoff = Math.min(30_000, 2000 * 2 ** (consecutiveErrors - 5));
+          await sleep(backoff);
         }
       }
-    }
 
-    await sleep(POLL_INTERVAL_MS);
+      await sleep(POLL_INTERVAL_MS);
+    }
   }
 }
 
@@ -168,9 +205,10 @@ export function startIndexer(): void {
   if (running) return;
   running = true;
   console.log('[indexer] Starting checkpoint indexer...');
+  writeHeartbeat();
   pollLoop().catch((err) => {
-    console.error('[indexer] Fatal error:', err);
-    running = false;
+    console.error('[indexer] Fatal error — exiting for ECS restart:', err);
+    process.exit(1);
   });
 }
 

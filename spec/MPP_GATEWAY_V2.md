@@ -13,7 +13,7 @@ We decided to defer `suimpp.dev` as a separate site until there's real ecosystem
 | Feature | Status |
 |---------|--------|
 | Service directory with search, categories, card/list toggle | ✅ |
-| 35 services, 79 endpoints across 9 categories | ✅ |
+| 41 services, 90 endpoints across 9 categories | ✅ |
 | `GET /api/services` JSON catalog | ✅ |
 | `GET /llms.txt` agent-readable catalog | ✅ |
 | Copy service URL to clipboard | ✅ |
@@ -29,7 +29,7 @@ We decided to defer `suimpp.dev` as a separate site until there's real ecosystem
 | Explorer page (`/explorer`) | Deep-dive: full payment history with search, filters, Suiscan links, charts | 2 |
 | Protocol spec page (`/spec`) | Make mpp.t2000.ai the reference for how MPP works on Sui | 3 |
 | Developer docs (`/docs`) | "Pay for APIs" and "Accept payments" guides | 3 |
-| 13 new Track A services (→ 48 total) | Wider coverage, viral stories, new categories | Ongoing |
+| 6 new Track A services (→ 41 total, 90 endpoints) | Wider coverage, reliable services | ✅ Complete |
 
 ---
 
@@ -836,38 +836,31 @@ Each phase ships independently. Phase 0 is invisible to users (backend only). Ph
 
 ## Housekeeping (parallel with any phase)
 
-| Task | Notes |
-|------|-------|
-| Update `SUI_PAYMENTS_HUB.md` | Mark suimpp.dev as deferred, note features absorbed into gateway |
-| Update `t2000-roadmap-v2.md` | Add Gateway v2 phases to roadmap, update priorities |
-| Update root `README.md` | Add gateway features (explorer, live feed) to MPP section |
-| Commit spec files to git | `SUI_PAYMENTS_HUB.md` and `mysten-strategy.md` are still untracked |
+| Task | Status |
+|------|--------|
+| Update root `README.md` | ✅ Updated with 41 services, 90 endpoints |
+| Update `ARCHITECTURE.md` | ✅ Updated with current counts |
+| Update all website/docs counts | ✅ Homepage, docs, MPP page aligned |
+| `SUI_PAYMENTS_HUB.md` | Deferred — not needed (features absorbed into gateway) |
+| `t2000-roadmap-v2.md` | Deferred — not needed |
 
-### `t2000 history` UX improvement (follow-up)
+### `t2000 history` UX improvement ✅
 
-The current CLI history output is minimal and doesn't tell a useful story:
+Implemented in CLI v0.22.6+:
+- Action classification: `↗ send`, `🏦 lend`, `🔄 swap`, `📦 tx`
+- Amount + token display with bold formatting
+- Recipient address (dimmed, truncated)
+- Relative timestamps ("2h ago") with Suiscan links
+- Detail view: `t2000 history <digest>` for full tx breakdown
 
-```
-  Transaction History
+### Tests ✅
 
-  EXJvQd...sygq  transaction  21/03/2026, 5:57:06 pm
-  FjhtzF...R5AC  transaction  21/03/2026, 4:44:49 pm
-```
+Gateway API tests added (18 tests pass):
 
-**Improvement targets (separate task, not blocking gateway work):**
-- Show transaction type: `send`, `invest buy`, `invest sell`, `mpp payment`, `deposit`
-- Show amount + token: `1.50 USDC`, `0.005 SUI`
-- Show recipient/service: `→ 0x1234...abcd` or `→ openai/chat`
-- Show Suiscan link for each tx
-- Payment receipts: `t2000 history <digest>` for full details
-
-### Tests
-
-No gateway tests exist today (`apps/gateway` has zero test files). For the new API routes:
-
-- [ ] `GET /api/mpp/payments` — returns paginated results, respects `limit`/`service` params
-- [ ] `GET /api/mpp/stats` — returns correct counts and volume
-- [ ] `logPayment()` — inserts correctly, handles errors gracefully
+- [x] `GET /api/mpp/payments` — returns paginated results, respects `limit`/`service` params
+- [x] `GET /api/mpp/stats` — returns correct counts and volume
+- [x] `logPayment()` — inserts correctly, handles errors gracefully
+- [x] `parseReceiptDigest()` — null header, deserialization, reference extraction
 
 MCP tool tests (`t2000_services`, `t2000_pay`) already pass and don't need changes.
 

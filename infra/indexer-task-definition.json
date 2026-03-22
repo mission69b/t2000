@@ -2,14 +2,21 @@
   "family": "t2000-indexer",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "256",
-  "memory": "512",
+  "cpu": "512",
+  "memory": "1024",
   "executionRoleArn": "${EXEC_ROLE_ARN}",
   "containerDefinitions": [
     {
       "name": "t2000-indexer",
       "image": "${ECR_BASE}/t2000-indexer:latest",
       "essential": true,
+      "healthCheck": {
+        "command": ["CMD-SHELL", "test $(( $(date +%s) - $(cat /tmp/indexer-heartbeat 2>/dev/null || echo 0) )) -lt 300 || exit 1"],
+        "interval": 60,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 120
+      },
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -22,6 +29,7 @@
         { "name": "NODE_ENV", "value": "production" },
         { "name": "SUI_RPC_URL", "value": "https://fullnode.mainnet.sui.io:443" },
         { "name": "INDEXER_POLL_INTERVAL_MS", "value": "2000" },
+        { "name": "INDEXER_BATCH_SIZE", "value": "10" },
         { "name": "MPP_GATEWAY_TREASURIES", "value": "0x703284465d889aa19cbd6806f5e60445d40f558ba1470e96240abf6b65509d2f" }
       ],
       "secrets": [

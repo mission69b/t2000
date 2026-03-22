@@ -322,7 +322,7 @@ t2000 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
   --max-price 0.05
 ```
 
-The [MPP Gateway](https://mpp.t2000.ai) proxies OpenAI, Anthropic, fal.ai, and Firecrawl — all payable with Sui USDC.
+The [MPP Gateway](https://mpp.t2000.ai) proxies 41 services (90 endpoints) — OpenAI, Anthropic, fal.ai, Brave, Lob, Reloadly, and more — all payable with Sui USDC.
 
 Full reference → [`@t2000/mpp-sui` README](packages/mpp-sui)
 
@@ -336,7 +336,7 @@ t2000 mcp install
 
 **Architecture:** User → MCP Client (Claude/Cursor/Windsurf) → @t2000/mcp → @t2000/sdk → Sui
 
-Auto-configures Claude Desktop + Cursor. 35 tools · 20 prompts · stdio transport · safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 35 tools · 20 prompts · stdio transport · safeguard enforced. Supports 41 MPP services (90 endpoints). See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 
@@ -386,7 +386,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 35 tools + 20 AI advisor prompts |
+| MCP Server | — | ✓ 35 tools + 20 AI prompts + 41 MPP services |
 
 ## Security
 
