@@ -1079,7 +1079,7 @@ function CliMoreSection() {
       </h2>
       <p>
         Pay for MPP-protected API resources with USDC micropayments.
-        35 services available at{" "}
+        41 services available at{" "}
         <a href="https://mpp.t2000.ai" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai</a>.
         See the{" "}
         <a onClick={() => document.getElementById("mpp")?.scrollIntoView({ behavior: "smooth" })} className="text-accent hover:underline cursor-pointer">MPP Payments guide</a>{" "}
@@ -1668,7 +1668,7 @@ function MppSection() {
       </Callout>
 
       <h2 id="mpp-services">Available services</h2>
-      <p>35 services, 79 endpoints. No API keys, no accounts — just USDC on Sui.</p>
+      <p>41 services, 90 endpoints. No API keys, no accounts — just USDC on Sui.</p>
       <DocTable
         headers={["Category", "Services", "From"]}
         rows={[

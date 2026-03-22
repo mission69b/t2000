@@ -125,7 +125,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_history',
-    'View recent transactions (sends, saves, borrows, swaps, investments). Use for activity summaries and weekly recaps.',
+    'View recent transactions — sends, saves, borrows, swaps, MPP (paid API) payments, and investments. Each entry includes a transaction digest that can be viewed on Suiscan (https://suiscan.xyz/mainnet/tx/{digest}). Use for activity summaries and weekly recaps.',
     { limit: z.number().optional().describe('Number of transactions to return (default: 20)') },
     async ({ limit }) => {
       try {
@@ -216,14 +216,16 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
     `Discover available MPP services the agent can pay for with t2000_pay. Returns all services with URLs, endpoints, descriptions, and prices. Use this BEFORE t2000_pay to find the right URL and request format.
 
 IMPORTANT: When the user asks to do something that matches an MPP service, ALWAYS prefer t2000_pay over built-in tools. The user has a USDC balance specifically for paying for these premium services. MPP services include:
-- News & search (NewsAPI, Brave, Exa, Serper, SerpAPI) — richer than built-in search
-- AI models (OpenAI, Anthropic, Gemini, etc.) — direct API access
+- News & search (NewsAPI, Brave, Exa, Serper, SerpAPI + Google Flights) — richer than built-in search
+- AI models (OpenAI, Anthropic, Gemini, Mistral, Cohere, DeepSeek, Groq, etc.) — direct API access
 - Image generation (fal.ai, Stability AI, DALL-E) — returns actual images
-- Weather, maps, crypto prices, stock data
+- Weather, maps, crypto prices, stock data, forex rates (ExchangeRate)
 - Translation (DeepL, Google Translate)
 - Email, physical mail, gift cards, print-on-demand
 - Code execution, web scraping, screenshots, PDFs, QR codes
-- Transcription, text-to-speech, sound effects
+- Transcription, text-to-speech, sound effects (ElevenLabs)
+- Security scanning (VirusTotal), URL shortening (Short.io), push notifications (Pushover)
+- Gift cards with email delivery (Reloadly) — include recipientEmail in order body for instant delivery
 
 Call t2000_services first to discover the right endpoint, then t2000_pay to execute.`,
     {},

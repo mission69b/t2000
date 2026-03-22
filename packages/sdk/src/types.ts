@@ -188,6 +188,7 @@ export interface TransactionRecord {
   action: string;
   amount?: number;
   asset?: string;
+  recipient?: string;
   timestamp: number;
   gasMethod?: GasMethod;
 }

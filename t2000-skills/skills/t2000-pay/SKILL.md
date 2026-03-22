@@ -51,7 +51,7 @@ t2000 pay <url> [options]
 | `--timeout <seconds>` | Request timeout in seconds | 30 |
 | `--dry-run` | Show what would be paid without paying | — |
 
-## Available Services (35 services, 79 endpoints)
+## Available Services (41 services, 90 endpoints)
 
 > For the live, canonical list use `t2000_services` (MCP) or GET `https://mpp.t2000.ai/api/services`.
 > The table below is a quick reference.
@@ -73,6 +73,11 @@ t2000 pay <url> [options]
 | Together AI Chat | `/together/v1/chat/completions` | $0.005 |
 | Together AI Embeddings | `/together/v1/embeddings` | $0.005 |
 | Perplexity | `/perplexity/v1/chat/completions` | $0.01 |
+| Mistral Chat | `/mistral/v1/chat/completions` | $0.005 |
+| Mistral Embeddings | `/mistral/v1/embeddings` | $0.005 |
+| Cohere Chat | `/cohere/v1/chat` | $0.005 |
+| Cohere Embed | `/cohere/v1/embed` | $0.005 |
+| Cohere Rerank | `/cohere/v1/rerank` | $0.005 |
 
 ### Media & Generation
 | Service | Endpoint | Price |
@@ -84,8 +89,8 @@ t2000 pay <url> [options]
 | Fal.ai Recraft 20B | `/fal/fal-ai/recraft-20b` | $0.05 |
 | Fal.ai Whisper | `/fal/fal-ai/whisper` | $0.01 |
 | Together AI Images | `/together/v1/images/generations` | $0.03 |
-| ElevenLabs TTS | `/elevenlabs/v1/text-to-speech/:voiceId` | $0.02 |
-| ElevenLabs SFX | `/elevenlabs/v1/sound-generation` | $0.03 |
+| ElevenLabs TTS | `/elevenlabs/v1/text-to-speech/:voiceId` | $0.05 |
+| ElevenLabs SFX | `/elevenlabs/v1/sound-generation` | $0.05 |
 | Replicate (any model) | `/replicate/v1/predictions` | $0.02 |
 | Replicate (check status) | `/replicate/v1/predictions/status` | $0.005 |
 | Stability AI (generate) | `/stability/v1/generate` | $0.03 |
@@ -106,6 +111,7 @@ t2000 pay <url> [options]
 | Serper (Google search) | `/serper/v1/search` | $0.005 |
 | Serper (image search) | `/serper/v1/images` | $0.005 |
 | SerpAPI (Google search) | `/serpapi/v1/search` | $0.01 |
+| SerpAPI (Google Flights) | `/serpapi/v1/flights` | $0.01 |
 | SerpAPI (locations) | `/serpapi/v1/locations` | $0.005 |
 | NewsAPI (headlines) | `/newsapi/v1/headlines` | $0.005 |
 | NewsAPI (article search) | `/newsapi/v1/search` | $0.005 |
@@ -115,7 +121,7 @@ t2000 pay <url> [options]
 |---------|----------|-------|
 | OpenWeather Current | `/openweather/v1/weather` | $0.005 |
 | OpenWeather Forecast | `/openweather/v1/forecast` | $0.005 |
-| Google Maps Geocode | `/googlemaps/v1/geocode` | $0.005 |
+| Google Maps Geocode | `/googlemaps/v1/geocode` | $0.01 |
 | Google Maps Places | `/googlemaps/v1/places` | $0.01 |
 | Google Maps Directions | `/googlemaps/v1/directions` | $0.01 |
 | CoinGecko (price) | `/coingecko/v1/price` | $0.005 |
@@ -147,8 +153,8 @@ t2000 pay <url> [options]
 ### Intelligence
 | Service | Endpoint | Price |
 |---------|----------|-------|
-| Hunter.io (domain search) | `/hunter/v1/search` | $0.01 |
-| Hunter.io (verify email) | `/hunter/v1/verify` | $0.01 |
+| Hunter.io (domain search) | `/hunter/v1/search` | $0.02 |
+| Hunter.io (verify email) | `/hunter/v1/verify` | $0.02 |
 | IPinfo (IP lookup) | `/ipinfo/v1/lookup` | $0.005 |
 
 ### Tools & Compute
@@ -170,6 +176,27 @@ t2000 pay <url> [options]
 | Printful (browse) | `/printful/v1/products` | $0.005 |
 | Printful (estimate) | `/printful/v1/estimate` | $0.005 |
 | Printful (order) | `/printful/v1/order` | dynamic |
+
+### Messaging
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| Pushover | `/pushover/v1/push` | $0.005 |
+
+### Security
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| VirusTotal (URL/file scan) | `/virustotal/v1/scan` | $0.01 |
+
+### Finance
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| ExchangeRate (rates) | `/exchangerate/v1/rates` | $0.005 |
+| ExchangeRate (convert) | `/exchangerate/v1/convert` | $0.005 |
+
+### Utility
+| Service | Endpoint | Price |
+|---------|----------|-------|
+| Short.io (URL shortener) | `/shortio/v1/shorten` | $0.005 |
 
 ## Example Commands
 
@@ -339,6 +366,36 @@ t2000 pay https://mpp.t2000.ai/ipinfo/v1/lookup \
 t2000 pay https://mpp.t2000.ai/printful/v1/order \
   --max-price 30 \
   --data '{"recipient":{"name":"Jane Doe","address1":"123 Main St","city":"SF","state_code":"CA","country_code":"US","zip":"94105"},"items":[{"variant_id":4012,"quantity":1,"files":[{"url":"https://example.com/design.png"}]}]}'
+```
+
+### Search for flights
+```bash
+t2000 pay https://mpp.t2000.ai/serpapi/v1/flights \
+  --data '{"departure_id":"LAX","arrival_id":"NRT","outbound_date":"2026-05-01","type":"2"}'
+```
+
+### Convert currency
+```bash
+t2000 pay https://mpp.t2000.ai/exchangerate/v1/convert \
+  --data '{"from":"USD","to":"EUR","amount":100}'
+```
+
+### Scan a URL for malware
+```bash
+t2000 pay https://mpp.t2000.ai/virustotal/v1/scan \
+  --data '{"url":"https://suspicious-site.com"}'
+```
+
+### Shorten a URL
+```bash
+t2000 pay https://mpp.t2000.ai/shortio/v1/shorten \
+  --data '{"url":"https://example.com/very/long/url/path"}'
+```
+
+### Send a push notification
+```bash
+t2000 pay https://mpp.t2000.ai/pushover/v1/push \
+  --data '{"user":"USER_KEY","message":"Your agent has a message!"}'
 ```
 
 ## Flow (automatic)

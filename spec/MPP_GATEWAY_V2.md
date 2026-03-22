@@ -676,35 +676,51 @@ Services · Explorer · Spec · Docs
 
 ## Phase 4: Expand Track A Services — Ongoing
 
-**Goal:** 35 → 43 services. Prioritize reliable, low-friction services over flashy ones that create operational risk.
+**Goal:** 35 → 41 services (90 endpoints). Prioritize reliable, low-friction services over flashy ones that create operational risk. All services tested with real payments and verified profitable.
 
 ### Wave 7a: Shipped
 
 | # | Service | What it unlocks | API | Price | Status |
 |---|---------|----------------|-----|-------|--------|
 | 36 | **Pushover** | Instant push notifications to any device | `api.pushover.net` | $0.005/msg | ✅ Live |
-| 37 | **Amadeus** | Flight search + pricing (OAuth2, token cached) | `api.amadeus.com` | $0.01/search | ✅ Live |
 
 ### Wave 7b: Shipped
 
 | # | Service | What it unlocks | API | Price | Status |
 |---|---------|----------------|-----|-------|--------|
-| 38 | **Mistral** | European AI models (Mistral Large, Codestral) | `api.mistral.ai` | $0.005/req | ✅ Live |
-| 39 | **Cohere** | Chat, embeddings, reranking | `api.cohere.com` | $0.005/req | ✅ Live |
-| 40 | **Remove.bg** | Background removal from any image | `api.remove.bg` | $0.01/req | ✅ Live |
-| 41 | **VirusTotal** | URL/file security scanning | `virustotal.com/api` | $0.01/req | ✅ Live |
-| 42 | **ExchangeRate** | Forex rates for 160+ currencies | `v6.exchangerate-api.com` | $0.005/req | ✅ Live |
-| 43 | **Short.io** | URL shortening with analytics | `api.short.io` | $0.005/req | ✅ Live |
+| 37 | **Mistral** | European AI models (Mistral Large, Codestral) | `api.mistral.ai` | $0.005/req | ✅ Live |
+| 38 | **Cohere** | Chat, embeddings, reranking | `api.cohere.com` | $0.005/req | ✅ Live |
+| 39 | **VirusTotal** | URL/file security scanning | `virustotal.com/api` | $0.01/req | ✅ Live |
+| 40 | **ExchangeRate** | Forex rates + conversion for 160+ currencies | `v6.exchangerate-api.com` | $0.005/req | ✅ Live |
+| 41 | **Short.io** | URL shortening with analytics | `api.short.io` | $0.005/req | ✅ Live |
+
+SerpAPI Google Flights added as an endpoint on the existing SerpAPI service (`/v1/flights`).
+
+### Pricing audit (completed)
+
+| Service | Old price | New price | Reason |
+|---------|-----------|-----------|--------|
+| ElevenLabs TTS/SFX | $0.02-0.03 | $0.05 | Upstream ~$0.03-0.08/req |
+| Hunter.io search/verify | $0.01 | $0.02 | Upstream ~$0.015-0.025/req |
+| Google Maps geocode | $0.005 | $0.01 | Was break-even |
+
+### Removed (unprofitable or high friction)
+
+| Service | Issue |
+|---------|-------|
+| **Remove.bg** | Upstream cost $0.15-0.43/req, was charging $0.01 |
+| **Amadeus** | OAuth2 unreliable; replaced by SerpAPI Google Flights |
+| **Twilio SMS** | A2P 10DLC compliance, carrier filtering, abuse risk |
+| **AbstractAPI** | Dead code, never registered in catalog |
 
 ### Deferred (operational risk)
 
 | Service | Issue | Revisit when |
 |---------|-------|-------------|
-| **Twilio SMS** | A2P 10DLC compliance, carrier filtering, spam/abuse risk | Dedicated sender setup |
 | **Suno** | Third-party API wrapper (not official), Vercel 60s timeout | Official API + job queue |
 | **HeyGen** | Video generation takes 2-5 min, exceeds Vercel timeout | Job queue infra |
 | **Runway** | Same timeout issue as HeyGen | Job queue infra |
-| **Postmark** | Requires verified sender domain, users can't send from arbitrary addresses | Domain setup |
+| **Postmark** | Requires verified sender domain | Domain setup |
 
 ### Reloadly storytelling (already live — needs better UX)
 
@@ -879,4 +895,4 @@ MCP tool tests (`t2000_services`, `t2000_pay`) already pass and don't need chang
 | Feed engagement | Users spending time on homepage (Vercel Analytics) |
 | Explorer visits | Page views on `/explorer` |
 | Mysten reaction | "this is real" when they see live payments flowing |
-| Service growth | 35 → 48 services shipped |
+| Service growth | 35 → 41 services shipped (90 endpoints) |

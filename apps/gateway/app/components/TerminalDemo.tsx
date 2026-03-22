@@ -41,7 +41,7 @@ const COMMANDS: Command[] = [
   },
   {
     label: 'Generate an image',
-    cmd: `t2000 pay https://mpp.t2000.ai/fal/v1/image \\
+    cmd: `t2000 pay https://mpp.t2000.ai/fal/fal-ai/flux/dev \\
     --data '{
       "prompt": "a neon-lit Tokyo alley in the rain, cyberpunk"
     }'`,
@@ -53,7 +53,7 @@ const COMMANDS: Command[] = [
   },
   {
     label: 'Order a custom t-shirt',
-    cmd: `t2000 pay https://mpp.t2000.ai/printful/v1/orders \\
+    cmd: `t2000 pay https://mpp.t2000.ai/printful/v1/order \\
     --data '{
       "product_id": 71,
       "design_url": "https://...",

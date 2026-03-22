@@ -183,7 +183,7 @@ const COMPARE_ROWS: {
   { feature: "Token exchange", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
   { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
-  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 35 services, 79 endpoints", bothCheck: true },
+  { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 41 services, 90 endpoints", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 33 tools + 20 AI prompts + MCP", coinbaseCross: true },
   { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
@@ -518,7 +518,7 @@ export default function Home() {
                 Pay-per-use APIs
               </div>
               <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
-                35 services.
+                41 services.
                 <br />
                 <em className="italic text-accent">No API keys.</em>
               </h2>

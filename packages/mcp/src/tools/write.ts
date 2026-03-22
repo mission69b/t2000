@@ -516,7 +516,21 @@ Common examples:
 - Crypto prices: POST https://mpp.t2000.ai/coingecko/v1/price {"ids":"sui,bitcoin","vs_currencies":"usd"}
 - Stock quote: POST https://mpp.t2000.ai/alphavantage/v1/quote {"symbol":"AAPL"}
 - Code exec: POST https://mpp.t2000.ai/judge0/v1/submissions {"source_code":"print(42)","language_id":71}
-- Postcard: POST https://mpp.t2000.ai/lob/v1/postcards {"to":{...},"from":{...},"front":"...","back":"..."}`,
+- Postcard: POST https://mpp.t2000.ai/lob/v1/postcards {"to":{...},"from":{...},"front":"...","back":"..."}
+- Gift card: POST https://mpp.t2000.ai/reloadly/v1/order {"productId":12345,"unitPrice":25,"countryCode":"US","recipientEmail":"user@email.com"}
+- Flights: POST https://mpp.t2000.ai/serpapi/v1/flights {"departure_id":"LAX","arrival_id":"NRT","outbound_date":"2026-05-01","type":"2"}
+- URL shorten: POST https://mpp.t2000.ai/shortio/v1/shorten {"url":"https://example.com"}
+- Security scan: POST https://mpp.t2000.ai/virustotal/v1/scan {"url":"https://suspicious-site.com"}
+- Forex: POST https://mpp.t2000.ai/exchangerate/v1/convert {"from":"USD","to":"EUR","amount":100}
+- Push notification: POST https://mpp.t2000.ai/pushover/v1/push {"user":"USER_KEY","message":"Alert!"}
+- Mistral: POST https://mpp.t2000.ai/mistral/v1/chat/completions {"model":"mistral-large-latest","messages":[{"role":"user","content":"Hello"}]}
+- Cohere: POST https://mpp.t2000.ai/cohere/v1/chat {"model":"command-r-plus","message":"Hello"}
+
+RELOADLY GIFT CARDS: Always include "recipientEmail" in the order body — Reloadly sends the gift card directly to that email with a "Redeem Now" button. For the agent response, construct clickable redemption links for major brands:
+- Amazon: https://www.amazon.com/gc/redeem?claimCode={code}
+- Google Play: https://play.google.com/redeem?code={code}
+- Others: show the code + Reloadly's redeemInstruction.concise field
+Set maxPrice higher for gift cards (e.g. $50 for a $25 card to cover markup).`,
     {
       url: z.string().describe('Full URL of the MPP service endpoint (use t2000_services to discover available URLs)'),
       method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('POST').describe('HTTP method (most services use POST)'),

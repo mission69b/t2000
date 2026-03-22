@@ -45,7 +45,7 @@ Paste into your AI platform's MCP settings:
 ### MPP Services (2)
 | Tool | Description |
 |------|-------------|
-| `t2000_services` | List all MPP services and endpoints (35 services, 79 endpoints) |
+| `t2000_services` | List all MPP services and endpoints (41 services, 90 endpoints) |
 | `t2000_pay` | Pay for and call any MPP API service with USDC |
 
 ### Read-only (16)

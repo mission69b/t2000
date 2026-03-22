@@ -2,7 +2,7 @@
 
 MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
 
-**33 tools · 20 prompts · stdio transport · safeguard enforced**
+**35 tools · 20 prompts · stdio transport · safeguard enforced**
 
 > **New to t2000?** Run `t2000 init` — it creates your wallet, configures MCP for your AI platforms, and sets safeguards in one command.
 
@@ -45,6 +45,8 @@ For other platforms, paste manually:
 | `t2000_sentinel_info` | read | Sentinel details — model, prompt, history |
 | `t2000_contacts` | read | List saved contacts (name → address) |
 | `t2000_portfolio` | read | Investment portfolio + P&L |
+| `t2000_services` | read | Discover MPP services, endpoints, and prices |
+| `t2000_pay` | write | Make a paid API request via MPP |
 | `t2000_send` | write | Send USDC |
 | `t2000_save` | write | Deposit to savings |
 | `t2000_withdraw` | write | Withdraw from savings |

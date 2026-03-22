@@ -23,6 +23,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   commerce: 'Commerce',
   communication: 'Comms',
   translation: 'Translation',
+  messaging: 'Messaging',
+  security: 'Security',
+  finance: 'Finance',
+  utility: 'Utility',
 };
 
 function getPriceRange(service: Service): string {

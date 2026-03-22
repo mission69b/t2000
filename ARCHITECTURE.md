@@ -28,8 +28,8 @@
 │ t2000 Server│  │ MPP Gateway │  │           Sui Blockchain               │
 │ (ECS)       │  │ (Vercel)    │  │                                        │
 │             │  │             │  │  USDC · NAVI · Suilend · Cetus         │
-│ Sponsor API │  │ 35 services │  │  t2000 Treasury · Fee collection       │
-│ Gas station │  │ 79 endpoints│  │  Sentinel · Payment Kit                │
+│ Sponsor API │  │ 41 services │  │  t2000 Treasury · Fee collection       │
+│ Gas station │  │ 90 endpoints│  │  Sentinel · Payment Kit                │
 │ Fee ledger  │  │ chargeProxy │  │                                        │
 │ Indexer     │  │             │  │                                        │
 └──────┬──────┘  └──────┬──────┘  └────────────────────────────────────────┘
