@@ -665,6 +665,9 @@ Services · Explorer · Spec · Docs
 - [x] `/spec` page — render MPP charge method spec
 - [x] `/docs` page — two-track developer guide
 - [x] Code examples with copy buttons
+- [x] Syntax highlighting (sugar-high)
+- [x] Sticky sidebar with section anchors on `/spec` (desktop + mobile pill nav)
+- [x] Quickstart section on `/docs` (3-line pay + 3-line accept)
 - [x] Update nav with Spec + Docs links
 - [x] Mobile responsive
 - [x] Deploy
