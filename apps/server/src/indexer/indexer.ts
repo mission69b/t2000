@@ -140,10 +140,25 @@ async function processCheckpoints(
   return batch.nextCursor;
 }
 
+async function withStartupRetry<T>(label: string, fn: () => Promise<T>, maxRetries = 5): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt === maxRetries) throw err;
+      const delay = Math.min(10_000, 2000 * attempt);
+      console.warn(`[indexer] ${label} failed (attempt ${attempt}/${maxRetries}): ${msg} — retrying in ${delay / 1000}s`);
+      await sleep(delay);
+    }
+  }
+  throw new Error('unreachable');
+}
+
 async function pollLoop(): Promise<void> {
   const client = getClient();
-  let cursor = await getOrCreateCursor();
-  let knownAgents = await getKnownAgents();
+  let cursor = await withStartupRetry('getOrCreateCursor', () => getOrCreateCursor());
+  let knownAgents = await withStartupRetry('getKnownAgents', () => getKnownAgents());
   let agentRefreshCounter = 0;
   let consecutiveErrors = 0;
   let skipCount = 0;
