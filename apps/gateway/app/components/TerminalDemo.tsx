@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
-interface Example {
+interface Command {
   label: string;
-  command: string;
+  cmd: string;
   payment: string;
   response: string;
 }
 
-const EXAMPLES: Example[] = [
+const COMMANDS: Command[] = [
   {
     label: 'Mail a postcard',
-    command: `$ t2000 pay https://mpp.t2000.ai/lob/v1/postcards \\
+    cmd: `t2000 pay https://mpp.t2000.ai/lob/v1/postcards \\
     --data '{
       "to": { "name": "Mom", "address": "379 University Ave..." },
       "message": "Miss you!"
@@ -26,7 +26,7 @@ const EXAMPLES: Example[] = [
   },
   {
     label: 'Buy a gift card',
-    command: `$ t2000 pay https://mpp.t2000.ai/reloadly/v1/order \\
+    cmd: `t2000 pay https://mpp.t2000.ai/reloadly/v1/order \\
     --data '{
       "productId": 4521,
       "unitPrice": 25,
@@ -41,7 +41,7 @@ const EXAMPLES: Example[] = [
   },
   {
     label: 'Generate an image',
-    command: `$ t2000 pay https://mpp.t2000.ai/fal/v1/image \\
+    cmd: `t2000 pay https://mpp.t2000.ai/fal/v1/image \\
     --data '{
       "prompt": "a neon-lit Tokyo alley in the rain, cyberpunk"
     }'`,
@@ -53,7 +53,7 @@ const EXAMPLES: Example[] = [
   },
   {
     label: 'Order a custom t-shirt',
-    command: `$ t2000 pay https://mpp.t2000.ai/printful/v1/orders \\
+    cmd: `t2000 pay https://mpp.t2000.ai/printful/v1/orders \\
     --data '{
       "product_id": 71,
       "design_url": "https://...",
@@ -68,39 +68,91 @@ const EXAMPLES: Example[] = [
   },
 ];
 
-const CYCLE_MS = 8_000;
+type Phase = 'prompt' | 'running' | 'result';
+
+const AUTO_RUN_MS = 2_500;
+const AUTO_NEXT_MS = 3_500;
 
 export function TerminalDemo() {
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [fadeKey, setFadeKey] = useState(0);
+  const [idx, setIdx] = useState(0);
+  const [phase, setPhase] = useState<Phase>('prompt');
+  const [showPayment, setShowPayment] = useState(false);
+  const [showResponse, setShowResponse] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const termRef = useRef<HTMLDivElement>(null);
 
-  const advance = useCallback(() => {
-    if (!paused) {
-      setActive((prev) => (prev + 1) % EXAMPLES.length);
-      setFadeKey((k) => k + 1);
-    }
-  }, [paused]);
+  const cmd = COMMANDS[idx];
+
+  const resetTo = useCallback((nextIdx: number) => {
+    clearTimeout(timerRef.current);
+    setIdx(nextIdx);
+    setPhase('prompt');
+    setShowPayment(false);
+    setShowResponse(false);
+  }, []);
+
+  const run = useCallback(() => {
+    clearTimeout(timerRef.current);
+    setPhase('running');
+    setShowPayment(false);
+    setShowResponse(false);
+
+    setTimeout(() => {
+      setShowPayment(true);
+      setTimeout(() => {
+        setShowResponse(true);
+        setPhase('result');
+      }, 400);
+    }, 600);
+  }, []);
 
   useEffect(() => {
-    const timer = setInterval(advance, CYCLE_MS);
-    return () => clearInterval(timer);
-  }, [advance]);
+    clearTimeout(timerRef.current);
 
-  const handleDotClick = (i: number) => {
-    setActive(i);
-    setFadeKey((k) => k + 1);
-  };
+    if (phase === 'prompt') {
+      timerRef.current = setTimeout(run, AUTO_RUN_MS);
+    } else if (phase === 'result') {
+      timerRef.current = setTimeout(() => {
+        resetTo((idx + 1) % COMMANDS.length);
+      }, AUTO_NEXT_MS);
+    }
 
-  const example = EXAMPLES[active];
+    return () => clearTimeout(timerRef.current);
+  }, [phase, idx, run, resetTo]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        resetTo((idx - 1 + COMMANDS.length) % COMMANDS.length);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        resetTo((idx + 1) % COMMANDS.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (phase === 'prompt') run();
+        else if (phase === 'result')
+          resetTo((idx + 1) % COMMANDS.length);
+      }
+    },
+    [idx, phase, run, resetTo],
+  );
+
+  const handleTap = useCallback(() => {
+    if (phase === 'prompt') run();
+    else if (phase === 'result')
+      resetTo((idx + 1) % COMMANDS.length);
+  }, [phase, idx, run, resetTo]);
 
   return (
-    <div
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      <div className="border border-border rounded-lg bg-panel overflow-hidden">
-        {/* Title bar */}
+    <div>
+      <div
+        ref={termRef}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        onClick={handleTap}
+        className="border border-border rounded-lg bg-panel overflow-hidden outline-none focus:border-accent/30 transition-colors cursor-pointer select-none"
+      >
         <div className="px-4 py-2 border-b border-border flex items-center gap-2">
           <div className="flex gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]/80" />
@@ -108,43 +160,56 @@ export function TerminalDemo() {
             <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]/80" />
           </div>
           <span className="text-[10px] text-dim ml-2">terminal</span>
-          <span className="text-[10px] text-dim/50 ml-auto">{example.label}</span>
+          <span className="text-[10px] text-dim/50 ml-auto">
+            {cmd.label}
+          </span>
         </div>
 
-        {/* Content */}
-        <div key={fadeKey} className="p-5 space-y-4 terminal-content">
-          <pre className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed font-mono">
-            {example.command}
+        <div className="p-5 space-y-4 font-mono">
+          <pre className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
+            <span className="text-muted">$ </span>
+            {cmd.cmd}
+            {phase === 'prompt' && (
+              <span className="terminal-cursor" />
+            )}
           </pre>
 
-          <div className="text-xs text-accent font-medium">
-            {example.payment}
-          </div>
+          {phase === 'running' && !showPayment && (
+            <div className="text-xs text-dim animate-pulse">paying...</div>
+          )}
 
-          <pre className="text-xs text-foreground/60 whitespace-pre-wrap leading-relaxed font-mono">
-            {example.response}
-          </pre>
+          {showPayment && (
+            <div className="text-xs text-accent font-medium terminal-line">
+              {cmd.payment}
+            </div>
+          )}
 
-          <p className="text-[11px] text-dim pt-3 border-t border-border/50">
-            No API key. No signup. One command.
-          </p>
+          {showResponse && (
+            <>
+              <pre className="text-xs text-foreground/60 whitespace-pre-wrap leading-relaxed terminal-line">
+                {cmd.response}
+              </pre>
+              <p className="text-[11px] text-dim pt-3 border-t border-border/50 terminal-line">
+                No API key. No signup. One command.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Dot navigation */}
-      <div className="flex items-center justify-center gap-2 mt-4">
-        {EXAMPLES.map((ex, i) => (
-          <button
-            key={i}
-            onClick={() => handleDotClick(i)}
-            className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
-              i === active
-                ? 'bg-accent scale-125'
-                : 'bg-dim hover:bg-muted'
-            }`}
-            title={ex.label}
-          />
-        ))}
+      <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-dim select-none">
+        <span className="hidden sm:inline">
+          <kbd className="px-1 py-0.5 rounded bg-panel border border-border text-muted">↑</kbd>
+          <kbd className="px-1 py-0.5 rounded bg-panel border border-border text-muted ml-0.5">↓</kbd>
+          <span className="ml-1.5">history</span>
+        </span>
+        <span className="hidden sm:inline">
+          <kbd className="px-1.5 py-0.5 rounded bg-panel border border-border text-muted">↵</kbd>
+          <span className="ml-1.5">run</span>
+        </span>
+        <span className="sm:hidden">tap to run</span>
+        <span className="text-dim/40">·</span>
+        <span>{idx + 1}/{COMMANDS.length}</span>
       </div>
     </div>
   );
