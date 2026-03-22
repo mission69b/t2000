@@ -26,6 +26,29 @@ export default function DocsPage() {
             </p>
           </header>
 
+          {/* Quickstart */}
+          <section className="border border-accent/20 rounded-lg bg-accent-dim p-5 space-y-3">
+            <div className="text-[10px] uppercase tracking-wider text-accent">
+              Quickstart
+            </div>
+            <p className="text-xs text-muted">
+              Pay for any API in 3 lines:
+            </p>
+            <CodeBlock
+              code={`import { T2000 } from '@t2000/sdk';
+const agent = await T2000.create({ pin: 'my-secret' });
+const result = await agent.pay({ url: 'https://mpp.t2000.ai/openai/v1/chat/completions', maxPrice: 0.05 });`}
+            />
+            <p className="text-xs text-muted">
+              Accept payments in 3 lines:
+            </p>
+            <CodeBlock
+              code={`import { Mppx } from 'mppx/nextjs';
+import { sui } from '@t2000/mpp-sui/server';
+export const POST = Mppx.create({ methods: [sui({ currency: SUI_USDC, recipient: '0xYOU' })] }).charge({ amount: '0.01' })(() => Response.json({ ok: true }));`}
+            />
+          </section>
+
           {/* Track picker */}
           <div className="flex gap-2">
             <button

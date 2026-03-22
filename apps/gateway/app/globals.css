@@ -11,6 +11,16 @@
   --dim: #333844;
   --accent: #00d68f;
   --accent-dim: rgba(0, 214, 143, 0.12);
+
+  --sh-class: #e8e6e0;
+  --sh-identifier: #c4c0b8;
+  --sh-keyword: #c792ea;
+  --sh-string: #c3e88d;
+  --sh-sign: #5a6070;
+  --sh-property: #82aaff;
+  --sh-entity: #e8e6e0;
+  --sh-jsxliterals: #89ddff;
+  --sh-comment: #444d5a;
 }
 
 @theme inline {

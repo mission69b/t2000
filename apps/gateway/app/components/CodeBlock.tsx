@@ -1,20 +1,28 @@
 'use client';
 
 import { useState } from 'react';
+import { highlight } from 'sugar-high';
 
 export function CodeBlock({
   code,
-  lang = 'typescript',
+  lang,
 }: {
   code: string;
   lang?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
+  const isPlainText = lang === 'text' || lang === 'plain';
+  const html = isPlainText ? null : highlight(code);
+
   return (
     <div className="relative group">
-      <pre className="text-[11px] text-foreground/80 bg-panel border border-border rounded-lg p-4 overflow-x-auto whitespace-pre leading-relaxed font-mono">
-        <code>{code}</code>
+      <pre className="sh text-[11px] bg-panel border border-border rounded-lg p-4 overflow-x-auto whitespace-pre leading-relaxed font-mono">
+        {html ? (
+          <code dangerouslySetInnerHTML={{ __html: html }} />
+        ) : (
+          <code className="text-foreground/80">{code}</code>
+        )}
       </pre>
       <button
         onClick={() => {
