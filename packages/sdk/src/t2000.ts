@@ -14,7 +14,7 @@ import {
 } from './wallet/keyManager.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
-import { queryHistory } from './wallet/history.js';
+import { queryHistory, queryTransaction } from './wallet/history.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
 import * as sentinel from './protocols/sentinel.js';
@@ -445,6 +445,10 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async history(params?: { limit?: number }): Promise<TransactionRecord[]> {
     return queryHistory(this.client, this._address, params?.limit);
+  }
+
+  async transactionDetail(digest: string): Promise<TransactionRecord | null> {
+    return queryTransaction(this.client, digest, this._address);
   }
 
   async deposit(): Promise<DepositInfo> {
