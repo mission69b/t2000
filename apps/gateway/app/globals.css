@@ -85,6 +85,9 @@ body {
   animation: line-appear 0.3s ease-out both;
 }
 
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
 body::before {
   content: "";
   position: fixed;

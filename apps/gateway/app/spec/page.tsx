@@ -42,14 +42,26 @@ export default function SpecPage() {
       <Header />
 
       <main className="flex-1">
-        <div className="max-w-5xl mx-auto px-6 py-10 lg:flex lg:gap-10">
-          {/* Sidebar */}
-          <aside className="hidden lg:block lg:w-44 shrink-0">
+        <div className="max-w-5xl mx-auto px-6 py-10 md:flex md:gap-10">
+          {/* Sidebar — desktop */}
+          <aside className="hidden md:block md:w-40 shrink-0">
             <SpecSidebar sections={SECTIONS} />
           </aside>
 
           {/* Content */}
           <article className="flex-1 min-w-0 space-y-10">
+            {/* Section nav — mobile only */}
+            <nav className="md:hidden flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none">
+              {SECTIONS.map((s) => (
+                <a
+                  key={s.id}
+                  href={`#${s.id}`}
+                  className="shrink-0 text-[10px] px-2.5 py-1 rounded-full border border-border text-muted hover:text-foreground hover:border-border-bright transition-colors"
+                >
+                  {s.label}
+                </a>
+              ))}
+            </nav>
             {/* Header */}
             <header className="space-y-2">
               <div className="text-[10px] uppercase tracking-wider text-accent">
