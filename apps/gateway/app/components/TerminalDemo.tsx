@@ -165,42 +165,54 @@ export function TerminalDemo() {
           </span>
         </div>
 
-        <div className="p-5 space-y-4 font-mono">
-          <pre className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
-            <span className="text-muted">$ </span>
-            {cmd.cmd}
-            {phase === 'prompt' && (
-              <span className="terminal-cursor" />
-            )}
-          </pre>
+        <div className="grid font-mono">
+          {COMMANDS.map((c, i) => {
+            const isActive = i === idx;
+            return (
+              <div
+                key={i}
+                className={`p-5 space-y-4 col-start-1 row-start-1 ${
+                  isActive ? '' : 'invisible'
+                }`}
+              >
+                <pre className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                  <span className="text-muted">$ </span>
+                  {c.cmd}
+                  {isActive && phase === 'prompt' && (
+                    <span className="terminal-cursor" />
+                  )}
+                </pre>
 
-          <div
-            className={`text-xs font-medium ${
-              showPayment
-                ? 'text-accent terminal-line'
-                : phase === 'running'
-                  ? 'text-dim animate-pulse'
-                  : 'opacity-0'
-            }`}
-          >
-            {showPayment ? cmd.payment : 'paying...'}
-          </div>
+                <div
+                  className={`text-xs font-medium ${
+                    isActive && showPayment
+                      ? 'text-accent terminal-line'
+                      : isActive && phase === 'running'
+                        ? 'text-dim animate-pulse'
+                        : 'opacity-0'
+                  }`}
+                >
+                  {isActive && showPayment ? c.payment : 'paying...'}
+                </div>
 
-          <pre
-            className={`text-xs text-foreground/60 whitespace-pre-wrap leading-relaxed ${
-              showResponse ? 'terminal-line' : 'opacity-0'
-            }`}
-          >
-            {cmd.response}
-          </pre>
+                <pre
+                  className={`text-xs text-foreground/60 whitespace-pre-wrap leading-relaxed ${
+                    isActive && showResponse ? 'terminal-line' : 'opacity-0'
+                  }`}
+                >
+                  {c.response}
+                </pre>
 
-          <p
-            className={`text-[11px] text-dim pt-3 border-t border-border/50 ${
-              showResponse ? 'terminal-line' : 'opacity-0 border-transparent'
-            }`}
-          >
-            No API key. No signup. One command.
-          </p>
+                <p
+                  className={`text-[11px] text-dim pt-3 border-t border-border/50 ${
+                    isActive && showResponse ? 'terminal-line' : 'opacity-0 border-transparent'
+                  }`}
+                >
+                  No API key. No signup. One command.
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
