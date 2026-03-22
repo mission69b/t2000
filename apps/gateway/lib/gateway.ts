@@ -87,11 +87,16 @@ export function chargeProxy(
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const receipt = response.headers.get('Payment-Receipt');
+      const allHeaders: Record<string, string> = {};
+      response.headers.forEach((v, k) => { allHeaders[k] = v; });
+      console.log('[mpp-log] status:', response.status, 'receipt header:', receipt ? receipt.slice(0, 60) + '...' : 'null', 'all headers:', JSON.stringify(allHeaders));
+      const digest = parseReceiptDigest(receipt);
+      console.log('[mpp-log] parsed digest:', digest);
       logPayment({
         service,
         endpoint,
         amount,
-        digest: parseReceiptDigest(receipt),
+        digest,
       }).catch(() => {});
     }
 
@@ -128,11 +133,14 @@ export function chargeCustom(
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const receipt = response.headers.get('Payment-Receipt');
+      console.log('[mpp-log-custom] status:', response.status, 'receipt header:', receipt ? receipt.slice(0, 60) + '...' : 'null');
+      const digest = parseReceiptDigest(receipt);
+      console.log('[mpp-log-custom] parsed digest:', digest);
       logPayment({
         service,
         endpoint,
         amount: resolvedAmount,
-        digest: parseReceiptDigest(receipt),
+        digest,
       }).catch(() => {});
     }
 
