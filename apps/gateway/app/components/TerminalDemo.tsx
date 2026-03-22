@@ -174,42 +174,45 @@ export function TerminalDemo() {
             )}
           </pre>
 
-          {phase === 'running' && !showPayment && (
-            <div className="text-xs text-dim animate-pulse">paying...</div>
-          )}
+          <div
+            className={`text-xs font-medium ${
+              showPayment
+                ? 'text-accent terminal-line'
+                : phase === 'running'
+                  ? 'text-dim animate-pulse'
+                  : 'opacity-0'
+            }`}
+          >
+            {showPayment ? cmd.payment : 'paying...'}
+          </div>
 
-          {showPayment && (
-            <div className="text-xs text-accent font-medium terminal-line">
-              {cmd.payment}
-            </div>
-          )}
+          <pre
+            className={`text-xs text-foreground/60 whitespace-pre-wrap leading-relaxed ${
+              showResponse ? 'terminal-line' : 'opacity-0'
+            }`}
+          >
+            {cmd.response}
+          </pre>
 
-          {showResponse && (
-            <>
-              <pre className="text-xs text-foreground/60 whitespace-pre-wrap leading-relaxed terminal-line">
-                {cmd.response}
-              </pre>
-              <p className="text-[11px] text-dim pt-3 border-t border-border/50 terminal-line">
-                No API key. No signup. One command.
-              </p>
-            </>
-          )}
+          <p
+            className={`text-[11px] text-dim pt-3 border-t border-border/50 ${
+              showResponse ? 'terminal-line' : 'opacity-0 border-transparent'
+            }`}
+          >
+            No API key. No signup. One command.
+          </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-dim select-none">
-        <span className="hidden sm:inline">
-          <kbd className="px-1 py-0.5 rounded bg-panel border border-border text-muted">↑</kbd>
-          <kbd className="px-1 py-0.5 rounded bg-panel border border-border text-muted ml-0.5">↓</kbd>
-          <span className="ml-1.5">history</span>
-        </span>
-        <span className="hidden sm:inline">
-          <kbd className="px-1.5 py-0.5 rounded bg-panel border border-border text-muted">↵</kbd>
-          <span className="ml-1.5">run</span>
-        </span>
-        <span className="sm:hidden">tap to run</span>
-        <span className="text-dim/40">·</span>
-        <span>{idx + 1}/{COMMANDS.length}</span>
+      <div className="flex items-center justify-center gap-1.5 mt-3 select-none">
+        {COMMANDS.map((_, i) => (
+          <div
+            key={i}
+            className={`w-1.5 h-1.5 rounded-full transition-colors ${
+              i === idx ? 'bg-accent' : 'bg-dim/50'
+            }`}
+          />
+        ))}
       </div>
     </div>
   );
