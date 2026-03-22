@@ -611,16 +611,16 @@ Explorer link already added to header nav in Phase 1 (`Services · Explorer · D
 
 ### Checklist
 
-- [ ] `/explorer` page route
-- [ ] Payment table with pagination
-- [ ] Search by digest / address
-- [ ] Service filter dropdown
-- [ ] Suiscan link for each row
-- [ ] Volume chart (7d) — lightweight, CSS or small chart lib
-- [ ] Service breakdown chart
-- [ ] Payment detail view (click to expand)
-- [ ] Add Explorer to nav
-- [ ] Mobile responsive
+- [x] `/explorer` page route
+- [x] Payment table with pagination
+- [x] Search by digest / address
+- [x] Service filter dropdown
+- [x] Suiscan link for each row
+- [x] Volume chart (7d) — lightweight, CSS bar chart
+- [x] Service breakdown chart
+- [x] Payment detail view (click to expand)
+- [x] Add Explorer to nav
+- [x] Mobile responsive
 - [ ] Deploy
 
 ---

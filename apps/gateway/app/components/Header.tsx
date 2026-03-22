@@ -19,7 +19,7 @@ export function Header() {
           </Link>
           <Link
             href="/explorer"
-            className="hover:text-foreground transition-colors pointer-events-none opacity-40"
+            className="hover:text-foreground transition-colors"
           >
             Explorer
           </Link>
