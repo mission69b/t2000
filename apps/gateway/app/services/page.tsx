@@ -225,7 +225,7 @@ function ServiceUrlCopy({ url }: { url: string }) {
       className="inline-flex items-center gap-1.5 text-[11px] text-dim font-mono hover:text-accent transition-colors cursor-pointer group"
       title="Copy full URL"
     >
-      {url.replace(/^https?:\/\//, '')}
+      {url}
       <span className={`text-[9px] transition-colors ${copied ? 'text-accent' : 'text-transparent group-hover:text-muted'}`}>
         {copied ? '✓' : 'copy'}
       </span>
