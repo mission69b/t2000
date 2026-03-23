@@ -23,7 +23,7 @@ const WALLET_ERROR_MAP: [RegExp, string][] = [
   [/rate.?limit|too many transactions/i, 'Too many transactions. Please wait a moment and try again.'],
   [/sponsorship failed|gas pool/i, 'Gas sponsorship temporarily unavailable. Please try again later.'],
   [/sponsored transaction expired/i, 'Transaction expired. Please try again.'],
-  [/not supported|disallowed/i, 'This action is not currently supported.'],
+  [/disallowed.*move.*call/i, 'This transaction type is not yet enabled. Contact support.'],
 ];
 
 export function mapError(error: unknown): FeedItemData {

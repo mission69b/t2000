@@ -110,7 +110,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transaction build failed';
-    console.error('[prepare] Error:', message);
+    const stack = err instanceof Error ? err.stack : '';
+    console.error('[prepare] Error:', message, stack);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
