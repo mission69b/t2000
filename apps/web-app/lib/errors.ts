@@ -21,9 +21,10 @@ const WALLET_ERROR_MAP: [RegExp, string][] = [
   [/object.*not found/i, 'Account data is stale. Refreshing...'],
   [/network.*error|fetch.*failed|timed?\s?out/i, 'Network issue. Check your connection and try again.'],
   [/rate.?limit|too many transactions/i, 'Too many transactions. Please wait a moment and try again.'],
-  [/sponsorship failed|gas pool/i, 'Gas sponsorship temporarily unavailable. Please try again later.'],
+  [/not part of an allow.?listed move call/i, 'This transaction target is not allow-listed in Enoki. Update your Enoki Portal settings.'],
+  [/gas pool.*depleted|gas pool.*empty/i, 'Gas sponsorship pool is empty. Please try again later.'],
+  [/sponsorship failed.*5\d\d|sponsor.*unavailable/i, 'Gas sponsorship temporarily unavailable. Please try again later.'],
   [/sponsored transaction expired/i, 'Transaction expired. Please try again.'],
-  [/disallowed.*move.*call/i, 'This transaction type is not yet enabled. Contact support.'],
 ];
 
 export function mapError(error: unknown): FeedItemData {
