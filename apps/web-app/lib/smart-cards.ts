@@ -34,6 +34,7 @@ export interface AccountState {
   isFirstOpenToday?: boolean;
   healthFactor?: number;
   sessionExpiringSoon?: boolean;
+  receivedAmount?: number;
 }
 
 /**
@@ -50,6 +51,20 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
       title: 'Session expires soon',
       body: 'Your session expires within 24 hours. Refresh to stay signed in.',
       actions: [{ label: 'Refresh now', variant: 'primary', chipFlow: 'refresh-session' }],
+    });
+  }
+
+  if (state.receivedAmount && state.receivedAmount > 0) {
+    cards.push({
+      type: 'received-funds',
+      icon: '💸',
+      title: `You received $${state.receivedAmount.toFixed(2)}`,
+      body: 'Funds arrived in your wallet.',
+      actions: [
+        { label: 'Move to savings', variant: 'primary', chipFlow: 'save-all' },
+        { label: 'Dismiss', variant: 'secondary' },
+      ],
+      dismissible: true,
     });
   }
 

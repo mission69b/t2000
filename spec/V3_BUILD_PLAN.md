@@ -402,7 +402,7 @@ idle → redirecting → proving → ready
                             expired → idle
 ```
 
-### 3.7 — Vercel Deployment Config ⏳
+### 3.7 — Vercel Deployment Config ✅
 
 Configure Vercel project for `apps/web-app`:
 - Root directory: `apps/web-app`
@@ -664,7 +664,7 @@ Implement the error card pattern from the spec. Map Move abort codes to human-re
 
 Track daily query count via `llm_usage` table. Show inline cost warning at 11th query. Display small cost badge after that.
 
-### 6.7 — Beta Test ⏳
+### 6.7 — Beta Test ⏳ (blocked on P1-P3)
 
 Deploy to Vercel. Share with 5-10 users. Collect feedback on:
 - Onboarding flow (Google sign-in → dashboard)
@@ -804,9 +804,9 @@ Phase 6 — remaining chip flows.
 
 `[Help]` chip implemented. Renders formatted feature list via intent parser and feed.
 
-### Gap 10: Vercel deployment config ⏳
+### Gap 10: Vercel deployment config ✅
 
-Manual Vercel setup needed before beta deploy.
+Deployed to Vercel at `app.t2000.ai`. Enoki prover, Google OAuth, NeonDB all configured.
 
 ### Gap 11: OAuth callback route ✅
 
@@ -1104,6 +1104,159 @@ Automated E2E (post-beta, not MVP): Playwright for critical paths (sign-in, save
 - No separate API docs for the web app (it's a frontend, not an API)
 - No user-facing docs (the product is self-explanatory — that's the whole point of "dead simple")
 - No wiki or Notion — everything stays in-repo as markdown
+
+---
+
+## Outstanding Items
+
+Everything remaining after Phases 1-7. Ordered by priority.
+
+### P0 — Server Tests ✅
+
+Write missing test coverage for web-app API routes.
+
+| File | Tests | Est. |
+|------|-------|------|
+| `app/api/zklogin/salt/route.test.ts` | Valid JWT → returns salt. Invalid JWT → 401. Missing JWT → 400. Same sub → same salt (deterministic). | 20 min |
+| `app/api/user/preferences/route.test.ts` | GET → returns contacts/limits. POST → upserts. Missing address → 400. Invalid body → 400. | 20 min |
+
+### P1 — Real Balance Polling ✅
+
+**Bucket 2A.** Dashboard currently mocks balance with `setTimeout → zeros`. Wire to Sui RPC for live data.
+
+**Changes:**
+- Create `hooks/useBalance.ts` — polls `suix_getAllBalances` for the user's address
+- Parse SUI + USDC balances, convert from MIST
+- Query lending protocols (Suilend/NAVI) for savings positions
+- Feed real data into `BalanceHeader` and `AccountState` for smart cards
+- Use TanStack Query with `refetchInterval: 30_000`
+
+**Depends on:** Sui RPC (already available via `@mysten/sui/client`)
+
+### P2 — Smart Cards from Real Data ✅
+
+**Bucket 2G + 2I.** Smart cards are currently derived from mocked balance. Once P1 is done:
+
+- `deriveSmartCards()` already works — just needs real `AccountState` input
+- Add `received-funds` card: compare balance between polls, if increased → show "You received X SUI"
+- Add idle funds detection: if checking > $10 and savings rate > 0 → show "Move to savings" card
+
+**Depends on:** P1 (real balance)
+
+### P3 — Real Transaction Execution ✅
+
+**Bucket 2B.** `handleConfirm` in dashboard simulates with `setTimeout`. Wire to SDK.
+
+**Changes:**
+- `useAgent().getInstance()` returns a live `T2000` instance (already scaffolded)
+- **Save:** `agent.save(amount)` → deposit to highest-yield lending protocol
+- **Send:** `agent.pay(recipient, amount)` → on-chain SUI/USDC transfer
+- **Withdraw:** `agent.withdraw(amount)` → withdraw from lending protocol
+- **Borrow/Repay:** `agent.borrow()` / `agent.repay()` → lending protocol operations
+- Update `handleConfirm` to call real SDK methods instead of setTimeout
+- Invalidate balance queries on success
+
+**Depends on:** P1 (balance), `useAgent` hook (already exists)
+
+### P4 — MPP LLM Integration ⏳
+
+**Bucket 2C + 2D.** `useLlm` currently returns local keyword-matched responses. Wire to real LLM via MPP.
+
+**Architecture decision needed:** How does the web app call the LLM?
+- **Option A:** Client → MPP gateway directly (exposes gateway URL to client)
+- **Option B:** Client → Next.js API route → MPP gateway (server-side proxy, keeps gateway URL private)
+- **Recommendation:** Option B (server-side proxy at `/api/llm/query`)
+
+**Changes:**
+- Create `app/api/llm/query/route.ts` — proxies to MPP gateway with `LLM_SYSTEM_PROMPT`
+- Update `hooks/useLlm.ts` to POST to `/api/llm/query`
+- Pass user address + balance context to system prompt
+- Return structured responses (text, chips, tool calls)
+
+**Depends on:** Gateway LLM endpoint availability
+
+### P5 — MPP Services Execution ⏳
+
+**Bucket 2F.** Service form submit is display-only. Wire to MPP for real execution.
+
+**Changes:**
+- Create `app/api/services/execute/route.ts` — proxies to MPP gateway
+- `handleServiceSubmit` calls the API route with service ID + form values
+- Parse MPP response → render as receipt/result card in feed
+- Handle errors (insufficient balance, service unavailable)
+
+**Depends on:** P4 architecture decision (same proxy pattern)
+
+### P6 — LLM Tool Calling ⏳
+
+**Bucket 2H.** 35 MCP tools and 20 prompts exist but aren't callable from the web app LLM.
+
+**Changes:**
+- LLM system prompt includes tool definitions (subset relevant to web users)
+- Server-side proxy parses tool_use responses from Claude
+- Execute tool calls server-side → return results to client
+- Priority tools: `t2000_overview`, `t2000_balance`, `t2000_all_rates`, `t2000_history`
+
+**Depends on:** P4 (LLM integration)
+
+### P7 — Service Intent Parsing ⏳
+
+**Bucket 3, item 4.** Typing "uber eats" currently falls through to LLM. Should be parsed client-side.
+
+**Changes:**
+- Add service intent patterns to `intent-parser.ts`
+- Fuzzy match service names from `SERVICE_CATALOG`
+- On match → open `ServicesPanel` with service pre-selected
+
+**Depends on:** Nothing (can be done anytime)
+
+### P8 — Gift Card Brand Grid ⏳
+
+**Bucket 3, item 3.** Spec has a visual brand tile grid for gift cards. Currently a single form entry.
+
+**Changes:**
+- Fetch Reloadly catalog (or hardcode top 20 brands)
+- `GiftCardGrid` component with brand tiles
+- Tap brand → amount chips → email input → confirm
+
+**Depends on:** Reloadly API access / catalog data
+
+### P9 — Settings Panel Extras ⏳
+
+**Bucket 1, item 6.** Settings panel is missing spec items.
+
+| Item | Priority |
+|------|----------|
+| Google email display | Low |
+| Contacts management (view/delete) | Medium |
+| Safety limits (daily send cap) | Post-MVP |
+| Emergency lock | Post-MVP |
+
+### P10 — Vercel Deployment Cleanup ⏳
+
+Mark deployment as complete. Clean up:
+- Remove unused `/api/zklogin/salt` route (now using Enoki)
+- Remove `ZKLOGIN_MASTER_SEED` env var from Vercel (no longer needed)
+- Remove `API_BASE_URL` from constants (unused)
+- Verify CSP headers allow only Enoki (remove old prover domains)
+
+### Summary
+
+| Priority | Item | Blocking beta? |
+|----------|------|----------------|
+| **P0** ✅ | Server tests | No, but good hygiene |
+| **P1** ✅ | Real balance polling | **Yes** — core UX |
+| **P2** ✅ | Smart cards from real data | **Yes** — depends on P1 |
+| **P3** ✅ | Real transaction execution | **Yes** — core product |
+| **P4** | MPP LLM integration | No — keyword fallback works |
+| **P5** | MPP services execution | No — display-only is acceptable for beta |
+| **P6** | LLM tool calling | No — post-beta |
+| **P7** | Service intent parsing | No — LLM fallback handles it |
+| **P8** | Gift card brand grid | No — post-beta |
+| **P9** | Settings panel extras | No — post-beta |
+| **P10** | Vercel cleanup | No — housekeeping |
+
+**For beta:** P0-P3 are complete. P4-P10 are post-beta.
 
 ---
 

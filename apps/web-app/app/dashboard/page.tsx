@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
-import { BalanceHeader, type BalanceData } from '@/components/dashboard/BalanceHeader';
+import { BalanceHeader } from '@/components/dashboard/BalanceHeader';
 import { SmartCardFeed } from '@/components/dashboard/SmartCardFeed';
 import { ChipBar } from '@/components/dashboard/ChipBar';
 import { InputBar } from '@/components/dashboard/InputBar';
@@ -17,12 +17,14 @@ import { useChipFlow, type ChipFlowResult } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useLlm } from '@/hooks/useLlm';
 import { useLlmUsage } from '@/hooks/useLlmUsage';
+import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
 import { deriveSmartCards, type AccountState } from '@/lib/smart-cards';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
+import { useAgent } from '@/hooks/useAgent';
 import type { ServiceItem } from '@/lib/service-catalog';
 
 function DashboardContent() {
@@ -32,24 +34,34 @@ function DashboardContent() {
   const llm = useLlm();
   const llmUsage = useLlmUsage();
   const contactsHook = useContacts(address);
+  const { agent } = useAgent();
+  const balanceQuery = useBalance(address);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const feedEndRef = useRef<HTMLDivElement>(null);
+  const prevTotalRef = useRef<number | null>(null);
+  const [receivedAmount, setReceivedAmount] = useState<number | null>(null);
 
-  const [balance, setBalance] = useState<BalanceData>({
-    total: 0,
-    checking: 0,
-    savings: 0,
-    loading: true,
-  });
+  const balance = {
+    total: balanceQuery.data?.total ?? 0,
+    checking: balanceQuery.data?.checking ?? 0,
+    savings: balanceQuery.data?.savings ?? 0,
+    loading: balanceQuery.isLoading,
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setBalance({ total: 0, checking: 0, savings: 0, loading: false });
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (balanceQuery.data && !balanceQuery.isLoading) {
+      const currentTotal = balanceQuery.data.total;
+      if (prevTotalRef.current !== null && currentTotal > prevTotalRef.current) {
+        const diff = currentTotal - prevTotalRef.current;
+        if (diff >= 0.01) {
+          setReceivedAmount(diff);
+        }
+      }
+      prevTotalRef.current = currentTotal;
+    }
+  }, [balanceQuery.data, balanceQuery.isLoading]);
 
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,6 +73,7 @@ function DashboardContent() {
     savingsRate: 0,
     pendingRewards: 0,
     sessionExpiringSoon: expiringSoon,
+    receivedAmount: receivedAmount ?? undefined,
   };
 
   const smartCards = deriveSmartCards(accountState).filter(
@@ -69,6 +82,7 @@ function DashboardContent() {
 
   const handleDismissCard = useCallback((type: string) => {
     setDismissedCards((prev) => new Set(prev).add(type));
+    if (type === 'received-funds') setReceivedAmount(null);
   }, []);
 
   const executeIntent = useCallback(
@@ -128,26 +142,44 @@ function DashboardContent() {
             ],
           });
           break;
-        case 'balance':
-          feed.addItem({
-            type: 'ai-text',
-            text: `Your balance:\n\nChecking: $${balance.checking.toFixed(2)}\nSavings: $${balance.savings.toFixed(2)}\nTotal: $${balance.total.toFixed(2)}`,
-          });
+        case 'balance': {
+          const bd = balanceQuery.data;
+          const lines = [
+            `Total: $${balance.total.toFixed(2)}`,
+            `Checking: $${balance.checking.toFixed(2)}`,
+            `Savings: $${balance.savings.toFixed(2)}`,
+          ];
+          if (bd) {
+            lines.push('');
+            lines.push(`SUI: ${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})`);
+            lines.push(`USDC: ${bd.usdc.toFixed(2)}`);
+            lines.push(`SUI price: $${bd.suiPrice.toFixed(2)}`);
+          }
+          feed.addItem({ type: 'ai-text', text: `Your balance:\n\n${lines.join('\n')}` });
           break;
-        case 'report':
+        }
+          break;
+        case 'report': {
+          const rd = balanceQuery.data;
+          const reportLines = [
+            `Total: $${balance.total.toFixed(2)}`,
+            `Checking: $${balance.checking.toFixed(2)}`,
+            `Savings: $${balance.savings.toFixed(2)}`,
+          ];
+          const assetLines: string[] = [];
+          if (rd) {
+            assetLines.push(`SUI: ${rd.sui.toFixed(4)} ($${rd.suiUsd.toFixed(2)})`);
+            assetLines.push(`USDC: ${rd.usdc.toFixed(2)}`);
+          }
           feed.addItem({
             type: 'report',
             sections: [
-              {
-                title: 'Account Summary',
-                lines: [
-                  `Total: $${balance.total.toFixed(2)}`,
-                  `Checking: $${balance.checking.toFixed(2)}`,
-                  `Savings: $${balance.savings.toFixed(2)}`,
-                ],
-              },
+              { title: 'Account Summary', lines: reportLines },
+              ...(assetLines.length > 0 ? [{ title: 'Assets', lines: assetLines }] : []),
             ],
           });
+          break;
+        }
           break;
         case 'history':
           feed.addItem({
@@ -333,18 +365,59 @@ function DashboardContent() {
   const handleConfirm = useCallback(async () => {
     chipFlow.confirm();
 
+    const flow = chipFlow.state.flow;
+    const amount = chipFlow.state.amount ?? 0;
+
     try {
-      // TODO: Wire to useAgent().getInstance() for real execution
-      await new Promise((r) => setTimeout(r, 2000));
-      const flowLabel = chipFlow.state.flow === 'save' ? 'Saved'
-        : chipFlow.state.flow === 'send' ? 'Sent'
-        : chipFlow.state.flow === 'withdraw' ? 'Withdrew'
-        : chipFlow.state.flow === 'borrow' ? 'Borrowed'
-        : 'Repaid';
+      if (!agent) throw new Error('Not authenticated');
+      const sdk = await agent.getInstance();
+
+      let txDigest = '';
+      let flowLabel = '';
+
+      switch (flow) {
+        case 'save': {
+          const res = await sdk.save({ amount });
+          txDigest = res.tx;
+          flowLabel = 'Saved';
+          break;
+        }
+        case 'send': {
+          const recipient = chipFlow.state.recipient;
+          if (!recipient) throw new Error('No recipient specified');
+          const res = await sdk.send({ to: recipient, amount });
+          txDigest = res.tx;
+          flowLabel = 'Sent';
+          break;
+        }
+        case 'withdraw': {
+          const res = await sdk.withdraw({ amount });
+          txDigest = res.tx;
+          flowLabel = 'Withdrew';
+          break;
+        }
+        case 'borrow': {
+          const res = await sdk.borrow({ amount });
+          txDigest = res.tx;
+          flowLabel = 'Borrowed';
+          break;
+        }
+        case 'repay': {
+          const res = await sdk.repay({ amount });
+          txDigest = res.tx;
+          flowLabel = 'Repaid';
+          break;
+        }
+        default:
+          throw new Error(`Unknown flow: ${flow}`);
+      }
+
       const result: ChipFlowResult = {
         success: true,
-        title: `${flowLabel} $${chipFlow.state.amount}`,
-        details: 'Transaction confirmed on-chain.',
+        title: `${flowLabel} $${amount.toFixed(2)}`,
+        details: txDigest
+          ? `Tx: ${txDigest.slice(0, 8)}...${txDigest.slice(-6)}`
+          : 'Transaction confirmed on-chain.',
       };
       chipFlow.setResult(result);
 
@@ -355,8 +428,10 @@ function DashboardContent() {
         details: result.details,
       });
 
+      balanceQuery.refetch();
+
       if (
-        chipFlow.state.flow === 'send' &&
+        flow === 'send' &&
         chipFlow.state.recipient &&
         !contactsHook.isKnownAddress(chipFlow.state.recipient)
       ) {
@@ -370,7 +445,7 @@ function DashboardContent() {
       chipFlow.setError(errorData.type === 'error' ? errorData.message : 'Transaction failed');
       feed.addItem(errorData);
     }
-  }, [chipFlow, feed]);
+  }, [chipFlow, feed, agent, contactsHook, balanceQuery]);
 
   const getConfirmationDetails = () => {
     const flow = chipFlow.state.flow;
