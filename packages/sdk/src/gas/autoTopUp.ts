@@ -1,5 +1,4 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   SUPPORTED_ASSETS,
   GAS_RESERVE_TARGET,
@@ -10,6 +9,8 @@ import {
 import { buildSwapTx } from '../protocols/cetus.js';
 import { requestGasSponsorship, reportGasUsage } from './gasStation.js';
 import { T2000Error } from '../errors.js';
+import type { TransactionSigner } from '../signer.js';
+import { toBase64, fromBase64 } from '../utils/base64.js';
 
 export interface AutoTopUpResult {
   success: boolean;
@@ -40,9 +41,9 @@ export async function shouldAutoTopUp(
  */
 export async function executeAutoTopUp(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  signer: TransactionSigner,
 ): Promise<AutoTopUpResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
+  const address = signer.getAddress();
   const topupAmountHuman = Number(AUTO_TOPUP_AMOUNT) / 1e6;
 
   const { tx } = await buildSwapTx({
@@ -56,9 +57,11 @@ export async function executeAutoTopUp(
 
   let result;
   try {
-    result = await client.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
+    const builtBytes = await tx.build({ client });
+    const { signature } = await signer.signTransaction(builtBytes);
+    result = await client.executeTransactionBlock({
+      transactionBlock: toBase64(builtBytes),
+      signature: [signature],
       options: { showEffects: true, showBalanceChanges: true },
     });
   } catch {
@@ -74,14 +77,14 @@ export async function executeAutoTopUp(
       txJson = freshTx.serialize();
     } catch {
       const bcsBytes = await freshTx.build({ client });
-      txBcsBase64 = Buffer.from(bcsBytes).toString('base64');
+      txBcsBase64 = toBase64(bcsBytes);
     }
 
     const sponsored = await requestGasSponsorship(
       txJson ?? '', address, 'auto-topup', txBcsBase64,
     );
-    const sponsoredTxBytes = Buffer.from(sponsored.txBytes, 'base64');
-    const { signature: agentSig } = await keypair.signTransaction(sponsoredTxBytes);
+    const sponsoredTxBytes = fromBase64(sponsored.txBytes);
+    const { signature: agentSig } = await signer.signTransaction(sponsoredTxBytes);
 
     result = await client.executeTransactionBlock({
       transactionBlock: sponsored.txBytes,

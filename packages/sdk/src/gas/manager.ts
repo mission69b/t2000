@@ -1,5 +1,4 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import {
   SUPPORTED_ASSETS,
@@ -14,6 +13,8 @@ import { shouldAutoTopUp, executeAutoTopUp } from './autoTopUp.js';
 import { requestGasSponsorship, reportGasUsage } from './gasStation.js';
 import type { SafeguardEnforcer } from '../safeguards/enforcer.js';
 import type { TxMetadata } from '../safeguards/types.js';
+import type { TransactionSigner } from '../signer.js';
+import { toBase64, fromBase64 } from '../utils/base64.js';
 
 export interface GasExecutionResult {
   digest: string;
@@ -53,20 +54,21 @@ async function assertTxSuccess(effects: unknown, digest: string): Promise<void> 
 
 async function trySelfFunded(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  signer: TransactionSigner,
   tx: Transaction,
 ): Promise<GasExecutionResult | null> {
-  const address = keypair.getPublicKey().toSuiAddress();
+  const address = signer.getAddress();
   const suiBalance = await getSuiBalance(client, address);
 
-  // Need at least 0.05 SUI for gas
   if (suiBalance < AUTO_TOPUP_THRESHOLD) return null;
 
   tx.setSender(address);
 
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
+  const builtBytes = await tx.build({ client });
+  const { signature } = await signer.signTransaction(builtBytes);
+  const result = await client.executeTransactionBlock({
+    transactionBlock: toBase64(builtBytes),
+    signature: [signature],
     options: { showEffects: true },
   });
   await client.waitForTransaction({ digest: result.digest });
@@ -83,15 +85,15 @@ async function trySelfFunded(
 
 async function tryAutoTopUpThenSelfFund(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  signer: TransactionSigner,
   buildTx: () => Transaction | Promise<Transaction>,
 ): Promise<GasExecutionResult | null> {
-  const address = keypair.getPublicKey().toSuiAddress();
+  const address = signer.getAddress();
 
   const canTopUp = await shouldAutoTopUp(client, address);
   if (!canTopUp) return null;
 
-  await executeAutoTopUp(client, keypair);
+  await executeAutoTopUp(client, signer);
 
   // Rebuild the transaction with fresh object versions (auto-topup changed coin state)
   const tx = await buildTx();
@@ -99,9 +101,11 @@ async function tryAutoTopUpThenSelfFund(
 
   const suiAfterTopUp = await getSuiBalance(client, address);
 
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
+  const builtBytes = await tx.build({ client });
+  const { signature } = await signer.signTransaction(builtBytes);
+  const result = await client.executeTransactionBlock({
+    transactionBlock: toBase64(builtBytes),
+    signature: [signature],
     options: { showEffects: true },
   });
   await client.waitForTransaction({ digest: result.digest });
@@ -118,10 +122,10 @@ async function tryAutoTopUpThenSelfFund(
 
 async function trySponsored(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  signer: TransactionSigner,
   tx: Transaction,
 ): Promise<GasExecutionResult | null> {
-  const address = keypair.getPublicKey().toSuiAddress();
+  const address = signer.getAddress();
   const suiBalance = await getSuiBalance(client, address);
   tx.setSender(address);
 
@@ -133,13 +137,13 @@ async function trySponsored(
     txJson = tx.serialize();
   } catch {
     const bcsBytes = await tx.build({ client });
-    txBcsBase64 = Buffer.from(bcsBytes).toString('base64');
+    txBcsBase64 = toBase64(bcsBytes);
   }
 
   const sponsoredResult = await requestGasSponsorship(txJson ?? '', address, undefined, txBcsBase64);
 
-  const sponsoredTxBytes = Buffer.from(sponsoredResult.txBytes, 'base64');
-  const { signature: agentSig } = await keypair.signTransaction(sponsoredTxBytes);
+  const sponsoredTxBytes = fromBase64(sponsoredResult.txBytes);
+  const { signature: agentSig } = await signer.signTransaction(sponsoredTxBytes);
 
   const result = await client.executeTransactionBlock({
     transactionBlock: sponsoredResult.txBytes,
@@ -150,7 +154,6 @@ async function trySponsored(
   await client.waitForTransaction({ digest: result.digest });
   await assertTxSuccess(result.effects, result.digest);
 
-  // Report gas usage (best-effort)
   const gasCost = extractGasCost(result.effects as Parameters<typeof extractGasCost>[0]);
   reportGasUsage(address, result.digest, gasCost, 0, sponsoredResult.type);
 
@@ -192,7 +195,7 @@ async function waitForIndexer(client: SuiJsonRpcClient, digest: string): Promise
  */
 export async function executeWithGas(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  signer: TransactionSigner,
   buildTx: () => Transaction | Promise<Transaction>,
   options?: { metadata?: TxMetadata; enforcer?: SafeguardEnforcer },
 ): Promise<GasExecutionResult> {
@@ -200,7 +203,7 @@ export async function executeWithGas(
     options.enforcer.check(options.metadata);
   }
 
-  const result = await resolveGas(client, keypair, buildTx);
+  const result = await resolveGas(client, signer, buildTx);
 
   // Proactive gas maintenance — compute remaining SUI from the TX result
   // instead of querying the indexer (which may still show stale balances).
@@ -211,13 +214,13 @@ export async function executeWithGas(
         : BigInt(Math.round(result.gasCostSui * 1e9));
       const estimatedRemaining = result.preTxSuiMist - gasCostMist;
       if (estimatedRemaining < GAS_RESERVE_TARGET) {
-        const address = keypair.getPublicKey().toSuiAddress();
+        const address = signer.getAddress();
         const usdcBal = await client.getBalance({
           owner: address,
           coinType: SUPPORTED_ASSETS.USDC.type,
         });
         if (BigInt(usdcBal.totalBalance) >= AUTO_TOPUP_MIN_USDC) {
-          await executeAutoTopUp(client, keypair);
+          await executeAutoTopUp(client, signer);
         }
       }
     }
@@ -240,7 +243,7 @@ function isBuildError(err: unknown): err is T2000Error {
 
 async function resolveGas(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  signer: TransactionSigner,
   buildTx: () => Transaction | Promise<Transaction>,
 ): Promise<GasExecutionResult> {
   const errors: string[] = [];
@@ -249,7 +252,7 @@ async function resolveGas(
   // Step 1: Try self-funded
   try {
     const tx = await buildTx();
-    const result = await trySelfFunded(client, keypair, tx);
+    const result = await trySelfFunded(client, signer, tx);
     if (result) {
       await waitForIndexer(client, result.digest);
       return result;
@@ -267,7 +270,7 @@ async function resolveGas(
 
   // Step 2: Try auto-topup (swap USDC→SUI) then self-fund the main tx
   try {
-    const result = await tryAutoTopUpThenSelfFund(client, keypair, buildTx);
+    const result = await tryAutoTopUpThenSelfFund(client, signer, buildTx);
     if (result) {
       await waitForIndexer(client, result.digest);
       return result;
@@ -282,7 +285,7 @@ async function resolveGas(
   // even if the combined operation failed
   try {
     const tx = await buildTx();
-    const result = await trySelfFunded(client, keypair, tx);
+    const result = await trySelfFunded(client, signer, tx);
     if (result) {
       await waitForIndexer(client, result.digest);
       return result;
@@ -300,7 +303,7 @@ async function resolveGas(
   // Step 3: Try gas station sponsored
   try {
     const tx = await buildTx();
-    const result = await trySponsored(client, keypair, tx);
+    const result = await trySponsored(client, signer, tx);
     if (result) {
       await waitForIndexer(client, result.digest);
       return result;
@@ -313,8 +316,6 @@ async function resolveGas(
   }
 
   // Step 4: All methods failed
-  // If buildTx() consistently threw a non-gas T2000Error (e.g.
-  // INSUFFICIENT_BALANCE), surface that instead of misleading INSUFFICIENT_GAS.
   if (lastBuildError) throw lastBuildError;
 
   throw new T2000Error(

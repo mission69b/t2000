@@ -1,4 +1,7 @@
 export { T2000 } from './t2000.js';
+export type { TransactionSigner } from './signer.js';
+export { KeypairSigner } from './wallet/keypairSigner.js';
+export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 export { ContactManager } from './contacts.js';
 export type { Contact, ContactMap } from './contacts.js';
 export { PortfolioManager } from './portfolio.js';

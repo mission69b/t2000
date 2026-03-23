@@ -5,9 +5,9 @@ import type { EarningsResult, FundStatusResult } from '../types.js';
 
 export async function getEarnings(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  addressOrKeypair: string | Ed25519Keypair,
 ): Promise<EarningsResult> {
-  const hf = await navi.getHealthFactor(client, keypair);
+  const hf = await navi.getHealthFactor(client, addressOrKeypair);
   const rates = await navi.getRates(client);
 
   const supplied = hf.supplied;
@@ -15,9 +15,7 @@ export async function getEarnings(
   const dailyRate = apy / 365;
   const dailyEarning = supplied * dailyRate;
 
-  // Estimate total yield earned based on position age
-  // For MVP, use a simple approximation
-  const totalYieldEarned = dailyEarning * 30; // rough monthly estimate
+  const totalYieldEarned = dailyEarning * 30;
 
   return {
     totalYieldEarned,
@@ -29,9 +27,9 @@ export async function getEarnings(
 
 export async function getFundStatus(
   client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
+  addressOrKeypair: string | Ed25519Keypair,
 ): Promise<FundStatusResult> {
-  const earnings = await getEarnings(client, keypair);
+  const earnings = await getEarnings(client, addressOrKeypair);
 
   return {
     supplied: earnings.supplied,

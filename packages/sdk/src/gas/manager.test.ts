@@ -18,6 +18,9 @@ import { executeWithGas, type GasExecutionResult } from './manager.js';
 import { shouldAutoTopUp, executeAutoTopUp } from './autoTopUp.js';
 import { requestGasSponsorship } from './gasStation.js';
 
+const MOCK_TX_BYTES = new Uint8Array([1, 2, 3, 4]);
+vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(MOCK_TX_BYTES);
+
 const MOCK_DIGEST = 'MockTxDigest123456789';
 const MOCK_EFFECTS = {
   gasUsed: {
@@ -45,9 +48,7 @@ function mockClient(suiBalance: bigint) {
 
 function mockKeypair() {
   return {
-    getPublicKey: () => ({
-      toSuiAddress: () => '0x' + 'a'.repeat(64),
-    }),
+    getAddress: () => '0x' + 'a'.repeat(64),
     signTransaction: vi.fn().mockResolvedValue({ signature: 'mock-sig' }),
   } as unknown as Parameters<typeof executeWithGas>[1];
 }

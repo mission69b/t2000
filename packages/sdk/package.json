@@ -12,6 +12,10 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    },
     "./adapters": {
       "types": "./dist/adapters/index.d.ts",
       "import": "./dist/adapters/index.js",
@@ -57,6 +61,7 @@
   },
   "devDependencies": {
     "@cetusprotocol/aggregator-sdk": "^1.4.5",
+    "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.2.0",
     "@suilend/sdk": "^2.0.2",

@@ -1,0 +1,56 @@
+'use client';
+
+import { useState, useCallback, type KeyboardEvent } from 'react';
+
+interface InputBarProps {
+  onSubmit: (text: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+
+export function InputBar({ onSubmit, disabled, placeholder = 'Ask anything...' }: InputBarProps) {
+  const [value, setValue] = useState('');
+
+  const handleSubmit = useCallback(() => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
+    setValue('');
+  }, [value, onSubmit]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit],
+  );
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="flex-1 rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white placeholder:text-neutral-600 outline-none focus:ring-1 focus:ring-neutral-700 disabled:opacity-50"
+      />
+      {value.trim() && (
+        <button
+          onClick={handleSubmit}
+          disabled={disabled}
+          className="rounded-xl bg-white p-3 text-neutral-950 transition hover:bg-neutral-200 disabled:opacity-50"
+          aria-label="Send"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}

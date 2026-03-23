@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../constants.js';
 import { T2000Error } from '../errors.js';
+import { toBase64 } from '../utils/base64.js';
 
 export type GasRequestType = 'bootstrap' | 'auto-topup' | 'fallback';
 
@@ -34,7 +35,7 @@ export async function requestGasSponsorship(
     payload.txBcsBytes = txBcsBytes;
   } else {
     payload.txJson = txJson;
-    payload.txBytes = Buffer.from(txJson).toString('base64');
+    payload.txBytes = toBase64(new TextEncoder().encode(txJson));
   }
 
   const res = await fetch(`${API_BASE_URL}/api/gas`, {

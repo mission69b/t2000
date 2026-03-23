@@ -12,6 +12,9 @@ import {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
+import type { TransactionSigner } from './signer.js';
+import { KeypairSigner } from './wallet/keypairSigner.js';
+import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
@@ -101,7 +104,8 @@ interface T2000Events {
 }
 
 export class T2000 extends EventEmitter<T2000Events> {
-  private readonly keypair: Ed25519Keypair;
+  private readonly _signer: TransactionSigner;
+  private readonly _keypair?: Ed25519Keypair;
   private readonly client: SuiJsonRpcClient;
   private readonly _address: string;
   private readonly registry: ProtocolRegistry;
@@ -111,11 +115,27 @@ export class T2000 extends EventEmitter<T2000Events> {
   readonly strategies: StrategyManager;
   readonly autoInvest: AutoInvestManager;
 
-  private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry, configDir?: string) {
+  private constructor(keypair: Ed25519Keypair, client: SuiJsonRpcClient, registry?: ProtocolRegistry, configDir?: string);
+  private constructor(signer: TransactionSigner, client: SuiJsonRpcClient, registry: ProtocolRegistry | undefined, configDir: string | undefined, isSignerMode: true);
+  private constructor(
+    keypairOrSigner: Ed25519Keypair | TransactionSigner,
+    client: SuiJsonRpcClient,
+    registry?: ProtocolRegistry,
+    configDir?: string,
+    isSignerMode?: boolean,
+  ) {
     super();
-    this.keypair = keypair;
+    if (isSignerMode) {
+      this._signer = keypairOrSigner as TransactionSigner;
+      this._keypair = undefined;
+      this._address = this._signer.getAddress();
+    } else {
+      const kp = keypairOrSigner as Ed25519Keypair;
+      this._keypair = kp;
+      this._signer = new KeypairSigner(kp);
+      this._address = getAddress(kp);
+    }
     this.client = client;
-    this._address = getAddress(keypair);
     this.registry = registry ?? T2000.createDefaultRegistry(client);
     this.enforcer = new SafeguardEnforcer(configDir);
     this.enforcer.load();
@@ -204,9 +224,17 @@ export class T2000 extends EventEmitter<T2000Events> {
     return this.client;
   }
 
-  /** Ed25519Keypair used by this agent — exposed for integrations. */
-  get signer(): Ed25519Keypair {
-    return this.keypair;
+  /** Ed25519Keypair used by this agent — exposed for CLI/MCP integrations. */
+  get keypair(): Ed25519Keypair {
+    if (!this._keypair) {
+      throw new T2000Error('WALLET_NOT_FOUND', 'Keypair not available — this instance uses zkLogin');
+    }
+    return this._keypair;
+  }
+
+  /** Transaction signer (works for both keypair and zkLogin). */
+  get signer(): TransactionSigner {
+    return this._signer;
   }
 
   // -- MPP Payments --
@@ -219,15 +247,15 @@ export class T2000 extends EventEmitter<T2000Events> {
     const { sui } = await import('@t2000/mpp-sui/client');
 
     const client = this.client;
-    const keypair = this.keypair;
+    const signer = this._signer;
 
     const mppx = Mppx.create({
       polyfill: false,
       methods: [sui({
         client,
-        signer: keypair,
+        signer: this._keypair ?? (this._signer as unknown as Ed25519Keypair),
         execute: async (tx) => {
-          const result = await executeWithGas(client, keypair, () => tx);
+          const result = await executeWithGas(client, signer, () => tx);
           return { digest: result.digest, effects: result.effects };
         },
       })],
@@ -300,7 +328,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const sendAmount = params.amount;
     const sendTo = resolved.address;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, () =>
+    const gasResult = await executeWithGas(this.client, this._signer, () =>
       buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset }),
       { metadata: { operation: 'send', amount: sendAmount }, enforcer: this.enforcer },
     );
@@ -474,6 +502,19 @@ export class T2000 extends EventEmitter<T2000Events> {
     return exportPrivateKey(this.keypair);
   }
 
+  /** Create a T2000 instance from zkLogin credentials (for web app). */
+  static fromZkLogin(opts: {
+    ephemeralKeypair: Ed25519Keypair;
+    zkProof: ZkLoginProof;
+    userAddress: string;
+    maxEpoch: number;
+    rpcUrl?: string;
+  }): T2000 {
+    const signer = new ZkLoginSigner(opts.ephemeralKeypair, opts.zkProof, opts.userAddress, opts.maxEpoch);
+    const client = getSuiClient(opts.rpcUrl);
+    return new T2000(signer, client, undefined, undefined, true);
+  }
+
   async registerAdapter(adapter: LendingAdapter | SwapAdapter): Promise<void> {
     await adapter.init(this.client);
     if ('buildSaveTx' in adapter) this.registry.registerLending(adapter as LendingAdapter);
@@ -514,7 +555,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const swapAdapter = this.registry.listSwap()[0];
     const canPTB = adapter.addSaveToTx && (!needsAutoConvert || swapAdapter?.addSwapToTx);
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       if (canPTB && needsAutoConvert) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -676,7 +717,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const swapAdapter = target.asset !== 'USDC' ? this.registry.listSwap()[0] : undefined;
     const canPTB = adapter.addWithdrawToTx && (!swapAdapter || swapAdapter.addSwapToTx);
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       if (canPTB) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -773,7 +814,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     let totalUsdcReceived = 0;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       if (canPTB) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -925,7 +966,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     let estimatedOut = 0;
     let toDecimals = 6;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const built = await swapAdapter.buildSwapTx(this._address, asset, 'USDC', amount);
       estimatedOut = built.estimatedOut;
       toDecimals = built.toDecimals;
@@ -943,7 +984,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     let estimatedOut = 0;
     let toDecimals = 6;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const built = await swapAdapter.buildSwapTx(this._address, 'USDC', toAsset, amount);
       estimatedOut = built.estimatedOut;
       toDecimals = built.toDecimals;
@@ -1090,7 +1131,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fee = calculateFee('borrow', params.amount);
     const borrowAmount = params.amount;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: true });
       return tx;
     });
@@ -1140,7 +1181,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const swapAdapter = target.asset !== 'USDC' ? this.registry.listSwap()[0] : undefined;
     const canPTB = adapter.addRepayToTx && (!swapAdapter || swapAdapter.addSwapToTx);
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       if (canPTB && target.asset !== 'USDC' && swapAdapter?.addSwapToTx) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -1208,7 +1249,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     let totalRepaid = 0;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       if (canPTB) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -1324,7 +1365,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     let swapMeta: { estimatedOut: number; toDecimals: number } = { estimatedOut: 0, toDecimals: 0 };
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const built = await adapter.buildSwapTx(this._address, fromAsset, toAsset, swapAmount, slippageBps);
       swapMeta = { estimatedOut: built.estimatedOut, toDecimals: built.toDecimals };
       return built.tx;
@@ -1687,7 +1728,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       ({ adapter, rate } = await this.registry.bestSaveRate(params.asset));
     }
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const { tx } = await adapter.buildSaveTx(this._address, depositAmount, params.asset);
       return tx;
     });
@@ -1745,7 +1786,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const protocolName = adapter.name;
     let effectiveAmount = withdrawAmount;
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const result = await adapter.buildWithdrawTx(this._address, withdrawAmount, params.asset);
       effectiveAmount = result.effectiveAmount;
       return result.tx;
@@ -1842,14 +1883,14 @@ export class T2000 extends EventEmitter<T2000Events> {
         continue;
       }
 
-      const withdrawResult = await executeWithGas(this.client, this.keypair, async () => {
+      const withdrawResult = await executeWithGas(this.client, this._signer, async () => {
         const result = await fromAdapter.buildWithdrawTx(this._address, pos.totalAmount, pos.asset);
         return result.tx;
       });
       txDigests.push(withdrawResult.digest);
       moveGasCost += withdrawResult.gasCostSui;
 
-      const depositResult = await executeWithGas(this.client, this.keypair, async () => {
+      const depositResult = await executeWithGas(this.client, this._signer, async () => {
         const assetInfo = SUPPORTED_ASSETS[pos.asset as keyof typeof SUPPORTED_ASSETS];
         const balance = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
         const available = Number(balance.totalBalance) / (10 ** assetInfo.decimals);
@@ -1920,7 +1961,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       return { success: true, tx: '', rewards: [], totalValueUsd: 0, usdcReceived: 0, gasCost: 0, gasMethod: 'none' };
     }
 
-    const claimResult = await executeWithGas(this.client, this.keypair, async () => tx);
+    const claimResult = await executeWithGas(this.client, this._signer, async () => tx);
     await this.client.waitForTransaction({ digest: claimResult.digest });
 
     const usdcReceived = await this.swapRewardTokensToUsdc(allRewards);
@@ -1963,7 +2004,7 @@ export class T2000 extends EventEmitter<T2000Events> {
           amount: rawBalance,
         });
 
-        const gasResult = await executeWithGas(this.client, this.keypair, async () => swapResult.tx);
+        const gasResult = await executeWithGas(this.client, this._signer, async () => swapResult.tx);
         await this.client.waitForTransaction({ digest: gasResult.digest });
 
         totalUsdc += swapResult.estimatedOut / 10 ** usdcDecimals;
@@ -2029,7 +2070,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     let swapMetas: Array<{ asset: string; usdAmount: number; estimatedOut: number; toDecimals: number }> = [];
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       swapMetas = [];
       const tx = new Transaction();
       tx.setSender(this._address);
@@ -2193,7 +2234,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const MAX_RETRIES = 3;
     for (let attempt = 0; ; attempt++) {
       try {
-        gasResult = await executeWithGas(this.client, this.keypair, buildSellPtb);
+        gasResult = await executeWithGas(this.client, this._signer, buildSellPtb);
         break;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -2350,7 +2391,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     // Execute all sells and buys in a single PTB
     const tradeMetas: Array<{ action: 'buy' | 'sell'; asset: string; usdAmount: number; estimatedOut: number; toDecimals: number }> = [];
 
-    const gasResult = await executeWithGas(this.client, this.keypair, async () => {
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
       tradeMetas.length = 0;
       const tx = new Transaction();
       tx.setSender(this._address);
@@ -2996,7 +3037,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     let totalGasCost: number;
 
     if (canComposePTB) {
-      const result = await executeWithGas(this.client, this.keypair, async () => {
+      const result = await executeWithGas(this.client, this._signer, async () => {
         const tx = new Transaction();
         tx.setSender(this._address);
 
@@ -3027,7 +3068,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       txDigests = [];
       totalGasCost = 0;
 
-      const withdrawResult = await executeWithGas(this.client, this.keypair, async () => {
+      const withdrawResult = await executeWithGas(this.client, this._signer, async () => {
         const built = await withdrawAdapter.buildWithdrawTx(this._address, current.amount, current.asset);
         amountToDeposit = built.effectiveAmount;
         return built.tx;
@@ -3039,7 +3080,7 @@ export class T2000 extends EventEmitter<T2000Events> {
         const swapAdapter = this.registry.listSwap()[0];
         if (!swapAdapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', 'No swap adapter available');
 
-        const swapResult = await executeWithGas(this.client, this.keypair, async () => {
+        const swapResult = await executeWithGas(this.client, this._signer, async () => {
           const built = await swapAdapter.buildSwapTx(this._address, current.asset, bestRate.asset, amountToDeposit);
           amountToDeposit = built.estimatedOut / 10 ** built.toDecimals;
           return built.tx;
@@ -3048,7 +3089,7 @@ export class T2000 extends EventEmitter<T2000Events> {
         totalGasCost += swapResult.gasCostSui;
       }
 
-      const depositResult = await executeWithGas(this.client, this.keypair, async () => {
+      const depositResult = await executeWithGas(this.client, this._signer, async () => {
         const { tx } = await depositAdapter.buildSaveTx(this._address, amountToDeposit, bestRate.asset, { collectFee: bestRate.asset === 'USDC' });
         return tx;
       });
@@ -3075,7 +3116,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async earnings(): Promise<EarningsResult> {
-    const result = await yieldTracker.getEarnings(this.client, this.keypair);
+    const result = await yieldTracker.getEarnings(this.client, this._address);
 
     if (result.totalYieldEarned > 0) {
       this.emit('yield', {
@@ -3090,7 +3131,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   async fundStatus(): Promise<FundStatusResult> {
-    return yieldTracker.getFundStatus(this.client, this.keypair);
+    return yieldTracker.getFundStatus(this.client, this._address);
   }
 
   // -- Sentinel --
