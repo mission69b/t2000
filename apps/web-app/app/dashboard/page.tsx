@@ -514,7 +514,7 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (
           <AmountChips
             amounts={[50, 100, 200]}
-            allLabel={chipFlow.state.flow === 'withdraw' || chipFlow.state.flow === 'save' ? `All $${Math.floor(balance.checking)}` : undefined}
+            allLabel={chipFlow.state.flow === 'withdraw' ? `All $${Math.floor(balance.savings)}` : chipFlow.state.flow === 'save' ? `All $${Math.floor(balance.checking)}` : undefined}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
           />

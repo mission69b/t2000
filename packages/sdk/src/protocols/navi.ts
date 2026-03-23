@@ -59,6 +59,7 @@ async function refreshOracle(
   tx: Transaction,
   client: SuiJsonRpcClient,
   address: string,
+  options?: { skipPythUpdate?: boolean },
 ): Promise<void> {
   const origInfo = console.info;
   const origWarn = console.warn;
@@ -72,10 +73,15 @@ async function refreshOracle(
   };
   try {
     const pools = await naviGetPools(sdkOptions(client));
-    await updateOraclePriceBeforeUserOperationPTB(tx, address, pools, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const oracleOpts: any = {
       ...sdkOptions(client),
       throws: false,
-    });
+      // Pyth update uses tx.splitCoins(tx.gas, ...) which is incompatible
+      // with sponsored transactions where tx.gas belongs to the sponsor.
+      updatePythPriceFeeds: !options?.skipPythUpdate,
+    };
+    await updateOraclePriceBeforeUserOperationPTB(tx, address, pools, oracleOpts);
   } catch {
     // Best-effort: if oracle refresh fails (network issue), the operation
     // may still succeed if on-chain prices are fresh enough.
@@ -351,7 +357,7 @@ export async function buildWithdrawTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: string } = {},
+  options: { asset?: string; sponsored?: boolean } = {},
 ): Promise<{ tx: Transaction; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
@@ -374,7 +380,7 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.sponsored });
 
   try {
     const coin = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
@@ -497,7 +503,7 @@ export async function buildBorrowTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { collectFee?: boolean; asset?: string } = {},
+  options: { collectFee?: boolean; asset?: string; sponsored?: boolean } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be a positive number');
@@ -509,7 +515,7 @@ export async function buildBorrowTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.sponsored });
 
   try {
     const borrowedCoin = await borrowCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
@@ -559,7 +565,7 @@ export async function buildRepayTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: string } = {},
+  options: { asset?: string; sponsored?: boolean } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Repay amount must be a positive number');
@@ -578,7 +584,7 @@ export async function buildRepayTx(
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
   const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.sponsored });
 
   try {
     await repayCoinPTB(tx, assetInfo.type, repayCoin as never, {

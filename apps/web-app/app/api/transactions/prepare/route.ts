@@ -171,25 +171,25 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
     case 'save': {
       const navi = getNaviAdapter();
-      const result = await navi.buildSaveTx(address, amount, asset ?? 'USDC');
+      const result = await navi.buildSaveTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
     }
 
     case 'withdraw': {
       const navi = getNaviAdapter();
-      const result = await navi.buildWithdrawTx(address, amount, asset ?? 'USDC');
+      const result = await navi.buildWithdrawTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
     }
 
     case 'borrow': {
       const navi = getNaviAdapter();
-      const result = await navi.buildBorrowTx(address, amount, asset ?? 'USDC');
+      const result = await navi.buildBorrowTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
     }
 
     case 'repay': {
       const navi = getNaviAdapter();
-      const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC');
+      const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
     }
 
