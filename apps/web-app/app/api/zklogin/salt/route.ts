@@ -83,16 +83,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `JWT verification failed: ${message}` }, { status: 401 });
   }
 
+  // Take first 16 bytes (128 bits) of HMAC-SHA256 — Mysten prover requires 16-byte salt
   const rawHash = createHmac('sha256', Buffer.from(MASTER_SEED, 'hex'))
     .update(sub)
-    .digest('hex');
+    .digest('hex')
+    .slice(0, 32); // 32 hex chars = 16 bytes
 
-  // BN254 field prime — salt must be smaller than this for the ZK prover
-  const BN254_FIELD_ORDER = BigInt(
-    '21888242871839275222246405745257275088548364400416034343698204186575808495617',
-  );
-  const saltBigInt = BigInt('0x' + rawHash) % BN254_FIELD_ORDER;
-  const salt = saltBigInt.toString();
+  const salt = BigInt('0x' + rawHash).toString();
 
   return NextResponse.json({ salt });
 }
