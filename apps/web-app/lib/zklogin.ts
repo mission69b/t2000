@@ -8,7 +8,8 @@ import {
 import { GOOGLE_CLIENT_ID, SUI_NETWORK } from './constants';
 
 const STORAGE_KEY = 't2000:zklogin:session';
-const PROVER_URL = 'https://prover.mystenlabs.com/v1';
+// Dev prover accepts any OAuth client ID; production prover requires whitelisted aud
+const PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 
 export interface ZkLoginSession {

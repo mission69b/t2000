@@ -29,7 +29,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https:",
-      "connect-src 'self' https://fullnode.mainnet.sui.io:443 https://fullnode.testnet.sui.io:443 https://prover.mystenlabs.com https://accounts.google.com https://*.googleapis.com https://t2000-server.fly.dev",
+      "connect-src 'self' https://fullnode.mainnet.sui.io:443 https://fullnode.testnet.sui.io:443 https://prover.mystenlabs.com https://prover-dev.mystenlabs.com https://accounts.google.com https://*.googleapis.com https://t2000-server.fly.dev",
       "frame-src https://accounts.google.com",
       "base-uri 'self'",
       "form-action 'self' https://accounts.google.com",
