@@ -2,14 +2,12 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import {
   generateNonce,
   generateRandomness,
-  jwtToAddress,
   getExtendedEphemeralPublicKey,
 } from '@mysten/sui/zklogin';
-import { GOOGLE_CLIENT_ID, SUI_NETWORK } from './constants';
+import { GOOGLE_CLIENT_ID, ENOKI_API_KEY, SUI_NETWORK } from './constants';
 
 const STORAGE_KEY = 't2000:zklogin:session';
-// Dev prover accepts any OAuth client ID; production prover requires whitelisted aud
-const PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
+const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 
 export interface ZkLoginSession {
@@ -128,58 +126,56 @@ export function extractJwtFromUrl(): string | null {
   return params.get('id_token');
 }
 
-// --- Salt ---
+// --- Salt + Address (via Enoki) ---
 
-export async function fetchSalt(jwt: string): Promise<string> {
-  const res = await fetch('/api/zklogin/salt', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jwt }),
+export async function fetchSaltAndAddress(jwt: string): Promise<{ salt: string; address: string }> {
+  const res = await fetch(`${ENOKI_BASE}/zklogin`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${ENOKI_API_KEY}`,
+      'zklogin-jwt': jwt,
+    },
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Salt service error: ${res.status}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`Enoki salt error (${res.status}): ${body}`);
   }
 
-  const { salt } = await res.json();
-  return salt;
+  const { data } = await res.json();
+  return { salt: data.salt, address: data.address };
 }
 
-// --- ZK Proof ---
+// --- ZK Proof (via Enoki) ---
 
 export async function fetchZkProof(params: {
   jwt: string;
   ephemeralPublicKey: string;
   maxEpoch: number;
   randomness: string;
-  salt: string;
 }): Promise<ZkProof> {
-  const res = await fetch(PROVER_URL, {
+  const res = await fetch(`${ENOKI_BASE}/zklogin/zkp`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${ENOKI_API_KEY}`,
+      'zklogin-jwt': params.jwt,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      jwt: params.jwt,
-      extendedEphemeralPublicKey: params.ephemeralPublicKey,
+      network: SUI_NETWORK,
+      ephemeralPublicKey: params.ephemeralPublicKey,
       maxEpoch: params.maxEpoch,
-      jwtRandomness: params.randomness,
-      salt: params.salt,
-      keyClaimName: 'sub',
+      randomness: params.randomness,
     }),
   });
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`ZK prover error (${res.status}): ${body}`);
+    throw new Error(`Enoki ZKP error (${res.status}): ${body}`);
   }
 
-  return res.json();
-}
-
-// --- Address ---
-
-export function deriveAddress(jwt: string, salt: string): string {
-  return jwtToAddress(jwt, BigInt(salt), false);
+  const { data } = await res.json();
+  return data;
 }
 
 // --- Full flow helpers ---
@@ -258,20 +254,16 @@ export async function completeLogin(params: {
   const ephemeralKeyPair = deserializeKeypair(pending.ephemeralKey);
   const extPubKey = getExtendedEphemeralPublicKey(ephemeralKeyPair.getPublicKey());
 
-  // Fetch salt
-  const salt = await fetchSalt(jwt);
+  // Fetch salt + address from Enoki
+  const { salt, address } = await fetchSaltAndAddress(jwt);
   params.onStep('salt');
 
-  // Derive address
-  const address = deriveAddress(jwt, salt);
-
-  // Generate ZK proof (3-8 seconds)
+  // Generate ZK proof via Enoki (3-8 seconds)
   const proof = await fetchZkProof({
     jwt,
     ephemeralPublicKey: extPubKey,
     maxEpoch: pending.maxEpoch,
     randomness: pending.randomness,
-    salt,
   });
   params.onStep('proof');
 
