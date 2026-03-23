@@ -34,8 +34,9 @@ jobs:
 
       - name: Determine commit type
         id: type
+        env:
+          MSG: ${{ steps.info.outputs.message }}
         run: |
-          MSG="${{ steps.info.outputs.message }}"
           if echo "$MSG" | grep -qE "^✨|^feat"; then
             echo "color=5763719" >> "$GITHUB_OUTPUT"
             echo "label=feature" >> "$GITHUB_OUTPUT"
@@ -59,25 +60,16 @@ jobs:
       - name: Post to Discord
         env:
           WEBHOOK_URL: ${{ secrets.DISCORD_DEVLOG_WEBHOOK }}
+          COMMIT_MSG: ${{ steps.info.outputs.message }}
         run: |
           COMMIT_URL="https://github.com/mission69b/t2000/commit/${{ github.sha }}"
-          MESSAGE=$(echo "${{ steps.info.outputs.message }}" | sed 's/"/\\"/g')
 
-          curl -s -H "Content-Type: application/json" -d "{
-            \"embeds\": [{
-              \"title\": \"${MESSAGE}\",
-              \"url\": \"${COMMIT_URL}\",
-              \"color\": ${{ steps.type.outputs.color }},
-              \"fields\": [
-                {
-                  \"name\": \"Changes\",
-                  \"value\": \"${{ steps.info.outputs.files_changed }} files — ${{ steps.info.outputs.diff_stat }}\",
-                  \"inline\": true
-                }
-              ],
-              \"footer\": {
-                \"text\": \"${{ steps.type.outputs.label }} · ${{ steps.info.outputs.short_sha }} · ${{ steps.info.outputs.author }}\"
-              },
-              \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
-            }]
-          }" "$WEBHOOK_URL"
+          jq -n \
+            --arg title "$COMMIT_MSG" \
+            --arg url "$COMMIT_URL" \
+            --argjson color ${{ steps.type.outputs.color }} \
+            --arg changes "${{ steps.info.outputs.files_changed }} files — ${{ steps.info.outputs.diff_stat }}" \
+            --arg footer "${{ steps.type.outputs.label }} · ${{ steps.info.outputs.short_sha }} · ${{ steps.info.outputs.author }}" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{embeds: [{title: $title, url: $url, color: $color, fields: [{name: "Changes", value: $changes, inline: true}], footer: {text: $footer}, timestamp: $ts}]}' \
+          | curl -s -H "Content-Type: application/json" -d @- "$WEBHOOK_URL"
