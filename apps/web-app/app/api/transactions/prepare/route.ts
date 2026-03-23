@@ -31,6 +31,17 @@ function getNaviAdapter(): NaviAdapter {
   return navi;
 }
 
+function extractMoveCallTargets(tx: Transaction): string[] {
+  const data = tx.getData();
+  const targets = new Set<string>();
+  for (const cmd of data.commands) {
+    if (cmd.$kind === 'MoveCall') {
+      targets.add(`${cmd.MoveCall.package}::${cmd.MoveCall.module}::${cmd.MoveCall.function}`);
+    }
+  }
+  return [...targets];
+}
+
 /**
  * POST /api/transactions/prepare
  *
@@ -64,6 +75,8 @@ export async function POST(request: NextRequest) {
   try {
     const tx = await buildTransaction({ type, address, amount, recipient, asset });
 
+    const moveCallTargets = extractMoveCallTargets(tx);
+
     const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
     const txKindBase64 = toBase64(txKindBytes);
 
@@ -79,6 +92,7 @@ export async function POST(request: NextRequest) {
       network: SUI_NETWORK,
       transactionBlockKindBytes: txKindBase64,
       sender: address,
+      allowedMoveCallTargets: moveCallTargets,
     };
 
     if (recipient) {
