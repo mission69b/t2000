@@ -123,7 +123,7 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search services..."
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
+                className="w-full rounded-sm border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
               />
 
               <div className="grid grid-cols-4 gap-2">

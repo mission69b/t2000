@@ -89,7 +89,7 @@ export function SettingsPanel({
         <div className="p-5 border-t border-border">
           <button
             onClick={onSignOut}
-            className="w-full rounded-xl bg-red-500/10 border border-red-500/20 py-3 text-sm font-medium text-red-400 hover:bg-red-500/20 transition"
+            className="w-full rounded-sm bg-red-500/10 border border-red-500/20 py-3 text-sm font-medium text-red-400 hover:bg-red-500/20 transition"
           >
             Sign out
           </button>

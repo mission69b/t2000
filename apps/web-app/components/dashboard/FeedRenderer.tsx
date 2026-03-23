@@ -77,7 +77,7 @@ function FeedItemCard({
 
     case 'receipt':
       return (
-        <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+        <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
           <p className="text-sm font-medium text-foreground">{data.title}</p>
           {data.qr && data.code && (
             <div className="flex justify-center py-2">
@@ -109,7 +109,7 @@ function FeedItemCard({
 
     case 'list':
       return (
-        <div className="rounded-xl border border-border bg-surface p-4 space-y-2 feed-row">
+        <div className="rounded-sm border border-border bg-surface p-4 space-y-2 feed-row">
           <p className="text-sm font-medium text-foreground">{data.title}</p>
           <div className="divide-y divide-border">
             {data.items.map((row, i) => (
@@ -127,7 +127,7 @@ function FeedItemCard({
 
     case 'report':
       return (
-        <div className="rounded-xl border border-border bg-surface p-4 space-y-4 feed-row">
+        <div className="rounded-sm border border-border bg-surface p-4 space-y-4 feed-row">
           {data.sections.map((section, i) => (
             <div key={i} className="space-y-1">
               <p className="text-sm font-medium text-foreground">{section.title}</p>
@@ -141,7 +141,7 @@ function FeedItemCard({
 
     case 'image':
       return (
-        <div className="rounded-xl border border-border bg-surface overflow-hidden space-y-2 feed-row">
+        <div className="rounded-sm border border-border bg-surface overflow-hidden space-y-2 feed-row">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={data.url} alt={data.alt} className="w-full" />
           {data.cost && (
@@ -152,7 +152,7 @@ function FeedItemCard({
 
     case 'confirmation':
       return (
-        <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+        <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
           <p className="text-sm font-medium text-foreground">{data.title}</p>
           {data.details.map((d) => (
             <div key={d.label} className="flex justify-between text-sm">
@@ -165,7 +165,7 @@ function FeedItemCard({
 
     case 'result':
       return (
-        <div className={`rounded-xl p-4 text-sm feed-row ${data.success ? 'bg-accent-dim border border-accent/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+        <div className={`rounded-sm p-4 text-sm feed-row ${data.success ? 'bg-accent-dim border border-accent/20' : 'bg-red-500/10 border border-red-500/20'}`}>
           <p className="font-medium">
             <span className="mr-1.5">{data.success ? '✓' : '✕'}</span>
             <span className={data.success ? 'text-accent' : 'text-red-400'}>{data.title}</span>
@@ -178,7 +178,7 @@ function FeedItemCard({
 
     case 'audio':
       return (
-        <div className="rounded-xl border border-border bg-surface p-4 space-y-2 feed-row">
+        <div className="rounded-sm border border-border bg-surface p-4 space-y-2 feed-row">
           <p className="text-sm font-medium text-foreground">{data.title}</p>
           <audio controls className="w-full" src={data.url} />
           <div className="flex items-center justify-between">
@@ -199,7 +199,7 @@ function FeedItemCard({
     case 'error':
       return (
         <div className="space-y-2 feed-row">
-          <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm">
+          <div className="rounded-sm bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm">
             <span className="text-dim mr-1.5">t2</span>
             <span className="text-red-300">{data.message}</span>
           </div>

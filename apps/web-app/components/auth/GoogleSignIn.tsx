@@ -12,8 +12,8 @@ export function GoogleSignIn({ onClick, loading, className }: GoogleSignInProps)
       onClick={onClick}
       disabled={loading}
       className={[
-        'w-full rounded-xl border border-accent/40 bg-accent px-6 py-4 text-base font-semibold text-background',
-        'transition hover:bg-accent/90 active:scale-[0.98]',
+        'w-full border border-accent/40 bg-accent px-6 py-4 text-base font-semibold text-background tracking-[0.05em] uppercase',
+        'transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] active:scale-[0.98]',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         'flex items-center justify-center gap-3',
         className,

@@ -15,10 +15,10 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
 
   if (showCustom) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+      <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
         {message && <p className="text-sm text-muted whitespace-pre-line">{message}</p>}
         <div className="flex gap-2">
-          <div className="flex-1 flex items-center border border-border bg-panel rounded-xl px-4">
+          <div className="flex-1 flex items-center border border-border bg-panel rounded-sm px-4">
             <span className="text-muted font-mono">$</span>
             <input
               type="number"
@@ -35,7 +35,7 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
           <button
             onClick={() => custom && onSelect(parseFloat(custom))}
             disabled={!custom || parseFloat(custom) <= 0}
-            className="rounded-xl bg-accent px-5 py-3 text-sm font-medium text-background transition hover:bg-accent/90 disabled:opacity-40"
+            className="bg-accent px-5 py-3 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] disabled:opacity-40"
           >
             Go
           </button>
@@ -51,7 +51,7 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+    <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
       {message && <p className="text-sm text-muted whitespace-pre-line">{message}</p>}
       <div className="flex flex-wrap gap-2">
         {amounts.map((a) => (

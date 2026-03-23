@@ -37,17 +37,17 @@ export default function LandingPage() {
         </div>
 
         <div className="flex items-stretch gap-3 pt-4 text-xs">
-          <div className="flex-1 border border-border rounded-lg bg-surface/40 px-4 py-3">
+          <div className="flex-1 border border-border rounded-sm bg-surface/40 px-4 py-3">
             <p className="text-lg font-semibold text-foreground font-mono">41</p>
-            <p className="text-muted">Services</p>
+            <p className="text-muted uppercase tracking-wider">Services</p>
           </div>
-          <div className="flex-1 border border-border rounded-lg bg-surface/40 px-4 py-3">
+          <div className="flex-1 border border-border rounded-sm bg-surface/40 px-4 py-3">
             <p className="text-lg font-semibold text-foreground font-mono">90+</p>
-            <p className="text-muted">Endpoints</p>
+            <p className="text-muted uppercase tracking-wider">Endpoints</p>
           </div>
-          <div className="flex-1 border border-border rounded-lg bg-surface/40 px-4 py-3">
+          <div className="flex-1 border border-border rounded-sm bg-surface/40 px-4 py-3">
             <p className="text-lg font-semibold text-foreground font-mono">0</p>
-            <p className="text-muted">Fees to start</p>
+            <p className="text-muted uppercase tracking-wider">Fees to start</p>
           </div>
         </div>
 

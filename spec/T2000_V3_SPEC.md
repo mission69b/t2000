@@ -922,6 +922,88 @@ Settings now includes: account, session, contacts, safety limits, explorer link,
 
 ---
 
+## UX Audit — Spec vs Implementation (Feb 2026)
+
+> Systematic gap analysis comparing every wireframe in this spec to the deployed web app (`app.t2000.ai`). Findings feed into Phase 8 of V3_BUILD_PLAN.md.
+
+### Screen-by-Screen Assessment
+
+#### Landing Page — Partially Aligned
+
+| Spec element | Status | Notes |
+|-------------|--------|-------|
+| "A bank account that works for you" | ✅ | Heading matches |
+| Three value props (earn, pay, invest) | ❌ | Replaced with generic description. Missing: "Your money earns 6-8%", "Pay for any service", "Invest with one tap" |
+| Google Sign-In CTA | ✅ | Works |
+| "No seed phrase. No keys." | ✅ | Present |
+| Below-fold "How it works" 1-2-3 | ❌ | Missing entirely |
+| Second CTA below fold | ❌ | Missing |
+| Stats (41 Services, 90+ Endpoints) | ⚠️ | Present but developer-facing, not consumer. Spec says no jargon above the fold. |
+
+#### Dashboard — Smart Cards Gap (Critical)
+
+The dashboard's three-zone layout (balance top, cards middle, input bottom) is correct. But the middle zone is effectively empty because `AccountState` lacks real data:
+
+| Smart card | Spec trigger | Implementation status |
+|-----------|-------------|---------------------|
+| 🏆 Rewards | `pendingRewards > 0` | ❌ No data source — hardcoded `0` |
+| 💰 Idle funds | `checking > $10` + `savingsRate > 0` | ⚠️ Card appears but shows "$X at 0.0%" because rate is `0` |
+| 📈 Better rate | `bestAlternativeRate.rate - currentRate > 0.3%` | ❌ No data source |
+| 💵 Overnight earnings | `isFirstOpenToday` + `overnightEarnings > 0` | ❌ No data source |
+| ← Received funds | Balance increase between polls | ✅ Working |
+| ⚠ Risk | `healthFactor < 1.5` | ❌ No data source |
+| ⚠ Session expiry | `sessionExpiringSoon` | ✅ Working |
+
+**Result:** 2 of 7 MVP smart cards functional. Dashboard shows "✅ Your account is working for you" for almost all users.
+
+#### Chip Flows — Functional but Missing Context
+
+| Flow | Spec context message | Current message |
+|------|---------------------|----------------|
+| Save | "Save to earn 6.8%. You have $105 available." | "Save to earn yield." (no rate, no balance) |
+| Send | "Who do you want to send to?" + contact chips + [📋 Paste] [📷 Scan QR] | "Who do you want to send to?" + contacts + address input (no Paste/Scan buttons, no Go button) |
+| Withdraw | "Withdraw from savings. You have $880 saved." | "Withdraw from savings." (no amount) |
+| Borrow | "Borrow against your savings. You can borrow up to $440." + safety indicator | "Borrow against your savings." (no max, no safety) |
+| Repay | Implicit: only available when debt > 0 | ❌ Allows repay with no active debt |
+| Invest | Asset sub-chips → amount → confirm | ❌ Stub — shows text message |
+| Swap | Token chips → amount → confirm | ❌ Stub — shows text message |
+
+#### Confirmation Cards — Missing Detail
+
+Spec shows: Amount, Fee, Gas, Rate/Yield estimate. Current shows: Amount, To (send only), Gas. Missing: fee, rate, yield estimate, dry-run simulation.
+
+#### Error States — Missing Actionable Recovery
+
+Spec: "Can't withdraw $500 — repay some of your $200 loan first. [Repay $50] [Withdraw $300] [Why?]"
+Current: Generic error messages without recovery chips.
+
+#### Settings Panel — Incomplete
+
+| Spec element | Status |
+|-------------|--------|
+| Google email display | ❌ Missing |
+| Address + copy | ✅ |
+| Session expiry + refresh | ✅ |
+| Contacts management | ❌ Missing |
+| Safety limits | ❌ Missing |
+| Suiscan link | ✅ |
+| Emergency lock | ❌ Missing |
+| Sign out | ✅ |
+
+### Key Spec Refinements
+
+Based on user testing feedback, the following spec refinements are recommended:
+
+1. **Chip bar should be context-aware** — the static [Save] [Send] [Services] [More...] L1 forces users to always press "More..." for common actions like Withdraw and Repay. Spec should allow dynamic L1 chip selection based on account state (e.g., show [Repay] when user has debt).
+
+2. **Repay flow requires active borrow validation** — spec doesn't explicitly state this, but it's implicit. The flow should check for active debt before allowing repay, and show an informative message if no debt exists.
+
+3. **Send flow needs explicit "Go" button** — the spec wireframe shows contact chips and address input, but doesn't show the transition mechanism. On mobile, Enter key is not obvious. A visible "Go" or "→" button is needed next to the address input.
+
+4. **Smart cards should always be visible** — spec says smart cards show when "nothing needs attention," but current implementation hides them when the conversational feed has items. Smart cards should persist below feed content per the spec's "the dashboard IS the intelligence" principle.
+
+---
+
 ## Technical UX Decisions
 
 These decisions prevent tech debt and ensure the "magic" feeling works reliably.

@@ -10,7 +10,7 @@ const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), n
 /**
  * GET /api/positions?address=0x...
  *
- * Returns savings/borrows totals from NAVI Protocol.
+ * Returns savings, borrows, rates, health factor, and max borrow from NAVI Protocol.
  */
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get('address');
@@ -21,19 +21,45 @@ export async function GET(request: NextRequest) {
   try {
     const navi = new NaviAdapter();
     navi.initSync(client);
-    const positions = await navi.getPositions(address);
+
+    const [positions, health] = await Promise.all([
+      navi.getPositions(address),
+      navi.getHealth(address).catch(() => null),
+    ]);
 
     let savings = 0;
     let borrows = 0;
+    let weightedRateSum = 0;
+
+    const supplies: Array<{ asset: string; amount: number; amountUsd: number; apy: number }> = [];
+    const borrowList: Array<{ asset: string; amount: number; amountUsd: number; apy: number }> = [];
+
     for (const s of positions.supplies) {
-      savings += s.amountUsd ?? s.amount;
+      const usd = s.amountUsd ?? s.amount;
+      savings += usd;
+      weightedRateSum += usd * s.apy;
+      supplies.push({ asset: s.asset, amount: s.amount, amountUsd: usd, apy: s.apy });
     }
     for (const b of positions.borrows) {
-      borrows += b.amountUsd ?? b.amount;
+      const usd = b.amountUsd ?? b.amount;
+      borrows += usd;
+      borrowList.push({ asset: b.asset, amount: b.amount, amountUsd: usd, apy: b.apy });
     }
 
-    return NextResponse.json({ savings, borrows });
+    const savingsRate = savings > 0 ? weightedRateSum / savings : 0;
+    const healthFactor = health?.healthFactor ?? (borrows > 0 ? null : Infinity);
+    const maxBorrow = health?.maxBorrow ?? 0;
+
+    return NextResponse.json({
+      savings,
+      borrows,
+      savingsRate,
+      healthFactor: healthFactor === Infinity ? null : healthFactor,
+      maxBorrow,
+      supplies,
+      borrows_detail: borrowList,
+    });
   } catch {
-    return NextResponse.json({ savings: 0, borrows: 0 });
+    return NextResponse.json({ savings: 0, borrows: 0, savingsRate: 0, healthFactor: null, maxBorrow: 0 });
   }
 }

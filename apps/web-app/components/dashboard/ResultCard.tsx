@@ -11,7 +11,7 @@ export function ResultCard({ success, title, details, onDismiss }: ResultCardPro
   return (
     <div
       className={[
-        'rounded-xl p-4 space-y-2 feed-row',
+        'rounded-sm p-4 space-y-2 feed-row',
         success ? 'bg-accent-dim border border-accent/20' : 'bg-red-500/10 border border-red-500/20',
       ].join(' ')}
     >

@@ -48,6 +48,9 @@ function DashboardContent() {
     checking: balanceQuery.data?.checking ?? 0,
     savings: balanceQuery.data?.savings ?? 0,
     borrows: balanceQuery.data?.borrows ?? 0,
+    savingsRate: balanceQuery.data?.savingsRate ?? 0,
+    healthFactor: balanceQuery.data?.healthFactor ?? null,
+    maxBorrow: balanceQuery.data?.maxBorrow ?? 0,
     loading: balanceQuery.isLoading,
   };
 
@@ -71,8 +74,10 @@ function DashboardContent() {
   const accountState: AccountState = {
     checking: balance.checking,
     savings: balance.savings,
-    savingsRate: 0,
+    borrows: balance.borrows,
+    savingsRate: balance.savingsRate,
     pendingRewards: 0,
+    healthFactor: balance.healthFactor ?? undefined,
     sessionExpiringSoon: expiringSoon,
     receivedAmount: receivedAmount ?? undefined,
   };
@@ -101,16 +106,32 @@ function DashboardContent() {
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
         case 'withdraw':
-          chipFlow.startFlow('withdraw');
-          if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+          if (balance.savings <= 0) {
+            feed.addItem({
+              type: 'ai-text',
+              text: 'You don\'t have any savings to withdraw.',
+              chips: [{ label: 'Save', flow: 'save' }],
+            });
+          } else {
+            chipFlow.startFlow('withdraw');
+            if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+          }
           break;
         case 'borrow':
           chipFlow.startFlow('borrow');
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
         case 'repay':
-          chipFlow.startFlow('repay');
-          if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+          if (balance.borrows <= 0) {
+            feed.addItem({
+              type: 'ai-text',
+              text: 'You don\'t have any active debt to repay.',
+              chips: [{ label: 'Borrow', flow: 'borrow' }],
+            });
+          } else {
+            chipFlow.startFlow('repay');
+            if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+          }
           break;
         case 'invest':
           feed.addItem({
@@ -150,6 +171,7 @@ function DashboardContent() {
             `Checking: $${balance.checking.toFixed(2)}`,
             `Savings: $${balance.savings.toFixed(2)}`,
           ];
+          if (balance.borrows > 0) lines.push(`Debt: $${balance.borrows.toFixed(2)}`);
           if (bd) {
             lines.push('');
             lines.push(`SUI: ${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})`);
@@ -203,7 +225,7 @@ function DashboardContent() {
           break;
       }
     },
-    [chipFlow, feed, address, balance],
+    [chipFlow, feed, address, balance, balanceQuery.data],
   );
 
   const handleSmartCardAction = useCallback(
@@ -274,9 +296,25 @@ function DashboardContent() {
         });
         return;
       }
+      if (flow === 'repay' && balance.borrows <= 0) {
+        feed.addItem({
+          type: 'ai-text',
+          text: 'You don\'t have any active debt to repay. Borrow first to create a loan.',
+          chips: [{ label: 'Borrow', flow: 'borrow' }],
+        });
+        return;
+      }
+      if (flow === 'withdraw' && balance.savings <= 0) {
+        feed.addItem({
+          type: 'ai-text',
+          text: 'You don\'t have any savings to withdraw. Save first to earn yield.',
+          chips: [{ label: 'Save', flow: 'save' }],
+        });
+        return;
+      }
       chipFlow.startFlow(flow);
     },
-    [chipFlow, feed, executeIntent],
+    [chipFlow, feed, executeIntent, balance.borrows, balance.savings],
   );
 
   const handleServiceSubmit = useCallback(
@@ -528,7 +566,7 @@ function DashboardContent() {
 
         {/* Send flow — recipient selection */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (
-          <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+          <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
             <p className="text-sm text-muted">Who do you want to send to?</p>
             {contactsHook.contacts.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -548,7 +586,7 @@ function DashboardContent() {
                 type="text"
                 placeholder={contactsHook.contacts.length > 0 ? 'Or paste address (0x...)' : 'Paste address (0x...) or contact name'}
                 autoFocus
-                className="flex-1 rounded-xl border border-border bg-panel px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
+                className="flex-1 rounded-sm border border-border bg-panel px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const input = e.currentTarget.value.trim();

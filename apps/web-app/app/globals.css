@@ -11,6 +11,7 @@
   --dim: #333844;
   --accent: #00d68f;
   --accent-dim: rgba(0, 214, 143, 0.12);
+  --accent-glow: rgba(0, 214, 143, 0.25);
 }
 
 @theme inline {
@@ -22,6 +23,7 @@
   --color-dim: var(--dim);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
+  --color-accent-glow: var(--accent-glow);
   --color-border: var(--border);
   --color-border-bright: var(--border-bright);
   --font-sans: var(--font-inter);
@@ -41,6 +43,21 @@ body::before {
   pointer-events: none;
   z-index: 1;
   opacity: 0.4;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 
 @keyframes feed-slide-in {

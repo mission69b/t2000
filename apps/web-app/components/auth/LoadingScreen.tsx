@@ -51,7 +51,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
           {onRetry && (
             <button
               onClick={onRetry}
-              className="rounded-xl bg-accent px-6 py-3 font-semibold text-background transition hover:bg-accent/90"
+              className="bg-accent px-6 py-3 font-semibold text-background tracking-[0.05em] uppercase transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)]"
             >
               Try again
             </button>

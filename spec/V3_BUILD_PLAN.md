@@ -1107,9 +1107,569 @@ Automated E2E (post-beta, not MVP): Playwright for critical paths (sign-in, save
 
 ---
 
+## Phase 8: UX Design Pass
+
+> Comprehensive gap analysis: spec wireframes vs current implementation. Every item maps to a specific wireframe in `T2000_V3_SPEC.md`.
+
+The dashboard works mechanically (transactions execute, balances update) but the **experience** doesn't match the spec's vision. The spec defines a product where the AI has already analyzed the user's account and shows what matters — the current implementation shows dead space because it lacks data. This phase wires real data, fixes UX flows, and aligns every screen with its wireframe.
+
+**Guiding principle from the spec:** *"Every time the user opens the app, the AI has analyzed their account and shows what matters. No generic greeting. No 'Welcome back.' The dashboard IS the intelligence."*
+
+---
+
+### 8.1 — Smart Cards Data Wiring (Critical — The Biggest Gap)
+
+**Spec ref:** "What Smart Cards Appear (and When)" table — 7 MVP cards.
+
+**Problem:** The `accountState` object in `dashboard/page.tsx` hardcodes `savingsRate: 0`, `pendingRewards: 0`, and leaves `bestAlternativeRate`, `healthFactor`, `overnightEarnings` as `undefined`. As a result, `deriveSmartCards()` only ever returns the `all-good` card ("Your account is working for you"), creating the empty dashboard the user reported.
+
+**Data wiring needed:**
+
+| `AccountState` field | Data source | API | Priority |
+|---------------------|------------|-----|----------|
+| `savingsRate` | NAVI/Suilend supply APY for user's position | New: `GET /api/positions?address=X` (extend existing) | P0 |
+| `pendingRewards` | NAVI unclaimed incentive rewards | New: `GET /api/rewards?address=X` | P0 |
+| `bestAlternativeRate` | Compare all lending protocol rates | New: `GET /api/rates` | P1 |
+| `currentRate` | User's current weighted APY | Derive from positions API | P1 |
+| `healthFactor` | NAVI borrow health factor | Extend positions API | P0 |
+| `overnightEarnings` | Diff of savings position value vs last visit | `localStorage` last-seen value + positions API | P2 |
+| `isFirstOpenToday` | Check `localStorage` last-open timestamp | Client-side only | P2 |
+
+**Implementation:**
+
+1. **Extend `/api/positions` response** to include `savingsRate`, `healthFactor`, individual position details:
+
+```typescript
+// Current response:
+{ savings: number, borrows: number }
+
+// New response:
+{
+  savings: number,
+  borrows: number,
+  savingsRate: number,        // weighted avg APY across all supply positions
+  healthFactor: number | null, // null when no borrows
+  pendingRewards: number,
+  positions: {
+    supplies: [{ asset: string, amount: number, amountUsd: number, apy: number, protocol: string }],
+    borrows: [{ asset: string, amount: number, amountUsd: number, apy: number, protocol: string }],
+  }
+}
+```
+
+2. **Create `/api/rates` endpoint** — calls `navi.getAllRates()` + `suilend.getAllRates()`, returns best available rate with protocol name.
+
+3. **Update `useBalance` hook** — consume the extended positions response, pass through to `accountState`.
+
+4. **Update `accountState` construction in `dashboard/page.tsx`**:
+
+```typescript
+const accountState: AccountState = {
+  checking: balance.checking,
+  savings: balance.savings,
+  savingsRate: positionsData?.savingsRate ?? 0,
+  pendingRewards: positionsData?.pendingRewards ?? 0,
+  bestAlternativeRate: ratesData?.bestRate,
+  currentRate: positionsData?.savingsRate,
+  healthFactor: positionsData?.healthFactor ?? undefined,
+  overnightEarnings: computeOvernightEarnings(balance.savings),
+  isFirstOpenToday: checkFirstOpenToday(),
+  sessionExpiringSoon: expiringSoon,
+  receivedAmount: receivedAmount ?? undefined,
+};
+```
+
+5. **Add `overnightEarnings` client-side logic:**
+   - On dashboard mount, read `localStorage('t2000_last_savings')`.
+   - If savings > lastSavings and it's a new day → `overnightEarnings = savings - lastSavings`.
+   - Write current savings to localStorage on each load.
+
+**Expected result after wiring:**
+- User with $8 checking, $2 savings → sees idle funds card: "💰 $8 idle — could earn $X.XX/mo at 4.9%"
+- User with unclaimed rewards → sees rewards card: "🏆 $0.12 in rewards [Claim $0.12]"
+- User with active borrow → sees health factor card when HF < 1.5
+- Dashboard is **never empty** for a funded account
+
+---
+
+### 8.2 — Landing Page Alignment
+
+**Spec ref:** "Screen 1: Landing" wireframe.
+
+**Problem:** Current landing page is functional but doesn't match the spec wireframe. Missing three value props above the fold and "How it works" section below the fold.
+
+**Current:**
+```
+"A bank account that works for you."
++ generic description
++ Sign in with Google
++ 3 stat boxes (41 Services, 90+ Endpoints, 0 Fees)
+```
+
+**Spec wireframe:**
+```
+"A bank account that works for you."
+
+"Your money earns 6-8% while you sleep."
+"Pay for any service — no accounts, no subscriptions."
+"Invest in crypto and gold with one tap."
+
+[Sign in with Google]
+
+--- below the fold ---
+
+How it works
+1. Sign in with Google
+2. Add funds
+3. That's it.
+
+[Sign in with Google]
+```
+
+**Changes to `app/page.tsx`:**
+- Replace generic description with three distinct value props (earn, pay, invest)
+- Add "How it works" 1-2-3 section below the fold with second CTA
+- Move stat boxes below the "How it works" section or remove (they're developer-facing, not consumer)
+- Match spec note: "Zero jargon above the fold. No: yield, USDC, DeFi, seed phrase, keys, blockchain, Sui"
+
+---
+
+### 8.3 — Chip Flow Context Messages
+
+**Spec ref:** Every chip flow wireframe includes an AI context message. E.g., Save shows "Save to earn 6.8%. You have $105 available."
+
+**Problem:** `getFlowMessage()` in `useChipFlow.ts` returns static strings without real data: "Save to earn yield. Choose an amount:" — no rate, no available balance.
+
+**Fix:** Make `getFlowMessage()` accept balance data and return contextual messages:
+
+| Flow | Current message | Spec message |
+|------|----------------|-------------|
+| Save | "Save to earn yield." | "Save to earn 6.8%. You have $105 available." |
+| Send | "Who do you want to send to?" | "Who do you want to send to?" (✓ already correct) |
+| Withdraw | "Withdraw from savings." | "Withdraw from savings. You have $880 saved." |
+| Borrow | "Borrow against your savings." | "Borrow against your savings. You can borrow up to $440." |
+| Repay | "Repay your loan." | "Repay your loan. Outstanding debt: $200." |
+
+**Implementation:** Change `startFlow` to accept a `context` parameter:
+
+```typescript
+startFlow(flow: string, context?: {
+  checking?: number;
+  savings?: number;
+  borrows?: number;
+  savingsRate?: number;
+  maxBorrow?: number;
+});
+```
+
+Update `dashboard/page.tsx` `handleChipClick` to pass balance context when starting flows.
+
+---
+
+### 8.4 — Send Flow UX Improvements
+
+**Spec ref:** "[Send]" chip flow wireframe — "Who do you want to send to? [Alex] [Mom] [📋 Paste Address] [📷 Scan QR]"
+
+**Problems identified by user:**
+1. No visible "Next" or "Go" button after pasting an address — only Enter key works
+2. No explicit "Save contact" option during the flow
+3. Missing [📋 Paste] and [📷 Scan QR] helper buttons per spec
+
+**Changes to send flow in `dashboard/page.tsx`:**
+
+1. **Add a "Go" button** next to the address input (visible when input has content):
+```
+┌──────────────────────────────────────┐
+│ Paste address (0x...) or name   [Go] │
+└──────────────────────────────────────┘
+```
+
+2. **Add [📋 Paste] button** — calls `navigator.clipboard.readText()` and fills the input:
+```
+[📋 Paste]  [📷 Scan QR]
+```
+(QR scan is post-MVP — show only Paste for now)
+
+3. **Keep contact toast after success** (already exists) — but make it more prominent by appearing immediately after the result card, not buried.
+
+---
+
+### 8.5 — Dashboard Layout & Dead Space
+
+**Spec ref:** "Three zones" — Top (balance), Middle (smart cards), Bottom (input + chips).
+
+**Problem:** The user sees "too much dead space" and "always pressing More..." The bottom bar takes significant vertical space (input + chips + cancel), and when no smart cards show, the middle zone is empty.
+
+**Changes:**
+
+1. **Always show smart cards** — after 8.1 data wiring, the dashboard will have 1-4 cards. The "dead space" problem is primarily a data problem, not a layout problem.
+
+2. **Reduce bottom bar height** — the ChipBar currently wraps to two rows when "More" is expanded. On mobile, this pushes content up significantly.
+
+3. **Smart cards always visible** — currently smart cards are hidden when there are feed items (`!hasFeedItems`). Per spec, smart cards should ALWAYS be visible below the feed:
+
+```typescript
+// Current (hides smart cards when feed has items and user is not in a flow):
+{!isInFlow && !hasFeedItems && <SmartCardFeed ... />}
+
+// Spec behavior: smart cards always visible, below feed items
+{!isInFlow && <SmartCardFeed ... />}
+```
+
+This is already partially implemented (smart cards show below feed when `hasFeedItems && !isInFlow`) but the condition logic should be simplified.
+
+4. **Chip bar reorganization** — address the "More..." complaint:
+
+   **Option A (recommended):** Make L1 chips context-aware. When user has savings, show [Withdraw] in L1. When user has debt, show [Repay] in L1. Dynamic 4-chip bar:
+
+   | Account state | L1 chips |
+   |--------------|----------|
+   | Has checking only | [Save] [Send] [Services] [More...] |
+   | Has savings | [Save] [Withdraw] [Send] [More...] |
+   | Has debt | [Repay] [Save] [Send] [More...] |
+   | Has everything | [Save] [Send] [Withdraw] [More...] |
+
+   **Option B:** Horizontal scrollable chip bar showing all 8-10 chips in a single row:
+   ```
+   ← [Save] [Send] [Withdraw] [Borrow] [Repay] [Services] [Report] [Help] →
+   ```
+   Pro: no More button. Con: less discoverable on small screens.
+
+---
+
+### 8.6 — Empty State Enhancement
+
+**Spec ref:** "Dashboard — Empty State ($0 balance, first login)" wireframe.
+
+**Problem:** Current empty state shows a text-only card: "Add funds to get started. Send SUI from any exchange..." The spec wireframe shows the address prominently with a copy button inline.
+
+**Changes to `smart-cards.ts`** — the `all-good` empty-state card should trigger a richer display. Instead of a simple SmartCard, the empty state should render as a special component:
+
+```
+┌──────────────────────────────────────┐
+│  👋 Welcome to t2000                 │
+│                                      │
+│  Your account is ready. Add funds    │
+│  to get started.                     │
+│                                      │
+│  ┌────────────────────────────────┐  │
+│  │  0x7f20...f6dc           [📋] │  │
+│  │                                │  │
+│  │  Send USDC from any exchange  │  │
+│  │  or Sui wallet to start.     │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  [Show QR code]                      │
+└──────────────────────────────────────┘
+```
+
+**Implementation:**
+- Add a new `WelcomeCard` component (or enhance `SmartCard` with a `variant` prop)
+- Show copyable address inline within the card
+- "Show QR code" chip opens the receive flow
+
+---
+
+### 8.7 — Confirmation Card Enhancement
+
+**Spec ref:** Every confirmation card wireframe includes fee, rate, and estimated outcome.
+
+**Problem:** Current confirmation card shows only: Amount, To (for send), Gas (Sponsored). Missing: fee amount, current rate, estimated monthly yield.
+
+**Spec confirmation card (Save flow):**
+```
+Save $100 · earning 6.8%
+Fee: $0.50
+Gas: Sponsored
+
+[✓ Save $100]     Cancel
+```
+
+**Changes to `getConfirmationDetails()` in `dashboard/page.tsx`:**
+
+```typescript
+const getConfirmationDetails = () => {
+  const flow = chipFlow.state.flow;
+  const amount = chipFlow.state.amount ?? 0;
+  const details: { label: string; value: string }[] = [];
+
+  details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
+
+  if (flow === 'save' && positionsData?.savingsRate) {
+    details.push({ label: 'Rate', value: `${positionsData.savingsRate.toFixed(2)}% APY` });
+    const monthlyYield = (amount * (positionsData.savingsRate / 100)) / 12;
+    details.push({ label: 'Est. monthly yield', value: `~$${monthlyYield.toFixed(2)}` });
+  }
+
+  if (flow === 'send' && chipFlow.state.recipient) {
+    details.push({ label: 'To', value: chipFlow.state.subFlow ?? chipFlow.state.recipient });
+  }
+
+  if (flow === 'borrow') {
+    details.push({ label: 'Interest rate', value: `${borrowRate?.toFixed(2) ?? '?'}% APY` });
+  }
+
+  details.push({ label: 'Gas', value: 'Sponsored (free)' });
+  // TODO: Add protocol fee when dry-run is implemented
+
+  return {
+    title: `${flow?.charAt(0).toUpperCase()}${flow?.slice(1)} $${amount.toFixed(2)}`,
+    confirmLabel: `${flow?.charAt(0).toUpperCase()}${flow?.slice(1)} $${amount.toFixed(2)}`,
+    details,
+  };
+};
+```
+
+---
+
+### 8.8 — Error States with Actionable Chips
+
+**Spec ref:** "Error States in the Feed" — errors as inline cards with actionable chips.
+
+**Problem:** Current errors show generic messages without actionable recovery chips. The spec shows context-aware errors:
+
+```
+🤖 Can't withdraw $500 right now — you'd need to repay some of
+your $200 loan first.
+
+[Repay $50 first]  [Withdraw $300]  [Why?]
+```
+
+**Changes to `lib/errors.ts` — `mapError()` function:**
+
+Add context-aware error mapping that returns actionable chips:
+
+```typescript
+// Enhance mapError to accept context
+function mapError(err: unknown, context?: {
+  flow?: string;
+  amount?: number;
+  savings?: number;
+  borrows?: number;
+  checking?: number;
+}): FeedItemData {
+  const msg = extractMessage(err);
+
+  // Insufficient balance for withdraw
+  if (msg.includes('insufficient') && context?.flow === 'withdraw') {
+    const available = context.savings ?? 0;
+    return {
+      type: 'error',
+      message: `Can't withdraw $${context.amount} — you only have $${available.toFixed(0)} in savings.`,
+      chips: available > 0
+        ? [{ label: `Withdraw $${Math.floor(available)}`, flow: 'withdraw' }]
+        : [],
+    };
+  }
+
+  // Health factor too low
+  if (msg.includes('health') || msg.includes('liquidation')) {
+    return {
+      type: 'error',
+      message: 'Your position is getting risky — repay some debt before borrowing more.',
+      chips: [
+        { label: 'Repay $50', flow: 'repay' },
+        { label: 'Why?', flow: 'risk-explain' },
+      ],
+    };
+  }
+
+  // Generic fallback with contextual chips
+  return {
+    type: 'error',
+    message: msg,
+    chips: context?.flow ? [{ label: 'Try again', flow: context.flow }] : [],
+  };
+}
+```
+
+---
+
+### 8.9 — Repay Validation
+
+**Spec ref:** Implicit — the spec never shows a repay flow without an active borrow position.
+
+**Problem:** User was able to repay $2 without having borrowed anything. No validation against actual borrow position.
+
+**Changes:**
+
+1. **In `dashboard/page.tsx` `handleChipClick`** — when starting repay flow, check if user has active borrows:
+
+```typescript
+if (flow === 'repay') {
+  if (balance.borrows <= 0) {
+    feed.addItem({
+      type: 'ai-text',
+      text: 'You don\'t have any active debt to repay.',
+      chips: [{ label: 'Borrow', flow: 'borrow' }],
+    });
+    return;
+  }
+  chipFlow.startFlow('repay', { borrows: balance.borrows });
+  return;
+}
+```
+
+2. **In `handleAmountSelect`** — for repay, cap amount at outstanding debt:
+```typescript
+if (chipFlow.state.flow === 'repay' && amount > balance.borrows) {
+  chipFlow.selectAmount(balance.borrows);
+  return;
+}
+```
+
+3. **Repay "All" label** — show debt amount: `All $${Math.floor(balance.borrows)}`
+
+---
+
+### 8.10 — Settings Panel Completion
+
+**Spec ref:** "Settings (slide-over panel)" wireframe.
+
+**Problem:** Settings panel is missing spec items: email display, contacts management, safety limits, emergency lock.
+
+**Current vs Spec:**
+
+| Setting | Spec | Current | Priority |
+|---------|------|---------|----------|
+| Google email | ✓ "user@gmail.com" | ✗ Missing | P1 |
+| Address + copy | ✓ | ✓ | Done |
+| Session expiry + refresh | ✓ | ✓ | Done |
+| Contacts list + manage | ✓ "Alex · Mom · 0x9c4d..." | ✗ Missing | P1 |
+| Safety limits | ✓ "Max per tx: $1,000" | ✗ Missing | P2 |
+| Suiscan link | ✓ | ✓ | Done |
+| Emergency lock | ✓ "🔴 Emergency Lock" | ✗ Missing | P2 |
+| Sign out | ✓ | ✓ | Done |
+
+**Changes to `SettingsPanel.tsx`:**
+
+1. **Add email display** — extract from zkLogin JWT (the `email` claim):
+```
+📧 user@gmail.com
+Signed in with Google
+```
+
+2. **Add contacts section** — show saved contacts with delete option:
+```
+Contacts
+Alex · Mom · 0x9c4d...
+[Manage contacts]
+```
+
+3. **Add safety limits section (P2):**
+```
+Safety limits
+Max per transaction: $1,000
+Max daily send: $5,000
+[Change limits]
+```
+
+4. **Add emergency lock (P2):**
+```
+[🔴 Emergency Lock]
+```
+
+---
+
+### 8.11 — Invest & Swap Guided Flows
+
+**Spec ref:** "[Invest]" and "[Swap]" chip flow wireframes.
+
+**Problem:** Both flows currently show text stubs instead of guided chip flows.
+
+**Invest flow spec:**
+```
+[Invest] → "What would you like to invest in?"
+→ [SUI] [BTC] [ETH] [GOLD]
+→ user taps [SUI]
+→ "Buy SUI at $0.995."
+→ [$25] [$50] [$100] [$500]
+→ confirmation card
+```
+
+**Swap flow spec:**
+```
+[Swap] → "Swap between tokens."
+→ From: [Dollars ▼]  To: [SUI] [BTC] [ETH]
+→ amount chips
+→ confirmation card
+```
+
+**Implementation:**
+- Extend `useChipFlow` to support multi-step flows (currently only supports: start → amount → confirm)
+- Add `subFlow` steps for asset selection
+- Wire to SDK `exchange()` method for swaps, `invest()` for investments
+- These can be stubs that show "Coming soon" for the actual execution — the UX flow itself should be built
+
+---
+
+### 8.12 — Result Card Post-Transaction
+
+**Spec ref:** "After Completing an Action" wireframe.
+
+**Problem:** After a transaction, the result card appears but smart cards don't immediately update to reflect the new state. The spec shows:
+
+```
+✓ Saved $100. Now earning 6.8% on $980.
+
+🏆 $12.40 in rewards
+[Claim $12.40]
+```
+
+**Changes:**
+- After transaction success, immediately invalidate and refetch balance + positions queries
+- Show updated smart cards below the result card
+- The result card message should include context: "Saved $100. Now earning X% on $Y." (requires positions data)
+
+---
+
+### Implementation Priority
+
+| Task | Est. | Blocking beta? | Depends on |
+|------|------|----------------|------------|
+| **8.1** Smart cards data wiring | 3-4h | **Yes** — empty dashboard is the #1 UX complaint | Extend `/api/positions`, new `/api/rates` |
+| **8.2** Landing page alignment | 1h | No — functional but not polished | None |
+| **8.3** Chip flow context messages | 30m | No — works without, but feels generic | 8.1 (needs rate data) |
+| **8.4** Send flow UX (Go button, Paste) | 45m | Partial — Enter-only is confusing | None |
+| **8.5** Dashboard layout / dead space | 1h | Partial — solved mostly by 8.1 | 8.1 |
+| **8.6** Empty state enhancement | 30m | No — works but not per spec | None |
+| **8.7** Confirmation card enhancement | 30m | No — works but lacks detail | 8.1 |
+| **8.8** Error states with chips | 1h | No — errors work but aren't actionable | None |
+| **8.9** Repay validation | 30m | **Yes** — allows invalid transactions | None |
+| **8.10** Settings panel completion | 1-2h | No — all essential settings work | None |
+| **8.11** Invest & swap guided flows | 2h | No — stubs are acceptable for beta | SDK invest/exchange methods |
+| **8.12** Post-transaction smart card refresh | 30m | No — polish | 8.1 |
+
+**Total estimate:** ~12-14 hours
+
+**For beta:** 8.1 (smart cards data) + 8.9 (repay validation) are blocking. 8.4 (send UX) is highly recommended. Everything else is polish.
+
+---
+
+### Wireframe Cross-Reference
+
+Every item above maps to a specific wireframe in `T2000_V3_SPEC.md`:
+
+| Task | Spec section | Line range |
+|------|-------------|------------|
+| 8.1 | "What Smart Cards Appear (and When)" | Lines 269-293 |
+| 8.2 | "Screen 1: Landing" | Lines 131-186 |
+| 8.3 | "[Save]", "[Borrow]", "[Withdraw]" chip flows | Lines 506-579 |
+| 8.4 | "[Send]" chip flow | Lines 526-546 |
+| 8.5 | "Three zones" dashboard layout | Lines 223-263 |
+| 8.6 | "Dashboard — Empty State" | Lines 787-825 |
+| 8.7 | Confirmation card in every flow wireframe | Lines 390-404, 517-522 |
+| 8.8 | "Error States in the Feed" | Lines 827-840 |
+| 8.9 | "[Repay]" flow (implicit — no repay without borrow) | Lines 550-564 |
+| 8.10 | "Settings (slide-over panel)" | Lines 881-921 |
+| 8.11 | "[Invest]" and "[Swap]" chip flows | Lines 583-620 |
+| 8.12 | "After Completing an Action" | Lines 312-324 |
+
+---
+
 ## Outstanding Items
 
-Everything remaining after Phases 1-7. Ordered by priority.
+Everything remaining after Phases 1-8. Ordered by priority.
 
 ### P0 — Server Tests ✅
 
@@ -1122,41 +1682,15 @@ Write missing test coverage for web-app API routes.
 
 ### P1 — Real Balance Polling ✅
 
-**Bucket 2A.** Dashboard currently mocks balance with `setTimeout → zeros`. Wire to Sui RPC for live data.
-
-**Changes:**
-- Create `hooks/useBalance.ts` — polls `suix_getAllBalances` for the user's address
-- Parse SUI + USDC balances, convert from MIST
-- Query lending protocols (Suilend/NAVI) for savings positions
-- Feed real data into `BalanceHeader` and `AccountState` for smart cards
-- Use TanStack Query with `refetchInterval: 30_000`
-
-**Depends on:** Sui RPC (already available via `@mysten/sui/client`)
+Dashboard balance polling wired to Sui RPC + NAVI positions.
 
 ### P2 — Smart Cards from Real Data ✅
 
-**Bucket 2G + 2I.** Smart cards are currently derived from mocked balance. Once P1 is done:
-
-- `deriveSmartCards()` already works — just needs real `AccountState` input
-- Add `received-funds` card: compare balance between polls, if increased → show "You received X SUI"
-- Add idle funds detection: if checking > $10 and savings rate > 0 → show "Move to savings" card
-
-**Depends on:** P1 (real balance)
+`deriveSmartCards()` wired with real balance. Received-funds card detects incoming transfers.
 
 ### P3 — Real Transaction Execution ✅
 
-**Bucket 2B.** `handleConfirm` in dashboard simulates with `setTimeout`. Wire to SDK.
-
-**Changes:**
-- `useAgent().getInstance()` returns a live `T2000` instance (already scaffolded)
-- **Save:** `agent.save(amount)` → deposit to highest-yield lending protocol
-- **Send:** `agent.pay(recipient, amount)` → on-chain SUI/USDC transfer
-- **Withdraw:** `agent.withdraw(amount)` → withdraw from lending protocol
-- **Borrow/Repay:** `agent.borrow()` / `agent.repay()` → lending protocol operations
-- Update `handleConfirm` to call real SDK methods instead of setTimeout
-- Invalidate balance queries on success
-
-**Depends on:** P1 (balance), `useAgent` hook (already exists)
+All core flows (save, send, withdraw, borrow, repay) execute real on-chain transactions via Enoki-sponsored flow.
 
 ---
 
@@ -1469,22 +2003,34 @@ Mark deployment as complete. Clean up:
 
 ### Summary
 
-| Priority | Item | Blocking beta? |
-|----------|------|----------------|
-| **P0** ✅ | Server tests | No, but good hygiene |
-| **P1** ✅ | Real balance polling | **Yes** — core UX |
-| **P2** ✅ | Smart cards from real data | **Yes** — depends on P1 |
-| **P3** ✅ | Real transaction execution | **Yes** — core product |
-| **P3.1** ✅ | Enoki sponsored transactions | **Yes** — without gas, new users can't transact |
-| **P4** | MPP LLM integration | No — keyword fallback works |
-| **P5** | MPP services execution | No — display-only is acceptable for beta |
-| **P6** | LLM tool calling | No — post-beta |
-| **P7** | Service intent parsing | No — LLM fallback handles it |
-| **P8** | Gift card brand grid | No — post-beta |
-| **P9** | Settings panel extras | No — post-beta |
-| **P10** | Vercel cleanup | No — housekeeping |
+| Priority | Item | Blocking beta? | Status |
+|----------|------|----------------|--------|
+| **P0** | Server tests | No, but good hygiene | ✅ |
+| **P1** | Real balance polling | **Yes** — core UX | ✅ |
+| **P2** | Smart cards from real data | **Yes** — depends on P1 | ✅ |
+| **P3** | Real transaction execution | **Yes** — core product | ✅ |
+| **P3.1** | Enoki sponsored transactions | **Yes** — without gas, new users can't transact | ✅ |
+| **UX-1** | Smart cards data wiring (8.1) | **Yes** — #1 UX complaint (empty dashboard) | ⏳ |
+| **UX-2** | Repay validation (8.9) | **Yes** — allows invalid transactions | ⏳ |
+| **UX-3** | Send flow UX (8.4 — Go button, Paste) | Recommended — Enter-only confuses users | ⏳ |
+| **UX-4** | Chip flow context messages (8.3) | No — generic messages work | ⏳ |
+| **UX-5** | Landing page alignment (8.2) | No — functional | ⏳ |
+| **UX-6** | Dashboard layout / chip bar (8.5) | Partial — solved by UX-1 | ⏳ |
+| **UX-7** | Empty state enhancement (8.6) | No — works | ⏳ |
+| **UX-8** | Confirmation card detail (8.7) | No — works | ⏳ |
+| **UX-9** | Actionable error chips (8.8) | No — errors work | ⏳ |
+| **UX-10** | Settings panel completion (8.10) | No — essential settings work | ⏳ |
+| **UX-11** | Invest & swap flows (8.11) | No — stubs acceptable | ⏳ |
+| **UX-12** | Post-tx smart card refresh (8.12) | No — polish | ⏳ |
+| **P4** | MPP LLM integration | No — keyword fallback works | ⏳ |
+| **P5** | MPP services execution | No — display-only acceptable | ⏳ |
+| **P6** | LLM tool calling | No — post-beta | ⏳ |
+| **P7** | Service intent parsing | No — LLM fallback handles it | ⏳ |
+| **P8** | Gift card brand grid | No — post-beta | ⏳ |
+| **P9** | Settings panel extras | No — post-beta (see UX-10) | ⏳ |
+| **P10** | Vercel cleanup | No — housekeeping | ⏳ |
 
-**For beta:** P0-P3.1 are all complete. All beta blockers resolved. P4-P10 are post-beta enhancements.
+**For beta:** P0-P3.1 are complete. **UX-1 (smart cards data wiring) and UX-2 (repay validation) are the remaining beta blockers.** UX-3 (send flow) is strongly recommended. Everything else is polish or post-beta.
 
 ---
 

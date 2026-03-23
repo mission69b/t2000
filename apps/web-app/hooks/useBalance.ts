@@ -17,6 +17,9 @@ export interface BalanceData {
   suiUsd: number;
   usdc: number;
   suiPrice: number;
+  savingsRate: number;
+  healthFactor: number | null;
+  maxBorrow: number;
   loading: boolean;
 }
 
@@ -73,6 +76,9 @@ export function useBalance(address: string | null) {
       const checking = usdc + suiUsd;
       const savings = posData.savings ?? 0;
       const borrows = posData.borrows ?? 0;
+      const savingsRate = posData.savingsRate ?? 0;
+      const healthFactor = posData.healthFactor ?? null;
+      const maxBorrow = posData.maxBorrow ?? 0;
 
       return {
         total: checking + savings - borrows,
@@ -83,6 +89,9 @@ export function useBalance(address: string | null) {
         suiUsd,
         usdc,
         suiPrice,
+        savingsRate,
+        healthFactor,
+        maxBorrow,
         loading: false,
       };
     },

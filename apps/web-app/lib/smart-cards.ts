@@ -26,6 +26,7 @@ export interface SmartCardAction {
 export interface AccountState {
   checking: number;
   savings: number;
+  borrows: number;
   savingsRate: number;
   pendingRewards: number;
   bestAlternativeRate?: { protocol: string; rate: number };
@@ -130,6 +131,22 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
     });
   }
 
+  if (state.borrows > 0) {
+    const debtActions: SmartCardAction[] = [
+      { label: 'Repay', variant: 'primary', chipFlow: 'repay' },
+    ];
+    const hfStr = state.healthFactor !== undefined && state.healthFactor !== Infinity
+      ? ` · HF ${state.healthFactor.toFixed(1)}`
+      : '';
+    cards.push({
+      type: 'all-good',
+      icon: '📊',
+      title: `$${Math.floor(state.borrows)} debt outstanding${hfStr}`,
+      body: '',
+      actions: debtActions,
+    });
+  }
+
   if (cards.length === 0) {
     if (state.checking === 0 && state.savings === 0) {
       cards.push({
@@ -140,12 +157,13 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
         actions: [{ label: 'Show my address', variant: 'primary', chipFlow: 'receive' }],
       });
     } else {
-      const rateStr = state.savingsRate > 0 ? ` Earning ${state.savingsRate.toFixed(1)}% on $${Math.floor(state.savings)}.` : '';
+      const parts: string[] = [];
+      if (state.savingsRate > 0) parts.push(`Earning ${state.savingsRate.toFixed(1)}% on $${Math.floor(state.savings)}`);
       cards.push({
         type: 'all-good',
         icon: '✅',
         title: 'Your account is working for you.',
-        body: rateStr.trim(),
+        body: parts.join(' · '),
         actions: [],
       });
     }

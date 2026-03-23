@@ -4,6 +4,7 @@ import { deriveSmartCards, type AccountState } from './smart-cards';
 const BASE_STATE: AccountState = {
   checking: 0,
   savings: 0,
+  borrows: 0,
   savingsRate: 0,
   pendingRewards: 0,
 };
@@ -139,5 +140,20 @@ describe('deriveSmartCards', () => {
   it('does not include "all good" card when other cards are present', () => {
     const cards = deriveSmartCards({ ...BASE_STATE, pendingRewards: 10 });
     expect(cards.find((c) => c.type === 'all-good')).toBeUndefined();
+  });
+
+  it('surfaces debt card when borrows > 0', () => {
+    const cards = deriveSmartCards({ ...BASE_STATE, checking: 100, savings: 50, borrows: 20, healthFactor: 3.5 });
+    const debtCard = cards.find((c) => c.title.includes('debt'));
+    expect(debtCard).toBeDefined();
+    expect(debtCard!.title).toContain('$20');
+    expect(debtCard!.title).toContain('HF 3.5');
+    expect(debtCard!.actions[0].chipFlow).toBe('repay');
+  });
+
+  it('does not surface debt card when borrows is 0', () => {
+    const cards = deriveSmartCards({ ...BASE_STATE, checking: 100, savings: 50 });
+    const debtCard = cards.find((c) => c.title.includes('debt'));
+    expect(debtCard).toBeUndefined();
   });
 });

@@ -40,7 +40,7 @@ export function SmartForm({ service, onSubmit, onCancel }: SmartFormProps) {
   if (!service.fields?.length) return null;
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
+    <div className="rounded-sm border border-border bg-surface p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">{service.icon}</span>
@@ -76,7 +76,7 @@ export function SmartForm({ service, onSubmit, onCancel }: SmartFormProps) {
         <span className="text-xs text-muted font-mono">From {service.startingPrice}</span>
         <button
           onClick={handleSubmit}
-          className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-background transition hover:bg-accent/90 active:scale-[0.97]"
+          className="bg-accent px-5 py-2.5 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] active:scale-[0.97]"
         >
           Continue
         </button>
@@ -97,7 +97,7 @@ function FieldInput({
   onChange: (value: string) => void;
 }) {
   const baseClass = [
-    'w-full rounded-lg border bg-panel px-3 py-2.5 text-sm text-foreground placeholder:text-dim outline-none',
+    'w-full rounded-sm border bg-panel px-3 py-2.5 text-sm text-foreground placeholder:text-dim outline-none',
     error ? 'border-red-500/50 focus:border-red-500/50' : 'border-border focus:border-border-bright',
   ].join(' ');
 

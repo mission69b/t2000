@@ -37,13 +37,13 @@ export function InputBar({ onSubmit, disabled, placeholder = 'Ask anything...' }
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright disabled:opacity-50"
+        className="flex-1 rounded-sm border border-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright disabled:opacity-50"
       />
       {value.trim() && (
         <button
           onClick={handleSubmit}
           disabled={disabled}
-          className="rounded-xl bg-accent p-3 text-background transition hover:bg-accent/90 disabled:opacity-50"
+          className="bg-accent p-3 text-background tracking-[0.05em] uppercase transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] disabled:opacity-50"
           aria-label="Send"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

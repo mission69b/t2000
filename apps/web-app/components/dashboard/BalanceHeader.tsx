@@ -20,14 +20,17 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
   return (
     <div className="space-y-1 text-center">
       <div className="flex items-center justify-between px-1">
-        <span className="text-sm font-semibold text-muted tracking-wide">t2000</span>
+        <div className="font-mono font-semibold text-sm text-accent tracking-tight flex items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]" />
+          t2000
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-dim">
             {truncateAddress(address)}
           </span>
           <button
             onClick={onSettingsClick}
-            className="rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-panel transition"
+            className="rounded-sm p-1.5 text-muted hover:text-foreground hover:bg-panel transition"
             aria-label="Settings"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -40,23 +43,23 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
 
       {balance.loading ? (
         <div className="py-4 space-y-2">
-          <div className="h-10 w-32 mx-auto rounded-lg bg-panel animate-pulse" />
-          <div className="h-4 w-48 mx-auto rounded bg-panel animate-pulse" />
+          <div className="h-10 w-32 mx-auto rounded-sm bg-panel animate-pulse" />
+          <div className="h-4 w-48 mx-auto rounded-sm bg-panel animate-pulse" />
         </div>
       ) : (
         <>
           <p className="text-4xl font-bold tracking-tight font-mono text-foreground">
             ${balance.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <p className="text-sm text-muted">
-            Checking ${balance.checking.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          <p className="text-xs font-mono text-muted tracking-wide">
+            <span className="uppercase text-[10px] tracking-[0.1em]">chk</span> ${balance.checking.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             {' · '}
-            Savings ${balance.savings.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            <span className="uppercase text-[10px] tracking-[0.1em]">sav</span> ${balance.savings.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             {balance.borrows > 0 && (
               <>
                 {' · '}
                 <span className="text-amber-400">
-                  Debt ${balance.borrows.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  <span className="uppercase text-[10px] tracking-[0.1em]">debt</span> ${balance.borrows.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </span>
               </>
             )}

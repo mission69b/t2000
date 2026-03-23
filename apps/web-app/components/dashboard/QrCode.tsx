@@ -29,7 +29,7 @@ export function QrCode({ value, size = 200 }: QrCodeProps) {
   if (!dataUrl) {
     return (
       <div
-        className="animate-pulse rounded-xl bg-panel"
+        className="animate-pulse rounded-sm bg-panel"
         style={{ width: size, height: size }}
       />
     );
@@ -42,7 +42,7 @@ export function QrCode({ value, size = 200 }: QrCodeProps) {
       alt={`QR code for ${value}`}
       width={size}
       height={size}
-      className="rounded-xl"
+      className="rounded-sm"
     />
   );
 }
