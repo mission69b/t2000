@@ -40,9 +40,6 @@ function DashboardContent() {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const feedEndRef = useRef<HTMLDivElement>(null);
-  const prevTotalRef = useRef<number | null>(null);
-  const txJustCompletedRef = useRef(false);
-  const [receivedAmount, setReceivedAmount] = useState<number | null>(null);
 
   const balance = {
     total: balanceQuery.data?.total ?? 0,
@@ -56,21 +53,6 @@ function DashboardContent() {
   };
 
   useEffect(() => {
-    if (balanceQuery.data && !balanceQuery.isLoading) {
-      const currentTotal = balanceQuery.data.total;
-      if (txJustCompletedRef.current) {
-        txJustCompletedRef.current = false;
-      } else if (prevTotalRef.current !== null && currentTotal > prevTotalRef.current) {
-        const diff = currentTotal - prevTotalRef.current;
-        if (diff >= 1) {
-          setReceivedAmount(diff);
-        }
-      }
-      prevTotalRef.current = currentTotal;
-    }
-  }, [balanceQuery.data, balanceQuery.isLoading]);
-
-  useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [feed.items.length]);
 
@@ -82,7 +64,6 @@ function DashboardContent() {
     pendingRewards: 0,
     healthFactor: balance.healthFactor ?? undefined,
     sessionExpiringSoon: expiringSoon,
-    receivedAmount: receivedAmount ?? undefined,
   };
 
   const smartCards = deriveSmartCards(accountState).filter(
@@ -91,7 +72,6 @@ function DashboardContent() {
 
   const handleDismissCard = useCallback((type: string) => {
     setDismissedCards((prev) => new Set(prev).add(type));
-    if (type === 'received-funds') setReceivedAmount(null);
   }, []);
 
   const executeIntent = useCallback(
@@ -475,7 +455,6 @@ function DashboardContent() {
         details: result.details,
       });
 
-      txJustCompletedRef.current = true;
       balanceQuery.refetch();
 
       if (

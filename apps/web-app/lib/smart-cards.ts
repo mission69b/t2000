@@ -3,7 +3,6 @@ export type SmartCardType =
   | 'idle-funds'
   | 'better-rate'
   | 'overnight-earnings'
-  | 'received-funds'
   | 'risk'
   | 'session-expiry'
   | 'all-good';
@@ -35,7 +34,6 @@ export interface AccountState {
   isFirstOpenToday?: boolean;
   healthFactor?: number;
   sessionExpiringSoon?: boolean;
-  receivedAmount?: number;
 }
 
 /**
@@ -55,19 +53,8 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
     });
   }
 
-  if (state.receivedAmount && state.receivedAmount > 0) {
-    cards.push({
-      type: 'received-funds',
-      icon: '💸',
-      title: `You received $${state.receivedAmount.toFixed(2)}`,
-      body: 'Funds arrived in your wallet.',
-      actions: [
-        { label: 'Move to savings', variant: 'primary', chipFlow: 'save-all' },
-        { label: 'Dismiss', variant: 'secondary' },
-      ],
-      dismissible: true,
-    });
-  }
+  // TODO: "received funds" card — implement via on-chain tx history query
+  // instead of fragile balance-diff detection
 
   if (state.isFirstOpenToday && state.overnightEarnings && state.overnightEarnings > 0) {
     cards.push({
