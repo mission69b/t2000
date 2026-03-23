@@ -178,7 +178,7 @@ export async function fetchZkProof(params: {
 // --- Address ---
 
 export function deriveAddress(jwt: string, salt: string): string {
-  return jwtToAddress(jwt, BigInt(`0x${salt}`), false);
+  return jwtToAddress(jwt, BigInt(salt), false);
 }
 
 // --- Full flow helpers ---
