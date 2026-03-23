@@ -41,6 +41,7 @@ function DashboardContent() {
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const feedEndRef = useRef<HTMLDivElement>(null);
   const prevTotalRef = useRef<number | null>(null);
+  const txJustCompletedRef = useRef(false);
   const [receivedAmount, setReceivedAmount] = useState<number | null>(null);
 
   const balance = {
@@ -57,9 +58,11 @@ function DashboardContent() {
   useEffect(() => {
     if (balanceQuery.data && !balanceQuery.isLoading) {
       const currentTotal = balanceQuery.data.total;
-      if (prevTotalRef.current !== null && currentTotal > prevTotalRef.current) {
+      if (txJustCompletedRef.current) {
+        txJustCompletedRef.current = false;
+      } else if (prevTotalRef.current !== null && currentTotal > prevTotalRef.current) {
         const diff = currentTotal - prevTotalRef.current;
-        if (diff >= 0.01) {
+        if (diff >= 1) {
           setReceivedAmount(diff);
         }
       }
@@ -472,6 +475,7 @@ function DashboardContent() {
         details: result.details,
       });
 
+      txJustCompletedRef.current = true;
       balanceQuery.refetch();
 
       if (
