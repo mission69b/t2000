@@ -62,6 +62,20 @@ export default function LandingPage() {
             npm install -g @t2000/cli
           </a>
         </p>
+
+        <div className="flex items-center justify-center gap-4 pt-2 text-xs text-neutral-600">
+          <a href="https://t2000.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-neutral-400 transition">
+            Privacy
+          </a>
+          <span>·</span>
+          <a href="https://t2000.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-neutral-400 transition">
+            Terms
+          </a>
+          <span>·</span>
+          <a href="https://t2000.ai/security" target="_blank" rel="noopener noreferrer" className="hover:text-neutral-400 transition">
+            Security
+          </a>
+        </div>
       </div>
     </main>
   );
