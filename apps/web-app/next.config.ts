@@ -38,7 +38,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@naviprotocol/lending'],
   async headers() {
     return [
       {

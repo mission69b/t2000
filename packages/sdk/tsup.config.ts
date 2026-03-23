@@ -9,19 +9,6 @@ export default defineConfig([
     sourcemap: true,
     splitting: false,
     treeshake: true,
-    noExternal: [
-      /^@suilend/,
-      /^@naviprotocol/,
-      /^@cetusprotocol/,
-      /^@pythnetwork/,
-    ],
-    esbuildOptions(options) {
-      if (options.format === 'esm') {
-        options.banner = {
-          js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
-        };
-      }
-    },
   },
   {
     entry: ['src/browser.ts'],
