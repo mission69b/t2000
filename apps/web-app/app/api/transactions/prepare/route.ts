@@ -150,7 +150,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
         throw new Error('Invalid recipient');
       }
 
-      const assetKey = asset ?? 'SUI';
+      const assetKey = asset ?? 'USDC';
       const coinType = assetKey === 'SUI' ? '0x2::sui::SUI' : USDC_TYPE;
       const decimals = assetKey === 'SUI' ? 9 : 6;
       const rawAmount = BigInt(Math.round(amount * 10 ** decimals));

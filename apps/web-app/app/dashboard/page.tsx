@@ -47,6 +47,7 @@ function DashboardContent() {
     total: balanceQuery.data?.total ?? 0,
     checking: balanceQuery.data?.checking ?? 0,
     savings: balanceQuery.data?.savings ?? 0,
+    borrows: balanceQuery.data?.borrows ?? 0,
     loading: balanceQuery.isLoading,
   };
 
@@ -356,10 +357,15 @@ function DashboardContent() {
 
   const handleAmountSelect = useCallback(
     (amount: number) => {
-      const actualAmount = amount === -1 ? balance.checking : amount;
-      chipFlow.selectAmount(actualAmount);
+      if (amount === -1) {
+        const flow = chipFlow.state.flow;
+        const actualAmount = flow === 'withdraw' ? balance.savings : balance.checking;
+        chipFlow.selectAmount(actualAmount);
+      } else {
+        chipFlow.selectAmount(amount);
+      }
     },
-    [chipFlow, balance.checking],
+    [chipFlow, balance.checking, balance.savings],
   );
 
   const handleConfirm = useCallback(async () => {

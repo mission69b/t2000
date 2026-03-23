@@ -6,6 +6,7 @@ export interface BalanceData {
   total: number;
   checking: number;
   savings: number;
+  borrows: number;
   loading: boolean;
 }
 
@@ -51,6 +52,14 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
             Checking ${balance.checking.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             {' · '}
             Savings ${balance.savings.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            {balance.borrows > 0 && (
+              <>
+                {' · '}
+                <span className="text-amber-400">
+                  Debt ${balance.borrows.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </span>
+              </>
+            )}
           </p>
         </>
       )}

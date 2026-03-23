@@ -12,6 +12,7 @@ export interface BalanceData {
   total: number;
   checking: number;
   savings: number;
+  borrows: number;
   sui: number;
   suiUsd: number;
   usdc: number;
@@ -71,11 +72,13 @@ export function useBalance(address: string | null) {
 
       const checking = usdc + suiUsd;
       const savings = posData.savings ?? 0;
+      const borrows = posData.borrows ?? 0;
 
       return {
-        total: checking + savings,
+        total: checking + savings - borrows,
         checking,
         savings,
+        borrows,
         sui,
         suiUsd,
         usdc,
