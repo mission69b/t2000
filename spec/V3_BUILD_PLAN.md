@@ -1158,6 +1158,233 @@ Write missing test coverage for web-app API routes.
 
 **Depends on:** P1 (balance), `useAgent` hook (already exists)
 
+---
+
+### P3.1 — Enoki Sponsored Transactions ✅
+
+**Critical for beta.** Without gas sponsorship, new zkLogin users cannot execute any transaction (they have 0 SUI). This makes the entire app unusable for new users.
+
+#### Overview
+
+Replace the current direct-to-RPC submission flow with Enoki-sponsored transactions. The user **never needs SUI for gas** — Enoki pays from a pre-funded gas pool. The flow remains **fully non-custodial**: the user's ephemeral key never leaves the browser.
+
+#### Current Flow (P3)
+
+```
+Client → POST /api/transactions/prepare → Server builds full tx → Returns txBytes
+Client signs txBytes locally with zkLogin signer
+Client submits directly to Sui RPC → Requires user SUI for gas ❌
+```
+
+#### New Flow (P3.1)
+
+```
+1. Client → POST /api/transactions/prepare
+   Server builds tx with onlyTransactionKind: true
+   Server calls Enoki POST /v1/transaction-blocks/sponsor
+   Server returns { bytes, digest } to client
+
+2. Client signs `bytes` locally with zkLogin signer (NON-CUSTODIAL)
+
+3. Client → POST /api/transactions/execute
+   Server calls Enoki POST /v1/transaction-blocks/sponsor/:digest
+   Server returns { digest } to client
+   
+User needs 0 SUI for gas ✅
+```
+
+#### Security Model
+
+| Party | Has access to | Does NOT have |
+|-------|--------------|---------------|
+| **Client (browser)** | Ephemeral keypair, zkLogin proof, session JWT | Enoki private API key |
+| **Server (Next.js)** | Enoki private key, tx structure, user JWT | User's ephemeral private key |
+| **Enoki (Mysten)** | Gas pool SUI, sponsored tx bytes | User's ephemeral private key |
+
+- Signing (step 2) happens **entirely in the browser** — ephemeral key never transmitted
+- Server only receives the final `signature` string, never the private key
+- Enoki never sees the user's private key either
+- Same security model as hardware wallets
+
+#### Enoki Portal Setup (Manual — Pre-Implementation)
+
+1. **Create a private API key** in Enoki Portal
+   - Enable: "Sponsored Transactions"
+   - Enable network: "Mainnet"
+   - This key stays server-side only (`ENOKI_SECRET_KEY`)
+
+2. **Fund the gas pool**
+   - Deposit SUI into the Enoki gas pool via the portal dashboard
+   - Start with 5-10 SUI for beta testing (~500-1000 sponsored transactions)
+   - Monitor usage in portal analytics
+
+3. **Configure allowed targets (recommended)**
+   - Restrict sponsorship to known Move call targets to prevent abuse:
+     - `0x2::coin::*` (transfers)
+     - `0x2::pay::*` (payments)
+     - NAVI Protocol addresses (save/withdraw/borrow/repay)
+     - Cetus addresses (swaps)
+   - Or leave unrestricted initially and tighten post-beta
+
+#### Environment Variables
+
+| Variable | Type | Where | Description |
+|----------|------|-------|-------------|
+| `ENOKI_SECRET_KEY` | Private | Server only (`.env.local` + Vercel) | Enoki private API key for sponsorship |
+| `NEXT_PUBLIC_ENOKI_API_KEY` | Public | Already exists | Enoki public key (zkLogin auth) |
+| `NEXT_PUBLIC_SUI_NETWORK` | Public | Already exists | Network for sponsorship requests |
+
+**Critical:** `ENOKI_SECRET_KEY` must NEVER be exposed to the client. It is used only in server-side API routes.
+
+#### Implementation Tasks
+
+**Task 1: Update `/api/transactions/prepare` route**
+
+Current: builds full tx → returns `txBytes`
+New: builds tx kind → sponsors via Enoki → returns `{ bytes, digest }`
+
+Changes:
+- Build with `tx.build({ client, onlyTransactionKind: true })` instead of `tx.build({ client })`
+- Call Enoki `POST /v1/transaction-blocks/sponsor` with:
+  - `Authorization: Bearer ENOKI_SECRET_KEY` (private key)
+  - `zklogin-jwt: <user's JWT>` (forwarded from client)
+  - Body: `{ network, transactionBlockKindBytes, sender, allowedAddresses?, allowedMoveCallTargets? }`
+- Return `{ bytes, digest }` from Enoki response (instead of raw `txBytes`)
+- Add JWT forwarding from client request header
+
+File: `apps/web-app/app/api/transactions/prepare/route.ts`
+
+**Task 2: Create `/api/transactions/execute` route**
+
+New server route that submits the user's signature to Enoki for execution.
+
+Endpoint: `POST /api/transactions/execute`
+Request body: `{ digest: string, signature: string }`
+Server action: call Enoki `POST /v1/transaction-blocks/sponsor/:digest` with `{ signature }`
+Response: `{ digest: string }`
+
+File: `apps/web-app/app/api/transactions/execute/route.ts`
+
+**Task 3: Update `useAgent` hook**
+
+Current flow: prepare → sign → submit to Sui RPC directly
+New flow: prepare → sign → execute via server
+
+Changes:
+- `signAndSubmit()` sends JWT in prepare request header
+- After signing, POST to `/api/transactions/execute` instead of `suiClient.executeTransactionBlock()`
+- Remove direct `suiClient` dependency for transaction submission
+- Handle Enoki-specific error codes
+
+File: `apps/web-app/hooks/useAgent.ts`
+
+**Task 4: Update constants and CSP**
+
+- Add `ENOKI_SECRET_KEY` to `lib/constants.ts` (server-side only, no `NEXT_PUBLIC_` prefix)
+- CSP `connect-src` already allows `api.enoki.mystenlabs.com` ✅
+- No CSP changes needed (Enoki calls happen server-side)
+
+File: `apps/web-app/lib/constants.ts`
+
+**Task 5: Forward JWT from zkLogin session**
+
+The Enoki sponsorship endpoint can accept a `zklogin-jwt` header to identify the user. The client needs to forward its JWT from the zkLogin session to the prepare route.
+
+Changes:
+- `useAgent` includes `session.jwt` in the `Authorization` or custom header when calling `/api/transactions/prepare`
+- Server forwards this JWT to Enoki's sponsor endpoint
+- JWT is already stored in the zkLogin session (no new auth flow needed)
+
+File: `apps/web-app/hooks/useAgent.ts`, `apps/web-app/app/api/transactions/prepare/route.ts`
+
+**Task 6: Error handling**
+
+Map Enoki-specific error responses to user-friendly messages:
+
+| Enoki Error | User Message | Action |
+|-------------|-------------|--------|
+| `INSUFFICIENT_GAS_POOL` | "Service temporarily unavailable" | Alert admin to refund gas pool |
+| `RATE_LIMITED` | "Too many transactions. Try again shortly." | Show retry timer |
+| `INVALID_TRANSACTION` | "Transaction rejected" | Show error details |
+| `DISALLOWED_MOVE_CALL` | "This action is not supported" | Log for debugging |
+| Network error | "Connection error. Retrying..." | Auto-retry once |
+
+File: `apps/web-app/lib/errors.ts`
+
+**Task 7: Fallback strategy**
+
+If Enoki sponsorship fails (gas pool empty, rate limited, Enoki down), attempt self-funded execution as fallback — but only if the user has sufficient SUI balance.
+
+```
+try sponsored via Enoki
+  → if fails and user has SUI > 0.01:
+    → fall back to self-funded (current P3 flow)
+  → if fails and user has no SUI:
+    → show error "Gas pool temporarily empty. Please try again later."
+```
+
+File: `apps/web-app/hooks/useAgent.ts`
+
+#### Testing
+
+**Unit tests:**
+
+| Test | File | What it verifies |
+|------|------|-----------------|
+| Prepare route calls Enoki sponsor API | `route.test.ts` | Correct endpoint, headers, body format |
+| Prepare route forwards JWT | `route.test.ts` | JWT passed in `zklogin-jwt` header |
+| Execute route calls Enoki execute API | `route.test.ts` | Correct digest path param, signature body |
+| Execute route validates inputs | `route.test.ts` | Missing digest/signature → 400 |
+| Error mapping for Enoki responses | `errors.test.ts` | Each error code → correct user message |
+
+**Integration tests (manual):**
+
+| Test | Expected Result |
+|------|----------------|
+| New user (0 SUI) sends USDC | Transaction succeeds, user pays 0 gas |
+| New user (0 SUI) saves to NAVI | Transaction succeeds, user pays 0 gas |
+| Rapid-fire 10 transactions | First N succeed, rate limit kicks in gracefully |
+| Enoki gas pool empty | Graceful error message, no crash |
+| Enoki API down | Fallback to self-funded if user has SUI; error if not |
+| Verify tx on Suiscan | Sponsor address is Enoki's, not user's |
+
+#### Cost Analysis
+
+| Metric | Estimate |
+|--------|----------|
+| Average gas per tx | ~0.002-0.01 SUI |
+| Gas pool per 1 SUI | ~100-500 sponsored transactions |
+| Beta (100 users × 5 tx/day × 30 days) | ~15,000 txs → ~30-150 SUI |
+| Abuse vector | Rate limiting + allowedMoveCallTargets |
+
+#### Monitoring & Alerts
+
+- Track gas pool balance via Enoki Portal analytics
+- Set up alert when gas pool drops below 2 SUI
+- Log all sponsorship requests/failures in server logs
+- Dashboard for sponsorship usage (post-beta)
+
+#### Dependencies
+
+- Enoki Portal: private API key with sponsored transactions enabled
+- Enoki Portal: gas pool funded with SUI
+- P3 (real transaction execution) ✅ — already done
+
+#### Files Changed
+
+| File | Action |
+|------|--------|
+| `app/api/transactions/prepare/route.ts` | Modify — add Enoki sponsor call |
+| `app/api/transactions/execute/route.ts` | **New** — Enoki execute endpoint |
+| `app/api/transactions/execute/route.test.ts` | **New** — unit tests |
+| `app/api/transactions/prepare/route.test.ts` | Modify — update tests for new response shape |
+| `hooks/useAgent.ts` | Modify — new sign+execute flow |
+| `lib/constants.ts` | Modify — add ENOKI_SECRET_KEY |
+| `lib/errors.ts` | Modify — add Enoki error mapping |
+| `.env.local` | Modify — add ENOKI_SECRET_KEY |
+
+---
+
 ### P4 — MPP LLM Integration ⏳
 
 **Bucket 2C + 2D.** `useLlm` currently returns local keyword-matched responses. Wire to real LLM via MPP.
@@ -1248,6 +1475,7 @@ Mark deployment as complete. Clean up:
 | **P1** ✅ | Real balance polling | **Yes** — core UX |
 | **P2** ✅ | Smart cards from real data | **Yes** — depends on P1 |
 | **P3** ✅ | Real transaction execution | **Yes** — core product |
+| **P3.1** ✅ | Enoki sponsored transactions | **Yes** — without gas, new users can't transact |
 | **P4** | MPP LLM integration | No — keyword fallback works |
 | **P5** | MPP services execution | No — display-only is acceptable for beta |
 | **P6** | LLM tool calling | No — post-beta |
@@ -1256,7 +1484,7 @@ Mark deployment as complete. Clean up:
 | **P9** | Settings panel extras | No — post-beta |
 | **P10** | Vercel cleanup | No — housekeeping |
 
-**For beta:** P0-P3 are complete. P4-P10 are post-beta.
+**For beta:** P0-P3.1 are all complete. All beta blockers resolved. P4-P10 are post-beta enhancements.
 
 ---
 

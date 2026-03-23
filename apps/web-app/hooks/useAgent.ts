@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useSuiClient } from '@mysten/dapp-kit';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { deserializeKeypair } from '@/lib/zklogin';
 
@@ -16,7 +15,6 @@ export interface AgentActions {
 
 export function useAgent() {
   const { session, status } = useZkLogin();
-  const suiClient = useSuiClient();
 
   const agent = useMemo((): { address: string; getInstance: () => Promise<AgentActions> } | null => {
     if (!session || status !== 'authenticated') return null;
@@ -25,7 +23,6 @@ export function useAgent() {
       address: session.address,
       async getInstance(): Promise<AgentActions> {
         const { ZkLoginSigner } = await import('@t2000/sdk/browser');
-        const { toBase64 } = await import('@t2000/sdk/browser');
 
         const ephemeralKeypair = deserializeKeypair(session.ephemeralKeyPair);
         const signer = new ZkLoginSigner(
@@ -36,32 +33,53 @@ export function useAgent() {
         );
 
         const address = session.address;
+        const jwt = session.jwt;
 
-        async function signAndSubmit(txType: string, params: Record<string, unknown>): Promise<{ tx: string }> {
-          const buildRes = await fetch('/api/transactions/prepare', {
+        /**
+         * Sponsored transaction flow:
+         * 1. POST /api/transactions/prepare — server builds tx + sponsors via Enoki
+         * 2. Sign locally with zkLogin signer (non-custodial)
+         * 3. POST /api/transactions/execute — server submits signature to Enoki
+         */
+        async function sponsoredTransaction(
+          txType: string,
+          params: Record<string, unknown>,
+        ): Promise<{ tx: string }> {
+          const prepareHeaders: Record<string, string> = {
+            'Content-Type': 'application/json',
+          };
+          if (jwt) {
+            prepareHeaders['x-zklogin-jwt'] = jwt;
+          }
+
+          const prepareRes = await fetch('/api/transactions/prepare', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: prepareHeaders,
             body: JSON.stringify({ type: txType, address, ...params }),
           });
 
-          if (!buildRes.ok) {
-            const err = await buildRes.json();
-            throw new Error(err.error ?? 'Failed to build transaction');
+          if (!prepareRes.ok) {
+            const err = await prepareRes.json();
+            throw new Error(err.error ?? 'Failed to prepare transaction');
           }
 
-          const { txBytes: txBytesBase64 } = await buildRes.json();
+          const { bytes, digest } = await prepareRes.json();
 
-          const txBytes = Uint8Array.from(atob(txBytesBase64), c => c.charCodeAt(0));
+          const txBytes = Uint8Array.from(atob(bytes), c => c.charCodeAt(0));
           const { signature } = await signer.signTransaction(txBytes);
 
-          const result = await suiClient.executeTransactionBlock({
-            transactionBlock: toBase64(txBytes),
-            signature: [signature],
-            options: { showEffects: true },
+          const executeRes = await fetch('/api/transactions/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ digest, signature }),
           });
 
-          await suiClient.waitForTransaction({ digest: result.digest });
+          if (!executeRes.ok) {
+            const err = await executeRes.json();
+            throw new Error(err.error ?? 'Failed to execute transaction');
+          }
 
+          const result = await executeRes.json();
           return { tx: result.digest };
         }
 
@@ -69,28 +87,28 @@ export function useAgent() {
           address,
 
           async send({ to, amount, asset }) {
-            return signAndSubmit('send', { amount, recipient: to, asset });
+            return sponsoredTransaction('send', { amount, recipient: to, asset });
           },
 
           async save({ amount }) {
-            return signAndSubmit('save', { amount });
+            return sponsoredTransaction('save', { amount });
           },
 
           async withdraw({ amount }) {
-            return signAndSubmit('withdraw', { amount });
+            return sponsoredTransaction('withdraw', { amount });
           },
 
           async borrow({ amount }) {
-            return signAndSubmit('borrow', { amount });
+            return sponsoredTransaction('borrow', { amount });
           },
 
           async repay({ amount }) {
-            return signAndSubmit('repay', { amount });
+            return sponsoredTransaction('repay', { amount });
           },
         };
       },
     };
-  }, [session, status, suiClient]);
+  }, [session, status]);
 
   return {
     agent,

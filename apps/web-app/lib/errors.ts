@@ -20,7 +20,10 @@ const WALLET_ERROR_MAP: [RegExp, string][] = [
   [/gas budget.*exceeded/i, 'Transaction too expensive. Try a smaller amount.'],
   [/object.*not found/i, 'Account data is stale. Refreshing...'],
   [/network.*error|fetch.*failed|timed?\s?out/i, 'Network issue. Check your connection and try again.'],
-  [/rate.?limit/i, 'Too many requests. Wait a moment and try again.'],
+  [/rate.?limit|too many transactions/i, 'Too many transactions. Please wait a moment and try again.'],
+  [/sponsorship failed|gas pool/i, 'Gas sponsorship temporarily unavailable. Please try again later.'],
+  [/sponsored transaction expired/i, 'Transaction expired. Please try again.'],
+  [/not supported|disallowed/i, 'This action is not currently supported.'],
 ];
 
 export function mapError(error: unknown): FeedItemData {
