@@ -132,6 +132,50 @@ export class PortfolioManager {
     this.save();
   }
 
+  getStrategyAmountForAsset(asset: string): number {
+    this.load();
+    let total = 0;
+    for (const bucket of Object.values(this.data.strategies)) {
+      const pos = bucket[asset];
+      if (pos && pos.totalAmount > 0) total += pos.totalAmount;
+    }
+    return total;
+  }
+
+  getDirectAmount(asset: string): number {
+    this.load();
+    const aggregate = this.data.positions[asset]?.totalAmount ?? 0;
+    const strategyAmount = this.getStrategyAmountForAsset(asset);
+    return Math.max(0, aggregate - strategyAmount);
+  }
+
+  deductFromStrategies(asset: string, amount: number): void {
+    this.load();
+    let remaining = amount;
+    for (const [stratKey, bucket] of Object.entries(this.data.strategies)) {
+      if (remaining <= 0) break;
+      const pos = bucket[asset];
+      if (!pos || pos.totalAmount <= 0) continue;
+
+      const deduct = Math.min(pos.totalAmount, remaining);
+      const costDeduct = pos.avgPrice * deduct;
+      pos.totalAmount -= deduct;
+      pos.costBasis -= costDeduct;
+      if (pos.totalAmount < 0.000001) {
+        pos.totalAmount = 0;
+        pos.costBasis = 0;
+        pos.avgPrice = 0;
+      }
+      remaining -= deduct;
+
+      const hasPositions = Object.values(bucket).some((p) => p.totalAmount > 0);
+      if (!hasPositions) {
+        delete this.data.strategies[stratKey];
+      }
+    }
+    this.save();
+  }
+
   closePosition(asset: string): void {
     this.load();
     const pos = this.data.positions[asset];

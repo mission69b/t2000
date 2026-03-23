@@ -229,6 +229,13 @@ SDK: executeWithGas(buildTx)
         → report gas usage
 ```
 
+1. SDK builds a Transaction (gasless) and serializes it
+2. Sends to your gas station server (POST /api/gas)
+3. Server adds gas objects, dry-runs, signs as sponsor
+4. Returns txBytes + sponsorSignature to SDK
+5. SDK signs with user's ephemeral key (dual-signed)
+6. Submits to fullnode
+
 ### Gas constants
 
 | Constant | Value | Purpose |

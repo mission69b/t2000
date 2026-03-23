@@ -1589,6 +1589,8 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const price = swapResult.toAmount / sellAmountAsset;
 
+    const directAmountBeforeSell = this.portfolio.getDirectAmount(params.asset);
+
     let realizedPnL = 0;
     try {
       realizedPnL = this.portfolio.recordSell({
@@ -1608,6 +1610,12 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     if (params.usdAmount === 'all' && !params._strategyOnly) {
       this.portfolio.closePosition(params.asset);
+      this.portfolio.deductFromStrategies(params.asset, sellAmountAsset);
+    } else if (!params._strategyOnly && sellAmountAsset > 0) {
+      const overflowIntoStrategy = sellAmountAsset - directAmountBeforeSell;
+      if (overflowIntoStrategy > 0) {
+        this.portfolio.deductFromStrategies(params.asset, overflowIntoStrategy);
+      }
     }
 
     const updatedPos = this.portfolio.getPosition(params.asset);
