@@ -40,18 +40,18 @@ export function SmartForm({ service, onSubmit, onCancel }: SmartFormProps) {
   if (!service.fields?.length) return null;
 
   return (
-    <div className="rounded-xl bg-neutral-900 p-4 space-y-4">
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">{service.icon}</span>
           <div>
-            <p className="text-sm font-medium">{service.name}</p>
-            <p className="text-xs text-neutral-500">{service.description}</p>
+            <p className="text-sm font-medium text-foreground">{service.name}</p>
+            <p className="text-xs text-muted">{service.description}</p>
           </div>
         </div>
         <button
           onClick={onCancel}
-          className="text-neutral-500 hover:text-white p-1"
+          className="text-muted hover:text-foreground p-1"
           aria-label="Close"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -73,10 +73,10 @@ export function SmartForm({ service, onSubmit, onCancel }: SmartFormProps) {
       </div>
 
       <div className="flex items-center justify-between pt-1">
-        <span className="text-xs text-neutral-500">From {service.startingPrice}</span>
+        <span className="text-xs text-muted font-mono">From {service.startingPrice}</span>
         <button
           onClick={handleSubmit}
-          className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-neutral-950 transition hover:bg-neutral-200 active:scale-[0.97]"
+          className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-background transition hover:bg-accent/90 active:scale-[0.97]"
         >
           Continue
         </button>
@@ -97,14 +97,13 @@ function FieldInput({
   onChange: (value: string) => void;
 }) {
   const baseClass = [
-    'w-full rounded-lg bg-neutral-800 px-3 py-2.5 text-sm text-white placeholder:text-neutral-600 outline-none',
-    'focus:ring-1',
-    error ? 'ring-1 ring-red-500/50 focus:ring-red-500/50' : 'focus:ring-neutral-700',
+    'w-full rounded-lg border bg-panel px-3 py-2.5 text-sm text-foreground placeholder:text-dim outline-none',
+    error ? 'border-red-500/50 focus:border-red-500/50' : 'border-border focus:border-border-bright',
   ].join(' ');
 
   return (
     <div className="space-y-1">
-      <label className="text-xs text-neutral-400">{field.label}</label>
+      <label className="text-xs text-muted">{field.label}</label>
       {field.type === 'textarea' ? (
         <textarea
           value={value}

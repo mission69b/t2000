@@ -49,11 +49,11 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
           onClick={() => handleClick(chip.id)}
           disabled={disabled}
           className={[
-            'rounded-full px-4 py-2 text-sm font-medium transition active:scale-[0.95]',
+            'rounded-full px-4 py-2 text-sm font-medium transition active:scale-[0.95] border',
             'disabled:opacity-40 disabled:cursor-not-allowed',
             activeFlow === chip.id
-              ? 'bg-white text-neutral-950'
-              : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white',
+              ? 'bg-accent-dim border-accent/40 text-accent'
+              : 'bg-panel border-border text-muted hover:border-border-bright hover:text-foreground',
           ].join(' ')}
         >
           {chip.label}
@@ -62,7 +62,7 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
       {showMore && (
         <button
           onClick={() => setShowMore(false)}
-          className="rounded-full px-4 py-2 text-sm font-medium bg-neutral-800 text-neutral-500 hover:text-white transition"
+          className="rounded-full px-4 py-2 text-sm font-medium border border-border bg-panel text-dim hover:text-foreground transition"
         >
           ← Back
         </button>

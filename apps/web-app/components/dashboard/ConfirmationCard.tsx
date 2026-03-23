@@ -18,14 +18,14 @@ export function ConfirmationCard({
   loading,
 }: ConfirmationCardProps) {
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-5 space-y-4">
-      <p className="font-medium">{title}</p>
+    <div className="rounded-xl border border-border bg-surface p-5 space-y-4 feed-row">
+      <p className="font-medium text-foreground">{title}</p>
 
       <div className="space-y-2">
         {details.map((d) => (
           <div key={d.label} className="flex justify-between text-sm">
-            <span className="text-neutral-400">{d.label}</span>
-            <span className="text-white font-medium">{d.value}</span>
+            <span className="text-muted">{d.label}</span>
+            <span className="text-foreground font-medium font-mono">{d.value}</span>
           </div>
         ))}
       </div>
@@ -34,11 +34,11 @@ export function ConfirmationCard({
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex-1 rounded-xl bg-white py-3 text-sm font-semibold text-neutral-950 transition hover:bg-neutral-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+          className="flex-1 rounded-xl bg-accent py-3 text-sm font-semibold text-background transition hover:bg-accent/90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-400 border-t-neutral-950" />
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-background/40 border-t-background" />
               Processing...
             </>
           ) : (
@@ -48,7 +48,7 @@ export function ConfirmationCard({
         <button
           onClick={onCancel}
           disabled={loading}
-          className="rounded-xl px-5 py-3 text-sm text-neutral-400 hover:text-white transition disabled:opacity-50"
+          className="rounded-xl px-5 py-3 text-sm text-muted hover:text-foreground transition disabled:opacity-50"
         >
           Cancel
         </button>

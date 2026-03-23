@@ -45,8 +45,8 @@ function FeedItemCard({
   switch (data.type) {
     case 'user-message':
       return (
-        <div className="flex justify-end">
-          <div className="max-w-[80%] rounded-2xl rounded-br-md bg-white px-4 py-2.5 text-sm text-neutral-950">
+        <div className="flex justify-end feed-row">
+          <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent/15 border border-accent/20 px-4 py-2.5 text-sm text-foreground">
             {data.text}
           </div>
         </div>
@@ -54,10 +54,10 @@ function FeedItemCard({
 
     case 'ai-text':
       return (
-        <div className="space-y-2">
-          <div className="rounded-2xl rounded-bl-md bg-neutral-900 px-4 py-3 text-sm">
-            <span className="text-neutral-500 mr-1.5">🤖</span>
-            <span className="whitespace-pre-line">{data.text}</span>
+        <div className="space-y-2 feed-row">
+          <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm">
+            <span className="text-dim mr-1.5">t2</span>
+            <span className="whitespace-pre-line text-foreground">{data.text}</span>
           </div>
           {data.chips && data.chips.length > 0 && (
             <div className="flex flex-wrap gap-2 pl-2">
@@ -65,7 +65,7 @@ function FeedItemCard({
                 <button
                   key={chip.label}
                   onClick={() => onChipClick(chip.flow)}
-                  className="rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition"
+                  className="rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
                 >
                   {chip.label}
                 </button>
@@ -77,8 +77,8 @@ function FeedItemCard({
 
     case 'receipt':
       return (
-        <div className="rounded-xl bg-neutral-900 p-4 space-y-3">
-          <p className="text-sm font-medium">{data.title}</p>
+        <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+          <p className="text-sm font-medium text-foreground">{data.title}</p>
           {data.qr && data.code && (
             <div className="flex justify-center py-2">
               <QrCode value={data.code} size={180} />
@@ -86,16 +86,16 @@ function FeedItemCard({
           )}
           {data.meta.map((m) => (
             <div key={m.label} className="flex justify-between text-sm">
-              <span className="text-neutral-500">{m.label}</span>
-              <span>{m.value}</span>
+              <span className="text-muted">{m.label}</span>
+              <span className="text-foreground font-mono">{m.value}</span>
             </div>
           ))}
           {data.code && (
-            <div className="flex items-center justify-between bg-neutral-800 rounded-lg px-3 py-2">
-              <code className="text-xs font-mono text-white break-all">{data.code}</code>
+            <div className="flex items-center justify-between border border-border bg-panel rounded-lg px-3 py-2">
+              <code className="text-xs font-mono text-foreground break-all">{data.code}</code>
               <button
                 onClick={() => onCopy?.(data.code!)}
-                className="text-neutral-500 hover:text-white p-1 shrink-0 ml-2"
+                className="text-muted hover:text-foreground p-1 shrink-0 ml-2"
                 aria-label="Copy address"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -109,16 +109,16 @@ function FeedItemCard({
 
     case 'list':
       return (
-        <div className="rounded-xl bg-neutral-900 p-4 space-y-2">
-          <p className="text-sm font-medium">{data.title}</p>
-          <div className="divide-y divide-neutral-800">
+        <div className="rounded-xl border border-border bg-surface p-4 space-y-2 feed-row">
+          <p className="text-sm font-medium text-foreground">{data.title}</p>
+          <div className="divide-y divide-border">
             {data.items.map((row, i) => (
               <div key={i} className="flex justify-between py-2 text-sm">
                 <div>
-                  <span>{row.label}</span>
-                  {row.sub && <span className="ml-2 text-neutral-500">{row.sub}</span>}
+                  <span className="text-foreground">{row.label}</span>
+                  {row.sub && <span className="ml-2 text-muted">{row.sub}</span>}
                 </div>
-                <span className="text-neutral-400">{row.value}</span>
+                <span className="text-muted font-mono">{row.value}</span>
               </div>
             ))}
           </div>
@@ -127,12 +127,12 @@ function FeedItemCard({
 
     case 'report':
       return (
-        <div className="rounded-xl bg-neutral-900 p-4 space-y-4">
+        <div className="rounded-xl border border-border bg-surface p-4 space-y-4 feed-row">
           {data.sections.map((section, i) => (
             <div key={i} className="space-y-1">
-              <p className="text-sm font-medium">{section.title}</p>
+              <p className="text-sm font-medium text-foreground">{section.title}</p>
               {section.lines.map((line, j) => (
-                <p key={j} className="text-sm text-neutral-400">{line}</p>
+                <p key={j} className="text-sm text-muted font-mono">{line}</p>
               ))}
             </div>
           ))}
@@ -141,23 +141,23 @@ function FeedItemCard({
 
     case 'image':
       return (
-        <div className="rounded-xl bg-neutral-900 overflow-hidden space-y-2">
+        <div className="rounded-xl border border-border bg-surface overflow-hidden space-y-2 feed-row">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={data.url} alt={data.alt} className="w-full" />
           {data.cost && (
-            <p className="text-xs text-neutral-500 px-4 pb-3">{data.cost} from your balance</p>
+            <p className="text-xs text-muted px-4 pb-3">{data.cost} from your balance</p>
           )}
         </div>
       );
 
     case 'confirmation':
       return (
-        <div className="rounded-xl bg-neutral-900 p-4 space-y-3">
-          <p className="text-sm font-medium">{data.title}</p>
+        <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+          <p className="text-sm font-medium text-foreground">{data.title}</p>
           {data.details.map((d) => (
             <div key={d.label} className="flex justify-between text-sm">
-              <span className="text-neutral-500">{d.label}</span>
-              <span>{d.value}</span>
+              <span className="text-muted">{d.label}</span>
+              <span className="text-foreground font-mono">{d.value}</span>
             </div>
           ))}
         </div>
@@ -165,30 +165,30 @@ function FeedItemCard({
 
     case 'result':
       return (
-        <div className={`rounded-xl p-4 text-sm ${data.success ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+        <div className={`rounded-xl p-4 text-sm feed-row ${data.success ? 'bg-accent-dim border border-accent/20' : 'bg-red-500/10 border border-red-500/20'}`}>
           <p className="font-medium">
             <span className="mr-1.5">{data.success ? '✓' : '✕'}</span>
-            {data.title}
+            <span className={data.success ? 'text-accent' : 'text-red-400'}>{data.title}</span>
           </p>
           {data.details && (
-            <p className={`mt-1 ${data.success ? 'text-green-300/80' : 'text-red-300/80'}`}>{data.details}</p>
+            <p className={`mt-1 ${data.success ? 'text-accent/70' : 'text-red-300/80'}`}>{data.details}</p>
           )}
         </div>
       );
 
     case 'audio':
       return (
-        <div className="rounded-xl bg-neutral-900 p-4 space-y-2">
-          <p className="text-sm font-medium">{data.title}</p>
+        <div className="rounded-xl border border-border bg-surface p-4 space-y-2 feed-row">
+          <p className="text-sm font-medium text-foreground">{data.title}</p>
           <audio controls className="w-full" src={data.url} />
           <div className="flex items-center justify-between">
             {data.cost && (
-              <p className="text-xs text-neutral-500">{data.cost} from your balance</p>
+              <p className="text-xs text-muted">{data.cost} from your balance</p>
             )}
             <a
               href={data.url}
               download
-              className="text-xs text-neutral-500 hover:text-white transition"
+              className="text-xs text-accent hover:underline transition"
             >
               Download
             </a>
@@ -198,9 +198,9 @@ function FeedItemCard({
 
     case 'error':
       return (
-        <div className="space-y-2">
+        <div className="space-y-2 feed-row">
           <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm">
-            <span className="text-neutral-500 mr-1.5">🤖</span>
+            <span className="text-dim mr-1.5">t2</span>
             <span className="text-red-300">{data.message}</span>
           </div>
           {data.chips && data.chips.length > 0 && (
@@ -209,7 +209,7 @@ function FeedItemCard({
                 <button
                   key={chip.label}
                   onClick={() => onChipClick(chip.flow)}
-                  className="rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition"
+                  className="rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
                 >
                   {chip.label}
                 </button>

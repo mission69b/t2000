@@ -15,18 +15,18 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
 
   if (showCustom) {
     return (
-      <div className="rounded-xl bg-neutral-900 p-4 space-y-3">
-        {message && <p className="text-sm text-neutral-400 whitespace-pre-line">{message}</p>}
+      <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+        {message && <p className="text-sm text-muted whitespace-pre-line">{message}</p>}
         <div className="flex gap-2">
-          <div className="flex-1 flex items-center bg-neutral-800 rounded-xl px-4">
-            <span className="text-neutral-500">$</span>
+          <div className="flex-1 flex items-center border border-border bg-panel rounded-xl px-4">
+            <span className="text-muted font-mono">$</span>
             <input
               type="number"
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
               placeholder="0.00"
               autoFocus
-              className="flex-1 bg-transparent py-3 pl-1 text-sm text-white outline-none"
+              className="flex-1 bg-transparent py-3 pl-1 text-sm text-foreground font-mono outline-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && custom) onSelect(parseFloat(custom));
               }}
@@ -35,14 +35,14 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
           <button
             onClick={() => custom && onSelect(parseFloat(custom))}
             disabled={!custom || parseFloat(custom) <= 0}
-            className="rounded-xl bg-white px-5 py-3 text-sm font-medium text-neutral-950 transition hover:bg-neutral-200 disabled:opacity-40"
+            className="rounded-xl bg-accent px-5 py-3 text-sm font-medium text-background transition hover:bg-accent/90 disabled:opacity-40"
           >
             Go
           </button>
         </div>
         <button
           onClick={() => setShowCustom(false)}
-          className="text-xs text-neutral-500 hover:text-white transition"
+          className="text-xs text-muted hover:text-foreground transition"
         >
           ← Back to presets
         </button>
@@ -51,14 +51,14 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
   }
 
   return (
-    <div className="rounded-xl bg-neutral-900 p-4 space-y-3">
-      {message && <p className="text-sm text-neutral-400 whitespace-pre-line">{message}</p>}
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+      {message && <p className="text-sm text-muted whitespace-pre-line">{message}</p>}
       <div className="flex flex-wrap gap-2">
         {amounts.map((a) => (
           <button
             key={a}
             onClick={() => onSelect(a)}
-            className="rounded-full bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 transition active:scale-[0.95]"
+            className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-medium font-mono text-foreground hover:border-border-bright transition active:scale-[0.95]"
           >
             ${a}
           </button>
@@ -66,14 +66,14 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
         {allLabel && (
           <button
             onClick={() => onSelect(-1)}
-            className="rounded-full bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 transition active:scale-[0.95]"
+            className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-medium font-mono text-foreground hover:border-border-bright transition active:scale-[0.95]"
           >
             {allLabel}
           </button>
         )}
         <button
           onClick={() => setShowCustom(true)}
-          className="rounded-full bg-neutral-800 px-4 py-2 text-sm text-neutral-400 hover:text-white hover:bg-neutral-700 transition"
+          className="rounded-full border border-border bg-panel px-4 py-2 text-sm text-muted hover:text-foreground hover:border-border-bright transition"
         >
           Custom
         </button>

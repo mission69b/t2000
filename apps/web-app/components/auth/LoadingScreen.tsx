@@ -45,13 +45,13 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-semibold">Something went wrong</h2>
-            <p className="mt-2 text-sm text-neutral-400">{error}</p>
+            <h2 className="text-xl font-semibold text-foreground">Something went wrong</h2>
+            <p className="mt-2 text-sm text-muted">{error}</p>
           </div>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="rounded-xl bg-white px-6 py-3 font-semibold text-neutral-950 transition hover:bg-neutral-200"
+              className="rounded-xl bg-accent px-6 py-3 font-semibold text-background transition hover:bg-accent/90"
             >
               Try again
             </button>
@@ -65,12 +65,12 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center px-6">
         <div className="space-y-4 text-center animate-in fade-in duration-300">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-            <svg className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent-dim">
+            <svg className="h-8 w-8 text-accent" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold">You&apos;re all set!</h2>
+          <h2 className="text-xl font-semibold text-foreground">You&apos;re all set!</h2>
         </div>
       </main>
     );
@@ -79,7 +79,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-8">
-        <h2 className="text-xl font-semibold text-center">
+        <h2 className="text-xl font-semibold text-center text-foreground">
           Creating your account...
         </h2>
 
@@ -91,21 +91,21 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
             return (
               <div key={s.key} className="flex items-center gap-3">
                 {isComplete ? (
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500/20">
-                    <svg className="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-dim">
+                    <svg className="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   </div>
                 ) : isActive ? (
                   <div className="h-6 w-6 flex items-center justify-center">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
                   </div>
                 ) : (
                   <div className="flex h-6 w-6 items-center justify-center">
-                    <div className="h-2.5 w-2.5 rounded-full bg-neutral-600" />
+                    <div className="h-2.5 w-2.5 rounded-full bg-dim" />
                   </div>
                 )}
-                <span className={isComplete || isActive ? 'text-white' : 'text-neutral-500'}>
+                <span className={isComplete || isActive ? 'text-foreground' : 'text-muted'}>
                   {s.label}{isActive ? '...' : ''}
                 </span>
               </div>
@@ -113,10 +113,9 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
           })}
         </div>
 
-        {/* Progress bar */}
-        <div className="h-1.5 w-full rounded-full bg-neutral-800 overflow-hidden">
+        <div className="h-1.5 w-full rounded-full bg-panel overflow-hidden">
           <div
-            className="h-full rounded-full bg-white transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>

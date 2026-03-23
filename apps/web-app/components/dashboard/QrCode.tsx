@@ -17,7 +17,7 @@ export function QrCode({ value, size = 200 }: QrCodeProps) {
     QRCode.toDataURL(value, {
       width: size,
       margin: 2,
-      color: { dark: '#ffffff', light: '#00000000' },
+      color: { dark: '#e8e6e0', light: '#00000000' },
       errorCorrectionLevel: 'M',
     }).then((url) => {
       if (!cancelled) setDataUrl(url);
@@ -29,7 +29,7 @@ export function QrCode({ value, size = 200 }: QrCodeProps) {
   if (!dataUrl) {
     return (
       <div
-        className="animate-pulse rounded-xl bg-neutral-800"
+        className="animate-pulse rounded-xl bg-panel"
         style={{ width: size, height: size }}
       />
     );

@@ -10,14 +10,14 @@ interface SmartCardProps {
 
 export function SmartCard({ card, onAction, onDismiss }: SmartCardProps) {
   return (
-    <div className="rounded-xl bg-neutral-900 p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
       <div className="space-y-1">
-        <p className="text-sm">
+        <p className="text-sm text-foreground">
           <span className="mr-1.5">{card.icon}</span>
           {card.title}
         </p>
         {card.body && (
-          <p className="text-sm text-neutral-400">{card.body}</p>
+          <p className="text-sm text-muted">{card.body}</p>
         )}
       </div>
 
@@ -35,8 +35,8 @@ export function SmartCard({ card, onAction, onDismiss }: SmartCardProps) {
               }}
               className={
                 action.variant === 'primary'
-                  ? 'rounded-lg bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition hover:bg-neutral-200 active:scale-[0.97]'
-                  : 'rounded-lg bg-neutral-800 px-4 py-2 text-sm text-neutral-400 transition hover:text-white hover:bg-neutral-700 active:scale-[0.97]'
+                  ? 'rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background transition hover:bg-accent/90 active:scale-[0.97]'
+                  : 'rounded-lg border border-border bg-panel px-4 py-2 text-sm text-muted transition hover:text-foreground hover:border-border-bright active:scale-[0.97]'
               }
             >
               {action.label}

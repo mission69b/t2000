@@ -399,7 +399,7 @@ function DashboardContent() {
 
   return (
     <main className="flex flex-1 flex-col pb-36">
-      <div className="mx-auto w-full max-w-lg px-4 py-6 space-y-5">
+      <div className="mx-auto w-full max-w-xl px-4 py-6 space-y-5">
         <BalanceHeader
           address={address}
           balance={balance}
@@ -447,15 +447,15 @@ function DashboardContent() {
 
         {/* Send flow — recipient selection */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (
-          <div className="rounded-xl bg-neutral-900 p-4 space-y-3">
-            <p className="text-sm text-neutral-400">Who do you want to send to?</p>
+          <div className="rounded-xl border border-border bg-surface p-4 space-y-3 feed-row">
+            <p className="text-sm text-muted">Who do you want to send to?</p>
             {contactsHook.contacts.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {contactsHook.contacts.map((c) => (
                   <button
                     key={c.address}
                     onClick={() => chipFlow.selectRecipient(c.address, c.name)}
-                    className="rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition"
+                    className="rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
                   >
                     {c.name}
                   </button>
@@ -467,7 +467,7 @@ function DashboardContent() {
                 type="text"
                 placeholder={contactsHook.contacts.length > 0 ? 'Or paste address (0x...)' : 'Paste address (0x...) or contact name'}
                 autoFocus
-                className="flex-1 rounded-xl bg-neutral-800 px-4 py-3 text-sm text-white placeholder:text-neutral-600 outline-none focus:ring-1 focus:ring-neutral-700"
+                className="flex-1 rounded-xl border border-border bg-panel px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const input = e.currentTarget.value.trim();
@@ -528,17 +528,16 @@ function DashboardContent() {
         {llm.loading && (
           <div className="flex items-center gap-2 px-2">
             <div className="flex gap-1">
-              <span className="h-2 w-2 rounded-full bg-neutral-600 animate-bounce [animation-delay:0ms]" />
-              <span className="h-2 w-2 rounded-full bg-neutral-600 animate-bounce [animation-delay:150ms]" />
-              <span className="h-2 w-2 rounded-full bg-neutral-600 animate-bounce [animation-delay:300ms]" />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce [animation-delay:0ms]" />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce [animation-delay:150ms]" />
+              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce [animation-delay:300ms]" />
             </div>
-            <span className="text-xs text-neutral-500">Thinking...</span>
+            <span className="text-xs text-muted">Thinking...</span>
           </div>
         )}
 
-        {/* LLM usage badge */}
         {llmUsage.isOverFreeLimit && (
-          <p className="text-center text-xs text-neutral-600">
+          <p className="text-center text-xs text-dim">
             AI queries today: {llmUsage.count} (costs apply)
           </p>
         )}
@@ -547,8 +546,8 @@ function DashboardContent() {
       </div>
 
       {/* Bottom bar — fixed */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur-sm safe-bottom p-4">
-        <div className="mx-auto max-w-lg space-y-3">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom p-4 z-30">
+        <div className="mx-auto max-w-xl space-y-3">
           <InputBar
             onSubmit={handleInputSubmit}
             disabled={chipFlow.state.phase === 'executing' || llm.loading}
@@ -561,7 +560,7 @@ function DashboardContent() {
           {isInFlow && chipFlow.state.phase !== 'result' && (
             <button
               onClick={chipFlow.reset}
-              className="w-full text-center text-xs text-neutral-500 hover:text-white transition py-1"
+              className="w-full text-center text-xs text-muted hover:text-foreground transition py-1"
             >
               Cancel
             </button>

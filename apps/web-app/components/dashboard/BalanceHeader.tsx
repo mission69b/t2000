@@ -19,14 +19,14 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
   return (
     <div className="space-y-1 text-center">
       <div className="flex items-center justify-between px-1">
-        <span className="text-sm font-semibold text-neutral-400 tracking-wide">t2000</span>
+        <span className="text-sm font-semibold text-muted tracking-wide">t2000</span>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-neutral-600">
+          <span className="text-xs font-mono text-dim">
             {truncateAddress(address)}
           </span>
           <button
             onClick={onSettingsClick}
-            className="rounded-lg p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 transition"
+            className="rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-panel transition"
             aria-label="Settings"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -39,15 +39,15 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
 
       {balance.loading ? (
         <div className="py-4 space-y-2">
-          <div className="h-10 w-32 mx-auto rounded-lg bg-neutral-800 animate-pulse" />
-          <div className="h-4 w-48 mx-auto rounded bg-neutral-800 animate-pulse" />
+          <div className="h-10 w-32 mx-auto rounded-lg bg-panel animate-pulse" />
+          <div className="h-4 w-48 mx-auto rounded bg-panel animate-pulse" />
         </div>
       ) : (
         <>
-          <p className="text-4xl font-bold tracking-tight">
+          <p className="text-4xl font-bold tracking-tight font-mono text-foreground">
             ${balance.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-muted">
             Checking ${balance.checking.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             {' · '}
             Savings ${balance.savings.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}

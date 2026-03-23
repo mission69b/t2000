@@ -69,16 +69,13 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/60" onClick={onClose} />
 
-      {/* Panel */}
-      <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl bg-neutral-950 border-t border-neutral-800">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
+      <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl bg-background border-t border-border">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <button
             onClick={handleBack}
-            className="flex items-center gap-1 text-sm text-neutral-400 hover:text-white transition"
+            className="flex items-center gap-1 text-sm text-muted hover:text-foreground transition"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -87,7 +84,7 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
           </button>
           <button
             onClick={onClose}
-            className="text-neutral-500 hover:text-white p-1"
+            className="text-muted hover:text-foreground p-1"
             aria-label="Close services"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -96,9 +93,7 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Service form view */}
           {selectedService && (
             <SmartForm
               service={selectedService}
@@ -107,17 +102,15 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
             />
           )}
 
-          {/* Category / browse view */}
           {!selectedService && (
             <>
-              {/* Category chips */}
               {!activeCategory && (
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className="rounded-full bg-neutral-800 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition active:scale-[0.97]"
+                      className="rounded-full border border-border bg-panel px-3 py-1.5 text-sm font-medium text-muted hover:border-border-bright hover:text-foreground transition active:scale-[0.97]"
                     >
                       {CATEGORY_META[cat].icon} {CATEGORY_META[cat].label}
                     </button>
@@ -125,16 +118,14 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
                 </div>
               )}
 
-              {/* Search */}
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search services..."
-                className="w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-sm text-white placeholder:text-neutral-600 outline-none focus:ring-1 focus:ring-neutral-700"
+                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
               />
 
-              {/* Service grid */}
               <div className="grid grid-cols-4 gap-2">
                 {filteredServices.map((service) => (
                   <ServiceCard
@@ -146,13 +137,12 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
               </div>
 
               {filteredServices.length === 0 && (
-                <p className="text-center text-sm text-neutral-500 py-8">
+                <p className="text-center text-sm text-muted py-8">
                   No services found. Try a different search.
                 </p>
               )}
 
-              {/* Footer */}
-              <p className="text-center text-xs text-neutral-600 pb-2">
+              <p className="text-center text-xs text-dim pb-2">
                 No accounts. No API keys. No sign-ups. Just tap and use.
               </p>
             </>

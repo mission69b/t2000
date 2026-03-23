@@ -2199,3 +2199,55 @@ Both are maintained independently — `recordBuy`/`recordSell` mutate `positions
 ### If We Revisit Later
 
 The clean fix: derive `positions` and `strategies` from the `history` array on every access (with caching). Each history entry gets a `strategyId` field (null for direct trades). No dual-ledger sync logic needed — a sell is just a new history entry, and both views recompute automatically.
+
+---
+
+## Design System
+
+The web app (`app.t2000.ai`) must share the same visual identity as the gateway (`t2000.ai`). The brand is defined by:
+
+### Color Palette (shared across all t2000 surfaces)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--background` | `#040406` | Page background |
+| `--surface` | `#080a0f` | Cards, elevated containers |
+| `--panel` | `#0d1018` | Inputs, nested elements |
+| `--border` | `rgba(255,255,255,0.07)` | Default borders |
+| `--border-bright` | `rgba(255,255,255,0.14)` | Hover/focus borders |
+| `--foreground` | `#e8e6e0` | Primary text (warm off-white) |
+| `--muted` | `#5a6070` | Secondary text |
+| `--dim` | `#333844` | Tertiary text, separators |
+| `--accent` | `#00d68f` | CTAs, links, success, active states |
+| `--accent-dim` | `rgba(0,214,143,0.12)` | Accent backgrounds, selected chips |
+
+### Typography
+
+- **Body text:** Inter (sans-serif) — readability for consumer product
+- **Code / data:** IBM Plex Mono — addresses, amounts, balances, hashes, transaction data
+- **Sizing:** Understated. Gateway uses `text-xl` for hero, `text-sm` for body. Web app should match this restraint.
+
+### Visual Texture
+
+- Noise grain overlay on `body::before` (SVG filter, `opacity: 0.4`)
+- Layered surface depth: `background` → `surface` → `panel` (3-tier)
+- Borders are subtle white-alpha, not opaque Tailwind neutrals
+
+### Motion
+
+- Feed items: `feed-slide-in` (translateY -8px → 0, 300ms ease-out)
+- Smart cards: staggered entrance animation
+- Scrollbar: hidden on chip bars (`scrollbar-none`)
+
+### What Differs from Gateway
+
+The web app is a **consumer banking product**, not a developer tool. Key differences:
+
+| Aspect | Gateway | Web App |
+|--------|---------|---------|
+| Primary font | IBM Plex Mono (monospace everywhere) | Inter for body, IBM Plex Mono for data only |
+| Content width | `max-w-3xl` | `max-w-lg` (mobile-first, tighter) |
+| Interaction model | Browse + CLI | Conversational + chips |
+| Terminal aesthetics | Cursor blink, line-appear | Feed animations, card transitions |
+
+Same colors, same texture, same border language — different typography and interaction patterns.
