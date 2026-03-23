@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
+import {
+  depositCoinPTB,
+  withdrawCoinPTB,
+  borrowCoinPTB,
+  repayCoinPTB,
+  getPools,
+  getLendingPositions,
+  updateOraclePriceBeforeUserOperationPTB,
+} from '@naviprotocol/lending';
 
 export const runtime = 'nodejs';
 
@@ -22,7 +31,65 @@ interface BuildRequest {
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+const USDC_DECIMALS = 6;
 const MIST_PER_SUI = 1_000_000_000;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function naviOpts(): { env: 'prod'; client: any; cacheTime: number; disableCache: boolean } {
+  return { env: 'prod', client, cacheTime: 0, disableCache: true };
+}
+
+async function fetchCoins(
+  owner: string,
+  coinType: string,
+): Promise<Array<{ coinObjectId: string; balance: string }>> {
+  const all: Array<{ coinObjectId: string; balance: string }> = [];
+  let cursor: string | null | undefined;
+  let hasNext = true;
+  while (hasNext) {
+    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
+    all.push(...page.data.map((c) => ({ coinObjectId: c.coinObjectId, balance: c.balance })));
+    cursor = page.nextCursor;
+    hasNext = page.hasNextPage;
+  }
+  return all;
+}
+
+function mergeCoins(
+  tx: Transaction,
+  coins: Array<{ coinObjectId: string }>,
+): TransactionObjectArgument {
+  const primary = tx.object(coins[0].coinObjectId);
+  if (coins.length > 1) {
+    tx.mergeCoins(primary, coins.slice(1).map((c) => tx.object(c.coinObjectId)));
+  }
+  return primary;
+}
+
+async function refreshOracle(tx: Transaction, address: string): Promise<void> {
+  const origInfo = console.info;
+  const origWarn = console.warn;
+  console.info = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('stale price feed')) return;
+    origInfo.apply(console, args);
+  };
+  console.warn = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('price feed')) return;
+    origWarn.apply(console, args);
+  };
+  try {
+    const pools = await getPools(naviOpts());
+    await updateOraclePriceBeforeUserOperationPTB(tx, address, pools, {
+      ...naviOpts(),
+      throws: false,
+    });
+  } catch {
+    // Best-effort: operation may succeed if on-chain prices are fresh
+  } finally {
+    console.info = origInfo;
+    console.warn = origWarn;
+  }
+}
 
 /**
  * POST /api/transactions/prepare
@@ -131,7 +198,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
       const assetKey = asset ?? 'SUI';
       const coinType = assetKey === 'SUI' ? '0x2::sui::SUI' : USDC_TYPE;
-      const decimals = assetKey === 'SUI' ? 9 : 6;
+      const decimals = assetKey === 'SUI' ? 9 : USDC_DECIMALS;
       const rawAmount = BigInt(Math.round(amount * 10 ** decimals));
 
       const coins = await client.getCoins({ owner: address, coinType });
@@ -149,35 +216,73 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'save': {
-      const { NaviAdapter } = await import('@t2000/sdk/adapters');
-      const navi = new NaviAdapter();
-      navi.initSync(client);
-      const result = await navi.buildSaveTx(address, amount, 'USDC');
-      return result.tx;
+      const coins = await fetchCoins(address, USDC_TYPE);
+      if (coins.length === 0) throw new Error('No USDC coins found');
+
+      const coinObj = mergeCoins(tx, coins);
+      const rawAmount = Math.round(amount * 10 ** USDC_DECIMALS);
+
+      await depositCoinPTB(tx, USDC_TYPE, coinObj as never, {
+        ...naviOpts(),
+        amount: rawAmount,
+      });
+      return tx;
     }
 
     case 'withdraw': {
-      const { NaviAdapter } = await import('@t2000/sdk/adapters');
-      const navi = new NaviAdapter();
-      navi.initSync(client);
-      const result = await navi.buildWithdrawTx(address, amount, 'USDC');
-      return result.tx;
+      const positions = await getLendingPositions(address, {
+        ...naviOpts(),
+        markets: ['main'],
+      });
+
+      let deposited = 0;
+      for (const pos of positions) {
+        const data = pos['navi-lending-supply'] ?? pos['navi-lending-emode-supply'];
+        if (!data) continue;
+        const coinSuffix = (data.token?.coinType ?? '').split('::').slice(1).join('::').toLowerCase();
+        if (coinSuffix === 'usdc::usdc') {
+          deposited = parseFloat(data.amount);
+        }
+      }
+
+      const dustBuffer = 1000 / 10 ** USDC_DECIMALS;
+      const effectiveAmount = Math.min(amount, Math.max(0, deposited - dustBuffer));
+      if (effectiveAmount <= 0) throw new Error('Nothing to withdraw from NAVI');
+
+      const rawAmount = Math.round(effectiveAmount * 10 ** USDC_DECIMALS);
+
+      await refreshOracle(tx, address);
+
+      const coin = await withdrawCoinPTB(tx, USDC_TYPE, rawAmount, naviOpts());
+      tx.transferObjects([coin as TransactionObjectArgument], address);
+      return tx;
     }
 
     case 'borrow': {
-      const { NaviAdapter } = await import('@t2000/sdk/adapters');
-      const navi = new NaviAdapter();
-      navi.initSync(client);
-      const result = await navi.buildBorrowTx(address, amount, 'USDC');
-      return result.tx;
+      const rawAmount = Math.round(amount * 10 ** USDC_DECIMALS);
+
+      await refreshOracle(tx, address);
+
+      const borrowedCoin = await borrowCoinPTB(tx, USDC_TYPE, rawAmount, naviOpts());
+      tx.transferObjects([borrowedCoin as TransactionObjectArgument], address);
+      return tx;
     }
 
     case 'repay': {
-      const { NaviAdapter } = await import('@t2000/sdk/adapters');
-      const navi = new NaviAdapter();
-      navi.initSync(client);
-      const result = await navi.buildRepayTx(address, amount, 'USDC');
-      return result.tx;
+      const coins = await fetchCoins(address, USDC_TYPE);
+      if (coins.length === 0) throw new Error('No USDC coins to repay with');
+
+      const coinObj = mergeCoins(tx, coins);
+      const rawAmount = Math.round(amount * 10 ** USDC_DECIMALS);
+      const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
+
+      await refreshOracle(tx, address);
+
+      await repayCoinPTB(tx, USDC_TYPE, repayCoin as never, {
+        ...naviOpts(),
+        amount: rawAmount,
+      });
+      return tx;
     }
 
     default:

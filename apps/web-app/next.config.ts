@@ -38,7 +38,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@t2000/sdk'],
+  serverExternalPackages: ['@naviprotocol/lending'],
   async headers() {
     return [
       {
