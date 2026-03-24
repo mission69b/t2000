@@ -297,11 +297,17 @@ function DashboardContent() {
           chipFlow.startFlow('save', flowContext);
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
-        case 'send':
+        case 'send': {
           chipFlow.startFlow('send', flowContext);
-          chipFlow.selectRecipient(intent.to, undefined, flowContext.checking);
+          const resolved = contactsHook.resolveContact(intent.to);
+          if (resolved) {
+            chipFlow.selectRecipient(resolved, intent.to, flowContext.checking);
+          } else {
+            chipFlow.selectRecipient(intent.to, undefined, flowContext.checking);
+          }
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
+        }
         case 'withdraw':
           if (balance.savings <= 0) {
             feed.addItem({
