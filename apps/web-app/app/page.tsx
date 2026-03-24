@@ -18,16 +18,18 @@ export default function LandingPage() {
   const isLoading = status === 'redirecting' || status === 'loading';
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-      <div className="max-w-xl space-y-8">
+    <main className="flex flex-1 flex-col items-center px-6 text-center">
+      {/* Above the fold */}
+      <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-4rem)] max-w-xl space-y-8">
         <h1 className="text-2xl font-medium tracking-tight text-foreground">
           A bank account that works for you.
         </h1>
 
-        <p className="text-sm text-muted leading-relaxed max-w-md mx-auto">
-          Earn yield on idle funds. Pay for services without accounts.
-          Invest with one tap. All from your Google account.
-        </p>
+        <div className="space-y-2 text-sm text-muted">
+          <p>Your money earns 6-8% while you sleep.</p>
+          <p>Pay for any service — no accounts, no subscriptions.</p>
+          <p>Invest in crypto and gold with one tap.</p>
+        </div>
 
         <div className="space-y-3">
           <GoogleSignIn onClick={login} loading={isLoading} />
@@ -35,8 +37,28 @@ export default function LandingPage() {
             No seed phrase. No keys. No downloads.
           </p>
         </div>
+      </div>
 
-        <div className="flex items-stretch gap-3 pt-4 text-xs">
+      {/* Below the fold */}
+      <div className="max-w-xl w-full space-y-12 pb-16">
+        <div className="space-y-6">
+          <h2 className="text-lg font-medium text-foreground">How it works</h2>
+          <div className="space-y-4 text-sm">
+            {[
+              { step: '1', label: 'Sign in with Google' },
+              { step: '2', label: 'Add funds' },
+              { step: '3', label: "That's it." },
+            ].map((item) => (
+              <div key={item.step} className="flex items-center gap-4 border border-border rounded-sm bg-surface/40 px-4 py-3">
+                <span className="font-mono text-accent text-lg font-semibold">{item.step}</span>
+                <span className="text-muted">{item.label}</span>
+              </div>
+            ))}
+          </div>
+          <GoogleSignIn onClick={login} loading={isLoading} />
+        </div>
+
+        <div className="flex items-stretch gap-3 text-xs">
           <div className="flex-1 border border-border rounded-sm bg-surface/40 px-4 py-3">
             <p className="text-lg font-semibold text-foreground font-mono">41</p>
             <p className="text-muted uppercase tracking-wider">Services</p>
@@ -51,7 +73,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <p className="text-xs text-dim pt-2">
+        <p className="text-xs text-dim">
           Already use the CLI?{' '}
           <a
             href="https://www.npmjs.com/package/@t2000/cli"
@@ -63,7 +85,7 @@ export default function LandingPage() {
           </a>
         </p>
 
-        <div className="flex items-center justify-center gap-4 pt-1 text-xs text-dim">
+        <div className="flex items-center justify-center gap-4 text-xs text-dim">
           <a href="https://t2000.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
             Privacy
           </a>

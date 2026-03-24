@@ -76,7 +76,7 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
     });
   }
 
-  if (state.checking > 10) {
+  if (state.checking > 5) {
     const monthlyEarnings = (state.checking * (state.savingsRate / 100)) / 12;
     cards.push({
       type: 'idle-funds',

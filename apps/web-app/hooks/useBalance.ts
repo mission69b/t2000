@@ -20,6 +20,8 @@ export interface BalanceData {
   savingsRate: number;
   healthFactor: number | null;
   maxBorrow: number;
+  pendingRewards: number;
+  bestSaveRate: { protocol: string; rate: number } | null;
   loading: boolean;
 }
 
@@ -60,13 +62,16 @@ export function useBalance(address: string | null) {
     queryFn: async (): Promise<BalanceData> => {
       if (!address) throw new Error('No address');
 
-      const [suiBal, usdcBal, suiPrice, posData] = await Promise.all([
+      const [suiBal, usdcBal, suiPrice, posData, ratesData] = await Promise.all([
         client.getBalance({ owner: address, coinType: '0x2::sui::SUI' }),
         client.getBalance({ owner: address, coinType: USDC_TYPE }).catch(() => ({ totalBalance: '0' })),
         fetchSuiPrice(client),
         fetch(`/api/positions?address=${address}`)
           .then(r => r.json())
           .catch(() => ({ savings: 0, borrows: 0 })),
+        fetch('/api/rates')
+          .then(r => r.json())
+          .catch(() => ({ rates: [], bestSaveRate: null })),
       ]);
 
       const sui = Number(suiBal.totalBalance) / MIST_PER_SUI;
@@ -79,6 +84,8 @@ export function useBalance(address: string | null) {
       const savingsRate = posData.savingsRate ?? 0;
       const healthFactor = posData.healthFactor ?? null;
       const maxBorrow = posData.maxBorrow ?? 0;
+      const pendingRewards = posData.pendingRewards ?? 0;
+      const bestSaveRate = ratesData.bestSaveRate ?? null;
 
       return {
         total: checking + savings - borrows,
@@ -92,6 +99,8 @@ export function useBalance(address: string | null) {
         savingsRate,
         healthFactor,
         maxBorrow,
+        pendingRewards,
+        bestSaveRate,
         loading: false,
       };
     },

@@ -6,7 +6,7 @@ import { truncateAddress, formatUsd } from '@t2000/sdk';
 
 const KNOWN_ASSETS = new Set(['USDC', 'USDT', 'USDE', 'USDSUI', 'SUI']);
 
-function parseSendArgs(args: string[]): { amount: number; asset: string; recipient: string } {
+export function parseSendArgs(args: string[]): { amount: number; asset: string; recipient: string } {
   const filtered = args.filter(a => a.toLowerCase() !== 'to');
   if (filtered.length >= 3 && KNOWN_ASSETS.has(filtered[1].toUpperCase())) {
     return { amount: parseFloat(filtered[0]), asset: filtered[1].toUpperCase(), recipient: filtered[2] };

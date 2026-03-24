@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { BalanceHeader } from '@/components/dashboard/BalanceHeader';
@@ -13,7 +13,7 @@ import { AmountChips } from '@/components/dashboard/AmountChips';
 import { FeedRenderer } from '@/components/dashboard/FeedRenderer';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ServicesPanel } from '@/components/services/ServicesPanel';
-import { useChipFlow, type ChipFlowResult } from '@/hooks/useChipFlow';
+import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useLlm } from '@/hooks/useLlm';
 import { useLlmUsage } from '@/hooks/useLlmUsage';
@@ -26,6 +26,110 @@ import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
 import type { ServiceItem } from '@/lib/service-catalog';
+
+const LS_LAST_SAVINGS = 't2000_last_savings';
+const LS_LAST_OPEN = 't2000_last_open_date';
+
+function SendRecipientInput({
+  contacts,
+  onSelectContact,
+  onSubmit,
+}: {
+  contacts: Array<{ name: string; address: string }>;
+  onSelectContact: (address: string, name: string) => void;
+  onSubmit: (input: string) => void;
+}) {
+  const [value, setValue] = useState('');
+
+  const handleSubmit = () => {
+    const input = value.trim();
+    if (!input) return;
+    onSubmit(input);
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        setValue(text.trim());
+      }
+    } catch {
+      // clipboard access denied
+    }
+  };
+
+  return (
+    <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
+      <p className="text-sm text-muted">Who do you want to send to?</p>
+      {contacts.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {contacts.map((c) => (
+            <button
+              key={c.address}
+              onClick={() => onSelectContact(c.address, c.name)}
+              className="rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Address (0x...) or contact name"
+          autoFocus
+          className="flex-1 rounded-sm border border-border bg-panel px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+        />
+        {value.trim() ? (
+          <button
+            onClick={handleSubmit}
+            className="bg-accent px-4 py-2 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] active:scale-[0.97]"
+          >
+            Go
+          </button>
+        ) : (
+          <button
+            onClick={handlePaste}
+            className="rounded-sm border border-border bg-panel px-4 py-2 text-sm text-muted transition hover:text-foreground hover:border-border-bright active:scale-[0.97]"
+          >
+            📋 Paste
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function useOvernightEarnings(savings: number, loading: boolean) {
+  return useMemo(() => {
+    if (loading || typeof window === 'undefined') {
+      return { earnings: undefined, isFirstOpenToday: false };
+    }
+
+    const today = new Date().toDateString();
+    const lastOpen = localStorage.getItem(LS_LAST_OPEN);
+    const isFirstOpenToday = lastOpen !== today;
+
+    let earnings: number | undefined;
+    if (isFirstOpenToday && savings > 0) {
+      const lastSavings = parseFloat(localStorage.getItem(LS_LAST_SAVINGS) ?? '0');
+      if (lastSavings > 0 && savings > lastSavings) {
+        earnings = savings - lastSavings;
+      }
+    }
+
+    localStorage.setItem(LS_LAST_OPEN, today);
+    if (savings > 0) {
+      localStorage.setItem(LS_LAST_SAVINGS, savings.toString());
+    }
+
+    return { earnings, isFirstOpenToday };
+  }, [savings, loading]);
+}
 
 function DashboardContent() {
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
@@ -49,6 +153,8 @@ function DashboardContent() {
     savingsRate: balanceQuery.data?.savingsRate ?? 0,
     healthFactor: balanceQuery.data?.healthFactor ?? null,
     maxBorrow: balanceQuery.data?.maxBorrow ?? 0,
+    pendingRewards: balanceQuery.data?.pendingRewards ?? 0,
+    bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
     loading: balanceQuery.isLoading,
   };
 
@@ -56,14 +162,28 @@ function DashboardContent() {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [feed.items.length]);
 
+  const overnightData = useOvernightEarnings(balance.savings, balance.loading);
+
   const accountState: AccountState = {
     checking: balance.checking,
     savings: balance.savings,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
-    pendingRewards: 0,
+    pendingRewards: balance.pendingRewards,
+    bestAlternativeRate: balance.bestSaveRate ?? undefined,
+    currentRate: balance.savingsRate > 0 ? balance.savingsRate : undefined,
     healthFactor: balance.healthFactor ?? undefined,
+    overnightEarnings: overnightData.earnings,
+    isFirstOpenToday: overnightData.isFirstOpenToday,
     sessionExpiringSoon: expiringSoon,
+  };
+
+  const flowContext: FlowContext = {
+    checking: balance.checking,
+    savings: balance.savings,
+    borrows: balance.borrows,
+    savingsRate: balance.savingsRate,
+    maxBorrow: balance.maxBorrow,
   };
 
   const smartCards = deriveSmartCards(accountState).filter(
@@ -80,12 +200,12 @@ function DashboardContent() {
 
       switch (intent.action) {
         case 'save':
-          chipFlow.startFlow('save');
+          chipFlow.startFlow('save', flowContext);
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
         case 'send':
-          chipFlow.startFlow('send');
-          chipFlow.selectRecipient(intent.to);
+          chipFlow.startFlow('send', flowContext);
+          chipFlow.selectRecipient(intent.to, undefined, flowContext.checking);
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
         case 'withdraw':
@@ -96,12 +216,12 @@ function DashboardContent() {
               chips: [{ label: 'Save', flow: 'save' }],
             });
           } else {
-            chipFlow.startFlow('withdraw');
+            chipFlow.startFlow('withdraw', flowContext);
             if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           }
           break;
         case 'borrow':
-          chipFlow.startFlow('borrow');
+          chipFlow.startFlow('borrow', flowContext);
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
         case 'repay':
@@ -112,7 +232,7 @@ function DashboardContent() {
               chips: [{ label: 'Borrow', flow: 'borrow' }],
             });
           } else {
-            chipFlow.startFlow('repay');
+            chipFlow.startFlow('repay', flowContext);
             if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           }
           break;
@@ -164,7 +284,6 @@ function DashboardContent() {
           feed.addItem({ type: 'ai-text', text: `Your balance:\n\n${lines.join('\n')}` });
           break;
         }
-          break;
         case 'report': {
           const rd = balanceQuery.data;
           const reportLines = [
@@ -186,7 +305,6 @@ function DashboardContent() {
           });
           break;
         }
-          break;
         case 'history':
           feed.addItem({
             type: 'ai-text',
@@ -208,7 +326,7 @@ function DashboardContent() {
           break;
       }
     },
-    [chipFlow, feed, address, balance, balanceQuery.data],
+    [chipFlow, feed, address, balance, balanceQuery.data, flowContext],
   );
 
   const handleSmartCardAction = useCallback(
@@ -226,7 +344,7 @@ function DashboardContent() {
         return;
       }
       if (chipFlowId === 'save-all') {
-        chipFlow.startFlow('save');
+        chipFlow.startFlow('save', flowContext);
         chipFlow.selectAmount(-1);
         return;
       }
@@ -245,9 +363,9 @@ function DashboardContent() {
         });
         return;
       }
-      chipFlow.startFlow(chipFlowId);
+      chipFlow.startFlow(chipFlowId, flowContext);
     },
-    [chipFlow, refresh, feed],
+    [chipFlow, refresh, feed, flowContext],
   );
 
   const handleChipClick = useCallback(
@@ -295,9 +413,9 @@ function DashboardContent() {
         });
         return;
       }
-      chipFlow.startFlow(flow);
+      chipFlow.startFlow(flow, flowContext);
     },
-    [chipFlow, feed, executeIntent, balance.borrows, balance.savings],
+    [chipFlow, feed, executeIntent, balance.borrows, balance.savings, flowContext],
   );
 
   const handleServiceSubmit = useCallback(
@@ -380,13 +498,16 @@ function DashboardContent() {
     (amount: number) => {
       if (amount === -1) {
         const flow = chipFlow.state.flow;
-        const actualAmount = flow === 'withdraw' ? balance.savings : balance.checking;
+        let actualAmount = balance.checking;
+        if (flow === 'withdraw') actualAmount = balance.savings;
+        else if (flow === 'repay') actualAmount = balance.borrows;
+        else if (flow === 'borrow') actualAmount = balance.maxBorrow;
         chipFlow.selectAmount(actualAmount);
       } else {
         chipFlow.selectAmount(amount);
       }
     },
-    [chipFlow, balance.checking, balance.savings],
+    [chipFlow, balance.checking, balance.savings, balance.borrows, balance.maxBorrow],
   );
 
   const handleConfirm = useCallback(async () => {
@@ -456,6 +577,7 @@ function DashboardContent() {
       });
 
       balanceQuery.refetch();
+      setTimeout(() => balanceQuery.refetch(), 3000);
 
       if (
         flow === 'send' &&
@@ -483,6 +605,16 @@ function DashboardContent() {
 
     if (flow === 'send' && chipFlow.state.recipient) {
       details.push({ label: 'To', value: chipFlow.state.subFlow ?? chipFlow.state.recipient });
+    }
+
+    if (flow === 'save' && balance.savingsRate > 0) {
+      details.push({ label: 'APY', value: `${balance.savingsRate.toFixed(1)}%` });
+      const monthly = (amount * (balance.savingsRate / 100)) / 12;
+      if (monthly >= 0.01) details.push({ label: 'Est. monthly', value: `+$${monthly.toFixed(2)}` });
+    }
+
+    if (flow === 'borrow' && balance.savingsRate > 0) {
+      details.push({ label: 'Collateral', value: `$${Math.floor(balance.savings)}` });
     }
 
     details.push({ label: 'Gas', value: 'Sponsored' });
@@ -541,7 +673,13 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (
           <AmountChips
             amounts={[50, 100, 200]}
-            allLabel={chipFlow.state.flow === 'withdraw' ? `All $${Math.floor(balance.savings)}` : chipFlow.state.flow === 'save' ? `All $${Math.floor(balance.checking)}` : undefined}
+            allLabel={
+              chipFlow.state.flow === 'withdraw' ? `All $${Math.floor(balance.savings)}` :
+              chipFlow.state.flow === 'save' ? `All $${Math.floor(balance.checking)}` :
+              chipFlow.state.flow === 'repay' ? `All $${Math.floor(balance.borrows)}` :
+              chipFlow.state.flow === 'borrow' && balance.maxBorrow > 0 ? `Max $${Math.floor(balance.maxBorrow)}` :
+              undefined
+            }
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
           />
@@ -549,42 +687,18 @@ function DashboardContent() {
 
         {/* Send flow — recipient selection */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (
-          <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
-            <p className="text-sm text-muted">Who do you want to send to?</p>
-            {contactsHook.contacts.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {contactsHook.contacts.map((c) => (
-                  <button
-                    key={c.address}
-                    onClick={() => chipFlow.selectRecipient(c.address, c.name)}
-                    className="rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
-                  >
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder={contactsHook.contacts.length > 0 ? 'Or paste address (0x...)' : 'Paste address (0x...) or contact name'}
-                autoFocus
-                className="flex-1 rounded-sm border border-border bg-panel px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const input = e.currentTarget.value.trim();
-                    if (!input) return;
-                    const resolved = contactsHook.resolveContact(input);
-                    if (resolved) {
-                      chipFlow.selectRecipient(resolved, input);
-                    } else {
-                      chipFlow.selectRecipient(input);
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
+          <SendRecipientInput
+            contacts={contactsHook.contacts}
+            onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.checking)}
+            onSubmit={(input) => {
+              const resolved = contactsHook.resolveContact(input);
+              if (resolved) {
+                chipFlow.selectRecipient(resolved, input, balance.checking);
+              } else {
+                chipFlow.selectRecipient(input, undefined, balance.checking);
+              }
+            }}
+          />
         )}
 
         {/* Send flow — amount selection after recipient */}
@@ -597,33 +711,24 @@ function DashboardContent() {
           />
         )}
 
-        {/* Smart Cards Feed (only show when not in a flow and no feed items) */}
-        {!isInFlow && !hasFeedItems && (
+        {/* Conversational Feed */}
+        {hasFeedItems && !isInFlow && (
+          <FeedRenderer
+            items={feed.items}
+            onChipClick={handleFeedChipClick}
+            onCopy={handleCopy}
+            onSaveContact={handleSaveContact}
+          />
+        )}
+
+        {/* Smart Cards — always visible when not in a flow */}
+        {!isInFlow && (
           <SmartCardFeed
             cards={smartCards}
             loading={balance.loading}
             onAction={handleSmartCardAction}
             onDismiss={handleDismissCard}
           />
-        )}
-
-        {/* Conversational Feed */}
-        {hasFeedItems && !isInFlow && (
-          <>
-            <FeedRenderer
-              items={feed.items}
-              onChipClick={handleFeedChipClick}
-              onCopy={handleCopy}
-              onSaveContact={handleSaveContact}
-            />
-
-            <SmartCardFeed
-              cards={smartCards}
-              loading={balance.loading}
-              onAction={handleSmartCardAction}
-              onDismiss={handleDismissCard}
-            />
-          </>
         )}
 
         {/* LLM loading indicator */}

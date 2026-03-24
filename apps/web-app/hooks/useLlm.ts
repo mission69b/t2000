@@ -64,55 +64,76 @@ export function useLlm(): UseLlmReturn {
   return { loading, error, query };
 }
 
-/**
- * Local response generation for common queries until LLM endpoint is wired.
- * This gives users meaningful responses without requiring an LLM API key.
- */
 function generateLocalResponse(message: string): FeedItemData {
   const text = message.toLowerCase();
 
   if (/report|overview|summary|financial/.test(text)) {
     return {
-      type: 'report',
-      sections: [
-        {
-          title: '📊 Account Overview',
-          lines: [
-            'Connect your account data to see your full financial report.',
-            'Tip: Use the [Save] chip to start earning yield on idle funds.',
-          ],
-        },
-      ],
+      type: 'ai-text',
+      text: 'Use the Report chip to see your full account breakdown, or type "balance" for a quick check.',
+      chips: [{ label: 'Report', flow: 'report' }, { label: 'Balance', flow: 'balance' }],
     };
   }
 
   if (/history|transactions|recent|activity/.test(text)) {
     return {
       type: 'ai-text',
-      text: 'Your transaction history will appear here once you make your first transaction. Try saving or sending funds to get started!',
+      text: 'Transaction history is coming soon. You can view your on-chain activity on Suiscan in the meantime.',
+      chips: [{ label: 'Report', flow: 'report' }],
     };
   }
 
   if (/rates?|apy|yield|interest|earning/.test(text)) {
     return {
       type: 'ai-text',
-      text: 'Current savings rates are fetched from Suilend and NAVI protocols in real-time. Tap [Save] to see the best rate available for your deposit.',
-      chips: [{ label: 'Save now', flow: 'save' }],
+      text: 'Savings rates are fetched from NAVI Protocol in real-time. Tap Save to see the current rate and start earning yield.',
+      chips: [{ label: 'Save', flow: 'save' }],
     };
   }
 
-  if (/what.*(can|do)|help|features/.test(text)) {
+  if (/what.*(can|do)|help|features|how/.test(text)) {
     return {
       type: 'ai-text',
-      text: 'Here\'s what I can help with:\n\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Invest — Buy SUI, BTC, ETH, GOLD\n• Services — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100".',
+      text: 'Here\'s what I can do:\n\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Invest — Buy SUI, BTC, ETH, GOLD\n• Services — Gift cards, AI tools, 90+ endpoints\n• Report — Full financial summary\n\nType a command like "save $100" or tap a chip below.',
     };
   }
 
   if (/invest|portfolio|performance/.test(text)) {
     return {
       type: 'ai-text',
-      text: 'Your investment portfolio will show here once you start investing. Tap [Invest] to buy SUI, BTC, ETH, or GOLD.',
+      text: 'Tap Invest to browse assets. You can buy SUI, BTC, ETH, or GOLD.',
       chips: [{ label: 'Invest', flow: 'invest' }],
+    };
+  }
+
+  if (/gift.?card|uber|starbucks|netflix|amazon/.test(text)) {
+    return {
+      type: 'ai-text',
+      text: 'Gift cards are available through Services. Browse the catalog to find Uber Eats, Starbucks, Netflix, and more.',
+      chips: [{ label: 'Services', flow: 'services' }],
+    };
+  }
+
+  if (/service|pay.*for|api|tool/.test(text)) {
+    return {
+      type: 'ai-text',
+      text: 'Browse 41 services including AI models, gift cards, email, and more. Tap Services to see the full catalog.',
+      chips: [{ label: 'Services', flow: 'services' }],
+    };
+  }
+
+  if (/safe|security|protect|secure/.test(text)) {
+    return {
+      type: 'ai-text',
+      text: 'Your account is non-custodial — only you control your funds via your Google account. Keys are ephemeral and never stored. All transactions are gas-sponsored (free).',
+    };
+  }
+
+  if (/address|receive|deposit|fund|add.*money/.test(text)) {
+    return {
+      type: 'ai-text',
+      text: 'To add funds, send USDC or SUI to your wallet address. Tap below to see it.',
+      chips: [{ label: 'Show address', flow: 'receive' }],
     };
   }
 
@@ -120,13 +141,20 @@ function generateLocalResponse(message: string): FeedItemData {
     return { type: 'ai-text', text: 'Happy to help! Let me know if you need anything else.' };
   }
 
-  // Generic fallback
+  if (/hello|hey|hi|gm/.test(text)) {
+    return {
+      type: 'ai-text',
+      text: 'Hey! What would you like to do? You can save, send, borrow, or browse services.',
+      chips: [{ label: 'Save', flow: 'save' }, { label: 'Services', flow: 'services' }],
+    };
+  }
+
   return {
     type: 'ai-text',
-    text: `I understand you're asking about "${message}". This will be answered by our AI when the LLM integration is fully connected. In the meantime, try using the suggestion chips below for common actions!`,
+    text: `I can help with saving, sending, borrowing, investing, and services. Try one of these actions or rephrase your question.`,
     chips: [
       { label: 'Save', flow: 'save' },
-      { label: 'Send', flow: 'send' },
+      { label: 'Services', flow: 'services' },
       { label: 'Help', flow: 'help' },
     ],
   };

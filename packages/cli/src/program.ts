@@ -46,7 +46,17 @@ export function createProgram(): Command {
     .hook('preAction', (thisCommand) => {
       const opts = thisCommand.optsWithGlobals();
       if (opts.json) setJsonMode(true);
-    });
+    })
+    .addHelpText('after', `
+Examples:
+  $ t2000 init                    Create a new agent bank account
+  $ t2000 balance                 Show wallet balance
+  $ t2000 save 100                Save $100 to earn yield
+  $ t2000 send 50 to 0xabc...    Send $50 USDC
+  $ t2000 borrow 200              Borrow $200 against savings
+  $ t2000 pay openai ...          Pay for an API via MPP gateway
+  $ t2000 invest buy 100 SUI     Buy $100 of SUI
+  $ t2000 mcp install             Install MCP for AI platforms`);
 
   registerInit(program);
   registerSend(program);

@@ -14,9 +14,9 @@ const MOVE_ABORT_MAP: Record<number, { message: string; chips?: { label: string;
   5: { message: 'Your position is at risk. Repay some of your loan first.', chips: [{ label: 'Repay $50', flow: 'repay' }] },
 };
 
-const WALLET_ERROR_MAP: [RegExp, string][] = [
+const WALLET_ERROR_MAP: [RegExp, string, { label: string; flow: string }[]?][] = [
   [/user rejected|user denied|cancelled/i, 'Transaction cancelled. No funds were moved.'],
-  [/insufficient.*balance|insufficient.*gas/i, 'Insufficient balance. Add funds and try again.'],
+  [/insufficient.*balance|insufficient.*gas/i, 'Insufficient balance. Add funds and try again.', [{ label: 'Check balance', flow: 'balance' }, { label: 'Add funds', flow: 'receive' }]],
   [/gas budget.*exceeded/i, 'Transaction too expensive. Try a smaller amount.'],
   [/object.*not found/i, 'Account data is stale. Refreshing...'],
   [/network.*error|fetch.*failed|timed?\s?out/i, 'Network issue. Check your connection and try again.'],
@@ -41,9 +41,9 @@ export function mapError(error: unknown): FeedItemData {
   }
 
   // Wallet / RPC errors
-  for (const [pattern, friendlyMessage] of WALLET_ERROR_MAP) {
+  for (const [pattern, friendlyMessage, chips] of WALLET_ERROR_MAP) {
     if (pattern.test(message)) {
-      return { type: 'error', message: friendlyMessage };
+      return { type: 'error', message: friendlyMessage, chips };
     }
   }
 

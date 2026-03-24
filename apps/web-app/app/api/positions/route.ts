@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
     const navi = new NaviAdapter();
     navi.initSync(client);
 
-    const [positions, health] = await Promise.all([
+    const [positions, health, rewards] = await Promise.all([
       navi.getPositions(address),
       navi.getHealth(address).catch(() => null),
+      navi.getPendingRewards(address).catch(() => []),
     ]);
 
     let savings = 0;
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
     const savingsRate = savings > 0 ? weightedRateSum / savings : 0;
     const healthFactor = health?.healthFactor ?? (borrows > 0 ? null : Infinity);
     const maxBorrow = health?.maxBorrow ?? 0;
+    const pendingRewards = rewards.reduce((sum, r) => sum + (r.estimatedValueUsd ?? 0), 0);
 
     return NextResponse.json({
       savings,
@@ -56,10 +58,11 @@ export async function GET(request: NextRequest) {
       savingsRate,
       healthFactor: healthFactor === Infinity ? null : healthFactor,
       maxBorrow,
+      pendingRewards,
       supplies,
       borrows_detail: borrowList,
     });
   } catch {
-    return NextResponse.json({ savings: 0, borrows: 0, savingsRate: 0, healthFactor: null, maxBorrow: 0 });
+    return NextResponse.json({ savings: 0, borrows: 0, savingsRate: 0, healthFactor: null, maxBorrow: 0, pendingRewards: 0 });
   }
 }

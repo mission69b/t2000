@@ -10,7 +10,7 @@ const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 
 const SAFEGUARD_KEYS = new Set(['locked', 'maxPerTx', 'maxDailySend', 'dailyUsed', 'dailyResetDate', 'alertThreshold', 'maxLeverage', 'maxPositionSize']);
 
-function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+export function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   const parts = path.split('.');
   let current: unknown = obj;
   for (const part of parts) {
@@ -20,7 +20,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   return current;
 }
 
-function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
+export function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split('.');
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
