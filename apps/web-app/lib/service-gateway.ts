@@ -94,6 +94,7 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     url: `${GATEWAY_BASE}/resend/v1/emails`,
     price: '0.005',
     transformBody: (f) => ({
+      from: 'T2000 <noreply@t2000.ai>',
       to: f.to,
       subject: f.subject,
       text: f.body,

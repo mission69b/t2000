@@ -144,7 +144,13 @@ export function useAgent() {
               throw new Error(err.error ?? 'Failed to prepare service payment');
             }
 
-            const { bytes, digest, meta } = await prepareRes.json();
+            const prepareData = await prepareRes.json();
+
+            if (prepareData.success && !prepareData.bytes) {
+              return prepareData;
+            }
+
+            const { bytes, digest, meta } = prepareData;
 
             const txBytes = Uint8Array.from(atob(bytes), c => c.charCodeAt(0));
             const { signature } = await signer.signTransaction(txBytes);

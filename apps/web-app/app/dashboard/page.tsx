@@ -49,9 +49,16 @@ function fmtDollar(n: number): string {
   return '0';
 }
 
+function fmtToken(amount: number): string {
+  if (amount > 0 && amount < 0.001) return amount.toFixed(8);
+  if (amount > 0 && amount < 1) return amount.toFixed(6);
+  return amount.toFixed(4);
+}
+
 function capForFlow(
   flow: string,
-  bal: { checking: number; savings: number; borrows: number; maxBorrow: number },
+  bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number },
+  fromAsset?: string,
 ): number {
   switch (flow) {
     case 'save': return bal.checking;
@@ -59,14 +66,18 @@ function capForFlow(
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
     case 'borrow': return bal.maxBorrow;
-    case 'invest': return bal.checking;
-    case 'swap': return bal.checking;
+    case 'invest': return bal.usdc;
+    case 'swap': {
+      if (fromAsset === 'SUI') return bal.sui;
+      if (fromAsset === 'USDC') return bal.usdc;
+      return bal.checking;
+    }
     default: return bal.checking;
   }
 }
 
-function getAmountPresets(flow: string, bal: { checking: number; savings: number; borrows: number; maxBorrow: number }): number[] {
-  const cap = Math.floor(capForFlow(flow, bal));
+function getAmountPresets(flow: string, bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number }, fromAsset?: string): number[] {
+  const cap = Math.floor(capForFlow(flow, bal, fromAsset));
   if (cap <= 0) return [];
   if (cap <= 5) return [1, 2, Math.min(5, cap)].filter((v, i, a) => v <= cap && a.indexOf(v) === i);
   if (cap <= 20) return [1, 5, 10].filter((v) => v <= cap);
@@ -222,6 +233,8 @@ function DashboardContent() {
     maxBorrow: balanceQuery.data?.maxBorrow ?? 0,
     pendingRewards: balanceQuery.data?.pendingRewards ?? 0,
     bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
+    sui: balanceQuery.data?.sui ?? 0,
+    usdc: balanceQuery.data?.usdc ?? 0,
     loading: balanceQuery.isLoading,
   };
 
@@ -541,15 +554,6 @@ function DashboardContent() {
 
         feed.removeLastItem();
 
-        const responseText = typeof result.result === 'string'
-          ? result.result
-          : JSON.stringify(result.result, null, 2);
-
-        const previewLength = 500;
-        const preview = responseText.length > previewLength
-          ? responseText.slice(0, previewLength) + '...'
-          : responseText;
-
         feed.addItem({
           type: 'result',
           success: true,
@@ -557,10 +561,26 @@ function DashboardContent() {
           details: `Paid $${result.price} · Tx: ${result.paymentDigest.slice(0, 8)}...${result.paymentDigest.slice(-6)}`,
         });
 
-        feed.addItem({
-          type: 'ai-text',
-          text: `**${service.name} response:**\n\n\`\`\`\n${preview}\n\`\`\``,
-        });
+        const r = result.result as Record<string, unknown> | string;
+        const images = typeof r === 'object' && r !== null && Array.isArray(r.images)
+          ? (r.images as { url?: string }[]).filter((img) => img.url)
+          : [];
+
+        if (images.length > 0) {
+          for (const img of images) {
+            feed.addItem({ type: 'image', url: img.url!, alt: service.name, cost: `$${result.price}` });
+          }
+        } else {
+          const responseText = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
+          const previewLength = 500;
+          const preview = responseText.length > previewLength
+            ? responseText.slice(0, previewLength) + '...'
+            : responseText;
+          feed.addItem({
+            type: 'ai-text',
+            text: `**${service.name} response:**\n\n\`\`\`\n${preview}\n\`\`\``,
+          });
+        }
 
         balanceQuery.refetch();
       } catch (err) {
@@ -663,7 +683,8 @@ function DashboardContent() {
   const handleAmountSelect = useCallback(
     (amount: number) => {
       const flow = chipFlow.state.flow ?? '';
-      const cap = capForFlow(flow, balance);
+      const fromAsset = flow === 'swap' ? (chipFlow.state.asset ?? undefined) : undefined;
+      const cap = capForFlow(flow, balance, fromAsset);
       const resolved = amount === -1 ? cap : Math.min(amount, cap);
 
       if (flow === 'invest' || flow === 'swap') {
@@ -681,7 +702,8 @@ function DashboardContent() {
     chipFlow.confirm();
 
     const flow = chipFlow.state.flow;
-    const cap = capForFlow(flow ?? '', balance);
+    const fromAsset = flow === 'swap' ? (chipFlow.state.asset ?? undefined) : undefined;
+    const cap = capForFlow(flow ?? '', balance, fromAsset);
     const rawAmount = chipFlow.state.amount ?? 0;
     const amount = Math.min(rawAmount, cap);
 
@@ -731,7 +753,7 @@ function DashboardContent() {
           txDigest = res.tx;
           const q = chipFlow.state.quote;
           flowLabel = q
-            ? `Invested $${amount.toFixed(2)} → ${q.expectedOutput.toFixed(4)} ${asset}`
+            ? `Invested $${amount.toFixed(2)} → ${fmtToken(q.expectedOutput)} ${asset}`
             : `Invested $${amount.toFixed(2)} in ${asset}`;
           break;
         }
@@ -742,7 +764,7 @@ function DashboardContent() {
           txDigest = res.tx;
           const q = chipFlow.state.quote;
           flowLabel = q
-            ? `Swapped ${amount} ${from} → ${q.expectedOutput.toFixed(4)} ${to}`
+            ? `Swapped ${amount} ${from} → ${fmtToken(q.expectedOutput)} ${to}`
             : `Swapped ${amount} ${from} → ${to}`;
           break;
         }
@@ -795,7 +817,7 @@ function DashboardContent() {
 
     if (flow === 'invest' && quote) {
       details.push({ label: 'You pay', value: `$${amount.toFixed(2)} USDC` });
-      details.push({ label: 'You receive', value: `~${quote.expectedOutput.toFixed(4)} ${quote.toAsset}` });
+      details.push({ label: 'You receive', value: `~${fmtToken(quote.expectedOutput)} ${quote.toAsset}` });
       const unitPrice = amount / quote.expectedOutput;
       details.push({ label: 'Price', value: `$${unitPrice.toFixed(2)} / ${quote.toAsset}` });
       if (quote.priceImpact > 0.001) {
@@ -804,14 +826,14 @@ function DashboardContent() {
       details.push({ label: 'Gas', value: 'Sponsored' });
       return {
         title: `Buy ${quote.toAsset}`,
-        confirmLabel: `Buy ${quote.expectedOutput.toFixed(4)} ${quote.toAsset}`,
+        confirmLabel: `Buy ${fmtToken(quote.expectedOutput)} ${quote.toAsset}`,
         details,
       };
     }
 
     if (flow === 'swap' && quote) {
       details.push({ label: 'You send', value: `${amount} ${quote.fromAsset}` });
-      details.push({ label: 'You receive', value: `~${quote.expectedOutput.toFixed(4)} ${quote.toAsset}` });
+      details.push({ label: 'You receive', value: `~${fmtToken(quote.expectedOutput)} ${quote.toAsset}` });
       if (quote.priceImpact > 0.001) {
         details.push({ label: 'Price impact', value: `${(quote.priceImpact * 100).toFixed(2)}%` });
       }
@@ -919,22 +941,28 @@ function DashboardContent() {
         )}
 
         {/* Amount sub-chips */}
-        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (
-          <AmountChips
-            amounts={getAmountPresets(chipFlow.state.flow, balance)}
-            allLabel={
-              chipFlow.state.flow === 'withdraw' ? `All $${fmtDollar(balance.savings)}` :
-              chipFlow.state.flow === 'save' ? `All $${fmtDollar(balance.checking)}` :
-              chipFlow.state.flow === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
-              chipFlow.state.flow === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
-              chipFlow.state.flow === 'invest' ? `All $${fmtDollar(balance.checking)}` :
-              chipFlow.state.flow === 'swap' ? `All $${fmtDollar(balance.checking)}` :
-              undefined
-            }
-            onSelect={handleAmountSelect}
-            message={chipFlow.state.message ?? undefined}
-          />
-        )}
+        {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (() => {
+          const f = chipFlow.state.flow!;
+          const swapFrom = f === 'swap' ? (chipFlow.state.asset ?? undefined) : undefined;
+          const swapCap = f === 'swap' && swapFrom ? capForFlow('swap', balance, swapFrom) : 0;
+          return (
+            <AmountChips
+              amounts={getAmountPresets(f, balance, swapFrom)}
+              allLabel={
+                f === 'withdraw' ? `All $${fmtDollar(balance.savings)}` :
+                f === 'save' ? `All $${fmtDollar(balance.checking)}` :
+                f === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
+                f === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
+                f === 'invest' ? `All $${fmtDollar(balance.usdc)}` :
+                f === 'swap' && swapFrom ? `All ${swapCap.toFixed(swapFrom === 'USDC' ? 2 : 4)} ${swapFrom}` :
+                undefined
+              }
+              assetLabel={f === 'swap' && swapFrom ? swapFrom : undefined}
+              onSelect={handleAmountSelect}
+              message={chipFlow.state.message ?? undefined}
+            />
+          );
+        })()}
 
         {/* Send flow — recipient selection */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (

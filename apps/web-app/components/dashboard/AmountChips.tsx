@@ -7,9 +7,10 @@ interface AmountChipsProps {
   allLabel?: string;
   onSelect: (amount: number) => void;
   message?: string;
+  assetLabel?: string;
 }
 
-export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChipsProps) {
+export function AmountChips({ amounts, allLabel, onSelect, message, assetLabel }: AmountChipsProps) {
   const [custom, setCustom] = useState('');
   const [showCustom, setShowCustom] = useState(false);
 
@@ -19,7 +20,7 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
         {message && <p className="text-sm text-muted whitespace-pre-line">{message}</p>}
         <div className="flex gap-2">
           <div className="flex-1 flex items-center border border-border bg-panel rounded-sm px-4">
-            <span className="text-muted font-mono">$</span>
+            {!assetLabel && <span className="text-muted font-mono">$</span>}
             <input
               type="number"
               value={custom}
@@ -31,6 +32,7 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
                 if (e.key === 'Enter' && custom) onSelect(parseFloat(custom));
               }}
             />
+            {assetLabel && <span className="text-muted font-mono text-xs ml-1">{assetLabel}</span>}
           </div>
           <button
             onClick={() => custom && onSelect(parseFloat(custom))}
@@ -60,7 +62,7 @@ export function AmountChips({ amounts, allLabel, onSelect, message }: AmountChip
             onClick={() => onSelect(a)}
             className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-medium font-mono text-foreground hover:border-border-bright transition active:scale-[0.95]"
           >
-            ${a}
+            {assetLabel ? `${a} ${assetLabel}` : `$${a}`}
           </button>
         ))}
         {allLabel && (
