@@ -81,6 +81,7 @@ jobs:
           VERSION="v${{ steps.bump.outputs.version }}"
           git add -A
           git commit -m "📦 build: ${VERSION}"
-          git tag "$VERSION"
-          git push origin main --follow-tags
+          git tag -a "$VERSION" -m "$VERSION"
+          git push origin main
+          git push origin "$VERSION"
 
