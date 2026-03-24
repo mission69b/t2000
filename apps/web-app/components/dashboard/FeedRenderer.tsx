@@ -228,7 +228,111 @@ function FeedItemCard({
         />
       );
 
+    case 'transaction-history':
+      return <TransactionHistoryCard transactions={data.transactions} network={data.network} />;
+
     default:
       return null;
   }
+}
+
+const ACTION_ICONS: Record<string, string> = {
+  send: '↑',
+  receive: '↓',
+  lending: '🏦',
+  swap: '⇄',
+  contract: '📄',
+  transaction: '📄',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  send: 'Sent',
+  receive: 'Received',
+  lending: 'DeFi',
+  swap: 'Swap',
+  contract: 'Contract',
+  transaction: 'Transaction',
+};
+
+function relativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function truncAddr(addr: string): string {
+  return addr.length > 12 ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : addr;
+}
+
+function TransactionHistoryCard({
+  transactions,
+  network,
+}: {
+  transactions: import('@/lib/feed-types').TxHistoryEntry[];
+  network: string;
+}) {
+  const explorerBase = network === 'testnet'
+    ? 'https://suiscan.xyz/testnet/tx'
+    : 'https://suiscan.xyz/mainnet/tx';
+
+  if (transactions.length === 0) {
+    return (
+      <div className="rounded-sm border border-border bg-surface p-4 feed-row">
+        <p className="text-sm text-muted">No transactions found yet. Make your first save or send to see activity here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-sm border border-border bg-surface p-4 space-y-1 feed-row">
+      <p className="text-sm font-medium text-foreground mb-2">Recent Activity</p>
+      <div className="divide-y divide-border">
+        {transactions.map((tx) => {
+          const icon = ACTION_ICONS[tx.action] ?? '📄';
+          const label = ACTION_LABELS[tx.action] ?? tx.action;
+          const isIn = tx.direction === 'in';
+          const amountStr = tx.amount ? `${isIn ? '+' : '-'}$${tx.amount.toFixed(2)}` : '';
+
+          return (
+            <a
+              key={tx.digest}
+              href={`${explorerBase}/${tx.digest}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between py-2.5 hover:bg-panel/50 -mx-1 px-1 transition group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-base w-6 text-center shrink-0">{icon}</span>
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground font-medium">{label}</p>
+                  <p className="text-xs text-dim font-mono truncate">
+                    {tx.counterparty ? truncAddr(tx.counterparty) : relativeTime(tx.timestamp)}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right shrink-0 ml-3">
+                {amountStr && (
+                  <p className={`text-sm font-mono font-medium ${isIn ? 'text-accent' : 'text-foreground'}`}>
+                    {amountStr}
+                  </p>
+                )}
+                {tx.counterparty && (
+                  <p className="text-xs text-dim">{relativeTime(tx.timestamp)}</p>
+                )}
+                {!tx.counterparty && tx.asset && (
+                  <p className="text-xs text-dim">{tx.asset}</p>
+                )}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

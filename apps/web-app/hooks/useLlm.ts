@@ -78,8 +78,8 @@ function generateLocalResponse(message: string): FeedItemData {
   if (/history|transactions|recent|activity/.test(text)) {
     return {
       type: 'ai-text',
-      text: 'Transaction history is coming soon. You can view your on-chain activity on Suiscan in the meantime.',
-      chips: [{ label: 'Report', flow: 'report' }],
+      text: 'Here\'s your recent transaction history. Each entry links to the explorer for full details.',
+      chips: [{ label: 'View history', flow: 'history' }],
     };
   }
 

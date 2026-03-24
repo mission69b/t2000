@@ -15,9 +15,13 @@ export function useFeed() {
     setItems((prev) => [...prev, ...dataList.map(createFeedItem)]);
   }, []);
 
+  const removeLastItem = useCallback(() => {
+    setItems((prev) => prev.slice(0, -1));
+  }, []);
+
   const clear = useCallback(() => {
     setItems([]);
   }, []);
 
-  return { items, addItem, addItems, clear, scrollRef };
+  return { items, addItem, addItems, removeLastItem, clear, scrollRef };
 }

@@ -3,6 +3,7 @@ export type SmartCardType =
   | 'idle-funds'
   | 'better-rate'
   | 'overnight-earnings'
+  | 'received-funds'
   | 'risk'
   | 'session-expiry'
   | 'all-good';
@@ -34,6 +35,7 @@ export interface AccountState {
   isFirstOpenToday?: boolean;
   healthFactor?: number;
   sessionExpiringSoon?: boolean;
+  recentIncoming?: { amount: number; asset: string; from: string; timestamp: number }[];
 }
 
 /**
@@ -53,8 +55,24 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
     });
   }
 
-  // TODO: "received funds" card — implement via on-chain tx history query
-  // instead of fragile balance-diff detection
+  if (state.recentIncoming && state.recentIncoming.length > 0) {
+    const fiveMinAgo = Date.now() - 5 * 60_000;
+    const recent = state.recentIncoming.filter((tx) => tx.timestamp > fiveMinAgo);
+    if (recent.length > 0) {
+      const total = recent.reduce((s, tx) => s + tx.amount, 0);
+      const fromLabel = recent.length === 1 && recent[0].from
+        ? ` from ${recent[0].from.slice(0, 6)}...${recent[0].from.slice(-4)}`
+        : '';
+      cards.push({
+        type: 'received-funds',
+        icon: '💸',
+        title: `You received $${total.toFixed(2)}${fromLabel}`,
+        body: recent.length > 1 ? `${recent.length} incoming transfers` : '',
+        actions: [{ label: 'View history', variant: 'primary', chipFlow: 'history' }],
+        dismissible: true,
+      });
+    }
+  }
 
   if (state.isFirstOpenToday && state.overnightEarnings && state.overnightEarnings > 0) {
     cards.push({

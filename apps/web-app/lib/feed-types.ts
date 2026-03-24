@@ -9,7 +9,8 @@ export type FeedItemType =
   | 'image'
   | 'audio'
   | 'error'
-  | 'contact-prompt';
+  | 'contact-prompt'
+  | 'transaction-history';
 
 export interface FeedItem {
   id: string;
@@ -29,7 +30,18 @@ export type FeedItemData =
   | { type: 'image'; url: string; alt: string; cost?: string }
   | { type: 'audio'; url: string; title: string; cost?: string }
   | { type: 'error'; message: string; chips?: { label: string; flow: string }[] }
-  | { type: 'contact-prompt'; address: string };
+  | { type: 'contact-prompt'; address: string }
+  | { type: 'transaction-history'; transactions: TxHistoryEntry[]; network: string };
+
+export interface TxHistoryEntry {
+  digest: string;
+  action: string;
+  direction: 'out' | 'in' | 'self';
+  amount?: number;
+  asset?: string;
+  counterparty?: string;
+  timestamp: number;
+}
 
 let nextId = 0;
 export function createFeedItem(data: FeedItemData): FeedItem {

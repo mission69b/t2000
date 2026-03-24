@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { BalanceHeader } from '@/components/dashboard/BalanceHeader';
@@ -170,6 +171,28 @@ function DashboardContent() {
   const contactsHook = useContacts(address);
   const { agent } = useAgent();
   const balanceQuery = useBalance(address);
+  const incomingQuery = useQuery({
+    queryKey: ['incoming-tx', address],
+    enabled: !!address,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const res = await fetch(`/api/history?address=${address}&limit=5`);
+      const data = await res.json();
+      const items = (data.items ?? []) as Array<{
+        direction: string; amount?: number; asset?: string;
+        counterparty?: string; timestamp: number;
+      }>;
+      return items
+        .filter((tx) => tx.direction === 'in' && tx.amount && tx.amount > 0)
+        .map((tx) => ({
+          amount: tx.amount!,
+          asset: tx.asset ?? 'USDC',
+          from: tx.counterparty ?? '',
+          timestamp: tx.timestamp,
+        }));
+    },
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
@@ -206,6 +229,7 @@ function DashboardContent() {
     overnightEarnings: overnightData.earnings,
     isFirstOpenToday: overnightData.isFirstOpenToday,
     sessionExpiringSoon: expiringSoon,
+    recentIncoming: incomingQuery.data,
   };
 
   const flowContext: FlowContext = {
@@ -223,6 +247,35 @@ function DashboardContent() {
   const handleDismissCard = useCallback((type: string) => {
     setDismissedCards((prev) => new Set(prev).add(type));
   }, []);
+
+  const fetchHistory = useCallback(async () => {
+    if (!address) return;
+    feed.addItem({ type: 'ai-text', text: 'Loading transaction history...' });
+    try {
+      const res = await fetch(`/api/history?address=${address}&limit=20`);
+      const data = await res.json();
+      feed.removeLastItem();
+      if (data.items && data.items.length > 0) {
+        feed.addItem({
+          type: 'transaction-history',
+          transactions: data.items,
+          network: data.network ?? SUI_NETWORK,
+        });
+      } else {
+        feed.addItem({
+          type: 'ai-text',
+          text: 'No transactions found yet. Make your first save or send to see your activity here.',
+          chips: [{ label: 'Save', flow: 'save' }, { label: 'Receive', flow: 'receive' }],
+        });
+      }
+    } catch {
+      feed.removeLastItem();
+      feed.addItem({
+        type: 'ai-text',
+        text: 'Could not load transaction history right now. Try again later.',
+      });
+    }
+  }, [address, feed]);
 
   const executeIntent = useCallback(
     (intent: ParsedIntent) => {
@@ -344,10 +397,7 @@ function DashboardContent() {
           break;
         }
         case 'history':
-          feed.addItem({
-            type: 'ai-text',
-            text: 'No transactions yet. Make your first save or send to see your history here.',
-          });
+          fetchHistory();
           break;
         case 'rates':
           feed.addItem({
