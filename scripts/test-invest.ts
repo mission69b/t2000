@@ -25,7 +25,7 @@ async function main() {
 
   let boughtAmount = 0;
 
-  // ── Phase 17a/b: Buy, Portfolio, Locking ──
+  // ── Buy & Portfolio ──
 
   await runSection(`Invest Buy $${BUY_AMOUNT} SUI`, async () => {
     const result = await agent.investBuy({ asset: 'SUI', usdAmount: BUY_AMOUNT });
