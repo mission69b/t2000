@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
+import { Challenge } from 'mppx';
 import { getGatewayMapping } from '@/lib/service-gateway';
 
 export const runtime = 'nodejs';
@@ -10,31 +11,16 @@ const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainn
 const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 
-const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
-
-interface ChallengeMethod {
-  name: string;
-  intent: string;
-  request: {
-    amount: string;
-    currency: string;
-    recipient: string;
-  };
-}
-
-interface ChallengeResponse {
-  challengeId: string;
-  methods: ChallengeMethod[];
-}
 
 /**
  * POST /api/services/prepare
  *
- * 1. Pre-flights the gateway to get the 402 challenge (recipient + amount)
- * 2. Builds a USDC payment to the gateway's recipient
- * 3. Sponsors via Enoki
- * 4. Returns { bytes, digest, meta } for client-side signing
+ * 1. Pre-flights the gateway to get the 402 challenge (WWW-Authenticate header)
+ * 2. Parses the challenge to extract recipient, amount, currency
+ * 3. Builds a payment tx to the gateway's recipient
+ * 4. Sponsors via Enoki
+ * 5. Returns { bytes, digest, meta } for client-side signing
  */
 export async function POST(request: NextRequest) {
   if (!ENOKI_SECRET_KEY) {
@@ -89,17 +75,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const challenge: ChallengeResponse = await challengeRes.json();
-    const suiMethod = challenge.methods?.find((m) => m.name === 'sui');
-
-    if (!suiMethod) {
+    let challenge: Challenge.Challenge;
+    try {
+      challenge = Challenge.fromResponse(challengeRes);
+    } catch (err) {
+      console.error('[services/prepare] Failed to parse 402 challenge:', err);
       return NextResponse.json(
-        { error: 'Gateway does not accept Sui payments' },
-        { status: 400 },
+        { error: 'Gateway returned 402 but challenge could not be parsed' },
+        { status: 502 },
       );
     }
 
-    const { amount: chargeAmount, currency, recipient: gatewayRecipient } = suiMethod.request;
+    const { amount: chargeAmount, currency, recipient: gatewayRecipient } = challenge.request as {
+      amount: string;
+      currency: string;
+      recipient: string;
+    };
+
+    if (!gatewayRecipient || !chargeAmount || !currency) {
+      console.error('[services/prepare] Challenge missing payment details:', challenge.request);
+      return NextResponse.json(
+        { error: 'Gateway challenge missing payment details' },
+        { status: 502 },
+      );
+    }
 
     const decimals = currency.includes('::usdc::') ? 6 : 9;
     const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));

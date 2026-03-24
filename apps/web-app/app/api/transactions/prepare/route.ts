@@ -84,9 +84,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const tx = await buildTransaction({ type, address, amount, recipient, asset });
+    const tx = await buildTransaction({ type, address, amount, recipient, asset, fromAsset: body.fromAsset, toAsset: body.toAsset });
 
-    const moveCallTargets = extractMoveCallTargets(tx);
+    const isCetusTx = type === 'invest' || type === 'swap';
+    const moveCallTargets = isCetusTx ? [] : extractMoveCallTargets(tx);
 
     const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
     const txKindBase64 = toBase64(txKindBytes);
@@ -103,8 +104,11 @@ export async function POST(request: NextRequest) {
       network: SUI_NETWORK,
       transactionBlockKindBytes: txKindBase64,
       sender: address,
-      allowedMoveCallTargets: moveCallTargets,
     };
+
+    if (moveCallTargets.length > 0) {
+      sponsorBody.allowedMoveCallTargets = moveCallTargets;
+    }
 
     if (recipient) {
       sponsorBody.allowedAddresses = [recipient];

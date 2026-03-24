@@ -2114,30 +2114,24 @@ The `[Sentinels]` chip from the spec is stubbed but never implemented. Sentinels
 
 ---
 
-### POL-2 — E2E Automated Tests (Playwright)
+### POL-2 — Update Existing Unit Tests for P5-P9 Changes
 
-Manual testing has caught many bugs but doesn't scale. Automate the critical happy paths.
+The new P5-P9 code added logic to `intent-parser.ts`, `useChipFlow.ts`, and `service-gateway.ts` without updating their test files. These are pure functions / state machines — high ROI, quick to write.
 
-| Test | Flow |
-|------|------|
-| Onboarding | Google sign-in → loading screen → dashboard renders with balance |
-| Save | [Save] → amount → confirm → balance updates |
-| Send | [Send] → address → amount → confirm → tx success |
-| Withdraw | [Withdraw] → amount → confirm → savings decreases |
-| Borrow/Repay | [Borrow] → amount → confirm → debt appears → [Repay] → clears |
-| Invest | [Invest] → SUI → amount → quote card → confirm → tx success |
-| Swap | [Swap] → USDC → SUI → amount → quote → confirm |
-| Services | [Pay] → gift card → brand → amount → email → confirm |
-| History | [History] → shows recent transactions, expand/collapse |
-| Settings | Open settings → contacts visible, limits editable, emergency lock works |
-| Session | Session expiry warning → refresh → still authenticated |
-| Mobile | All flows on viewport 375×812 (iPhone), input not covered by keyboard |
+| File | What to update | Est. |
+|------|---------------|------|
+| `intent-parser.test.ts` | Add cases for service intent fuzzy matching ("uber eats" → `reloadly-giftcard`, "search web" → `tavily-search`, etc.) | 15 min |
+| `useChipFlow.test.ts` | Add transitions for `asset-select` → `l2-chips`, `quoting` → `confirming`, `selectAsset()` for invest/swap, `setQuoting()`, `setQuote()` | 20 min |
+| `service-gateway.ts` (**new test**) | `getGatewayMapping` returns correct mapping for each service ID, `transformBody` produces correct request shape, unknown service → `null` | 10 min |
 
-**Framework:** Playwright + `@playwright/test`. Mock zkLogin auth with a test JWT fixture.
+**What NOT to test (low ROI at this stage):**
+- API routes (`/api/llm`, `/api/quote`, `/api/services/*`) — thin glue code calling external services. Mocking Enoki + Cetus + LLM is high effort, breaks on any API change. Manual browser testing catches issues faster.
+- React components (`AssetSelector`, `GiftCardGrid`) — UI components are better validated by manual testing during iteration. Revisit when UI stabilizes.
+- Playwright E2E — 2-3 days to write, slow to run, brittle on UI changes. Not worth it for a solo dev iterating on beta. Revisit for production launch with a team.
 
-| Priority | Low — post-beta |
-|----------|-----------------|
-| Est. | 2-3 days |
+| Priority | Medium — keeps existing test suite honest |
+|----------|-------------------------------------------|
+| Est. | 45 min |
 | Status | ⏳ |
 
 ---
@@ -2271,7 +2265,7 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 | ID | Item | Priority | Est. | Status |
 |----|------|----------|------|--------|
 | **POL-1** | Sentinels chip flow | Low | 1-2 days | ⏳ |
-| **POL-2** | E2E Playwright tests | Low | 2-3 days | ⏳ |
+| **POL-2** | Update existing unit tests for P5-P9 | Medium | 45 min | ⏳ |
 | **POL-3** | Performance pass | Medium | 1-2 days | ⏳ |
 | **POL-4** | Swap cap for non-USDC assets | Medium | 2-3h | ⏳ |
 | **POL-5** | Async service submit type | Low | 5 min | ⏳ |
@@ -2280,6 +2274,44 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 | **POL-8** | Service payment error recovery | Medium | 2-3h | ⏳ |
 | **POL-9** | Accessibility pass | Medium | 1 day | ⏳ |
 | **POL-10** | Security hardening | High (prod) | 1-2 days | ⏳ |
+| **POL-11** | DCA & investment strategies chip flow | Medium | 1-2 days | ⏳ |
+
+---
+
+### POL-11 — DCA & Investment Strategies Chip Flow
+
+The SDK already has `DEFAULT_STRATEGIES` (bluechip, layer1, sui-heavy) in `constants.ts` and an `auto-invest.ts` module with allocation logic. These aren't wired to the web app.
+
+**New chip flow: `[DCA]` or `[Strategies]`**
+
+```
+[Invest] → "How do you want to invest?"
+→ [One-time buy]  [DCA strategy]
+→ user taps [DCA strategy]
+→ [Bluechip (BTC 50%, ETH 30%, SUI 20%)]
+  [Layer 1 (ETH 50%, SUI 50%)]
+  [Sui-Heavy (BTC 20%, ETH 20%, SUI 60%)]
+  [Custom]
+→ user taps [Bluechip]
+→ "Invest $X/week into Bluechip portfolio"
+→ [$10/wk] [$25/wk] [$50/wk] [Custom]
+→ confirmation card with allocation breakdown
+```
+
+**Implementation:**
+1. Extend `useChipFlow` with a `strategy-select` phase
+2. New `StrategySelector` component showing allocation pie/bars
+3. New `DcaSchedule` component for frequency + amount
+4. Schedule storage in `localStorage` (or server-side via preferences API)
+5. Background execution: either cron-triggered API route or client-side polling when app is open
+6. Wire to SDK `auto-invest.ts` allocation + `CetusAdapter.buildSwapTx` for each asset
+
+**Dependencies:** Invest flow working (UX-11 ✅), CetusAdapter multi-asset swaps
+
+| Priority | Medium — differentiating feature |
+|----------|----------------------------------|
+| Est. | 1-2 days |
+| Status | ⏳ |
 
 ---
 
