@@ -1,8 +1,18 @@
 import { defineConfig } from 'tsup';
 
-// @suilend packages have broken ESM imports (missing .js extensions, bare
-// directory imports) that fail on Node 25+. Bundling resolves them at build time.
-const BUNDLE_DEPS = ['@suilend/sdk', '@suilend/sui-fe', '@suilend/springsui-sdk'];
+// Bundle all protocol SDKs so their transitive peer-dependency conflicts
+// (different @mysten/sui versions) don't surface as npm warnings on install.
+// Also fixes broken ESM imports in @suilend packages on Node 25+.
+const BUNDLE_DEPS = [
+  '@suilend/sdk',
+  '@suilend/sui-fe',
+  '@suilend/springsui-sdk',
+  '@naviprotocol/lending',
+  '@cetusprotocol/aggregator-sdk',
+  '@pythnetwork/pyth-sui-js',
+  '@t2000/mpp-sui',
+  'mppx',
+];
 
 export default defineConfig([
   {
