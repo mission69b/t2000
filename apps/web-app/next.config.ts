@@ -46,14 +46,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // @pythnetwork/pyth-sui-js has CJS transitive deps (axios, form-data,
-  // combined-stream) whose dynamic require() breaks Turbopack. Externalize
-  // the entire chain so Node.js resolves them natively at runtime.
-  serverExternalPackages: [
-    '@pythnetwork/pyth-sui-js',
-    '@pythnetwork/price-service-client',
-    'axios',
-  ],
   turbopack: {},
 };
 

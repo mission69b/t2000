@@ -54,20 +54,20 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@mysten/sui": "^2.6.0",
-    "@pythnetwork/pyth-sui-js": "^2.2.0",
-    "eventemitter3": "^5"
-  },
-  "devDependencies": {
     "@cetusprotocol/aggregator-sdk": "^1.4.5",
+    "@mysten/sui": "^2.6.0",
     "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",
+    "@pythnetwork/pyth-sui-js": "^2.2.0",
     "@suilend/sdk": "^2.0.2",
     "@suilend/sui-fe": "^2.0.6",
     "@t2000/mpp-sui": "workspace:*",
+    "eventemitter3": "^5",
+    "mppx": "^0.4.7"
+  },
+  "devDependencies": {
     "@types/node": "^20",
     "eslint": "^9",
-    "mppx": "^0.4.7",
     "tsup": "^8",
     "typescript": "^5",
     "vitest": "^3"
