@@ -208,6 +208,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const toAsset = params.toAsset ?? params.asset ?? 'SUI';
       const cetus = getCetusAdapter();
       const result = await cetus.buildSwapTx(address, 'USDC', toAsset, amount);
+      result.tx.setSender(address);
       return result.tx;
     }
 
@@ -216,6 +217,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const to = params.toAsset ?? 'SUI';
       const cetus = getCetusAdapter();
       const result = await cetus.buildSwapTx(address, from, to, amount);
+      result.tx.setSender(address);
       return result.tx;
     }
 

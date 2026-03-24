@@ -184,9 +184,22 @@ function parseTx(tx: TxBlock, address: string): TxHistoryItem {
     }
   }
 
-  const resolvedAction = direction === 'in' && !isUserTx ? 'receive'
-    : direction === 'in' && isUserTx ? (action === 'contract' || action === 'transaction' ? 'lending' : action)
-    : action;
+  let resolvedAction = action;
+
+  const hasMoveCall = commandTypes.includes('MoveCall');
+  const hasMultipleAssetTypes = new Set(
+    [...userInflows, ...userOutflows].map((c) => c.coinType),
+  ).size > 1;
+
+  if (hasMultipleAssetTypes && userInflows.length > 0 && userOutflows.length > 0) {
+    resolvedAction = 'swap';
+  } else if (direction === 'in' && !isUserTx) {
+    resolvedAction = 'receive';
+  } else if (isUserTx && hasMoveCall && (action === 'contract' || action === 'transaction')) {
+    resolvedAction = direction === 'self' && !amount ? 'contract' : 'lending';
+  } else if (direction === 'out' && !hasMoveCall) {
+    resolvedAction = 'send';
+  }
 
   return {
     digest: tx.digest,

@@ -9,16 +9,32 @@ export const runtime = 'nodejs';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
-const TREASURY_ADDRESS = process.env.TREASURY_ADDRESS ?? '0x0e4e22abd90526d96eb5de02f8c0076f4de593f17ce6d91bda3a09a0baa8c6eb';
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
+interface ChallengeMethod {
+  name: string;
+  intent: string;
+  request: {
+    amount: string;
+    currency: string;
+    recipient: string;
+  };
+}
+
+interface ChallengeResponse {
+  challengeId: string;
+  methods: ChallengeMethod[];
+}
+
 /**
  * POST /api/services/prepare
  *
- * Builds a USDC payment transaction for a service, sponsors it via Enoki.
- * Returns { bytes, digest, meta } for client-side signing.
+ * 1. Pre-flights the gateway to get the 402 challenge (recipient + amount)
+ * 2. Builds a USDC payment to the gateway's recipient
+ * 3. Sponsors via Enoki
+ * 4. Returns { bytes, digest, meta } for client-side signing
  */
 export async function POST(request: NextRequest) {
   if (!ENOKI_SECRET_KEY) {
@@ -45,31 +61,63 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Unknown service: ${serviceId}` }, { status: 400 });
   }
 
-  const price = mapping.price === 'dynamic'
-    ? calculateDynamicPrice(serviceId, fields)
-    : mapping.price;
-
-  const priceNum = parseFloat(price);
-  if (isNaN(priceNum) || priceNum <= 0) {
-    return NextResponse.json({ error: 'Invalid service price' }, { status: 400 });
-  }
-
   try {
-    const rawAmount = BigInt(Math.round(priceNum * 1e6));
+    const serviceBody = mapping.transformBody(fields);
+
+    const challengeRes = await fetch(mapping.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serviceBody),
+    });
+
+    if (challengeRes.status !== 402) {
+      if (challengeRes.ok) {
+        const result = await challengeRes.json().catch(() => challengeRes.text());
+        return NextResponse.json({
+          success: true,
+          paymentDigest: 'free',
+          price: '0',
+          serviceId,
+          result,
+        });
+      }
+      const errText = await challengeRes.text().catch(() => '');
+      console.error(`[services/prepare] Gateway returned ${challengeRes.status}:`, errText);
+      return NextResponse.json(
+        { error: `Gateway error (${challengeRes.status})` },
+        { status: challengeRes.status },
+      );
+    }
+
+    const challenge: ChallengeResponse = await challengeRes.json();
+    const suiMethod = challenge.methods?.find((m) => m.name === 'sui');
+
+    if (!suiMethod) {
+      return NextResponse.json(
+        { error: 'Gateway does not accept Sui payments' },
+        { status: 400 },
+      );
+    }
+
+    const { amount: chargeAmount, currency, recipient: gatewayRecipient } = suiMethod.request;
+
+    const decimals = currency.includes('::usdc::') ? 6 : 9;
+    const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
+
     const tx = new Transaction();
     tx.setSender(address);
 
-    const coins = await client.getCoins({ owner: address, coinType: USDC_TYPE });
+    const coins = await client.getCoins({ owner: address, coinType: currency });
     if (!coins.data.length) {
       return NextResponse.json({ error: 'No USDC balance to pay for service' }, { status: 400 });
     }
 
-    const coinIds = coins.data.map(c => c.coinObjectId);
+    const coinIds = coins.data.map((c) => c.coinObjectId);
     if (coinIds.length > 1) {
-      tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map(id => tx.object(id)));
+      tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
     }
     const [split] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
-    tx.transferObjects([split], TREASURY_ADDRESS);
+    tx.transferObjects([split], gatewayRecipient);
 
     const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
     const txKindBase64 = toBase64(txKindBytes);
@@ -89,7 +137,7 @@ export async function POST(request: NextRequest) {
         network: SUI_NETWORK,
         transactionBlockKindBytes: txKindBase64,
         sender: address,
-        allowedAddresses: [TREASURY_ADDRESS],
+        allowedAddresses: [gatewayRecipient],
       }),
     });
 
@@ -106,8 +154,6 @@ export async function POST(request: NextRequest) {
 
     const { data } = await sponsorRes.json();
 
-    const serviceBody = mapping.transformBody(fields);
-
     return NextResponse.json({
       bytes: data.bytes,
       digest: data.digest,
@@ -115,7 +161,7 @@ export async function POST(request: NextRequest) {
         serviceId,
         gatewayUrl: mapping.url,
         serviceBody: JSON.stringify(serviceBody),
-        price,
+        price: chargeAmount,
       },
     });
   } catch (err) {
@@ -123,13 +169,4 @@ export async function POST(request: NextRequest) {
     console.error('[services/prepare] Error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
-
-function calculateDynamicPrice(serviceId: string, fields: Record<string, string>): string {
-  if (serviceId === 'reloadly-giftcard') {
-    const faceValue = parseFloat(fields.amount) || 25;
-    const fee = faceValue * 0.05;
-    return (faceValue + fee).toFixed(2);
-  }
-  return '1.00';
 }

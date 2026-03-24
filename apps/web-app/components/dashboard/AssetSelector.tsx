@@ -11,6 +11,7 @@ const INVEST_ASSETS: Asset[] = [
   { id: 'SUI', label: 'SUI', icon: '💧', description: 'Sui Network' },
   { id: 'BTC', label: 'BTC', icon: '₿', description: 'Bitcoin (wBTC)' },
   { id: 'ETH', label: 'ETH', icon: 'Ξ', description: 'Ethereum (wETH)' },
+  { id: 'GOLD', label: 'GOLD', icon: '🥇', description: 'Gold (XAUM)' },
 ];
 
 const SWAP_ASSETS: Asset[] = [
@@ -38,7 +39,7 @@ export function AssetSelector({ flow, selectedFrom, message, onSelect }: AssetSe
       {message && (
         <p className="text-sm text-muted whitespace-pre-line">{message}</p>
       )}
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${assets.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
         {assets.map((asset) => (
           <button
             key={asset.id}
