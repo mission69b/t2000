@@ -55,11 +55,11 @@
   },
   "dependencies": {
     "@mysten/sui": "^2.6.0",
-    "@mysten/zklogin": "^0.8.1",
     "eventemitter3": "^5"
   },
   "devDependencies": {
     "@cetusprotocol/aggregator-sdk": "^1.4.5",
+    "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.2.0",
     "@suilend/sdk": "^2.0.2",

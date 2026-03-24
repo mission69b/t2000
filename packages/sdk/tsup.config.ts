@@ -10,6 +10,7 @@ const BUNDLE_DEPS = [
   '@naviprotocol/lending',
   '@cetusprotocol/aggregator-sdk',
   '@pythnetwork/pyth-sui-js',
+  '@mysten/zklogin',
   '@t2000/mpp-sui',
   'mppx',
 ];

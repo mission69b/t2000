@@ -279,6 +279,10 @@ importers:
         version: 3.2.4(@types/node@20.19.37)(jiti@2.6.1)(jsdom@29.0.1(@noble/hashes@2.0.1))(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/cli:
+    dependencies:
+      '@mysten/sui':
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
     devDependencies:
       '@hono/node-server':
         specifier: ^1
@@ -286,9 +290,6 @@ importers:
       '@inquirer/prompts':
         specifier: ^7
         version: 7.10.1(@types/node@20.19.37)
-      '@mysten/sui':
-        specifier: ^2.6.0
-        version: 2.6.0(typescript@5.9.3)
       '@t2000/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -382,9 +383,6 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
-      '@mysten/zklogin':
-        specifier: ^0.8.1
-        version: 0.8.1(typescript@5.9.3)
       eventemitter3:
         specifier: ^5
         version: 5.0.4
@@ -392,6 +390,9 @@ importers:
       '@cetusprotocol/aggregator-sdk':
         specifier: ^1.4.5
         version: 1.4.5(typescript@5.9.3)
+      '@mysten/zklogin':
+        specifier: ^0.8.1
+        version: 0.8.1(typescript@5.9.3)
       '@naviprotocol/lending':
         specifier: ^1.4.0
         version: 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.6.0(typescript@5.9.3))(typescript@5.9.3)

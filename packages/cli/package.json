@@ -38,7 +38,9 @@
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@mysten/sui": "^2.6.0"
+  },
   "optionalDependencies": {
     "@t2000/mcp": "workspace:*"
   },
