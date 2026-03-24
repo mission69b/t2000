@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { truncateAddress } from '@/lib/format';
 
 export interface BalanceData {
@@ -20,10 +21,10 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
   return (
     <div className="space-y-1 text-center">
       <div className="flex items-center justify-between px-1">
-        <div className="font-mono font-semibold text-sm text-accent tracking-tight flex items-center gap-2">
+        <Link href="/dashboard" className="font-mono font-semibold text-sm text-accent tracking-tight flex items-center gap-2 hover:opacity-80 transition">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]" />
           t2000
-        </div>
+        </Link>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-dim">
             {truncateAddress(address)}

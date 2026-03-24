@@ -36,6 +36,27 @@ function fmtNum(n: number): string {
   return Math.floor(n).toString();
 }
 
+function getAmountPresets(
+  flow: string,
+  bal: { checking: number; savings: number; borrows: number; maxBorrow: number },
+): number[] {
+  let cap = 0;
+  switch (flow) {
+    case 'save': cap = bal.checking; break;
+    case 'withdraw': cap = bal.savings; break;
+    case 'repay': cap = bal.borrows; break;
+    case 'borrow': cap = bal.maxBorrow; break;
+    default: cap = bal.checking;
+  }
+  cap = Math.floor(cap);
+  if (cap <= 0) return [1, 5, 10];
+  if (cap <= 5) return [1, 2, Math.min(5, cap)].filter((v, i, a) => a.indexOf(v) === i);
+  if (cap <= 20) return [1, 5, 10].filter((v) => v <= cap);
+  if (cap <= 100) return [5, 10, 25].filter((v) => v <= cap);
+  if (cap <= 500) return [25, 50, 100].filter((v) => v <= cap);
+  return [50, 100, 200];
+}
+
 function SendRecipientInput({
   contacts,
   onSelectContact,
@@ -359,7 +380,7 @@ function DashboardContent() {
       }
       if (chipFlowId === 'save-all') {
         chipFlow.startFlow('save', flowContext);
-        chipFlow.selectAmount(balance.checking);
+        chipFlow.selectAmount(Math.floor(balance.checking));
         return;
       }
       if (chipFlowId === 'rebalance') {
@@ -693,7 +714,7 @@ function DashboardContent() {
         {/* Amount sub-chips */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (
           <AmountChips
-            amounts={[50, 100, 200]}
+            amounts={getAmountPresets(chipFlow.state.flow, balance)}
             allLabel={
               chipFlow.state.flow === 'withdraw' ? `All $${fmtNum(balance.savings)}` :
               chipFlow.state.flow === 'save' ? `All $${fmtNum(balance.checking)}` :
@@ -725,7 +746,7 @@ function DashboardContent() {
         {/* Send flow — amount selection after recipient */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
           <AmountChips
-            amounts={[10, 25, 50]}
+            amounts={getAmountPresets('send', balance)}
             allLabel={`All $${fmtNum(balance.checking)}`}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
