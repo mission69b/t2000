@@ -16,10 +16,12 @@ vi.mock('@mysten/sui/transactions', () => ({
     mergeCoins: vi.fn(),
     splitCoins: vi.fn(() => ['split_coin']),
     transferObjects: vi.fn(),
+    build: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
   })),
 }));
 
 const mockSignAndExecute = vi.fn();
+const mockExecuteTransactionBlock = vi.fn();
 const mockWaitForTransaction = vi.fn();
 
 vi.mock('@mysten/sui/client', () => ({
@@ -27,13 +29,13 @@ vi.mock('@mysten/sui/client', () => ({
 }));
 
 const mockSigner = {
-  getPublicKey: () => ({
-    toSuiAddress: () => '0xagent_address',
-  }),
+  getAddress: () => '0xagent_address',
+  signTransaction: vi.fn().mockResolvedValue({ signature: 'mock_sig' }),
 };
 
 const mockClient = {
   signAndExecuteTransaction: mockSignAndExecute,
+  executeTransactionBlock: mockExecuteTransactionBlock,
   waitForTransaction: mockWaitForTransaction,
 };
 
@@ -96,11 +98,8 @@ describe('client createCredential', () => {
       { coinObjectId: '0xb', balance: '600000' } as any,
     ]);
 
-    mockSignAndExecute.mockResolvedValue({ digest: '0xtxdigest' });
+    mockExecuteTransactionBlock.mockResolvedValue({ digest: '0xtxdigest' });
     mockWaitForTransaction.mockResolvedValue({});
-
-    const { Transaction } = await import('@mysten/sui/transactions');
-    const txInstance = new Transaction();
 
     const clientMethod = suiFn({
       client: mockClient as any,
@@ -121,6 +120,7 @@ describe('client createCredential', () => {
       // Credential.serialize may not be available in test — we're testing TX building
     }
 
-    expect(mockSignAndExecute).toHaveBeenCalled();
+    expect(mockSigner.signTransaction).toHaveBeenCalled();
+    expect(mockExecuteTransactionBlock).toHaveBeenCalled();
   });
 });
