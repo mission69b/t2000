@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import type { FeedItem } from '@/lib/feed-types';
 import { QrCode } from './QrCode';
 import { ContactToast } from './ContactToast';
@@ -277,6 +278,8 @@ function TransactionHistoryCard({
   transactions: import('@/lib/feed-types').TxHistoryEntry[];
   network: string;
 }) {
+  const INITIAL_LIMIT = 5;
+  const [expanded, setExpanded] = React.useState(false);
   const explorerBase = network === 'testnet'
     ? 'https://suiscan.xyz/testnet/tx'
     : 'https://suiscan.xyz/mainnet/tx';
@@ -289,11 +292,17 @@ function TransactionHistoryCard({
     );
   }
 
+  const visible = expanded ? transactions : transactions.slice(0, INITIAL_LIMIT);
+  const hasMore = transactions.length > INITIAL_LIMIT;
+
   return (
     <div className="rounded-sm border border-border bg-surface p-4 space-y-1 feed-row">
-      <p className="text-sm font-medium text-foreground mb-2">Recent Activity</p>
+      <p className="text-sm font-medium text-foreground mb-2">
+        Recent Activity
+        <span className="text-xs text-dim font-normal ml-2">{transactions.length} txns</span>
+      </p>
       <div className="divide-y divide-border">
-        {transactions.map((tx) => {
+        {visible.map((tx) => {
           const icon = ACTION_ICONS[tx.action] ?? '📄';
           const label = ACTION_LABELS[tx.action] ?? tx.action;
           const isIn = tx.direction === 'in';
@@ -333,6 +342,14 @@ function TransactionHistoryCard({
           );
         })}
       </div>
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full pt-2 text-xs text-accent hover:text-accent/80 font-mono transition"
+        >
+          {expanded ? '▲ Show less' : `▼ Show all ${transactions.length} transactions`}
+        </button>
+      )}
     </div>
   );
 }
