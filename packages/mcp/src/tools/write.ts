@@ -526,11 +526,13 @@ Common examples:
 - Mistral: POST https://mpp.t2000.ai/mistral/v1/chat/completions {"model":"mistral-large-latest","messages":[{"role":"user","content":"Hello"}]}
 - Cohere: POST https://mpp.t2000.ai/cohere/v1/chat {"model":"command-r-plus","message":"Hello"}
 
-RELOADLY GIFT CARDS: Always include "recipientEmail" in the order body — Reloadly sends the gift card directly to that email with a "Redeem Now" button. For the agent response, construct clickable redemption links for major brands:
-- Amazon: https://www.amazon.com/gc/redeem?claimCode={code}
-- Google Play: https://play.google.com/redeem?code={code}
-- Others: show the code + Reloadly's redeemInstruction.concise field
-Set maxPrice higher for gift cards (e.g. $50 for a $25 card to cover markup).`,
+RELOADLY GIFT CARDS:
+- Ask the user for their country and email if not already known in the conversation.
+- First browse: POST /reloadly/v1/products {"countryCode":"AU"} to find the right productId for their country.
+- Then order: POST /reloadly/v1/order {"productId":XXXX,"unitPrice":25,"countryCode":"AU","recipientEmail":"user@email.com"}
+- Reloadly emails the gift card with a "Redeem Now" button.
+- Redemption links: Amazon https://www.amazon.com/gc/redeem?claimCode={code}, Google Play https://play.google.com/redeem?code={code}, others show code + redeemInstruction.concise.
+- Set maxPrice higher for gift cards (e.g. $50 for a $25 card to cover 5% markup).`,
     {
       url: z.string().describe('Full URL of the MPP service endpoint (use t2000_services to discover available URLs)'),
       method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('POST').describe('HTTP method (most services use POST)'),

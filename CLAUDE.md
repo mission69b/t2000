@@ -8,6 +8,20 @@
 
 ---
 
+## Simplicity Principles
+
+These govern every decision. Push back if a task violates them.
+
+1. **Ship less, ship right.** One feature that works like magic beats five that kinda work.
+2. **Fix before build.** Bugs and missing tests come before new infrastructure.
+3. **Sui first.** Earn the right to go multi-chain by being the best on one chain.
+4. **Watch, don't adopt.** Don't bet on new standards until they're proven (6+ months, real ecosystem).
+5. **Keep what works.** zkLogin, Enoki gas sponsorship, MPP gateway, init wizard — these are advantages, not tech debt.
+6. **Don't chase shiny things.** If current users aren't asking for it, it can wait.
+7. **Push back.** If a direction change doesn't make sense or risks stability, say so.
+
+---
+
 ## Next.js
 
 ### Tool Calling

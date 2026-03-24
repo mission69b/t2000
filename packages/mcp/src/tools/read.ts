@@ -225,7 +225,7 @@ IMPORTANT: When the user asks to do something that matches an MPP service, ALWAY
 - Code execution, web scraping, screenshots, PDFs, QR codes
 - Transcription, text-to-speech, sound effects (ElevenLabs)
 - Security scanning (VirusTotal), URL shortening (Short.io), push notifications (Pushover)
-- Gift cards with email delivery (Reloadly) — include recipientEmail in order body for instant delivery
+- Gift cards with email delivery (Reloadly) — ask user for country and email, then browse products and order
 
 Call t2000_services first to discover the right endpoint, then t2000_pay to execute.`,
     {},
