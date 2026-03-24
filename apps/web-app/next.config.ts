@@ -46,6 +46,10 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // @t2000/sdk bundles CJS protocol deps (pyth, axios, etc.) whose dynamic
+  // require() calls aren't supported by Turbopack. Externalize so Node.js
+  // resolves them natively at runtime instead.
+  serverExternalPackages: ['@t2000/sdk'],
   turbopack: {},
 };
 
