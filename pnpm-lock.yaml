@@ -283,6 +283,9 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
+      '@pythnetwork/pyth-sui-js':
+        specifier: 2.2.0
+        version: 2.2.0(typescript@5.9.3)
     devDependencies:
       '@hono/node-server':
         specifier: ^1
@@ -383,6 +386,9 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
+      '@pythnetwork/pyth-sui-js':
+        specifier: 2.2.0
+        version: 2.2.0(typescript@5.9.3)
       eventemitter3:
         specifier: ^5
         version: 5.0.4
@@ -396,9 +402,6 @@ importers:
       '@naviprotocol/lending':
         specifier: ^1.4.0
         version: 1.4.0(patch_hash=f5361914099eac610a549dc571b1248d29f6a1f4195ed0179d9a1065b3af2400)(@mysten/sui@2.6.0(typescript@5.9.3))(typescript@5.9.3)
-      '@pythnetwork/pyth-sui-js':
-        specifier: 2.2.0
-        version: 2.2.0(typescript@5.9.3)
       '@suilend/sdk':
         specifier: ^2.0.2
         version: 2.0.2(@mysten/bcs@2.0.2)(@mysten/sui@2.6.0(typescript@5.9.3))(@pythnetwork/pyth-sui-js@2.2.0(typescript@5.9.3))(@suilend/sui-fe@2.0.10(@mysten/sui@2.6.0(typescript@5.9.3)))(graphql@16.12.0)(typescript@5.9.3)

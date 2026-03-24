@@ -46,10 +46,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // @t2000/sdk bundles CJS protocol deps (pyth, axios, etc.) whose dynamic
-  // require() calls aren't supported by Turbopack. Externalize so Node.js
-  // resolves them natively at runtime instead.
-  serverExternalPackages: ['@t2000/sdk'],
+  // @pythnetwork/pyth-sui-js has CJS transitive deps (axios, form-data,
+  // combined-stream) whose dynamic require() breaks Turbopack. Externalize
+  // the entire chain so Node.js resolves them natively at runtime.
+  serverExternalPackages: [
+    '@pythnetwork/pyth-sui-js',
+    '@pythnetwork/price-service-client',
+    'axios',
+  ],
   turbopack: {},
 };
 

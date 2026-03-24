@@ -9,10 +9,11 @@ const BUNDLE_DEPS = [
   '@suilend/springsui-sdk',
   '@naviprotocol/lending',
   '@cetusprotocol/aggregator-sdk',
-  '@pythnetwork/pyth-sui-js',
   '@mysten/zklogin',
   '@t2000/mpp-sui',
   'mppx',
+  // NOT @pythnetwork/pyth-sui-js — its CJS transitive deps (axios, form-data,
+  // combined-stream) use dynamic require() which breaks Next.js Turbopack.
 ];
 
 export default defineConfig([

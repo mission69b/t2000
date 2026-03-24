@@ -39,7 +39,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@mysten/sui": "^2.6.0"
+    "@mysten/sui": "^2.6.0",
+    "@pythnetwork/pyth-sui-js": "^2.2.0"
   },
   "optionalDependencies": {
     "@t2000/mcp": "workspace:*"
