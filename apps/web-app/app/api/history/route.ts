@@ -48,23 +48,29 @@ export async function GET(request: NextRequest) {
         options: { showEffects: true, showInput: true, showBalanceChanges: true },
         limit,
         order: 'descending',
+      }).catch((err) => {
+        console.error('[history] FromAddress query failed:', err?.message);
+        return { data: [] };
       }),
       client.queryTransactionBlocks({
         filter: { ToAddress: address },
         options: { showEffects: true, showInput: true, showBalanceChanges: true },
         limit: Math.min(limit, 10),
         order: 'descending',
+      }).catch((err) => {
+        console.error('[history] ToAddress query failed:', err?.message);
+        return { data: [] };
       }),
     ]);
 
     const seen = new Set<string>();
     const allTxns: TxBlock[] = [];
 
-    for (const tx of outgoing.data) {
+    for (const tx of (outgoing.data ?? [])) {
       seen.add(tx.digest);
       allTxns.push(tx as unknown as TxBlock);
     }
-    for (const tx of incoming.data) {
+    for (const tx of (incoming.data ?? [])) {
       if (!seen.has(tx.digest)) {
         seen.add(tx.digest);
         allTxns.push(tx as unknown as TxBlock);
@@ -73,11 +79,23 @@ export async function GET(request: NextRequest) {
 
     allTxns.sort((a, b) => Number(b.timestampMs ?? 0) - Number(a.timestampMs ?? 0));
 
-    const items: TxHistoryItem[] = allTxns.slice(0, limit).map((tx) => parseTx(tx, address));
+    const items: TxHistoryItem[] = allTxns.slice(0, limit).map((tx) => {
+      try {
+        return parseTx(tx, address);
+      } catch (err) {
+        console.error('[history] Parse error for', tx.digest, err);
+        return {
+          digest: tx.digest,
+          action: 'transaction',
+          direction: 'self' as const,
+          timestamp: Number(tx.timestampMs ?? 0),
+        };
+      }
+    });
 
     return NextResponse.json({ items, network: SUI_NETWORK });
   } catch (err) {
-    console.error('[history] Error:', err);
+    console.error('[history] Unexpected error:', err);
     return NextResponse.json({ items: [], network: SUI_NETWORK });
   }
 }
@@ -127,14 +145,7 @@ function parseTx(tx: TxBlock, address: string): TxHistoryItem {
   let asset: string | undefined;
   let counterparty: string | undefined;
 
-  if (!isUserTx && userInflows.length > 0) {
-    direction = 'in';
-    const primary = userInflows.sort((a, b) => Number(BigInt(b.amount) - BigInt(a.amount)))[0];
-    const decimals = primary.coinType.includes('::usdc::') ? 6 : 9;
-    amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
-    asset = formatAsset(primary.coinType);
-    counterparty = sender ?? undefined;
-  } else if (userOutflows.length > 0) {
+  if (userOutflows.length > 0 && userInflows.length === 0) {
     direction = 'out';
     const primary = userOutflows.sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0];
     const decimals = primary.coinType.includes('::usdc::') ? 6 : 9;
@@ -144,13 +155,42 @@ function parseTx(tx: TxBlock, address: string): TxHistoryItem {
       (c) => resolveOwner(c.owner) !== address && c.coinType === primary.coinType && BigInt(c.amount) > BigInt(0),
     );
     counterparty = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;
-  } else if (isUserTx) {
-    direction = 'self';
+  } else if (userInflows.length > 0 && userOutflows.length === 0) {
+    direction = 'in';
+    const primary = userInflows.sort((a, b) => Number(BigInt(b.amount) - BigInt(a.amount)))[0];
+    const decimals = primary.coinType.includes('::usdc::') ? 6 : 9;
+    amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
+    asset = formatAsset(primary.coinType);
+    if (!isUserTx && sender) counterparty = sender;
+  } else if (userOutflows.length > 0 && userInflows.length > 0) {
+    // Both in and out (e.g., swap) — show the outflow
+    direction = 'out';
+    const primary = userOutflows.sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0];
+    const decimals = primary.coinType.includes('::usdc::') ? 6 : 9;
+    amount = Math.round(Math.abs(Number(BigInt(primary.amount))) / 10 ** decimals * 100) / 100;
+    asset = formatAsset(primary.coinType);
+  } else {
+    // No non-SUI balance changes — check SUI changes
+    const suiChanges = changes.filter(
+      (c) => resolveOwner(c.owner) === address && c.coinType === SUI_TYPE,
+    );
+    if (suiChanges.length > 0) {
+      const netSui = suiChanges.reduce((s, c) => s + Number(BigInt(c.amount)), 0);
+      if (Math.abs(netSui) > 1_000_000) {
+        direction = netSui > 0 ? 'in' : 'out';
+        amount = Math.round(Math.abs(netSui) / 1e9 * 100) / 100;
+        asset = 'SUI';
+      }
+    }
   }
+
+  const resolvedAction = direction === 'in' && !isUserTx ? 'receive'
+    : direction === 'in' && isUserTx ? (action === 'contract' || action === 'transaction' ? 'lending' : action)
+    : action;
 
   return {
     digest: tx.digest,
-    action: !isUserTx && direction === 'in' ? 'receive' : action,
+    action: resolvedAction,
     direction,
     amount,
     asset,

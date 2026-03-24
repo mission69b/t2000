@@ -431,6 +431,10 @@ function DashboardContent() {
         executeIntent({ action: 'address' });
         return;
       }
+      if (chipFlowId === 'history') {
+        fetchHistory();
+        return;
+      }
       if (chipFlowId === 'save-all') {
         chipFlow.startFlow('save', flowContext);
         chipFlow.selectAmount(balance.checking);
