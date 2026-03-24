@@ -289,6 +289,9 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
+      '@t2000/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@t2000/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -316,10 +319,6 @@ importers:
       vitest:
         specifier: ^3
         version: 3.2.4(@types/node@20.19.37)(jiti@2.6.1)(jsdom@29.0.1(@noble/hashes@2.0.1))(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2)
-    optionalDependencies:
-      '@t2000/mcp':
-        specifier: workspace:*
-        version: link:../mcp
 
   packages/mcp:
     dependencies:

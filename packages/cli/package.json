@@ -39,12 +39,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {},
-  "optionalDependencies": {
-    "@t2000/mcp": "workspace:*"
-  },
-  "overrides": {
-    "@mysten/sui": "^2.6.0"
-  },
   "devDependencies": {
     "@hono/node-server": "^1",
     "@inquirer/prompts": "^7",
