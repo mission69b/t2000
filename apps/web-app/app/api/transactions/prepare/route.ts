@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
 import { NaviAdapter, CetusAdapter } from '@t2000/sdk/adapters';
 
@@ -25,7 +25,17 @@ interface BuildRequest {
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+const SUI_TYPE = '0x2::sui::SUI';
 const MIST_PER_SUI = 1_000_000_000;
+
+const ASSET_COIN_TYPES: Record<string, { type: string; decimals: number }> = {
+  USDC: { type: USDC_TYPE, decimals: 6 },
+  USDT: { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
+  SUI: { type: SUI_TYPE, decimals: 9 },
+  BTC: { type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC', decimals: 8 },
+  ETH: { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8 },
+  GOLD: { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9 },
+};
 
 function getNaviAdapter(): NaviAdapter {
   const navi = new NaviAdapter();
@@ -210,19 +220,46 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
     case 'invest': {
       const toAsset = params.toAsset ?? params.asset ?? 'SUI';
+      const fromKey = 'USDC';
+      const fromInfo = ASSET_COIN_TYPES[fromKey];
+      if (!fromInfo) throw new Error(`Unsupported asset: ${fromKey}`);
+
+      const rawAmount = BigInt(Math.round(amount * 10 ** fromInfo.decimals));
+      const coins = await client.getCoins({ owner: address, coinType: fromInfo.type });
+      if (!coins.data.length) throw new Error(`No ${fromKey} coins found`);
+
+      const coinIds = coins.data.map((c) => c.coinObjectId);
+      if (coinIds.length > 1) {
+        tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
+      }
+      const [inputCoin] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
+
       const cetus = getCetusAdapter();
-      const result = await cetus.buildSwapTx(address, 'USDC', toAsset, amount);
-      result.tx.setSender(address);
-      return result.tx;
+      const { outputCoin } = await cetus.addSwapToTx(tx, address, inputCoin, fromKey, toAsset, amount);
+      tx.transferObjects([outputCoin], address);
+      break;
     }
 
     case 'swap': {
       const from = params.fromAsset ?? 'USDC';
       const to = params.toAsset ?? 'SUI';
+      const fromInfo = ASSET_COIN_TYPES[from];
+      if (!fromInfo) throw new Error(`Unsupported asset: ${from}`);
+
+      const rawAmount = BigInt(Math.round(amount * 10 ** fromInfo.decimals));
+      const coins = await client.getCoins({ owner: address, coinType: fromInfo.type });
+      if (!coins.data.length) throw new Error(`No ${from} coins found`);
+
+      const coinIds = coins.data.map((c) => c.coinObjectId);
+      if (coinIds.length > 1) {
+        tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
+      }
+      const [inputCoin] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
+
       const cetus = getCetusAdapter();
-      const result = await cetus.buildSwapTx(address, from, to, amount);
-      result.tx.setSender(address);
-      return result.tx;
+      const { outputCoin } = await cetus.addSwapToTx(tx, address, inputCoin, from, to, amount);
+      tx.transferObjects([outputCoin], address);
+      break;
     }
 
     default:
