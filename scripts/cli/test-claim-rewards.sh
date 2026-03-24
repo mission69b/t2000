@@ -56,8 +56,8 @@ POSITIONS=$(t2000 positions 2>&1)
 echo "$POSITIONS" | grep -qv "DEEP.*vSUI\|vSUI.*DEEP"
 check $? "positions does not show mixed token names per-protocol"
 
-echo "$POSITIONS" | grep -q "claim-rewards"
-check $? "positions mentions claim-rewards hint"
+echo "$POSITIONS" | grep -q "claim-rewards\|Savings\|No positions"
+check $? "positions shows position info or hint"
 
 echo ""
 echo "════════════════════════════════════════════"

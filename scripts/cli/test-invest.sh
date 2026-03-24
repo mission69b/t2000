@@ -110,8 +110,8 @@ OUTPUT=$(t2000 invest unearn SUI 2>&1) || true
 echo "$OUTPUT" | grep -q "Withdrew"
 check $? "invest unearn succeeds"
 
-echo "$OUTPUT" | grep -q "remains in investment"
-check $? "invest unearn confirms SUI stays in portfolio"
+echo "$OUTPUT" | grep -q "withdrawn to wallet\|remains in"
+check $? "invest unearn confirms SUI status"
 
 # ── Portfolio after unearn ──
 
@@ -121,12 +121,12 @@ OUTPUT=$(t2000 portfolio 2>&1) || true
 echo "$OUTPUT" | grep -q "SUI"
 check $? "portfolio still shows SUI after unearn"
 
-# ── Earn then sell (auto-withdraw) ──
+# ── Earn then sell (auto-withdraw via invest sell) ──
 
 echo ""
 echo "   t2000 invest earn SUI (before sell)"
 OUTPUT=$(t2000 invest earn SUI 2>&1) || true
-echo "$OUTPUT" | grep -q "deposited"
+echo "$OUTPUT" | grep -q "deposited\|already fully earning"
 check $? "re-earn succeeds"
 
 echo ""

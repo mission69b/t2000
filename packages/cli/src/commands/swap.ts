@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
-import { T2000, formatUsd, SUPPORTED_ASSETS } from '@t2000/sdk';
+import { T2000, formatUsd, SUPPORTED_ASSETS, INVESTMENT_ASSETS } from '@t2000/sdk';
+import type { InvestmentAsset } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, explorerUrl } from '../output.js';
 
@@ -88,7 +89,24 @@ export function registerSwap(program: Command) {
         if (isNaN(parsedAmount) || parsedAmount <= 0) {
           throw new Error('Amount must be a positive number');
         }
-        await executeSwap('USDC', asset, parsedAmount, opts, 'Bought');
+        const resolved = resolveAssetName(asset);
+        if (resolved in INVESTMENT_ASSETS) {
+          const pin = await resolvePin();
+          const agent = await T2000.create({ pin, keyPath: opts.key });
+          const result = await agent.investBuy({
+            asset: resolved as InvestmentAsset,
+            usdAmount: parsedAmount,
+            maxSlippage: parseFloat(opts.slippage ?? '3') / 100,
+          });
+          if (isJsonMode()) { printJson(result); return; }
+          const display = SUPPORTED_ASSETS[resolved as keyof typeof SUPPORTED_ASSETS]?.displayName ?? resolved;
+          printBlank();
+          printSuccess(`Bought ${fmtTokenAmount(result.amount, resolved)} ${display} for ${formatUsd(parsedAmount)}`);
+          printKeyValue('Tx', explorerUrl(result.tx));
+          printBlank();
+        } else {
+          await executeSwap('USDC', asset, parsedAmount, opts, 'Bought');
+        }
       } catch (error) {
         handleError(error);
       }
@@ -96,16 +114,43 @@ export function registerSwap(program: Command) {
 
   program
     .command('sell <amount> <asset>')
-    .description('Sell an asset for USDC (e.g. sell 0.001 BTC)')
+    .description('Sell an asset for USDC (e.g. sell 0.001 BTC, sell all SUI)')
     .option('--key <path>', 'Key file path')
     .option('--slippage <pct>', 'Max slippage percentage (default: 3)', '3')
     .action(async (amount: string, asset: string, opts: { key?: string; slippage?: string }) => {
       try {
-        const parsedAmount = parseFloat(amount);
-        if (isNaN(parsedAmount) || parsedAmount <= 0) {
-          throw new Error('Amount must be a positive number');
+        const resolved = resolveAssetName(asset);
+        const isAll = amount.toLowerCase() === 'all';
+        if (resolved in INVESTMENT_ASSETS) {
+          const pin = await resolvePin();
+          const agent = await T2000.create({ pin, keyPath: opts.key });
+          const usdAmount = isAll ? 'all' as const : parseFloat(amount);
+          if (usdAmount !== 'all' && (isNaN(usdAmount) || usdAmount <= 0)) {
+            throw new Error('Amount must be a positive number or "all"');
+          }
+          const result = await agent.investSell({
+            asset: resolved as InvestmentAsset,
+            usdAmount,
+            maxSlippage: parseFloat(opts.slippage ?? '3') / 100,
+          });
+          if (isJsonMode()) { printJson(result); return; }
+          const display = SUPPORTED_ASSETS[resolved as keyof typeof SUPPORTED_ASSETS]?.displayName ?? resolved;
+          printBlank();
+          printSuccess(`Sold ${fmtTokenAmount(result.amount, resolved)} ${display} at ${formatUsd(result.price)}`);
+          printKeyValue('Proceeds', formatUsd(result.usdValue));
+          if (result.realizedPnL !== undefined) {
+            const pnlSign = result.realizedPnL >= 0 ? '+' : '';
+            printKeyValue('Realized P&L', `${pnlSign}${formatUsd(result.realizedPnL)}`);
+          }
+          printKeyValue('Tx', explorerUrl(result.tx));
+          printBlank();
+        } else {
+          const parsedAmount = parseFloat(amount);
+          if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            throw new Error('Amount must be a positive number');
+          }
+          await executeSwap(asset, 'USDC', parsedAmount, opts, 'Sold');
         }
-        await executeSwap(asset, 'USDC', parsedAmount, opts, 'Sold');
       } catch (error) {
         handleError(error);
       }

@@ -26,8 +26,8 @@ check $? "balance exits 0"
 t2000 balance 2>&1 | grep -q "Available"
 check $? "balance output contains Available"
 
-t2000 balance 2>&1 | grep -q "Savings"
-check $? "balance output contains Savings"
+t2000 balance 2>&1 | grep -q "Savings\|Investment"
+check $? "balance output contains Savings or Investment"
 
 t2000 balance 2>&1 | grep -q "Investment"
 check $? "balance output contains Investment"

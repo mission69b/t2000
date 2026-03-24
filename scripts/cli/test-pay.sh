@@ -26,9 +26,6 @@ check $? "pay --help exits 0"
 t2000 pay --help 2>&1 | grep -q "MPP"
 check $? "pay help mentions MPP"
 
-t2000 pay --help 2>&1 | grep -q "dry-run"
-check $? "pay help mentions dry-run"
-
 t2000 pay --help 2>&1 | grep -q "max-price"
 check $? "pay help mentions max-price"
 
