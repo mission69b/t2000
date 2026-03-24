@@ -30,6 +30,12 @@ import type { ServiceItem } from '@/lib/service-catalog';
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
 
+function fmtNum(n: number): string {
+  if (n === 0) return '0';
+  if (n < 1) return n.toFixed(2);
+  return Math.floor(n).toString();
+}
+
 function SendRecipientInput({
   contacts,
   onSelectContact,
@@ -345,7 +351,7 @@ function DashboardContent() {
       }
       if (chipFlowId === 'save-all') {
         chipFlow.startFlow('save', flowContext);
-        chipFlow.selectAmount(-1);
+        chipFlow.selectAmount(balance.checking);
         return;
       }
       if (chipFlowId === 'rebalance') {
@@ -378,15 +384,20 @@ function DashboardContent() {
       if (flow === 'report') { executeIntent({ action: 'report' }); return; }
       if (flow === 'history') { executeIntent({ action: 'history' }); return; }
       if (flow === 'receive') { executeIntent({ action: 'address' }); return; }
-      if (flow === 'invest') {
+      if (flow === 'invest' || flow.startsWith('invest-')) {
+        const asset = flow.startsWith('invest-') ? flow.replace('invest-', '').toUpperCase() : null;
         feed.addItem({
           type: 'ai-text',
-          text: 'What would you like to invest in? Type "invest $100 in SUI" or choose an asset.',
-          chips: [
-            { label: 'SUI', flow: 'invest-sui' },
-            { label: 'BTC', flow: 'invest-btc' },
-            { label: 'ETH', flow: 'invest-eth' },
-          ],
+          text: asset
+            ? `To invest in ${asset}, type "invest $100 in ${asset}". This will be available once the exchange integration is live.`
+            : 'What would you like to invest in? Type "invest $100 in SUI" or choose an asset.',
+          chips: asset
+            ? [{ label: 'Check balance', flow: 'balance' }]
+            : [
+                { label: 'SUI', flow: 'invest-sui' },
+                { label: 'BTC', flow: 'invest-btc' },
+                { label: 'ETH', flow: 'invest-eth' },
+              ],
         });
         return;
       }
@@ -397,6 +408,8 @@ function DashboardContent() {
         });
         return;
       }
+      if (flow === 'balance') { executeIntent({ action: 'balance' }); return; }
+      if (flow === 'rates') { executeIntent({ action: 'rates' }); return; }
       if (flow === 'repay' && balance.borrows <= 0) {
         feed.addItem({
           type: 'ai-text',
@@ -674,10 +687,10 @@ function DashboardContent() {
           <AmountChips
             amounts={[50, 100, 200]}
             allLabel={
-              chipFlow.state.flow === 'withdraw' ? `All $${Math.floor(balance.savings)}` :
-              chipFlow.state.flow === 'save' ? `All $${Math.floor(balance.checking)}` :
-              chipFlow.state.flow === 'repay' ? `All $${Math.floor(balance.borrows)}` :
-              chipFlow.state.flow === 'borrow' && balance.maxBorrow > 0 ? `Max $${Math.floor(balance.maxBorrow)}` :
+              chipFlow.state.flow === 'withdraw' ? `All $${fmtNum(balance.savings)}` :
+              chipFlow.state.flow === 'save' ? `All $${fmtNum(balance.checking)}` :
+              chipFlow.state.flow === 'repay' ? `All $${fmtNum(balance.borrows)}` :
+              chipFlow.state.flow === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtNum(balance.maxBorrow)}` :
               undefined
             }
             onSelect={handleAmountSelect}
@@ -705,7 +718,7 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
           <AmountChips
             amounts={[10, 25, 50]}
-            allLabel={`All $${Math.floor(balance.checking)}`}
+            allLabel={`All $${fmtNum(balance.checking)}`}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
           />

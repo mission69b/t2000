@@ -21,7 +21,12 @@ export default function LandingPage() {
     <main className="flex flex-1 flex-col items-center px-6 text-center">
       {/* Above the fold */}
       <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-4rem)] max-w-xl space-y-8">
-        <h1 className="text-2xl font-medium tracking-tight text-foreground">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-accent rounded-full shadow-[0_0_8px_var(--accent)]" />
+          <span className="font-mono font-semibold text-accent tracking-tight text-lg">t2000</span>
+        </div>
+
+        <h1 className="text-2xl font-mono font-semibold tracking-tight text-foreground">
           A bank account that works for you.
         </h1>
 
@@ -33,7 +38,7 @@ export default function LandingPage() {
 
         <div className="space-y-3">
           <GoogleSignIn onClick={login} loading={isLoading} />
-          <p className="text-xs text-dim">
+          <p className="text-xs text-dim font-mono">
             No seed phrase. No keys. No downloads.
           </p>
         </div>
@@ -42,38 +47,37 @@ export default function LandingPage() {
       {/* Below the fold */}
       <div className="max-w-xl w-full space-y-12 pb-16">
         <div className="space-y-6">
-          <h2 className="text-lg font-medium text-foreground">How it works</h2>
-          <div className="space-y-4 text-sm">
+          <h2 className="text-lg font-mono font-semibold text-foreground">How it works</h2>
+          <div className="space-y-3 text-sm">
             {[
               { step: '1', label: 'Sign in with Google' },
               { step: '2', label: 'Add funds' },
               { step: '3', label: "That's it." },
             ].map((item) => (
-              <div key={item.step} className="flex items-center gap-4 border border-border rounded-sm bg-surface/40 px-4 py-3">
+              <div key={item.step} className="flex items-center gap-4 border border-border bg-surface/40 px-4 py-3">
                 <span className="font-mono text-accent text-lg font-semibold">{item.step}</span>
-                <span className="text-muted">{item.label}</span>
+                <span className="text-muted font-mono">{item.label}</span>
               </div>
             ))}
           </div>
-          <GoogleSignIn onClick={login} loading={isLoading} />
         </div>
 
         <div className="flex items-stretch gap-3 text-xs">
-          <div className="flex-1 border border-border rounded-sm bg-surface/40 px-4 py-3">
+          <div className="flex-1 border border-border bg-surface/40 px-4 py-3">
             <p className="text-lg font-semibold text-foreground font-mono">41</p>
-            <p className="text-muted uppercase tracking-wider">Services</p>
+            <p className="text-muted uppercase tracking-wider font-mono text-[10px]">Services</p>
           </div>
-          <div className="flex-1 border border-border rounded-sm bg-surface/40 px-4 py-3">
+          <div className="flex-1 border border-border bg-surface/40 px-4 py-3">
             <p className="text-lg font-semibold text-foreground font-mono">90+</p>
-            <p className="text-muted uppercase tracking-wider">Endpoints</p>
+            <p className="text-muted uppercase tracking-wider font-mono text-[10px]">Endpoints</p>
           </div>
-          <div className="flex-1 border border-border rounded-sm bg-surface/40 px-4 py-3">
+          <div className="flex-1 border border-border bg-surface/40 px-4 py-3">
             <p className="text-lg font-semibold text-foreground font-mono">0</p>
-            <p className="text-muted uppercase tracking-wider">Fees to start</p>
+            <p className="text-muted uppercase tracking-wider font-mono text-[10px]">Fees to start</p>
           </div>
         </div>
 
-        <p className="text-xs text-dim">
+        <p className="text-xs text-dim font-mono">
           Already use the CLI?{' '}
           <a
             href="https://www.npmjs.com/package/@t2000/cli"
@@ -85,7 +89,7 @@ export default function LandingPage() {
           </a>
         </p>
 
-        <div className="flex items-center justify-center gap-4 text-xs text-dim">
+        <div className="flex items-center justify-center gap-4 text-xs text-dim font-mono">
           <a href="https://t2000.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
             Privacy
           </a>

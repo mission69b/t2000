@@ -125,25 +125,30 @@ function truncate(s: string): string {
   return s.length > 12 ? `${s.slice(0, 6)}...${s.slice(-4)}` : s;
 }
 
+function fmtAmount(n: number): string {
+  if (n === 0) return '$0';
+  if (n < 1) return `$${n.toFixed(2)}`;
+  return `$${Math.floor(n)}`;
+}
+
 function getFlowMessage(flow: string, ctx?: FlowContext): string {
-  const fmt = (n?: number) => n !== undefined ? `$${Math.floor(n)}` : '';
   switch (flow) {
     case 'save': {
       const rate = ctx?.savingsRate ? ` ${ctx.savingsRate.toFixed(1)}%` : '';
-      const avail = ctx?.checking ? ` You have ${fmt(ctx.checking)} available.` : '';
+      const avail = ctx?.checking ? ` You have ${fmtAmount(ctx.checking)} available.` : '';
       return `Save to earn${rate}.${avail}\nChoose an amount:`;
     }
     case 'send': return 'Who do you want to send to?';
     case 'withdraw': {
-      const saved = ctx?.savings ? ` You have ${fmt(ctx.savings)} saved.` : '';
+      const saved = ctx?.savings ? ` You have ${fmtAmount(ctx.savings)} saved.` : '';
       return `Withdraw from savings.${saved}\nChoose an amount:`;
     }
     case 'borrow': {
-      const max = ctx?.maxBorrow ? ` You can borrow up to ${fmt(ctx.maxBorrow)}.` : '';
+      const max = ctx?.maxBorrow ? ` You can borrow up to ${fmtAmount(ctx.maxBorrow)}.` : '';
       return `Borrow against your savings.${max}\nChoose an amount:`;
     }
     case 'repay': {
-      const debt = ctx?.borrows ? ` Outstanding debt: ${fmt(ctx.borrows)}.` : '';
+      const debt = ctx?.borrows ? ` Outstanding debt: ${fmtAmount(ctx.borrows)}.` : '';
       return `Repay your loan.${debt}\nChoose an amount:`;
     }
     default: return 'Choose an option:';

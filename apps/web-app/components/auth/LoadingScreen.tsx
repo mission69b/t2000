@@ -10,9 +10,9 @@ interface LoadingScreenProps {
 }
 
 const STEPS: { key: ZkLoginStep; label: string }[] = [
-  { key: 'jwt', label: 'Account created' },
-  { key: 'salt', label: 'Address generated' },
-  { key: 'proof', label: 'Securing your account' },
+  { key: 'jwt', label: 'Authenticated' },
+  { key: 'salt', label: 'Resolving address' },
+  { key: 'proof', label: 'Verifying identity' },
 ];
 
 function stepIndex(step: ZkLoginStep | null): number {
@@ -45,7 +45,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-foreground">Something went wrong</h2>
+            <h2 className="text-xl font-semibold text-foreground font-mono">Something went wrong</h2>
             <p className="mt-2 text-sm text-muted">{error}</p>
           </div>
           {onRetry && (
@@ -70,7 +70,7 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-foreground">You&apos;re all set!</h2>
+          <h2 className="text-xl font-semibold text-foreground font-mono">You&apos;re all set!</h2>
         </div>
       </main>
     );
@@ -79,8 +79,8 @@ export function LoadingScreen({ step, error, onRetry }: LoadingScreenProps) {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-8">
-        <h2 className="text-xl font-semibold text-center text-foreground">
-          Creating your account...
+        <h2 className="text-xl font-semibold text-center text-foreground font-mono">
+          Signing you in...
         </h2>
 
         <div className="space-y-4">

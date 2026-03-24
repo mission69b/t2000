@@ -123,6 +123,7 @@ export function useZkLogin(): UseZkLoginReturn {
     setProvingStep(null);
     setError(null);
     setStatus('unauthenticated');
+    window.location.href = '/';
   }, []);
 
   const refresh = useCallback(async () => {
