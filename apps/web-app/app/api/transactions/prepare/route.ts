@@ -96,8 +96,10 @@ export async function POST(request: NextRequest) {
   try {
     const tx = await buildTransaction({ type, address, amount, recipient, asset, fromAsset: body.fromAsset, toAsset: body.toAsset });
 
-    const isCetusTx = type === 'invest' || type === 'swap';
-    const moveCallTargets = isCetusTx ? [] : extractMoveCallTargets(tx);
+    const moveCallTargets = extractMoveCallTargets(tx);
+    if (moveCallTargets.length > 0) {
+      console.log(`[prepare] ${type} targets (${moveCallTargets.length}):`, moveCallTargets);
+    }
 
     const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
     const txKindBase64 = toBase64(txKindBytes);

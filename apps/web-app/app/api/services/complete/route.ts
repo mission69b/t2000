@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Credential, Method } from 'mppx';
 import { suiCharge } from '@t2000/mpp-sui/client';
 
 export const runtime = 'nodejs';
 
+const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
+
+const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
 /**
  * POST /api/services/complete
  *
  * 1. Submits the signed payment tx via Enoki
- * 2. Calls the MPP gateway with the payment credential
- * 3. Returns the service result
+ * 2. Waits for on-chain confirmation
+ * 3. Calls the MPP gateway with the payment credential
+ * 4. Returns the service result
  */
 export async function POST(request: NextRequest) {
   if (!ENOKI_SECRET_KEY) {
@@ -69,6 +74,15 @@ export async function POST(request: NextRequest) {
     const paymentResult = await executeRes.json();
     const paymentDigest = paymentResult.data?.digest ?? digest;
 
+    console.log(`[services/complete] Payment executed: ${paymentDigest}, waiting for confirmation...`);
+
+    await client.waitForTransaction({
+      digest: paymentDigest,
+      options: { showEffects: true },
+    });
+
+    console.log(`[services/complete] Payment confirmed on-chain, calling gateway...`);
+
     const mppClient = Method.toClient(suiCharge, {
       async createCredential({ challenge }) {
         return Credential.serialize({
@@ -97,11 +111,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!serviceResponse.ok && serviceResponse.status !== 402) {
+      console.error(
+        `[services/complete] Gateway error (${serviceResponse.status}):`,
+        typeof result === 'string' ? result : JSON.stringify(result),
+      );
       return NextResponse.json(
         {
           error: typeof result === 'object' && result && 'error' in result
             ? (result as { error: string }).error
-            : 'Service request failed',
+            : typeof result === 'object' && result && 'message' in result
+              ? (result as { message: string }).message
+              : 'Service request failed',
           serviceStatus: serviceResponse.status,
         },
         { status: serviceResponse.status },
