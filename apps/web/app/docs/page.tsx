@@ -90,8 +90,8 @@ const NAV: { label: string; items: NavItem[] }[] = [
     items: [
       { id: "cli-wallet", name: "Wallet" },
       { id: "cli-savings", name: "Savings & Credit" },
-      { id: "cli-invest", name: "Investment" },
-      { id: "cli-more", name: "Exchange & More" },
+      { id: "cli-invest", name: "Trade" },
+      { id: "cli-more", name: "Swap & More" },
     ],
   },
   {
@@ -413,7 +413,7 @@ function QuickStart({
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Trade{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
         {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
@@ -602,8 +602,8 @@ function ConceptsSection() {
           [<InlineCode key="k">checking</InlineCode>, "USDC available for immediate use. Shown as Available in balance output.", <InlineCode key="v">t2000 send</InlineCode>],
           [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI, Suilend), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
           [<InlineCode key="k">credit</InlineCode>, "USDC borrowed against savings collateral. Health factor enforced on-chain.", <><InlineCode>t2000 borrow</InlineCode> / <InlineCode>repay</InlineCode></>],
-          [<InlineCode key="k">exchange</InlineCode>, "Currency exchange via Cetus DEX. Use t2000 exchange to swap between USDC, SUI, and stablecoins. Also used internally by rebalance and auto-swap.", <InlineCode key="v">t2000 exchange</InlineCode>],
-          [<InlineCode key="k">investment</InlineCode>, "Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 invest</InlineCode> / <InlineCode>portfolio</InlineCode></>],
+          [<InlineCode key="k">swap</InlineCode>, "Token swap via Cetus DEX. Use t2000 swap to convert between USDC, SUI, and stablecoins. Also used internally by rebalance and auto-swap.", <InlineCode key="v">t2000 swap</InlineCode>],
+          [<InlineCode key="k">trade</InlineCode>, "Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 buy</InlineCode> / <InlineCode>sell</InlineCode> / <InlineCode>portfolio</InlineCode></>],
         ]}
       />
 
@@ -641,7 +641,7 @@ function ConceptsSection() {
         rows={[
           ["Save", "0.1%", "Protocol fee on deposit"],
           ["Borrow", "0.05%", "Protocol fee on loan"],
-          ["Exchange", <strong key="f">Free</strong>, "Cetus pool fees only (slippage protected on-chain)"],
+          ["Swap", <strong key="f">Free</strong>, "Cetus pool fees only (slippage protected on-chain)"],
           ["Withdraw", <strong key="f">Free</strong>, ""],
           ["Repay", <strong key="f">Free</strong>, ""],
           ["Send", <strong key="f">Free</strong>, ""],
@@ -708,7 +708,7 @@ function CliWalletSection() {
         {S.g("✓")} Keypair generated{"\n"}
         {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n"}
-        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
+        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Trade{"\n\n"}
         {"🎉 "}{S.g("Bank account created")}{"\n"}
         {"Address: "}{S.a("0x8b3e...d412")}{"\n\n"}
         {S.g("✓")} MCP configured (Claude Desktop, Cursor){"\n"}
@@ -727,7 +727,7 @@ function CliWalletSection() {
         {"  "}Available:  {S.a("$69.60")}  {S.c("(checking — spendable)")}{"\n"}
         {"  "}Savings:  {S.a("$9.26")}  {S.c("(earning 4.15% APY)")}{"\n"}
         {"  "}Credit:  {S.r("-$1.00")}  {S.c("(7.67% APY)")}{"\n"}
-        {"  "}Investment:  {S.a("$5.01")}  {S.c("(+0.1%)")}{"\n"}
+        {"  "}Trade:  {S.a("$5.01")}  {S.c("(+0.1%)")}{"\n"}
         {"  "}{S.m("──────────────────────────────────────")}{"\n"}
         {"  "}Total:  {S.a("$82.87")}
       </CodeBlock>
@@ -939,7 +939,7 @@ function CliInvestSection() {
         CLI
       </div>
       <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        <em className="italic text-accent">Investment</em>
+        <em className="italic text-accent">Trade</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands.
@@ -948,7 +948,7 @@ function CliInvestSection() {
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
-        <CmdCard name="t2000 invest buy / sell" desc="Buy or sell SUI, BTC, ETH, GOLD" onClick={() => scrollTo("cmd-invest")} />
+        <CmdCard name="t2000 buy / sell" desc="Buy or sell SUI, BTC, ETH, GOLD" onClick={() => scrollTo("cmd-invest")} />
         <CmdCard name="t2000 invest earn" desc="Earn yield on holdings" onClick={() => scrollTo("cmd-invest-earn")} />
         <CmdCard name="t2000 invest rebalance" desc="Move earning to better rate" onClick={() => scrollTo("cmd-invest-rebalance")} />
         <CmdCard name="t2000 invest strategy" desc="Themed allocations (bluechip, layer1)" onClick={() => scrollTo("cmd-strategy")} />
@@ -956,14 +956,14 @@ function CliInvestSection() {
         <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollTo("cmd-portfolio")} />
       </div>
 
-      <h2 id="cmd-invest">t2000 invest buy / sell</h2>
-      <p>Buy or sell SUI, BTC, or ETH. Portfolio tracks cost basis, average price, and realized P&L. Investment assets are locked from <InlineCode>send</InlineCode> and <InlineCode>exchange</InlineCode> — use <InlineCode>invest sell</InlineCode> to liquidate.</p>
+      <h2 id="cmd-invest">t2000 buy / sell</h2>
+      <p>Buy or sell SUI, BTC, or ETH. Portfolio tracks cost basis, average price, and realized P&L. Investment assets are locked from <InlineCode>send</InlineCode> and <InlineCode>swap</InlineCode> — use <InlineCode>sell</InlineCode> to liquidate.</p>
       <CodeBlock lang="bash">
-        t2000 invest buy &lt;amount&gt; &lt;asset&gt;{"\n"}
-        t2000 invest sell &lt;amount|all&gt; &lt;asset&gt;{"\n\n"}
-        t2000 invest buy {S.a("5")} SUI            {S.c("# buy $5 of SUI")}{"\n"}
-        t2000 invest buy {S.a("10")} BTC           {S.c("# buy $10 of BTC")}{"\n"}
-        t2000 invest sell all ETH       {S.c("# sell entire ETH position")}
+        t2000 buy &lt;amount&gt; &lt;asset&gt;{"\n"}
+        t2000 sell &lt;amount|all&gt; &lt;asset&gt;{"\n\n"}
+        t2000 buy {S.a("5")} SUI            {S.c("# buy $5 of SUI")}{"\n"}
+        t2000 buy {S.a("10")} BTC           {S.c("# buy $10 of BTC")}{"\n"}
+        t2000 sell all ETH       {S.c("# sell entire ETH position")}
       </CodeBlock>
       <CodeBlock lang="output">
         {"  "}{S.g("✓")} Bought {S.a("4.8500")} SUI at {S.a("$1.03")}{"\n"}
@@ -1035,12 +1035,12 @@ function CliInvestSection() {
       </CodeBlock>
 
       <h2 id="cmd-portfolio">t2000 portfolio</h2>
-      <p>View your investment portfolio with cost-basis P&L, strategy grouping, and earning status.</p>
+      <p>View your trade portfolio with cost-basis P&L, strategy grouping, and earning status.</p>
       <CodeBlock lang="bash">
         t2000 portfolio [--json]
       </CodeBlock>
       <CodeBlock lang="output">
-        {"  "}Investment Portfolio{"\n\n"}
+        {"  "}Trade Portfolio{"\n\n"}
         {"    "}▸ Bluechip / Large-Cap{"\n"}
         {"  "}{S.m("──────────────────────────────────────")}{"\n"}
         {"  "}BTC:  {S.a("0.00003500")}    Avg: $71,000    Now: $71,200    {S.g("+$0.01 (+0.3%)")}{"\n"}
@@ -1068,31 +1068,31 @@ function CliMoreSection() {
         CLI
       </div>
       <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        Exchange <em className="italic text-accent">& More</em>
+        Swap <em className="italic text-accent">& More</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Currency exchange, MPP payments, AI sentinels, MCP integration,
+        Token swaps, MPP payments, AI sentinels, MCP integration,
         and agent safeguards.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
-        <CmdCard name="t2000 exchange" desc="Swap tokens (USDC ⇌ SUI)" onClick={() => scrollTo("cmd-exchange")} />
+        <CmdCard name="t2000 swap" desc="Swap tokens (USDC ⇌ SUI)" onClick={() => scrollTo("cmd-exchange")} />
         <CmdCard name="t2000 pay" desc="Pay for MPP-protected APIs" badge="addon" onClick={() => scrollTo("cmd-pay")} />
         <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollTo("cmd-sentinel")} />
         <CmdCard name="t2000 mcp" desc="MCP server for AI platforms" badge="NEW" onClick={() => scrollTo("cmd-mcp")} />
         <CmdCard name="t2000 safeguards" desc="Spending limits, lock/unlock" onClick={() => scrollTo("cmd-safeguards")} />
       </div>
 
-      <h2 id="cmd-exchange">t2000 exchange</h2>
-      <p>Exchange tokens via Cetus DEX with on-chain slippage protection. Supports USDC ⇌ SUI and stablecoin pairs.</p>
+      <h2 id="cmd-exchange">t2000 swap</h2>
+      <p>Swap tokens via Cetus DEX with on-chain slippage protection. Supports USDC ⇌ SUI and stablecoin pairs.</p>
       <CodeBlock lang="bash">
-        t2000 exchange &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
-        t2000 exchange 5 USDC SUI            {S.c("# buy SUI with USDC")}{"\n"}
-        t2000 exchange 2 SUI USDC            {S.c("# sell SUI for USDC")}{"\n"}
-        t2000 exchange 10 USDC suiUSDT --slippage 0.5
+        t2000 swap &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
+        t2000 swap 5 USDC SUI            {S.c("# buy SUI with USDC")}{"\n"}
+        t2000 swap 2 SUI USDC            {S.c("# sell SUI for USDC")}{"\n"}
+        t2000 swap 10 USDC suiUSDT --slippage 0.5
       </CodeBlock>
       <CodeBlock lang="output">
-        {"  "}{S.g("✓")} Exchanged {S.a("$5.00")} USDC → {S.a("4.8500")} SUI{"\n"}
+        {"  "}{S.g("✓")} Swapped {S.a("$5.00")} USDC → {S.a("4.8500")} SUI{"\n"}
         {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}{"\n"}
         {"  "}Gas:  {S.a("0.0050")} SUI (self-funded)
       </CodeBlock>
@@ -1383,7 +1383,7 @@ function InitWizardSection() {
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Exchange  {S.g("✓")} Investment{"\n\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Trade{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
         {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
@@ -1480,7 +1480,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_sentinel_list</InlineCode>, "List active sentinels with prize pools"],
           [<InlineCode key="k">t2000_sentinel_info</InlineCode>, "Sentinel details — model, system prompt, attack history"],
           [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
-          [<InlineCode key="k">t2000_portfolio</InlineCode>, "View investment portfolio with cost-basis P&L"],
+          [<InlineCode key="k">t2000_portfolio</InlineCode>, "View trade portfolio with cost-basis P&L"],
           [<InlineCode key="k">t2000_services</InlineCode>, "Discover all MPP services, endpoints, and prices"],
         ]}
       />
@@ -1498,9 +1498,11 @@ function McpSection() {
           [<InlineCode key="k">t2000_withdraw</InlineCode>, "Withdraw from savings"],
           [<InlineCode key="k">t2000_borrow</InlineCode>, "Borrow against collateral"],
           [<InlineCode key="k">t2000_repay</InlineCode>, "Repay borrowed USDC"],
-          [<InlineCode key="k">t2000_exchange</InlineCode>, "Swap assets via DEX"],
+          [<InlineCode key="k">t2000_swap</InlineCode>, "Swap assets via DEX"],
           [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
-          [<InlineCode key="k">t2000_invest</InlineCode>, "Buy, sell, earn, or unearn SUI, BTC, ETH, GOLD"],
+          [<InlineCode key="k">t2000_buy</InlineCode>, "Buy SUI, BTC, ETH, GOLD"],
+          [<InlineCode key="k">t2000_sell</InlineCode>, "Sell SUI, BTC, ETH, GOLD"],
+          [<InlineCode key="k">t2000_invest</InlineCode>, "Earn or unearn yield on holdings"],
           [<InlineCode key="k">t2000_invest_rebalance</InlineCode>, "Move earning positions to better-rate protocols"],
           [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
           [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
@@ -1547,7 +1549,7 @@ function McpSection() {
           [<InlineCode key="k">dca-advisor</InlineCode>, "Personalized DCA setup — budget → strategy, frequency, projected growth"],
           [<InlineCode key="k">claim-rewards</InlineCode>, "Check and claim pending protocol rewards — auto-converts to USDC"],
           [<InlineCode key="k">safeguards</InlineCode>, "Review safety settings — per-tx limits, daily caps, emergency lock"],
-          [<InlineCode key="k">quick-exchange</InlineCode>, "Guided token swap — preview rate, slippage, impact before executing"],
+          [<InlineCode key="k">quick-swap</InlineCode>, "Guided token swap — preview rate, slippage, impact before executing"],
           [<InlineCode key="k">sentinel-hunt</InlineCode>, "Guided bounty hunting — find targets, craft attacks, win prizes"],
           [<InlineCode key="k">onboarding</InlineCode>, "New user setup — deposit, first save, explore features"],
           [<InlineCode key="k">emergency</InlineCode>, "Lock account, assess damage, recovery guidance"],
@@ -1639,7 +1641,7 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-withdraw</InlineCode>, <>&#34;withdraw from savings&#34;, &#34;access deposits&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-borrow</InlineCode>, <>&#34;borrow 40 USDC&#34;, &#34;take out a loan&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-exchange</InlineCode>, <>&#34;swap USDC to SUI&#34;, &#34;exchange tokens&#34;, &#34;convert to...&#34;</>, <Badge color="green" key="b">live</Badge>],
+          [<InlineCode key="k">t2000-swap</InlineCode>, <>&#34;swap USDC to SUI&#34;, &#34;swap tokens&#34;, &#34;convert to...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;search the web&#34;, &#34;generate an image&#34;, &#34;buy a gift card&#34;, &#34;send mail&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-sentinel</InlineCode>, <>&#34;attack a sentinel&#34;, &#34;earn bounties&#34;, &#34;red team&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
@@ -1826,7 +1828,7 @@ function DefiSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         t2000 integrates NAVI Protocol and Suilend for savings and borrowing, and Cetus DEX
-        for token exchange. All protocols are composed atomically via PTBs using direct Move contract calls — no external SDK dependencies.
+        for token swaps. All protocols are composed atomically via PTBs using direct Move contract calls — no external SDK dependencies.
       </p>
 
       <h2 id="defi-navi">Lending protocol integration</h2>
@@ -1975,7 +1977,7 @@ function ChangelogSection() {
         v0.14.0
       </h2>
       <p>
-        Investment account: buy/sell SUI, BTC, ETH, GOLD with portfolio tracking, cost-basis P&L,
+        Trade account: buy/sell SUI, BTC, ETH, GOLD with portfolio tracking, cost-basis P&L,
         and investment locking guard. 19 MCP tools, 6 prompts, 14 agent skills.
       </p>
 
@@ -2030,10 +2032,10 @@ function ChangelogSection() {
         v0.10.1
       </h2>
       <p>
-        New <InlineCode>t2000 exchange</InlineCode> command for token swaps via
+        New <InlineCode>t2000 swap</InlineCode> command for token swaps via
         Cetus DEX with on-chain slippage protection. Public SDK methods{" "}
-        <InlineCode>exchange()</InlineCode> and{" "}
-        <InlineCode>exchangeQuote()</InlineCode>.
+        <InlineCode>swap()</InlineCode> and{" "}
+        <InlineCode>swapQuote()</InlineCode>.
       </p>
 
       <h2 id="cl-0100">
@@ -2077,8 +2079,8 @@ function ChangelogSection() {
         v0.2.12
       </h2>
       <p>
-        Full bank account model: checking, savings, credit, and currency
-        exchange. Programmable Transaction Block architecture for atomic
+        Full bank account model: checking, savings, credit, and token
+        swap. Programmable Transaction Block architecture for atomic
         multi-step operations. Gas manager with auto-topup. MPP payment support
         on Sui. Agent Skills integration.
       </p>

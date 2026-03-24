@@ -80,7 +80,7 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
 
   it('can cancel at l2-chips and return to idle', () => {
     const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('invest'));
+    act(() => result.current.startFlow('save'));
     expect(result.current.state.phase).toBe('l2-chips');
     act(() => result.current.reset());
     expect(result.current.state.phase).toBe('idle');

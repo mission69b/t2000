@@ -207,7 +207,7 @@ export function registerInit(program: Command) {
         } else {
           console.log(`  │  Use the CLI directly:                 │`);
           console.log(`  │    ${pc.cyan('t2000 balance')}                        │`);
-          console.log(`  │    ${pc.cyan('t2000 invest buy 100 SUI')}             │`);
+          console.log(`  │    ${pc.cyan('t2000 buy 100 BTC')}                   │`);
           console.log(`  │                                         │`);
         }
 

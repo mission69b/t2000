@@ -3,13 +3,13 @@ import Link from "next/link";
 import { InvestShowcase } from "./InvestShowcase";
 
 export const metadata: Metadata = {
-  title: "t2000 — Investment Account",
+  title: "t2000 — Trade Account",
   description:
-    "Invest in crypto, earn yield while holding, and automate with strategies and DCA. All from natural language or CLI.",
+    "Buy and sell crypto, earn yield while holding, and automate with strategies and DCA. All from natural language or CLI.",
   openGraph: {
-    title: "t2000 — Investment Account",
+    title: "t2000 — Trade Account",
     description:
-      "Invest in crypto, earn yield while holding, and automate with strategies and DCA.",
+      "Buy and sell crypto, earn yield while holding, and automate with strategies and DCA.",
     type: "website",
   },
 };
@@ -40,7 +40,7 @@ export default function InvestPage() {
         <section className="pb-16 sm:pb-24 border-b border-border">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
-            Investment Account
+            Trade Account
           </div>
 
           <h1 className="font-serif text-[36px] sm:text-[clamp(42px,5vw,64px)] leading-[1.05] text-foreground mb-4 font-normal tracking-tight">
@@ -124,9 +124,9 @@ export default function InvestPage() {
               <div className="space-y-4">
                 {[
                   { cmd: "t2000 invest earn <asset>", desc: "Start earning yield on any holding" },
-                  { cmd: "t2000 invest unearn <asset>", desc: "Stop earning, keep the investment" },
+                  { cmd: "t2000 invest unearn <asset>", desc: "Stop earning, keep the asset" },
                   { cmd: "t2000 invest rebalance", desc: "Move earning to better-rate protocol" },
-                  { cmd: "t2000 invest sell all <asset>", desc: "Sell — auto-withdraws from lending first" },
+                  { cmd: "t2000 sell all <asset>", desc: "Sell — auto-withdraws from lending first" },
                 ].map((step) => (
                   <div key={step.cmd} className="flex items-start gap-3">
                     <span className="text-accent text-xs mt-0.5">▸</span>
@@ -146,7 +146,7 @@ export default function InvestPage() {
                 t2000 portfolio — with yield
               </div>
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">Investment Portfolio</span>
+                <span className="text-foreground">Trade Portfolio</span>
                 {"\n"}
                 <span className="text-muted/30">─────────────────────────────────────────────</span>
                 {"\n"}
@@ -430,7 +430,7 @@ export default function InvestPage() {
           <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-5 tracking-tight">
             Give your agent an
             <br />
-            <em className="italic text-accent">investment account.</em>
+            <em className="italic text-accent">trade account.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[460px] mx-auto mb-8 sm:mb-10 leading-[1.8]">
             Open source. Non-custodial. Built on Sui.

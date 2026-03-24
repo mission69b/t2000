@@ -111,10 +111,12 @@ Over-borrow warning (before action):
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
-### `t2000 exchange <amount> <from> <to>`
+### `t2000 swap <amount> <from> <to>`
+
+> `t2000 exchange` is a deprecated alias for `t2000 swap`.
 
 ```
-  ✓ Exchanged $5.00 USDC → 4.8500 SUI
+  ✓ Swapped $5.00 USDC → 4.8500 SUI
   Tx:  https://suiscan.xyz/mainnet/tx/...
   Gas:  0.0050 SUI (self-funded)
 ```
@@ -267,7 +269,7 @@ Empty state:
 
   0x9f2c...a801  save (sponsored)      2/19/2026, 3:45 PM
   0xa1b2...c3d4  send (self-funded)    2/19/2026, 2:30 PM
-  0xd5e6...f7a8  exchange (self-funded) 2/18/2026, 1:15 PM
+  0xd5e6...f7a8  swap (self-funded)     2/18/2026, 1:15 PM
 ```
 
 ### `t2000 pay <url>`
@@ -424,7 +426,9 @@ Empty state:
 
 Starts stdio server (used by AI platforms, not run directly by users).
 
-### `t2000 invest buy <amount> <asset>`
+### `t2000 buy <amount> <asset>`
+
+> `t2000 invest buy` is a deprecated alias for `t2000 buy`.
 
 ```
 printBlank()
@@ -456,7 +460,9 @@ printKeyValue('Tx', explorerUrl(digest))
 printBlank()
 ```
 
-### `t2000 invest sell <amount|all> <asset>`
+### `t2000 sell <amount|all> <asset>`
+
+> `t2000 invest sell` is a deprecated alias for `t2000 sell`.
 
 Auto-withdraws from lending first if position is earning.
 
@@ -663,13 +669,6 @@ Nothing pending:
   Unrealized P&L:  +$0.09 (+0.9%)
 ```
 
-### Investment locking error
-
-```
-printError(`Cannot send ${amount} ${asset} — ${invested} ${asset} is invested. Free ${asset}: ${free}`)
-printInfo(`To access invested funds: t2000 invest sell ${amount} ${asset}`)
-```
-
 ### Claim Rewards
 
 `t2000 claim-rewards` — claims protocol incentive rewards from all lending protocols and auto-converts to USDC.
@@ -713,7 +712,7 @@ Guided setup wizard. Creates wallet, configures MCP for AI platforms, sets safeg
   ✓ Gas sponsorship  enabled
 
   Setting up accounts...
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Trade
 
   🎉 Bank account created
   Address: 0x8b3e...d412

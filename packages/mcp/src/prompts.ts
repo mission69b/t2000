@@ -210,7 +210,7 @@ export function registerPrompts(server: McpServer): void {
             '',
             'AUTO-FUNDING: If checking balance is insufficient but savings exist,',
             '  the SDK auto-withdraws from savings to fund the investment.',
-            '  Do NOT manually withdraw first — just call t2000_strategy buy or t2000_invest buy directly.',
+            '  Do NOT manually withdraw first — just call t2000_strategy buy or t2000_invest with action: "buy" directly.',
             '',
             'For DCA: use t2000_auto_invest action: "setup" to create recurring buys.',
           ].join('\n'),
@@ -302,7 +302,7 @@ export function registerPrompts(server: McpServer): void {
             'For BORROW scenarios ("borrow $X"):',
             '  - Show new health factor and interest cost',
             '',
-            'For EXCHANGE scenarios ("swap $X A to B"):',
+            'For SWAP scenarios ("swap $X A to B", "buy $X BTC", "sell 0.1 ETH"):',
             '  - Call t2000_exchange with dryRun: true',
             '',
             'ALWAYS present results as a BEFORE → AFTER comparison table:',
@@ -420,7 +420,7 @@ export function registerPrompts(server: McpServer): void {
             '───────────────',
             '',
             '💰 Net Worth: $X — Checking $X | Savings $X | Investment $X',
-            '📈 Activity: X sends, X saves, X trades, X exchanges',
+            '📈 Activity: X sends, X saves, X trades, X swaps',
             '💸 Yield: $X.XX this week, X% APY, $X/month projected',
             '📊 Portfolio: Per-asset P&L, best & worst performer',
             '🔄 DCA: Runs this week, next run, total invested',
@@ -582,7 +582,7 @@ export function registerPrompts(server: McpServer): void {
   );
 
   server.prompt(
-    'quick-exchange',
+    'quick-swap',
     'Guided token swap — preview rate, slippage, and price impact before executing.',
     {
       from: z.string().optional().describe('Asset to sell (e.g. USDC, SUI)'),
@@ -602,7 +602,7 @@ export function registerPrompts(server: McpServer): void {
           content: {
             type: 'text',
             text: [
-              'You are an exchange assistant for a t2000 AI agent bank account.',
+              'You are a swap assistant for a t2000 AI agent bank account.',
               '',
               context ? `Context:\n${context}\n` : '',
               'Help the user swap tokens. Follow this flow:',

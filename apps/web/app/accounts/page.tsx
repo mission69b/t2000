@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "t2000 — Accounts",
   description:
-    "Five accounts, one wallet. Checking, savings, credit, exchange, and investment — everything your AI agent needs to manage money.",
+    "Five accounts, one wallet. Checking, savings, credit, swap, and trade — everything your AI agent needs to manage money.",
   openGraph: {
     title: "t2000 — Accounts",
     description:
@@ -239,14 +239,14 @@ export default function AccountsPage() {
           </div>
         </section>
 
-        {/* ── Exchange ── */}
+        {/* ── Swap ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-xl">⇌</span>
                 <div className="text-[10px] tracking-[0.2em] uppercase text-accent">
-                  Exchange
+                  Swap
                 </div>
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
@@ -259,8 +259,8 @@ export default function AccountsPage() {
 
               <div className="space-y-4">
                 {[
-                  { cmd: "t2000 exchange 5 USDC SUI", desc: "Swap USDC for SUI" },
-                  { cmd: "t2000 exchange 2 SUI USDC", desc: "Swap SUI back to USDC" },
+                  { cmd: "t2000 swap 5 USDC SUI", desc: "Swap USDC for SUI" },
+                  { cmd: "t2000 swap 2 SUI USDC", desc: "Swap SUI back to USDC" },
                 ].map((step) => (
                   <div key={step.cmd} className="flex items-start gap-3">
                     <span className="text-accent text-xs mt-0.5">▸</span>
@@ -277,12 +277,12 @@ export default function AccountsPage() {
 
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
               <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-                t2000 exchange
+                t2000 swap
               </div>
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">❯ t2000 exchange 10 USDC SUI</span>
+                <span className="text-foreground">❯ t2000 swap 10 USDC SUI</span>
                 {"\n\n"}
-                <span className="text-accent">  ✓ Exchanged $10.00 USDC → 9.71 SUI</span>
+                <span className="text-accent">  ✓ Swapped $10.00 USDC → 9.71 SUI</span>
                 {"\n"}
                 <span className="text-muted">  Rate:  1 SUI = $1.03</span>
                 {"\n"}
@@ -295,14 +295,14 @@ export default function AccountsPage() {
           </div>
         </section>
 
-        {/* ── Investment (link to invest page) ── */}
+        {/* ── Trade (link to invest page) ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-xl">◆</span>
                 <div className="text-[10px] tracking-[0.2em] uppercase text-accent">
-                  Investment
+                  Trade
                 </div>
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
@@ -317,7 +317,7 @@ export default function AccountsPage() {
                 href="/invest"
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono text-accent border border-accent/30 rounded transition-all hover:bg-accent-dim hover:shadow-[0_0_20px_rgba(0,214,143,0.08)]"
               >
-                Explore investment account →
+                Explore trade account →
               </Link>
             </div>
 
@@ -326,7 +326,7 @@ export default function AccountsPage() {
                 t2000 portfolio
               </div>
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">Investment Portfolio</span>
+                <span className="text-foreground">Trade Portfolio</span>
                 {"\n"}
                 <span className="text-muted/30">─────────────────────────────────────────</span>
                 {"\n"}

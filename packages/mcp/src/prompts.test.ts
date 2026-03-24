@@ -36,7 +36,7 @@ describe('prompts', () => {
     expect(prompts.has('dca-advisor')).toBe(true);
     expect(prompts.has('claim-rewards')).toBe(true);
     expect(prompts.has('safeguards')).toBe(true);
-    expect(prompts.has('quick-exchange')).toBe(true);
+    expect(prompts.has('quick-swap')).toBe(true);
     expect(prompts.has('sentinel-hunt')).toBe(true);
     expect(prompts.has('onboarding')).toBe(true);
     expect(prompts.has('emergency')).toBe(true);
@@ -117,8 +117,8 @@ describe('prompts', () => {
     expect(result.messages[0].content.text).toContain('t2000_lock');
   });
 
-  it('quick-exchange should work with and without args', async () => {
-    const handler = prompts.get('quick-exchange')!;
+  it('quick-swap should work with and without args', async () => {
+    const handler = prompts.get('quick-swap')!;
     const withArgs = await handler({ from: 'USDC', to: 'SUI', amount: 10 });
     expect(withArgs.messages).toHaveLength(1);
     expect(withArgs.messages[0].content.text).toContain('USDC');

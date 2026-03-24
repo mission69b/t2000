@@ -102,31 +102,49 @@ describe('parseIntent', () => {
     });
   });
 
-  describe('invest', () => {
-    it('parses "invest $100 in SUI"', () => {
-      expect(parseIntent('invest $100 in SUI')).toEqual({ action: 'invest', amount: 100, asset: 'SUI' });
-    });
-
+  describe('buy', () => {
     it('parses "buy $200 BTC"', () => {
-      expect(parseIntent('buy $200 BTC')).toEqual({ action: 'invest', amount: 200, asset: 'BTC' });
+      expect(parseIntent('buy $200 BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 200 });
     });
 
     it('parses "buy SUI $100"', () => {
-      expect(parseIntent('buy SUI $100')).toEqual({ action: 'invest', amount: 100, asset: 'SUI' });
+      expect(parseIntent('buy SUI $100')).toEqual({ action: 'swap', from: 'USDC', to: 'SUI', amount: 100 });
     });
 
-    it('parses "invest 500 in ethereum"', () => {
-      expect(parseIntent('invest 500 in ethereum')).toEqual({ action: 'invest', amount: 500, asset: 'ETH' });
+    it('parses "invest $100 in SUI" as buy', () => {
+      expect(parseIntent('invest $100 in SUI')).toEqual({ action: 'swap', from: 'USDC', to: 'SUI', amount: 100 });
+    });
+
+    it('parses "invest 500 in ethereum" as buy', () => {
+      expect(parseIntent('invest 500 in ethereum')).toEqual({ action: 'swap', from: 'USDC', to: 'ETH', amount: 500 });
+    });
+  });
+
+  describe('sell', () => {
+    it('parses "sell 0.001 BTC"', () => {
+      expect(parseIntent('sell 0.001 BTC')).toEqual({ action: 'swap', from: 'BTC', to: 'USDC', amount: 0.001 });
+    });
+
+    it('parses "sell $50 ETH"', () => {
+      expect(parseIntent('sell $50 ETH')).toEqual({ action: 'swap', from: 'ETH', to: 'USDC', amount: 50 });
     });
   });
 
   describe('swap', () => {
-    it('parses "swap $50 to SUI"', () => {
-      expect(parseIntent('swap $50 to SUI')).toEqual({ action: 'swap', amount: 50, to: 'SUI' });
+    it('parses "swap $50 to SUI" (assumes from USDC)', () => {
+      expect(parseIntent('swap $50 to SUI')).toEqual({ action: 'swap', from: 'USDC', to: 'SUI', amount: 50 });
     });
 
-    it('parses "exchange 100 for ETH"', () => {
-      expect(parseIntent('exchange 100 for ETH')).toEqual({ action: 'swap', amount: 100, to: 'ETH' });
+    it('parses "exchange 100 for ETH" (assumes from USDC)', () => {
+      expect(parseIntent('exchange 100 for ETH')).toEqual({ action: 'swap', from: 'USDC', to: 'ETH', amount: 100 });
+    });
+
+    it('parses "swap 50 SUI to ETH"', () => {
+      expect(parseIntent('swap 50 SUI to ETH')).toEqual({ action: 'swap', from: 'SUI', to: 'ETH', amount: 50 });
+    });
+
+    it('parses "trade 10 USDC for BTC"', () => {
+      expect(parseIntent('trade 10 USDC for BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 10 });
     });
   });
 

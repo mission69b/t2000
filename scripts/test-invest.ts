@@ -1,8 +1,8 @@
 /**
  * Investment Tests
  *
- * Tests: invest buy, portfolio, invest sell, investment locking guard,
- *        invest earn, invest unearn, portfolio yield, auto-withdraw, borrow guard.
+ * Tests: invest buy, portfolio, invest sell,
+ *        invest earn, invest unearn, portfolio yield, auto-withdraw.
  *
  * Requires at least $3 USDC available.
  * Buys SUI, earns yield, checks guards, then sells it back.
@@ -67,20 +67,6 @@ async function main() {
 
     assert(bal.investment > 0, 'balance.investment > 0');
     assert(typeof bal.investmentPnL === 'number', 'investmentPnL is a number');
-  });
-
-  await runSection('Investment locking guard (send)', async () => {
-    const bal = await agent.balance();
-    const totalWalletSui = bal.gasReserve.sui + boughtAmount;
-    const overAmount = totalWalletSui + 1;
-    console.log(`   Wallet SUI: ${totalWalletSui.toFixed(4)}, invested: ${boughtAmount.toFixed(4)}, sending: ${overAmount.toFixed(4)}`);
-    try {
-      await agent.send({ to: agent.address(), amount: overAmount, asset: 'SUI' });
-      assert(false, 'send should have been blocked');
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      assert(code === 'INVESTMENT_LOCKED', `send blocked with INVESTMENT_LOCKED (got ${code})`);
-    }
   });
 
   // ── Phase 17c: Earn Yield ──

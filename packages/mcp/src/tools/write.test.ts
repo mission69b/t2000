@@ -35,6 +35,15 @@ function createMockAgent() {
       success: true, tx: '0xdigest', amount: 2,
       remainingDebt: 0, gasCost: 0.001, gasMethod: 'self-funded',
     }),
+    swap: vi.fn().mockResolvedValue({
+      success: true, tx: '0xdigest', fromAmount: 10, fromAsset: 'USDC',
+      toAmount: 10.25, toAsset: 'SUI', priceImpact: 0.01,
+      fee: 0.03, gasCost: 0.001, gasMethod: 'self-funded',
+    }),
+    swapQuote: vi.fn().mockResolvedValue({
+      expectedOutput: 10.25, priceImpact: 0.01, poolPrice: 0.975,
+      fee: { amount: 0.03, rate: 0.003 },
+    }),
     exchange: vi.fn().mockResolvedValue({
       success: true, tx: '0xdigest', fromAmount: 10, fromAsset: 'USDC',
       toAmount: 10.25, toAsset: 'SUI', priceImpact: 0.01,
@@ -282,13 +291,13 @@ describe('write tools', () => {
       const data = JSON.parse(result.content[0].text);
       expect(data.preview).toBe(true);
       expect(data.expectedOutput).toBe(10.25);
-      expect(agent.exchange).not.toHaveBeenCalled();
+      expect(agent.swap).not.toHaveBeenCalled();
     });
 
     it('should execute exchange', async () => {
       const handler = tools.get('t2000_exchange')!;
       await handler({ amount: 10, from: 'USDC', to: 'SUI' });
-      expect(agent.exchange).toHaveBeenCalled();
+      expect(agent.swap).toHaveBeenCalled();
     });
   });
 

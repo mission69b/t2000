@@ -1,36 +1,38 @@
 ---
 name: t2000-exchange
 description: >-
-  Exchange tokens via Cetus DEX with on-chain slippage protection.
+  Swap tokens via Cetus DEX with on-chain slippage protection.
   Use when asked to swap, exchange, convert, or trade between tokens.
   Supports USDC ⇌ SUI, stablecoin pairs, and any supported token pair.
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
-# t2000: Exchange
+# t2000: Swap (Exchange)
 
 ## Purpose
-Exchange between tokens via Cetus DEX. Useful for acquiring SUI for gas,
+Swap between tokens via Cetus DEX. Useful for acquiring SUI for gas,
 converting earnings, or moving between stablecoins. On-chain slippage
 protection enforced by Cetus CLMM pools.
 
 ## Command
 ```bash
-t2000 exchange <amount> <from> <to>
+t2000 swap <amount> <from> <to>
 
-t2000 exchange 5 USDC SUI              # buy SUI with USDC
-t2000 exchange 2 SUI USDC              # sell SUI for USDC
-t2000 exchange 10 USDC suiUSDT         # stablecoin swap
-t2000 exchange 5 USDC SUI --slippage 0.5  # custom slippage (default: 3%)
+t2000 swap 5 USDC SUI              # buy SUI with USDC
+t2000 swap 2 SUI USDC              # sell SUI for USDC
+t2000 swap 10 USDC suiUSDT         # stablecoin swap
+t2000 swap 5 USDC SUI --slippage 0.5  # custom slippage (default: 3%)
 ```
+
+> **Deprecated alias:** `t2000 exchange` still works but is deprecated. Use `t2000 swap` instead.
 
 ## Output
 ```
-  ✓ Exchanged 5 USDC → 4.8500 SUI
+  ✓ Swapped 5 USDC → 4.8500 SUI
   Tx:  https://suiscan.xyz/mainnet/tx/...
   Gas:  0.0050 SUI (self-funded)
 ```
@@ -58,6 +60,7 @@ t2000 exchange 5 USDC SUI --slippage 0.5  # custom slippage (default: 3%)
 - Agent needs to acquire a specific token
 
 ## Notes
-- Exchange is also used internally by `rebalance` and `withdraw all` (auto-swap)
-- No protocol fee on exchange — only standard Cetus pool fees apply
+- Swap is also used internally by `rebalance` and `withdraw all` (auto-swap)
+- No protocol fee on swap — only standard Cetus pool fees apply
 - Slippage protection is enforced on-chain by the Cetus CLMM contract
+- MCP tool ID remains `t2000_exchange` for backward compatibility

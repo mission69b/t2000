@@ -22,16 +22,18 @@ All investment commands work via CLI and MCP.
 
 ## Commands — Direct Investment
 ```bash
-t2000 invest buy 100 SUI           # Invest $100 in SUI
-t2000 invest buy 500 BTC           # Invest $500 in Bitcoin
-t2000 invest sell 50 SUI           # Sell $50 worth of SUI
-t2000 invest sell all ETH          # Sell entire ETH position
+t2000 buy 100 SUI                  # Invest $100 in SUI
+t2000 buy 500 BTC                  # Invest $500 in Bitcoin
+t2000 sell 50 SUI                  # Sell $50 worth of SUI
+t2000 sell all ETH                 # Sell entire ETH position
 t2000 invest earn SUI              # Deposit SUI into best lending protocol for yield
 t2000 invest unearn SUI            # Withdraw from lending (stays in portfolio)
 t2000 invest rebalance             # Move earning positions to better-rate protocols
 t2000 invest rebalance --dry-run   # Preview rebalance moves without executing
 t2000 portfolio                    # Show all positions + P&L + yield
 ```
+
+> **Deprecated aliases:** `t2000 invest buy` and `t2000 invest sell` still work but are deprecated. Use `t2000 buy` / `t2000 sell` instead.
 
 ## Commands — Strategies
 ```bash
@@ -115,9 +117,9 @@ t2000 invest auto stop <id>                    # Stop a schedule
 ```
 
 ## Investment Locking
-- Invested assets are locked — you cannot `send` or `exchange` them directly
-- To access value: `t2000 invest sell <amount> <asset>` → proceeds go to checking
-- `invest sell` auto-withdraws from lending if the asset is earning
+- Invested assets are locked — you cannot `send` or `swap` them directly
+- To access value: `t2000 sell <amount> <asset>` → proceeds go to checking
+- `sell` auto-withdraws from lending if the asset is earning
 
 ## Earning Yield
 - `invest earn <asset>` deposits the full position into the best-rate lending protocol
@@ -135,7 +137,7 @@ t2000 invest auto stop <id>                    # Stop a schedule
 - **GOLD** — Tokenized gold (XAUm, yield via NAVI, Suilend)
 
 ## Notes
-- Amounts are always in USD: `invest buy 100 SUI` means "spend $100 to buy SUI"
+- Amounts are always in USD: `buy 100 SUI` means "spend $100 to buy SUI"
 - `--slippage <pct>` option controls max slippage (default 3%)
 - Investment shows in `t2000 balance` as a separate line with P&L and earning APY
 - Strategy positions are tracked separately from direct positions

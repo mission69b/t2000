@@ -11,12 +11,12 @@ export interface Demo {
 export const demos: Demo[] = [
   {
     id: "invest",
-    title: "Investment — Buy, Earn & Sell",
+    title: "Trade — Buy, Earn & Sell",
     description:
       "Buy crypto, earn yield while holding, track P&L, sell. Four commands.",
     tweet: "t2000 invest — buy, earn yield, track P&L, sell.",
     lines: [
-      { type: "command", text: "❯ t2000 invest buy 5 SUI", delay: 0 },
+      { type: "command", text: "❯ t2000 buy 5 SUI", delay: 0 },
       { type: "success", text: "  ✓ Bought 4.8500 SUI at $1.03", delay: 600 },
       { type: "info", text: "  Invested:  $5.00", delay: 200 },
       { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/Kx9fVw3nRt...", delay: 200 },
@@ -27,13 +27,13 @@ export const demos: Demo[] = [
       { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/7CAugsDaPvMM...", delay: 200 },
 
       { type: "command", text: "❯ t2000 portfolio", delay: 1200 },
-      { type: "output", text: "  Investment Portfolio", delay: 400 },
+      { type: "output", text: "  Trade Portfolio", delay: 400 },
       { type: "info", text: "  ─────────────────────────────────────────────────────────────────", delay: 80 },
       { type: "output", text: "  SUI:  4.8500    Avg: $1.03    Now: $1.05    +$0.10 (+2.0%)    2.61% APY (Suilend)", delay: 200 },
       { type: "info", text: "", delay: 80 },
       { type: "success", text: "  Unrealized P&L:  +$0.10 (+2.0%)", delay: 150 },
 
-      { type: "command", text: "❯ t2000 invest sell all SUI", delay: 1200 },
+      { type: "command", text: "❯ t2000 sell all SUI", delay: 1200 },
       { type: "success", text: "  ✓ Sold 4.8500 SUI at $1.05", delay: 600 },
       { type: "success", text: "  Realized P&L:  +$0.10", delay: 150 },
       { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/Mv2pRs8kLw...", delay: 200 },
@@ -137,7 +137,7 @@ export const demos: Demo[] = [
       { type: "success", text: "  ✓ Keypair generated", delay: 300 },
       { type: "success", text: "  ✓ Network  Sui mainnet", delay: 200 },
       { type: "success", text: "  ✓ Gas sponsorship  enabled", delay: 200 },
-      { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Exchange  ✓ Investment", delay: 300 },
+      { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Trade", delay: 300 },
       { type: "output", text: "  🎉 Bank account created", delay: 300 },
       { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 

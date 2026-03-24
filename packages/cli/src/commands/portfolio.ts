@@ -52,7 +52,7 @@ export function registerPortfolio(program: Command) {
         const hasStrategyPositions = portfolio.strategyPositions && Object.keys(portfolio.strategyPositions).length > 0;
 
         if (!hasDirectPositions && !hasStrategyPositions) {
-          printInfo('No investments yet. Try: t2000 invest buy 100 SUI');
+          printInfo('No investments yet. Try: t2000 buy 100 SUI');
           printBlank();
           return;
         }

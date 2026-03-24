@@ -19,8 +19,7 @@ export interface AgentActions {
   withdraw(params: { amount: number }): Promise<{ tx: string }>;
   borrow(params: { amount: number }): Promise<{ tx: string }>;
   repay(params: { amount: number }): Promise<{ tx: string }>;
-  invest(params: { asset: string; amount: number }): Promise<{ tx: string }>;
-  exchange(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
+  swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
   payService(params: { serviceId: string; fields: Record<string, string> }): Promise<ServiceResult>;
 }
 
@@ -117,11 +116,7 @@ export function useAgent() {
             return sponsoredTransaction('repay', { amount });
           },
 
-          async invest({ asset, amount }) {
-            return sponsoredTransaction('invest', { amount, toAsset: asset });
-          },
-
-          async exchange({ from, to, amount }) {
+          async swap({ from, to, amount }) {
             return sponsoredTransaction('swap', { amount, fromAsset: from, toAsset: to });
           },
 

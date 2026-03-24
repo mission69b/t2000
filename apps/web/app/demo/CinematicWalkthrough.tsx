@@ -21,7 +21,7 @@ const scenes: Scene[] = [
       {
         type: "ai",
         tools: ["t2000_balance", "t2000_rates"],
-        html: `<table><tr><td>Checking</td><td class="hi">$96.81 USDC</td><td class="nt">spendable</td></tr><tr><td>Savings</td><td>$5.10</td><td class="nt">4.98% APY</td></tr><tr><td>Credit</td><td>$0.00</td><td class="nt">no active loans</td></tr><tr><td>Investment</td><td class="hi">$521.04</td><td class="nt">SUI \u00b7 BTC \u00b7 ETH \u00b7 GOLD</td></tr><tr><td>Gas</td><td>0.86 SUI</td><td class="nt">~$0.84</td></tr><tr class="bdr"><td><strong>Total</strong></td><td class="hi"><strong>$102.75</strong></td><td></td></tr></table><div class="nt">93% of your funds are idle in checking earning nothing.</div>`,
+        html: `<table><tr><td>Checking</td><td class="hi">$96.81 USDC</td><td class="nt">spendable</td></tr><tr><td>Savings</td><td>$5.10</td><td class="nt">4.98% APY</td></tr><tr><td>Credit</td><td>$0.00</td><td class="nt">no active loans</td></tr><tr><td>Trade</td><td class="hi">$521.04</td><td class="nt">SUI \u00b7 BTC \u00b7 ETH \u00b7 GOLD</td></tr><tr><td>Gas</td><td>0.86 SUI</td><td class="nt">~$0.84</td></tr><tr class="bdr"><td><strong>Total</strong></td><td class="hi"><strong>$102.75</strong></td><td></td></tr></table><div class="nt">93% of your funds are idle in checking earning nothing.</div>`,
         hold: 2500,
       },
     ],

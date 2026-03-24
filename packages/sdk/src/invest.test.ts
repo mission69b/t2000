@@ -77,16 +77,11 @@ describe('swap-returns-zero guard', () => {
   });
 });
 
-describe('investment locking guard', () => {
-  let pm: PortfolioManager;
-  let dir: string;
+describe('investment locking removed (swap freely)', () => {
+  it('all tokens are freely swappable regardless of portfolio state', () => {
+    const dir = tmpDir();
+    const pm = new PortfolioManager(dir);
 
-  beforeEach(() => {
-    dir = tmpDir();
-    pm = new PortfolioManager(dir);
-  });
-
-  it('blocks sending invested SUI', () => {
     pm.recordBuy({
       id: 'buy1', type: 'buy', asset: 'SUI',
       amount: 100, price: 1.0, usdValue: 100,
@@ -94,58 +89,17 @@ describe('investment locking guard', () => {
     });
 
     const pos = pm.getPosition('SUI');
-    const invested = pos?.totalAmount ?? 0;
-    const walletSui = 105;
-    const freeSui = Math.max(0, walletSui - invested - GAS_RESERVE_MIN);
-
-    expect(freeSui).toBeCloseTo(4.95);
-    expect(50 > freeSui).toBe(true);
+    expect(pos?.totalAmount).toBe(100);
+    // Portfolio tracks the buy informationally but does NOT lock tokens
   });
 
-  it('allows sending free SUI when wallet has more than invested', () => {
-    pm.recordBuy({
-      id: 'buy1', type: 'buy', asset: 'SUI',
-      amount: 50, price: 1.0, usdValue: 50,
-      fee: 0, tx: '0x1', timestamp: new Date().toISOString(),
-    });
-
-    const walletSui = 110;
-    const invested = pm.getPosition('SUI')?.totalAmount ?? 0;
-    const freeSui = Math.max(0, walletSui - invested - GAS_RESERVE_MIN);
-
-    expect(freeSui).toBeCloseTo(59.95);
-    expect(30 <= freeSui).toBe(true);
-  });
-
-  it('no guard needed for USDC (not investment asset)', () => {
-    expect('USDC' in INVESTMENT_ASSETS).toBe(false);
-  });
-
-  it('guard applies to all investment assets', () => {
+  it('INVESTMENT_ASSETS still identifies non-stablecoin assets', () => {
     expect('SUI' in INVESTMENT_ASSETS).toBe(true);
     expect('BTC' in INVESTMENT_ASSETS).toBe(true);
     expect('ETH' in INVESTMENT_ASSETS).toBe(true);
     expect('GOLD' in INVESTMENT_ASSETS).toBe(true);
-  });
-
-  it('blocks exchange of invested SUI', () => {
-    pm.recordBuy({
-      id: 'buy1', type: 'buy', asset: 'SUI',
-      amount: 100, price: 1.0, usdValue: 100,
-      fee: 0, tx: '0x1', timestamp: new Date().toISOString(),
-    });
-
-    const walletSui = 100.05;
-    const invested = pm.getPosition('SUI')?.totalAmount ?? 0;
-    const freeSui = Math.max(0, walletSui - invested - GAS_RESERVE_MIN);
-
-    expect(freeSui).toBe(0);
-    expect(50 > freeSui).toBe(true);
-  });
-
-  it('allows exchange in buy direction (USDC→SUI)', () => {
-    const fromAsset = 'USDC';
-    expect(fromAsset in INVESTMENT_ASSETS).toBe(false);
+    expect('USDC' in INVESTMENT_ASSETS).toBe(false);
+    expect('USDT' in INVESTMENT_ASSETS).toBe(false);
   });
 });
 

@@ -12,7 +12,7 @@ const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
-type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'invest' | 'swap';
+type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap';
 
 interface BuildRequest {
   type: TxType;
@@ -218,28 +218,6 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const navi = getNaviAdapter();
       const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
-    }
-
-    case 'invest': {
-      const toAsset = params.toAsset ?? params.asset ?? 'SUI';
-      const fromKey = 'USDC';
-      const fromInfo = ASSET_COIN_TYPES[fromKey];
-      if (!fromInfo) throw new Error(`Unsupported asset: ${fromKey}`);
-
-      const rawAmount = BigInt(Math.round(amount * 10 ** fromInfo.decimals));
-      const coins = await client.getCoins({ owner: address, coinType: fromInfo.type });
-      if (!coins.data.length) throw new Error(`No ${fromKey} coins found`);
-
-      const coinIds = coins.data.map((c) => c.coinObjectId);
-      if (coinIds.length > 1) {
-        tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
-      }
-      const [inputCoin] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
-
-      const cetus = getCetusAdapter();
-      const { outputCoin } = await cetus.addSwapToTx(tx, address, inputCoin, fromKey, toAsset, amount);
-      tx.transferObjects([outputCoin], address);
-      break;
     }
 
     case 'swap': {

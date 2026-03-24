@@ -8,15 +8,16 @@ import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleE
 export function registerInvest(program: Command) {
   const investCmd = program
     .command('invest')
-    .description('Buy or sell investment assets');
+    .description('Investment strategies, DCA, and yield earning');
 
   investCmd
     .command('buy <amount> <asset>')
-    .description('Invest USD amount in an asset')
+    .description('[deprecated — use "buy" instead] Buy an asset')
     .option('--key <path>', 'Key file path')
     .option('--slippage <pct>', 'Max slippage percent', '3')
     .action(async (amount: string, asset: string, opts: { key?: string; slippage: string }) => {
       try {
+        console.error(pc.yellow(`  ⚠ "invest buy" is deprecated. Use: t2000 buy ${amount} ${asset}`));
         const parsed = parseFloat(amount);
         if (isNaN(parsed) || parsed <= 0 || !isFinite(parsed)) {
           console.error(pc.red('  ✗ Amount must be greater than $0'));
@@ -37,7 +38,6 @@ export function registerInvest(program: Command) {
         const sym = asset.toUpperCase();
         printSuccess(`Bought ${formatAssetAmount(result.amount, sym)} ${sym} at ${formatUsd(result.price)}`);
         printKeyValue('Invested', formatUsd(result.usdValue));
-        printKeyValue('Portfolio', `${formatAssetAmount(result.position.totalAmount, sym)} ${sym} (avg ${formatUsd(result.position.avgPrice)})`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) { handleError(error); }
@@ -45,11 +45,12 @@ export function registerInvest(program: Command) {
 
   investCmd
     .command('sell <amount> <asset>')
-    .description('Sell USD amount of an asset (or "all")')
+    .description('[deprecated — use "sell" instead] Sell an asset')
     .option('--key <path>', 'Key file path')
     .option('--slippage <pct>', 'Max slippage percent', '3')
     .action(async (amount: string, asset: string, opts: { key?: string; slippage: string }) => {
       try {
+        console.error(pc.yellow(`  ⚠ "invest sell" is deprecated. Use: t2000 sell ${amount} ${asset}`));
         const isAll = amount.toLowerCase() === 'all';
         if (!isAll) {
           const parsed = parseFloat(amount);
@@ -62,13 +63,6 @@ export function registerInvest(program: Command) {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
         const sym = asset.toUpperCase();
-
-        const strategyAmount = agent.portfolio.getStrategyAmountForAsset(sym);
-        const directAmount = agent.portfolio.getDirectAmount(sym);
-        if (isAll && strategyAmount > 0) {
-          console.log(pc.yellow(`  ⚠ This will sell ALL ${sym} including ${formatAssetAmount(strategyAmount, sym)} from strategies`));
-          console.log(pc.dim(`    To sell only strategy positions: t2000 invest strategy sell <strategy-name>`));
-        }
 
         const usdAmount = isAll ? 'all' as const : parseFloat(amount);
         const result = await agent.investSell({
@@ -87,75 +81,7 @@ export function registerInvest(program: Command) {
           const pnlSign = result.realizedPnL >= 0 ? '+' : '';
           printKeyValue('Realized P&L', pnlColor(`${pnlSign}${formatUsd(result.realizedPnL)}`));
         }
-        if (result.position.totalAmount > 0) {
-          printKeyValue('Remaining', `${formatAssetAmount(result.position.totalAmount, sym)} ${sym} (avg ${formatUsd(result.position.avgPrice)})`);
-        }
         printKeyValue('Tx', explorerUrl(result.tx));
-        printBlank();
-      } catch (error) { handleError(error); }
-    });
-
-  investCmd
-    .command('sell-all')
-    .description('Sell ALL investment positions (direct + strategies)')
-    .option('--key <path>', 'Key file path')
-    .option('--slippage <pct>', 'Max slippage percent', '3')
-    .action(async (opts: { key?: string; slippage: string }) => {
-      try {
-        const pin = await resolvePin();
-        const agent = await T2000.create({ pin, keyPath: opts.key });
-        const positions = agent.portfolio.getPositions();
-
-        if (positions.length === 0) {
-          if (isJsonMode()) { printJson({ sold: [] }); return; }
-          printBlank();
-          printInfo('No investment positions to sell');
-          printBlank();
-          return;
-        }
-
-        if (isJsonMode()) {
-          const results = [];
-          for (const pos of positions) {
-            const result = await agent.investSell({
-              asset: pos.asset as InvestmentAsset,
-              usdAmount: 'all',
-              maxSlippage: parseFloat(opts.slippage) / 100,
-            });
-            results.push(result);
-          }
-          printJson(results);
-          return;
-        }
-
-        printBlank();
-        printHeader('Selling all positions');
-        printSeparator();
-        let totalProceeds = 0;
-        let totalPnL = 0;
-        for (const pos of positions) {
-          try {
-            const result = await agent.investSell({
-              asset: pos.asset as InvestmentAsset,
-              usdAmount: 'all',
-              maxSlippage: parseFloat(opts.slippage) / 100,
-            });
-            const pnl = result.realizedPnL ?? 0;
-            const pnlColor = pnl >= 0 ? pc.green : pc.red;
-            const pnlSign = pnl >= 0 ? '+' : '';
-            printKeyValue(pos.asset, `${formatUsd(result.usdValue)}  ${pnlColor(`${pnlSign}${formatUsd(pnl)}`)}`);
-            totalProceeds += result.usdValue;
-            totalPnL += pnl;
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error(pc.yellow(`  ⚠ ${pos.asset}: ${msg}`));
-          }
-        }
-        printSeparator();
-        printKeyValue('Total proceeds', formatUsd(totalProceeds));
-        const rpnlColor = totalPnL >= 0 ? pc.green : pc.red;
-        const rpnlSign = totalPnL >= 0 ? '+' : '';
-        printKeyValue('Realized P&L', rpnlColor(`${rpnlSign}${formatUsd(totalPnL)}`));
         printBlank();
       } catch (error) { handleError(error); }
     });
@@ -208,7 +134,7 @@ export function registerInvest(program: Command) {
         printBlank();
         const sym = asset.toUpperCase();
         printSuccess(`Withdrew ${formatAssetAmount(result.amount, sym)} ${sym} from ${result.protocol}`);
-        printKeyValue('Status', `${sym} remains in investment portfolio (locked)`);
+        printKeyValue('Status', `${sym} withdrawn to wallet`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) { handleError(error); }

@@ -66,10 +66,10 @@ function capForFlow(
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
     case 'borrow': return bal.maxBorrow;
-    case 'invest': return bal.usdc;
     case 'swap': {
       if (fromAsset === 'SUI') return bal.sui;
       if (fromAsset === 'USDC') return bal.usdc;
+      if (fromAsset === 'GOLD' || fromAsset === 'USDT') return bal.checking;
       return bal.checking;
     }
     default: return bal.checking;
@@ -352,13 +352,9 @@ function DashboardContent() {
             if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           }
           break;
-        case 'invest':
-          chipFlow.startFlow('invest', flowContext);
-          if (intent.asset) chipFlow.selectAsset(intent.asset, flowContext);
-          break;
         case 'swap':
           chipFlow.startFlow('swap', flowContext);
-          chipFlow.selectAsset('USDC', flowContext);
+          if (intent.from) chipFlow.selectAsset(intent.from, flowContext);
           if (intent.to) chipFlow.selectAsset(intent.to, flowContext);
           break;
         case 'claim-rewards':
@@ -438,7 +434,7 @@ function DashboardContent() {
         case 'help':
           feed.addItem({
             type: 'ai-text',
-            text: 'Here\'s what I can help with:\n\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Invest — Buy SUI, BTC, ETH, GOLD\n• Services — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100".',
+            text: 'Here\'s what I can help with:\n\n• Trade — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Services — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100" or "buy $50 BTC".',
           });
           break;
         case 'service':
@@ -502,14 +498,6 @@ function DashboardContent() {
       if (flow === 'report') { executeIntent({ action: 'report' }); return; }
       if (flow === 'history') { executeIntent({ action: 'history' }); return; }
       if (flow === 'receive') { executeIntent({ action: 'address' }); return; }
-      if (flow === 'invest' || flow.startsWith('invest-')) {
-        chipFlow.startFlow('invest', flowContext);
-        if (flow.startsWith('invest-')) {
-          const asset = flow.replace('invest-', '').toUpperCase();
-          chipFlow.selectAsset(asset, flowContext);
-        }
-        return;
-      }
       if (flow === 'swap') {
         chipFlow.startFlow('swap', flowContext);
         return;
@@ -648,9 +636,8 @@ function DashboardContent() {
 
   const fetchQuoteAndConfirm = useCallback(
     async (amount: number) => {
-      const flow = chipFlow.state.flow;
-      const fromAsset = flow === 'invest' ? 'USDC' : (chipFlow.state.asset ?? 'USDC');
-      const toAsset = flow === 'invest' ? (chipFlow.state.asset ?? 'SUI') : (chipFlow.state.toAsset ?? 'SUI');
+      const fromAsset = chipFlow.state.asset ?? 'USDC';
+      const toAsset = chipFlow.state.toAsset ?? 'SUI';
 
       chipFlow.setQuoting(amount);
 
@@ -683,11 +670,11 @@ function DashboardContent() {
   const handleAmountSelect = useCallback(
     (amount: number) => {
       const flow = chipFlow.state.flow ?? '';
-      const fromAsset = flow === 'swap' ? (chipFlow.state.asset ?? undefined) : undefined;
+      const fromAsset = chipFlow.state.asset ?? undefined;
       const cap = capForFlow(flow, balance, fromAsset);
       const resolved = amount === -1 ? cap : Math.min(amount, cap);
 
-      if (flow === 'invest' || flow === 'swap') {
+      if (flow === 'swap') {
         fetchQuoteAndConfirm(resolved);
       } else if (amount === -1) {
         chipFlow.selectAmount(cap);
@@ -702,7 +689,7 @@ function DashboardContent() {
     chipFlow.confirm();
 
     const flow = chipFlow.state.flow;
-    const fromAsset = flow === 'swap' ? (chipFlow.state.asset ?? undefined) : undefined;
+    const fromAsset = chipFlow.state.asset ?? undefined;
     const cap = capForFlow(flow ?? '', balance, fromAsset);
     const rawAmount = chipFlow.state.amount ?? 0;
     const amount = Math.min(rawAmount, cap);
@@ -747,35 +734,32 @@ function DashboardContent() {
           flowLabel = 'Repaid';
           break;
         }
-        case 'invest': {
-          const asset = chipFlow.state.asset ?? 'SUI';
-          const res = await sdk.invest({ asset, amount });
-          txDigest = res.tx;
-          const q = chipFlow.state.quote;
-          flowLabel = q
-            ? `Invested $${amount.toFixed(2)} → ${fmtToken(q.expectedOutput)} ${asset}`
-            : `Invested $${amount.toFixed(2)} in ${asset}`;
-          break;
-        }
         case 'swap': {
           const from = chipFlow.state.asset ?? 'USDC';
           const to = chipFlow.state.toAsset ?? 'SUI';
-          const res = await sdk.exchange({ from, to, amount });
+          const res = await sdk.swap({ from, to, amount });
           txDigest = res.tx;
           const q = chipFlow.state.quote;
-          flowLabel = q
-            ? `Swapped ${amount} ${from} → ${fmtToken(q.expectedOutput)} ${to}`
-            : `Swapped ${amount} ${from} → ${to}`;
+          const isBuy = from === 'USDC';
+          const isSell = to === 'USDC';
+          if (isBuy && q) {
+            flowLabel = `Bought ${fmtToken(q.expectedOutput)} ${to} for $${amount.toFixed(2)}`;
+          } else if (isSell && q) {
+            flowLabel = `Sold ${fmtToken(amount)} ${from} for ~$${q.expectedOutput.toFixed(2)}`;
+          } else if (q) {
+            flowLabel = `Swapped ${fmtToken(amount)} ${from} → ${fmtToken(q.expectedOutput)} ${to}`;
+          } else {
+            flowLabel = `Swapped ${fmtToken(amount)} ${from} → ${to}`;
+          }
           break;
         }
         default:
           throw new Error(`Unknown flow: ${flow}`);
       }
 
-      const isSwapLike = flow === 'invest' || flow === 'swap';
       const result: ChipFlowResult = {
         success: true,
-        title: isSwapLike ? flowLabel : `${flowLabel} $${amount.toFixed(2)}`,
+        title: flow === 'swap' ? flowLabel : `${flowLabel} $${amount.toFixed(2)}`,
         details: txDigest
           ? `Tx: ${txDigest.slice(0, 8)}...${txDigest.slice(-6)}`
           : 'Transaction confirmed on-chain.',
@@ -815,32 +799,40 @@ function DashboardContent() {
     const quote = chipFlow.state.quote;
     const details: { label: string; value: string }[] = [];
 
-    if (flow === 'invest' && quote) {
-      details.push({ label: 'You pay', value: `$${amount.toFixed(2)} USDC` });
-      details.push({ label: 'You receive', value: `~${fmtToken(quote.expectedOutput)} ${quote.toAsset}` });
-      const unitPrice = amount / quote.expectedOutput;
-      details.push({ label: 'Price', value: `$${unitPrice.toFixed(2)} / ${quote.toAsset}` });
-      if (quote.priceImpact > 0.001) {
-        details.push({ label: 'Price impact', value: `${(quote.priceImpact * 100).toFixed(2)}%` });
-      }
-      details.push({ label: 'Gas', value: 'Sponsored' });
-      return {
-        title: `Buy ${quote.toAsset}`,
-        confirmLabel: `Buy ${fmtToken(quote.expectedOutput)} ${quote.toAsset}`,
-        details,
-      };
-    }
-
     if (flow === 'swap' && quote) {
-      details.push({ label: 'You send', value: `${amount} ${quote.fromAsset}` });
-      details.push({ label: 'You receive', value: `~${fmtToken(quote.expectedOutput)} ${quote.toAsset}` });
+      const isBuy = quote.fromAsset === 'USDC';
+      const isSell = quote.toAsset === 'USDC';
+      if (isBuy) {
+        details.push({ label: 'You pay', value: `$${amount.toFixed(2)} USDC` });
+        details.push({ label: 'You receive', value: `~${fmtToken(quote.expectedOutput)} ${quote.toAsset}` });
+        const unitPrice = amount / quote.expectedOutput;
+        details.push({ label: 'Price', value: `$${unitPrice.toFixed(2)} / ${quote.toAsset}` });
+      } else if (isSell) {
+        details.push({ label: 'You sell', value: `${fmtToken(amount)} ${quote.fromAsset}` });
+        details.push({ label: 'You receive', value: `~$${quote.expectedOutput.toFixed(2)} USDC` });
+      } else {
+        details.push({ label: 'You send', value: `${fmtToken(amount)} ${quote.fromAsset}` });
+        details.push({ label: 'You receive', value: `~${fmtToken(quote.expectedOutput)} ${quote.toAsset}` });
+      }
       if (quote.priceImpact > 0.001) {
         details.push({ label: 'Price impact', value: `${(quote.priceImpact * 100).toFixed(2)}%` });
       }
       details.push({ label: 'Gas', value: 'Sponsored' });
+      let title: string;
+      let confirmLabel: string;
+      if (isBuy) {
+        title = `Buy ${quote.toAsset}`;
+        confirmLabel = `Buy ${fmtToken(quote.expectedOutput)} ${quote.toAsset}`;
+      } else if (isSell) {
+        title = `Sell ${quote.fromAsset}`;
+        confirmLabel = `Sell ${fmtToken(amount)} ${quote.fromAsset}`;
+      } else {
+        title = `Swap ${quote.fromAsset} → ${quote.toAsset}`;
+        confirmLabel = `Swap ${fmtToken(amount)} ${quote.fromAsset}`;
+      }
       return {
-        title: `Swap ${quote.fromAsset} → ${quote.toAsset}`,
-        confirmLabel: `Swap ${amount} ${quote.fromAsset}`,
+        title,
+        confirmLabel,
         details,
       };
     }
@@ -923,14 +915,7 @@ function DashboardContent() {
           />
         )}
 
-        {/* Asset selection (invest/swap) */}
-        {chipFlow.state.phase === 'asset-select' && chipFlow.state.flow === 'invest' && (
-          <AssetSelector
-            flow="invest"
-            message={chipFlow.state.message ?? undefined}
-            onSelect={(asset) => chipFlow.selectAsset(asset, flowContext)}
-          />
-        )}
+        {/* Asset selection (trade/swap) */}
         {chipFlow.state.phase === 'asset-select' && chipFlow.state.flow === 'swap' && (
           <AssetSelector
             flow="swap"
@@ -943,7 +928,7 @@ function DashboardContent() {
         {/* Amount sub-chips */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (() => {
           const f = chipFlow.state.flow!;
-          const swapFrom = f === 'swap' ? (chipFlow.state.asset ?? undefined) : undefined;
+          const swapFrom = chipFlow.state.asset ?? undefined;
           const swapCap = f === 'swap' && swapFrom ? capForFlow('swap', balance, swapFrom) : 0;
           return (
             <AmountChips
@@ -953,7 +938,6 @@ function DashboardContent() {
                 f === 'save' ? `All $${fmtDollar(balance.checking)}` :
                 f === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
                 f === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
-                f === 'invest' ? `All $${fmtDollar(balance.usdc)}` :
                 f === 'swap' && swapFrom ? `All ${swapCap.toFixed(swapFrom === 'USDC' ? 2 : 4)} ${swapFrom}` :
                 undefined
               }

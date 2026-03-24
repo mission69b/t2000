@@ -34,7 +34,7 @@ export function BalanceWidget() {
         <span className="text-danger">-$20.00</span>
       </div>
       <div className="flex justify-between items-center py-1.5 border-b border-border text-xs">
-        <span className="text-muted">Investment</span>
+        <span className="text-muted">Trade</span>
         <span className="text-foreground">${investment.toFixed(2)} <span className="text-accent text-[10px]">+0.4%</span></span>
       </div>
       <div className="mt-3 pt-3 border-t border-border-bright flex justify-between text-[13px] font-medium">

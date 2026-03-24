@@ -7,32 +7,24 @@ interface Asset {
   description: string;
 }
 
-const INVEST_ASSETS: Asset[] = [
-  { id: 'SUI', label: 'SUI', icon: '💧', description: 'Sui Network' },
-  { id: 'BTC', label: 'BTC', icon: '₿', description: 'Bitcoin (wBTC)' },
-  { id: 'ETH', label: 'ETH', icon: 'Ξ', description: 'Ethereum (wETH)' },
-  { id: 'GOLD', label: 'GOLD', icon: '🥇', description: 'Gold (XAUM)' },
-];
-
-const SWAP_ASSETS: Asset[] = [
+const TRADE_ASSETS: Asset[] = [
   { id: 'USDC', label: 'USDC', icon: '💵', description: 'USD Coin' },
   { id: 'SUI', label: 'SUI', icon: '💧', description: 'Sui Network' },
   { id: 'BTC', label: 'BTC', icon: '₿', description: 'Bitcoin (wBTC)' },
   { id: 'ETH', label: 'ETH', icon: 'Ξ', description: 'Ethereum (wETH)' },
+  { id: 'GOLD', label: 'GOLD', icon: '🥇', description: 'Gold (XAUM)' },
   { id: 'USDT', label: 'USDT', icon: '💲', description: 'Tether' },
 ];
 
 interface AssetSelectorProps {
-  flow: 'invest' | 'swap';
+  flow: 'swap';
   selectedFrom?: string | null;
   message?: string;
   onSelect: (asset: string) => void;
 }
 
 export function AssetSelector({ flow, selectedFrom, message, onSelect }: AssetSelectorProps) {
-  const assets = flow === 'invest'
-    ? INVEST_ASSETS
-    : SWAP_ASSETS.filter((a) => a.id !== selectedFrom);
+  const assets = TRADE_ASSETS.filter((a) => a.id !== selectedFrom);
 
   return (
     <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">

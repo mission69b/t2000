@@ -6,7 +6,7 @@
  *
  * Covers:
  *   1. Strategy sell preserves direct positions (same asset in both)
- *   2. Exchange guard allows free SUI when investment positions exist
+ *   2. Swap works with overlapping investment positions
  *   3. Rebalance excludes investment assets
  *   4. Balance hides zero-balance stablecoins
  *   5. Withdraw excludes investment assets
@@ -113,36 +113,25 @@ async function main() {
   agent.portfolio.closePosition('BTC');
 
   // ══════════════════════════════════════════════════════
-  // Test 2: Exchange guard with overlapping positions
+  // Test 2: Swap works with overlapping investment positions
   // ══════════════════════════════════════════════════════
 
-  await runSection('Exchange guard: buy SUI for testing', async () => {
+  await runSection('Swap: buy SUI for testing', async () => {
     const result = await agent.investBuy({ asset: 'SUI', usdAmount: 1 });
     console.log(`   Bought ${result.amount.toFixed(4)} SUI`);
     assert(result.success, 'SUI buy succeeded');
   });
 
-  await runSection('Exchange guard: USDC→SUI exchange works', async () => {
-    const result = await agent.exchange({ from: 'USDC', to: 'SUI', amount: 0.5 });
-    console.log(`   Exchanged $0.50 USDC → ${result.toAmount.toFixed(4)} SUI`);
-    assert(result.success, 'USDC→SUI exchange succeeded');
+  await runSection('Swap: USDC→SUI works with positions', async () => {
+    const result = await agent.swap({ from: 'USDC', to: 'SUI', amount: 0.5 });
+    console.log(`   Swapped $0.50 USDC → ${result.toAmount.toFixed(4)} SUI`);
+    assert(result.success, 'USDC→SUI swap succeeded');
   });
 
-  await runSection('Exchange guard: SUI→USDC allowed for free SUI', async () => {
-    // After exchanging 0.5 USDC → SUI, we should have free SUI (non-invested)
-    // The exchange guard should allow selling the free SUI back
-    try {
-      const result = await agent.exchange({ from: 'SUI', to: 'USDC', amount: 0.3 });
-      console.log(`   Exchanged 0.3 SUI → $${result.toAmount.toFixed(4)} USDC`);
-      assert(result.success, 'SUI→USDC exchange succeeded for free SUI');
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      if (code === 'INVESTMENT_LOCKED') {
-        assert(false, `SUI→USDC blocked incorrectly: ${(err as Error).message}`);
-      } else {
-        throw err;
-      }
-    }
+  await runSection('Swap: SUI→USDC works freely', async () => {
+    const result = await agent.swap({ from: 'SUI', to: 'USDC', amount: 0.3 });
+    console.log(`   Swapped 0.3 SUI → $${result.toAmount.toFixed(4)} USDC`);
+    assert(result.success, 'SUI→USDC swap succeeded');
   });
 
   // Cleanup SUI investment
@@ -247,27 +236,21 @@ async function main() {
     console.log(`   Direct SUI: ${directSui?.totalAmount.toFixed(4) ?? 0}`);
     console.log(`   Strategy SUI: ${stratSui?.totalAmount.toFixed(4) ?? 0}`);
 
-    // Verify exchange doesn't incorrectly block a small USDC→SUI exchange
+    // Verify swap works with overlapping positions
     try {
-      const exchResult = await agent.exchange({ from: 'USDC', to: 'SUI', amount: 0.2 });
-      assert(exchResult.success, 'exchange USDC→SUI works with positions');
+      const swapResult = await agent.swap({ from: 'USDC', to: 'SUI', amount: 0.2 });
+      assert(swapResult.success, 'swap USDC→SUI works with positions');
     } catch (err) {
-      assert(false, `exchange blocked: ${(err as Error).message}`);
+      assert(false, `swap failed: ${(err as Error).message}`);
     }
 
-    // Verify SUI→USDC exchange of a small free amount works
+    // Verify SUI→USDC swap of a small amount works
     try {
-      const exchResult = await agent.exchange({ from: 'SUI', to: 'USDC', amount: 0.1 });
-      assert(exchResult.success, 'exchange free SUI→USDC works');
+      const swapResult = await agent.swap({ from: 'SUI', to: 'USDC', amount: 0.1 });
+      assert(swapResult.success, 'swap free SUI→USDC works');
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      if (code === 'INVESTMENT_LOCKED') {
-        assert(false, `SUI→USDC blocked by investment guard (free balance miscalculated)`);
-      } else {
-        // Other errors (slippage, etc.) are OK — the guard passed
-        console.log(`   ℹ  Exchange failed for non-guard reason: ${(err as Error).message.slice(0, 60)}`);
-        assert(true, 'exchange guard did not block (other error)');
-      }
+      console.log(`   ℹ  Swap failed: ${(err as Error).message.slice(0, 60)}`);
+      throw err;
     }
   });
 

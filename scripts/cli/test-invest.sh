@@ -1,5 +1,5 @@
 #!/bin/bash
-# CLI Test: invest buy, portfolio, invest sell, invest earn, invest unearn
+# CLI Test: buy, portfolio, sell, invest earn, invest unearn
 # Run: T2000_PIN=your-pin bash scripts/cli/test-invest.sh
 
 PASS=0
@@ -16,21 +16,21 @@ check() {
 }
 
 echo ""
-echo "── CLI: Investment Commands ──"
+echo "── CLI: Trade Commands ──"
 
 # ── Buy ──
 
 echo ""
-echo "   t2000 invest buy 1 SUI"
-OUTPUT=$(t2000 invest buy 1 SUI 2>&1) || true
+echo "   t2000 buy 1 SUI"
+OUTPUT=$(t2000 buy 1 SUI 2>&1) || true
 echo "$OUTPUT" | grep -q "Bought"
-check $? "invest buy succeeds"
+check $? "buy succeeds"
 
 echo "$OUTPUT" | grep -q "SUI"
-check $? "invest buy output contains SUI"
+check $? "buy output contains SUI"
 
 echo "$OUTPUT" | grep -q "Tx:"
-check $? "invest buy output shows transaction link"
+check $? "buy output shows transaction link"
 
 # ── Portfolio ──
 
@@ -130,30 +130,30 @@ echo "$OUTPUT" | grep -q "deposited"
 check $? "re-earn succeeds"
 
 echo ""
-echo "   t2000 invest sell all SUI (auto-withdraw)"
-OUTPUT=$(t2000 invest sell all SUI 2>&1) || true
+echo "   t2000 sell all SUI (auto-withdraw)"
+OUTPUT=$(t2000 sell all SUI 2>&1) || true
 echo "$OUTPUT" | grep -q "Sold"
-check $? "invest sell all SUI succeeds (auto-withdrew from lending)"
+check $? "sell all SUI succeeds (auto-withdrew from lending)"
 
 echo "$OUTPUT" | grep -q "Proceeds"
-check $? "invest sell shows Proceeds"
+check $? "sell shows Proceeds"
 
 echo "$OUTPUT" | grep -q "suiscan"
-check $? "invest sell shows transaction link"
+check $? "sell shows transaction link"
 
 # ── Multi-asset buy/sell ──
 
 echo ""
-echo "   t2000 invest buy 1 BTC"
-OUTPUT=$(t2000 invest buy 1 BTC 2>&1) || true
+echo "   t2000 buy 1 BTC"
+OUTPUT=$(t2000 buy 1 BTC 2>&1) || true
 echo "$OUTPUT" | grep -q "Bought"
-check $? "invest buy BTC succeeds"
+check $? "buy BTC succeeds"
 
 echo ""
-echo "   t2000 invest buy 1 ETH"
-OUTPUT=$(t2000 invest buy 1 ETH 2>&1) || true
+echo "   t2000 buy 1 ETH"
+OUTPUT=$(t2000 buy 1 ETH 2>&1) || true
 echo "$OUTPUT" | grep -q "Bought"
-check $? "invest buy ETH succeeds"
+check $? "buy ETH succeeds"
 
 echo ""
 echo "   t2000 portfolio (multi-asset)"
@@ -165,16 +165,16 @@ echo "$OUTPUT" | grep -q "ETH"
 check $? "portfolio shows ETH"
 
 echo ""
-echo "   t2000 invest sell all BTC"
-OUTPUT=$(t2000 invest sell all BTC 2>&1) || true
+echo "   t2000 sell all BTC"
+OUTPUT=$(t2000 sell all BTC 2>&1) || true
 echo "$OUTPUT" | grep -q "Sold"
-check $? "invest sell all BTC succeeds"
+check $? "sell all BTC succeeds"
 
 echo ""
-echo "   t2000 invest sell all ETH"
-OUTPUT=$(t2000 invest sell all ETH 2>&1) || true
+echo "   t2000 sell all ETH"
+OUTPUT=$(t2000 sell all ETH 2>&1) || true
 echo "$OUTPUT" | grep -q "Sold"
-check $? "invest sell all ETH succeeds"
+check $? "sell all ETH succeeds"
 
 # ── Empty state ──
 
@@ -192,7 +192,7 @@ fi
 
 echo ""
 echo "════════════════════════════════════════════"
-echo "  CLI Invest: $PASS passed, $FAIL failed"
+echo "  CLI Trade: $PASS passed, $FAIL failed"
 echo "════════════════════════════════════════════"
 echo ""
 

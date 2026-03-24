@@ -83,7 +83,7 @@ async function main() {
     }
 
     try {
-      await agent.exchange({ from: 'USDC', to: 'USDC', amount: 1 });
+      await agent.swap({ from: 'USDC', to: 'USDC', amount: 1 });
       assert(false, 'Should throw for same-asset swap');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -91,7 +91,7 @@ async function main() {
     }
 
     try {
-      await agent.exchange({ from: 'DOGE', to: 'SUI', amount: 1 });
+      await agent.swap({ from: 'DOGE', to: 'SUI', amount: 1 });
       assert(false, 'Should throw for unsupported asset');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 
 export type ChipFlowPhase =
   | 'idle'
-  | 'asset-select'     // picking an asset (invest/swap)
+  | 'asset-select'     // picking an asset (trade/swap)
   | 'l2-chips'         // showing sub-chips (amount, recipient, etc.)
   | 'quoting'          // fetching a swap quote
   | 'confirming'       // showing confirmation card
@@ -22,13 +22,13 @@ export interface SwapQuoteData {
 
 export interface ChipFlowState {
   phase: ChipFlowPhase;
-  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'invest', 'swap'
+  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'swap'
   subFlow: string | null;        // recipient name, asset type, etc.
   amount: number | null;
   recipient: string | null;
-  asset: string | null;          // selected asset (invest target or swap source)
+  asset: string | null;          // swap source asset (e.g. USDC for buy, BTC for sell)
   toAsset: string | null;        // swap destination asset
-  quote: SwapQuoteData | null;   // swap/invest quote data
+  quote: SwapQuoteData | null;   // swap quote data
   message: string | null;        // AI context message
   result: ChipFlowResult | null;
   error: string | null;
@@ -71,7 +71,7 @@ export function useChipFlow() {
   const [state, setState] = useState<ChipFlowState>(INITIAL_STATE);
 
   const startFlow = useCallback((flow: string, context?: FlowContext) => {
-    const needsAssetSelect = flow === 'invest' || flow === 'swap';
+    const needsAssetSelect = flow === 'swap';
     setState({
       ...INITIAL_STATE,
       phase: needsAssetSelect ? 'asset-select' : 'l2-chips',
@@ -82,28 +82,25 @@ export function useChipFlow() {
 
   const selectAsset = useCallback((asset: string, context?: FlowContext) => {
     setState((prev) => {
-      if (prev.flow === 'invest') {
-        const avail = context?.checking ? ` You have ${fmtAmount(context.checking)} to invest.` : '';
-        return {
-          ...prev,
-          asset,
-          phase: 'l2-chips',
-          message: `Invest in ${asset}.${avail}\nChoose an amount (USD):`,
-        };
-      }
       if (prev.flow === 'swap' && !prev.asset) {
         return {
           ...prev,
           asset,
-          message: `Swap from ${asset}. What do you want to receive?`,
+          message: `Trade from ${asset}. What do you want to receive?`,
         };
       }
       if (prev.flow === 'swap' && prev.asset) {
+        const isBuy = prev.asset === 'USDC';
+        const isSell = asset === 'USDC';
+        let label: string;
+        if (isBuy) label = `Buy ${asset} with USDC.`;
+        else if (isSell) label = `Sell ${prev.asset} for USDC.`;
+        else label = `Swap ${prev.asset} → ${asset}.`;
         return {
           ...prev,
           toAsset: asset,
           phase: 'l2-chips',
-          message: `Swap ${prev.asset} → ${asset}.\nChoose an amount:`,
+          message: `${label}\nChoose an amount:`,
         };
       }
       return prev;
@@ -218,10 +215,8 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
       const debt = ctx?.borrows ? ` Outstanding debt: ${fmtAmount(ctx.borrows)}.` : '';
       return `Repay your loan.${debt}\nChoose an amount:`;
     }
-    case 'invest':
-      return 'What do you want to invest in?';
     case 'swap':
-      return 'What do you want to swap from?';
+      return 'What do you want to trade? Pick an asset:';
     default: return 'Choose an option:';
   }
 }

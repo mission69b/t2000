@@ -42,14 +42,14 @@ export function useLlm(): UseLlmReturn {
 
         return {
           type: 'ai-text',
-          text: data.text ?? 'I can help with saving, sending, borrowing, investing, and services.',
+          text: data.text ?? 'I can help with trading, saving, sending, borrowing, and services.',
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'LLM query failed';
         setError(msg);
         return {
           type: 'ai-text',
-          text: 'I can help with saving, sending, borrowing, investing, and services. Try tapping a chip below.',
+          text: 'I can help with trading, saving, sending, borrowing, and services. Try tapping a chip below.',
           chips: [
             { label: 'Save', flow: 'save' },
             { label: 'Services', flow: 'services' },

@@ -13,8 +13,7 @@ export type ParsedIntent =
   | { action: 'withdraw'; amount: number }
   | { action: 'borrow'; amount: number }
   | { action: 'repay'; amount: number }
-  | { action: 'invest'; asset: string; amount: number }
-  | { action: 'swap'; to: string; amount: number }
+  | { action: 'swap'; from: string; to: string; amount: number }
   | { action: 'claim-rewards' }
   | { action: 'report' }
   | { action: 'history' }
@@ -28,9 +27,10 @@ export type ParsedIntent =
 const AMOUNT_PATTERN = /\$?([\d,]+(?:\.\d{1,2})?)/;
 const ALL_PATTERN = /\ball\b/i;
 
-const INVESTMENT_ASSETS: Record<string, string> = {
+const TRADEABLE_ASSETS: Record<string, string> = {
   sui: 'SUI', btc: 'BTC', bitcoin: 'BTC',
   eth: 'ETH', ethereum: 'ETH', gold: 'GOLD',
+  usdc: 'USDC', usdt: 'USDT',
 };
 
 export function parseIntent(input: string): ParsedIntent {
@@ -97,11 +97,14 @@ export function parseIntent(input: string): ParsedIntent {
   const sendMatch = parseSendIntent(text);
   if (sendMatch) return sendMatch;
 
-  // "invest $100 in SUI", "buy $200 SUI", "buy SUI $100"
-  const investMatch = parseInvestIntent(text);
-  if (investMatch) return investMatch;
+  // "buy $100 BTC", "invest $100 in SUI", "sell 0.001 BTC"
+  const buyMatch = parseBuyIntent(text);
+  if (buyMatch) return buyMatch;
 
-  // "swap $50 to SUI", "exchange 100 for ETH"
+  const sellMatch = parseSellIntent(text);
+  if (sellMatch) return sellMatch;
+
+  // "swap $50 SUI to ETH", "exchange 100 for ETH"
   const swapMatch = parseSwapIntent(text);
   if (swapMatch) return swapMatch;
 
@@ -140,39 +143,69 @@ function parseSendIntent(text: string): ParsedIntent {
   return null;
 }
 
-function parseInvestIntent(text: string): ParsedIntent {
-  // "invest $100 in SUI"
-  let match = text.match(/^(invest|buy)\s+\$?([\d,.]+)\s+(?:in\s+)?(\w+)/i);
+function parseBuyIntent(text: string): ParsedIntent {
+  // "buy $100 BTC", "invest $100 in SUI", "buy 200 ETH"
+  let match = text.match(/^(invest|buy)\s+\$?([\d,.]+)\s+(?:in\s+|of\s+)?(\w+)/i);
   if (match) {
     const amount = parseFloat(match[2].replace(/,/g, ''));
     const asset = resolveAsset(match[3]);
-    if (amount > 0 && asset) return { action: 'invest', amount, asset };
+    if (amount > 0 && asset) return { action: 'swap', from: 'USDC', to: asset, amount };
   }
 
-  // "buy SUI $100", "invest SUI 200"
+  // "buy SUI $100", "buy BTC 200"
   match = text.match(/^(invest|buy)\s+(\w+)\s+\$?([\d,.]+)/i);
   if (match) {
     const asset = resolveAsset(match[2]);
     const amount = parseFloat(match[3].replace(/,/g, ''));
-    if (amount > 0 && asset) return { action: 'invest', amount, asset };
+    if (amount > 0 && asset) return { action: 'swap', from: 'USDC', to: asset, amount };
+  }
+
+  return null;
+}
+
+function parseSellIntent(text: string): ParsedIntent {
+  // "sell 0.001 BTC", "sell $50 ETH"
+  let match = text.match(/^sell\s+\$?([\d,.]+)\s+(\w+)/i);
+  if (match) {
+    const amount = parseFloat(match[1].replace(/,/g, ''));
+    const asset = resolveAsset(match[2]);
+    if (amount > 0 && asset) return { action: 'swap', from: asset, to: 'USDC', amount };
+  }
+
+  // "sell BTC 0.001"
+  match = text.match(/^sell\s+(\w+)\s+\$?([\d,.]+)/i);
+  if (match) {
+    const asset = resolveAsset(match[1]);
+    const amount = parseFloat(match[2].replace(/,/g, ''));
+    if (amount > 0 && asset) return { action: 'swap', from: asset, to: 'USDC', amount };
   }
 
   return null;
 }
 
 function parseSwapIntent(text: string): ParsedIntent {
-  // "swap $50 to SUI", "exchange 100 for ETH"
-  const match = text.match(/^(swap|exchange|convert)\s+\$?([\d,.]+)\s+(?:to|for|into)\s+(\w+)/i);
+  // "swap 50 USDC to SUI", "swap 50 SUI for ETH"
+  let match = text.match(/^(swap|exchange|convert|trade)\s+\$?([\d,.]+)\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i);
   if (match) {
     const amount = parseFloat(match[2].replace(/,/g, ''));
-    const asset = resolveAsset(match[3]);
-    if (amount > 0 && asset) return { action: 'swap', amount, to: asset };
+    const from = resolveAsset(match[3]);
+    const to = resolveAsset(match[4]);
+    if (amount > 0 && from && to) return { action: 'swap', from, to, amount };
   }
+
+  // "swap $50 to SUI" (assumes from USDC)
+  match = text.match(/^(swap|exchange|convert|trade)\s+\$?([\d,.]+)\s+(?:to|for|into)\s+(\w+)/i);
+  if (match) {
+    const amount = parseFloat(match[2].replace(/,/g, ''));
+    const to = resolveAsset(match[3]);
+    if (amount > 0 && to) return { action: 'swap', from: 'USDC', to, amount };
+  }
+
   return null;
 }
 
 function resolveAsset(input: string): string | null {
-  return INVESTMENT_ASSETS[input.toLowerCase()] ?? null;
+  return TRADEABLE_ASSETS[input.toLowerCase()] ?? null;
 }
 
 const SERVICE_KEYWORDS: Array<{ keywords: string[]; serviceId: string }> = [

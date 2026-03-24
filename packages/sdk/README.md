@@ -43,8 +43,8 @@ await agent.save({ amount: 50 });
 // Borrow USDC against your collateral
 await agent.borrow({ amount: 25 });
 
-// Exchange tokens (e.g. USDC ⇌ SUI)
-await agent.exchange({ from: 'USDC', to: 'SUI', amount: 5 });
+// Swap tokens (e.g. USDC ⇌ SUI)
+await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 
 // Rebalance — move savings to the best rate (dry-run first)
 const plan = await agent.rebalance({ dryRun: true });
@@ -54,11 +54,11 @@ await agent.rebalance(); // execute
 // Withdraw — always returns USDC (auto-swaps non-USDC positions)
 await agent.withdraw({ amount: 25 });
 
-// Invest in crypto assets
-await agent.investBuy({ asset: 'SUI', usdAmount: 100 });
-await agent.investBuy({ asset: 'BTC', usdAmount: 500 });
-await agent.investBuy({ asset: 'ETH', usdAmount: 200 });
-await agent.investBuy({ asset: 'GOLD', usdAmount: 100 });
+// Buy crypto assets
+await agent.buy({ asset: 'SUI', usdAmount: 100 });
+await agent.buy({ asset: 'BTC', usdAmount: 500 });
+await agent.buy({ asset: 'ETH', usdAmount: 200 });
+await agent.buy({ asset: 'GOLD', usdAmount: 100 });
 
 // Check portfolio
 const portfolio = await agent.getPortfolio();
@@ -75,7 +75,7 @@ await agent.investRebalance();                  // execute
 await agent.investRebalance({ dryRun: true });  // preview only
 
 // Sell position (auto-withdraws if earning first)
-await agent.investSell({ asset: 'SUI', usdAmount: 'all' });
+await agent.sell({ asset: 'SUI', usdAmount: 'all' });
 
 // Buy into a strategy (single atomic PTB)
 // bluechip: BTC 50%, ETH 30%, SUI 20%; all-weather: BTC 30%, ETH 20%, SUI 20%, GOLD 30%; safe-haven: BTC 50%, GOLD 50%
@@ -142,8 +142,10 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
 | `agent.repay({ amount })` | Repay outstanding debt (auto-swaps USDC to borrowed asset if non-USDC). `amount` can be `'all'`. | `RepayResult` |
 | `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins internally. Dry-run for preview. | `RebalanceResult` |
-| `agent.exchange({ from, to, amount, maxSlippage? })` | Exchange tokens via Cetus DEX (e.g. USDC ⇌ SUI). On-chain slippage protection. | `SwapResult` |
-| `agent.exchangeQuote({ from, to, amount })` | Get exchange quote without executing | `{ expectedOutput, priceImpact, poolPrice, fee }` |
+| `agent.swap({ from, to, amount, maxSlippage? })` | Swap tokens via Cetus DEX (e.g. USDC ⇌ SUI). On-chain slippage protection. | `SwapResult` |
+| `agent.swapQuote({ from, to, amount })` | Get swap quote without executing | `{ expectedOutput, priceImpact, poolPrice, fee }` |
+| `agent.buy({ asset, usdAmount, maxSlippage? })` | Buy crypto asset with USD | `TradeResult` |
+| `agent.sell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC (auto-withdraws if earning) | `TradeResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -193,16 +195,16 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 
 **Types:** `SafeguardConfig` — `{ maxPerTx?, maxDailySend?, locked? }` · `SafeguardError` — thrown when limits exceeded or agent locked
 
-### Investment Methods
+### Trade Yield Methods
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `agent.investBuy({ asset, usdAmount, maxSlippage? })` | Buy crypto asset with USD | `InvestResult` |
-| `agent.investSell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC (auto-withdraws if earning) | `InvestResult` |
-| `agent.investEarn({ asset })` | Deposit invested asset into best-rate lending for yield | `InvestEarnResult` |
+| `agent.investEarn({ asset })` | Deposit held asset into best-rate lending for yield | `InvestEarnResult` |
 | `agent.investUnearn({ asset })` | Withdraw from lending, keep in portfolio | `InvestUnearnResult` |
 | `agent.investRebalance({ dryRun?, minYieldDiff? })` | Move earning positions to better-rate protocols | `InvestRebalanceResult` |
-| `agent.getPortfolio()` | Investment positions + P&L (grouped by strategy) | `PortfolioResult` |
+| `agent.getPortfolio()` | Trade positions + P&L (grouped by strategy) | `PortfolioResult` |
+
+> **Deprecated aliases:** `agent.exchange()` and `agent.exchangeQuote()` still work but are deprecated — use `agent.swap()` and `agent.swapQuote()`. Similarly, `agent.investBuy()` and `agent.investSell()` are deprecated — use `agent.buy()` and `agent.sell()`.
 
 ### Strategy Methods
 
@@ -433,7 +435,7 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 |-----------|-----|-------|
 | Save (deposit) | 0.10% | Protocol fee on deposit |
 | Borrow | 0.05% | Protocol fee on loan |
-| Exchange | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
+| Swap | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |

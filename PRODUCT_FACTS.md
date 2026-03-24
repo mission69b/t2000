@@ -41,7 +41,7 @@
 |-----------|-----|------|-------|
 | Save | 10 | 0.1% | Protocol fee on deposit |
 | Borrow | 5 | 0.05% | Protocol fee on loan |
-| Exchange | 0 | **Free** | Only standard Cetus pool fees apply; exchange is used internally by rebalance, auto-convert, and auto-swap |
+| Swap | 0 | **Free** | Only standard Cetus pool fees apply; swap is used internally by rebalance, auto-convert, and auto-swap |
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
@@ -123,16 +123,16 @@ auto-swaps non-USDC positions back to USDC, and repay auto-swaps USDC to the
 borrowed asset if debt is in a non-USDC stablecoin (from rebalance).
 Rebalance optimizes across all stablecoins internally.
 
-| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Exchange | Rebalance |
+| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Swap | Rebalance |
 |--------|---------|----------|------|------|--------|----------|-----------------|-----------|
 | USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ (always returns USDC) | ✅ | ✅ |
 | USDT | suiUSDT | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
 | USDe | suiUSDe | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
 | USDsui | USDsui | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
 | SUI | SUI | 9 | ✅ (gas) | — | — | — | ✅ | — |
-| BTC | Bitcoin | 8 | — | — | — | — | ✅ (invest) | — |
-| ETH | Ethereum | 8 | — | — | — | — | ✅ (invest) | — |
-| GOLD | Gold | 9 | — | — | — | — | ✅ (invest) | — |
+| BTC | Bitcoin | 8 | — | — | — | — | ✅ (buy/sell) | — |
+| ETH | Ethereum | 8 | — | — | — | — | ✅ (buy/sell) | — |
+| GOLD | Gold | 9 | — | — | — | — | ✅ (buy/sell) | — |
 
 **Coin Types (investment assets):**
 
@@ -180,12 +180,15 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | sentinel info | `t2000 sentinel info <id>` | Show details for a sentinel |
 | sentinel attack | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel (full 3-step flow). Options: `--fee <sui>` |
 | rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
-| exchange | `t2000 exchange <amount> <from> <to>` | Exchange tokens via Cetus DEX (e.g. USDC ⇌ SUI). Options: `--slippage <pct>` (default: 3%) |
+| swap | `t2000 swap <amount> <from> <to>` | Swap tokens via Cetus DEX (e.g. USDC ⇌ SUI). Options: `--slippage <pct>` (default: 3%) |
+| exchange | `t2000 exchange <amount> <from> <to>` | **Deprecated** — alias for `swap`. Use `t2000 swap` instead |
 | contacts | `t2000 contacts` | List saved contacts |
 | contacts add | `t2000 contacts add <name> <address>` | Save a named contact |
 | contacts remove | `t2000 contacts remove <name>` | Remove a contact |
-| invest buy | `t2000 invest buy <amount> <asset>` | Buy crypto asset with USD |
-| invest sell | `t2000 invest sell <amount|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
+| buy | `t2000 buy <amount> <asset>` | Buy crypto asset with USD |
+| sell | `t2000 sell <amount\|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
+| invest buy | `t2000 invest buy <amount> <asset>` | **Deprecated** — alias for `buy`. Use `t2000 buy` instead |
+| invest sell | `t2000 invest sell <amount\|all> <asset>` | **Deprecated** — alias for `sell`. Use `t2000 sell` instead |
 | invest earn | `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
 | invest unearn | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
 | invest rebalance | `t2000 invest rebalance` | Move earning positions to better-rate protocols |
@@ -203,7 +206,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | invest auto run | `t2000 invest auto run` | Execute pending DCA purchases |
 | invest auto stop | `t2000 invest auto stop [id]` | Stop auto-invest schedule |
 
-**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `invest sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Savings rebalance skips earning investment positions. `invest rebalance` moves earning positions to better-rate protocols (0.1% minimum APY difference). `claim-rewards` claims DeFi incentive rewards from all protocols and auto-converts to USDC in a single operation.
+**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Savings rebalance skips earning investment positions. `invest rebalance` moves earning positions to better-rate protocols (0.1% minimum APY difference). `claim-rewards` claims DeFi incentive rewards from all protocols and auto-converts to USDC in a single operation.
 | earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -318,10 +321,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | `earnings()` | — | `EarningsResult` |
 | `fundStatus()` | — | `FundStatusResult` |
 | `rebalance()` | `{ dryRun?, minYieldDiff?, maxBreakEven? }` | `RebalanceResult` |
-| `exchange()` | `{ from, to, amount, maxSlippage? }` | `SwapResult` |
+| `exchange()` | `{ from, to, amount, maxSlippage? }` | `SwapResult` — CLI: `t2000 swap` (alias: `exchange`) |
 | `exchangeQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice, fee }` |
-| `investBuy()` | `{ asset, usdAmount, maxSlippage? }` | `InvestBuyResult` |
-| `investSell()` | `{ asset, usdAmount \| 'all', maxSlippage? }` | `InvestSellResult` |
+| `investBuy()` | `{ asset, usdAmount, maxSlippage? }` | `InvestBuyResult` — CLI: `t2000 buy` (alias: `invest buy`) |
+| `investSell()` | `{ asset, usdAmount \| 'all', maxSlippage? }` | `InvestSellResult` — CLI: `t2000 sell` (alias: `invest sell`) |
 | `investEarn()` | `{ asset }` | `InvestEarnResult` |
 | `investUnearn()` | `{ asset }` | `InvestUnearnResult` |
 | `investRebalance()` | `{ dryRun?, minYieldDiff? }` | `InvestRebalanceResult` |

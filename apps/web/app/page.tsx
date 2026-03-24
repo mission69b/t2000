@@ -45,20 +45,20 @@ const ACCOUNTS = [
   {
     num: "04 / 05",
     icon: "⇌",
-    title: "Exchange",
+    title: "Swap",
     subtitle: "Swap any pair",
     desc: "Swap any token pair at market rates. Automatic routing.",
     prompt: "Convert $5 to SUI",
-    cmd: "t2000 exchange 5 USDC SUI",
+    cmd: "t2000 swap 5 USDC SUI",
     href: "/accounts",
   },
   {
     num: "05 / 05",
     icon: "◆",
-    title: "Investment",
+    title: "Trade",
     subtitle: "Buy · Sell · Strategies · DCA",
     desc: "Buy, sell, earn yield. Strategies and DCA built in.",
-    prompt: "Invest $200 in layer1 strategy",
+    prompt: "Buy $200 of the layer1 strategy",
     cmd: "t2000 invest strategy buy layer1 200",
     href: "/invest",
   },
@@ -186,8 +186,8 @@ const COMPARE_ROWS: {
   { feature: "Send / receive", coinbase: "✓", t2000: "✓", bothCheck: true },
   { feature: "Savings account", coinbase: "—", t2000: "✓ Earn 2–8% APY automatically", coinbaseCross: true },
   { feature: "Credit line", coinbase: "—", t2000: "✓ Borrow against savings + investments", coinbaseCross: true },
-  { feature: "Token exchange", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
-  { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
+  { feature: "Token swap", coinbase: "✓ Base tokens", t2000: "✓ Any pair on Sui", bothCheck: true },
+  { feature: "Trade account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
   { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
   { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 41 services, 90 endpoints", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 35 tools + 20 AI prompts + MCP", coinbaseCross: true },
@@ -283,7 +283,7 @@ export default function Home() {
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
-            Five accounts. Earn, borrow, invest, exchange — autonomously.
+            Five accounts. Earn, borrow, invest, swap — autonomously.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
@@ -291,8 +291,8 @@ export default function Home() {
               { icon: "⟳", label: "Checking", href: "/accounts" },
               { icon: "◈", label: "Savings", href: "/accounts" },
               { icon: "◎", label: "Credit", href: "/accounts" },
-              { icon: "◆", label: "Investment", href: "/invest" },
-              { icon: "⇌", label: "Exchange", href: "/accounts" },
+              { icon: "◆", label: "Trade", href: "/invest" },
+              { icon: "⇌", label: "Swap", href: "/accounts" },
             ].map((pill) => (
               <Link
                 key={pill.label}
@@ -354,7 +354,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Not just spending. Earning, borrowing, investing, exchanging.
+            Not just spending. Earning, borrowing, investing, swapping.
           </p>
         </div>
 

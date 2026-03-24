@@ -29,6 +29,7 @@ import { registerSentinel } from './commands/sentinel.js';
 import { registerEarn } from './commands/earn.js';
 import { registerRebalance } from './commands/rebalance.js';
 import { registerExchange } from './commands/exchange.js';
+import { registerSwap } from './commands/swap.js';
 import { registerMcp } from './commands/mcp.js';
 import { registerContacts } from './commands/contacts.js';
 import { registerInvest } from './commands/invest.js';
@@ -55,7 +56,9 @@ Examples:
   $ t2000 send 50 to 0xabc...    Send $50 USDC
   $ t2000 borrow 200              Borrow $200 against savings
   $ t2000 pay openai ...          Pay for an API via MPP gateway
-  $ t2000 invest buy 100 SUI     Buy $100 of SUI
+  $ t2000 buy 100 BTC             Buy $100 of BTC
+  $ t2000 sell 0.001 BTC          Sell BTC for USDC
+  $ t2000 swap 100 USDC SUI       Swap between any tokens
   $ t2000 mcp install             Install MCP for AI platforms`);
 
   registerInit(program);
@@ -82,6 +85,7 @@ Examples:
   registerSentinel(program);
   registerEarn(program);
   registerRebalance(program);
+  registerSwap(program);
   registerExchange(program);
   registerMcp(program);
   registerContacts(program);

@@ -312,18 +312,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('ASSET_NOT_SUPPORTED', `Asset ${asset} is not supported`);
     }
 
-    if (asset in INVESTMENT_ASSETS) {
-      const free = await this.getFreeBalance(asset);
-      if (params.amount > free) {
-        const pos = this.portfolio.getPosition(asset);
-        const invested = pos?.totalAmount ?? 0;
-        throw new T2000Error('INVESTMENT_LOCKED',
-          `Cannot send ${params.amount} ${asset} — ${invested.toFixed(4)} ${asset} is invested. Free ${asset}: ${free.toFixed(4)}\nTo access invested funds: t2000 invest sell ${params.amount} ${asset}`,
-          { free, invested, requested: params.amount },
-        );
-      }
-    }
-
     const resolved = this.contacts.resolve(params.to);
     const sendAmount = params.amount;
     const sendTo = resolved.address;
@@ -1330,9 +1318,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     return hf;
   }
 
-  // -- Exchange --
+  // -- Swap (formerly Exchange) --
 
-  async exchange(params: { from: string; to: string; amount: number; maxSlippage?: number; _bypassInvestmentGuard?: boolean }): Promise<SwapResult> {
+  async swap(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
     this.enforcer.assertNotLocked();
     const fromAsset = params.from as keyof typeof SUPPORTED_ASSETS;
     const toAsset = params.to as keyof typeof SUPPORTED_ASSETS;
@@ -1342,18 +1330,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
     if (fromAsset === toAsset) {
       throw new T2000Error('INVALID_AMOUNT', 'Cannot swap same asset');
-    }
-
-    if (!params._bypassInvestmentGuard && fromAsset in INVESTMENT_ASSETS) {
-      const free = await this.getFreeBalance(fromAsset);
-      if (params.amount > free) {
-        const pos = this.portfolio.getPosition(fromAsset);
-        const invested = pos?.totalAmount ?? 0;
-        throw new T2000Error('INVESTMENT_LOCKED',
-          `Cannot exchange ${params.amount} ${fromAsset} — ${invested.toFixed(4)} ${fromAsset} is invested. Free ${fromAsset}: ${free.toFixed(4)}\nTo sell investment: t2000 invest sell ${params.amount} ${fromAsset}`,
-          { free, invested, requested: params.amount },
-        );
-      }
     }
 
     const best = await this.registry.bestSwapQuote(fromAsset, toAsset, params.amount);
@@ -1418,7 +1394,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async exchangeQuote(params: { from: string; to: string; amount: number }): Promise<{
+  async swapQuote(params: { from: string; to: string; amount: number }): Promise<{
     expectedOutput: number;
     priceImpact: number;
     poolPrice: number;
@@ -1431,7 +1407,22 @@ export class T2000 extends EventEmitter<T2000Events> {
     return { ...best.quote, fee: { amount: fee.amount, rate: fee.rate } };
   }
 
-  // -- Investment --
+  /** @deprecated Use swap() instead */
+  async exchange(params: { from: string; to: string; amount: number; maxSlippage?: number; _bypassInvestmentGuard?: boolean }): Promise<SwapResult> {
+    return this.swap(params);
+  }
+
+  /** @deprecated Use swapQuote() instead */
+  async exchangeQuote(params: { from: string; to: string; amount: number }): Promise<{
+    expectedOutput: number;
+    priceImpact: number;
+    poolPrice: number;
+    fee: { amount: number; rate: number };
+  }> {
+    return this.swapQuote(params);
+  }
+
+  // -- Investment (strategies only — individual buy/sell deprecated, use swap()) --
 
   async investBuy(params: { asset: InvestmentAsset; usdAmount: number; maxSlippage?: number }): Promise<InvestResult> {
     this.enforcer.assertNotLocked();
@@ -1459,16 +1450,15 @@ export class T2000 extends EventEmitter<T2000Events> {
       await this._autoFundFromSavings(params.usdAmount - bal.available);
     }
 
-    let swapResult: Awaited<ReturnType<typeof this.exchange>>;
+    let swapResult: Awaited<ReturnType<typeof this.swap>>;
     const maxRetries = 3;
     for (let attempt = 0; ; attempt++) {
       try {
-        swapResult = await this.exchange({
+        swapResult = await this.swap({
           from: 'USDC',
           to: params.asset,
           amount: params.usdAmount,
           maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
-          _bypassInvestmentGuard: true,
         });
         break;
       } catch (err) {
@@ -1605,16 +1595,15 @@ export class T2000 extends EventEmitter<T2000Events> {
       throw new T2000Error('INSUFFICIENT_INVESTMENT', 'Nothing to sell after gas reserve');
     }
 
-    let swapResult: Awaited<ReturnType<typeof this.exchange>>;
+    let swapResult: Awaited<ReturnType<typeof this.swap>>;
     const maxRetries = 3;
     for (let attempt = 0; ; attempt++) {
       try {
-        swapResult = await this.exchange({
+        swapResult = await this.swap({
           from: params.asset,
           to: 'USDC',
           amount: sellAmountAsset,
           maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
-          _bypassInvestmentGuard: true,
         });
         break;
       } catch (err) {

@@ -9,16 +9,15 @@ const LLM_ENDPOINT = process.env.LLM_ENDPOINT ?? `${GATEWAY_BASE}/openai/v1/chat
 
 const SYSTEM_PROMPT = `You are t2000, a smart banking assistant for a Web3 wallet app on Sui blockchain.
 
-You help users manage funds, earn yield, send money, invest, borrow, and use 40+ paid services via the MPP gateway.
+You help users manage funds, earn yield, send money, trade crypto, borrow, and use 40+ paid services via the MPP gateway.
 
 Available actions (users trigger via chips or typed commands):
+- Trade: Buy, sell, or swap between SUI, BTC, ETH, GOLD, USDC (via Cetus DEX)
 - Save: Earn yield on idle USDC (via NAVI Protocol)
 - Send: Transfer USDC/SUI to any address
 - Withdraw: Pull funds from savings
 - Borrow: Borrow against savings collateral
 - Repay: Repay outstanding debt
-- Invest: Buy SUI, BTC, ETH (via Cetus DEX)
-- Swap: Exchange between crypto assets
 - Services: Gift cards, AI, search, email, and 40+ APIs (paid via MPP)
 
 Rules:
@@ -93,8 +92,8 @@ export async function POST(request: NextRequest) {
 function fallbackResponse(message: string): string {
   const text = message.toLowerCase();
   if (/rate|apy|yield/.test(text)) return 'Tap Save to see current yield rates from NAVI Protocol.';
-  if (/invest|portfolio/.test(text)) return 'Tap Invest to browse assets — SUI, BTC, ETH available.';
+  if (/invest|buy|sell|trade|portfolio/.test(text)) return 'Tap Trade to buy, sell, or swap assets — SUI, BTC, ETH, GOLD available.';
   if (/service|gift|pay/.test(text)) return 'Tap Pay to browse 40+ services including gift cards, AI, and more.';
   if (/safe|secure/.test(text)) return 'Your account is non-custodial — only you control your funds via Google login. All transactions are gas-free.';
-  return 'I can help with saving, sending, borrowing, investing, and services. Try tapping a chip below or typing a specific command.';
+  return 'I can help with trading, saving, sending, borrowing, and services. Try tapping a chip below or typing a specific command.';
 }

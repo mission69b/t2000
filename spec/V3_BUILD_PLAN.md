@@ -2315,6 +2315,87 @@ The SDK already has `DEFAULT_STRATEGIES` (bluechip, layer1, sui-heavy) in `const
 
 ---
 
+### POL-12: Trade Unification Refactor (invest → swap)
+
+**Goal:** Remove the broken "invest buy/sell" concept. Swap is the universal primitive for all token exchanges. "Invest" is reserved for strategy baskets (future). Consistent across SDK, CLI, and web app.
+
+**Rationale:**
+- Web app "invest" was a Cetus swap with no portfolio tracking, no sell flow, no balance display — half-baked
+- SDK `investBuy`/`investSell` lock tokens via client-side `portfolio.json` — fragile, gets out of sync
+- Two different names (invest vs exchange/swap) for the same on-chain operation creates user confusion
+- "Swap" is DeFi jargon; user-facing UX should support "buy" and "sell" as natural aliases
+
+**Architecture (after):**
+
+```
+User Actions:  Save · Borrow · Trade · Earn · Pay
+
+Trade covers:
+  buy 100 BTC      → swap(USDC, BTC, 100)   → "Bought 0.001 BTC"
+  sell 0.001 BTC   → swap(BTC, USDC, 0.001)  → "Sold 0.001 BTC for $95"
+  swap 10 SUI ETH  → swap(SUI, ETH, 10)      → "Swapped 10 SUI → 0.004 ETH"
+
+All three are the same swap() call. Different UX framing based on intent.
+```
+
+**Command mapping (after):**
+
+| Action | SDK method | CLI | Web app |
+|--------|-----------|-----|---------|
+| Trade tokens | `swap()` | `swap 100 USDC BTC` | Trade/Swap chip |
+| Buy shorthand | `swap()` | `buy 100 BTC` | "buy $100 of BTC" intent |
+| Sell shorthand | `swap()` | `sell 0.001 BTC` | "sell my BTC" intent |
+| Strategy basket | `investStrategy()` | `invest strategy buy bluechip 200` | Future |
+| Earn yield | `earn()` | `earn BTC` | Future |
+| Rebalance yield | `rebalance()` | `earn rebalance` | Future (NAVI + Suilend) |
+| DCA schedule | `autoInvest()` | `auto setup 50 weekly BTC` | Future |
+
+**What's removed:**
+- `investBuy()` / `investSell()` — deprecated, alias to `swap()`
+- Investment locking (`_bypassInvestmentGuard` in `exchange()`)
+- `PortfolioManager` enforcement (tracking becomes informational only)
+- Separate "invest" chip in web app
+- Duplicate `invest` case in `transactions/prepare/route.ts`
+
+**Phase 1 — SDK (foundation):**
+1. Rename `exchange()` → `swap()`, keep `exchange()` as deprecated alias
+2. Remove `_bypassInvestmentGuard` check from `swap()`
+3. Deprecate `investBuy`/`investSell` (internally call `swap()`, keep portfolio recording as informational)
+4. Update error codes: remove `INVESTMENT_LOCKED` throws
+5. Update tests that assert `INVESTMENT_LOCKED`
+
+**Phase 2 — CLI (commands):**
+1. Add `swap <amount> <from> <to>` command (copy from `exchange`, rename)
+2. Add `buy <amount> <asset>` shorthand (swap USDC → asset, amount in USD)
+3. Add `sell <amount|all> <asset>` shorthand (swap asset → USDC)
+4. Deprecate `invest buy`/`invest sell` (print "use `buy`/`sell` or `swap` instead", still works)
+5. Deprecate `exchange` (print "use `swap` instead", still works)
+6. Rename `invest earn/unearn/rebalance` → `earn/unearn` top-level (keep `invest earn` as alias)
+
+**Phase 3 — Web app (UI):**
+1. Remove invest chip from `ChipBar.tsx`
+2. Rename swap chip label context-aware: "Buy" when USDC→asset, "Sell" when asset→USDC, "Swap" otherwise
+3. Merge `INVEST_ASSETS` into `SWAP_ASSETS` in `AssetSelector.tsx` (add GOLD, remove invest flow distinction)
+4. Update intent parser: "buy BTC" → `{ action: 'swap', from: 'USDC', to: 'BTC' }`, "sell BTC" → `{ action: 'swap', from: 'BTC', to: 'USDC' }`
+5. Remove `'invest'` case from `transactions/prepare/route.ts` (swap handles it)
+6. Remove `invest()` from `useAgent.ts` SDK wrapper
+7. Update `handleConfirm`, `getConfirmationDetails`, `capForFlow` — remove invest branches
+8. Show ALL token balances: use `client.getAllBalances()` in `useBalance.ts`, map coin types → names/prices
+9. Fix precision: store raw on-chain balances alongside display values, "All" uses raw amount
+10. Update confirmation copy: "Bought X BTC" / "Sold X BTC" / "Swapped X SUI → Y ETH"
+
+**Scalability:**
+- Adding a new asset: add coin type to `ASSET_COIN_TYPES` + `SWAP_ASSETS`. One-line additions.
+- Adding strategies later: `invest strategy buy` uses multi-swap PTB, builds on `swap()` primitive
+- Adding earn for new tokens: register lending adapter in registry, `earn` auto-discovers best rate (NAVI + Suilend)
+
+| Priority | High — fixes critical UX bugs + consistency |
+|----------|---------------------------------------------|
+| Est. | 1-2 days |
+| Status | 🔄 In progress |
+
+---
+
 ## Risk Checklist
 
 | Risk | Mitigation | When to check |

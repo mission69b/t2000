@@ -52,8 +52,8 @@ echo ""
 echo "   Test 2: Strategy sell preserves direct positions"
 
 # Buy direct ETH
-echo "   → invest buy 2 ETH (direct)"
-OUTPUT=$(t2000 invest buy 2 ETH 2>&1) || true
+echo "   → buy 2 ETH (direct)"
+OUTPUT=$(t2000 buy 2 ETH 2>&1) || true
 echo "$OUTPUT" | grep -q "Bought"
 check $? "direct ETH buy succeeds"
 
@@ -103,27 +103,23 @@ else
 fi
 
 # ══════════════════════════════════════════════════════
-# Test 3: Exchange guard doesn't block free SUI
+# Test 3: Swap works freely with investment positions
 # ══════════════════════════════════════════════════════
 
 echo ""
-echo "   Test 3: Exchange guard with investment positions"
+echo "   Test 3: Swap with investment positions"
 
-# Exchange USDC → SUI (should always work)
-echo "   → exchange 0.5 USDC SUI"
-OUTPUT=$(t2000 exchange 0.5 USDC SUI 2>&1) || true
-echo "$OUTPUT" | grep -q "Exchanged"
-check $? "USDC→SUI exchange works"
+# Swap USDC → SUI (should always work)
+echo "   → swap 0.5 USDC SUI"
+OUTPUT=$(t2000 swap 0.5 USDC SUI 2>&1) || true
+echo "$OUTPUT" | grep -q "Swapped"
+check $? "USDC→SUI swap works"
 
-# Exchange free SUI → USDC (should work if there's free SUI)
-echo "   → exchange 0.3 SUI USDC"
-OUTPUT=$(t2000 exchange 0.3 SUI USDC 2>&1) || true
-echo "$OUTPUT" | grep -q "Cannot exchange"
-if [ $? -eq 0 ]; then
-  check 1 "SUI→USDC NOT incorrectly blocked by investment guard"
-else
-  check 0 "SUI→USDC NOT incorrectly blocked by investment guard"
-fi
+# Swap SUI → USDC (should work freely)
+echo "   → swap 0.3 SUI USDC"
+OUTPUT=$(t2000 swap 0.3 SUI USDC 2>&1) || true
+echo "$OUTPUT" | grep -q "Swapped"
+check $? "SUI→USDC swap works freely"
 
 # ══════════════════════════════════════════════════════
 # Test 4: Rebalance excludes investment assets
@@ -164,8 +160,8 @@ fi
 echo ""
 echo "   Test 5: No debug output in CLI"
 
-echo "   → invest sell all ETH (checking for debug output)"
-OUTPUT=$(t2000 invest sell all ETH 2>&1) || true
+echo "   → sell all ETH (checking for debug output)"
+OUTPUT=$(t2000 sell all ETH 2>&1) || true
 echo "$OUTPUT" | grep -q "extendedDetails"
 if [ $? -eq 0 ]; then
   check 1 "no Cetus debug output (found extendedDetails)"
@@ -187,9 +183,9 @@ fi
 echo ""
 echo "   Test 6: Withdraw prefers stablecoins"
 
-# Buy some SUI to have an investment position
-echo "   → invest buy 1 SUI (so SUI is on lending)"
-OUTPUT=$(t2000 invest buy 1 SUI 2>&1) || true
+# Buy some SUI to have a position
+echo "   → buy 1 SUI (so SUI is on lending)"
+OUTPUT=$(t2000 buy 1 SUI 2>&1) || true
 
 # Save a bit of USDC
 echo "   → save 0.2 (so there's a stablecoin savings position)"
@@ -223,8 +219,8 @@ fi
 
 echo ""
 echo "   Cleanup: selling remaining positions"
-t2000 invest sell all SUI 2>/dev/null || true
-t2000 invest sell all BTC 2>/dev/null || true
+t2000 sell all SUI 2>/dev/null || true
+t2000 sell all BTC 2>/dev/null || true
 
 echo ""
 echo "════════════════════════════════════════════"

@@ -244,7 +244,7 @@ SDK: executeWithGas(buildTx)
 | `GAS_RESERVE_TARGET` | 0.15 SUI | Proactive top-up target |
 | `AUTO_TOPUP_AMOUNT` | $1 USDC | Swapped per top-up |
 | `AUTO_TOPUP_MIN_USDC` | $2 USDC | USDC required to trigger auto-topup |
-| `GAS_RESERVE_MIN` | 0.05 SUI | Always kept when selling/investing |
+| `GAS_RESERVE_MIN` | 0.05 SUI | Always kept when selling/trading |
 
 ### New agent bootstrap
 
@@ -403,7 +403,7 @@ Local-only enforcement on the agent's machine:
 | Category | Count | Examples |
 |----------|-------|---------|
 | Read | 17 | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services`, `t2000_portfolio` |
-| Write | 16 | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_exchange`, `t2000_invest` |
+| Write | 16 | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_exchange` (swap), `t2000_invest` |
 | Safety | 2 | `t2000_config`, `t2000_lock` |
 
 20 prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, `dca-advisor`, etc.
@@ -527,7 +527,7 @@ Any write operation (send, save, pay, etc.)
 ```
 
 **Outbound ops** (guarded by daily limit): `send`, `pay`, `sentinel`
-**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`, `exchange`, `rebalance`, `invest`
+**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`, `swap`, `rebalance`, `buy`, `sell`
 
 The daily budget resets automatically when the date changes.
 

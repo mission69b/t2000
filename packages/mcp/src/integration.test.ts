@@ -49,6 +49,10 @@ function createMockAgent() {
     withdraw: vi.fn().mockResolvedValue({ digest: '0xwithdraw123', amount: 25 }),
     borrow: vi.fn().mockResolvedValue({ digest: '0xborrow123', amount: 5 }),
     repay: vi.fn().mockResolvedValue({ digest: '0xrepay123', amount: 5 }),
+    swap: vi.fn().mockResolvedValue({ digest: '0xswap123' }),
+    swapQuote: vi.fn().mockResolvedValue({
+      expectedOutput: 10.25, priceImpact: 0.01, fee: { amount: 0.03 },
+    }),
     exchange: vi.fn().mockResolvedValue({ digest: '0xswap123' }),
     exchangeQuote: vi.fn().mockResolvedValue({
       expectedOutput: 10.25, priceImpact: 0.01, fee: { amount: 0.03 },
@@ -188,7 +192,7 @@ describe('integration: MCP client ↔ server', () => {
     expect(prompts).toHaveLength(20);
 
     const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'emergency', 'financial-report', 'investment-strategy', 'morning-briefing', 'onboarding', 'optimize-all', 'optimize-yield', 'quick-exchange', 'risk-check', 'safeguards', 'savings-goal', 'savings-strategy', 'send-money', 'sentinel-hunt', 'sweep', 'weekly-recap', 'what-if']);
+    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'emergency', 'financial-report', 'investment-strategy', 'morning-briefing', 'onboarding', 'optimize-all', 'optimize-yield', 'quick-swap', 'risk-check', 'safeguards', 'savings-goal', 'savings-strategy', 'send-money', 'sentinel-hunt', 'sweep', 'weekly-recap', 'what-if']);
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {

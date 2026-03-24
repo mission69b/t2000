@@ -236,7 +236,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
       try {
         if (dryRun) {
           agent.enforcer.assertNotLocked();
-          const quote = await agent.exchangeQuote({ from, to, amount });
+          const quote = await agent.swapQuote({ from, to, amount });
 
           return {
             content: [{
@@ -255,7 +255,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
         }
 
         const result = await mutex.run(() =>
-          agent.exchange({ from, to, amount, maxSlippage }),
+          agent.swap({ from, to, amount, maxSlippage }),
         );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
