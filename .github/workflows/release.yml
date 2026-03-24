@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    name: Bump, Tag & Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump versions
+        id: bump
+        run: |
+          BUMP="${{ inputs.bump }}"
+
+          bump_pkg() {
+            local pkg=$1
+            local current=$(node -p "require('./$pkg/package.json').version")
+            local IFS='.'
+            read -r major minor patch <<< "$current"
+
+            case "$BUMP" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+            esac
+
+            local next="$major.$minor.$patch"
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('./$pkg/package.json', 'utf8'));
+              pkg.version = '$next';
+              fs.writeFileSync('./$pkg/package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
+            echo "$pkg: $current → $next"
+            echo "$next"
+          }
+
+          SDK_VERSION=$(bump_pkg "packages/sdk")
+          CLI_VERSION=$(bump_pkg "packages/cli")
+          MCP_VERSION=$(bump_pkg "packages/mcp")
+          MPP_VERSION=$(bump_pkg "packages/mpp-sui")
+
+          echo "version=$CLI_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit & tag
+        run: |
+          VERSION="v${{ steps.bump.outputs.version }}"
+          git add -A
+          git commit -m "📦 build: ${VERSION}"
+          git tag "$VERSION"
+          git push origin main --follow-tags
+
