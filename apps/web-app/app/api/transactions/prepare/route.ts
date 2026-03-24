@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
-import { NaviAdapter } from '@t2000/sdk/adapters';
+import { NaviAdapter, CetusAdapter } from '@t2000/sdk/adapters';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +12,7 @@ const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
-type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay';
+type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'invest' | 'swap';
 
 interface BuildRequest {
   type: TxType;
@@ -20,6 +20,8 @@ interface BuildRequest {
   amount: number;
   recipient?: string;
   asset?: string;
+  fromAsset?: string;
+  toAsset?: string;
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -29,6 +31,15 @@ function getNaviAdapter(): NaviAdapter {
   const navi = new NaviAdapter();
   navi.initSync(client);
   return navi;
+}
+
+let _cetusAdapter: CetusAdapter | null = null;
+function getCetusAdapter(): CetusAdapter {
+  if (!_cetusAdapter) {
+    _cetusAdapter = new CetusAdapter();
+    _cetusAdapter.initSync(client);
+  }
+  return _cetusAdapter;
 }
 
 function extractMoveCallTargets(tx: Transaction): string[] {
@@ -190,6 +201,21 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     case 'repay': {
       const navi = getNaviAdapter();
       const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      return result.tx;
+    }
+
+    case 'invest': {
+      const toAsset = params.toAsset ?? params.asset ?? 'SUI';
+      const cetus = getCetusAdapter();
+      const result = await cetus.buildSwapTx(address, 'USDC', toAsset, amount);
+      return result.tx;
+    }
+
+    case 'swap': {
+      const from = params.fromAsset ?? 'USDC';
+      const to = params.toAsset ?? 'SUI';
+      const cetus = getCetusAdapter();
+      const result = await cetus.buildSwapTx(address, from, to, amount);
       return result.tx;
     }
 

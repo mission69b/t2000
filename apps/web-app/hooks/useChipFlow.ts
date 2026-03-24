@@ -4,17 +4,31 @@ import { useCallback, useState } from 'react';
 
 export type ChipFlowPhase =
   | 'idle'
+  | 'asset-select'     // picking an asset (invest/swap)
   | 'l2-chips'         // showing sub-chips (amount, recipient, etc.)
+  | 'quoting'          // fetching a swap quote
   | 'confirming'       // showing confirmation card
   | 'executing'        // transaction in progress
   | 'result';          // showing result
 
+export interface SwapQuoteData {
+  expectedOutput: number;
+  priceImpact: number;
+  poolPrice: number;
+  fromAsset: string;
+  toAsset: string;
+  fromAmount: number;
+}
+
 export interface ChipFlowState {
   phase: ChipFlowPhase;
-  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', etc.
+  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'invest', 'swap'
   subFlow: string | null;        // recipient name, asset type, etc.
   amount: number | null;
   recipient: string | null;
+  asset: string | null;          // selected asset (invest target or swap source)
+  toAsset: string | null;        // swap destination asset
+  quote: SwapQuoteData | null;   // swap/invest quote data
   message: string | null;        // AI context message
   result: ChipFlowResult | null;
   error: string | null;
@@ -37,6 +51,9 @@ const INITIAL_STATE: ChipFlowState = {
   subFlow: null,
   amount: null,
   recipient: null,
+  asset: null,
+  toAsset: null,
+  quote: null,
   message: null,
   result: null,
   error: null,
@@ -54,11 +71,42 @@ export function useChipFlow() {
   const [state, setState] = useState<ChipFlowState>(INITIAL_STATE);
 
   const startFlow = useCallback((flow: string, context?: FlowContext) => {
+    const needsAssetSelect = flow === 'invest' || flow === 'swap';
     setState({
       ...INITIAL_STATE,
-      phase: 'l2-chips',
+      phase: needsAssetSelect ? 'asset-select' : 'l2-chips',
       flow,
       message: getFlowMessage(flow, context),
+    });
+  }, []);
+
+  const selectAsset = useCallback((asset: string, context?: FlowContext) => {
+    setState((prev) => {
+      if (prev.flow === 'invest') {
+        const avail = context?.checking ? ` You have ${fmtAmount(context.checking)} to invest.` : '';
+        return {
+          ...prev,
+          asset,
+          phase: 'l2-chips',
+          message: `Invest in ${asset}.${avail}\nChoose an amount (USD):`,
+        };
+      }
+      if (prev.flow === 'swap' && !prev.asset) {
+        return {
+          ...prev,
+          asset,
+          message: `Swap from ${asset}. What do you want to receive?`,
+        };
+      }
+      if (prev.flow === 'swap' && prev.asset) {
+        return {
+          ...prev,
+          toAsset: asset,
+          phase: 'l2-chips',
+          message: `Swap ${prev.asset} → ${asset}.\nChoose an amount:`,
+        };
+      }
+      return prev;
     });
   }, []);
 
@@ -66,6 +114,22 @@ export function useChipFlow() {
     setState((prev) => ({
       ...prev,
       amount,
+      phase: 'confirming',
+    }));
+  }, []);
+
+  const setQuoting = useCallback((amount: number) => {
+    setState((prev) => ({
+      ...prev,
+      amount,
+      phase: 'quoting',
+    }));
+  }, []);
+
+  const setQuote = useCallback((quote: SwapQuoteData) => {
+    setState((prev) => ({
+      ...prev,
+      quote,
       phase: 'confirming',
     }));
   }, []);
@@ -112,7 +176,10 @@ export function useChipFlow() {
   return {
     state,
     startFlow,
+    selectAsset,
     selectAmount,
+    setQuoting,
+    setQuote,
     selectRecipient,
     confirm,
     setResult,
@@ -151,6 +218,10 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
       const debt = ctx?.borrows ? ` Outstanding debt: ${fmtAmount(ctx.borrows)}.` : '';
       return `Repay your loan.${debt}\nChoose an amount:`;
     }
+    case 'invest':
+      return 'What do you want to invest in?';
+    case 'swap':
+      return 'What do you want to swap from?';
     default: return 'Choose an option:';
   }
 }

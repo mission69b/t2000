@@ -17,6 +17,23 @@ interface SettingsPanelProps {
   onRefreshSession: () => void;
 }
 
+const DEFAULT_MAX_TX = 1000;
+const DEFAULT_MAX_DAILY = 5000;
+const LS_LIMITS_KEY = 't2000_safety_limits';
+
+function loadLimits(): { maxTx: number; maxDaily: number } {
+  if (typeof window === 'undefined') return { maxTx: DEFAULT_MAX_TX, maxDaily: DEFAULT_MAX_DAILY };
+  try {
+    const raw = localStorage.getItem(LS_LIMITS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { maxTx: DEFAULT_MAX_TX, maxDaily: DEFAULT_MAX_DAILY };
+}
+
+function saveLimits(limits: { maxTx: number; maxDaily: number }) {
+  localStorage.setItem(LS_LIMITS_KEY, JSON.stringify(limits));
+}
+
 export function SettingsPanel({
   open,
   onClose,
@@ -31,11 +48,14 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
+  const [limits, setLimits] = useState(loadLimits);
+  const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [now] = useState(() => Date.now());
 
   if (!open) return null;
-
   const expiryDate = new Date(sessionExpiresAt);
-  const daysLeft = Math.max(0, Math.ceil((sessionExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
+  const daysLeft = Math.max(0, Math.ceil((sessionExpiresAt - now) / (24 * 60 * 60 * 1000)));
 
   const handleCopy = () => {
     navigator.clipboard.writeText(address);
@@ -134,9 +154,43 @@ export function SettingsPanel({
           <section className="space-y-3">
             <SectionHeader>Safety Limits</SectionHeader>
             <div className="space-y-2">
-              <SettingRow label="Max per transaction" value="$1,000" />
-              <SettingRow label="Max daily send" value="$5,000" />
-              <p className="text-xs text-dim">Limits help protect your account. Custom limits coming soon.</p>
+              <EditableLimit
+                label="Max per transaction"
+                value={limits.maxTx}
+                editing={editingLimit === 'maxTx'}
+                editValue={editValue}
+                onEdit={() => { setEditingLimit('maxTx'); setEditValue(String(limits.maxTx)); }}
+                onEditChange={setEditValue}
+                onSave={() => {
+                  const val = parseInt(editValue);
+                  if (val > 0) {
+                    const next = { ...limits, maxTx: val };
+                    setLimits(next);
+                    saveLimits(next);
+                  }
+                  setEditingLimit(null);
+                }}
+                onCancel={() => setEditingLimit(null)}
+              />
+              <EditableLimit
+                label="Max daily send"
+                value={limits.maxDaily}
+                editing={editingLimit === 'maxDaily'}
+                editValue={editValue}
+                onEdit={() => { setEditingLimit('maxDaily'); setEditValue(String(limits.maxDaily)); }}
+                onEditChange={setEditValue}
+                onSave={() => {
+                  const val = parseInt(editValue);
+                  if (val > 0) {
+                    const next = { ...limits, maxDaily: val };
+                    setLimits(next);
+                    saveLimits(next);
+                  }
+                  setEditingLimit(null);
+                }}
+                onCancel={() => setEditingLimit(null)}
+              />
+              <p className="text-xs text-dim">Tap a limit to customize. Limits help protect your account.</p>
             </div>
           </section>
 
@@ -216,5 +270,56 @@ function SettingRow({ label, value, mono }: { label: string; value: string; mono
       <span className="text-muted">{label}</span>
       <span className={`text-foreground ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
+  );
+}
+
+function EditableLimit({
+  label,
+  value,
+  editing,
+  editValue,
+  onEdit,
+  onEditChange,
+  onSave,
+  onCancel,
+}: {
+  label: string;
+  value: number;
+  editing: boolean;
+  editValue: string;
+  onEdit: () => void;
+  onEditChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  if (editing) {
+    return (
+      <div className="flex items-center justify-between text-sm gap-2">
+        <span className="text-muted">{label}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-muted">$</span>
+          <input
+            type="number"
+            value={editValue}
+            onChange={(e) => onEditChange(e.target.value)}
+            autoFocus
+            className="w-20 rounded-sm border border-border bg-panel px-2 py-1 text-sm text-foreground font-mono outline-none focus:border-accent/50"
+            onKeyDown={(e) => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel(); }}
+          />
+          <button onClick={onSave} className="text-accent text-xs font-medium px-1">Save</button>
+          <button onClick={onCancel} className="text-dim text-xs px-1">×</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={onEdit} className="flex justify-between text-sm w-full group">
+      <span className="text-muted">{label}</span>
+      <span className="text-foreground font-mono group-hover:text-accent transition">
+        ${value.toLocaleString()}
+        <span className="text-dim text-xs ml-1 opacity-0 group-hover:opacity-100 transition">✎</span>
+      </span>
+    </button>
   );
 }

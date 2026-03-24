@@ -4,6 +4,14 @@ import { useMemo } from 'react';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { deserializeKeypair } from '@/lib/zklogin';
 
+export interface ServiceResult {
+  success: boolean;
+  paymentDigest: string;
+  price: string;
+  serviceId: string;
+  result: unknown;
+}
+
 export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<{ tx: string }>;
@@ -11,6 +19,9 @@ export interface AgentActions {
   withdraw(params: { amount: number }): Promise<{ tx: string }>;
   borrow(params: { amount: number }): Promise<{ tx: string }>;
   repay(params: { amount: number }): Promise<{ tx: string }>;
+  invest(params: { asset: string; amount: number }): Promise<{ tx: string }>;
+  exchange(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
+  payService(params: { serviceId: string; fields: Record<string, string> }): Promise<ServiceResult>;
 }
 
 export function useAgent() {
@@ -104,6 +115,52 @@ export function useAgent() {
 
           async repay({ amount }) {
             return sponsoredTransaction('repay', { amount });
+          },
+
+          async invest({ asset, amount }) {
+            return sponsoredTransaction('invest', { amount, toAsset: asset });
+          },
+
+          async exchange({ from, to, amount }) {
+            return sponsoredTransaction('swap', { amount, fromAsset: from, toAsset: to });
+          },
+
+          async payService({ serviceId, fields }) {
+            const prepareHeaders: Record<string, string> = {
+              'Content-Type': 'application/json',
+            };
+            if (jwt) {
+              prepareHeaders['x-zklogin-jwt'] = jwt;
+            }
+
+            const prepareRes = await fetch('/api/services/prepare', {
+              method: 'POST',
+              headers: prepareHeaders,
+              body: JSON.stringify({ serviceId, fields, address }),
+            });
+
+            if (!prepareRes.ok) {
+              const err = await prepareRes.json();
+              throw new Error(err.error ?? 'Failed to prepare service payment');
+            }
+
+            const { bytes, digest, meta } = await prepareRes.json();
+
+            const txBytes = Uint8Array.from(atob(bytes), c => c.charCodeAt(0));
+            const { signature } = await signer.signTransaction(txBytes);
+
+            const completeRes = await fetch('/api/services/complete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ signature, digest, meta }),
+            });
+
+            if (!completeRes.ok) {
+              const err = await completeRes.json();
+              throw new Error(err.error ?? 'Service execution failed');
+            }
+
+            return completeRes.json();
           },
         };
       },

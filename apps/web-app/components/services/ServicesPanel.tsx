@@ -11,6 +11,7 @@ import {
 } from '@/lib/service-catalog';
 import { ServiceCard } from './ServiceCard';
 import { SmartForm } from './SmartForm';
+import { GiftCardGrid } from './GiftCardGrid';
 
 interface ServicesPanelProps {
   open: boolean;
@@ -94,7 +95,19 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {selectedService && (
+          {selectedService?.id === 'reloadly-giftcard' && (
+            <GiftCardGrid
+              onSelect={(brand, amount, email) => {
+                handleFormSubmit(selectedService, {
+                  brand,
+                  amount: String(amount),
+                  email,
+                });
+              }}
+              onCancel={() => setSelectedService(null)}
+            />
+          )}
+          {selectedService && selectedService.id !== 'reloadly-giftcard' && (
             <SmartForm
               service={selectedService}
               onSubmit={handleFormSubmit}

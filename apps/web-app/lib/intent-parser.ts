@@ -22,6 +22,7 @@ export type ParsedIntent =
   | { action: 'balance' }
   | { action: 'rates' }
   | { action: 'help' }
+  | { action: 'service'; serviceId: string }
   | null;
 
 const AMOUNT_PATTERN = /\$?([\d,]+(?:\.\d{1,2})?)/;
@@ -104,6 +105,10 @@ export function parseIntent(input: string): ParsedIntent {
   const swapMatch = parseSwapIntent(text);
   if (swapMatch) return swapMatch;
 
+  // Service fuzzy matching: "uber eats", "gift card", "search web", "image gen"
+  const serviceMatch = parseServiceIntent(text);
+  if (serviceMatch) return serviceMatch;
+
   return null;
 }
 
@@ -168,4 +173,38 @@ function parseSwapIntent(text: string): ParsedIntent {
 
 function resolveAsset(input: string): string | null {
   return INVESTMENT_ASSETS[input.toLowerCase()] ?? null;
+}
+
+const SERVICE_KEYWORDS: Array<{ keywords: string[]; serviceId: string }> = [
+  { keywords: ['gift card', 'giftcard', 'gift', 'amazon', 'uber eats', 'netflix', 'spotify', 'steam'], serviceId: 'reloadly-giftcard' },
+  { keywords: ['ask ai', 'chatgpt', 'gpt', 'claude', 'gemini', 'ai chat'], serviceId: 'openai-chat' },
+  { keywords: ['text to speech', 'tts', 'speak', 'voice'], serviceId: 'elevenlabs-tts' },
+  { keywords: ['translate', 'translation'], serviceId: 'translate' },
+  { keywords: ['image gen', 'generate image', 'create image', 'dall-e', 'flux', 'draw'], serviceId: 'fal-flux' },
+  { keywords: ['edit image', 'image edit'], serviceId: 'stability-edit' },
+  { keywords: ['web search', 'search web', 'search'], serviceId: 'brave-search' },
+  { keywords: ['flight', 'flights', 'plane ticket'], serviceId: 'serpapi-flights' },
+  { keywords: ['news', 'headlines'], serviceId: 'newsapi' },
+  { keywords: ['email', 'send email'], serviceId: 'resend-email' },
+  { keywords: ['postcard', 'mail', 'snail mail'], serviceId: 'lob-postcard' },
+  { keywords: ['crypto price', 'coin price', 'bitcoin price', 'eth price'], serviceId: 'coingecko-price' },
+  { keywords: ['stock', 'stock price', 'stocks'], serviceId: 'alphavantage-quote' },
+  { keywords: ['currency', 'forex', 'exchange rate', 'convert currency'], serviceId: 'exchangerate-convert' },
+  { keywords: ['screenshot', 'capture page'], serviceId: 'screenshot' },
+  { keywords: ['shorten url', 'short link', 'url shortener'], serviceId: 'shortio' },
+  { keywords: ['qr code', 'qr'], serviceId: 'qrcode' },
+  { keywords: ['run code', 'execute code', 'code runner', 'compile'], serviceId: 'e2b-execute' },
+  { keywords: ['security scan', 'virus scan', 'scan url'], serviceId: 'virustotal' },
+];
+
+function parseServiceIntent(text: string): ParsedIntent {
+  const lower = text.toLowerCase().trim();
+  for (const entry of SERVICE_KEYWORDS) {
+    for (const kw of entry.keywords) {
+      if (lower.includes(kw)) {
+        return { action: 'service', serviceId: entry.serviceId };
+      }
+    }
+  }
+  return null;
 }

@@ -12,6 +12,7 @@ import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
 import { ResultCard } from '@/components/dashboard/ResultCard';
 import { AmountChips } from '@/components/dashboard/AmountChips';
 import { FeedRenderer } from '@/components/dashboard/FeedRenderer';
+import { AssetSelector } from '@/components/dashboard/AssetSelector';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ServicesPanel } from '@/components/services/ServicesPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
@@ -58,6 +59,8 @@ function capForFlow(
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
     case 'borrow': return bal.maxBorrow;
+    case 'invest': return bal.checking;
+    case 'swap': return bal.checking;
     default: return bal.checking;
   }
 }
@@ -337,17 +340,13 @@ function DashboardContent() {
           }
           break;
         case 'invest':
-          feed.addItem({
-            type: 'ai-text',
-            text: `To invest $${intent.amount} in ${intent.asset}, the SDK needs to be connected. This will be wired once the agent integration is complete.`,
-            chips: [{ label: 'Check rates', flow: 'rates' }],
-          });
+          chipFlow.startFlow('invest', flowContext);
+          if (intent.asset) chipFlow.selectAsset(intent.asset, flowContext);
           break;
         case 'swap':
-          feed.addItem({
-            type: 'ai-text',
-            text: `Swap $${intent.amount} to ${intent.to} will be available once the exchange flow is connected.`,
-          });
+          chipFlow.startFlow('swap', flowContext);
+          chipFlow.selectAsset('USDC', flowContext);
+          if (intent.to) chipFlow.selectAsset(intent.to, flowContext);
           break;
         case 'claim-rewards':
           feed.addItem({
@@ -429,6 +428,9 @@ function DashboardContent() {
             text: 'Here\'s what I can help with:\n\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Invest — Buy SUI, BTC, ETH, GOLD\n• Services — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100".',
           });
           break;
+        case 'service':
+          setServicesOpen(true);
+          break;
       }
     },
     [chipFlow, feed, address, balance, balanceQuery.data, flowContext],
@@ -488,27 +490,15 @@ function DashboardContent() {
       if (flow === 'history') { executeIntent({ action: 'history' }); return; }
       if (flow === 'receive') { executeIntent({ action: 'address' }); return; }
       if (flow === 'invest' || flow.startsWith('invest-')) {
-        const asset = flow.startsWith('invest-') ? flow.replace('invest-', '').toUpperCase() : null;
-        feed.addItem({
-          type: 'ai-text',
-          text: asset
-            ? `To invest in ${asset}, type "invest $100 in ${asset}". This will be available once the exchange integration is live.`
-            : 'What would you like to invest in? Type "invest $100 in SUI" or choose an asset.',
-          chips: asset
-            ? [{ label: 'Check balance', flow: 'balance' }]
-            : [
-                { label: 'SUI', flow: 'invest-sui' },
-                { label: 'BTC', flow: 'invest-btc' },
-                { label: 'ETH', flow: 'invest-eth' },
-              ],
-        });
+        chipFlow.startFlow('invest', flowContext);
+        if (flow.startsWith('invest-')) {
+          const asset = flow.replace('invest-', '').toUpperCase();
+          chipFlow.selectAsset(asset, flowContext);
+        }
         return;
       }
       if (flow === 'swap') {
-        feed.addItem({
-          type: 'ai-text',
-          text: 'What would you like to swap? Type "swap $50 to SUI" to get started.',
-        });
+        chipFlow.startFlow('swap', flowContext);
         return;
       }
       if (flow === 'balance') { executeIntent({ action: 'balance' }); return; }
@@ -535,30 +525,55 @@ function DashboardContent() {
   );
 
   const handleServiceSubmit = useCallback(
-    (service: ServiceItem, values: Record<string, string>) => {
-      const details = Object.entries(values)
-        .filter(([, v]) => v.trim())
-        .map(([k, v]) => `${k}: ${v}`)
-        .join('\n');
-
-      feed.addItem({
-        type: 'confirmation',
-        title: `${service.icon} ${service.name}`,
-        details: [
-          { label: 'Service', value: service.name },
-          ...Object.entries(values).filter(([, v]) => v.trim()).map(([k, v]) => ({ label: k, value: v })),
-          { label: 'Cost', value: `From ${service.startingPrice}` },
-        ],
-        flow: service.id,
-      });
-
-      // TODO: Execute via MPP gateway when wired
+    async (service: ServiceItem, values: Record<string, string>) => {
       feed.addItem({
         type: 'ai-text',
-        text: `Your ${service.name} request is ready. MPP gateway execution will be connected in a future update.\n\n${details}`,
+        text: `Processing ${service.name}... Paying $${service.startingPrice} via MPP.`,
       });
+
+      try {
+        if (!agent) throw new Error('Not authenticated');
+        const sdk = await agent.getInstance();
+        const result = await sdk.payService({
+          serviceId: service.id,
+          fields: values,
+        });
+
+        feed.removeLastItem();
+
+        const responseText = typeof result.result === 'string'
+          ? result.result
+          : JSON.stringify(result.result, null, 2);
+
+        const previewLength = 500;
+        const preview = responseText.length > previewLength
+          ? responseText.slice(0, previewLength) + '...'
+          : responseText;
+
+        feed.addItem({
+          type: 'result',
+          success: true,
+          title: `${service.icon} ${service.name}`,
+          details: `Paid $${result.price} · Tx: ${result.paymentDigest.slice(0, 8)}...${result.paymentDigest.slice(-6)}`,
+        });
+
+        feed.addItem({
+          type: 'ai-text',
+          text: `**${service.name} response:**\n\n\`\`\`\n${preview}\n\`\`\``,
+        });
+
+        balanceQuery.refetch();
+      } catch (err) {
+        feed.removeLastItem();
+        const msg = err instanceof Error ? err.message : 'Service request failed';
+        feed.addItem({
+          type: 'ai-text',
+          text: `${service.icon} ${service.name} failed: ${msg}`,
+          chips: [{ label: 'Try again', flow: 'services' }],
+        });
+      }
     },
-    [feed],
+    [feed, agent, balanceQuery],
   );
 
   const handleInputSubmit = useCallback(
@@ -582,7 +597,8 @@ function DashboardContent() {
       }
 
       llmUsage.increment();
-      const response = await llm.query(text, address);
+      const balanceCtx = `Total: $${balance.total.toFixed(2)}, Checking: $${balance.checking.toFixed(2)}, Savings: $${balance.savings.toFixed(2)}${balance.borrows > 0 ? `, Debt: $${balance.borrows.toFixed(2)}` : ''}`;
+      const response = await llm.query(text, address, balanceCtx);
       feed.addItem(response);
     },
     [feed, executeIntent, llm, llmUsage, address],
@@ -610,18 +626,55 @@ function DashboardContent() {
     [contactsHook, feed],
   );
 
+  const fetchQuoteAndConfirm = useCallback(
+    async (amount: number) => {
+      const flow = chipFlow.state.flow;
+      const fromAsset = flow === 'invest' ? 'USDC' : (chipFlow.state.asset ?? 'USDC');
+      const toAsset = flow === 'invest' ? (chipFlow.state.asset ?? 'SUI') : (chipFlow.state.toAsset ?? 'SUI');
+
+      chipFlow.setQuoting(amount);
+
+      try {
+        const res = await fetch(
+          `/api/quote?from=${fromAsset}&to=${toAsset}&amount=${amount}`,
+        );
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error ?? 'Quote failed');
+        }
+        const data = await res.json();
+        chipFlow.setQuote({
+          expectedOutput: data.expectedOutput,
+          priceImpact: data.priceImpact,
+          poolPrice: data.poolPrice,
+          fromAsset,
+          toAsset,
+          fromAmount: amount,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to get quote';
+        chipFlow.setError(msg);
+        feed.addItem({ type: 'ai-text', text: `Could not get a price quote: ${msg}` });
+      }
+    },
+    [chipFlow, feed],
+  );
+
   const handleAmountSelect = useCallback(
     (amount: number) => {
       const flow = chipFlow.state.flow ?? '';
       const cap = capForFlow(flow, balance);
+      const resolved = amount === -1 ? cap : Math.min(amount, cap);
 
-      if (amount === -1) {
+      if (flow === 'invest' || flow === 'swap') {
+        fetchQuoteAndConfirm(resolved);
+      } else if (amount === -1) {
         chipFlow.selectAmount(cap);
       } else {
         chipFlow.selectAmount(Math.min(amount, cap));
       }
     },
-    [chipFlow, balance],
+    [chipFlow, balance, fetchQuoteAndConfirm],
   );
 
   const handleConfirm = useCallback(async () => {
@@ -672,13 +725,35 @@ function DashboardContent() {
           flowLabel = 'Repaid';
           break;
         }
+        case 'invest': {
+          const asset = chipFlow.state.asset ?? 'SUI';
+          const res = await sdk.invest({ asset, amount });
+          txDigest = res.tx;
+          const q = chipFlow.state.quote;
+          flowLabel = q
+            ? `Invested $${amount.toFixed(2)} → ${q.expectedOutput.toFixed(4)} ${asset}`
+            : `Invested $${amount.toFixed(2)} in ${asset}`;
+          break;
+        }
+        case 'swap': {
+          const from = chipFlow.state.asset ?? 'USDC';
+          const to = chipFlow.state.toAsset ?? 'SUI';
+          const res = await sdk.exchange({ from, to, amount });
+          txDigest = res.tx;
+          const q = chipFlow.state.quote;
+          flowLabel = q
+            ? `Swapped ${amount} ${from} → ${q.expectedOutput.toFixed(4)} ${to}`
+            : `Swapped ${amount} ${from} → ${to}`;
+          break;
+        }
         default:
           throw new Error(`Unknown flow: ${flow}`);
       }
 
+      const isSwapLike = flow === 'invest' || flow === 'swap';
       const result: ChipFlowResult = {
         success: true,
-        title: `${flowLabel} $${amount.toFixed(2)}`,
+        title: isSwapLike ? flowLabel : `${flowLabel} $${amount.toFixed(2)}`,
         details: txDigest
           ? `Tx: ${txDigest.slice(0, 8)}...${txDigest.slice(-6)}`
           : 'Transaction confirmed on-chain.',
@@ -715,7 +790,38 @@ function DashboardContent() {
   const getConfirmationDetails = () => {
     const flow = chipFlow.state.flow;
     const amount = chipFlow.state.amount ?? 0;
+    const quote = chipFlow.state.quote;
     const details: { label: string; value: string }[] = [];
+
+    if (flow === 'invest' && quote) {
+      details.push({ label: 'You pay', value: `$${amount.toFixed(2)} USDC` });
+      details.push({ label: 'You receive', value: `~${quote.expectedOutput.toFixed(4)} ${quote.toAsset}` });
+      const unitPrice = amount / quote.expectedOutput;
+      details.push({ label: 'Price', value: `$${unitPrice.toFixed(2)} / ${quote.toAsset}` });
+      if (quote.priceImpact > 0.001) {
+        details.push({ label: 'Price impact', value: `${(quote.priceImpact * 100).toFixed(2)}%` });
+      }
+      details.push({ label: 'Gas', value: 'Sponsored' });
+      return {
+        title: `Buy ${quote.toAsset}`,
+        confirmLabel: `Buy ${quote.expectedOutput.toFixed(4)} ${quote.toAsset}`,
+        details,
+      };
+    }
+
+    if (flow === 'swap' && quote) {
+      details.push({ label: 'You send', value: `${amount} ${quote.fromAsset}` });
+      details.push({ label: 'You receive', value: `~${quote.expectedOutput.toFixed(4)} ${quote.toAsset}` });
+      if (quote.priceImpact > 0.001) {
+        details.push({ label: 'Price impact', value: `${(quote.priceImpact * 100).toFixed(2)}%` });
+      }
+      details.push({ label: 'Gas', value: 'Sponsored' });
+      return {
+        title: `Swap ${quote.fromAsset} → ${quote.toAsset}`,
+        confirmLabel: `Swap ${amount} ${quote.fromAsset}`,
+        details,
+      };
+    }
 
     details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
 
@@ -775,6 +881,16 @@ function DashboardContent() {
           />
         )}
 
+        {/* Quoting state (fetching swap quote) */}
+        {chipFlow.state.phase === 'quoting' && (
+          <div className="rounded-sm border border-border bg-surface p-5 space-y-3 feed-row">
+            <div className="flex items-center gap-3">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-accent/30 border-t-accent" />
+              <p className="text-sm text-muted">Fetching price quote...</p>
+            </div>
+          </div>
+        )}
+
         {/* Executing state */}
         {chipFlow.state.phase === 'executing' && (
           <ConfirmationCard
@@ -782,6 +898,23 @@ function DashboardContent() {
             onConfirm={() => {}}
             onCancel={() => {}}
             loading
+          />
+        )}
+
+        {/* Asset selection (invest/swap) */}
+        {chipFlow.state.phase === 'asset-select' && chipFlow.state.flow === 'invest' && (
+          <AssetSelector
+            flow="invest"
+            message={chipFlow.state.message ?? undefined}
+            onSelect={(asset) => chipFlow.selectAsset(asset, flowContext)}
+          />
+        )}
+        {chipFlow.state.phase === 'asset-select' && chipFlow.state.flow === 'swap' && (
+          <AssetSelector
+            flow="swap"
+            selectedFrom={chipFlow.state.asset}
+            message={chipFlow.state.message ?? undefined}
+            onSelect={(asset) => chipFlow.selectAsset(asset, flowContext)}
           />
         )}
 
@@ -794,6 +927,8 @@ function DashboardContent() {
               chipFlow.state.flow === 'save' ? `All $${fmtDollar(balance.checking)}` :
               chipFlow.state.flow === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
               chipFlow.state.flow === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
+              chipFlow.state.flow === 'invest' ? `All $${fmtDollar(balance.checking)}` :
+              chipFlow.state.flow === 'swap' ? `All $${fmtDollar(balance.checking)}` :
               undefined
             }
             onSelect={handleAmountSelect}
