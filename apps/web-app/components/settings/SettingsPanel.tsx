@@ -1,13 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { truncateAddress } from '@/lib/format';
+import type { Contact } from '@/hooks/useContacts';
 
 interface SettingsPanelProps {
   open: boolean;
   onClose: () => void;
   address: string;
+  email: string | null;
   network: string;
   sessionExpiresAt: number;
+  contacts: Contact[];
+  onRemoveContact: (address: string) => void;
   onSignOut: () => void;
   onRefreshSession: () => void;
 }
@@ -16,15 +21,27 @@ export function SettingsPanel({
   open,
   onClose,
   address,
+  email,
   network,
   sessionExpiresAt,
+  contacts,
+  onRemoveContact,
   onSignOut,
   onRefreshSession,
 }: SettingsPanelProps) {
+  const [copied, setCopied] = useState(false);
+  const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
+
   if (!open) return null;
 
   const expiryDate = new Date(sessionExpiresAt);
   const daysLeft = Math.max(0, Math.ceil((sessionExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <>
@@ -44,26 +61,35 @@ export function SettingsPanel({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          {/* Account */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Account</h3>
+            <SectionHeader>Account</SectionHeader>
             <div className="space-y-2">
+              {email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted">📧</span>
+                  <span className="text-foreground">{email}</span>
+                </div>
+              )}
               <SettingRow label="Address" value={truncateAddress(address)} mono />
               <SettingRow label="Network" value={network} />
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(address);
-                }}
-                className="text-sm text-accent hover:underline transition"
+                onClick={handleCopy}
+                className="text-sm text-accent hover:underline underline-offset-2 transition font-mono"
               >
-                Copy full address
+                {copied ? '✓ Copied' : 'Copy full address'}
               </button>
             </div>
           </section>
 
+          {/* Session */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Session</h3>
+            <SectionHeader>Session</SectionHeader>
             <div className="space-y-2">
               <SettingRow label="Expires" value={`${expiryDate.toLocaleDateString()} (${daysLeft}d left)`} />
+              {daysLeft <= 1 && (
+                <p className="text-xs text-amber-400">⚠ Session expiring soon</p>
+              )}
               <button
                 onClick={onRefreshSession}
                 className="text-sm text-accent hover:underline underline-offset-2 transition"
@@ -73,8 +99,50 @@ export function SettingsPanel({
             </div>
           </section>
 
+          {/* Contacts */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Links</h3>
+            <SectionHeader>Contacts</SectionHeader>
+            {contacts.length === 0 ? (
+              <p className="text-sm text-dim">No saved contacts yet. Send to an address and you&apos;ll be prompted to save it.</p>
+            ) : (
+              <div className="space-y-1">
+                {contacts.map((c) => (
+                  <div
+                    key={c.address}
+                    className="flex items-center justify-between py-2 px-2 -mx-2 rounded-sm hover:bg-panel/50 transition group"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground font-medium">{c.name}</p>
+                      <p className="text-xs text-dim font-mono truncate">{truncateAddress(c.address)}</p>
+                    </div>
+                    <button
+                      onClick={() => onRemoveContact(c.address)}
+                      className="text-dim hover:text-red-400 opacity-0 group-hover:opacity-100 transition p-1"
+                      title="Remove contact"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Safety Limits */}
+          <section className="space-y-3">
+            <SectionHeader>Safety Limits</SectionHeader>
+            <div className="space-y-2">
+              <SettingRow label="Max per transaction" value="$1,000" />
+              <SettingRow label="Max daily send" value="$5,000" />
+              <p className="text-xs text-dim">Limits help protect your account. Custom limits coming soon.</p>
+            </div>
+          </section>
+
+          {/* Links */}
+          <section className="space-y-3">
+            <SectionHeader>Links</SectionHeader>
             <a
               href={`https://suiscan.xyz/${network}/account/${address}`}
               target="_blank"
@@ -84,18 +152,61 @@ export function SettingsPanel({
               View on Suiscan ↗
             </a>
           </section>
+
+          {/* Emergency Lock */}
+          <section className="space-y-3">
+            <SectionHeader>Security</SectionHeader>
+            {!showEmergencyConfirm ? (
+              <button
+                onClick={() => setShowEmergencyConfirm(true)}
+                className="w-full rounded-sm border border-red-500/20 bg-red-500/5 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 transition flex items-center justify-center gap-2"
+              >
+                <span className="w-2 h-2 bg-red-500 rounded-full" />
+                Emergency Lock
+              </button>
+            ) : (
+              <div className="rounded-sm border border-red-500/30 bg-red-500/5 p-3 space-y-3">
+                <p className="text-sm text-red-300">
+                  This will sign you out and clear all local data. You can sign back in anytime with Google.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowEmergencyConfirm(false);
+                      onSignOut();
+                    }}
+                    className="flex-1 rounded-sm bg-red-500/20 border border-red-500/30 py-2 text-sm font-medium text-red-400 hover:bg-red-500/30 transition"
+                  >
+                    Confirm Lock
+                  </button>
+                  <button
+                    onClick={() => setShowEmergencyConfirm(false)}
+                    className="flex-1 rounded-sm border border-border py-2 text-sm text-muted hover:text-foreground transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
         </div>
 
         <div className="p-5 border-t border-border">
           <button
             onClick={onSignOut}
-            className="w-full rounded-sm bg-red-500/10 border border-red-500/20 py-3 text-sm font-medium text-red-400 hover:bg-red-500/20 transition"
+            className="w-full rounded-sm bg-panel border border-border py-3 text-sm font-medium text-muted hover:text-foreground hover:border-border-bright transition"
           >
             Sign out
           </button>
         </div>
       </div>
     </>
+  );
+}
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">{children}</h3>
   );
 }
 

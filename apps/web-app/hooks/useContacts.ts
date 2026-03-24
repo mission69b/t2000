@@ -46,6 +46,22 @@ export function useContacts(userAddress: string | null) {
     [userAddress, contacts],
   );
 
+  const removeContact = useCallback(
+    async (addressToRemove: string) => {
+      if (!userAddress) return;
+      const updated = contacts.filter(
+        (c) => c.address.toLowerCase() !== addressToRemove.toLowerCase(),
+      );
+      setContacts(updated);
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: userAddress, contacts: updated }),
+      });
+    },
+    [userAddress, contacts],
+  );
+
   const isKnownAddress = useCallback(
     (addr: string) =>
       contacts.some((c) => c.address.toLowerCase() === addr.toLowerCase()),
@@ -62,5 +78,5 @@ export function useContacts(userAddress: string | null) {
     [contacts],
   );
 
-  return { contacts, loaded, addContact, isKnownAddress, resolveContact };
+  return { contacts, loaded, addContact, removeContact, isKnownAddress, resolveContact };
 }

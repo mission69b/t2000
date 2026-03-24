@@ -31,6 +31,17 @@ import type { ServiceItem } from '@/lib/service-catalog';
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
 
+function decodeJwtEmail(jwt: string | undefined): string | null {
+  if (!jwt) return null;
+  try {
+    const payload = jwt.split('.')[1];
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return decoded.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function fmtDollar(n: number): string {
   if (n >= 1) return `${Math.floor(n)}`;
   if (n > 0) return n.toFixed(2);
@@ -879,8 +890,11 @@ function DashboardContent() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         address={address}
+        email={decodeJwtEmail(session.jwt)}
         network={SUI_NETWORK}
         sessionExpiresAt={session.expiresAt}
+        contacts={contactsHook.contacts}
+        onRemoveContact={contactsHook.removeContact}
         onSignOut={logout}
         onRefreshSession={refresh}
       />
