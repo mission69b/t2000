@@ -74,28 +74,30 @@ export function useBalance(address: string | null) {
           .catch(() => ({ rates: [], bestSaveRate: null })),
       ]);
 
-      const sui = Number(suiBal.totalBalance) / MIST_PER_SUI;
-      const usdc = Number(usdcBal.totalBalance) / (10 ** USDC_DECIMALS);
-      const suiUsd = sui * suiPrice;
+      const r2 = (n: number) => Math.round(n * 100) / 100;
 
-      const checking = usdc + suiUsd;
-      const savings = posData.savings ?? 0;
-      const borrows = posData.borrows ?? 0;
-      const savingsRate = posData.savingsRate ?? 0;
+      const sui = r2(Number(suiBal.totalBalance) / MIST_PER_SUI);
+      const usdc = r2(Number(usdcBal.totalBalance) / (10 ** USDC_DECIMALS));
+      const suiUsd = r2(sui * suiPrice);
+
+      const checking = r2(usdc + suiUsd);
+      const savings = r2(posData.savings ?? 0);
+      const borrows = r2(posData.borrows ?? 0);
+      const savingsRate = r2(posData.savingsRate ?? 0);
       const healthFactor = posData.healthFactor ?? null;
-      const maxBorrow = posData.maxBorrow ?? 0;
-      const pendingRewards = posData.pendingRewards ?? 0;
+      const maxBorrow = r2(posData.maxBorrow ?? 0);
+      const pendingRewards = r2(posData.pendingRewards ?? 0);
       const bestSaveRate = ratesData.bestSaveRate ?? null;
 
       return {
-        total: checking + savings - borrows,
+        total: r2(checking + savings - borrows),
         checking,
         savings,
         borrows,
         sui,
         suiUsd,
         usdc,
-        suiPrice,
+        suiPrice: r2(suiPrice),
         savingsRate,
         healthFactor,
         maxBorrow,

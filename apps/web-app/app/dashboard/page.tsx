@@ -30,27 +30,30 @@ import type { ServiceItem } from '@/lib/service-catalog';
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
 
-function fmtNum(n: number): string {
-  if (n === 0) return '0';
-  if (n < 1) return n.toFixed(2);
-  return Math.floor(n).toString();
+function fmtDollar(n: number): string {
+  if (n >= 1) return `${Math.floor(n)}`;
+  if (n > 0) return n.toFixed(2);
+  return '0';
 }
 
-function getAmountPresets(
+function capForFlow(
   flow: string,
   bal: { checking: number; savings: number; borrows: number; maxBorrow: number },
-): number[] {
-  let cap = 0;
+): number {
   switch (flow) {
-    case 'save': cap = bal.checking; break;
-    case 'withdraw': cap = bal.savings; break;
-    case 'repay': cap = bal.borrows; break;
-    case 'borrow': cap = bal.maxBorrow; break;
-    default: cap = bal.checking;
+    case 'save': return bal.checking;
+    case 'send': return bal.checking;
+    case 'withdraw': return bal.savings;
+    case 'repay': return bal.borrows;
+    case 'borrow': return bal.maxBorrow;
+    default: return bal.checking;
   }
-  cap = Math.floor(cap);
-  if (cap <= 0) return [1, 5, 10];
-  if (cap <= 5) return [1, 2, Math.min(5, cap)].filter((v, i, a) => a.indexOf(v) === i);
+}
+
+function getAmountPresets(flow: string, bal: { checking: number; savings: number; borrows: number; maxBorrow: number }): number[] {
+  const cap = Math.floor(capForFlow(flow, bal));
+  if (cap <= 0) return [];
+  if (cap <= 5) return [1, 2, Math.min(5, cap)].filter((v, i, a) => v <= cap && a.indexOf(v) === i);
   if (cap <= 20) return [1, 5, 10].filter((v) => v <= cap);
   if (cap <= 100) return [5, 10, 25].filter((v) => v <= cap);
   if (cap <= 500) return [25, 50, 100].filter((v) => v <= cap);
@@ -380,7 +383,7 @@ function DashboardContent() {
       }
       if (chipFlowId === 'save-all') {
         chipFlow.startFlow('save', flowContext);
-        chipFlow.selectAmount(Math.floor(balance.checking));
+        chipFlow.selectAmount(balance.checking);
         return;
       }
       if (chipFlowId === 'rebalance') {
@@ -538,25 +541,25 @@ function DashboardContent() {
 
   const handleAmountSelect = useCallback(
     (amount: number) => {
+      const flow = chipFlow.state.flow ?? '';
+      const cap = capForFlow(flow, balance);
+
       if (amount === -1) {
-        const flow = chipFlow.state.flow;
-        let actualAmount = balance.checking;
-        if (flow === 'withdraw') actualAmount = balance.savings;
-        else if (flow === 'repay') actualAmount = balance.borrows;
-        else if (flow === 'borrow') actualAmount = balance.maxBorrow;
-        chipFlow.selectAmount(actualAmount);
+        chipFlow.selectAmount(cap);
       } else {
-        chipFlow.selectAmount(amount);
+        chipFlow.selectAmount(Math.min(amount, cap));
       }
     },
-    [chipFlow, balance.checking, balance.savings, balance.borrows, balance.maxBorrow],
+    [chipFlow, balance],
   );
 
   const handleConfirm = useCallback(async () => {
     chipFlow.confirm();
 
     const flow = chipFlow.state.flow;
-    const amount = chipFlow.state.amount ?? 0;
+    const cap = capForFlow(flow ?? '', balance);
+    const rawAmount = chipFlow.state.amount ?? 0;
+    const amount = Math.min(rawAmount, cap);
 
     try {
       if (!agent) throw new Error('Not authenticated');
@@ -716,10 +719,10 @@ function DashboardContent() {
           <AmountChips
             amounts={getAmountPresets(chipFlow.state.flow, balance)}
             allLabel={
-              chipFlow.state.flow === 'withdraw' ? `All $${fmtNum(balance.savings)}` :
-              chipFlow.state.flow === 'save' ? `All $${fmtNum(balance.checking)}` :
-              chipFlow.state.flow === 'repay' ? `All $${fmtNum(balance.borrows)}` :
-              chipFlow.state.flow === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtNum(balance.maxBorrow)}` :
+              chipFlow.state.flow === 'withdraw' ? `All $${fmtDollar(balance.savings)}` :
+              chipFlow.state.flow === 'save' ? `All $${fmtDollar(balance.checking)}` :
+              chipFlow.state.flow === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
+              chipFlow.state.flow === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
               undefined
             }
             onSelect={handleAmountSelect}
@@ -747,7 +750,7 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
           <AmountChips
             amounts={getAmountPresets('send', balance)}
-            allLabel={`All $${fmtNum(balance.checking)}`}
+            allLabel={`All $${fmtDollar(balance.checking)}`}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
           />
