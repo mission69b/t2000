@@ -38,22 +38,21 @@
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@hono/node-server": "^1",
-    "@inquirer/prompts": "^7",
-    "@mysten/sui": "^2.6.0",
-    "@t2000/sdk": "workspace:*",
-    "commander": "^13",
-    "hono": "^4",
-    "picocolors": "^1"
-  },
+  "dependencies": {},
   "optionalDependencies": {
     "@t2000/mcp": "workspace:*"
   },
   "devDependencies": {
+    "@hono/node-server": "^1",
+    "@inquirer/prompts": "^7",
+    "@mysten/sui": "^2.6.0",
     "@t2000/mcp": "workspace:*",
+    "@t2000/sdk": "workspace:*",
     "@types/node": "^20",
+    "commander": "^13",
     "eslint": "^9",
+    "hono": "^4",
+    "picocolors": "^1",
     "tsup": "^8",
     "typescript": "^5",
     "vitest": "^3"
