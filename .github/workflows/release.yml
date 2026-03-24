@@ -65,16 +65,16 @@ jobs:
               pkg.version = '$next';
               fs.writeFileSync('./$pkg/package.json', JSON.stringify(pkg, null, 2) + '\n');
             "
-            echo "$pkg: $current → $next"
-            echo "$next"
+            echo "$pkg: $current → $next" >&2
+            printf '%s' "$next"
           }
 
-          SDK_VERSION=$(bump_pkg "packages/sdk")
-          CLI_VERSION=$(bump_pkg "packages/cli")
-          MCP_VERSION=$(bump_pkg "packages/mcp")
-          MPP_VERSION=$(bump_pkg "packages/mpp-sui")
+          bump_pkg "packages/sdk"
+          VERSION=$(bump_pkg "packages/cli")
+          bump_pkg "packages/mcp"
+          bump_pkg "packages/mpp-sui"
 
-          echo "version=$CLI_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Commit & tag
         run: |
