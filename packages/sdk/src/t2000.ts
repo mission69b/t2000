@@ -253,7 +253,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       polyfill: false,
       methods: [sui({
         client,
-        signer: this._keypair ?? (this._signer as unknown as Ed25519Keypair),
+        signer,
         execute: async (tx) => {
           const result = await executeWithGas(client, signer, () => tx);
           return { digest: result.digest, effects: result.effects };
@@ -3146,7 +3146,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async sentinelAttack(id: string, prompt: string, fee?: bigint): Promise<SentinelAttackResult> {
     this.enforcer.check({ operation: 'sentinel', amount: fee ? Number(fee) / 1e9 : 0.1 });
-    return sentinel.attack(this.client, this.keypair, id, prompt, fee);
+    return sentinel.attack(this.client, this._signer, id, prompt, fee);
   }
 
   // -- Helpers --

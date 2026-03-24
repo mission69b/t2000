@@ -1,5 +1,4 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import {
   getLendingPositions,
@@ -22,11 +21,6 @@ import { stableToRaw } from '../utils/format.js';
 import { addCollectFeeToTx } from './protocolFee.js';
 import type { PendingReward } from '../adapters/types.js';
 import type {
-  SaveResult,
-  WithdrawResult,
-  BorrowResult,
-  RepayResult,
-  GasMethod,
   RatesResult,
   PositionsResult,
   PositionEntry,
@@ -123,14 +117,6 @@ function resolveAssetInfo(asset: string): { type: string; decimals: number; disp
   throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown asset: ${asset}`);
 }
 
-function extractGasCost(effects: { gasUsed?: { computationCost: string; storageCost: string; storageRebate: string } } | undefined | null): number {
-  if (!effects?.gasUsed) return 0;
-  return Math.abs(
-    (Number(effects.gasUsed.computationCost) +
-      Number(effects.gasUsed.storageCost) -
-      Number(effects.gasUsed.storageRebate)) / 1e9,
-  );
-}
 
 async function fetchCoins(
   client: SuiJsonRpcClient,
@@ -167,11 +153,8 @@ function mergeCoins(
 
 export async function getPositions(
   client: SuiJsonRpcClient,
-  addressOrKeypair: string | Ed25519Keypair,
+  address: string,
 ): Promise<PositionsResult> {
-  const address = typeof addressOrKeypair === 'string'
-    ? addressOrKeypair
-    : addressOrKeypair.getPublicKey().toSuiAddress();
 
   try {
     const naviPositions = await getLendingPositions(address, {
@@ -249,11 +232,8 @@ export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
 
 export async function getHealthFactor(
   client: SuiJsonRpcClient,
-  addressOrKeypair: string | Ed25519Keypair,
+  address: string,
 ): Promise<HealthFactorResult> {
-  const address = typeof addressOrKeypair === 'string'
-    ? addressOrKeypair
-    : addressOrKeypair.getPublicKey().toSuiAddress();
 
   const posResult = await getPositions(client, address);
   let supplied = 0;
@@ -322,35 +302,6 @@ export async function buildSaveTx(
   }
 
   return tx;
-}
-
-export async function save(
-  client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
-  amount: number,
-): Promise<SaveResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
-  const tx = await buildSaveTx(client, address, amount);
-
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
-
-  const rates = await getRates(client);
-
-  return {
-    success: true,
-    tx: result.digest,
-    amount,
-    apy: rates.USDC?.saveApy ?? 4.0,
-    fee: 0,
-    gasCost: extractGasCost(result.effects),
-    gasMethod: 'self-funded' as GasMethod,
-    savingsBalance: amount,
-  };
 }
 
 export async function buildWithdrawTx(
@@ -475,30 +426,6 @@ export async function addRepayToTx(
   }
 }
 
-export async function withdraw(
-  client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
-  amount: number,
-): Promise<WithdrawResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
-  const { tx, effectiveAmount } = await buildWithdrawTx(client, address, amount);
-
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
-
-  return {
-    success: true,
-    tx: result.digest,
-    amount: effectiveAmount,
-    gasCost: extractGasCost(result.effects),
-    gasMethod: 'self-funded' as GasMethod,
-  };
-}
-
 export async function buildBorrowTx(
   client: SuiJsonRpcClient,
   address: string,
@@ -531,34 +458,6 @@ export async function buildBorrowTx(
   }
 
   return tx;
-}
-
-export async function borrow(
-  client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
-  amount: number,
-): Promise<BorrowResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
-  const tx = await buildBorrowTx(client, address, amount);
-
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
-
-  const hfResult = await getHealthFactor(client, address);
-
-  return {
-    success: true,
-    tx: result.digest,
-    amount,
-    fee: 0,
-    healthFactor: hfResult.healthFactor,
-    gasCost: extractGasCost(result.effects),
-    gasMethod: 'self-funded' as GasMethod,
-  };
 }
 
 export async function buildRepayTx(
@@ -599,42 +498,11 @@ export async function buildRepayTx(
   return tx;
 }
 
-export async function repay(
-  client: SuiJsonRpcClient,
-  keypair: Ed25519Keypair,
-  amount: number,
-): Promise<RepayResult> {
-  const address = keypair.getPublicKey().toSuiAddress();
-  const tx = await buildRepayTx(client, address, amount);
-
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
-
-  const posResult = await getPositions(client, address);
-  let remainingDebt = 0;
-  for (const pos of posResult.positions) {
-    if (pos.type === 'borrow') remainingDebt += pos.amountUsd ?? pos.amount;
-  }
-
-  return {
-    success: true,
-    tx: result.digest,
-    amount,
-    remainingDebt,
-    gasCost: extractGasCost(result.effects),
-    gasMethod: 'self-funded' as GasMethod,
-  };
-}
-
 export async function maxWithdrawAmount(
   client: SuiJsonRpcClient,
-  addressOrKeypair: string | Ed25519Keypair,
+  address: string,
 ): Promise<MaxWithdrawResult> {
-  const hf = await getHealthFactor(client, addressOrKeypair);
+  const hf = await getHealthFactor(client, address);
   const ltv = hf.liquidationThreshold > 0 ? hf.liquidationThreshold : 0.75;
 
   let maxAmount: number;
@@ -652,9 +520,9 @@ export async function maxWithdrawAmount(
 
 export async function maxBorrowAmount(
   client: SuiJsonRpcClient,
-  addressOrKeypair: string | Ed25519Keypair,
+  address: string,
 ): Promise<MaxBorrowResult> {
-  const hf = await getHealthFactor(client, addressOrKeypair);
+  const hf = await getHealthFactor(client, address);
   const ltv = hf.liquidationThreshold > 0 ? hf.liquidationThreshold : 0.75;
 
   const maxAmount = Math.max(0, hf.supplied * ltv / MIN_HEALTH_FACTOR - hf.borrowed);

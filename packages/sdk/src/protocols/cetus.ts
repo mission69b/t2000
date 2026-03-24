@@ -1,5 +1,4 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { AggregatorClient, Env } from '@cetusprotocol/aggregator-sdk';
 import { SUPPORTED_ASSETS, CETUS_USDC_SUI_POOL } from '../constants.js';
@@ -7,36 +6,6 @@ import { T2000Error } from '../errors.js';
 import type { GasMethod } from '../types.js';
 
 const DEFAULT_SLIPPAGE_BPS = 300; // 3%
-
-export interface SwapParams {
-  client: SuiJsonRpcClient;
-  keypair: Ed25519Keypair;
-  fromAsset: string;
-  toAsset: string;
-  amount: number;
-  maxSlippageBps?: number;
-}
-
-export interface SwapTxResult {
-  digest: string;
-  fromAmount: number;
-  fromAsset: string;
-  toAmount: number;
-  toAsset: string;
-  priceImpact: number;
-  gasCost: number;
-}
-
-function extractGasCost(
-  effects: { gasUsed?: { computationCost: string; storageCost: string; storageRebate: string } } | undefined | null,
-): number {
-  if (!effects?.gasUsed) return 0;
-  return (
-    Number(effects.gasUsed.computationCost) +
-    Number(effects.gasUsed.storageCost) -
-    Number(effects.gasUsed.storageRebate)
-  ) / 1e9;
-}
 
 export interface SwapBuildResult {
   tx: Transaction;
@@ -186,62 +155,6 @@ export async function addSwapToTx(params: {
     outputCoin: outputCoin as unknown as TransactionObjectArgument,
     estimatedOut,
     toDecimals: toInfo.decimals,
-  };
-}
-
-export async function executeSwap(params: SwapParams): Promise<SwapTxResult> {
-  const { client, keypair, fromAsset, toAsset, amount, maxSlippageBps } = params;
-  const address = keypair.getPublicKey().toSuiAddress();
-  const toInfo = SUPPORTED_ASSETS[toAsset as keyof typeof SUPPORTED_ASSETS];
-
-  const { tx, estimatedOut, toDecimals } = await buildSwapTx({
-    client,
-    address,
-    fromAsset,
-    toAsset,
-    amount,
-    maxSlippageBps,
-  });
-
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true, showBalanceChanges: true },
-  });
-
-  await client.waitForTransaction({ digest: result.digest });
-
-  let actualReceived = 0;
-  if (result.balanceChanges) {
-    for (const change of result.balanceChanges) {
-      if (
-        change.coinType === toInfo.type &&
-        change.owner &&
-        typeof change.owner === 'object' &&
-        'AddressOwner' in change.owner &&
-        change.owner.AddressOwner === address
-      ) {
-        const amt = Number(change.amount) / 10 ** toInfo.decimals;
-        if (amt > 0) actualReceived += amt;
-      }
-    }
-  }
-
-  const expectedOutput = estimatedOut / 10 ** toDecimals;
-  if (actualReceived === 0) actualReceived = expectedOutput;
-
-  const priceImpact = expectedOutput > 0
-    ? Math.abs(actualReceived - expectedOutput) / expectedOutput
-    : 0;
-
-  return {
-    digest: result.digest,
-    fromAmount: amount,
-    fromAsset,
-    toAmount: actualReceived,
-    toAsset,
-    priceImpact,
-    gasCost: extractGasCost(result.effects as Parameters<typeof extractGasCost>[0]),
   };
 }
 

@@ -1,6 +1,5 @@
 import { Method, Credential } from 'mppx';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { suiCharge } from './method.js';
 import { fetchCoins, parseAmountToRaw } from './utils.js';
@@ -8,15 +7,20 @@ import { fetchCoins, parseAmountToRaw } from './utils.js';
 export { suiCharge } from './method.js';
 export { SUI_USDC_TYPE } from './utils.js';
 
+export interface TransactionSigner {
+  getAddress(): string;
+  signTransaction(txBytes: Uint8Array): Promise<{ signature: string }>;
+}
+
 export interface SuiChargeOptions {
   client: SuiJsonRpcClient;
-  signer: Ed25519Keypair;
+  signer: TransactionSigner;
   /** Override transaction execution (e.g. to route through a gas manager). */
   execute?: (tx: Transaction) => Promise<{ digest: string; effects: unknown }>;
 }
 
 export function sui(options: SuiChargeOptions) {
-  const address = options.signer.getPublicKey().toSuiAddress();
+  const address = options.signer.getAddress();
 
   return Method.toClient(suiCharge, {
     async createCredential({ challenge }) {
@@ -61,9 +65,12 @@ export function sui(options: SuiChargeOptions) {
         if (options.execute) {
           result = await options.execute(tx);
         } else {
-          result = await options.client.signAndExecuteTransaction({
-            signer: options.signer,
-            transaction: tx,
+          tx.setSender(address);
+          const built = await tx.build({ client: options.client });
+          const { signature } = await options.signer.signTransaction(built);
+          result = await options.client.executeTransactionBlock({
+            transactionBlock: built,
+            signature,
             options: { showEffects: true },
           });
         }

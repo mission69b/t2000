@@ -1,9 +1,9 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
 import { SENTINEL, CLOCK_ID, MIST_PER_SUI } from '../constants.js';
 import { T2000Error } from '../errors.js';
+import type { TransactionSigner } from '../signer.js';
 import type { SentinelAgent, SentinelVerdict, SentinelAttackResult } from '../types.js';
 import type { ProtocolDescriptor } from '../adapters/types.js';
 
@@ -102,7 +102,7 @@ export async function getSentinelInfo(
 
 export async function requestAttack(
   client: SuiJsonRpcClient,
-  signer: Ed25519Keypair,
+  signer: TransactionSigner,
   sentinelObjectId: string,
   feeMist: bigint,
 ): Promise<{ attackObjectId: string; digest: string }> {
@@ -110,7 +110,9 @@ export async function requestAttack(
     throw new T2000Error('INVALID_AMOUNT', `Attack fee must be at least 0.1 SUI (${SENTINEL.MIN_FEE_MIST} MIST)`);
   }
 
+  const address = signer.getAddress();
   const tx = new Transaction();
+  tx.setSender(address);
   const [coin] = tx.splitCoins(tx.gas, [Number(feeMist)]);
 
   const [attack] = tx.moveCall({
@@ -125,22 +127,23 @@ export async function requestAttack(
     ],
   });
 
-  const address = signer.toSuiAddress();
   tx.transferObjects([attack], address);
 
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
+  const built = await tx.build({ client });
+  const { signature } = await signer.signTransaction(built);
+  const result = await client.executeTransactionBlock({
+    transactionBlock: built,
+    signature,
     options: { showObjectChanges: true, showEffects: true },
   });
 
   await client.waitForTransaction({ digest: result.digest });
 
   const attackObj = result.objectChanges?.find(
-    (c) => c.type === 'created' && c.objectType?.includes('::sentinel::Attack'),
+    (c: Record<string, unknown>) => c.type === 'created' && (c.objectType as string)?.includes('::sentinel::Attack'),
   );
 
-  const attackObjectId = attackObj && 'objectId' in attackObj ? attackObj.objectId : undefined;
+  const attackObjectId = attackObj && 'objectId' in attackObj ? (attackObj as Record<string, string>).objectId : undefined;
 
   if (!attackObjectId) {
     throw new T2000Error('SENTINEL_TX_FAILED', 'Attack object was not created — transaction may have failed');
@@ -194,7 +197,7 @@ export async function submitPrompt(
 
 export async function settleAttack(
   client: SuiJsonRpcClient,
-  signer: Ed25519Keypair,
+  signer: TransactionSigner,
   sentinelObjectId: string,
   attackObjectId: string,
   prompt: string,
@@ -202,7 +205,9 @@ export async function settleAttack(
 ): Promise<{ digest: string; success: boolean }> {
   const sigBytes = Array.from(Buffer.from(verdict.signature.replace(/^0x/, ''), 'hex'));
 
+  const address = signer.getAddress();
   const tx = new Transaction();
+  tx.setSender(address);
   tx.moveCall({
     target: `${SENTINEL.PACKAGE}::sentinel::consume_prompt`,
     arguments: [
@@ -223,22 +228,24 @@ export async function settleAttack(
     ],
   });
 
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
+  const built = await tx.build({ client });
+  const { signature } = await signer.signTransaction(built);
+  const result = await client.executeTransactionBlock({
+    transactionBlock: built,
+    signature,
     options: { showEffects: true },
   });
 
   await client.waitForTransaction({ digest: result.digest });
 
-  const txSuccess = result.effects?.status?.status === 'success';
+  const txSuccess = (result.effects as { status?: { status?: string } })?.status?.status === 'success';
 
   return { digest: result.digest, success: txSuccess };
 }
 
 export async function attack(
   client: SuiJsonRpcClient,
-  signer: Ed25519Keypair,
+  signer: TransactionSigner,
   sentinelId: string,
   prompt: string,
   feeMist?: bigint,
