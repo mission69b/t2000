@@ -225,9 +225,17 @@ export function deriveContextualChips(
     priority: 5,
   });
 
-  return chips
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, MAX_CHIPS);
+  const sorted = chips.sort((a, b) => b.priority - a.priority);
+  const seen = new Set<string>();
+  const deduped: ContextualChip[] = [];
+  for (const chip of sorted) {
+    if (!seen.has(chip.label)) {
+      seen.add(chip.label);
+      deduped.push(chip);
+    }
+    if (deduped.length >= MAX_CHIPS) break;
+  }
+  return deduped;
 }
 
 function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
@@ -242,7 +250,7 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
     case 'get_rates':
       return { id: 'post-rates', icon: '🔍', label: 'Best yield?', agentPrompt: 'Am I getting the best yield? Compare my current rate to what\'s available and tell me if I should switch.', priority: 40 };
     case 'get_health':
-      return { id: 'post-health', icon: '🛡', label: 'Risk analysis', agentPrompt: 'Give me a deeper risk analysis. How much could prices drop before I get liquidated?', priority: 40 };
+      return { id: 'post-health', icon: '📉', label: 'Liquidation risk?', agentPrompt: 'How much could prices drop before I get liquidated? Show me the exact thresholds.', priority: 40 };
     case 'search_flights':
       return { id: 'post-flights', icon: '✈', label: 'Email me these results', agentPrompt: 'Email me those flight results', priority: 40 };
     case 'generate_image':

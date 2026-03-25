@@ -22,6 +22,7 @@ export function ContextualChips({ chips, onChipFlow, onAgentPrompt, onDismiss }:
         <button
           key={chip.id}
           onClick={() => {
+            onDismiss(chip.id);
             if (chip.chipFlow) {
               onChipFlow(chip.chipFlow);
             } else if (chip.agentPrompt !== undefined) {
