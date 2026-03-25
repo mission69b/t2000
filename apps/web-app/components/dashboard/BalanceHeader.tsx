@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { truncateAddress } from '@/lib/format';
 
 export interface BalanceHeaderData {
@@ -38,6 +38,13 @@ function fmtToken(n: number): string {
 
 export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHeaderProps) {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = useCallback(() => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [address]);
 
   const holdings: { symbol: string; amount: string; usd: string }[] = [];
   if (balance.sui > 0) {
@@ -63,11 +70,22 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
         <span className="font-mono font-semibold text-sm text-accent tracking-tight flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]" />
           t2000
+          <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
+            beta
+          </span>
         </span>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-muted">
-            {truncateAddress(address)}
-          </span>
+          <button
+            onClick={copyAddress}
+            className="text-xs font-mono text-muted hover:text-foreground transition cursor-pointer"
+            title="Copy address"
+          >
+            {copied ? (
+              <span className="text-accent">copied ✓</span>
+            ) : (
+              truncateAddress(address)
+            )}
+          </button>
           <button
             onClick={onSettingsClick}
             className="rounded-sm p-1.5 text-muted hover:text-foreground hover:bg-panel transition"
