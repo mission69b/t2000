@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { BalanceHeader } from '@/components/dashboard/BalanceHeader';
-import { SmartCardFeed } from '@/components/dashboard/SmartCardFeed';
+import { ContextualChips } from '@/components/dashboard/ContextualChips';
 import { ChipBar } from '@/components/dashboard/ChipBar';
 import { InputBar } from '@/components/dashboard/InputBar';
 import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
@@ -24,7 +24,7 @@ import type { AgentStepData } from '@/lib/feed-types';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
-import { deriveSmartCards, type AccountState } from '@/lib/smart-cards';
+import { deriveContextualChips, type AccountState } from '@/lib/contextual-chips';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
@@ -333,12 +333,14 @@ function DashboardContent() {
     maxBorrow: balance.maxBorrow,
   };
 
-  const smartCards = deriveSmartCards(accountState).filter(
-    (c) => !dismissedCards.has(c.type),
+  const [lastAgentAction, setLastAgentAction] = useState<string | undefined>();
+
+  const contextualChips = deriveContextualChips(accountState, { lastAgentAction }).filter(
+    (c) => !dismissedCards.has(c.id),
   );
 
-  const handleDismissCard = useCallback((type: string) => {
-    setDismissedCards((prev) => new Set(prev).add(type));
+  const handleDismissChip = useCallback((id: string) => {
+    setDismissedCards((prev) => new Set(prev).add(id));
   }, []);
 
   const fetchHistory = useCallback(async () => {
@@ -568,30 +570,20 @@ function DashboardContent() {
     [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, contactsHook, fetchHistory],
   );
 
-  const handleSmartCardAction = useCallback(
-    (chipFlowId: string) => {
-      if (chipFlowId === 'refresh-session') {
-        refresh();
-        return;
-      }
-      if (chipFlowId === 'claim-rewards') {
-        executeIntent({ action: 'claim-rewards' });
-        return;
-      }
-      if (chipFlowId === 'receive') {
-        executeIntent({ action: 'address' });
-        return;
-      }
-      if (chipFlowId === 'history') {
-        fetchHistory();
-        return;
-      }
-      if (chipFlowId === 'save-all') {
+  const handleChipClick = useCallback(
+    (flow: string) => {
+      if (flow === 'refresh-session') { refresh(); return; }
+      if (flow === 'claim-rewards') { executeIntent({ action: 'claim-rewards' }); return; }
+      if (flow === 'help') { executeIntent({ action: 'help' }); return; }
+      if (flow === 'report') { executeIntent({ action: 'report' }); return; }
+      if (flow === 'history') { executeIntent({ action: 'history' }); return; }
+      if (flow === 'receive') { executeIntent({ action: 'address' }); return; }
+      if (flow === 'save-all') {
         chipFlow.startFlow('save', flowContext);
         chipFlow.selectAmount(balance.cash);
         return;
       }
-      if (chipFlowId === 'rebalance') {
+      if (flow === 'rebalance') {
         const alt = balance.bestSaveRate;
         const current = balance.savingsRate;
         if (alt && current > 0) {
@@ -600,9 +592,7 @@ function DashboardContent() {
           feed.addItem({
             type: 'ai-text',
             text: `To rebalance: withdraw from your current position (${current.toFixed(1)}% APY) and re-deposit at ${alt.protocol} (${alt.rate.toFixed(1)}% APY). That's +$${extraMonthly.toFixed(2)}/mo extra on $${Math.floor(balance.savings)}.`,
-            chips: [
-              { label: 'Withdraw savings', flow: 'withdraw' },
-            ],
+            chips: [{ label: 'Withdraw savings', flow: 'withdraw' }],
           });
         } else {
           feed.addItem({
@@ -612,7 +602,7 @@ function DashboardContent() {
         }
         return;
       }
-      if (chipFlowId === 'risk-explain') {
+      if (flow === 'risk-explain') {
         feed.addItem({
           type: 'ai-text',
           text: 'Your health factor measures how safe your loan is. Below 1.5 means you\'re close to liquidation — repaying even a small amount brings it back to a safer level.',
@@ -620,18 +610,6 @@ function DashboardContent() {
         });
         return;
       }
-      chipFlow.startFlow(chipFlowId, flowContext);
-    },
-    [chipFlow, refresh, feed, flowContext, executeIntent, balance, fetchHistory],
-  );
-
-  const handleChipClick = useCallback(
-    (flow: string) => {
-      if (flow === 'claim-rewards') { executeIntent({ action: 'claim-rewards' }); return; }
-      if (flow === 'help') { executeIntent({ action: 'help' }); return; }
-      if (flow === 'report') { executeIntent({ action: 'report' }); return; }
-      if (flow === 'history') { executeIntent({ action: 'history' }); return; }
-      if (flow === 'receive') { executeIntent({ action: 'address' }); return; }
       if (flow === 'swap') {
         chipFlow.startFlow('swap', flowContext);
         return;
@@ -660,7 +638,7 @@ function DashboardContent() {
       }
       chipFlow.startFlow(flow, flowContext);
     },
-    [chipFlow, feed, executeIntent, balance.borrows, balance.savings, flowContext],
+    [chipFlow, feed, executeIntent, balance, flowContext, refresh],
   );
 
   const handleInputSubmit = useCallback(
@@ -705,6 +683,7 @@ function DashboardContent() {
           if (idx !== -1) {
             stepsAccum[idx] = { ...stepsAccum[idx], ...update };
           }
+          if (update.status === 'done') setLastAgentAction(tool);
           feed.updateLastItem(() => ({
             type: 'agent-response',
             steps: [...stepsAccum],
@@ -1177,15 +1156,7 @@ function DashboardContent() {
           />
         )}
 
-        {/* Smart Cards — always visible when not in a flow */}
-        {!isInFlow && (
-          <SmartCardFeed
-            cards={smartCards}
-            loading={balance.loading}
-            onAction={handleSmartCardAction}
-            onDismiss={handleDismissCard}
-          />
-        )}
+        {/* Contextual chips now live in the fixed bottom bar */}
 
         {/* Agent loading indicator */}
         {agentLoop.status === 'running' && (
@@ -1202,6 +1173,14 @@ function DashboardContent() {
       {/* Bottom bar — fixed */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom p-4 z-30">
         <div className="mx-auto max-w-xl space-y-3">
+          {!isInFlow && agentLoop.status !== 'running' && contextualChips.length > 0 && (
+            <ContextualChips
+              chips={contextualChips}
+              onChipFlow={handleChipClick}
+              onAgentPrompt={(prompt) => handleInputSubmit(prompt)}
+              onDismiss={handleDismissChip}
+            />
+          )}
           <InputBar
             onSubmit={handleInputSubmit}
             disabled={chipFlow.state.phase === 'executing' || agentLoop.status === 'running'}
