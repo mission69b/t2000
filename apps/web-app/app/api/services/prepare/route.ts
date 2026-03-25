@@ -3,7 +3,7 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
 import { Challenge } from 'mppx';
-import { getGatewayMapping } from '@/lib/service-gateway';
+import { getGatewayMapping, createRawGatewayMapping } from '@/lib/service-gateway';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 
@@ -33,14 +33,20 @@ export async function POST(request: NextRequest) {
   const jwtResult = validateJwt(jwt);
   if ('error' in jwtResult) return jwtResult.error;
 
-  let body: { serviceId: string; fields: Record<string, string>; address: string };
+  let body: {
+    serviceId?: string;
+    fields?: Record<string, string>;
+    url?: string;
+    rawBody?: Record<string, unknown>;
+    address: string;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { serviceId, fields, address } = body;
+  const { address } = body;
 
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
@@ -50,13 +56,20 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`svc:${address}`, 5, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
-  const mapping = getGatewayMapping(serviceId);
+  const mapping = body.serviceId
+    ? getGatewayMapping(body.serviceId)
+    : body.url
+      ? createRawGatewayMapping(body.url, body.rawBody ?? {})
+      : null;
+
+  const serviceId = body.serviceId ?? body.url ?? 'unknown';
+
   if (!mapping) {
     return NextResponse.json({ error: `Unknown service: ${serviceId}` }, { status: 400 });
   }
 
   try {
-    const serviceBody = mapping.transformBody(fields);
+    const serviceBody = mapping.transformBody(body.fields ?? {});
 
     const challengeRes = await fetch(mapping.url, {
       method: 'POST',

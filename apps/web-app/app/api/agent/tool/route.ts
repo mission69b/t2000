@@ -81,6 +81,12 @@ async function executeTool(
       return get(`/api/positions?address=${address}`);
     }
 
+    case 'discover_services': {
+      const res = await fetch('https://mpp.t2000.ai/api/services');
+      if (!res.ok) throw new Error(`Service discovery failed: ${res.status}`);
+      return res.json();
+    }
+
     default:
       throw new Error(`Unknown read tool: ${tool}`);
   }

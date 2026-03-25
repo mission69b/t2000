@@ -12,7 +12,7 @@ export interface NormalizedResponse {
 }
 
 export interface ToolExecutor {
-  type: 'read' | 'service';
+  type: 'read' | 'service' | 'raw-service';
   serviceId?: string;
   estimatedCost?: number;
   transform?: (args: Record<string, unknown>) => Record<string, string>;
@@ -24,6 +24,8 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
   get_history: { type: 'read' },
   get_portfolio: { type: 'read' },
   get_health: { type: 'read' },
+  discover_services: { type: 'read' },
+  use_service: { type: 'raw-service', estimatedCost: 0.05 },
 
   web_search: {
     type: 'service',
@@ -376,6 +378,24 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
         required: ['brand', 'amount', 'email', 'country'],
       },
     },
+    {
+      name: 'discover_services',
+      description: 'Discover all available paid MPP services with endpoints, prices, and descriptions. Call this if the user asks about available services or if you need to find the right endpoint for use_service.',
+      input_schema: { type: 'object' as const, properties: {}, required: [] },
+    },
+    {
+      name: 'use_service',
+      description: 'Call ANY MPP service by URL. Use this for services not covered by specific tools (weather, maps, scraping, additional AI models, etc.). The full service catalog is in your system prompt. Cost varies by service.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          url: { type: 'string', description: 'Full MPP gateway URL (e.g. "https://mpp.t2000.ai/openweather/v1/weather")' },
+          body: { type: 'string', description: 'JSON request body as string (e.g. \'{"city":"Tokyo"}\')' },
+          maxPrice: { type: 'number', description: 'Max price in USD you expect (for confirmation). Default 0.05' },
+        },
+        required: ['url', 'body'],
+      },
+    },
   ];
 }
 
@@ -394,9 +414,29 @@ export function buildSystemPrompt(
 - Local time: ${timeOfDay}
 
 ## Your capabilities
-You have 5 read tools (free) and 18 service tools (paid via USDC):
-- Read: balance, rates, history, portfolio, health factor
-- Services: web search, news, crypto prices, stock quotes, flights, email, translate, image gen, screenshots, postcards, gift cards, TTS, code execution, QR codes, short URLs, currency conversion, security scans, AI chat
+You have 6 read tools (free), 18 specific service tools, and 1 generic use_service tool:
+- Read: balance, rates, history, portfolio, health factor, discover_services
+- Specific services: web search, news, crypto prices, stock quotes, flights, email, translate, image gen, screenshots, postcards, gift cards, TTS, code execution, QR codes, short URLs, currency conversion, security scans, AI chat
+- Generic: use_service can call ANY of the 40+ MPP gateway services below
+
+## MPP Service Catalog (for use_service tool)
+Base: https://mpp.t2000.ai — Use these when no specific tool exists:
+- Weather: /openweather/v1/weather {"city":"Tokyo"} $0.005 | /openweather/v1/forecast {"city":"London"} $0.005
+- Maps: /googlemaps/v1/geocode {"address":"..."} $0.01 | /googlemaps/v1/directions {"origin":"...","destination":"..."} $0.01 | /googlemaps/v1/places {"query":"..."} $0.01
+- Scrape: /firecrawl/v1/scrape {"url":"..."} $0.01 | /firecrawl/v1/extract {"url":"...","prompt":"..."} $0.02
+- Read URL: /jina/v1/read {"url":"..."} $0.005
+- Semantic search: /exa/v1/search {"query":"..."} $0.01
+- Google search: /serper/v1/search {"q":"..."} $0.005
+- PDF: /pdfshift/v1/convert {"source":"<html>..."} $0.01
+- AI models: /gemini/v1beta/models/gemini-2.5-flash {"contents":[...]} $0.005 | /groq/v1/chat/completions {"model":"llama-3.3-70b-versatile","messages":[...]} $0.005 | /perplexity/v1/chat/completions {"model":"sonar","messages":[...]} $0.01 | /deepseek/v1/chat/completions {"model":"deepseek-chat","messages":[...]} $0.005
+- Transcribe: /assemblyai/v1/transcribe {"audio_url":"..."} $0.02
+- Email find: /hunter/v1/search {"domain":"..."} $0.02 | /hunter/v1/verify {"email":"..."} $0.02
+- IP lookup: /ipinfo/v1/lookup {"ip":"..."} $0.005
+- Push notify: /pushover/v1/push {"message":"...","title":"..."} $0.005
+- Print: /printful/v1/products {} $0.005 | /printful/v1/order {"items":[...]} dynamic
+- Image: /stability/v1/generate {"prompt":"..."} $0.03 | /replicate/v1/predictions {"model":"...","input":{}} $0.02
+- Embeddings: /cohere/v1/embed {"texts":["..."]} $0.005 | /together/v1/embeddings {"input":"..."} $0.001
+Always prepend https://mpp.t2000.ai to relative paths when calling use_service.
 
 ## Rules
 - Be concise. 2-4 sentences for simple answers. Use **bold** for emphasis and numbered lists for recommendations.
@@ -417,7 +457,8 @@ ONLY if the user asks a general capabilities question like "what can you do?", "
 - Banking: Save, Send, Swap, Borrow, Invest (via chips below)
 - Free: Check balance, rates, portfolio, health factor, transaction history
 - Paid services ($0.005-$0.05 each): Web search, news, crypto/stock prices, flights, email, translate, image generation, text-to-speech, code execution, QR codes, URL shortening, currency conversion, security scans
-- Premium ($1+): Physical postcards, gift cards (800+ brands)
+- Extended services (via use_service): Weather, maps/directions, web scraping, PDF generation, semantic search, IP lookup, push notifications, transcription, email finding, and 10+ AI models
+- Premium ($1+): Physical postcards, gift cards (800+ brands), print-on-demand
 Keep it to 4-5 lines. End with an example: "Try 'search for flights to Tokyo' or 'what's my balance?'"
 
 ## First-time users

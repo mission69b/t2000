@@ -9,13 +9,13 @@ import {
 } from './agent-tools';
 
 describe('TOOL_EXECUTORS', () => {
-  it('defines exactly 23 tools (5 read + 18 service)', () => {
+  it('defines exactly 25 tools (6 read + 18 service + 1 raw-service)', () => {
     const entries = Object.entries(TOOL_EXECUTORS);
-    expect(entries.length).toBe(23);
+    expect(entries.length).toBe(25);
 
     const reads = entries.filter(([, e]) => e.type === 'read');
     const services = entries.filter(([, e]) => e.type === 'service');
-    expect(reads.length).toBe(5);
+    expect(reads.length).toBe(6);
     expect(services.length).toBe(18);
   });
 
@@ -123,9 +123,9 @@ describe('getEstimatedCost', () => {
 });
 
 describe('getAnthropicTools', () => {
-  it('returns 23 tool schemas', () => {
+  it('returns 25 tool schemas', () => {
     const tools = getAnthropicTools();
-    expect(tools.length).toBe(23);
+    expect(tools.length).toBe(25);
   });
 
   it('every tool has name, description, and input_schema', () => {

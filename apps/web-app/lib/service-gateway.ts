@@ -194,3 +194,17 @@ export function getGatewayMapping(serviceId: string): GatewayMapping | null {
 export function getServicePrice(serviceId: string): string {
   return SERVICE_MAP[serviceId]?.price ?? '0.01';
 }
+
+export function createRawGatewayMapping(
+  url: string,
+  body: Record<string, unknown>,
+): GatewayMapping {
+  const fullUrl = url.startsWith('http') ? url : `${GATEWAY_BASE}${url}`;
+  return {
+    url: fullUrl,
+    price: '0.05',
+    transformBody: () => body,
+  };
+}
+
+export { GATEWAY_BASE };

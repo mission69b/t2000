@@ -202,6 +202,54 @@ export function useAgentLoop() {
               result = { error: errMsg };
               callbacks.onStepUpdate(toolCall.function.name, { status: 'error', error: errMsg });
             }
+          } else if (executor.type === 'raw-service') {
+            const estimated = args.maxPrice ? Number(args.maxPrice) : (executor.estimatedCost ?? 0.05);
+
+            if (estimated > 0.50 || cost + estimated > opts.budget) {
+              setStatus('confirming');
+              const approved = await callbacks.onConfirmNeeded(
+                toolCall.function.name,
+                args,
+                estimated,
+              );
+              setStatus('running');
+
+              if (!approved) {
+                cancelledRef.current = true;
+                conversationRef.current.push({
+                  role: 'tool',
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: 'User declined this action' }),
+                });
+                break;
+              }
+            }
+
+            callbacks.onStep({ tool: toolCall.function.name, status: 'running', cost: estimated });
+
+            try {
+              let rawBody: Record<string, unknown> = {};
+              try { rawBody = JSON.parse(String(args.body ?? '{}')); } catch { /* use empty */ }
+
+              const sdk = await agent.getInstance();
+              const serviceResult: ServiceResult = await sdk.payService({
+                url: String(args.url),
+                rawBody,
+              });
+
+              result = serviceResult.result;
+              const actualCost = parseFloat(serviceResult.price);
+              cost += actualCost;
+              setTotalCost(cost);
+              callbacks.onStepUpdate(toolCall.function.name, {
+                status: 'done',
+                cost: actualCost,
+              });
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : 'Service call failed';
+              result = { error: errMsg };
+              callbacks.onStepUpdate(toolCall.function.name, { status: 'error', error: errMsg });
+            }
           }
 
           const resultStr = JSON.stringify(result);

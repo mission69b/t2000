@@ -50,7 +50,7 @@ export interface AgentActions {
   swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
   strategyBuy(params: { strategy: string; amount: number }): Promise<StrategyBuyResult>;
   claimRewards(): Promise<{ tx: string }>;
-  payService(params: { serviceId: string; fields: Record<string, string> }): Promise<ServiceResult>;
+  payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
 }
 
@@ -186,7 +186,7 @@ export function useAgent() {
             return sponsoredTransaction('claim-rewards', { amount: 0 });
           },
 
-          async payService({ serviceId, fields }) {
+          async payService({ serviceId, fields, url, rawBody }) {
             const prepareHeaders: Record<string, string> = {
               'Content-Type': 'application/json',
             };
@@ -194,10 +194,14 @@ export function useAgent() {
               prepareHeaders['x-zklogin-jwt'] = jwt;
             }
 
+            const preparePayload = serviceId
+              ? { serviceId, fields, address }
+              : { url, rawBody, address };
+
             const prepareRes = await fetch('/api/services/prepare', {
               method: 'POST',
               headers: prepareHeaders,
-              body: JSON.stringify({ serviceId, fields, address }),
+              body: JSON.stringify(preparePayload),
             });
 
             if (!prepareRes.ok) {
