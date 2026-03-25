@@ -24,7 +24,7 @@ export function LiveFeed() {
 
   const fetchPayments = useCallback(async () => {
     try {
-      const res = await fetch('/api/mpp/payments?limit=5');
+      const res = await fetch('/api/mpp/payments?limit=8');
       if (res.ok) {
         const data = await res.json();
         const incoming: Payment[] = data.payments;
@@ -59,7 +59,7 @@ export function LiveFeed() {
 
   useEffect(() => {
     fetchPayments();
-    const poll = setInterval(fetchPayments, 30_000);
+    const poll = setInterval(fetchPayments, 5_000);
     return () => clearInterval(poll);
   }, [fetchPayments]);
 
