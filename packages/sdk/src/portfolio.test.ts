@@ -3,9 +3,9 @@ import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PortfolioManager } from './portfolio.js';
-import type { InvestmentTrade } from './types.js';
+import type { InvestmentRecord } from './types.js';
 
-function makeTrade(overrides: Partial<InvestmentTrade> = {}): InvestmentTrade {
+function makeTrade(overrides: Partial<InvestmentRecord> = {}): InvestmentRecord {
   return {
     id: `inv_${Date.now()}`,
     type: 'buy',

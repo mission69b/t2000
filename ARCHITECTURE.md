@@ -403,7 +403,7 @@ Local-only enforcement on the agent's machine:
 | Category | Count | Examples |
 |----------|-------|---------|
 | Read | 17 | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services`, `t2000_portfolio` |
-| Write | 16 | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_exchange` (swap), `t2000_invest` |
+| Write | 16 | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_swap`, `t2000_invest` |
 | Safety | 2 | `t2000_config`, `t2000_lock` |
 
 20 prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, `dca-advisor`, etc.

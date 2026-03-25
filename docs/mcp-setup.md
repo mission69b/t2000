@@ -84,7 +84,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay borrowed USDC |
-| `t2000_exchange` | Swap assets via DEX |
+| `t2000_swap` | Swap assets via DEX |
 | `t2000_rebalance` | Optimize yield across protocols |
 | `t2000_invest` | Buy, sell, earn, or unearn investment assets (SUI, BTC, ETH) |
 | `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |

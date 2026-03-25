@@ -223,7 +223,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
-    't2000_exchange',
+    't2000_swap',
     'Swap assets via Cetus DEX (e.g. USDC to SUI, SUI to USDC). Amount is in source asset units. Set dryRun: true to get a quote without executing.',
     {
       amount: z.number().describe('Amount to swap (in source asset units)'),

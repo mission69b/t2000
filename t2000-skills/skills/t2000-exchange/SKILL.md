@@ -63,4 +63,4 @@ t2000 swap 5 USDC SUI --slippage 0.5  # custom slippage (default: 3%)
 - Swap is also used internally by `rebalance` and `withdraw all` (auto-swap)
 - No protocol fee on swap — only standard Cetus pool fees apply
 - Slippage protection is enforced on-chain by the Cetus CLMM contract
-- MCP tool ID remains `t2000_exchange` for backward compatibility
+- MCP tool ID: `t2000_swap`

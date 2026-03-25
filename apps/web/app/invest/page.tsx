@@ -288,50 +288,6 @@ export default function InvestPage() {
           </div>
         </section>
 
-        {/* ── Investment Protection ── */}
-        <section className="py-16 sm:py-24 border-b border-border">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-            <div>
-              <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-                Safety
-              </div>
-              <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-                Protected{" "}
-                <em className="italic text-accent">by default.</em>
-              </h2>
-              <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px]">
-                Investments can&apos;t be accidentally sent or swapped. Sell to access value.
-              </p>
-            </div>
-
-            <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-border flex items-center gap-2">
-                <span className="text-[11px] tracking-[0.1em] text-muted uppercase">
-                  How it works
-                </span>
-              </div>
-              <div className="p-5 space-y-3">
-                {[
-                  { icon: "✗", ok: false, label: "Send invested assets", status: "Blocked" },
-                  { icon: "✗", ok: false, label: "Swap invested assets", status: "Blocked" },
-                  { icon: "✓", ok: true, label: "Sell through invest account", status: "Allowed" },
-                  { icon: "✓", ok: true, label: "Earn yield on holdings", status: "Allowed" },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-center gap-3 text-xs">
-                    <span className={`font-mono ${row.ok ? "text-accent" : "text-red-400"}`}>
-                      {row.icon}
-                    </span>
-                    <span className="text-[12px] text-muted flex-1">{row.label}</span>
-                    <span className={`text-[11px] tracking-[0.06em] ${row.ok ? "text-accent" : "text-red-400"}`}>
-                      {row.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* ── MCP ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">

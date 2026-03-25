@@ -107,7 +107,7 @@ export type {
   RebalanceResult,
   DepositInfo,
   TransactionRecord,
-  InvestmentTrade,
+  InvestmentRecord,
   InvestmentPosition,
   PortfolioResult,
   InvestResult,

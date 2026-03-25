@@ -141,7 +141,7 @@ describe('write tools', () => {
     expect(tools.has('t2000_withdraw')).toBe(true);
     expect(tools.has('t2000_borrow')).toBe(true);
     expect(tools.has('t2000_repay')).toBe(true);
-    expect(tools.has('t2000_exchange')).toBe(true);
+    expect(tools.has('t2000_swap')).toBe(true);
     expect(tools.has('t2000_rebalance')).toBe(true);
     expect(tools.has('t2000_invest')).toBe(true);
     expect(tools.has('t2000_strategy')).toBe(true);
@@ -284,9 +284,9 @@ describe('write tools', () => {
     });
   });
 
-  describe('t2000_exchange', () => {
+  describe('t2000_swap', () => {
     it('should return quote with dryRun: true', async () => {
-      const handler = tools.get('t2000_exchange')!;
+      const handler = tools.get('t2000_swap')!;
       const result = await handler({ amount: 10, from: 'USDC', to: 'SUI', dryRun: true });
       const data = JSON.parse(result.content[0].text);
       expect(data.preview).toBe(true);
@@ -295,7 +295,7 @@ describe('write tools', () => {
     });
 
     it('should execute exchange', async () => {
-      const handler = tools.get('t2000_exchange')!;
+      const handler = tools.get('t2000_swap')!;
       await handler({ amount: 10, from: 'USDC', to: 'SUI' });
       expect(agent.swap).toHaveBeenCalled();
     });

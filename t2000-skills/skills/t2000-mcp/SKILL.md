@@ -78,7 +78,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay debt |
-| `t2000_exchange` | Swap assets |
+| `t2000_swap` | Swap assets |
 | `t2000_rebalance` | Optimize yield |
 | `t2000_invest` | Buy/sell investment assets (spot) |
 | `t2000_invest_rebalance` | Move earning positions to better-rate protocols |

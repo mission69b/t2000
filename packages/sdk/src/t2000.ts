@@ -2683,7 +2683,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       } catch { prices[asset] = 0; }
     }
 
-    const enrichPosition = async (pos: { asset: string; totalAmount: number; costBasis: number; avgPrice: number; trades: import('./types.js').InvestmentTrade[]; earning?: boolean; earningProtocol?: string; earningApy?: number }, adjustWallet: boolean): Promise<InvestmentPosition> => {
+    const enrichPosition = async (pos: { asset: string; totalAmount: number; costBasis: number; avgPrice: number; trades: import('./types.js').InvestmentRecord[]; earning?: boolean; earningProtocol?: string; earningApy?: number }, adjustWallet: boolean): Promise<InvestmentPosition> => {
       const currentPrice = prices[pos.asset] ?? 0;
       let totalAmount = pos.totalAmount;
       let costBasis = pos.costBasis;

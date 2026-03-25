@@ -155,7 +155,7 @@ export interface PerpsAdapter {
     side: import('../types.js').PositionSide;
     margin: number;
     leverage: number;
-  }): Promise<import('../types.js').TradeResult>;
+  }): Promise<import('../types.js').PerpsTradeResult>;
 
-  closePosition(market: string): Promise<import('../types.js').TradeResult>;
+  closePosition(market: string): Promise<import('../types.js').PerpsTradeResult>;
 }

@@ -126,7 +126,7 @@ describe('prompts', () => {
 
     const withoutArgs = await handler({});
     expect(withoutArgs.messages).toHaveLength(1);
-    expect(withoutArgs.messages[0].content.text).toContain('t2000_exchange');
+    expect(withoutArgs.messages[0].content.text).toContain('t2000_swap');
   });
 
   it('morning-briefing should use t2000_overview and mention action items', async () => {

@@ -52,7 +52,7 @@ For other platforms, paste manually:
 | `t2000_withdraw` | write | Withdraw from savings |
 | `t2000_borrow` | write | Borrow against collateral |
 | `t2000_repay` | write | Repay debt |
-| `t2000_exchange` | write | Swap assets |
+| `t2000_swap` | write | Swap assets |
 | `t2000_rebalance` | write | Optimize yield |
 | `t2000_invest` | write | Buy/sell investment assets; earn/unearn yield |
 | `t2000_invest_rebalance` | write | Move earning positions to better-rate protocols |

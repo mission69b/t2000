@@ -230,7 +230,7 @@ export interface SentinelAttackResult {
 
 // --- Investment types ---
 
-export interface InvestmentTrade {
+export interface InvestmentRecord {
   id: string;
   type: 'buy' | 'sell';
   asset: string;
@@ -251,7 +251,7 @@ export interface InvestmentPosition {
   currentValue: number;
   unrealizedPnL: number;
   unrealizedPnLPct: number;
-  trades: InvestmentTrade[];
+  trades: InvestmentRecord[];
   earning?: boolean;
   earningProtocol?: string;
   earningApy?: number;
@@ -442,7 +442,7 @@ export interface PerpsPosition {
   unrealizedPnLPct: number;
 }
 
-export interface TradeResult {
+export interface PerpsTradeResult {
   success: boolean;
   action: 'open' | 'close';
   market: string;
@@ -456,7 +456,7 @@ export interface TradeResult {
   tx?: string;
 }
 
-export interface TradePositionsResult {
+export interface PerpsPositionsResult {
   positions: PerpsPosition[];
   totalMargin: number;
   totalUnrealizedPnL: number;

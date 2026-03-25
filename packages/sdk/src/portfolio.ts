@@ -2,13 +2,13 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { T2000Error } from './errors.js';
-import type { InvestmentTrade } from './types.js';
+import type { InvestmentRecord } from './types.js';
 
 interface StoredPosition {
   totalAmount: number;
   costBasis: number;
   avgPrice: number;
-  trades: InvestmentTrade[];
+  trades: InvestmentRecord[];
   earning?: boolean;
   earningProtocol?: string;
   earningApy?: number;
@@ -51,7 +51,7 @@ export class PortfolioManager {
     writeFileSync(this.filePath, JSON.stringify(this.data, null, 2));
   }
 
-  recordBuy(trade: InvestmentTrade): void {
+  recordBuy(trade: InvestmentRecord): void {
     this.load();
     const pos = this.data.positions[trade.asset] ?? { totalAmount: 0, costBasis: 0, avgPrice: 0, trades: [] };
 
@@ -64,7 +64,7 @@ export class PortfolioManager {
     this.save();
   }
 
-  recordSell(trade: InvestmentTrade): number {
+  recordSell(trade: InvestmentRecord): number {
     this.load();
     const pos = this.data.positions[trade.asset];
     if (!pos || pos.totalAmount <= 0) {
@@ -204,7 +204,7 @@ export class PortfolioManager {
 
   // --- Strategy position tracking ---
 
-  recordStrategyBuy(strategyKey: string, trade: InvestmentTrade): void {
+  recordStrategyBuy(strategyKey: string, trade: InvestmentRecord): void {
     this.load();
     if (!this.data.strategies[strategyKey]) {
       this.data.strategies[strategyKey] = {};
@@ -221,7 +221,7 @@ export class PortfolioManager {
     this.save();
   }
 
-  recordStrategySell(strategyKey: string, trade: InvestmentTrade): number {
+  recordStrategySell(strategyKey: string, trade: InvestmentRecord): number {
     this.load();
     const bucket = this.data.strategies[strategyKey];
     if (!bucket) {
