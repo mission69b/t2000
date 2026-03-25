@@ -26,7 +26,8 @@ import { deriveSmartCards, type AccountState } from '@/lib/smart-cards';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
-import { useAgent } from '@/hooks/useAgent';
+import { useAgent, ServiceDeliveryError } from '@/hooks/useAgent';
+import type { ServiceRetryMeta } from '@/hooks/useAgent';
 import type { ServiceItem } from '@/lib/service-catalog';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
@@ -606,8 +607,82 @@ function DashboardContent() {
     [chipFlow, refresh, feed, flowContext, executeIntent, balance, fetchHistory],
   );
 
+  const pendingRetryRef = useRef<{
+    paymentDigest: string;
+    meta: ServiceRetryMeta;
+    serviceName: string;
+    serviceIcon: string;
+  } | null>(null);
+
+  const handleServiceRetry = useCallback(
+    async (paymentDigest: string, meta: ServiceRetryMeta, serviceName: string, serviceIcon: string) => {
+      feed.addItem({
+        type: 'ai-text',
+        text: `Retrying ${serviceName} delivery...`,
+      });
+
+      try {
+        if (!agent) throw new Error('Not authenticated');
+        const sdk = await agent.getInstance();
+        const result = await sdk.retryServiceDelivery(paymentDigest, meta);
+
+        feed.removeLastItem();
+        feed.addItem({
+          type: 'result',
+          success: true,
+          title: `${serviceIcon} ${serviceName}`,
+          details: `Paid $${result.price} · Tx: ${paymentDigest.slice(0, 8)}...${paymentDigest.slice(-6)}`,
+        });
+
+        const r = result.result as Record<string, unknown> | string;
+        const images = typeof r === 'object' && r !== null && Array.isArray(r.images)
+          ? (r.images as { url?: string }[]).filter((img) => img.url)
+          : [];
+
+        if (images.length > 0) {
+          for (const img of images) {
+            feed.addItem({ type: 'image', url: img.url!, alt: serviceName, cost: `$${result.price}` });
+          }
+        } else {
+          const responseText = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
+          const preview = responseText.length > 500
+            ? responseText.slice(0, 500) + '...'
+            : responseText;
+          feed.addItem({
+            type: 'ai-text',
+            text: `**${serviceName} response:**\n\n\`\`\`\n${preview}\n\`\`\``,
+          });
+        }
+
+        balanceQuery.refetch();
+      } catch (err) {
+        feed.removeLastItem();
+        if (err instanceof ServiceDeliveryError) {
+          feed.addItem({
+            type: 'ai-text',
+            text: `${serviceIcon} ${serviceName} delivery still failing.\n\nPayment confirmed: \`${paymentDigest.slice(0, 8)}...${paymentDigest.slice(-6)}\`\n\nThe service may be temporarily down. You can retry later — your payment is safe on-chain.`,
+          });
+        } else {
+          const msg = err instanceof Error ? err.message : 'Retry failed';
+          feed.addItem({
+            type: 'ai-text',
+            text: `${serviceIcon} ${serviceName} retry failed: ${msg}`,
+          });
+        }
+      }
+    },
+    [agent, feed, balanceQuery],
+  );
+
   const handleChipClick = useCallback(
     (flow: string) => {
+      if (flow === 'service-retry') {
+        const retry = pendingRetryRef.current;
+        if (retry) {
+          handleServiceRetry(retry.paymentDigest, retry.meta, retry.serviceName, retry.serviceIcon);
+        }
+        return;
+      }
       if (flow === 'services') {
         setServicesOpen(true);
         return;
@@ -641,7 +716,7 @@ function DashboardContent() {
       }
       chipFlow.startFlow(flow, flowContext);
     },
-    [chipFlow, feed, executeIntent, balance.borrows, balance.savings, flowContext],
+    [chipFlow, feed, executeIntent, balance.borrows, balance.savings, flowContext, handleServiceRetry],
   );
 
   const handleServiceSubmit = useCallback(
@@ -692,6 +767,23 @@ function DashboardContent() {
         balanceQuery.refetch();
       } catch (err) {
         feed.removeLastItem();
+
+        if (err instanceof ServiceDeliveryError) {
+          const digest = err.paymentDigest;
+          pendingRetryRef.current = {
+            paymentDigest: digest,
+            meta: err.meta,
+            serviceName: service.name,
+            serviceIcon: service.icon,
+          };
+          feed.addItem({
+            type: 'ai-text',
+            text: `${service.icon} Payment confirmed but ${service.name} delivery failed.\n\nTx: \`${digest.slice(0, 8)}...${digest.slice(-6)}\`\n\nYour payment is safe on-chain. Tap below to retry delivery (no extra charge).`,
+            chips: [{ label: 'Retry delivery', flow: 'service-retry' }],
+          });
+          return;
+        }
+
         const msg = err instanceof Error ? err.message : 'Service request failed';
         feed.addItem({
           type: 'ai-text',

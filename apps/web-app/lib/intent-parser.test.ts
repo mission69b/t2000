@@ -148,6 +148,28 @@ describe('parseIntent', () => {
     });
   });
 
+  describe('swap with unified terminology', () => {
+    it('parses "swap to BTC" without amount as swap intent', () => {
+      expect(parseIntent('swap $100 to BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 100 });
+    });
+
+    it('parses "trade USDT for SUI"', () => {
+      expect(parseIntent('trade 50 USDT for SUI')).toEqual({ action: 'swap', from: 'USDT', to: 'SUI', amount: 50 });
+    });
+
+    it('parses "buy $100 GOLD"', () => {
+      expect(parseIntent('buy $100 GOLD')).toEqual({ action: 'swap', from: 'USDC', to: 'GOLD', amount: 100 });
+    });
+
+    it('parses "sell 0.5 ETH" (fractional token amount)', () => {
+      expect(parseIntent('sell 0.5 ETH')).toEqual({ action: 'swap', from: 'ETH', to: 'USDC', amount: 0.5 });
+    });
+
+    it('still parses "invest" as backward-compatible swap', () => {
+      expect(parseIntent('invest $200 in BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 200 });
+    });
+  });
+
   describe('LLM fallback', () => {
     it('returns null for unrecognized input', () => {
       expect(parseIntent('what should I do with $500?')).toBeNull();

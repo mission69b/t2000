@@ -12,6 +12,25 @@ export interface ServiceResult {
   result: unknown;
 }
 
+export interface ServiceRetryMeta {
+  serviceId: string;
+  gatewayUrl: string;
+  serviceBody: string;
+  price: string;
+}
+
+export class ServiceDeliveryError extends Error {
+  paymentDigest: string;
+  meta: ServiceRetryMeta;
+
+  constructor(message: string, paymentDigest: string, meta: ServiceRetryMeta) {
+    super(message);
+    this.name = 'ServiceDeliveryError';
+    this.paymentDigest = paymentDigest;
+    this.meta = meta;
+  }
+}
+
 export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<{ tx: string }>;
@@ -22,6 +41,7 @@ export interface AgentActions {
   swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
   claimRewards(): Promise<{ tx: string }>;
   payService(params: { serviceId: string; fields: Record<string, string> }): Promise<ServiceResult>;
+  retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
 }
 
 export function useAgent() {
@@ -163,10 +183,39 @@ export function useAgent() {
 
             if (!completeRes.ok) {
               const err = await completeRes.json();
+              if (err.paymentConfirmed && err.paymentDigest) {
+                throw new ServiceDeliveryError(
+                  err.error ?? 'Service delivery failed after payment',
+                  err.paymentDigest,
+                  err.meta ?? meta,
+                );
+              }
               throw new Error(err.error ?? 'Service execution failed');
             }
 
             return completeRes.json();
+          },
+
+          async retryServiceDelivery(paymentDigest, meta) {
+            const retryRes = await fetch('/api/services/retry', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentDigest, meta }),
+            });
+
+            if (!retryRes.ok) {
+              const err = await retryRes.json();
+              if (err.paymentConfirmed && err.paymentDigest) {
+                throw new ServiceDeliveryError(
+                  err.error ?? 'Service delivery retry failed',
+                  err.paymentDigest,
+                  err.meta ?? meta,
+                );
+              }
+              throw new Error(err.error ?? 'Service retry failed');
+            }
+
+            return retryRes.json();
           },
         };
       },

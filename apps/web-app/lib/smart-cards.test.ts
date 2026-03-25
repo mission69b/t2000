@@ -163,4 +163,28 @@ describe('deriveSmartCards', () => {
     const debtCard = cards.find((c) => c.title.includes('debt'));
     expect(debtCard).toBeUndefined();
   });
+
+  it('surfaces received-funds card for recent incoming transfers', () => {
+    const cards = deriveSmartCards({
+      ...BASE_STATE,
+      recentIncoming: [
+        { amount: 50, asset: 'USDC', from: '0xabcdef1234567890', timestamp: Date.now() - 60_000 },
+      ],
+    });
+    const receivedCard = cards.find((c) => c.type === 'received-funds');
+    expect(receivedCard).toBeDefined();
+    expect(receivedCard!.title).toContain('$50.00');
+    expect(receivedCard!.actions[0].chipFlow).toBe('history');
+    expect(receivedCard!.dismissible).toBe(true);
+  });
+
+  it('does not surface received-funds card for old transfers (>5 min)', () => {
+    const cards = deriveSmartCards({
+      ...BASE_STATE,
+      recentIncoming: [
+        { amount: 50, asset: 'USDC', from: '0xabc', timestamp: Date.now() - 10 * 60_000 },
+      ],
+    });
+    expect(cards.find((c) => c.type === 'received-funds')).toBeUndefined();
+  });
 });

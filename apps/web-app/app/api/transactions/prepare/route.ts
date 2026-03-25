@@ -39,10 +39,13 @@ const ASSET_COIN_TYPES: Record<string, { type: string; decimals: number }> = {
   GOLD: { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9 },
 };
 
+let _naviAdapter: NaviAdapter | null = null;
 function getNaviAdapter(): NaviAdapter {
-  const navi = new NaviAdapter();
-  navi.initSync(client);
-  return navi;
+  if (!_naviAdapter) {
+    _naviAdapter = new NaviAdapter();
+    _naviAdapter.initSync(client);
+  }
+  return _naviAdapter;
 }
 
 let _cetusAdapter: CetusAdapter | null = null;

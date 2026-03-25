@@ -18,6 +18,35 @@ function getCetus(): CetusAdapter {
   return cetusAdapter;
 }
 
+const QUOTE_CACHE_TTL = 10_000;
+
+interface CachedQuote {
+  data: { expectedOutput: number; priceImpact: number; poolPrice: number };
+  expiresAt: number;
+}
+
+const quoteCache = new Map<string, CachedQuote>();
+
+function getCachedQuote(from: string, to: string, amount: number): CachedQuote['data'] | null {
+  const key = `${from}:${to}:${amount}`;
+  const cached = quoteCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  if (cached) quoteCache.delete(key);
+  return null;
+}
+
+function setCachedQuote(from: string, to: string, amount: number, data: CachedQuote['data']) {
+  const key = `${from}:${to}:${amount}`;
+  quoteCache.set(key, { data, expiresAt: Date.now() + QUOTE_CACHE_TTL });
+
+  if (quoteCache.size > 200) {
+    const now = Date.now();
+    for (const [k, v] of quoteCache) {
+      if (v.expiresAt < now) quoteCache.delete(k);
+    }
+  }
+}
+
 /**
  * GET /api/quote?from=USDC&to=SUI&amount=50
  *
@@ -51,17 +80,22 @@ export async function GET(request: NextRequest) {
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   try {
+    const cached = getCachedQuote(from, to, amount);
+    if (cached) {
+      return NextResponse.json({ from, to, amount, ...cached, cached: true });
+    }
+
     const cetus = getCetus();
     const quote = await cetus.getQuote(from, to, amount);
 
-    return NextResponse.json({
-      from,
-      to,
-      amount,
+    const data = {
       expectedOutput: quote.expectedOutput,
       priceImpact: quote.priceImpact,
       poolPrice: quote.poolPrice,
-    });
+    };
+    setCachedQuote(from, to, amount, data);
+
+    return NextResponse.json({ from, to, amount, ...data });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Quote failed';
     console.error('[quote] Error:', message);

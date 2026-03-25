@@ -7,6 +7,15 @@ export const runtime = 'nodejs';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
+let _naviAdapter: NaviAdapter | null = null;
+function getNaviAdapter(): NaviAdapter {
+  if (!_naviAdapter) {
+    _naviAdapter = new NaviAdapter();
+    _naviAdapter.initSync(client);
+  }
+  return _naviAdapter;
+}
+
 /**
  * GET /api/positions?address=0x...
  *
@@ -19,8 +28,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const navi = new NaviAdapter();
-    navi.initSync(client);
+    const navi = getNaviAdapter();
 
     const [positions, health, rewards] = await Promise.all([
       navi.getPositions(address),

@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`svc-complete:${digest.slice(0, 16)}`, 5, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
+  let confirmedPaymentDigest: string | null = null;
+
   try {
     const executeRes = await fetch(
       `${ENOKI_BASE}/transaction-blocks/sponsor/${encodeURIComponent(digest)}`,
@@ -77,72 +79,96 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentResult = await executeRes.json();
-    const paymentDigest = paymentResult.data?.digest ?? digest;
+    confirmedPaymentDigest = paymentResult.data?.digest ?? digest;
 
-    console.log(`[services/complete] Payment executed: ${paymentDigest}, waiting for confirmation...`);
+    console.log(`[services/complete] Payment executed: ${confirmedPaymentDigest}, waiting for confirmation...`);
 
     await client.waitForTransaction({
-      digest: paymentDigest,
+      digest: confirmedPaymentDigest!,
       options: { showEffects: true },
     });
 
     console.log(`[services/complete] Payment confirmed on-chain, calling gateway...`);
 
-    const mppClient = Method.toClient(suiCharge, {
-      async createCredential({ challenge }) {
-        return Credential.serialize({
-          challenge,
-          payload: { digest: paymentDigest },
-        });
-      },
-    });
-
-    const { Mppx } = await import('mppx/client');
-    const mppx = Mppx.create({ methods: [mppClient] });
-
-    const serviceResponse = await mppx.fetch(meta.gatewayUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: meta.serviceBody,
-    });
-
-    const contentType = serviceResponse.headers.get('content-type') ?? '';
-    let result: unknown;
-
-    if (contentType.includes('application/json')) {
-      result = await serviceResponse.json();
-    } else {
-      result = await serviceResponse.text();
-    }
-
-    if (!serviceResponse.ok && serviceResponse.status !== 402) {
-      console.error(
-        `[services/complete] Gateway error (${serviceResponse.status}):`,
-        typeof result === 'string' ? result : JSON.stringify(result),
-      );
-      return NextResponse.json(
-        {
-          error: typeof result === 'object' && result && 'error' in result
-            ? (result as { error: string }).error
-            : typeof result === 'object' && result && 'message' in result
-              ? (result as { message: string }).message
-              : 'Service request failed',
-          serviceStatus: serviceResponse.status,
-        },
-        { status: serviceResponse.status },
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      paymentDigest,
-      price: meta.price,
-      serviceId: meta.serviceId,
-      result,
-    });
+    return await callGateway(confirmedPaymentDigest!, meta);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Service execution failed';
     console.error('[services/complete] Error:', message);
+
+    if (confirmedPaymentDigest) {
+      return NextResponse.json(
+        {
+          error: message,
+          paymentConfirmed: true,
+          paymentDigest: confirmedPaymentDigest,
+          meta,
+        },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+async function callGateway(
+  paymentDigest: string,
+  meta: { serviceId: string; gatewayUrl: string; serviceBody: string; price: string },
+): Promise<NextResponse> {
+  const mppClient = Method.toClient(suiCharge, {
+    async createCredential({ challenge }) {
+      return Credential.serialize({
+        challenge,
+        payload: { digest: paymentDigest },
+      });
+    },
+  });
+
+  const { Mppx } = await import('mppx/client');
+  const mppx = Mppx.create({ methods: [mppClient] });
+
+  const serviceResponse = await mppx.fetch(meta.gatewayUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: meta.serviceBody,
+  });
+
+  const contentType = serviceResponse.headers.get('content-type') ?? '';
+  let result: unknown;
+
+  if (contentType.includes('application/json')) {
+    result = await serviceResponse.json();
+  } else {
+    result = await serviceResponse.text();
+  }
+
+  if (!serviceResponse.ok && serviceResponse.status !== 402) {
+    const errMsg = typeof result === 'object' && result && 'error' in result
+      ? (result as { error: string }).error
+      : typeof result === 'object' && result && 'message' in result
+        ? (result as { message: string }).message
+        : 'Service request failed';
+    console.error(
+      `[services/complete] Gateway error (${serviceResponse.status}):`,
+      errMsg,
+    );
+    return NextResponse.json(
+      {
+        error: errMsg,
+        serviceStatus: serviceResponse.status,
+        paymentConfirmed: true,
+        paymentDigest,
+        meta,
+      },
+      { status: 502 },
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    paymentDigest,
+    price: meta.price,
+    serviceId: meta.serviceId,
+    result,
+  });
 }

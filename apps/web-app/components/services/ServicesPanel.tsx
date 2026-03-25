@@ -16,7 +16,7 @@ import { GiftCardGrid } from './GiftCardGrid';
 interface ServicesPanelProps {
   open: boolean;
   onClose: () => void;
-  onServiceSubmit: (service: ServiceItem, values: Record<string, string>) => void;
+  onServiceSubmit: (service: ServiceItem, values: Record<string, string>) => void | Promise<void>;
 }
 
 export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelProps) {

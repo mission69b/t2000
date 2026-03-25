@@ -94,4 +94,49 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
     act(() => result.current.reset());
     expect(result.current.state.phase).toBe('idle');
   });
+
+  it('starts swap flow in asset-select phase', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    expect(result.current.state.phase).toBe('asset-select');
+    expect(result.current.state.flow).toBe('swap');
+  });
+
+  it('swap flow: selects source then destination asset', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectAsset('USDC'));
+    expect(result.current.state.asset).toBe('USDC');
+    expect(result.current.state.phase).toBe('asset-select');
+
+    act(() => result.current.selectAsset('SUI'));
+    expect(result.current.state.toAsset).toBe('SUI');
+    expect(result.current.state.phase).toBe('l2-chips');
+    expect(result.current.state.message).toContain('Buy SUI');
+  });
+
+  it('swap flow: sell labels correctly', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectAsset('BTC'));
+    act(() => result.current.selectAsset('USDC'));
+    expect(result.current.state.message).toContain('Sell BTC');
+  });
+
+  it('startFlow with context generates message with balance info', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('save', { checking: 500, savingsRate: 6.5 }));
+    expect(result.current.state.phase).toBe('l2-chips');
+    expect(result.current.state.message).toBeTruthy();
+  });
+
+  it('handles quoting phase for swaps', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('swap'));
+    act(() => result.current.selectAsset('USDC'));
+    act(() => result.current.selectAsset('SUI'));
+    act(() => result.current.setQuoting(100));
+    expect(result.current.state.phase).toBe('quoting');
+    expect(result.current.state.amount).toBe(100);
+  });
 });
