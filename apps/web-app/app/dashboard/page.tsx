@@ -62,7 +62,7 @@ function capForFlow(
   fromAsset?: string,
 ): number {
   switch (flow) {
-    case 'save': return bal.cash;
+    case 'save': return bal.usdc;
     case 'send': return bal.cash;
     case 'invest': return bal.usdc;
     case 'withdraw': return bal.savings;

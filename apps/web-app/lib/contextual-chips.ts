@@ -123,7 +123,7 @@ export function deriveContextualChips(
         id: 'morning',
         icon: '☀',
         label: 'Morning report',
-        chipFlow: 'report',
+        agentPrompt: 'Give me my morning financial report. Check my balances, savings yield, portfolio holdings, health factor, and suggest any actions I should take today.',
         priority: 15,
       });
     } else if (hour >= 17 && hour < 21) {
@@ -131,7 +131,7 @@ export function deriveContextualChips(
         id: 'evening',
         icon: '📊',
         label: 'Daily summary',
-        chipFlow: 'report',
+        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, savings yield, portfolio performance, and any overnight changes.',
         priority: 15,
       });
     }

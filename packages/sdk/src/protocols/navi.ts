@@ -281,6 +281,8 @@ export async function buildSaveTx(
   const coins = await fetchCoins(client, address, assetInfo.type);
   if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
 
+  const totalBalance = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+
   const tx = new Transaction();
   tx.setSender(address);
 
@@ -290,7 +292,7 @@ export async function buildSaveTx(
     addCollectFeeToTx(tx, coinObj, 'save');
   }
 
-  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+  const rawAmount = Math.min(Number(stableToRaw(amount, assetInfo.decimals)), Number(totalBalance));
 
   try {
     await depositCoinPTB(tx, assetInfo.type, coinObj as never, {
@@ -476,12 +478,14 @@ export async function buildRepayTx(
   const coins = await fetchCoins(client, address, assetInfo.type);
   if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins to repay with`);
 
+  const totalBalance = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+
   const tx = new Transaction();
   tx.setSender(address);
 
   const coinObj = mergeCoins(tx, coins);
 
-  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+  const rawAmount = Math.min(Number(stableToRaw(amount, assetInfo.decimals)), Number(totalBalance));
   const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
 
   await refreshOracle(tx, client, address, {

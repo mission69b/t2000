@@ -66,7 +66,7 @@ export function AmountChips({ amounts, allLabel, onSelect, message, assetLabel }
             {assetLabel ? `${a} ${assetLabel}` : `$${a}`}
           </button>
         ))}
-        {allLabel && (
+        {allLabel && amounts.length > 0 && (
           <button
             onClick={() => onSelect(-1)}
             className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-medium font-mono text-foreground hover:border-border-bright transition active:scale-[0.95]"
