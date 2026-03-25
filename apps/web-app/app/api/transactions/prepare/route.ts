@@ -198,18 +198,25 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const assetKey = asset ?? 'USDC';
       const coinType = assetKey === 'SUI' ? '0x2::sui::SUI' : USDC_TYPE;
       const decimals = assetKey === 'SUI' ? 9 : 6;
-      const rawAmount = BigInt(Math.round(amount * 10 ** decimals));
+      let sendRawAmount = BigInt(Math.round(amount * 10 ** decimals));
 
-      const coins = await client.getCoins({ owner: address, coinType });
-      if (!coins.data.length) {
-        throw new Error(`No ${assetKey} coins found`);
-      }
+      const sendCoins = [];
+      let sendCursor: string | null | undefined = undefined;
+      do {
+        const page = await client.getCoins({ owner: address, coinType, cursor: sendCursor });
+        sendCoins.push(...page.data);
+        sendCursor = page.hasNextPage ? page.nextCursor : null;
+      } while (sendCursor);
+      if (!sendCoins.length) throw new Error(`No ${assetKey} coins found`);
 
-      const coinIds = coins.data.map(c => c.coinObjectId);
+      const sendTotal = sendCoins.reduce((sum, c) => sum + BigInt(c.balance), BigInt(0));
+      if (sendRawAmount > sendTotal) sendRawAmount = sendTotal;
+
+      const coinIds = sendCoins.map(c => c.coinObjectId);
       if (coinIds.length > 1) {
         tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map(id => tx.object(id)));
       }
-      const [split] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
+      const [split] = tx.splitCoins(tx.object(coinIds[0]), [sendRawAmount]);
       tx.transferObjects([split], recipient);
       break;
     }
@@ -244,11 +251,21 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const fromInfo = ASSET_COIN_TYPES[from];
       if (!fromInfo) throw new Error(`Unsupported asset: ${from}`);
 
-      const rawAmount = BigInt(Math.round(amount * 10 ** fromInfo.decimals));
-      const coins = await client.getCoins({ owner: address, coinType: fromInfo.type });
-      if (!coins.data.length) throw new Error(`No ${from} coins found`);
+      let rawAmount = BigInt(Math.round(amount * 10 ** fromInfo.decimals));
 
-      const coinIds = coins.data.map((c) => c.coinObjectId);
+      const allCoins = [];
+      let cursor: string | null | undefined = undefined;
+      do {
+        const page = await client.getCoins({ owner: address, coinType: fromInfo.type, cursor });
+        allCoins.push(...page.data);
+        cursor = page.hasNextPage ? page.nextCursor : null;
+      } while (cursor);
+      if (!allCoins.length) throw new Error(`No ${from} coins found`);
+
+      const totalOnChain = allCoins.reduce((sum, c) => sum + BigInt(c.balance), BigInt(0));
+      if (rawAmount > totalOnChain) rawAmount = totalOnChain;
+
+      const coinIds = allCoins.map((c) => c.coinObjectId);
       if (coinIds.length > 1) {
         tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
       }
