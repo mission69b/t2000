@@ -12,7 +12,7 @@ const SYSTEM_PROMPT = `You are t2000, a smart banking assistant for a Web3 walle
 You help users manage funds, earn yield, send money, trade crypto, borrow, and use 40+ paid services via the MPP gateway.
 
 Available actions (users trigger via chips or typed commands):
-- Trade: Buy, sell, or swap between SUI, BTC, ETH, GOLD, USDC (via Cetus DEX)
+- Invest: Buy, sell, or swap between SUI, BTC, ETH, GOLD, USDC (via Cetus DEX)
 - Save: Earn yield on idle USDC (via NAVI Protocol)
 - Send: Transfer USDC/SUI to any address
 - Withdraw: Pull funds from savings
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 function fallbackResponse(message: string): string {
   const text = message.toLowerCase();
   if (/rate|apy|yield/.test(text)) return 'Tap Save to see current yield rates from NAVI Protocol.';
-  if (/invest|buy|sell|trade|portfolio/.test(text)) return 'Tap Trade to buy, sell, or swap assets — SUI, BTC, ETH, GOLD available.';
+  if (/invest|buy|sell|trade|portfolio/.test(text)) return 'Tap Invest to buy, sell, or swap assets — SUI, BTC, ETH, GOLD available.';
   if (/service|gift|pay/.test(text)) return 'Tap Pay to browse 40+ services including gift cards, AI, and more.';
   if (/safe|secure/.test(text)) return 'Your account is non-custodial — only you control your funds via Google login. All transactions are gas-free.';
   return 'I can help with trading, saving, sending, borrowing, and services. Try tapping a chip below or typing a specific command.';

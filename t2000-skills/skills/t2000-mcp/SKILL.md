@@ -112,7 +112,7 @@ All support `dryRun: true` for previews without signing.
 | `dca-advisor` | Personalized DCA setup from budget |
 | `claim-rewards` | Check and claim protocol rewards — auto-converts to USDC |
 | `safeguards` | Review safety settings — limits, lock, PIN-protected operations |
-| `quick-exchange` | Guided token swap — preview rate, slippage, impact |
+| `quick-swap` | Guided token swap — preview rate, slippage, impact |
 | `sentinel-hunt` | Guided bounty hunting — find targets, craft attacks, win prizes |
 | `onboarding` | New user setup — deposit, first save, explore features |
 | `emergency` | Lock account, assess damage, recovery guidance |

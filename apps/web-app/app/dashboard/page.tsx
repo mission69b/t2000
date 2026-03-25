@@ -434,7 +434,7 @@ function DashboardContent() {
         case 'help':
           feed.addItem({
             type: 'ai-text',
-            text: 'Here\'s what I can help with:\n\n• Trade — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Services — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100" or "buy $50 BTC".',
+            text: 'Here\'s what I can help with:\n\n• Invest — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Services — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100" or "buy $50 BTC".',
           });
           break;
         case 'service':

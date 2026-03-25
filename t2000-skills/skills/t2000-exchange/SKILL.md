@@ -2,7 +2,7 @@
 name: t2000-exchange
 description: >-
   Swap tokens via Cetus DEX with on-chain slippage protection.
-  Use when asked to swap, exchange, convert, or trade between tokens.
+  Use when asked to swap, exchange, or convert between tokens.
   Supports USDC ⇌ SUI, stablecoin pairs, and any supported token pair.
 license: MIT
 metadata:

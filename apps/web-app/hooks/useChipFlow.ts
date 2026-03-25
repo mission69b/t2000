@@ -86,7 +86,7 @@ export function useChipFlow() {
         return {
           ...prev,
           asset,
-          message: `Trade from ${asset}. What do you want to receive?`,
+          message: `Swap from ${asset}. What do you want to receive?`,
         };
       }
       if (prev.flow === 'swap' && prev.asset) {

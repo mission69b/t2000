@@ -420,7 +420,7 @@ export function registerPrompts(server: McpServer): void {
             '───────────────',
             '',
             '💰 Net Worth: $X — Checking $X | Savings $X | Investment $X',
-            '📈 Activity: X sends, X saves, X trades, X swaps',
+            '📈 Activity: X sends, X saves, X buys, X swaps',
             '💸 Yield: $X.XX this week, X% APY, $X/month projected',
             '📊 Portfolio: Per-asset P&L, best & worst performer',
             '🔄 DCA: Runs this week, next run, total invested',

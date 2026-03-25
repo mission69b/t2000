@@ -45,7 +45,7 @@ t2000 unlock                         # resume operations (requires PIN)
 - `t2000 sentinel attack` — sentinel bounties
 
 ## What is NOT limited
-Internal operations (save, withdraw, borrow, repay, exchange, rebalance)
+Internal operations (save, withdraw, borrow, repay, swap, rebalance)
 move funds within the agent's own wallet and protocol positions. They
 are not subject to send limits.
 
