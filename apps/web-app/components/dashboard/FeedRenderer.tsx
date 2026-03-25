@@ -273,17 +273,17 @@ function AgentResponseCard({ data }: { data: Extract<import('@/lib/feed-types').
   const isError = data.status === 'error';
 
   return (
-    <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm space-y-2 feed-row">
+    <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm space-y-2 feed-row overflow-hidden">
       {hasSteps && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-muted">
           {data.steps.map((step, i) => (
-            <span key={i} className="flex items-center gap-1">
-              {step.status === 'done' && <span className="text-accent">✓</span>}
+            <span key={i} className="flex items-center gap-1 min-w-0">
+              {step.status === 'done' && <span className="text-accent shrink-0">✓</span>}
               {step.status === 'running' && (
-                <span className="h-3 w-3 animate-spin rounded-full border border-accent/30 border-t-accent" />
+                <span className="h-3 w-3 shrink-0 animate-spin rounded-full border border-accent/30 border-t-accent" />
               )}
-              {step.status === 'error' && <span className="text-red-400">✗</span>}
-              <span>{TOOL_LABELS[step.tool] ?? step.tool.replace(/_/g, ' ')}</span>
+              {step.status === 'error' && <span className="text-red-400 shrink-0">✗</span>}
+              <span className="truncate">{TOOL_LABELS[step.tool] ?? step.tool.replace(/_/g, ' ')}</span>
             </span>
           ))}
         </div>
@@ -296,33 +296,34 @@ function AgentResponseCard({ data }: { data: Extract<import('@/lib/feed-types').
       )}
 
       {data.text && (
-        <div>
+        <div className="min-w-0">
           <span className="text-muted mr-1.5">t2</span>
-          <span className="whitespace-pre-line text-foreground">{data.text}</span>
+          <span className="whitespace-pre-line text-foreground break-words">{data.text}</span>
         </div>
       )}
 
       {isError && data.error && (
-        <div className="text-red-300 text-xs">{data.error}</div>
+        <div className="text-red-300 text-xs break-words">{data.error}</div>
       )}
 
       {isDone && data.totalCost != null && data.totalCost > 0 && (
         <div className="flex justify-end">
           <button
             onClick={() => setCostExpanded(!costExpanded)}
-            className="text-xs text-muted hover:text-foreground transition"
+            className="text-xs text-muted hover:text-foreground transition min-h-[32px] flex items-center gap-1 px-1"
           >
-            ${data.totalCost.toFixed(3)} {costExpanded ? '▾' : '▸'}
+            <span className="font-mono">${data.totalCost.toFixed(3)}</span>
+            <span>{costExpanded ? '▾' : '▸'}</span>
           </button>
         </div>
       )}
 
       {costExpanded && data.steps.filter((s) => s.cost && s.cost > 0).length > 0 && (
-        <div className="border-t border-border pt-2 space-y-1">
+        <div className="border-t border-border pt-2 space-y-1.5">
           {data.steps.filter((s) => s.cost && s.cost > 0).map((step, i) => (
-            <div key={i} className="flex justify-between text-xs text-muted">
-              <span>{TOOL_LABELS[step.tool] ?? step.tool}</span>
-              <span className="font-mono">${step.cost!.toFixed(3)}</span>
+            <div key={i} className="flex justify-between text-xs text-muted gap-2">
+              <span className="truncate">{TOOL_LABELS[step.tool] ?? step.tool}</span>
+              <span className="font-mono shrink-0">${step.cost!.toFixed(3)}</span>
             </div>
           ))}
         </div>

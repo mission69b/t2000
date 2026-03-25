@@ -59,6 +59,8 @@ export function useAgentLoop() {
     cancelledRef.current = false;
     let cost = 0;
     let iterations = 0;
+    let emptyRetries = 0;
+    const toolCallCounts = new Map<string, number>();
 
     if (conversationRef.current.length > 20) {
       conversationRef.current = conversationRef.current.slice(-20);
@@ -108,6 +110,18 @@ export function useAgentLoop() {
         });
 
         for (const toolCall of llmResponse.tool_calls) {
+          const callKey = `${toolCall.function.name}:${toolCall.function.arguments}`;
+          const prevCount = toolCallCounts.get(callKey) ?? 0;
+          toolCallCounts.set(callKey, prevCount + 1);
+
+          if (prevCount >= 3) {
+            conversationRef.current.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: 'This tool was already called with identical arguments. Try a different approach.' }),
+            });
+            continue;
+          }
           if (cancelledRef.current) break;
 
           const executor = TOOL_EXECUTORS[toolCall.function.name];
@@ -204,6 +218,10 @@ export function useAgentLoop() {
       }
 
       if (!llmResponse.tool_calls?.length && !llmResponse.content) {
+        if (emptyRetries < 1) {
+          emptyRetries++;
+          continue;
+        }
         callbacks.onError('Agent returned an empty response. Try rephrasing your request.');
         callbacks.onDone(cost);
         break;
