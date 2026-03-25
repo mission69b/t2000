@@ -314,6 +314,7 @@ function DashboardContent() {
   const accountState: AccountState = {
     cash: balance.cash,
     savings: balance.savings,
+    investments: balance.investments,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
     pendingRewards: balance.pendingRewards,

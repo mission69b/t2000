@@ -4,6 +4,7 @@ import { deriveContextualChips, type AccountState } from './contextual-chips';
 const BASE_STATE: AccountState = {
   cash: 0,
   savings: 0,
+  investments: 0,
   borrows: 0,
   savingsRate: 0,
   pendingRewards: 0,
@@ -160,11 +161,11 @@ describe('deriveContextualChips', () => {
 });
 
 describe('post-agent suggestions', () => {
-  it('suggests "Full report" after get_balance', () => {
+  it('suggests "What if I save it all?" after get_balance', () => {
     const chips = deriveContextualChips(BASE_STATE, { lastAgentAction: 'get_balance' });
-    const postChip = chips.find((c) => c.id === 'post-portfolio');
+    const postChip = chips.find((c) => c.id === 'post-balance');
     expect(postChip).toBeDefined();
-    expect(postChip!.chipFlow).toBe('report');
+    expect(postChip!.agentPrompt).toContain('save');
   });
 
   it('suggests "Email results" after search_flights', () => {
@@ -184,5 +185,40 @@ describe('post-agent suggestions', () => {
     const chips = deriveContextualChips(BASE_STATE, { lastAgentAction: 'send_email' });
     const postChips = chips.filter((c) => c.id.startsWith('post-'));
     expect(postChips).toHaveLength(0);
+  });
+});
+
+describe('discovery chips', () => {
+  it('shows portfolio check when user has investments', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, investments: 500 });
+    const chip = chips.find((c) => c.id === 'portfolio-check');
+    expect(chip).toBeDefined();
+    expect(chip!.agentPrompt).toContain('portfolio');
+  });
+
+  it('shows risk analysis when user has borrows and HF >= 1.5', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, borrows: 100, healthFactor: 2.0 });
+    const chip = chips.find((c) => c.id === 'risk-analysis');
+    expect(chip).toBeDefined();
+    expect(chip!.agentPrompt).toContain('risk');
+  });
+
+  it('does not show risk analysis when HF < 1.5 (critical risk chip takes over)', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, borrows: 100, healthFactor: 1.2 });
+    expect(chips.find((c) => c.id === 'risk-analysis')).toBeUndefined();
+  });
+
+  it('shows yield check when savings > $10', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, savings: 50, savingsRate: 4.0 });
+    const chip = chips.find((c) => c.id === 'yield-check');
+    expect(chip).toBeDefined();
+    expect(chip!.agentPrompt).toContain('best yield');
+  });
+
+  it('shows what-if chip when cash > $10', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, cash: 50, savingsRate: 4.0 });
+    const chip = chips.find((c) => c.id === 'what-if');
+    expect(chip).toBeDefined();
+    expect(chip!.agentPrompt).toContain('$50');
   });
 });

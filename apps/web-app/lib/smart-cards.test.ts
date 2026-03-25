@@ -4,6 +4,7 @@ import { deriveSmartCards, type AccountState } from './smart-cards';
 const BASE_STATE: AccountState = {
   cash: 0,
   savings: 0,
+  investments: 0,
   borrows: 0,
   savingsRate: 0,
   pendingRewards: 0,

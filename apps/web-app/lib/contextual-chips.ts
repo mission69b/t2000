@@ -114,10 +114,59 @@ export function deriveContextualChips(
     if (suggestion) chips.push(suggestion);
   }
 
+  // --- Discovery: AI-powered insights ---
+
+  if (state.investments > 0) {
+    chips.push({
+      id: 'portfolio-check',
+      icon: '📊',
+      label: 'Portfolio P&L',
+      agentPrompt: 'Show me my portfolio performance. What are my holdings, gains/losses, and should I rebalance anything?',
+      priority: 28,
+      dismissible: true,
+    });
+  }
+
+  if (state.borrows > 0 && (state.healthFactor === undefined || state.healthFactor >= 1.5)) {
+    chips.push({
+      id: 'risk-analysis',
+      icon: '🛡',
+      label: 'Risk analysis',
+      agentPrompt: 'Analyze my borrowing risk. Check my health factor, how much room I have before liquidation, and whether I should repay some debt.',
+      priority: 25,
+      dismissible: true,
+    });
+  }
+
+  if (state.savings > 10) {
+    chips.push({
+      id: 'yield-check',
+      icon: '🔍',
+      label: 'Best yield?',
+      agentPrompt: 'Am I getting the best yield on my savings? Compare my current rate to all available protocols and tell me if I should switch.',
+      priority: 22,
+      dismissible: true,
+    });
+  }
+
+  if (state.cash > 10) {
+    chips.push({
+      id: 'what-if',
+      icon: '🤔',
+      label: 'What if I save it all?',
+      agentPrompt: `What would happen if I saved my $${Math.floor(state.cash)} idle cash? Show me projected earnings at the best available rate over 1 month, 6 months, and 1 year.`,
+      priority: 18,
+      dismissible: true,
+    });
+  }
+
   // --- Time-of-day awareness ---
 
   const hour = new Date().getHours();
-  if (chips.length === 0 && state.cash > 0 && state.savings > 0) {
+  const dayOfWeek = new Date().getDay();
+  const hasFunds = state.cash > 0 || state.savings > 0;
+
+  if (hasFunds) {
     if (hour >= 6 && hour < 10) {
       chips.push({
         id: 'morning',
@@ -131,40 +180,50 @@ export function deriveContextualChips(
         id: 'evening',
         icon: '📊',
         label: 'Daily summary',
-        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, savings yield, portfolio performance, and any overnight changes.',
+        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, savings yield, portfolio performance, and any changes today.',
         priority: 15,
       });
     }
-  }
 
-  // --- Fallback: discovery ---
-
-  if (chips.length === 0) {
-    if (state.cash === 0 && state.savings === 0) {
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
       chips.push({
-        id: 'welcome',
-        icon: '👋',
-        label: 'Add funds to get started',
-        chipFlow: 'receive',
-        priority: 10,
-      });
-    } else if (state.savingsRate > 0 && state.savings > 0) {
-      chips.push({
-        id: 'good',
-        icon: '✅',
-        label: `Earning ${state.savingsRate.toFixed(1)}% on $${Math.floor(state.savings)}`,
-        chipFlow: 'report',
-        priority: 10,
+        id: 'weekly-recap',
+        icon: '📅',
+        label: 'Weekly recap',
+        agentPrompt: 'Give me my weekly recap. Summarize my balances, transactions this week, portfolio changes, savings earnings, and any action items.',
+        priority: 14,
+        dismissible: true,
       });
     }
+  }
+
+  // --- Fallback: onboarding + discovery ---
+
+  if (state.cash === 0 && state.savings === 0 && state.investments === 0) {
     chips.push({
-      id: 'discover',
-      icon: '✨',
-      label: 'What can I do?',
-      agentPrompt: 'What services and features do you have?',
-      priority: 5,
+      id: 'welcome',
+      icon: '👋',
+      label: 'Add funds to get started',
+      chipFlow: 'receive',
+      priority: 10,
+    });
+  } else if (state.savingsRate > 0 && state.savings > 0) {
+    chips.push({
+      id: 'good',
+      icon: '✅',
+      label: `Earning ${state.savingsRate.toFixed(1)}% on $${Math.floor(state.savings)}`,
+      chipFlow: 'report',
+      priority: 10,
     });
   }
+
+  chips.push({
+    id: 'discover',
+    icon: '✨',
+    label: 'What can I do?',
+    agentPrompt: 'What services and features do you have?',
+    priority: 5,
+  });
 
   return chips
     .sort((a, b) => b.priority - a.priority)
@@ -177,15 +236,24 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
     case 'get_news':
       return { id: 'post-search', icon: '🔍', label: 'Search again', agentPrompt: '', priority: 40 };
     case 'get_balance':
+      return { id: 'post-balance', icon: '🤔', label: 'What if I save it all?', agentPrompt: 'What would happen if I saved all my idle cash? Project my earnings over 1 month, 6 months, and 1 year.', priority: 40 };
     case 'get_portfolio':
-      return { id: 'post-portfolio', icon: '📊', label: 'Full report', chipFlow: 'report', priority: 40 };
+      return { id: 'post-portfolio', icon: '📊', label: 'Full report', agentPrompt: 'Give me a full financial report covering my balances, portfolio performance, yields, and action items.', priority: 40 };
+    case 'get_rates':
+      return { id: 'post-rates', icon: '🔍', label: 'Best yield?', agentPrompt: 'Am I getting the best yield? Compare my current rate to what\'s available and tell me if I should switch.', priority: 40 };
+    case 'get_health':
+      return { id: 'post-health', icon: '🛡', label: 'Risk analysis', agentPrompt: 'Give me a deeper risk analysis. How much could prices drop before I get liquidated?', priority: 40 };
     case 'search_flights':
       return { id: 'post-flights', icon: '✈', label: 'Email me these results', agentPrompt: 'Email me those flight results', priority: 40 };
     case 'generate_image':
       return { id: 'post-image', icon: '🎨', label: 'Generate another', agentPrompt: '', priority: 40 };
     case 'get_crypto_price':
     case 'get_stock_quote':
-      return { id: 'post-price', icon: '💹', label: 'Check portfolio', chipFlow: 'report', priority: 40 };
+      return { id: 'post-price', icon: '💹', label: 'Check portfolio', agentPrompt: 'How does my portfolio compare to what I just looked up? Show me my holdings and P&L.', priority: 40 };
+    case 'translate':
+      return { id: 'post-translate', icon: '🌐', label: 'Translate more', agentPrompt: '', priority: 40 };
+    case 'convert_currency':
+      return { id: 'post-convert', icon: '💱', label: 'Convert another', agentPrompt: '', priority: 40 };
     default:
       return null;
   }
