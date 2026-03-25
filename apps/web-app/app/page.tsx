@@ -34,7 +34,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-sm text-muted leading-relaxed">
-            Earn yield. Pay for services. Swap crypto. All in one place.
+            Earn yield automatically. Pay for anything with AI. Zero gas fees.
           </p>
         </div>
 
