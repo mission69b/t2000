@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { services, type Service } from '@/lib/services';
 import { Header } from '../components/Header';
+import { CodeBlock } from '../components/CodeBlock';
 
 const METHOD_COLORS: Record<string, string> = {
   POST: 'bg-blue-500/15 text-blue-400',
@@ -234,23 +235,6 @@ function ServiceUrlCopy({ url }: { url: string }) {
         {copied ? '✓' : 'copy'}
       </span>
     </span>
-  );
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  return (
-    <button
-      onClick={() => {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }}
-      className="text-[10px] text-muted hover:text-foreground transition-colors cursor-pointer"
-    >
-      {copied ? 'copied' : 'copy'}
-    </button>
   );
 }
 
@@ -487,36 +471,20 @@ const result = await agent.pay({
 
             {/* Install */}
             <div className="px-5 py-4 border-b border-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] uppercase tracking-wider text-muted">Install</span>
-              </div>
-              <pre className="text-xs text-foreground bg-panel border border-border rounded p-3 overflow-x-auto">
-                <code>npm i -g @t2000/cli && t2000 init</code>
-              </pre>
+              <div className="text-[10px] uppercase tracking-wider text-muted mb-2">Install</div>
+              <CodeBlock code="npm i -g @t2000/cli && t2000 init" lang="bash" />
             </div>
 
             {/* CLI */}
             <div className="px-5 py-4 border-b border-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] uppercase tracking-wider text-muted">CLI</span>
-                <CopyButton text={cliSnippet} />
-              </div>
-              <pre className="text-[11px] text-foreground bg-panel border border-border rounded p-3 overflow-x-auto whitespace-pre leading-relaxed">
-                <code>
-                  <span className="text-muted">$</span> {cliSnippet}
-                </code>
-              </pre>
+              <div className="text-[10px] uppercase tracking-wider text-muted mb-2">CLI</div>
+              <CodeBlock code={`$ ${cliSnippet}`} lang="bash" />
             </div>
 
             {/* SDK */}
             <div className="px-5 py-4 border-b border-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] uppercase tracking-wider text-muted">SDK</span>
-                <CopyButton text={sdkSnippet} />
-              </div>
-              <pre className="text-[11px] text-foreground bg-panel border border-border rounded p-3 overflow-x-auto whitespace-pre leading-relaxed">
-                <code>{sdkSnippet}</code>
-              </pre>
+              <div className="text-[10px] uppercase tracking-wider text-muted mb-2">SDK</div>
+              <CodeBlock code={sdkSnippet} lang="typescript" />
             </div>
 
             {/* MCP */}
