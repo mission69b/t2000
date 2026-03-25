@@ -422,14 +422,19 @@ function DashboardContent() {
             `Checking: $${balance.checking.toFixed(2)}`,
             `Savings: $${balance.savings.toFixed(2)}`,
           ];
-          if (balance.borrows > 0) lines.push(`Debt: $${balance.borrows.toFixed(2)}`);
-          if (balance.healthFactor && balance.healthFactor !== Infinity) {
-            lines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
+          if (balance.borrows > 0) {
+            lines.push(`Debt: $${balance.borrows.toFixed(2)}`);
+            if (balance.healthFactor && balance.healthFactor !== Infinity) {
+              lines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
+            }
           }
           if (bd) {
             lines.push('');
-            lines.push(`SUI: ${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})`);
-            lines.push(`USDC: ${bd.usdc.toFixed(2)}`);
+            if (bd.sui > 0) lines.push(`SUI: ${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})`);
+            if (bd.usdc > 0) lines.push(`USDC: ${bd.usdc.toFixed(2)}`);
+            for (const [symbol, amt] of Object.entries(bd.assetBalances)) {
+              if (amt > 0) lines.push(`${symbol}: ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
+            }
             lines.push(`SUI price: $${bd.suiPrice.toFixed(2)}`);
           }
           feed.addItem({ type: 'ai-text', text: `Your balance:\n\n${lines.join('\n')}` });
@@ -442,15 +447,20 @@ function DashboardContent() {
             `Checking: $${balance.checking.toFixed(2)}`,
             `Savings: $${balance.savings.toFixed(2)}`,
           ];
-          if (balance.borrows > 0) reportLines.push(`Debt: $${balance.borrows.toFixed(2)}`);
-          if (balance.healthFactor && balance.healthFactor !== Infinity) {
-            reportLines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
+          if (balance.borrows > 0) {
+            reportLines.push(`Debt: $${balance.borrows.toFixed(2)}`);
+            if (balance.healthFactor && balance.healthFactor !== Infinity) {
+              reportLines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
+            }
           }
           if (balance.savingsRate > 0) reportLines.push(`Savings APY: ${balance.savingsRate.toFixed(1)}%`);
           const assetLines: string[] = [];
           if (rd) {
-            assetLines.push(`SUI: ${rd.sui.toFixed(4)} ($${rd.suiUsd.toFixed(2)})`);
-            assetLines.push(`USDC: ${rd.usdc.toFixed(2)}`);
+            if (rd.sui > 0) assetLines.push(`SUI: ${rd.sui.toFixed(4)} ($${rd.suiUsd.toFixed(2)})`);
+            if (rd.usdc > 0) assetLines.push(`USDC: ${rd.usdc.toFixed(2)}`);
+            for (const [symbol, amt] of Object.entries(rd.assetBalances)) {
+              if (amt > 0) assetLines.push(`${symbol}: ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
+            }
           }
           feed.addItem({
             type: 'report',
