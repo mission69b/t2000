@@ -24,7 +24,6 @@ interface BuildRequest {
   asset?: string;
   fromAsset?: string;
   toAsset?: string;
-  skipOracle?: boolean;
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -117,16 +116,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const params: BuildRequest = { type, address, amount, recipient, asset, fromAsset: body.fromAsset, toAsset: body.toAsset };
-
-    let result = await buildAndSponsor(params, jwt);
-
-    if (!result.ok && result.status === 400 && type === 'repay' && !params.skipOracle) {
-      console.warn(
-        '[prepare] Repay sponsorship rejected by Enoki — retrying without oracle.',
-        'To fix permanently, add oracle_pro and incentive_v3 targets to your Enoki project allowlist.',
-      );
-      result = await buildAndSponsor({ ...params, skipOracle: true }, jwt);
-    }
+    const result = await buildAndSponsor(params, jwt);
 
     if (!result.ok) {
       if (result.status === 429) {
@@ -160,9 +150,11 @@ async function buildAndSponsor(
 ): Promise<SponsorResult> {
   const tx = await buildTransaction(params);
 
-  const moveCallTargets = extractMoveCallTargets(tx);
-  if (moveCallTargets.length > 0) {
-    console.log(`[prepare] ${params.type} targets (${moveCallTargets.length}):`, moveCallTargets);
+  if (process.env.NODE_ENV !== 'production') {
+    const moveCallTargets = extractMoveCallTargets(tx);
+    if (moveCallTargets.length > 0) {
+      console.log(`[prepare] ${params.type} targets (${moveCallTargets.length}):`, moveCallTargets);
+    }
   }
 
   const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
@@ -181,10 +173,6 @@ async function buildAndSponsor(
     transactionBlockKindBytes: txKindBase64,
     sender: params.address,
   };
-
-  if (moveCallTargets.length > 0) {
-    sponsorBody.allowedMoveCallTargets = moveCallTargets;
-  }
 
   if (params.recipient) {
     sponsorBody.allowedAddresses = [params.recipient];
@@ -273,7 +261,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const navi = getNaviAdapter();
       const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC', {
         sponsored: true,
-        skipOracle: params.skipOracle,
+        skipOracle: true,
       });
       return result.tx;
     }
