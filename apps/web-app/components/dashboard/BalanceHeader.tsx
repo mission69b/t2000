@@ -1,22 +1,54 @@
 'use client';
 
+import { useState } from 'react';
 import { truncateAddress } from '@/lib/format';
 
-export interface BalanceData {
+export interface BalanceHeaderData {
   total: number;
   checking: number;
   savings: number;
   borrows: number;
+  savingsRate: number;
+  healthFactor: number | null;
+  sui: number;
+  usdc: number;
+  assetBalances: Record<string, number>;
+  bestSaveRate: { protocol: string; rate: number } | null;
   loading: boolean;
 }
 
 interface BalanceHeaderProps {
   address: string;
-  balance: BalanceData;
+  balance: BalanceHeaderData;
   onSettingsClick: () => void;
 }
 
+function fmtUsd(n: number): string {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtToken(n: number): string {
+  if (n > 0 && n < 0.01) return n.toFixed(8);
+  if (n < 1) return n.toFixed(6);
+  return n.toFixed(4);
+}
+
 export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHeaderProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const assets: { symbol: string; amount: string }[] = [];
+  if (balance.sui > 0) {
+    assets.push({ symbol: 'SUI', amount: fmtToken(balance.sui) });
+  }
+  if (balance.usdc > 0) {
+    assets.push({ symbol: 'USDC', amount: fmtUsd(balance.usdc) });
+  }
+  for (const [symbol, amt] of Object.entries(balance.assetBalances)) {
+    if (amt > 0) {
+      assets.push({ symbol, amount: fmtToken(amt) });
+    }
+  }
+
   return (
     <div className="space-y-1 text-center">
       <div className="flex items-center justify-between px-1">
@@ -47,9 +79,12 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
           <div className="h-4 w-48 mx-auto rounded-sm bg-panel animate-pulse" />
         </div>
       ) : (
-        <>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full text-center focus:outline-none group"
+        >
           <p className="text-4xl font-bold tracking-tight font-mono text-foreground">
-            ${balance.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${fmtUsd(balance.total)}
           </p>
           <p className="text-xs font-mono text-muted tracking-wide">
             <span className="uppercase text-[10px] tracking-[0.1em]">chk</span> ${balance.checking.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -63,9 +98,59 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
                 </span>
               </>
             )}
+            {' '}
+            <span className={`inline-block transition-transform duration-200 text-dim ${expanded ? 'rotate-180' : ''}`}>
+              ▾
+            </span>
           </p>
-        </>
+        </button>
       )}
+
+      {expanded && !balance.loading && (
+        <div className="mt-2 rounded-sm border border-border bg-surface/60 text-left text-xs font-mono divide-y divide-border/50 overflow-hidden transition-all">
+          {/* Account breakdown */}
+          <div className="px-4 py-3 space-y-1.5">
+            <Row label="Checking" value={`$${fmtUsd(balance.checking)}`} />
+            <Row label="Savings" value={`$${fmtUsd(balance.savings)}`} />
+            {balance.savingsRate > 0 && (
+              <Row label="Savings APY" value={`${balance.savingsRate.toFixed(1)}%`} accent />
+            )}
+            {balance.borrows > 0 && (
+              <>
+                <Row label="Debt" value={`$${fmtUsd(balance.borrows)}`} warn />
+                {balance.healthFactor && balance.healthFactor !== Infinity && (
+                  <Row
+                    label="Health Factor"
+                    value={balance.healthFactor.toFixed(1)}
+                    warn={balance.healthFactor < 1.5}
+                  />
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Assets */}
+          {assets.length > 0 && (
+            <div className="px-4 py-3 space-y-1.5">
+              <p className="text-[10px] uppercase tracking-[0.1em] text-dim mb-1">Assets</p>
+              {assets.map((a) => (
+                <Row key={a.symbol} label={a.symbol} value={a.amount} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value, accent, warn }: { label: string; value: string; accent?: boolean; warn?: boolean }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-muted">{label}</span>
+      <span className={accent ? 'text-accent' : warn ? 'text-amber-400' : 'text-foreground'}>
+        {value}
+      </span>
     </div>
   );
 }

@@ -255,6 +255,43 @@ function DashboardContent() {
   }, [feed.items.length]);
 
   const overnightData = useOvernightEarnings(balance.savings, balance.loading);
+  const dailyReportShown = useRef(false);
+
+  useEffect(() => {
+    if (dailyReportShown.current || balance.loading || !overnightData.isFirstOpenToday) return;
+    if (balance.total <= 0) return;
+    dailyReportShown.current = true;
+
+    const reportLines = [
+      `Total: $${balance.total.toFixed(2)}`,
+      `Checking: $${balance.checking.toFixed(2)}`,
+      `Savings: $${balance.savings.toFixed(2)}`,
+    ];
+    if (balance.borrows > 0) {
+      reportLines.push(`Debt: $${balance.borrows.toFixed(2)}`);
+      if (balance.healthFactor && balance.healthFactor !== Infinity) {
+        reportLines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
+      }
+    }
+    if (balance.savingsRate > 0) reportLines.push(`Savings APY: ${balance.savingsRate.toFixed(1)}%`);
+    const assetLines: string[] = [];
+    const bd = balanceQuery.data;
+    if (bd) {
+      if (bd.sui > 0) assetLines.push(`SUI: ${bd.sui.toFixed(4)}`);
+      if (bd.usdc > 0) assetLines.push(`USDC: ${bd.usdc.toFixed(2)}`);
+      for (const [symbol, amt] of Object.entries(bd.assetBalances)) {
+        if (amt > 0) assetLines.push(`${symbol}: ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
+      }
+    }
+
+    feed.addItem({
+      type: 'report',
+      sections: [
+        { title: 'Good morning', lines: reportLines },
+        ...(assetLines.length > 0 ? [{ title: 'Assets', lines: assetLines }] : []),
+      ],
+    });
+  }, [balance, balanceQuery.data, overnightData.isFirstOpenToday, feed]);
 
   const accountState: AccountState = {
     checking: balance.checking,
