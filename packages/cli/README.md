@@ -32,7 +32,7 @@ t2000 init
   ✓ Keypair generated
   ✓ Network  Sui mainnet
   ✓ Gas sponsorship  enabled
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Trade
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Investment
 
   🎉 Bank account created
   Address: 0x8b3e...d412
@@ -115,7 +115,7 @@ t2000 init
     Tx:  https://suiscan.xyz/mainnet/tx/...
 
 ❯ t2000 portfolio
-  Trade Portfolio
+  Investment Portfolio
   ─────────────────────────────────────────────────────
   SUI     105.26000000  Avg: $0.95    Now: $0.97    APY: 2.10%    +$2.10 (+2.1%)
   BTC     0.00512820    Avg: $97,500  Now: $98,200  —              +$3.59 (+0.7%)
@@ -241,7 +241,7 @@ t2000 init
 | `t2000 contacts add <name> <address>` | Save a named contact |
 | `t2000 contacts remove <name>` | Remove a contact |
 
-### Trade
+### Invest
 
 | Command | Description |
 |---------|-------------|
@@ -251,7 +251,7 @@ t2000 init
 | `t2000 invest earn <asset>` | Deposit held asset into best-rate lending for yield |
 | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
 | `t2000 invest rebalance` | Move earning positions to better-rate protocols |
-| `t2000 portfolio` | View trade portfolio with cost-basis P&L (strategy grouping) |
+| `t2000 portfolio` | View investment portfolio with cost-basis P&L (strategy grouping) |
 
 > **Deprecated:** `t2000 exchange` still works but prints a deprecation notice — use `t2000 swap`. `t2000 invest buy` / `t2000 invest sell` still work but are deprecated — use `t2000 buy` / `t2000 sell`.
 

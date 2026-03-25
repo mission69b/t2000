@@ -5,7 +5,7 @@
 <h3 align="center">A bank account for AI agents.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Trade · Payments · MCP
+  Checking · Savings · Credit · Invest · Pay · MCP
   <br />
   Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial · BYOK LLM
 </p>
@@ -53,7 +53,7 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
   ✓ Keypair generated
   ✓ Network  Sui mainnet
   ✓ Gas sponsorship  enabled
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Trade
+  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Investment
   🎉 Bank account created
   Address: 0x8b3e...d412
 
@@ -70,7 +70,7 @@ await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluech
 ❯ t2000 balance
   Available:  $85.00   (checking — spendable)
   Savings:    $80.00   (earning 4.86% APY)
-  Trade:      $5.02    (+0.4%)
+  Investment: $5.02    (+0.4%)
   ──────────────────────────────────────
   Total:      $170.02
 ```
@@ -117,8 +117,8 @@ t2000 wraps five DeFi primitives into a single interface that any AI agent can u
 | **Checking** | Send and receive USDC | Direct Sui transfers |
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) + [Suilend](https://suilend.fi) (auto-selected) |
 | **Credit** | Borrow USDC against savings | NAVI + Suilend collateralized loans |
-| **Trade** | Buy, sell, and swap any supported tokens (SUI, BTC, ETH, GOLD) with cost-basis P&L | [Cetus DEX](https://www.cetus.zone) CLMM pools |
-| **Trade Yield** | Earn yield on held assets via lending | NAVI + Suilend (auto-selected best rate, auto-rebalance) |
+| **Investment** | Buy and sell supported assets (SUI, BTC, ETH, GOLD) with cost-basis P&L | [Cetus DEX](https://www.cetus.zone) CLMM pools |
+| **Investment Yield** | Earn yield on held assets via lending | NAVI + Suilend (auto-selected best rate, auto-rebalance) |
 | **Strategies** | Themed allocations (bluechip, all-weather, safe-haven, layer1, sui-heavy) — single atomic PTB | Agent orchestration + Cetus |
 | **Auto-Invest** | Dollar-cost averaging (daily/weekly/monthly DCA) | Agent scheduling |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
@@ -197,14 +197,14 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.contacts.remove(name)` | Remove a contact |
 | | `agent.contacts.get(name)` | Get contact address |
 | | `agent.contacts.resolve(nameOrAddress)` | Resolve name → address |
-| **Trade** | `agent.buy({ asset, usdAmount })` | Buy crypto asset with USD |
+| **Investment** | `agent.buy({ asset, usdAmount })` | Buy crypto asset with USD |
 | | `agent.sell({ asset, usdAmount })` | Sell crypto asset back to USDC |
 | | `agent.swap({ from, to, amount })` | Swap tokens via Cetus DEX |
 | | `agent.swapQuote({ from, to, amount })` | Get swap quote without executing |
 | | `agent.investEarn({ asset })` | Deposit held asset to lending for yield |
 | | `agent.investUnearn({ asset })` | Withdraw from lending, keep in portfolio |
 | | `agent.investRebalance({ dryRun? })` | Move earning positions to better-rate protocols |
-| | `agent.getPortfolio()` | Trade positions + P&L |
+| | `agent.getPortfolio()` | Investment positions + P&L |
 | **Strategies** | `agent.investStrategy({ strategy, usdAmount })` | Buy into a strategy (atomic PTB) |
 | | `agent.rebalanceStrategy({ strategy })` | Rebalance to target weights |
 | | `agent.getStrategies()` | List available strategies |
@@ -362,7 +362,7 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |
 | `t2000-contacts` | "list contacts", "add contact" |
-| `t2000-trade` | "buy SUI", "sell BTC", "portfolio" |
+| `t2000-invest` | "buy SUI", "sell BTC", "portfolio" |
 
 Full reference → [Agent Skills README](t2000-skills)
 
@@ -374,8 +374,8 @@ Full reference → [Agent Skills README](t2000-skills)
 | Send / receive | ✓ | ✓ |
 | Earn yield on savings | — | ✓ NAVI + Suilend (~2–8% APY) |
 | Borrow / credit line | — | ✓ Borrow against savings + investment collateral |
-| Token swap | ✓ Base tokens | ✓ Cetus DEX (any pair + rebalance) |
-| Trade (spot buy/sell) | — | ✓ SUI, BTC, ETH, GOLD with cost-basis P&L |
+| Token swap | ✓ Base tokens | ✓ Cetus DEX (stables + SUI, BTC, ETH, GOLD) |
+| Investment (spot buy/sell) | — | ✓ SUI, BTC, ETH, GOLD with cost-basis P&L |
 | Yield on holdings | — | ✓ Earn lending APY on holdings while keeping price exposure |
 | Borrow against holdings | — | ✓ Deposited holdings count as collateral for credit |
 | Margin trading | — | 🔜 Coming soon — leveraged positions on SUI, BTC, ETH, GOLD |

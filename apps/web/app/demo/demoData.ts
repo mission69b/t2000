@@ -11,7 +11,7 @@ export interface Demo {
 export const demos: Demo[] = [
   {
     id: "invest",
-    title: "Trade — Buy, Earn & Sell",
+    title: "Invest — Buy, Earn & Sell",
     description:
       "Buy crypto, earn yield while holding, track P&L, sell. Four commands.",
     tweet: "t2000 invest — buy, earn yield, track P&L, sell.",
@@ -27,7 +27,7 @@ export const demos: Demo[] = [
       { type: "info", text: "  Tx:  suiscan.xyz/mainnet/tx/7CAugsDaPvMM...", delay: 200 },
 
       { type: "command", text: "❯ t2000 portfolio", delay: 1200 },
-      { type: "output", text: "  Trade Portfolio", delay: 400 },
+      { type: "output", text: "  Investment Portfolio", delay: 400 },
       { type: "info", text: "  ─────────────────────────────────────────────────────────────────", delay: 80 },
       { type: "output", text: "  SUI:  4.8500    Avg: $1.03    Now: $1.05    +$0.10 (+2.0%)    2.61% APY (Suilend)", delay: 200 },
       { type: "info", text: "", delay: 80 },
@@ -137,7 +137,7 @@ export const demos: Demo[] = [
       { type: "success", text: "  ✓ Keypair generated", delay: 300 },
       { type: "success", text: "  ✓ Network  Sui mainnet", delay: 200 },
       { type: "success", text: "  ✓ Gas sponsorship  enabled", delay: 200 },
-      { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Trade", delay: 300 },
+      { type: "success", text: "  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Invest", delay: 300 },
       { type: "output", text: "  🎉 Bank account created", delay: 300 },
       { type: "output", text: "  Address: 0x8b3e...d412", delay: 200 },
 

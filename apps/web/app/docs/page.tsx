@@ -90,7 +90,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
     items: [
       { id: "cli-wallet", name: "Wallet" },
       { id: "cli-savings", name: "Savings & Credit" },
-      { id: "cli-invest", name: "Trade" },
+      { id: "cli-invest", name: "Invest" },
       { id: "cli-more", name: "Swap & More" },
     ],
   },
@@ -413,7 +413,7 @@ function QuickStart({
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Trade{"\n\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Investment{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
         {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
@@ -603,7 +603,7 @@ function ConceptsSection() {
           [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI, Suilend), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
           [<InlineCode key="k">credit</InlineCode>, "USDC borrowed against savings collateral. Health factor enforced on-chain.", <><InlineCode>t2000 borrow</InlineCode> / <InlineCode>repay</InlineCode></>],
           [<InlineCode key="k">swap</InlineCode>, "Token swap via Cetus DEX. Use t2000 swap to convert between USDC, SUI, and stablecoins. Also used internally by rebalance and auto-swap.", <InlineCode key="v">t2000 swap</InlineCode>],
-          [<InlineCode key="k">trade</InlineCode>, "Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 buy</InlineCode> / <InlineCode>sell</InlineCode> / <InlineCode>portfolio</InlineCode></>],
+          [<InlineCode key="k">investment</InlineCode>, "Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 buy</InlineCode> / <InlineCode>sell</InlineCode> / <InlineCode>portfolio</InlineCode></>],
         ]}
       />
 
@@ -708,7 +708,7 @@ function CliWalletSection() {
         {S.g("✓")} Keypair generated{"\n"}
         {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n"}
-        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Trade{"\n\n"}
+        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Investment{"\n\n"}
         {"🎉 "}{S.g("Bank account created")}{"\n"}
         {"Address: "}{S.a("0x8b3e...d412")}{"\n\n"}
         {S.g("✓")} MCP configured (Claude Desktop, Cursor){"\n"}
@@ -727,7 +727,7 @@ function CliWalletSection() {
         {"  "}Available:  {S.a("$69.60")}  {S.c("(checking — spendable)")}{"\n"}
         {"  "}Savings:  {S.a("$9.26")}  {S.c("(earning 4.15% APY)")}{"\n"}
         {"  "}Credit:  {S.r("-$1.00")}  {S.c("(7.67% APY)")}{"\n"}
-        {"  "}Trade:  {S.a("$5.01")}  {S.c("(+0.1%)")}{"\n"}
+        {"  "}Investment:  {S.a("$5.01")}  {S.c("(+0.1%)")}{"\n"}
         {"  "}{S.m("──────────────────────────────────────")}{"\n"}
         {"  "}Total:  {S.a("$82.87")}
       </CodeBlock>
@@ -939,7 +939,7 @@ function CliInvestSection() {
         CLI
       </div>
       <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        <em className="italic text-accent">Trade</em>
+        <em className="italic text-accent">Invest</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands.
@@ -1035,12 +1035,12 @@ function CliInvestSection() {
       </CodeBlock>
 
       <h2 id="cmd-portfolio">t2000 portfolio</h2>
-      <p>View your trade portfolio with cost-basis P&L, strategy grouping, and earning status.</p>
+      <p>View your investment portfolio with cost-basis P&L, strategy grouping, and earning status.</p>
       <CodeBlock lang="bash">
         t2000 portfolio [--json]
       </CodeBlock>
       <CodeBlock lang="output">
-        {"  "}Trade Portfolio{"\n\n"}
+        {"  "}Investment Portfolio{"\n\n"}
         {"    "}▸ Bluechip / Large-Cap{"\n"}
         {"  "}{S.m("──────────────────────────────────────")}{"\n"}
         {"  "}BTC:  {S.a("0.00003500")}    Avg: $71,000    Now: $71,200    {S.g("+$0.01 (+0.3%)")}{"\n"}
@@ -1383,7 +1383,7 @@ function InitWizardSection() {
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Trade{"\n\n"}
+        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Investment{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
         {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
@@ -1480,7 +1480,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_sentinel_list</InlineCode>, "List active sentinels with prize pools"],
           [<InlineCode key="k">t2000_sentinel_info</InlineCode>, "Sentinel details — model, system prompt, attack history"],
           [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
-          [<InlineCode key="k">t2000_portfolio</InlineCode>, "View trade portfolio with cost-basis P&L"],
+          [<InlineCode key="k">t2000_portfolio</InlineCode>, "View investment portfolio with cost-basis P&L"],
           [<InlineCode key="k">t2000_services</InlineCode>, "Discover all MPP services, endpoints, and prices"],
         ]}
       />
@@ -1977,7 +1977,7 @@ function ChangelogSection() {
         v0.14.0
       </h2>
       <p>
-        Trade account: buy/sell SUI, BTC, ETH, GOLD with portfolio tracking, cost-basis P&L,
+        Investment account: buy/sell SUI, BTC, ETH, GOLD with portfolio tracking, cost-basis P&L,
         and investment locking guard. 19 MCP tools, 6 prompts, 14 agent skills.
       </p>
 

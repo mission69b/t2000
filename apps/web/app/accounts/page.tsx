@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "t2000 — Accounts",
   description:
-    "Five accounts, one wallet. Checking, savings, credit, swap, and trade — everything your AI agent needs to manage money.",
+    "Five accounts, one wallet. Checking, savings, credit, swap, and invest — everything your AI agent needs to manage money.",
   openGraph: {
     title: "t2000 — Accounts",
     description:
@@ -250,11 +250,11 @@ export default function AccountsPage() {
                 </div>
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-                Swap{" "}
-                <em className="italic text-accent">anything.</em>
+                Swap between{" "}
+                <em className="italic text-accent">supported assets.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Any token pair at market rates with on-chain slippage protection.
+                Swap stablecoins and crypto at market rates with on-chain slippage protection.
               </p>
 
               <div className="space-y-4">
@@ -295,14 +295,14 @@ export default function AccountsPage() {
           </div>
         </section>
 
-        {/* ── Trade (link to invest page) ── */}
+        {/* ── Investment (link to invest page) ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-xl">◆</span>
                 <div className="text-[10px] tracking-[0.2em] uppercase text-accent">
-                  Trade
+                  Investment
                 </div>
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
@@ -317,7 +317,7 @@ export default function AccountsPage() {
                 href="/invest"
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono text-accent border border-accent/30 rounded transition-all hover:bg-accent-dim hover:shadow-[0_0_20px_rgba(0,214,143,0.08)]"
               >
-                Explore trade account →
+                Explore investment account →
               </Link>
             </div>
 
@@ -326,7 +326,7 @@ export default function AccountsPage() {
                 t2000 portfolio
               </div>
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">Trade Portfolio</span>
+                <span className="text-foreground">Investment Portfolio</span>
                 {"\n"}
                 <span className="text-muted/30">─────────────────────────────────────────</span>
                 {"\n"}

@@ -144,8 +144,8 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins internally. Dry-run for preview. | `RebalanceResult` |
 | `agent.swap({ from, to, amount, maxSlippage? })` | Swap tokens via Cetus DEX (e.g. USDC ⇌ SUI). On-chain slippage protection. | `SwapResult` |
 | `agent.swapQuote({ from, to, amount })` | Get swap quote without executing | `{ expectedOutput, priceImpact, poolPrice, fee }` |
-| `agent.buy({ asset, usdAmount, maxSlippage? })` | Buy crypto asset with USD | `TradeResult` |
-| `agent.sell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC (auto-withdraws if earning) | `TradeResult` |
+| `agent.buy({ asset, usdAmount, maxSlippage? })` | Buy crypto asset with USD | `InvestResult` |
+| `agent.sell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC (auto-withdraws if earning) | `InvestResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -195,14 +195,14 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 
 **Types:** `SafeguardConfig` — `{ maxPerTx?, maxDailySend?, locked? }` · `SafeguardError` — thrown when limits exceeded or agent locked
 
-### Trade Yield Methods
+### Investment Yield Methods
 
 | Method | Description | Returns |
 |--------|-------------|---------|
 | `agent.investEarn({ asset })` | Deposit held asset into best-rate lending for yield | `InvestEarnResult` |
 | `agent.investUnearn({ asset })` | Withdraw from lending, keep in portfolio | `InvestUnearnResult` |
 | `agent.investRebalance({ dryRun?, minYieldDiff? })` | Move earning positions to better-rate protocols | `InvestRebalanceResult` |
-| `agent.getPortfolio()` | Trade positions + P&L (grouped by strategy) | `PortfolioResult` |
+| `agent.getPortfolio()` | Investment positions + P&L (grouped by strategy) | `PortfolioResult` |
 
 > **Deprecated aliases:** `agent.exchange()` and `agent.exchangeQuote()` still work but are deprecated — use `agent.swap()` and `agent.swapQuote()`. Similarly, `agent.investBuy()` and `agent.investSell()` are deprecated — use `agent.buy()` and `agent.sell()`.
 

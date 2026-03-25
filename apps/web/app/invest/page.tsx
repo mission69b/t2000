@@ -3,11 +3,11 @@ import Link from "next/link";
 import { InvestShowcase } from "./InvestShowcase";
 
 export const metadata: Metadata = {
-  title: "t2000 — Trade Account",
+  title: "t2000 — Investment Account",
   description:
     "Buy and sell crypto, earn yield while holding, and automate with strategies and DCA. All from natural language or CLI.",
   openGraph: {
-    title: "t2000 — Trade Account",
+    title: "t2000 — Investment Account",
     description:
       "Buy and sell crypto, earn yield while holding, and automate with strategies and DCA.",
     type: "website",
@@ -40,7 +40,7 @@ export default function InvestPage() {
         <section className="pb-16 sm:pb-24 border-b border-border">
           <div className="text-[10px] tracking-[0.2em] uppercase text-accent mb-6 flex items-center gap-3">
             <span className="block w-8 h-px bg-accent" />
-            Trade Account
+            Investment Account
           </div>
 
           <h1 className="font-serif text-[36px] sm:text-[clamp(42px,5vw,64px)] leading-[1.05] text-foreground mb-4 font-normal tracking-tight">
@@ -146,7 +146,7 @@ export default function InvestPage() {
                 t2000 portfolio — with yield
               </div>
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">Trade Portfolio</span>
+                <span className="text-foreground">Investment Portfolio</span>
                 {"\n"}
                 <span className="text-muted/30">─────────────────────────────────────────────</span>
                 {"\n"}
@@ -430,7 +430,7 @@ export default function InvestPage() {
           <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-5 tracking-tight">
             Give your agent an
             <br />
-            <em className="italic text-accent">trade account.</em>
+            <em className="italic text-accent">investment account.</em>
           </h2>
           <p className="text-muted text-[12px] sm:text-[13px] max-w-[460px] mx-auto mb-8 sm:mb-10 leading-[1.8]">
             Open source. Non-custodial. Built on Sui.

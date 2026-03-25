@@ -131,7 +131,7 @@ export function registerInit(program: Command) {
             `  ${pc.green('✓')} Checking  ` +
             `${pc.green('✓')} Savings  ` +
             `${pc.green('✓')} Credit  ` +
-            `${pc.green('✓')} Exchange  ` +
+            `${pc.green('✓')} Swap  ` +
             `${pc.green('✓')} Investment`
           );
 

@@ -36,7 +36,7 @@ export const chatDemos: ChatDemo[] = [
             ["Checking", "$69.60", ""],
             ["Savings", "$9.26 · 4.15% APY", ""],
             ["Credit", "-$1.00", "red"],
-            ["Trade", "$5.01 · +0.1%", "hi"],
+            ["Investment", "$5.01 · +0.1%", "hi"],
             ["Net Worth", "$82.87", "hi"],
           ]) +
           `<div style="margin-top:10px;font-size:11px;font-weight:600">📋 Action Items</div>` +
@@ -164,7 +164,7 @@ export const chatDemos: ChatDemo[] = [
               <td style="padding:4px 0;font-size:11px;color:#ff4757">-$130.40</td>
             </tr>
             <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
-              <td style="padding:4px 0;font-size:11px;color:rgba(255,255,255,0.35)">Trade</td>
+              <td style="padding:4px 0;font-size:11px;color:rgba(255,255,255,0.35)">Investment</td>
               <td style="padding:4px 0;font-size:11px">$5.01</td>
               <td style="padding:4px 0;font-size:11px;color:#00d68f">$205.01</td>
             </tr>
