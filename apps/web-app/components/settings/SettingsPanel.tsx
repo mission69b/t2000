@@ -143,7 +143,7 @@ export function SettingsPanel({
           <section className="space-y-3">
             <SectionHeader>Contacts</SectionHeader>
             {contacts.length === 0 ? (
-              <p className="text-sm text-dim">No saved contacts yet. Send to an address and you&apos;ll be prompted to save it.</p>
+              <p className="text-sm text-muted">No saved contacts yet. Send to an address and you&apos;ll be prompted to save it.</p>
             ) : (
               <div className="space-y-1">
                 {contacts.map((c) => (
@@ -153,7 +153,7 @@ export function SettingsPanel({
                   >
                     <div className="min-w-0">
                       <p className="text-sm text-foreground font-medium">{c.name}</p>
-                      <p className="text-xs text-dim font-mono truncate">{truncateAddress(c.address)}</p>
+                      <p className="text-xs text-muted font-mono truncate">{truncateAddress(c.address)}</p>
                     </div>
                     <button
                       onClick={() => onRemoveContact(c.address)}
@@ -210,7 +210,7 @@ export function SettingsPanel({
                 }}
                 onCancel={() => setEditingLimit(null)}
               />
-              <p className="text-xs text-dim">Tap a limit to customize. Limits help protect your account.</p>
+              <p className="text-xs text-muted">Tap a limit to customize. Limits help protect your account.</p>
             </div>
           </section>
 

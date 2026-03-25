@@ -57,7 +57,7 @@ function FeedItemCard({
       return (
         <div className="space-y-2 feed-row">
           <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm">
-            <span className="text-dim mr-1.5">t2</span>
+            <span className="text-muted mr-1.5">t2</span>
             <span className="whitespace-pre-line text-foreground">{data.text}</span>
           </div>
           {data.chips && data.chips.length > 0 && (
@@ -201,7 +201,7 @@ function FeedItemCard({
       return (
         <div className="space-y-2 feed-row">
           <div className="rounded-sm bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm">
-            <span className="text-dim mr-1.5">t2</span>
+            <span className="text-muted mr-1.5">t2</span>
             <span className="text-red-300">{data.message}</span>
           </div>
           {data.chips && data.chips.length > 0 && (
@@ -299,7 +299,7 @@ function TransactionHistoryCard({
     <div className="rounded-sm border border-border bg-surface p-4 space-y-1 feed-row">
       <p className="text-sm font-medium text-foreground mb-2">
         Recent Activity
-        <span className="text-xs text-dim font-normal ml-2">{transactions.length} txns</span>
+        <span className="text-xs text-muted font-normal ml-2">{transactions.length} txns</span>
       </p>
       <div className="divide-y divide-border">
         {visible.map((tx) => {
@@ -320,7 +320,7 @@ function TransactionHistoryCard({
                 <span className="text-base w-6 text-center shrink-0">{icon}</span>
                 <div className="min-w-0">
                   <p className="text-sm text-foreground font-medium">{label}</p>
-                  <p className="text-xs text-dim font-mono truncate">
+                  <p className="text-xs text-muted font-mono truncate">
                     {tx.counterparty ? truncAddr(tx.counterparty) : relativeTime(tx.timestamp)}
                   </p>
                 </div>
@@ -332,10 +332,10 @@ function TransactionHistoryCard({
                   </p>
                 )}
                 {tx.counterparty && (
-                  <p className="text-xs text-dim">{relativeTime(tx.timestamp)}</p>
+                  <p className="text-xs text-muted">{relativeTime(tx.timestamp)}</p>
                 )}
                 {!tx.counterparty && tx.asset && (
-                  <p className="text-xs text-dim">{tx.asset}</p>
+                  <p className="text-xs text-muted">{tx.asset}</p>
                 )}
               </div>
             </a>

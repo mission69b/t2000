@@ -175,7 +175,7 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
                 </p>
               )}
 
-              <p className="text-center text-xs text-dim pb-2">
+              <p className="text-center text-xs text-muted pb-2">
                 No accounts. No API keys. No sign-ups. Just tap and use.
               </p>
             </>

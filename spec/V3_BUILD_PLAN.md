@@ -2166,7 +2166,7 @@ The new P5-P9 code added logic to `intent-parser.ts`, `useChipFlow.ts`, and `ser
 | Priority | Medium — edge case but causes confusing UX for non-USDC swaps |
 |----------|---------------------------------------------------------------|
 | Est. | 2-3h |
-| Status | ⏳ |
+| Status | ✅ (already implemented in trade unification) |
 
 ---
 
@@ -2232,13 +2232,13 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 | Keyboard navigation for all chip flows | ✅ |
 | Screen reader labels on interactive elements | ✅ |
 | Focus management in slide-over panels (settings, services) | ✅ |
-| Color contrast ratio ≥ 4.5:1 for all text on dark bg | ⏳ (green-on-black may fail) |
+| Color contrast ratio ≥ 4.5:1 for all text on dark bg | ✅ (muted→#7b8494 5.43:1, dim→#596170 3.29:1 AA-large, accent #00d68f 10.7:1) |
 | `aria-live` regions for feed updates | ✅ |
 
 | Priority | Medium — important for production |
 |----------|----------------------------------|
 | Est. | 1 day |
-| Status | ✅ (core items done, contrast audit remaining) |
+| Status | ✅ |
 
 ---
 
@@ -2267,14 +2267,14 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 | **POL-1** | Sentinels chip flow | Low | 1-2 days | ⏳ |
 | **POL-2** | Update existing unit tests for P5-P9 | Medium | 45 min | ✅ |
 | **POL-3** | Performance pass | Medium | 1-2 days | ✅ |
-| **POL-4** | Swap cap for non-USDC assets | Medium | 2-3h | ⏳ |
+| **POL-4** | Swap cap for non-USDC assets | Medium | 2-3h | ✅ (already implemented) |
 | **POL-5** | Async service submit type | Low | 5 min | ✅ |
 | **POL-6** | LLM streaming responses | Low | 3-4h | ✅ |
 | **POL-7** | Shared service price logic | Low | 1h | ✅ |
 | **POL-8** | Service payment error recovery | Medium | 2-3h | ✅ |
 | **POL-9** | Accessibility pass | Medium | 1 day | ✅ |
 | **POL-10** | Security hardening | High (prod) | 1-2 days | ✅ |
-| **POL-11** | DCA & investment strategies chip flow | Medium | 1-2 days | ⏳ |
+| **POL-11** | DCA & investment strategies chip flow | Medium | 1-2 days | ✅ |
 
 ---
 
@@ -2311,7 +2311,7 @@ The SDK already has `DEFAULT_STRATEGIES` (bluechip, layer1, sui-heavy) in `const
 | Priority | Medium — differentiating feature |
 |----------|----------------------------------|
 | Est. | 1-2 days |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 

@@ -5,6 +5,8 @@ import { useCallback, useState } from 'react';
 export type ChipFlowPhase =
   | 'idle'
   | 'asset-select'     // picking an asset (trade/swap)
+  | 'strategy-select'  // picking an investment strategy (DCA)
+  | 'dca-frequency'    // choosing DCA frequency
   | 'l2-chips'         // showing sub-chips (amount, recipient, etc.)
   | 'quoting'          // fetching a swap quote
   | 'confirming'       // showing confirmation card
@@ -22,13 +24,15 @@ export interface SwapQuoteData {
 
 export interface ChipFlowState {
   phase: ChipFlowPhase;
-  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'swap'
+  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'swap', 'invest'
   subFlow: string | null;        // recipient name, asset type, etc.
   amount: number | null;
   recipient: string | null;
   asset: string | null;          // swap source asset (e.g. USDC for buy, BTC for sell)
   toAsset: string | null;        // swap destination asset
   quote: SwapQuoteData | null;   // swap quote data
+  strategy: string | null;       // DCA strategy key (e.g. 'bluechip')
+  frequency: 'daily' | 'weekly' | 'monthly' | null;
   message: string | null;        // AI context message
   result: ChipFlowResult | null;
   error: string | null;
@@ -54,6 +58,8 @@ const INITIAL_STATE: ChipFlowState = {
   asset: null,
   toAsset: null,
   quote: null,
+  strategy: null,
+  frequency: null,
   message: null,
   result: null,
   error: null,
@@ -72,9 +78,10 @@ export function useChipFlow() {
 
   const startFlow = useCallback((flow: string, context?: FlowContext) => {
     const needsAssetSelect = flow === 'swap';
+    const needsStrategy = flow === 'invest';
     setState({
       ...INITIAL_STATE,
-      phase: needsAssetSelect ? 'asset-select' : 'l2-chips',
+      phase: needsStrategy ? 'strategy-select' : needsAssetSelect ? 'asset-select' : 'l2-chips',
       flow,
       message: getFlowMessage(flow, context),
     });
@@ -107,12 +114,31 @@ export function useChipFlow() {
     });
   }, []);
 
-  const selectAmount = useCallback((amount: number) => {
+  const selectStrategy = useCallback((strategyKey: string, strategyName: string) => {
     setState((prev) => ({
       ...prev,
-      amount,
+      strategy: strategyKey,
+      subFlow: strategyName,
+      phase: 'l2-chips',
+      message: `${strategyName} strategy selected.\nHow much do you want to invest?`,
+    }));
+  }, []);
+
+  const selectFrequency = useCallback((frequency: 'daily' | 'weekly' | 'monthly') => {
+    setState((prev) => ({
+      ...prev,
+      frequency,
       phase: 'confirming',
     }));
+  }, []);
+
+  const selectAmount = useCallback((amount: number) => {
+    setState((prev) => {
+      if (prev.flow === 'invest' && prev.strategy) {
+        return { ...prev, amount, phase: 'dca-frequency', message: 'How often?' };
+      }
+      return { ...prev, amount, phase: 'confirming' };
+    });
   }, []);
 
   const setQuoting = useCallback((amount: number) => {
@@ -174,6 +200,8 @@ export function useChipFlow() {
     state,
     startFlow,
     selectAsset,
+    selectStrategy,
+    selectFrequency,
     selectAmount,
     setQuoting,
     setQuote,
@@ -217,6 +245,8 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
     }
     case 'swap':
       return 'What do you want to trade? Pick an asset:';
+    case 'invest':
+      return 'Choose an investment strategy:';
     default: return 'Choose an option:';
   }
 }

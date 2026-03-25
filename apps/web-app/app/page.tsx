@@ -55,7 +55,7 @@ export default function LandingPage() {
         {/* CTA */}
         <div className="space-y-3">
           <GoogleSignIn onClick={login} loading={isLoading} />
-          <p className="text-xs text-dim font-mono">
+          <p className="text-xs text-muted font-mono">
             No seed phrase. No keys. No downloads.
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function LandingPage() {
 
         {/* Footer */}
         <div className="space-y-4">
-          <p className="text-xs text-dim font-mono">
+          <p className="text-xs text-muted font-mono">
             Already use the CLI?{' '}
             <a
               href="https://www.npmjs.com/package/@t2000/cli"
@@ -90,7 +90,7 @@ export default function LandingPage() {
             </a>
           </p>
 
-          <div className="flex items-center justify-center gap-4 text-xs text-dim font-mono">
+          <div className="flex items-center justify-center gap-4 text-xs text-muted font-mono">
             <a href="https://t2000.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
               Privacy
             </a>

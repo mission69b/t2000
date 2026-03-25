@@ -13,6 +13,8 @@ import { ResultCard } from '@/components/dashboard/ResultCard';
 import { AmountChips } from '@/components/dashboard/AmountChips';
 import { FeedRenderer } from '@/components/dashboard/FeedRenderer';
 import { AssetSelector } from '@/components/dashboard/AssetSelector';
+import { StrategySelector } from '@/components/dashboard/StrategySelector';
+import { FrequencySelector } from '@/components/dashboard/FrequencySelector';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ServicesPanel } from '@/components/services/ServicesPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
@@ -54,6 +56,40 @@ function fmtToken(amount: number): string {
   if (amount > 0 && amount < 0.001) return amount.toFixed(8);
   if (amount > 0 && amount < 1) return amount.toFixed(6);
   return amount.toFixed(4);
+}
+
+interface DcaSchedule {
+  id: string;
+  strategy: string;
+  strategyName: string;
+  amount: number;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  createdAt: string;
+  enabled: boolean;
+}
+
+const DCA_STORAGE_KEY = 't2000_dca_schedules';
+
+function saveDcaSchedule(params: {
+  strategy: string;
+  strategyName: string;
+  amount: number;
+  frequency: 'daily' | 'weekly' | 'monthly';
+}): DcaSchedule {
+  const schedules: DcaSchedule[] = (() => {
+    try { return JSON.parse(localStorage.getItem(DCA_STORAGE_KEY) ?? '[]'); } catch { return []; }
+  })();
+
+  const schedule: DcaSchedule = {
+    id: `dca-${Date.now().toString(36)}`,
+    ...params,
+    createdAt: new Date().toISOString(),
+    enabled: true,
+  };
+
+  schedules.push(schedule);
+  localStorage.setItem(DCA_STORAGE_KEY, JSON.stringify(schedules));
+  return schedule;
 }
 
 function capForFlow(
@@ -542,6 +578,9 @@ function DashboardContent() {
             text: 'Here\'s what I can help with:\n\n• Swap — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Pay — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100" or "buy $50 BTC".',
           });
           break;
+        case 'invest':
+          chipFlow.startFlow('invest', flowContext);
+          break;
         case 'service':
           setServicesOpen(true);
           break;
@@ -694,6 +733,10 @@ function DashboardContent() {
       if (flow === 'receive') { executeIntent({ action: 'address' }); return; }
       if (flow === 'swap') {
         chipFlow.startFlow('swap', flowContext);
+        return;
+      }
+      if (flow === 'invest') {
+        chipFlow.startFlow('invest', flowContext);
         return;
       }
       if (flow === 'balance') { executeIntent({ action: 'balance' }); return; }
@@ -968,6 +1011,23 @@ function DashboardContent() {
           }
           break;
         }
+        case 'invest': {
+          const strategyKey = chipFlow.state.strategy;
+          const freq = chipFlow.state.frequency ?? 'weekly';
+          if (!strategyKey) throw new Error('No strategy selected');
+
+          const schedule = saveDcaSchedule({
+            strategy: strategyKey,
+            strategyName: chipFlow.state.subFlow ?? strategyKey,
+            amount,
+            frequency: freq,
+          });
+
+          const strategyResult = await sdk.strategyBuy({ strategy: strategyKey, amount });
+          txDigest = strategyResult.buys?.[0]?.tx ?? '';
+          flowLabel = `DCA started: $${amount}/${freq === 'daily' ? 'day' : freq === 'weekly' ? 'wk' : 'mo'} into ${chipFlow.state.subFlow ?? strategyKey} (ID: ${schedule.id})`;
+          break;
+        }
         default:
           throw new Error(`Unknown flow: ${flow}`);
       }
@@ -1048,6 +1108,20 @@ function DashboardContent() {
       return {
         title,
         confirmLabel,
+        details,
+      };
+    }
+
+    if (flow === 'invest') {
+      const strategy = chipFlow.state.subFlow ?? 'Strategy';
+      const freq = chipFlow.state.frequency ?? 'weekly';
+      details.push({ label: 'Strategy', value: strategy });
+      details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
+      details.push({ label: 'Frequency', value: freq.charAt(0).toUpperCase() + freq.slice(1) });
+      details.push({ label: 'Gas', value: 'Sponsored (per execution)' });
+      return {
+        title: `DCA into ${strategy}`,
+        confirmLabel: `Start $${amount.toFixed(0)}/${freq === 'daily' ? 'day' : freq === 'weekly' ? 'wk' : 'mo'} DCA`,
         details,
       };
     }
@@ -1140,6 +1214,23 @@ function DashboardContent() {
           />
         )}
 
+        {/* Strategy selection (invest/DCA) */}
+        {chipFlow.state.phase === 'strategy-select' && chipFlow.state.flow === 'invest' && (
+          <StrategySelector
+            message={chipFlow.state.message ?? undefined}
+            onSelect={(key, name) => chipFlow.selectStrategy(key, name)}
+          />
+        )}
+
+        {/* DCA frequency selection */}
+        {chipFlow.state.phase === 'dca-frequency' && chipFlow.state.flow === 'invest' && (
+          <FrequencySelector
+            amount={chipFlow.state.amount ?? 0}
+            strategyName={chipFlow.state.subFlow ?? 'Strategy'}
+            onSelect={(freq) => chipFlow.selectFrequency(freq)}
+          />
+        )}
+
         {/* Amount sub-chips */}
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow && chipFlow.state.flow !== 'send' && (() => {
           const f = chipFlow.state.flow!;
@@ -1222,7 +1313,7 @@ function DashboardContent() {
         )}
 
         {llmUsage.isOverFreeLimit && (
-          <p className="text-center text-xs text-dim">
+          <p className="text-center text-xs text-muted">
             AI queries today: {llmUsage.count} (costs apply)
           </p>
         )}

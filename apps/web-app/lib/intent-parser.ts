@@ -21,6 +21,7 @@ export type ParsedIntent =
   | { action: 'balance' }
   | { action: 'rates' }
   | { action: 'help' }
+  | { action: 'invest' }
   | { action: 'service'; serviceId: string }
   | null;
 
@@ -96,6 +97,11 @@ export function parseIntent(input: string): ParsedIntent {
   // "send $50 to alice", "send 50 to 0x...", "send alice $50"
   const sendMatch = parseSendIntent(text);
   if (sendMatch) return sendMatch;
+
+  // "dca into bluechip", "invest strategy", "start dca"
+  if (/^(dca|invest\s+strategy|start\s+dca|auto.?invest)/i.test(text)) {
+    return { action: 'invest' as const };
+  }
 
   // "buy $100 BTC", "invest $100 in SUI", "sell 0.001 BTC"
   const buyMatch = parseBuyIntent(text);

@@ -57,7 +57,7 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
           t2000
         </span>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-dim">
+          <span className="text-xs font-mono text-muted">
             {truncateAddress(address)}
           </span>
           <button
@@ -134,7 +134,7 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
           {/* Assets */}
           {assets.length > 0 && (
             <div className="px-4 py-3 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-dim mb-1">Assets</p>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Assets</p>
               {assets.map((a) => (
                 <Row key={a.symbol} label={a.symbol} value={a.amount} />
               ))}

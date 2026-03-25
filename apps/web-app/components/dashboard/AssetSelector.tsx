@@ -40,7 +40,7 @@ export function AssetSelector({ flow, selectedFrom, message, onSelect }: AssetSe
           >
             <span className="text-xl">{asset.icon}</span>
             <span className="text-sm font-semibold text-foreground">{asset.label}</span>
-            <span className="text-[10px] text-dim leading-tight">{asset.description}</span>
+            <span className="text-[10px] text-muted leading-tight">{asset.description}</span>
           </button>
         ))}
       </div>

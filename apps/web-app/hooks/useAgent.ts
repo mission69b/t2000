@@ -31,6 +31,11 @@ export class ServiceDeliveryError extends Error {
   }
 }
 
+export interface StrategyBuyResult {
+  buys: { asset: string; amount: number; tx: string }[];
+  totalInvested: number;
+}
+
 export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<{ tx: string }>;
@@ -39,6 +44,7 @@ export interface AgentActions {
   borrow(params: { amount: number }): Promise<{ tx: string }>;
   repay(params: { amount: number }): Promise<{ tx: string }>;
   swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
+  strategyBuy(params: { strategy: string; amount: number }): Promise<StrategyBuyResult>;
   claimRewards(): Promise<{ tx: string }>;
   payService(params: { serviceId: string; fields: Record<string, string> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
@@ -139,6 +145,31 @@ export function useAgent() {
 
           async swap({ from, to, amount }) {
             return sponsoredTransaction('swap', { amount, fromAsset: from, toAsset: to });
+          },
+
+          async strategyBuy({ strategy, amount }) {
+            const ALLOCATIONS: Record<string, Record<string, number>> = {
+              bluechip: { BTC: 50, ETH: 30, SUI: 20 },
+              layer1: { ETH: 50, SUI: 50 },
+              'sui-heavy': { BTC: 20, ETH: 20, SUI: 60 },
+              'all-weather': { BTC: 30, ETH: 20, SUI: 20, GOLD: 30 },
+              'safe-haven': { BTC: 50, GOLD: 50 },
+            };
+            const alloc = ALLOCATIONS[strategy];
+            if (!alloc) throw new Error(`Unknown strategy: ${strategy}`);
+
+            const buys: { asset: string; amount: number; tx: string }[] = [];
+            for (const [asset, pct] of Object.entries(alloc)) {
+              const assetAmount = (amount * pct) / 100;
+              if (assetAmount < 0.01) continue;
+              const res = await sponsoredTransaction('swap', {
+                amount: assetAmount,
+                fromAsset: 'USDC',
+                toAsset: asset,
+              });
+              buys.push({ asset, amount: assetAmount, tx: res.tx });
+            }
+            return { buys, totalInvested: amount };
           },
 
           async claimRewards() {
