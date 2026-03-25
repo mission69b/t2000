@@ -101,6 +101,7 @@ export function deriveContextualChips(
       id: 'earnings',
       icon: '💵',
       label: `Earned $${state.overnightEarnings.toFixed(2)} overnight`,
+      chipFlow: 'report',
       priority: 50,
       dismissible: true,
     });
@@ -152,6 +153,7 @@ export function deriveContextualChips(
         id: 'good',
         icon: '✅',
         label: `Earning ${state.savingsRate.toFixed(1)}% on $${Math.floor(state.savings)}`,
+        chipFlow: 'report',
         priority: 10,
       });
     }
