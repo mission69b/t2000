@@ -63,7 +63,7 @@ function capForFlow(
 ): number {
   switch (flow) {
     case 'save': return bal.cash;
-    case 'send': return bal.cash;
+    case 'send': return bal.usdc;
     case 'invest': return bal.usdc;
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
@@ -1124,13 +1124,13 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (
           <SendRecipientInput
             contacts={contactsHook.contacts}
-            onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.cash)}
+            onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.usdc)}
             onSubmit={(input) => {
               const resolved = contactsHook.resolveContact(input);
               if (resolved) {
-                chipFlow.selectRecipient(resolved, input, balance.cash);
+                chipFlow.selectRecipient(resolved, input, balance.usdc);
               } else {
-                chipFlow.selectRecipient(input, undefined, balance.cash);
+                chipFlow.selectRecipient(input, undefined, balance.usdc);
               }
             }}
           />
@@ -1140,7 +1140,7 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
           <AmountChips
             amounts={getAmountPresets('send', balance)}
-            allLabel={`All $${fmtDollar(balance.cash)}`}
+            allLabel={`All $${fmtDollar(balance.usdc)}`}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
           />

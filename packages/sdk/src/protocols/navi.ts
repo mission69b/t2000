@@ -53,8 +53,9 @@ async function refreshOracle(
   tx: Transaction,
   client: SuiJsonRpcClient,
   address: string,
-  options?: { skipPythUpdate?: boolean },
+  options?: { skipPythUpdate?: boolean; skipOracle?: boolean },
 ): Promise<void> {
+  if (options?.skipOracle) return;
   const origInfo = console.info;
   const origWarn = console.warn;
   console.info = (...args: unknown[]) => {
@@ -483,7 +484,10 @@ export async function buildRepayTx(
   const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
   const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
 
-  await refreshOracle(tx, client, address, { skipPythUpdate: options.sponsored });
+  await refreshOracle(tx, client, address, {
+    skipPythUpdate: options.sponsored,
+    skipOracle: options.sponsored,
+  });
 
   try {
     await repayCoinPTB(tx, assetInfo.type, repayCoin as never, {
