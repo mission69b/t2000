@@ -6,6 +6,20 @@ import { TOOL_EXECUTORS, getEstimatedCost, type ToolCall, type NormalizedRespons
 
 const MAX_ITERATIONS = 10;
 const MAX_RESULT_SIZE = 4000;
+const MAX_HISTORY = 20;
+
+function trimMessages(msgs: ChatMessage[]): ChatMessage[] {
+  if (msgs.length <= MAX_HISTORY) return msgs;
+  let trimmed = msgs.slice(-MAX_HISTORY);
+  while (
+    trimmed.length > 0 &&
+    (trimmed[0].role === 'tool' ||
+      (trimmed[0].role === 'assistant' && trimmed[0].tool_calls?.length))
+  ) {
+    trimmed = trimmed.slice(1);
+  }
+  return trimmed;
+}
 
 export interface AgentStep {
   tool: string;
@@ -62,10 +76,7 @@ export function useAgentLoop() {
     let emptyRetries = 0;
     const toolCallCounts = new Map<string, number>();
 
-    if (conversationRef.current.length > 20) {
-      conversationRef.current = conversationRef.current.slice(-20);
-    }
-
+    conversationRef.current = trimMessages(conversationRef.current);
     conversationRef.current.push({ role: 'user', content: message });
 
     while (iterations < MAX_ITERATIONS && !cancelledRef.current) {
@@ -297,9 +308,7 @@ export function useAgentLoop() {
   }, []);
 
   const trimHistory = useCallback(() => {
-    if (conversationRef.current.length > 20) {
-      conversationRef.current = conversationRef.current.slice(-20);
-    }
+    conversationRef.current = trimMessages(conversationRef.current);
   }, []);
 
   return { run, cancel, clearHistory, trimHistory, status, totalCost };

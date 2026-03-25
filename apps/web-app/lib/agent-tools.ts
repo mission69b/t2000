@@ -237,12 +237,12 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
     },
     {
       name: 'translate',
-      description: 'Translate text to another language via DeepL. Cost: $0.005.',
+      description: 'Translate text to another language via Google Translate. Cost: $0.005.',
       input_schema: {
         type: 'object' as const,
         properties: {
           text: { type: 'string', description: 'Text to translate' },
-          target_language: { type: 'string', description: 'Target language (e.g. "Spanish", "ja", "fr")' },
+          target_language: { type: 'string', description: 'ISO 639-1 language code: "es" for Spanish, "ja" for Japanese, "fr" for French, "de" for German, "zh" for Chinese, "ko" for Korean, "pt" for Portuguese, "it" for Italian, "ar" for Arabic, "hi" for Hindi' },
         },
         required: ['text', 'target_language'],
       },
@@ -304,12 +304,12 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
     },
     {
       name: 'search_flights',
-      description: 'Search for flights between airports. Cost: $0.01. For return trips, call twice (outbound + return). Infer reasonable dates from the user\'s message and current date.',
+      description: 'Search for flights between airports. Cost: $0.01. For return trips, call twice (outbound + return). Infer reasonable dates from the user\'s message and current date. IMPORTANT: You MUST use 3-letter IATA airport codes, NOT city names. Convert cities: NYC=JFK, Tokyo=NRT, London=LHR, Bangkok=BKK, Hong Kong=HKG, Paris=CDG, Sydney=SYD, LA=LAX, SF=SFO, Singapore=SIN, Seoul=ICN, Dubai=DXB, Delhi=DEL, Beijing=PEK, Shanghai=PVG.',
       input_schema: {
         type: 'object' as const,
         properties: {
-          from: { type: 'string', description: 'Departure city or airport code (e.g. "SYD", "BKK")' },
-          to: { type: 'string', description: 'Arrival city or airport code (e.g. "NRT", "HKG")' },
+          from: { type: 'string', description: 'IATA airport code (3 letters, e.g. "JFK", "BKK", "SYD")' },
+          to: { type: 'string', description: 'IATA airport code (3 letters, e.g. "NRT", "HKG", "LHR")' },
           date: { type: 'string', description: 'Departure date in YYYY-MM-DD format (e.g. "2026-04-15")' },
         },
         required: ['from', 'to', 'date'],

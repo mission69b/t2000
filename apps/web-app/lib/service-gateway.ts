@@ -55,7 +55,7 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     url: `${GATEWAY_BASE}/translate/v1/translate`,
     price: '0.005',
     transformBody: (f) => ({
-      text: f.text,
+      q: f.text,
       target: f.target,
     }),
   },
