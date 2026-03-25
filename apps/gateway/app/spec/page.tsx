@@ -150,25 +150,33 @@ export const suiCharge = Method.from({
               <CodeBlock
                 code={`import { Method, Receipt } from 'mppx';
 import { suiCharge } from './method.js';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { parseAmountToRaw } from './utils.js';
 
 export function sui(options: {
   currency: string;
   recipient: string;
   rpcUrl?: string;
+  network?: 'mainnet' | 'testnet' | 'devnet';
 }) {
-  const client = new SuiClient({
-    url: options.rpcUrl ?? getFullnodeUrl('mainnet'),
+  const network = options.network ?? 'mainnet';
+  const client = new SuiJsonRpcClient({
+    url: options.rpcUrl ?? getJsonRpcFullnodeUrl(network),
+    network,
   });
+  const normalizedRecipient = normalizeSuiAddress(options.recipient);
 
   return Method.toServer(suiCharge, {
     defaults: {
       currency: options.currency,
       recipient: options.recipient,
     },
-    async verify({ credential, request }) {
+    async verify({ credential }) {
+      const digest = credential.payload.digest;
+
       const tx = await client.getTransactionBlock({
-        digest: credential.payload.digest,
+        digest,
         options: { showEffects: true, showBalanceChanges: true },
       });
 
@@ -178,22 +186,23 @@ export function sui(options: {
       const payment = (tx.balanceChanges ?? []).find(bc =>
         bc.coinType === options.currency &&
         typeof bc.owner === 'object' &&
+        bc.owner !== null &&
         'AddressOwner' in bc.owner &&
-        bc.owner.AddressOwner === options.recipient &&
+        normalizeSuiAddress(bc.owner.AddressOwner) === normalizedRecipient &&
         Number(bc.amount) > 0
       );
 
       if (!payment)
         throw new Error('Payment not found in balance changes');
 
-      const transferred = Number(payment.amount) / 1e6;
-      const requested = Number(request.amount);
-      if (transferred < requested)
-        throw new Error(\`Paid $\${transferred} < requested $\${requested}\`);
+      const transferredRaw = BigInt(payment.amount);
+      const requestedRaw = parseAmountToRaw(credential.challenge.request.amount, 6);
+      if (transferredRaw < requestedRaw)
+        throw new Error(\`Transferred \${transferredRaw} < requested \${requestedRaw}\`);
 
       return Receipt.from({
         method: 'sui',
-        reference: credential.payload.digest,
+        reference: digest,
         status: 'success',
         timestamp: new Date().toISOString(),
       });
@@ -214,8 +223,12 @@ import { suiCharge } from './method.js';
 import { Transaction } from '@mysten/sui/transactions';
 import { fetchCoins, parseAmountToRaw } from './utils.js';
 
-export function sui(options: { client: SuiClient; signer: Ed25519Keypair }) {
-  const address = options.signer.getPublicKey().toSuiAddress();
+export function sui(options: {
+  client: SuiJsonRpcClient;
+  signer: TransactionSigner;
+  execute?: (tx: Transaction) => Promise<{ digest: string }>;
+}) {
+  const address = options.signer.getAddress();
 
   return Method.toClient(suiCharge, {
     async createCredential({ challenge }) {
@@ -237,10 +250,17 @@ export function sui(options: { client: SuiClient; signer: Ed25519Keypair }) {
       const [payment] = tx.splitCoins(primary, [amountRaw]);
       tx.transferObjects([payment], recipient);
 
-      const result = await options.client.signAndExecuteTransaction({
-        signer: options.signer, transaction: tx,
-      });
-      await options.client.waitForTransaction({ digest: result.digest });
+      let result;
+      if (options.execute) {
+        result = await options.execute(tx);
+      } else {
+        const built = await tx.build({ client: options.client });
+        const { signature } = await options.signer.signTransaction(built);
+        result = await options.client.executeTransactionBlock({
+          transactionBlock: built, signature,
+          options: { showEffects: true },
+        });
+      }
 
       return Credential.serialize({
         challenge,

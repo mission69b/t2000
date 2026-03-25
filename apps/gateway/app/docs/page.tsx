@@ -95,10 +95,13 @@ export const POST = Mppx.create({ methods: [sui({ currency: SUI_USDC, recipient:
                 <CodeBlock
                   code={`import { Mppx } from 'mppx/client';
 import { sui } from '@t2000/mpp-sui/client';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
-const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
+const client = new SuiJsonRpcClient({
+  url: getJsonRpcFullnodeUrl('mainnet'),
+  network: 'mainnet',
+});
 const signer = Ed25519Keypair.deriveKeypair('your mnemonic');
 
 const mppx = Mppx.create({

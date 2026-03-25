@@ -144,15 +144,24 @@ import { sui } from '@t2000/mpp-sui/client';
 
 const method = sui({
   client: suiJsonRpcClient,    // SuiJsonRpcClient instance
-  signer: ed25519Keypair,      // Ed25519Keypair for signing
+  signer: ed25519Keypair,      // TransactionSigner (Ed25519Keypair works)
+  execute: async (tx) => {     // Optional: custom execution (gas sponsor, etc.)
+    return myGasManager.execute(tx);
+  },
 });
 ```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `client` | `SuiJsonRpcClient` | Yes | Sui RPC client instance |
+| `signer` | `TransactionSigner` | Yes | Any object with `getAddress()` and `signTransaction()` — `Ed25519Keypair` works |
+| `execute` | `(tx: Transaction) => Promise<{ digest: string }>` | No | Override transaction execution (e.g. gas sponsor/manager) |
 
 The client:
 - Fetches all USDC coins (handles Sui pagination, max 50 per page)
 - Checks balance before building the transaction
 - Merges fragmented coins into a single payment
-- Signs and broadcasts the transaction
+- Signs and broadcasts the transaction (or delegates to `execute` if provided)
 - Returns the digest as the payment credential
 
 ## Utilities
