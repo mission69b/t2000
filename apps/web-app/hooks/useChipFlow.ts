@@ -32,7 +32,7 @@ export interface ChipFlowState {
   toAsset: string | null;        // swap destination asset
   quote: SwapQuoteData | null;   // swap quote data
   strategy: string | null;       // DCA strategy key (e.g. 'bluechip')
-  frequency: 'daily' | 'weekly' | 'monthly' | null;
+  frequency: 'once' | 'daily' | 'weekly' | 'monthly' | null;
   message: string | null;        // AI context message
   result: ChipFlowResult | null;
   error: string | null;
@@ -124,7 +124,7 @@ export function useChipFlow() {
     }));
   }, []);
 
-  const selectFrequency = useCallback((frequency: 'daily' | 'weekly' | 'monthly') => {
+  const selectFrequency = useCallback((frequency: 'once' | 'daily' | 'weekly' | 'monthly') => {
     setState((prev) => ({
       ...prev,
       frequency,

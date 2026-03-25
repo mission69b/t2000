@@ -1,15 +1,17 @@
 'use client';
 
+export type InvestFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+
 interface FrequencySelectorProps {
-  onSelect: (frequency: 'daily' | 'weekly' | 'monthly') => void;
+  onSelect: (frequency: InvestFrequency) => void;
   amount: number;
   strategyName: string;
 }
 
-const OPTIONS: { value: 'daily' | 'weekly' | 'monthly'; label: string; sublabel: string }[] = [
+const OPTIONS: { value: InvestFrequency; label: string; sublabel: string }[] = [
+  { value: 'once', label: 'One-time', sublabel: 'Buy now' },
   { value: 'weekly', label: 'Weekly', sublabel: 'Every Monday' },
-  { value: 'daily', label: 'Daily', sublabel: 'Every day' },
-  { value: 'monthly', label: 'Monthly', sublabel: '1st of each month' },
+  { value: 'monthly', label: 'Monthly', sublabel: '1st of month' },
 ];
 
 export function FrequencySelector({ onSelect, amount, strategyName }: FrequencySelectorProps) {
@@ -23,7 +25,11 @@ export function FrequencySelector({ onSelect, amount, strategyName }: FrequencyS
           <button
             key={opt.value}
             onClick={() => onSelect(opt.value)}
-            className="flex-1 rounded-sm border border-border bg-panel p-3 text-center transition hover:border-accent/40 hover:bg-accent-dim active:scale-[0.98] space-y-1"
+            className={`flex-1 rounded-sm border p-3 text-center transition active:scale-[0.98] space-y-1 ${
+              opt.value === 'once'
+                ? 'border-accent/40 bg-accent-dim hover:bg-accent/20'
+                : 'border-border bg-panel hover:border-accent/40 hover:bg-accent-dim'
+            }`}
           >
             <p className="text-sm font-medium text-foreground">{opt.label}</p>
             <p className="text-[10px] text-muted">{opt.sublabel}</p>

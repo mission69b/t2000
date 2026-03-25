@@ -15,6 +15,7 @@ import { FeedRenderer } from '@/components/dashboard/FeedRenderer';
 import { AssetSelector } from '@/components/dashboard/AssetSelector';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import { FrequencySelector } from '@/components/dashboard/FrequencySelector';
+import type { DcaSchedule } from '@/hooks/useDcaSchedules';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ServicesPanel } from '@/components/services/ServicesPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
@@ -58,16 +59,6 @@ function fmtToken(amount: number): string {
   return amount.toFixed(4);
 }
 
-interface DcaSchedule {
-  id: string;
-  strategy: string;
-  strategyName: string;
-  amount: number;
-  frequency: 'daily' | 'weekly' | 'monthly';
-  createdAt: string;
-  enabled: boolean;
-}
-
 const DCA_STORAGE_KEY = 't2000_dca_schedules';
 
 function saveDcaSchedule(params: {
@@ -76,9 +67,7 @@ function saveDcaSchedule(params: {
   amount: number;
   frequency: 'daily' | 'weekly' | 'monthly';
 }): DcaSchedule {
-  const schedules: DcaSchedule[] = (() => {
-    try { return JSON.parse(localStorage.getItem(DCA_STORAGE_KEY) ?? '[]'); } catch { return []; }
-  })();
+  const schedules: DcaSchedule[] = getDcaSchedules();
 
   const schedule: DcaSchedule = {
     id: `dca-${Date.now().toString(36)}`,
@@ -90,6 +79,15 @@ function saveDcaSchedule(params: {
   schedules.push(schedule);
   localStorage.setItem(DCA_STORAGE_KEY, JSON.stringify(schedules));
   return schedule;
+}
+
+function getDcaSchedules(): DcaSchedule[] {
+  try { return JSON.parse(localStorage.getItem(DCA_STORAGE_KEY) ?? '[]'); } catch { return []; }
+}
+
+function removeDcaSchedule(id: string): void {
+  const schedules = getDcaSchedules().filter((s) => s.id !== id);
+  localStorage.setItem(DCA_STORAGE_KEY, JSON.stringify(schedules));
 }
 
 function capForFlow(
@@ -1014,7 +1012,7 @@ function DashboardContent() {
         case 'invest': {
           const strategyKey = chipFlow.state.strategy;
           if (!strategyKey) throw new Error('No strategy selected');
-          const freq = chipFlow.state.frequency ?? 'weekly';
+          const freq = chipFlow.state.frequency ?? 'once';
           const strategyName = chipFlow.state.subFlow ?? strategyKey;
 
           const strategyResult = await sdk.strategyBuy({ strategy: strategyKey, amount });
@@ -1029,12 +1027,15 @@ function DashboardContent() {
             flowLabel = `Invested $${amount.toFixed(2)} into ${strategyName} (${bought})`;
           }
 
-          saveDcaSchedule({
-            strategy: strategyKey,
-            strategyName,
-            amount,
-            frequency: freq,
-          });
+          if (freq !== 'once') {
+            saveDcaSchedule({
+              strategy: strategyKey,
+              strategyName,
+              amount,
+              frequency: freq,
+            });
+            flowLabel += ` — repeats ${freq}`;
+          }
           break;
         }
         default:
@@ -1124,14 +1125,16 @@ function DashboardContent() {
 
     if (flow === 'invest') {
       const strategy = chipFlow.state.subFlow ?? 'Strategy';
-      const freq = chipFlow.state.frequency ?? 'weekly';
-      const freqLabel = freq.charAt(0).toUpperCase() + freq.slice(1);
+      const freq = chipFlow.state.frequency ?? 'once';
+      const isRecurring = freq !== 'once';
       details.push({ label: 'Strategy', value: strategy });
       details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
-      details.push({ label: 'Repeat', value: `${freqLabel} (saved as preference)` });
+      if (isRecurring) {
+        details.push({ label: 'Repeat', value: freq.charAt(0).toUpperCase() + freq.slice(1) });
+      }
       details.push({ label: 'Gas', value: 'Sponsored' });
       return {
-        title: `Invest into ${strategy}`,
+        title: isRecurring ? `DCA into ${strategy}` : `Invest into ${strategy}`,
         confirmLabel: `Invest $${amount.toFixed(0)} into ${strategy}`,
         details,
       };
