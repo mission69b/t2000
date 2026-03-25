@@ -10,7 +10,8 @@ export type FeedItemType =
   | 'audio'
   | 'error'
   | 'contact-prompt'
-  | 'transaction-history';
+  | 'transaction-history'
+  | 'agent-response';
 
 export interface FeedItem {
   id: string;
@@ -31,7 +32,15 @@ export type FeedItemData =
   | { type: 'audio'; url: string; title: string; cost?: string }
   | { type: 'error'; message: string; chips?: { label: string; flow: string }[] }
   | { type: 'contact-prompt'; address: string }
-  | { type: 'transaction-history'; transactions: TxHistoryEntry[]; network: string };
+  | { type: 'transaction-history'; transactions: TxHistoryEntry[]; network: string }
+  | { type: 'agent-response'; steps: AgentStepData[]; text?: string; totalCost?: number; status: 'running' | 'done' | 'error'; error?: string };
+
+export interface AgentStepData {
+  tool: string;
+  status: 'running' | 'done' | 'error';
+  cost?: number;
+  error?: string;
+}
 
 export interface TxHistoryEntry {
   digest: string;

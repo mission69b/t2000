@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@mysten/dapp-kit": "^1.0.4",
     "@mysten/sui": "^2.9.1",
     "@mysten/zklogin": "^0.8.1",

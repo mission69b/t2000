@@ -136,7 +136,13 @@ async function callGateway(
   const contentType = serviceResponse.headers.get('content-type') ?? '';
   let result: unknown;
 
-  if (contentType.includes('application/json')) {
+  if (contentType.startsWith('image/') || contentType.startsWith('audio/')) {
+    const buffer = await serviceResponse.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    const mimeType = contentType.split(';')[0].trim();
+    const mediaType = contentType.startsWith('image/') ? 'image' : 'audio';
+    result = { type: mediaType, dataUri: `data:${mimeType};base64,${base64}` };
+  } else if (contentType.includes('application/json')) {
     result = await serviceResponse.json();
   } else {
     result = await serviceResponse.text();

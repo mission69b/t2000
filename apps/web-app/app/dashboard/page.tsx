@@ -20,8 +20,8 @@ import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ServicesPanel } from '@/components/services/ServicesPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
-import { useLlm } from '@/hooks/useLlm';
-import { useLlmUsage } from '@/hooks/useLlmUsage';
+import { useAgentLoop, type AgentStep } from '@/hooks/useAgentLoop';
+import type { AgentStepData } from '@/lib/feed-types';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
@@ -207,11 +207,10 @@ function DashboardContent() {
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
   const chipFlow = useChipFlow();
   const feed = useFeed();
-  const llm = useLlm();
-  const llmUsage = useLlmUsage();
   const contactsHook = useContacts(address);
   const dcaHook = useDcaSchedules(address);
   const { agent } = useAgent();
+  const agentLoop = useAgentLoop();
   const balanceQuery = useBalance(address);
   const incomingQuery = useQuery({
     queryKey: ['incoming-tx', address],
@@ -825,24 +824,70 @@ function DashboardContent() {
 
       if (!address) return;
 
-      // LLM rate limit check
-      if (llmUsage.shouldWarn) {
-        feed.addItem({
-          type: 'ai-text',
-          text: `You've used ${llmUsage.FREE_TIER_LIMIT} free AI queries today. Additional queries may incur a small cost from your balance.`,
-        });
-      }
-
-      llmUsage.increment();
+      const email = decodeJwtEmail(session?.jwt) ?? '';
       const balanceCtx = `Total: $${balance.total.toFixed(2)}, Cash: $${balance.cash.toFixed(2)}${balance.investments > 0 ? `, Investments: $${balance.investments.toFixed(2)}` : ''}, Savings: $${balance.savings.toFixed(2)}${balance.borrows > 0 ? `, Debt: $${balance.borrows.toFixed(2)}` : ''}`;
 
-      feed.addItem({ type: 'ai-text', text: '' });
-      const response = await llm.queryStream(text, address, balanceCtx, (partialText) => {
-        feed.updateLastItem(() => ({ type: 'ai-text', text: partialText }));
+      feed.addItem({
+        type: 'agent-response',
+        steps: [],
+        status: 'running',
       });
-      feed.updateLastItem(() => response);
+
+      const stepsAccum: AgentStepData[] = [];
+
+      await agentLoop.run(text, {
+        address,
+        email,
+        balanceSummary: balanceCtx,
+        budget: 0.50,
+      }, {
+        onStep: (step: AgentStep) => {
+          stepsAccum.push({ ...step });
+          feed.updateLastItem(() => ({
+            type: 'agent-response',
+            steps: [...stepsAccum],
+            status: 'running',
+          }));
+        },
+        onStepUpdate: (tool: string, update: Partial<AgentStep>) => {
+          const idx = stepsAccum.findIndex((s) => s.tool === tool && s.status === 'running');
+          if (idx !== -1) {
+            stepsAccum[idx] = { ...stepsAccum[idx], ...update };
+          }
+          feed.updateLastItem(() => ({
+            type: 'agent-response',
+            steps: [...stepsAccum],
+            status: 'running',
+          }));
+        },
+        onText: (responseText: string) => {
+          feed.updateLastItem(() => ({
+            type: 'agent-response',
+            steps: [...stepsAccum],
+            text: responseText,
+            status: 'done',
+          }));
+        },
+        onConfirmNeeded: async (tool: string, _args: Record<string, unknown>, cost: number) => {
+          const toolLabel = tool.replace(/_/g, ' ');
+          return window.confirm(`Approve ${toolLabel}? Estimated cost: $${cost.toFixed(2)}`);
+        },
+        onDone: (totalCost: number) => {
+          feed.updateLastItem((prev) => {
+            if (prev.type !== 'agent-response') return prev;
+            return { ...prev, totalCost, status: 'done' as const };
+          });
+          balanceQuery.refetch();
+        },
+        onError: (error: string) => {
+          feed.updateLastItem((prev) => {
+            if (prev.type !== 'agent-response') return prev;
+            return { ...prev, status: 'error' as const, error, steps: [...stepsAccum] };
+          });
+        },
+      });
     },
-    [feed, executeIntent, llm, llmUsage, address],
+    [feed, executeIntent, address, session, balance, agentLoop, balanceQuery],
   );
 
   const handleFeedChipClick = useCallback(
@@ -1291,22 +1336,13 @@ function DashboardContent() {
           />
         )}
 
-        {/* LLM loading indicator */}
-        {llm.loading && (
+        {/* Agent loading indicator */}
+        {agentLoop.status === 'running' && (
           <div className="flex items-center gap-2 px-2">
-            <div className="flex gap-1">
-              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce [animation-delay:0ms]" />
-              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce [animation-delay:150ms]" />
-              <span className="h-2 w-2 rounded-full bg-accent/40 animate-bounce [animation-delay:300ms]" />
+            <div className="h-4 w-full max-w-[200px] rounded-full overflow-hidden bg-border/30">
+              <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
             </div>
-            <span className="text-xs text-muted">Thinking...</span>
           </div>
-        )}
-
-        {llmUsage.isOverFreeLimit && (
-          <p className="text-center text-xs text-muted">
-            AI queries today: {llmUsage.count} (costs apply)
-          </p>
         )}
 
         <div ref={feedEndRef} />
@@ -1317,20 +1353,36 @@ function DashboardContent() {
         <div className="mx-auto max-w-xl space-y-3">
           <InputBar
             onSubmit={handleInputSubmit}
-            disabled={chipFlow.state.phase === 'executing' || llm.loading}
+            disabled={chipFlow.state.phase === 'executing' || agentLoop.status === 'running'}
           />
-          <ChipBar
-            onChipClick={handleChipClick}
-            activeFlow={chipFlow.state.flow}
-            disabled={chipFlow.state.phase === 'executing'}
-          />
-          {isInFlow && chipFlow.state.phase !== 'result' && (
-            <button
-              onClick={chipFlow.reset}
-              className="w-full text-center text-xs text-muted hover:text-foreground transition py-1"
-            >
-              Cancel
-            </button>
+          {agentLoop.status === 'running' ? (
+            <div className="flex items-center justify-between">
+              <button
+                onClick={agentLoop.cancel}
+                className="flex items-center gap-2 rounded-sm border border-border bg-surface px-4 py-2 text-sm text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
+              >
+                <span className="text-base">■</span> Stop
+              </button>
+              {agentLoop.totalCost > 0 && (
+                <span className="text-xs text-muted">${agentLoop.totalCost.toFixed(3)} spent</span>
+              )}
+            </div>
+          ) : (
+            <>
+              <ChipBar
+                onChipClick={handleChipClick}
+                activeFlow={chipFlow.state.flow}
+                disabled={chipFlow.state.phase === 'executing'}
+              />
+              {isInFlow && chipFlow.state.phase !== 'result' && (
+                <button
+                  onClick={chipFlow.reset}
+                  className="w-full text-center text-xs text-muted hover:text-foreground transition py-1"
+                >
+                  Cancel
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

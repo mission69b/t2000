@@ -232,9 +232,103 @@ function FeedItemCard({
     case 'transaction-history':
       return <TransactionHistoryCard transactions={data.transactions} network={data.network} />;
 
+    case 'agent-response':
+      return <AgentResponseCard data={data} />;
+
     default:
       return null;
   }
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  get_balance: 'Checking balance',
+  get_rates: 'Checking rates',
+  get_history: 'Loading history',
+  get_portfolio: 'Checking portfolio',
+  get_health: 'Checking health',
+  web_search: 'Searching web',
+  get_news: 'Fetching news',
+  get_crypto_price: 'Fetching prices',
+  get_stock_quote: 'Fetching quote',
+  convert_currency: 'Converting currency',
+  translate: 'Translating',
+  send_email: 'Sending email',
+  shorten_url: 'Shortening URL',
+  generate_qr: 'Generating QR',
+  run_code: 'Running code',
+  ask_ai: 'Asking AI',
+  search_flights: 'Searching flights',
+  take_screenshot: 'Taking screenshot',
+  security_scan: 'Scanning URL',
+  generate_image: 'Generating image',
+  text_to_speech: 'Converting to speech',
+  send_postcard: 'Sending postcard',
+  buy_gift_card: 'Buying gift card',
+};
+
+function AgentResponseCard({ data }: { data: Extract<import('@/lib/feed-types').FeedItemData, { type: 'agent-response' }> }) {
+  const [costExpanded, setCostExpanded] = React.useState(false);
+  const hasSteps = data.steps.length > 0;
+  const isDone = data.status === 'done';
+  const isError = data.status === 'error';
+
+  return (
+    <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm space-y-2 feed-row">
+      {hasSteps && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+          {data.steps.map((step, i) => (
+            <span key={i} className="flex items-center gap-1">
+              {step.status === 'done' && <span className="text-accent">✓</span>}
+              {step.status === 'running' && (
+                <span className="h-3 w-3 animate-spin rounded-full border border-accent/30 border-t-accent" />
+              )}
+              {step.status === 'error' && <span className="text-red-400">✗</span>}
+              <span>{TOOL_LABELS[step.tool] ?? step.tool.replace(/_/g, ' ')}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {data.status === 'running' && !data.text && (
+        <div className="h-3 w-full max-w-[160px] rounded-full overflow-hidden bg-border/30">
+          <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
+        </div>
+      )}
+
+      {data.text && (
+        <div>
+          <span className="text-muted mr-1.5">t2</span>
+          <span className="whitespace-pre-line text-foreground">{data.text}</span>
+        </div>
+      )}
+
+      {isError && data.error && (
+        <div className="text-red-300 text-xs">{data.error}</div>
+      )}
+
+      {isDone && data.totalCost != null && data.totalCost > 0 && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setCostExpanded(!costExpanded)}
+            className="text-xs text-muted hover:text-foreground transition"
+          >
+            ${data.totalCost.toFixed(3)} {costExpanded ? '▾' : '▸'}
+          </button>
+        </div>
+      )}
+
+      {costExpanded && data.steps.filter((s) => s.cost && s.cost > 0).length > 0 && (
+        <div className="border-t border-border pt-2 space-y-1">
+          {data.steps.filter((s) => s.cost && s.cost > 0).map((step, i) => (
+            <div key={i} className="flex justify-between text-xs text-muted">
+              <span>{TOOL_LABELS[step.tool] ?? step.tool}</span>
+              <span className="font-mono">${step.cost!.toFixed(3)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const ACTION_ICONS: Record<string, string> = {

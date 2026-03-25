@@ -16,10 +16,19 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     url: `${GATEWAY_BASE}/reloadly/v1/order`,
     price: 'dynamic',
     transformBody: (f) => ({
-      productId: f.brand,
+      productId: f.productId ?? f.brand,
       quantity: 1,
       unitPrice: parseFloat(f.amount) || 25,
       recipientEmail: f.email,
+      countryCode: f.country ?? f.countryCode ?? 'US',
+    }),
+  },
+
+  'reloadly-browse': {
+    url: `${GATEWAY_BASE}/reloadly/v1/products`,
+    price: '0.005',
+    transformBody: (f) => ({
+      countryCode: f.countryCode ?? 'US',
     }),
   },
 
@@ -81,6 +90,7 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
       departure_id: f.departure,
       arrival_id: f.arrival,
       outbound_date: f.date,
+      type: f.type ?? '2',
     }),
   },
 
