@@ -24,7 +24,7 @@ export function LiveFeed() {
 
   const fetchPayments = useCallback(async () => {
     try {
-      const res = await fetch('/api/mpp/payments?limit=5');
+      const res = await fetch('/api/mpp/payments?limit=8');
       if (res.ok) {
         const data = await res.json();
         const incoming: Payment[] = data.payments;
