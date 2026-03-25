@@ -3,7 +3,9 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+function getBaseUrl(request: NextRequest): string {
+  return request.nextUrl.origin;
+}
 
 export async function POST(request: NextRequest) {
   let body: { tool: string; args: Record<string, unknown>; address: string };
@@ -24,8 +26,10 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`agent-tool:${ip}`, 60, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
+  const baseUrl = getBaseUrl(request);
+
   try {
-    const result = await executeTool(tool, args, address);
+    const result = await executeTool(tool, args, address, baseUrl);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Tool execution failed';
@@ -38,13 +42,16 @@ async function executeTool(
   tool: string,
   args: Record<string, unknown>,
   address: string,
+  baseUrl: string,
 ): Promise<unknown> {
+  const get = (path: string) => internalFetch(path, baseUrl);
+
   switch (tool) {
     case 'get_balance': {
       const [balRes, posRes, pricesRes] = await Promise.all([
-        internalFetch(`/api/balances?address=${address}`),
-        internalFetch(`/api/positions?address=${address}`),
-        internalFetch('/api/prices'),
+        get(`/api/balances?address=${address}`),
+        get(`/api/positions?address=${address}`),
+        get('/api/prices'),
       ]);
       return {
         balances: balRes,
@@ -54,24 +61,24 @@ async function executeTool(
     }
 
     case 'get_rates': {
-      return internalFetch('/api/rates');
+      return get('/api/rates');
     }
 
     case 'get_history': {
       const limit = Number(args.limit) || 10;
-      return internalFetch(`/api/history?address=${address}&limit=${limit}`);
+      return get(`/api/history?address=${address}&limit=${limit}`);
     }
 
     case 'get_portfolio': {
       const [balRes, pricesRes] = await Promise.all([
-        internalFetch(`/api/balances?address=${address}`),
-        internalFetch('/api/prices'),
+        get(`/api/balances?address=${address}`),
+        get('/api/prices'),
       ]);
       return { balances: balRes, prices: pricesRes };
     }
 
     case 'get_health': {
-      return internalFetch(`/api/positions?address=${address}`);
+      return get(`/api/positions?address=${address}`);
     }
 
     default:
@@ -79,8 +86,8 @@ async function executeTool(
   }
 }
 
-async function internalFetch(path: string): Promise<unknown> {
-  const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
+async function internalFetch(path: string, baseUrl: string): Promise<unknown> {
+  const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Internal fetch ${path} failed: ${res.status}`);
