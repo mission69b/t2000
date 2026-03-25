@@ -4,7 +4,9 @@
  * the user understands: Gift Cards, AI, Search, etc.
  *
  * No API call needed — static at build time.
+ * Pricing: see lib/service-pricing.ts for shared calculation logic.
  */
+import { GIFT_CARD_FEE_RATE } from '@/lib/service-pricing';
 
 export interface ServiceItem {
   id: string;
@@ -65,7 +67,7 @@ export const SERVICE_CATALOG: ServiceItem[] = [
       { name: 'amount', label: 'Amount', placeholder: '$25', type: 'number', required: true },
       { name: 'email', label: 'Send to (email)', placeholder: 'sarah@gmail.com', type: 'email', required: true },
     ],
-    startingPrice: 'Face value + 5%',
+    startingPrice: `Face value + ${GIFT_CARD_FEE_RATE * 100}%`,
   },
 
   // AI & Chat

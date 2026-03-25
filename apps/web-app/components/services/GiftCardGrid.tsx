@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { giftCardPrice } from '@/lib/service-pricing';
 
 interface Brand {
   id: string;
@@ -166,9 +167,8 @@ export function GiftCardGrid({ onSelect, onCancel }: GiftCardGridProps) {
   }
 
   if (phase === 'confirm' && selectedBrand) {
-    const faceValue = parseFloat(amount);
-    const fee = faceValue * 0.05;
-    const total = faceValue + fee;
+    const pricing = giftCardPrice(parseFloat(amount));
+    const { faceValue, fee, total, feeLabel } = pricing;
 
     return (
       <div className="rounded-sm border border-border bg-surface p-5 space-y-4">
@@ -181,7 +181,7 @@ export function GiftCardGrid({ onSelect, onCancel }: GiftCardGridProps) {
             <span className="text-foreground font-medium font-mono">${faceValue.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted">Fee (5%)</span>
+            <span className="text-muted">Fee ({feeLabel})</span>
             <span className="text-foreground font-medium font-mono">${fee.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm border-t border-border pt-2">

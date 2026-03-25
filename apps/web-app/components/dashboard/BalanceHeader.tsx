@@ -81,7 +81,9 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
       ) : (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full text-center focus:outline-none group"
+          aria-expanded={expanded}
+          aria-label={`Balance $${fmtUsd(balance.total)}, ${expanded ? 'collapse' : 'expand'} details`}
+          className="w-full text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm group"
         >
           <p className="text-4xl font-bold tracking-tight font-mono text-foreground">
             ${fmtUsd(balance.total)}

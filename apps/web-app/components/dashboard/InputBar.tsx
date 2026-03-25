@@ -37,6 +37,7 @@ export function InputBar({ onSubmit, disabled, placeholder = 'Ask anything...' }
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
+        aria-label="Message t2000"
         className="flex-1 rounded-sm border border-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright disabled:opacity-50"
       />
       {value.trim() && (

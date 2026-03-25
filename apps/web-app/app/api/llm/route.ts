@@ -36,7 +36,7 @@ Rules:
  * Uses a server-side API key (free for the user) or routes through MPP gateway.
  */
 export async function POST(request: NextRequest) {
-  let body: { message: string; context?: { balance?: string } };
+  let body: { message: string; context?: { balance?: string }; stream?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -54,43 +54,97 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(`llm:${ip}`, 20, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
+  const wantsStream = body.stream === true;
+
   if (!LLM_API_KEY) {
     return NextResponse.json({ text: fallbackResponse(message) });
   }
 
-  try {
-    const systemContent = context?.balance
-      ? `${SYSTEM_PROMPT}\n\nUser's current account state:\n${context.balance}`
-      : SYSTEM_PROMPT;
+  const systemContent = context?.balance
+    ? `${SYSTEM_PROMPT}\n\nUser's current account state:\n${context.balance}`
+    : SYSTEM_PROMPT;
 
+  const llmBody = {
+    model: LLM_MODEL,
+    messages: [
+      { role: 'system', content: systemContent },
+      { role: 'user', content: message },
+    ],
+    max_tokens: 300,
+    temperature: 0.7,
+    stream: wantsStream,
+  };
+
+  if (!wantsStream) {
+    try {
+      const res = await fetch(LLM_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${LLM_API_KEY}`,
+        },
+        body: JSON.stringify(llmBody),
+      });
+
+      if (!res.ok) {
+        console.error('[llm] API error:', res.status, await res.text().catch(() => ''));
+        return NextResponse.json({ text: fallbackResponse(message) });
+      }
+
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content ?? fallbackResponse(message);
+
+      return NextResponse.json({ text });
+    } catch (err) {
+      console.error('[llm] Error:', err instanceof Error ? err.message : err);
+      return NextResponse.json({ text: fallbackResponse(message) });
+    }
+  }
+
+  try {
     const res = await fetch(LLM_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${LLM_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: LLM_MODEL,
-        messages: [
-          { role: 'system', content: systemContent },
-          { role: 'user', content: message },
-        ],
-        max_tokens: 300,
-        temperature: 0.7,
-      }),
+      body: JSON.stringify(llmBody),
     });
 
-    if (!res.ok) {
-      console.error('[llm] API error:', res.status, await res.text().catch(() => ''));
+    if (!res.ok || !res.body) {
+      console.error('[llm] Stream error:', res.status);
       return NextResponse.json({ text: fallbackResponse(message) });
     }
 
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content ?? fallbackResponse(message);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
 
-    return NextResponse.json({ text });
+    const stream = new ReadableStream({
+      async pull(controller) {
+        try {
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.close();
+            return;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          controller.enqueue(new TextEncoder().encode(chunk));
+        } catch {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
   } catch (err) {
-    console.error('[llm] Error:', err instanceof Error ? err.message : err);
+    console.error('[llm] Stream error:', err instanceof Error ? err.message : err);
     return NextResponse.json({ text: fallbackResponse(message) });
   }
 }

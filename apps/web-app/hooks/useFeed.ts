@@ -19,9 +19,17 @@ export function useFeed() {
     setItems((prev) => prev.slice(0, -1));
   }, []);
 
+  const updateLastItem = useCallback((updater: (data: FeedItemData) => FeedItemData) => {
+    setItems((prev) => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      return [...prev.slice(0, -1), { ...last, data: updater(last.data) }];
+    });
+  }, []);
+
   const clear = useCallback(() => {
     setItems([]);
   }, []);
 
-  return { items, addItem, addItems, removeLastItem, clear, scrollRef };
+  return { items, addItem, addItems, removeLastItem, updateLastItem, clear, scrollRef };
 }

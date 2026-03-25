@@ -817,8 +817,12 @@ function DashboardContent() {
 
       llmUsage.increment();
       const balanceCtx = `Total: $${balance.total.toFixed(2)}, Checking: $${balance.checking.toFixed(2)}, Savings: $${balance.savings.toFixed(2)}${balance.borrows > 0 ? `, Debt: $${balance.borrows.toFixed(2)}` : ''}`;
-      const response = await llm.query(text, address, balanceCtx);
-      feed.addItem(response);
+
+      feed.addItem({ type: 'ai-text', text: '' });
+      const response = await llm.queryStream(text, address, balanceCtx, (partialText) => {
+        feed.updateLastItem(() => ({ type: 'ai-text', text: partialText }));
+      });
+      feed.updateLastItem(() => response);
     },
     [feed, executeIntent, llm, llmUsage, address],
   );

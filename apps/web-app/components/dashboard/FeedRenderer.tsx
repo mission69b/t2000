@@ -16,7 +16,7 @@ export function FeedRenderer({ items, onChipClick, onCopy, onSaveContact }: Feed
   if (items.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" role="log" aria-label="Conversation" aria-live="polite">
       {items.map((item) => (
         <FeedItemCard
           key={item.id}

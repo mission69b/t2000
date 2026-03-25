@@ -27,6 +27,7 @@ export function AmountChips({ amounts, allLabel, onSelect, message, assetLabel }
               onChange={(e) => setCustom(e.target.value)}
               placeholder="0.00"
               autoFocus
+              aria-label={assetLabel ? `Amount in ${assetLabel}` : 'Amount in dollars'}
               className="flex-1 bg-transparent py-3 pl-1 text-sm text-foreground font-mono outline-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && custom) onSelect(parseFloat(custom));

@@ -2132,7 +2132,7 @@ The new P5-P9 code added logic to `intent-parser.ts`, `useChipFlow.ts`, and `ser
 | Priority | Medium — keeps existing test suite honest |
 |----------|-------------------------------------------|
 | Est. | 45 min |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 
@@ -2150,7 +2150,7 @@ The new P5-P9 code added logic to `intent-parser.ts`, `useChipFlow.ts`, and `ser
 | Priority | Medium |
 |----------|--------|
 | Est. | 1-2 days |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 
@@ -2179,7 +2179,7 @@ The new P5-P9 code added logic to `intent-parser.ts`, `useChipFlow.ts`, and `ser
 | Priority | Low — cosmetic, errors are caught internally |
 |----------|----------------------------------------------|
 | Est. | 5 min |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 
@@ -2192,7 +2192,7 @@ Current `/api/llm` returns the full response after the LLM finishes generating. 
 | Priority | Low — responses are capped at 300 tokens, latency is acceptable |
 |----------|---------------------------------------------------------------|
 | Est. | 3-4h |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 
@@ -2205,7 +2205,7 @@ Gift card dynamic pricing is calculated independently on client (`GiftCardGrid`)
 | Priority | Low — both sides use identical logic today |
 |----------|---------------------------------------------|
 | Est. | 1h |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 
@@ -2221,7 +2221,7 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 | Priority | Medium — real money at stake |
 |----------|------------------------------|
 | Est. | 2-3h |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 
@@ -2229,16 +2229,16 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 
 | Item | Status |
 |------|--------|
-| Keyboard navigation for all chip flows | ⏳ |
-| Screen reader labels on interactive elements | ⏳ |
-| Focus management in slide-over panels (settings, services) | ⏳ |
+| Keyboard navigation for all chip flows | ✅ |
+| Screen reader labels on interactive elements | ✅ |
+| Focus management in slide-over panels (settings, services) | ✅ |
 | Color contrast ratio ≥ 4.5:1 for all text on dark bg | ⏳ (green-on-black may fail) |
-| `aria-live` regions for feed updates | ⏳ |
+| `aria-live` regions for feed updates | ✅ |
 
 | Priority | Medium — important for production |
 |----------|----------------------------------|
 | Est. | 1 day |
-| Status | ⏳ |
+| Status | ✅ (core items done, contrast audit remaining) |
 
 ---
 
@@ -2256,7 +2256,7 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 | Priority | High for production, medium for beta |
 |----------|--------------------------------------|
 | Est. | 1-2 days |
-| Status | ⏳ |
+| Status | ✅ |
 
 ---
 
@@ -2265,15 +2265,15 @@ If a service payment transaction succeeds but the MPP gateway call fails (networ
 | ID | Item | Priority | Est. | Status |
 |----|------|----------|------|--------|
 | **POL-1** | Sentinels chip flow | Low | 1-2 days | ⏳ |
-| **POL-2** | Update existing unit tests for P5-P9 | Medium | 45 min | ⏳ |
-| **POL-3** | Performance pass | Medium | 1-2 days | ⏳ |
+| **POL-2** | Update existing unit tests for P5-P9 | Medium | 45 min | ✅ |
+| **POL-3** | Performance pass | Medium | 1-2 days | ✅ |
 | **POL-4** | Swap cap for non-USDC assets | Medium | 2-3h | ⏳ |
-| **POL-5** | Async service submit type | Low | 5 min | ⏳ |
-| **POL-6** | LLM streaming responses | Low | 3-4h | ⏳ |
-| **POL-7** | Shared service price logic | Low | 1h | ⏳ |
-| **POL-8** | Service payment error recovery | Medium | 2-3h | ⏳ |
-| **POL-9** | Accessibility pass | Medium | 1 day | ⏳ |
-| **POL-10** | Security hardening | High (prod) | 1-2 days | ⏳ |
+| **POL-5** | Async service submit type | Low | 5 min | ✅ |
+| **POL-6** | LLM streaming responses | Low | 3-4h | ✅ |
+| **POL-7** | Shared service price logic | Low | 1h | ✅ |
+| **POL-8** | Service payment error recovery | Medium | 2-3h | ✅ |
+| **POL-9** | Accessibility pass | Medium | 1 day | ✅ |
+| **POL-10** | Security hardening | High (prod) | 1-2 days | ✅ |
 | **POL-11** | DCA & investment strategies chip flow | Medium | 1-2 days | ⏳ |
 
 ---

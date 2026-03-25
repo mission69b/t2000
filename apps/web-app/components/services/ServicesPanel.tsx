@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SERVICE_CATALOG,
   CATEGORY_META,
@@ -66,13 +66,32 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
       ? CATEGORY_META[activeCategory].label
       : 'Services';
 
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    panelRef.current?.focus();
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/60" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/60" onClick={onClose} aria-hidden="true" />
 
-      <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl bg-background border-t border-border">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Services"
+        tabIndex={-1}
+        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl bg-background border-t border-border outline-none"
+      >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <button
             onClick={handleBack}
@@ -136,6 +155,7 @@ export function ServicesPanel({ open, onClose, onServiceSubmit }: ServicesPanelP
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search services..."
+                aria-label="Search services"
                 className="w-full rounded-sm border border-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
               />
 

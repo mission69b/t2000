@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { truncateAddress } from '@/lib/format';
 import type { Contact } from '@/hooks/useContacts';
 
@@ -53,6 +53,18 @@ export function SettingsPanel({
   const [editValue, setEditValue] = useState('');
   const [now] = useState(() => Date.now());
 
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    panelRef.current?.focus();
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
   if (!open) return null;
   const expiryDate = new Date(sessionExpiresAt);
   const daysLeft = Math.max(0, Math.ceil((sessionExpiresAt - now) / (24 * 60 * 60 * 1000)));
@@ -65,13 +77,21 @@ export function SettingsPanel({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose} aria-hidden="true" />
 
-      <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-background border-l border-border z-50 flex flex-col">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        tabIndex={-1}
+        className="fixed inset-y-0 right-0 w-full max-w-sm bg-background border-l border-border z-50 flex flex-col outline-none"
+      >
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Settings</h2>
+          <h2 id="settings-title" className="text-lg font-semibold text-foreground">Settings</h2>
           <button
             onClick={onClose}
+            aria-label="Close settings"
             className="rounded-lg p-2 text-muted hover:text-foreground hover:bg-panel transition"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
