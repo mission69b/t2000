@@ -161,7 +161,6 @@ describe('integration: MCP client ↔ server', () => {
       't2000_contacts',
       't2000_deposit_info',
       't2000_earnings',
-      't2000_swap',
       't2000_fund_status',
       't2000_health',
       't2000_history',
@@ -183,6 +182,7 @@ describe('integration: MCP client ↔ server', () => {
       't2000_sentinel_list',
       't2000_services',
       't2000_strategy',
+      't2000_swap',
       't2000_withdraw',
     ]);
   });
