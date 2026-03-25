@@ -63,7 +63,7 @@ function capForFlow(
 ): number {
   switch (flow) {
     case 'save': return bal.cash;
-    case 'send': return bal.usdc;
+    case 'send': return bal.cash;
     case 'invest': return bal.usdc;
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
@@ -249,6 +249,7 @@ function DashboardContent() {
     bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
     sui: balanceQuery.data?.sui ?? 0,
     suiUsd: balanceQuery.data?.suiUsd ?? 0,
+    suiPrice: balanceQuery.data?.suiPrice ?? 0,
     usdc: balanceQuery.data?.usdc ?? 0,
     assetBalances: balanceQuery.data?.assetBalances ?? {},
     assetUsdValues: balanceQuery.data?.assetUsdValues ?? {},
@@ -819,7 +820,13 @@ function DashboardContent() {
         case 'send': {
           const recipient = chipFlow.state.recipient;
           if (!recipient) throw new Error('No recipient specified');
-          const res = await sdk.send({ to: recipient, amount });
+          let sendAsset: string | undefined;
+          let sendAmount = amount;
+          if (amount > balance.usdc && balance.sui > 0) {
+            sendAsset = 'SUI';
+            sendAmount = balance.suiPrice > 0 ? amount / balance.suiPrice : 0;
+          }
+          const res = await sdk.send({ to: recipient, amount: sendAmount, asset: sendAsset });
           txDigest = res.tx;
           flowLabel = 'Sent';
           break;
@@ -1124,13 +1131,13 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (
           <SendRecipientInput
             contacts={contactsHook.contacts}
-            onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.usdc)}
+            onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.cash)}
             onSubmit={(input) => {
               const resolved = contactsHook.resolveContact(input);
               if (resolved) {
-                chipFlow.selectRecipient(resolved, input, balance.usdc);
+                chipFlow.selectRecipient(resolved, input, balance.cash);
               } else {
-                chipFlow.selectRecipient(input, undefined, balance.usdc);
+                chipFlow.selectRecipient(input, undefined, balance.cash);
               }
             }}
           />
@@ -1140,7 +1147,7 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
           <AmountChips
             amounts={getAmountPresets('send', balance)}
-            allLabel={`All $${fmtDollar(balance.usdc)}`}
+            allLabel={`All $${fmtDollar(balance.cash)}`}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
           />

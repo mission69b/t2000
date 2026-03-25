@@ -150,11 +150,9 @@ async function buildAndSponsor(
 ): Promise<SponsorResult> {
   const tx = await buildTransaction(params);
 
-  if (process.env.NODE_ENV !== 'production') {
-    const moveCallTargets = extractMoveCallTargets(tx);
-    if (moveCallTargets.length > 0) {
-      console.log(`[prepare] ${params.type} targets (${moveCallTargets.length}):`, moveCallTargets);
-    }
+  const moveCallTargets = extractMoveCallTargets(tx);
+  if (moveCallTargets.length > 0) {
+    console.log(`[prepare] ${params.type} targets (${moveCallTargets.length}):`, moveCallTargets);
   }
 
   const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
@@ -173,6 +171,10 @@ async function buildAndSponsor(
     transactionBlockKindBytes: txKindBase64,
     sender: params.address,
   };
+
+  if (moveCallTargets.length > 0) {
+    sponsorBody.allowedMoveCallTargets = moveCallTargets;
+  }
 
   if (params.recipient) {
     sponsorBody.allowedAddresses = [params.recipient];
