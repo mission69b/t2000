@@ -18,10 +18,14 @@ export function StatsBar() {
   const [stats, setStats] = useState<StatsData | null>(null);
 
   useEffect(() => {
-    fetch('/api/mpp/stats')
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setStats)
-      .catch(() => {});
+    const fetchStats = () =>
+      fetch('/api/mpp/stats')
+        .then((r) => (r.ok ? r.json() : null))
+        .then(setStats)
+        .catch(() => {});
+    fetchStats();
+    const poll = setInterval(fetchStats, 5_000);
+    return () => clearInterval(poll);
   }, []);
 
   const items = [
