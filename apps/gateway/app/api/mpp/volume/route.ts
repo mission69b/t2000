@@ -4,19 +4,18 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const now = new Date();
-  const DAYS = 30;
-  const startDate = new Date(now.getTime() - DAYS * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const payments = await prisma.mppPayment.findMany({
-    where: { createdAt: { gte: startDate } },
+    where: { createdAt: { gte: sevenDaysAgo } },
     select: { amount: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
   });
 
   const buckets = new Map<string, { count: number; volume: number }>();
 
-  for (let d = 0; d < DAYS; d++) {
-    const date = new Date(now.getTime() - (DAYS - 1 - d) * 24 * 60 * 60 * 1000);
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(now.getTime() - (6 - d) * 24 * 60 * 60 * 1000);
     const key = date.toISOString().slice(0, 10);
     buckets.set(key, { count: 0, volume: 0 });
   }

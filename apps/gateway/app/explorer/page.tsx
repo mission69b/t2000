@@ -126,33 +126,30 @@ export default function ExplorerPage() {
             {/* Volume chart */}
             <div className="border border-border rounded-lg bg-surface/40 p-4">
               <div className="text-[10px] uppercase tracking-wider text-muted mb-3">
-                Volume (30d)
+                Volume (7d)
               </div>
               {volume.length > 0 ? (
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-end gap-px h-28">
-                    {volume.map((d) => {
-                      const pct = d.count > 0 ? Math.max((d.count / maxVolume) * 100, 6) : 0;
-                      return (
-                        <div
-                          key={d.date}
-                          className={`flex-1 rounded-sm transition-all ${d.count > 0 ? 'bg-accent/70 hover:bg-accent' : 'bg-border/10'}`}
-                          style={{ height: d.count > 0 ? `${pct}%` : '2px' }}
-                          title={`${d.label} ${d.date}\n${d.count} payments · ${d.volume} USDC`}
-                        />
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-between text-[9px] text-dim px-px">
-                    <span>{volume[0]?.label}</span>
-                    <span>{volume[Math.floor(volume.length / 2)]?.label}</span>
-                    <span>{volume[volume.length - 1]?.label}</span>
-                  </div>
+                <div className="space-y-2">
+                  {volume.map((d) => {
+                    const pct = maxVolume > 0 ? (d.count / maxVolume) * 100 : 0;
+                    return (
+                      <div key={d.date} className="flex items-center gap-2 text-xs">
+                        <span className="text-foreground w-10 shrink-0">{d.label}</span>
+                        <div className="flex-1 h-1.5 bg-panel rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-accent/70 rounded-full transition-all"
+                            style={{ width: `${Math.max(pct, d.count > 0 ? 4 : 0)}%` }}
+                          />
+                        </div>
+                        <span className="text-muted text-[11px] w-8 text-right shrink-0">
+                          {d.count}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-28 text-xs text-dim">
-                  Loading...
-                </div>
+                <div className="text-xs text-dim">Loading...</div>
               )}
             </div>
 
