@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface DcaSchedule {
   id: string;
@@ -12,53 +12,73 @@ export interface DcaSchedule {
   enabled: boolean;
 }
 
-const STORAGE_KEY = 't2000_dca_schedules';
+export function useDcaSchedules(userAddress: string | null) {
+  const [schedules, setSchedules] = useState<DcaSchedule[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-let listeners: Array<() => void> = [];
+  useEffect(() => {
+    if (!userAddress) return;
 
-function emitChange() {
-  for (const listener of listeners) listener();
-}
+    fetch(`/api/user/preferences?address=${userAddress}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.dcaSchedules)) {
+          setSchedules(data.dcaSchedules as DcaSchedule[]);
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [userAddress]);
 
-function getSnapshot(): DcaSchedule[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
-  } catch {
-    return [];
-  }
-}
+  const persist = useCallback(
+    (updated: DcaSchedule[]) => {
+      if (!userAddress) return;
+      fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: userAddress, dcaSchedules: updated }),
+      });
+    },
+    [userAddress],
+  );
 
-function getServerSnapshot(): DcaSchedule[] {
-  return [];
-}
+  const add = useCallback(
+    (params: Omit<DcaSchedule, 'id' | 'createdAt' | 'enabled'>) => {
+      const schedule: DcaSchedule = {
+        ...params,
+        id: `dca-${Date.now().toString(36)}`,
+        createdAt: new Date().toISOString(),
+        enabled: true,
+      };
+      const updated = [...schedules, schedule];
+      setSchedules(updated);
+      persist(updated);
+      return schedule;
+    },
+    [schedules, persist],
+  );
 
-function subscribe(listener: () => void): () => void {
-  listeners = [...listeners, listener];
-  return () => {
-    listeners = listeners.filter((l) => l !== listener);
-  };
-}
+  const remove = useCallback(
+    (id: string) => {
+      const updated = schedules.filter((s) => s.id !== id);
+      setSchedules(updated);
+      persist(updated);
+    },
+    [schedules, persist],
+  );
 
-export function useDcaSchedules() {
-  const schedules = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-
-  const remove = useCallback((id: string) => {
-    const updated = getSnapshot().filter((s) => s.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    emitChange();
-  }, []);
-
-  const toggleEnabled = useCallback((id: string) => {
-    const all = getSnapshot();
-    const target = all.find((s) => s.id === id);
-    if (target) {
-      target.enabled = !target.enabled;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-      emitChange();
-    }
-  }, []);
+  const toggleEnabled = useCallback(
+    (id: string) => {
+      const updated = schedules.map((s) =>
+        s.id === id ? { ...s, enabled: !s.enabled } : s,
+      );
+      setSchedules(updated);
+      persist(updated);
+    },
+    [schedules, persist],
+  );
 
   const active = schedules.filter((s) => s.enabled);
 
-  return { schedules, active, remove, toggleEnabled };
+  return { schedules, active, loaded, add, remove, toggleEnabled };
 }

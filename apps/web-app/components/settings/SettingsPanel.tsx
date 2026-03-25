@@ -53,7 +53,7 @@ export function SettingsPanel({
   const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [now] = useState(() => Date.now());
-  const dcaSchedules = useDcaSchedules();
+  const dcaSchedules = useDcaSchedules(address);
 
   const panelRef = useRef<HTMLDivElement>(null);
 

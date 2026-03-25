@@ -15,7 +15,7 @@ import { FeedRenderer } from '@/components/dashboard/FeedRenderer';
 import { AssetSelector } from '@/components/dashboard/AssetSelector';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import { FrequencySelector } from '@/components/dashboard/FrequencySelector';
-import type { DcaSchedule } from '@/hooks/useDcaSchedules';
+import { useDcaSchedules } from '@/hooks/useDcaSchedules';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { ServicesPanel } from '@/components/services/ServicesPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
@@ -57,37 +57,6 @@ function fmtToken(amount: number): string {
   if (amount > 0 && amount < 0.001) return amount.toFixed(8);
   if (amount > 0 && amount < 1) return amount.toFixed(6);
   return amount.toFixed(4);
-}
-
-const DCA_STORAGE_KEY = 't2000_dca_schedules';
-
-function saveDcaSchedule(params: {
-  strategy: string;
-  strategyName: string;
-  amount: number;
-  frequency: 'daily' | 'weekly' | 'monthly';
-}): DcaSchedule {
-  const schedules: DcaSchedule[] = getDcaSchedules();
-
-  const schedule: DcaSchedule = {
-    id: `dca-${Date.now().toString(36)}`,
-    ...params,
-    createdAt: new Date().toISOString(),
-    enabled: true,
-  };
-
-  schedules.push(schedule);
-  localStorage.setItem(DCA_STORAGE_KEY, JSON.stringify(schedules));
-  return schedule;
-}
-
-function getDcaSchedules(): DcaSchedule[] {
-  try { return JSON.parse(localStorage.getItem(DCA_STORAGE_KEY) ?? '[]'); } catch { return []; }
-}
-
-function removeDcaSchedule(id: string): void {
-  const schedules = getDcaSchedules().filter((s) => s.id !== id);
-  localStorage.setItem(DCA_STORAGE_KEY, JSON.stringify(schedules));
 }
 
 function capForFlow(
@@ -240,6 +209,7 @@ function DashboardContent() {
   const llm = useLlm();
   const llmUsage = useLlmUsage();
   const contactsHook = useContacts(address);
+  const dcaHook = useDcaSchedules(address);
   const { agent } = useAgent();
   const balanceQuery = useBalance(address);
   const incomingQuery = useQuery({
@@ -1028,7 +998,7 @@ function DashboardContent() {
           }
 
           if (freq !== 'once') {
-            saveDcaSchedule({
+            dcaHook.add({
               strategy: strategyKey,
               strategyName,
               amount,
@@ -1077,7 +1047,7 @@ function DashboardContent() {
       chipFlow.setError(errorData.type === 'error' ? errorData.message : 'Transaction failed');
       feed.addItem(errorData);
     }
-  }, [chipFlow, feed, agent, contactsHook, balanceQuery]);
+  }, [chipFlow, feed, agent, contactsHook, dcaHook, balanceQuery]);
 
   const getConfirmationDetails = () => {
     const flow = chipFlow.state.flow;

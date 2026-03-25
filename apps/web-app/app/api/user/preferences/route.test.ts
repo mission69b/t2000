@@ -40,9 +40,10 @@ describe('/api/user/preferences', () => {
   });
 
   describe('GET', () => {
-    it('returns contacts and limits for existing user', async () => {
+    it('returns contacts, limits, and dcaSchedules for existing user', async () => {
       const contacts = [{ name: 'Alice', address: '0xabc' }];
-      mockFindUnique.mockResolvedValueOnce({ contacts, limits: null });
+      const dcaSchedules = [{ id: 'dca-1', strategy: 'bluechip', amount: 50, frequency: 'weekly' }];
+      mockFindUnique.mockResolvedValueOnce({ contacts, limits: null, dcaSchedules });
 
       const res = await GET(buildGetRequest('0x1234'));
       const body = await res.json();
@@ -50,9 +51,10 @@ describe('/api/user/preferences', () => {
       expect(res.status).toBe(200);
       expect(body.contacts).toEqual(contacts);
       expect(body.limits).toBeNull();
+      expect(body.dcaSchedules).toEqual(dcaSchedules);
     });
 
-    it('returns empty contacts for new user', async () => {
+    it('returns empty contacts and dcaSchedules for new user', async () => {
       mockFindUnique.mockResolvedValueOnce(null);
 
       const res = await GET(buildGetRequest('0xnewuser'));
@@ -61,6 +63,7 @@ describe('/api/user/preferences', () => {
       expect(res.status).toBe(200);
       expect(body.contacts).toEqual([]);
       expect(body.limits).toBeNull();
+      expect(body.dcaSchedules).toEqual([]);
     });
 
     it('returns 400 for missing address', async () => {
@@ -80,7 +83,7 @@ describe('/api/user/preferences', () => {
   describe('POST', () => {
     it('upserts contacts for valid address', async () => {
       const contacts = [{ name: 'Bob', address: '0xbob' }];
-      mockUpsert.mockResolvedValueOnce({ contacts, limits: null });
+      mockUpsert.mockResolvedValueOnce({ contacts, limits: null, dcaSchedules: [] });
 
       const res = await POST(buildPostRequest({ address: '0x1234', contacts }));
       const body = await res.json();
@@ -92,13 +95,25 @@ describe('/api/user/preferences', () => {
 
     it('upserts limits for valid address', async () => {
       const limits = { dailySend: 1000 };
-      mockUpsert.mockResolvedValueOnce({ contacts: [], limits });
+      mockUpsert.mockResolvedValueOnce({ contacts: [], limits, dcaSchedules: [] });
 
       const res = await POST(buildPostRequest({ address: '0x1234', limits }));
       const body = await res.json();
 
       expect(res.status).toBe(200);
       expect(body.limits).toEqual(limits);
+    });
+
+    it('upserts dcaSchedules for valid address', async () => {
+      const dcaSchedules = [{ id: 'dca-1', strategy: 'bluechip', amount: 25, frequency: 'weekly', enabled: true }];
+      mockUpsert.mockResolvedValueOnce({ contacts: [], limits: null, dcaSchedules });
+
+      const res = await POST(buildPostRequest({ address: '0x1234', dcaSchedules }));
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.dcaSchedules).toEqual(dcaSchedules);
+      expect(mockUpsert).toHaveBeenCalledOnce();
     });
 
     it('returns 400 for missing address', async () => {
