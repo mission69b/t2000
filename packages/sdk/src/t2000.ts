@@ -1320,7 +1320,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Swap (formerly Exchange) --
 
-  async swap(params: { from: string; to: string; amount: number; maxSlippage?: number }): Promise<SwapResult> {
+  async swap(params: { from: string; to: string; amount: number; maxSlippage?: number; _skipPortfolioRecord?: boolean }): Promise<SwapResult> {
     this.enforcer.assertNotLocked();
     const fromAsset = params.from as keyof typeof SUPPORTED_ASSETS;
     const toAsset = params.to as keyof typeof SUPPORTED_ASSETS;
@@ -1379,6 +1379,35 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     reportFee(this._address, 'swap', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(fromAsset, swapAmount, 'swap', gasResult.digest);
+
+    const stableSet = new Set<string>(STABLE_ASSETS);
+    if (!params._skipPortfolioRecord && stableSet.has(fromAsset) && toAsset in INVESTMENT_ASSETS && actualReceived > 0) {
+      const price = swapAmount / actualReceived;
+      this.portfolio.recordBuy({
+        id: `swap_${Date.now()}`,
+        type: 'buy',
+        asset: toAsset,
+        amount: actualReceived,
+        price,
+        usdValue: swapAmount,
+        fee: fee.amount,
+        tx: gasResult.digest,
+        timestamp: new Date().toISOString(),
+      });
+    } else if (!params._skipPortfolioRecord && fromAsset in INVESTMENT_ASSETS && stableSet.has(toAsset) && actualReceived > 0) {
+      const price = actualReceived / swapAmount;
+      this.portfolio.recordSell({
+        id: `swap_${Date.now()}`,
+        type: 'sell',
+        asset: fromAsset,
+        amount: swapAmount,
+        price,
+        usdValue: actualReceived,
+        fee: fee.amount,
+        tx: gasResult.digest,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     return {
       success: true,
@@ -1459,6 +1488,7 @@ export class T2000 extends EventEmitter<T2000Events> {
           to: params.asset,
           amount: params.usdAmount,
           maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
+          _skipPortfolioRecord: true,
         });
         break;
       } catch (err) {
@@ -1604,6 +1634,7 @@ export class T2000 extends EventEmitter<T2000Events> {
           to: 'USDC',
           amount: sellAmountAsset,
           maxSlippage: params.maxSlippage ?? defaultSlippage(params.asset),
+          _skipPortfolioRecord: true,
         });
         break;
       } catch (err) {
