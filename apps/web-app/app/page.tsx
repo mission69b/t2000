@@ -24,6 +24,9 @@ export default function LandingPage() {
           <div className="flex items-center justify-center gap-2">
             <div className="w-2 h-2 bg-accent rounded-full shadow-[0_0_8px_var(--accent)]" />
             <span className="font-mono font-semibold text-accent tracking-tight text-lg">t2000</span>
+            <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
+              beta
+            </span>
           </div>
 
           <h1 className="text-2xl font-mono font-semibold tracking-tight text-foreground">
