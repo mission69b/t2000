@@ -126,29 +126,31 @@ export default function ExplorerPage() {
             {/* Volume chart */}
             <div className="border border-border rounded-lg bg-surface/40 p-4">
               <div className="text-[10px] uppercase tracking-wider text-muted mb-3">
-                Volume (7d)
+                Volume (30d)
               </div>
               {volume.length > 0 ? (
-                <div className="flex items-end gap-[6px] h-36">
-                  {volume.map((d) => {
-                    const pct = d.count > 0 ? Math.max((d.count / maxVolume) * 100, 10) : 0;
-                    return (
-                      <div key={d.date} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
-                        {d.count > 0 && (
-                          <span className="text-[10px] text-muted font-medium">{d.count}</span>
-                        )}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-end gap-px h-28">
+                    {volume.map((d) => {
+                      const pct = d.count > 0 ? Math.max((d.count / maxVolume) * 100, 6) : 0;
+                      return (
                         <div
-                          className={`w-full rounded transition-all ${d.count > 0 ? 'bg-accent/70 hover:bg-accent' : 'bg-border/20'}`}
-                          style={{ height: d.count > 0 ? `${pct}%` : '3px' }}
-                          title={`${d.count} payments · ${d.volume} USDC`}
+                          key={d.date}
+                          className={`flex-1 rounded-sm transition-all ${d.count > 0 ? 'bg-accent/70 hover:bg-accent' : 'bg-border/10'}`}
+                          style={{ height: d.count > 0 ? `${pct}%` : '2px' }}
+                          title={`${d.label} ${d.date}\n${d.count} payments · ${d.volume} USDC`}
                         />
-                        <span className="text-[10px] text-dim mt-1">{d.label}</span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-[9px] text-dim px-px">
+                    <span>{volume[0]?.label}</span>
+                    <span>{volume[Math.floor(volume.length / 2)]?.label}</span>
+                    <span>{volume[volume.length - 1]?.label}</span>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-36 text-xs text-dim">
+                <div className="flex items-center justify-center h-28 text-xs text-dim">
                   Loading...
                 </div>
               )}
