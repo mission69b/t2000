@@ -18,22 +18,7 @@ interface SettingsPanelProps {
   onRefreshSession: () => void;
 }
 
-const DEFAULT_MAX_TX = 1000;
-const DEFAULT_MAX_DAILY = 5000;
-const LS_LIMITS_KEY = 't2000_safety_limits';
-
-function loadLimits(): { maxTx: number; maxDaily: number } {
-  if (typeof window === 'undefined') return { maxTx: DEFAULT_MAX_TX, maxDaily: DEFAULT_MAX_DAILY };
-  try {
-    const raw = localStorage.getItem(LS_LIMITS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { maxTx: DEFAULT_MAX_TX, maxDaily: DEFAULT_MAX_DAILY };
-}
-
-function saveLimits(limits: { maxTx: number; maxDaily: number }) {
-  localStorage.setItem(LS_LIMITS_KEY, JSON.stringify(limits));
-}
+const DEFAULT_LIMITS = { maxTx: 1000, maxDaily: 5000 };
 
 export function SettingsPanel({
   open,
@@ -49,11 +34,23 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
-  const [limits, setLimits] = useState(loadLimits);
+  const [limits, setLimits] = useState(DEFAULT_LIMITS);
   const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [now] = useState(() => Date.now());
   const dcaSchedules = useDcaSchedules(address);
+
+  useEffect(() => {
+    if (!address) return;
+    fetch(`/api/user/preferences?address=${address}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.limits && typeof data.limits === 'object') {
+          setLimits({ ...DEFAULT_LIMITS, ...data.limits });
+        }
+      })
+      .catch(() => {});
+  }, [address]);
 
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -232,7 +229,11 @@ export function SettingsPanel({
                   if (val > 0) {
                     const next = { ...limits, maxTx: val };
                     setLimits(next);
-                    saveLimits(next);
+                    fetch('/api/user/preferences', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ address, limits: next }),
+                    });
                   }
                   setEditingLimit(null);
                 }}
@@ -250,7 +251,11 @@ export function SettingsPanel({
                   if (val > 0) {
                     const next = { ...limits, maxDaily: val };
                     setLimits(next);
-                    saveLimits(next);
+                    fetch('/api/user/preferences', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ address, limits: next }),
+                    });
                   }
                   setEditingLimit(null);
                 }}
