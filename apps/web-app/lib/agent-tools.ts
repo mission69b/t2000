@@ -302,13 +302,13 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
     },
     {
       name: 'search_flights',
-      description: 'Search for flights between airports. Cost: $0.01.',
+      description: 'Search for flights between airports. Cost: $0.01. For return trips, call twice (outbound + return). Infer reasonable dates from the user\'s message and current date.',
       input_schema: {
         type: 'object' as const,
         properties: {
-          from: { type: 'string', description: 'Departure city or airport code (e.g. "SYD")' },
-          to: { type: 'string', description: 'Arrival city or airport code (e.g. "NRT")' },
-          date: { type: 'string', description: 'Departure date (e.g. "2026-04-15")' },
+          from: { type: 'string', description: 'Departure city or airport code (e.g. "SYD", "BKK")' },
+          to: { type: 'string', description: 'Arrival city or airport code (e.g. "NRT", "HKG")' },
+          date: { type: 'string', description: 'Departure date in YYYY-MM-DD format (e.g. "2026-04-15")' },
         },
         required: ['from', 'to', 'date'],
       },
@@ -404,7 +404,7 @@ You have 5 read tools (free) and 18 service tools (paid via USDC):
 - When the user asks to perform a banking action (save, send, swap, borrow, repay, withdraw, invest), DO NOT use tools. Instead, respond with advice and include an action button using bracket syntax: [Save $500], [Repay $50], [Withdraw $100], [Invest $200], [Borrow $50], [Send $10]. The user can tap these to execute. Always include the dollar amount in the bracket.
 - CRITICAL: Action button amounts MUST match the user's actual balances. Never suggest saving or investing more than available cash, repaying more than actual debt, or withdrawing more than savings. If debt is under $0.10, skip the repay suggestion. Round to practical amounts (e.g. leave ~$0.50 buffer for gas when suggesting save-all).
 - For reports and multi-tool responses, structure output with **bold labels** and numbered recommendations. End with 1-3 actionable [Buttons] with realistic amounts the user can tap.
-- For paid services, just call the tool. Don't ask permission for cheap calls (<$0.50).
+- For paid services (web search, flights, crypto prices, translate, image gen, etc.), ALWAYS call the tool directly. Don't ask permission for cheap calls (<$0.50). Never refuse to call a service tool — the user expects you to use them.
 - For expensive services (gift cards, postcards), confirm the details first in your response before calling the tool.
 - When the user says "email me" or "send me", use their email: ${email}
 - Show prices in USD. Show crypto amounts with appropriate precision.
@@ -412,8 +412,8 @@ You have 5 read tools (free) and 18 service tools (paid via USDC):
 - Keep tool calls minimal. Don't call tools you don't need.
 - When chaining tools, pipe the output of one into the next. Don't ask the user to confirm intermediate steps for cheap calls — just execute.
 
-## Handling "what can you do?" or "help"
-If asked what you can do, give a brief overview organized by category:
+## Handling "what can you do?"
+ONLY if the user asks a general capabilities question like "what can you do?", "help", or "what services do you have?" — and NOT when they have a specific request (e.g. "help me search for flights" is a flight search, not a help request). Give a brief overview organized by category:
 - Banking: Save, Send, Swap, Borrow, Invest (via chips below)
 - Free: Check balance, rates, portfolio, health factor, transaction history
 - Paid services ($0.005-$0.05 each): Web search, news, crypto/stock prices, flights, email, translate, image generation, text-to-speech, code execution, QR codes, URL shortening, currency conversion, security scans

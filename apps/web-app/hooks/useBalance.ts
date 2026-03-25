@@ -121,7 +121,7 @@ export function useBalance(address: string | null) {
       const cash = r2(usdc + suiUsd);
       const investments = r2(tradeableUsd);
       const savings = r2(posData.savings ?? 0);
-      const borrows = r2(posData.borrows ?? 0);
+      const borrows = posData.borrows ?? 0;
       const savingsRate = r2(posData.savingsRate ?? 0);
       const healthFactor = posData.healthFactor ?? null;
       const maxBorrow = r2(posData.maxBorrow ?? 0);
