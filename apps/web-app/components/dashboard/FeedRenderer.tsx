@@ -4,6 +4,7 @@ import React from 'react';
 import type { FeedItem } from '@/lib/feed-types';
 import { QrCode } from './QrCode';
 import { ContactToast } from './ContactToast';
+import { AgentMarkdown } from './AgentMarkdown';
 
 interface FeedRendererProps {
   items: FeedItem[];
@@ -57,8 +58,8 @@ function FeedItemCard({
       return (
         <div className="space-y-2 feed-row">
           <div className="rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm">
-            <span className="text-muted mr-1.5">t2</span>
-            <span className="whitespace-pre-line text-foreground">{data.text}</span>
+            <span className="text-muted mr-1.5 float-left leading-relaxed">t2</span>
+            <AgentMarkdown text={data.text} onAction={onChipClick} />
           </div>
           {data.chips && data.chips.length > 0 && (
             <div className="flex flex-wrap gap-2 pl-2">
@@ -233,7 +234,7 @@ function FeedItemCard({
       return <TransactionHistoryCard transactions={data.transactions} network={data.network} />;
 
     case 'agent-response':
-      return <AgentResponseCard data={data} />;
+      return <AgentResponseCard data={data} onAction={onChipClick} />;
 
     default:
       return null;
@@ -266,7 +267,7 @@ const TOOL_LABELS: Record<string, string> = {
   buy_gift_card: 'Buying gift card',
 };
 
-function AgentResponseCard({ data }: { data: Extract<import('@/lib/feed-types').FeedItemData, { type: 'agent-response' }> }) {
+function AgentResponseCard({ data, onAction }: { data: Extract<import('@/lib/feed-types').FeedItemData, { type: 'agent-response' }>; onAction?: (flow: string) => void }) {
   const [costExpanded, setCostExpanded] = React.useState(false);
   const hasSteps = data.steps.length > 0;
   const isDone = data.status === 'done';
@@ -297,8 +298,8 @@ function AgentResponseCard({ data }: { data: Extract<import('@/lib/feed-types').
 
       {data.text && (
         <div className="min-w-0">
-          <span className="text-muted mr-1.5">t2</span>
-          <span className="whitespace-pre-line text-foreground break-words">{data.text}</span>
+          <span className="text-muted mr-1.5 float-left leading-relaxed">t2</span>
+          <AgentMarkdown text={data.text} onAction={onAction} />
         </div>
       )}
 
