@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Credential, Method } from 'mppx';
 import { suiCharge } from '@t2000/mpp-sui/client';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest) {
   if (!signature || !digest || !meta?.gatewayUrl) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
+
+  // 5 completions per minute per digest prefix
+  const rl = rateLimit(`svc-complete:${digest.slice(0, 16)}`, 5, 60_000);
+  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   try {
     const executeRes = await fetch(

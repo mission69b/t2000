@@ -13,7 +13,7 @@ const CHIPS = [
   { id: 'borrow', label: 'Borrow' },
   { id: 'withdraw', label: 'Withdraw' },
   { id: 'repay', label: 'Repay' },
-  { id: 'swap', label: 'Invest' },
+  { id: 'swap', label: 'Swap' },
   { id: 'receive', label: 'Receive' },
   { id: 'report', label: 'Report' },
   { id: 'history', label: 'History' },

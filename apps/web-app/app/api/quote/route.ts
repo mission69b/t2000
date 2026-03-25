@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { CetusAdapter } from '@t2000/sdk/adapters';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -43,6 +44,11 @@ export async function GET(request: NextRequest) {
   if (from === to) {
     return NextResponse.json({ error: 'Cannot swap same asset' }, { status: 400 });
   }
+
+  // 30 quotes per minute per IP
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = rateLimit(`quote:${ip}`, 30, 60_000);
+  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   try {
     const cetus = getCetus();

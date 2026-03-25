@@ -3,6 +3,8 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
 import { NaviAdapter, CetusAdapter } from '@t2000/sdk/adapters';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +14,7 @@ const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
-type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap';
+type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap' | 'claim-rewards';
 
 interface BuildRequest {
   type: TxType;
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
   }
 
   const jwt = request.headers.get('x-zklogin-jwt');
+  const jwtResult = validateJwt(jwt);
+  if ('error' in jwtResult) return jwtResult.error;
 
   let body: BuildRequest;
   try {
@@ -86,11 +90,25 @@ export async function POST(request: NextRequest) {
 
   const { type, address, amount, recipient, asset } = body;
 
-  if (!address || !address.startsWith('0x')) {
+  if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
-  if (!amount || amount <= 0) {
+
+  // 10 transactions per minute per address
+  const rl = rateLimit(`tx:${address}`, 10, 60_000);
+  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
+
+  if (type !== 'claim-rewards' && (!amount || amount <= 0)) {
     return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+  }
+  if (type !== 'claim-rewards') {
+    const amountCheck = validateAmount(type, amount);
+    if (!amountCheck.valid) {
+      return NextResponse.json({ error: amountCheck.reason }, { status: 400 });
+    }
+  }
+  if (recipient && !isValidSuiAddress(recipient)) {
+    return NextResponse.json({ error: 'Invalid recipient address' }, { status: 400 });
   }
 
   try {
@@ -239,6 +257,15 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const cetus = getCetusAdapter();
       const { outputCoin } = await cetus.addSwapToTx(tx, address, inputCoin, from, to, amount);
       tx.transferObjects([outputCoin], address);
+      break;
+    }
+
+    case 'claim-rewards': {
+      const navi = getNaviAdapter();
+      const claimed = await navi.addClaimRewardsToTx(tx, address);
+      if (claimed.length === 0) {
+        throw new Error('No rewards available to claim');
+      }
       break;
     }
 

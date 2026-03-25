@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
   if (!signature || typeof signature !== 'string') {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
   }
+
+  // 10 executions per minute per digest prefix (approximates per-user)
+  const rl = rateLimit(`exec:${digest.slice(0, 16)}`, 10, 60_000);
+  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   try {
     const res = await fetch(

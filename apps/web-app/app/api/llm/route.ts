@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +13,7 @@ const SYSTEM_PROMPT = `You are t2000, a smart banking assistant for a Web3 walle
 You help users manage funds, earn yield, send money, trade crypto, borrow, and use 40+ paid services via the MPP gateway.
 
 Available actions (users trigger via chips or typed commands):
-- Invest: Buy, sell, or swap between SUI, BTC, ETH, GOLD, USDC (via Cetus DEX)
+- Swap: Buy, sell, or swap between SUI, BTC, ETH, GOLD, USDC (via Cetus DEX)
 - Save: Earn yield on idle USDC (via NAVI Protocol)
 - Send: Transfer USDC/SUI to any address
 - Withdraw: Pull funds from savings
@@ -47,6 +48,11 @@ export async function POST(request: NextRequest) {
   if (!message?.trim()) {
     return NextResponse.json({ error: 'Message required' }, { status: 400 });
   }
+
+  // 20 LLM queries per minute (IP-based since no address in body)
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = rateLimit(`llm:${ip}`, 20, 60_000);
+  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   if (!LLM_API_KEY) {
     return NextResponse.json({ text: fallbackResponse(message) });
@@ -92,8 +98,8 @@ export async function POST(request: NextRequest) {
 function fallbackResponse(message: string): string {
   const text = message.toLowerCase();
   if (/rate|apy|yield/.test(text)) return 'Tap Save to see current yield rates from NAVI Protocol.';
-  if (/invest|buy|sell|trade|portfolio/.test(text)) return 'Tap Invest to buy, sell, or swap assets — SUI, BTC, ETH, GOLD available.';
+  if (/invest|buy|sell|trade|swap|portfolio/.test(text)) return 'Tap Swap to buy, sell, or swap assets — SUI, BTC, ETH, GOLD available.';
   if (/service|gift|pay/.test(text)) return 'Tap Pay to browse 40+ services including gift cards, AI, and more.';
   if (/safe|secure/.test(text)) return 'Your account is non-custodial — only you control your funds via Google login. All transactions are gas-free.';
-  return 'I can help with trading, saving, sending, borrowing, and services. Try tapping a chip below or typing a specific command.';
+  return 'I can help with swapping, saving, sending, borrowing, and services. Try tapping a chip below or typing a specific command.';
 }

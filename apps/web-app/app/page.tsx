@@ -34,7 +34,7 @@ export default function LandingPage() {
           <div className="space-y-1.5 text-sm text-muted">
             <p>Your money earns 6-8% while you sleep.</p>
             <p>Pay for any service — no accounts, no subscriptions.</p>
-            <p>Invest in crypto and gold with one tap.</p>
+            <p>Buy, sell, and swap crypto with one tap.</p>
           </div>
         </div>
 

@@ -57,7 +57,7 @@ function fmtToken(amount: number): string {
 
 function capForFlow(
   flow: string,
-  bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number },
+  bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> },
   fromAsset?: string,
 ): number {
   switch (flow) {
@@ -69,15 +69,26 @@ function capForFlow(
     case 'swap': {
       if (fromAsset === 'SUI') return bal.sui;
       if (fromAsset === 'USDC') return bal.usdc;
-      if (fromAsset === 'GOLD' || fromAsset === 'USDT') return bal.checking;
+      if (fromAsset && fromAsset in bal.assetBalances) return bal.assetBalances[fromAsset];
       return bal.checking;
     }
     default: return bal.checking;
   }
 }
 
-function getAmountPresets(flow: string, bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number }, fromAsset?: string): number[] {
-  const cap = Math.floor(capForFlow(flow, bal, fromAsset));
+function getAmountPresets(flow: string, bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> }, fromAsset?: string): number[] {
+  const rawCap = capForFlow(flow, bal, fromAsset);
+  if (rawCap <= 0) return [];
+
+  const isTokenAsset = flow === 'swap' && fromAsset && fromAsset !== 'USDC';
+  if (isTokenAsset && rawCap < 1) {
+    const quarter = rawCap * 0.25;
+    const half = rawCap * 0.5;
+    const threeQ = rawCap * 0.75;
+    return [quarter, half, threeQ].filter((v) => v > 0);
+  }
+
+  const cap = Math.floor(rawCap);
   if (cap <= 0) return [];
   if (cap <= 5) return [1, 2, Math.min(5, cap)].filter((v, i, a) => v <= cap && a.indexOf(v) === i);
   if (cap <= 20) return [1, 5, 10].filter((v) => v <= cap);
@@ -235,6 +246,7 @@ function DashboardContent() {
     bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
     sui: balanceQuery.data?.sui ?? 0,
     usdc: balanceQuery.data?.usdc ?? 0,
+    assetBalances: balanceQuery.data?.assetBalances ?? {},
     loading: balanceQuery.isLoading,
   };
 
@@ -358,10 +370,38 @@ function DashboardContent() {
           if (intent.to) chipFlow.selectAsset(intent.to, flowContext);
           break;
         case 'claim-rewards':
-          feed.addItem({
-            type: 'ai-text',
-            text: 'Rewards claiming will be available once connected to the SDK.',
-          });
+          if (balance.pendingRewards <= 0) {
+            feed.addItem({
+              type: 'ai-text',
+              text: 'No pending rewards to claim right now.',
+            });
+          } else {
+            feed.addItem({ type: 'ai-text', text: `Claiming $${balance.pendingRewards.toFixed(2)} in rewards...` });
+            (async () => {
+              try {
+                if (!agent) throw new Error('Not authenticated');
+                const sdk = await agent.getInstance();
+                const res = await sdk.claimRewards();
+                feed.removeLastItem();
+                feed.addItem({
+                  type: 'result',
+                  success: true,
+                  title: `Claimed $${balance.pendingRewards.toFixed(2)} in rewards`,
+                  details: `Tx: ${res.tx.slice(0, 8)}...${res.tx.slice(-6)}`,
+                });
+                balanceQuery.refetch();
+                setTimeout(() => balanceQuery.refetch(), 3000);
+              } catch (err) {
+                feed.removeLastItem();
+                const msg = err instanceof Error ? err.message : 'Failed to claim rewards';
+                feed.addItem({
+                  type: 'ai-text',
+                  text: `Claim failed: ${msg}`,
+                  chips: [{ label: 'Try again', flow: 'claim-rewards' }],
+                });
+              }
+            })();
+          }
           break;
         case 'address':
           feed.addItem({
@@ -424,17 +464,34 @@ function DashboardContent() {
         case 'history':
           fetchHistory();
           break;
-        case 'rates':
+        case 'rates': {
+          const rateLines: string[] = [];
+          if (balance.savingsRate > 0) {
+            rateLines.push(`Current savings APY: ${balance.savingsRate.toFixed(1)}% (NAVI)`);
+          }
+          if (balance.bestSaveRate) {
+            rateLines.push(`${balance.bestSaveRate.protocol}: ${balance.bestSaveRate.rate.toFixed(1)}% APY`);
+          }
+          if (rateLines.length === 0) {
+            rateLines.push('No rate data available yet — rates refresh every 30s.');
+          }
+          if (balance.savings > 0 && balance.savingsRate > 0) {
+            const monthly = (balance.savings * (balance.savingsRate / 100)) / 12;
+            rateLines.push(`\nYou're earning ~$${monthly.toFixed(2)}/mo on $${Math.floor(balance.savings)} in savings.`);
+          }
           feed.addItem({
             type: 'ai-text',
-            text: 'Current rates will be fetched from Suilend and NAVI once connected. Use the [Save] chip to check rates.',
-            chips: [{ label: 'Save', flow: 'save' }],
+            text: rateLines.join('\n'),
+            chips: balance.checking > 5
+              ? [{ label: 'Save', flow: 'save' }]
+              : [],
           });
           break;
+        }
         case 'help':
           feed.addItem({
             type: 'ai-text',
-            text: 'Here\'s what I can help with:\n\n• Invest — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Services — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100" or "buy $50 BTC".',
+            text: 'Here\'s what I can help with:\n\n• Swap — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Pay — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100" or "buy $50 BTC".',
           });
           break;
         case 'service':
@@ -442,7 +499,7 @@ function DashboardContent() {
           break;
       }
     },
-    [chipFlow, feed, address, balance, balanceQuery.data, flowContext],
+    [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, contactsHook, fetchHistory],
   );
 
   const handleSmartCardAction = useCallback(
@@ -452,7 +509,7 @@ function DashboardContent() {
         return;
       }
       if (chipFlowId === 'claim-rewards') {
-        feed.addItem({ type: 'ai-text', text: 'Rewards claiming will be connected once the SDK integration is complete.' });
+        executeIntent({ action: 'claim-rewards' });
         return;
       }
       if (chipFlowId === 'receive') {
@@ -469,10 +526,24 @@ function DashboardContent() {
         return;
       }
       if (chipFlowId === 'rebalance') {
-        feed.addItem({
-          type: 'ai-text',
-          text: 'Rebalancing will be available once rate comparison is live.',
-        });
+        const alt = balance.bestSaveRate;
+        const current = balance.savingsRate;
+        if (alt && current > 0) {
+          const diff = alt.rate - current;
+          const extraMonthly = (balance.savings * (diff / 100)) / 12;
+          feed.addItem({
+            type: 'ai-text',
+            text: `To rebalance: withdraw from your current position (${current.toFixed(1)}% APY) and re-deposit at ${alt.protocol} (${alt.rate.toFixed(1)}% APY). That's +$${extraMonthly.toFixed(2)}/mo extra on $${Math.floor(balance.savings)}.`,
+            chips: [
+              { label: 'Withdraw savings', flow: 'withdraw' },
+            ],
+          });
+        } else {
+          feed.addItem({
+            type: 'ai-text',
+            text: 'No better rates found right now. Your savings are already at the best available rate.',
+          });
+        }
         return;
       }
       if (chipFlowId === 'risk-explain') {
@@ -485,7 +556,7 @@ function DashboardContent() {
       }
       chipFlow.startFlow(chipFlowId, flowContext);
     },
-    [chipFlow, refresh, feed, flowContext],
+    [chipFlow, refresh, feed, flowContext, executeIntent, balance, fetchHistory],
   );
 
   const handleChipClick = useCallback(
@@ -494,6 +565,7 @@ function DashboardContent() {
         setServicesOpen(true);
         return;
       }
+      if (flow === 'claim-rewards') { executeIntent({ action: 'claim-rewards' }); return; }
       if (flow === 'help') { executeIntent({ action: 'help' }); return; }
       if (flow === 'report') { executeIntent({ action: 'report' }); return; }
       if (flow === 'history') { executeIntent({ action: 'history' }); return; }

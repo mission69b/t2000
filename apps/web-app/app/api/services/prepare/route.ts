@@ -4,6 +4,8 @@ import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
 import { Challenge } from 'mppx';
 import { getGatewayMapping } from '@/lib/service-gateway';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -28,6 +30,8 @@ export async function POST(request: NextRequest) {
   }
 
   const jwt = request.headers.get('x-zklogin-jwt');
+  const jwtResult = validateJwt(jwt);
+  if ('error' in jwtResult) return jwtResult.error;
 
   let body: { serviceId: string; fields: Record<string, string>; address: string };
   try {
@@ -38,9 +42,13 @@ export async function POST(request: NextRequest) {
 
   const { serviceId, fields, address } = body;
 
-  if (!address?.startsWith('0x')) {
+  if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
+
+  // 5 service calls per minute per address
+  const rl = rateLimit(`svc:${address}`, 5, 60_000);
+  if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
   const mapping = getGatewayMapping(serviceId);
   if (!mapping) {

@@ -20,6 +20,7 @@ export interface AgentActions {
   borrow(params: { amount: number }): Promise<{ tx: string }>;
   repay(params: { amount: number }): Promise<{ tx: string }>;
   swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
+  claimRewards(): Promise<{ tx: string }>;
   payService(params: { serviceId: string; fields: Record<string, string> }): Promise<ServiceResult>;
 }
 
@@ -118,6 +119,10 @@ export function useAgent() {
 
           async swap({ from, to, amount }) {
             return sponsoredTransaction('swap', { amount, fromAsset: from, toAsset: to });
+          },
+
+          async claimRewards() {
+            return sponsoredTransaction('claim-rewards', { amount: 0 });
           },
 
           async payService({ serviceId, fields }) {
