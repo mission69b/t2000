@@ -66,7 +66,7 @@ const INITIAL_STATE: ChipFlowState = {
 };
 
 export interface FlowContext {
-  checking?: number;
+  cash?: number;
   savings?: number;
   borrows?: number;
   savingsRate?: number;
@@ -157,8 +157,8 @@ export function useChipFlow() {
     }));
   }, []);
 
-  const selectRecipient = useCallback((recipient: string, label?: string, checking?: number) => {
-    const available = checking !== undefined ? `$${Math.floor(checking)} available` : 'checking balance';
+  const selectRecipient = useCallback((recipient: string, label?: string, cash?: number) => {
+    const available = cash !== undefined ? `$${Math.floor(cash)} available` : 'cash balance';
     setState((prev) => ({
       ...prev,
       recipient,
@@ -227,7 +227,7 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
   switch (flow) {
     case 'save': {
       const rate = ctx?.savingsRate ? ` ${ctx.savingsRate.toFixed(1)}%` : '';
-      const avail = ctx?.checking ? ` You have ${fmtAmount(ctx.checking)} available.` : '';
+      const avail = ctx?.cash ? ` You have ${fmtAmount(ctx.cash)} available.` : '';
       return `Save to earn${rate}.${avail}\nChoose an amount:`;
     }
     case 'send': return 'Who do you want to send to?';

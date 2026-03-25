@@ -17,7 +17,10 @@ const TRADEABLE_COINS: Record<string, { type: string; decimals: number }> = {
 
 export interface BalanceData {
   total: number;
-  checking: number;
+  /** Liquid spendable balance: USDC + SUI (in USD) */
+  cash: number;
+  /** Volatile asset holdings in USD: BTC, ETH, GOLD, USDT */
+  investments: number;
   savings: number;
   borrows: number;
   sui: number;
@@ -31,6 +34,8 @@ export interface BalanceData {
   bestSaveRate: { protocol: string; rate: number } | null;
   /** Raw token balances for tradeable assets (BTC, ETH, GOLD, USDT) */
   assetBalances: Record<string, number>;
+  /** USD values for tradeable assets */
+  assetUsdValues: Record<string, number>;
   loading: boolean;
 }
 
@@ -72,7 +77,7 @@ export function useBalance(address: string | null) {
       if (!address) throw new Error('No address');
 
       const tradeableEntries = Object.entries(TRADEABLE_COINS);
-      const [suiBal, usdcBal, suiPrice, posData, ratesData, ...tradeableBals] = await Promise.all([
+      const [suiBal, usdcBal, suiPrice, posData, ratesData, pricesData, ...tradeableBals] = await Promise.all([
         client.getBalance({ owner: address, coinType: '0x2::sui::SUI' }),
         client.getBalance({ owner: address, coinType: USDC_TYPE }).catch(() => ({ totalBalance: '0' })),
         fetchSuiPrice(client),
@@ -82,6 +87,9 @@ export function useBalance(address: string | null) {
         fetch('/api/rates')
           .then(r => r.json())
           .catch(() => ({ rates: [], bestSaveRate: null })),
+        fetch('/api/prices')
+          .then(r => r.json())
+          .catch(() => ({} as Record<string, number>)),
         ...tradeableEntries.map(([, info]) =>
           client.getBalance({ owner: address, coinType: info.type })
             .catch(() => ({ totalBalance: '0' })),
@@ -89,18 +97,29 @@ export function useBalance(address: string | null) {
       ]);
 
       const r2 = (n: number) => Math.round(n * 100) / 100;
+      const prices = pricesData as Record<string, number>;
 
       const sui = r2(Number(suiBal.totalBalance) / MIST_PER_SUI);
       const usdc = r2(Number(usdcBal.totalBalance) / (10 ** USDC_DECIMALS));
       const suiUsd = r2(sui * suiPrice);
 
       const assetBalances: Record<string, number> = {};
+      const assetUsdValues: Record<string, number> = {};
+      let tradeableUsd = 0;
+
       tradeableEntries.forEach(([symbol, info], idx) => {
         const raw = Number(tradeableBals[idx].totalBalance);
-        assetBalances[symbol] = raw / 10 ** info.decimals;
+        const amount = raw / 10 ** info.decimals;
+        assetBalances[symbol] = amount;
+
+        const price = prices[symbol] ?? (symbol === 'USDT' ? 1 : 0);
+        const usdVal = r2(amount * price);
+        assetUsdValues[symbol] = usdVal;
+        tradeableUsd += usdVal;
       });
 
-      const checking = r2(usdc + suiUsd);
+      const cash = r2(usdc + suiUsd);
+      const investments = r2(tradeableUsd);
       const savings = r2(posData.savings ?? 0);
       const borrows = r2(posData.borrows ?? 0);
       const savingsRate = r2(posData.savingsRate ?? 0);
@@ -110,8 +129,9 @@ export function useBalance(address: string | null) {
       const bestSaveRate = ratesData.bestSaveRate ?? null;
 
       return {
-        total: r2(checking + savings - borrows),
-        checking,
+        total: r2(cash + investments + savings - borrows),
+        cash,
+        investments,
         savings,
         borrows,
         sui,
@@ -124,6 +144,7 @@ export function useBalance(address: string | null) {
         pendingRewards,
         bestSaveRate,
         assetBalances,
+        assetUsdValues,
         loading: false,
       };
     },

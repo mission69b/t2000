@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface DcaSchedule {
   id: string;
@@ -15,6 +15,8 @@ export interface DcaSchedule {
 export function useDcaSchedules(userAddress: string | null) {
   const [schedules, setSchedules] = useState<DcaSchedule[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const schedulesRef = useRef(schedules);
+  schedulesRef.current = schedules;
 
   useEffect(() => {
     if (!userAddress) return;
@@ -23,7 +25,9 @@ export function useDcaSchedules(userAddress: string | null) {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data.dcaSchedules)) {
-          setSchedules(data.dcaSchedules as DcaSchedule[]);
+          const fetched = data.dcaSchedules as DcaSchedule[];
+          setSchedules(fetched);
+          schedulesRef.current = fetched;
         }
         setLoaded(true);
       })
@@ -37,7 +41,7 @@ export function useDcaSchedules(userAddress: string | null) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: userAddress, dcaSchedules: updated }),
-      });
+      }).catch(() => {});
     },
     [userAddress],
   );
@@ -50,32 +54,35 @@ export function useDcaSchedules(userAddress: string | null) {
         createdAt: new Date().toISOString(),
         enabled: true,
       };
-      const updated = [...schedules, schedule];
+      const updated = [...schedulesRef.current, schedule];
+      schedulesRef.current = updated;
       setSchedules(updated);
       persist(updated);
       return schedule;
     },
-    [schedules, persist],
+    [persist],
   );
 
   const remove = useCallback(
     (id: string) => {
-      const updated = schedules.filter((s) => s.id !== id);
+      const updated = schedulesRef.current.filter((s) => s.id !== id);
+      schedulesRef.current = updated;
       setSchedules(updated);
       persist(updated);
     },
-    [schedules, persist],
+    [persist],
   );
 
   const toggleEnabled = useCallback(
     (id: string) => {
-      const updated = schedules.map((s) =>
+      const updated = schedulesRef.current.map((s) =>
         s.id === id ? { ...s, enabled: !s.enabled } : s,
       );
+      schedulesRef.current = updated;
       setSchedules(updated);
       persist(updated);
     },
-    [schedules, persist],
+    [persist],
   );
 
   const active = schedules.filter((s) => s.enabled);

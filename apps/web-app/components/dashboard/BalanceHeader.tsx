@@ -5,14 +5,17 @@ import { truncateAddress } from '@/lib/format';
 
 export interface BalanceHeaderData {
   total: number;
-  checking: number;
+  cash: number;
+  investments: number;
   savings: number;
   borrows: number;
   savingsRate: number;
   healthFactor: number | null;
   sui: number;
+  suiUsd: number;
   usdc: number;
   assetBalances: Record<string, number>;
+  assetUsdValues: Record<string, number>;
   bestSaveRate: { protocol: string; rate: number } | null;
   loading: boolean;
 }
@@ -36,16 +39,21 @@ function fmtToken(n: number): string {
 export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHeaderProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const assets: { symbol: string; amount: string }[] = [];
+  const holdings: { symbol: string; amount: string; usd: string }[] = [];
   if (balance.sui > 0) {
-    assets.push({ symbol: 'SUI', amount: fmtToken(balance.sui) });
+    holdings.push({ symbol: 'SUI', amount: fmtToken(balance.sui), usd: `$${fmtUsd(balance.suiUsd)}` });
   }
   if (balance.usdc > 0) {
-    assets.push({ symbol: 'USDC', amount: fmtUsd(balance.usdc) });
+    holdings.push({ symbol: 'USDC', amount: fmtUsd(balance.usdc), usd: `$${fmtUsd(balance.usdc)}` });
   }
   for (const [symbol, amt] of Object.entries(balance.assetBalances)) {
     if (amt > 0) {
-      assets.push({ symbol, amount: fmtToken(amt) });
+      const usdVal = balance.assetUsdValues[symbol] ?? 0;
+      holdings.push({
+        symbol,
+        amount: fmtToken(amt),
+        usd: `$${fmtUsd(usdVal)}`,
+      });
     }
   }
 
@@ -89,14 +97,20 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
             ${fmtUsd(balance.total)}
           </p>
           <p className="text-xs font-mono text-muted tracking-wide">
-            <span className="uppercase text-[10px] tracking-[0.1em]">chk</span> ${balance.checking.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            <span className="uppercase text-[10px] tracking-[0.1em]">cash</span> ${Math.floor(balance.cash)}
+            {balance.investments > 0 && (
+              <>
+                {' · '}
+                <span className="uppercase text-[10px] tracking-[0.1em]">inv</span> ${Math.floor(balance.investments)}
+              </>
+            )}
             {' · '}
-            <span className="uppercase text-[10px] tracking-[0.1em]">sav</span> ${balance.savings.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            <span className="uppercase text-[10px] tracking-[0.1em]">sav</span> ${Math.floor(balance.savings)}
             {balance.borrows > 0 && (
               <>
                 {' · '}
                 <span className="text-amber-400">
-                  <span className="uppercase text-[10px] tracking-[0.1em]">debt</span> ${balance.borrows.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  <span className="uppercase text-[10px] tracking-[0.1em]">debt</span> ${Math.floor(balance.borrows)}
                 </span>
               </>
             )}
@@ -112,7 +126,10 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
         <div className="mt-2 rounded-sm border border-border bg-surface/60 text-left text-xs font-mono divide-y divide-border/50 overflow-hidden transition-all">
           {/* Account breakdown */}
           <div className="px-4 py-3 space-y-1.5">
-            <Row label="Checking" value={`$${fmtUsd(balance.checking)}`} />
+            <Row label="Cash" value={`$${fmtUsd(balance.cash)}`} />
+            {balance.investments > 0 && (
+              <Row label="Investments" value={`$${fmtUsd(balance.investments)}`} />
+            )}
             <Row label="Savings" value={`$${fmtUsd(balance.savings)}`} />
             {balance.savingsRate > 0 && (
               <Row label="Savings APY" value={`${balance.savingsRate.toFixed(1)}%`} accent />
@@ -131,12 +148,12 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
             )}
           </div>
 
-          {/* Assets */}
-          {assets.length > 0 && (
+          {/* Holdings detail */}
+          {holdings.length > 0 && (
             <div className="px-4 py-3 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Assets</p>
-              {assets.map((a) => (
-                <Row key={a.symbol} label={a.symbol} value={a.amount} />
+              <p className="text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Holdings</p>
+              {holdings.map((h) => (
+                <Row key={h.symbol} label={h.symbol} value={h.amount} sublabel={h.usd} />
               ))}
             </div>
           )}
@@ -146,12 +163,13 @@ export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHead
   );
 }
 
-function Row({ label, value, accent, warn }: { label: string; value: string; accent?: boolean; warn?: boolean }) {
+function Row({ label, value, sublabel, accent, warn }: { label: string; value: string; sublabel?: string; accent?: boolean; warn?: boolean }) {
   return (
     <div className="flex justify-between items-center">
       <span className="text-muted">{label}</span>
       <span className={accent ? 'text-accent' : warn ? 'text-amber-400' : 'text-foreground'}>
         {value}
+        {sublabel && <span className="text-muted ml-1.5">{sublabel}</span>}
       </span>
     </div>
   );

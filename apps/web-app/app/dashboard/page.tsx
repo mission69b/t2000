@@ -61,12 +61,13 @@ function fmtToken(amount: number): string {
 
 function capForFlow(
   flow: string,
-  bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> },
+  bal: { cash: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> },
   fromAsset?: string,
 ): number {
   switch (flow) {
-    case 'save': return bal.checking;
-    case 'send': return bal.checking;
+    case 'save': return bal.cash;
+    case 'send': return bal.cash;
+    case 'invest': return bal.usdc;
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
     case 'borrow': return bal.maxBorrow;
@@ -74,13 +75,13 @@ function capForFlow(
       if (fromAsset === 'SUI') return bal.sui;
       if (fromAsset === 'USDC') return bal.usdc;
       if (fromAsset && fromAsset in bal.assetBalances) return bal.assetBalances[fromAsset];
-      return bal.checking;
+      return bal.cash;
     }
-    default: return bal.checking;
+    default: return bal.cash;
   }
 }
 
-function getAmountPresets(flow: string, bal: { checking: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> }, fromAsset?: string): number[] {
+function getAmountPresets(flow: string, bal: { cash: number; savings: number; borrows: number; maxBorrow: number; sui: number; usdc: number; assetBalances: Record<string, number> }, fromAsset?: string): number[] {
   const rawCap = capForFlow(flow, bal, fromAsset);
   if (rawCap <= 0) return [];
 
@@ -241,7 +242,8 @@ function DashboardContent() {
 
   const balance = {
     total: balanceQuery.data?.total ?? 0,
-    checking: balanceQuery.data?.checking ?? 0,
+    cash: balanceQuery.data?.cash ?? 0,
+    investments: balanceQuery.data?.investments ?? 0,
     savings: balanceQuery.data?.savings ?? 0,
     borrows: balanceQuery.data?.borrows ?? 0,
     savingsRate: balanceQuery.data?.savingsRate ?? 0,
@@ -250,8 +252,10 @@ function DashboardContent() {
     pendingRewards: balanceQuery.data?.pendingRewards ?? 0,
     bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
     sui: balanceQuery.data?.sui ?? 0,
+    suiUsd: balanceQuery.data?.suiUsd ?? 0,
     usdc: balanceQuery.data?.usdc ?? 0,
     assetBalances: balanceQuery.data?.assetBalances ?? {},
+    assetUsdValues: balanceQuery.data?.assetUsdValues ?? {},
     loading: balanceQuery.isLoading,
   };
 
@@ -269,9 +273,10 @@ function DashboardContent() {
 
     const reportLines = [
       `Total: $${balance.total.toFixed(2)}`,
-      `Checking: $${balance.checking.toFixed(2)}`,
+      `Cash: $${balance.cash.toFixed(2)}`,
+      balance.investments > 0 ? `Investments: $${balance.investments.toFixed(2)}` : '',
       `Savings: $${balance.savings.toFixed(2)}`,
-    ];
+    ].filter(Boolean);
     if (balance.borrows > 0) {
       reportLines.push(`Debt: $${balance.borrows.toFixed(2)}`);
       if (balance.healthFactor && balance.healthFactor !== Infinity) {
@@ -299,7 +304,7 @@ function DashboardContent() {
   }, [balance, balanceQuery.data, overnightData.isFirstOpenToday, feed]);
 
   const accountState: AccountState = {
-    checking: balance.checking,
+    cash: balance.cash,
     savings: balance.savings,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
@@ -314,7 +319,7 @@ function DashboardContent() {
   };
 
   const flowContext: FlowContext = {
-    checking: balance.checking,
+    cash: balance.cash,
     savings: balance.savings,
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
@@ -371,9 +376,9 @@ function DashboardContent() {
           chipFlow.startFlow('send', flowContext);
           const resolved = contactsHook.resolveContact(intent.to);
           if (resolved) {
-            chipFlow.selectRecipient(resolved, intent.to, flowContext.checking);
+            chipFlow.selectRecipient(resolved, intent.to, flowContext.cash);
           } else {
-            chipFlow.selectRecipient(intent.to, undefined, flowContext.checking);
+            chipFlow.selectRecipient(intent.to, undefined, flowContext.cash);
           }
           if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
           break;
@@ -461,9 +466,10 @@ function DashboardContent() {
           const bd = balanceQuery.data;
           const lines = [
             `Total: $${balance.total.toFixed(2)}`,
-            `Checking: $${balance.checking.toFixed(2)}`,
+            `Cash: $${balance.cash.toFixed(2)}`,
+            balance.investments > 0 ? `Investments: $${balance.investments.toFixed(2)}` : '',
             `Savings: $${balance.savings.toFixed(2)}`,
-          ];
+          ].filter(Boolean);
           if (balance.borrows > 0) {
             lines.push(`Debt: $${balance.borrows.toFixed(2)}`);
             if (balance.healthFactor && balance.healthFactor !== Infinity) {
@@ -486,9 +492,10 @@ function DashboardContent() {
           const rd = balanceQuery.data;
           const reportLines = [
             `Total: $${balance.total.toFixed(2)}`,
-            `Checking: $${balance.checking.toFixed(2)}`,
+            `Cash: $${balance.cash.toFixed(2)}`,
+            balance.investments > 0 ? `Investments: $${balance.investments.toFixed(2)}` : '',
             `Savings: $${balance.savings.toFixed(2)}`,
-          ];
+          ].filter(Boolean);
           if (balance.borrows > 0) {
             reportLines.push(`Debt: $${balance.borrows.toFixed(2)}`);
             if (balance.healthFactor && balance.healthFactor !== Infinity) {
@@ -534,7 +541,7 @@ function DashboardContent() {
           feed.addItem({
             type: 'ai-text',
             text: rateLines.join('\n'),
-            chips: balance.checking > 5
+            chips: balance.cash > 5
               ? [{ label: 'Save', flow: 'save' }]
               : [],
           });
@@ -577,7 +584,7 @@ function DashboardContent() {
       }
       if (chipFlowId === 'save-all') {
         chipFlow.startFlow('save', flowContext);
-        chipFlow.selectAmount(balance.checking);
+        chipFlow.selectAmount(balance.cash);
         return;
       }
       if (chipFlowId === 'rebalance') {
@@ -827,7 +834,7 @@ function DashboardContent() {
       }
 
       llmUsage.increment();
-      const balanceCtx = `Total: $${balance.total.toFixed(2)}, Checking: $${balance.checking.toFixed(2)}, Savings: $${balance.savings.toFixed(2)}${balance.borrows > 0 ? `, Debt: $${balance.borrows.toFixed(2)}` : ''}`;
+      const balanceCtx = `Total: $${balance.total.toFixed(2)}, Cash: $${balance.cash.toFixed(2)}${balance.investments > 0 ? `, Investments: $${balance.investments.toFixed(2)}` : ''}, Savings: $${balance.savings.toFixed(2)}${balance.borrows > 0 ? `, Debt: $${balance.borrows.toFixed(2)}` : ''}`;
 
       feed.addItem({ type: 'ai-text', text: '' });
       const response = await llm.queryStream(text, address, balanceCtx, (partialText) => {
@@ -1225,7 +1232,7 @@ function DashboardContent() {
               amounts={getAmountPresets(f, balance, swapFrom)}
               allLabel={
                 f === 'withdraw' ? `All $${fmtDollar(balance.savings)}` :
-                f === 'save' ? `All $${fmtDollar(balance.checking)}` :
+                f === 'save' ? `All $${fmtDollar(balance.cash)}` :
                 f === 'repay' ? `All $${fmtDollar(balance.borrows)}` :
                 f === 'borrow' && balance.maxBorrow > 0 ? `Max $${fmtDollar(balance.maxBorrow)}` :
                 f === 'swap' && swapFrom ? `All ${swapCap.toFixed(swapFrom === 'USDC' ? 2 : 4)} ${swapFrom}` :
@@ -1242,13 +1249,13 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && !chipFlow.state.recipient && (
           <SendRecipientInput
             contacts={contactsHook.contacts}
-            onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.checking)}
+            onSelectContact={(addr, name) => chipFlow.selectRecipient(addr, name, balance.cash)}
             onSubmit={(input) => {
               const resolved = contactsHook.resolveContact(input);
               if (resolved) {
-                chipFlow.selectRecipient(resolved, input, balance.checking);
+                chipFlow.selectRecipient(resolved, input, balance.cash);
               } else {
-                chipFlow.selectRecipient(input, undefined, balance.checking);
+                chipFlow.selectRecipient(input, undefined, balance.cash);
               }
             }}
           />
@@ -1258,7 +1265,7 @@ function DashboardContent() {
         {chipFlow.state.phase === 'l2-chips' && chipFlow.state.flow === 'send' && chipFlow.state.recipient && (
           <AmountChips
             amounts={getAmountPresets('send', balance)}
-            allLabel={`All $${fmtDollar(balance.checking)}`}
+            allLabel={`All $${fmtDollar(balance.cash)}`}
             onSelect={handleAmountSelect}
             message={chipFlow.state.message ?? undefined}
           />

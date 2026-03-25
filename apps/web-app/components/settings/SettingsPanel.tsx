@@ -233,7 +233,7 @@ export function SettingsPanel({
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ address, limits: next }),
-                    });
+                    }).catch(() => {});
                   }
                   setEditingLimit(null);
                 }}
@@ -255,7 +255,7 @@ export function SettingsPanel({
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ address, limits: next }),
-                    });
+                    }).catch(() => {});
                   }
                   setEditingLimit(null);
                 }}

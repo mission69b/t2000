@@ -125,7 +125,7 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
 
   it('startFlow with context generates message with balance info', () => {
     const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('save', { checking: 500, savingsRate: 6.5 }));
+    act(() => result.current.startFlow('save', { cash: 500, savingsRate: 6.5 }));
     expect(result.current.state.phase).toBe('l2-chips');
     expect(result.current.state.message).toBeTruthy();
   });
