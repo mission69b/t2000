@@ -75,13 +75,14 @@ export default function ExplorerPage() {
   }, [fetchPayments]);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/mpp/stats').then((r) => r.json()),
-      fetch('/api/mpp/volume').then((r) => r.json()),
-    ]).then(([s, v]) => {
-      setStats(s);
-      setVolume(v.days);
-    });
+    fetch('/api/mpp/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => { if (s) setStats(s); })
+      .catch(() => {});
+    fetch('/api/mpp/volume')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v) => { if (v?.days) setVolume(v.days); })
+      .catch(() => {});
   }, []);
 
   const totalPages = Math.ceil(total / PER_PAGE);
@@ -127,20 +128,31 @@ export default function ExplorerPage() {
               <div className="text-[10px] uppercase tracking-wider text-muted mb-3">
                 Volume (7d)
               </div>
-              <div className="flex items-end gap-1 h-20">
-                {volume.map((d) => (
-                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full bg-accent/60 rounded-sm transition-all hover:bg-accent"
-                      style={{
-                        height: `${Math.max((d.count / maxVolume) * 100, 4)}%`,
-                      }}
-                      title={`${d.count} payments · ${d.volume} USDC`}
-                    />
-                    <span className="text-[9px] text-dim">{d.label}</span>
-                  </div>
-                ))}
-              </div>
+              {volume.length > 0 ? (
+                <div className="flex items-end gap-1 h-20">
+                  {volume.map((d) => (
+                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+                      {d.count > 0 && (
+                        <span className="text-[9px] text-muted">{d.count}</span>
+                      )}
+                      <div
+                        className={`w-full rounded-sm transition-all hover:bg-accent ${d.count > 0 ? 'bg-accent/60' : 'bg-border/30'}`}
+                        style={{
+                          height: d.count > 0
+                            ? `${Math.max((d.count / maxVolume) * 100, 8)}%`
+                            : '4%',
+                        }}
+                        title={`${d.count} payments · ${d.volume} USDC`}
+                      />
+                      <span className="text-[9px] text-dim">{d.label}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-20 text-xs text-dim">
+                  Loading...
+                </div>
+              )}
             </div>
 
             {/* Service breakdown */}
