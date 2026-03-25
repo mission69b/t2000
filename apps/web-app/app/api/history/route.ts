@@ -10,7 +10,7 @@ const SUI_TYPE = '0x2::sui::SUI';
 
 const KNOWN_TARGETS: [RegExp, string][] = [
   [/::suilend|::obligation/, 'lending'],
-  [/::navi|::incentive_v2|::incentive_v3|::oracle_pro/, 'lending'],
+  [/::navi|::incentive_v\d+|::oracle_pro/, 'lending'],
   [/::cetus|::pool/, 'swap'],
   [/::deepbook/, 'swap'],
   [/::transfer::public_transfer/, 'send'],

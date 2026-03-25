@@ -111,10 +111,14 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { sponsored?: boolean },
+    options?: { sponsored?: boolean; skipOracle?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
-    const tx = await naviProtocol.buildRepayTx(this.client, address, amount, { asset: normalized, sponsored: options?.sponsored });
+    const tx = await naviProtocol.buildRepayTx(this.client, address, amount, {
+      asset: normalized,
+      sponsored: options?.sponsored,
+      skipOracle: options?.skipOracle,
+    });
     return { tx };
   }
 

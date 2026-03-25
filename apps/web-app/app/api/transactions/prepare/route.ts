@@ -24,6 +24,7 @@ interface BuildRequest {
   asset?: string;
   fromAsset?: string;
   toAsset?: string;
+  skipOracle?: boolean;
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -115,76 +116,102 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const tx = await buildTransaction({ type, address, amount, recipient, asset, fromAsset: body.fromAsset, toAsset: body.toAsset });
+    const params: BuildRequest = { type, address, amount, recipient, asset, fromAsset: body.fromAsset, toAsset: body.toAsset };
 
-    const moveCallTargets = extractMoveCallTargets(tx);
-    if (moveCallTargets.length > 0) {
-      console.log(`[prepare] ${type} targets (${moveCallTargets.length}):`, moveCallTargets);
+    let result = await buildAndSponsor(params, jwt);
+
+    if (!result.ok && result.status === 400 && type === 'repay' && !params.skipOracle) {
+      console.warn(
+        '[prepare] Repay sponsorship rejected by Enoki — retrying without oracle.',
+        'To fix permanently, add oracle_pro and incentive_v3 targets to your Enoki project allowlist.',
+      );
+      result = await buildAndSponsor({ ...params, skipOracle: true }, jwt);
     }
 
-    const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
-    const txKindBase64 = toBase64(txKindBytes);
-
-    const sponsorHeaders: Record<string, string> = {
-      Authorization: `Bearer ${ENOKI_SECRET_KEY}`,
-      'Content-Type': 'application/json',
-    };
-    if (jwt) {
-      sponsorHeaders['zklogin-jwt'] = jwt;
-    }
-
-    const sponsorBody: Record<string, unknown> = {
-      network: SUI_NETWORK,
-      transactionBlockKindBytes: txKindBase64,
-      sender: address,
-    };
-
-    if (moveCallTargets.length > 0) {
-      sponsorBody.allowedMoveCallTargets = moveCallTargets;
-    }
-
-    if (recipient) {
-      sponsorBody.allowedAddresses = [recipient];
-    }
-
-    const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
-      method: 'POST',
-      headers: sponsorHeaders,
-      body: JSON.stringify(sponsorBody),
-    });
-
-    if (!sponsorRes.ok) {
-      const errorBody = await sponsorRes.text().catch(() => '');
-      console.error(`[sponsor] Enoki error (${sponsorRes.status}):`, errorBody);
-
-      let parsed: { message?: string } = {};
-      try { parsed = JSON.parse(errorBody); } catch {}
-
-      if (sponsorRes.status === 429) {
+    if (!result.ok) {
+      if (result.status === 429) {
         return NextResponse.json(
           { error: 'Too many transactions. Please try again shortly.' },
           { status: 429 },
         );
       }
-
       return NextResponse.json(
-        { error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})` },
-        { status: sponsorRes.status >= 500 ? 502 : sponsorRes.status },
+        { error: result.error },
+        { status: result.status >= 500 ? 502 : result.status },
       );
     }
 
-    const { data } = await sponsorRes.json();
-
-    return NextResponse.json({
-      bytes: data.bytes,
-      digest: data.digest,
-    });
+    return NextResponse.json({ bytes: result.bytes, digest: result.digest });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transaction build failed';
     const stack = err instanceof Error ? err.stack : '';
     console.error('[prepare] Error:', message, stack);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+type SponsorResult =
+  | { ok: true; bytes: string; digest: string }
+  | { ok: false; status: number; error: string };
+
+async function buildAndSponsor(
+  params: BuildRequest,
+  jwt: string | null,
+): Promise<SponsorResult> {
+  const tx = await buildTransaction(params);
+
+  const moveCallTargets = extractMoveCallTargets(tx);
+  if (moveCallTargets.length > 0) {
+    console.log(`[prepare] ${params.type} targets (${moveCallTargets.length}):`, moveCallTargets);
+  }
+
+  const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
+  const txKindBase64 = toBase64(txKindBytes);
+
+  const sponsorHeaders: Record<string, string> = {
+    Authorization: `Bearer ${ENOKI_SECRET_KEY!}`,
+    'Content-Type': 'application/json',
+  };
+  if (jwt) {
+    sponsorHeaders['zklogin-jwt'] = jwt;
+  }
+
+  const sponsorBody: Record<string, unknown> = {
+    network: SUI_NETWORK,
+    transactionBlockKindBytes: txKindBase64,
+    sender: params.address,
+  };
+
+  if (moveCallTargets.length > 0) {
+    sponsorBody.allowedMoveCallTargets = moveCallTargets;
+  }
+
+  if (params.recipient) {
+    sponsorBody.allowedAddresses = [params.recipient];
+  }
+
+  const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
+    method: 'POST',
+    headers: sponsorHeaders,
+    body: JSON.stringify(sponsorBody),
+  });
+
+  if (!sponsorRes.ok) {
+    const errorBody = await sponsorRes.text().catch(() => '');
+    console.error(`[sponsor] Enoki error (${sponsorRes.status}):`, errorBody);
+
+    let parsed: { message?: string } = {};
+    try { parsed = JSON.parse(errorBody); } catch {}
+
+    return {
+      ok: false,
+      status: sponsorRes.status,
+      error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})`,
+    };
+  }
+
+  const { data } = await sponsorRes.json();
+  return { ok: true, bytes: data.bytes, digest: data.digest };
 }
 
 async function buildTransaction(params: BuildRequest): Promise<Transaction> {
@@ -244,7 +271,10 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
     case 'repay': {
       const navi = getNaviAdapter();
-      const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC', {
+        sponsored: true,
+        skipOracle: params.skipOracle,
+      });
       return result.tx;
     }
 

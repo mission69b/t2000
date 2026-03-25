@@ -465,7 +465,7 @@ export async function buildRepayTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: string; sponsored?: boolean } = {},
+  options: { asset?: string; sponsored?: boolean; skipOracle?: boolean } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Repay amount must be a positive number');
@@ -486,7 +486,7 @@ export async function buildRepayTx(
 
   await refreshOracle(tx, client, address, {
     skipPythUpdate: options.sponsored,
-    skipOracle: options.sponsored,
+    skipOracle: options.skipOracle,
   });
 
   try {
