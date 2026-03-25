@@ -1,6 +1,6 @@
 {
   "name": "@t2000/mcp",
-  "version": "0.22.19",
+  "version": "0.22.20",
   "mcpName": "io.github.mission69b/t2000",
   "description": "MCP server for AI agent bank accounts on Sui — 35 tools, 20 prompts, stdio transport",
   "type": "module",
