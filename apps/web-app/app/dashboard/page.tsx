@@ -17,7 +17,6 @@ import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import { FrequencySelector } from '@/components/dashboard/FrequencySelector';
 import { useDcaSchedules } from '@/hooks/useDcaSchedules';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
-import { ServicesPanel } from '@/components/services/ServicesPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
 import { useAgentLoop, type AgentStep } from '@/hooks/useAgentLoop';
@@ -29,9 +28,7 @@ import { deriveSmartCards, type AccountState } from '@/lib/smart-cards';
 import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
-import { useAgent, ServiceDeliveryError } from '@/hooks/useAgent';
-import type { ServiceRetryMeta } from '@/hooks/useAgent';
-import type { ServiceItem } from '@/lib/service-catalog';
+import { useAgent } from '@/hooks/useAgent';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -235,7 +232,7 @@ function DashboardContent() {
     },
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [servicesOpen, setServicesOpen] = useState(false);
+  const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const feedEndRef = useRef<HTMLDivElement>(null);
 
@@ -261,6 +258,17 @@ function DashboardContent() {
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [feed.items.length]);
+
+  useEffect(() => {
+    if (!address) return;
+    fetch(`/api/user/preferences?address=${address}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const budget = data.limits?.agentBudget;
+        if (typeof budget === 'number' && budget >= 0) setAgentBudget(budget);
+      })
+      .catch(() => {});
+  }, [address]);
 
   const overnightData = useOvernightEarnings(balance.savings, balance.loading);
   const dailyReportShown = useRef(false);
@@ -549,14 +557,11 @@ function DashboardContent() {
         case 'help':
           feed.addItem({
             type: 'ai-text',
-            text: 'Here\'s what I can help with:\n\n• Swap — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Pay — Gift cards, AI tools, and 90+ endpoints\n• Report — Full financial summary\n\nJust tap a chip below or type a command like "save $100" or "buy $50 BTC".',
+            text: 'Here\'s what I can help with:\n\n• Swap — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Invest — DCA or one-time into BTC, ETH, GOLD\n• Report — Full financial summary\n\nI can also search the web, send emails, translate, generate images, buy gift cards, and more — just type what you need.',
           });
           break;
         case 'invest':
           chipFlow.startFlow('invest', flowContext);
-          break;
-        case 'service':
-          setServicesOpen(true);
           break;
       }
     },
@@ -620,86 +625,8 @@ function DashboardContent() {
     [chipFlow, refresh, feed, flowContext, executeIntent, balance, fetchHistory],
   );
 
-  const pendingRetryRef = useRef<{
-    paymentDigest: string;
-    meta: ServiceRetryMeta;
-    serviceName: string;
-    serviceIcon: string;
-  } | null>(null);
-
-  const handleServiceRetry = useCallback(
-    async (paymentDigest: string, meta: ServiceRetryMeta, serviceName: string, serviceIcon: string) => {
-      feed.addItem({
-        type: 'ai-text',
-        text: `Retrying ${serviceName} delivery...`,
-      });
-
-      try {
-        if (!agent) throw new Error('Not authenticated');
-        const sdk = await agent.getInstance();
-        const result = await sdk.retryServiceDelivery(paymentDigest, meta);
-
-        feed.removeLastItem();
-        feed.addItem({
-          type: 'result',
-          success: true,
-          title: `${serviceIcon} ${serviceName}`,
-          details: `Paid $${result.price} · Tx: ${paymentDigest.slice(0, 8)}...${paymentDigest.slice(-6)}`,
-        });
-
-        const r = result.result as Record<string, unknown> | string;
-        const images = typeof r === 'object' && r !== null && Array.isArray(r.images)
-          ? (r.images as { url?: string }[]).filter((img) => img.url)
-          : [];
-
-        if (images.length > 0) {
-          for (const img of images) {
-            feed.addItem({ type: 'image', url: img.url!, alt: serviceName, cost: `$${result.price}` });
-          }
-        } else {
-          const responseText = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
-          const preview = responseText.length > 500
-            ? responseText.slice(0, 500) + '...'
-            : responseText;
-          feed.addItem({
-            type: 'ai-text',
-            text: `**${serviceName} response:**\n\n\`\`\`\n${preview}\n\`\`\``,
-          });
-        }
-
-        balanceQuery.refetch();
-      } catch (err) {
-        feed.removeLastItem();
-        if (err instanceof ServiceDeliveryError) {
-          feed.addItem({
-            type: 'ai-text',
-            text: `${serviceIcon} ${serviceName} delivery still failing.\n\nPayment confirmed: \`${paymentDigest.slice(0, 8)}...${paymentDigest.slice(-6)}\`\n\nThe service may be temporarily down. You can retry later — your payment is safe on-chain.`,
-          });
-        } else {
-          const msg = err instanceof Error ? err.message : 'Retry failed';
-          feed.addItem({
-            type: 'ai-text',
-            text: `${serviceIcon} ${serviceName} retry failed: ${msg}`,
-          });
-        }
-      }
-    },
-    [agent, feed, balanceQuery],
-  );
-
   const handleChipClick = useCallback(
     (flow: string) => {
-      if (flow === 'service-retry') {
-        const retry = pendingRetryRef.current;
-        if (retry) {
-          handleServiceRetry(retry.paymentDigest, retry.meta, retry.serviceName, retry.serviceIcon);
-        }
-        return;
-      }
-      if (flow === 'services') {
-        setServicesOpen(true);
-        return;
-      }
       if (flow === 'claim-rewards') { executeIntent({ action: 'claim-rewards' }); return; }
       if (flow === 'help') { executeIntent({ action: 'help' }); return; }
       if (flow === 'report') { executeIntent({ action: 'report' }); return; }
@@ -733,83 +660,7 @@ function DashboardContent() {
       }
       chipFlow.startFlow(flow, flowContext);
     },
-    [chipFlow, feed, executeIntent, balance.borrows, balance.savings, flowContext, handleServiceRetry],
-  );
-
-  const handleServiceSubmit = useCallback(
-    async (service: ServiceItem, values: Record<string, string>) => {
-      feed.addItem({
-        type: 'ai-text',
-        text: `Processing ${service.name}... Paying $${service.startingPrice} via MPP.`,
-      });
-
-      try {
-        if (!agent) throw new Error('Not authenticated');
-        const sdk = await agent.getInstance();
-        const result = await sdk.payService({
-          serviceId: service.id,
-          fields: values,
-        });
-
-        feed.removeLastItem();
-
-        feed.addItem({
-          type: 'result',
-          success: true,
-          title: `${service.icon} ${service.name}`,
-          details: `Paid $${result.price} · Tx: ${result.paymentDigest.slice(0, 8)}...${result.paymentDigest.slice(-6)}`,
-        });
-
-        const r = result.result as Record<string, unknown> | string;
-        const images = typeof r === 'object' && r !== null && Array.isArray(r.images)
-          ? (r.images as { url?: string }[]).filter((img) => img.url)
-          : [];
-
-        if (images.length > 0) {
-          for (const img of images) {
-            feed.addItem({ type: 'image', url: img.url!, alt: service.name, cost: `$${result.price}` });
-          }
-        } else {
-          const responseText = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
-          const previewLength = 500;
-          const preview = responseText.length > previewLength
-            ? responseText.slice(0, previewLength) + '...'
-            : responseText;
-          feed.addItem({
-            type: 'ai-text',
-            text: `**${service.name} response:**\n\n\`\`\`\n${preview}\n\`\`\``,
-          });
-        }
-
-        balanceQuery.refetch();
-      } catch (err) {
-        feed.removeLastItem();
-
-        if (err instanceof ServiceDeliveryError) {
-          const digest = err.paymentDigest;
-          pendingRetryRef.current = {
-            paymentDigest: digest,
-            meta: err.meta,
-            serviceName: service.name,
-            serviceIcon: service.icon,
-          };
-          feed.addItem({
-            type: 'ai-text',
-            text: `${service.icon} Payment confirmed but ${service.name} delivery failed.\n\nTx: \`${digest.slice(0, 8)}...${digest.slice(-6)}\`\n\nYour payment is safe on-chain. Tap below to retry delivery (no extra charge).`,
-            chips: [{ label: 'Retry delivery', flow: 'service-retry' }],
-          });
-          return;
-        }
-
-        const msg = err instanceof Error ? err.message : 'Service request failed';
-        feed.addItem({
-          type: 'ai-text',
-          text: `${service.icon} ${service.name} failed: ${msg}`,
-          chips: [{ label: 'Try again', flow: 'services' }],
-        });
-      }
-    },
-    [feed, agent, balanceQuery],
+    [chipFlow, feed, executeIntent, balance.borrows, balance.savings, flowContext],
   );
 
   const handleInputSubmit = useCallback(
@@ -839,7 +690,7 @@ function DashboardContent() {
         address,
         email,
         balanceSummary: balanceCtx,
-        budget: 0.50,
+        budget: agentBudget,
       }, {
         onStep: (step: AgentStep) => {
           stepsAccum.push({ ...step });
@@ -887,7 +738,7 @@ function DashboardContent() {
         },
       });
     },
-    [feed, executeIntent, address, session, balance, agentLoop, balanceQuery],
+    [feed, executeIntent, address, session, balance, agentLoop, balanceQuery, agentBudget],
   );
 
   const handleFeedChipClick = useCallback(
@@ -1401,11 +1252,6 @@ function DashboardContent() {
         onRefreshSession={refresh}
       />
 
-      <ServicesPanel
-        open={servicesOpen}
-        onClose={() => setServicesOpen(false)}
-        onServiceSubmit={handleServiceSubmit}
-      />
     </main>
   );
 }

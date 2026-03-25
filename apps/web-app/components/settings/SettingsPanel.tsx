@@ -18,7 +18,7 @@ interface SettingsPanelProps {
   onRefreshSession: () => void;
 }
 
-const DEFAULT_LIMITS = { maxTx: 1000, maxDaily: 5000 };
+const DEFAULT_LIMITS = { maxTx: 1000, maxDaily: 5000, agentBudget: 0.50 };
 
 export function SettingsPanel({
   open,
@@ -35,7 +35,7 @@ export function SettingsPanel({
   const [copied, setCopied] = useState(false);
   const [showEmergencyConfirm, setShowEmergencyConfirm] = useState(false);
   const [limits, setLimits] = useState(DEFAULT_LIMITS);
-  const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | null>(null);
+  const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | 'agentBudget' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [now] = useState(() => Date.now());
   const dcaSchedules = useDcaSchedules(address);
@@ -261,7 +261,29 @@ export function SettingsPanel({
                 }}
                 onCancel={() => setEditingLimit(null)}
               />
-              <p className="text-xs text-muted">Tap a limit to customize. Limits help protect your account.</p>
+              <EditableLimit
+                label="Agent session budget"
+                value={limits.agentBudget}
+                editing={editingLimit === 'agentBudget'}
+                editValue={editValue}
+                onEdit={() => { setEditingLimit('agentBudget'); setEditValue(String(limits.agentBudget)); }}
+                onEditChange={setEditValue}
+                onSave={() => {
+                  const val = parseFloat(editValue);
+                  if (val >= 0) {
+                    const next = { ...limits, agentBudget: val };
+                    setLimits(next);
+                    fetch('/api/user/preferences', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ address, limits: next }),
+                    }).catch(() => {});
+                  }
+                  setEditingLimit(null);
+                }}
+                onCancel={() => setEditingLimit(null)}
+              />
+              <p className="text-xs text-muted">Tap a limit to customize. Agent budget is the max auto-approved spend per session.</p>
             </div>
           </section>
 
