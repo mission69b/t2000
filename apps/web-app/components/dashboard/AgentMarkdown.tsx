@@ -62,6 +62,7 @@ function parseInline(text: string): Segment[] {
 
 type LineData =
   | { type: 'paragraph'; segments: Segment[] }
+  | { type: 'heading'; level: number; segments: Segment[] }
   | { type: 'list-item'; number: number; segments: Segment[] }
   | { type: 'bullet-item'; segments: Segment[] }
   | { type: 'spacer' };
@@ -76,6 +77,16 @@ function parseLines(text: string): LineData[] {
       if (result.length > 0 && result[result.length - 1].type !== 'spacer') {
         result.push({ type: 'spacer' });
       }
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
+    if (headingMatch) {
+      result.push({
+        type: 'heading',
+        level: headingMatch[1].length,
+        segments: parseInline(headingMatch[2]),
+      });
       continue;
     }
 
@@ -159,6 +170,17 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
       {lines.map((line, i) => {
         if (line.type === 'spacer') {
           return <div key={i} className="h-1" />;
+        }
+
+        if (line.type === 'heading') {
+          const cls = line.level === 1
+            ? 'font-semibold text-foreground text-sm mt-2 first:mt-0'
+            : 'font-semibold text-foreground text-[13px] mt-2 first:mt-0';
+          return (
+            <p key={i} className={cls}>
+              <InlineSegments segments={line.segments} onAction={onAction} />
+            </p>
+          );
         }
 
         if (line.type === 'list-item') {
