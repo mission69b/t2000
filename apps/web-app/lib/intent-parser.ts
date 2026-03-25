@@ -37,7 +37,7 @@ export function parseIntent(input: string): ParsedIntent {
   const text = input.trim().toLowerCase();
 
   // Simple keyword matches
-  if (/^(help|what can (you|i) do|commands)\b/i.test(text)) {
+  if (/^(help|what can (you|i) do|commands)$/i.test(text)) {
     return { action: 'help' };
   }
 

@@ -3,10 +3,16 @@ import { parseIntent } from './intent-parser';
 
 describe('parseIntent', () => {
   describe('simple commands', () => {
-    it('parses help', () => {
+    it('parses help (exact only)', () => {
       expect(parseIntent('help')).toEqual({ action: 'help' });
       expect(parseIntent('what can you do')).toEqual({ action: 'help' });
       expect(parseIntent('what can I do')).toEqual({ action: 'help' });
+    });
+
+    it('does NOT match "help me..." — falls through to LLM', () => {
+      expect(parseIntent('help me send an email')).toBeNull();
+      expect(parseIntent('help me search for flights')).toBeNull();
+      expect(parseIntent('help me find a gift card')).toBeNull();
     });
 
     it('parses address', () => {
