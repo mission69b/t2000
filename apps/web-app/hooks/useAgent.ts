@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { deserializeKeypair } from '@/lib/zklogin';
+import { getStrategyAllocations } from '@/lib/strategies';
 
 export interface ServiceResult {
   success: boolean;
@@ -34,6 +35,9 @@ export class ServiceDeliveryError extends Error {
 export interface StrategyBuyResult {
   buys: { asset: string; amount: number; tx: string }[];
   totalInvested: number;
+  partial?: boolean;
+  failedAsset?: string;
+  error?: string;
 }
 
 export interface AgentActions {
@@ -148,26 +152,32 @@ export function useAgent() {
           },
 
           async strategyBuy({ strategy, amount }) {
-            const ALLOCATIONS: Record<string, Record<string, number>> = {
-              bluechip: { BTC: 50, ETH: 30, SUI: 20 },
-              layer1: { ETH: 50, SUI: 50 },
-              'sui-heavy': { BTC: 20, ETH: 20, SUI: 60 },
-              'all-weather': { BTC: 30, ETH: 20, SUI: 20, GOLD: 30 },
-              'safe-haven': { BTC: 50, GOLD: 50 },
-            };
-            const alloc = ALLOCATIONS[strategy];
+            const alloc = getStrategyAllocations(strategy);
             if (!alloc) throw new Error(`Unknown strategy: ${strategy}`);
 
             const buys: { asset: string; amount: number; tx: string }[] = [];
             for (const [asset, pct] of Object.entries(alloc)) {
               const assetAmount = (amount * pct) / 100;
               if (assetAmount < 0.01) continue;
-              const res = await sponsoredTransaction('swap', {
-                amount: assetAmount,
-                fromAsset: 'USDC',
-                toAsset: asset,
-              });
-              buys.push({ asset, amount: assetAmount, tx: res.tx });
+              try {
+                const res = await sponsoredTransaction('swap', {
+                  amount: assetAmount,
+                  fromAsset: 'USDC',
+                  toAsset: asset,
+                });
+                buys.push({ asset, amount: assetAmount, tx: res.tx });
+              } catch (err) {
+                if (buys.length > 0) {
+                  return {
+                    buys,
+                    totalInvested: buys.reduce((sum, b) => sum + b.amount, 0),
+                    partial: true,
+                    failedAsset: asset,
+                    error: err instanceof Error ? err.message : 'Swap failed',
+                  };
+                }
+                throw err;
+              }
             }
             return { buys, totalInvested: amount };
           },

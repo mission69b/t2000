@@ -91,15 +91,15 @@ export default function LandingPage() {
           </p>
 
           <div className="flex items-center justify-center gap-4 text-xs text-muted font-mono">
-            <a href="https://t2000.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
+            <a href="https://t2000.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition">
               Privacy
             </a>
             <span>·</span>
-            <a href="https://t2000.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
+            <a href="https://t2000.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition">
               Terms
             </a>
             <span>·</span>
-            <a href="https://t2000.ai/security" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
+            <a href="https://t2000.ai/security" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition">
               Security
             </a>
           </div>

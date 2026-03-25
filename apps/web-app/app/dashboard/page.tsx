@@ -1013,28 +1013,38 @@ function DashboardContent() {
         }
         case 'invest': {
           const strategyKey = chipFlow.state.strategy;
-          const freq = chipFlow.state.frequency ?? 'weekly';
           if (!strategyKey) throw new Error('No strategy selected');
+          const freq = chipFlow.state.frequency ?? 'weekly';
+          const strategyName = chipFlow.state.subFlow ?? strategyKey;
 
-          const schedule = saveDcaSchedule({
+          const strategyResult = await sdk.strategyBuy({ strategy: strategyKey, amount });
+
+          if (strategyResult.partial) {
+            const bought = strategyResult.buys.map((b) => `${b.asset} $${b.amount.toFixed(2)}`).join(', ');
+            txDigest = strategyResult.buys[0]?.tx ?? '';
+            flowLabel = `Partial invest into ${strategyName}: bought ${bought}. ${strategyResult.failedAsset} swap failed: ${strategyResult.error}`;
+          } else {
+            txDigest = strategyResult.buys[0]?.tx ?? '';
+            const bought = strategyResult.buys.map((b) => `${b.asset} $${b.amount.toFixed(2)}`).join(', ');
+            flowLabel = `Invested $${amount.toFixed(2)} into ${strategyName} (${bought})`;
+          }
+
+          saveDcaSchedule({
             strategy: strategyKey,
-            strategyName: chipFlow.state.subFlow ?? strategyKey,
+            strategyName,
             amount,
             frequency: freq,
           });
-
-          const strategyResult = await sdk.strategyBuy({ strategy: strategyKey, amount });
-          txDigest = strategyResult.buys?.[0]?.tx ?? '';
-          flowLabel = `DCA started: $${amount}/${freq === 'daily' ? 'day' : freq === 'weekly' ? 'wk' : 'mo'} into ${chipFlow.state.subFlow ?? strategyKey} (ID: ${schedule.id})`;
           break;
         }
         default:
           throw new Error(`Unknown flow: ${flow}`);
       }
 
+      const hasAmountInLabel = flow === 'swap' || flow === 'invest';
       const result: ChipFlowResult = {
         success: true,
-        title: flow === 'swap' ? flowLabel : `${flowLabel} $${amount.toFixed(2)}`,
+        title: hasAmountInLabel ? flowLabel : `${flowLabel} $${amount.toFixed(2)}`,
         details: txDigest
           ? `Tx: ${txDigest.slice(0, 8)}...${txDigest.slice(-6)}`
           : 'Transaction confirmed on-chain.',
@@ -1115,13 +1125,14 @@ function DashboardContent() {
     if (flow === 'invest') {
       const strategy = chipFlow.state.subFlow ?? 'Strategy';
       const freq = chipFlow.state.frequency ?? 'weekly';
+      const freqLabel = freq.charAt(0).toUpperCase() + freq.slice(1);
       details.push({ label: 'Strategy', value: strategy });
       details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
-      details.push({ label: 'Frequency', value: freq.charAt(0).toUpperCase() + freq.slice(1) });
-      details.push({ label: 'Gas', value: 'Sponsored (per execution)' });
+      details.push({ label: 'Repeat', value: `${freqLabel} (saved as preference)` });
+      details.push({ label: 'Gas', value: 'Sponsored' });
       return {
-        title: `DCA into ${strategy}`,
-        confirmLabel: `Start $${amount.toFixed(0)}/${freq === 'daily' ? 'day' : freq === 'weekly' ? 'wk' : 'mo'} DCA`,
+        title: `Invest into ${strategy}`,
+        confirmLabel: `Invest $${amount.toFixed(0)} into ${strategy}`,
         details,
       };
     }
