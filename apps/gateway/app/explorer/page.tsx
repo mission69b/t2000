@@ -129,27 +129,26 @@ export default function ExplorerPage() {
                 Volume (7d)
               </div>
               {volume.length > 0 ? (
-                <div className="flex items-end gap-1 h-20">
-                  {volume.map((d) => (
-                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
-                      {d.count > 0 && (
-                        <span className="text-[9px] text-muted">{d.count}</span>
-                      )}
-                      <div
-                        className={`w-full rounded-sm transition-all hover:bg-accent ${d.count > 0 ? 'bg-accent/60' : 'bg-border/30'}`}
-                        style={{
-                          height: d.count > 0
-                            ? `${Math.max((d.count / maxVolume) * 100, 8)}%`
-                            : '4%',
-                        }}
-                        title={`${d.count} payments · ${d.volume} USDC`}
-                      />
-                      <span className="text-[9px] text-dim">{d.label}</span>
-                    </div>
-                  ))}
+                <div className="flex items-end gap-[6px] h-36">
+                  {volume.map((d) => {
+                    const pct = d.count > 0 ? Math.max((d.count / maxVolume) * 100, 10) : 0;
+                    return (
+                      <div key={d.date} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+                        {d.count > 0 && (
+                          <span className="text-[10px] text-muted font-medium">{d.count}</span>
+                        )}
+                        <div
+                          className={`w-full rounded transition-all ${d.count > 0 ? 'bg-accent/70 hover:bg-accent' : 'bg-border/20'}`}
+                          style={{ height: d.count > 0 ? `${pct}%` : '3px' }}
+                          title={`${d.count} payments · ${d.volume} USDC`}
+                        />
+                        <span className="text-[10px] text-dim mt-1">{d.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-20 text-xs text-dim">
+                <div className="flex items-center justify-center h-36 text-xs text-dim">
                   Loading...
                 </div>
               )}
