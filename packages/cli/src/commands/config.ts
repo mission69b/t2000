@@ -20,8 +20,11 @@ export function getNestedValue(obj: Record<string, unknown>, path: string): unkn
   return current;
 }
 
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 export function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split('.');
+  if (parts.some((p) => UNSAFE_KEYS.has(p))) return;
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];

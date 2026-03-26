@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Tool execution failed';
-    console.error(`[agent/tool] ${tool} error:`, message);
+    console.error('[agent/tool] error:', String(tool), message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

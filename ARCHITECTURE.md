@@ -30,8 +30,8 @@
 │             │  │             │  │             │  │  USDC · NAVI ·       │
 │ zkLogin     │  │ Sponsor API │  │ 41 services │  │  Suilend · Cetus     │
 │ Enoki gas   │  │ Gas station │  │ 90 endpoints│  │  t2000 Treasury      │
-│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  Fee collection      │
-│ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  Payment Kit         │
+│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @t2000/mpp-sui      │
+│ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  (payment method)    │
 └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
        │                │                │
        ▼                ▼                ▼

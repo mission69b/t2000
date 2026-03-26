@@ -4,6 +4,8 @@ import { homedir } from 'node:os';
 import { T2000Error } from './errors.js';
 import type { InvestmentRecord } from './types.js';
 
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 interface StoredPosition {
   totalAmount: number;
   costBasis: number;
@@ -205,6 +207,9 @@ export class PortfolioManager {
   // --- Strategy position tracking ---
 
   recordStrategyBuy(strategyKey: string, trade: InvestmentRecord): void {
+    if (UNSAFE_KEYS.has(strategyKey) || UNSAFE_KEYS.has(trade.asset)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', 'Invalid strategy key or asset name');
+    }
     this.load();
     if (!this.data.strategies[strategyKey]) {
       this.data.strategies[strategyKey] = {};
@@ -222,6 +227,9 @@ export class PortfolioManager {
   }
 
   recordStrategySell(strategyKey: string, trade: InvestmentRecord): number {
+    if (UNSAFE_KEYS.has(strategyKey) || UNSAFE_KEYS.has(trade.asset)) {
+      throw new T2000Error('ASSET_NOT_SUPPORTED', 'Invalid strategy key or asset name');
+    }
     this.load();
     const bucket = this.data.strategies[strategyKey];
     if (!bucket) {

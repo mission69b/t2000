@@ -152,7 +152,7 @@ async function buildAndSponsor(
 
   const moveCallTargets = extractMoveCallTargets(tx);
   if (moveCallTargets.length > 0) {
-    console.log(`[prepare] ${params.type} targets (${moveCallTargets.length}):`, moveCallTargets);
+    console.log('[prepare]', String(params.type), 'targets:', moveCallTargets);
   }
 
   const txKindBytes = await tx.build({ client, onlyTransactionKind: true });

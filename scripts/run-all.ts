@@ -54,7 +54,6 @@ for (const test of tests) {
   try {
     execSync(`npx tsx ${scriptPath}${args}`, {
       stdio: 'inherit',
-      env: process.env,
     });
     const elapsed = Date.now() - start;
     results.push({ name: test.name, status: 'passed', time: elapsed });

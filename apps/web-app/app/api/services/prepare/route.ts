@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   const serviceId = body.serviceId ?? body.url ?? 'unknown';
 
   if (!mapping) {
-    return NextResponse.json({ error: `Unknown service: ${serviceId}` }, { status: 400 });
+    return NextResponse.json({ error: `Unknown or disallowed service: ${serviceId}` }, { status: 400 });
   }
 
   try {
