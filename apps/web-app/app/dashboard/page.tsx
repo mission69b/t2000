@@ -584,17 +584,22 @@ function DashboardContent() {
   const handleChipClick = useCallback(
     (flow: string) => {
       if (flow === 'refresh-session') { refresh(); return; }
-      if (flow === 'claim-rewards') { executeIntent({ action: 'claim-rewards' }); return; }
-      if (flow === 'help') { executeIntent({ action: 'help' }); return; }
-      if (flow === 'report') { executeIntent({ action: 'report' }); return; }
-      if (flow === 'history') { executeIntent({ action: 'history' }); return; }
-      if (flow === 'receive') { executeIntent({ action: 'address' }); return; }
+
+      if (flow === 'claim-rewards') { chipFlow.reset(); executeIntent({ action: 'claim-rewards' }); return; }
+      if (flow === 'help') { chipFlow.reset(); executeIntent({ action: 'help' }); return; }
+      if (flow === 'report') { chipFlow.reset(); executeIntent({ action: 'report' }); return; }
+      if (flow === 'history') { chipFlow.reset(); executeIntent({ action: 'history' }); return; }
+      if (flow === 'receive') { chipFlow.reset(); executeIntent({ action: 'address' }); return; }
+      if (flow === 'balance') { chipFlow.reset(); executeIntent({ action: 'balance' }); return; }
+      if (flow === 'rates') { chipFlow.reset(); executeIntent({ action: 'rates' }); return; }
+
       if (flow === 'save-all') {
         chipFlow.startFlow('save', flowContext);
         chipFlow.selectAmount(balance.cash);
         return;
       }
       if (flow === 'rebalance') {
+        chipFlow.reset();
         const alt = balance.bestSaveRate;
         const current = balance.savingsRate;
         if (alt && current > 0) {
@@ -614,6 +619,7 @@ function DashboardContent() {
         return;
       }
       if (flow === 'risk-explain') {
+        chipFlow.reset();
         feed.addItem({
           type: 'ai-text',
           text: 'Your health factor measures how safe your loan is. Below 1.5 means you\'re close to liquidation — repaying even a small amount brings it back to a safer level.',
@@ -629,9 +635,8 @@ function DashboardContent() {
         chipFlow.startFlow('invest', flowContext);
         return;
       }
-      if (flow === 'balance') { executeIntent({ action: 'balance' }); return; }
-      if (flow === 'rates') { executeIntent({ action: 'rates' }); return; }
       if (flow === 'repay' && balance.borrows < 0.01) {
+        chipFlow.reset();
         if (balance.borrows > 0) {
           feed.addItem({
             type: 'ai-text',
@@ -647,6 +652,7 @@ function DashboardContent() {
         return;
       }
       if (flow === 'withdraw' && balance.savings <= 0) {
+        chipFlow.reset();
         feed.addItem({
           type: 'ai-text',
           text: 'You don\'t have any savings to withdraw. Save first to earn yield.',
