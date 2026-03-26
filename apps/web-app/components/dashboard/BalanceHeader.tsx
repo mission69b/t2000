@@ -72,13 +72,17 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
   return (
     <div className="space-y-1 text-center">
       <div className="flex items-center justify-between px-1">
-        <span className="font-mono font-semibold text-sm text-accent tracking-tight flex items-center gap-2">
+        <button
+          onClick={() => window.location.reload()}
+          className="font-mono font-semibold text-sm text-accent tracking-tight flex items-center gap-2 hover:opacity-80 transition cursor-pointer"
+          aria-label="Refresh page"
+        >
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]" />
           t2000
           <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
             beta
           </span>
-        </span>
+        </button>
         <div className="flex items-center gap-2">
           <button
             onClick={copyAddress}
