@@ -8,7 +8,7 @@ interface ChipBarProps {
   disabled?: boolean;
 }
 
-const PAGE_1 = [
+const CORE_CHIPS = [
   { id: 'save', label: 'Save' },
   { id: 'send', label: 'Send' },
   { id: 'swap', label: 'Swap' },
@@ -17,7 +17,7 @@ const PAGE_1 = [
   { id: 'receive', label: 'Receive' },
 ];
 
-const PAGE_2 = [
+const MORE_CHIPS = [
   { id: 'withdraw', label: 'Withdraw' },
   { id: 'repay', label: 'Repay' },
   { id: 'report', label: 'Report' },
@@ -26,8 +26,8 @@ const PAGE_2 = [
 ];
 
 export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
-  const [page, setPage] = useState(0);
-  const chips = page === 0 ? PAGE_1 : PAGE_2;
+  const [expanded, setExpanded] = useState(false);
+  const chips = expanded ? [...CORE_CHIPS, ...MORE_CHIPS] : CORE_CHIPS;
 
   return (
     <div className="flex flex-wrap gap-1.5" role="toolbar" aria-label="Quick actions">
@@ -50,12 +50,13 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
         </button>
       ))}
       <button
-        onClick={() => setPage(page === 0 ? 1 : 0)}
+        onClick={() => setExpanded(!expanded)}
         disabled={disabled}
         className="rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.95] border bg-panel border-border text-muted hover:border-border-bright hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
-        aria-label={page === 0 ? 'More actions' : 'Back to main actions'}
+        aria-expanded={expanded}
+        aria-label={expanded ? 'Show fewer actions' : 'Show more actions'}
       >
-        {page === 0 ? 'More' : 'Back'}
+        {expanded ? 'Less' : 'More'}
       </button>
     </div>
   );
