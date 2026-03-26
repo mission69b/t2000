@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, IBM_Plex_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import { AppProviders } from '@/components/providers/AppProviders';
 import './globals.css';
 
@@ -36,6 +37,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${ibmPlexMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <AppProviders>{children}</AppProviders>
+        <Analytics />
       </body>
     </html>
   );
