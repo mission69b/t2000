@@ -4,10 +4,11 @@ interface ResultCardProps {
   success: boolean;
   title: string;
   details: string;
+  txUrl?: string;
   onDismiss: () => void;
 }
 
-export function ResultCard({ success, title, details, onDismiss }: ResultCardProps) {
+export function ResultCard({ success, title, details, txUrl, onDismiss }: ResultCardProps) {
   return (
     <div
       className={[
@@ -37,7 +38,18 @@ export function ResultCard({ success, title, details, onDismiss }: ResultCardPro
         </button>
       </div>
       {details && (
-        <p className="text-sm text-muted pl-7">{details}</p>
+        txUrl ? (
+          <a
+            href={txUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-sm text-accent/70 hover:text-accent pl-7 font-mono transition"
+          >
+            {details} ↗
+          </a>
+        ) : (
+          <p className="text-sm text-muted pl-7">{details}</p>
+        )
       )}
     </div>
   );

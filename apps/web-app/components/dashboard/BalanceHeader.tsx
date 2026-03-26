@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { truncateAddress } from '@/lib/format';
 
 export interface BalanceHeaderData {
@@ -23,6 +23,7 @@ export interface BalanceHeaderData {
 interface BalanceHeaderProps {
   address: string;
   balance: BalanceHeaderData;
+  compact?: boolean;
   onSettingsClick: () => void;
 }
 
@@ -36,9 +37,13 @@ function fmtToken(n: number): string {
   return n.toFixed(4);
 }
 
-export function BalanceHeader({ address, balance, onSettingsClick }: BalanceHeaderProps) {
+export function BalanceHeader({ address, balance, compact, onSettingsClick }: BalanceHeaderProps) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (compact) setExpanded(false);
+  }, [compact]);
 
   const copyAddress = useCallback(() => {
     navigator.clipboard.writeText(address);

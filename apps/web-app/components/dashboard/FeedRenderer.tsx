@@ -78,7 +78,7 @@ function FeedItemCard({
     case 'user-message':
       return (
         <div className="flex justify-end feed-row">
-          <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent/15 border border-accent/20 px-4 py-2.5 text-sm text-foreground">
+          <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent/15 border border-accent/20 px-4 py-2.5 text-sm text-foreground break-words overflow-hidden">
             {data.text}
           </div>
         </div>
@@ -192,7 +192,18 @@ function FeedItemCard({
             <span className={data.success ? 'text-accent' : 'text-red-400'}>{data.title}</span>
           </p>
           {data.details && (
-            <p className={`mt-1 ${data.success ? 'text-accent/70' : 'text-red-300/80'}`}>{data.details}</p>
+            data.txUrl ? (
+              <a
+                href={data.txUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block mt-1 text-accent/70 hover:text-accent font-mono transition"
+              >
+                {data.details} ↗
+              </a>
+            ) : (
+              <p className={`mt-1 ${data.success ? 'text-accent/70' : 'text-red-300/80'}`}>{data.details}</p>
+            )
           )}
         </div>
       );

@@ -42,6 +42,7 @@ export interface ChipFlowResult {
   success: boolean;
   title: string;
   details: string;
+  txUrl?: string;
 }
 
 export interface ConfirmationData {

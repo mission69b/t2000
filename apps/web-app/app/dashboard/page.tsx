@@ -234,7 +234,14 @@ function DashboardContent() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentBudget, setAgentBudget] = useState(0.50);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
+  const [scrolled, setScrolled] = useState(false);
   const feedEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const balance = {
     total: balanceQuery.data?.total ?? 0,
@@ -912,12 +919,17 @@ function DashboardContent() {
       }
 
       const hasAmountInLabel = flow === 'swap' || flow === 'invest';
+      const explorerBase = SUI_NETWORK === 'testnet'
+        ? 'https://suiscan.xyz/testnet/tx'
+        : 'https://suiscan.xyz/mainnet/tx';
+      const txUrl = txDigest ? `${explorerBase}/${txDigest}` : undefined;
       const result: ChipFlowResult = {
         success: true,
         title: hasAmountInLabel ? flowLabel : `${flowLabel} $${amount.toFixed(2)}`,
         details: txDigest
           ? `Tx: ${txDigest.slice(0, 8)}...${txDigest.slice(-6)}`
           : 'Transaction confirmed on-chain.',
+        txUrl,
       };
       chipFlow.setResult(result);
 
@@ -926,6 +938,7 @@ function DashboardContent() {
         success: true,
         title: result.title,
         details: result.details,
+        txUrl,
       });
 
       balanceQuery.refetch();
@@ -1041,12 +1054,17 @@ function DashboardContent() {
 
   return (
     <main className="flex flex-1 flex-col pb-36">
-      <div className="mx-auto w-full max-w-xl px-4 py-6 space-y-5">
-        <BalanceHeader
-          address={address}
-          balance={balance}
-          onSettingsClick={() => setSettingsOpen(true)}
-        />
+      <div className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm transition-[border-color] duration-200 border-b ${scrolled ? 'border-border/50' : 'border-transparent'}`}>
+        <div className="mx-auto w-full max-w-xl px-4 pt-6 pb-4">
+          <BalanceHeader
+            address={address}
+            balance={balance}
+            compact={scrolled}
+            onSettingsClick={() => setSettingsOpen(true)}
+          />
+        </div>
+      </div>
+      <div className="mx-auto w-full max-w-xl px-4 py-4 space-y-5">
 
         {/* Result card (after transaction) */}
         {chipFlow.state.phase === 'result' && chipFlow.state.result && (
@@ -1054,6 +1072,7 @@ function DashboardContent() {
             success={chipFlow.state.result.success}
             title={chipFlow.state.result.title}
             details={chipFlow.state.result.details}
+            txUrl={chipFlow.state.result.txUrl}
             onDismiss={chipFlow.reset}
           />
         )}
