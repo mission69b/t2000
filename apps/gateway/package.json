@@ -14,8 +14,8 @@
     "@prisma/client": "^6",
     "@t2000/mpp-sui": "workspace:*",
     "@vercel/analytics": "^1.6.1",
-    "mppx": "^0.4.1",
-    "next": "16.1.6",
+    "mppx": "^0.4.9",
+    "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sugar-high": "^1.0.0"

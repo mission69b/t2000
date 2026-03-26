@@ -47,7 +47,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.28.0",
     "@t2000/sdk": "workspace:*",
     "zod": "^3.25.0"
   },
