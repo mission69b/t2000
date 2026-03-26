@@ -14,10 +14,10 @@ const CORE_CHIPS = [
   { id: 'swap', label: 'Swap' },
   { id: 'borrow', label: 'Borrow' },
   { id: 'invest', label: 'Invest' },
-  { id: 'receive', label: 'Receive' },
 ];
 
 const MORE_CHIPS = [
+  { id: 'receive', label: 'Receive' },
   { id: 'withdraw', label: 'Withdraw' },
   { id: 'repay', label: 'Repay' },
   { id: 'report', label: 'Report' },
