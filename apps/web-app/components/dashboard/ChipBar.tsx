@@ -23,7 +23,7 @@ const ALL_CHIPS = [
 export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
   return (
     <div
-      className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1"
+      className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1 md:flex-wrap md:overflow-x-visible"
       role="toolbar"
       aria-label="Quick actions"
     >
@@ -34,7 +34,7 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
           disabled={disabled}
           aria-pressed={activeFlow === chip.id}
           className={[
-            'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.95] border',
+            'shrink-0 md:shrink rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.95] border',
             'disabled:opacity-40 disabled:cursor-not-allowed',
             'focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
             activeFlow === chip.id
