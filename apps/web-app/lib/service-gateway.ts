@@ -195,16 +195,20 @@ export function getServicePrice(serviceId: string): string {
   return SERVICE_MAP[serviceId]?.price ?? '0.01';
 }
 
+const ALLOWED_SEGMENT_RE = /^[a-z0-9\-]+$/i;
+
 export function createRawGatewayMapping(
   path: string,
   body: Record<string, unknown>,
 ): GatewayMapping | null {
-  if (path.includes('://') || path.includes('..') || path.startsWith('//')) return null;
-  const safePath = path.startsWith('/') ? path : `/${path}`;
-  const url = new URL(safePath, GATEWAY_BASE);
-  if (url.origin !== new URL(GATEWAY_BASE).origin) return null;
+  const stripped = path.replace(/^\/+/, '');
+  const segments = stripped.split('/');
+  if (segments.length < 2 || segments.some((s) => !ALLOWED_SEGMENT_RE.test(s))) return null;
+  const safePath = '/' + segments.join('/');
+  const gatewayUrl = new URL(GATEWAY_BASE);
+  gatewayUrl.pathname = safePath;
   return {
-    url: url.toString(),
+    url: gatewayUrl.toString(),
     price: '0.05',
     transformBody: () => body,
   };

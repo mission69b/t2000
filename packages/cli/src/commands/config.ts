@@ -25,16 +25,19 @@ const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 export function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split('.');
   if (parts.some((p) => UNSAFE_KEYS.has(p))) return;
+  const sanitized = parts.map((p) => p.replace(/[^a-zA-Z0-9_]/g, ''));
   let current = obj;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
+  for (let i = 0; i < sanitized.length - 1; i++) {
+    const part = sanitized[i];
+    if (!part) return;
     if (!Object.hasOwn(current, part) || typeof current[part] !== 'object' || current[part] === null) {
-      Object.defineProperty(current, part, { value: Object.create(null), writable: true, enumerable: true, configurable: true });
+      current[part] = {};
     }
     current = current[part] as Record<string, unknown>;
   }
-  const key = parts[parts.length - 1];
-  Object.defineProperty(current, key, { value, writable: true, enumerable: true, configurable: true });
+  const key = sanitized[sanitized.length - 1];
+  if (!key) return;
+  current[key] = value;
 }
 
 function loadConfig(): Record<string, unknown> {
