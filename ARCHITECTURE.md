@@ -10,7 +10,7 @@
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                           User / AI Agent                                │
 │                                                                          │
-│  Web App · Claude · Cursor · ChatGPT · CLI · any MCP client             │
+│  Web App · Claude · Cursor · ChatGPT · CLI · any MCP client              │
 └──┬─────────┬──────────────┬──────────────┬───────────────────────────────┘
    │         │              │              │
    │    MCP (stdio)    CLI commands    SDK (TypeScript)
@@ -20,7 +20,7 @@
    │  │                        @t2000/sdk                                │
    │  │                                                                  │
    │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
-   │  │  Adapters: NAVI · Suilend · Cetus · Sentinel                    │
+   │  │  Adapters: NAVI · Suilend · Cetus · Sentinel                     │
    │  └────────┬──────────────┬──────────────┬───────────────────────────┘
    │           │              │              │
    ▼           ▼              ▼              ▼
