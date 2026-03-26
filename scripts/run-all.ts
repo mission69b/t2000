@@ -9,7 +9,7 @@
  *   source .env.local && npx tsx scripts/run-all.ts --live    # includes live sentinel attack
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -52,9 +52,8 @@ for (const test of tests) {
   console.log(`${'═'.repeat(50)}`);
 
   try {
-    execSync(`npx tsx ${scriptPath}${args}`, {
-      stdio: 'inherit',
-    });
+    const execArgs = ['tsx', scriptPath, ...args.trim().split(/\s+/).filter(Boolean)];
+    execFileSync('npx', execArgs, { stdio: 'inherit' });
     const elapsed = Date.now() - start;
     results.push({ name: test.name, status: 'passed', time: elapsed });
     totalPassed++;

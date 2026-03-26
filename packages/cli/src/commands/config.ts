@@ -28,12 +28,13 @@ export function setNestedValue(obj: Record<string, unknown>, path: string, value
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
-    if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
-      current[part] = {};
+    if (!Object.hasOwn(current, part) || typeof current[part] !== 'object' || current[part] === null) {
+      Object.defineProperty(current, part, { value: Object.create(null), writable: true, enumerable: true, configurable: true });
     }
     current = current[part] as Record<string, unknown>;
   }
-  current[parts[parts.length - 1]] = value;
+  const key = parts[parts.length - 1];
+  Object.defineProperty(current, key, { value, writable: true, enumerable: true, configurable: true });
 }
 
 function loadConfig(): Record<string, unknown> {

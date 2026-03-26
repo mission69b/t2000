@@ -211,18 +211,20 @@ export class PortfolioManager {
       throw new T2000Error('ASSET_NOT_SUPPORTED', 'Invalid strategy key or asset name');
     }
     this.load();
-    if (!this.data.strategies[strategyKey]) {
-      this.data.strategies[strategyKey] = {};
+    if (!Object.hasOwn(this.data.strategies, strategyKey)) {
+      this.data.strategies[strategyKey] = Object.create(null);
     }
     const bucket = this.data.strategies[strategyKey];
-    const pos = bucket[trade.asset] ?? { totalAmount: 0, costBasis: 0, avgPrice: 0, trades: [] };
+    const pos = Object.hasOwn(bucket, trade.asset)
+      ? bucket[trade.asset]
+      : { totalAmount: 0, costBasis: 0, avgPrice: 0, trades: [] };
 
     pos.totalAmount += trade.amount;
     pos.costBasis += trade.usdValue;
     pos.avgPrice = pos.costBasis / pos.totalAmount;
     pos.trades.push(trade);
 
-    bucket[trade.asset] = pos;
+    Object.defineProperty(bucket, trade.asset, { value: pos, writable: true, enumerable: true, configurable: true });
     this.save();
   }
 
@@ -234,6 +236,9 @@ export class PortfolioManager {
     const bucket = this.data.strategies[strategyKey];
     if (!bucket) {
       throw new T2000Error('STRATEGY_NOT_FOUND', `No positions for strategy '${strategyKey}'`);
+    }
+    if (!Object.hasOwn(bucket, trade.asset)) {
+      throw new T2000Error('INSUFFICIENT_INVESTMENT', `No ${trade.asset} position in strategy '${strategyKey}'`);
     }
     const pos = bucket[trade.asset];
     if (!pos || pos.totalAmount <= 0) {
@@ -256,10 +261,8 @@ export class PortfolioManager {
     }
 
     pos.trades.push(trade);
-    // P&L is NOT added to global realizedPnL here — investSell already
-    // recorded it via recordSell to avoid double-counting.
 
-    bucket[trade.asset] = pos;
+    Object.defineProperty(bucket, trade.asset, { value: pos, writable: true, enumerable: true, configurable: true });
 
     const hasPositions = Object.values(bucket).some((p) => p.totalAmount > 0);
     if (!hasPositions) {

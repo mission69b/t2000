@@ -196,13 +196,15 @@ export function getServicePrice(serviceId: string): string {
 }
 
 export function createRawGatewayMapping(
-  url: string,
+  path: string,
   body: Record<string, unknown>,
 ): GatewayMapping | null {
-  const fullUrl = url.startsWith('http') ? url : `${GATEWAY_BASE}${url}`;
-  if (!fullUrl.startsWith(GATEWAY_BASE + '/')) return null;
+  if (path.includes('://') || path.includes('..') || path.startsWith('//')) return null;
+  const safePath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(safePath, GATEWAY_BASE);
+  if (url.origin !== new URL(GATEWAY_BASE).origin) return null;
   return {
-    url: fullUrl,
+    url: url.toString(),
     price: '0.05',
     transformBody: () => body,
   };
