@@ -10,40 +10,40 @@
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                           User / AI Agent                                │
 │                                                                          │
-│  Claude · Cursor · ChatGPT · CLI · any MCP client                       │
-└────────┬──────────────┬──────────────┬───────────────────────────────────┘
-         │              │              │
-    MCP (stdio)    CLI commands    SDK (TypeScript)
-         │              │              │
-         ▼              ▼              ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                        @t2000/sdk                                        │
-│                                                                          │
-│  Agent core · Safeguards · Gas manager · Protocol registry               │
-│  Adapters: NAVI · Suilend · Cetus · Sentinel                            │
-└────────┬──────────────┬──────────────┬───────────────────────────────────┘
-         │              │              │
-         ▼              ▼              ▼
-┌─────────────┐  ┌─────────────┐  ┌────────────────────────────────────────┐
-│ t2000 Server│  │ MPP Gateway │  │           Sui Blockchain               │
-│ (ECS)       │  │ (Vercel)    │  │                                        │
-│             │  │             │  │  USDC · NAVI · Suilend · Cetus         │
-│ Sponsor API │  │ 41 services │  │  t2000 Treasury · Fee collection       │
-│ Gas station │  │ 90 endpoints│  │  Sentinel · Payment Kit                │
-│ Fee ledger  │  │ chargeProxy │  │                                        │
-│ Indexer     │  │             │  │                                        │
-└──────┬──────┘  └──────┬──────┘  └────────────────────────────────────────┘
-       │                │
-       ▼                ▼
-┌─────────────┐  ┌─────────────┐
-│  NeonDB     │  │ Upstream    │
-│  (Postgres) │  │ APIs        │
-│             │  │             │
-│ Agents      │  │ OpenAI      │
-│ Transactions│  │ Anthropic   │
-│ Gas ledger  │  │ Brave       │
-│ Yield snaps │  │ + 32 more   │
-└─────────────┘  └─────────────┘
+│  Web App · Claude · Cursor · ChatGPT · CLI · any MCP client             │
+└──┬─────────┬──────────────┬──────────────┬───────────────────────────────┘
+   │         │              │              │
+   │    MCP (stdio)    CLI commands    SDK (TypeScript)
+   │         │              │              │
+   │         ▼              ▼              ▼
+   │  ┌──────────────────────────────────────────────────────────────────┐
+   │  │                        @t2000/sdk                                │
+   │  │                                                                  │
+   │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
+   │  │  Adapters: NAVI · Suilend · Cetus · Sentinel                    │
+   │  └────────┬──────────────┬──────────────┬───────────────────────────┘
+   │           │              │              │
+   ▼           ▼              ▼              ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐
+│ Web App     │  │ t2000 Server│  │ MPP Gateway │  │   Sui Blockchain     │
+│ (Vercel)    │  │ (ECS)       │  │ (Vercel)    │  │                      │
+│             │  │             │  │             │  │  USDC · NAVI ·       │
+│ zkLogin     │  │ Sponsor API │  │ 41 services │  │  Suilend · Cetus     │
+│ Enoki gas   │  │ Gas station │  │ 90 endpoints│  │  t2000 Treasury      │
+│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  Fee collection      │
+│ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  Payment Kit         │
+└──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
+       │                │                │
+       ▼                ▼                ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ NeonDB      │  │  NeonDB     │  │ Upstream    │
+│ (web app)   │  │  (server)   │  │ APIs        │
+│             │  │             │  │             │
+│ Users       │  │ Agents      │  │ OpenAI      │
+│ Preferences │  │ Transactions│  │ Anthropic   │
+│ Sessions    │  │ Gas ledger  │  │ Brave       │
+│             │  │ Yield snaps │  │ + 38 more   │
+└─────────────┘  └─────────────┘  └─────────────┘
 ```
 
 ---
@@ -62,10 +62,128 @@
 
 | App | Hosting | Domain | What it does |
 |-----|---------|--------|-------------|
+| `apps/web-app` | Vercel | app.t2000.ai | Consumer web app — zkLogin, conversational AI, banking |
 | `apps/web` | Vercel | t2000.ai | Product site — docs, demos, stats |
-| `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 35 pay-per-use APIs |
+| `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 41 services, 90 endpoints, explorer, spec, docs |
 | `apps/server` | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger |
 | Indexer | AWS ECS Fargate | — | Checkpoint indexer, yield snapshotter |
+
+---
+
+## Web App (`app.t2000.ai`)
+
+Consumer banking product. Anyone with a Google account gets a Sui wallet in 3 seconds.
+
+### Auth: zkLogin + Enoki
+
+```
+User clicks "Sign in with Google"
+  │
+  ├── Google OAuth → JWT (contains `sub` = Google user ID)
+  ├── Generate ephemeral Ed25519 keypair (browser-only, session-scoped)
+  ├── Enoki creates ZK proof (JWT + ephemeral key → Sui address)
+  ├── Address is deterministic: same Google account = same Sui address
+  └── Session stored in localStorage (JWT + ephemeral key + proof)
+```
+
+No private key to manage. No seed phrase. The wallet address is derived from the Google JWT. Ephemeral keys are session-scoped and never persisted to a server.
+
+### Transaction flow (sponsored)
+
+```
+User taps "Save $50"
+  │
+  ├── SDK builds a Transaction (gasless — no gas owner set)
+  ├── Serialize TX → POST to Enoki sponsorship endpoint
+  ├── Enoki sets gasOwner = Enoki gas wallet, signs as sponsor
+  ├── User signs TX with ephemeral key (dual-signed)
+  └── Submit to Sui fullnode → finality ~400ms
+```
+
+All transactions are gas-free for the user. Enoki sponsors gas.
+
+### Agent loop (Anthropic Claude)
+
+For complex queries typed into the chat, an LLM agent loop processes the request:
+
+```
+User types "search for flights from NYC to Tokyo"
+  │
+  ├── POST /api/agent/chat (conversation history + system prompt)
+  ├── Anthropic Claude responds with tool_use (search_flights)
+  ├── POST /api/agent/tool (executes tool via MPP gateway)
+  │   └── Pays USDC on Sui via Enoki-sponsored tx
+  ├── Tool result → sent back to Claude for final response
+  └── Response rendered in feed with cost breakdown
+```
+
+Simple actions (Save, Send, Swap) use client-side chip flows with zero LLM cost.
+
+### Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Framework | Next.js (App Router) |
+| Auth | zkLogin via `@mysten/enoki` |
+| Gas | Enoki sponsored transactions |
+| LLM | Anthropic Claude (for agent queries) |
+| Database | NeonDB (Prisma) — users, preferences, contacts |
+| Styling | Tailwind CSS + shadcn/ui patterns |
+| Analytics | Vercel Analytics |
+| State | TanStack Query + custom hooks |
+
+---
+
+## MPP Gateway (`mpp.t2000.ai`)
+
+Payment infrastructure for machine-to-machine commerce. 41 services, 90 endpoints.
+
+### Pages
+
+| Page | URL | What it shows |
+|------|-----|-------------|
+| Homepage | `/` | Pitch, live payment feed, stats bar |
+| Services | `/services` | Full catalog with search, categories, code examples |
+| Explorer | `/explorer` | Payment history, volume chart, service breakdown |
+| Spec | `/spec` | MPP protocol specification for Sui |
+| Docs | `/docs` | Developer guides — "Pay for APIs" + "Accept payments" |
+
+### Payment logging
+
+Every MPP payment is logged to a dedicated NeonDB (separate from banking DB):
+
+| Field | Type | Description |
+|-------|------|------------|
+| `service` | String | Service name (e.g. "openai") |
+| `endpoint` | String | Endpoint path (e.g. "/v1/chat/completions") |
+| `amount` | String | USDC amount charged |
+| `digest` | String | Sui transaction digest |
+| `sender` | String | Sender Sui address |
+| `createdAt` | DateTime | Timestamp |
+
+### API routes
+
+| Route | What it returns |
+|-------|----------------|
+| `GET /api/mpp/payments?limit=N` | Recent payments (live feed) |
+| `GET /api/mpp/stats` | Aggregates: total payments, volume, unique services |
+| `GET /api/mpp/volume` | 7-day payment volume by day |
+| `GET /api/services` | JSON service catalog |
+| `GET /llms.txt` | Agent-readable service catalog |
+
+### Service categories
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| AI & ML | 12 | OpenAI, Anthropic, Gemini, DeepSeek, Groq, Together, Perplexity, Replicate, Stability AI, Mistral, Cohere |
+| Media | 3 | fal.ai, ElevenLabs, AssemblyAI |
+| Search & Web | 7 | Brave, Firecrawl, Exa, Jina Reader, Serper, SerpAPI, ScreenshotOne |
+| Data & Intelligence | 8 | OpenWeather, Google Maps, CoinGecko, Alpha Vantage, NewsAPI, IPinfo, Hunter.io, ExchangeRate |
+| Communication | 2 | Resend, Pushover |
+| Translation & Docs | 4 | Google Translate, PDFShift, QR Code, Short.io |
+| Compute | 1 | Judge0 |
+| Commerce | 3 | Reloadly, Lob, Printful |
+| Security | 1 | VirusTotal |
 
 ---
 
@@ -446,11 +564,14 @@ Returns only aggregated numbers:
 
 | Component | Hosting | Notes |
 |-----------|---------|-------|
+| Web App (app.t2000.ai) | Vercel | Next.js, zkLogin + Enoki, Anthropic |
 | Web (t2000.ai) | Vercel | Next.js, ISR |
-| Gateway (mpp.t2000.ai) | Vercel | Next.js, stateless |
+| Gateway (mpp.t2000.ai) | Vercel | Next.js, payment logging, explorer |
 | Server (api.t2000.ai) | AWS ECS Fargate | Hono, long-running |
 | Indexer | AWS ECS Fargate | Checkpoint poller, always-on |
-| Database | NeonDB (Postgres) | Prisma ORM, used by server + web |
+| Database (web app) | NeonDB (Postgres) | Users, preferences, contacts |
+| Database (server) | NeonDB (Postgres) | Agents, transactions, gas ledger |
+| Database (gateway) | NeonDB (Postgres) | MPP payment logs |
 | DNS | Cloudflare | — |
 | CI/CD | GitHub Actions | Lint, typecheck, test, publish, deploy |
 
