@@ -86,12 +86,22 @@ describe('deriveContextualChips', () => {
       ...BASE_STATE,
       savings: 1000,
       currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'Suilend', rate: 6.5 },
+      bestAlternativeRate: { protocol: 'Suilend', protocolId: 'suilend', rate: 6.5 },
     });
     const chip = chips.find((c) => c.id === 'rate');
     expect(chip).toBeDefined();
     expect(chip!.label).toContain('Suilend');
+    expect(chip!.chipFlow).toBe('rebalance');
     expect(chip!.dismissible).toBe(true);
+  });
+
+  it('does not show rate chip when same protocol is best', () => {
+    const chips = deriveContextualChips({
+      ...BASE_STATE,
+      savings: 1000,
+      currentRate: 5.0,
+    });
+    expect(chips.find((c) => c.id === 'rate')).toBeUndefined();
   });
 
   it('shows overnight earnings chip on first open', () => {

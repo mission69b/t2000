@@ -19,6 +19,7 @@ const ACTION_FLOW_MAP: [RegExp, string][] = [
   [/^sell/i, 'swap'],
   [/^claim/i, 'claim-rewards'],
   [/^rebalance/i, 'rebalance'],
+  [/^switch to/i, 'rebalance'],
   [/^check rate/i, 'report'],
   [/^view/i, 'report'],
 ];

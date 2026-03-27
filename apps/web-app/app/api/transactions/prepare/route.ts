@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
-import { NaviAdapter, CetusAdapter } from '@t2000/sdk/adapters';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress, validateAmount } from '@/lib/auth';
+import { getRegistry, getClient } from '@/lib/protocol-registry';
 
 export const runtime = 'nodejs';
 
-const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
+const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 
-const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
-
-type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap' | 'claim-rewards';
+type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap' | 'claim-rewards' | 'rebalance';
 
 interface BuildRequest {
   type: TxType;
@@ -24,6 +21,9 @@ interface BuildRequest {
   asset?: string;
   fromAsset?: string;
   toAsset?: string;
+  protocol?: string;
+  fromProtocol?: string;
+  toProtocol?: string;
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -39,22 +39,22 @@ const ASSET_COIN_TYPES: Record<string, { type: string; decimals: number }> = {
   GOLD: { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9 },
 };
 
-let _naviAdapter: NaviAdapter | null = null;
-function getNaviAdapter(): NaviAdapter {
-  if (!_naviAdapter) {
-    _naviAdapter = new NaviAdapter();
-    _naviAdapter.initSync(client);
+function getLendingAdapter(protocolId?: string) {
+  const registry = getRegistry();
+  const adapters = registry.listLending();
+  if (protocolId) {
+    const match = adapters.find((a) => a.protocolId === protocolId);
+    if (!match) throw new Error(`Unknown lending protocol: ${protocolId}`);
+    return match;
   }
-  return _naviAdapter;
+  return adapters[0];
 }
 
-let _cetusAdapter: CetusAdapter | null = null;
-function getCetusAdapter(): CetusAdapter {
-  if (!_cetusAdapter) {
-    _cetusAdapter = new CetusAdapter();
-    _cetusAdapter.initSync(client);
-  }
-  return _cetusAdapter;
+function getSwapAdapter() {
+  const registry = getRegistry();
+  const swaps = registry.listSwap();
+  if (!swaps.length) throw new Error('No swap adapter available');
+  return swaps[0];
 }
 
 function extractMoveCallTargets(tx: Transaction): string[] {
@@ -115,7 +115,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const params: BuildRequest = { type, address, amount, recipient, asset, fromAsset: body.fromAsset, toAsset: body.toAsset };
+    const params: BuildRequest = {
+      type, address, amount, recipient, asset,
+      fromAsset: body.fromAsset, toAsset: body.toAsset,
+      protocol: body.protocol, fromProtocol: body.fromProtocol, toProtocol: body.toProtocol,
+    };
     const result = await buildAndSponsor(params, jwt);
 
     if (!result.ok) {
@@ -155,7 +159,7 @@ async function buildAndSponsor(
     console.log('[prepare]', String(params.type), 'targets:', moveCallTargets);
   }
 
-  const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
+  const txKindBytes = await tx.build({ client: getClient(), onlyTransactionKind: true });
   const txKindBase64 = toBase64(txKindBytes);
 
   const sponsorHeaders: Record<string, string> = {
@@ -206,6 +210,7 @@ async function buildAndSponsor(
 
 async function buildTransaction(params: BuildRequest): Promise<Transaction> {
   const { type, address, amount, recipient, asset } = params;
+  const client = getClient();
   const tx = new Transaction();
   tx.setSender(address);
 
@@ -242,26 +247,26 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
     }
 
     case 'save': {
-      const navi = getNaviAdapter();
-      const result = await navi.buildSaveTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      const adapter = getLendingAdapter(params.protocol);
+      const result = await adapter.buildSaveTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
     }
 
     case 'withdraw': {
-      const navi = getNaviAdapter();
-      const result = await navi.buildWithdrawTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      const adapter = getLendingAdapter(params.protocol);
+      const result = await adapter.buildWithdrawTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
     }
 
     case 'borrow': {
-      const navi = getNaviAdapter();
-      const result = await navi.buildBorrowTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      const adapter = getLendingAdapter(params.protocol);
+      const result = await adapter.buildBorrowTx(address, amount, asset ?? 'USDC', { sponsored: true });
       return result.tx;
     }
 
     case 'repay': {
-      const navi = getNaviAdapter();
-      const result = await navi.buildRepayTx(address, amount, asset ?? 'USDC', {
+      const adapter = getLendingAdapter(params.protocol);
+      const result = await adapter.buildRepayTx(address, amount, asset ?? 'USDC', {
         sponsored: true,
         skipOracle: true,
       });
@@ -294,16 +299,51 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       }
       const [inputCoin] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
 
-      const cetus = getCetusAdapter();
-      const { outputCoin } = await cetus.addSwapToTx(tx, address, inputCoin, from, to, amount);
+      const swapAdapter = getSwapAdapter();
+      const { outputCoin } = await swapAdapter.addSwapToTx(tx, address, inputCoin, from, to, amount);
       tx.transferObjects([outputCoin], address);
       break;
     }
 
+    case 'rebalance': {
+      const fromAdapter = getLendingAdapter(params.fromProtocol);
+      const toAdapter = getLendingAdapter(params.toProtocol);
+      if (!fromAdapter.addWithdrawToTx) throw new Error(`${params.fromProtocol} does not support composable withdraw`);
+      if (!toAdapter.addSaveToTx) throw new Error(`${params.toProtocol} does not support composable deposit`);
+
+      const withdrawAsset = params.fromAsset ?? asset ?? 'USDC';
+      const { coin: withdrawnCoin, effectiveAmount } = await fromAdapter.addWithdrawToTx(
+        tx, address, amount, withdrawAsset,
+      );
+      let depositCoin = withdrawnCoin;
+      let depositAsset = withdrawAsset;
+
+      if (params.toAsset && params.toAsset !== withdrawAsset) {
+        const swapAdapter = getSwapAdapter();
+        const { outputCoin } = await swapAdapter.addSwapToTx(
+          tx, address, withdrawnCoin, withdrawAsset, params.toAsset, effectiveAmount,
+        );
+        depositCoin = outputCoin;
+        depositAsset = params.toAsset;
+      }
+
+      await toAdapter.addSaveToTx(tx, address, depositCoin, depositAsset, { collectFee: depositAsset === 'USDC' });
+      break;
+    }
+
     case 'claim-rewards': {
-      const navi = getNaviAdapter();
-      const claimed = await navi.addClaimRewardsToTx(tx, address);
-      if (claimed.length === 0) {
+      const registry = getRegistry();
+      let totalClaimed = 0;
+      for (const adapter of registry.listLending()) {
+        if (!adapter.addClaimRewardsToTx) continue;
+        try {
+          const claimed = await adapter.addClaimRewardsToTx(tx, address);
+          totalClaimed += claimed.length;
+        } catch {
+          // Skip protocols with no claimable rewards
+        }
+      }
+      if (totalClaimed === 0) {
         throw new Error('No rewards available to claim');
       }
       break;

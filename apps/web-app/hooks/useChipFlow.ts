@@ -24,7 +24,7 @@ export interface SwapQuoteData {
 
 export interface ChipFlowState {
   phase: ChipFlowPhase;
-  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'swap', 'invest'
+  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'swap', 'invest', 'rebalance'
   subFlow: string | null;        // recipient name, asset type, etc.
   amount: number | null;
   recipient: string | null;
@@ -33,6 +33,7 @@ export interface ChipFlowState {
   quote: SwapQuoteData | null;   // swap quote data
   strategy: string | null;       // DCA strategy key (e.g. 'bluechip')
   frequency: 'once' | 'daily' | 'weekly' | 'monthly' | null;
+  protocol: string | null;       // target lending protocol ID (e.g. 'navi', 'suilend')
   message: string | null;        // AI context message
   result: ChipFlowResult | null;
   error: string | null;
@@ -61,6 +62,7 @@ const INITIAL_STATE: ChipFlowState = {
   quote: null,
   strategy: null,
   frequency: null,
+  protocol: null,
   message: null,
   result: null,
   error: null,
@@ -72,6 +74,7 @@ export interface FlowContext {
   borrows?: number;
   savingsRate?: number;
   maxBorrow?: number;
+  protocol?: string;
 }
 
 export function useChipFlow() {
@@ -84,6 +87,7 @@ export function useChipFlow() {
       ...INITIAL_STATE,
       phase: needsStrategy ? 'strategy-select' : needsAssetSelect ? 'asset-select' : 'l2-chips',
       flow,
+      protocol: context?.protocol ?? null,
       message: getFlowMessage(flow, context),
     });
   }, []);
@@ -248,6 +252,10 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
       return 'What do you want to trade? Pick an asset:';
     case 'invest':
       return 'Choose an investment strategy:';
+    case 'rebalance': {
+      const rate = ctx?.savingsRate ? ` for ${ctx.savingsRate.toFixed(1)}% APY` : '';
+      return `Moving savings to a better rate${rate}.\nConfirm to proceed:`;
+    }
     default: return 'Choose an option:';
   }
 }

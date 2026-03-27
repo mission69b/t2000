@@ -499,17 +499,26 @@ export class SuilendAdapter implements LendingAdapter {
 
       const ob = obligations[0];
       const rewards: PendingReward[] = [];
+      const WAD = 1e18;
 
       for (const dep of ob.deposits) {
-        for (const rw of dep.reserve.depositsPoolRewardManager.poolRewards) {
+        const urm = dep.userRewardManager;
+        for (const rw of dep.reserve.depositsPoolRewardManager?.poolRewards ?? []) {
           if (rw.endTimeMs <= Date.now()) continue;
+
+          let claimableAmount = 0;
+          const userReward = urm?.rewards?.[rw.rewardIndex];
+          if (userReward?.earnedRewards) {
+            claimableAmount = Number(BigInt(userReward.earnedRewards.value.toString())) / WAD / (10 ** rw.mintDecimals);
+          }
+
           const symbol = rw.symbol || rw.coinType.split('::').pop() || 'UNKNOWN';
           rewards.push({
             protocol: 'suilend',
             asset: this.resolveSymbol(dep.coinType),
             coinType: rw.coinType,
             symbol,
-            amount: 0,
+            amount: claimableAmount,
             estimatedValueUsd: 0,
           });
         }

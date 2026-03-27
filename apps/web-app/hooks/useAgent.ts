@@ -43,11 +43,12 @@ export interface StrategyBuyResult {
 export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<{ tx: string }>;
-  save(params: { amount: number }): Promise<{ tx: string }>;
-  withdraw(params: { amount: number }): Promise<{ tx: string }>;
-  borrow(params: { amount: number }): Promise<{ tx: string }>;
-  repay(params: { amount: number }): Promise<{ tx: string }>;
+  save(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
+  withdraw(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
+  borrow(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
+  repay(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
+  rebalance(params: { amount: number; fromProtocol: string; toProtocol: string; asset?: string }): Promise<{ tx: string }>;
   strategyBuy(params: { strategy: string; amount: number }): Promise<StrategyBuyResult>;
   claimRewards(): Promise<{ tx: string }>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
@@ -131,24 +132,28 @@ export function useAgent() {
             return sponsoredTransaction('send', { amount, recipient: to, asset });
           },
 
-          async save({ amount }) {
-            return sponsoredTransaction('save', { amount });
+          async save({ amount, protocol }) {
+            return sponsoredTransaction('save', { amount, protocol });
           },
 
-          async withdraw({ amount }) {
-            return sponsoredTransaction('withdraw', { amount });
+          async withdraw({ amount, protocol }) {
+            return sponsoredTransaction('withdraw', { amount, protocol });
           },
 
-          async borrow({ amount }) {
-            return sponsoredTransaction('borrow', { amount });
+          async borrow({ amount, protocol }) {
+            return sponsoredTransaction('borrow', { amount, protocol });
           },
 
-          async repay({ amount }) {
-            return sponsoredTransaction('repay', { amount });
+          async repay({ amount, protocol }) {
+            return sponsoredTransaction('repay', { amount, protocol });
           },
 
           async swap({ from, to, amount }) {
             return sponsoredTransaction('swap', { amount, fromAsset: from, toAsset: to });
+          },
+
+          async rebalance({ amount, fromProtocol, toProtocol, asset }) {
+            return sponsoredTransaction('rebalance', { amount, fromProtocol, toProtocol, asset });
           },
 
           async strategyBuy({ strategy, amount }) {

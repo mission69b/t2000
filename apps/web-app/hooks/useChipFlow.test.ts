@@ -139,4 +139,33 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
     expect(result.current.state.phase).toBe('quoting');
     expect(result.current.state.amount).toBe(100);
   });
+
+  it('startFlow with protocol context sets protocol on state', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('rebalance', { protocol: 'suilend', savingsRate: 7.2 }));
+    expect(result.current.state.phase).toBe('l2-chips');
+    expect(result.current.state.flow).toBe('rebalance');
+    expect(result.current.state.protocol).toBe('suilend');
+    expect(result.current.state.message).toContain('7.2%');
+  });
+
+  it('protocol field resets to null on reset', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('save', { protocol: 'navi' }));
+    expect(result.current.state.protocol).toBe('navi');
+    act(() => result.current.reset());
+    expect(result.current.state.protocol).toBeNull();
+  });
+
+  it('rebalance flow goes through full lifecycle', () => {
+    const { result } = renderHook(() => useChipFlow());
+    act(() => result.current.startFlow('rebalance', { protocol: 'suilend' }));
+    act(() => result.current.selectAmount(1000));
+    expect(result.current.state.phase).toBe('confirming');
+    act(() => result.current.confirm());
+    expect(result.current.state.phase).toBe('executing');
+    act(() => result.current.setResult({ success: true, title: 'Rebalanced', details: 'Moved to Suilend' }));
+    expect(result.current.state.phase).toBe('result');
+    expect(result.current.state.result?.success).toBe(true);
+  });
 });

@@ -143,7 +143,7 @@ export function deriveContextualChips(
       id: 'yield-check',
       icon: '🔍',
       label: 'Best yield?',
-      agentPrompt: 'Am I getting the best yield on my savings? Compare my current rate to all available protocols and tell me if I should switch.',
+      agentPrompt: 'Am I getting the best yield on my savings? Compare rates across NAVI and Suilend and tell me if I should rebalance to a better protocol.',
       priority: 22,
       dismissible: true,
     });
@@ -172,7 +172,7 @@ export function deriveContextualChips(
         id: 'morning',
         icon: '☀',
         label: 'Morning report',
-        agentPrompt: 'Give me my morning financial report. Check my balances, savings yield, portfolio holdings, health factor, and suggest any actions I should take today.',
+        agentPrompt: 'Give me my morning financial report. Check my balances, compare savings yield across protocols (NAVI vs Suilend), review portfolio holdings and health factor, and suggest any actions I should take today — including rebalancing if a better rate is available.',
         priority: 15,
       });
     } else if (hour >= 17 && hour < 21) {
@@ -180,7 +180,7 @@ export function deriveContextualChips(
         id: 'evening',
         icon: '📊',
         label: 'Daily summary',
-        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, savings yield, portfolio performance, and any changes today.',
+        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, compare yields across protocols, review portfolio performance, and note any changes today.',
         priority: 15,
       });
     }

@@ -69,6 +69,7 @@ function capForFlow(
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
     case 'borrow': return bal.maxBorrow;
+    case 'rebalance': return bal.savings;
     case 'swap': {
       if (fromAsset === 'SUI') return bal.sui;
       if (fromAsset === 'USDC') return bal.usdc;
@@ -255,6 +256,9 @@ function DashboardContent() {
     maxBorrow: balanceQuery.data?.maxBorrow ?? 0,
     pendingRewards: balanceQuery.data?.pendingRewards ?? 0,
     bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
+    bestAlternativeRate: balanceQuery.data?.bestAlternativeRate ?? null,
+    currentRate: balanceQuery.data?.currentRate ?? 0,
+    savingsBreakdown: balanceQuery.data?.savingsBreakdown ?? [],
     sui: balanceQuery.data?.sui ?? 0,
     suiUsd: balanceQuery.data?.suiUsd ?? 0,
     suiPrice: balanceQuery.data?.suiPrice ?? 0,
@@ -326,8 +330,8 @@ function DashboardContent() {
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
     pendingRewards: balance.pendingRewards,
-    bestAlternativeRate: balance.bestSaveRate ?? undefined,
-    currentRate: balance.savingsRate > 0 ? balance.savingsRate : undefined,
+    bestAlternativeRate: balance.bestAlternativeRate ?? undefined,
+    currentRate: balance.currentRate > 0 ? balance.currentRate : undefined,
     healthFactor: balance.healthFactor ?? undefined,
     overnightEarnings: overnightData.earnings,
     isFirstOpenToday: overnightData.isFirstOpenToday,
@@ -648,18 +652,15 @@ function DashboardContent() {
         return;
       }
       if (flow === 'rebalance') {
-        chipFlow.reset();
-        const alt = balance.bestSaveRate;
-        const current = balance.savingsRate;
-        if (alt && current > 0) {
-          const diff = alt.rate - current;
-          const extraMonthly = (balance.savings * (diff / 100)) / 12;
-          feed.addItem({
-            type: 'ai-text',
-            text: `To rebalance: withdraw from your current position (${current.toFixed(1)}% APY) and re-deposit at ${alt.protocol} (${alt.rate.toFixed(1)}% APY). That's +$${extraMonthly.toFixed(2)}/mo extra on $${Math.floor(balance.savings)}.`,
-            chips: [{ label: 'Withdraw savings', flow: 'withdraw' }],
+        const alt = balance.bestAlternativeRate;
+        if (alt && balance.savings > 0) {
+          chipFlow.startFlow('rebalance', {
+            ...flowContext,
+            protocol: alt.protocolId,
           });
+          chipFlow.selectAmount(balance.savings);
         } else {
+          chipFlow.reset();
           feed.addItem({
             type: 'ai-text',
             text: 'No better rates found right now. Your savings are already at the best available rate.',
@@ -848,9 +849,11 @@ function DashboardContent() {
       let txDigest = '';
       let flowLabel = '';
 
+      const protocol = chipFlow.state.protocol ?? undefined;
+
       switch (flow) {
         case 'save': {
-          const res = await sdk.save({ amount });
+          const res = await sdk.save({ amount, protocol });
           txDigest = res.tx;
           flowLabel = 'Saved';
           break;
@@ -870,21 +873,34 @@ function DashboardContent() {
           break;
         }
         case 'withdraw': {
-          const res = await sdk.withdraw({ amount });
+          const res = await sdk.withdraw({ amount, protocol });
           txDigest = res.tx;
           flowLabel = 'Withdrew';
           break;
         }
         case 'borrow': {
-          const res = await sdk.borrow({ amount });
+          const res = await sdk.borrow({ amount, protocol });
           txDigest = res.tx;
           flowLabel = 'Borrowed';
           break;
         }
         case 'repay': {
-          const res = await sdk.repay({ amount });
+          const res = await sdk.repay({ amount, protocol });
           txDigest = res.tx;
           flowLabel = 'Repaid';
+          break;
+        }
+        case 'rebalance': {
+          const toProtocol = protocol;
+          const primary = balance.savingsBreakdown.length > 0
+            ? balance.savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
+            : null;
+          const fromProtocol = primary?.protocolId ?? 'navi';
+          if (!toProtocol) throw new Error('No target protocol for rebalance');
+          const res = await sdk.rebalance({ amount, fromProtocol, toProtocol });
+          txDigest = res.tx;
+          const toName = balance.bestAlternativeRate?.protocol ?? toProtocol;
+          flowLabel = `Rebalanced $${amount.toFixed(2)} to ${toName}`;
           break;
         }
         case 'swap': {
@@ -1022,6 +1038,23 @@ function DashboardContent() {
       return {
         title,
         confirmLabel,
+        details,
+      };
+    }
+
+    if (flow === 'rebalance') {
+      const toName = balance.bestAlternativeRate?.protocol ?? chipFlow.state.protocol ?? 'target';
+      const fromEntry = balance.savingsBreakdown.length > 0
+        ? balance.savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
+        : null;
+      const fromName = fromEntry?.protocol ?? 'current';
+      details.push({ label: 'From', value: `${fromName} (${(fromEntry?.apy ?? balance.savingsRate).toFixed(1)}%)` });
+      details.push({ label: 'To', value: `${toName} (${(balance.bestAlternativeRate?.rate ?? 0).toFixed(1)}%)` });
+      details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
+      details.push({ label: 'Gas', value: 'Sponsored' });
+      return {
+        title: `Rebalance to ${toName}`,
+        confirmLabel: `Switch $${amount.toFixed(0)} to ${toName}`,
         details,
       };
     }

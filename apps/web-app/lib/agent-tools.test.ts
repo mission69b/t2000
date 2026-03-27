@@ -162,6 +162,22 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('what can you do');
     expect(prompt).toContain('First-time users');
   });
+
+  it('includes multi-protocol DeFi section', () => {
+    const prompt = buildSystemPrompt('0xabc123', 'user@test.com');
+    expect(prompt).toContain('Multi-Protocol DeFi');
+    expect(prompt).toContain('NAVI');
+    expect(prompt).toContain('Suilend');
+    expect(prompt).toContain('rebalancing');
+  });
+
+  it('get_rates tool description mentions multi-protocol', () => {
+    const tools = getAnthropicTools();
+    const ratesTool = tools.find((t) => t.name === 'get_rates');
+    expect(ratesTool).toBeDefined();
+    expect(ratesTool!.description).toContain('protocolId');
+    expect(ratesTool!.description).toContain('bestSaveRate');
+  });
 });
 
 describe('normalizeAnthropicResponse', () => {

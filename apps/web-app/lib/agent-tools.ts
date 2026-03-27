@@ -164,7 +164,7 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
     },
     {
       name: 'get_rates',
-      description: 'Get current yield rates across DeFi protocols (NAVI, Suilend, etc.).',
+      description: 'Get current savings and borrow APY rates across all DeFi protocols (NAVI, Suilend). Returns per-protocol rates with protocolId, and the bestSaveRate (highest savings APY across protocols). Use this to compare protocols and recommend rebalancing.',
       input_schema: { type: 'object' as const, properties: {}, required: [] },
     },
     {
@@ -440,10 +440,13 @@ Base: https://mpp.t2000.ai — Use these when no specific tool exists:
 - Embeddings: /cohere/v1/embed {"texts":["..."]} $0.005 | /together/v1/embeddings {"input":"..."} $0.001
 Always prepend https://mpp.t2000.ai to relative paths when calling use_service.
 
+## Multi-Protocol DeFi
+The app supports multiple lending protocols: **NAVI** and **Suilend**. When the user asks about rates or yield, use get_rates to compare across protocols. If one protocol offers a significantly better rate (>0.3% APY difference), suggest rebalancing with a [Switch to ProtocolName] button. The user's savings may be split across protocols — get_balance shows a per-protocol breakdown. Always mention the specific protocol name and APY when recommending a change.
+
 ## Rules
 - Be concise. 2-4 sentences for simple answers. Use **bold** for emphasis and numbered lists for recommendations.
 - Do NOT use markdown headers (#, ##, ###). Use **bold text** instead for section titles.
-- When the user asks to perform a banking action (save, send, swap, borrow, repay, withdraw, invest), DO NOT use tools. Instead, respond with a brief confirmation and include an action button using bracket syntax: [Save $500], [Repay $50], [Withdraw $100], [Invest $200], [Borrow $50], [Send $10 to 0x...], [Swap $5 to SUI], [Buy $10 BTC], [Sell 1.0 ETH]. The user can tap these to execute. Always include the dollar amount in the bracket.
+- When the user asks to perform a banking action (save, send, swap, borrow, repay, withdraw, invest, rebalance), DO NOT use tools. Instead, respond with a brief confirmation and include an action button using bracket syntax: [Save $500], [Repay $50], [Withdraw $100], [Invest $200], [Borrow $50], [Send $10 to 0x...], [Swap $5 to SUI], [Buy $10 BTC], [Sell 1.0 ETH], [Switch to Suilend]. The user can tap these to execute. Always include the dollar amount in the bracket.
 - The app has BUILT-IN swapping. Users can swap USDC to SUI, BTC, ETH, or GOLD (and sell them back to USDC) directly in the app. When the user asks "can I buy SUI?" or "how do I get BTC?", the answer is YES — suggest a swap button. NEVER tell users to go to an external exchange for assets we support.
 - CRITICAL for action buttons: Keep the response SHORT — just confirm what you'll do and provide the button. Do NOT give manual step-by-step instructions like "open your wallet, enter the address, select token...". The button handles everything. Example: "Sending 1 USDC to that address. Gas is sponsored.\n\n[Send $1]" — that's it.
 - For [Send] buttons, if the user provides a recipient address, include it: [Send $10 to 0xabc...]. The system will parse it.
@@ -465,7 +468,7 @@ The user has a contacts system. After sending to a new address, the app automati
 
 ## Capability overview (only when explicitly asked)
 ONLY show this list when the user's ENTIRE message is a generic question like "what can you do?" or "what features do you have?". NEVER show this for messages that contain a specific task — "help me send an email" means SEND AN EMAIL, "help me search for flights" means SEARCH FLIGHTS. The word "help" followed by a task is ALWAYS a task request. Execute the task.
-- Banking: Save, Send, Swap, Borrow, Invest (via action buttons)
+- Banking: Save, Send, Swap, Borrow, Invest, Rebalance (via action buttons, multi-protocol: NAVI & Suilend)
 - Free: Check balance, rates, portfolio, health factor, transaction history
 - Paid ($0.005-$0.05): Web search, news, crypto/stock prices, flights, email, translate, image gen, TTS, code execution, QR, URL shortening, currency conversion, security scans
 - Extended (via use_service): Weather, maps, web scraping, PDF gen, semantic search, IP lookup, push notifications, transcription, email finding, 10+ AI models

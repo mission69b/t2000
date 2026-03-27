@@ -3,6 +3,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { truncateAddress } from '@/lib/format';
 
+export interface SavingsBreakdownEntry {
+  protocol: string;
+  protocolId: string;
+  amount: number;
+  apy: number;
+}
+
 export interface BalanceHeaderData {
   total: number;
   cash: number;
@@ -16,7 +23,8 @@ export interface BalanceHeaderData {
   usdc: number;
   assetBalances: Record<string, number>;
   assetUsdValues: Record<string, number>;
-  bestSaveRate: { protocol: string; rate: number } | null;
+  bestSaveRate: { protocol: string; protocolId: string; rate: number } | null;
+  savingsBreakdown?: SavingsBreakdownEntry[];
   loading: boolean;
 }
 
@@ -158,7 +166,17 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
               <Row label="Investments" value={`$${fmtUsd(balance.investments)}`} />
             )}
             <Row label="Savings" value={`$${fmtUsd(balance.savings)}`} />
-            {balance.savingsRate > 0 && (
+            {balance.savingsBreakdown && balance.savingsBreakdown.length > 1 && (
+              balance.savingsBreakdown.map((s) => (
+                <Row
+                  key={s.protocolId}
+                  label={`\u00A0\u00A0${s.protocol}`}
+                  value={`$${fmtUsd(s.amount)}`}
+                  sublabel={`${s.apy.toFixed(1)}%`}
+                />
+              ))
+            )}
+            {balance.savingsRate > 0 && (!balance.savingsBreakdown || balance.savingsBreakdown.length <= 1) && (
               <Row label="Savings APY" value={`${balance.savingsRate.toFixed(1)}%`} accent />
             )}
             {balance.borrows > 0 && (

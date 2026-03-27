@@ -15,6 +15,13 @@ const TRADEABLE_COINS: Record<string, { type: string; decimals: number }> = {
   GOLD: { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9 },
 };
 
+export interface SavingsBreakdownEntry {
+  protocol: string;
+  protocolId: string;
+  amount: number;
+  apy: number;
+}
+
 export interface BalanceData {
   total: number;
   /** Liquid spendable balance: USDC + SUI (in USD) */
@@ -31,7 +38,13 @@ export interface BalanceData {
   healthFactor: number | null;
   maxBorrow: number;
   pendingRewards: number;
-  bestSaveRate: { protocol: string; rate: number } | null;
+  bestSaveRate: { protocol: string; protocolId: string; rate: number } | null;
+  /** Best rate from a DIFFERENT protocol than the user's primary savings protocol */
+  bestAlternativeRate: { protocol: string; protocolId: string; rate: number } | null;
+  /** The user's current blended savings rate from their primary savings protocol */
+  currentRate: number;
+  /** Per-protocol savings breakdown */
+  savingsBreakdown: SavingsBreakdownEntry[];
   /** Raw token balances for tradeable assets (BTC, ETH, GOLD, USDT) */
   assetBalances: Record<string, number>;
   /** USD values for tradeable assets */
@@ -128,6 +141,45 @@ export function useBalance(address: string | null) {
       const pendingRewards = r2(posData.pendingRewards ?? 0);
       const bestSaveRate = ratesData.bestSaveRate ?? null;
 
+      const suppliesRaw: Array<{ protocol: string; protocolId: string; amountUsd: number; apy: number }> =
+        posData.supplies ?? [];
+      const savingsBreakdown: SavingsBreakdownEntry[] = [];
+      const byProtocol = new Map<string, { protocol: string; protocolId: string; amount: number; weightedApy: number }>();
+      for (const s of suppliesRaw) {
+        const existing = byProtocol.get(s.protocolId);
+        if (existing) {
+          existing.amount += s.amountUsd;
+          existing.weightedApy += s.amountUsd * s.apy;
+        } else {
+          byProtocol.set(s.protocolId, {
+            protocol: s.protocol,
+            protocolId: s.protocolId,
+            amount: s.amountUsd,
+            weightedApy: s.amountUsd * s.apy,
+          });
+        }
+      }
+      for (const entry of byProtocol.values()) {
+        savingsBreakdown.push({
+          protocol: entry.protocol,
+          protocolId: entry.protocolId,
+          amount: r2(entry.amount),
+          apy: entry.amount > 0 ? r2(entry.weightedApy / entry.amount) : 0,
+        });
+      }
+
+      const primaryProtocol = savingsBreakdown.length > 0
+        ? savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
+        : null;
+
+      const bestAlternativeRate = bestSaveRate &&
+        primaryProtocol &&
+        bestSaveRate.protocolId !== primaryProtocol.protocolId
+          ? bestSaveRate
+          : null;
+
+      const currentRate = primaryProtocol?.apy ?? savingsRate;
+
       return {
         total: r2(cash + investments + savings - borrows),
         cash,
@@ -143,6 +195,9 @@ export function useBalance(address: string | null) {
         maxBorrow,
         pendingRewards,
         bestSaveRate,
+        bestAlternativeRate,
+        currentRate,
+        savingsBreakdown,
         assetBalances,
         assetUsdValues,
         loading: false,

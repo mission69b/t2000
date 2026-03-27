@@ -30,7 +30,7 @@ export interface AccountState {
   borrows: number;
   savingsRate: number;
   pendingRewards: number;
-  bestAlternativeRate?: { protocol: string; rate: number };
+  bestAlternativeRate?: { protocol: string; protocolId: string; rate: number };
   currentRate?: number;
   overnightEarnings?: number;
   isFirstOpenToday?: boolean;
