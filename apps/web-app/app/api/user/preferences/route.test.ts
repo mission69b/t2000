@@ -10,6 +10,7 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
       upsert: (...args: unknown[]) => mockUpsert(...args),
     },
+    $executeRaw: () => Promise.resolve(0),
   },
 }));
 

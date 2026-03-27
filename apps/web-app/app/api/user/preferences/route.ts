@@ -14,6 +14,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing or invalid address' }, { status: 400 });
   }
 
+  // Register address with indexer so on-chain transactions get tracked in stats.
+  // Fire-and-forget — table may not exist if DB hasn't been shared yet.
+  prisma.$executeRaw`
+    INSERT INTO "Agent" (address, created_at)
+    VALUES (${address}, NOW())
+    ON CONFLICT (address) DO NOTHING
+  `.catch(() => {});
+
   const prefs = await prisma.userPreferences.findUnique({
     where: { address },
   });
