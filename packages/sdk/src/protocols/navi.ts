@@ -376,7 +376,7 @@ export async function addWithdrawToTx(
     return { coin, effectiveAmount: 0 };
   }
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: true });
 
   try {
     const coin = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
@@ -419,7 +419,7 @@ export async function addRepayToTx(
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: true });
 
   try {
     await repayCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });
