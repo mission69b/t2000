@@ -420,11 +420,18 @@ function DashboardContent() {
       if (!intent) return;
 
       switch (intent.action) {
-        case 'save':
-          chipFlow.startFlow('save', flowContext);
-          if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+        case 'save': {
+          const cap = capForFlow('save', balance);
+          if (cap <= 0) {
+            feed.addItem({ type: 'ai-text', text: 'No USDC available to save right now.', chips: [{ label: 'Receive', flow: 'receive' }] });
+          } else {
+            chipFlow.startFlow('save', flowContext);
+            if (intent.amount > 0) chipFlow.selectAmount(Math.min(intent.amount, cap));
+          }
           break;
+        }
         case 'send': {
+          const cap = capForFlow('send', balance);
           chipFlow.startFlow('send', flowContext);
           const resolved = contactsHook.resolveContact(intent.to);
           if (resolved) {
@@ -432,7 +439,7 @@ function DashboardContent() {
           } else {
             chipFlow.selectRecipient(intent.to, undefined, flowContext.cash);
           }
-          if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+          if (intent.amount > 0) chipFlow.selectAmount(Math.min(intent.amount, cap));
           break;
         }
         case 'withdraw':
@@ -444,13 +451,15 @@ function DashboardContent() {
             });
           } else {
             chipFlow.startFlow('withdraw', flowContext);
-            if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+            if (intent.amount > 0) chipFlow.selectAmount(Math.min(intent.amount, balance.savings));
           }
           break;
-        case 'borrow':
+        case 'borrow': {
+          const cap = capForFlow('borrow', balance);
           chipFlow.startFlow('borrow', flowContext);
-          if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+          if (intent.amount > 0) chipFlow.selectAmount(Math.min(intent.amount, cap));
           break;
+        }
         case 'repay':
           if (balance.borrows < 0.01) {
             feed.addItem({
@@ -462,7 +471,7 @@ function DashboardContent() {
             });
           } else {
             chipFlow.startFlow('repay', flowContext);
-            if (intent.amount > 0) chipFlow.selectAmount(intent.amount);
+            if (intent.amount > 0) chipFlow.selectAmount(Math.min(intent.amount, balance.borrows));
           }
           break;
         case 'swap':
