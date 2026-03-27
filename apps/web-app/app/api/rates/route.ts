@@ -3,6 +3,8 @@ import { getRegistry } from '@/lib/protocol-registry';
 
 export const runtime = 'nodejs';
 
+const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
+
 interface RateEntry {
   protocol: string;
   protocolId: string;
@@ -46,6 +48,7 @@ export async function GET() {
 
     let bestSaveRate: BestSaveRate | null = null;
     for (const r of rates) {
+      if (!STABLECOINS.has(r.asset)) continue;
       if (!bestSaveRate || r.saveApy > bestSaveRate.rate) {
         bestSaveRate = { protocol: r.protocol, protocolId: r.protocolId, asset: r.asset, rate: r.saveApy };
       }
