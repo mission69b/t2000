@@ -161,12 +161,26 @@ function parseBuyIntent(text: string): ParsedIntent {
     if (amount > 0 && asset) return { action: 'swap', from: 'USDC', to: asset, amount };
   }
 
+  // "buy SUI", "buy gold" (no amount → show amount picker)
+  match = text.match(/^(?:buy|get)\s+(\w+)$/i);
+  if (match) {
+    const asset = resolveAsset(match[1]);
+    if (asset && asset !== 'USDC') return { action: 'swap', from: 'USDC', to: asset, amount: 0 };
+  }
+
   return null;
 }
 
 function parseSellIntent(text: string): ParsedIntent {
+  // "sell SUI", "sell gold" (no amount → show amount picker)
+  let match = text.match(/^sell\s+(\w+)$/i);
+  if (match) {
+    const asset = resolveAsset(match[1]);
+    if (asset && asset !== 'USDC') return { action: 'swap', from: asset, to: 'USDC', amount: 0 };
+  }
+
   // "sell 0.001 BTC", "sell $50 ETH"
-  let match = text.match(/^sell\s+\$?([\d,.]+)\s+(\w+)/i);
+  match = text.match(/^sell\s+\$?([\d,.]+)\s+(\w+)/i);
   if (match) {
     const amount = parseFloat(match[1].replace(/,/g, ''));
     const asset = resolveAsset(match[2]);
