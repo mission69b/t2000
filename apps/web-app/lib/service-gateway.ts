@@ -15,13 +15,23 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
   'reloadly-giftcard': {
     url: `${GATEWAY_BASE}/reloadly/v1/order`,
     price: 'dynamic',
-    transformBody: (f) => ({
-      productId: f.productId ?? f.brand,
-      quantity: 1,
-      unitPrice: parseFloat(f.amount) || 25,
-      recipientEmail: f.email,
-      countryCode: f.country ?? f.countryCode ?? 'US',
-    }),
+    transformBody: (f) => {
+      const productId = parseInt(f.productId, 10);
+      if (!productId || isNaN(productId)) {
+        throw new Error('Invalid productId — browse gift cards first to get a valid ID');
+      }
+      const unitPrice = parseFloat(f.amount);
+      if (!unitPrice || unitPrice <= 0) {
+        throw new Error('Amount must be a positive number');
+      }
+      return {
+        productId,
+        quantity: 1,
+        unitPrice,
+        recipientEmail: f.email,
+        countryCode: f.country ?? f.countryCode ?? 'US',
+      };
+    },
   },
 
   'reloadly-browse': {

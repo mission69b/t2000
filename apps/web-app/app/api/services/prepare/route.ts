@@ -69,7 +69,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const serviceBody = mapping.transformBody(body.fields ?? {});
+    let serviceBody: Record<string, unknown>;
+    try {
+      serviceBody = mapping.transformBody(body.fields ?? {});
+    } catch (validationErr) {
+      const msg = validationErr instanceof Error ? validationErr.message : 'Invalid service parameters';
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
 
     const challengeRes = await fetch(mapping.url, {
       method: 'POST',

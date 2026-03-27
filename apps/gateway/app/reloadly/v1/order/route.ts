@@ -16,8 +16,11 @@ export const POST = chargeCustom(
   (bodyText) => {
     const body = JSON.parse(bodyText) as OrderBody;
 
-    if (!body.productId || !body.unitPrice || body.unitPrice <= 0) {
-      throw new Error('productId and unitPrice (> 0) are required');
+    if (!body.productId || typeof body.productId !== 'number' || !Number.isInteger(body.productId)) {
+      throw new Error('productId must be a valid integer (use browse endpoint first)');
+    }
+    if (!body.unitPrice || typeof body.unitPrice !== 'number' || body.unitPrice <= 0) {
+      throw new Error('unitPrice must be a positive number');
     }
     if (body.unitPrice > 100) {
       throw new Error('unitPrice cannot exceed $100 per order');
