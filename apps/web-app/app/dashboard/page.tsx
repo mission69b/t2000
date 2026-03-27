@@ -748,6 +748,7 @@ function DashboardContent() {
         email,
         balanceSummary: balanceCtx,
         budget: agentBudget,
+        locale: typeof navigator !== 'undefined' ? navigator.language : undefined,
       }, {
         onStep: (step: AgentStep) => {
           stepsAccum.push({ ...step });

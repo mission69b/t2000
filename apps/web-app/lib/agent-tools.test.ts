@@ -197,6 +197,17 @@ describe('buildSystemPrompt', () => {
     expect(ratesTool!.description).toContain('protocolId');
     expect(ratesTool!.description).toContain('bestSaveRate');
   });
+
+  it('includes country from locale', () => {
+    const prompt = buildSystemPrompt('0xabc', 'u@t.com', undefined, 'en-AU');
+    expect(prompt).toContain('Country: AU');
+    expect(prompt).toContain('GIFT CARD FLOW');
+  });
+
+  it('defaults country to US when no locale', () => {
+    const prompt = buildSystemPrompt('0xabc', 'u@t.com');
+    expect(prompt).toContain('Country: US');
+  });
 });
 
 describe('normalizeAnthropicResponse', () => {

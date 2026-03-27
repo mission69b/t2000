@@ -421,20 +421,40 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
   ];
 }
 
+const LOCALE_COUNTRY_MAP: Record<string, string> = {
+  'en-AU': 'AU', 'en-US': 'US', 'en-GB': 'GB', 'en-CA': 'CA', 'en-NZ': 'NZ',
+  'en-IE': 'IE', 'en-SG': 'SG', 'en-IN': 'IN', 'de-DE': 'DE', 'fr-FR': 'FR',
+  'es-ES': 'ES', 'it-IT': 'IT', 'pt-BR': 'BR', 'ja-JP': 'JP', 'ko-KR': 'KR',
+  'zh-CN': 'CN', 'zh-TW': 'TW', 'nl-NL': 'NL', 'sv-SE': 'SE', 'da-DK': 'DK',
+  'nb-NO': 'NO', 'fi-FI': 'FI', 'pl-PL': 'PL', 'tr-TR': 'TR', 'th-TH': 'TH',
+  'id-ID': 'ID', 'ms-MY': 'MY', 'vi-VN': 'VN', 'ar-SA': 'SA', 'he-IL': 'IL',
+};
+
+function countryFromLocale(locale?: string): string {
+  if (!locale) return 'US';
+  if (LOCALE_COUNTRY_MAP[locale]) return LOCALE_COUNTRY_MAP[locale];
+  const parts = locale.split('-');
+  if (parts[1] && parts[1].length === 2) return parts[1].toUpperCase();
+  return 'US';
+}
+
 export function buildSystemPrompt(
   address: string,
   email: string,
   balanceSummary?: string,
+  locale?: string,
 ): string {
   const now = new Date();
   const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const timeOfDay = now.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+  const country = countryFromLocale(locale);
   return `You are t2000, a financial assistant built into a smart wallet on Sui blockchain.
 
 ## About the user
 - Email: ${email}
 - Wallet: ${address}
 - Balance: ${balanceSummary ?? 'unknown'}
+- Country: ${country}
 - Today: ${currentDate}, ${timeOfDay}
 
 ## Your capabilities
@@ -477,6 +497,7 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
 - For reports and multi-tool responses, structure output with **bold labels** and numbered recommendations. End with 1-3 actionable [Buttons] with realistic amounts the user can tap.
 - For paid services (web search, flights, crypto prices, translate, image gen, etc.), ALWAYS call the tool directly. Don't ask permission for cheap calls (<$0.50). Never refuse to call a service tool — the user expects you to use them.
 - For expensive services (gift cards, postcards), confirm the details first in your response before calling the tool.
+- GIFT CARD FLOW: When the user wants to buy food, get a ride, shop, or purchase anything from a specific brand, you CAN help — via gift cards. Don't say "I can't order pizza" — instead say "I'll get you a DoorDash/Uber Eats gift card so you can order." The flow: 1) call browse_gift_cards with the user's country (${country}) to find the right brand/productId, 2) confirm product + amount + email with user, 3) call buy_gift_card. ALWAYS use the user's country (${country}) — never ask for it. After a successful purchase, tell the user to check their email for the gift card code and include the redeem instructions from the result.
 - When the user says "email me" or "send me", use their email: ${email}
 - Show prices in USD. Show crypto amounts with appropriate precision.
 - If you don't know something, say so. Don't make up data.

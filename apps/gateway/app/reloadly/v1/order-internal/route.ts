@@ -68,9 +68,21 @@ export async function POST(request: NextRequest) {
   const quantity = body.quantity ?? 1;
   const price = (body.unitPrice * quantity * (1 + SERVICE_FEE_RATE)).toFixed(2);
 
+  let redeemInstructions: string | null = null;
+  try {
+    const instrRes = await fetch(
+      `${RELOADLY_BASE}/products/${body.productId}/redeem-instructions`,
+      { method: 'GET', headers: reloadlyHeaders(token) },
+    );
+    if (instrRes.ok) {
+      const data = (await instrRes.json()) as { concise?: string };
+      redeemInstructions = data.concise ?? null;
+    }
+  } catch {}
+
   return NextResponse.json({
     success: true,
-    result,
+    result: { ...result as object, redeemInstructions },
     payment: {
       recipient: TREASURY_ADDRESS,
       currency: SUI_USDC_TYPE,

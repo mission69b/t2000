@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
     address: string;
     email: string;
     balanceSummary?: string;
+    locale?: string;
   };
 
   try {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { messages, address, email, balanceSummary } = body;
+  const { messages, address, email, balanceSummary, locale } = body;
 
   if (!messages?.length || !address) {
     return NextResponse.json({ error: 'Messages and address required' }, { status: 400 });
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-    const systemPrompt = buildSystemPrompt(address, email, balanceSummary);
+    const systemPrompt = buildSystemPrompt(address, email, balanceSummary, locale);
     const tools = getAnthropicTools();
     const anthropicMessages = toAnthropicMessages(messages);
 

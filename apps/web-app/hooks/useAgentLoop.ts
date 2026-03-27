@@ -61,6 +61,7 @@ export function useAgentLoop() {
       email: string;
       balanceSummary?: string;
       budget: number;
+      locale?: string;
     },
     callbacks: AgentCallbacks,
   ) => {
@@ -92,6 +93,7 @@ export function useAgentLoop() {
             address: opts.address,
             email: opts.email,
             balanceSummary: opts.balanceSummary,
+            locale: opts.locale,
           }),
         });
 
