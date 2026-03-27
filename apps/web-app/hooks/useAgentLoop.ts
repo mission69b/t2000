@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { useAgent, type ServiceResult } from '@/hooks/useAgent';
+import { useAgent, ServiceDeliveryError, type ServiceResult } from '@/hooks/useAgent';
 import { TOOL_EXECUTORS, getEstimatedCost, type ToolCall, type NormalizedResponse } from '@/lib/agent-tools';
 
 const MAX_ITERATIONS = 10;
@@ -195,10 +195,28 @@ export function useAgentLoop() {
             try {
               const fields = executor.transform!(args);
               const sdk = await agent.getInstance();
-              const serviceResult: ServiceResult = await sdk.payService({
-                serviceId: executor.serviceId!,
-                fields,
-              });
+              let serviceResult: ServiceResult;
+
+              try {
+                serviceResult = await sdk.payService({
+                  serviceId: executor.serviceId!,
+                  fields,
+                });
+              } catch (payErr) {
+                if (payErr instanceof ServiceDeliveryError) {
+                  for (let retry = 0; retry < 2; retry++) {
+                    try {
+                      serviceResult = await sdk.retryServiceDelivery(payErr.paymentDigest, payErr.meta);
+                      break;
+                    } catch (retryErr) {
+                      if (retry === 1 || !(retryErr instanceof ServiceDeliveryError)) throw retryErr;
+                    }
+                  }
+                  if (!serviceResult!) throw payErr;
+                } else {
+                  throw payErr;
+                }
+              }
 
               result = serviceResult.result;
               const actualCost = parseFloat(serviceResult.price);
@@ -243,10 +261,28 @@ export function useAgentLoop() {
               try { rawBody = JSON.parse(String(args.body ?? '{}')); } catch { /* use empty */ }
 
               const sdk = await agent.getInstance();
-              const serviceResult: ServiceResult = await sdk.payService({
-                url: String(args.url),
-                rawBody,
-              });
+              let serviceResult: ServiceResult;
+
+              try {
+                serviceResult = await sdk.payService({
+                  url: String(args.url),
+                  rawBody,
+                });
+              } catch (payErr) {
+                if (payErr instanceof ServiceDeliveryError) {
+                  for (let retry = 0; retry < 2; retry++) {
+                    try {
+                      serviceResult = await sdk.retryServiceDelivery(payErr.paymentDigest, payErr.meta);
+                      break;
+                    } catch (retryErr) {
+                      if (retry === 1 || !(retryErr instanceof ServiceDeliveryError)) throw retryErr;
+                    }
+                  }
+                  if (!serviceResult!) throw payErr;
+                } else {
+                  throw payErr;
+                }
+              }
 
               result = serviceResult.result;
               const actualCost = parseFloat(serviceResult.price);

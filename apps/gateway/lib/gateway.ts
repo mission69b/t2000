@@ -39,6 +39,7 @@ function inferServiceEndpoint(rawUrl: string): { service: string; endpoint: stri
 interface ProxyOptions {
   upstreamMethod?: 'GET' | 'POST';
   bodyToQuery?: boolean;
+  validate?: (body: Record<string, unknown>) => string | null;
 }
 
 /**
@@ -55,6 +56,18 @@ export function chargeProxy(
     const mppx = getGateway();
     const bodyText = await req.text();
     const method = options?.upstreamMethod ?? 'POST';
+
+    if (options?.validate && bodyText) {
+      try {
+        const parsed = JSON.parse(bodyText) as Record<string, unknown>;
+        const validationError = options.validate(parsed);
+        if (validationError) {
+          return Response.json({ error: validationError }, { status: 400 });
+        }
+      } catch {
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
+    }
 
     const handler: RouteHandler = async () => {
       let url = upstream;
