@@ -874,7 +874,17 @@ function DashboardContent() {
           break;
         }
         case 'withdraw': {
-          const res = await sdk.withdraw({ amount, protocol });
+          const primary = balance.savingsBreakdown.length > 0
+            ? balance.savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
+            : null;
+          const fromAsset = primary?.asset ?? 'USDC';
+          const toAsset = fromAsset !== 'USDC' ? 'USDC' : undefined;
+          const res = await sdk.withdraw({
+            amount,
+            protocol: protocol ?? primary?.protocolId,
+            fromAsset: fromAsset !== 'USDC' ? fromAsset : undefined,
+            toAsset,
+          });
           txDigest = res.tx;
           flowLabel = 'Withdrew';
           break;
@@ -1089,6 +1099,15 @@ function DashboardContent() {
     }
 
     details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
+
+    if (flow === 'withdraw') {
+      const primary = balance.savingsBreakdown.length > 0
+        ? balance.savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
+        : null;
+      if (primary && primary.asset !== 'USDC') {
+        details.push({ label: 'Swap', value: `${primary.asset} → USDC (auto)` });
+      }
+    }
 
     if (flow === 'send' && chipFlow.state.recipient) {
       details.push({ label: 'To', value: chipFlow.state.subFlow ?? chipFlow.state.recipient });

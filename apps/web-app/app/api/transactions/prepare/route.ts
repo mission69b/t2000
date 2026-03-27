@@ -254,7 +254,23 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
     case 'withdraw': {
       const adapter = getLendingAdapter(params.protocol);
-      const result = await adapter.buildWithdrawTx(address, amount, asset ?? 'USDC', { sponsored: true });
+      const withdrawAsset = params.fromAsset ?? asset ?? 'USDC';
+      const targetAsset = params.toAsset ?? 'USDC';
+
+      if (withdrawAsset !== targetAsset && adapter.addWithdrawToTx) {
+        const { coin: withdrawnCoin, effectiveAmount } = await adapter.addWithdrawToTx(
+          tx, address, amount, withdrawAsset,
+        );
+        const swapAdapter = getSwapAdapter();
+        if (!swapAdapter.addSwapToTx) throw new Error('Swap adapter does not support composable swap');
+        const { outputCoin } = await swapAdapter.addSwapToTx(
+          tx, address, withdrawnCoin, withdrawAsset, targetAsset, effectiveAmount,
+        );
+        tx.transferObjects([outputCoin], address);
+        break;
+      }
+
+      const result = await adapter.buildWithdrawTx(address, amount, withdrawAsset, { sponsored: true });
       return result.tx;
     }
 

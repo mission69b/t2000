@@ -44,7 +44,7 @@ export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<{ tx: string }>;
   save(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
-  withdraw(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
+  withdraw(params: { amount: number; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<{ tx: string }>;
   borrow(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   repay(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
@@ -136,8 +136,8 @@ export function useAgent() {
             return sponsoredTransaction('save', { amount, protocol });
           },
 
-          async withdraw({ amount, protocol }) {
-            return sponsoredTransaction('withdraw', { amount, protocol });
+          async withdraw({ amount, protocol, fromAsset, toAsset }) {
+            return sponsoredTransaction('withdraw', { amount, protocol, fromAsset, toAsset });
           },
 
           async borrow({ amount, protocol }) {
