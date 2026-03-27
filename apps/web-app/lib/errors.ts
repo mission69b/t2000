@@ -33,8 +33,8 @@ const WALLET_ERROR_MAP: [RegExp, string, { label: string; flow: string }[]?][] =
 export function mapError(error: unknown): FeedItemData {
   const message = error instanceof Error ? error.message : String(error);
 
-  // Move abort codes
-  const abortMatch = message.match(/MoveAbort.*?(\d+)/);
+  // Move abort codes — extract: MoveAbort(...}, CODE) or MoveAbort(..., CODE)
+  const abortMatch = message.match(/MoveAbort.*},\s*(\d+)\)/) ?? message.match(/MoveAbort.*,\s*(\d+)\)/);
   if (abortMatch) {
     const code = parseInt(abortMatch[1], 10);
     const mapped = MOVE_ABORT_MAP[code];
