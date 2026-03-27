@@ -133,11 +133,19 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
       message: String(a.message),
     }),
   },
+  browse_gift_cards: {
+    type: 'service',
+    serviceId: 'reloadly-browse',
+    estimatedCost: 0.005,
+    transform: (a) => ({
+      countryCode: String(a.country ?? 'US'),
+    }),
+  },
   buy_gift_card: {
     type: 'service',
     serviceId: 'reloadly-giftcard',
     transform: (a) => ({
-      brand: String(a.brand),
+      productId: String(a.productId),
       amount: String(a.amount),
       email: String(a.email),
       country: String(a.country ?? 'US'),
@@ -368,17 +376,28 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
       },
     },
     {
-      name: 'buy_gift_card',
-      description: 'Buy a gift card from 800+ brands (Amazon, Uber Eats, Netflix, etc.) via Reloadly. Cost: face value + 5% fee. ALWAYS confirm details with the user before calling this tool.',
+      name: 'browse_gift_cards',
+      description: 'Browse available gift card brands and their productIds for a country. ALWAYS call this BEFORE buy_gift_card to get the correct numeric productId. Returns a list of products with id, name, denomination type, and price range.',
       input_schema: {
         type: 'object' as const,
         properties: {
-          brand: { type: 'string', description: 'Brand name (e.g. "Amazon")' },
-          amount: { type: 'number', description: 'Gift card face value in USD' },
+          country: { type: 'string', description: 'Country code (e.g. "US", "GB", "AU")' },
+        },
+        required: ['country'],
+      },
+    },
+    {
+      name: 'buy_gift_card',
+      description: 'Buy a gift card using a numeric productId from browse_gift_cards. Cost: face value + 5% fee. You MUST call browse_gift_cards first to get the productId. ALWAYS confirm details with the user before calling.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          productId: { type: 'number', description: 'Numeric product ID from browse_gift_cards results' },
+          amount: { type: 'number', description: 'Gift card face value in local currency' },
           email: { type: 'string', description: 'Recipient email address' },
           country: { type: 'string', description: 'Country code (e.g. "US", "GB", "AU")' },
         },
-        required: ['brand', 'amount', 'email', 'country'],
+        required: ['productId', 'amount', 'email', 'country'],
       },
     },
     {

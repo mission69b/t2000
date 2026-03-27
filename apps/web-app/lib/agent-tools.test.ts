@@ -9,14 +9,14 @@ import {
 } from './agent-tools';
 
 describe('TOOL_EXECUTORS', () => {
-  it('defines exactly 25 tools (6 read + 18 service + 1 raw-service)', () => {
+  it('defines exactly 26 tools (6 read + 19 service + 1 raw-service)', () => {
     const entries = Object.entries(TOOL_EXECUTORS);
-    expect(entries.length).toBe(25);
+    expect(entries.length).toBe(26);
 
     const reads = entries.filter(([, e]) => e.type === 'read');
     const services = entries.filter(([, e]) => e.type === 'service');
     expect(reads.length).toBe(6);
-    expect(services.length).toBe(18);
+    expect(services.length).toBe(19);
   });
 
   it('every service executor has a serviceId and transform', () => {
@@ -52,14 +52,24 @@ describe('TOOL_EXECUTORS transforms', () => {
     expect(result).toEqual({ to: 'user@test.com', subject: 'Hello', body: 'Test body' });
   });
 
-  it('buy_gift_card transforms with country default', () => {
+  it('browse_gift_cards transforms country', () => {
+    const result = TOOL_EXECUTORS.browse_gift_cards.transform!({ country: 'AU' });
+    expect(result).toEqual({ countryCode: 'AU' });
+  });
+
+  it('browse_gift_cards defaults to US', () => {
+    const result = TOOL_EXECUTORS.browse_gift_cards.transform!({});
+    expect(result).toEqual({ countryCode: 'US' });
+  });
+
+  it('buy_gift_card transforms with productId and country default', () => {
     const result = TOOL_EXECUTORS.buy_gift_card.transform!({
-      brand: 'Amazon',
+      productId: 4521,
       amount: 25,
       email: 'user@test.com',
     });
     expect(result).toEqual({
-      brand: 'Amazon',
+      productId: '4521',
       amount: '25',
       email: 'user@test.com',
       country: 'US',
@@ -68,7 +78,7 @@ describe('TOOL_EXECUTORS transforms', () => {
 
   it('buy_gift_card passes explicit country', () => {
     const result = TOOL_EXECUTORS.buy_gift_card.transform!({
-      brand: 'Amazon',
+      productId: 4521,
       amount: 50,
       email: 'user@test.com',
       country: 'GB',
@@ -132,9 +142,9 @@ describe('getEstimatedCost', () => {
 });
 
 describe('getAnthropicTools', () => {
-  it('returns 25 tool schemas', () => {
+  it('returns 26 tool schemas', () => {
     const tools = getAnthropicTools();
-    expect(tools.length).toBe(25);
+    expect(tools.length).toBe(26);
   });
 
   it('every tool has name, description, and input_schema', () => {

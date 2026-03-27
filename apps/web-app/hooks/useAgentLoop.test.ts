@@ -183,7 +183,7 @@ describe('useAgentLoop (unit logic)', () => {
 
   it('stops when user declines confirmation', async () => {
     mockFetch.mockResolvedValueOnce(llmToolResponse([
-      { id: 'tc_1', name: 'buy_gift_card', args: { brand: 'Amazon', amount: 50, email: 'test@test.com', country: 'US' } },
+      { id: 'tc_1', name: 'buy_gift_card', args: { productId: 4521, amount: 50, email: 'test@test.com', country: 'US' } },
     ]));
 
     const onConfirmNeeded = vi.fn().mockResolvedValue(false);
