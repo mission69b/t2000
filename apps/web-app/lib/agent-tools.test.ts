@@ -201,7 +201,7 @@ describe('buildSystemPrompt', () => {
   it('includes country from locale', () => {
     const prompt = buildSystemPrompt('0xabc', 'u@t.com', undefined, 'en-AU');
     expect(prompt).toContain('Country: AU');
-    expect(prompt).toContain('GIFT CARD FLOW');
+    expect(prompt).toContain('REAL-WORLD PURCHASES');
   });
 
   it('defaults country to US when no locale', () => {
