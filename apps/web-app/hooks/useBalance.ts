@@ -128,7 +128,8 @@ export function useBalance(address: string | null) {
         const amount = raw / 10 ** info.decimals;
         assetBalances[symbol] = amount;
 
-        const price = prices[symbol] ?? (symbol === 'USDT' ? 1 : 0);
+        const STABLECOINS = new Set(['USDT', 'USDe', 'USDsui']);
+        const price = prices[symbol] ?? (STABLECOINS.has(symbol) ? 1 : 0);
         const usdVal = r2(amount * price);
         assetUsdValues[symbol] = usdVal;
         tradeableUsd += usdVal;

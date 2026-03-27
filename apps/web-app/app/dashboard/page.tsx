@@ -482,10 +482,18 @@ function DashboardContent() {
           }
           break;
         case 'swap': {
+          const cap = capForFlow('swap', balance, intent.from);
+          if (intent.amount === -1 && cap <= 0) {
+            feed.addItem({
+              type: 'ai-text',
+              text: `No ${intent.from} available to swap.`,
+              chips: [{ label: 'Balance', flow: 'balance' }],
+            });
+            break;
+          }
           chipFlow.startFlow('swap', flowContext);
           if (intent.from) chipFlow.selectAsset(intent.from, flowContext);
           if (intent.to) chipFlow.selectAsset(intent.to, flowContext);
-          const cap = capForFlow('swap', balance, intent.from);
           const swapAmt = intent.amount === -1 ? cap : intent.amount;
           if (swapAmt > 0) {
             fetchQuoteAndConfirm(swapAmt, intent.from, intent.to);
