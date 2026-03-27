@@ -55,13 +55,31 @@ export async function POST(request: NextRequest) {
     const tools = getAnthropicTools();
     const anthropicMessages = toAnthropicMessages(messages);
 
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: anthropicMessages,
-      tools,
-    });
+    let response: Anthropic.Messages.Message | undefined;
+    let lastErr: unknown;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await client.messages.create({
+          model: MODEL,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: anthropicMessages,
+          tools,
+        });
+        break;
+      } catch (err) {
+        lastErr = err;
+        const status = (err as { status?: number }).status;
+        if (status === 529 || status === 503 || status === 500) {
+          await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!response) throw lastErr;
 
     return NextResponse.json(normalizeAnthropicResponse(response));
   } catch (err) {
