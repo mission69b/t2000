@@ -198,6 +198,28 @@ describe('parseIntent', () => {
     });
   });
 
+  describe('preamble stripping', () => {
+    it('parses "can you save 4"', () => {
+      expect(parseIntent('can you save 4')).toEqual({ action: 'save', amount: 4 });
+    });
+
+    it('parses "could you withdraw all"', () => {
+      expect(parseIntent('could you withdraw all')).toEqual({ action: 'withdraw', amount: -1 });
+    });
+
+    it('parses "please swap all USDe to USDC"', () => {
+      expect(parseIntent('please swap all USDe to USDC')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
+    });
+
+    it('parses "i want to buy $100 BTC"', () => {
+      expect(parseIntent('i want to buy $100 BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 100 });
+    });
+
+    it('parses "pls send $50 to alice"', () => {
+      expect(parseIntent('pls send $50 to alice')).toEqual({ action: 'send', amount: 50, to: 'alice' });
+    });
+  });
+
   describe('LLM fallback', () => {
     it('returns null for unrecognized input', () => {
       expect(parseIntent('what should I do with $500?')).toBeNull();

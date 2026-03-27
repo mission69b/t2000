@@ -35,8 +35,12 @@ const TRADEABLE_ASSETS: Record<string, string> = {
   usdsui: 'USDsui',
 };
 
+function stripPreamble(text: string): string {
+  return text.replace(/^(can you|could you|please|pls|hey|yo|i want to|i'd like to|i wanna|go ahead and)\s+/i, '');
+}
+
 export function parseIntent(input: string): ParsedIntent {
-  const text = input.trim().toLowerCase();
+  const text = stripPreamble(input.trim()).toLowerCase();
 
   // Simple keyword matches
   if (/^(help|what can (you|i) do|commands)$/i.test(text)) {
