@@ -30,7 +30,7 @@ export interface AccountState {
   borrows: number;
   savingsRate: number;
   pendingRewards: number;
-  bestAlternativeRate?: { protocol: string; protocolId: string; rate: number };
+  bestAlternativeRate?: { protocol: string; protocolId: string; asset: string; rate: number };
   currentRate?: number;
   overnightEarnings?: number;
   isFirstOpenToday?: boolean;
@@ -110,13 +110,16 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
     const diff = state.bestAlternativeRate.rate - state.currentRate;
     if (diff > 0.3 && state.savings > 0) {
       const extraMonthly = (state.savings * (diff / 100)) / 12;
+      const alt = state.bestAlternativeRate;
+      const assetLabel = alt.asset && alt.asset !== 'USDC' ? ` ${alt.asset}` : '';
+      const targetLabel = `${alt.protocol}${assetLabel}`;
       cards.push({
         type: 'better-rate',
         icon: '📈',
-        title: `${state.bestAlternativeRate.protocol} is offering ${state.bestAlternativeRate.rate.toFixed(1)}% vs your ${state.currentRate.toFixed(1)}%`,
+        title: `${targetLabel} is offering ${alt.rate.toFixed(1)}% vs your ${state.currentRate.toFixed(1)}%`,
         body: `That's $${extraMonthly.toFixed(2)}/mo more on your $${Math.floor(state.savings)}.`,
         actions: [
-          { label: `Switch to ${state.bestAlternativeRate.protocol}`, variant: 'primary', chipFlow: 'rebalance' },
+          { label: `Switch to ${targetLabel}`, variant: 'primary', chipFlow: 'rebalance' },
           { label: 'Dismiss', variant: 'secondary' },
         ],
         dismissible: true,

@@ -164,7 +164,7 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
     },
     {
       name: 'get_rates',
-      description: 'Get current savings and borrow APY rates across all DeFi protocols (NAVI, Suilend). Returns per-protocol rates with protocolId, and the bestSaveRate (highest savings APY across protocols). Use this to compare protocols and recommend rebalancing.',
+      description: 'Get current savings and borrow APY rates across all DeFi protocols (NAVI, Suilend) and all stablecoins (USDC, USDT, USDe). Returns per-protocol per-asset rates with protocolId and asset, and the bestSaveRate (highest savings APY across all protocols and assets). Use this to compare protocols AND stablecoins and recommend rebalancing — even to a different asset if it has a higher rate.',
       input_schema: { type: 'object' as const, properties: {}, required: [] },
     },
     {
@@ -441,7 +441,7 @@ Base: https://mpp.t2000.ai — Use these when no specific tool exists:
 Always prepend https://mpp.t2000.ai to relative paths when calling use_service.
 
 ## Multi-Protocol DeFi
-The app supports multiple lending protocols: **NAVI** and **Suilend**. When the user asks about rates or yield, use get_rates to compare across protocols. If one protocol offers a significantly better rate (>0.3% APY difference), suggest rebalancing with a [Switch to ProtocolName] button. The user's savings may be split across protocols — get_balance shows a per-protocol breakdown. Always mention the specific protocol name and APY when recommending a change.
+The app supports multiple lending protocols (**NAVI** and **Suilend**) and multiple stablecoins (**USDC**, **USDT/suiUSDT**, **USDe/suiUSDe**). When the user asks about rates or yield, use get_rates to compare across ALL protocols AND stablecoins. If a different protocol/asset combo offers a significantly better rate (>0.3% APY difference), suggest rebalancing with a [Switch to ProtocolName] button — even if it means moving from USDC to USDe or USDT. The user's savings may be split across protocols and assets — get_balance shows a per-protocol breakdown. Always mention the specific protocol name, asset, and APY when recommending a change (e.g. "NAVI suiUSDe at 6.7% vs your USDC at 4.7%").
 
 ## Rules
 - Be concise. 2-4 sentences for simple answers. Use **bold** for emphasis and numbered lists for recommendations.

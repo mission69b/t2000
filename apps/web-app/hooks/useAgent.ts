@@ -48,7 +48,7 @@ export interface AgentActions {
   borrow(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   repay(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
-  rebalance(params: { amount: number; fromProtocol: string; toProtocol: string; asset?: string }): Promise<{ tx: string }>;
+  rebalance(params: { amount: number; fromProtocol: string; toProtocol: string; fromAsset?: string; toAsset?: string }): Promise<{ tx: string }>;
   strategyBuy(params: { strategy: string; amount: number }): Promise<StrategyBuyResult>;
   claimRewards(): Promise<{ tx: string }>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
@@ -152,8 +152,8 @@ export function useAgent() {
             return sponsoredTransaction('swap', { amount, fromAsset: from, toAsset: to });
           },
 
-          async rebalance({ amount, fromProtocol, toProtocol, asset }) {
-            return sponsoredTransaction('rebalance', { amount, fromProtocol, toProtocol, asset });
+          async rebalance({ amount, fromProtocol, toProtocol, fromAsset, toAsset }) {
+            return sponsoredTransaction('rebalance', { amount, fromProtocol, toProtocol, fromAsset, toAsset });
           },
 
           async strategyBuy({ strategy, amount }) {

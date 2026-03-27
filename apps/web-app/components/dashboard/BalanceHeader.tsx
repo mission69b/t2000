@@ -6,6 +6,7 @@ import { truncateAddress } from '@/lib/format';
 export interface SavingsBreakdownEntry {
   protocol: string;
   protocolId: string;
+  asset: string;
   amount: number;
   apy: number;
 }
@@ -169,8 +170,8 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
             {balance.savingsBreakdown && balance.savingsBreakdown.length > 1 && (
               balance.savingsBreakdown.map((s) => (
                 <Row
-                  key={s.protocolId}
-                  label={`\u00A0\u00A0${s.protocol}`}
+                  key={`${s.protocolId}:${s.asset}`}
+                  label={`\u00A0\u00A0${s.protocol}${s.asset !== 'USDC' ? ` (${s.asset})` : ''}`}
                   value={`$${fmtUsd(s.amount)}`}
                   sublabel={`${s.apy.toFixed(1)}%`}
                 />

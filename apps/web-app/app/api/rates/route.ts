@@ -11,13 +11,20 @@ interface RateEntry {
   borrowApy: number;
 }
 
+interface BestSaveRate {
+  protocol: string;
+  protocolId: string;
+  asset: string;
+  rate: number;
+}
+
 const RATES_CACHE_TTL = 30_000;
-let ratesCache: { data: { rates: RateEntry[]; bestSaveRate: { protocol: string; protocolId: string; rate: number } | null }; expiresAt: number } | null = null;
+let ratesCache: { data: { rates: RateEntry[]; bestSaveRate: BestSaveRate | null }; expiresAt: number } | null = null;
 
 /**
  * GET /api/rates
  *
- * Returns current lending rates from all protocols for USDC.
+ * Returns current lending rates across all protocols and all stablecoins.
  * Cached for 30s since rates change slowly.
  */
 export async function GET() {
@@ -27,20 +34,20 @@ export async function GET() {
 
   try {
     const registry = getRegistry();
-    const allRates = await registry.allRates('USDC');
+    const allRates = await registry.allRatesAcrossAssets();
 
     const rates: RateEntry[] = allRates.map((r) => ({
       protocol: r.protocol,
       protocolId: r.protocolId,
-      asset: r.rates.asset,
+      asset: r.asset,
       saveApy: r.rates.saveApy,
       borrowApy: r.rates.borrowApy,
     }));
 
-    let bestSaveRate: { protocol: string; protocolId: string; rate: number } | null = null;
+    let bestSaveRate: BestSaveRate | null = null;
     for (const r of rates) {
       if (!bestSaveRate || r.saveApy > bestSaveRate.rate) {
-        bestSaveRate = { protocol: r.protocol, protocolId: r.protocolId, rate: r.saveApy };
+        bestSaveRate = { protocol: r.protocol, protocolId: r.protocolId, asset: r.asset, rate: r.saveApy };
       }
     }
 

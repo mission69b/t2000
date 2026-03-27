@@ -657,6 +657,7 @@ function DashboardContent() {
           chipFlow.startFlow('rebalance', {
             ...flowContext,
             protocol: alt.protocolId,
+            toAsset: alt.asset,
           });
           chipFlow.selectAmount(balance.savings);
         } else {
@@ -897,10 +898,13 @@ function DashboardContent() {
             : null;
           const fromProtocol = primary?.protocolId ?? 'navi';
           if (!toProtocol) throw new Error('No target protocol for rebalance');
-          const res = await sdk.rebalance({ amount, fromProtocol, toProtocol });
+          const fromAsset = primary?.asset ?? 'USDC';
+          const toAsset = chipFlow.state.toAsset ?? balance.bestAlternativeRate?.asset ?? fromAsset;
+          const res = await sdk.rebalance({ amount, fromProtocol, toProtocol, fromAsset, toAsset });
           txDigest = res.tx;
-          const toName = balance.bestAlternativeRate?.protocol ?? toProtocol;
-          flowLabel = `Rebalanced $${amount.toFixed(2)} to ${toName}`;
+          const alt = balance.bestAlternativeRate;
+          const toLabel = alt ? `${alt.protocol}${alt.asset !== 'USDC' ? ` ${alt.asset}` : ''}` : toProtocol;
+          flowLabel = `Rebalanced $${amount.toFixed(2)} to ${toLabel}`;
           break;
         }
         case 'swap': {
@@ -955,7 +959,7 @@ function DashboardContent() {
           throw new Error(`Unknown flow: ${flow}`);
       }
 
-      const hasAmountInLabel = flow === 'swap' || flow === 'invest';
+      const hasAmountInLabel = flow === 'swap' || flow === 'invest' || flow === 'rebalance';
       const explorerBase = SUI_NETWORK === 'testnet'
         ? 'https://suiscan.xyz/testnet/tx'
         : 'https://suiscan.xyz/mainnet/tx';
@@ -1043,18 +1047,26 @@ function DashboardContent() {
     }
 
     if (flow === 'rebalance') {
-      const toName = balance.bestAlternativeRate?.protocol ?? chipFlow.state.protocol ?? 'target';
+      const alt = balance.bestAlternativeRate;
       const fromEntry = balance.savingsBreakdown.length > 0
         ? balance.savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
         : null;
+      const fromAsset = fromEntry?.asset ?? 'USDC';
+      const toAsset = chipFlow.state.toAsset ?? alt?.asset ?? fromAsset;
       const fromName = fromEntry?.protocol ?? 'current';
-      details.push({ label: 'From', value: `${fromName} (${(fromEntry?.apy ?? balance.savingsRate).toFixed(1)}%)` });
-      details.push({ label: 'To', value: `${toName} (${(balance.bestAlternativeRate?.rate ?? 0).toFixed(1)}%)` });
+      const toProtocol = alt?.protocol ?? chipFlow.state.protocol ?? 'target';
+      const toLabel = `${toProtocol}${toAsset !== 'USDC' ? ` ${toAsset}` : ''}`;
+      const fromLabel = `${fromName}${fromAsset !== 'USDC' ? ` ${fromAsset}` : ''}`;
+      details.push({ label: 'From', value: `${fromLabel} (${(fromEntry?.apy ?? balance.savingsRate).toFixed(1)}%)` });
+      details.push({ label: 'To', value: `${toLabel} (${(alt?.rate ?? 0).toFixed(1)}%)` });
+      if (fromAsset !== toAsset) {
+        details.push({ label: 'Swap', value: `${fromAsset} → ${toAsset} (auto)` });
+      }
       details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
       details.push({ label: 'Gas', value: 'Sponsored' });
       return {
-        title: `Rebalance to ${toName}`,
-        confirmLabel: `Switch $${amount.toFixed(0)} to ${toName}`,
+        title: `Rebalance to ${toLabel}`,
+        confirmLabel: `Switch $${amount.toFixed(0)} to ${toLabel}`,
         details,
       };
     }

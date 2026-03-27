@@ -83,10 +83,12 @@ export function deriveContextualChips(
   if (state.bestAlternativeRate && state.currentRate) {
     const diff = state.bestAlternativeRate.rate - state.currentRate;
     if (diff > 0.3 && state.savings > 0) {
+      const alt = state.bestAlternativeRate;
+      const assetLabel = alt.asset && alt.asset !== 'USDC' ? ` ${alt.asset}` : '';
       chips.push({
         id: 'rate',
         icon: '📈',
-        label: `Switch to ${state.bestAlternativeRate.rate.toFixed(1)}% ${state.bestAlternativeRate.protocol}`,
+        label: `Switch to ${alt.rate.toFixed(1)}% ${alt.protocol}${assetLabel}`,
         chipFlow: 'rebalance',
         priority: 65,
         dismissible: true,
@@ -143,7 +145,7 @@ export function deriveContextualChips(
       id: 'yield-check',
       icon: '🔍',
       label: 'Best yield?',
-      agentPrompt: 'Am I getting the best yield on my savings? Compare rates across NAVI and Suilend and tell me if I should rebalance to a better protocol.',
+      agentPrompt: 'Am I getting the best yield on my savings? Compare rates across all protocols (NAVI, Suilend) and all stablecoins (USDC, USDT, USDe) and tell me if I should rebalance to a better rate — even if it means switching to a different stablecoin.',
       priority: 22,
       dismissible: true,
     });
@@ -172,7 +174,7 @@ export function deriveContextualChips(
         id: 'morning',
         icon: '☀',
         label: 'Morning report',
-        agentPrompt: 'Give me my morning financial report. Check my balances, compare savings yield across protocols (NAVI vs Suilend), review portfolio holdings and health factor, and suggest any actions I should take today — including rebalancing if a better rate is available.',
+        agentPrompt: 'Give me my morning financial report. Check my balances, compare savings yield across all protocols and stablecoins (USDC, USDT, USDe on NAVI and Suilend), review portfolio holdings and health factor, and suggest any actions I should take today — including rebalancing to a different asset if a better rate is available.',
         priority: 15,
       });
     } else if (hour >= 17 && hour < 21) {
@@ -180,7 +182,7 @@ export function deriveContextualChips(
         id: 'evening',
         icon: '📊',
         label: 'Daily summary',
-        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, compare yields across protocols, review portfolio performance, and note any changes today.',
+        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, compare yields across all protocols and stablecoins, review portfolio performance, and note any changes today.',
         priority: 15,
       });
     }

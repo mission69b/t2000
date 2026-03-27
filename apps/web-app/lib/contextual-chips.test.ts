@@ -86,7 +86,7 @@ describe('deriveContextualChips', () => {
       ...BASE_STATE,
       savings: 1000,
       currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'Suilend', protocolId: 'suilend', rate: 6.5 },
+      bestAlternativeRate: { protocol: 'Suilend', protocolId: 'suilend', asset: 'USDC', rate: 6.5 },
     });
     const chip = chips.find((c) => c.id === 'rate');
     expect(chip).toBeDefined();

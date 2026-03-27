@@ -75,6 +75,8 @@ export interface FlowContext {
   savingsRate?: number;
   maxBorrow?: number;
   protocol?: string;
+  asset?: string;
+  toAsset?: string;
 }
 
 export function useChipFlow() {
@@ -88,6 +90,8 @@ export function useChipFlow() {
       phase: needsStrategy ? 'strategy-select' : needsAssetSelect ? 'asset-select' : 'l2-chips',
       flow,
       protocol: context?.protocol ?? null,
+      asset: context?.asset ?? null,
+      toAsset: context?.toAsset ?? null,
       message: getFlowMessage(flow, context),
     });
   }, []);

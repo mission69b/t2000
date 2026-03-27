@@ -18,6 +18,7 @@ const TRADEABLE_COINS: Record<string, { type: string; decimals: number }> = {
 export interface SavingsBreakdownEntry {
   protocol: string;
   protocolId: string;
+  asset: string;
   amount: number;
   apy: number;
 }
@@ -38,9 +39,9 @@ export interface BalanceData {
   healthFactor: number | null;
   maxBorrow: number;
   pendingRewards: number;
-  bestSaveRate: { protocol: string; protocolId: string; rate: number } | null;
-  /** Best rate from a DIFFERENT protocol than the user's primary savings protocol */
-  bestAlternativeRate: { protocol: string; protocolId: string; rate: number } | null;
+  bestSaveRate: { protocol: string; protocolId: string; asset: string; rate: number } | null;
+  /** Best rate from a DIFFERENT protocol/asset than the user's current primary savings */
+  bestAlternativeRate: { protocol: string; protocolId: string; asset: string; rate: number } | null;
   /** The user's current blended savings rate from their primary savings protocol */
   currentRate: number;
   /** Per-protocol savings breakdown */
@@ -141,44 +142,49 @@ export function useBalance(address: string | null) {
       const pendingRewards = r2(posData.pendingRewards ?? 0);
       const bestSaveRate = ratesData.bestSaveRate ?? null;
 
-      const suppliesRaw: Array<{ protocol: string; protocolId: string; amountUsd: number; apy: number }> =
+      const suppliesRaw: Array<{ protocol: string; protocolId: string; asset: string; amountUsd: number; apy: number }> =
         posData.supplies ?? [];
       const savingsBreakdown: SavingsBreakdownEntry[] = [];
-      const byProtocol = new Map<string, { protocol: string; protocolId: string; amount: number; weightedApy: number }>();
+      const byKey = new Map<string, { protocol: string; protocolId: string; asset: string; amount: number; weightedApy: number }>();
       for (const s of suppliesRaw) {
-        const existing = byProtocol.get(s.protocolId);
+        const key = `${s.protocolId}:${s.asset}`;
+        const existing = byKey.get(key);
         if (existing) {
           existing.amount += s.amountUsd;
           existing.weightedApy += s.amountUsd * s.apy;
         } else {
-          byProtocol.set(s.protocolId, {
+          byKey.set(key, {
             protocol: s.protocol,
             protocolId: s.protocolId,
+            asset: s.asset,
             amount: s.amountUsd,
             weightedApy: s.amountUsd * s.apy,
           });
         }
       }
-      for (const entry of byProtocol.values()) {
+      for (const entry of byKey.values()) {
         savingsBreakdown.push({
           protocol: entry.protocol,
           protocolId: entry.protocolId,
+          asset: entry.asset,
           amount: r2(entry.amount),
           apy: entry.amount > 0 ? r2(entry.weightedApy / entry.amount) : 0,
         });
       }
 
-      const primaryProtocol = savingsBreakdown.length > 0
+      const primaryPosition = savingsBreakdown.length > 0
         ? savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
         : null;
 
-      const bestAlternativeRate = bestSaveRate &&
-        primaryProtocol &&
-        bestSaveRate.protocolId !== primaryProtocol.protocolId
-          ? bestSaveRate
-          : null;
+      const isSamePosition = bestSaveRate && primaryPosition &&
+        bestSaveRate.protocolId === primaryPosition.protocolId &&
+        bestSaveRate.asset === primaryPosition.asset;
 
-      const currentRate = primaryProtocol?.apy ?? savingsRate;
+      const bestAlternativeRate = bestSaveRate && primaryPosition && !isSamePosition
+        ? bestSaveRate
+        : null;
+
+      const currentRate = primaryPosition?.apy ?? savingsRate;
 
       return {
         total: r2(cash + investments + savings - borrows),
