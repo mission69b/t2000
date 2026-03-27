@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       gatewayUrl: string;
       serviceBody: string;
       price: string;
+      preDeliveredResult?: unknown;
     };
   };
 
@@ -87,6 +88,17 @@ export async function POST(request: NextRequest) {
       digest: confirmedPaymentDigest!,
       options: { showEffects: true },
     });
+
+    if (meta.preDeliveredResult) {
+      console.log(`[services/complete] Payment confirmed — returning pre-delivered result (deliver-first flow)`);
+      return NextResponse.json({
+        success: true,
+        paymentDigest: confirmedPaymentDigest,
+        price: meta.price,
+        serviceId: meta.serviceId,
+        result: meta.preDeliveredResult,
+      });
+    }
 
     console.log(`[services/complete] Payment confirmed on-chain, calling gateway...`);
 

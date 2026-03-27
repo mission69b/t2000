@@ -8,11 +8,23 @@
  */
 
 const GATEWAY_BASE = process.env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? '';
 
-interface GatewayMapping {
+export interface GatewayMapping {
   url: string;
   price: string;
   transformBody: (fields: Record<string, string>) => Record<string, unknown>;
+  /**
+   * When set, the service is called BEFORE payment is built.
+   * If the upstream fails → no payment ever happens → no money lost.
+   */
+  deliverFirst?: {
+    internalUrl: string;
+  };
+}
+
+export function getInternalApiKey(): string {
+  return INTERNAL_API_KEY;
 }
 
 function require(fields: Record<string, string>, ...keys: string[]): void {
@@ -50,6 +62,9 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
         recipientEmail: f.email,
         countryCode: f.country ?? f.countryCode ?? 'US',
       };
+    },
+    deliverFirst: {
+      internalUrl: `${GATEWAY_BASE}/reloadly/v1/order-internal`,
     },
   },
 

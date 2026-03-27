@@ -3,7 +3,8 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { toBase64 } from '@mysten/sui/utils';
 import { Challenge } from 'mppx';
-import { getGatewayMapping, createRawGatewayMapping } from '@/lib/service-gateway';
+import { getGatewayMapping, createRawGatewayMapping, getInternalApiKey } from '@/lib/service-gateway';
+import type { GatewayMapping } from '@/lib/service-gateway';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
 
@@ -18,11 +19,17 @@ const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), n
 /**
  * POST /api/services/prepare
  *
- * 1. Pre-flights the gateway to get the 402 challenge (WWW-Authenticate header)
- * 2. Parses the challenge to extract recipient, amount, currency
- * 3. Builds a payment tx to the gateway's recipient
- * 4. Sponsors via Enoki
- * 5. Returns { bytes, digest, meta } for client-side signing
+ * Two flows depending on the service mapping:
+ *
+ * **Deliver-first** (gift cards, etc.):
+ *   1. Call the gateway's internal endpoint — upstream service runs FIRST
+ *   2. If upstream fails → return error, user is NEVER charged
+ *   3. If upstream succeeds → build payment tx, store result in meta
+ *
+ * **Standard** (cheap, idempotent services):
+ *   1. Pre-flight the gateway to get a 402 challenge
+ *   2. Build payment tx from the challenge
+ *   3. Return { bytes, digest, meta } for client-side signing
  */
 export async function POST(request: NextRequest) {
   if (!ENOKI_SECRET_KEY) {
@@ -52,7 +59,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
 
-  // 5 service calls per minute per address
   const rl = rateLimit(`svc:${address}`, 5, 60_000);
   if (!rl.success) return rateLimitResponse(rl.retryAfterMs!);
 
@@ -77,123 +83,258 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
-    const challengeRes = await fetch(mapping.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(serviceBody),
-    });
-
-    if (challengeRes.status !== 402) {
-      if (challengeRes.ok) {
-        console.log(`[services/prepare] ${serviceId} returned ${challengeRes.status} (free path) — no payment required`);
-        const result = await challengeRes.json().catch(() => challengeRes.text());
-        return NextResponse.json({
-          success: true,
-          paymentDigest: 'free',
-          price: '0',
-          serviceId,
-          result,
-        });
-      }
-      const errText = await challengeRes.text().catch(() => '');
-      console.error(`[services/prepare] Gateway returned ${challengeRes.status}:`, errText);
-      return NextResponse.json(
-        { error: `Gateway error (${challengeRes.status})` },
-        { status: challengeRes.status },
-      );
+    if (mapping.deliverFirst) {
+      return await handleDeliverFirst(mapping, serviceBody, serviceId, address, jwt);
     }
 
-    let challenge: Challenge.Challenge;
-    try {
-      challenge = Challenge.fromResponse(challengeRes);
-    } catch (err) {
-      console.error('[services/prepare] Failed to parse 402 challenge:', err);
-      return NextResponse.json(
-        { error: 'Gateway returned 402 but challenge could not be parsed' },
-        { status: 502 },
-      );
-    }
-
-    const { amount: chargeAmount, currency, recipient: gatewayRecipient } = challenge.request as {
-      amount: string;
-      currency: string;
-      recipient: string;
-    };
-
-    if (!gatewayRecipient || !chargeAmount || !currency) {
-      console.error('[services/prepare] Challenge missing payment details:', challenge.request);
-      return NextResponse.json(
-        { error: 'Gateway challenge missing payment details' },
-        { status: 502 },
-      );
-    }
-
-    const decimals = currency.includes('::usdc::') ? 6 : 9;
-    const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
-
-    const tx = new Transaction();
-    tx.setSender(address);
-
-    const coins = await client.getCoins({ owner: address, coinType: currency });
-    if (!coins.data.length) {
-      return NextResponse.json({ error: 'No USDC balance to pay for service' }, { status: 400 });
-    }
-
-    const coinIds = coins.data.map((c) => c.coinObjectId);
-    if (coinIds.length > 1) {
-      tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
-    }
-    const [split] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
-    tx.transferObjects([split], gatewayRecipient);
-
-    const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
-    const txKindBase64 = toBase64(txKindBytes);
-
-    const sponsorHeaders: Record<string, string> = {
-      Authorization: `Bearer ${ENOKI_SECRET_KEY}`,
-      'Content-Type': 'application/json',
-    };
-    if (jwt) {
-      sponsorHeaders['zklogin-jwt'] = jwt;
-    }
-
-    const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
-      method: 'POST',
-      headers: sponsorHeaders,
-      body: JSON.stringify({
-        network: SUI_NETWORK,
-        transactionBlockKindBytes: txKindBase64,
-        sender: address,
-        allowedAddresses: [gatewayRecipient],
-      }),
-    });
-
-    if (!sponsorRes.ok) {
-      const errorBody = await sponsorRes.text().catch(() => '');
-      console.error(`[services/prepare] Sponsor error (${sponsorRes.status}):`, errorBody);
-      let parsed: { message?: string } = {};
-      try { parsed = JSON.parse(errorBody); } catch {}
-      return NextResponse.json(
-        { error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})` },
-        { status: sponsorRes.status >= 500 ? 502 : sponsorRes.status },
-      );
-    }
-
-    const { data } = await sponsorRes.json();
-
-    return NextResponse.json({
-      bytes: data.bytes,
-      digest: data.digest,
-      meta: {
-        serviceId,
-        gatewayUrl: mapping.url,
-        serviceBody: JSON.stringify(serviceBody),
-        price: chargeAmount,
-      },
-    });
+    return await handleStandardMpp(mapping, serviceBody, serviceId, address, jwt);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Service preparation failed';
     console.error('[services/prepare] Error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * Deliver-first: call upstream BEFORE building any payment.
+ * If upstream fails, user is never charged.
+ */
+async function handleDeliverFirst(
+  mapping: GatewayMapping,
+  serviceBody: Record<string, unknown>,
+  serviceId: string,
+  address: string,
+  jwt: string | null,
+): Promise<NextResponse> {
+  const internalUrl = mapping.deliverFirst!.internalUrl;
+  const internalKey = getInternalApiKey();
+
+  if (!internalKey) {
+    console.error('[services/prepare] INTERNAL_API_KEY not configured');
+    return NextResponse.json({ error: 'Service not configured' }, { status: 500 });
+  }
+
+  console.log(`[services/prepare] Deliver-first: calling ${internalUrl} before payment`);
+
+  const deliverRes = await fetch(internalUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-key': internalKey,
+    },
+    body: JSON.stringify(serviceBody),
+  });
+
+  if (!deliverRes.ok) {
+    const errData = await deliverRes.json().catch(() => ({ error: 'Service delivery failed' }));
+    const msg = (errData as { error?: string }).error ?? `Service failed (${deliverRes.status})`;
+    console.error(`[services/prepare] Deliver-first failed (${deliverRes.status}):`, msg);
+    return NextResponse.json({ error: msg }, { status: deliverRes.status >= 500 ? 502 : deliverRes.status });
+  }
+
+  const deliverData = (await deliverRes.json()) as {
+    success: boolean;
+    result: unknown;
+    payment: { recipient: string; currency: string; amount: string };
+  };
+
+  if (!deliverData.success || !deliverData.payment) {
+    return NextResponse.json({ error: 'Internal endpoint returned unexpected format' }, { status: 502 });
+  }
+
+  const { recipient, currency, amount: chargeAmount } = deliverData.payment;
+
+  console.log(`[services/prepare] Deliver-first succeeded, building payment tx: $${chargeAmount} → ${recipient}`);
+
+  const decimals = currency.includes('::usdc::') ? 6 : 9;
+  const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
+
+  const tx = new Transaction();
+  tx.setSender(address);
+
+  const coins = await client.getCoins({ owner: address, coinType: currency });
+  if (!coins.data.length) {
+    return NextResponse.json({ error: 'No USDC balance to pay for service' }, { status: 400 });
+  }
+
+  const coinIds = coins.data.map((c) => c.coinObjectId);
+  if (coinIds.length > 1) {
+    tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
+  }
+  const [split] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
+  tx.transferObjects([split], recipient);
+
+  const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
+  const txKindBase64 = toBase64(txKindBytes);
+
+  const sponsorHeaders: Record<string, string> = {
+    Authorization: `Bearer ${ENOKI_SECRET_KEY!}`,
+    'Content-Type': 'application/json',
+  };
+  if (jwt) {
+    sponsorHeaders['zklogin-jwt'] = jwt;
+  }
+
+  const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
+    method: 'POST',
+    headers: sponsorHeaders,
+    body: JSON.stringify({
+      network: SUI_NETWORK,
+      transactionBlockKindBytes: txKindBase64,
+      sender: address,
+      allowedAddresses: [recipient],
+    }),
+  });
+
+  if (!sponsorRes.ok) {
+    const errorBody = await sponsorRes.text().catch(() => '');
+    console.error(`[services/prepare] Sponsor error (${sponsorRes.status}):`, errorBody);
+    let parsed: { message?: string } = {};
+    try { parsed = JSON.parse(errorBody); } catch {}
+    return NextResponse.json(
+      { error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})` },
+      { status: sponsorRes.status >= 500 ? 502 : sponsorRes.status },
+    );
+  }
+
+  const { data } = await sponsorRes.json();
+
+  return NextResponse.json({
+    bytes: data.bytes,
+    digest: data.digest,
+    meta: {
+      serviceId,
+      gatewayUrl: mapping.url,
+      serviceBody: JSON.stringify(serviceBody),
+      price: chargeAmount,
+      preDeliveredResult: deliverData.result,
+    },
+  });
+}
+
+/**
+ * Standard MPP: pre-flight → 402 challenge → build payment tx.
+ * Service is called AFTER payment in the complete route.
+ */
+async function handleStandardMpp(
+  mapping: GatewayMapping,
+  serviceBody: Record<string, unknown>,
+  serviceId: string,
+  address: string,
+  jwt: string | null,
+): Promise<NextResponse> {
+  const challengeRes = await fetch(mapping.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(serviceBody),
+  });
+
+  if (challengeRes.status !== 402) {
+    if (challengeRes.ok) {
+      console.log(`[services/prepare] ${serviceId} returned ${challengeRes.status} (free path) — no payment required`);
+      const result = await challengeRes.json().catch(() => challengeRes.text());
+      return NextResponse.json({
+        success: true,
+        paymentDigest: 'free',
+        price: '0',
+        serviceId,
+        result,
+      });
+    }
+    const errText = await challengeRes.text().catch(() => '');
+    console.error(`[services/prepare] Gateway returned ${challengeRes.status}:`, errText);
+    return NextResponse.json(
+      { error: `Gateway error (${challengeRes.status})` },
+      { status: challengeRes.status },
+    );
+  }
+
+  let challenge: Challenge.Challenge;
+  try {
+    challenge = Challenge.fromResponse(challengeRes);
+  } catch (err) {
+    console.error('[services/prepare] Failed to parse 402 challenge:', err);
+    return NextResponse.json(
+      { error: 'Gateway returned 402 but challenge could not be parsed' },
+      { status: 502 },
+    );
+  }
+
+  const { amount: chargeAmount, currency, recipient: gatewayRecipient } = challenge.request as {
+    amount: string;
+    currency: string;
+    recipient: string;
+  };
+
+  if (!gatewayRecipient || !chargeAmount || !currency) {
+    console.error('[services/prepare] Challenge missing payment details:', challenge.request);
+    return NextResponse.json(
+      { error: 'Gateway challenge missing payment details' },
+      { status: 502 },
+    );
+  }
+
+  const decimals = currency.includes('::usdc::') ? 6 : 9;
+  const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
+
+  const tx = new Transaction();
+  tx.setSender(address);
+
+  const coins = await client.getCoins({ owner: address, coinType: currency });
+  if (!coins.data.length) {
+    return NextResponse.json({ error: 'No USDC balance to pay for service' }, { status: 400 });
+  }
+
+  const coinIds = coins.data.map((c) => c.coinObjectId);
+  if (coinIds.length > 1) {
+    tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
+  }
+  const [split] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
+  tx.transferObjects([split], gatewayRecipient);
+
+  const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
+  const txKindBase64 = toBase64(txKindBytes);
+
+  const sponsorHeaders: Record<string, string> = {
+    Authorization: `Bearer ${ENOKI_SECRET_KEY!}`,
+    'Content-Type': 'application/json',
+  };
+  if (jwt) {
+    sponsorHeaders['zklogin-jwt'] = jwt;
+  }
+
+  const sponsorRes = await fetch(`${ENOKI_BASE}/transaction-blocks/sponsor`, {
+    method: 'POST',
+    headers: sponsorHeaders,
+    body: JSON.stringify({
+      network: SUI_NETWORK,
+      transactionBlockKindBytes: txKindBase64,
+      sender: address,
+      allowedAddresses: [gatewayRecipient],
+    }),
+  });
+
+  if (!sponsorRes.ok) {
+    const errorBody = await sponsorRes.text().catch(() => '');
+    console.error(`[services/prepare] Sponsor error (${sponsorRes.status}):`, errorBody);
+    let parsed: { message?: string } = {};
+    try { parsed = JSON.parse(errorBody); } catch {}
+    return NextResponse.json(
+      { error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})` },
+      { status: sponsorRes.status >= 500 ? 502 : sponsorRes.status },
+    );
+  }
+
+  const { data } = await sponsorRes.json();
+
+  return NextResponse.json({
+    bytes: data.bytes,
+    digest: data.digest,
+    meta: {
+      serviceId,
+      gatewayUrl: mapping.url,
+      serviceBody: JSON.stringify(serviceBody),
+      price: chargeAmount,
+    },
+  });
 }

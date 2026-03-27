@@ -23,14 +23,14 @@ interface ReloadlyProduct {
 
 /**
  * Pre-validate the order against Reloadly BEFORE returning a 402.
- * Checks: kill switch, account balance, product exists, denomination valid.
+ * Checks: account balance, product exists, denomination valid.
  * If any check fails, throws — no 402 issued, no payment built.
+ *
+ * NOTE: The web-app now uses the deliver-first flow via /order-internal
+ * which calls Reloadly BEFORE payment. This legacy 402 flow is kept
+ * as a fallback for direct gateway callers.
  */
 async function validateOrder(body: OrderBody): Promise<void> {
-  if (process.env.RELOADLY_ORDERS_DISABLED === 'true') {
-    throw new Error('Gift card purchases are temporarily disabled — service provider is experiencing issues');
-  }
-
   const token = await getReloadlyToken();
 
   const [balRes, prodRes] = await Promise.all([
