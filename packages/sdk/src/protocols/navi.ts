@@ -352,9 +352,10 @@ export async function addWithdrawToTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: string } = {},
+  options: { asset?: string; sponsored?: boolean } = {},
 ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
+  const sponsored = options.sponsored ?? true;
   const assetInfo = resolveAssetInfo(asset);
 
   const posResult = await getPositions(client, address);
@@ -376,7 +377,7 @@ export async function addWithdrawToTx(
     return { coin, effectiveAmount: 0 };
   }
 
-  await refreshOracle(tx, client, address, { skipPythUpdate: true });
+  await refreshOracle(tx, client, address, { skipPythUpdate: sponsored });
 
   try {
     const coin = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
@@ -414,12 +415,13 @@ export async function addRepayToTx(
   client: SuiJsonRpcClient,
   address: string,
   coin: TransactionObjectArgument,
-  options: { asset?: string } = {},
+  options: { asset?: string; sponsored?: boolean } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
+  const sponsored = options.sponsored ?? true;
   const assetInfo = resolveAssetInfo(asset);
 
-  await refreshOracle(tx, client, address, { skipPythUpdate: true });
+  await refreshOracle(tx, client, address, { skipPythUpdate: sponsored });
 
   try {
     await repayCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });

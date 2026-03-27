@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getRegistry } from '@/lib/protocol-registry';
+import { STABLE_ASSETS } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
 
-const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
+const STABLECOINS = new Set<string>(STABLE_ASSETS);
 
 interface RateEntry {
   protocol: string;
