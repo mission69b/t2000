@@ -7,8 +7,8 @@ export const runtime = 'nodejs';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
-let cetusAdapter: CetusAdapter | null = null;
-function getCetus(): CetusAdapter {
+let cetusAdapter: InstanceType<typeof CetusAdapter> | null = null;
+function getCetus(): InstanceType<typeof CetusAdapter> {
   if (!cetusAdapter) {
     cetusAdapter = new CetusAdapter();
     cetusAdapter.initSync(client);
@@ -35,7 +35,7 @@ async function fetchPrices(): Promise<Record<string, number>> {
     ...ASSETS_TO_PRICE.map((asset) =>
       cetus
         .getQuote('USDC', asset, 1)
-        .then((q) => ({ asset, price: q.expectedOutput > 0 ? 1 / q.expectedOutput : 0 }))
+        .then((q: { expectedOutput: number }) => ({ asset, price: q.expectedOutput > 0 ? 1 / q.expectedOutput : 0 }))
         .catch(() => ({ asset, price: 0 })),
     ),
   ]);

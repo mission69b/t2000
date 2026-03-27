@@ -43,7 +43,7 @@ function getLendingAdapter(protocolId?: string) {
   const registry = getRegistry();
   const adapters = registry.listLending();
   if (protocolId) {
-    const match = adapters.find((a) => a.protocolId === protocolId);
+    const match = adapters.find((a) => a.id === protocolId);
     if (!match) throw new Error(`Unknown lending protocol: ${protocolId}`);
     return match;
   }
@@ -300,6 +300,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       const [inputCoin] = tx.splitCoins(tx.object(coinIds[0]), [rawAmount]);
 
       const swapAdapter = getSwapAdapter();
+      if (!swapAdapter.addSwapToTx) throw new Error('Swap adapter does not support composable swap');
       const { outputCoin } = await swapAdapter.addSwapToTx(tx, address, inputCoin, from, to, amount);
       tx.transferObjects([outputCoin], address);
       break;
@@ -320,6 +321,7 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
       if (params.toAsset && params.toAsset !== withdrawAsset) {
         const swapAdapter = getSwapAdapter();
+        if (!swapAdapter.addSwapToTx) throw new Error('Swap adapter does not support composable swap');
         const { outputCoin } = await swapAdapter.addSwapToTx(
           tx, address, withdrawnCoin, withdrawAsset, params.toAsset, effectiveAmount,
         );

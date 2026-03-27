@@ -8,9 +8,9 @@ export const runtime = 'nodejs';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
-let cetusAdapter: CetusAdapter | null = null;
+let cetusAdapter: InstanceType<typeof CetusAdapter> | null = null;
 
-function getCetus(): CetusAdapter {
+function getCetus(): InstanceType<typeof CetusAdapter> {
   if (!cetusAdapter) {
     cetusAdapter = new CetusAdapter();
     cetusAdapter.initSync(client);
