@@ -117,31 +117,19 @@ jobs:
       - name: Post to Discord
         env:
           WEBHOOK_URL: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+          RELEASE_VERSION: ${{ steps.info.outputs.version }}
+          RELEASE_NOTES: ${{ steps.info.outputs.notes }}
         run: |
-          VERSION="${{ steps.info.outputs.version }}"
-          NOTES=$(echo '${{ steps.info.outputs.notes }}' | sed 's/"/\\"/g' | head -c 1500)
+          NOTES=$(printf '%s' "$RELEASE_NOTES" | head -c 1500)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          curl -s -H "Content-Type: application/json" -d "{
-            \"embeds\": [{
-              \"title\": \"t2000 ${VERSION} released\",
-              \"url\": \"https://github.com/mission69b/t2000/releases/tag/${VERSION}\",
-              \"color\": 55951,
-              \"description\": \"${NOTES}\",
-              \"fields\": [
-                {
-                  \"name\": \"Update\",
-                  \"value\": \"\`\`\`npm update @t2000/cli -g\`\`\`\",
-                  \"inline\": false
-                },
-                {
-                  \"name\": \"Links\",
-                  \"value\": \"[npm](https://www.npmjs.com/package/@t2000/cli) · [GitHub](https://github.com/mission69b/t2000/releases/tag/${VERSION}) · [Docs](https://t2000.ai/docs)\",
-                  \"inline\": false
-                }
-              ],
-              \"footer\": {
-                \"text\": \"t2000.ai\"
-              },
-              \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
-            }]
-          }" "$WEBHOOK_URL"
+          PAYLOAD=$(jq -n \
+            --arg title "t2000 ${RELEASE_VERSION} released" \
+            --arg url "https://github.com/mission69b/t2000/releases/tag/${RELEASE_VERSION}" \
+            --arg desc "$NOTES" \
+            --arg update '```npm update @t2000/cli -g```' \
+            --arg links "[npm](https://www.npmjs.com/package/@t2000/cli) · [GitHub](https://github.com/mission69b/t2000/releases/tag/${RELEASE_VERSION}) · [Docs](https://t2000.ai/docs)" \
+            --arg ts "$TIMESTAMP" \
+            '{embeds: [{title: $title, url: $url, color: 55951, description: $desc, fields: [{name: "Update", value: $update, inline: false}, {name: "Links", value: $links, inline: false}], footer: {text: "t2000.ai"}, timestamp: $ts}]}')
+
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL"
