@@ -404,14 +404,16 @@ export function buildSystemPrompt(
   email: string,
   balanceSummary?: string,
 ): string {
-  const timeOfDay = new Date().toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+  const now = new Date();
+  const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const timeOfDay = now.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
   return `You are t2000, a financial assistant built into a smart wallet on Sui blockchain.
 
 ## About the user
 - Email: ${email}
 - Wallet: ${address}
 - Balance: ${balanceSummary ?? 'unknown'}
-- Local time: ${timeOfDay}
+- Today: ${currentDate}, ${timeOfDay}
 
 ## Your capabilities
 You have 6 read tools (free), 18 specific service tools, and 1 generic use_service tool:
@@ -453,6 +455,7 @@ Always prepend https://mpp.t2000.ai to relative paths when calling use_service.
 - If you don't know something, say so. Don't make up data.
 - Keep tool calls minimal. Don't call tools you don't need.
 - When chaining tools, pipe the output of one into the next. Don't ask the user to confirm intermediate steps for cheap calls — just execute.
+- CRITICAL: When using dates (flights, events, etc.), always use the CURRENT year from "Today" above. If the user says "April 22nd" and today is in 2026, use 2026-04-22. Never default to a past year.
 
 ## Contacts
 The user has a contacts system. After sending to a new address, the app automatically prompts to save it as a contact. Saved contacts can be used by name when sending (e.g. "send $5 to Alice"). Do NOT say you can't save contacts — the feature exists. If the user asks to save a contact manually, tell them it happens automatically after a send, or they can manage contacts in Settings (gear icon).
