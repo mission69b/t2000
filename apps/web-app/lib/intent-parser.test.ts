@@ -154,6 +154,28 @@ describe('parseIntent', () => {
     });
   });
 
+  describe('swap all', () => {
+    it('parses "swap all USDe to USDC"', () => {
+      expect(parseIntent('swap all USDe to USDC')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
+    });
+
+    it('parses "Swap all USDe to USDC" (case-insensitive)', () => {
+      expect(parseIntent('Swap all USDe to USDC')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
+    });
+
+    it('parses "convert all ETH to USDC"', () => {
+      expect(parseIntent('convert all ETH to USDC')).toEqual({ action: 'swap', from: 'ETH', to: 'USDC', amount: -1 });
+    });
+
+    it('parses "sell all BTC"', () => {
+      expect(parseIntent('sell all BTC')).toEqual({ action: 'swap', from: 'BTC', to: 'USDC', amount: -1 });
+    });
+
+    it('parses "sell all USDe"', () => {
+      expect(parseIntent('sell all USDe')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
+    });
+  });
+
   describe('swap with unified terminology', () => {
     it('parses "swap to BTC" without amount as swap intent', () => {
       expect(parseIntent('swap $100 to BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 100 });

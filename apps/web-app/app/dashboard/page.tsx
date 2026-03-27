@@ -481,14 +481,17 @@ function DashboardContent() {
             if (amt > 0) chipFlow.selectAmount(amt);
           }
           break;
-        case 'swap':
+        case 'swap': {
           chipFlow.startFlow('swap', flowContext);
           if (intent.from) chipFlow.selectAsset(intent.from, flowContext);
           if (intent.to) chipFlow.selectAsset(intent.to, flowContext);
-          if (intent.amount > 0) {
-            fetchQuoteAndConfirm(intent.amount, intent.from, intent.to);
+          const cap = capForFlow('swap', balance, intent.from);
+          const swapAmt = intent.amount === -1 ? cap : intent.amount;
+          if (swapAmt > 0) {
+            fetchQuoteAndConfirm(swapAmt, intent.from, intent.to);
           }
           break;
+        }
         case 'claim-rewards':
           if (balance.pendingRewards <= 0) {
             feed.addItem({

@@ -174,8 +174,15 @@ function parseBuyIntent(text: string): ParsedIntent {
 }
 
 function parseSellIntent(text: string): ParsedIntent {
+  // "sell all BTC", "sell all USDe"
+  let match = text.match(/^sell\s+all\s+(\w+)/i);
+  if (match) {
+    const asset = resolveAsset(match[1]);
+    if (asset && asset !== 'USDC') return { action: 'swap', from: asset, to: 'USDC', amount: -1 };
+  }
+
   // "sell SUI", "sell gold" (no amount → show amount picker)
-  let match = text.match(/^sell\s+(\w+)$/i);
+  match = text.match(/^sell\s+(\w+)$/i);
   if (match) {
     const asset = resolveAsset(match[1]);
     if (asset && asset !== 'USDC') return { action: 'swap', from: asset, to: 'USDC', amount: 0 };
@@ -201,8 +208,16 @@ function parseSellIntent(text: string): ParsedIntent {
 }
 
 function parseSwapIntent(text: string): ParsedIntent {
+  // "swap all USDe to USDC", "convert all ETH to USDC"
+  let match = text.match(/^(swap|exchange|convert|trade)\s+all\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i);
+  if (match) {
+    const from = resolveAsset(match[2]);
+    const to = resolveAsset(match[3]);
+    if (from && to) return { action: 'swap', from, to, amount: -1 };
+  }
+
   // "swap 50 USDC to SUI", "swap 50 SUI for ETH"
-  let match = text.match(/^(swap|exchange|convert|trade)\s+\$?([\d,.]+)\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i);
+  match = text.match(/^(swap|exchange|convert|trade)\s+\$?([\d,.]+)\s+(\w+)\s+(?:to|for|into)\s+(\w+)/i);
   if (match) {
     const amount = parseFloat(match[2].replace(/,/g, ''));
     const from = resolveAsset(match[3]);
