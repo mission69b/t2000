@@ -13,7 +13,6 @@ const TRADE_ASSETS: Asset[] = [
   { id: 'BTC', label: 'BTC', icon: '₿', description: 'Bitcoin (wBTC)' },
   { id: 'ETH', label: 'ETH', icon: 'Ξ', description: 'Ethereum (wETH)' },
   { id: 'GOLD', label: 'GOLD', icon: '🥇', description: 'Gold (XAUM)' },
-  { id: 'USDT', label: 'USDT', icon: '💲', description: 'Tether' },
 ];
 
 interface AssetSelectorProps {

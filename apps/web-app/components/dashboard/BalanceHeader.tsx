@@ -178,7 +178,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           {/* Holdings detail */}
           {holdings.length > 0 && (
             <div className="px-4 py-3 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Holdings</p>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Assets</p>
               {holdings.map((h) => (
                 <Row key={h.symbol} label={h.symbol} value={h.amount} sublabel={h.usd} />
               ))}

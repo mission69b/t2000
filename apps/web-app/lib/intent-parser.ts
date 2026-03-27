@@ -30,7 +30,7 @@ const ALL_PATTERN = /\ball\b/i;
 const TRADEABLE_ASSETS: Record<string, string> = {
   sui: 'SUI', btc: 'BTC', bitcoin: 'BTC',
   eth: 'ETH', ethereum: 'ETH', gold: 'GOLD',
-  usdc: 'USDC', usdt: 'USDT',
+  usdc: 'USDC',
 };
 
 export function parseIntent(input: string): ParsedIntent {
