@@ -465,13 +465,11 @@ function DashboardContent() {
           break;
         }
         case 'repay':
-          if (balance.borrows < 0.01) {
+          if (balance.borrows <= 0) {
             feed.addItem({
               type: 'ai-text',
-              text: balance.borrows > 0
-                ? `Your debt is only $${balance.borrows.toFixed(4)} — too small to repay individually.`
-                : 'You don\'t have any active debt to repay.',
-              chips: balance.borrows <= 0 ? [{ label: 'Borrow', flow: 'borrow' }] : [],
+              text: 'You don\'t have any active debt to repay.',
+              chips: [{ label: 'Borrow', flow: 'borrow' }],
             });
           } else {
             chipFlow.startFlow('repay', flowContext);
@@ -686,20 +684,13 @@ function DashboardContent() {
         chipFlow.startFlow('invest', flowContext);
         return;
       }
-      if (flow === 'repay' && balance.borrows < 0.01) {
+      if (flow === 'repay' && balance.borrows <= 0) {
         chipFlow.reset();
-        if (balance.borrows > 0) {
-          feed.addItem({
-            type: 'ai-text',
-            text: `Your debt is only $${balance.borrows.toFixed(4)} — too small to repay. It costs almost nothing in interest and will resolve naturally.`,
-          });
-        } else {
-          feed.addItem({
-            type: 'ai-text',
-            text: 'You don\'t have any active debt to repay. Borrow first to create a loan.',
-            chips: [{ label: 'Borrow', flow: 'borrow' }],
-          });
-        }
+        feed.addItem({
+          type: 'ai-text',
+          text: 'You don\'t have any active debt to repay.',
+          chips: [{ label: 'Borrow', flow: 'borrow' }],
+        });
         return;
       }
       if (flow === 'withdraw' && balance.savings <= 0) {
