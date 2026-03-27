@@ -128,9 +128,15 @@ export function chargeCustom(
     const mppx = getGateway();
     const bodyText = await req.text();
 
-    const resolvedAmount = typeof amount === 'function'
-      ? await amount(bodyText)
-      : amount;
+    let resolvedAmount: string;
+    try {
+      resolvedAmount = typeof amount === 'function'
+        ? await amount(bodyText)
+        : amount;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Invalid request';
+      return Response.json({ error: msg }, { status: 400 });
+    }
 
     const wrappedHandler: RouteHandler = async () => handler(bodyText);
 
