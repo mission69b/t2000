@@ -159,8 +159,8 @@ describe('parseIntent', () => {
       expect(parseIntent('swap $100 to BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 100 });
     });
 
-    it('parses "trade USDT for SUI"', () => {
-      expect(parseIntent('trade 50 USDT for SUI')).toEqual({ action: 'swap', from: 'USDT', to: 'SUI', amount: 50 });
+    it('returns null for "trade USDT for SUI" (USDT not tradeable)', () => {
+      expect(parseIntent('trade 50 USDT for SUI')).toBeNull();
     });
 
     it('parses "buy $100 GOLD"', () => {
