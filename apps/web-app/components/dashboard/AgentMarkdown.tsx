@@ -34,11 +34,13 @@ export function resolveFlow(label: string): string | null {
 type Segment =
   | { type: 'text'; content: string }
   | { type: 'bold'; content: string }
+  | { type: 'code'; content: string }
+  | { type: 'link'; text: string; url: string }
   | { type: 'action'; label: string };
 
 function parseInline(text: string): Segment[] {
   const segments: Segment[] = [];
-  const regex = /(\*\*([^*]+)\*\*|\[([A-Z][^\]]*)\])/g;
+  const regex = /(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\[([A-Z][^\]]*)\])/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -49,7 +51,11 @@ function parseInline(text: string): Segment[] {
     if (match[2]) {
       segments.push({ type: 'bold', content: match[2] });
     } else if (match[3]) {
-      segments.push({ type: 'action', label: match[3] });
+      segments.push({ type: 'code', content: match[3] });
+    } else if (match[4] && match[5]) {
+      segments.push({ type: 'link', text: match[4], url: match[5] });
+    } else if (match[6]) {
+      segments.push({ type: 'action', label: match[6] });
     }
     lastIndex = regex.lastIndex;
   }
@@ -61,11 +67,19 @@ function parseInline(text: string): Segment[] {
   return segments;
 }
 
+interface GiftCardData {
+  brand: string;
+  amount: string;
+  code: string;
+  url: string;
+}
+
 type LineData =
   | { type: 'paragraph'; segments: Segment[] }
   | { type: 'heading'; level: number; segments: Segment[] }
   | { type: 'list-item'; number: number; segments: Segment[] }
   | { type: 'bullet-item'; segments: Segment[] }
+  | { type: 'giftcard'; data: GiftCardData }
   | { type: 'spacer' };
 
 function parseLines(text: string): LineData[] {
@@ -78,6 +92,15 @@ function parseLines(text: string): LineData[] {
       if (result.length > 0 && result[result.length - 1].type !== 'spacer') {
         result.push({ type: 'spacer' });
       }
+      continue;
+    }
+
+    const gcMatch = trimmed.match(/^<<giftcard\s+brand="([^"]+)"\s+amount="([^"]+)"\s+code="([^"]+)"\s+url="([^"]+)">>$/);
+    if (gcMatch) {
+      result.push({
+        type: 'giftcard',
+        data: { brand: gcMatch[1], amount: gcMatch[2], code: gcMatch[3], url: gcMatch[4] },
+      });
       continue;
     }
 
@@ -136,6 +159,24 @@ function InlineSegments({
                 {seg.content}
               </strong>
             );
+          case 'code':
+            return (
+              <code key={i} className="bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-xs font-mono text-accent">
+                {seg.content}
+              </code>
+            );
+          case 'link':
+            return (
+              <a
+                key={i}
+                href={seg.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent underline underline-offset-2 hover:text-accent/80 transition"
+              >
+                {seg.text}
+              </a>
+            );
           case 'action': {
             const flow = resolveFlow(seg.label);
             if (flow && onAction) {
@@ -163,6 +204,51 @@ function InlineSegments({
   );
 }
 
+function GiftCardVisual({ data }: { data: GiftCardData }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(data.code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-2 rounded-2xl overflow-hidden border border-accent/20 bg-gradient-to-br from-accent/10 via-surface to-accent/5">
+      <div className="px-4 pt-4 pb-2 flex items-start justify-between">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-accent/60 font-medium">Gift Card</div>
+          <div className="text-sm font-semibold text-foreground mt-0.5">{data.brand}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-accent">{data.amount}</div>
+        </div>
+      </div>
+
+      <div className="px-4 pb-3">
+        <button
+          onClick={copyCode}
+          className="w-full flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 py-2 hover:bg-white/10 transition group"
+        >
+          <code className="font-mono text-sm text-foreground tracking-wide">{data.code}</code>
+          <span className="text-xs text-muted group-hover:text-accent transition ml-2 shrink-0">
+            {copied ? '✓ Copied' : 'Copy'}
+          </span>
+        </button>
+      </div>
+
+      <a
+        href={data.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 bg-accent text-black font-semibold text-sm py-3 hover:brightness-110 transition active:scale-[0.99]"
+      >
+        Redeem Now →
+      </a>
+    </div>
+  );
+}
+
 export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
   const lines = parseLines(text);
 
@@ -171,6 +257,10 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
       {lines.map((line, i) => {
         if (line.type === 'spacer') {
           return <div key={i} className="h-1" />;
+        }
+
+        if (line.type === 'giftcard') {
+          return <GiftCardVisual key={i} data={line.data} />;
         }
 
         if (line.type === 'heading') {

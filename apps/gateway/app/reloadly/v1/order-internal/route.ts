@@ -64,25 +64,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg, detail: errorData }, { status: orderRes.status });
   }
 
-  const result = await orderRes.json();
+  const result = (await orderRes.json()) as { transactionId?: number; product?: { productName?: string; currencyCode?: string } };
   const quantity = body.quantity ?? 1;
   const price = (body.unitPrice * quantity * (1 + SERVICE_FEE_RATE)).toFixed(2);
 
-  let redeemInstructions: string | null = null;
-  try {
-    const instrRes = await fetch(
-      `${RELOADLY_BASE}/products/${body.productId}/redeem-instructions`,
-      { method: 'GET', headers: reloadlyHeaders(token) },
-    );
-    if (instrRes.ok) {
-      const data = (await instrRes.json()) as { concise?: string };
-      redeemInstructions = data.concise ?? null;
-    }
-  } catch {}
+  const v2Headers = { ...reloadlyHeaders(token), accept: 'application/com.reloadly.giftcards-v2+json' };
+
+  const [redeemData, instrData] = await Promise.all([
+    result.transactionId
+      ? fetch(`${RELOADLY_BASE}/orders/transactions/${result.transactionId}/cards`, {
+          method: 'GET', headers: v2Headers,
+        }).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null),
+    fetch(`${RELOADLY_BASE}/products/${body.productId}/redeem-instructions`, {
+      method: 'GET', headers: reloadlyHeaders(token),
+    }).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+
+  const cards = Array.isArray(redeemData) ? redeemData : [];
+  const card = cards[0] as { cardNumber?: string; pinCode?: string; redemptionUrl?: string } | undefined;
 
   return NextResponse.json({
     success: true,
-    result: { ...result as object, redeemInstructions },
+    result: {
+      ...result,
+      redeemInstructions: (instrData as { concise?: string })?.concise ?? null,
+      cardNumber: card?.cardNumber ?? null,
+      pinCode: card?.pinCode ?? null,
+      redemptionUrl: card?.redemptionUrl ?? null,
+      brandName: result.product?.productName ?? null,
+      localCurrency: result.product?.currencyCode ?? null,
+      faceValue: body.unitPrice,
+    },
     payment: {
       recipient: TREASURY_ADDRESS,
       currency: SUI_USDC_TYPE,
