@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
 
     if (challengeRes.status !== 402) {
       if (challengeRes.ok) {
+        console.log(`[services/prepare] ${serviceId} returned ${challengeRes.status} (free path) — no payment required`);
         const result = await challengeRes.json().catch(() => challengeRes.text());
         return NextResponse.json({
           success: true,
