@@ -12,6 +12,7 @@ const MOVE_ABORT_MAP: Record<number, { message: string; chips?: { label: string;
   3: { message: 'You can\'t withdraw more than your available savings.', chips: [{ label: 'Withdraw what\'s available', flow: 'withdraw' }] },
   4: { message: 'Repayment exceeds your outstanding loan.', chips: [{ label: 'Check balance', flow: 'balance' }] },
   5: { message: 'Your position is at risk. Repay some of your loan first.', chips: [{ label: 'Repay $50', flow: 'repay' }] },
+  1600: { message: 'Can\'t withdraw all savings while you have outstanding debt. Repay your loan first, then withdraw.', chips: [{ label: 'Repay all', flow: 'repay' }] },
 };
 
 const WALLET_ERROR_MAP: [RegExp, string, { label: string; flow: string }[]?][] = [
@@ -25,6 +26,8 @@ const WALLET_ERROR_MAP: [RegExp, string, { label: string; flow: string }[]?][] =
   [/gas pool.*depleted|gas pool.*empty/i, 'Gas sponsorship pool is empty. Please try again later.'],
   [/sponsorship failed.*5\d\d|sponsor.*unavailable/i, 'Gas sponsorship temporarily unavailable. Please try again later.'],
   [/sponsored transaction expired/i, 'Transaction expired. Please try again.'],
+  [/dry.?run.*failed.*MoveAbort/i, 'Transaction would fail on-chain. Try a smaller amount or check your balances.', [{ label: 'Check balance', flow: 'balance' }]],
+  [/sponsorship failed.*400/i, 'Transaction simulation failed. Try a smaller amount or check your positions.', [{ label: 'Check balance', flow: 'balance' }]],
 ];
 
 export function mapError(error: unknown): FeedItemData {

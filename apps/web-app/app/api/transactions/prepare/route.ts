@@ -190,14 +190,14 @@ async function buildAndSponsor(
     const errorBody = await sponsorRes.text().catch(() => '');
     console.error(`[sponsor] Enoki error (${sponsorRes.status}):`, errorBody);
 
-    let parsed: { message?: string } = {};
-    try { parsed = JSON.parse(errorBody); } catch {}
+    let errorMsg = `Sponsorship failed (${sponsorRes.status})`;
+    try {
+      const parsed = JSON.parse(errorBody);
+      const enokiMsg = parsed?.errors?.[0]?.message ?? parsed?.message;
+      if (enokiMsg) errorMsg = enokiMsg;
+    } catch {}
 
-    return {
-      ok: false,
-      status: sponsorRes.status,
-      error: parsed.message ?? `Sponsorship failed (${sponsorRes.status})`,
-    };
+    return { ok: false, status: sponsorRes.status, error: errorMsg };
   }
 
   const { data } = await sponsorRes.json();
