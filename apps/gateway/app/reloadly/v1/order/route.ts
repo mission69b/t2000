@@ -22,21 +22,39 @@ interface ReloadlyProduct {
 }
 
 /**
- * Pre-validate the order against Reloadly's catalog BEFORE returning a 402.
- * This ensures the user never pays for an order that will be rejected.
+ * Pre-validate the order against Reloadly BEFORE returning a 402.
+ * Checks: account balance, product exists, denomination valid.
+ * If any check fails, throws — no 402 issued, no payment built.
  */
-async function validateProduct(body: OrderBody): Promise<void> {
+async function validateOrder(body: OrderBody): Promise<void> {
   const token = await getReloadlyToken();
-  const res = await fetch(`${RELOADLY_BASE}/products/${body.productId}`, {
-    method: 'GET',
-    headers: reloadlyHeaders(token),
-  });
 
-  if (!res.ok) {
+  const [balRes, prodRes] = await Promise.all([
+    fetch(`${RELOADLY_BASE}/accounts/balance`, {
+      method: 'GET',
+      headers: reloadlyHeaders(token),
+    }).catch(() => null),
+    fetch(`${RELOADLY_BASE}/products/${body.productId}`, {
+      method: 'GET',
+      headers: reloadlyHeaders(token),
+    }),
+  ]);
+
+  if (balRes?.ok) {
+    const balData = (await balRes.json()) as { balance?: number };
+    if (typeof balData.balance === 'number' && balData.balance < body.unitPrice) {
+      throw new Error(
+        `Gift card service temporarily unavailable — provider account balance too low. ` +
+        `Please contact support or try again later.`,
+      );
+    }
+  }
+
+  if (!prodRes.ok) {
     throw new Error(`Product ${body.productId} not found — browse gift cards to find valid products`);
   }
 
-  const product = (await res.json()) as ReloadlyProduct;
+  const product = (await prodRes.json()) as ReloadlyProduct;
 
   if (product.denominationType === 'FIXED') {
     const valid = product.fixedRecipientDenominations ?? [];
@@ -72,7 +90,7 @@ export const POST = chargeCustom(
       throw new Error('unitPrice cannot exceed $100 per order');
     }
 
-    await validateProduct(body);
+    await validateOrder(body);
 
     const quantity = body.quantity ?? 1;
     const total = body.unitPrice * quantity * (1 + SERVICE_FEE_RATE);
