@@ -136,7 +136,6 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
   buy_gift_card: {
     type: 'service',
     serviceId: 'reloadly-giftcard',
-    estimatedCost: 25,
     transform: (a) => ({
       brand: String(a.brand),
       amount: String(a.amount),
@@ -146,10 +145,14 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
   },
 };
 
-export function getEstimatedCost(toolName: string): number {
+export function getEstimatedCost(toolName: string, args?: Record<string, unknown>): number {
   const executor = TOOL_EXECUTORS[toolName];
   if (!executor) return 0;
   if (executor.type === 'read') return 0;
+  if (toolName === 'buy_gift_card' && args?.amount) {
+    const face = Number(args.amount) || 25;
+    return +(face * 1.05).toFixed(2);
+  }
   if (executor.estimatedCost) return executor.estimatedCost;
   if (executor.serviceId) return parseFloat(getDisplayPrice(executor.serviceId));
   return 0.01;

@@ -168,7 +168,7 @@ export function useAgentLoop() {
               callbacks.onStepUpdate(toolCall.function.name, { status: 'error', error: errMsg });
             }
           } else if (executor.type === 'service') {
-            const estimated = getEstimatedCost(toolCall.function.name);
+            const estimated = getEstimatedCost(toolCall.function.name, args);
 
             if (estimated > 0.50 || cost + estimated > opts.budget) {
               setStatus('confirming');

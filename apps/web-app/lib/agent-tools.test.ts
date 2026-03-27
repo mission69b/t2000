@@ -114,7 +114,16 @@ describe('getEstimatedCost', () => {
     expect(getEstimatedCost('generate_image')).toBe(0.03);
     expect(getEstimatedCost('text_to_speech')).toBe(0.05);
     expect(getEstimatedCost('send_postcard')).toBe(1.0);
-    expect(getEstimatedCost('buy_gift_card')).toBe(25);
+  });
+
+  it('computes gift card cost from amount arg (face + 5%)', () => {
+    expect(getEstimatedCost('buy_gift_card', { amount: 5 })).toBe(5.25);
+    expect(getEstimatedCost('buy_gift_card', { amount: 25 })).toBe(26.25);
+    expect(getEstimatedCost('buy_gift_card', { amount: 100 })).toBe(105);
+  });
+
+  it('falls back to default for gift card with no amount arg', () => {
+    expect(getEstimatedCost('buy_gift_card')).toBe(0.01);
   });
 
   it('returns 0 for unknown tools', () => {
