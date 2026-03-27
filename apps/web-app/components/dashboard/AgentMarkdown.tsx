@@ -23,7 +23,7 @@ const ACTION_FLOW_MAP: [RegExp, string][] = [
   [/^view/i, 'report'],
 ];
 
-function resolveFlow(label: string): string | null {
+export function resolveFlow(label: string): string | null {
   for (const [pattern, flow] of ACTION_FLOW_MAP) {
     if (pattern.test(label)) return flow;
   }
@@ -141,7 +141,7 @@ function InlineSegments({
               return (
                 <button
                   key={i}
-                  onClick={() => onAction(flow)}
+                  onClick={() => onAction(seg.label)}
                   className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent hover:bg-accent/20 hover:border-accent/50 transition active:scale-[0.97] mx-0.5 align-baseline"
                 >
                   {seg.label}

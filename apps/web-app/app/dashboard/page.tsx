@@ -12,6 +12,7 @@ import { ConfirmationCard } from '@/components/dashboard/ConfirmationCard';
 import { ResultCard } from '@/components/dashboard/ResultCard';
 import { AmountChips } from '@/components/dashboard/AmountChips';
 import { FeedRenderer } from '@/components/dashboard/FeedRenderer';
+import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { AssetSelector } from '@/components/dashboard/AssetSelector';
 import { StrategySelector } from '@/components/dashboard/StrategySelector';
 import { FrequencySelector } from '@/components/dashboard/FrequencySelector';
@@ -381,6 +382,39 @@ function DashboardContent() {
     }
   }, [address, feed]);
 
+  const fetchQuoteAndConfirm = useCallback(
+    async (amount: number, fromOverride?: string, toOverride?: string) => {
+      const fromAsset = fromOverride ?? chipFlow.state.asset ?? 'USDC';
+      const toAsset = toOverride ?? chipFlow.state.toAsset ?? 'SUI';
+
+      chipFlow.setQuoting(amount);
+
+      try {
+        const res = await fetch(
+          `/api/quote?from=${fromAsset}&to=${toAsset}&amount=${amount}`,
+        );
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error ?? 'Quote failed');
+        }
+        const data = await res.json();
+        chipFlow.setQuote({
+          expectedOutput: data.expectedOutput,
+          priceImpact: data.priceImpact,
+          poolPrice: data.poolPrice,
+          fromAsset,
+          toAsset,
+          fromAmount: amount,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to get quote';
+        chipFlow.setError(msg);
+        feed.addItem({ type: 'ai-text', text: `Could not get a price quote: ${msg}` });
+      }
+    },
+    [chipFlow, feed],
+  );
+
   const executeIntent = useCallback(
     (intent: ParsedIntent) => {
       if (!intent) return;
@@ -435,6 +469,9 @@ function DashboardContent() {
           chipFlow.startFlow('swap', flowContext);
           if (intent.from) chipFlow.selectAsset(intent.from, flowContext);
           if (intent.to) chipFlow.selectAsset(intent.to, flowContext);
+          if (intent.amount > 0) {
+            fetchQuoteAndConfirm(intent.amount, intent.from, intent.to);
+          }
           break;
         case 'claim-rewards':
           if (balance.pendingRewards <= 0) {
@@ -578,7 +615,7 @@ function DashboardContent() {
           break;
       }
     },
-    [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, contactsHook, fetchHistory],
+    [chipFlow, feed, address, balance, balanceQuery, flowContext, agent, contactsHook, fetchHistory, fetchQuoteAndConfirm],
   );
 
   const handleChipClick = useCallback(
@@ -745,10 +782,16 @@ function DashboardContent() {
   );
 
   const handleFeedChipClick = useCallback(
-    (flow: string) => {
+    (flowOrLabel: string) => {
+      const intent = parseIntent(flowOrLabel);
+      if (intent) {
+        executeIntent(intent);
+        return;
+      }
+      const flow = resolveFlow(flowOrLabel) ?? flowOrLabel;
       handleChipClick(flow);
     },
-    [handleChipClick],
+    [handleChipClick, executeIntent],
   );
 
   const handleCopy = useCallback((text: string) => {
@@ -764,39 +807,6 @@ function DashboardContent() {
       });
     },
     [contactsHook, feed],
-  );
-
-  const fetchQuoteAndConfirm = useCallback(
-    async (amount: number) => {
-      const fromAsset = chipFlow.state.asset ?? 'USDC';
-      const toAsset = chipFlow.state.toAsset ?? 'SUI';
-
-      chipFlow.setQuoting(amount);
-
-      try {
-        const res = await fetch(
-          `/api/quote?from=${fromAsset}&to=${toAsset}&amount=${amount}`,
-        );
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error ?? 'Quote failed');
-        }
-        const data = await res.json();
-        chipFlow.setQuote({
-          expectedOutput: data.expectedOutput,
-          priceImpact: data.priceImpact,
-          poolPrice: data.poolPrice,
-          fromAsset,
-          toAsset,
-          fromAmount: amount,
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to get quote';
-        chipFlow.setError(msg);
-        feed.addItem({ type: 'ai-text', text: `Could not get a price quote: ${msg}` });
-      }
-    },
-    [chipFlow, feed],
   );
 
   const handleAmountSelect = useCallback(
