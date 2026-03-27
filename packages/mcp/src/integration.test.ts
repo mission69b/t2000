@@ -101,13 +101,6 @@ function createMockAgent() {
     allRatesAcrossAssets: vi.fn().mockResolvedValue([
       { protocol: 'navi', asset: 'USDC', rates: { saveApy: 4.08, borrowApy: 4.94 } },
     ]),
-    sentinelList: vi.fn().mockResolvedValue([]),
-    sentinelInfo: vi.fn().mockResolvedValue({
-      id: '1', objectId: '0xsentinel', name: 'Test', model: 'gpt-4', systemPrompt: '', attackFee: 100000000n, prizePool: 1000000000n, totalAttacks: 0, successfulBreaches: 0, state: 'active',
-    }),
-    sentinelAttack: vi.fn().mockResolvedValue({
-      attackObjectId: '0x1', sentinelId: '1', prompt: 'test', verdict: { success: false, score: 20, agentResponse: 'No', juryResponse: 'Defended' }, requestTx: '0x1', settleTx: '0x2', won: false, feePaid: 0.1,
-    }),
     pay: vi.fn().mockResolvedValue({
       status: 200, body: { data: 'paid content' }, paid: true, cost: 0.01,
       receipt: { reference: '0xdigest123', timestamp: new Date().toISOString() },
@@ -143,9 +136,9 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 35 tools', async () => {
+  it('lists all 32 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(35);
+    expect(tools).toHaveLength(32);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -177,9 +170,6 @@ describe('integration: MCP client ↔ server', () => {
       't2000_repay',
       't2000_save',
       't2000_send',
-      't2000_sentinel_attack',
-      't2000_sentinel_info',
-      't2000_sentinel_list',
       't2000_services',
       't2000_strategy',
       't2000_swap',
@@ -187,12 +177,12 @@ describe('integration: MCP client ↔ server', () => {
     ]);
   });
 
-  it('lists all 20 prompts', async () => {
+  it('lists all 19 prompts', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts).toHaveLength(20);
+    expect(prompts).toHaveLength(19);
 
     const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'emergency', 'financial-report', 'investment-strategy', 'morning-briefing', 'onboarding', 'optimize-all', 'optimize-yield', 'quick-swap', 'risk-check', 'safeguards', 'savings-goal', 'savings-strategy', 'send-money', 'sentinel-hunt', 'sweep', 'weekly-recap', 'what-if']);
+    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'emergency', 'financial-report', 'investment-strategy', 'morning-briefing', 'onboarding', 'optimize-all', 'optimize-yield', 'quick-swap', 'risk-check', 'safeguards', 'savings-goal', 'savings-strategy', 'send-money', 'sweep', 'weekly-recap', 'what-if']);
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {

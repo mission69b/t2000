@@ -1,7 +1,5 @@
 # MPP Ecosystem Roadmap
 
-> Post-Mysten meeting. Supersedes `SUI_PAYMENTS_HUB.md` and `MPP_GATEWAY_V2.md` for forward direction.
-
 ---
 
 ## Three Domains

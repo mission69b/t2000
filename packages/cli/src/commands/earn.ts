@@ -1,6 +1,5 @@
 import type { Command } from 'commander';
-import { T2000, MIST_PER_SUI, listSentinels, formatUsd } from '@t2000/sdk';
-import type { SentinelAgent } from '@t2000/sdk';
+import { T2000, formatUsd } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
 import {
   printHeader,
@@ -15,41 +14,25 @@ import {
 } from '../output.js';
 import pc from 'picocolors';
 
-function mistToSui(mist: bigint): number {
-  return Number(mist) / Number(MIST_PER_SUI);
-}
-
-function bestTarget(sentinels: SentinelAgent[]): SentinelAgent | undefined {
-  const withPool = sentinels.filter((s) => s.prizePool > 0n && s.attackFee > 0n);
-  if (withPool.length === 0) return undefined;
-  return withPool.sort((a, b) => {
-    const ratioA = Number(a.prizePool) / Number(a.attackFee);
-    const ratioB = Number(b.prizePool) / Number(b.attackFee);
-    return ratioB - ratioA;
-  })[0];
-}
-
 export function registerEarn(program: Command) {
   program
     .command('earn')
-    .description('Show all earning opportunities — savings yield + sentinel bounties')
+    .description('Show all earning opportunities — savings yield + investment yield')
     .option('--key <path>', 'Key file path')
     .action(async (opts: { key?: string }) => {
       try {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        const [positionsResult, portfolioResult, ratesResult, sentinels] = await Promise.allSettled([
+        const [positionsResult, portfolioResult, ratesResult] = await Promise.allSettled([
           agent.positions(),
           agent.getPortfolio(),
           agent.allRates('USDC'),
-          listSentinels(),
         ]);
 
         const posData = positionsResult.status === 'fulfilled' ? positionsResult.value : null;
         const portfolio = portfolioResult.status === 'fulfilled' ? portfolioResult.value : null;
         const ratesData = ratesResult.status === 'fulfilled' ? ratesResult.value : null;
-        const agents = sentinels.status === 'fulfilled' ? sentinels.value : null;
         const savePositions = posData?.positions.filter((p) => p.type === 'save') ?? [];
         const totalSaved = savePositions.reduce((s, p) => s + p.amount, 0);
         const earningInvestments = portfolio?.positions.filter((p) => p.earning && p.currentValue > 0) ?? [];
@@ -58,14 +41,6 @@ export function registerEarn(program: Command) {
           : 0;
 
         if (isJsonMode()) {
-          const best = agents ? bestTarget(agents) : undefined;
-          const totalPool = agents
-            ? agents.reduce((sum, s) => sum + mistToSui(s.prizePool), 0)
-            : 0;
-          const cheapest = agents
-            ? Math.min(...agents.map((s) => mistToSui(s.attackFee)))
-            : 0;
-
           printJson({
             savings: savePositions.map((p) => ({
               protocol: p.protocol,
@@ -86,22 +61,6 @@ export function registerEarn(program: Command) {
               protocol: p.earningProtocol,
               apy: p.earningApy,
             })),
-            sentinel: agents
-              ? {
-                  activeSentinels: agents.length,
-                  totalPrizePool: Number(totalPool.toFixed(2)),
-                  cheapestFee: Number(cheapest.toFixed(2)),
-                  bestTarget: best
-                    ? {
-                        name: best.name,
-                        objectId: best.objectId,
-                        prizePool: mistToSui(best.prizePool),
-                        attackFee: mistToSui(best.attackFee),
-                        ratio: Number((Number(best.prizePool) / Number(best.attackFee)).toFixed(1)),
-                      }
-                    : null,
-                }
-              : null,
           });
           return;
         }
@@ -173,38 +132,11 @@ export function registerEarn(program: Command) {
 
         printBlank();
 
-        // --- Sentinel section ---
-        printLine(pc.bold('SENTINEL BOUNTIES') + pc.dim(' — Active Red Teaming'));
-        printDivider();
-
-        if (agents && agents.length > 0) {
-          const totalPool = agents.reduce((sum, s) => sum + mistToSui(s.prizePool), 0);
-          const cheapest = Math.min(...agents.map((s) => mistToSui(s.attackFee)));
-          const best = bestTarget(agents);
-
-          printKeyValue('Active', `${agents.length} sentinels`);
-          printKeyValue('Prize Pools', `${totalPool.toFixed(2)} SUI available`);
-          printKeyValue('Cheapest Fee', `${cheapest.toFixed(2)} SUI`);
-
-          if (best) {
-            const ratio = (Number(best.prizePool) / Number(best.attackFee)).toFixed(1);
-            printKeyValue('Best Target', `${best.name} — ${mistToSui(best.prizePool).toFixed(2)} SUI pool (${ratio}x ratio)`);
-          }
-        } else if (agents) {
-          printInfo('No active bounties right now');
-        } else {
-          printInfo('Sentinel data unavailable');
-        }
-
-        printBlank();
-
         // --- Quick actions ---
         printLine(pc.bold('Quick Actions'));
         printDivider();
         printLine(`  ${pc.dim('t2000 save <amount> [asset]')}     Save stablecoins for yield`);
         printLine(`  ${pc.dim('t2000 invest earn <asset>')}     Earn yield on investments`);
-        printLine(`  ${pc.dim('t2000 sentinel list')}            Browse sentinel bounties`);
-        printLine(`  ${pc.dim('t2000 sentinel attack <id>')}     Attack a sentinel`);
         printBlank();
       } catch (error) {
         handleError(error);

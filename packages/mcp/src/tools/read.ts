@@ -242,51 +242,6 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
   );
 
   // ---------------------------------------------------------------------------
-  // Sentinel tools
-  // ---------------------------------------------------------------------------
-
-  server.tool(
-    't2000_sentinel_list',
-    'List active Sui Sentinels — AI agents with prize pools you can attack. Shows name, attack fee, prize pool, and attack count. Use this for bounty hunting.',
-    {},
-    async () => {
-      try {
-        const sentinels = await agent.sentinelList();
-        const serializable = sentinels.map(s => ({
-          ...s,
-          attackFee: s.attackFee.toString(),
-          attackFeeSui: Number(s.attackFee) / 1e9,
-          prizePool: s.prizePool.toString(),
-          prizePoolSui: Number(s.prizePool) / 1e9,
-        }));
-        return { content: [{ type: 'text', text: JSON.stringify(serializable) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_sentinel_info',
-    'Get detailed info about a specific Sui Sentinel — model, system prompt, prize pool, attack history. Use the sentinel ID or object ID from t2000_sentinel_list.',
-    { id: z.string().describe('Sentinel agent ID or object ID') },
-    async ({ id }) => {
-      try {
-        const s = await agent.sentinelInfo(id);
-        return { content: [{ type: 'text', text: JSON.stringify({
-          ...s,
-          attackFee: s.attackFee.toString(),
-          attackFeeSui: Number(s.attackFee) / 1e9,
-          prizePool: s.prizePool.toString(),
-          prizePoolSui: Number(s.prizePool) / 1e9,
-        }) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  // ---------------------------------------------------------------------------
   // Contacts & Portfolio
   // ---------------------------------------------------------------------------
 

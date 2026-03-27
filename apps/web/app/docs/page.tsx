@@ -896,7 +896,7 @@ function CliSavingsSection() {
       </CodeBlock>
 
       <h2 id="cmd-earn">t2000 earn</h2>
-      <p>Show all earning opportunities in one dashboard — savings yield, investment yield, and sentinel bounties.</p>
+      <p>Show all earning opportunities in one dashboard — savings yield and investment yield.</p>
       <CodeBlock lang="bash">
         t2000 earn [--json]
       </CodeBlock>
@@ -910,11 +910,7 @@ function CliSavingsSection() {
         {"  "}Total Saved:  {S.a("$8.25")}{"\n\n"}
         {"  "}{S.b("INVESTMENTS — Earning Yield")}{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}SUI via Suilend:  {S.a("$1.00")} (0.9734 SUI) @ {S.g("2.61%")} APY{"\n\n"}
-        {"  "}{S.b("SENTINEL BOUNTIES — Active Red Teaming")}{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}Active:  49 sentinels{"\n"}
-        {"  "}Prize Pools:  238.67 SUI available
+        {"  "}SUI via Suilend:  {S.a("$1.00")} (0.9734 SUI) @ {S.g("2.61%")} APY
       </CodeBlock>
 
       <h2 id="cmd-savings-more">More savings commands</h2>
@@ -1071,14 +1067,13 @@ function CliMoreSection() {
         Swap <em className="italic text-accent">& More</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Token swaps, MPP payments, AI sentinels, MCP integration,
+        Token swaps, MPP payments, MCP integration,
         and agent safeguards.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
         <CmdCard name="t2000 swap" desc="Swap tokens (USDC ⇌ SUI)" onClick={() => scrollTo("cmd-exchange")} />
         <CmdCard name="t2000 pay" desc="Pay for MPP-protected APIs" badge="addon" onClick={() => scrollTo("cmd-pay")} />
-        <CmdCard name="t2000 sentinel" desc="Attack AI sentinels, earn bounties" badge="partner" onClick={() => scrollTo("cmd-sentinel")} />
         <CmdCard name="t2000 mcp" desc="MCP server for AI platforms" badge="NEW" onClick={() => scrollTo("cmd-mcp")} />
         <CmdCard name="t2000 safeguards" desc="Spending limits, lock/unlock" onClick={() => scrollTo("cmd-safeguards")} />
       </div>
@@ -1131,21 +1126,10 @@ function CliMoreSection() {
         {"  "}← {S.g("200 OK")}  {S.m("[820ms]")}
       </CodeBlock>
 
-      <h2 id="cmd-sentinel">
-        t2000 sentinel <Badge color="amber">partner</Badge>
-      </h2>
-      <p>Browse and attack AI sentinels on <a href="https://suisentinel.xyz" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Sui Sentinel</a>. Earn bounties by finding vulnerabilities via adversarial prompts.</p>
-      <CodeBlock lang="bash">
-        t2000 sentinel list{"\n"}
-        t2000 sentinel info &lt;id&gt;{"\n"}
-        t2000 sentinel attack &lt;id&gt; {S.s('"Your attack prompt"')}{"\n\n"}
-        {"  "}{S.a("--fee")}    Override attack fee in SUI (default: sentinel&apos;s min)
-      </CodeBlock>
-
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 35 tools, 20 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 32 tools, 19 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1459,9 +1443,9 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (33)</h2>
+      <h2 id="mcp-tools">Available tools (30)</h2>
 
-      <h3 id="mcp-tools-read">Read-only (17)</h3>
+      <h3 id="mcp-tools-read">Read-only (15)</h3>
       <DocTable
         headers={["Tool", "Description"]}
         rows={[
@@ -1477,15 +1461,13 @@ function McpSection() {
           [<InlineCode key="k">t2000_fund_status</InlineCode>, "Savings fund status — supplied, APY, projections"],
           [<InlineCode key="k">t2000_pending_rewards</InlineCode>, "Pending protocol rewards"],
           [<InlineCode key="k">t2000_deposit_info</InlineCode>, "Deposit instructions — address, network, supported assets"],
-          [<InlineCode key="k">t2000_sentinel_list</InlineCode>, "List active sentinels with prize pools"],
-          [<InlineCode key="k">t2000_sentinel_info</InlineCode>, "Sentinel details — model, system prompt, attack history"],
           [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
           [<InlineCode key="k">t2000_portfolio</InlineCode>, "View investment portfolio with cost-basis P&L"],
           [<InlineCode key="k">t2000_services</InlineCode>, "Discover all MPP services, endpoints, and prices"],
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (16)</h3>
+      <h3 id="mcp-tools-write">State-changing (15)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1507,7 +1489,6 @@ function McpSection() {
           [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
           [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
           [<InlineCode key="k">t2000_claim_rewards</InlineCode>, "Claim protocol rewards and auto-convert to USDC"],
-          [<InlineCode key="k">t2000_sentinel_attack</InlineCode>, "Attack a sentinel to win its prize pool"],
           [<InlineCode key="k">t2000_pay</InlineCode>, "Pay for an MPP-protected API (handles 402 challenge automatically)"],
           [<InlineCode key="k">t2000_contact_add</InlineCode>, "Save a contact name → Sui address"],
           [<InlineCode key="k">t2000_contact_remove</InlineCode>, "Remove a saved contact"],
@@ -1528,7 +1509,7 @@ function McpSection() {
         <InlineCode>t2000 unlock</InlineCode> in the terminal.
       </Callout>
 
-      <h2 id="mcp-prompts">Prompts (20)</h2>
+      <h2 id="mcp-prompts">Prompts (19)</h2>
       <p>
         Reusable conversation templates that help AI assistants interact with t2000 effectively.
       </p>
@@ -1550,7 +1531,6 @@ function McpSection() {
           [<InlineCode key="k">claim-rewards</InlineCode>, "Check and claim pending protocol rewards — auto-converts to USDC"],
           [<InlineCode key="k">safeguards</InlineCode>, "Review safety settings — per-tx limits, daily caps, emergency lock"],
           [<InlineCode key="k">quick-swap</InlineCode>, "Guided token swap — preview rate, slippage, impact before executing"],
-          [<InlineCode key="k">sentinel-hunt</InlineCode>, "Guided bounty hunting — find targets, craft attacks, win prizes"],
           [<InlineCode key="k">onboarding</InlineCode>, "New user setup — deposit, first save, explore features"],
           [<InlineCode key="k">emergency</InlineCode>, "Lock account, assess damage, recovery guidance"],
           [<InlineCode key="k">optimize-all</InlineCode>, "One-shot full optimization — sweep, rebalance, claim, earn"],
@@ -1643,7 +1623,6 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-swap</InlineCode>, <>&#34;swap USDC to SUI&#34;, &#34;swap tokens&#34;, &#34;convert to...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;search the web&#34;, &#34;generate an image&#34;, &#34;buy a gift card&#34;, &#34;send mail&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-sentinel</InlineCode>, <>&#34;attack a sentinel&#34;, &#34;earn bounties&#34;, &#34;red team&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-invest</InlineCode>, <>&#34;buy SUI&#34;, &#34;invest $100 in BTC&#34;, &#34;sell my ETH&#34;, &#34;show portfolio&#34;</>, <Badge color="green" key="b">live</Badge>],
         ]}

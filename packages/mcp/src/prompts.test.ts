@@ -21,8 +21,8 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 20 prompts', () => {
-    expect(prompts.size).toBe(20);
+  it('should register 19 prompts', () => {
+    expect(prompts.size).toBe(19);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
@@ -37,7 +37,6 @@ describe('prompts', () => {
     expect(prompts.has('claim-rewards')).toBe(true);
     expect(prompts.has('safeguards')).toBe(true);
     expect(prompts.has('quick-swap')).toBe(true);
-    expect(prompts.has('sentinel-hunt')).toBe(true);
     expect(prompts.has('onboarding')).toBe(true);
     expect(prompts.has('emergency')).toBe(true);
     expect(prompts.has('optimize-all')).toBe(true);
@@ -143,14 +142,6 @@ describe('prompts', () => {
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_overview');
     expect(result.messages[0].content.text).toContain('t2000_rates');
-  });
-
-  it('sentinel-hunt should reference sentinel tools', async () => {
-    const handler = prompts.get('sentinel-hunt')!;
-    const result = await handler({});
-    expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].content.text).toContain('t2000_sentinel_list');
-    expect(result.messages[0].content.text).toContain('t2000_sentinel_attack');
   });
 
   it('onboarding should reference t2000_overview and t2000_deposit_info', async () => {

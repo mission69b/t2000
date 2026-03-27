@@ -210,8 +210,6 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.getStrategies()` | List available strategies |
 | **Auto-Invest** | `agent.setupAutoInvest({ amount, frequency, strategy })` | Schedule DCA |
 | | `agent.runAutoInvest()` | Execute pending purchases |
-| **Sentinel** | `agent.sentinelList()` | Browse active sentinels |
-| | `agent.sentinelAttack(id, prompt)` | Full attack flow |
 
 Full API reference → [`@t2000/sdk` README](packages/sdk)
 
@@ -250,11 +248,6 @@ t2000 pay https://api.example.com  Pay for API resource
 
 # Earn (directory)
 t2000 earn                         Show all earning opportunities
-
-# Sentinel (earn bounties)
-t2000 sentinel list                Browse active sentinels
-t2000 sentinel attack <id> "..."   Attack a sentinel (costs SUI)
-t2000 sentinel info <id>           Sentinel details
 
 # Contacts
 t2000 contacts                     List saved contacts
@@ -359,7 +352,6 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-repay` | "repay my loan" |
 | `t2000-swap` | "swap USDC to SUI", "swap tokens" |
 | `t2000-pay` | "call that paid API" |
-| `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |
 | `t2000-contacts` | "list contacts", "add contact" |
 | `t2000-invest` | "buy SUI", "sell BTC", "portfolio" |

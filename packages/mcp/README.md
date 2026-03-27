@@ -2,7 +2,7 @@
 
 MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
 
-**35 tools · 20 prompts · stdio transport · safeguard enforced**
+**32 tools · 19 prompts · stdio transport · safeguard enforced**
 
 > **New to t2000?** Run `t2000 init` — it creates your wallet, configures MCP for your AI platforms, and sets safeguards in one command.
 
@@ -41,8 +41,6 @@ For other platforms, paste manually:
 | `t2000_fund_status` | read | Savings fund status |
 | `t2000_pending_rewards` | read | Pending protocol rewards |
 | `t2000_deposit_info` | read | Deposit instructions |
-| `t2000_sentinel_list` | read | List active sentinels with prize pools |
-| `t2000_sentinel_info` | read | Sentinel details — model, prompt, history |
 | `t2000_contacts` | read | List saved contacts (name → address) |
 | `t2000_portfolio` | read | Investment portfolio + P&L |
 | `t2000_services` | read | Discover MPP services, endpoints, and prices |
@@ -59,7 +57,6 @@ For other platforms, paste manually:
 | `t2000_strategy` | write | Investment strategies — list, buy, sell, status, rebalance, create, delete |
 | `t2000_auto_invest` | write | DCA scheduling — setup, status, run, stop |
 | `t2000_claim_rewards` | write | Claim protocol rewards and auto-convert to USDC |
-| `t2000_sentinel_attack` | write | Attack a sentinel to win its prize pool |
 | `t2000_contact_add` | write | Save a contact name → address |
 | `t2000_contact_remove` | write | Remove a saved contact |
 | `t2000_config` | safety | View/set limits |

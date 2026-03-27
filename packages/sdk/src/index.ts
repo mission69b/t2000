@@ -33,9 +33,6 @@ export type {
   RebalanceResult,
   DepositInfo,
   TransactionRecord,
-  SentinelAgent,
-  SentinelVerdict,
-  SentinelAttackResult,
   InvestmentRecord,
   InvestmentPosition,
   PortfolioResult,
@@ -68,7 +65,6 @@ export {
   SUPPORTED_ASSETS,
   CLOCK_ID,
   DEFAULT_NETWORK,
-  SENTINEL,
 } from './constants.js';
 export type { SupportedAsset, StableAsset, InvestmentAsset, PerpsMarket } from './constants.js';
 export {
@@ -110,14 +106,6 @@ export type { SimulationResult } from './utils/simulate.js';
 export { getPoolPrice } from './protocols/cetus.js';
 export { getRates } from './protocols/navi.js';
 export * from './adapters/index.js';
-export {
-  listSentinels,
-  getSentinelInfo,
-  requestAttack,
-  submitPrompt,
-  settleAttack,
-  attack as sentinelAttack,
-} from './protocols/sentinel.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
 export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';

@@ -572,29 +572,6 @@ RELOADLY GIFT CARDS:
   );
 
   // ---------------------------------------------------------------------------
-  // Sentinel
-  // ---------------------------------------------------------------------------
-
-  server.tool(
-    't2000_sentinel_attack',
-    'Attack a Sui Sentinel with a prompt to try to breach its defenses and win the prize pool. Costs SUI (the attack fee). Use t2000_sentinel_list to find targets first.',
-    {
-      id: z.string().describe('Sentinel agent ID or object ID to attack'),
-      prompt: z.string().describe('Your attack prompt — try to make the AI do something its system prompt forbids'),
-      fee: z.number().optional().describe('Override attack fee in SUI (default: sentinel\'s listed fee)'),
-    },
-    async ({ id, prompt, fee }) => {
-      try {
-        const feeMist = fee ? BigInt(Math.round(fee * 1e9)) : undefined;
-        const result = await mutex.run(() => agent.sentinelAttack(id, prompt, feeMist));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  // ---------------------------------------------------------------------------
   // Contact management
   // ---------------------------------------------------------------------------
 

@@ -192,11 +192,10 @@ runLendingComplianceTests('SuilendAdapter', () => new SuilendAdapter(), { isStub
 import { descriptor as naviDesc } from './navi.js';
 import { descriptor as suilendDesc } from './suilend.js';
 import { descriptor as cetusDesc } from './cetus.js';
-import { descriptor as sentinelDesc } from '../protocols/sentinel.js';
 import { allDescriptors } from './index.js';
 import type { ProtocolDescriptor } from './types.js';
 
-const VALID_ACTIONS = ['save', 'withdraw', 'borrow', 'repay', 'swap', 'sentinel_attack', 'sentinel_settle'];
+const VALID_ACTIONS = ['save', 'withdraw', 'borrow', 'repay', 'swap'];
 
 function runDescriptorComplianceTests(desc: ProtocolDescriptor) {
   describe(`ProtocolDescriptor: ${desc.id}`, () => {
@@ -240,4 +239,3 @@ function runDescriptorComplianceTests(desc: ProtocolDescriptor) {
 runDescriptorComplianceTests(naviDesc);
 runDescriptorComplianceTests(suilendDesc);
 runDescriptorComplianceTests(cetusDesc);
-runDescriptorComplianceTests(sentinelDesc);

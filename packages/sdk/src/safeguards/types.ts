@@ -18,7 +18,6 @@ export interface TxMetadata {
     | 'exchange'
     | 'rebalance'
     | 'pay'
-    | 'sentinel'
     | 'invest'
     | 'trade';
   amount?: number;
@@ -27,7 +26,6 @@ export interface TxMetadata {
 export const OUTBOUND_OPS = new Set<TxMetadata['operation']>([
   'send',
   'pay',
-  'sentinel',
 ]);
 
 export const DEFAULT_SAFEGUARD_CONFIG: SafeguardConfig = {

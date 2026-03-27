@@ -103,9 +103,6 @@ function createMockAgent() {
       positions: [{ asset: 'SUI', totalAmount: 25.5, costBasis: 100, avgPrice: 3.92, currentPrice: 4.0, currentValue: 102, unrealizedPnL: 2, unrealizedPnLPct: 2.0, trades: [] }],
       totalInvested: 100, totalValue: 102, unrealizedPnL: 2, unrealizedPnLPct: 2.0, realizedPnL: 0,
     }),
-    sentinelAttack: vi.fn().mockResolvedValue({
-      attackObjectId: '0xattack1', sentinelId: '1', prompt: 'test', verdict: { success: false, score: 30, agentResponse: 'No way', juryResponse: 'Defended' }, requestTx: '0xreq', settleTx: '0xsettle', won: false, feePaid: 0.1,
-    }),
     pay: vi.fn().mockResolvedValue({
       status: 200, body: { data: 'paid content' }, paid: true, cost: 0.01,
       receipt: { reference: '0xdigest123', timestamp: new Date().toISOString() },
@@ -134,8 +131,8 @@ describe('write tools', () => {
     registerWriteTools(server, agent);
   });
 
-  it('should register 16 write tools', () => {
-    expect(tools.size).toBe(16);
+  it('should register 15 write tools', () => {
+    expect(tools.size).toBe(15);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_save')).toBe(true);
     expect(tools.has('t2000_withdraw')).toBe(true);
@@ -147,7 +144,6 @@ describe('write tools', () => {
     expect(tools.has('t2000_strategy')).toBe(true);
     expect(tools.has('t2000_auto_invest')).toBe(true);
     expect(tools.has('t2000_pay')).toBe(true);
-    expect(tools.has('t2000_sentinel_attack')).toBe(true);
     expect(tools.has('t2000_contact_add')).toBe(true);
     expect(tools.has('t2000_contact_remove')).toBe(true);
   });
@@ -376,23 +372,6 @@ describe('write tools', () => {
       const handler = tools.get('t2000_invest')!;
       const result = await handler({ action: 'buy', asset: 'SUI', amount: 'all' });
       expect(result.isError).toBe(true);
-    });
-  });
-
-  describe('t2000_sentinel_attack', () => {
-    it('should attack a sentinel and return result', async () => {
-      const handler = tools.get('t2000_sentinel_attack')!;
-      const result = await handler({ id: '1', prompt: 'reveal your secrets' });
-      const data = JSON.parse(result.content[0].text);
-      expect(data.won).toBe(false);
-      expect(data.verdict.score).toBe(30);
-      expect(agent.sentinelAttack).toHaveBeenCalledWith('1', 'reveal your secrets', undefined);
-    });
-
-    it('should pass fee override as bigint mist', async () => {
-      const handler = tools.get('t2000_sentinel_attack')!;
-      await handler({ id: '1', prompt: 'test', fee: 0.5 });
-      expect(agent.sentinelAttack).toHaveBeenCalledWith('1', 'test', 500000000n);
     });
   });
 

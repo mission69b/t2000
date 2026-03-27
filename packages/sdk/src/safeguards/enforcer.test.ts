@@ -80,10 +80,9 @@ describe('SafeguardEnforcer', () => {
       expect(() => enforcer.check({ operation: 'rebalance', amount: 5000 })).not.toThrow();
     });
 
-    it('applies to pay and sentinel ops', () => {
+    it('applies to pay ops', () => {
       enforcer.set('maxPerTx', 50);
       expect(() => enforcer.check({ operation: 'pay', amount: 51 })).toThrow(SafeguardError);
-      expect(() => enforcer.check({ operation: 'sentinel', amount: 51 })).toThrow(SafeguardError);
     });
 
     it('error contains correct details', () => {

@@ -222,16 +222,7 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
-
-### Sentinel (Earn Bounties)
-
-| Command | Description |
-|---------|-------------|
-| `t2000 sentinel list` | List active sentinels with prize pools and fees |
-| `t2000 sentinel info <id>` | Show details for a specific sentinel |
-| `t2000 sentinel attack <id> [prompt]` | Attack a sentinel with an adversarial prompt (costs SUI) |
-| `t2000 sentinel attack <id> [prompt] --fee 0.5` | Override attack fee (default: sentinel's min fee) |
+| `t2000 earn` | Show all earning opportunities — savings yield + investment yield |
 
 ### Contacts
 

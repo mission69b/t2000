@@ -20,7 +20,6 @@ import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
-import * as sentinel from './protocols/sentinel.js';
 import { ProtocolRegistry } from './adapters/registry.js';
 import { NaviAdapter } from './adapters/navi.js';
 import { CetusAdapter } from './adapters/cetus.js';
@@ -47,8 +46,6 @@ import type {
   DepositInfo,
   EarningsResult,
   FundStatusResult,
-  SentinelAgent,
-  SentinelAttackResult,
   RebalanceResult,
   RebalanceStep,
   InvestResult,
@@ -3152,21 +3149,6 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async fundStatus(): Promise<FundStatusResult> {
     return yieldTracker.getFundStatus(this.client, this._address);
-  }
-
-  // -- Sentinel --
-
-  async sentinelList(): Promise<SentinelAgent[]> {
-    return sentinel.listSentinels();
-  }
-
-  async sentinelInfo(id: string): Promise<SentinelAgent> {
-    return sentinel.getSentinelInfo(this.client, id);
-  }
-
-  async sentinelAttack(id: string, prompt: string, fee?: bigint): Promise<SentinelAttackResult> {
-    this.enforcer.check({ operation: 'sentinel', amount: fee ? Number(fee) / 1e9 : 0.1 });
-    return sentinel.attack(this.client, this._signer, id, prompt, fee);
   }
 
   // -- Helpers --

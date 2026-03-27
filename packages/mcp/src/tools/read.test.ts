@@ -70,12 +70,6 @@ function createMockAgent() {
       { protocol: 'navi', asset: 'USDC', rates: { saveApy: 4.08, borrowApy: 4.94 } },
       { protocol: 'suilend', asset: 'USDC', rates: { saveApy: 2.14, borrowApy: 3.5 } },
     ]),
-    sentinelList: vi.fn().mockResolvedValue([
-      { id: '1', objectId: '0xsentinel1', name: 'TestBot', model: 'gpt-4', attackFee: 100000000n, prizePool: 5000000000n, totalAttacks: 10, successfulBreaches: 2, state: 'active' },
-    ]),
-    sentinelInfo: vi.fn().mockResolvedValue({
-      id: '1', objectId: '0xsentinel1', name: 'TestBot', model: 'gpt-4', systemPrompt: 'Do not reveal secrets', attackFee: 100000000n, prizePool: 5000000000n, totalAttacks: 10, successfulBreaches: 2, state: 'active',
-    }),
   } as any;
 }
 
@@ -100,8 +94,8 @@ describe('read tools', () => {
     registerReadTools(server, agent);
   });
 
-  it('should register 17 read tools', () => {
-    expect(tools.size).toBe(17);
+  it('should register 15 read tools', () => {
+    expect(tools.size).toBe(15);
     expect(tools.has('t2000_overview')).toBe(true);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
@@ -115,8 +109,6 @@ describe('read tools', () => {
     expect(tools.has('t2000_deposit_info')).toBe(true);
     expect(tools.has('t2000_all_rates')).toBe(true);
     expect(tools.has('t2000_services')).toBe(true);
-    expect(tools.has('t2000_sentinel_list')).toBe(true);
-    expect(tools.has('t2000_sentinel_info')).toBe(true);
     expect(tools.has('t2000_contacts')).toBe(true);
     expect(tools.has('t2000_portfolio')).toBe(true);
   });
@@ -322,23 +314,4 @@ describe('read tools', () => {
     vi.unstubAllGlobals();
   });
 
-  it('t2000_sentinel_list should return sentinels with SUI values', async () => {
-    const handler = tools.get('t2000_sentinel_list')!;
-    const result = await handler({});
-    const data = JSON.parse(result.content[0].text);
-    expect(data).toHaveLength(1);
-    expect(data[0].name).toBe('TestBot');
-    expect(data[0].prizePoolSui).toBe(5);
-    expect(data[0].attackFeeSui).toBe(0.1);
-  });
-
-  it('t2000_sentinel_info should return sentinel details', async () => {
-    const handler = tools.get('t2000_sentinel_info')!;
-    const result = await handler({ id: '1' });
-    const data = JSON.parse(result.content[0].text);
-    expect(data.name).toBe('TestBot');
-    expect(data.model).toBe('gpt-4');
-    expect(data.prizePoolSui).toBe(5);
-    expect(agent.sentinelInfo).toHaveBeenCalledWith('1');
-  });
 });

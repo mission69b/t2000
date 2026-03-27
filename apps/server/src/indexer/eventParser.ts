@@ -119,9 +119,6 @@ function classifyFromEvents(events: SuiEvent[]): { action: string; protocol: str
   for (const event of events) {
     const eventType = event.type.toLowerCase();
 
-    if (eventType.includes('sentinel') || eventType.includes('attack')) {
-      return { action: 'sentinel_attack', protocol: 'sentinel' };
-    }
     if (eventType.includes('deposit') || eventType.includes('save')) {
       return { action: 'save', protocol: null };
     }

@@ -194,7 +194,6 @@ function main() {
     't2000-borrow',
     't2000-repay',
     't2000-pay',
-    't2000-sentinel',
     't2000-rebalance',
   ];
 

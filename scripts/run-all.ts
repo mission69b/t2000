@@ -6,7 +6,6 @@
  *
  * Usage:
  *   source .env.local && npx tsx scripts/run-all.ts
- *   source .env.local && npx tsx scripts/run-all.ts --live    # includes live sentinel attack
  */
 
 import { execFileSync } from 'child_process';
@@ -14,8 +13,6 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const LIVE = process.argv.includes('--live');
-
 const tests = [
   { name: 'Wallet & Balance', file: 'test-wallet.ts' },
   { name: 'Send', file: 'test-send.ts' },
@@ -26,7 +23,6 @@ const tests = [
   { name: 'Investment', file: 'test-invest.ts' },
   { name: 'Strategies', file: 'test-strategy.ts' },
   { name: 'Claim Rewards', file: 'test-claim-rewards.ts' },
-  { name: 'Sentinel', file: 'test-sentinel.ts', args: LIVE ? '--live' : '' },
   { name: 'MPP Pay', file: 'test-pay.ts' },
   { name: 'Cross-Feature', file: 'test-cross-features.ts' },
   { name: 'Misc', file: 'test-misc.ts' },
@@ -36,7 +32,7 @@ console.log('╔═════════════════════�
 console.log('║   t2000 SDK — Full Integration Suite     ║');
 console.log('╚══════════════════════════════════════════╝');
 console.log(`\n   Tests: ${tests.length}`);
-console.log(`   Mode:  ${LIVE ? 'LIVE (sentinel attack costs SUI)' : 'Standard'}\n`);
+console.log(`   Mode:  Standard\n`);
 
 let totalPassed = 0;
 let totalFailed = 0;
@@ -44,7 +40,6 @@ const results: { name: string; status: 'passed' | 'failed'; time: number }[] = [
 
 for (const test of tests) {
   const scriptPath = resolve(__dirname, test.file);
-  const args = test.args ? ` ${test.args}` : '';
   const start = Date.now();
 
   console.log(`\n${'═'.repeat(50)}`);
@@ -52,7 +47,7 @@ for (const test of tests) {
   console.log(`${'═'.repeat(50)}`);
 
   try {
-    const execArgs = ['tsx', scriptPath, ...args.trim().split(/\s+/).filter(Boolean)];
+    const execArgs = ['tsx', scriptPath];
     execFileSync('npx', execArgs, { stdio: 'inherit' });
     const elapsed = Date.now() - start;
     results.push({ name: test.name, status: 'passed', time: elapsed });

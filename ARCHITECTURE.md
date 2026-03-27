@@ -20,7 +20,7 @@
    │  │                        @t2000/sdk                                │
    │  │                                                                  │
    │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
-   │  │  Adapters: NAVI · Suilend · Cetus · Sentinel                     │
+   │  │  Adapters: NAVI · Suilend · Cetus                                 │
    │  └────────┬──────────────┬──────────────┬───────────────────────────┘
    │           │              │              │
    ▼           ▼              ▼              ▼
@@ -419,7 +419,7 @@ The indexer only tracks addresses that went through `t2000 init` (bootstrap spon
 The indexer uses SDK adapter descriptors to classify transactions:
 - Move call targets → map to protocol (NAVI, Suilend, Cetus)
 - Balance changes → infer action type (save, withdraw, swap, etc.)
-- Events → fee collection, sentinel attacks
+- Events → fee collection
 
 ---
 
@@ -505,11 +505,11 @@ Local-only enforcement on the agent's machine:
 |-------|-------------|
 | Emergency lock | `agent.lock()` — blocks all outbound operations instantly |
 | Per-TX limit | Max dollar amount per transaction (0 = unlimited) |
-| Daily send limit | Max daily outbound (send + pay + sentinel) |
+| Daily send limit | Max daily outbound (send + pay) |
 
 - Config stored locally in `config.json` alongside the private key
 - MCP server refuses to start until safeguard limits are configured
-- Only outbound ops are guarded (send, pay, sentinel) — save/withdraw/borrow are not
+- Only outbound ops are guarded (send, pay) — save/withdraw/borrow are not
 - `unlock()` requires human confirmation (not callable by AI)
 
 ---
@@ -634,7 +634,7 @@ Any write operation (send, save, pay, etc.)
   │   └── If locked: reject immediately
   │
   ├── SafeguardEnforcer.check(metadata)
-  │   ├── Is this an outbound op? (send / pay / sentinel only)
+  │   ├── Is this an outbound op? (send / pay only)
   │   ├── Amount ≤ maxPerTx? ($500 default)
   │   └── dailyUsed + amount ≤ maxDailySend? ($1000 default)
   │
@@ -647,7 +647,7 @@ Any write operation (send, save, pay, etc.)
   └── TxMutex.release()
 ```
 
-**Outbound ops** (guarded by daily limit): `send`, `pay`, `sentinel`
+**Outbound ops** (guarded by daily limit): `send`, `pay`
 **Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`, `swap`, `rebalance`, `buy`, `sell`
 
 The daily budget resets automatically when the date changes.

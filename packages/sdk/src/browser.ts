@@ -44,7 +44,6 @@ export {
   SUPPORTED_ASSETS,
   CLOCK_ID,
   DEFAULT_NETWORK,
-  SENTINEL,
 } from './constants.js';
 export type { SupportedAsset, StableAsset, InvestmentAsset } from './constants.js';
 export {

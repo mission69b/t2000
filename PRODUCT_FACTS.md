@@ -28,8 +28,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 14 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-sentinel`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-invest` |
+| Skill count | 13 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-invest` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -176,9 +176,6 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | export | `t2000 export` | Options: `--yes` to skip confirmation |
 | import | `t2000 import` | |
 | lock | `t2000 lock` | Clear saved session |
-| sentinel list | `t2000 sentinel list` | List active sentinels with prize pools |
-| sentinel info | `t2000 sentinel info <id>` | Show details for a sentinel |
-| sentinel attack | `t2000 sentinel attack <id> [prompt]` | Attack a sentinel (full 3-step flow). Options: `--fee <sui>` |
 | rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
 | swap | `t2000 swap <amount> <from> <to>` | Swap tokens via Cetus DEX (e.g. USDC ⇌ SUI). Options: `--slippage <pct>` (default: 3%) |
 | exchange | `t2000 exchange <amount> <from> <to>` | **Deprecated** — alias for `swap`. Use `t2000 swap` instead |
@@ -207,7 +204,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | invest auto stop | `t2000 invest auto stop [id]` | Stop auto-invest schedule |
 
 **Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Savings rebalance skips earning investment positions. `invest rebalance` moves earning positions to better-rate protocols (0.1% minimum APY difference). `claim-rewards` claims DeFi incentive rewards from all protocols and auto-converts to USDC in a single operation.
-| earn | `t2000 earn` | Show all earning opportunities — savings yield + sentinel bounties |
+| earn | `t2000 earn` | Show all earning opportunities — savings yield |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
 | mcp | `t2000 mcp` | Start MCP server (stdio transport, used by AI platforms) |
@@ -340,14 +337,6 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | `getAutoInvestStatus()` | — | `AutoInvestStatus` |
 | `runAutoInvest()` | — | `AutoInvestRunResult` |
 | `stopAutoInvest()` | `{ id? }` | `void` |
-
-### Sentinel
-
-| Method | Params | Returns |
-|--------|--------|---------|
-| `sentinelList()` | — | `SentinelAgent[]` |
-| `sentinelInfo()` | `id: string` | `SentinelAgent` |
-| `sentinelAttack()` | `id: string, prompt: string, fee?: bigint` | `SentinelAttackResult` |
 
 ### Safeguards
 
@@ -503,10 +492,6 @@ Source: `packages/sdk/src/types.ts`
 | `DUPLICATE_PAYMENT` | MPP nonce already used | No |
 | `FACILITATOR_REJECTION` | Facilitator rejected payment | No |
 | `FACILITATOR_TIMEOUT` | Facilitator timed out | Yes |
-| `SENTINEL_API_ERROR` | Sentinel API request failed | Yes |
-| `SENTINEL_NOT_FOUND` | Sentinel agent not found | No |
-| `SENTINEL_TX_FAILED` | Sentinel transaction failed | No |
-| `SENTINEL_TEE_ERROR` | TEE attestation/prompt error | Yes |
 | `SAFEGUARD_BLOCKED` | Safeguard rule violated (locked, maxPerTx, maxDailySend) | No |
 | `INVESTMENT_LOCKED` | Attempted to send/exchange invested assets | No |
 | `INVEST_ALREADY_EARNING` | Asset is already earning via a protocol | No |
@@ -600,18 +585,6 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 | Payment Registry | `0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291` |
 
 MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle endpoints.
-
-### Sui Sentinel (Partner — Red Teaming)
-
-| Object | ID |
-|--------|----|
-| Package | `0x88b83f36dafcd5f6dcdcf1d2cb5889b03f61264ab3cee9cae35db7aa940a21b7` |
-| Agent Registry | `0xc47564f5f14c12b31e0dfa1a3dc99a6380a1edf8929c28cb0eaa3359c8db36ac` |
-| Enclave | `0xfb1261aeb9583514cb1341a548a5ec12d1231bd96af22215f1792617a93e1213` |
-| Protocol Config | `0x2fa4fa4a1dd0498612304635ff9334e1b922e78af325000e9d9c0e88adea459f` |
-
-> Sentinel integration: SDK (`protocols/sentinel.ts`), CLI (`t2000 sentinel list|info|attack`), and `t2000-sentinel` skill.
-> Docs: https://docs.suisentinel.xyz | App: https://app.suisentinel.xyz
 
 ---
 

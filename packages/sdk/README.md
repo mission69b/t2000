@@ -173,14 +173,6 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.contacts.get(name)` | Get a contact by name | `Contact` |
 | `agent.contacts.resolve(nameOrAddress)` | Resolve name to address (passthrough if already an address) | `string` |
 
-### Sentinel Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.sentinelList()` | List active sentinels with prize pools | `SentinelAgent[]` |
-| `agent.sentinelInfo(id)` | Get sentinel details (from API or on-chain) | `SentinelAgent` |
-| `agent.sentinelAttack(id, prompt, fee?)` | Full attack flow: request → TEE → settle | `SentinelAttackResult` |
-
 ### Safeguards (Enforcer)
 
 | Method | Description | Returns |
@@ -426,7 +418,6 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 | `suilend.test.ts` | Suilend adapter (rates, positions, health, SDK mocks) |
 | `t2000.integration.test.ts` | End-to-end flows (save, withdraw, borrow, repay, rebalance, auto-swap) |
 | `protocolFee.test.ts` | Protocol fee calculation and collection |
-| `sentinel.test.ts` | Sentinel attack flow, listing, fee parsing |
 | `serialization.test.ts` | Transaction JSON serialization roundtrip |
 
 ## Protocol Fees

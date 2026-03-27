@@ -42,7 +42,6 @@ t2000 unlock                         # resume operations (requires PIN)
 ## What counts as outbound
 - `t2000 send` — transfers to other addresses
 - `t2000 pay` — MPP API payments
-- `t2000 sentinel attack` — sentinel bounties
 
 ## What is NOT limited
 Internal operations (save, withdraw, borrow, repay, swap, rebalance)

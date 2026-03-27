@@ -29,9 +29,6 @@ check $? "earn shows Earning Opportunities header"
 t2000 earn 2>&1 | grep -q "SAVINGS"
 check $? "earn shows SAVINGS section"
 
-t2000 earn 2>&1 | grep -q "SENTINEL BOUNTIES"
-check $? "earn shows SENTINEL BOUNTIES section"
-
 t2000 earn 2>&1 | grep -q "Quick Actions"
 check $? "earn shows Quick Actions section"
 
@@ -40,8 +37,8 @@ echo "   t2000 earn --json"
 t2000 earn --json > /dev/null 2>&1 || true
 check $? "earn --json exits 0"
 
-t2000 earn --json 2>&1 | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'savings' in d and 'sentinel' in d" 2>/dev/null
-check $? "earn --json returns savings and sentinel keys"
+t2000 earn --json 2>&1 | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'savings' in d" 2>/dev/null
+check $? "earn --json returns savings key"
 
 echo ""
 echo "════════════════════════════════════════════"

@@ -44,7 +44,7 @@ export const descriptor: ProtocolDescriptor = {
 | `id` | Yes | Lowercase kebab-case, must match adapter's `id` field |
 | `name` | Yes | Human-readable protocol name |
 | `packages` | Yes | On-chain package IDs (base/original package for upgradeable contracts) |
-| `actionMap` | Yes | Maps `module::function` to action type (`save`, `withdraw`, `borrow`, `repay`, `swap`, `sentinel_attack`) |
+| `actionMap` | Yes | Maps `module::function` to action type (`save`, `withdraw`, `borrow`, `repay`, `swap`) |
 | `dynamicPackageId` | No | Set `true` if the protocol uses frequently upgraded package IDs (like NAVI). Indexer matches by `module::function` only, ignoring package prefix |
 
 ### 2. Implement the interface

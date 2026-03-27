@@ -39,7 +39,6 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 | `t2000-repay` | "repay my loan", "pay back..." |
 | `t2000-exchange` | "swap USDC to SUI", "exchange tokens", "convert to..." (CLI: `t2000 swap`) |
 | `t2000-pay` | "call that paid API", "pay for MPP service" |
-| `t2000-sentinel` | "attack a sentinel", "earn bounties" |
 | `t2000-rebalance` | "optimize yield", "rebalance savings" |
 | `t2000-invest` | "buy SUI", "invest $100 in BTC", "sell my ETH", "buy GOLD", "show portfolio" (CLI: `t2000 buy` / `t2000 sell`) |
 | `t2000-contacts` | "add contact", "send to alice", "list contacts" |

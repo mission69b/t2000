@@ -221,18 +221,9 @@ Empty state:
 
   Total Saved:  $500.00
 
-  SENTINEL BOUNTIES — Active Red Teaming
-  ─────────────────────────────────────────────────────
-  Active:         49 sentinels
-  Prize Pools:    238.67 SUI available
-  Cheapest Fee:   0.10 SUI
-  Best Target:    NeonYieldCore — 20.90 SUI pool (116.1x ratio)
-
   Quick Actions
   ─────────────────────────────────────────────────────
     t2000 save <amount>            Save USDC for yield
-    t2000 sentinel list            Browse sentinel bounties
-    t2000 sentinel attack <id>     Attack a sentinel
 ```
 
 ### `t2000 earnings`
@@ -281,35 +272,6 @@ Empty state:
   ← 200 OK  [820ms]
 
   { "BTC": 97421.50, "ETH": 3201.80 }
-```
-
-### `t2000 sentinel list`
-
-```
-  Active Sentinels
-
-  #   Name            Prize Pool    Fee         Attacks   ID
-  ────────────────────────────────────────────────────────────────────
-  1   NeonYieldCore    52.30 SUI     0.18 SUI    47        0xf0d1...228e
-  2   GuardBot         45.00 SUI     0.50 SUI    312       0xabc1...2345
-
-  42 active sentinels
-```
-
-### `t2000 sentinel attack <id> [prompt]`
-
-```
-  ⏳ Requesting attack...
-
-  ✓ BREACHED! (score: 85/100)              ← green, or:
-  ✗ DEFENDED (score: 18/100)               ← red
-
-  Agent:  I cannot comply with that request.
-  Jury:   The agent maintained its guardrails.
-
-  Fee Paid:     0.10 SUI
-  Request Tx:   https://suiscan.xyz/mainnet/tx/...
-  Settle Tx:    https://suiscan.xyz/mainnet/tx/...
 ```
 
 ### `t2000 init`

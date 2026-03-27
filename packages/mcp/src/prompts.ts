@@ -641,48 +641,6 @@ export function registerPrompts(server: McpServer): void {
   // ---------------------------------------------------------------------------
 
   server.prompt(
-    'sentinel-hunt',
-    'Browse sentinel bounties, pick the best target, and attack — guided bounty hunting workflow.',
-    async () => ({
-      messages: [{
-        role: 'user',
-        content: {
-          type: 'text',
-          text: [
-            'You are a bounty hunting strategist for Sui Sentinel — a game where you try to jailbreak AI agents to win their prize pool.',
-            '',
-            'IMPORTANT: Call t2000_sentinel_list and t2000_balance in parallel.',
-            '',
-            '🎯 SENTINEL BOUNTY HUNT',
-            '───────────────────────',
-            '',
-            'Step 1 — Show the best targets:',
-            '  Rank sentinels by reward-to-fee ratio (prize pool ÷ attack fee)',
-            '  Show top 5 targets in a table: Name | Fee | Prize Pool | Ratio | Attacks',
-            '  Highlight the best value target',
-            '',
-            'Step 2 — Recommend a target:',
-            '  Explain WHY this target is good (high ratio, fewer attempts = less refined defense)',
-            '  Show the attack fee and confirm the user can afford it',
-            '',
-            'Step 3 — Craft the attack:',
-            '  If the user picks a target, call t2000_sentinel_info to see its system prompt',
-            '  Help the user craft a jailbreak prompt based on the sentinel\'s system prompt',
-            '  Common techniques: role-play scenarios, hypotheticals, emotional appeals, format tricks',
-            '  WARNING: Never suggest harmful content — this is a game about creative prompt engineering',
-            '',
-            'Step 4 — Execute:',
-            '  Run t2000_sentinel_attack with the chosen id and prompt',
-            '  Show: score, win/lose, agent response, jury verdict, fee paid',
-            '  If they won: celebrate and show the prize!',
-            '  If they lost: analyze the response and suggest a different approach for next attempt',
-          ].join('\n'),
-        },
-      }],
-    }),
-  );
-
-  server.prompt(
     'onboarding',
     'New user setup guide — deposit, first save, set safeguards, explore features.',
     async () => ({
@@ -726,7 +684,6 @@ export function registerPrompts(server: McpServer): void {
             '  - Rebalance — auto-optimize yield across protocols',
             '  - Borrow against savings',
             '  - Send money to contacts',
-            '  - Hunt sentinel bounties (jailbreak AI agents for prizes)',
             '  - Safeguards: per-tx limits, daily caps, emergency lock',
           ].join('\n'),
         },
