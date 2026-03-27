@@ -23,3 +23,15 @@ model LlmUsage {
 
   @@id([address, date])
 }
+
+model ServicePurchase {
+  id        String   @id @default(cuid())
+  address   String
+  serviceId String
+  amountUsd Float
+  productId String?
+  status    String   @default("completed")
+  createdAt DateTime @default(now())
+
+  @@index([address, createdAt])
+}

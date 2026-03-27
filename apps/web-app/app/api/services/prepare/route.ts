@@ -7,6 +7,7 @@ import { getGatewayMapping, createRawGatewayMapping, getInternalApiKey } from '@
 import type { GatewayMapping } from '@/lib/service-gateway';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { validateJwt, isValidSuiAddress } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
@@ -95,9 +96,21 @@ export async function POST(request: NextRequest) {
   }
 }
 
+const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+const USDC_DECIMALS = 6;
+
+const DAILY_GIFT_CARD_LIMIT_USD = 50;
+const MONTHLY_GIFT_CARD_LIMIT_USD = 500;
+
 /**
  * Deliver-first: call upstream BEFORE building any payment.
  * If upstream fails, user is never charged.
+ *
+ * Safety order:
+ * 1. Check USDC balance (prevent $0 users from getting free gift cards)
+ * 2. Check daily/monthly spending limits
+ * 3. Call upstream (Reloadly)
+ * 4. Build payment tx
  */
 async function handleDeliverFirst(
   mapping: GatewayMapping,
@@ -114,7 +127,32 @@ async function handleDeliverFirst(
     return NextResponse.json({ error: 'Service not configured' }, { status: 500 });
   }
 
-  console.log(`[services/prepare] Deliver-first: calling ${internalUrl} before payment`);
+  const estimatedCostUsd = parseFloat(
+    String((serviceBody as { unitPrice?: number }).unitPrice ?? 0),
+  ) * 1.05;
+
+  // --- SAFETY CHECK 1: Verify user has enough USDC before touching upstream ---
+  const coins = await client.getCoins({ owner: address, coinType: USDC_TYPE });
+  const totalBalance = coins.data.reduce(
+    (sum, c) => sum + BigInt(c.balance),
+    BigInt(0),
+  );
+  const requiredRaw = BigInt(Math.ceil(estimatedCostUsd * 10 ** USDC_DECIMALS));
+  if (totalBalance < requiredRaw) {
+    const balanceUsd = Number(totalBalance) / 10 ** USDC_DECIMALS;
+    return NextResponse.json(
+      { error: `Insufficient USDC balance ($${balanceUsd.toFixed(2)}) for $${estimatedCostUsd.toFixed(2)} purchase` },
+      { status: 400 },
+    );
+  }
+
+  // --- SAFETY CHECK 2: Daily/monthly spending limits ---
+  const limitCheck = await checkSpendingLimits(address, estimatedCostUsd);
+  if (limitCheck) {
+    return NextResponse.json({ error: limitCheck }, { status: 429 });
+  }
+
+  console.log(`[services/prepare] Deliver-first: balance OK ($${(Number(totalBalance) / 10 ** USDC_DECIMALS).toFixed(2)}), calling ${internalUrl}`);
 
   const deliverRes = await fetch(internalUrl, {
     method: 'POST',
@@ -146,17 +184,16 @@ async function handleDeliverFirst(
 
   console.log(`[services/prepare] Deliver-first succeeded, building payment tx: $${chargeAmount} → ${recipient}`);
 
+  // Record purchase for audit trail and spending limit tracking
+  recordPurchase(address, serviceId, parseFloat(chargeAmount), String(serviceBody.productId ?? '')).catch(() => {});
+
   const decimals = currency.includes('::usdc::') ? 6 : 9;
   const rawAmount = BigInt(Math.round(parseFloat(chargeAmount) * 10 ** decimals));
 
   const tx = new Transaction();
   tx.setSender(address);
 
-  const coins = await client.getCoins({ owner: address, coinType: currency });
-  if (!coins.data.length) {
-    return NextResponse.json({ error: 'No USDC balance to pay for service' }, { status: 400 });
-  }
-
+  // Reuse coins from balance check — no need to fetch again
   const coinIds = coins.data.map((c) => c.coinObjectId);
   if (coinIds.length > 1) {
     tx.mergeCoins(tx.object(coinIds[0]), coinIds.slice(1).map((id) => tx.object(id)));
@@ -336,5 +373,55 @@ async function handleStandardMpp(
       serviceBody: JSON.stringify(serviceBody),
       price: chargeAmount,
     },
+  });
+}
+
+/**
+ * Check if a user has exceeded daily or monthly spending limits.
+ * Returns an error message if exceeded, null if within limits.
+ */
+async function checkSpendingLimits(address: string, amountUsd: number): Promise<string | null> {
+  try {
+    const now = new Date();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [dailySpend, monthlySpend] = await Promise.all([
+      prisma.servicePurchase.aggregate({
+        where: { address, createdAt: { gte: dayAgo } },
+        _sum: { amountUsd: true },
+      }),
+      prisma.servicePurchase.aggregate({
+        where: { address, createdAt: { gte: monthAgo } },
+        _sum: { amountUsd: true },
+      }),
+    ]);
+
+    const dailyTotal = (dailySpend._sum.amountUsd ?? 0) + amountUsd;
+    const monthlyTotal = (monthlySpend._sum.amountUsd ?? 0) + amountUsd;
+
+    if (dailyTotal > DAILY_GIFT_CARD_LIMIT_USD) {
+      return `Daily gift card limit reached ($${DAILY_GIFT_CARD_LIMIT_USD}/day). You've spent $${(dailyTotal - amountUsd).toFixed(2)} today. Try again tomorrow.`;
+    }
+
+    if (monthlyTotal > MONTHLY_GIFT_CARD_LIMIT_USD) {
+      return `Monthly gift card limit reached ($${MONTHLY_GIFT_CARD_LIMIT_USD}/month). You've spent $${(monthlyTotal - amountUsd).toFixed(2)} this month.`;
+    }
+
+    return null;
+  } catch (err) {
+    console.error('[services/prepare] Spending limit check failed:', err);
+    return null;
+  }
+}
+
+async function recordPurchase(
+  address: string,
+  serviceId: string,
+  amountUsd: number,
+  productId?: string,
+): Promise<void> {
+  await prisma.servicePurchase.create({
+    data: { address, serviceId, amountUsd, productId: productId || null },
   });
 }
