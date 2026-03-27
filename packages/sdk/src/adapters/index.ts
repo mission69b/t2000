@@ -11,18 +11,12 @@ export type {
   ProtocolDescriptor,
 } from './types.js';
 export { ProtocolRegistry } from './registry.js';
-export { NaviAdapter, descriptor as naviDescriptor } from './navi.js';
-export { CetusAdapter, descriptor as cetusDescriptor } from './cetus.js';
-export { SuilendAdapter, descriptor as suilendDescriptor } from './suilend.js';
-
-import { descriptor as naviDescriptor } from './navi.js';
-import { descriptor as cetusDescriptor } from './cetus.js';
-import { descriptor as suilendDescriptor } from './suilend.js';
-import type { ProtocolDescriptor } from './types.js';
-
-/** All registered protocol descriptors — used by the indexer for event classification */
-export const allDescriptors: ProtocolDescriptor[] = [
+export { NaviAdapter } from './navi.js';
+export { CetusAdapter } from './cetus.js';
+export { SuilendAdapter } from './suilend.js';
+export {
   naviDescriptor,
-  suilendDescriptor,
   cetusDescriptor,
-];
+  suilendDescriptor,
+  allDescriptors,
+} from './descriptors.js';

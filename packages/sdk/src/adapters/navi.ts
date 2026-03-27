@@ -7,7 +7,6 @@ import type {
   HealthInfo,
   AdapterTxResult,
   AdapterCapability,
-  ProtocolDescriptor,
   PendingReward,
 } from './types.js';
 import { STABLE_ASSETS } from '../constants.js';
@@ -15,22 +14,7 @@ import { T2000Error } from '../errors.js';
 import { normalizeAsset } from '../utils/format.js';
 import * as naviProtocol from '../protocols/navi.js';
 
-export const descriptor: ProtocolDescriptor = {
-  id: 'navi',
-  name: 'NAVI Protocol',
-  packages: [],
-  dynamicPackageId: true,
-  actionMap: {
-    'incentive_v3::entry_deposit': 'save',
-    'incentive_v3::deposit': 'save',
-    'incentive_v3::withdraw_v2': 'withdraw',
-    'incentive_v3::entry_withdraw': 'withdraw',
-    'incentive_v3::borrow_v2': 'borrow',
-    'incentive_v3::entry_borrow': 'borrow',
-    'incentive_v3::entry_repay': 'repay',
-    'incentive_v3::repay': 'repay',
-  },
-};
+export { naviDescriptor as descriptor } from './descriptors.js';
 
 export class NaviAdapter implements LendingAdapter {
   readonly id = 'navi';

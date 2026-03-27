@@ -20,6 +20,11 @@
       "types": "./dist/adapters/index.d.ts",
       "import": "./dist/adapters/index.js",
       "require": "./dist/adapters/index.cjs"
+    },
+    "./descriptors": {
+      "types": "./dist/adapters/descriptors.d.ts",
+      "import": "./dist/adapters/descriptors.js",
+      "require": "./dist/adapters/descriptors.cjs"
     }
   },
   "files": [

@@ -15,7 +15,6 @@ import type {
   HealthInfo,
   AdapterTxResult,
   AdapterCapability,
-  ProtocolDescriptor,
   PendingReward,
 } from './types.js';
 import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
@@ -24,7 +23,8 @@ import { T2000Error } from '../errors.js';
 import { addCollectFeeToTx } from '../protocols/protocolFee.js';
 import type { TransactionObjectArgument } from '@mysten/sui/transactions';
 
-const SUILEND_PACKAGE = '0xf95b06141ed4a174f239417323bde3f209b972f5930d8521ea38a52aff3a6ddf';
+export { suilendDescriptor as descriptor } from './descriptors.js';
+
 const MIN_HEALTH_FACTOR = 1.5;
 
 async function quietSuilend<T>(fn: () => Promise<T>): Promise<T> {
@@ -36,24 +36,6 @@ async function quietSuilend<T>(fn: () => Promise<T>): Promise<T> {
   console.warn = (...args: unknown[]) => { if (!filter(...args)) origWarn.apply(console, args); };
   return fn().finally(() => { console.log = origLog; console.warn = origWarn; });
 }
-
-export const descriptor: ProtocolDescriptor = {
-  id: 'suilend',
-  name: 'Suilend',
-  packages: [SUILEND_PACKAGE],
-  actionMap: {
-    'lending_market::deposit_liquidity_and_mint_ctokens': 'save',
-    'lending_market::deposit_ctokens_into_obligation': 'save',
-    'lending_market::create_obligation': 'save',
-    'lending_market::withdraw_ctokens': 'withdraw',
-    'lending_market::redeem_ctokens_and_withdraw_liquidity': 'withdraw',
-    'lending_market::redeem_ctokens_and_withdraw_liquidity_request': 'withdraw',
-    'lending_market::fulfill_liquidity_request': 'withdraw',
-    'lending_market::unstake_sui_from_staker': 'withdraw',
-    'lending_market::borrow': 'borrow',
-    'lending_market::repay': 'repay',
-  },
-};
 
 export class SuilendAdapter implements LendingAdapter {
   readonly id = 'suilend';

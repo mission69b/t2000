@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@mysten/sui': ^2.6.0
+  '@mysten/sui': ^2.11.0
   '@mysten/bcs': ^2.0.1
   '@pythnetwork/pyth-sui-js': 2.2.0
 
@@ -98,7 +98,7 @@ importers:
         specifier: ^1
         version: 1.19.11(hono@4.12.9)
       '@mysten/sui':
-        specifier: ^2.6.0
+        specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
       '@prisma/client':
         specifier: ^6
@@ -138,7 +138,7 @@ importers:
   apps/web:
     dependencies:
       '@mysten/sui':
-        specifier: ^2.6.0
+        specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
       '@prisma/client':
         specifier: ^6
@@ -193,7 +193,7 @@ importers:
         specifier: ^1.0.4
         version: 1.0.4(@mysten/sui@2.11.0(typescript@5.9.3))(@tanstack/react-query@5.95.2(react@19.2.4))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       '@mysten/sui':
-        specifier: ^2.6.0
+        specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
       '@mysten/zklogin':
         specifier: ^0.8.1
@@ -293,7 +293,7 @@ importers:
         specifier: ^7
         version: 7.10.1(@types/node@20.19.37)
       '@mysten/sui':
-        specifier: ^2.6.0
+        specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
       '@t2000/mcp':
         specifier: workspace:*
@@ -357,7 +357,7 @@ importers:
   packages/mpp-sui:
     dependencies:
       '@mysten/sui':
-        specifier: ^2.6.0
+        specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
       mppx:
         specifier: ^0.4.9
@@ -388,7 +388,7 @@ importers:
         specifier: ^1.4.6
         version: 1.4.6(axios@1.13.6)(typescript@5.9.3)
       '@mysten/sui':
-        specifier: ^2.6.0
+        specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
       '@mysten/zklogin':
         specifier: ^0.8.1
@@ -554,13 +554,13 @@ packages:
   '@bluefin-exchange/bluefin7k-aggregator-sdk@4.3.2':
     resolution: {integrity: sha512-i17f++6v+9ju2vvdmqe6nVhbKadiHcLmU7Fqzsjijh0NKZ39xNrsKjCA33RIP7KTeXpTOxdNytgiqR2TQKUdDQ==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
       '@pythnetwork/pyth-sui-js': 2.2.0
 
   '@bluefin-exchange/bluefin7k-aggregator-sdk@5.5.1':
     resolution: {integrity: sha512-BPdBTBist7UrULMxY2B9HS/0IzbMLUL1k+Uknw3Jzb7DNcc68rtH7YLxjxE2Z9nW3cCu8muNHZahm4PNEaQ67A==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
       '@pythnetwork/pyth-sui-js': 2.2.0
 
   '@bramus/specificity@2.4.2':
@@ -1234,14 +1234,14 @@ packages:
   '@mysten/dapp-kit@1.0.4':
     resolution: {integrity: sha512-RybvMIT3R+GNWNH7tOWXnsLk0gKLtpY/GOefp/Mzsqb78JD3QzKzlQmrm/Bc5bEisI/SuykU3qYzKDLQivZy0Q==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
       '@tanstack/react-query': ^5.0.0
       react: '*'
 
   '@mysten/slush-wallet@1.0.3':
     resolution: {integrity: sha512-TF1CXXug5VPaV4KImKxZ7nyR0XY//KJVzOFxFXaajBHewLBinCO7s6GS9EYbtQMaNvnjrYQn1cpGhYfwGkzvtQ==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
 
   '@mysten/sui.js@0.54.1':
     resolution: {integrity: sha512-TSmGIX7U9O/uS9EKIQdv7/S69KTbBhMJVelXCafJE6IJw8iB9cN9uLu0+uklkBSDrbRmLSEY70jMr3uRFjReIg==}
@@ -1258,12 +1258,12 @@ packages:
   '@mysten/wallet-standard@0.20.0':
     resolution: {integrity: sha512-GtPDZu212uRjcKFEgYh6sOkSOIv1jhO62DqmDYQ+IyzHb2Kqa/6pzaWsKBY0Ij2FYUQPrTdo4PJuoASPbqpICw==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
 
   '@mysten/wallet-standard@0.20.1':
     resolution: {integrity: sha512-Q2GoXO1SPLayqunNIWI3VT8cyOVGTFAPUvaCzx7jYIEoZBfyCR5RCUS4/ehgAlApF88Y/1c/OfjBvEoeRi76jw==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
 
   '@mysten/window-wallet-core@0.1.4':
     resolution: {integrity: sha512-LK1t5dJQZUJv0fF/Cj8HS8N9HHaa7cAOcdWfPAFuYvgVJMEr9K/p33ldqiflcn6p1d53uTtUH9kA5/lQlTmZ2A==}
@@ -1278,7 +1278,7 @@ packages:
   '@naviprotocol/lending@1.4.0':
     resolution: {integrity: sha512-LHM3MRMSIyNr5hIXDszMDUZTqf86pThNoouMCIuZ51Jf1YjEDN4d1kH5Po7LrrowE8LJrSXoddl6Zg8RkjUmWw==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
 
   '@next/env@16.2.1':
     resolution: {integrity: sha512-n8P/HCkIWW+gVal2Z8XqXJ6aB3J0tuM29OcHpCsobWlChH/SITBs1DFBk/HajgrwDkqqBXPbuUuzgDvUekREPg==}
@@ -1956,7 +1956,7 @@ packages:
     resolution: {integrity: sha512-RBQDcFWti1BmTBYGgGspTOxSP4h4/vYR3wpaZkNLXlCv9igR0F5B++7B1MOSBZ7Fclr2glF1evliCp7Hl33hQA==}
     peerDependencies:
       '@mysten/bcs': ^2.0.1
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
       '@pythnetwork/pyth-sui-js': 2.2.0
       '@suilend/sui-fe': ^2.0.6
 
@@ -1964,12 +1964,12 @@ packages:
     resolution: {integrity: sha512-JYMQz4q828A/I5i1iMgqGYquJCidIfpJxSYUSIF2n7ZY6ggmi1O5D/4AY/+C1zClLYU5s9TGlSlQyrKm2f903w==}
     peerDependencies:
       '@mysten/bcs': ^2.0.1
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
 
   '@suilend/sui-fe@2.0.10':
     resolution: {integrity: sha512-z3kXBdlx0aFLJL6xK2XulhJ6ZFHmgx+BpFkdprEDzKvtgtKFR/jlZkiTRGsHltaTH9RiCgHi7yADgrfUe6ipwg==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -2454,7 +2454,7 @@ packages:
   aftermath-ts-sdk@1.3.29:
     resolution: {integrity: sha512-YjsY8zfBajCeGcKrk7bW2exJKdzC5MW6iFFyJ+igpF9dt7cUoT/vjKU6ZlojtBSAN3zE77GRJGUWoEcyvCsxOw==}
     peerDependencies:
-      '@mysten/sui': ^2.6.0
+      '@mysten/sui': ^2.11.0
 
   ajv-draft-04@1.0.0:
     resolution: {integrity: sha512-mv00Te6nmYbRp5DCwclxtt7yV/joXJPGS7nM+97GdxvuttCOfgI3K4U25zboyeX0O+myI8ERluxQe5wljMmVIw==}
@@ -8222,7 +8222,7 @@ snapshots:
       eslint: 9.39.4(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.0.1(eslint@9.39.4(jiti@2.6.1))
@@ -8275,7 +8275,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -8315,7 +8315,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9

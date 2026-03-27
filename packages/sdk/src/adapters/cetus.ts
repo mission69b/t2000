@@ -5,23 +5,11 @@ import type {
   SwapQuote,
   AdapterTxResult,
   AdapterCapability,
-  ProtocolDescriptor,
 } from './types.js';
 import * as cetusProtocol from '../protocols/cetus.js';
-import { CETUS_PACKAGE, STABLE_ASSETS, INVESTMENT_ASSETS } from '../constants.js';
+import { STABLE_ASSETS, INVESTMENT_ASSETS } from '../constants.js';
 
-export const descriptor: ProtocolDescriptor = {
-  id: 'cetus',
-  name: 'Cetus DEX',
-  packages: [CETUS_PACKAGE],
-  actionMap: {
-    'router::swap': 'swap',
-    'router::swap_ab_bc': 'swap',
-    'router::swap_ab_cb': 'swap',
-    'router::swap_ba_bc': 'swap',
-    'router::swap_ba_cb': 'swap',
-  },
-};
+export { cetusDescriptor as descriptor } from './descriptors.js';
 
 export class CetusAdapter implements SwapAdapter {
   readonly id = 'cetus';

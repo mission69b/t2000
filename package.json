@@ -28,7 +28,7 @@
       "unrs-resolver"
     ],
     "overrides": {
-      "@mysten/sui": "^2.6.0",
+      "@mysten/sui": "^2.11.0",
       "@mysten/bcs": "^2.0.1",
       "@pythnetwork/pyth-sui-js": "2.2.0"
     },

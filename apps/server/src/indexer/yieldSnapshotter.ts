@@ -1,31 +1,41 @@
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { prisma } from '../db/prisma.js';
-import { ProtocolRegistry, NaviAdapter, SuilendAdapter } from '@t2000/sdk/adapters';
+import type { ProtocolRegistry as RegistryType } from '@t2000/sdk/adapters';
 
 const SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 let timer: ReturnType<typeof setInterval> | null = null;
-let registry: ProtocolRegistry | null = null;
+let registry: RegistryType | null = null;
 
 function getClient(): SuiJsonRpcClient {
   const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
   return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 
-async function getRegistry(client: SuiJsonRpcClient): Promise<ProtocolRegistry> {
+async function getRegistry(client: SuiJsonRpcClient): Promise<RegistryType> {
   if (registry) return registry;
+
+  const { ProtocolRegistry, NaviAdapter } = await import('@t2000/sdk/adapters');
   registry = new ProtocolRegistry();
+
   const navi = new NaviAdapter();
   await navi.init(client);
-  const suilend = new SuilendAdapter();
-  await suilend.init(client);
   registry.registerLending(navi);
-  registry.registerLending(suilend);
+
+  try {
+    const { SuilendAdapter } = await import('@t2000/sdk/adapters');
+    const suilend = new SuilendAdapter();
+    await suilend.init(client);
+    registry.registerLending(suilend);
+  } catch (err) {
+    console.warn('[yield] Suilend adapter failed to load — running with NAVI only:', err instanceof Error ? err.message : err);
+  }
+
   return registry;
 }
 
 async function getPositionsForAgent(
-  reg: ProtocolRegistry,
+  reg: RegistryType,
   agentAddress: string,
 ): Promise<{ supplied: number; apy: number } | null> {
   try {
