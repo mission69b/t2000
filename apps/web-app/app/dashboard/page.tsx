@@ -550,39 +550,37 @@ function DashboardContent() {
         case 'balance': {
           const bd = balanceQuery.data;
           const stats: string[] = [
-            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="neutral">>`,
+            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="${balance.cash > 0 ? 'safe' : 'neutral'}">>`,
             `<<stat label="Savings" value="$${balance.savings.toFixed(2)}" status="${balance.savings > 0 ? 'safe' : 'neutral'}">>`,
           ];
           if (balance.investments > 0) {
-            stats.push(`<<stat label="Investments" value="$${balance.investments.toFixed(2)}" status="neutral">>`);
+            stats.push(`<<stat label="Investments" value="$${balance.investments.toFixed(2)}" status="safe">>`);
           }
-          stats.push(`<<stat label="Total" value="$${balance.total.toFixed(2)}" status="neutral">>`);
+          stats.push(`<<stat label="Total" value="$${balance.total.toFixed(2)}" status="${balance.total > 0 ? 'safe' : 'neutral'}">>`)
           if (balance.borrows > 0) {
             stats.push(`<<stat label="Debt" value="$${balance.borrows.toFixed(2)}" status="${balance.borrows > 1 ? 'warning' : 'safe'}">>`)
             if (balance.healthFactor && balance.healthFactor !== Infinity) {
               stats.push(`<<stat label="Health" value="${balance.healthFactor.toFixed(0)}" status="${balance.healthFactor > 2 ? 'safe' : 'danger'}">>`)
             }
           }
-          const assetParts: string[] = [];
           if (bd) {
-            if (bd.sui > 0) assetParts.push(`**SUI** ${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})`);
-            if (bd.usdc > 0) assetParts.push(`**USDC** ${bd.usdc.toFixed(2)}`);
+            if (bd.sui > 0) stats.push(`<<stat label="SUI" value="${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})" status="safe">>`);
+            if (bd.usdc > 0) stats.push(`<<stat label="USDC" value="${bd.usdc.toFixed(2)}" status="safe">>`);
             for (const [symbol, amt] of Object.entries(bd.assetBalances)) {
-              if (amt > 0) assetParts.push(`**${symbol}** ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
+              if (amt > 0) stats.push(`<<stat label="${symbol}" value="${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}" status="safe">>`);
             }
           }
-          const text = stats.join('\n') + (assetParts.length > 0 ? `\n\n${assetParts.join(' · ')}` : '');
-          feed.addItem({ type: 'ai-text', text });
+          feed.addItem({ type: 'ai-text', text: stats.join('\n') });
           break;
         }
         case 'report': {
           const rd = balanceQuery.data;
           const rStats: string[] = [
-            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="neutral">>`,
+            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="${balance.cash > 0 ? 'safe' : 'neutral'}">>`,
             `<<stat label="Savings" value="$${balance.savings.toFixed(2)}" status="${balance.savings > 0 ? 'safe' : 'neutral'}">>`,
           ];
           if (balance.investments > 0) {
-            rStats.push(`<<stat label="Investments" value="$${balance.investments.toFixed(2)}" status="neutral">>`);
+            rStats.push(`<<stat label="Investments" value="$${balance.investments.toFixed(2)}" status="safe">>`);
           }
           if (balance.borrows > 0) {
             rStats.push(`<<stat label="Debt" value="$${balance.borrows.toFixed(2)}" status="${balance.borrows > 1 ? 'warning' : 'safe'}">>`)
@@ -595,16 +593,14 @@ function DashboardContent() {
           if (balance.healthFactor && balance.healthFactor !== Infinity && balance.borrows > 0) {
             rStats.push(`<<stat label="Health" value="${balance.healthFactor.toFixed(0)}" status="${balance.healthFactor > 2 ? 'safe' : 'danger'}">>`)
           }
-          const rAssetParts: string[] = [];
           if (rd) {
-            if (rd.sui > 0) rAssetParts.push(`**SUI** ${rd.sui.toFixed(4)} ($${rd.suiUsd.toFixed(2)})`);
-            if (rd.usdc > 0) rAssetParts.push(`**USDC** ${rd.usdc.toFixed(2)}`);
+            if (rd.sui > 0) rStats.push(`<<stat label="SUI" value="${rd.sui.toFixed(4)} ($${rd.suiUsd.toFixed(2)})" status="safe">>`);
+            if (rd.usdc > 0) rStats.push(`<<stat label="USDC" value="${rd.usdc.toFixed(2)}" status="safe">>`);
             for (const [symbol, amt] of Object.entries(rd.assetBalances)) {
-              if (amt > 0) rAssetParts.push(`**${symbol}** ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
+              if (amt > 0) rStats.push(`<<stat label="${symbol}" value="${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}" status="safe">>`);
             }
           }
-          const rText = rStats.join('\n') + (rAssetParts.length > 0 ? `\n\n${rAssetParts.join(' · ')}` : '');
-          feed.addItem({ type: 'ai-text', text: rText });
+          feed.addItem({ type: 'ai-text', text: rStats.join('\n') });
           break;
         }
         case 'history':
