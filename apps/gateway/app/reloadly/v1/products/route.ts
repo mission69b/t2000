@@ -36,7 +36,9 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
   const headers = reloadlyHeaders(token);
   const cc = encodeURIComponent(countryCode);
 
-  const all: { productName: string; [k: string]: unknown }[] = [];
+  type Product = { productName: string; [k: string]: unknown };
+
+  const all: Product[] = [];
   let page = 1;
   const size = 200;
 
@@ -48,13 +50,16 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
 
     if (!res.ok) break;
 
-    const batch = (await res.json()) as { productName: string; [k: string]: unknown }[];
+    const json = await res.json();
+    const batch: Product[] = Array.isArray(json) ? json : (json as { content?: Product[] }).content ?? [];
     all.push(...batch);
 
     if (batch.length < size) break;
     page++;
     if (page > 10) break;
   }
+
+  console.log(`[reloadly/products] country=${countryCode} fetched=${all.length} pages=${page}`);
 
   const cleaned = all.filter((p) => !isJunk(p.productName));
 
