@@ -321,6 +321,14 @@ async function handleStandardMpp(
   if (!coins.data.length) {
     return NextResponse.json({ error: 'No USDC balance to pay for service' }, { status: 400 });
   }
+  const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), BigInt(0));
+  if (totalBalance < rawAmount) {
+    const balanceUsd = Number(totalBalance) / 10 ** decimals;
+    return NextResponse.json(
+      { error: `Insufficient USDC balance ($${balanceUsd.toFixed(2)}) for $${chargeAmount} service` },
+      { status: 400 },
+    );
+  }
 
   const coinIds = coins.data.map((c) => c.coinObjectId);
   if (coinIds.length > 1) {
