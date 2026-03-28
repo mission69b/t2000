@@ -127,9 +127,9 @@ async function handleDeliverFirst(
     return NextResponse.json({ error: 'Service not configured' }, { status: 500 });
   }
 
-  const estimatedCostUsd = parseFloat(
-    String((serviceBody as { unitPrice?: number }).unitPrice ?? 0),
-  ) * 1.05;
+  const estimatedCostUsd = (serviceBody as { unitPrice?: number }).unitPrice
+    ? parseFloat(String((serviceBody as { unitPrice?: number }).unitPrice)) * 1.05
+    : parseFloat(mapping.price);
 
   // --- SAFETY CHECK 1: Verify user has enough USDC before touching upstream ---
   const coins = await client.getCoins({ owner: address, coinType: USDC_TYPE });

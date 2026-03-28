@@ -178,27 +178,35 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     transformBody: (f) => {
       require(f, 'to_name', 'to_address_line1', 'to_city', 'to_state', 'to_zip', 'to_country', 'message');
       return {
-        to: {
-          name: f.to_name,
-          address_line1: f.to_address_line1,
-          address_line2: f.to_address_line2 ?? undefined,
-          address_city: f.to_city,
-          address_state: f.to_state,
-          address_zip: f.to_zip,
-          address_country: f.to_country,
+        type: 'postcard',
+        price: '1.00',
+        payload: {
+          to: {
+            name: f.to_name,
+            address_line1: f.to_address_line1,
+            address_line2: f.to_address_line2 ?? undefined,
+            address_city: f.to_city,
+            address_state: f.to_state,
+            address_zip: f.to_zip,
+            address_country: f.to_country,
+          },
+          from: {
+            name: 't2000',
+            address_line1: '185 Berry St',
+            address_city: 'San Francisco',
+            address_state: 'CA',
+            address_zip: '94107',
+            address_country: 'US',
+          },
+          use_type: 'operational',
+          front: `<html><body style="background:#0a0a0a;display:flex;align-items:center;justify-content:center;height:100%;font-family:monospace"><div style="color:#00ff88;font-size:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">t2000</div><div style="font-size:12px;opacity:0.6">sent with crypto</div></div></body></html>`,
+          back: `<html><body style="padding:40px;font-family:Georgia,serif;font-size:16px;line-height:1.6"><p>${(f.message ?? '').replace(/</g, '&lt;')}</p></body></html>`,
+          size: '4x6',
         },
-        from: {
-          name: 't2000',
-          address_line1: '185 Berry St',
-          address_city: 'San Francisco',
-          address_state: 'CA',
-          address_zip: '94107',
-          address_country: 'US',
-        },
-        front: `<html><body style="background:#0a0a0a;display:flex;align-items:center;justify-content:center;height:100%;font-family:monospace"><div style="color:#00ff88;font-size:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">t2000</div><div style="font-size:12px;opacity:0.6">sent with crypto</div></div></body></html>`,
-        back: `<html><body style="padding:40px;font-family:Georgia,serif;font-size:16px;line-height:1.6"><p>${(f.message ?? '').replace(/</g, '&lt;')}</p></body></html>`,
-        size: '4x6',
       };
+    },
+    deliverFirst: {
+      internalUrl: `${GATEWAY_BASE}/lob/v1/mail-internal`,
     },
   },
 
@@ -209,26 +217,34 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
       require(f, 'to_name', 'to_address_line1', 'to_city', 'to_state', 'to_zip', 'to_country', 'body');
       const sanitized = (f.body ?? '').replace(/</g, '&lt;').replace(/\n/g, '<br/>');
       return {
-        to: {
-          name: f.to_name,
-          address_line1: f.to_address_line1,
-          address_line2: f.to_address_line2 ?? undefined,
-          address_city: f.to_city,
-          address_state: f.to_state,
-          address_zip: f.to_zip,
-          address_country: f.to_country,
+        type: 'letter',
+        price: '1.50',
+        payload: {
+          to: {
+            name: f.to_name,
+            address_line1: f.to_address_line1,
+            address_line2: f.to_address_line2 ?? undefined,
+            address_city: f.to_city,
+            address_state: f.to_state,
+            address_zip: f.to_zip,
+            address_country: f.to_country,
+          },
+          from: {
+            name: 't2000',
+            address_line1: '185 Berry St',
+            address_city: 'San Francisco',
+            address_state: 'CA',
+            address_zip: '94107',
+            address_country: 'US',
+          },
+          use_type: 'operational',
+          file: `<html><body style="padding:1in;font-family:Georgia,serif;font-size:12pt;line-height:1.8"><p>${sanitized}</p></body></html>`,
+          color: false,
         },
-        from: {
-          name: 't2000',
-          address_line1: '185 Berry St',
-          address_city: 'San Francisco',
-          address_state: 'CA',
-          address_zip: '94107',
-          address_country: 'US',
-        },
-        file: `<html><body style="padding:1in;font-family:Georgia,serif;font-size:12pt;line-height:1.8"><p>${sanitized}</p></body></html>`,
-        color: false,
       };
+    },
+    deliverFirst: {
+      internalUrl: `${GATEWAY_BASE}/lob/v1/mail-internal`,
     },
   },
 

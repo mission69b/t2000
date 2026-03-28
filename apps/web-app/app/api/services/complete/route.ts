@@ -199,6 +199,8 @@ async function callGateway(
 async function logToGateway(serviceId: string, amount: string, digest: string): Promise<void> {
   const serviceMap: Record<string, { service: string; endpoint: string }> = {
     'reloadly-giftcard': { service: 'reloadly', endpoint: '/v1/order' },
+    'lob-postcard': { service: 'lob', endpoint: '/v1/postcards' },
+    'lob-letter': { service: 'lob', endpoint: '/v1/letters' },
   };
   const info = serviceMap[serviceId];
   if (!info) return;
