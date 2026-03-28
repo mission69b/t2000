@@ -108,7 +108,7 @@ export const POST = chargeCustom(
       `${RELOADLY_BASE}/orders`,
       {
         method: 'POST',
-        headers: reloadlyHeaders(token, 'v2'),
+        headers: reloadlyHeaders(token),
         body: bodyText,
       },
     );

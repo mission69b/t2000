@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     `${RELOADLY_BASE}/orders`,
     {
       method: 'POST',
-      headers: reloadlyHeaders(token, 'v2'),
+      headers: reloadlyHeaders(token),
       body: JSON.stringify(body),
     },
     3,
