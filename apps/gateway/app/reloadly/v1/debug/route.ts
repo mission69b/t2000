@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
       diagnostics.product = { error: prodRes.status, body: await prodRes.text().catch(() => '') };
     }
 
-    // Step 4: Try a $5 order (smallest amount) — Uber Eats US
+    // Step 4: Try a $20 order (within $15-$100 range) — Uber Eats US
     const orderBody = {
       productId: 13044,
       quantity: 1,
-      unitPrice: 5,
+      unitPrice: 20,
       customIdentifier: `t2000-debug-${Date.now()}`,
       senderName: 't2000',
       recipientEmail: 'funkii@mission69b.com',
@@ -75,33 +75,12 @@ export async function GET(request: NextRequest) {
     });
 
     diagnostics.orderStatus = orderRes.status;
-    diagnostics.orderHeaders = Object.fromEntries(orderRes.headers.entries());
 
     const orderText = await orderRes.text();
     try {
       diagnostics.orderResponse = JSON.parse(orderText);
     } catch {
       diagnostics.orderResponse = orderText;
-    }
-
-    // Step 5: Also try with explicit countryCode to see if it matters
-    if (!orderRes.ok) {
-      const orderBody2 = { ...orderBody, customIdentifier: `t2000-debug2-${Date.now()}`, countryCode: 'US' };
-      diagnostics.retryWithCountryCode = orderBody2;
-
-      const orderRes2 = await fetch(`${RELOADLY_BASE}/orders`, {
-        method: 'POST',
-        headers: reloadlyHeaders(token),
-        body: JSON.stringify(orderBody2),
-      });
-
-      diagnostics.retryStatus = orderRes2.status;
-      const orderText2 = await orderRes2.text();
-      try {
-        diagnostics.retryResponse = JSON.parse(orderText2);
-      } catch {
-        diagnostics.retryResponse = orderText2;
-      }
     }
 
     return NextResponse.json(diagnostics, { status: 200 });
