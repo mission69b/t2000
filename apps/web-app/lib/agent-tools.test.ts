@@ -9,14 +9,14 @@ import {
 } from './agent-tools';
 
 describe('TOOL_EXECUTORS', () => {
-  it('defines exactly 26 tools (6 read + 19 service + 1 raw-service)', () => {
+  it('defines exactly 28 tools (6 read + 21 service + 1 raw-service)', () => {
     const entries = Object.entries(TOOL_EXECUTORS);
-    expect(entries.length).toBe(26);
+    expect(entries.length).toBe(28);
 
     const reads = entries.filter(([, e]) => e.type === 'read');
     const services = entries.filter(([, e]) => e.type === 'service');
     expect(reads.length).toBe(6);
-    expect(services.length).toBe(19);
+    expect(services.length).toBe(21);
   });
 
   it('every service executor has a serviceId and transform', () => {
@@ -142,9 +142,9 @@ describe('getEstimatedCost', () => {
 });
 
 describe('getAnthropicTools', () => {
-  it('returns 26 tool schemas', () => {
+  it('returns 28 tool schemas', () => {
     const tools = getAnthropicTools();
-    expect(tools.length).toBe(26);
+    expect(tools.length).toBe(28);
   });
 
   it('every tool has name, description, and input_schema', () => {
