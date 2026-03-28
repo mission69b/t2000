@@ -11,9 +11,10 @@ interface FeedRendererProps {
   onChipClick: (flow: string) => void;
   onCopy?: (text: string) => void;
   onSaveContact?: (name: string, address: string) => void;
+  onConfirmResolve?: (approved: boolean) => void;
 }
 
-export function FeedRenderer({ items, onChipClick, onCopy, onSaveContact }: FeedRendererProps) {
+export function FeedRenderer({ items, onChipClick, onCopy, onSaveContact, onConfirmResolve }: FeedRendererProps) {
   if (items.length === 0) return null;
 
   return (
@@ -25,6 +26,7 @@ export function FeedRenderer({ items, onChipClick, onCopy, onSaveContact }: Feed
           onChipClick={onChipClick}
           onCopy={onCopy}
           onSaveContact={onSaveContact}
+          onConfirmResolve={onConfirmResolve}
         />
       ))}
     </div>
@@ -66,11 +68,13 @@ function FeedItemCard({
   onChipClick,
   onCopy,
   onSaveContact,
+  onConfirmResolve,
 }: {
   item: FeedItem;
   onChipClick: (flow: string) => void;
   onCopy?: (text: string) => void;
   onSaveContact?: (name: string, address: string) => void;
+  onConfirmResolve?: (approved: boolean) => void;
 }) {
   const { data } = item;
 
@@ -264,7 +268,7 @@ function FeedItemCard({
       return <TransactionHistoryCard transactions={data.transactions} network={data.network} />;
 
     case 'agent-response':
-      return <AgentResponseCard data={data} onAction={onChipClick} />;
+      return <AgentResponseCard data={data} onAction={onChipClick} onConfirmResolve={onConfirmResolve} />;
 
     default:
       return null;
@@ -297,7 +301,45 @@ const TOOL_LABELS: Record<string, string> = {
   buy_gift_card: 'Buying gift card',
 };
 
-function AgentResponseCard({ data, onAction }: { data: Extract<import('@/lib/feed-types').FeedItemData, { type: 'agent-response' }>; onAction?: (flow: string) => void }) {
+function InlineConfirm({ tool, cost, onResolve }: { tool: string; cost: number; onResolve?: (approved: boolean) => void }) {
+  const [decided, setDecided] = React.useState(false);
+  const toolLabel = TOOL_LABELS[tool] ?? tool.replace(/_/g, ' ');
+
+  const handle = (approved: boolean) => {
+    if (decided) return;
+    setDecided(true);
+    onResolve?.(approved);
+  };
+
+  return (
+    <div className="rounded-xl border border-accent/20 bg-accent/5 p-3 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted">{toolLabel}</span>
+        <span className="text-sm font-semibold text-accent">${cost.toFixed(2)}</span>
+      </div>
+      {!decided ? (
+        <div className="flex gap-2">
+          <button
+            onClick={() => handle(false)}
+            className="flex-1 rounded-lg border border-border bg-surface py-2 text-xs font-medium text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => handle(true)}
+            className="flex-1 rounded-lg bg-accent py-2 text-xs font-semibold text-black hover:brightness-110 transition active:scale-[0.97]"
+          >
+            Approve
+          </button>
+        </div>
+      ) : (
+        <div className="text-xs text-muted text-center py-1">Processing...</div>
+      )}
+    </div>
+  );
+}
+
+function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract<import('@/lib/feed-types').FeedItemData, { type: 'agent-response' }>; onAction?: (flow: string) => void; onConfirmResolve?: (approved: boolean) => void }) {
   const [costExpanded, setCostExpanded] = React.useState(false);
   const hasSteps = data.steps.length > 0;
   const isDone = data.status === 'done';
@@ -320,7 +362,7 @@ function AgentResponseCard({ data, onAction }: { data: Extract<import('@/lib/fee
         </div>
       )}
 
-      {data.status === 'running' && !data.text && (
+      {data.status === 'running' && !data.text && !data.confirm && (
         <div className="h-3 w-full max-w-[160px] rounded-full overflow-hidden bg-border/30">
           <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
         </div>
@@ -331,6 +373,14 @@ function AgentResponseCard({ data, onAction }: { data: Extract<import('@/lib/fee
           <span className="text-muted mr-1.5 float-left leading-relaxed">t2</span>
           <AgentMarkdown text={data.text} onAction={onAction} />
         </div>
+      )}
+
+      {data.confirm && (
+        <InlineConfirm
+          tool={data.confirm.tool}
+          cost={data.confirm.cost}
+          onResolve={onConfirmResolve}
+        />
       )}
 
       {isError && data.error && (

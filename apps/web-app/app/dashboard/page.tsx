@@ -285,6 +285,7 @@ function DashboardContent() {
 
   const overnightData = useOvernightEarnings(balance.savings, balance.loading);
   const dailyReportShown = useRef(false);
+  const confirmResolverRef = useRef<((approved: boolean) => void) | null>(null);
 
   useEffect(() => {
     if (dailyReportShown.current || balance.loading || !overnightData.isFirstOpenToday) return;
@@ -779,8 +780,13 @@ function DashboardContent() {
           }));
         },
         onConfirmNeeded: async (tool: string, _args: Record<string, unknown>, cost: number) => {
-          const toolLabel = tool.replace(/_/g, ' ');
-          return window.confirm(`Approve ${toolLabel}? Estimated cost: $${cost.toFixed(2)}`);
+          return new Promise<boolean>((resolve) => {
+            confirmResolverRef.current = resolve;
+            feed.updateLastItem((prev) => {
+              if (prev.type !== 'agent-response') return prev;
+              return { ...prev, confirm: { tool, cost } };
+            });
+          });
         },
         onDone: (totalCost: number) => {
           feed.updateLastItem((prev) => {
@@ -1286,6 +1292,17 @@ function DashboardContent() {
             onChipClick={handleFeedChipClick}
             onCopy={handleCopy}
             onSaveContact={handleSaveContact}
+            onConfirmResolve={(approved) => {
+              const resolver = confirmResolverRef.current;
+              if (resolver) {
+                confirmResolverRef.current = null;
+                feed.updateLastItem((prev) => {
+                  if (prev.type !== 'agent-response') return prev;
+                  return { ...prev, confirm: undefined };
+                });
+                resolver(approved);
+              }
+            }}
           />
         )}
 
