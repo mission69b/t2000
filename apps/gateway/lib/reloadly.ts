@@ -37,11 +37,11 @@ export async function getReloadlyToken(): Promise<string> {
   return cached.token;
 }
 
-export function reloadlyHeaders(token: string): Record<string, string> {
+export function reloadlyHeaders(token: string, version: 'v1' | 'v2' = 'v1'): Record<string, string> {
   return {
     authorization: `Bearer ${token}`,
     'content-type': 'application/json',
-    accept: 'application/com.reloadly.giftcards-v2+json',
+    accept: `application/com.reloadly.giftcards-${version}+json`,
   };
 }
 
