@@ -129,7 +129,7 @@ async function handleDeliverFirst(
 
   const parsedPrice = parseFloat(mapping.price);
   const estimatedCostUsd = (serviceBody as { unitPrice?: number }).unitPrice
-    ? parseFloat(String((serviceBody as { unitPrice?: number }).unitPrice)) * 1.05
+    ? parseFloat(String((serviceBody as { unitPrice?: number }).unitPrice))
     : isNaN(parsedPrice) ? 1.0 : parsedPrice;
 
   // --- SAFETY CHECK 1: Verify user has enough USDC before touching upstream ---

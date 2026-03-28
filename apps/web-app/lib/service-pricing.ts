@@ -6,7 +6,7 @@
  * estimates that must stay in sync with gateway pricing.
  */
 
-export const GIFT_CARD_FEE_RATE = 0.05;
+export const GIFT_CARD_FEE_RATE = 0;
 
 export function giftCardPrice(faceValue: number): {
   faceValue: number;

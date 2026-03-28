@@ -241,7 +241,7 @@ export function getEstimatedCost(toolName: string, args?: Record<string, unknown
   if (executor.type === 'read') return 0;
   if (toolName === 'buy_gift_card' && args?.amount) {
     const face = Number(args.amount) || 25;
-    return +(face * 1.05).toFixed(2);
+    return face;
   }
   if (executor.estimatedCost) return executor.estimatedCost;
   if (executor.serviceId) return parseFloat(getDisplayPrice(executor.serviceId));
@@ -555,7 +555,7 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
     },
     {
       name: 'buy_gift_card',
-      description: 'Buy a gift card using a numeric productId from browse_gift_cards. Cost: face value + 5% fee. You MUST call browse_gift_cards first to get the productId. ALWAYS confirm details with the user before calling.',
+      description: 'Buy a gift card using a numeric productId from browse_gift_cards. Cost: exact face value, zero fees. You MUST call browse_gift_cards first to get the productId. ALWAYS confirm details with the user before calling.',
       input_schema: {
         type: 'object' as const,
         properties: {

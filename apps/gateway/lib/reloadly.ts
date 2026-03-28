@@ -45,4 +45,4 @@ export function reloadlyHeaders(token: string, version: 'v1' | 'v2' = 'v1'): Rec
   };
 }
 
-export const SERVICE_FEE_RATE = 0.05;
+export const SERVICE_FEE_RATE = 0;
