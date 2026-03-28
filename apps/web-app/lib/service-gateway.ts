@@ -176,10 +176,43 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     url: `${GATEWAY_BASE}/lob/v1/postcards`,
     price: '1.00',
     transformBody: (f) => {
-      require(f, 'to_name', 'to_address', 'message');
+      require(f, 'to_name', 'to_address_line1', 'to_city', 'to_state', 'to_zip', 'to_country', 'message');
       return {
-        to: { name: f.to_name, address_line1: f.to_address },
-        message: f.message,
+        to: {
+          name: f.to_name,
+          address_line1: f.to_address_line1,
+          address_line2: f.to_address_line2 ?? undefined,
+          address_city: f.to_city,
+          address_state: f.to_state,
+          address_zip: f.to_zip,
+          address_country: f.to_country,
+        },
+        from: {
+          name: 't2000',
+          address_line1: '185 Berry St',
+          address_city: 'San Francisco',
+          address_state: 'CA',
+          address_zip: '94107',
+          address_country: 'US',
+        },
+        front: `<html><body style="background:#0a0a0a;display:flex;align-items:center;justify-content:center;height:100%;font-family:monospace"><div style="color:#00ff88;font-size:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">t2000</div><div style="font-size:12px;opacity:0.6">sent with crypto</div></div></body></html>`,
+        back: `<html><body style="padding:40px;font-family:Georgia,serif;font-size:16px;line-height:1.6"><p>${(f.message ?? '').replace(/</g, '&lt;')}</p></body></html>`,
+        size: '4x6',
+      };
+    },
+  },
+
+  'lob-verify': {
+    url: `${GATEWAY_BASE}/lob/v1/verify`,
+    price: '0.01',
+    transformBody: (f) => {
+      require(f, 'primary_line');
+      return {
+        primary_line: f.primary_line,
+        secondary_line: f.secondary_line ?? undefined,
+        city: f.city ?? undefined,
+        state: f.state ?? undefined,
+        zip_code: f.zip_code ?? undefined,
       };
     },
   },

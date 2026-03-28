@@ -297,7 +297,8 @@ const TOOL_LABELS: Record<string, string> = {
   security_scan: 'Scanning URL',
   generate_image: 'Generating image',
   text_to_speech: 'Converting to speech',
-  send_postcard: 'Sending postcard',
+  send_postcard: 'Mailing postcard',
+  verify_address: 'Verifying address',
   buy_gift_card: 'Buying gift card',
 };
 

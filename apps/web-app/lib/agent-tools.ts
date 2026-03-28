@@ -127,11 +127,32 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
     type: 'service',
     serviceId: 'lob-postcard',
     estimatedCost: 1.0,
-    transform: (a) => ({
-      to_name: String(a.to_name),
-      to_address: String(a.to_address),
-      message: String(a.message),
-    }),
+    transform: (a) => {
+      const fields: Record<string, string> = {
+        to_name: String(a.to_name),
+        to_address_line1: String(a.to_address_line1),
+        to_city: String(a.to_city),
+        to_state: String(a.to_state),
+        to_zip: String(a.to_zip),
+        to_country: String(a.to_country ?? 'US'),
+        message: String(a.message),
+      };
+      if (a.to_address_line2) fields.to_address_line2 = String(a.to_address_line2);
+      return fields;
+    },
+  },
+  verify_address: {
+    type: 'service',
+    serviceId: 'lob-verify',
+    estimatedCost: 0.01,
+    transform: (a) => {
+      const fields: Record<string, string> = { primary_line: String(a.primary_line) };
+      if (a.secondary_line) fields.secondary_line = String(a.secondary_line);
+      if (a.city) fields.city = String(a.city);
+      if (a.state) fields.state = String(a.state);
+      if (a.zip_code) fields.zip_code = String(a.zip_code);
+      return fields;
+    },
   },
   browse_gift_cards: {
     type: 'service',
@@ -363,16 +384,36 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
       },
     },
     {
+      name: 'verify_address',
+      description: 'Verify a US address before sending mail. Cost: $0.01. Returns deliverability status and standardized address. ALWAYS call this before send_postcard for US addresses.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          primary_line: { type: 'string', description: 'Street address (e.g. "185 Berry St Suite 6100")' },
+          secondary_line: { type: 'string', description: 'Apt/Suite if separate' },
+          city: { type: 'string', description: 'City name' },
+          state: { type: 'string', description: 'State code (e.g. "CA")' },
+          zip_code: { type: 'string', description: 'ZIP code' },
+        },
+        required: ['primary_line'],
+      },
+    },
+    {
       name: 'send_postcard',
-      description: 'Mail a physical postcard to any address via Lob. Cost: ~$1.00.',
+      description: 'Mail a physical postcard to any address worldwide via Lob. Cost: ~$1.00. The front shows a t2000 branded design, the back has your message. Lob returns thumbnails and expected delivery date. MUST confirm with user before calling.',
       input_schema: {
         type: 'object' as const,
         properties: {
           to_name: { type: 'string', description: 'Recipient full name' },
-          to_address: { type: 'string', description: 'Full mailing address' },
-          message: { type: 'string', description: 'Postcard message text' },
+          to_address_line1: { type: 'string', description: 'Street address line 1' },
+          to_address_line2: { type: 'string', description: 'Apartment, suite, etc. (optional)' },
+          to_city: { type: 'string', description: 'City' },
+          to_state: { type: 'string', description: 'State/province code' },
+          to_zip: { type: 'string', description: 'ZIP/postal code' },
+          to_country: { type: 'string', description: 'Country code (e.g. "US", "AU", "GB"). Defaults to US.' },
+          message: { type: 'string', description: 'Message for the back of the postcard (max ~350 chars)' },
         },
-        required: ['to_name', 'to_address', 'message'],
+        required: ['to_name', 'to_address_line1', 'to_city', 'to_state', 'to_zip', 'message'],
       },
     },
     {
@@ -511,6 +552,14 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
   Then add a brief message like "Tap **Redeem Now** to use it."
   If cardNumber is missing, just share the redemptionUrl as a link and tell them to check their email.
   Be proactive: "I'm hungry" → immediately browse food delivery cards. "I need toilet paper" → browse grocery/retail cards. Don't explain what a gift card is — just present the option and wait for confirmation.
+- PHYSICAL MAIL (postcards): You can mail a real postcard anywhere in the world for ~$1. The front has a t2000 branded design, the back has the user's message.
+  Flow (MUST follow):
+    STEP 1 — Collect details: Get recipient name, full address (street, city, state, zip, country), and the message. Parse addresses intelligently — "123 Main St, Sydney NSW 2000, Australia" → line1: "123 Main St", city: "Sydney", state: "NSW", zip: "2000", country: "AU". For US addresses, call verify_address first ($0.01) to check deliverability.
+    STEP 2 — Confirm: Show a summary: "Sending a postcard to **Name** at City, State. Message: '...' — Cost: ~$1.05. Send it?" Do NOT call send_postcard yet.
+    STEP 3 — Send (only after user confirms): call send_postcard.
+  After success, the result contains expected_delivery_date and thumbnails. Render using this EXACT syntax on its own line:
+  <<postcard to="Name — City, State" message="The message text" delivery="Apr 5, 2026" tracking="psc_xxx" front="thumbnail_url" back="thumbnail_url">>
+  If thumbnails are in result.thumbnails (array of objects with large/medium/small URLs), use the "medium" size. If not available, omit front/back attrs.
 - NEVER pad responses with filler like "Sure!", "I'd be happy to help!", "Great choice!", "Let me help you with that!". Get straight to the action. Example: user says "I'm hungry" → you say "Let me find food delivery options for you." then call browse_gift_cards. NOT "I'd be happy to help you with that! Let me look into some food delivery options in your area."
 - When the user says "email me" or "send me", use their email: ${email}
 - Show prices in USD. Show crypto amounts with appropriate precision.

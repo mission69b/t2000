@@ -74,12 +74,22 @@ interface GiftCardData {
   url: string;
 }
 
+interface PostcardData {
+  to: string;
+  message: string;
+  delivery: string;
+  tracking: string;
+  front?: string;
+  back?: string;
+}
+
 type LineData =
   | { type: 'paragraph'; segments: Segment[] }
   | { type: 'heading'; level: number; segments: Segment[] }
   | { type: 'list-item'; number: number; segments: Segment[] }
   | { type: 'bullet-item'; segments: Segment[] }
   | { type: 'giftcard'; data: GiftCardData }
+  | { type: 'postcard'; data: PostcardData }
   | { type: 'spacer' };
 
 function parseLines(text: string): LineData[] {
@@ -100,6 +110,15 @@ function parseLines(text: string): LineData[] {
       result.push({
         type: 'giftcard',
         data: { brand: gcMatch[1], amount: gcMatch[2], code: gcMatch[3], url: gcMatch[4] },
+      });
+      continue;
+    }
+
+    const pcMatch = trimmed.match(/^<<postcard\s+to="([^"]+)"\s+message="([^"]+)"\s+delivery="([^"]+)"\s+tracking="([^"]*)"(?:\s+front="([^"]*)")?(?:\s+back="([^"]*)")?\s*>>$/);
+    if (pcMatch) {
+      result.push({
+        type: 'postcard',
+        data: { to: pcMatch[1], message: pcMatch[2], delivery: pcMatch[3], tracking: pcMatch[4], front: pcMatch[5], back: pcMatch[6] },
       });
       continue;
     }
@@ -249,6 +268,41 @@ function GiftCardVisual({ data }: { data: GiftCardData }) {
   );
 }
 
+function PostcardVisual({ data }: { data: PostcardData }) {
+  return (
+    <div className="my-2 rounded-2xl overflow-hidden border border-blue-400/20 bg-gradient-to-br from-blue-500/10 via-surface to-blue-400/5">
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-blue-400/60 font-medium">Postcard Sent</div>
+            <div className="text-sm font-semibold text-foreground mt-0.5">To: {data.to}</div>
+          </div>
+          <div className="text-2xl">📬</div>
+        </div>
+        <p className="text-xs text-muted mt-2 italic leading-relaxed">&ldquo;{data.message}&rdquo;</p>
+      </div>
+
+      {(data.front || data.back) && (
+        <div className="px-4 pb-2 flex gap-2">
+          {data.front && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={data.front} alt="Postcard front" className="w-1/2 rounded-lg border border-white/10" />
+          )}
+          {data.back && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={data.back} alt="Postcard back" className="w-1/2 rounded-lg border border-white/10" />
+          )}
+        </div>
+      )}
+
+      <div className="px-4 pb-4 flex items-center justify-between text-xs text-muted">
+        <span>Est. delivery: <span className="text-foreground font-medium">{data.delivery}</span></span>
+        {data.tracking && <span className="font-mono text-[11px]">{data.tracking}</span>}
+      </div>
+    </div>
+  );
+}
+
 export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
   const lines = parseLines(text);
 
@@ -261,6 +315,10 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
 
         if (line.type === 'giftcard') {
           return <GiftCardVisual key={i} data={line.data} />;
+        }
+
+        if (line.type === 'postcard') {
+          return <PostcardVisual key={i} data={line.data} />;
         }
 
         if (line.type === 'heading') {
