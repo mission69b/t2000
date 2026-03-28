@@ -15,50 +15,6 @@ export const metadata: Metadata = {
   },
 };
 
-const FEATURES = [
-  {
-    icon: "◈",
-    title: "Save & earn yield",
-    desc: "Idle funds earn 2–8% APY automatically. Best rate across protocols.",
-  },
-  {
-    icon: "⇌",
-    title: "Send, swap & invest",
-    desc: "Move money, swap tokens, buy crypto and gold. All by asking.",
-  },
-  {
-    icon: "◎",
-    title: "Borrow instantly",
-    desc: "Credit against your savings. No paperwork. Repay anytime.",
-  },
-  {
-    icon: "⟳",
-    title: "Rebalance in one tap",
-    desc: "AI compares rates across every protocol. Switch with one confirmation.",
-  },
-  {
-    icon: "✦",
-    title: "Buy real things",
-    desc: "Gift cards, physical mail, flight searches, translations — 41 services.",
-  },
-  {
-    icon: "◆",
-    title: "Risk monitoring",
-    desc: "Health factor, liquidation thresholds, debt exposure — always watching.",
-  },
-];
-
-const ZERO_LIST = [
-  "No seed phrase",
-  "No private key",
-  "No wallet extension",
-  "No gas fees",
-  "No credit card",
-  "No API keys",
-  "No app install",
-  "No crypto jargon",
-];
-
 export default function AppPage() {
   return (
     <main className="min-h-screen bg-background text-foreground relative z-10">
@@ -81,18 +37,16 @@ export default function AppPage() {
 
         {/* Hero */}
         <section className="mb-20 sm:mb-28">
-          <p className="text-xs font-mono text-accent mb-4 tracking-wider uppercase">
-            Consumer app
-          </p>
           <h1 className="text-3xl sm:text-5xl font-serif italic text-foreground tracking-tight leading-[1.15] mb-6">
             A banking app where you
             <br />
-            talk to your money.
+            talk to your{" "}
+            <em className="italic text-accent">money.</em>
           </h1>
           <p className="text-sm sm:text-base text-muted font-mono leading-relaxed max-w-xl mb-10">
-            Sign in with your email. Save, send, invest, borrow, buy gift cards,
-            mail postcards, search flights — all from a single chat interface.
-            Your AI handles everything.
+            Sign in with email. Save, earn yield, buy gift cards, mail
+            postcards, search flights — all from one chat. No seed phrase, no
+            gas, no credit card.
           </p>
           <a
             href={APP_URL}
@@ -105,46 +59,48 @@ export default function AppPage() {
 
         {/* Zero friction */}
         <section className="mb-20 sm:mb-28">
-          <h2 className="text-lg sm:text-xl font-serif italic text-foreground mb-8">
-            Zero friction
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {ZERO_LIST.map((item) => (
-              <div
+          <div className="flex flex-wrap gap-2">
+            {[
+              "No seed phrase",
+              "No gas fees",
+              "No credit card",
+              "No wallet extension",
+              "No app install",
+              "No crypto jargon",
+            ].map((item) => (
+              <span
                 key={item}
-                className="border border-border rounded-lg px-4 py-3 text-center"
+                className="text-xs font-mono text-muted border border-border rounded-full px-3.5 py-1.5"
               >
-                <span className="text-xs font-mono text-accent">✓</span>
-                <p className="text-xs font-mono text-muted mt-1">{item}</p>
-              </div>
+                {item}
+              </span>
             ))}
           </div>
-          <p className="text-xs font-mono text-dim mt-6 leading-relaxed">
-            Powered by Sui. Gas is sponsored — you never pay network fees. No
-            blockchain knowledge needed.
-          </p>
         </section>
 
-        {/* Features */}
+        {/* What you can say */}
         <section className="mb-20 sm:mb-28">
           <h2 className="text-lg sm:text-xl font-serif italic text-foreground mb-8">
-            What your AI can do
+            Things you can say
           </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {FEATURES.map((f) => (
+          <div className="space-y-2">
+            {[
+              { q: "\"Coffee run\"", a: "Gift card, 15 seconds" },
+              { q: "\"Am I getting the best yield?\"", a: "Compared every protocol" },
+              { q: "\"Send mum a birthday postcard\"", a: "Printed, mailed — $1" },
+              { q: "\"Find me flights to Tokyo\"", a: "Searched, compared, emailed" },
+              { q: "\"Save my idle cash\"", a: "Deposited into 6.5% APY" },
+            ].map((d) => (
               <div
-                key={f.title}
-                className="border border-border rounded-lg p-5 hover:border-border-bright transition-colors"
+                key={d.q}
+                className="flex items-baseline justify-between gap-4 py-2.5 border-b border-border"
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-accent text-sm">{f.icon}</span>
-                  <h3 className="text-sm font-mono text-foreground font-medium">
-                    {f.title}
-                  </h3>
-                </div>
-                <p className="text-xs font-mono text-muted leading-relaxed">
-                  {f.desc}
-                </p>
+                <span className="text-sm font-mono text-foreground">
+                  {d.q}
+                </span>
+                <span className="text-xs font-mono text-muted shrink-0">
+                  {d.a}
+                </span>
               </div>
             ))}
           </div>
@@ -157,26 +113,9 @@ export default function AppPage() {
           </h2>
           <div className="space-y-6">
             {[
-              {
-                num: "01",
-                title: "Sign in",
-                desc: "Email only. Under 10 seconds. No wallet, no extension, no seed phrase.",
-              },
-              {
-                num: "02",
-                title: "Fund",
-                desc: "Send USDC to your address from any Sui wallet or exchange.",
-              },
-              {
-                num: "03",
-                title: "Talk",
-                desc: "Tap a chip or type what you need. The AI finds the best way to do it.",
-              },
-              {
-                num: "04",
-                title: "Confirm",
-                desc: "Every transaction shows you exactly what happens and what it costs. One tap.",
-              },
+              { num: "01", title: "Sign in with email", desc: "Google sign-in. Under 10 seconds. No wallet, no extension." },
+              { num: "02", title: "Fund your account", desc: "Send USDC from any exchange or Sui wallet." },
+              { num: "03", title: "Ask for anything", desc: "Tap a chip or type. The AI handles the rest." },
             ].map((step) => (
               <div key={step.num} className="flex gap-4 items-start">
                 <span className="text-xs font-mono text-accent mt-0.5 shrink-0">
@@ -195,56 +134,11 @@ export default function AppPage() {
           </div>
         </section>
 
-        {/* Demos */}
-        <section className="mb-20 sm:mb-28">
-          <h2 className="text-lg sm:text-xl font-serif italic text-foreground mb-8">
-            Real things people said this week
-          </h2>
-          <div className="space-y-3">
-            {[
-              { q: '"I\'m hungry"', a: "→ $25 Uber Eats gift card. 15 seconds." },
-              {
-                q: '"Send mum a birthday postcard"',
-                a: "→ Physical postcard, printed and mailed. $1.",
-              },
-              {
-                q: '"Am I getting the best yield?"',
-                a: "→ Compared every protocol in 2 seconds. Already optimal.",
-              },
-              {
-                q: '"Find me flights to Tokyo"',
-                a: "→ Searched, compared, emailed. Under a minute.",
-              },
-              {
-                q: '"Complain to my ISP"',
-                a: "→ Wrote a formal letter and physically posted it. $1.50.",
-              },
-            ].map((d) => (
-              <div
-                key={d.q}
-                className="border border-border rounded-lg px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3"
-              >
-                <span className="text-sm font-mono text-foreground font-medium shrink-0">
-                  {d.q}
-                </span>
-                <span className="text-xs font-mono text-muted">{d.a}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs font-mono text-dim mt-4">
-            41 services. 90 endpoints. All paid from your balance — no credit
-            card, no API keys, no signups.
-          </p>
-        </section>
-
         {/* CTA */}
         <section className="text-center py-12 sm:py-16 border-t border-border">
-          <h2 className="text-2xl sm:text-3xl font-serif italic text-foreground mb-3">
+          <h2 className="text-2xl sm:text-3xl font-serif italic text-foreground mb-6">
             Try it now
           </h2>
-          <p className="text-sm font-mono text-muted mb-8">
-            Sign in with email. Free. Works on any device.
-          </p>
           <a
             href={APP_URL}
             className="inline-flex items-center gap-2 bg-accent text-background font-mono text-sm font-medium px-8 py-3.5 rounded-md hover:brightness-110 transition-all"
@@ -258,17 +152,17 @@ export default function AppPage() {
           <Link href="/" className="hover:text-muted transition-colors">
             Home
           </Link>
-          <Link href="/docs" className="hover:text-muted transition-colors">
-            Docs
-          </Link>
-          <Link href="/demo" className="hover:text-muted transition-colors">
-            Demo
-          </Link>
           <Link href="/privacy" className="hover:text-muted transition-colors">
             Privacy
           </Link>
           <Link href="/terms" className="hover:text-muted transition-colors">
             Terms
+          </Link>
+          <Link
+            href="/disclaimer"
+            className="hover:text-muted transition-colors"
+          >
+            Disclaimer
           </Link>
         </footer>
       </div>
