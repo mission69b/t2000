@@ -202,6 +202,36 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     },
   },
 
+  'lob-letter': {
+    url: `${GATEWAY_BASE}/lob/v1/letters`,
+    price: '1.50',
+    transformBody: (f) => {
+      require(f, 'to_name', 'to_address_line1', 'to_city', 'to_state', 'to_zip', 'to_country', 'body');
+      const sanitized = (f.body ?? '').replace(/</g, '&lt;').replace(/\n/g, '<br/>');
+      return {
+        to: {
+          name: f.to_name,
+          address_line1: f.to_address_line1,
+          address_line2: f.to_address_line2 ?? undefined,
+          address_city: f.to_city,
+          address_state: f.to_state,
+          address_zip: f.to_zip,
+          address_country: f.to_country,
+        },
+        from: {
+          name: 't2000',
+          address_line1: '185 Berry St',
+          address_city: 'San Francisco',
+          address_state: 'CA',
+          address_zip: '94107',
+          address_country: 'US',
+        },
+        file: `<html><body style="padding:1in;font-family:Georgia,serif;font-size:12pt;line-height:1.8"><p>${sanitized}</p></body></html>`,
+        color: false,
+      };
+    },
+  },
+
   'lob-verify': {
     url: `${GATEWAY_BASE}/lob/v1/verify`,
     price: '0.01',

@@ -298,6 +298,7 @@ const TOOL_LABELS: Record<string, string> = {
   generate_image: 'Generating image',
   text_to_speech: 'Converting to speech',
   send_postcard: 'Mailing postcard',
+  send_letter: 'Mailing letter',
   verify_address: 'Verifying address',
   buy_gift_card: 'Buying gift card',
 };

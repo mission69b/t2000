@@ -141,6 +141,24 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
       return fields;
     },
   },
+  send_letter: {
+    type: 'service',
+    serviceId: 'lob-letter',
+    estimatedCost: 1.5,
+    transform: (a) => {
+      const fields: Record<string, string> = {
+        to_name: String(a.to_name),
+        to_address_line1: String(a.to_address_line1),
+        to_city: String(a.to_city),
+        to_state: String(a.to_state),
+        to_zip: String(a.to_zip),
+        to_country: String(a.to_country ?? 'US'),
+        body: String(a.body),
+      };
+      if (a.to_address_line2) fields.to_address_line2 = String(a.to_address_line2);
+      return fields;
+    },
+  },
   verify_address: {
     type: 'service',
     serviceId: 'lob-verify',
@@ -417,6 +435,24 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
       },
     },
     {
+      name: 'send_letter',
+      description: 'Mail a physical letter to any address worldwide via Lob. Cost: ~$1.50. Printed on standard letter paper, mailed in an envelope. MUST confirm with user before calling.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          to_name: { type: 'string', description: 'Recipient full name' },
+          to_address_line1: { type: 'string', description: 'Street address line 1' },
+          to_address_line2: { type: 'string', description: 'Apartment, suite, etc. (optional)' },
+          to_city: { type: 'string', description: 'City' },
+          to_state: { type: 'string', description: 'State/province code' },
+          to_zip: { type: 'string', description: 'ZIP/postal code' },
+          to_country: { type: 'string', description: 'Country code (e.g. "US", "AU", "GB"). Defaults to US.' },
+          body: { type: 'string', description: 'The letter body text. Can be multiple paragraphs. Will be printed on standard letter paper.' },
+        },
+        required: ['to_name', 'to_address_line1', 'to_city', 'to_state', 'to_zip', 'body'],
+      },
+    },
+    {
       name: 'browse_gift_cards',
       description: 'Browse available gift card brands and their productIds for a country. ALWAYS call this BEFORE buy_gift_card to get the correct numeric productId. Returns a list of products with id, name, denomination type, and price range.',
       input_schema: {
@@ -552,7 +588,7 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
   Then add a brief message like "Tap **Redeem Now** to use it."
   If cardNumber is missing, just share the redemptionUrl as a link and tell them to check their email.
   Be proactive: "I'm hungry" → immediately browse food delivery cards. "I need toilet paper" → browse grocery/retail cards. Don't explain what a gift card is — just present the option and wait for confirmation.
-- PHYSICAL MAIL (postcards): You can mail a real postcard anywhere in the world for ~$1. The front has a t2000 branded design, the back has the user's message.
+- PHYSICAL MAIL (postcards + letters): You can mail a real postcard (~$1) or letter (~$1.50) anywhere in the world. Postcards: t2000 branded front, user's message on back. Letters: printed on letter paper in an envelope — good for longer messages, formal notes, or anything that doesn't fit a postcard. Choose the right format for the user's intent: "send a birthday card" → postcard, "write a letter to my landlord" → letter.
   Flow (MUST follow):
     STEP 1 — Collect details: Get recipient name, full address (street, city, state, zip, country), and the message. Parse addresses intelligently — "123 Main St, Sydney NSW 2000, Australia" → line1: "123 Main St", city: "Sydney", state: "NSW", zip: "2000", country: "AU". For US addresses, call verify_address first ($0.01) to check deliverability.
     STEP 2 — Confirm: Show a summary: "Sending a postcard to **Name** at City, State. Message: '...' — Cost: ~$1.05. Send it?" Do NOT call send_postcard yet.
