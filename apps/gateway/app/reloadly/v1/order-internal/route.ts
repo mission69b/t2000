@@ -139,8 +139,12 @@ export async function POST(request: NextRequest) {
   );
 
   if (!orderRes.ok) {
-    const errorData = await orderRes.json().catch(() => ({ message: 'Unknown error' }));
-    const msg = (errorData as { message?: string }).message ?? 'Gift card order failed';
+    const errorText = await orderRes.text().catch(() => '');
+    let errorData: Record<string, unknown> = { message: 'Unknown error' };
+    try { errorData = JSON.parse(errorText); } catch { errorData = { message: errorText || 'Unknown error' }; }
+    const msg = (errorData.message as string) ?? 'Gift card order failed';
+    console.error(`[reloadly/order-internal] Reloadly ${orderRes.status}: ${JSON.stringify(errorData)}`);
+    console.error(`[reloadly/order-internal] Request body: ${JSON.stringify(body)}`);
     return NextResponse.json({ error: msg, detail: errorData }, { status: orderRes.status });
   }
 

@@ -41,7 +41,7 @@ export function reloadlyHeaders(token: string): Record<string, string> {
   return {
     authorization: `Bearer ${token}`,
     'content-type': 'application/json',
-    accept: 'application/com.reloadly.giftcards-v1+json',
+    accept: 'application/com.reloadly.giftcards-v2+json',
   };
 }
 

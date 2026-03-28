@@ -162,11 +162,66 @@ export function deriveContextualChips(
     });
   }
 
+  // --- Seasonal gift awareness ---
+
+  const now = new Date();
+  const month = now.getMonth(); // 0-indexed
+  const day = now.getDate();
+  const hasFunds = state.cash > 0 || state.savings > 0;
+
+  if (hasFunds && state.cash >= 10) {
+    if (month === 11 && day >= 1 && day <= 25) {
+      chips.push({
+        id: 'christmas',
+        icon: '🎄',
+        label: 'Christmas gifts',
+        agentPrompt: 'Help me with Christmas gift ideas. I want to buy gifts for my family and friends. What can you help me get?',
+        priority: 35,
+        dismissible: true,
+      });
+    } else if (month === 1 && day >= 1 && day <= 14) {
+      chips.push({
+        id: 'valentines',
+        icon: '❤',
+        label: "Valentine's gift",
+        agentPrompt: "Help me with a Valentine's Day gift. Something thoughtful — maybe a gift card and a postcard with a custom AI-generated design?",
+        priority: 35,
+        dismissible: true,
+      });
+    } else if (month === 4 && day >= 1 && day <= 14) {
+      chips.push({
+        id: 'mothers-day',
+        icon: '💐',
+        label: "Gift for mum",
+        agentPrompt: "Mother's Day is coming up. Help me buy a gift for mum — maybe an Amazon gift card and a postcard with a nice message?",
+        priority: 35,
+        dismissible: true,
+      });
+    } else if (month === 5 && day >= 1 && day <= 21) {
+      chips.push({
+        id: 'fathers-day',
+        icon: '🎁',
+        label: "Gift for dad",
+        agentPrompt: "Father's Day is coming up. Help me buy a gift for dad — what's available?",
+        priority: 35,
+        dismissible: true,
+      });
+    } else if (month === 10 && day >= 20 && day <= 31) {
+      chips.push({
+        id: 'halloween',
+        icon: '🎃',
+        label: 'Halloween treats',
+        agentPrompt: 'Halloween is coming! Help me with something fun — maybe a custom Halloween design on a mug or a spooky AI-generated postcard?',
+        priority: 30,
+        dismissible: true,
+      });
+    }
+  }
+
   // --- Time-of-day awareness ---
 
-  const hour = new Date().getHours();
-  const dayOfWeek = new Date().getDay();
-  const hasFunds = state.cash > 0 || state.savings > 0;
+  const hour = now.getHours();
+  const dayOfWeek = now.getDay();
 
   if (hasFunds) {
     if (hour >= 6 && hour < 10) {
@@ -257,6 +312,14 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
       return { id: 'post-flights', icon: '✈', label: 'Email me these results', agentPrompt: 'Email me those flight results', priority: 40 };
     case 'generate_image':
       return { id: 'post-image', icon: '🎨', label: 'Generate another', agentPrompt: '', priority: 40 };
+    case 'buy_gift_card':
+      return { id: 'post-gift', icon: '💌', label: 'Send a card too?', agentPrompt: 'Send a postcard to go with the gift card I just bought. Help me write a nice message and mail it.', priority: 45 };
+    case 'send_postcard':
+      return { id: 'post-postcard', icon: '🎁', label: 'Add a gift card?', agentPrompt: 'Browse gift cards I can send to go with the postcard I just mailed.', priority: 45 };
+    case 'send_letter':
+      return { id: 'post-letter', icon: '🎁', label: 'Add a gift card?', agentPrompt: 'Browse gift cards I can send along with the letter I just mailed.', priority: 45 };
+    case 'place_order':
+      return { id: 'post-merch', icon: '💌', label: 'Send them a note?', agentPrompt: 'Send a postcard to the person I just ordered the gift for. Help me write a nice message.', priority: 45 };
     case 'get_crypto_price':
     case 'get_stock_quote':
       return { id: 'post-price', icon: '💹', label: 'Check portfolio', agentPrompt: 'How does my portfolio compare to what I just looked up? Show me my holdings and P&L.', priority: 40 };
