@@ -40,7 +40,7 @@ type Segment =
 
 function parseInline(text: string): Segment[] {
   const segments: Segment[] = [];
-  const regex = /(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\[([A-Z][^\]]*)\])/g;
+  const regex = /(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\[([A-Za-z][^\]]*)\])/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 

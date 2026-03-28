@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const USDC_DECIMALS = 6;
 
-const DAILY_GIFT_CARD_LIMIT_USD = 50;
-const MONTHLY_GIFT_CARD_LIMIT_USD = 500;
+const DAILY_PURCHASE_LIMIT_USD = 50;
+const MONTHLY_PURCHASE_LIMIT_USD = 500;
 
 /**
  * Deliver-first: call upstream BEFORE building any payment.
@@ -127,9 +127,10 @@ async function handleDeliverFirst(
     return NextResponse.json({ error: 'Service not configured' }, { status: 500 });
   }
 
+  const parsedPrice = parseFloat(mapping.price);
   const estimatedCostUsd = (serviceBody as { unitPrice?: number }).unitPrice
     ? parseFloat(String((serviceBody as { unitPrice?: number }).unitPrice)) * 1.05
-    : parseFloat(mapping.price);
+    : isNaN(parsedPrice) ? 1.0 : parsedPrice;
 
   // --- SAFETY CHECK 1: Verify user has enough USDC before touching upstream ---
   const coins = await client.getCoins({ owner: address, coinType: USDC_TYPE });
@@ -408,12 +409,12 @@ async function checkSpendingLimits(address: string, amountUsd: number): Promise<
     const dailyTotal = (dailySpend._sum.amountUsd ?? 0) + amountUsd;
     const monthlyTotal = (monthlySpend._sum.amountUsd ?? 0) + amountUsd;
 
-    if (dailyTotal > DAILY_GIFT_CARD_LIMIT_USD) {
-      return `Daily gift card limit reached ($${DAILY_GIFT_CARD_LIMIT_USD}/day). You've spent $${(dailyTotal - amountUsd).toFixed(2)} today. Try again tomorrow.`;
+    if (dailyTotal > DAILY_PURCHASE_LIMIT_USD) {
+      return `Daily purchase limit reached ($${DAILY_PURCHASE_LIMIT_USD}/day). You've spent $${(dailyTotal - amountUsd).toFixed(2)} today. Try again tomorrow.`;
     }
 
-    if (monthlyTotal > MONTHLY_GIFT_CARD_LIMIT_USD) {
-      return `Monthly gift card limit reached ($${MONTHLY_GIFT_CARD_LIMIT_USD}/month). You've spent $${(monthlyTotal - amountUsd).toFixed(2)} this month.`;
+    if (monthlyTotal > MONTHLY_PURCHASE_LIMIT_USD) {
+      return `Monthly purchase limit reached ($${MONTHLY_PURCHASE_LIMIT_USD}/month). You've spent $${(monthlyTotal - amountUsd).toFixed(2)} this month.`;
     }
 
     return null;

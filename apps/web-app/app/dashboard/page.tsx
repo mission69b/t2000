@@ -802,12 +802,23 @@ function DashboardContent() {
             });
           }
         },
-        onConfirmNeeded: async (tool: string, _args: Record<string, unknown>, cost: number) => {
+        onConfirmNeeded: async (tool: string, args: Record<string, unknown>, cost: number) => {
+          const summaryParts: string[] = [];
+          if (args.to_name) summaryParts.push(`To: ${args.to_name}`);
+          if (args.recipient_name) summaryParts.push(`To: ${args.recipient_name}`);
+          if (args.email) summaryParts.push(`Email: ${args.email}`);
+          if (args.to) summaryParts.push(`To: ${args.to}`);
+          if (args.amount) summaryParts.push(`$${args.amount}`);
+          if (args.brand) summaryParts.push(String(args.brand));
+          if (args.message && String(args.message).length <= 60) summaryParts.push(`"${args.message}"`);
+          if (args.path) summaryParts.push(String(args.path));
+          const summary = summaryParts.length > 0 ? summaryParts.join(' · ') : undefined;
+
           return new Promise<boolean>((resolve) => {
             confirmResolverRef.current = resolve;
             feed.updateLastItem((prev) => {
               if (prev.type !== 'agent-response') return prev;
-              return { ...prev, confirm: { tool, cost } };
+              return { ...prev, confirm: { tool, cost, summary } };
             });
           });
         },

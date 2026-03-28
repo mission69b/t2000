@@ -33,7 +33,7 @@ export type FeedItemData =
   | { type: 'error'; message: string; chips?: { label: string; flow: string }[] }
   | { type: 'contact-prompt'; address: string }
   | { type: 'transaction-history'; transactions: TxHistoryEntry[]; network: string }
-  | { type: 'agent-response'; steps: AgentStepData[]; text?: string; totalCost?: number; status: 'running' | 'done' | 'error'; error?: string; confirm?: { tool: string; cost: number } };
+  | { type: 'agent-response'; steps: AgentStepData[]; text?: string; totalCost?: number; status: 'running' | 'done' | 'error'; error?: string; confirm?: { tool: string; cost: number; summary?: string } };
 
 export interface AgentStepData {
   tool: string;

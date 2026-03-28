@@ -304,9 +304,12 @@ const TOOL_LABELS: Record<string, string> = {
   browse_products: 'Browsing products',
   estimate_order: 'Estimating cost',
   place_order: 'Placing order',
+  browse_gift_cards: 'Browsing gift cards',
+  discover_services: 'Discovering services',
+  use_service: 'Calling service',
 };
 
-function InlineConfirm({ tool, cost, onResolve }: { tool: string; cost: number; onResolve?: (approved: boolean) => void }) {
+function InlineConfirm({ tool, cost, summary, onResolve }: { tool: string; cost: number; summary?: string; onResolve?: (approved: boolean) => void }) {
   const [decided, setDecided] = React.useState(false);
   const toolLabel = TOOL_LABELS[tool] ?? tool.replace(/_/g, ' ');
 
@@ -322,6 +325,9 @@ function InlineConfirm({ tool, cost, onResolve }: { tool: string; cost: number; 
         <span className="text-xs text-muted">{toolLabel}</span>
         <span className="text-sm font-semibold text-accent">${cost.toFixed(2)}</span>
       </div>
+      {summary && (
+        <div className="text-xs text-foreground/70 truncate">{summary}</div>
+      )}
       {!decided ? (
         <div className="flex gap-2">
           <button
@@ -384,6 +390,7 @@ function AgentResponseCard({ data, onAction, onConfirmResolve }: { data: Extract
         <InlineConfirm
           tool={data.confirm.tool}
           cost={data.confirm.cost}
+          summary={data.confirm.summary}
           onResolve={onConfirmResolve}
         />
       )}

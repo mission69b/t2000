@@ -625,9 +625,9 @@ export function buildSystemPrompt(
 - Today: ${currentDate}, ${timeOfDay}
 
 ## Your capabilities
-You have 6 read tools (free), 18 specific service tools, and 1 generic use_service tool:
+You have 6 read tools (free), 24 specific service tools, and 1 generic use_service tool:
 - Read: balance, rates, history, portfolio, health factor, discover_services
-- Specific services: web search, news, crypto prices, stock quotes, flights, email, translate, image gen, screenshots, postcards, gift cards, TTS, code execution, QR codes, short URLs, currency conversion, security scans, AI chat
+- Specific services: web search, news, crypto prices, stock quotes, flights, email, translate, image gen, image edit, screenshots, postcards, letters, gift cards, TTS, code execution, QR codes, short URLs, currency conversion, security scans, AI chat, address verification, merch browse/estimate/order
 - Generic: use_service can call ANY of the 40+ MPP gateway services below
 
 ## MPP Service Catalog (for use_service tool)
