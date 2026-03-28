@@ -34,7 +34,7 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
   };
   const token = await getReloadlyToken();
   const headers = reloadlyHeaders(token);
-  const base = `${RELOADLY_BASE}/countries/${encodeURIComponent(countryCode)}/products`;
+  const cc = encodeURIComponent(countryCode);
 
   const all: { productName: string; [k: string]: unknown }[] = [];
   let page = 1;
@@ -42,7 +42,7 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
 
   while (true) {
     const res = await fetchWithRetry(
-      `${base}?size=${size}&page=${page}&includeRange=true&includeFixed=true`,
+      `${RELOADLY_BASE}/products?countryCode=${cc}&size=${size}&page=${page}&includeRange=true&includeFixed=true`,
       { method: 'GET', headers },
     );
 
