@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg, detail: errorData }, { status: orderRes.status });
   }
 
-  const result = (await orderRes.json()) as { transactionId?: number; product?: { productName?: string; currencyCode?: string } };
+  const result = (await orderRes.json()) as { transactionId?: number; product?: { productName?: string; currencyCode?: string; countryCode?: string } };
   const quantity = body.quantity ?? 1;
   const price = (body.unitPrice * quantity * (1 + SERVICE_FEE_RATE)).toFixed(2);
 
