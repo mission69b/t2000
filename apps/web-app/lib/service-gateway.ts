@@ -199,8 +199,8 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
             address_country: 'US',
           },
           use_type: 'operational',
-          front: `<html><body style="background:#0a0a0a;display:flex;align-items:center;justify-content:center;height:100%;font-family:monospace"><div style="color:#00ff88;font-size:18px;text-align:center"><div style="font-size:32px;margin-bottom:8px">t2000</div><div style="font-size:12px;opacity:0.6">sent with crypto</div></div></body></html>`,
-          back: `<html><body style="padding:40px;font-family:Georgia,serif;font-size:16px;line-height:1.6"><p>${(f.message ?? '').replace(/</g, '&lt;')}</p></body></html>`,
+          front: `<html><body style="margin:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;height:100%;font-family:Georgia,serif"><div style="text-align:center;padding:40px"><p style="color:#ffffff;font-size:18px;line-height:1.6;margin:0 0 24px">${(f.message ?? '').replace(/</g, '&lt;')}</p><div style="color:#00ff88;font-size:11px;font-family:monospace;opacity:0.5">sent with t2000</div></div></body></html>`,
+          back: `<html><body style="padding:40px;font-family:monospace;font-size:10px;color:#666"><div style="margin-bottom:8px;font-size:14px;color:#00ff88;font-weight:bold">t2000</div><div>sent with crypto</div></body></html>`,
           size: '4x6',
         },
       };
