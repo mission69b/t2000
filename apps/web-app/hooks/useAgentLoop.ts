@@ -9,25 +9,38 @@ const MAX_RESULT_SIZE = 4000;
 const MAX_HISTORY = 20;
 
 function isMediaResult(result: unknown): { type: 'image' | 'audio'; dataUri: string } | null {
-  if (
-    typeof result === 'object' && result !== null &&
-    'type' in result && 'dataUri' in result &&
-    typeof (result as { dataUri: unknown }).dataUri === 'string'
-  ) {
-    const r = result as { type: string; dataUri: string };
+  if (typeof result !== 'object' || result === null) return null;
+  const r = result as Record<string, unknown>;
+
+  if (typeof r.type === 'string' && typeof r.dataUri === 'string') {
     if ((r.type === 'image' || r.type === 'audio') && r.dataUri.startsWith('data:')) {
       return { type: r.type, dataUri: r.dataUri };
     }
   }
-  if (
-    typeof result === 'object' && result !== null &&
-    'images' in result && Array.isArray((result as { images: unknown }).images)
-  ) {
-    const images = (result as { images: { url?: string }[] }).images;
-    if (images[0]?.url) {
-      return { type: 'image', dataUri: images[0].url };
+
+  if (Array.isArray(r.images) && r.images.length > 0) {
+    const img = r.images[0] as Record<string, unknown> | undefined;
+    const url = img?.url ?? img?.uri;
+    if (typeof url === 'string' && url.length > 0) {
+      return { type: 'image', dataUri: url };
     }
   }
+
+  if (typeof r.image === 'string' && r.image.length > 0) {
+    return { type: 'image', dataUri: r.image };
+  }
+
+  if (Array.isArray(r.output) && r.output.length > 0 && typeof r.output[0] === 'string') {
+    const out = r.output[0] as string;
+    if (out.startsWith('http') || out.startsWith('data:')) {
+      return { type: 'image', dataUri: out };
+    }
+  }
+
+  if (typeof r.audio === 'string' && r.audio.length > 0) {
+    return { type: 'audio', dataUri: r.audio };
+  }
+
   return null;
 }
 

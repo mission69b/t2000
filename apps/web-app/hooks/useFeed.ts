@@ -27,9 +27,22 @@ export function useFeed() {
     });
   }, []);
 
+  const updateLastOfType = useCallback((type: string, updater: (data: FeedItemData) => FeedItemData) => {
+    setItems((prev) => {
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].data.type === type) {
+          const updated = [...prev];
+          updated[i] = { ...prev[i], data: updater(prev[i].data) };
+          return updated;
+        }
+      }
+      return prev;
+    });
+  }, []);
+
   const clear = useCallback(() => {
     setItems([]);
   }, []);
 
-  return { items, addItem, addItems, removeLastItem, updateLastItem, clear, scrollRef };
+  return { items, addItem, addItems, removeLastItem, updateLastItem, updateLastOfType, clear, scrollRef };
 }

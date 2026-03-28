@@ -793,7 +793,7 @@ function DashboardContent() {
       }, {
         onStep: (step: AgentStep) => {
           stepsAccum.push({ ...step });
-          feed.updateLastItem(() => ({
+          feed.updateLastOfType('agent-response', () => ({
             type: 'agent-response',
             steps: [...stepsAccum],
             status: 'running',
@@ -805,14 +805,14 @@ function DashboardContent() {
             stepsAccum[idx] = { ...stepsAccum[idx], ...update };
           }
           if (update.status === 'done') setLastAgentAction(tool);
-          feed.updateLastItem(() => ({
+          feed.updateLastOfType('agent-response', () => ({
             type: 'agent-response',
             steps: [...stepsAccum],
             status: 'running',
           }));
         },
         onText: (responseText: string) => {
-          feed.updateLastItem(() => ({
+          feed.updateLastOfType('agent-response', () => ({
             type: 'agent-response',
             steps: [...stepsAccum],
             text: responseText,
@@ -856,28 +856,28 @@ function DashboardContent() {
 
           return new Promise<boolean>((resolve) => {
             confirmResolverRef.current = resolve;
-            feed.updateLastItem((prev) => {
+            feed.updateLastOfType('agent-response', (prev) => {
               if (prev.type !== 'agent-response') return prev;
               return { ...prev, confirm: { tool, cost, summary } };
             });
           });
         },
         onDone: (totalCost: number) => {
-          feed.updateLastItem((prev) => {
+          feed.updateLastOfType('agent-response', (prev) => {
             if (prev.type !== 'agent-response') return prev;
             return { ...prev, totalCost, status: 'done' as const };
           });
           balanceQuery.refetch();
         },
         onError: (error: string) => {
-          feed.updateLastItem((prev) => {
+          feed.updateLastOfType('agent-response', (prev) => {
             if (prev.type !== 'agent-response') return prev;
             return { ...prev, status: 'error' as const, error, steps: [...stepsAccum] };
           });
         },
       });
       } catch (err) {
-        feed.updateLastItem((prev) => {
+        feed.updateLastOfType('agent-response', (prev) => {
           if (prev.type !== 'agent-response') return prev;
           return { ...prev, status: 'error' as const, error: err instanceof Error ? err.message : 'Something went wrong', steps: [...stepsAccum] };
         });
