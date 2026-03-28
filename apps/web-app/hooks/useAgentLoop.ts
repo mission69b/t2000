@@ -180,7 +180,18 @@ export function useAgentLoop() {
             continue;
           }
 
-          const args = JSON.parse(toolCall.function.arguments);
+          let args: Record<string, unknown>;
+          try {
+            args = JSON.parse(toolCall.function.arguments);
+          } catch {
+            conversationRef.current.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: 'Invalid tool arguments (malformed JSON)' }),
+            });
+            callbacks.onStepUpdate(toolCall.function.name, { status: 'error', error: 'Malformed arguments' });
+            continue;
+          }
           let result: unknown;
 
           if (executor.type === 'read') {

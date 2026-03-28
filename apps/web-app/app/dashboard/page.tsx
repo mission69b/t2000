@@ -266,6 +266,7 @@ function DashboardContent() {
     assetBalances: balanceQuery.data?.assetBalances ?? {},
     assetUsdValues: balanceQuery.data?.assetUsdValues ?? {},
     loading: balanceQuery.isLoading,
+    error: balanceQuery.isError,
   };
 
   useEffect(() => {
@@ -438,15 +439,19 @@ function DashboardContent() {
         }
         case 'send': {
           const cap = capForFlow('send', balance);
-          chipFlow.startFlow('send', flowContext);
-          const resolved = contactsHook.resolveContact(intent.to);
-          if (resolved) {
-            chipFlow.selectRecipient(resolved, intent.to, flowContext.cash);
+          if (cap <= 0) {
+            feed.addItem({ type: 'ai-text', text: 'No funds available to send right now.', chips: [{ label: 'Receive', flow: 'receive' }] });
           } else {
-            chipFlow.selectRecipient(intent.to, undefined, flowContext.cash);
+            chipFlow.startFlow('send', flowContext);
+            const resolved = contactsHook.resolveContact(intent.to);
+            if (resolved) {
+              chipFlow.selectRecipient(resolved, intent.to, flowContext.cash);
+            } else {
+              chipFlow.selectRecipient(intent.to, undefined, flowContext.cash);
+            }
+            const sendAmt = intent.amount === -1 ? cap : intent.amount > 0 ? Math.min(intent.amount, cap) : 0;
+            if (sendAmt > 0) chipFlow.selectAmount(sendAmt);
           }
-          const sendAmt = intent.amount === -1 ? cap : intent.amount > 0 ? Math.min(intent.amount, cap) : 0;
-          if (sendAmt > 0) chipFlow.selectAmount(sendAmt);
           break;
         }
         case 'withdraw':
@@ -464,9 +469,13 @@ function DashboardContent() {
           break;
         case 'borrow': {
           const cap = capForFlow('borrow', balance);
-          chipFlow.startFlow('borrow', flowContext);
-          const amt = intent.amount === -1 ? cap : intent.amount > 0 ? Math.min(intent.amount, cap) : 0;
-          if (amt > 0) chipFlow.selectAmount(amt);
+          if (cap <= 0) {
+            feed.addItem({ type: 'ai-text', text: 'Nothing available to borrow. You need savings deposited as collateral first.', chips: [{ label: 'Save', flow: 'save' }] });
+          } else {
+            chipFlow.startFlow('borrow', flowContext);
+            const amt = intent.amount === -1 ? cap : intent.amount > 0 ? Math.min(intent.amount, cap) : 0;
+            if (amt > 0) chipFlow.selectAmount(amt);
+          }
           break;
         }
         case 'repay':
@@ -771,6 +780,7 @@ function DashboardContent() {
 
       const stepsAccum: AgentStepData[] = [];
 
+      try {
       await agentLoop.run(text, {
         address,
         email,
@@ -866,6 +876,12 @@ function DashboardContent() {
           });
         },
       });
+      } catch (err) {
+        feed.updateLastItem((prev) => {
+          if (prev.type !== 'agent-response') return prev;
+          return { ...prev, status: 'error' as const, error: err instanceof Error ? err.message : 'Something went wrong', steps: [...stepsAccum] };
+        });
+      }
     },
     [feed, executeIntent, address, session, balance, agentLoop, balanceQuery, agentBudget],
   );

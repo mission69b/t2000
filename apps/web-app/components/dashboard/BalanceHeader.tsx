@@ -27,6 +27,7 @@ export interface BalanceHeaderData {
   bestSaveRate: { protocol: string; protocolId: string; rate: number } | null;
   savingsBreakdown?: SavingsBreakdownEntry[];
   loading: boolean;
+  error?: boolean;
 }
 
 interface BalanceHeaderProps {
@@ -121,6 +122,16 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
         <div className="py-4 space-y-2">
           <div className="h-10 w-32 mx-auto rounded-sm bg-panel animate-pulse" />
           <div className="h-4 w-48 mx-auto rounded-sm bg-panel animate-pulse" />
+        </div>
+      ) : balance.error ? (
+        <div className="py-4 text-center">
+          <p className="text-sm font-mono text-muted">Couldn&apos;t load balance</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs font-mono text-accent hover:underline mt-1"
+          >
+            Tap to retry
+          </button>
         </div>
       ) : (
         <button
