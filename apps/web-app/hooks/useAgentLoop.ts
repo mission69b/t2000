@@ -287,7 +287,11 @@ export function useAgentLoop() {
               });
             } catch (err) {
               const errMsg = err instanceof Error ? err.message : 'Service call failed';
-              result = { error: errMsg };
+              result = {
+                error: errMsg,
+                failed_tool: toolCall.function.name,
+                _instruction: 'This tool FAILED. Tell the user what went wrong and offer to retry. Do NOT call other tools to work around the failure.',
+              };
               callbacks.onStepUpdate(toolCall.function.name, { status: 'error', error: errMsg });
             }
           } else if (executor.type === 'raw-service') {
@@ -353,7 +357,11 @@ export function useAgentLoop() {
               });
             } catch (err) {
               const errMsg = err instanceof Error ? err.message : 'Service call failed';
-              result = { error: errMsg };
+              result = {
+                error: errMsg,
+                failed_tool: toolCall.function.name,
+                _instruction: 'This tool FAILED. Tell the user what went wrong and offer to retry. Do NOT call other tools to work around the failure.',
+              };
               callbacks.onStepUpdate(toolCall.function.name, { status: 'error', error: errMsg });
             }
           }
