@@ -76,38 +76,35 @@ export async function GET(request: NextRequest) {
       response: (() => { try { return JSON.parse(uberText); } catch { return uberText; } })(),
     };
 
-    // Step 5: Find and try Amazon US
-    const searchRes = await fetch(`${RELOADLY_BASE}/countries/US/products`, {
+    // Step 5: Try a second product — lookup product 2 (likely a common US card)
+    const prod2Res = await fetch(`${RELOADLY_BASE}/products/2`, {
       method: 'GET',
       headers: reloadlyHeaders(token),
     });
-    if (searchRes.ok) {
-      const products = (await searchRes.json()) as Array<{ productId: number; productName: string; denominationType: string; minRecipientDenomination?: number; fixedRecipientDenominations?: number[] }>;
-      const amazon = products.find((p: { productName: string }) => p.productName.toLowerCase().includes('amazon'));
-      if (amazon) {
-        const price = amazon.denominationType === 'FIXED'
-          ? (amazon.fixedRecipientDenominations?.[0] ?? 5)
-          : (amazon.minRecipientDenomination ?? 5);
-        const amazonBody = {
-          productId: amazon.productId,
-          quantity: 1,
-          unitPrice: price,
-          customIdentifier: `t2000-debug-amazon-${Date.now()}`,
-          senderName: 't2000',
-          recipientEmail: 'funkii@mission69b.com',
-        };
-        diagnostics.amazonProduct = { id: amazon.productId, name: amazon.productName, price };
-        const amazonRes = await fetch(`${RELOADLY_BASE}/orders`, {
-          method: 'POST',
-          headers: reloadlyHeaders(token),
-          body: JSON.stringify(amazonBody),
-        });
-        const amazonText = await amazonRes.text();
-        diagnostics.amazon = {
-          status: amazonRes.status,
-          response: (() => { try { return JSON.parse(amazonText); } catch { return amazonText; } })(),
-        };
-      }
+    if (prod2Res.ok) {
+      const p2 = (await prod2Res.json()) as { productId: number; productName: string; denominationType: string; minRecipientDenomination?: number; fixedRecipientDenominations?: number[] };
+      const price = p2.denominationType === 'FIXED'
+        ? (p2.fixedRecipientDenominations?.[0] ?? 5)
+        : (p2.minRecipientDenomination ?? 5);
+      const body2 = {
+        productId: p2.productId,
+        quantity: 1,
+        unitPrice: price,
+        customIdentifier: `t2000-debug-alt-${Date.now()}`,
+        senderName: 't2000',
+        recipientEmail: 'funkii@mission69b.com',
+      };
+      diagnostics.altProduct = { id: p2.productId, name: p2.productName, denom: p2.denominationType, price };
+      const altRes = await fetch(`${RELOADLY_BASE}/orders`, {
+        method: 'POST',
+        headers: reloadlyHeaders(token),
+        body: JSON.stringify(body2),
+      });
+      const altText = await altRes.text();
+      diagnostics.altOrder = {
+        status: altRes.status,
+        response: (() => { try { return JSON.parse(altText); } catch { return altText; } })(),
+      };
     }
 
     return NextResponse.json(diagnostics, { status: 200 });
