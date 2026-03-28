@@ -77,13 +77,13 @@ export async function GET(request: NextRequest) {
     };
 
     // Step 5: Find and try Amazon US
-    const searchRes = await fetch(`${RELOADLY_BASE}/products?size=5&page=1&productName=Amazon&countryCode=US`, {
+    const searchRes = await fetch(`${RELOADLY_BASE}/countries/US/products`, {
       method: 'GET',
       headers: reloadlyHeaders(token),
     });
     if (searchRes.ok) {
       const products = (await searchRes.json()) as Array<{ productId: number; productName: string; denominationType: string; minRecipientDenomination?: number; fixedRecipientDenominations?: number[] }>;
-      const amazon = products[0];
+      const amazon = products.find((p: { productName: string }) => p.productName.toLowerCase().includes('amazon'));
       if (amazon) {
         const price = amazon.denominationType === 'FIXED'
           ? (amazon.fixedRecipientDenominations?.[0] ?? 5)
