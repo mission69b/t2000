@@ -1,29 +1,41 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
 import { getReloadlyToken, RELOADLY_BASE, reloadlyHeaders } from '@/lib/reloadly';
 
+// Verified against Reloadly production catalog (audited March 2026)
 const POPULAR_BRANDS: Record<string, string[]> = {
   _global: [
-    'amazon', 'uber', 'uber eats', 'netflix', 'spotify', 'google play',
-    'apple', 'itunes', 'playstation', 'xbox', 'steam', 'nintendo',
+    'amazon', 'uber', 'uber eats', 'google play', 'app store', 'itunes',
+    'netflix', 'playstation', 'xbox', 'nintendo', 'roblox',
     'visa', 'mastercard', 'prepaid',
   ],
   US: [
-    'starbucks', 'doordash', 'grubhub', 'walmart', 'target', 'costco',
-    'best buy', 'home depot', 'nike', 'sephora', 'chipotle',
-    'dunkin', 'dominos', 'hulu', 'disney',
+    'starbucks', 'dunkin', 'doordash', 'grubhub', 'walmart', 'target',
+    'spotify', 'ebay', 'sephora', 'adidas', 'nike', 'h&m',
+    'lyft', 'chipotle', 'california pizza',
   ],
   GB: [
-    'costa', 'deliveroo', 'just eat', 'tesco', 'sainsbury', 'asda',
-    'marks & spencer', 'primark', 'john lewis', 'argos', 'currys',
-    'nando', 'greggs',
+    'asda', 'tesco', 'matalan', 'swarovski',
   ],
   AU: [
-    'uber eats', 'menulog', 'doordash', 'coles', 'woolworths', 'kmart',
-    'jb hi-fi', 'the good guys', 'bunnings', 'myer', 'cotton on',
+    'coles', 'doordash', 'myer', 'the good guys', 'bcf', 'rebel',
+    'supercheap auto', 'priceline', 'catch', 'hotels.com',
   ],
   CA: [
-    'tim hortons', 'skip the dishes', 'uber eats', 'canadian tire',
-    'loblaws', 'shoppers drug mart', 'best buy', 'indigo',
+    'tim horton', 'uber eats', 'boston pizza', 'indigo', 'canadian tire',
+    'hudson', 'golf town', 'home hardware', 'sportchek',
+  ],
+  DE: [
+    'ikea', 'nike', 'sephora', 'zalando', 'otto', 'douglas',
+    'decathlon', 'steam',
+  ],
+  FR: [
+    'ikea', 'decathlon', 'steam',
+  ],
+  AE: [
+    'deliveroo', 'talabat', 'shein', 'huawei', 'steam',
+  ],
+  SG: [
+    'steam',
   ],
 };
 
