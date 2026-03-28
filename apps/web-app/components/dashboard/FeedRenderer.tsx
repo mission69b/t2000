@@ -301,6 +301,9 @@ const TOOL_LABELS: Record<string, string> = {
   send_letter: 'Mailing letter',
   verify_address: 'Verifying address',
   buy_gift_card: 'Buying gift card',
+  browse_products: 'Browsing products',
+  estimate_order: 'Estimating cost',
+  place_order: 'Placing order',
 };
 
 function InlineConfirm({ tool, cost, onResolve }: { tool: string; cost: number; onResolve?: (approved: boolean) => void }) {

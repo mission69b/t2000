@@ -172,6 +172,49 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
       return fields;
     },
   },
+  browse_products: {
+    type: 'service',
+    serviceId: 'printful-browse',
+    estimatedCost: 0.005,
+    transform: (a) => {
+      const fields: Record<string, string> = {};
+      if (a.product_id) fields.id = String(a.product_id);
+      if (a.category) fields.category = String(a.category);
+      return fields;
+    },
+  },
+  estimate_order: {
+    type: 'service',
+    serviceId: 'printful-estimate',
+    estimatedCost: 0.005,
+    transform: (a) => ({
+      recipient_name: String(a.recipient_name),
+      address1: String(a.address1),
+      city: String(a.city),
+      state_code: String(a.state_code),
+      country_code: String(a.country_code ?? 'US'),
+      zip: String(a.zip),
+      items_json: String(a.items_json),
+    }),
+  },
+  place_order: {
+    type: 'service',
+    serviceId: 'printful-order',
+    estimatedCost: 15.0,
+    transform: (a) => {
+      const fields: Record<string, string> = {
+        recipient_name: String(a.recipient_name),
+        address1: String(a.address1),
+        city: String(a.city),
+        state_code: String(a.state_code),
+        country_code: String(a.country_code ?? 'US'),
+        zip: String(a.zip),
+        items_json: String(a.items_json),
+      };
+      if (a.address2) fields.address2 = String(a.address2);
+      return fields;
+    },
+  },
   browse_gift_cards: {
     type: 'service',
     serviceId: 'reloadly-browse',
@@ -453,6 +496,53 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
       },
     },
     {
+      name: 'browse_products',
+      description: 'Browse Printful product catalog (t-shirts, hoodies, mugs, posters, etc.). Cost: $0.005. Returns available products with variant IDs and pricing. Use to find product/variant IDs before estimating or ordering.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          product_id: { type: 'string', description: 'Specific product ID to get details + variants' },
+          category: { type: 'string', description: 'Category ID to filter (optional)' },
+        },
+        required: [],
+      },
+    },
+    {
+      name: 'estimate_order',
+      description: 'Get a cost estimate for a Printful merch order before placing it. Cost: $0.005. Returns itemized costs (subtotal, shipping, tax, total). Call this to show the user the price before confirming.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          recipient_name: { type: 'string', description: 'Recipient full name' },
+          address1: { type: 'string', description: 'Street address' },
+          city: { type: 'string', description: 'City' },
+          state_code: { type: 'string', description: 'State/province code (e.g. "CA")' },
+          country_code: { type: 'string', description: 'Country code (e.g. "US"). Defaults to US.' },
+          zip: { type: 'string', description: 'ZIP/postal code' },
+          items_json: { type: 'string', description: 'JSON array of items, each with variant_id, quantity, and files array. Example: [{"variant_id":4011,"quantity":1,"files":[{"url":"https://..."}]}]' },
+        },
+        required: ['recipient_name', 'address1', 'city', 'state_code', 'zip', 'items_json'],
+      },
+    },
+    {
+      name: 'place_order',
+      description: 'Place a Printful merch order (t-shirts, hoodies, mugs, posters, etc.). Cost: dynamic ($5-$50+). Order is placed with Printful and shipped to recipient. MUST call estimate_order first and confirm with user before placing.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          recipient_name: { type: 'string', description: 'Recipient full name' },
+          address1: { type: 'string', description: 'Street address line 1' },
+          address2: { type: 'string', description: 'Apartment, suite, etc. (optional)' },
+          city: { type: 'string', description: 'City' },
+          state_code: { type: 'string', description: 'State/province code (e.g. "CA")' },
+          country_code: { type: 'string', description: 'Country code (e.g. "US"). Defaults to US.' },
+          zip: { type: 'string', description: 'ZIP/postal code' },
+          items_json: { type: 'string', description: 'JSON array of items, each with variant_id, quantity, and files array. Example: [{"variant_id":4011,"quantity":1,"files":[{"url":"https://..."}]}]' },
+        },
+        required: ['recipient_name', 'address1', 'city', 'state_code', 'zip', 'items_json'],
+      },
+    },
+    {
       name: 'browse_gift_cards',
       description: 'Browse available gift card brands and their productIds for a country. ALWAYS call this BEFORE buy_gift_card to get the correct numeric productId. Returns a list of products with id, name, denomination type, and price range.',
       input_schema: {
@@ -596,6 +686,12 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
   After success, the result contains expected_delivery_date and thumbnails. Render using this EXACT syntax on its own line:
   <<postcard to="Name — City, State" message="The message text" delivery="Apr 5, 2026" tracking="psc_xxx" front="thumbnail_url" back="thumbnail_url">>
   If thumbnails are in result.thumbnails (array of objects with large/medium/small URLs), use the "medium" size. If not available, omit front/back attrs.
+- MERCH ORDERS (Printful): You can order custom printed merchandise — t-shirts, hoodies, mugs, posters, phone cases, etc. — shipped to any address. Prices vary by product ($5-$50+).
+  Flow (MUST follow):
+    STEP 1 — Browse: Call browse_products to see what's available. If user wants a specific product, get the product details to find variant_ids (size, color).
+    STEP 2 — Estimate: Call estimate_order with the shipping address and items to get a price quote. Show the user: "T-shirt (L, Black) shipped to **Name** in City, State — estimated total: $18.50 (incl. shipping). Order it?"
+    STEP 3 — Order (only after user confirms): Call place_order. This uses deliver-first — Printful is called before payment, so if anything fails you won't be charged.
+  Items format: each item needs variant_id (from browse), quantity, and files array with design URLs. Example: [{"variant_id":4011,"quantity":1,"files":[{"url":"https://example.com/design.png"}]}]
 - NEVER pad responses with filler like "Sure!", "I'd be happy to help!", "Great choice!", "Let me help you with that!". Get straight to the action. Example: user says "I'm hungry" → you say "Let me find food delivery options for you." then call browse_gift_cards. NOT "I'd be happy to help you with that! Let me look into some food delivery options in your area."
 - When the user says "email me" or "send me", use their email: ${email}
 - Show prices in USD. Show crypto amounts with appropriate precision.

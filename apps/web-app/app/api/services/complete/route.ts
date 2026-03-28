@@ -201,6 +201,7 @@ async function logToGateway(serviceId: string, amount: string, digest: string): 
     'reloadly-giftcard': { service: 'reloadly', endpoint: '/v1/order' },
     'lob-postcard': { service: 'lob', endpoint: '/v1/postcards' },
     'lob-letter': { service: 'lob', endpoint: '/v1/letters' },
+    'printful-order': { service: 'printful', endpoint: '/v1/order' },
   };
   const info = serviceMap[serviceId];
   if (!info) return;

@@ -248,6 +248,72 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     },
   },
 
+  'printful-order': {
+    url: `${GATEWAY_BASE}/printful/v1/order`,
+    price: 'dynamic',
+    transformBody: (f) => {
+      require(f, 'recipient_name', 'address1', 'city', 'state_code', 'country_code', 'zip', 'items_json');
+      let items: unknown[];
+      try {
+        items = JSON.parse(f.items_json);
+      } catch {
+        throw new Error('items_json must be valid JSON array');
+      }
+      if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('items_json must be a non-empty array');
+      }
+      return {
+        recipient: {
+          name: f.recipient_name,
+          address1: f.address1,
+          address2: f.address2 ?? undefined,
+          city: f.city,
+          state_code: f.state_code,
+          country_code: f.country_code,
+          zip: f.zip,
+        },
+        items,
+      };
+    },
+    deliverFirst: {
+      internalUrl: `${GATEWAY_BASE}/printful/v1/order-internal`,
+    },
+  },
+
+  'printful-browse': {
+    url: `${GATEWAY_BASE}/printful/v1/products`,
+    price: '0.005',
+    transformBody: (f) => ({
+      id: f.id ?? undefined,
+      category: f.category ?? undefined,
+    }),
+  },
+
+  'printful-estimate': {
+    url: `${GATEWAY_BASE}/printful/v1/estimate`,
+    price: '0.005',
+    transformBody: (f) => {
+      require(f, 'recipient_name', 'address1', 'city', 'state_code', 'country_code', 'zip', 'items_json');
+      let items: unknown[];
+      try {
+        items = JSON.parse(f.items_json);
+      } catch {
+        throw new Error('items_json must be valid JSON array');
+      }
+      return {
+        recipient: {
+          name: f.recipient_name,
+          address1: f.address1,
+          city: f.city,
+          state_code: f.state_code,
+          country_code: f.country_code,
+          zip: f.zip,
+        },
+        items,
+      };
+    },
+  },
+
   'lob-verify': {
     url: `${GATEWAY_BASE}/lob/v1/verify`,
     price: '0.01',
