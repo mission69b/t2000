@@ -59,6 +59,7 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
         productId,
         quantity: 1,
         unitPrice,
+        senderName: 't2000',
         recipientEmail: f.email,
         countryCode: f.country ?? f.countryCode ?? 'US',
       };
