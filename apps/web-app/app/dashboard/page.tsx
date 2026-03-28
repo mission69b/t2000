@@ -868,6 +868,7 @@ function DashboardContent() {
             return { ...prev, totalCost, status: 'done' as const };
           });
           balanceQuery.refetch();
+          setTimeout(() => balanceQuery.refetch(), 3000);
         },
         onError: (error: string) => {
           feed.updateLastOfType('agent-response', (prev) => {

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
+const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
+const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
 /**
  * POST /api/transactions/execute
@@ -72,8 +75,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { data } = await res.json();
+    const confirmedDigest = data.digest;
 
-    return NextResponse.json({ digest: data.digest });
+    await suiClient.waitForTransaction({
+      digest: confirmedDigest,
+      options: { showEffects: true },
+    });
+
+    return NextResponse.json({ digest: confirmedDigest });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Transaction execution failed';
     console.error('[execute] Error:', message);

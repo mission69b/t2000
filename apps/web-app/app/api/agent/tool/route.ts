@@ -94,7 +94,7 @@ async function executeTool(
 
 async function internalFetch(path: string, baseUrl: string): Promise<unknown> {
   const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`Internal fetch ${path} failed: ${res.status}`);
   }
