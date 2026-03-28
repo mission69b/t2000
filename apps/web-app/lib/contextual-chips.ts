@@ -215,7 +215,7 @@ export function deriveContextualChips(
       icon: '✅',
       label: `Earning ${state.savingsRate.toFixed(1)}% on $${Math.floor(state.savings)}`,
       chipFlow: 'report',
-      priority: 10,
+      priority: 20,
     });
   }
 
