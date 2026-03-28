@@ -6,6 +6,67 @@ import { QrCode } from './QrCode';
 import { ContactToast } from './ContactToast';
 import { AgentMarkdown } from './AgentMarkdown';
 
+function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${alt || 'image'}.png`;
+      a.click();
+    }
+  }, [url, alt]);
+
+  const handleDownload = useCallback(() => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${alt || 'image'}.png`;
+    a.target = '_blank';
+    a.click();
+  }, [url, alt]);
+
+  return (
+    <div className="rounded-sm border border-border bg-surface overflow-hidden feed-row group">
+      <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={alt} className="w-full" />
+        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-sm bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors"
+            title="Copy image"
+          >
+            {copied ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            )}
+          </button>
+          <button
+            onClick={handleDownload}
+            className="p-1.5 rounded-sm bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors"
+            title="Download image"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          </button>
+        </div>
+      </div>
+      {cost && (
+        <p className="text-xs text-muted px-4 py-2">{cost} from your balance</p>
+      )}
+    </div>
+  );
+}
+
 interface FeedRendererProps {
   items: FeedItem[];
   onChipClick: (flow: string) => void;
@@ -210,13 +271,7 @@ function FeedItemCard({
 
     case 'image':
       return (
-        <div className="rounded-sm border border-border bg-surface overflow-hidden space-y-2 feed-row">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={data.url} alt={data.alt} className="w-full" />
-          {data.cost && (
-            <p className="text-xs text-muted px-4 pb-3">{data.cost} from your balance</p>
-          )}
-        </div>
+        <ImageCard url={data.url} alt={data.alt} cost={data.cost} />
       );
 
     case 'confirmation':
