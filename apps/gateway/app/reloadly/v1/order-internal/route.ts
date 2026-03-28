@@ -127,6 +127,49 @@ export async function POST(request: NextRequest) {
 
   const token = await getReloadlyToken();
 
+  // Pre-validate: fetch product to check denomination and availability
+  const prodRes = await fetch(`${RELOADLY_BASE}/products/${body.productId}`, {
+    method: 'GET',
+    headers: reloadlyHeaders(token),
+  });
+
+  if (!prodRes.ok) {
+    console.error(`[reloadly/order-internal] Product ${body.productId} lookup failed: ${prodRes.status}`);
+    return NextResponse.json(
+      { error: `Product ${body.productId} not found — browse gift cards to find valid products` },
+      { status: 400 },
+    );
+  }
+
+  const product = (await prodRes.json()) as {
+    productId: number;
+    productName: string;
+    denominationType: 'FIXED' | 'RANGE';
+    fixedRecipientDenominations?: number[];
+    minRecipientDenomination?: number;
+    maxRecipientDenomination?: number;
+    country?: { isoName?: string };
+  };
+
+  if (product.denominationType === 'FIXED') {
+    const valid = product.fixedRecipientDenominations ?? [];
+    if (!valid.includes(body.unitPrice)) {
+      const msg = `${product.productName} only available in fixed amounts: ${valid.join(', ')}. You requested ${body.unitPrice}.`;
+      console.error(`[reloadly/order-internal] Denomination mismatch: ${msg}`);
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  } else if (product.denominationType === 'RANGE') {
+    const min = product.minRecipientDenomination ?? 0;
+    const max = product.maxRecipientDenomination ?? Infinity;
+    if (body.unitPrice < min || body.unitPrice > max) {
+      const msg = `${product.productName} requires amount between ${min} and ${max}. You requested ${body.unitPrice}.`;
+      console.error(`[reloadly/order-internal] Denomination out of range: ${msg}`);
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  }
+
+  console.log(`[reloadly/order-internal] Validated: ${product.productName} (${product.denominationType}), price=${body.unitPrice}, id=${body.productId}`);
+
   const orderRes = await fetch(`${RELOADLY_BASE}/orders`, {
     method: 'POST',
     headers: reloadlyHeaders(token),
@@ -138,8 +181,9 @@ export async function POST(request: NextRequest) {
     let errorData: Record<string, unknown> = { message: 'Unknown error' };
     try { errorData = JSON.parse(errorText); } catch { errorData = { message: errorText || 'Unknown error' }; }
     const msg = (errorData.message as string) ?? 'Gift card order failed';
-    console.error(`[reloadly/order-internal] Reloadly ${orderRes.status}: ${JSON.stringify(errorData)}`);
+    console.error(`[reloadly/order-internal] Reloadly order ${orderRes.status}: ${JSON.stringify(errorData)}`);
     console.error(`[reloadly/order-internal] Request body: ${JSON.stringify(body)}`);
+    console.error(`[reloadly/order-internal] Product: ${product.productName} (${product.denominationType}), valid denoms: ${JSON.stringify(product.fixedRecipientDenominations ?? 'RANGE')}`);
     return NextResponse.json({ error: msg, detail: errorData }, { status: orderRes.status });
   }
 
