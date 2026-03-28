@@ -61,7 +61,22 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
 
   console.log(`[reloadly/products] country=${countryCode} fetched=${all.length} pages=${page}`);
 
-  const cleaned = all.filter((p) => !isJunk(p.productName));
+  const cleaned = all
+    .filter((p) => !isJunk(p.productName))
+    .map((p) => {
+      const base: Record<string, unknown> = {
+        id: p.productId,
+        name: p.productName,
+        cur: p.recipientCurrencyCode,
+      };
+      if (p.denominationType === 'RANGE') {
+        base.min = p.minRecipientDenomination;
+        base.max = p.maxRecipientDenomination;
+      } else if (p.fixedRecipientDenominations) {
+        base.fixed = p.fixedRecipientDenominations;
+      }
+      return base;
+    });
 
   return new Response(JSON.stringify(cleaned), {
     status: 200,

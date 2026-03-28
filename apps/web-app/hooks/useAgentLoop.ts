@@ -5,7 +5,7 @@ import { useAgent, ServiceDeliveryError, type ServiceResult } from '@/hooks/useA
 import { TOOL_EXECUTORS, getEstimatedCost, type ToolCall, type NormalizedResponse } from '@/lib/agent-tools';
 
 const MAX_ITERATIONS = 10;
-const MAX_RESULT_SIZE = 4000;
+const MAX_RESULT_SIZE = 32_000;
 const MAX_HISTORY = 20;
 
 function isMediaResult(result: unknown): { type: 'image' | 'audio'; dataUri: string } | null {
