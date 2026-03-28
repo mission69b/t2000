@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { FeedItem } from '@/lib/feed-types';
 import { QrCode } from './QrCode';
 import { ContactToast } from './ContactToast';
@@ -8,42 +8,74 @@ import { AgentMarkdown } from './AgentMarkdown';
 
 function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string }) {
   const [copied, setCopied] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const getImageBlob = useCallback(async (): Promise<Blob | null> => {
+    const img = imgRef.current;
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    try {
+      ctx.drawImage(img, 0, 0);
+      return await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/png'),
+      );
+    } catch {
+      return null;
+    }
+  }, []);
 
   const handleCopy = useCallback(async () => {
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
+      const blob = await getImageBlob();
+      if (blob) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${alt || 'image'}.png`;
-      a.click();
+      try { await navigator.clipboard.writeText(url); } catch {}
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }, [url, alt]);
+  }, [getImageBlob, url]);
 
-  const handleDownload = useCallback(() => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${alt || 'image'}.png`;
-    a.target = '_blank';
-    a.click();
-  }, [url, alt]);
+  const handleDownload = useCallback(async () => {
+    const blob = await getImageBlob();
+    if (blob) {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${alt || 'generated-image'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } else {
+      window.open(url, '_blank');
+    }
+  }, [getImageBlob, url, alt]);
 
   return (
-    <div className="rounded-sm border border-border bg-surface overflow-hidden feed-row group">
-      <div className="relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={alt} className="w-full" />
-        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="rounded-sm border border-border bg-surface overflow-hidden feed-row">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img ref={imgRef} src={url} alt={alt} crossOrigin="anonymous" className="w-full" />
+      <div className="flex items-center justify-between px-3 py-2">
+        {cost ? (
+          <p className="text-xs text-muted">{cost} from your balance</p>
+        ) : (
+          <span />
+        )}
+        <div className="flex gap-1">
           <button
             onClick={handleCopy}
-            className="p-1.5 rounded-sm bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors"
-            title="Copy image"
+            className="p-1.5 rounded-sm text-muted hover:text-foreground hover:bg-panel transition-colors"
+            title={copied ? 'Copied!' : 'Copy image'}
           >
             {copied ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -53,16 +85,13 @@ function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string
           </button>
           <button
             onClick={handleDownload}
-            className="p-1.5 rounded-sm bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors"
+            className="p-1.5 rounded-sm text-muted hover:text-foreground hover:bg-panel transition-colors"
             title="Download image"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
           </button>
         </div>
       </div>
-      {cost && (
-        <p className="text-xs text-muted px-4 py-2">{cost} from your balance</p>
-      )}
     </div>
   );
 }
