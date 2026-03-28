@@ -33,13 +33,29 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
     countryCode?: string;
   };
   const token = await getReloadlyToken();
+  const headers = reloadlyHeaders(token);
+  const base = `${RELOADLY_BASE}/countries/${encodeURIComponent(countryCode)}/products`;
 
-  const res = await fetchWithRetry(
-    `${RELOADLY_BASE}/countries/${encodeURIComponent(countryCode)}/products`,
-    { method: 'GET', headers: reloadlyHeaders(token) },
-  );
+  const all: { productName: string; [k: string]: unknown }[] = [];
+  let page = 1;
+  const size = 200;
 
-  const all = (await res.json()) as { productName: string; [k: string]: unknown }[];
+  while (true) {
+    const res = await fetchWithRetry(
+      `${base}?size=${size}&page=${page}&includeRange=true&includeFixed=true`,
+      { method: 'GET', headers },
+    );
+
+    if (!res.ok) break;
+
+    const batch = (await res.json()) as { productName: string; [k: string]: unknown }[];
+    all.push(...batch);
+
+    if (batch.length < size) break;
+    page++;
+    if (page > 10) break;
+  }
+
   const cleaned = all.filter((p) => !isJunk(p.productName));
 
   return new Response(JSON.stringify(cleaned), {
