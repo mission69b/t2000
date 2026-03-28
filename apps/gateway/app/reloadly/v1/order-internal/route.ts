@@ -5,6 +5,69 @@ import { fetchWithRetry } from '@/lib/gateway';
 
 const INTERNAL_KEY = process.env.INTERNAL_API_KEY;
 
+/**
+ * Direct redemption URLs by brand keyword → country → URL.
+ * Bypasses Reloadly's cardredemption.com which blocks iCloud Private Relay.
+ */
+const DIRECT_REDEEM_URLS: Record<string, Record<string, string> & { default: string }> = {
+  amazon: {
+    AU: 'https://www.amazon.com.au/gc/redeem',
+    US: 'https://www.amazon.com/gc/redeem',
+    GB: 'https://www.amazon.co.uk/gc/redeem',
+    CA: 'https://www.amazon.ca/gc/redeem',
+    DE: 'https://www.amazon.de/gc/redeem',
+    FR: 'https://www.amazon.fr/gc/redeem',
+    JP: 'https://www.amazon.co.jp/gc/redeem',
+    IN: 'https://www.amazon.in/gc/redeem',
+    default: 'https://www.amazon.com/gc/redeem',
+  },
+  'uber eats': {
+    default: 'https://www.ubereats.com/gift-cards',
+  },
+  uber: {
+    default: 'https://www.uber.com/gift-cards',
+  },
+  doordash: {
+    default: 'https://www.doordash.com/consumer/redeem/gift-card/',
+  },
+  starbucks: {
+    US: 'https://app.starbucks.com/gift',
+    default: 'https://www.starbucks.com/gift',
+  },
+  'google play': {
+    default: 'https://play.google.com/redeem',
+  },
+  spotify: {
+    default: 'https://www.spotify.com/redeem/',
+  },
+  netflix: {
+    default: 'https://www.netflix.com/redeem',
+  },
+  playstation: {
+    default: 'https://store.playstation.com/en-us/latest',
+  },
+  xbox: {
+    default: 'https://redeem.microsoft.com/',
+  },
+  roblox: {
+    default: 'https://www.roblox.com/redeem',
+  },
+  steam: {
+    default: 'https://store.steampowered.com/account/redeemwalletcode',
+  },
+};
+
+function getDirectRedeemUrl(brandName: string | null | undefined, countryCode: string): string | null {
+  if (!brandName) return null;
+  const lower = brandName.toLowerCase();
+  for (const [key, urls] of Object.entries(DIRECT_REDEEM_URLS)) {
+    if (lower.includes(key)) {
+      return urls[countryCode] ?? urls.default;
+    }
+  }
+  return null;
+}
+
 interface OrderBody {
   productId: number;
   countryCode: string;
@@ -84,6 +147,9 @@ export async function POST(request: NextRequest) {
   const cards = Array.isArray(redeemData) ? redeemData : [];
   const card = cards[0] as { cardNumber?: string; pinCode?: string; redemptionUrl?: string } | undefined;
 
+  const brandName = result.product?.productName ?? null;
+  const directUrl = getDirectRedeemUrl(brandName, body.countryCode);
+
   return NextResponse.json({
     success: true,
     result: {
@@ -91,8 +157,8 @@ export async function POST(request: NextRequest) {
       redeemInstructions: (instrData as { concise?: string })?.concise ?? null,
       cardNumber: card?.cardNumber ?? null,
       pinCode: card?.pinCode ?? null,
-      redemptionUrl: card?.redemptionUrl ?? null,
-      brandName: result.product?.productName ?? null,
+      redemptionUrl: directUrl ?? card?.redemptionUrl ?? null,
+      brandName,
       localCurrency: result.product?.currencyCode ?? null,
       faceValue: body.unitPrice,
     },
