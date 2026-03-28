@@ -2,11 +2,13 @@ import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
 import { getReloadlyToken, RELOADLY_BASE, reloadlyHeaders } from '@/lib/reloadly';
 
 // Verified against Reloadly production catalog (audited March 2026)
+// Only brands that actually exist in each region's catalog
 const POPULAR_BRANDS: Record<string, string[]> = {
   _global: [
     'amazon', 'uber', 'uber eats', 'google play', 'app store', 'itunes',
-    'netflix', 'playstation', 'xbox', 'nintendo', 'roblox',
+    'netflix', 'playstation', 'xbox', 'nintendo', 'roblox', 'steam',
     'visa', 'mastercard', 'prepaid',
+    'razer gold', 'free fire', 'mobile legends', 'riot access', 'pubg',
   ],
   US: [
     'starbucks', 'dunkin', 'doordash', 'grubhub', 'walmart', 'target',
@@ -21,22 +23,42 @@ const POPULAR_BRANDS: Record<string, string[]> = {
     'supercheap auto', 'priceline', 'catch', 'hotels.com',
   ],
   CA: [
-    'tim horton', 'uber eats', 'boston pizza', 'indigo', 'canadian tire',
-    'hudson', 'golf town', 'home hardware', 'sportchek',
+    'tim horton', 'boston pizza', 'indigo', 'canadian tire',
+    'hudson', 'golf town', 'home hardware', 'sportchek', 'red lobster',
   ],
   DE: [
     'ikea', 'nike', 'sephora', 'zalando', 'otto', 'douglas',
-    'decathlon', 'steam',
+    'decathlon', 'flixbus',
   ],
   FR: [
-    'ikea', 'decathlon', 'steam',
+    'ikea', 'decathlon',
   ],
   AE: [
-    'deliveroo', 'talabat', 'shein', 'huawei', 'steam',
+    'deliveroo', 'talabat', 'shein', 'huawei',
   ],
-  SG: [
-    'steam',
+  IN: [
+    'flipkart', 'ratnadeep',
   ],
+  BR: [
+    'mcdonald', 'carrefour', 'shopee', 'centauro', 'decathlon', 'nike',
+    'spotify', 'havaianas', 'hering', 'netshoes', 'buser', 'flixbus',
+  ],
+  MX: [],
+  TH: [],
+  NG: [],
+  KE: [],
+  ZA: [],
+  GH: [],
+  PH: [],
+  ID: [],
+  VN: [],
+  CN: [],
+  HK: [],
+  JP: [],
+  TR: [],
+  PK: [],
+  EG: [],
+  KR: [],
 };
 
 function isPopularBrand(name: string, country: string): boolean {
