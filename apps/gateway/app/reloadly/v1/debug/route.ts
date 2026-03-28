@@ -56,31 +56,58 @@ export async function GET(request: NextRequest) {
       diagnostics.product = { error: prodRes.status, body: await prodRes.text().catch(() => '') };
     }
 
-    // Step 4: Try a $20 order (within $15-$100 range) — Uber Eats US
-    const orderBody = {
+    // Step 4: Try Uber Eats US $20 order
+    const uberBody = {
       productId: 13044,
       quantity: 1,
       unitPrice: 20,
-      customIdentifier: `t2000-debug-${Date.now()}`,
+      customIdentifier: `t2000-debug-uber-${Date.now()}`,
       senderName: 't2000',
       recipientEmail: 'funkii@mission69b.com',
     };
-
-    diagnostics.orderRequest = orderBody;
-
-    const orderRes = await fetch(`${RELOADLY_BASE}/orders`, {
+    const uberRes = await fetch(`${RELOADLY_BASE}/orders`, {
       method: 'POST',
       headers: reloadlyHeaders(token),
-      body: JSON.stringify(orderBody),
+      body: JSON.stringify(uberBody),
     });
+    const uberText = await uberRes.text();
+    diagnostics.uberEats = {
+      status: uberRes.status,
+      response: (() => { try { return JSON.parse(uberText); } catch { return uberText; } })(),
+    };
 
-    diagnostics.orderStatus = orderRes.status;
-
-    const orderText = await orderRes.text();
-    try {
-      diagnostics.orderResponse = JSON.parse(orderText);
-    } catch {
-      diagnostics.orderResponse = orderText;
+    // Step 5: Find and try Amazon US
+    const searchRes = await fetch(`${RELOADLY_BASE}/products?size=5&page=1&productName=Amazon&countryCode=US`, {
+      method: 'GET',
+      headers: reloadlyHeaders(token),
+    });
+    if (searchRes.ok) {
+      const products = (await searchRes.json()) as Array<{ productId: number; productName: string; denominationType: string; minRecipientDenomination?: number; fixedRecipientDenominations?: number[] }>;
+      const amazon = products[0];
+      if (amazon) {
+        const price = amazon.denominationType === 'FIXED'
+          ? (amazon.fixedRecipientDenominations?.[0] ?? 5)
+          : (amazon.minRecipientDenomination ?? 5);
+        const amazonBody = {
+          productId: amazon.productId,
+          quantity: 1,
+          unitPrice: price,
+          customIdentifier: `t2000-debug-amazon-${Date.now()}`,
+          senderName: 't2000',
+          recipientEmail: 'funkii@mission69b.com',
+        };
+        diagnostics.amazonProduct = { id: amazon.productId, name: amazon.productName, price };
+        const amazonRes = await fetch(`${RELOADLY_BASE}/orders`, {
+          method: 'POST',
+          headers: reloadlyHeaders(token),
+          body: JSON.stringify(amazonBody),
+        });
+        const amazonText = await amazonRes.text();
+        diagnostics.amazon = {
+          status: amazonRes.status,
+          response: (() => { try { return JSON.parse(amazonText); } catch { return amazonText; } })(),
+        };
+      }
     }
 
     return NextResponse.json(diagnostics, { status: 200 });
