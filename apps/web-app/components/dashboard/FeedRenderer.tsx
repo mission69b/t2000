@@ -113,21 +113,65 @@ function FeedItemCard({
 
     case 'receipt':
       return (
-        <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
-          <p className="text-sm font-medium text-foreground">{data.title}</p>
+        <div className="rounded-lg border border-border bg-surface overflow-hidden feed-row">
+          {/* Header */}
+          <div className="px-4 pt-4 pb-3 flex items-center gap-2">
+            <span className="text-accent text-xs">●</span>
+            <p className="text-sm font-medium text-foreground">{data.title}</p>
+          </div>
+
+          {/* QR + meta */}
           {data.qr && data.code && (
-            <div className="flex justify-center py-2">
-              <QrCode value={data.code} size={180} />
+            <div className="flex justify-center py-4 px-4">
+              <div className="relative p-3 rounded-lg border border-border-bright bg-panel">
+                <QrCode value={data.code} size={160} />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-[10px] font-mono font-bold text-accent bg-panel px-1.5 py-0.5 rounded">t2</span>
+                </div>
+              </div>
             </div>
           )}
-          {data.meta.map((m) => (
-            <div key={m.label} className="flex justify-between text-sm">
-              <span className="text-muted">{m.label}</span>
-              <span className="text-foreground font-mono">{m.value}</span>
+
+          {/* Meta badges */}
+          {data.meta.length > 0 && (
+            <div className="flex justify-center gap-2 px-4 pb-3">
+              {data.meta.map((m) => (
+                <span key={m.label} className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded bg-panel border border-border">
+                  <span className="text-muted">{m.label}</span>
+                  <span className="text-accent font-medium">{m.value}</span>
+                </span>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Copyable address */}
           {data.code && (
-            <CopyableCode code={data.code} onCopy={onCopy} />
+            <div className="px-4 pb-3">
+              <CopyableCode code={data.code} onCopy={onCopy} />
+            </div>
+          )}
+
+          {/* Deposit instructions */}
+          {data.instructions && data.instructions.length > 0 && (
+            <div className="border-t border-border px-4 py-3 space-y-3">
+              <p className="text-[11px] font-mono text-muted uppercase tracking-wider">How to deposit</p>
+              {data.instructions.map((inst) => (
+                <div key={inst.title} className="space-y-1">
+                  <p className="text-xs font-mono text-foreground font-medium">{inst.title}</p>
+                  <ol className="space-y-0.5">
+                    {inst.steps.map((step, i) => (
+                      <li key={i} className="text-[11px] font-mono text-muted leading-relaxed flex gap-2">
+                        <span className="text-dim shrink-0">{i + 1}.</span>
+                        <span dangerouslySetInnerHTML={{ __html: step.replace(/\*\*(.*?)\*\*/g, '<span class="text-accent font-medium">$1</span>') }} />
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+              <p className="text-[10px] font-mono text-dim leading-relaxed pt-1">
+                Only send <span className="text-accent">USDC on the Sui network</span>. Other tokens or networks may result in lost funds.
+              </p>
+            </div>
           )}
         </div>
       );

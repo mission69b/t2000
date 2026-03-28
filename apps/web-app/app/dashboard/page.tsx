@@ -538,12 +538,38 @@ function DashboardContent() {
         case 'address':
           feed.addItem({
             type: 'receipt',
-            title: 'Your Wallet Address',
+            title: 'Deposit Address',
             code: address ?? '',
             qr: true,
             meta: [
-              { label: 'Network', value: SUI_NETWORK },
-              { label: 'Display', value: address ? truncateAddress(address) : '' },
+              { label: 'Network', value: 'Sui (mainnet)' },
+              { label: 'Token', value: 'USDC' },
+            ],
+            instructions: [
+              {
+                title: 'From Binance',
+                steps: [
+                  'Go to Withdraw → search "USDC"',
+                  'Select network: **Sui**',
+                  'Paste your address above',
+                  'Enter amount and confirm',
+                ],
+              },
+              {
+                title: 'From Coinbase',
+                steps: [
+                  'Go to Send → select USDC',
+                  'Choose network: **Sui**',
+                  'Paste your address above',
+                  'Enter amount and confirm',
+                ],
+              },
+              {
+                title: 'From any Sui wallet',
+                steps: [
+                  'Send USDC to the address above',
+                ],
+              },
             ],
           });
           break;

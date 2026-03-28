@@ -25,7 +25,7 @@ export type FeedItemData =
   | { type: 'ai-text'; text: string; chips?: { label: string; flow: string }[] }
   | { type: 'confirmation'; title: string; details: { label: string; value: string }[]; flow: string; amount?: number }
   | { type: 'result'; success: boolean; title: string; details: string; txUrl?: string }
-  | { type: 'receipt'; title: string; code?: string; qr?: boolean; meta: { label: string; value: string }[] }
+  | { type: 'receipt'; title: string; code?: string; qr?: boolean; meta: { label: string; value: string }[]; instructions?: { title: string; steps: string[] }[] }
   | { type: 'list'; title: string; items: { label: string; value: string; sub?: string }[] }
   | { type: 'report'; sections: { title: string; lines: string[] }[] }
   | { type: 'image'; url: string; alt: string; cost?: string }
