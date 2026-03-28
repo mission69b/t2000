@@ -57,12 +57,29 @@ const DIRECT_REDEEM_URLS: Record<string, Record<string, string> & { default: str
   },
 };
 
-function getDirectRedeemUrl(brandName: string | null | undefined, countryCode: string): string | null {
+/**
+ * Brands that support pre-filling the code via URL query parameter.
+ * Key = brand keyword (must match DIRECT_REDEEM_URLS), value = query param name.
+ */
+const CODE_QUERY_PARAMS: Record<string, string> = {
+  amazon: 'claimCode',
+  'google play': 'code',
+  xbox: 'code',
+  roblox: 'code',
+};
+
+function getDirectRedeemUrl(brandName: string | null | undefined, countryCode: string, cardCode?: string | null): string | null {
   if (!brandName) return null;
   const lower = brandName.toLowerCase();
   for (const [key, urls] of Object.entries(DIRECT_REDEEM_URLS)) {
     if (lower.includes(key)) {
-      return urls[countryCode] ?? urls.default;
+      let url = urls[countryCode] ?? urls.default;
+      const paramName = CODE_QUERY_PARAMS[key];
+      if (paramName && cardCode) {
+        const sep = url.includes('?') ? '&' : '?';
+        url = `${url}${sep}${paramName}=${encodeURIComponent(cardCode)}`;
+      }
+      return url;
     }
   }
   return null;
@@ -148,7 +165,7 @@ export async function POST(request: NextRequest) {
   const card = cards[0] as { cardNumber?: string; pinCode?: string; redemptionUrl?: string } | undefined;
 
   const brandName = result.product?.productName ?? null;
-  const directUrl = getDirectRedeemUrl(brandName, body.countryCode);
+  const directUrl = getDirectRedeemUrl(brandName, body.countryCode, card?.cardNumber);
 
   return NextResponse.json({
     success: true,
