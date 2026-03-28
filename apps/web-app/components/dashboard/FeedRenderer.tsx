@@ -29,20 +29,18 @@ function ImageCard({ url, alt, cost }: { url: string; alt: string; cost?: string
   }, []);
 
   const handleCopy = useCallback(async () => {
+    const blob = await getImageBlob();
     try {
-      const blob = await getImageBlob();
       if (blob) {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       } else {
         await navigator.clipboard.writeText(url);
       }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       try { await navigator.clipboard.writeText(url); } catch {}
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, [getImageBlob, url]);
 
   const handleDownload = useCallback(async () => {
