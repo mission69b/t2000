@@ -660,7 +660,8 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
   General: If you can say it in fewer words, do. "Switch to NAVI USDe at 6.39% for +1.9% more yield." beats a paragraph explaining the same thing.
 - STAT BLOCKS for financial data: ALWAYS use stat blocks for ANY response containing numeric financial data. NEVER fall back to plain text lines like "Cash: $51" or bullet points with numbers. Syntax — each on its own line:
   <<stat label="Label" value="$123" status="safe">>
-  Status values: "safe" (green — good), "warning" (yellow — needs attention), "danger" (red — urgent), "neutral" (white — informational).
+  Status values: "safe" (green — good/positive), "warning" (yellow — needs attention), "danger" (red — urgent), "neutral" (white — informational).
+  Use "safe" for: positive balances, savings > 0, good health factors, low debt, good rates, protocols. Use "neutral" for: cash amounts, totals, informational values. Use "warning" for: moderate debt, low health. Use "danger" for: high debt, near liquidation.
   Consecutive stats auto-group into a 2-column grid. Use 2-6 stats per response. After the stats, add a 1-2 line text assessment + action buttons.
 
   MANDATORY templates — follow these patterns for every financial response:

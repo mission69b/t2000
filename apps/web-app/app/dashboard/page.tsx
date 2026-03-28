@@ -549,87 +549,92 @@ function DashboardContent() {
           break;
         case 'balance': {
           const bd = balanceQuery.data;
-          const lines = [
-            `Total: $${balance.total.toFixed(2)}`,
-            `Cash: $${balance.cash.toFixed(2)}`,
-            balance.investments > 0 ? `Investments: $${balance.investments.toFixed(2)}` : '',
-            `Savings: $${balance.savings.toFixed(2)}`,
-          ].filter(Boolean);
+          const stats: string[] = [
+            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="neutral">>`,
+            `<<stat label="Savings" value="$${balance.savings.toFixed(2)}" status="${balance.savings > 0 ? 'safe' : 'neutral'}">>`,
+          ];
+          if (balance.investments > 0) {
+            stats.push(`<<stat label="Investments" value="$${balance.investments.toFixed(2)}" status="neutral">>`);
+          }
+          stats.push(`<<stat label="Total" value="$${balance.total.toFixed(2)}" status="neutral">>`);
           if (balance.borrows > 0) {
-            lines.push(`Debt: $${balance.borrows.toFixed(2)}`);
+            stats.push(`<<stat label="Debt" value="$${balance.borrows.toFixed(2)}" status="${balance.borrows > 1 ? 'warning' : 'safe'}">>`)
             if (balance.healthFactor && balance.healthFactor !== Infinity) {
-              lines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
+              stats.push(`<<stat label="Health" value="${balance.healthFactor.toFixed(0)}" status="${balance.healthFactor > 2 ? 'safe' : 'danger'}">>`)
             }
           }
+          const assetParts: string[] = [];
           if (bd) {
-            lines.push('');
-            if (bd.sui > 0) lines.push(`SUI: ${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})`);
-            if (bd.usdc > 0) lines.push(`USDC: ${bd.usdc.toFixed(2)}`);
+            if (bd.sui > 0) assetParts.push(`**SUI** ${bd.sui.toFixed(4)} ($${bd.suiUsd.toFixed(2)})`);
+            if (bd.usdc > 0) assetParts.push(`**USDC** ${bd.usdc.toFixed(2)}`);
             for (const [symbol, amt] of Object.entries(bd.assetBalances)) {
-              if (amt > 0) lines.push(`${symbol}: ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
+              if (amt > 0) assetParts.push(`**${symbol}** ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
             }
-            lines.push(`SUI price: $${bd.suiPrice.toFixed(2)}`);
           }
-          feed.addItem({ type: 'ai-text', text: `Your balance:\n\n${lines.join('\n')}` });
+          const text = stats.join('\n') + (assetParts.length > 0 ? `\n\n${assetParts.join(' · ')}` : '');
+          feed.addItem({ type: 'ai-text', text });
           break;
         }
         case 'report': {
           const rd = balanceQuery.data;
-          const reportLines = [
-            `Total: $${balance.total.toFixed(2)}`,
-            `Cash: $${balance.cash.toFixed(2)}`,
-            balance.investments > 0 ? `Investments: $${balance.investments.toFixed(2)}` : '',
-            `Savings: $${balance.savings.toFixed(2)}`,
-          ].filter(Boolean);
+          const rStats: string[] = [
+            `<<stat label="Cash" value="$${balance.cash.toFixed(2)}" status="neutral">>`,
+            `<<stat label="Savings" value="$${balance.savings.toFixed(2)}" status="${balance.savings > 0 ? 'safe' : 'neutral'}">>`,
+          ];
+          if (balance.investments > 0) {
+            rStats.push(`<<stat label="Investments" value="$${balance.investments.toFixed(2)}" status="neutral">>`);
+          }
           if (balance.borrows > 0) {
-            reportLines.push(`Debt: $${balance.borrows.toFixed(2)}`);
-            if (balance.healthFactor && balance.healthFactor !== Infinity) {
-              reportLines.push(`Health Factor: ${balance.healthFactor.toFixed(1)}`);
-            }
+            rStats.push(`<<stat label="Debt" value="$${balance.borrows.toFixed(2)}" status="${balance.borrows > 1 ? 'warning' : 'safe'}">>`)
+          } else {
+            rStats.push(`<<stat label="Debt" value="$0.00" status="safe">>`);
           }
-          if (balance.savingsRate > 0) reportLines.push(`Savings APY: ${balance.savingsRate.toFixed(1)}%`);
-          const assetLines: string[] = [];
+          if (balance.savingsRate > 0) {
+            rStats.push(`<<stat label="Yield" value="${balance.savingsRate.toFixed(1)}% APY" status="safe">>`);
+          }
+          if (balance.healthFactor && balance.healthFactor !== Infinity && balance.borrows > 0) {
+            rStats.push(`<<stat label="Health" value="${balance.healthFactor.toFixed(0)}" status="${balance.healthFactor > 2 ? 'safe' : 'danger'}">>`)
+          }
+          const rAssetParts: string[] = [];
           if (rd) {
-            if (rd.sui > 0) assetLines.push(`SUI: ${rd.sui.toFixed(4)} ($${rd.suiUsd.toFixed(2)})`);
-            if (rd.usdc > 0) assetLines.push(`USDC: ${rd.usdc.toFixed(2)}`);
+            if (rd.sui > 0) rAssetParts.push(`**SUI** ${rd.sui.toFixed(4)} ($${rd.suiUsd.toFixed(2)})`);
+            if (rd.usdc > 0) rAssetParts.push(`**USDC** ${rd.usdc.toFixed(2)}`);
             for (const [symbol, amt] of Object.entries(rd.assetBalances)) {
-              if (amt > 0) assetLines.push(`${symbol}: ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
+              if (amt > 0) rAssetParts.push(`**${symbol}** ${amt < 0.01 ? amt.toFixed(8) : amt.toFixed(4)}`);
             }
           }
-          feed.addItem({
-            type: 'report',
-            sections: [
-              { title: 'Account Summary', lines: reportLines },
-              ...(assetLines.length > 0 ? [{ title: 'Assets', lines: assetLines }] : []),
-            ],
-          });
+          const rText = rStats.join('\n') + (rAssetParts.length > 0 ? `\n\n${rAssetParts.join(' · ')}` : '');
+          feed.addItem({ type: 'ai-text', text: rText });
           break;
         }
         case 'history':
           fetchHistory();
           break;
         case 'rates': {
-          const rateLines: string[] = [];
+          const rtStats: string[] = [];
           if (balance.savingsRate > 0) {
-            rateLines.push(`Current savings APY: ${balance.savingsRate.toFixed(1)}% (NAVI)`);
+            rtStats.push(`<<stat label="Your Rate" value="${balance.savingsRate.toFixed(1)}% APY" status="safe">>`);
           }
           if (balance.bestSaveRate) {
-            rateLines.push(`${balance.bestSaveRate.protocol}: ${balance.bestSaveRate.rate.toFixed(1)}% APY`);
-          }
-          if (rateLines.length === 0) {
-            rateLines.push('No rate data available yet — rates refresh every 30s.');
+            const isBetter = balance.bestSaveRate.rate > balance.savingsRate + 0.3;
+            rtStats.push(`<<stat label="Best Available" value="${balance.bestSaveRate.rate.toFixed(1)}% APY" status="${isBetter ? 'safe' : 'neutral'}">>`)
+            rtStats.push(`<<stat label="Protocol" value="${balance.bestSaveRate.protocol}" status="neutral">>`)
           }
           if (balance.savings > 0 && balance.savingsRate > 0) {
             const monthly = (balance.savings * (balance.savingsRate / 100)) / 12;
-            rateLines.push(`\nYou're earning ~$${monthly.toFixed(2)}/mo on $${Math.floor(balance.savings)} in savings.`);
+            rtStats.push(`<<stat label="Monthly Earnings" value="~$${monthly.toFixed(2)}" status="neutral">>`);
           }
-          feed.addItem({
-            type: 'ai-text',
-            text: rateLines.join('\n'),
-            chips: balance.cash > 5
-              ? [{ label: 'Save', flow: 'save' }]
-              : [],
-          });
+          if (rtStats.length === 0) {
+            feed.addItem({ type: 'ai-text', text: 'No rate data available yet — rates refresh every 30s.' });
+          } else {
+            feed.addItem({
+              type: 'ai-text',
+              text: rtStats.join('\n'),
+              chips: balance.cash > 5
+                ? [{ label: 'Save', flow: 'save' }]
+                : [],
+            });
+          }
           break;
         }
         case 'help':
