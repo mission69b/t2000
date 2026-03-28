@@ -87,12 +87,12 @@ function getDirectRedeemUrl(brandName: string | null | undefined, countryCode: s
 
 interface OrderBody {
   productId: number;
-  countryCode: string;
   quantity: number;
   unitPrice: number;
   customIdentifier?: string;
   senderName?: string;
   recipientEmail?: string;
+  countryCode?: string;
 }
 
 /**
@@ -169,7 +169,8 @@ export async function POST(request: NextRequest) {
   const card = cards[0] as { cardNumber?: string; pinCode?: string; redemptionUrl?: string } | undefined;
 
   const brandName = result.product?.productName ?? null;
-  const directUrl = getDirectRedeemUrl(brandName, body.countryCode, card?.cardNumber);
+  const countryCode = body.countryCode ?? result.product?.countryCode ?? 'US';
+  const directUrl = getDirectRedeemUrl(brandName, countryCode, card?.cardNumber);
 
   return NextResponse.json({
     success: true,

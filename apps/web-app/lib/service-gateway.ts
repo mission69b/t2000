@@ -59,9 +59,9 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
         productId,
         quantity: 1,
         unitPrice,
+        customIdentifier: `t2000-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         senderName: 't2000',
         recipientEmail: f.email,
-        countryCode: f.country ?? f.countryCode ?? 'US',
       };
     },
     deliverFirst: {

@@ -3,12 +3,12 @@ import { getReloadlyToken, RELOADLY_BASE, reloadlyHeaders, SERVICE_FEE_RATE } fr
 
 interface OrderBody {
   productId: number;
-  countryCode: string;
   quantity: number;
   unitPrice: number;
   customIdentifier?: string;
   senderName?: string;
   recipientEmail?: string;
+  countryCode?: string;
   recipientPhoneDetails?: { countryCode: string; phoneNumber: string };
 }
 
