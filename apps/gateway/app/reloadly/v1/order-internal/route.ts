@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getReloadlyToken, RELOADLY_BASE, reloadlyHeaders, SERVICE_FEE_RATE } from '@/lib/reloadly';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from '@/lib/constants';
-import { fetchWithRetry } from '@/lib/gateway';
 
 const INTERNAL_KEY = process.env.INTERNAL_API_KEY;
 
@@ -128,15 +127,11 @@ export async function POST(request: NextRequest) {
 
   const token = await getReloadlyToken();
 
-  const orderRes = await fetchWithRetry(
-    `${RELOADLY_BASE}/orders`,
-    {
-      method: 'POST',
-      headers: reloadlyHeaders(token),
-      body: JSON.stringify(body),
-    },
-    3,
-  );
+  const orderRes = await fetch(`${RELOADLY_BASE}/orders`, {
+    method: 'POST',
+    headers: reloadlyHeaders(token),
+    body: JSON.stringify(body),
+  });
 
   if (!orderRes.ok) {
     const errorText = await orderRes.text().catch(() => '');
