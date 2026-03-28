@@ -51,7 +51,12 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
   const all = (await res.json()) as { productName: string; [k: string]: unknown }[];
   const filtered = all.filter((p) => isPopularBrand(p.productName, countryCode));
 
-  return new Response(JSON.stringify(filtered), {
+  // If curated list is too thin for this region, return all products
+  // so the agent still has options
+  const MIN_RESULTS = 5;
+  const results = filtered.length >= MIN_RESULTS ? filtered : all;
+
+  return new Response(JSON.stringify(results), {
     status: 200,
     headers: { 'content-type': 'application/json' },
   });
