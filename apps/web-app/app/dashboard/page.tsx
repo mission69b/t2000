@@ -779,6 +779,29 @@ function DashboardContent() {
             status: 'done',
           }));
         },
+        onMedia: (media) => {
+          const TOOL_LABELS: Record<string, string> = {
+            generate_image: 'Generated image',
+            text_to_speech: 'Text to speech',
+            take_screenshot: 'Screenshot',
+            generate_qr: 'QR Code',
+          };
+          if (media.type === 'image') {
+            feed.addItem({
+              type: 'image',
+              url: media.dataUri,
+              alt: TOOL_LABELS[media.tool] ?? 'Generated image',
+              cost: media.cost ? `$${media.cost.toFixed(3)}` : undefined,
+            });
+          } else if (media.type === 'audio') {
+            feed.addItem({
+              type: 'audio',
+              url: media.dataUri,
+              title: TOOL_LABELS[media.tool] ?? 'Audio',
+              cost: media.cost ? `$${media.cost.toFixed(3)}` : undefined,
+            });
+          }
+        },
         onConfirmNeeded: async (tool: string, _args: Record<string, unknown>, cost: number) => {
           return new Promise<boolean>((resolve) => {
             confirmResolverRef.current = resolve;

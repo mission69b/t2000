@@ -8,6 +8,29 @@ const MAX_ITERATIONS = 10;
 const MAX_RESULT_SIZE = 4000;
 const MAX_HISTORY = 20;
 
+function isMediaResult(result: unknown): { type: 'image' | 'audio'; dataUri: string } | null {
+  if (
+    typeof result === 'object' && result !== null &&
+    'type' in result && 'dataUri' in result &&
+    typeof (result as { dataUri: unknown }).dataUri === 'string'
+  ) {
+    const r = result as { type: string; dataUri: string };
+    if ((r.type === 'image' || r.type === 'audio') && r.dataUri.startsWith('data:')) {
+      return { type: r.type, dataUri: r.dataUri };
+    }
+  }
+  if (
+    typeof result === 'object' && result !== null &&
+    'images' in result && Array.isArray((result as { images: unknown }).images)
+  ) {
+    const images = (result as { images: { url?: string }[] }).images;
+    if (images[0]?.url) {
+      return { type: 'image', dataUri: images[0].url };
+    }
+  }
+  return null;
+}
+
 function trimMessages(msgs: ChatMessage[]): ChatMessage[] {
   if (msgs.length <= MAX_HISTORY) return msgs;
   let trimmed = msgs.slice(-MAX_HISTORY);
@@ -37,10 +60,18 @@ interface ChatMessage {
   tool_call_id?: string;
 }
 
+export interface MediaResult {
+  type: 'image' | 'audio';
+  dataUri: string;
+  tool: string;
+  cost?: number;
+}
+
 export interface AgentCallbacks {
   onStep: (step: AgentStep) => void;
   onStepUpdate: (tool: string, step: Partial<AgentStep>) => void;
   onText: (text: string) => void;
+  onMedia: (media: MediaResult) => void;
   onConfirmNeeded: (tool: string, args: Record<string, unknown>, cost: number) => Promise<boolean>;
   onDone: (totalCost: number) => void;
   onError: (error: string) => void;
@@ -301,16 +332,26 @@ export function useAgentLoop() {
             }
           }
 
-          const resultStr = JSON.stringify(result);
-          const truncated = resultStr.length > MAX_RESULT_SIZE
-            ? resultStr.slice(0, MAX_RESULT_SIZE) + '…[truncated]'
-            : resultStr;
+          const media = isMediaResult(result);
+          if (media) {
+            callbacks.onMedia({ ...media, tool: toolCall.function.name });
+            conversationRef.current.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ type: media.type, delivered: true, message: `${media.type === 'image' ? 'Image' : 'Audio'} generated and displayed to user.` }),
+            });
+          } else {
+            const resultStr = JSON.stringify(result);
+            const truncated = resultStr.length > MAX_RESULT_SIZE
+              ? resultStr.slice(0, MAX_RESULT_SIZE) + '…[truncated]'
+              : resultStr;
 
-          conversationRef.current.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: truncated,
-          });
+            conversationRef.current.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: truncated,
+            });
+          }
         }
       }
 

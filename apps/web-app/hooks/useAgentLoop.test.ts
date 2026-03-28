@@ -68,6 +68,7 @@ describe('useAgentLoop (unit logic)', () => {
       onStep: vi.fn(),
       onStepUpdate: vi.fn(),
       onText: vi.fn(),
+      onMedia: vi.fn(),
       onConfirmNeeded: vi.fn().mockResolvedValue(true),
       onDone: vi.fn(),
       onError: vi.fn(),
