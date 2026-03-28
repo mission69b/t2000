@@ -588,6 +588,31 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
   ];
 }
 
+const TIMEZONE_COUNTRY_MAP: Record<string, string> = {
+  'Australia': 'AU', 'Pacific/Auckland': 'NZ', 'Pacific/Fiji': 'FJ',
+  'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US',
+  'America/Los_Angeles': 'US', 'America/Phoenix': 'US', 'America/Anchorage': 'US',
+  'Pacific/Honolulu': 'US', 'America/Toronto': 'CA', 'America/Vancouver': 'CA',
+  'America/Edmonton': 'CA', 'America/Winnipeg': 'CA', 'America/Halifax': 'CA',
+  'America/Sao_Paulo': 'BR', 'America/Mexico_City': 'MX', 'America/Buenos_Aires': 'AR',
+  'America/Bogota': 'CO', 'America/Lima': 'PE', 'America/Santiago': 'CL',
+  'Europe/London': 'GB', 'Europe/Berlin': 'DE', 'Europe/Paris': 'FR',
+  'Europe/Rome': 'IT', 'Europe/Madrid': 'ES', 'Europe/Amsterdam': 'NL',
+  'Europe/Stockholm': 'SE', 'Europe/Oslo': 'NO', 'Europe/Copenhagen': 'DK',
+  'Europe/Helsinki': 'FI', 'Europe/Warsaw': 'PL', 'Europe/Istanbul': 'TR',
+  'Europe/Moscow': 'RU', 'Europe/Dublin': 'IE', 'Europe/Lisbon': 'PT',
+  'Europe/Zurich': 'CH', 'Europe/Vienna': 'AT', 'Europe/Brussels': 'BE',
+  'Europe/Prague': 'CZ', 'Europe/Bucharest': 'RO', 'Europe/Athens': 'GR',
+  'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Asia/Shanghai': 'CN',
+  'Asia/Hong_Kong': 'HK', 'Asia/Taipei': 'TW', 'Asia/Singapore': 'SG',
+  'Asia/Kolkata': 'IN', 'Asia/Calcutta': 'IN', 'Asia/Bangkok': 'TH',
+  'Asia/Jakarta': 'ID', 'Asia/Kuala_Lumpur': 'MY', 'Asia/Ho_Chi_Minh': 'VN',
+  'Asia/Manila': 'PH', 'Asia/Karachi': 'PK', 'Asia/Dubai': 'AE',
+  'Asia/Riyadh': 'SA', 'Asia/Jerusalem': 'IL', 'Asia/Dhaka': 'BD',
+  'Africa/Lagos': 'NG', 'Africa/Nairobi': 'KE', 'Africa/Cairo': 'EG',
+  'Africa/Johannesburg': 'ZA', 'Africa/Accra': 'GH', 'Africa/Casablanca': 'MA',
+};
+
 const LOCALE_COUNTRY_MAP: Record<string, string> = {
   'en-AU': 'AU', 'en-US': 'US', 'en-GB': 'GB', 'en-CA': 'CA', 'en-NZ': 'NZ',
   'en-IE': 'IE', 'en-SG': 'SG', 'en-IN': 'IN', 'de-DE': 'DE', 'fr-FR': 'FR',
@@ -597,11 +622,19 @@ const LOCALE_COUNTRY_MAP: Record<string, string> = {
   'id-ID': 'ID', 'ms-MY': 'MY', 'vi-VN': 'VN', 'ar-SA': 'SA', 'he-IL': 'IL',
 };
 
-function countryFromLocale(locale?: string): string {
-  if (!locale) return 'US';
-  if (LOCALE_COUNTRY_MAP[locale]) return LOCALE_COUNTRY_MAP[locale];
-  const parts = locale.split('-');
-  if (parts[1] && parts[1].length === 2) return parts[1].toUpperCase();
+export function countryFromTimezoneAndLocale(timezone?: string, locale?: string): string {
+  if (timezone) {
+    if (TIMEZONE_COUNTRY_MAP[timezone]) return TIMEZONE_COUNTRY_MAP[timezone];
+    const prefix = timezone.split('/')[0] + '/' + timezone.split('/')[1]?.split('/')[0];
+    if (prefix && TIMEZONE_COUNTRY_MAP[prefix]) return TIMEZONE_COUNTRY_MAP[prefix];
+    const region = timezone.split('/')[0];
+    if (region === 'Australia') return 'AU';
+  }
+  if (locale) {
+    if (LOCALE_COUNTRY_MAP[locale]) return LOCALE_COUNTRY_MAP[locale];
+    const parts = locale.split('-');
+    if (parts[1] && parts[1].length === 2) return parts[1].toUpperCase();
+  }
   return 'US';
 }
 
@@ -610,11 +643,12 @@ export function buildSystemPrompt(
   email: string,
   balanceSummary?: string,
   locale?: string,
+  timezone?: string,
 ): string {
   const now = new Date();
   const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const timeOfDay = now.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
-  const country = countryFromLocale(locale);
+  const country = countryFromTimezoneAndLocale(timezone, locale);
   return `You are t2000, a financial assistant built into a smart wallet on Sui blockchain.
 
 ## About the user

@@ -93,6 +93,7 @@ export function useAgentLoop() {
       balanceSummary?: string;
       budget: number;
       locale?: string;
+      timezone?: string;
     },
     callbacks: AgentCallbacks,
   ) => {
@@ -125,6 +126,7 @@ export function useAgentLoop() {
             email: opts.email,
             balanceSummary: opts.balanceSummary,
             locale: opts.locale,
+            timezone: opts.timezone,
           }),
         });
 

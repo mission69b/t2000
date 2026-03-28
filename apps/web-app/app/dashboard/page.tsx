@@ -777,6 +777,9 @@ function DashboardContent() {
         balanceSummary: balanceCtx,
         budget: agentBudget,
         locale: typeof navigator !== 'undefined' ? navigator.language : undefined,
+        timezone: typeof Intl !== 'undefined'
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone
+          : undefined,
       }, {
         onStep: (step: AgentStep) => {
           stepsAccum.push({ ...step });

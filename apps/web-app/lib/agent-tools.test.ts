@@ -4,6 +4,7 @@ import {
   getEstimatedCost,
   getAnthropicTools,
   buildSystemPrompt,
+  countryFromTimezoneAndLocale,
   normalizeAnthropicResponse,
   toAnthropicMessages,
 } from './agent-tools';
@@ -207,6 +208,29 @@ describe('buildSystemPrompt', () => {
   it('defaults country to US when no locale', () => {
     const prompt = buildSystemPrompt('0xabc', 'u@t.com');
     expect(prompt).toContain('Country: US');
+  });
+
+  it('uses timezone over locale for country detection', () => {
+    const prompt = buildSystemPrompt('0xabc', 'u@t.com', undefined, 'en-GB', 'Australia/Sydney');
+    expect(prompt).toContain('Country: AU');
+  });
+
+  it('detects AU from any Australia/* timezone', () => {
+    expect(countryFromTimezoneAndLocale('Australia/Melbourne')).toBe('AU');
+    expect(countryFromTimezoneAndLocale('Australia/Perth')).toBe('AU');
+    expect(countryFromTimezoneAndLocale('Australia/Brisbane')).toBe('AU');
+  });
+
+  it('detects correct country from timezone', () => {
+    expect(countryFromTimezoneAndLocale('Asia/Tokyo')).toBe('JP');
+    expect(countryFromTimezoneAndLocale('America/New_York')).toBe('US');
+    expect(countryFromTimezoneAndLocale('Europe/London')).toBe('GB');
+    expect(countryFromTimezoneAndLocale('Africa/Lagos')).toBe('NG');
+  });
+
+  it('falls back to locale when timezone unknown', () => {
+    expect(countryFromTimezoneAndLocale(undefined, 'en-AU')).toBe('AU');
+    expect(countryFromTimezoneAndLocale('Unknown/Zone', 'fr-FR')).toBe('FR');
   });
 });
 
