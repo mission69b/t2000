@@ -232,6 +232,27 @@ Expose `/openapi.json` on `mpp.t2000.ai` with all 41 services documented in the 
 2. Registration on MPPscan for cross-chain visibility
 3. Agent discovery via standard tooling
 
+### Deliver-First Pattern (Gift Cards)
+
+Some endpoints operate in a **hybrid mode** — MPP for direct CLI/SDK callers, but "deliver-first" for the web-app:
+
+| Endpoint | Direct callers (CLI/SDK) | Web-app |
+|----------|-------------------------|---------|
+| `/reloadly/v1/order` | Standard MPP 402 challenge | Not used |
+| `/reloadly/v1/order-internal` | N/A (internal-key protected) | Deliver-first: call Reloadly → return result + payment details → web-app builds tx |
+
+**Why:** High-value services (gift cards) can't risk payment-before-delivery — if the upstream fails after payment, money is lost. The deliver-first pattern calls the upstream first, only charges after success.
+
+**OpenAPI implications:**
+- `/reloadly/v1/order` should be documented in `openapi.json` with `x-payment-info` (it's the public MPP endpoint)
+- `/reloadly/v1/order-internal` should NOT be in `openapi.json` (it's internal, not discoverable)
+- Both produce explorer entries via different paths: MPP auto-logs for direct callers, `POST /api/internal/log-payment` for deliver-first flows
+
+**Explorer logging:**
+After a deliver-first payment confirms on-chain, the web-app fires a log entry to `POST /api/internal/log-payment` (internal-key protected), which writes to the same `MppPayment` table the explorer reads. This ensures all gift card purchases appear in the explorer as `reloadly /v1/order` with correct amounts and tx digests.
+
+**Future deliver-first services:** Any new high-value service should follow this pattern — add an `*-internal` route on the gateway, a `deliverFirst` config in `service-gateway.ts`, and a mapping in the `logToGateway` function in the web-app's `complete` route.
+
 ### Structure after refactor
 
 ```
@@ -247,7 +268,9 @@ mpp.t2000.ai/
     ├── /services        → Service catalog JSON (stays)
     ├── /mpp/payments    → Payment feed (stays)
     ├── /mpp/stats       → Aggregate stats (stays)
-    └── /mpp/volume      → Volume chart data (stays)
+    ├── /mpp/volume      → Volume chart data (stays)
+    └── /internal/
+        └── /log-payment → Internal: log deliver-first payments to explorer (x-internal-key)
 ```
 
 ---
@@ -736,6 +759,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 | **SEO / discoverability** | mppsui.dev needs to rank for "machine payments Sui", "AI agent payments Sui" |
 | **OpenAPI auto-generation** | 41 services × multiple endpoints = large OpenAPI doc. Auto-generate from service catalog config |
 | **Cross-registration** | `mpp.t2000.ai` registers on both mppsui.dev AND mppscan.com. Keep in sync when services change |
+| **Deliver-first endpoints** | Gift cards (and future high-value services) bypass MPP via internal endpoints. `openapi.json` should only expose the public MPP route, not the internal one. Explorer logging handled separately via `POST /api/internal/log-payment` |
 
 ---
 
