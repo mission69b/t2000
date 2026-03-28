@@ -53,6 +53,10 @@ export default function LandingPage() {
           <a href="https://t2000.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
             Terms
           </a>
+          <span>·</span>
+          <a href="https://t2000.ai/disclaimer" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
+            Disclaimer
+          </a>
         </div>
       </div>
     </main>

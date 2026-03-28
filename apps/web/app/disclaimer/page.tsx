@@ -21,7 +21,7 @@ export default function DisclaimerPage() {
             Disclaimer
           </h1>
           <p className="text-sm text-muted font-mono">
-            Last updated: March 2026
+            Last updated: February 2026
           </p>
         </header>
 
@@ -72,14 +72,94 @@ export default function DisclaimerPage() {
 
           <section>
             <h2 className="text-foreground text-lg font-serif italic mb-3">
-              Key Management
+              AI Assistant Accuracy
             </h2>
             <p>
-              t2000 generates and stores private keys locally on your device,
+              The AI assistant is powered by large language models that can
+              produce incorrect, incomplete, or misleading information. This
+              includes but is not limited to:
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 mt-2">
+              <li>Yield comparisons and rebalancing recommendations</li>
+              <li>Risk assessments and health factor analysis</li>
+              <li>Price predictions or market commentary</li>
+              <li>Tax or regulatory interpretations</li>
+              <li>Gift card availability and pricing</li>
+              <li>Flight search results and pricing</li>
+            </ul>
+            <p className="mt-2">
+              Always verify critical financial information independently before
+              making decisions. The AI confirms actions before executing them,
+              but you bear full responsibility for approving transactions.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-foreground text-lg font-serif italic mb-3">
+              Authentication and Key Management
+            </h2>
+            <p>
+              <strong className="text-foreground">Consumer web app:</strong>{" "}
+              Uses zkLogin via Google sign-in, powered by Mysten Labs Enoki.
+              Your wallet is derived from your Google session. If you lose
+              access to your Google account, you may lose access to your
+              wallet. t2000 cannot recover funds on your behalf.
+            </p>
+            <p className="mt-2">
+              <strong className="text-foreground">CLI and SDK:</strong>{" "}
+              Private keys are generated and stored locally on your device,
               encrypted with your PIN. If you lose your key file or forget your
-              PIN, your funds are irrecoverable. There is no recovery mechanism,
-              customer support hotline, or backup service. You are solely
-              responsible for your keys.
+              PIN, your funds are irrecoverable. There is no recovery mechanism.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-foreground text-lg font-serif italic mb-3">
+              Service Delivery
+            </h2>
+            <p>
+              t2000 connects you to third-party services. We cannot guarantee:
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 mt-2">
+              <li>Gift card availability in your region or for specific brands</li>
+              <li>Physical mail delivery times or successful delivery</li>
+              <li>Merchandise print quality or shipping accuracy</li>
+              <li>Flight pricing accuracy (prices shown are from search APIs and may change)</li>
+              <li>Upstream service availability or uptime</li>
+            </ul>
+            <p className="mt-2">
+              Service payments are on-chain and final. If a third-party service
+              fails after payment, contact{" "}
+              <span className="text-foreground">support@t2000.ai</span>.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-foreground text-lg font-serif italic mb-3">
+              Tax Implications
+            </h2>
+            <p>
+              Using cryptocurrency (including stablecoins like USDC) to purchase
+              goods and services may constitute a taxable disposal event in your
+              jurisdiction, even if no capital gain is realized. t2000 does not
+              provide tax advice, does not generate tax reports, and does not
+              report transactions to tax authorities. Consult a qualified tax
+              professional regarding your obligations.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-foreground text-lg font-serif italic mb-3">
+              Regulatory
+            </h2>
+            <p>
+              t2000 does not provide financial services and is not a bank,
+              custodian, exchange, or financial advisor. The use of terms like
+              &quot;bank account,&quot; &quot;savings,&quot; and &quot;cash&quot; are functional labels within
+              the app and describe interactions with DeFi protocols, not
+              traditional banking products. Deposits are not insured. Users are
+              responsible for understanding and complying with the laws and
+              regulations in their jurisdiction.
             </p>
           </section>
 
@@ -92,32 +172,6 @@ export default function DisclaimerPage() {
               break, or be removed without notice. The software has not
               undergone a formal third-party security audit. An internal
               security review has been completed and is publicly available.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-foreground text-lg font-serif italic mb-3">
-              Regulatory
-            </h2>
-            <p>
-              t2000 does not provide financial services and is not a bank,
-              custodian, exchange, or financial advisor. The use of terms like
-              &quot;bank account,&quot; &quot;savings,&quot; and &quot;checking&quot; are metaphorical and
-              describe the functional roles within the agent framework. Users
-              are responsible for understanding and complying with the laws and
-              regulations in their jurisdiction.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-foreground text-lg font-serif italic mb-3">
-              Autonomous Agents
-            </h2>
-            <p>
-              t2000 is designed for use by autonomous AI agents. Transactions
-              executed by agents are final and irreversible. Ensure agent
-              configurations and spending limits are set appropriately before
-              granting agents access to funds.
             </p>
           </section>
         </div>

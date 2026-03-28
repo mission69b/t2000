@@ -21,7 +21,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="text-sm text-muted font-mono">
-            Last updated: March 2026
+            Last updated: February 2026
           </p>
         </header>
 
@@ -32,21 +32,10 @@ export default function PrivacyPage() {
             </h2>
             <p>
               t2000 is designed with privacy as a core principle. We collect
-              minimal data and never have access to your private keys or funds.
+              minimal data, operate non-custodially, and never store your
+              private keys. This policy covers all t2000 surfaces: the consumer
+              web app, CLI, SDK, MCP tools, and the t2000.ai website.
             </p>
-          </section>
-
-          <section>
-            <h2 className="text-foreground text-lg font-serif italic mb-3">
-              What We Do Not Collect
-            </h2>
-            <ul className="list-disc pl-5 space-y-1.5">
-              <li>Private keys (generated and stored locally on your device)</li>
-              <li>PINs or passwords</li>
-              <li>Personal identity information</li>
-              <li>IP addresses (not stored permanently)</li>
-              <li>Browser cookies for tracking</li>
-            </ul>
           </section>
 
           <section>
@@ -55,26 +44,48 @@ export default function PrivacyPage() {
             </h2>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>
-                <strong className="text-foreground">
-                  Sui wallet addresses
-                </strong>{" "}
-                — Registered when an agent initializes via the gas sponsorship
-                endpoint. These are public blockchain addresses.
+                <strong className="text-foreground">Email address</strong> —
+                Collected via Google sign-in (zkLogin) for authentication in the
+                consumer app. Also used as the delivery address for services
+                like gift cards and flight search results.
+              </li>
+              <li>
+                <strong className="text-foreground">Sui wallet addresses</strong>{" "}
+                — Generated via zkLogin (Mysten Labs Enoki). These are public
+                blockchain addresses derived from your Google session.
+              </li>
+              <li>
+                <strong className="text-foreground">Transaction digests</strong>{" "}
+                — On-chain transaction IDs recorded for payment verification and
+                service delivery. These are public blockchain data.
               </li>
               <li>
                 <strong className="text-foreground">
-                  Transaction digests
+                  Timezone and browser locale
                 </strong>{" "}
-                — On-chain transaction IDs recorded for fee accounting and
-                protocol analytics. These are public blockchain data.
+                — Used to detect your country for regional service availability
+                (e.g. gift card catalogs). Not stored permanently.
+              </li>
+              <li>
+                <strong className="text-foreground">Chat messages</strong> —
+                Sent to Anthropic&apos;s API for AI processing during your session.
+                Not stored by t2000 after your session ends. Subject to{" "}
+                <a
+                  href="https://www.anthropic.com/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  Anthropic&apos;s privacy policy
+                </a>
+                .
               </li>
               <li>
                 <strong className="text-foreground">
                   Protocol usage metrics
                 </strong>{" "}
-                — Aggregate counts of operations (saves, withdrawals, swaps)
-                for the public stats dashboard. No individual user data is
-                exposed.
+                — Aggregate counts of operations for the public stats dashboard.
+                No individual user data is exposed.
               </li>
               <li>
                 <strong className="text-foreground">Website analytics</strong>{" "}
@@ -94,12 +105,90 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-foreground text-lg font-serif italic mb-3">
+              What We Do Not Collect
+            </h2>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li>Private keys (managed by zkLogin/Enoki, never exposed to t2000)</li>
+              <li>Passwords or PINs</li>
+              <li>Government-issued identity documents</li>
+              <li>Financial account numbers or credit card details</li>
+              <li>IP addresses (not stored permanently)</li>
+              <li>Browser cookies for tracking</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-foreground text-lg font-serif italic mb-3">
+              Data Shared with Third Parties
+            </h2>
+            <p>
+              When you use t2000 services, certain data is shared with upstream
+              providers to fulfill your request. We do not sell or transfer data
+              for advertising or profiling purposes.
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 mt-2">
+              <li>
+                <strong className="text-foreground">Anthropic</strong> — Chat
+                messages for AI processing
+              </li>
+              <li>
+                <strong className="text-foreground">
+                  Mysten Labs (Enoki)
+                </strong>{" "}
+                — Authentication and gas sponsorship
+              </li>
+              <li>
+                <strong className="text-foreground">Google</strong> — OAuth
+                sign-in via zkLogin
+              </li>
+              <li>
+                <strong className="text-foreground">Reloadly</strong> — Email
+                address for gift card delivery
+              </li>
+              <li>
+                <strong className="text-foreground">Lob</strong> — Recipient
+                name and physical address for postcard and letter delivery
+              </li>
+              <li>
+                <strong className="text-foreground">Printful</strong> —
+                Shipping address for merchandise orders
+              </li>
+              <li>
+                <strong className="text-foreground">SerpAPI</strong> — Search
+                queries for flight results
+              </li>
+              <li>
+                <strong className="text-foreground">
+                  DeFi protocols (NAVI, Suilend, Cetus)
+                </strong>{" "}
+                — Via on-chain smart contracts (public blockchain data only)
+              </li>
+              <li>
+                <strong className="text-foreground">Sui RPC nodes</strong> —
+                For blockchain interaction
+              </li>
+              <li>
+                <strong className="text-foreground">Vercel</strong> — Website
+                and app hosting, analytics
+              </li>
+              <li>
+                <strong className="text-foreground">Neon</strong> — Database
+                hosting for aggregate protocol data
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-foreground text-lg font-serif italic mb-3">
               Data Storage
             </h2>
             <p>
-              Aggregate protocol data (agent registrations, transaction
-              summaries, fee records) is stored in a PostgreSQL database hosted
-              on Neon. No personal information is stored.
+              Aggregate protocol data (transaction summaries, fee records,
+              service delivery logs) is stored in a PostgreSQL database hosted
+              on Neon. Chat messages are processed in-memory during your session
+              and are not persisted by t2000. Physical addresses provided for
+              mail services are passed directly to the delivery provider and not
+              stored by t2000.
             </p>
           </section>
 
@@ -118,27 +207,10 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-foreground text-lg font-serif italic mb-3">
-              Third Parties
-            </h2>
-            <p>
-              We do not sell, share, or transfer any data to third parties. The
-              only third-party services we interact with are:
-            </p>
-            <ul className="list-disc pl-5 space-y-1.5 mt-2">
-              <li>Sui RPC nodes (for blockchain interaction)</li>
-              <li>DeFi protocols (NAVI, Suilend, Cetus — via on-chain contracts)</li>
-              <li>Vercel (website hosting and analytics)</li>
-              <li>Neon (database hosting)</li>
-              <li>npm (package distribution)</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-foreground text-lg font-serif italic mb-3">
               Open Source
             </h2>
             <p>
-              t2000 is fully open source. You can verify exactly what data is
+              t2000 is open source. You can verify exactly what data is
               collected and how it is used by reviewing the{" "}
               <a
                 href="https://github.com/mission69b/t2000"
