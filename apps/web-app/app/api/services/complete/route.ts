@@ -3,12 +3,14 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Credential, Method } from 'mppx';
 import { suiCharge } from '@t2000/mpp-sui/client';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { GATEWAY_BASE } from '@/lib/service-gateway';
 
 export const runtime = 'nodejs';
 
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? '';
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), network: SUI_NETWORK });
 
@@ -91,6 +93,9 @@ export async function POST(request: NextRequest) {
 
     if (meta.preDeliveredResult) {
       console.log(`[services/complete] Payment confirmed — returning pre-delivered result (deliver-first flow)`);
+
+      logToGateway(meta.serviceId, meta.price, confirmedPaymentDigest!).catch(() => {});
+
       return NextResponse.json({
         success: true,
         paymentDigest: confirmedPaymentDigest,
@@ -188,5 +193,22 @@ async function callGateway(
     price: meta.price,
     serviceId: meta.serviceId,
     result,
+  });
+}
+
+async function logToGateway(serviceId: string, amount: string, digest: string): Promise<void> {
+  const serviceMap: Record<string, { service: string; endpoint: string }> = {
+    'reloadly-giftcard': { service: 'reloadly', endpoint: '/v1/order' },
+  };
+  const info = serviceMap[serviceId];
+  if (!info) return;
+
+  await fetch(`${GATEWAY_BASE}/api/internal/log-payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-key': INTERNAL_API_KEY,
+    },
+    body: JSON.stringify({ ...info, amount, digest }),
   });
 }
