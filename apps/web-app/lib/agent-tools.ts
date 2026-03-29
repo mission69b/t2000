@@ -769,7 +769,6 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
   - For US users: Starbucks, Dunkin, DoorDash, Uber Eats, Walmart, Target, Amazon all exist. Rich catalog.
   - For most other countries: catalog is thinner. Let the browse results guide you. Don't promise brands before checking.
   - Fallback for shopping: Amazon (available in US, GB, AU, CA, DE, FR, AE). If no Amazon: check for Visa/Mastercard prepaid.
-  - PREFERRED BRANDS for food delivery: DoorDash first, then Uber Eats. Uber Eats has known ordering issues — always recommend DoorDash when available.
   Flow (MUST follow this exact 2-step process):
     STEP 1 — Browse & present: call browse_gift_cards with country "${country}". Then respond with a short recommendation: the brand you picked, a sensible default amount (lean LOW — $5 for coffee, $10 for a meal, $25 for groceries), and ask to confirm. Example: "Found **DoorDash US**. Want me to grab a **$15** card? (sends to ${email})" — keep it to 1-2 lines. Do NOT call buy_gift_card yet.
     STEP 2 — Buy (only after user says yes/confirms): call buy_gift_card with the confirmed details.
