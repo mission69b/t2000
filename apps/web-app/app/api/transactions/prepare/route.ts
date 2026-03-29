@@ -62,7 +62,7 @@ async function withSponsorableSwap<T>(
   try {
     return await fn();
   } finally {
-    delete (tx as Record<string, unknown>).gas;
+    delete (tx as unknown as Record<string, unknown>).gas;
   }
 }
 
