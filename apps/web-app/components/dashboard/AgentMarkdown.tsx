@@ -112,7 +112,7 @@ function parseLines(text: string): LineData[] {
       continue;
     }
 
-    const gcMatch = trimmed.match(/^<<giftcard\s+brand="([^"]+)"\s+amount="([^"]+)"\s+code="([^"]+)"\s+url="([^"]+)">>$/);
+    const gcMatch = trimmed.match(/^<<giftcard\s+brand="([^"]+)"\s+amount="([^"]+)"\s+code="([^"]*)"\s+url="([^"]+)">>$/);
     if (gcMatch) {
       result.push({
         type: 'giftcard',
@@ -291,15 +291,21 @@ function GiftCardVisual({ data }: { data: GiftCardData }) {
       </div>
 
       <div className="px-4 pb-3">
-        <button
-          onClick={copyCode}
-          className="w-full flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 py-2 hover:bg-white/10 transition group"
-        >
-          <code className="font-mono text-sm text-foreground tracking-wide">{data.code}</code>
-          <span className="text-xs text-muted group-hover:text-accent transition ml-2 shrink-0">
-            {copied ? '✓ Copied' : 'Copy'}
-          </span>
-        </button>
+        {data.code ? (
+          <button
+            onClick={copyCode}
+            className="w-full flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 py-2 hover:bg-white/10 transition group"
+          >
+            <code className="font-mono text-sm text-foreground tracking-wide">{data.code}</code>
+            <span className="text-xs text-muted group-hover:text-accent transition ml-2 shrink-0">
+              {copied ? '✓ Copied' : 'Copy'}
+            </span>
+          </button>
+        ) : (
+          <div className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-muted">
+            Check your email for the gift card code
+          </div>
+        )}
       </div>
 
       <a
