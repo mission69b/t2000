@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getReloadlyToken, RELOADLY_BASE, reloadlyHeaders, SERVICE_FEE_RATE } from '@/lib/reloadly';
+import { getReloadlyToken, reloadlyHeaders, reloadlyUrl, SERVICE_FEE_RATE } from '@/lib/reloadly';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from '@/lib/constants';
 
 const INTERNAL_KEY = process.env.INTERNAL_API_KEY;
@@ -127,8 +127,9 @@ export async function POST(request: NextRequest) {
 
   const token = await getReloadlyToken();
 
-  // Pre-validate: fetch product to check denomination and availability
-  const prodRes = await fetch(`${RELOADLY_BASE}/products/${body.productId}`, {
+  const safeProductId = String(Number(body.productId));
+
+  const prodRes = await fetch(reloadlyUrl(`/products/${safeProductId}`), {
     method: 'GET',
     headers: reloadlyHeaders(token),
   });
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
 
   console.log(`[reloadly/order-internal] Validated: ${product.productName} (${product.denominationType}), price=${body.unitPrice}, id=${body.productId}`);
 
-  const orderRes = await fetch(`${RELOADLY_BASE}/orders`, {
+  const orderRes = await fetch(reloadlyUrl('/orders'), {
     method: 'POST',
     headers: reloadlyHeaders(token),
     body: JSON.stringify(body),
@@ -195,11 +196,11 @@ export async function POST(request: NextRequest) {
 
   const [redeemData, instrData] = await Promise.all([
     result.transactionId
-      ? fetch(`${RELOADLY_BASE}/orders/transactions/${result.transactionId}/cards`, {
+      ? fetch(reloadlyUrl(`/orders/transactions/${String(Number(result.transactionId))}/cards`), {
           method: 'GET', headers: v2Headers,
         }).then(r => r.ok ? r.json() : null).catch(() => null)
       : Promise.resolve(null),
-    fetch(`${RELOADLY_BASE}/products/${body.productId}/redeem-instructions`, {
+    fetch(reloadlyUrl(`/products/${safeProductId}/redeem-instructions`), {
       method: 'GET', headers: reloadlyHeaders(token),
     }).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);

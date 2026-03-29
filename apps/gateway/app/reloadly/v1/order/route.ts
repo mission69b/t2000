@@ -1,5 +1,5 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
-import { getReloadlyToken, RELOADLY_BASE, reloadlyHeaders, SERVICE_FEE_RATE } from '@/lib/reloadly';
+import { getReloadlyToken, reloadlyHeaders, reloadlyUrl, SERVICE_FEE_RATE } from '@/lib/reloadly';
 
 interface OrderBody {
   productId: number;
@@ -33,12 +33,13 @@ interface ReloadlyProduct {
 async function validateOrder(body: OrderBody): Promise<void> {
   const token = await getReloadlyToken();
 
+  const safeProductId = String(Number(body.productId));
   const [balRes, prodRes] = await Promise.all([
-    fetch(`${RELOADLY_BASE}/accounts/balance`, {
+    fetch(reloadlyUrl('/accounts/balance'), {
       method: 'GET',
       headers: reloadlyHeaders(token),
     }).catch(() => null),
-    fetch(`${RELOADLY_BASE}/products/${body.productId}`, {
+    fetch(reloadlyUrl(`/products/${safeProductId}`), {
       method: 'GET',
       headers: reloadlyHeaders(token),
     }),
@@ -105,7 +106,7 @@ export const POST = chargeCustom(
     const token = await getReloadlyToken();
 
     return fetchWithRetry(
-      `${RELOADLY_BASE}/orders`,
+      reloadlyUrl('/orders'),
       {
         method: 'POST',
         headers: reloadlyHeaders(token),

@@ -5,6 +5,16 @@ export const RELOADLY_BASE = SANDBOX
   : 'https://giftcards.reloadly.com';
 
 const AUDIENCE = RELOADLY_BASE;
+const RELOADLY_ORIGIN = new URL(RELOADLY_BASE).origin;
+
+/** Build a validated Reloadly API URL — prevents SSRF via user-controlled path segments. */
+export function reloadlyUrl(path: string): string {
+  const url = new URL(path, RELOADLY_BASE);
+  if (url.origin !== RELOADLY_ORIGIN) {
+    throw new Error('Unexpected URL origin in Reloadly request');
+  }
+  return url.toString();
+}
 
 let cached: { token: string; expiresAt: number } | null = null;
 

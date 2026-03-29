@@ -1,5 +1,5 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
-import { getReloadlyToken, RELOADLY_BASE, reloadlyHeaders } from '@/lib/reloadly';
+import { getReloadlyToken, reloadlyHeaders, reloadlyUrl } from '@/lib/reloadly';
 
 // Blacklist junk products that appear in every country's catalog.
 // These are obscure games, crypto vouchers, and low-quality products
@@ -44,7 +44,7 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
 
   while (true) {
     const res = await fetchWithRetry(
-      `${RELOADLY_BASE}/products?countryCode=${cc}&size=${size}&page=${page}&includeRange=true&includeFixed=true`,
+      reloadlyUrl(`/products?countryCode=${cc}&size=${size}&page=${page}&includeRange=true&includeFixed=true`),
       { method: 'GET', headers },
     );
 
