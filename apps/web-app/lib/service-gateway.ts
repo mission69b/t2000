@@ -434,6 +434,10 @@ export function createRawGatewayMapping(
   path: string,
   body: Record<string, unknown>,
 ): GatewayMapping | null {
+  try {
+    const parsed = new URL(path);
+    path = parsed.pathname;
+  } catch { /* not a full URL — treat as path */ }
   const stripped = path.replace(/^\/+/, '');
   const segments = stripped.split('/');
   if (segments.length < 2 || segments.some((s) => !ALLOWED_SEGMENT_RE.test(s))) return null;
