@@ -40,6 +40,7 @@ interface ProxyOptions {
   upstreamMethod?: 'GET' | 'POST';
   bodyToQuery?: boolean;
   validate?: (body: Record<string, unknown>) => string | null;
+  mapBody?: (body: Record<string, unknown>) => Record<string, unknown>;
 }
 
 /**
@@ -73,7 +74,8 @@ export function chargeProxy(
       let url = upstream;
 
       if (options?.bodyToQuery && bodyText) {
-        const params = JSON.parse(bodyText) as Record<string, string>;
+        let params = JSON.parse(bodyText) as Record<string, string>;
+        if (options.mapBody) params = options.mapBody(params) as Record<string, string>;
         const qs = new URLSearchParams(params).toString();
         const sep = upstream.includes('?') ? '&' : '?';
         url = `${upstream}${sep}${qs}`;

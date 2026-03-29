@@ -30,6 +30,42 @@ const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f
 const SUI_TYPE = '0x2::sui::SUI';
 const MIST_PER_SUI = 1_000_000_000;
 
+/**
+ * The Cetus aggregator internally adds Pyth oracle updates that call
+ * `tx.splitCoins(tx.gas, ...)` to pay the Pyth fee. Enoki rejects
+ * transactions with GasCoin arguments because the gas coin belongs to
+ * the sponsor. This helper temporarily overrides `tx.gas` with a real
+ * SUI coin from the user's wallet so the aggregator uses that instead.
+ */
+async function withSponsorableSwap<T>(
+  tx: Transaction,
+  address: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const client = getClient();
+  const { data: suiCoins } = await client.getCoins({
+    owner: address,
+    coinType: SUI_TYPE,
+    limit: 1,
+  });
+
+  if (!suiCoins.length) {
+    return fn();
+  }
+
+  const suiCoinObj = tx.object(suiCoins[0].coinObjectId);
+  Object.defineProperty(tx, 'gas', {
+    get: () => suiCoinObj,
+    configurable: true,
+  });
+
+  try {
+    return await fn();
+  } finally {
+    delete (tx as Record<string, unknown>).gas;
+  }
+}
+
 const ASSET_COIN_TYPES: Record<string, { type: string; decimals: number }> = {
   USDC: { type: USDC_TYPE, decimals: 6 },
   USDT: { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
@@ -265,8 +301,8 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
         );
         const swapAdapter = getSwapAdapter();
         if (!swapAdapter.addSwapToTx) throw new Error('Swap adapter does not support composable swap');
-        const { outputCoin } = await swapAdapter.addSwapToTx(
-          tx, address, withdrawnCoin, withdrawAsset, targetAsset, effectiveAmount,
+        const { outputCoin } = await withSponsorableSwap(tx, address, () =>
+          swapAdapter.addSwapToTx!(tx, address, withdrawnCoin, withdrawAsset, targetAsset, effectiveAmount),
         );
         tx.transferObjects([outputCoin], address);
         break;
@@ -319,7 +355,9 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
 
       const swapAdapter = getSwapAdapter();
       if (!swapAdapter.addSwapToTx) throw new Error('Swap adapter does not support composable swap');
-      const { outputCoin } = await swapAdapter.addSwapToTx(tx, address, inputCoin, from, to, amount);
+      const { outputCoin } = await withSponsorableSwap(tx, address, () =>
+        swapAdapter.addSwapToTx!(tx, address, inputCoin, from, to, amount),
+      );
       tx.transferObjects([outputCoin], address);
       break;
     }
@@ -340,8 +378,8 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
       if (params.toAsset && params.toAsset !== withdrawAsset) {
         const swapAdapter = getSwapAdapter();
         if (!swapAdapter.addSwapToTx) throw new Error('Swap adapter does not support composable swap');
-        const { outputCoin } = await swapAdapter.addSwapToTx(
-          tx, address, withdrawnCoin, withdrawAsset, params.toAsset, effectiveAmount,
+        const { outputCoin } = await withSponsorableSwap(tx, address, () =>
+          swapAdapter.addSwapToTx!(tx, address, withdrawnCoin, withdrawAsset, params.toAsset!, effectiveAmount),
         );
         depositCoin = outputCoin;
         depositAsset = params.toAsset;
