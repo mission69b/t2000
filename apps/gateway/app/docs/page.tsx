@@ -308,7 +308,7 @@ export const POST = mppx.charge({ amount: '0.01' })(
                   </a>{' '}
                   and make it discoverable by agents, reach out on{' '}
                   <a
-                    href="https://discord.gg/qtVJR5eH"
+                    href="https://discord.gg/qE95FPt6Z5"
                     className="text-accent hover:underline"
                   >
                     Discord

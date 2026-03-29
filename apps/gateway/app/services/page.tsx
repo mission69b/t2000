@@ -535,7 +535,7 @@ const result = await agent.pay({
                 GitHub
               </a>
               <a
-                href="https://discord.gg/qtVJR5eH"
+                href="https://discord.gg/qE95FPt6Z5"
                 className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors"
               >
                 <span className="text-accent">&rarr;</span>

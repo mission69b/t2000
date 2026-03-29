@@ -253,7 +253,7 @@ All stablecoins use 6 decimals. All are supported on NAVI and Suilend.
 | MPP Gateway | `mpp.t2000.ai` |
 | GitHub | `github.com/mission69b/t2000` |
 | X | `x.com/t2000ai` |
-| Discord | `discord.gg/qtVJR5eH` |
+| Discord | `discord.gg/qE95FPt6Z5` |
 | npm | `npmjs.com/package/@t2000/cli` |
 
 ---

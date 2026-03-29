@@ -124,7 +124,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
       { id: "changelog", name: "Changelog" },
       { id: "_github", name: "GitHub ↗", href: GITHUB_URL },
       { id: "_twitter", name: "X ↗", href: "https://x.com/t2000ai" },
-      { id: "_discord", name: "Discord ↗", href: "https://discord.gg/qtVJR5eH" },
+      { id: "_discord", name: "Discord ↗", href: "https://discord.gg/qE95FPt6Z5" },
     ],
   },
 ];

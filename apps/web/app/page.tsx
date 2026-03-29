@@ -7,7 +7,7 @@ import { HomeShowcase } from "./components/HomeShowcase";
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
 const TWITTER_URL = "https://x.com/t2000ai";
-const DISCORD_URL = "https://discord.gg/qtVJR5eH";
+const DISCORD_URL = "https://discord.gg/qE95FPt6Z5";
 const DOCS_URL = "/docs";
 const DEMO_URL = "/demo";
 
