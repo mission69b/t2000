@@ -112,6 +112,8 @@ export function mapMoveAbortCode(code: number): string {
     1503: 'Withdrawal amount is invalid (zero or dust) — try a specific amount instead of "all"',
     1600: 'Health factor too low — withdrawal would risk liquidation',
     1605: 'Asset borrowing is disabled or at capacity on this protocol',
+    // NAVI utils abort codes
+    46000: 'Insufficient balance to repay — withdraw some savings first to get cash',
     // Cetus DEX abort codes
     46001: 'Swap failed — the DEX pool rejected the trade (liquidity or routing issue). Try again.',
   };

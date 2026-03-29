@@ -478,16 +478,21 @@ export async function buildRepayTx(
   const assetInfo = resolveAssetInfo(asset);
 
   const coins = await fetchCoins(client, address, assetInfo.type);
-  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins to repay with`);
+  if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins to repay with. Withdraw some savings first to get cash.`);
 
   const totalBalance = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+  const rawRequested = Number(stableToRaw(amount, assetInfo.decimals));
+
+  if (Number(totalBalance) < rawRequested && Number(totalBalance) < 1000) {
+    throw new T2000Error('INSUFFICIENT_BALANCE', `Not enough ${assetInfo.displayName} to repay (need $${amount.toFixed(2)}, wallet has ~$${(Number(totalBalance) / 10 ** assetInfo.decimals).toFixed(4)}). Withdraw some savings first.`);
+  }
 
   const tx = new Transaction();
   tx.setSender(address);
 
   const coinObj = mergeCoins(tx, coins);
 
-  const rawAmount = Math.min(Number(stableToRaw(amount, assetInfo.decimals)), Number(totalBalance));
+  const rawAmount = Math.min(rawRequested, Number(totalBalance));
   const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
 
   await refreshOracle(tx, client, address, {

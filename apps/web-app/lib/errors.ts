@@ -13,6 +13,7 @@ const MOVE_ABORT_MAP: Record<number, { message: string; chips?: { label: string;
   4: { message: 'Repayment exceeds your outstanding loan.', chips: [{ label: 'Check balance', flow: 'balance' }] },
   5: { message: 'Your position is at risk. Repay some of your loan first.', chips: [{ label: 'Repay $50', flow: 'repay' }] },
   1600: { message: 'Can\'t withdraw all savings while you have outstanding debt. Repay your loan first, then withdraw.', chips: [{ label: 'Repay all', flow: 'Repay all' }] },
+  46000: { message: 'Not enough cash to repay. Withdraw a small amount from savings first, then repay.', chips: [{ label: 'Withdraw $1', flow: 'Withdraw $1' }, { label: 'Check balance', flow: 'balance' }] },
 };
 
 const WALLET_ERROR_MAP: [RegExp, string, { label: string; flow: string }[]?][] = [
