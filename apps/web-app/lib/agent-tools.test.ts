@@ -127,10 +127,10 @@ describe('getEstimatedCost', () => {
     expect(getEstimatedCost('send_postcard')).toBe(1.0);
   });
 
-  it('computes gift card cost from amount arg (face + 5%)', () => {
-    expect(getEstimatedCost('buy_gift_card', { amount: 5 })).toBe(5.25);
-    expect(getEstimatedCost('buy_gift_card', { amount: 25 })).toBe(26.25);
-    expect(getEstimatedCost('buy_gift_card', { amount: 100 })).toBe(105);
+  it('computes gift card cost from amount arg (face value, zero fee)', () => {
+    expect(getEstimatedCost('buy_gift_card', { amount: 5 })).toBe(5);
+    expect(getEstimatedCost('buy_gift_card', { amount: 25 })).toBe(25);
+    expect(getEstimatedCost('buy_gift_card', { amount: 100 })).toBe(100);
   });
 
   it('falls back to default for gift card with no amount arg', () => {

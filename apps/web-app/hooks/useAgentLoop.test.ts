@@ -135,8 +135,8 @@ describe('useAgentLoop (unit logic)', () => {
     expect(callbacks.onError).toHaveBeenCalledWith(expect.stringContaining('500'));
   });
 
-  it('truncates tool results larger than 4KB', async () => {
-    const largeResult = { data: 'x'.repeat(5000) };
+  it('truncates tool results larger than 32KB', async () => {
+    const largeResult = { data: 'x'.repeat(35_000) };
     mockFetch
       .mockResolvedValueOnce(llmToolResponse([
         { id: 'tc_1', name: 'get_history', args: {} },
@@ -156,7 +156,7 @@ describe('useAgentLoop (unit logic)', () => {
     const chatCall = mockFetch.mock.calls[2];
     const body = JSON.parse(chatCall[1].body);
     const toolMsg = body.messages.find((m: { role: string }) => m.role === 'tool');
-    expect(toolMsg.content.length).toBeLessThanOrEqual(4020);
+    expect(toolMsg.content.length).toBeLessThanOrEqual(32_020);
     expect(toolMsg.content).toContain('truncated');
   });
 
