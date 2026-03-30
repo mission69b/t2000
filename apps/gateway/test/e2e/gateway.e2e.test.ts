@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { Mppx } from 'mppx/client';
 import { sui } from '@mppsui/mpp/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 
 const GATEWAY_URL = process.env.GATEWAY_URL ?? 'https://mpp.t2000.ai';
 const NETWORK = (process.env.SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
-const USE_GRPC = process.env.MPPSUI_USE_GRPC === 'true';
 
 let mppxClient: ReturnType<typeof Mppx.create>;
 let paidFetch: typeof globalThis.fetch;
@@ -17,32 +17,17 @@ beforeAll(async () => {
   const keypair = Ed25519Keypair.fromSecretKey(privateKey);
   const address = keypair.getPublicKey().toSuiAddress();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let client: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let signer: any;
-
-  if (USE_GRPC) {
-    const { SuiGrpcClient } = await import('@mysten/sui/grpc');
-    client = new SuiGrpcClient({ baseUrl: `https://fullnode.${NETWORK}.sui.io:443`, network: NETWORK });
-    signer = keypair;
-    console.log('Using SuiGrpcClient (PR branch)');
-  } else {
-    const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
-    client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(NETWORK), network: NETWORK });
-    signer = {
-      getAddress: () => address,
-      signTransaction: (txBytes: Uint8Array) => keypair.signTransaction(txBytes),
-    };
-    console.log('Using SuiJsonRpcClient (published npm)');
-  }
+  const client = new SuiGrpcClient({
+    baseUrl: `https://fullnode.${NETWORK}.sui.io:443`,
+    network: NETWORK,
+  });
 
   console.log(`E2E wallet: ${address}`);
   console.log(`Gateway:    ${GATEWAY_URL}`);
   console.log(`Network:    ${NETWORK}`);
 
   mppxClient = Mppx.create({
-    methods: [sui({ client, signer })],
+    methods: [sui({ client, signer: keypair })],
     polyfill: false,
   });
 
