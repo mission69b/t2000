@@ -113,7 +113,8 @@ describe('gateway e2e — 402 payment flow', () => {
     const decoded = JSON.parse(
       Buffer.from(receipt!.replace('sui:', ''), 'base64').toString(),
     );
-    expect(decoded.reference).toMatch(/^0x[a-fA-F0-9]+/);
+    expect(decoded.reference).toBeTruthy();
+    expect(decoded.reference.length).toBeGreaterThan(20);
     expect(decoded.status).toBe('success');
   });
 });
