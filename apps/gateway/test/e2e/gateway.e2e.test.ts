@@ -24,7 +24,7 @@ beforeAll(async () => {
 
   if (USE_GRPC) {
     const { SuiGrpcClient } = await import('@mysten/sui/grpc');
-    client = new SuiGrpcClient({ url: `https://sui-${NETWORK}.mystenlabs.com`, network: NETWORK });
+    client = new SuiGrpcClient({ baseUrl: `https://fullnode.${NETWORK}.sui.io:443`, network: NETWORK });
     signer = keypair;
     console.log('Using SuiGrpcClient (PR branch)');
   } else {
