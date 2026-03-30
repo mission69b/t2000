@@ -192,7 +192,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     return new T2000(keypair, client);
   }
 
-  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean }> {
+  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean; usdcSponsored: boolean }> {
     const secret = options.pin ?? options.passphrase ?? '';
     const keypair = generateKeypair();
     await saveKey(keypair, secret, options.keyPath);
@@ -202,6 +202,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const address = agent.address();
 
     let sponsored = false;
+    let usdcSponsored = false;
     if (options.sponsored !== false) {
       try {
         await callSponsorApi(address, options.name);
@@ -212,12 +213,13 @@ export class T2000 extends EventEmitter<T2000Events> {
 
       try {
         await callUsdcSponsorApi(address);
+        usdcSponsored = true;
       } catch {
         // USDC sponsor unavailable — not critical, user can deposit manually
       }
     }
 
-    return { agent, address, sponsored };
+    return { agent, address, sponsored, usdcSponsored };
   }
 
   // -- Gas --

@@ -117,14 +117,14 @@ export function registerInit(program: Command) {
           printBlank();
           printInfo('Creating agent wallet...');
 
-          const { address: addr, sponsored } = await T2000.init({ pin, keyPath: opts.key, sponsored: opts.sponsor });
+          const { address: addr, sponsored, usdcSponsored } = await T2000.init({ pin, keyPath: opts.key, sponsored: opts.sponsor });
           address = addr;
           await saveSession(pin);
 
           printSuccess('Keypair generated');
           printSuccess(`Network ${pc.dim('Sui mainnet')}`);
           printSuccess(`Gas sponsorship ${pc.dim(sponsored ? 'enabled' : 'disabled')}`);
-          if (sponsored) {
+          if (usdcSponsored) {
             printSuccess(`USDC onboarding ${pc.dim('$1 USDC funded')}`);
           }
 
