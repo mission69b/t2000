@@ -5,7 +5,10 @@ import { checkRateLimit, sponsorWalletInit } from '../services/sponsor.js';
 import {
   sponsorUsdc,
   checkUsdcSponsorRateLimit,
+  checkUsdcDailyLimit,
+  checkUsdcIpRateLimit,
   isAlreadySponsored,
+  isSponsorPaused,
 } from '../services/usdcSponsor.js';
 
 const SPONSOR_INTERNAL_KEY = process.env.SPONSOR_INTERNAL_KEY ?? '';
@@ -56,6 +59,10 @@ sponsor.post('/api/sponsor', async (c) => {
 });
 
 sponsor.post('/api/sponsor/usdc', async (c) => {
+  if (isSponsorPaused()) {
+    return c.json({ error: 'SPONSOR_PAUSED', message: 'USDC sponsorship is temporarily paused' }, 503);
+  }
+
   const body = await c.req.json<{
     address: string;
     source?: 'web' | 'cli';
@@ -71,27 +78,38 @@ sponsor.post('/api/sponsor/usdc', async (c) => {
   }
 
   const source = body.source ?? 'cli';
+  const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? '127.0.0.1';
 
-  const internalKey = c.req.header('x-internal-key');
   if (source === 'web') {
+    const internalKey = c.req.header('x-internal-key');
     if (!SPONSOR_INTERNAL_KEY || internalKey !== SPONSOR_INTERNAL_KEY) {
       return c.json({ error: 'UNAUTHORIZED', message: 'Invalid internal key' }, 401);
     }
-  } else {
-    const withinLimit = await checkUsdcSponsorRateLimit();
-    if (!withinLimit) {
-      if (!body.proof) {
-        const challenge = createChallenge(body.address);
-        return c.json({
-          error: 'RATE_LIMITED',
-          challenge: formatChallenge(challenge),
-          message: 'Solve the hashcash challenge and resubmit with proof field',
-        }, 429);
-      }
+  }
 
-      if (!verifyStamp(body.proof, body.address)) {
-        return c.json({ error: 'INVALID_PROOF', message: 'Hashcash proof is invalid' }, 403);
-      }
+  const withinDaily = await checkUsdcDailyLimit();
+  if (!withinDaily) {
+    return c.json({ error: 'DAILY_LIMIT', message: 'Daily USDC sponsorship limit reached — try again tomorrow' }, 429);
+  }
+
+  const withinIpLimit = await checkUsdcIpRateLimit(ip);
+  if (!withinIpLimit) {
+    return c.json({ error: 'RATE_LIMITED', message: 'Too many sponsorship requests from this IP' }, 429);
+  }
+
+  const withinHourly = await checkUsdcSponsorRateLimit();
+  if (!withinHourly) {
+    if (!body.proof) {
+      const challenge = createChallenge(body.address);
+      return c.json({
+        error: 'RATE_LIMITED',
+        challenge: formatChallenge(challenge),
+        message: 'Solve the hashcash challenge and resubmit with proof field',
+      }, 429);
+    }
+
+    if (!verifyStamp(body.proof, body.address)) {
+      return c.json({ error: 'INVALID_PROOF', message: 'Hashcash proof is invalid' }, 403);
     }
   }
 
@@ -101,7 +119,7 @@ sponsor.post('/api/sponsor/usdc', async (c) => {
   }
 
   try {
-    const result = await sponsorUsdc(body.address, source);
+    const result = await sponsorUsdc(body.address, source, ip);
     return c.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'USDC sponsor failed';

@@ -54,8 +54,11 @@ model UsdcSponsorLog {
   amount       String
   txDigest     String   @map("tx_digest")
   source       String   @default("web")
+  ipAddress    String?  @map("ip_address")
   createdAt    DateTime @default(now()) @map("created_at")
 
+  @@index([ipAddress, createdAt])
+  @@index([createdAt])
   @@map("usdc_sponsor_log")
 }
 

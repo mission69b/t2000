@@ -4,14 +4,20 @@ import { prisma } from '../db/prisma.js';
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const USDC_DECIMALS = 6;
-const SPONSOR_AMOUNT_USD = 1;
-const SPONSOR_AMOUNT_RAW = BigInt(SPONSOR_AMOUNT_USD * 10 ** USDC_DECIMALS);
+const SPONSOR_AMOUNT_USD = 0.25;
+const SPONSOR_AMOUNT_RAW = BigInt(Math.round(SPONSOR_AMOUNT_USD * 10 ** USDC_DECIMALS));
 const RATE_LIMIT_PER_HOUR = 20;
+const DAILY_LIMIT = 50;
+const IP_RATE_LIMIT_PER_HOUR = 3;
 
 export interface UsdcSponsorResult {
   digest: string;
   agentAddress: string;
   usdcFunded: string;
+}
+
+export function isSponsorPaused(): boolean {
+  return process.env.USDC_SPONSOR_PAUSED === '1' || process.env.USDC_SPONSOR_PAUSED === 'true';
 }
 
 export async function checkUsdcSponsorRateLimit(): Promise<boolean> {
@@ -20,6 +26,22 @@ export async function checkUsdcSponsorRateLimit(): Promise<boolean> {
     where: { createdAt: { gte: oneHourAgo } },
   });
   return count < RATE_LIMIT_PER_HOUR;
+}
+
+export async function checkUsdcDailyLimit(): Promise<boolean> {
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const count = await prisma.usdcSponsorLog.count({
+    where: { createdAt: { gte: oneDayAgo } },
+  });
+  return count < DAILY_LIMIT;
+}
+
+export async function checkUsdcIpRateLimit(ipAddress: string): Promise<boolean> {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const count = await prisma.usdcSponsorLog.count({
+    where: { ipAddress, createdAt: { gte: oneHourAgo } },
+  });
+  return count < IP_RATE_LIMIT_PER_HOUR;
 }
 
 export async function isAlreadySponsored(agentAddress: string): Promise<boolean> {
@@ -32,6 +54,7 @@ export async function isAlreadySponsored(agentAddress: string): Promise<boolean>
 export async function sponsorUsdc(
   agentAddress: string,
   source: 'web' | 'cli',
+  ipAddress?: string,
 ): Promise<UsdcSponsorResult> {
   const already = await isAlreadySponsored(agentAddress);
   if (already) {
@@ -79,6 +102,7 @@ export async function sponsorUsdc(
         amount: String(SPONSOR_AMOUNT_USD),
         txDigest: result.digest,
         source,
+        ...(ipAddress ? { ipAddress } : {}),
       },
     }),
     prisma.agent.upsert({
