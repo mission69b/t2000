@@ -207,7 +207,13 @@ export class T2000 extends EventEmitter<T2000Events> {
         await callSponsorApi(address, options.name);
         sponsored = true;
       } catch {
-        // Sponsor unavailable — agent can still be funded manually
+        // SUI gas sponsor unavailable — agent can still be funded manually
+      }
+
+      try {
+        await callUsdcSponsorApi(address);
+      } catch {
+        // USDC sponsor unavailable — not critical, user can deposit manually
       }
     }
 
@@ -3246,5 +3252,33 @@ async function callSponsorApi(address: string, name?: string): Promise<void> {
 
   if (!res.ok) {
     throw new T2000Error('SPONSOR_FAILED', 'Sponsor API unavailable');
+  }
+}
+
+async function callUsdcSponsorApi(address: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/sponsor/usdc`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, source: 'cli' }),
+  });
+
+  if (res.status === 429) {
+    const data = await res.json() as { challenge?: string };
+    if (data.challenge) {
+      const proof = solveHashcash(data.challenge);
+      const retry = await fetch(`${API_BASE_URL}/api/sponsor/usdc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, source: 'cli', proof }),
+      });
+      if (!retry.ok) throw new T2000Error('USDC_SPONSOR_RATE_LIMITED', 'USDC sponsor rate limited');
+      return;
+    }
+  }
+
+  if (res.status === 409) return; // Already sponsored — not an error
+
+  if (!res.ok) {
+    throw new T2000Error('USDC_SPONSOR_FAILED', 'USDC sponsor unavailable');
   }
 }

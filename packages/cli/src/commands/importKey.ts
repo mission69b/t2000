@@ -1,7 +1,9 @@
 import type { Command } from 'commander';
-import { T2000, keypairFromPrivateKey, saveKey } from '@t2000/sdk';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
+import { T2000, keypairFromPrivateKey, saveKey, SafeguardEnforcer } from '@t2000/sdk';
 import { resolvePin } from '../prompts.js';
-import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError } from '../output.js';
+import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleError, printError } from '../output.js';
 import { password } from '@inquirer/prompts';
 
 export function registerImport(program: Command) {
@@ -11,6 +13,13 @@ export function registerImport(program: Command) {
     .option('--key <path>', 'Key file path')
     .action(async (opts) => {
       try {
+        const enforcer = new SafeguardEnforcer(join(homedir(), '.t2000'));
+        enforcer.load();
+        if (enforcer.getConfig().locked) {
+          printError('Agent is locked. Unlock first: t2000 unlock');
+          return;
+        }
+
         let privateKey: string;
         if (process.env.T2000_PRIVATE_KEY) {
           privateKey = process.env.T2000_PRIVATE_KEY;

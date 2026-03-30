@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
-import { T2000 } from '@t2000/sdk';
+import { T2000, SafeguardEnforcer } from '@t2000/sdk';
 import { resolvePin, askConfirm } from '../prompts.js';
 import { printSuccess, printBlank, printInfo, printJson, isJsonMode, handleError, printError } from '../output.js';
 
@@ -37,6 +37,13 @@ export function registerExport(program: Command) {
     .option('--yes', 'Skip confirmation')
     .action(async (opts) => {
       try {
+        const enforcer = new SafeguardEnforcer(join(homedir(), '.t2000'));
+        enforcer.load();
+        if (enforcer.getConfig().locked) {
+          printError('Agent is locked. Unlock first: t2000 unlock');
+          return;
+        }
+
         const lock = await getLockState();
         if (lock.lockedUntil > Date.now()) {
           const remainSec = Math.ceil((lock.lockedUntil - Date.now()) / 1000);

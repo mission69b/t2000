@@ -124,6 +124,9 @@ export function registerInit(program: Command) {
           printSuccess('Keypair generated');
           printSuccess(`Network ${pc.dim('Sui mainnet')}`);
           printSuccess(`Gas sponsorship ${pc.dim(sponsored ? 'enabled' : 'disabled')}`);
+          if (sponsored) {
+            printSuccess(`USDC onboarding ${pc.dim('$1 USDC funded')}`);
+          }
 
           printBlank();
           printInfo('Setting up accounts...');
@@ -211,7 +214,7 @@ export function registerInit(program: Command) {
           console.log(`  │                                         │`);
         }
 
-        console.log(`  │  Deposit USDC to get started:           │`);
+        console.log(`  │  Your address:                          │`);
         console.log(`  │    ${pc.yellow(address)}  │`);
         console.log(`  └─────────────────────────────────────────┘`);
         console.log('');
