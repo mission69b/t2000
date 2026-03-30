@@ -51,9 +51,9 @@ describe('gateway e2e — 402 payment flow', () => {
 
     expect(res.status).toBe(402);
 
-    const paymentRequest = res.headers.get('X-Payment');
-    expect(paymentRequest).toBeTruthy();
-    expect(paymentRequest).toContain('sui');
+    const wwwAuth = res.headers.get('www-authenticate');
+    expect(wwwAuth).toBeTruthy();
+    expect(wwwAuth).toContain('method="sui"');
   });
 
   it('completes payment and receives response — openai chat', async () => {
@@ -124,7 +124,7 @@ describe('gateway e2e — error cases', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'X-Payment': 'sui:invalid_credential_data',
+        'authorization': 'Payment invalid_credential_data',
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
