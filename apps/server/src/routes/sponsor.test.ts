@@ -2,9 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 
 const mockCheckUsdcRateLimit = vi.fn();
+const mockCheckUsdcDailyLimit = vi.fn();
+const mockCheckUsdcIpRateLimit = vi.fn();
 const mockIsAlreadySponsored = vi.fn();
+const mockIsSponsorPaused = vi.fn();
 const mockSponsorUsdc = vi.fn();
 const mockCheckRateLimit = vi.fn();
+const mockCheckDailyLimit = vi.fn();
+const mockIsAlreadyFunded = vi.fn();
 const mockSponsorWalletInit = vi.fn();
 const mockCreateChallenge = vi.fn();
 const mockFormatChallenge = vi.fn();
@@ -12,12 +17,17 @@ const mockVerifyStamp = vi.fn();
 
 vi.mock('../services/usdcSponsor.js', () => ({
   checkUsdcSponsorRateLimit: (...args: unknown[]) => mockCheckUsdcRateLimit(...args),
+  checkUsdcDailyLimit: (...args: unknown[]) => mockCheckUsdcDailyLimit(...args),
+  checkUsdcIpRateLimit: (...args: unknown[]) => mockCheckUsdcIpRateLimit(...args),
   isAlreadySponsored: (...args: unknown[]) => mockIsAlreadySponsored(...args),
+  isSponsorPaused: (...args: unknown[]) => mockIsSponsorPaused(...args),
   sponsorUsdc: (...args: unknown[]) => mockSponsorUsdc(...args),
 }));
 
 vi.mock('../services/sponsor.js', () => ({
   checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
+  checkDailyLimit: (...args: unknown[]) => mockCheckDailyLimit(...args),
+  isAlreadyFunded: (...args: unknown[]) => mockIsAlreadyFunded(...args),
   sponsorWalletInit: (...args: unknown[]) => mockSponsorWalletInit(...args),
 }));
 
@@ -32,6 +42,12 @@ let app: Hono;
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.stubEnv('SPONSOR_INTERNAL_KEY', 'test-secret-key');
+
+  mockIsSponsorPaused.mockReturnValue(false);
+  mockCheckUsdcDailyLimit.mockResolvedValue(true);
+  mockCheckUsdcIpRateLimit.mockResolvedValue(true);
+  mockCheckDailyLimit.mockResolvedValue(true);
+  mockIsAlreadyFunded.mockResolvedValue(false);
 
   vi.resetModules();
   const { sponsor } = await import('./sponsor.js');
@@ -92,6 +108,7 @@ describe('POST /api/sponsor/usdc', () => {
     });
 
     it('accepts correct internal key', async () => {
+      mockCheckUsdcRateLimit.mockResolvedValue(true);
       mockIsAlreadySponsored.mockResolvedValue(false);
       mockSponsorUsdc.mockResolvedValue({ digest: '0xdigest', agentAddress: validAddress, usdcFunded: '1' });
       const res = await post(
@@ -100,7 +117,7 @@ describe('POST /api/sponsor/usdc', () => {
         { 'x-internal-key': 'test-secret-key' },
       );
       expect(res.status).toBe(200);
-      expect(mockSponsorUsdc).toHaveBeenCalledWith(validAddress, 'web');
+      expect(mockSponsorUsdc).toHaveBeenCalledWith(validAddress, 'web', expect.any(String));
     });
   });
 
@@ -113,7 +130,7 @@ describe('POST /api/sponsor/usdc', () => {
       mockSponsorUsdc.mockResolvedValue({ digest: '0xd', agentAddress: validAddress, usdcFunded: '1' });
       const res = await post('/api/sponsor/usdc', { address: validAddress });
       expect(res.status).toBe(200);
-      expect(mockSponsorUsdc).toHaveBeenCalledWith(validAddress, 'cli');
+      expect(mockSponsorUsdc).toHaveBeenCalledWith(validAddress, 'cli', expect.any(String));
     });
 
     it('allows request within rate limit without proof', async () => {

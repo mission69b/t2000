@@ -84,6 +84,7 @@ describe('isAlreadySponsored', () => {
       amount: '1',
       txDigest: '0xdigest',
       source: 'cli',
+      ipAddress: null,
       createdAt: new Date(),
     });
     const result = await isAlreadySponsored('0xabc');
