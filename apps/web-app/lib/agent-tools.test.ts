@@ -53,40 +53,6 @@ describe('TOOL_EXECUTORS transforms', () => {
     expect(result).toEqual({ to: 'user@test.com', subject: 'Hello', body: 'Test body' });
   });
 
-  it('browse_gift_cards transforms country', () => {
-    const result = TOOL_EXECUTORS.browse_gift_cards.transform!({ country: 'AU' });
-    expect(result).toEqual({ countryCode: 'AU' });
-  });
-
-  it('browse_gift_cards defaults to US', () => {
-    const result = TOOL_EXECUTORS.browse_gift_cards.transform!({});
-    expect(result).toEqual({ countryCode: 'US' });
-  });
-
-  it('buy_gift_card transforms with productId and country default', () => {
-    const result = TOOL_EXECUTORS.buy_gift_card.transform!({
-      productId: 4521,
-      amount: 25,
-      email: 'user@test.com',
-    });
-    expect(result).toEqual({
-      productId: '4521',
-      amount: '25',
-      email: 'user@test.com',
-      country: 'US',
-    });
-  });
-
-  it('buy_gift_card passes explicit country', () => {
-    const result = TOOL_EXECUTORS.buy_gift_card.transform!({
-      productId: 4521,
-      amount: 50,
-      email: 'user@test.com',
-      country: 'GB',
-    });
-    expect(result.country).toBe('GB');
-  });
-
   it('convert_currency stringifies amount', () => {
     const result = TOOL_EXECUTORS.convert_currency.transform!({
       from: 'USD',
@@ -125,16 +91,6 @@ describe('getEstimatedCost', () => {
     expect(getEstimatedCost('generate_image')).toBe(0.03);
     expect(getEstimatedCost('text_to_speech')).toBe(0.05);
     expect(getEstimatedCost('send_postcard')).toBe(1.0);
-  });
-
-  it('computes gift card cost from amount arg (face value, zero fee)', () => {
-    expect(getEstimatedCost('buy_gift_card', { amount: 5 })).toBe(5);
-    expect(getEstimatedCost('buy_gift_card', { amount: 25 })).toBe(25);
-    expect(getEstimatedCost('buy_gift_card', { amount: 100 })).toBe(100);
-  });
-
-  it('falls back to default for gift card with no amount arg', () => {
-    expect(getEstimatedCost('buy_gift_card')).toBe(0.01);
   });
 
   it('returns 0 for unknown tools', () => {

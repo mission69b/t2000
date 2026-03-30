@@ -22,7 +22,7 @@ const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(SUI_NETWORK), n
  *
  * Two flows depending on the service mapping:
  *
- * **Deliver-first** (gift cards, etc.):
+ * **Deliver-first** (merch orders, etc.):
  *   1. Call the gateway's internal endpoint — upstream service runs FIRST
  *   2. If upstream fails → return error, user is NEVER charged
  *   3. If upstream succeeds → build payment tx, store result in meta
@@ -107,9 +107,9 @@ const MONTHLY_PURCHASE_LIMIT_USD = 500;
  * If upstream fails, user is never charged.
  *
  * Safety order:
- * 1. Check USDC balance (prevent $0 users from getting free gift cards)
+ * 1. Check USDC balance (prevent $0 users from getting free services)
  * 2. Check daily/monthly spending limits
- * 3. Call upstream (Reloadly)
+ * 3. Call upstream service
  * 4. Build payment tx
  */
 async function handleDeliverFirst(

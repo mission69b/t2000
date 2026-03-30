@@ -6,29 +6,7 @@
  * estimates that must stay in sync with gateway pricing.
  */
 
-export const GIFT_CARD_FEE_RATE = 0;
-
-export function giftCardPrice(faceValue: number): {
-  faceValue: number;
-  fee: number;
-  total: number;
-  feeLabel: string;
-} {
-  const fee = faceValue * GIFT_CARD_FEE_RATE;
-  return {
-    faceValue,
-    fee,
-    total: faceValue + fee,
-    feeLabel: `${GIFT_CARD_FEE_RATE * 100}%`,
-  };
-}
-
-export function getDisplayPrice(serviceId: string, fields?: Record<string, string>): string {
-  if (serviceId === 'reloadly-giftcard' && fields?.amount) {
-    const { total } = giftCardPrice(parseFloat(fields.amount) || 0);
-    return total.toFixed(2);
-  }
-
+export function getDisplayPrice(serviceId: string): string {
   const STATIC_PRICES: Record<string, string> = {
     'openai-chat': '0.005',
     'elevenlabs-tts': '0.05',

@@ -73,12 +73,7 @@ interface StatData {
   status: 'safe' | 'warning' | 'danger' | 'neutral';
 }
 
-interface GiftCardData {
-  brand: string;
-  amount: string;
-  code: string;
-  url: string;
-}
+
 
 interface PostcardData {
   to: string;
@@ -95,7 +90,6 @@ type LineData =
   | { type: 'list-item'; number: number; segments: Segment[] }
   | { type: 'bullet-item'; segments: Segment[] }
   | { type: 'stat'; data: StatData }
-  | { type: 'giftcard'; data: GiftCardData }
   | { type: 'postcard'; data: PostcardData }
   | { type: 'spacer' };
 
@@ -109,15 +103,6 @@ function parseLines(text: string): LineData[] {
       if (result.length > 0 && result[result.length - 1].type !== 'spacer') {
         result.push({ type: 'spacer' });
       }
-      continue;
-    }
-
-    const gcMatch = trimmed.match(/^<<giftcard\s+brand="([^"]+)"\s+amount="([^"]+)"\s+code="([^"]*)"\s+url="([^"]+)">>$/);
-    if (gcMatch) {
-      result.push({
-        type: 'giftcard',
-        data: { brand: gcMatch[1], amount: gcMatch[2], code: gcMatch[3], url: gcMatch[4] },
-      });
       continue;
     }
 
@@ -269,57 +254,6 @@ function StatGrid({ stats }: { stats: StatData[] }) {
   );
 }
 
-function GiftCardVisual({ data }: { data: GiftCardData }) {
-  const [copied, setCopied] = React.useState(false);
-
-  const copyCode = () => {
-    navigator.clipboard.writeText(data.code).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="my-2 rounded-2xl overflow-hidden border border-accent/20 bg-gradient-to-br from-accent/10 via-surface to-accent/5">
-      <div className="px-4 pt-4 pb-2 flex items-start justify-between">
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-accent/60 font-medium">Gift Card</div>
-          <div className="text-sm font-semibold text-foreground mt-0.5">{data.brand}</div>
-        </div>
-        <div className="text-right">
-          <div className="text-lg font-bold text-accent">{data.amount}</div>
-        </div>
-      </div>
-
-      <div className="px-4 pb-3">
-        {data.code ? (
-          <button
-            onClick={copyCode}
-            className="w-full flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 py-2 hover:bg-white/10 transition group"
-          >
-            <code className="font-mono text-sm text-foreground tracking-wide">{data.code}</code>
-            <span className="text-xs text-muted group-hover:text-accent transition ml-2 shrink-0">
-              {copied ? '✓ Copied' : 'Copy'}
-            </span>
-          </button>
-        ) : (
-          <div className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-muted">
-            Check your email for the gift card code
-          </div>
-        )}
-      </div>
-
-      <a
-        href={data.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 bg-accent text-black font-semibold text-sm py-3 hover:brightness-110 transition active:scale-[0.99]"
-      >
-        Redeem Now →
-      </a>
-    </div>
-  );
-}
-
 function PostcardVisual({ data }: { data: PostcardData }) {
   return (
     <div className="my-2 rounded-2xl overflow-hidden border border-blue-400/20 bg-gradient-to-br from-blue-500/10 via-surface to-blue-400/5">
@@ -375,8 +309,6 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
 
     if (line.type === 'spacer') {
       elements.push(<div key={i} className="h-1" />);
-    } else if (line.type === 'giftcard') {
-      elements.push(<GiftCardVisual key={i} data={line.data} />);
     } else if (line.type === 'postcard') {
       elements.push(<PostcardVisual key={i} data={line.data} />);
     } else if (line.type === 'heading') {

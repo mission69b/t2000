@@ -44,8 +44,8 @@ export default function AppPage() {
             <em className="italic text-accent">money.</em>
           </h1>
           <p className="text-sm sm:text-base text-muted font-mono leading-relaxed max-w-xl mb-10">
-            Sign in with email. Save, earn yield, buy gift cards, mail
-            postcards, search flights — all from one chat. No seed phrase, no
+            Sign in with email. Save, earn yield, mail postcards,
+            search flights — all from one chat. No seed phrase, no
             gas, no credit card.
           </p>
           <a
@@ -85,7 +85,7 @@ export default function AppPage() {
           </h2>
           <div className="space-y-2">
             {[
-              { q: "\"Coffee run\"", a: "Gift card, 15 seconds" },
+              { q: "\"Translate this to French\"", a: "Done, instantly" },
               { q: "\"Am I getting the best yield?\"", a: "Compared every protocol" },
               { q: "\"Send mum a birthday postcard\"", a: "Printed, mailed — $1" },
               { q: "\"Find me flights to Tokyo\"", a: "Searched, compared, emailed" },

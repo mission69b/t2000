@@ -242,20 +242,6 @@ export const services: Service[] = [
     ],
   },
   {
-    id: 'reloadly',
-    name: 'Reloadly Gift Cards',
-    serviceUrl: `${BASE_URL}/reloadly`,
-    description: 'Buy gift cards (Amazon, Steam, Netflix, 800+ brands) with USDC.',
-    chain: 'sui',
-    currency: 'USDC',
-    categories: ['commerce'],
-    logo: '/logos/reloadly.svg',
-    endpoints: [
-      { method: 'POST', path: '/v1/products', description: 'Browse gift card catalog by country', price: '0.005' },
-      { method: 'POST', path: '/v1/order', description: 'Purchase a gift card (dynamic price: face value + 5%)', price: 'dynamic' },
-    ],
-  },
-  {
     id: 'lob',
     name: 'Lob',
     serviceUrl: `${BASE_URL}/lob`,

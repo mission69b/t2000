@@ -47,7 +47,7 @@ export default function PrivacyPage() {
                 <strong className="text-foreground">Email address</strong> —
                 Collected via Google sign-in (zkLogin) for authentication in the
                 consumer app. Also used as the delivery address for services
-                like gift cards and flight search results.
+                like flight search results.
               </li>
               <li>
                 <strong className="text-foreground">Sui wallet addresses</strong>{" "}
@@ -63,8 +63,8 @@ export default function PrivacyPage() {
                 <strong className="text-foreground">
                   Timezone and browser locale
                 </strong>{" "}
-                — Used to detect your country for regional service availability
-                (e.g. gift card catalogs). Not stored permanently.
+                — Used to detect your country for regional service availability.
+                Not stored permanently.
               </li>
               <li>
                 <strong className="text-foreground">Chat messages</strong> —
@@ -140,10 +140,6 @@ export default function PrivacyPage() {
               <li>
                 <strong className="text-foreground">Google</strong> — OAuth
                 sign-in via zkLogin
-              </li>
-              <li>
-                <strong className="text-foreground">Reloadly</strong> — Email
-                address for gift card delivery
               </li>
               <li>
                 <strong className="text-foreground">Lob</strong> — Recipient

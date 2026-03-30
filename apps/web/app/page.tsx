@@ -162,7 +162,6 @@ const MPP_SERVICES = [
   { name: "Google Translate", id: "translate", detail: "130+ languages" },
   { name: "Judge0", id: "judge0", detail: "Code execution" },
   { name: "Resend", id: "resend", detail: "Transactional email" },
-  { name: "Reloadly", id: "reloadly", detail: "800+ gift cards" },
   { name: "Lob", id: "lob", detail: "Physical mail API" },
   { name: "Printful", id: "printful", detail: "Print-on-demand" },
   { name: "Pushover", id: "pushover", detail: "Push notifications" },

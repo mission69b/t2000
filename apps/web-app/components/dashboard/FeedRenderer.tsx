@@ -430,11 +430,9 @@ const TOOL_LABELS: Record<string, string> = {
   send_postcard: 'Mailing postcard',
   send_letter: 'Mailing letter',
   verify_address: 'Verifying address',
-  buy_gift_card: 'Buying gift card',
   browse_products: 'Browsing products',
   estimate_order: 'Estimating cost',
   place_order: 'Placing order',
-  browse_gift_cards: 'Browsing gift cards',
   discover_services: 'Discovering services',
   use_service: 'Calling service',
 };

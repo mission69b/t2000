@@ -1,12 +1,11 @@
 /**
  * Consumer-friendly service catalog for the web app.
  * Mapped from the gateway's raw service list into categories
- * the user understands: Gift Cards, AI, Search, etc.
+ * the user understands: AI, Search, etc.
  *
  * No API call needed — static at build time.
  * Pricing: see lib/service-pricing.ts for shared calculation logic.
  */
-import { GIFT_CARD_FEE_RATE } from '@/lib/service-pricing';
 
 export interface ServiceItem {
   id: string;
@@ -29,7 +28,6 @@ export interface ServiceField {
 }
 
 export type ServiceCategory =
-  | 'gift-cards'
   | 'ai'
   | 'image'
   | 'search'
@@ -38,13 +36,11 @@ export type ServiceCategory =
   | 'tools';
 
 export type ServiceInputType =
-  | 'amount-email'
   | 'prompt'
   | 'query'
   | 'form';
 
 export const CATEGORY_META: Record<ServiceCategory, { label: string; icon: string }> = {
-  'gift-cards': { label: 'Gift Cards', icon: '🎁' },
   'ai': { label: 'AI & Chat', icon: '🤖' },
   'image': { label: 'Image Gen', icon: '🖼' },
   'search': { label: 'Search', icon: '🔍' },
@@ -54,34 +50,6 @@ export const CATEGORY_META: Record<ServiceCategory, { label: string; icon: strin
 };
 
 export const SERVICE_CATALOG: ServiceItem[] = [
-  // Gift Cards
-  {
-    id: 'reloadly-giftcard',
-    name: 'Gift Cards',
-    icon: '🎁',
-    description: 'Amazon, Uber Eats, Netflix, Spotify, and 800+ brands',
-    category: 'gift-cards',
-    inputType: 'amount-email',
-    fields: [
-      { name: 'brand', label: 'Brand', placeholder: 'Search brands...', type: 'text', required: true },
-      { name: 'amount', label: 'Amount', placeholder: '$25', type: 'number', required: true },
-      { name: 'email', label: 'Send to (email)', placeholder: 'sarah@gmail.com', type: 'email', required: true },
-      { name: 'country', label: 'Region', placeholder: 'US', type: 'select', required: true, options: [
-        { label: 'United States', value: 'US' },
-        { label: 'United Kingdom', value: 'GB' },
-        { label: 'Australia', value: 'AU' },
-        { label: 'Canada', value: 'CA' },
-        { label: 'Germany', value: 'DE' },
-        { label: 'France', value: 'FR' },
-        { label: 'India', value: 'IN' },
-        { label: 'Japan', value: 'JP' },
-        { label: 'Singapore', value: 'SG' },
-        { label: 'Brazil', value: 'BR' },
-      ]},
-    ],
-    startingPrice: `Face value + ${GIFT_CARD_FEE_RATE * 100}%`,
-  },
-
   // AI & Chat
   {
     id: 'openai-chat',

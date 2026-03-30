@@ -84,7 +84,6 @@ export default function DisclaimerPage() {
               <li>Risk assessments and health factor analysis</li>
               <li>Price predictions or market commentary</li>
               <li>Tax or regulatory interpretations</li>
-              <li>Gift card availability and pricing</li>
               <li>Flight search results and pricing</li>
             </ul>
             <p className="mt-2">
@@ -121,7 +120,6 @@ export default function DisclaimerPage() {
               t2000 connects you to third-party services. We cannot guarantee:
             </p>
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
-              <li>Gift card availability in your region or for specific brands</li>
               <li>Physical mail delivery times or successful delivery</li>
               <li>Merchandise print quality or shipping accuracy</li>
               <li>Flight pricing accuracy (prices shown are from search APIs and may change)</li>

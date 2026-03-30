@@ -25,18 +25,18 @@ const COMMANDS: Command[] = [
 }`,
   },
   {
-    label: 'Buy a gift card',
-    cmd: `t2000 pay https://mpp.t2000.ai/reloadly/v1/order \\
+    label: 'Send a postcard',
+    cmd: `t2000 pay https://mpp.t2000.ai/lob/v1/postcards \\
     --data '{
-      "productId": 4521,
-      "unitPrice": 25,
-      "recipientEmail": "me@email.com"
+      "to": "379 University Ave, Palo Alto, CA 94301",
+      "front": "https://example.com/image.jpg",
+      "message": "Hello from the future!"
     }'`,
-    payment: '✓ Paid 26.25 USDC  ·  Tx: FjhtzF...R5AC (0.5s)',
+    payment: '✓ Paid 1.00 USDC  ·  Tx: FjhtzF...R5AC (0.8s)',
     response: `{
-  "cardNumber": "XXXX-XXXX-XXXX",
-  "brand": "Uber Eats",
-  "value": "$25.00"
+  "id": "psc_abc123",
+  "status": "processed",
+  "expectedDelivery": "2026-02-25"
 }`,
   },
   {

@@ -184,7 +184,7 @@ export function deriveContextualChips(
         id: 'valentines',
         icon: '❤',
         label: "Valentine's gift",
-        agentPrompt: "Help me with a Valentine's Day gift. Something thoughtful — maybe a gift card and a postcard with a custom AI-generated design?",
+        agentPrompt: "Help me with a Valentine's Day gift. Something thoughtful — maybe a postcard with a custom AI-generated design?",
         priority: 35,
         dismissible: true,
       });
@@ -193,7 +193,7 @@ export function deriveContextualChips(
         id: 'mothers-day',
         icon: '💐',
         label: "Gift for mum",
-        agentPrompt: "Mother's Day is coming up. Help me buy a gift for mum — maybe an Amazon gift card and a postcard with a nice message?",
+        agentPrompt: "Mother's Day is coming up. Help me with a gift for mum — maybe a postcard with a nice message and a custom design?",
         priority: 35,
         dismissible: true,
       });
@@ -312,12 +312,10 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
       return { id: 'post-flights', icon: '✈', label: 'Email me these results', agentPrompt: 'Email me those flight results', priority: 40 };
     case 'generate_image':
       return { id: 'post-image', icon: '🎨', label: 'Generate another', agentPrompt: '', priority: 40 };
-    case 'buy_gift_card':
-      return { id: 'post-gift', icon: '💌', label: 'Send a card too?', agentPrompt: 'Send a postcard to go with the gift card I just bought. Help me write a nice message and mail it.', priority: 45 };
     case 'send_postcard':
-      return { id: 'post-postcard', icon: '🎁', label: 'Add a gift card?', agentPrompt: 'Browse gift cards I can send to go with the postcard I just mailed.', priority: 45 };
+      return { id: 'post-postcard', icon: '🎨', label: 'Send another?', agentPrompt: 'Help me send another postcard with a custom design.', priority: 45 };
     case 'send_letter':
-      return { id: 'post-letter', icon: '🎁', label: 'Add a gift card?', agentPrompt: 'Browse gift cards I can send along with the letter I just mailed.', priority: 45 };
+      return { id: 'post-letter', icon: '📬', label: 'Send another?', agentPrompt: 'Help me send another letter.', priority: 45 };
     case 'place_order':
       return { id: 'post-merch', icon: '💌', label: 'Send them a note?', agentPrompt: 'Send a postcard to the person I just ordered the gift for. Help me write a nice message.', priority: 45 };
     case 'get_crypto_price':

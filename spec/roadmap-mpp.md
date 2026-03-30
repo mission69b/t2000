@@ -5,14 +5,14 @@
 ## Three Domains
 
 ```
-mpp.t2000.ai          →  t2000's gateway (41 services, 90 endpoints)
+mpp.t2000.ai          →  t2000's gateway (40 services, 88 endpoints)
 mppsui.dev             →  Sui MPP standard (spec, docs, server registry, explorer)
 app.t2000.ai           →  Consumer product (web app, banking, AI chat)
 ```
 
 | Domain | What | Audience | Status |
 |--------|------|----------|--------|
-| `mpp.t2000.ai` | t2000 MPP gateway — 41 services, explorer, live feed | AI agents, developers | Live |
+| `mpp.t2000.ai` | t2000 MPP gateway — 40 services, explorer, live feed | AI agents, developers | Live |
 | `mppsui.dev` | Sui MPP ecosystem — spec, docs, server registry, protocol explorer | Builders, providers, Mysten | Planned |
 | `app.t2000.ai` | Consumer web app — zkLogin, conversational banking | Anyone with Google | Beta |
 
@@ -227,29 +227,29 @@ Unlike `mpp.t2000.ai/explorer` (which only shows t2000 gateway payments), `mppsu
 
 ### Add OpenAPI discovery
 
-Expose `/openapi.json` on `mpp.t2000.ai` with all 41 services documented in the standard format. This enables:
+Expose `/openapi.json` on `mpp.t2000.ai` with all 40 services documented in the standard format. This enables:
 1. Registration on mppsui.dev as the first server
 2. Registration on MPPscan for cross-chain visibility
 3. Agent discovery via standard tooling
 
-### Deliver-First Pattern (Gift Cards)
+### Deliver-First Pattern (High-Value Services)
 
 Some endpoints operate in a **hybrid mode** — MPP for direct CLI/SDK callers, but "deliver-first" for the web-app:
 
 | Endpoint | Direct callers (CLI/SDK) | Web-app |
 |----------|-------------------------|---------|
-| `/reloadly/v1/order` | Standard MPP 402 challenge | Not used |
-| `/reloadly/v1/order-internal` | N/A (internal-key protected) | Deliver-first: call Reloadly → return result + payment details → web-app builds tx |
+| `/printful/v1/order` | Standard MPP 402 challenge | Not used |
+| `/printful/v1/order-internal` | N/A (internal-key protected) | Deliver-first: call Printful → return result + payment details → web-app builds tx |
 
-**Why:** High-value services (gift cards) can't risk payment-before-delivery — if the upstream fails after payment, money is lost. The deliver-first pattern calls the upstream first, only charges after success.
+**Why:** High-value services (merch orders, physical mail) can't risk payment-before-delivery — if the upstream fails after payment, money is lost. The deliver-first pattern calls the upstream first, only charges after success.
 
 **OpenAPI implications:**
-- `/reloadly/v1/order` should be documented in `openapi.json` with `x-payment-info` (it's the public MPP endpoint)
-- `/reloadly/v1/order-internal` should NOT be in `openapi.json` (it's internal, not discoverable)
+- `/printful/v1/order` should be documented in `openapi.json` with `x-payment-info` (it's the public MPP endpoint)
+- `/printful/v1/order-internal` should NOT be in `openapi.json` (it's internal, not discoverable)
 - Both produce explorer entries via different paths: MPP auto-logs for direct callers, `POST /api/internal/log-payment` for deliver-first flows
 
 **Explorer logging:**
-After a deliver-first payment confirms on-chain, the web-app fires a log entry to `POST /api/internal/log-payment` (internal-key protected), which writes to the same `MppPayment` table the explorer reads. This ensures all gift card purchases appear in the explorer as `reloadly /v1/order` with correct amounts and tx digests.
+After a deliver-first payment confirms on-chain, the web-app fires a log entry to `POST /api/internal/log-payment` (internal-key protected), which writes to the same `X402Payment` table the explorer reads. This ensures all commerce purchases appear in the explorer with correct amounts and tx digests.
 
 **Future deliver-first services:** Any new high-value service should follow this pattern — add an `*-internal` route on the gateway, a `deliverFirst` config in `service-gateway.ts`, and a mapping in the `logToGateway` function in the web-app's `complete` route.
 
@@ -466,8 +466,8 @@ When there are multiple servers and trust matters, add on-chain verification —
 │                                                          │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │  t2000 Gateway                         [View →]    │  │
-│  │  41 services · 90 endpoints                        │  │
-│  │  AI, Search, Commerce, Gift Cards, DeFi            │  │
+│  │  40 services · 88 endpoints                        │  │
+│  │  AI, Search, Commerce, Physical Mail, DeFi         │  │
 │  │                                                    │  │
 │  │  Txns: 350+   Vol: $180   Agents: 45   2m ago      │  │
 │  │  ▇▇▇▅▃▅▇▆▄▅▇▇ (30d volume sparkline)              │  │
@@ -494,7 +494,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  t2000 Gateway                                           │
-│  41 services, 90 endpoints for AI agents                 │
+│  40 services, 88 endpoints for AI agents                 │
 │  https://mpp.t2000.ai    Registered: Feb 2026            │
 │                                                          │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
@@ -517,8 +517,8 @@ When there are multiple servers and trust matters, add on-chain verification —
 │  /openai/v1/chat       POST    $0.05     120             │
 │  /brave/v1/web/search  POST    $0.005    89              │
 │  /stability/v1/gen     POST    $0.05     45              │
-│  /reloadly/v1/order    POST    varies    12              │
-│  ... (90 total)                                          │
+│  /lob/v1/postcards     POST    $1.00     12              │
+│  ... (88 total)                                          │
 │                                                          │
 │  ── Recent Payments ───────────────────────────────────  │
 │                                                          │
@@ -562,7 +562,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 │  now      t2000 Gateway   /openai/v1/chat     $0.05  ↗  │
 │  1m ago   t2000 Gateway   /brave/v1/search    $0.005 ↗  │
 │  3m ago   StableAPI       /rates/v1/forex     $0.01  ↗  │
-│  5m ago   t2000 Gateway   /reloadly/v1/order  $25.00 ↗  │
+│  5m ago   t2000 Gateway   /lob/v1/postcards    $1.00  ↗  │
 │  ...                                                     │
 │                                                          │
 │  ── Server Leaderboard ────────────────────────────────  │
@@ -689,7 +689,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 | Task | Where |
 |------|-------|
 | Generate `/openapi.json` from service catalog | `apps/gateway` |
-| Add `x-payment-info` to all 41 services | `apps/gateway` |
+| Add `x-payment-info` to all 40 services | `apps/gateway` |
 | Add `x-guidance` for agent discovery | `apps/gateway` |
 | Validate with `@agentcash/discovery` | Local |
 | Register on MPPscan for cross-chain visibility | `mppscan.com/register` |
@@ -739,7 +739,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 |--------|---------|------|
 | `app.t2000.ai` | Consumer web app | `apps/web-app` (monorepo) |
 | `t2000.ai` | Product site, docs, stats | `apps/web` (monorepo) |
-| `mpp.t2000.ai` | t2000 gateway — 41 services | `apps/gateway` (monorepo) |
+| `mpp.t2000.ai` | t2000 gateway — 40 services | `apps/gateway` (monorepo) |
 | `mppsui.dev` | Sui MPP ecosystem hub | `apps/mppsui` (monorepo, or separate repo later) |
 | `api.t2000.ai` | Server — sponsor, gas, fees | `apps/server` (monorepo) |
 
@@ -757,9 +757,9 @@ When there are multiple servers and trust matters, add on-chain verification —
 | **Multi-currency future** | Spec currently assumes USDC only. Leave room in `x-payment-info` for SUI, wBTC etc. |
 | **Mysten co-ownership** | If Mysten wants to co-own mppsui.dev, may need separate repo sooner |
 | **SEO / discoverability** | mppsui.dev needs to rank for "machine payments Sui", "AI agent payments Sui" |
-| **OpenAPI auto-generation** | 41 services × multiple endpoints = large OpenAPI doc. Auto-generate from service catalog config |
+| **OpenAPI auto-generation** | 40 services × multiple endpoints = large OpenAPI doc. Auto-generate from service catalog config |
 | **Cross-registration** | `mpp.t2000.ai` registers on both mppsui.dev AND mppscan.com. Keep in sync when services change |
-| **Deliver-first endpoints** | Gift cards (and future high-value services) bypass MPP via internal endpoints. `openapi.json` should only expose the public MPP route, not the internal one. Explorer logging handled separately via `POST /api/internal/log-payment` |
+| **Deliver-first endpoints** | High-value services (merch, physical mail) bypass MPP via internal endpoints. `openapi.json` should only expose the public MPP route, not the internal one. Explorer logging handled separately via `POST /api/internal/log-payment` |
 
 ---
 
@@ -770,7 +770,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 | Sponsorship funding source? | Treasury self-funded vs Mysten grant | Start with treasury, apply for grant to scale |
 | Gas for treasury transfers? | Enoki-sponsored vs self-funded SUI | Enoki if Mysten approves, SUI fallback |
 | mppsui.dev in monorepo or separate? | Monorepo vs new repo | Monorepo initially, extract if needed |
-| OpenAPI doc generation? | Manual vs auto-generated from service catalog | Auto-generate — 90 endpoints is too many to maintain by hand |
+| OpenAPI doc generation? | Manual vs auto-generated from service catalog | Auto-generate — 88 endpoints is too many to maintain by hand |
 
 ### Deferred (build when needed)
 

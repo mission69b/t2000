@@ -499,7 +499,7 @@ const result = await agent.pay({
                 {[
                   '"Use t2000 to get the latest headlines"',
                   '"Use t2000 to generate a sunset image"',
-                  '"Use t2000 to buy a Netflix gift card"',
+                  '"Use t2000 to translate this to Spanish"',
                   '"Use t2000 to mail a postcard to NYC"',
                   '"Use t2000 to check weather in Tokyo"',
                 ].map((q) => (

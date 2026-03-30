@@ -168,8 +168,6 @@ t2000 pay <url> [options]
 ### Commerce
 | Service | Endpoint | Price |
 |---------|----------|-------|
-| Reloadly Gift Cards (browse) | `/reloadly/v1/products` | $0.005 |
-| Reloadly Gift Cards (buy) | `/reloadly/v1/order` | dynamic |
 | Lob Postcards | `/lob/v1/postcards` | $1.00 |
 | Lob Letters | `/lob/v1/letters` | $1.50 |
 | Lob Address Verify | `/lob/v1/verify` | $0.01 |
@@ -234,18 +232,6 @@ t2000 pay https://mpp.t2000.ai/resend/v1/emails \
 ```bash
 t2000 pay https://mpp.t2000.ai/judge0/v1/submissions \
   --data '{"source_code":"print(42)","language_id":71}'
-```
-
-### Buy a gift card
-```bash
-# Browse available gift cards
-t2000 pay https://mpp.t2000.ai/reloadly/v1/products \
-  --data '{"countryCode":"US"}'
-
-# Purchase a $20 Netflix gift card
-t2000 pay https://mpp.t2000.ai/reloadly/v1/order \
-  --max-price 25 \
-  --data '{"productId":120,"unitPrice":20,"quantity":1,"countryCode":"US","recipientEmail":"user@example.com"}'
 ```
 
 ### Send physical mail
@@ -408,7 +394,7 @@ t2000 pay https://mpp.t2000.ai/pushover/v1/push \
 ## Safety
 - If requested price exceeds --max-price, payment is refused (no funds spent)
 - Default max-price: $1.00 USDC per request
-- For commerce (gift cards, mail), set --max-price higher
+- For commerce (mail, merch), set --max-price higher
 - Payment only broadcast after 402 terms are validated
 
 ## Errors

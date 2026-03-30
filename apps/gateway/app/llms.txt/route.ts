@@ -33,7 +33,7 @@ export function GET() {
     'Natural language examples:',
     '  "Search the web for Sui blockchain news" → Brave Search ($0.005)',
     '  "Generate an image of a sunset" → Fal.ai Flux ($0.03)',
-    '  "Buy a $20 Netflix gift card" → Reloadly ($21.00 dynamic)',
+    '  "Translate this to Spanish" → DeepL ($0.005)',
     '  "Send a postcard to 123 Main St" → Lob ($1.00)',
     '  "What\'s the weather in Tokyo?" → OpenWeather ($0.005)',
     '  "Execute this Python code" → Judge0 ($0.005)',

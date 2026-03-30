@@ -671,7 +671,7 @@ function DashboardContent() {
         case 'help':
           feed.addItem({
             type: 'ai-text',
-            text: 'Here\'s what I can help with:\n\n• Swap — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Invest — DCA or one-time into BTC, ETH, GOLD\n• Report — Full financial summary\n\nI can also search the web, send emails, translate, generate images, buy gift cards, and more — just type what you need.',
+            text: 'Here\'s what I can help with:\n\n• Swap — Buy, sell, or swap SUI, BTC, ETH, GOLD\n• Save — Earn yield on idle funds\n• Send — Transfer to anyone\n• Borrow — Against your savings\n• Invest — DCA or one-time into BTC, ETH, GOLD\n• Report — Full financial summary\n\nI can also search the web, send emails, translate, generate images, and more — just type what you need.',
           });
           break;
         case 'invest':

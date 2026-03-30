@@ -1115,9 +1115,9 @@ function CliMoreSection() {
         {S.c("# Search the web")}{"\n"}
         t2000 pay https://mpp.t2000.ai/brave/v1/web/search \{"\n"}
         {"  "}--data {S.s("'{\"q\":\"latest Sui news\"}'")}{"\n\n"}
-        {S.c("# Buy a gift card (set higher max-price)")}{"\n"}
-        t2000 pay https://mpp.t2000.ai/reloadly/v1/order \{"\n"}
-        {"  "}--max-price {S.a("25")} --data {S.s("'{\"productId\":120,\"unitPrice\":20,...}'")}
+        {S.c("# Send a postcard")}{"\n"}
+        t2000 pay https://mpp.t2000.ai/lob/v1/postcards \{"\n"}
+        {"  "}--data {S.s("'{\"to\":\"123 Main St, NYC\",\"message\":\"Hello!\"}'")}{"\n"}
       </CodeBlock>
       <CodeBlock lang="output">
         {"  "}→ POST https://mpp.t2000.ai/openai/v1/chat/completions{"\n"}
@@ -1622,7 +1622,7 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-borrow</InlineCode>, <>&#34;borrow 40 USDC&#34;, &#34;take out a loan&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-swap</InlineCode>, <>&#34;swap USDC to SUI&#34;, &#34;swap tokens&#34;, &#34;convert to...&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;search the web&#34;, &#34;generate an image&#34;, &#34;buy a gift card&#34;, &#34;send mail&#34;</>, <Badge color="green" key="b">live</Badge>],
+          [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;search the web&#34;, &#34;generate an image&#34;, &#34;send mail&#34;, &#34;translate this&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-invest</InlineCode>, <>&#34;buy SUI&#34;, &#34;invest $100 in BTC&#34;, &#34;sell my ETH&#34;, &#34;show portfolio&#34;</>, <Badge color="green" key="b">live</Badge>],
         ]}
@@ -1684,7 +1684,7 @@ function MppSection() {
           ["Translation", "DeepL, Google Translate (130+ languages)", "$0.005"],
           ["Compute", "Judge0", "$0.005"],
           ["Communication", "Resend (email)", "$0.005"],
-          [<><strong key="c">Commerce</strong></>, <>Reloadly (gift cards), Lob (physical mail), Printful (print-on-demand)</>, "$0.005"],
+          [<><strong key="c">Commerce</strong></>, <>Lob (physical mail), Printful (print-on-demand)</>, "$0.005"],
         ]}
       />
 
@@ -1719,10 +1719,6 @@ function MppSection() {
         {S.c("# Search the web")}{"\n"}
         t2000 pay https://mpp.t2000.ai/brave/v1/web/search \{"\n"}
         {"  "}--data {S.s("'{\"q\":\"Sui blockchain news\"}'")}{"\n\n"}
-        {S.c("# Buy a gift card")}{"\n"}
-        t2000 pay https://mpp.t2000.ai/reloadly/v1/order \{"\n"}
-        {"  "}--max-price {S.a("25")} \{"\n"}
-        {"  "}--data {S.s("'{\"productId\":120,\"unitPrice\":20,\"recipientEmail\":\"...\"}'")}{"\n\n"}
         {S.c("# Send physical mail")}{"\n"}
         t2000 pay https://mpp.t2000.ai/lob/v1/postcards \{"\n"}
         {"  "}--max-price {S.a("2")} \{"\n"}

@@ -184,7 +184,7 @@ describe('useAgentLoop (unit logic)', () => {
 
   it('stops when user declines confirmation', async () => {
     mockFetch.mockResolvedValueOnce(llmToolResponse([
-      { id: 'tc_1', name: 'buy_gift_card', args: { productId: 4521, amount: 50, email: 'test@test.com', country: 'US' } },
+      { id: 'tc_1', name: 'place_order', args: { recipient_name: 'Test', address1: '123 Main', city: 'NYC', state_code: 'NY', zip: '10001', items_json: '[]' } },
     ]));
 
     const onConfirmNeeded = vi.fn().mockResolvedValue(false);
@@ -192,7 +192,7 @@ describe('useAgentLoop (unit logic)', () => {
     const { result } = renderHook(() => useAgentLoop());
 
     await act(async () => {
-      await result.current.run('buy a gift card', defaultOpts, callbacks);
+      await result.current.run('order a shirt', defaultOpts, callbacks);
     });
 
     expect(onConfirmNeeded).toHaveBeenCalled();

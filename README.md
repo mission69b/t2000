@@ -316,7 +316,7 @@ t2000 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
   --max-price 0.05
 ```
 
-The [MPP Gateway](https://mpp.t2000.ai) proxies 41 services (90 endpoints) — OpenAI, Anthropic, fal.ai, Brave, Lob, Reloadly, and more — all payable with Sui USDC.
+The [MPP Gateway](https://mpp.t2000.ai) proxies 40 services (88 endpoints) — OpenAI, Anthropic, fal.ai, Brave, Lob, and more — all payable with Sui USDC.
 
 Full reference → [`@t2000/mpp-sui` README](packages/mpp-sui)
 

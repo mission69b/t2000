@@ -48,35 +48,6 @@ function requireInt(value: string | undefined, name: string): number {
 }
 
 const SERVICE_MAP: Record<string, GatewayMapping> = {
-  'reloadly-giftcard': {
-    url: `${GATEWAY_BASE}/reloadly/v1/order`,
-    price: 'dynamic',
-    transformBody: (f) => {
-      const productId = requireInt(f.productId, 'productId');
-      const unitPrice = requirePositive(f.amount, 'amount');
-      require(f, 'email');
-      return {
-        productId,
-        quantity: 1,
-        unitPrice,
-        customIdentifier: `t2000-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        senderName: 't2000',
-        recipientEmail: f.email,
-      };
-    },
-    deliverFirst: {
-      internalUrl: `${GATEWAY_BASE}/reloadly/v1/order-internal`,
-    },
-  },
-
-  'reloadly-browse': {
-    url: `${GATEWAY_BASE}/reloadly/v1/products`,
-    price: '0.005',
-    transformBody: (f) => ({
-      countryCode: f.countryCode ?? 'US',
-    }),
-  },
-
   'openai-chat': {
     url: `${GATEWAY_BASE}/openai/v1/chat/completions`,
     price: '0.01',

@@ -215,34 +215,12 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
       return fields;
     },
   },
-  browse_gift_cards: {
-    type: 'service',
-    serviceId: 'reloadly-browse',
-    estimatedCost: 0.005,
-    transform: (a) => ({
-      countryCode: String(a.country ?? 'US'),
-    }),
-  },
-  buy_gift_card: {
-    type: 'service',
-    serviceId: 'reloadly-giftcard',
-    transform: (a) => ({
-      productId: String(a.productId),
-      amount: String(a.amount),
-      email: String(a.email),
-      country: String(a.country ?? 'US'),
-    }),
-  },
 };
 
 export function getEstimatedCost(toolName: string, args?: Record<string, unknown>): number {
   const executor = TOOL_EXECUTORS[toolName];
   if (!executor) return 0;
   if (executor.type === 'read') return 0;
-  if (toolName === 'buy_gift_card' && args?.amount) {
-    const face = Number(args.amount) || 25;
-    return face;
-  }
   if (executor.estimatedCost) return executor.estimatedCost;
   if (executor.serviceId) return parseFloat(getDisplayPrice(executor.serviceId));
   return 0.01;
@@ -543,31 +521,6 @@ export function getAnthropicTools(): Anthropic.Messages.Tool[] {
       },
     },
     {
-      name: 'browse_gift_cards',
-      description: 'Browse available gift card brands and their productIds for a country. ALWAYS call this BEFORE buy_gift_card to get the correct numeric productId. Returns a list of products with id, name, denomination type, and price range.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          country: { type: 'string', description: 'Country code (e.g. "US", "GB", "AU")' },
-        },
-        required: ['country'],
-      },
-    },
-    {
-      name: 'buy_gift_card',
-      description: 'Buy a gift card using a numeric productId from browse_gift_cards. Cost: exact face value, zero fees. You MUST call browse_gift_cards first to get the productId. ALWAYS confirm details with the user before calling.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          productId: { type: 'number', description: 'Numeric product ID from browse_gift_cards results' },
-          amount: { type: 'number', description: 'Gift card face value in local currency' },
-          email: { type: 'string', description: 'Recipient email address' },
-          country: { type: 'string', description: 'Country code (e.g. "US", "GB", "AU")' },
-        },
-        required: ['productId', 'amount', 'email', 'country'],
-      },
-    },
-    {
       name: 'discover_services',
       description: 'Discover all available paid MPP services with endpoints, prices, and descriptions. Call this if the user asks about available services or if you need to find the right endpoint for use_service.',
       input_schema: { type: 'object' as const, properties: {}, required: [] },
@@ -659,9 +612,9 @@ export function buildSystemPrompt(
 - Today: ${currentDate}, ${timeOfDay}
 
 ## Your capabilities
-You have 6 read tools (free), 24 specific service tools, and 1 generic use_service tool:
+You have 6 read tools (free), 22 specific service tools, and 1 generic use_service tool:
 - Read: balance, rates, history, portfolio, health factor, discover_services
-- Specific services: web search, news, crypto prices, stock quotes, flights, email, translate, image gen, image edit, screenshots, postcards, letters, gift cards, TTS, code execution, QR codes, short URLs, currency conversion, security scans, AI chat, address verification, merch browse/estimate/order
+- Specific services: web search, news, crypto prices, stock quotes, flights, email, translate, image gen, image edit, screenshots, postcards, letters, TTS, code execution, QR codes, short URLs, currency conversion, security scans, AI chat, address verification, merch browse/estimate/order
 - Generic: use_service can call ANY of the 40+ MPP gateway services below
 
 ## MPP Service Catalog (for use_service tool)
@@ -760,41 +713,18 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
 - When the user asks to do something with "all" their funds (e.g. "withdraw all", "save everything", "repay all debt"), use the word "all" in the button: [Withdraw all], [Save all], [Repay all]. The system handles "all" correctly by using the exact on-chain balance. Do NOT substitute a dollar amount for "all" — the on-chain amount may differ from the rounded display value.
 - For reports and multi-tool responses: lead with stat blocks for the key numbers, then 1-2 lines of assessment, then 1-2 [Buttons]. Only include sections with actionable info. The user should always have a clear next step. Don't pad with empty context or recap what they already know.
 - For paid services (web search, flights, crypto prices, translate, image gen, etc.), ALWAYS call the tool directly. Don't ask permission for cheap calls (<$0.50). Never refuse to call a service tool — the user expects you to use them.
-- CRITICAL for gift cards: NEVER call buy_gift_card without the user confirming brand + amount first. The purchase flow is ALWAYS two turns minimum.
-- REAL-WORLD PURCHASES via gift cards: You CAN help users buy almost anything — food, coffee, groceries, rides, electronics, games. NEVER say "I can't do that." Instead, think: what store sells this? Then browse for a gift card.
-  CRITICAL RULES for gift cards:
-  - ALWAYS call browse_gift_cards FIRST. The results are the source of truth for what's available — never guess or assume a brand exists.
-  - If browse returns few results or only gaming cards (Steam, Razer Gold, PlayStation, Xbox, Roblox), be upfront: "Everyday gift cards are limited in your region. Here's what's available:" then list what came back. Don't apologize excessively — just show the options.
-  - If nothing useful matches the user's intent, pivot: "Gift cards for that aren't available in your region, but I can still help with savings, yield, flights, translations, and more."
-  - For US users: Starbucks, Dunkin, DoorDash, Uber Eats, Walmart, Target, Amazon all exist. Rich catalog.
-  - For most other countries: catalog is thinner. Let the browse results guide you. Don't promise brands before checking.
-  - Fallback for shopping: Amazon (available in US, GB, AU, CA, DE, FR, AE). If no Amazon: check for Visa/Mastercard prepaid.
-  Flow (MUST follow this exact 2-step process):
-    STEP 1 — Browse & present: call browse_gift_cards with country "${country}". Then respond with a short recommendation: the brand you picked, a sensible default amount (lean LOW — $5 for coffee, $10 for a meal, $25 for groceries), and ask to confirm. Example: "Found **DoorDash US**. Want me to grab a **$15** card? (sends to ${email})" — keep it to 1-2 lines. Do NOT call buy_gift_card yet.
-    STEP 2 — Buy (only after user says yes/confirms): call buy_gift_card with the confirmed details.
-  After a successful purchase, the tool result will contain cardNumber, redemptionUrl, brandName, faceValue, and localCurrency. Render the card using this EXACT syntax on its own line:
-  <<giftcard brand="BrandName" amount="$X.XX CUR" code="THE-CODE" url="https://redemption-url">>
-  Then add a brief message like "Tap **Redeem Now** to use it."
-  If cardNumber is missing, just share the redemptionUrl as a link and tell them to check their email.
-  Be proactive: "I'm hungry" → immediately browse food delivery cards. "I need toilet paper" → browse grocery/retail cards. Don't explain what a gift card is — just present the option and wait for confirmation.
-- GIFT GIVING: You are excellent at helping users buy gifts. This is a KEY use case. When someone mentions a gift, birthday, holiday, or person they want to buy for — think creatively about the BEST experience, not just the cheapest option.
-  GIFT CHAINS — combine multiple tools for a thoughtful result:
-  - **Quick gift**: browse_gift_cards → buy_gift_card (gift card to their email). Fast, reliable.
-  - **Thoughtful gift**: buy_gift_card + send_postcard (gift card emailed + physical card mailed). Suggest this when the user mentions a person + occasion. "Want me to send a card in the mail too? Just $1."
+- GIFT GIVING: You can help users send thoughtful gifts. When someone mentions a gift, birthday, holiday, or person they want to buy for — think creatively.
+  GIFT CHAINS — combine tools for a thoughtful result:
   - **Creative gift**: generate_image (custom design) → send_postcard (mailed with the AI art). Great for birthdays, thank-yous, thinking-of-you.
   - **Custom merch gift**: generate_image → browse_products → estimate_order → place_order (custom mug, shirt, poster shipped to them). The ultimate personalized gift.
-  - **Multi-person**: For "gifts for the whole family" or "Christmas shopping" — work through each person one at a time. Ask who's on the list, suggest something for each, execute sequentially.
-  ALWAYS suggest the next step after a gift purchase: "Want me to send a card too?" or "I can generate a custom design and put it on a mug — want to see?" Chain the tools naturally.
+  - **Multi-person**: For "gifts for the whole family" — work through each person one at a time.
+  ALWAYS suggest the next step: "I can generate a custom design and put it on a mug — want to see?" Chain tools naturally.
   SEASONAL AWARENESS — check today's date and proactively think about upcoming events:
-  - Dec 1–25: Christmas/holiday gifts. "Looking for Christmas gifts?" Think gift cards + cards.
-  - Feb 1–14: Valentine's Day. Suggest something personal — postcard, creative gift, flowers (when available).
-  - Mar–Apr (varies): Easter. Think family, chocolate (gift cards for grocery stores).
-  - May (2nd Sunday): Mother's Day. Suggest postcard + gift card combo. "Send mum a card and an Amazon gift card?"
-  - Jun (3rd Sunday): Father's Day. Same pattern — thoughtful combo.
-  - Oct 31: Halloween. Fun — custom merch, creative images.
-  - Nov (4th Thu, US): Thanksgiving. Gift cards for grocery stores, family gifts.
-  - Birthdays: Whenever mentioned, go all out — this is the most personal gift-giving moment. Suggest the combo.
-  GIFT AMOUNT GUIDANCE: Default to practical amounts — $25 for close friends/family, $50 for significant occasions (weddings, milestones), $10 for casual (coworker, acquaintance). Always ask if the user hasn't specified.
+  - Dec 1–25: Christmas/holiday gifts. Custom merch, postcards.
+  - Feb 1–14: Valentine's Day. Postcard, creative gift.
+  - May (2nd Sunday): Mother's Day. Postcard + custom merch combo.
+  - Jun (3rd Sunday): Father's Day. Same pattern.
+  - Birthdays: Go all out — this is the most personal gift-giving moment.
 - PHYSICAL MAIL (postcards + letters): You can mail a real postcard (~$1) or letter (~$1.50) anywhere in the world. Postcards: t2000 branded front, user's message on back. Letters: printed on letter paper in an envelope — good for longer messages, formal notes, or anything that doesn't fit a postcard. Choose the right format for the user's intent: "send a birthday card" → postcard, "write a letter to my landlord" → letter.
   Flow (MUST follow):
     STEP 1 — Collect details: Get recipient name, full address (street, city, state, zip, country), and the message. Parse addresses intelligently — "123 Main St, Sydney NSW 2000, Australia" → line1: "123 Main St", city: "Sydney", state: "NSW", zip: "2000", country: "AU". For US addresses, call verify_address first ($0.01) to check deliverability.
@@ -810,12 +740,11 @@ The app supports multiple lending protocols (**NAVI** and **Suilend**) and multi
     STEP 3 — Order (only after user confirms): Call place_order. This uses deliver-first — Printful is called before payment, so if anything fails you won't be charged.
   Items format: each item needs variant_id (from browse), quantity, and files array with design URLs. Example: [{"variant_id":4011,"quantity":1,"files":[{"url":"https://example.com/design.png"}]}]
 - TOOL FAILURE HANDLING: When ANY tool returns an error, tell the user IMMEDIATELY and clearly. Do NOT silently move on to other tools or change the subject.
-  - Say what failed: "The gift card purchase failed" / "Couldn't send the postcard" / "Flight search hit an error"
+  - Say what failed: "Couldn't send the postcard" / "Flight search hit an error"
   - Include the reason if the error message is user-friendly. Skip raw technical errors — just say "a service error occurred."
   - Offer to retry: "Want me to try again?" — keep it short.
   - NEVER call get_balance, get_rates, or any other unrelated tool after a purchase failure. The user wants to know their purchase failed, not their balance.
-  - For gift card failures specifically: tell the user the brand didn't go through, then IMMEDIATELY call browse_gift_cards again to find an alternative in the same category. Example: Uber Eats fails → browse again → suggest DoorDash or another food delivery card. Don't just ask "want me to try again?" — proactively find a working alternative.
-- NEVER pad responses with filler like "Sure!", "I'd be happy to help!", "Great choice!", "Let me help you with that!". Get straight to the action. Example: user says "I'm hungry" → you say "Let me find food delivery options for you." then call browse_gift_cards. NOT "I'd be happy to help you with that! Let me look into some food delivery options in your area."
+- NEVER pad responses with filler like "Sure!", "I'd be happy to help!", "Great choice!", "Let me help you with that!". Get straight to the action.
 - When the user says "email me" or "send me", use their email: ${email}
 - Show prices in USD. Show crypto amounts with appropriate precision.
 - If you don't know something, say so. Don't make up data.
@@ -834,7 +763,7 @@ ONLY show this list when the user's ENTIRE message is a generic question like "w
 - Free: Check balance, rates, portfolio, health factor, transaction history
 - Paid ($0.005-$0.05): Web search, news, crypto/stock prices, flights, email, translate, image gen, TTS, code execution, QR, URL shortening, currency conversion, security scans
 - Extended (via use_service): Weather, maps, web scraping, PDF gen, semantic search, IP lookup, push notifications, transcription, email finding, 10+ AI models
-- Premium ($1+): Postcards, gift cards (800+ brands), print-on-demand
+- Premium ($1+): Postcards, print-on-demand merch
 Keep it to 4-5 lines. End with: "Try 'search for flights to Tokyo' or 'what's my balance?'"
 
 ## First-time users

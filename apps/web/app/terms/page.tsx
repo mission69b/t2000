@@ -45,7 +45,7 @@ export default function TermsPage() {
               t2000 is a financial platform built on the Sui blockchain. It
               provides an AI-powered assistant that can manage savings, earn
               yield through DeFi protocols, send and receive tokens, swap
-              assets, purchase gift cards, mail postcards and letters, search
+              assets, mail postcards and letters, search
               flights, generate images, and access other paid services. The
               Service is provided as-is and is currently in{" "}
               <strong className="text-amber-400">beta</strong>.
@@ -99,10 +99,6 @@ export default function TermsPage() {
                 (NAVI, Suilend, Cetus) — via on-chain smart contracts
               </li>
               <li>
-                <strong className="text-foreground">Gift cards</strong>{" "}
-                (Reloadly) — digital gift cards delivered via email
-              </li>
-              <li>
                 <strong className="text-foreground">Physical mail</strong>{" "}
                 (Lob) — postcards and letters delivered by postal service
               </li>
@@ -118,8 +114,7 @@ export default function TermsPage() {
             </ul>
             <p className="mt-2">
               We do not control, audit, or guarantee the availability, quality,
-              or security of third-party services. Gift card availability varies
-              by region. Physical mail delivery times depend on postal services.
+              or security of third-party services. Physical mail delivery times depend on postal services.
               Use of third-party services is at your own risk.
             </p>
           </section>
@@ -153,10 +148,6 @@ export default function TermsPage() {
               <li>
                 <strong className="text-foreground">Physical mail</strong> —
                 postcards ~$1.00, letters ~$1.50 USDC
-              </li>
-              <li>
-                <strong className="text-foreground">Gift cards</strong> — face
-                value plus a 5% service fee
               </li>
               <li>
                 <strong className="text-foreground">Merchandise</strong> —
@@ -195,9 +186,9 @@ export default function TermsPage() {
               8. Purchases and Refunds
             </h2>
             <p>
-              Service payments are on-chain USDC transfers and are final. Gift
-              cards, once delivered, cannot be refunded. Physical mail, once
-              submitted for delivery, cannot be recalled. If a service fails to
+              Service payments are on-chain USDC transfers and are final.
+              Physical mail, once submitted for delivery, cannot be recalled.
+              Merchandise orders, once placed, follow the provider&apos;s cancellation policy. If a service fails to
               deliver after payment, contact us at{" "}
               <span className="text-foreground">support@t2000.ai</span> and we
               will investigate on a case-by-case basis.

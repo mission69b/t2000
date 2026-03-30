@@ -182,7 +182,7 @@ Every MPP payment is logged to a dedicated NeonDB (separate from banking DB):
 | Communication | 2 | Resend, Pushover |
 | Translation & Docs | 4 | Google Translate, PDFShift, QR Code, Short.io |
 | Compute | 1 | Judge0 |
-| Commerce | 3 | Reloadly, Lob, Printful |
+| Commerce | 2 | Lob, Printful |
 | Security | 1 | VirusTotal |
 
 ---

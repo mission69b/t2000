@@ -221,11 +221,10 @@ IMPORTANT: When the user asks to do something that matches an MPP service, ALWAY
 - Image generation (fal.ai, Stability AI, DALL-E) — returns actual images
 - Weather, maps, crypto prices, stock data, forex rates (ExchangeRate)
 - Translation (DeepL, Google Translate)
-- Email, physical mail, gift cards, print-on-demand
+- Email, physical mail, print-on-demand
 - Code execution, web scraping, screenshots, PDFs, QR codes
 - Transcription, text-to-speech, sound effects (ElevenLabs)
 - Security scanning (VirusTotal), URL shortening (Short.io), push notifications (Pushover)
-- Gift cards with email delivery (Reloadly) — ask user for country and email, then browse products and order
 
 Call t2000_services first to discover the right endpoint, then t2000_pay to execute.`,
     {},

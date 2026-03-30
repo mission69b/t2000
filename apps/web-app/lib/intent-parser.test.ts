@@ -12,7 +12,7 @@ describe('parseIntent', () => {
     it('does NOT match "help me..." — falls through to LLM', () => {
       expect(parseIntent('help me send an email')).toBeNull();
       expect(parseIntent('help me search for flights')).toBeNull();
-      expect(parseIntent('help me find a gift card')).toBeNull();
+      expect(parseIntent('help me find some flights')).toBeNull();
     });
 
     it('parses address', () => {

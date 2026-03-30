@@ -19,7 +19,7 @@ Available actions (users trigger via chips or typed commands):
 - Withdraw: Pull funds from savings
 - Borrow: Borrow against savings collateral
 - Repay: Repay outstanding debt
-- Services: Gift cards, AI, search, email, and 40+ APIs (paid via MPP)
+- Services: AI, search, email, and 40+ APIs (paid via MPP)
 
 Rules:
 - Keep responses brief (2-4 sentences max)
@@ -153,7 +153,7 @@ function fallbackResponse(message: string): string {
   const text = message.toLowerCase();
   if (/rate|apy|yield/.test(text)) return 'Tap Save to see current yield rates from NAVI Protocol.';
   if (/invest|buy|sell|trade|swap|portfolio/.test(text)) return 'Tap Swap to buy, sell, or swap assets — SUI, BTC, ETH, GOLD available.';
-  if (/service|gift|pay/.test(text)) return 'Tap Pay to browse 40+ services including gift cards, AI, and more.';
+  if (/service|pay/.test(text)) return 'Tap Pay to browse 40+ services including AI, search, email, and more.';
   if (/safe|secure/.test(text)) return 'Your account is non-custodial — only you control your funds via Google login. All transactions are gas-free.';
   return 'I can help with swapping, saving, sending, borrowing, and services. Try tapping a chip below or typing a specific command.';
 }
