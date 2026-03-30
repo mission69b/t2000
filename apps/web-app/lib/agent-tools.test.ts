@@ -99,9 +99,9 @@ describe('getEstimatedCost', () => {
 });
 
 describe('getAnthropicTools', () => {
-  it('returns 31 tool schemas', () => {
+  it('returns 29 tool schemas', () => {
     const tools = getAnthropicTools();
-    expect(tools.length).toBe(31);
+    expect(tools.length).toBe(29);
   });
 
   it('every tool has name, description, and input_schema', () => {
