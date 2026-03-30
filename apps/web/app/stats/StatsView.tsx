@@ -40,6 +40,7 @@ interface Stats {
     last24h: number;
     last7d: number;
     gatewayAddress?: string;
+    gatewayBalance?: number;
   };
   transactions: {
     total: number;
@@ -379,7 +380,7 @@ export function StatsView() {
             </div>
             {stats.mpp.gatewayAddress && (
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-muted">Gateway</span>
+                <span className="text-muted">Treasury</span>
                 <a
                   href={`https://suiscan.xyz/mainnet/account/${stats.mpp.gatewayAddress}`}
                   target="_blank"
@@ -388,6 +389,12 @@ export function StatsView() {
                 >
                   {truncateAddress(stats.mpp.gatewayAddress)}
                 </a>
+              </div>
+            )}
+            {stats.mpp.gatewayBalance !== undefined && (
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-muted">Balance</span>
+                <span className="text-foreground">${stats.mpp.gatewayBalance.toFixed(4)} USDC</span>
               </div>
             )}
           </div>
@@ -469,6 +476,13 @@ export function StatsView() {
                   : `${(stats.wallets.rebate?.balanceSui ?? 0).toFixed(2)} SUI`
               }
             />
+            {stats.mpp.gatewayAddress && (
+              <WalletRow
+                label="MPP Gateway"
+                address={stats.mpp.gatewayAddress}
+                balance={`$${(stats.mpp.gatewayBalance ?? 0).toFixed(4)} USDC`}
+              />
+            )}
           </div>
         </section>
       )}
