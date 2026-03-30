@@ -5,7 +5,7 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
 const TREASURY_ID = "0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91";
 const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
-const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY ?? "0x703284465d889aa19cbd6806f5e60445d40f558ba1470e96240abf6b65509d2f";
+const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY ?? "0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012";
 
 export async function GET() {
 
