@@ -67,6 +67,9 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
     devDependencies:
+      '@mysten/sui':
+        specifier: ^2.11.0
+        version: 2.11.0(typescript@5.9.3)
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.2.2
@@ -4038,6 +4041,7 @@ packages:
 
   mppx@0.4.9:
     resolution: {integrity: sha512-oOSj7kIC4Bfa97i1GHDt8jLkqBV5Ffw8jCDSIclizeMiAtmkiLdOh1NmwgOt3kK38SNNjto/VKzTOyCSgkMfhA==}
+    deprecated: This version is deprecated. Please upgrade to 0.4.11 or later.
     hasBin: true
     peerDependencies:
       '@modelcontextprotocol/sdk': '>=1.25.0'
