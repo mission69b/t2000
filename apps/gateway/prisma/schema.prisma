@@ -12,7 +12,7 @@ model MppPayment {
   service   String
   endpoint  String
   amount    String
-  digest    String?
+  digest    String?  @unique
   sender    String?
   createdAt DateTime @default(now()) @map("created_at")
 

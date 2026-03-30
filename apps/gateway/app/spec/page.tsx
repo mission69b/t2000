@@ -68,7 +68,7 @@ export default function SpecPage() {
                 MPP Charge Method
               </div>
               <h1 className="text-xl font-medium text-foreground">
-                Sui USDC — <code className="text-accent">@t2000/mpp-sui</code>
+                Sui USDC — <code className="text-accent">@mppsui/mpp</code>
               </h1>
               <p className="text-sm text-muted max-w-xl">
                 A charge method implementation for the{' '}
@@ -150,22 +150,20 @@ export const suiCharge = Method.from({
               <CodeBlock
                 code={`import { Method, Receipt } from 'mppx';
 import { suiCharge } from './method.js';
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
+import type { ClientWithCoreApi } from '@mysten/sui/client';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { parseAmountToRaw } from './utils.js';
 
 export function sui(options: {
   currency: string;
   recipient: string;
-  rpcUrl?: string;
   network?: 'mainnet' | 'testnet' | 'devnet';
+  decimals?: number;
 }) {
   const network = options.network ?? 'mainnet';
-  const client = new SuiJsonRpcClient({
-    url: options.rpcUrl ?? getJsonRpcFullnodeUrl(network),
-    network,
-  });
+  const client: ClientWithCoreApi = /* SuiGrpcClient or compatible */;
   const normalizedRecipient = normalizeSuiAddress(options.recipient);
+  const decimals = options.decimals ?? 6;
 
   return Method.toServer(suiCharge, {
     defaults: {
@@ -175,28 +173,28 @@ export function sui(options: {
     async verify({ credential }) {
       const digest = credential.payload.digest;
 
-      const tx = await client.getTransactionBlock({
+      const tx = await client.core.getTransaction({
         digest,
-        options: { showEffects: true, showBalanceChanges: true },
+        include: { effects: true, balanceChanges: true },
       });
 
-      if (tx.effects?.status?.status !== 'success')
+      const resolved = tx.Transaction ?? tx.FailedTransaction;
+      if (!resolved || tx.FailedTransaction)
         throw new Error('Transaction failed on-chain');
 
-      const payment = (tx.balanceChanges ?? []).find(bc =>
+      const payment = (resolved.balanceChanges ?? []).find(bc =>
         bc.coinType === options.currency &&
-        typeof bc.owner === 'object' &&
-        bc.owner !== null &&
-        'AddressOwner' in bc.owner &&
-        normalizeSuiAddress(bc.owner.AddressOwner) === normalizedRecipient &&
-        Number(bc.amount) > 0
+        normalizeSuiAddress(bc.address) === normalizedRecipient &&
+        BigInt(bc.amount) > 0n
       );
 
       if (!payment)
         throw new Error('Payment not found in balance changes');
 
       const transferredRaw = BigInt(payment.amount);
-      const requestedRaw = parseAmountToRaw(credential.challenge.request.amount, 6);
+      const requestedRaw = parseAmountToRaw(
+        credential.challenge.request.amount, decimals
+      );
       if (transferredRaw < requestedRaw)
         throw new Error(\`Transferred \${transferredRaw} < requested \${requestedRaw}\`);
 
@@ -214,57 +212,49 @@ export function sui(options: {
 
             <Section id="client" title="Client — Payment">
               <p className="text-xs text-muted leading-relaxed">
-                The client handles coin fetching, balance checks, coin merging,
-                transaction building, and credential serialization:
+                The client uses <code className="text-foreground bg-panel px-1 py-0.5 rounded border border-border">coinWithBalance</code> for
+                automatic coin selection and merging, with the <code className="text-foreground bg-panel px-1 py-0.5 rounded border border-border">Signer</code> interface
+                from <code className="text-foreground bg-panel px-1 py-0.5 rounded border border-border">@mysten/sui/cryptography</code>:
               </p>
               <CodeBlock
                 code={`import { Method, Credential } from 'mppx';
 import { suiCharge } from './method.js';
-import { Transaction } from '@mysten/sui/transactions';
-import { fetchCoins, parseAmountToRaw } from './utils.js';
+import type { ClientWithCoreApi } from '@mysten/sui/client';
+import type { Signer } from '@mysten/sui/cryptography';
+import { coinWithBalance, Transaction } from '@mysten/sui/transactions';
+import { parseAmountToRaw } from './utils.js';
 
 export function sui(options: {
-  client: SuiJsonRpcClient;
-  signer: TransactionSigner;
+  client: ClientWithCoreApi;
+  signer: Signer;
+  decimals?: number;
   execute?: (tx: Transaction) => Promise<{ digest: string }>;
 }) {
-  const address = options.signer.getAddress();
+  const address = options.signer.toSuiAddress();
+  const decimals = options.decimals ?? 6;
 
   return Method.toClient(suiCharge, {
     async createCredential({ challenge }) {
       const { amount, currency, recipient } = challenge.request;
-      const amountRaw = parseAmountToRaw(amount, 6); // USDC = 6 decimals
-
-      const coins = await fetchCoins(options.client, address, currency);
-      const total = coins.reduce((s, c) => s + BigInt(c.balance), 0n);
-      if (total < amountRaw)
-        throw new Error(\`Not enough USDC (need $\${amount}, have $\${Number(total) / 1e6})\`);
+      const amountRaw = parseAmountToRaw(amount, decimals);
 
       const tx = new Transaction();
       tx.setSender(address);
 
-      const primary = tx.object(coins[0].coinObjectId);
-      if (coins.length > 1)
-        tx.mergeCoins(primary, coins.slice(1).map(c => tx.object(c.coinObjectId)));
-
-      const [payment] = tx.splitCoins(primary, [amountRaw]);
+      const payment = coinWithBalance({ balance: amountRaw, type: currency });
       tx.transferObjects([payment], recipient);
 
-      let result;
-      if (options.execute) {
-        result = await options.execute(tx);
-      } else {
-        const built = await tx.build({ client: options.client });
-        const { signature } = await options.signer.signTransaction(built);
-        result = await options.client.executeTransactionBlock({
-          transactionBlock: built, signature,
-          options: { showEffects: true },
-        });
-      }
+      const built = await tx.build({ client: options.client });
+      const { signature } = await options.signer.signTransaction(built);
+      const execResult = await options.client.core.executeTransaction({
+        transaction: built,
+        signatures: [signature],
+        include: { effects: true },
+      });
 
       return Credential.serialize({
         challenge,
-        payload: { digest: result.digest },
+        payload: { digest: execResult.Transaction!.digest },
       });
     },
   });
@@ -274,20 +264,9 @@ export function sui(options: {
 
             <Section id="utilities" title="Utilities">
               <CodeBlock
-                code={`export const SUI_USDC_TYPE =
+                code={`// Mainnet USDC coin type
+export const SUI_USDC_TYPE =
   '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
-
-// Fetch ALL coins — handles Sui pagination (max 50 per page)
-export async function fetchCoins(client, owner, coinType) {
-  const coins = [];
-  let cursor;
-  do {
-    const page = await client.getCoins({ owner, coinType, cursor });
-    coins.push(...page.data);
-    cursor = page.hasNextPage ? page.nextCursor : undefined;
-  } while (cursor);
-  return coins;
-}
 
 // String → BigInt without floating-point math
 // "0.01" → 10000n (USDC has 6 decimals)
@@ -295,7 +274,11 @@ export function parseAmountToRaw(amount: string, decimals: number): bigint {
   const [whole = '0', frac = ''] = amount.split('.');
   const padded = frac.padEnd(decimals, '0').slice(0, decimals);
   return BigInt(whole + padded);
-}`}
+}
+
+// Note: coin fetching and merging is handled automatically
+// by \`coinWithBalance\` from @mysten/sui/transactions.
+// No manual pagination or coin management needed.`}
               />
             </Section>
 
@@ -303,28 +286,28 @@ export function parseAmountToRaw(amount: string, decimals: number): bigint {
               <div className="space-y-3">
                 {[
                   {
-                    title: 'Coin fragmentation',
-                    desc: 'USDC may be split across multiple coin objects. The client merges all coins before splitting the payment amount.',
+                    title: 'Coin selection',
+                    desc: 'coinWithBalance handles coin fetching, merging, and splitting automatically — no manual pagination or coin management.',
                   },
                   {
                     title: 'Insufficient balance',
-                    desc: 'Client checks total balance before building the TX. Throws a clear error with available vs. requested amounts.',
+                    desc: 'coinWithBalance checks balance during tx.build() and throws if insufficient.',
                   },
                   {
                     title: 'TX confirmation race',
                     desc: 'Client waits for TX confirmation before sending the credential. Server verifies a confirmed TX — no race condition.',
                   },
                   {
-                    title: 'Double payment',
-                    desc: "Each challenge has a unique ID. Replaying a credential against a different challenge fails validation.",
+                    title: 'Challenge replay',
+                    desc: "Each challenge has a unique HMAC-bound ID and expiry. Replaying a credential against a different challenge fails validation.",
+                  },
+                  {
+                    title: 'Digest replay',
+                    desc: 'Server should track used digests to prevent the same on-chain TX from being presented to multiple challenges. Use a store or unique DB constraint.',
                   },
                   {
                     title: 'Amount precision',
                     desc: 'parseAmountToRaw() converts strings to BigInt via string splitting, not Number() multiplication. Zero floating-point risk.',
-                  },
-                  {
-                    title: 'Coin pagination',
-                    desc: "Sui's getCoins RPC returns max 50 objects per page. fetchCoins() paginates until all coins are fetched.",
                   },
                 ].map((item) => (
                   <div key={item.title} className="flex gap-3 text-xs">
@@ -368,11 +351,11 @@ export function parseAmountToRaw(amount: string, decimals: number): bigint {
               {[
                 { href: 'https://mpp.dev', label: 'MPP Protocol' },
                 {
-                  href: 'https://www.npmjs.com/package/@t2000/mpp-sui',
-                  label: 'npm: @t2000/mpp-sui',
+                  href: 'https://www.npmjs.com/package/@mppsui/mpp',
+                  label: 'npm: @mppsui/mpp',
                 },
                 {
-                  href: 'https://github.com/mission69b/t2000',
+                  href: 'https://github.com/mission69b/mppsui',
                   label: 'GitHub',
                 },
               ].map((link) => (
