@@ -825,7 +825,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 | 5 | ✅ Update `package.json` dependencies | `apps/gateway`, `apps/web-app`, `packages/sdk` |
 | 6 | ✅ Update CI workflows + Dockerfiles | `.github/workflows/publish.yml`, `ci.yml`, `deploy-server.yml`, `deploy-indexer.yml`, `packages/mcp/Dockerfile`, `infra/indexer.Dockerfile`, `apps/server/Dockerfile` |
 | 7 | ✅ Update docs & marketing references | `README.md`, `ARCHITECTURE.md`, `PRODUCT_FACTS.md`, `SECURITY.md`, `packages/sdk/README.md`, `packages/cli/README.md`, `apps/gateway/README.md`, `apps/gateway/app/docs/page.tsx`, `apps/web/app/docs/page.tsx`, `apps/web/app/mpp/page.tsx`, `t2000-skills/skills/t2000-pay/SKILL.md` |
-| 8 | Final publish of `@t2000/mpp-sui` with README → "Moved to `@mppsui/mpp`" | `packages/mpp-sui` (last publish, no re-export shim) |
+| 8 | ✅ Deprecate `@t2000/mpp-sui` (all 16 versions) → "Moved to `@mppsui/mpp`" | npm (no re-export shim) |
 
 Ships independently. The `@mppsui` org launches with both packages:
 - `@mppsui/mpp` — payment method (migrated from `@t2000/mpp-sui`)
@@ -883,10 +883,10 @@ Ships independently. The `@mppsui` org launches with both packages:
 | `api.t2000.ai` | Server — sponsor, gas, fees | `apps/server` (monorepo) | Live |
 
 **npm org:** `@mppsui` registered on npm (under mission69b). Publishes two packages:
-- `@mppsui/mpp` — published from `packages/mpp-sui` (rename `name` field in `package.json`)
-- `@mppsui/discovery` — published from `packages/discovery` (new)
+- `@mppsui/mpp` — Sui USDC payment method for `mppx`
+- `@mppsui/discovery` — discovery validation CLI
 
-**No separate repo.** The `@mppsui` npm org is for publishing, not GitHub hosting. Both packages and `apps/mppsui` stay in the t2000 monorepo. Extract to a separate repo only if Mysten wants to co-own or CI cadence diverges.
+**Separate repo:** `github.com/mission69b/mppsui` — dedicated monorepo with its own CI + automated npm publish on `v*` tags. The t2000 monorepo consumes `@mppsui/mpp` from npm (`^0.1.0`). `@t2000/mpp-sui` deprecated (all versions).
 
 **`t2000.ai/mpp` vs `mppsui.dev`:** The existing `/mpp` page is a product page — "use t2000 to pay for APIs on Sui." `mppsui.dev` is an ecosystem page — "MPP on Sui, any server, any agent." Different audiences: `/mpp` sells t2000, `mppsui.dev` grows the Sui MPP ecosystem.
 
@@ -932,7 +932,7 @@ Keep it lean. The site speaks for itself — live stats, real payments, real ser
 |------|---------------|
 | **API versioning** | `@mppsui/mpp` needs semver from day one — other builders will depend on it |
 | **Multi-currency future** | Spec currently assumes USDC only. Leave room in `x-payment-info` for SUI, wBTC etc. |
-| **Mysten co-ownership** | If Mysten wants to co-own mppsui.dev, may need separate repo sooner |
+| **Mysten co-ownership** | Separate repo already created — easy to add Mysten as collaborator |
 | **SEO / discoverability** | mppsui.dev needs to rank for "machine payments Sui", "AI agent payments Sui" |
 | **OpenAPI auto-generation** | 40 services × multiple endpoints = large OpenAPI doc. Auto-generate from service catalog config |
 | **Cross-registration** | `mpp.t2000.ai` registers on both mppsui.dev AND mppscan.com. Keep in sync when services change |
@@ -946,7 +946,7 @@ Keep it lean. The site speaks for itself — live stats, real payments, real ser
 |----------|---------|--------|
 | Sponsorship funding source? | Treasury self-funded vs Mysten grant | ✅ Self-funded ($100), apply for grant to scale |
 | Gas for treasury transfers? | Enoki-sponsored vs self-funded SUI | Enoki if Mysten approves, SUI fallback |
-| mppsui.dev in monorepo or separate? | Monorepo vs new repo | ✅ Monorepo — extract only if Mysten co-owns |
+| mppsui.dev in monorepo or separate? | Monorepo vs new repo | ✅ Separate repo (`mission69b/mppsui`) — own CI/CD cadence |
 | `@mppsui` npm org ownership? | Solo vs shared with Mysten | ✅ Registered under mission69b, discuss with Mysten later |
 | OpenAPI doc generation? | Manual vs auto-generated from service catalog | ✅ Auto-generate — 88 endpoints is too many to maintain by hand |
 
