@@ -10,14 +10,14 @@ import {
 } from './agent-tools';
 
 describe('TOOL_EXECUTORS', () => {
-  it('defines exactly 31 tools (6 read + 24 service + 1 raw-service)', () => {
+  it('defines exactly 29 tools (6 read + 22 service + 1 raw-service)', () => {
     const entries = Object.entries(TOOL_EXECUTORS);
-    expect(entries.length).toBe(31);
+    expect(entries.length).toBe(29);
 
     const reads = entries.filter(([, e]) => e.type === 'read');
     const services = entries.filter(([, e]) => e.type === 'service');
     expect(reads.length).toBe(6);
-    expect(services.length).toBe(24);
+    expect(services.length).toBe(22);
   });
 
   it('every service executor has a serviceId and transform', () => {
@@ -158,7 +158,7 @@ describe('buildSystemPrompt', () => {
   it('includes country from locale', () => {
     const prompt = buildSystemPrompt('0xabc', 'u@t.com', undefined, 'en-AU');
     expect(prompt).toContain('Country: AU');
-    expect(prompt).toContain('REAL-WORLD PURCHASES');
+    expect(prompt).toContain('GIFT GIVING');
   });
 
   it('defaults country to US when no locale', () => {
