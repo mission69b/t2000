@@ -201,8 +201,8 @@ t2000 init
   │   ├─ Encrypt with AES-256-GCM (scrypt-derived key)
   │   ├─ Write to ~/.t2000/wallet.key (mode 0600)
   │   ├─ Cache PIN in ~/.t2000/.session (mode 0600)
-  │   ├─ POST /api/sponsor → receive 0.05 SUI bootstrap
-  │   └─ POST /api/sponsor/usdc → receive $0.25 USDC onboarding
+  │   ├─ POST /api/sponsor → receive 0.05 SUI for gas (CLI only)
+  │   └─ POST /api/sponsor/usdc → receive $0.25 USDC to try the product
   │
   ├─ Step 2: MCP platforms
   │   ├─ Detect installed: Claude Desktop / Cursor / Windsurf
@@ -247,7 +247,9 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 | Cursor | `~/.cursor/mcp.json` |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` |
 
-### Bootstrap sponsorship (SUI gas)
+### Bootstrap sponsorship (SUI gas — CLI only)
+
+CLI agents need SUI for gas (they self-fund transactions). Web app users do NOT receive SUI — Enoki sponsors all gas on the web.
 
 - `POST https://api.t2000.ai/api/sponsor` with `{ address, name? }`
 - Server splits 0.05 SUI from sponsor wallet → transfers to new agent
@@ -255,15 +257,22 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 - Upserts agent in DB (makes address "known" to the indexer)
 - One-time per address, 10 per IP per hour, 100/day global cap, hashcash above limit
 
-### USDC sponsorship (onboarding)
+### USDC sponsorship (onboarding — both web + CLI)
 
-One-time $0.25 USDC to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance.
+One-time $0.25 USDC to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance and can immediately try save, swap, or pay.
 
 - `POST https://api.t2000.ai/api/sponsor/usdc` with `{ address, source }`
 - Server fetches USDC coins from sponsor wallet, splits $0.25, transfers to user
 - Records in `UsdcSponsorLog` (address is `@unique` — one-time per address)
 - Tracks IP address for forensics and per-IP rate limiting
 - Upserts agent in DB
+
+**Who gets what:**
+
+| Client | SUI bootstrap | USDC onboarding | Gas method |
+|--------|--------------|-----------------|------------|
+| Web app (zkLogin) | No — Enoki sponsors gas | $0.25 USDC | Enoki sponsored |
+| CLI (`t2000 init`) | 0.05 SUI | $0.25 USDC | Self-funded → auto-topup → gas station |
 
 **Protections:**
 
@@ -289,7 +298,16 @@ User signs in with Google → zkLogin → wallet derived
   → Dashboard shows $0.25 USDC balance
 ```
 
-**Wallet separation:** The sponsor wallet (sends USDC to users) and the MPP gateway treasury (receives payment revenue) are separate addresses. A drain on sponsorship cannot touch revenue.
+**Flow (CLI):**
+```
+t2000 init
+  → Generate keypair, encrypt with PIN
+  → POST /api/sponsor → 0.05 SUI (for gas)
+  → POST /api/sponsor/usdc → $0.25 USDC (to use the product)
+  → Agent is ready with gas + funds
+```
+
+**Wallet separation:** The sponsor wallet (sends USDC/SUI to new users) and the MPP gateway treasury (receives payment revenue) are separate addresses. A drain on sponsorship cannot touch revenue.
 
 ### What exists after init
 
@@ -301,7 +319,7 @@ User signs in with Google → zkLogin → wallet derived
 ```
 
 The agent now has:
-- A Sui address with 0.05 SUI for gas + $0.25 USDC (sponsored)
+- A Sui address with 0.05 SUI for gas + $0.25 USDC (both sponsored)
 - Safeguard limits configured
 - MCP server registered in AI clients
 - Ready for `t2000 save`, `t2000 pay`, or any MCP tool call
