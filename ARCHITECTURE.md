@@ -28,8 +28,8 @@
 │ Web App     │  │ t2000 Server│  │ MPP Gateway │  │   Sui Blockchain     │
 │ (Vercel)    │  │ (ECS)       │  │ (Vercel)    │  │                      │
 │             │  │             │  │             │  │  USDC · NAVI ·       │
-│ zkLogin     │  │ Sponsor API │  │ 41 services │  │  Suilend · Cetus     │
-│ Enoki gas   │  │ Gas station │  │ 90 endpoints│  │  t2000 Treasury      │
+│ zkLogin     │  │ Sponsor API │  │ 40 services │  │  Suilend · Cetus     │
+│ Enoki gas   │  │ Gas station │  │ 88 endpoints│  │  t2000 Treasury      │
 │ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @t2000/mpp-sui      │
 │ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  (payment method)    │
 └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
@@ -42,7 +42,7 @@
 │ Users       │  │ Agents      │  │ OpenAI      │
 │ Preferences │  │ Transactions│  │ Anthropic   │
 │ Sessions    │  │ Gas ledger  │  │ Brave       │
-│             │  │ Yield snaps │  │ + 38 more   │
+│             │  │ USDC sponsor│  │ + 37 more   │
 └─────────────┘  └─────────────┘  └─────────────┘
 ```
 
@@ -64,7 +64,7 @@
 |-----|---------|--------|-------------|
 | `apps/web-app` | Vercel | app.t2000.ai | Consumer web app — zkLogin, conversational AI, banking |
 | `apps/web` | Vercel | t2000.ai | Product site — docs, demos, stats |
-| `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 41 services, 90 endpoints, explorer, spec, docs |
+| `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs |
 | `apps/server` | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger |
 | Indexer | AWS ECS Fargate | — | Checkpoint indexer, yield snapshotter |
 
@@ -136,7 +136,7 @@ Simple actions (Save, Send, Swap) use client-side chip flows with zero LLM cost.
 
 ## MPP Gateway (`mpp.t2000.ai`)
 
-Payment infrastructure for machine-to-machine commerce. 41 services, 90 endpoints.
+Payment infrastructure for machine-to-machine commerce. 40 services, 88 endpoints.
 
 ### Pages
 
@@ -200,7 +200,8 @@ t2000 init
   │   ├─ Encrypt with AES-256-GCM (scrypt-derived key)
   │   ├─ Write to ~/.t2000/wallet.key (mode 0600)
   │   ├─ Cache PIN in ~/.t2000/.session (mode 0600)
-  │   └─ POST /api/sponsor → receive 0.05 SUI bootstrap
+  │   ├─ POST /api/sponsor → receive 0.05 SUI bootstrap
+  │   └─ POST /api/sponsor/usdc → receive $1 USDC onboarding
   │
   ├─ Step 2: MCP platforms
   │   ├─ Detect installed: Claude Desktop / Cursor / Windsurf
@@ -245,13 +246,40 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 | Cursor | `~/.cursor/mcp.json` |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` |
 
-### Bootstrap sponsorship
+### Bootstrap sponsorship (SUI gas)
 
 - `POST https://api.t2000.ai/api/sponsor` with `{ address, name? }`
 - Server splits 0.05 SUI from sponsor wallet → transfers to new agent
 - Records in `SponsorRequest` + `GasLedger` (txType: `bootstrap`)
 - Upserts agent in DB (makes address "known" to the indexer)
 - Rate limited: 10 per IP per hour, hashcash proof above limit
+
+### USDC sponsorship (onboarding)
+
+One-time $1 USDC airdrop to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance.
+
+- `POST https://api.t2000.ai/api/sponsor/usdc` with `{ address, source }`
+- Server fetches USDC coins from sponsor wallet, splits 1 USDC, transfers to user
+- Records in `UsdcSponsorLog` (address is `@unique` — one-time per address)
+- Upserts agent in DB
+
+**Auth per client:**
+
+| Client | Auth | Detail |
+|--------|------|--------|
+| Web app | `x-internal-key` header | Next.js server-side proxy route holds the secret — browser never sees it |
+| CLI | Global rate limit + hashcash | 20/hour free, then proof-of-work challenge (same as SUI gas) |
+
+**Flow (web app):**
+```
+User signs in with Google → zkLogin → wallet derived
+  → useUsdcSponsor hook fires (localStorage check)
+  → POST /api/sponsor/usdc (Next.js server route)
+    → adds x-internal-key, proxies to api.t2000.ai
+  → Server sends 1 USDC from sponsor wallet
+  → Hook marks address in localStorage
+  → Dashboard shows $1 USDC balance
+```
 
 ### What exists after init
 
@@ -263,7 +291,7 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 ```
 
 The agent now has:
-- A Sui address with 0.05 SUI for gas
+- A Sui address with 0.05 SUI for gas + $1 USDC (sponsored)
 - Safeguard limits configured
 - MCP server registered in AI clients
 - Ready for `t2000 save`, `t2000 pay`, or any MCP tool call
@@ -683,6 +711,7 @@ The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can free
 | **Pool minimum** | Rejects sponsorship when gas wallet < 100 SUI |
 | **Serialized signing** | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts |
 | **Sponsor rate limit** | 10 bootstrap requests per IP per hour |
+| **USDC sponsor limit** | 1 USDC per address (ever), 20/hr global, hashcash above limit |
 
 ### Hashcash flow
 
@@ -745,4 +774,5 @@ All write operations go through a `TxMutex` that ensures only one transaction ex
 | Gas usage amounts | Wallet balance |
 | Sponsored TX digests | What the TX does (opaque bytes) |
 | Bootstrap requests (IP, address) | CLI usage, local commands |
+| USDC sponsorship (address, amount, digest) | — |
 | Protocol fee events (from chain) | Which AI client is used |

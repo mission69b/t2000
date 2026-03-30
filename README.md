@@ -330,7 +330,7 @@ t2000 mcp install
 
 **Architecture:** User → MCP Client (Claude/Cursor/Windsurf) → @t2000/mcp → @t2000/sdk → Sui
 
-Auto-configures Claude Desktop + Cursor. 35 tools · 20 prompts · stdio transport · safeguard enforced. Supports 41 MPP services (90 endpoints). See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Auto-configures Claude Desktop + Cursor. 35 tools · 20 prompts · stdio transport · safeguard enforced. Supports 40 MPP services (88 endpoints). See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
 
 ## Agent Skills
 
@@ -379,7 +379,7 @@ Full reference → [Agent Skills README](t2000-skills)
 | Health factor protection | — | ✓ On-chain enforcement |
 | Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ 35 tools + 20 AI prompts + 41 MPP services |
+| MCP Server | — | ✓ 35 tools + 20 AI prompts + 40 MPP services |
 
 ## Security
 
