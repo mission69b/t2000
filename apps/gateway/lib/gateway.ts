@@ -8,6 +8,7 @@ type RouteHandler = (request: Request) => Promise<Response> | Response;
 
 function createMppx() {
   return Mppx.create({
+    realm: 'mpp.t2000.ai',
     methods: [sui({
       currency: SUI_USDC_TYPE,
       recipient: TREASURY_ADDRESS,
