@@ -6,6 +6,10 @@ on:
         description: 'Gateway URL to test against'
         default: 'https://mpp.t2000.ai'
         required: false
+      mppsui_branch:
+        description: 'mppsui branch/PR to test (e.g. "ml/use-more-built-in-helpers"). Leave empty for published npm version.'
+        default: ''
+        required: false
   schedule:
     - cron: '0 6 * * 1' # Weekly Monday 6am UTC
 
@@ -41,6 +45,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Override @mppsui/mpp with branch build
+        if: ${{ github.event.inputs.mppsui_branch != '' }}
+        run: |
+          git clone --branch ${{ github.event.inputs.mppsui_branch }} --depth 1 https://github.com/mission69b/mppsui.git /tmp/mppsui
+          cd /tmp/mppsui
+          pnpm install --frozen-lockfile
+          pnpm --filter @mppsui/mpp build
+          cd ${{ github.workspace }}
+          pnpm --filter @t2000/gateway add @mppsui/mpp@file:/tmp/mppsui/packages/mpp
+
       - name: Run gateway e2e tests
         run: pnpm --filter @t2000/gateway test:e2e
-        working-directory: .
