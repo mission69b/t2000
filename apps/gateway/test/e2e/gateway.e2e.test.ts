@@ -1,30 +1,41 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Mppx } from 'mppx/client';
 import { sui } from '@mppsui/mpp/client';
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const GATEWAY_URL = process.env.GATEWAY_URL ?? 'https://mpp.t2000.ai';
 const NETWORK = (process.env.SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
+const USE_GRPC = process.env.MPPSUI_USE_GRPC === 'true';
 
 let mppxClient: ReturnType<typeof Mppx.create>;
 let paidFetch: typeof globalThis.fetch;
 
-beforeAll(() => {
+beforeAll(async () => {
   const privateKey = process.env.E2E_TEST_PRIVATE_KEY;
   if (!privateKey) throw new Error('E2E_TEST_PRIVATE_KEY env var is required');
 
-  const client = new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl(NETWORK),
-    network: NETWORK,
-  });
   const keypair = Ed25519Keypair.fromSecretKey(privateKey);
   const address = keypair.getPublicKey().toSuiAddress();
 
-  const signer = {
-    getAddress: () => address,
-    signTransaction: (txBytes: Uint8Array) => keypair.signTransaction(txBytes),
-  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let client: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let signer: any;
+
+  if (USE_GRPC) {
+    const { SuiGrpcClient } = await import('@mysten/sui/grpc');
+    client = new SuiGrpcClient({ url: `https://sui-${NETWORK}.mystenlabs.com`, network: NETWORK });
+    signer = keypair;
+    console.log('Using SuiGrpcClient (PR branch)');
+  } else {
+    const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+    client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(NETWORK), network: NETWORK });
+    signer = {
+      getAddress: () => address,
+      signTransaction: (txBytes: Uint8Array) => keypair.signTransaction(txBytes),
+    };
+    console.log('Using SuiJsonRpcClient (published npm)');
+  }
 
   console.log(`E2E wallet: ${address}`);
   console.log(`Gateway:    ${GATEWAY_URL}`);

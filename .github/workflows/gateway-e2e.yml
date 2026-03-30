@@ -56,6 +56,7 @@ jobs:
           pnpm --filter @mppsui/mpp build
           cd ${{ github.workspace }}
           pnpm --filter @t2000/gateway add @mppsui/mpp@file:/tmp/mppsui/packages/mpp
+          echo "MPPSUI_USE_GRPC=true" >> $GITHUB_ENV
 
       - name: Run gateway e2e tests
         run: pnpm --filter @t2000/gateway test:e2e
