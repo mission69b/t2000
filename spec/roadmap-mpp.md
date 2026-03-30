@@ -861,13 +861,17 @@ Ships independently. The `@mppsui` org launches with both packages:
 
 **Register UX (ref: MPPscan):** The `/register` flow should follow MPPscan's live-preview pattern — paste a server URL, immediately fetch `/openapi.json` and render endpoints with pricing inline, run `@mppsui/discovery` validation in real-time with pass/fail checks, and only enable the "Register" button once validation passes. Show actionable warnings (e.g. high route count) rather than hard blocks.
 
-### Phase 5: Apple Pay / Android Pay — TBD
+### Phase 5: Fiat On-ramp (Stripe Crypto Onramp) → Absorbed into Phase 20a
 
-| Task | Where |
-|------|-------|
-| Payment provider integration (Stripe / Moonpay) | `apps/web-app` |
-| USDC purchase flow — fiat → USDC on Sui | New API route |
-| Replace sponsorship for returning users | `apps/web-app` |
+**Decision (Feb 2026):** This phase is now covered by Phase 20a in `t2000-roadmap-v2.md`. Stripe Crypto Onramp supports Sui as a `destination_network` (confirmed by Mysten). The embedded widget natively supports card, Apple Pay, and Google Pay — no separate "Apple Pay / Android Pay" phase needed.
+
+See `t2000-roadmap-v2.md` Phase 20a for full spec, architecture, and tasks.
+
+| Original task | Resolution |
+|---------------|------------|
+| Payment provider integration (Stripe / Moonpay) | **Stripe Crypto Onramp** — single vendor (also used for Phase 20b Issuing + future settlement) |
+| USDC purchase flow — fiat → USDC on Sui | Stripe handles end-to-end: KYC, payment, USDC delivery to Sui address |
+| Replace sponsorship for returning users | Sponsor $0.25 for first-timers, "Add Funds" (Stripe Onramp) for returning users |
 
 ---
 
