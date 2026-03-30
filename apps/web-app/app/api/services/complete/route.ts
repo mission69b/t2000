@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Credential, Method } from 'mppx';
-import { suiCharge } from '@t2000/mpp-sui/client';
+import { suiCharge } from '@mppsui/mpp/client';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { GATEWAY_BASE } from '@/lib/service-gateway';
 

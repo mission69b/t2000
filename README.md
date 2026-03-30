@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@t2000/mpp-sui">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@mppsui/mpp">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -122,7 +122,7 @@ t2000 wraps five DeFi primitives into a single interface that any AI agent can u
 | **Strategies** | Themed allocations (bluechip, all-weather, safe-haven, layer1, sui-heavy) — single atomic PTB | Agent orchestration + Cetus |
 | **Auto-Invest** | Dollar-cost averaging (daily/weekly/monthly DCA) | Agent scheduling |
 | **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
-| **Payments (MPP)** | Pay for API resources with USDC | [@t2000/mpp-sui](packages/mpp-sui) + [MPP Gateway](https://mpp.t2000.ai) |
+| **Payments (MPP)** | Pay for API resources with USDC | [@mppsui/mpp](packages/mpp-sui) + [MPP Gateway](https://mpp.t2000.ai) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
@@ -160,7 +160,7 @@ At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the
 | [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
 | [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
 | [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
-| [`@t2000/mpp-sui`](packages/mpp-sui) | MPP payment client (Sui USDC) | `npm install @t2000/mpp-sui` |
+| [`@mppsui/mpp`](packages/mpp-sui) | MPP payment client (Sui USDC) | `npm install @mppsui/mpp` |
 
 ## SDK
 
@@ -318,7 +318,7 @@ t2000 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
 
 The [MPP Gateway](https://mpp.t2000.ai) proxies 40 services (88 endpoints) — OpenAI, Anthropic, fal.ai, Brave, Lob, and more — all payable with Sui USDC.
 
-Full reference → [`@t2000/mpp-sui` README](packages/mpp-sui)
+Full reference → [`@mppsui/mpp` README](packages/mpp-sui)
 
 ## MCP Server
 
@@ -400,7 +400,7 @@ t2000/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
 │   ├── cli/              @t2000/cli — Terminal bank account
 │   ├── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
-│   └── mpp-sui/          @t2000/mpp-sui — MPP payment client
+│   └── mpp-sui/          @mppsui/mpp — MPP payment client
 │
 ├── apps/
 │   ├── gateway/           MPP Gateway — proxied AI APIs (mpp.t2000.ai)
@@ -428,7 +428,7 @@ pnpm test         # All unit tests
 
 ```bash
 pnpm --filter @t2000/sdk test     # 469 tests
-pnpm --filter @t2000/mpp-sui test
+pnpm --filter @mppsui/mpp test
 pnpm --filter @t2000/server test  # 10 tests
 ```
 

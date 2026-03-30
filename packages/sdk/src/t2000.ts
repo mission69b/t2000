@@ -249,7 +249,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     this.enforcer.check({ operation: 'pay', amount: options.maxPrice ?? 1.0 });
 
     const { Mppx } = await import('mppx/client');
-    const { sui } = await import('@t2000/mpp-sui/client');
+    const { sui } = await import('@mppsui/mpp/client');
 
     const client = this.client;
     const signer = this._signer;

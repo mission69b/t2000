@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6",
-    "@t2000/mpp-sui": "workspace:*",
+    "@mppsui/mpp": "workspace:*",
     "@vercel/analytics": "^1.6.1",
     "mppx": "^0.4.9",
     "next": "16.2.1",

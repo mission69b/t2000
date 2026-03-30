@@ -19,7 +19,7 @@
     "@mysten/zklogin": "^0.8.1",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
-    "@t2000/mpp-sui": "^0.1.1",
+    "@mppsui/mpp": "workspace:*",
     "@t2000/sdk": "workspace:*",
     "@tanstack/react-query": "^5.95.2",
     "@vercel/analytics": "^1.6.1",

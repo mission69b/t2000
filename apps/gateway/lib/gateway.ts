@@ -1,5 +1,5 @@
 import { Mppx } from 'mppx/nextjs';
-import { sui } from '@t2000/mpp-sui/server';
+import { sui } from '@mppsui/mpp/server';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';

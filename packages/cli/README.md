@@ -5,7 +5,7 @@ A bank account for AI agents on Sui. Guided setup, MCP integration for Claude De
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[MPP](https://www.npmjs.com/package/@t2000/mpp-sui)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
+**[Website](https://t2000.ai)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[MPP](https://www.npmjs.com/package/@mppsui/mpp)** · **[MCP](https://www.npmjs.com/package/@t2000/mcp)**
 
 ## Installation
 

@@ -1,49 +1,44 @@
 {
-  "name": "@mppsui/mpp",
+  "name": "@mppsui/discovery",
   "version": "0.1.0",
-  "description": "Sui USDC payment method for the Machine Payments Protocol (MPP)",
+  "description": "Sui-specific discovery validation for MPP servers — validate OpenAPI documents and probe 402 payment challenges",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "mppsui-discovery": "./bin/discovery.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    },
-    "./client": {
-      "types": "./dist/client.d.ts",
-      "import": "./dist/client.js",
-      "require": "./dist/client.cjs"
-    },
-    "./server": {
-      "types": "./dist/server.d.ts",
-      "import": "./dist/server.js",
-      "require": "./dist/server.cjs"
     }
   },
   "files": [
     "dist",
+    "bin",
     "README.md"
   ],
   "keywords": [
     "mpp",
     "sui",
-    "payment",
-    "usdc",
-    "ai",
-    "agent",
+    "discovery",
+    "openapi",
     "402",
-    "machine-payments"
+    "payment",
+    "validation",
+    "usdc",
+    "agent"
   ],
-  "author": "t2000",
+  "author": "mppsui",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mission69b/t2000.git",
-    "directory": "packages/mpp-sui"
+    "directory": "packages/discovery"
   },
-  "homepage": "https://t2000.ai/mpp",
+  "homepage": "https://mppsui.dev",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -54,8 +49,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@mysten/sui": "^2",
-    "mppx": "^0.4.9",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -16,7 +16,7 @@ COPY packages/mpp-sui packages/mpp-sui/
 COPY apps/server apps/server/
 COPY tsconfig.base.json ./
 
-RUN pnpm --filter @t2000/mpp-sui build
+RUN pnpm --filter @mppsui/mpp build
 RUN pnpm --filter @t2000/sdk build
 RUN pnpm --filter @t2000/server db:generate
 RUN pnpm --filter @t2000/server build

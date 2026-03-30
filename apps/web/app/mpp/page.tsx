@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 const GITHUB_URL = "https://github.com/mission69b/t2000";
-const NPM_URL = "https://www.npmjs.com/package/@t2000/mpp-sui";
+const NPM_URL = "https://www.npmjs.com/package/@mppsui/mpp";
 const MPP_URL = "https://mpp.dev";
 
 const HOW_IT_WORKS = [
@@ -86,7 +86,7 @@ export default function MppPage() {
               rel="noopener noreferrer"
               className="px-5 sm:px-7 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
             >
-              npm install @t2000/mpp-sui →
+              npm install @mppsui/mpp →
             </a>
             <a
               href={MPP_URL}
@@ -152,7 +152,7 @@ export default function MppPage() {
                 <span className="text-muted">{"import"}</span>
                 <span className="text-foreground">{" { sui }"}</span>
                 <span className="text-muted">{" from "}</span>
-                <span className="text-accent">{`'@t2000/mpp-sui/server'`}</span>
+                <span className="text-accent">{`'@mppsui/mpp/server'`}</span>
                 <span className="text-muted">;</span>
                 {"\n"}
                 <span className="text-muted">{"import"}</span>
@@ -473,14 +473,14 @@ export default function MppPage() {
 
           <p className="font-mono text-[12px] text-muted leading-[1.7] max-w-[520px] mb-10">
             MPP is an open standard by Stripe and Tempo Labs.{" "}
-            <code className="text-accent bg-accent-dim px-1.5 py-0.5">@t2000/mpp-sui</code>{" "}
+            <code className="text-accent bg-accent-dim px-1.5 py-0.5">@mppsui/mpp</code>{" "}
             is one payment method. Any MPP client can pay any MPP server.
           </p>
 
           <div className="grid sm:grid-cols-3 gap-6">
             {[
               {
-                title: "@t2000/mpp-sui",
+                title: "@mppsui/mpp",
                 desc: "Sui USDC payment method for MPP. Use it standalone or with the t2000 SDK.",
                 link: NPM_URL,
                 linkText: "npm →",
@@ -533,7 +533,7 @@ export default function MppPage() {
 
           <div className="inline-block bg-panel border border-border-bright rounded-sm px-6 py-4 mb-8 sm:mb-10">
             <code className="font-mono text-sm sm:text-base text-foreground tracking-wide">
-              npm install <span className="text-accent">@t2000/mpp-sui</span>
+              npm install <span className="text-accent">@mppsui/mpp</span>
             </code>
           </div>
 

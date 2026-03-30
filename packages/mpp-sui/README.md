@@ -1,22 +1,24 @@
-# @t2000/mpp-sui
+# @mppsui/mpp
 
 Sui USDC payment method for the [Machine Payments Protocol (MPP)](https://mpp.dev). Accept and make payments on any API — the first MPP implementation on Sui.
 
-[![npm](https://img.shields.io/npm/v/@t2000/mpp-sui)](https://www.npmjs.com/package/@t2000/mpp-sui)
+[![npm](https://img.shields.io/npm/v/@mppsui/mpp)](https://www.npmjs.com/package/@mppsui/mpp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 **[Website](https://t2000.ai/mpp)** · **[GitHub](https://github.com/mission69b/t2000)** · **[SDK](https://www.npmjs.com/package/@t2000/sdk)** · **[CLI](https://www.npmjs.com/package/@t2000/cli)**
+
+> **Migrated from `@t2000/mpp-sui`.** If you were using the old package, switch your imports to `@mppsui/mpp`.
 
 ## What is MPP?
 
 The [Machine Payments Protocol](https://mpp.dev) is an open standard by Stripe and Tempo Labs for agent-to-service payments. When a server returns HTTP `402 Payment Required`, the client pays automatically and retries — no API keys, no subscriptions, no human approval.
 
-`@t2000/mpp-sui` adds **Sui USDC** as a payment method. It works with any MPP-compatible client or server via the `mppx` SDK.
+`@mppsui/mpp` adds **Sui USDC** as a payment method. It works with any MPP-compatible client or server via the `mppx` SDK.
 
 ## Installation
 
 ```bash
-npm install @t2000/mpp-sui mppx
+npm install @mppsui/mpp mppx
 ```
 
 ## Accept Payments (Server)
@@ -24,7 +26,7 @@ npm install @t2000/mpp-sui mppx
 Add payments to any API in 5 lines:
 
 ```typescript
-import { sui } from '@t2000/mpp-sui/server';
+import { sui } from '@mppsui/mpp/server';
 import { Mppx } from 'mppx';
 
 const SUI_USDC = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -43,7 +45,7 @@ No webhooks. No Stripe dashboard. No KYC. USDC arrives directly in your wallet.
 ## Make Payments (Client)
 
 ```typescript
-import { sui } from '@t2000/mpp-sui/client';
+import { sui } from '@mppsui/mpp/client';
 import { Mppx } from 'mppx/client';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
@@ -118,7 +120,7 @@ No facilitator. No intermediary. The server verifies the Sui transaction directl
 Creates a Sui USDC payment method for the server.
 
 ```typescript
-import { sui } from '@t2000/mpp-sui/server';
+import { sui } from '@mppsui/mpp/server';
 
 const method = sui({
   currency: SUI_USDC,         // Sui coin type for USDC
@@ -140,7 +142,7 @@ Verification checks:
 Creates a Sui USDC payment method for the client.
 
 ```typescript
-import { sui } from '@t2000/mpp-sui/client';
+import { sui } from '@mppsui/mpp/client';
 
 const method = sui({
   client: suiJsonRpcClient,    // SuiJsonRpcClient instance
@@ -171,7 +173,7 @@ The client:
 The Sui coin type for Circle-issued USDC on mainnet.
 
 ```typescript
-import { SUI_USDC_TYPE } from '@t2000/mpp-sui';
+import { SUI_USDC_TYPE } from '@mppsui/mpp';
 // '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
 ```
 
@@ -202,8 +204,8 @@ MPP is chain-agnostic. We chose Sui because agent payments need:
 ## Testing
 
 ```bash
-pnpm --filter @t2000/mpp-sui test    # 16 tests
-pnpm --filter @t2000/mpp-sui typecheck
+pnpm --filter @mppsui/mpp test    # 16 tests
+pnpm --filter @mppsui/mpp typecheck
 ```
 
 ## License

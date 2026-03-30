@@ -21,12 +21,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @t2000/mpp-sui build
+      - run: pnpm --filter @mppsui/mpp build
+      - run: pnpm --filter @mppsui/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/web-app exec prisma generate
-      - run: pnpm --filter @t2000/mpp-sui typecheck
+      - run: pnpm --filter @mppsui/mpp typecheck
+      - run: pnpm --filter @mppsui/discovery typecheck
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/server typecheck
@@ -44,13 +46,15 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @t2000/mpp-sui build
+      - run: pnpm --filter @mppsui/mpp build
+      - run: pnpm --filter @mppsui/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/web-app exec prisma generate
       - run: pnpm --filter @t2000/sdk test
-      - run: pnpm --filter @t2000/mpp-sui test
+      - run: pnpm --filter @mppsui/mpp test
+      - run: pnpm --filter @mppsui/discovery test
       - run: pnpm --filter @t2000/server test
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/web-app test
@@ -66,7 +70,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @t2000/mpp-sui build
+      - run: pnpm --filter @mppsui/mpp build
       - run: pnpm --filter @t2000/sdk build
       - name: Run adapter compliance tests
         run: pnpm --filter @t2000/sdk exec vitest run src/adapters/ --reporter=verbose

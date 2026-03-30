@@ -14,7 +14,7 @@ COPY packages/sdk packages/sdk/
 COPY packages/mpp-sui packages/mpp-sui/
 COPY packages/mcp packages/mcp/
 RUN pnpm --filter @t2000/sdk build && \
-    pnpm --filter @t2000/mpp-sui build && \
+    pnpm --filter @mppsui/mpp build && \
     pnpm --filter @t2000/mcp build
 
 ENV T2000_PIN=glama-inspect

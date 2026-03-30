@@ -20,16 +20,19 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @t2000/mpp-sui build
+      - run: pnpm --filter @mppsui/mpp build
+      - run: pnpm --filter @mppsui/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/server exec prisma generate
-      - run: pnpm --filter @t2000/mpp-sui typecheck
+      - run: pnpm --filter @mppsui/mpp typecheck
+      - run: pnpm --filter @mppsui/discovery typecheck
       - run: pnpm --filter @t2000/sdk typecheck
       - run: pnpm --filter @t2000/mcp typecheck
       - run: pnpm --filter @t2000/server typecheck
       - run: pnpm --filter @t2000/cli typecheck
-      - run: pnpm --filter @t2000/mpp-sui test
+      - run: pnpm --filter @mppsui/mpp test
+      - run: pnpm --filter @mppsui/discovery test
       - run: pnpm --filter @t2000/sdk test
       - run: pnpm --filter @t2000/server test
       - run: pnpm --filter @t2000/mcp test
@@ -50,7 +53,8 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @t2000/mpp-sui build
+      - run: pnpm --filter @mppsui/mpp build
+      - run: pnpm --filter @mppsui/discovery build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/cli build
@@ -61,8 +65,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true
 
-      - name: Publish @t2000/mpp-sui
-        run: pnpm --filter @t2000/mpp-sui publish --no-git-checks --access public
+      - name: Publish @mppsui/mpp
+        run: pnpm --filter @mppsui/mpp publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish @mppsui/discovery
+        run: pnpm --filter @mppsui/discovery publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true

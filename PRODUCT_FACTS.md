@@ -16,7 +16,7 @@
 |---------|---------|
 | `@t2000/sdk` | `0.19.0` |
 | `@t2000/cli` | `0.21.0` |
-| `@t2000/mpp-sui` | `0.1.0` |
+| `@mppsui/mpp` | `0.1.0` |
 | `@t2000/mcp` | `0.21.0` |
 | Agent Skills | `3.0` |
 
@@ -597,7 +597,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | API | `https://api.t2000.ai` (ECS Fargate, ALB) |
 | npm (SDK) | `https://www.npmjs.com/package/@t2000/sdk` |
 | npm (CLI) | `https://www.npmjs.com/package/@t2000/cli` |
-| npm (MPP) | `https://www.npmjs.com/package/@t2000/mpp-sui` |
+| npm (MPP) | `https://www.npmjs.com/package/@mppsui/mpp` |
 | GitHub | `https://github.com/mission69b/t2000` |
 | Network | Sui mainnet |
 
@@ -615,7 +615,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 
 | Fact | Value |
 |------|-------|
-| Package | `@t2000/mpp-sui` |
+| Package | `@mppsui/mpp` |
 | SDK method | `agent.pay()` |
 | CLI command | `t2000 pay <url>` |
 | MCP tool | `t2000_pay` |

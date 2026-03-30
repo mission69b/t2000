@@ -42,41 +42,42 @@ Both CLI and web app call the same ECS server endpoint (`api.t2000.ai`). The ser
 ```
 CLI (t2000 init)                    Web App (Google Sign-In)
        │                                    │
-       │ POST /api/sponsor/onboard          │ POST /api/sponsor/onboard
-       │ { address, signature, nonce }      │ { address }
-       │                                    │ x-internal-key: <shared secret>
+       │ POST /api/sponsor/usdc             │ POST /api/sponsor/usdc (via Next.js proxy)
+       │ { address, source: "cli" }         │ { address, source: "web" }
+       │ (hashcash proof if rate-limited)    │ x-internal-key: <SPONSOR_INTERNAL_KEY>
        └──────────────┬────────────────────┘
                       │
               api.t2000.ai (ECS)
                       │
-         1. Verify request (signature or x-internal-key)
-         2. Check sponsor_log (one-time per address)
-         3. Build USDC transfer (sponsor wallet → user)
-         4. Sign with sponsor keypair
-         5. Submit to Sui (sponsor wallet pays gas from its SUI balance)
-         6. Log to sponsor_log { address, amount, type: 'onboard', digest }
+         1. Verify request (hashcash or x-internal-key)
+         2. Check usdc_sponsor_log (one-time per address)
+         3. Fetch USDC coins from sponsor wallet
+         4. Build split + transfer TX (sponsor wallet → user)
+         5. Sign with sponsor keypair, submit to Sui
+         6. Log to usdc_sponsor_log { address, amount, source, digest }
 ```
 
 ### Auth per client
 
 | Client | Auth method | Why |
 |--------|-------------|-----|
-| CLI | Signature challenge — CLI signs a server-issued nonce with the new keypair | No OAuth — proves the caller owns the address |
-| Web app | `x-internal-key` header (shared secret, same pattern as deliver-first) | zkLogin already authenticated the user; the web app just needs to prove the request came from the app, not a random caller |
+| CLI | Global rate limit (20/hr) + hashcash proof-of-work when over limit | Same pattern as SUI gas sponsor — PoW makes scripted drain expensive |
+| Web app | `x-internal-key` header (server-side proxy, secret never in browser) | zkLogin already authenticated the user; Next.js API route proves the request came from the app |
 
 ### Flow — Web App
 
 ```
 User clicks "Sign in with Google"
   → zkLogin → wallet derived
-  → Web app checks: first sign-in? (no balance, no history)
-  → Yes → POST api.t2000.ai/api/sponsor/onboard
-           { address: "0x..." }
-           x-internal-key: <SPONSOR_INTERNAL_KEY>
+  → useUsdcSponsor hook fires (checks localStorage for prior sponsorship)
+  → Not yet sponsored → POST /api/sponsor/usdc (Next.js server-side route)
+    → Next.js route adds x-internal-key header (from env, never in browser)
+    → Proxies to api.t2000.ai/api/sponsor/usdc { address, source: "web" }
     → Server verifies x-internal-key
-    → Server checks: address not in sponsor_log
-    → Server sends 1 USDC from treasury to address
-    → Log to sponsor_log { address, amount, type: 'onboard', digest }
+    → Server checks: address not in usdc_sponsor_log
+    → Server sends 1 USDC from sponsor wallet to address
+    → Logs to usdc_sponsor_log
+  → Hook marks address as sponsored in localStorage
   → User lands on dashboard with $1 USDC balance
 ```
 
@@ -85,12 +86,13 @@ User clicks "Sign in with Google"
 ```
 t2000 init
   → Generate keypair, encrypt with PIN
-  → GET api.t2000.ai/api/sponsor/challenge → { nonce }
-  → Client signs nonce with the new keypair
-  → POST /api/sponsor/onboard { address, signature, nonce }
-    → Server verifies signature matches address (proves key ownership)
-    → Same sponsor flow from here
-  → User has $1 USDC + 0.05 SUI (existing gas bootstrap)
+  → POST /api/sponsor (existing) → receive 0.05 SUI gas bootstrap
+  → POST /api/sponsor/usdc { address, source: "cli" }
+    → Server checks global rate limit (20/hr)
+    → If over limit → returns hashcash challenge → CLI solves + retries
+    → Server checks usdc_sponsor_log (one-time per address)
+    → Sends 1 USDC from sponsor wallet
+  → User has $1 USDC + 0.05 SUI
 ```
 
 ### Funding
@@ -108,7 +110,7 @@ The sponsor wallet (`0x7032...`) already has 701 SUI for gas — no top-up neede
 | Protection | Detail |
 |------------|--------|
 | One-time per address | `sponsor_log` table — address is unique. Duplicate requests return 409 (not 500) |
-| Auth per client | CLI: signature challenge (proves key ownership). Web app: `x-internal-key` (proves request came from app) |
+| Auth per client | CLI: hashcash proof-of-work (makes scripted drain expensive). Web app: `x-internal-key` (proves request came from app) |
 | Rate limit | Max 20 sponsorships per hour from treasury |
 | Google account uniqueness | zkLogin derives address from Google `sub` — one Google = one address |
 | Fund monitoring | Alert if treasury USDC drops below threshold (currently $2.12 USDC in treasury) |
@@ -140,13 +142,14 @@ Deferred until there's real user growth to amplify. When needed: referral link �
 ### Database
 
 ```prisma
-model SponsorLog {
-  id        Int      @id @default(autoincrement())
-  address   String   @unique
-  amount    String
-  txDigest  String
-  createdAt DateTime @default(now()) @map("created_at")
-  @@map("sponsor_log")
+model UsdcSponsorLog {
+  id           Int      @id @default(autoincrement())
+  agentAddress String   @unique @map("agent_address")
+  amount       String
+  txDigest     String   @map("tx_digest")
+  source       String   @default("web")  // "web" or "cli"
+  createdAt    DateTime @default(now()) @map("created_at")
+  @@map("usdc_sponsor_log")
 }
 ```
 
@@ -219,7 +222,7 @@ Any MPP server on Sui can register. Discovery follows the OpenAPI spec pattern f
 }
 ```
 
-**Validation:** Use `@agentcash/discovery` compatible validation or build our own `@mppsui/discovery` package.
+**Validation:** Phase 2 uses `@agentcash/discovery` for MPPscan registration. Phase 3a publishes `@mppsui/discovery` with Sui-specific checks (address format, USDC coin type, network).
 
 **Server card on `/servers`:**
 
@@ -339,24 +342,38 @@ The Sui payment method package outgrows the t2000 namespace. It's a protocol pri
 **Migration plan:**
 1. Create `@mppsui` npm org
 2. Publish `@mppsui/mpp` as the new package (same code, new name)
-3. Update `@t2000/mpp-sui` to re-export from `@mppsui/mpp` with a deprecation notice
-4. Update all internal references (`apps/gateway`, `apps/web-app`, `packages/sdk`)
-5. Keep `@t2000/mpp-sui` alive for 6 months as a shim, then archive
+3. Publish `@mppsui/discovery` as the Sui-specific validation CLI
+4. Update `@t2000/mpp-sui` to re-export from `@mppsui/mpp` with a deprecation notice
+5. Update all internal references (`apps/gateway`, `apps/web-app`, `packages/sdk`)
+6. Keep `@t2000/mpp-sui` alive for 6 months as a shim, then archive
 
 **No breaking changes** — existing users of `@t2000/mpp-sui` get a deprecation warning pointing to `@mppsui/mpp`.
 
-### Discovery Validation
+### `@mppsui/discovery`
 
-Build OpenAPI + Sui-specific validation logic directly inside `apps/mppsui` (the `/register` flow). No separate package yet.
+Sui-specific discovery validation package. Same CLI pattern as `@agentcash/discovery`.
 
-**Validation checks:**
+```bash
+npx @mppsui/discovery check https://mpp.t2000.ai
+npx @mppsui/discovery discover https://mpp.t2000.ai
+```
+
+**Ships in Phase 3a** alongside `@mppsui/mpp` — the `@mppsui` org launches with both packages from day one.
+
+**Validation checks (superset of `@agentcash/discovery`):**
 - OpenAPI 3.1 document at `/openapi.json`
 - `x-payment-info` present with `protocols: ["mpp"]`
-- 402 response declared on payable operations
+- `x-payment-info.pricingMode` valid (`fixed`, `range`, `quote`)
+- `requestBody` schema declared on payable operations
+- `responses.402` declared on payable operations
 - Sui-specific: recipient is a valid Sui address, coin type is Sui USDC
+- Sui-specific: network validation (mainnet/testnet)
 
-**Future: `@mppsui/discovery` package**
-Extract to a standalone npm package when external developers need to validate their servers locally before registering. Same CLI pattern as `@agentcash/discovery` (`npx @mppsui/discovery check <url>`). Not needed until there's demand.
+**Relationship to `@agentcash/discovery`:**
+- `@agentcash/discovery` = chain-agnostic OpenAPI validation (used by MPPscan)
+- `@mppsui/discovery` = same checks + Sui-specific validations (address format, USDC coin type, network)
+- Phase 2 validates with `@agentcash/discovery` to pass MPPscan registration
+- Phase 3a publishes `@mppsui/discovery` for Sui MPP server developers
 
 ---
 
@@ -723,38 +740,98 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ## Implementation Phases
 
-### Phase 1: USDC Sponsorship — 2-3 days
+### Phase 1: USDC Sponsorship — ✅ Shipped
 
-| Task | Where |
-|------|-------|
-| `SponsorLog` model + migration | `apps/server` (existing NeonDB) |
-| `POST /api/sponsor/onboard` endpoint with signature challenge | `apps/server` |
-| USDC transfer from treasury wallet | `apps/server` (uses SDK) |
-| Abuse prevention (one-time, rate limit, graceful degradation) | `apps/server` |
-| Web app: trigger on first sign-in | `apps/web-app` |
-| CLI: trigger on `t2000 init` | `packages/cli` |
+| Task | Where | Status |
+|------|-------|--------|
+| `UsdcSponsorLog` model + `prisma db push` | `apps/server` (NeonDB) | ✅ |
+| `POST /api/sponsor/usdc` endpoint with dual auth | `apps/server` | ✅ |
+| USDC transfer service (sponsor wallet → user) | `apps/server/src/services/usdcSponsor.ts` | ✅ |
+| Abuse prevention (unique address, global rate limit, hashcash) | `apps/server` | ✅ |
+| Web app: server-side proxy route + `useUsdcSponsor` hook | `apps/web-app` | ✅ |
+| ECS task definition: `SPONSOR_INTERNAL_KEY` via Secrets Manager | `infra/server-task-definition.json` | ✅ |
+| CLI: trigger on `t2000 init` + hashcash auth | `packages/cli` | ✅ |
 
-### Phase 2: OpenAPI Discovery + Gateway Refactor — 2-3 days
+### Phase 2: OpenAPI Discovery — ✅ Shipped
 
-| Task | Where |
-|------|-------|
-| Generate `/openapi.json` from service catalog | `apps/gateway` |
-| Add `x-payment-info` to all 40 services | `apps/gateway` |
-| Add `x-guidance` for agent discovery | `apps/gateway` |
-| Validate with `@agentcash/discovery` | Local |
-| Register on MPPscan for cross-chain visibility | `mppscan.com/register` |
-| Prepare redirect config (enable AFTER Phase 3 deploys) | `apps/gateway` |
+| Task | Where | Status |
+|------|-------|--------|
+| Add request/response schemas to service catalog | `apps/gateway/lib/schemas.ts` | ✅ |
+| Generate `/openapi.json` from catalog + schemas | `apps/gateway/app/openapi.json/route.ts` | ✅ |
+| `x-payment-info` per operation (generated from catalog) | Part of `/openapi.json` generation | ✅ |
+| `requestBody` + `responses` schemas per operation | Part of `/openapi.json` generation | ✅ |
+| `info.x-guidance` for agent discovery | Part of `/openapi.json` generation | ✅ |
+| `responses.402` on all payable operations | Part of `/openapi.json` generation | ✅ |
+| Update `/llms.txt` to reference `/openapi.json` | `apps/gateway/app/llms.txt/route.ts` | ✅ |
+| Fix mppx realm (was using Vercel deployment URL) | `apps/gateway/lib/gateway.ts` | ✅ |
+| Validate with `@agentcash/discovery` | Local | ✅ 88 routes discovered |
+| Register on MPPscan | `mppscan.com/register` | ✅ [Listed](https://mppscan.com/server/f8284ec0f870b9b542e09f91dcf76b752fd1090f91a419cd624394373f9fa564) |
+
+**Schema approach (per MPPscan spec):**
+- Each payable operation must have `requestBody.content["application/json"].schema`
+- Many endpoints share common patterns — define templates and reuse:
+  - `chatCompletions` — OpenAI, Anthropic, Groq, DeepSeek, Perplexity, Mistral, Together, Cohere, Gemini
+  - `search` — Brave, Serper, Exa, SerpAPI, NewsAPI, CoinGecko, Alpha Vantage, Hunter
+  - `imageGeneration` — Fal, Together, Stability, DALL-E
+  - `audioTranscription` — Whisper variants, AssemblyAI
+  - `translate` — DeepL, Google Translate
+  - Service-specific schemas for the rest (Lob, Printful, Resend, etc.)
+- Prices use string format with 6 decimal places per MPPscan convention (e.g. `"0.010000"`)
+- Fixed pricing uses `"price"` field (not `"amount"`)
+
+**OpenAPI minimal valid example (per MPPscan):**
+```json
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "t2000 MPP Gateway",
+    "version": "1.0.0",
+    "description": "40 MPP-enabled API services payable with Sui USDC.",
+    "x-guidance": "Use POST requests to any service endpoint. All endpoints require MPP payment via Sui USDC. See /llms.txt for natural-language usage examples."
+  },
+  "x-discovery": {
+    "ownershipProofs": ["<proof>"]
+  },
+  "paths": {
+    "/openai/v1/chat/completions": {
+      "post": {
+        "operationId": "openai-chat-completions",
+        "summary": "Chat completions (GPT-4o, o1, etc.)",
+        "tags": ["ai", "media"],
+        "x-payment-info": {
+          "pricingMode": "fixed",
+          "price": "0.010000",
+          "protocols": ["mpp"]
+        },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "..." } } } },
+        "responses": {
+          "200": { "description": "Successful response" },
+          "402": { "description": "Payment Required" }
+        }
+      }
+    }
+  }
+}
+```
 
 ### Phase 3a: Package Migration — 2-3 days
 
-| Task | Where |
-|------|-------|
-| Create `@mppsui` npm org | npm |
-| Publish `@mppsui/mpp` (Sui payment method plugin for `mppx`) | `packages/mpp` |
-| Add deprecation notice to `@t2000/mpp-sui` → re-exports from `@mppsui/mpp` | `packages/mpp-sui` |
-| Update all internal imports | `apps/gateway`, `apps/web-app`, `packages/sdk` |
+| # | Task | Where |
+|---|------|-------|
+| 1 | ✅ Create `@mppsui` npm org | npm |
+| 2 | ✅ Rename + publish `@mppsui/mpp` (Sui payment method plugin for `mppx`) | `packages/mpp-sui` → rename in `package.json` |
+| 3 | ✅ Create + publish `@mppsui/discovery` (Sui-specific discovery validation CLI) | `packages/discovery` (new) |
+| 4 | ✅ Update internal code imports (`@t2000/mpp-sui` → `@mppsui/mpp`) | `apps/gateway/lib/gateway.ts`, `packages/sdk/src/t2000.ts`, `apps/web-app/app/api/services/complete/route.ts`, `apps/web-app/app/api/services/retry/route.ts` |
+| 5 | ✅ Update `package.json` dependencies | `apps/gateway`, `apps/web-app`, `packages/sdk` |
+| 6 | ✅ Update CI workflows + Dockerfiles | `.github/workflows/publish.yml`, `ci.yml`, `deploy-server.yml`, `deploy-indexer.yml`, `packages/mcp/Dockerfile`, `infra/indexer.Dockerfile`, `apps/server/Dockerfile` |
+| 7 | ✅ Update docs & marketing references | `README.md`, `ARCHITECTURE.md`, `PRODUCT_FACTS.md`, `SECURITY.md`, `packages/sdk/README.md`, `packages/cli/README.md`, `apps/gateway/README.md`, `apps/gateway/app/docs/page.tsx`, `apps/web/app/docs/page.tsx`, `apps/web/app/mpp/page.tsx`, `t2000-skills/skills/t2000-pay/SKILL.md` |
+| 8 | Final publish of `@t2000/mpp-sui` with README → "Moved to `@mppsui/mpp`" | `packages/mpp-sui` (last publish, no re-export shim) |
 
-Ships independently. Immediate ecosystem benefit — better naming, consistent with how `tempo.charge()` and `stripe.charge()` work in the `mppx` SDK.
+Ships independently. The `@mppsui` org launches with both packages:
+- `@mppsui/mpp` — payment method (migrated from `@t2000/mpp-sui`)
+- `@mppsui/discovery` — validation CLI (`npx @mppsui/discovery check <url>`)
+
+**No deprecation shim** — `@t2000/mpp-sui` gets a final README-only publish pointing to `@mppsui/mpp`. No re-export wrapper to maintain.
 
 ### Phase 3b: mppsui.dev Site — 1-2 weeks
 
@@ -775,12 +852,14 @@ Ships independently. Immediate ecosystem benefit — better naming, consistent w
 | Task | Where |
 |------|-------|
 | `MppServer` + `MppServerPayment` models | `apps/mppsui` (NeonDB) |
-| OpenAPI + Sui validation logic (inline, not a separate package) | `apps/mppsui` |
+| OpenAPI + Sui validation (uses `@mppsui/discovery`) | `apps/mppsui` |
 | Server registry page — list registered servers | `/servers` |
 | Register flow — URL → OpenAPI validation → listing | `/register` |
 | Per-server detail page — endpoints, pricing, metrics | `/servers/:id` |
 | Payment feed ingestion cron (poll registered servers) | `apps/mppsui` cron |
 | Protocol explorer — live feed, volume charts | `/explorer` |
+
+**Register UX (ref: MPPscan):** The `/register` flow should follow MPPscan's live-preview pattern — paste a server URL, immediately fetch `/openapi.json` and render endpoints with pricing inline, run `@mppsui/discovery` validation in real-time with pass/fail checks, and only enable the "Register" button once validation passes. Show actionable warnings (e.g. high route count) rather than hard blocks.
 
 ### Phase 5: Apple Pay / Android Pay — TBD
 
@@ -800,14 +879,18 @@ Ships independently. Immediate ecosystem benefit — better naming, consistent w
 | `t2000.ai` | Product site, docs, stats | `apps/web` (monorepo) | Live |
 | `t2000.ai/mpp` | MPP product page ("use t2000 for MPP on Sui") | `apps/web` (monorepo) | Live |
 | `mpp.t2000.ai` | t2000 gateway — 40 services | `apps/gateway` (monorepo) | Live |
-| `mppsui.dev` | Sui MPP ecosystem hub | `apps/mppsui` (monorepo, or separate repo later) | **Domain needed** |
+| `mppsui.dev` | Sui MPP ecosystem hub | `apps/mppsui` (monorepo) | **Domain needed** |
 | `api.t2000.ai` | Server — sponsor, gas, fees | `apps/server` (monorepo) | Live |
+
+**npm org:** `@mppsui` registered on npm (under mission69b). Publishes two packages:
+- `@mppsui/mpp` — published from `packages/mpp-sui` (rename `name` field in `package.json`)
+- `@mppsui/discovery` — published from `packages/discovery` (new)
+
+**No separate repo.** The `@mppsui` npm org is for publishing, not GitHub hosting. Both packages and `apps/mppsui` stay in the t2000 monorepo. Extract to a separate repo only if Mysten wants to co-own or CI cadence diverges.
 
 **`t2000.ai/mpp` vs `mppsui.dev`:** The existing `/mpp` page is a product page — "use t2000 to pay for APIs on Sui." `mppsui.dev` is an ecosystem page — "MPP on Sui, any server, any agent." Different audiences: `/mpp` sells t2000, `mppsui.dev` grows the Sui MPP ecosystem.
 
 **Domain:** `mppsui.dev` must be purchased before Phase 3b. Check availability early.
-
-**Monorepo:** Keep `mppsui.dev` in the monorepo initially. Extract to a separate repo when there's real multi-contributor activity or if Mysten wants to co-own it.
 
 ---
 
@@ -815,11 +898,11 @@ Ships independently. Immediate ecosystem benefit — better naming, consistent w
 
 | Action | When | Status |
 |--------|------|--------|
-| Discuss USDC sponsorship grant (fund treasury for user onboarding) | Phase 1 | ⬜ |
+| Discuss USDC sponsorship grant (fund treasury for user onboarding) | Phase 1 | ✅ Self-funded ($100) |
 | Request Enoki approval for treasury gas sponsorship | Phase 1 | ⬜ |
 | Share mppsui.dev plans — gauge interest in co-ownership | Phase 3b | ⬜ |
 | Coordinate listing on Sui ecosystem pages / blog | Phase 3b launch | ⬜ |
-| Discuss `@mppsui` npm org ownership (solo vs shared with Mysten) | Phase 3a | ⬜ |
+| Discuss `@mppsui` npm org ownership (registered under mission69b, shared with Mysten later?) | Phase 3a | ✅ Created, discuss sharing later |
 
 ---
 
@@ -859,19 +942,19 @@ Keep it lean. The site speaks for itself — live stats, real payments, real ser
 
 ## Open Questions
 
-| Question | Options | Leaning |
-|----------|---------|---------|
-| Sponsorship funding source? | Treasury self-funded vs Mysten grant | Start with treasury, apply for grant to scale |
+| Question | Options | Status |
+|----------|---------|--------|
+| Sponsorship funding source? | Treasury self-funded vs Mysten grant | ✅ Self-funded ($100), apply for grant to scale |
 | Gas for treasury transfers? | Enoki-sponsored vs self-funded SUI | Enoki if Mysten approves, SUI fallback |
-| mppsui.dev in monorepo or separate? | Monorepo vs new repo | Monorepo initially, extract if needed |
-| OpenAPI doc generation? | Manual vs auto-generated from service catalog | Auto-generate — 88 endpoints is too many to maintain by hand |
+| mppsui.dev in monorepo or separate? | Monorepo vs new repo | ✅ Monorepo — extract only if Mysten co-owns |
+| `@mppsui` npm org ownership? | Solo vs shared with Mysten | ✅ Registered under mission69b, discuss with Mysten later |
+| OpenAPI doc generation? | Manual vs auto-generated from service catalog | ✅ Auto-generate — 88 endpoints is too many to maintain by hand |
 
 ### Deferred (build when needed)
 
 | Item | Trigger to build |
 |------|------------------|
 | Referral system | Real user growth to amplify |
-| `@mppsui/discovery` standalone package | External devs need local validation |
 | On-chain payment verification | Multiple servers, trust matters |
 | Privacy controls on payment feeds | Server operator requests it |
 | Agent leaderboard | Enough agent diversity to make it interesting |

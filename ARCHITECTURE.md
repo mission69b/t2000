@@ -30,7 +30,7 @@
 │             │  │             │  │             │  │  USDC · NAVI ·       │
 │ zkLogin     │  │ Sponsor API │  │ 40 services │  │  Suilend · Cetus     │
 │ Enoki gas   │  │ Gas station │  │ 88 endpoints│  │  t2000 Treasury      │
-│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @t2000/mpp-sui      │
+│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @mppsui/mpp      │
 │ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  (payment method)    │
 └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
        │                │                │
@@ -55,7 +55,8 @@
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
 | `@t2000/mcp` | Published | MCP server — 32 tools, 19 prompts, stdio transport |
-| `@t2000/mpp-sui` | Published | Sui USDC payment method for MPP (client + server verification) |
+| `@mppsui/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
+| `@mppsui/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
 
 ## Apps
@@ -625,7 +626,7 @@ Push to main
 Tag v0.22.3
   → CI: lint + typecheck + test
   → Build all packages
-  → Publish: @t2000/sdk, @t2000/mpp-sui, @t2000/mcp, @t2000/cli
+  → Publish: @t2000/sdk, @mppsui/mpp, @t2000/mcp, @t2000/cli
   → GitHub Release (auto-generated notes)
   → Discord notification
 ```
