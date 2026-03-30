@@ -202,7 +202,7 @@ t2000 init
   │   ├─ Write to ~/.t2000/wallet.key (mode 0600)
   │   ├─ Cache PIN in ~/.t2000/.session (mode 0600)
   │   ├─ POST /api/sponsor → receive 0.05 SUI bootstrap
-  │   └─ POST /api/sponsor/usdc → receive $1 USDC onboarding
+  │   └─ POST /api/sponsor/usdc → receive $0.25 USDC onboarding
   │
   ├─ Step 2: MCP platforms
   │   ├─ Detect installed: Claude Desktop / Cursor / Windsurf
@@ -253,34 +253,43 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 - Server splits 0.05 SUI from sponsor wallet → transfers to new agent
 - Records in `SponsorRequest` + `GasLedger` (txType: `bootstrap`)
 - Upserts agent in DB (makes address "known" to the indexer)
-- Rate limited: 10 per IP per hour, hashcash proof above limit
+- One-time per address, 10 per IP per hour, 100/day global cap, hashcash above limit
 
 ### USDC sponsorship (onboarding)
 
-One-time $1 USDC airdrop to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance.
+One-time $0.25 USDC to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance.
 
 - `POST https://api.t2000.ai/api/sponsor/usdc` with `{ address, source }`
-- Server fetches USDC coins from sponsor wallet, splits 1 USDC, transfers to user
+- Server fetches USDC coins from sponsor wallet, splits $0.25, transfers to user
 - Records in `UsdcSponsorLog` (address is `@unique` — one-time per address)
+- Tracks IP address for forensics and per-IP rate limiting
 - Upserts agent in DB
 
-**Auth per client:**
+**Protections:**
 
-| Client | Auth | Detail |
-|--------|------|--------|
-| Web app | `x-internal-key` header | Next.js server-side proxy route holds the secret — browser never sees it |
-| CLI | Global rate limit + hashcash | 20/hour free, then proof-of-work challenge (same as SUI gas) |
+| Layer | Rule |
+|-------|------|
+| Kill switch | `USDC_SPONSOR_PAUSED` env var → instant 503 |
+| Per-address | One-time only (DB unique constraint) |
+| Per-IP | 3 sponsorships per IP per hour |
+| Hourly global | 20/hour, then hashcash proof-of-work |
+| Daily global | 50/day hard cap ($12.50 max daily exposure) |
+| Race condition | In-memory lock prevents concurrent double-spend for same address |
+| Auth (web) | `x-internal-key` header — Next.js proxy holds the secret |
+| Auth (CLI) | Hashcash proof-of-work when rate limited |
 
 **Flow (web app):**
 ```
 User signs in with Google → zkLogin → wallet derived
   → useUsdcSponsor hook fires (localStorage check)
   → POST /api/sponsor/usdc (Next.js server route)
-    → adds x-internal-key, proxies to api.t2000.ai
-  → Server sends 1 USDC from sponsor wallet
+    → adds x-internal-key + forwards caller IP, proxies to api.t2000.ai
+  → Server sends $0.25 USDC from sponsor wallet
   → Hook marks address in localStorage
-  → Dashboard shows $1 USDC balance
+  → Dashboard shows $0.25 USDC balance
 ```
+
+**Wallet separation:** The sponsor wallet (sends USDC to users) and the MPP gateway treasury (receives payment revenue) are separate addresses. A drain on sponsorship cannot touch revenue.
 
 ### What exists after init
 
@@ -292,7 +301,7 @@ User signs in with Google → zkLogin → wallet derived
 ```
 
 The agent now has:
-- A Sui address with 0.05 SUI for gas + $1 USDC (sponsored)
+- A Sui address with 0.05 SUI for gas + $0.25 USDC (sponsored)
 - Safeguard limits configured
 - MCP server registered in AI clients
 - Ready for `t2000 save`, `t2000 pay`, or any MCP tool call
@@ -623,12 +632,17 @@ Push to main
 ### Publish pipeline (on tag `v*`)
 
 ```
-Tag v0.22.3
+Tag v0.22.3 (t2000 monorepo)
   → CI: lint + typecheck + test
   → Build all packages
-  → Publish: @t2000/sdk, @mppsui/mpp, @t2000/mcp, @t2000/cli
+  → Publish: @t2000/sdk, @t2000/mcp, @t2000/cli
   → GitHub Release (auto-generated notes)
   → Discord notification
+
+Tag v0.1.0 (mission69b/mppsui repo)
+  → CI: build + typecheck + test
+  → Publish: @mppsui/mpp, @mppsui/discovery
+  → GitHub Release
 ```
 
 ---
@@ -711,8 +725,9 @@ The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can free
 | **Circuit breaker** | Polls Cetus USDC/SUI pool every 30s, trips if >20% price swing in 1 hour |
 | **Pool minimum** | Rejects sponsorship when gas wallet < 100 SUI |
 | **Serialized signing** | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts |
-| **Sponsor rate limit** | 10 bootstrap requests per IP per hour |
-| **USDC sponsor limit** | 1 USDC per address (ever), 20/hr global, hashcash above limit |
+| **SUI bootstrap limit** | One-time per address, 10/IP/hr, 100/day global, hashcash above limit |
+| **USDC sponsor limit** | $0.25 per address (ever), 3/IP/hr, 20/hr global, 50/day cap, hashcash above limit |
+| **Sponsor kill switch** | `USDC_SPONSOR_PAUSED` env var stops all USDC sponsorship instantly |
 
 ### Hashcash flow
 
