@@ -60,15 +60,15 @@
   },
   "dependencies": {
     "@cetusprotocol/aggregator-sdk": "^1.4.6",
-    "@mysten/sui": "^2.11.0",
+    "@mysten/sui": "^2.13.2",
     "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.4.0",
     "@suilend/sdk": "^2.0.2",
     "@suilend/sui-fe": "^2.0.6",
-    "@mppsui/mpp": "^0.1.0",
+    "@mppsui/mpp": "^0.2.0",
     "eventemitter3": "^5",
-    "mppx": "^0.4.9"
+    "mppx": "^0.4.12"
   },
   "devDependencies": {
     "@types/node": "^20",
