@@ -54,7 +54,7 @@
 |---------|-----|-------------|
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
-| `@t2000/mcp` | Published | MCP server — 35 tools, 20 prompts, stdio transport |
+| `@t2000/mcp` | Published | MCP server — 32 tools, 19 prompts, stdio transport |
 | `@t2000/mpp-sui` | Published | Sui USDC payment method for MPP (client + server verification) |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
 
@@ -544,15 +544,15 @@ Local-only enforcement on the agent's machine:
 
 ## MCP Server
 
-35 tools across three categories:
+32 tools across three categories:
 
 | Category | Count | Examples |
 |----------|-------|---------|
-| Read | 17 | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services`, `t2000_portfolio` |
-| Write | 16 | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_swap`, `t2000_invest` |
+| Read | 15 | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services`, `t2000_portfolio` |
+| Write | 15 | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_swap`, `t2000_invest` |
 | Safety | 2 | `t2000_config`, `t2000_lock` |
 
-20 prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, `dca-advisor`, etc.
+19 prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, `dca-advisor`, etc.
 
 All write operations go through a `TxMutex` to prevent concurrent transactions (Sui object version conflicts). Safeguards are checked before every write.
 
