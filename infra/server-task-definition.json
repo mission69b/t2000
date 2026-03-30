@@ -37,7 +37,8 @@
       "secrets": [
         { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/database-url" },
         { "name": "SPONSOR_PRIVATE_KEY", "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/sponsor-key" },
-        { "name": "GAS_STATION_PRIVATE_KEY", "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/gas-station-key" }
+        { "name": "GAS_STATION_PRIVATE_KEY", "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/gas-station-key" },
+        { "name": "SPONSOR_INTERNAL_KEY", "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/sponsor-internal-key" }
       ]
     }
   ]

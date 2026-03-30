@@ -30,6 +30,7 @@ import { truncateAddress } from '@/lib/format';
 import { SUI_NETWORK } from '@/lib/constants';
 import { useContacts } from '@/hooks/useContacts';
 import { useAgent } from '@/hooks/useAgent';
+import { useUsdcSponsor } from '@/hooks/useUsdcSponsor';
 
 const LS_LAST_SAVINGS = 't2000_last_savings';
 const LS_LAST_OPEN = 't2000_last_open_date';
@@ -204,6 +205,7 @@ function useOvernightEarnings(savings: number, loading: boolean) {
 
 function DashboardContent() {
   const { address, session, expiringSoon, logout, refresh } = useZkLogin();
+  useUsdcSponsor(address);
   const chipFlow = useChipFlow();
   const feed = useFeed();
   const contactsHook = useContacts(address);

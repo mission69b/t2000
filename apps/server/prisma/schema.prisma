@@ -48,6 +48,17 @@ model ProtocolFeeLedger {
   @@map("protocol_fee_ledger")
 }
 
+model UsdcSponsorLog {
+  id           Int      @id @default(autoincrement())
+  agentAddress String   @unique @map("agent_address")
+  amount       String
+  txDigest     String   @map("tx_digest")
+  source       String   @default("web")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("usdc_sponsor_log")
+}
+
 model IndexerCursor {
   id              Int      @id @default(autoincrement())
   cursorName      String   @unique @map("cursor_name")

@@ -33,16 +33,50 @@ Users sign up in 3 seconds but have $0 USDC. They need to transfer from an excha
 | Web app: Google Sign-In (first time) | $1 USDC | Treasury wallet |
 | CLI: `t2000 init` (first time) | $1 USDC | Treasury wallet |
 
+### Architecture
+
+Both CLI and web app call the same ECS server endpoint (`api.t2000.ai`). The server uses the **sponsor wallet** (`0x7032...`) which it already controls for gas bootstrapping and MPP revenue. Neither client touches the sponsor wallet directly.
+
+> **Note:** The treasury (`0x3bb5...`) is an on-chain Move object, not a keypair wallet — can't be used for server-side transfers. The sponsor wallet is a regular keypair the server holds.
+
+```
+CLI (t2000 init)                    Web App (Google Sign-In)
+       │                                    │
+       │ POST /api/sponsor/onboard          │ POST /api/sponsor/onboard
+       │ { address, signature, nonce }      │ { address }
+       │                                    │ x-internal-key: <shared secret>
+       └──────────────┬────────────────────┘
+                      │
+              api.t2000.ai (ECS)
+                      │
+         1. Verify request (signature or x-internal-key)
+         2. Check sponsor_log (one-time per address)
+         3. Build USDC transfer (sponsor wallet → user)
+         4. Sign with sponsor keypair
+         5. Submit to Sui (sponsor wallet pays gas from its SUI balance)
+         6. Log to sponsor_log { address, amount, type: 'onboard', digest }
+```
+
+### Auth per client
+
+| Client | Auth method | Why |
+|--------|-------------|-----|
+| CLI | Signature challenge — CLI signs a server-issued nonce with the new keypair | No OAuth — proves the caller owns the address |
+| Web app | `x-internal-key` header (shared secret, same pattern as deliver-first) | zkLogin already authenticated the user; the web app just needs to prove the request came from the app, not a random caller |
+
 ### Flow — Web App
 
 ```
 User clicks "Sign in with Google"
   → zkLogin → wallet derived
-  → Check: is this a new address? (never seen before)
-  → Yes → POST /api/sponsor/onboard { address }
+  → Web app checks: first sign-in? (no balance, no history)
+  → Yes → POST api.t2000.ai/api/sponsor/onboard
+           { address: "0x..." }
+           x-internal-key: <SPONSOR_INTERNAL_KEY>
+    → Server verifies x-internal-key
     → Server checks: address not in sponsor_log
-    → Server sends 1 USDC from treasury to address (sponsored tx)
-    → Log to sponsor_log { address, amount, type: 'onboard', timestamp }
+    → Server sends 1 USDC from treasury to address
+    → Log to sponsor_log { address, amount, type: 'onboard', digest }
   → User lands on dashboard with $1 USDC balance
 ```
 
@@ -51,38 +85,51 @@ User clicks "Sign in with Google"
 ```
 t2000 init
   → Generate keypair, encrypt with PIN
-  → Client signs a challenge nonce with the new keypair
+  → GET api.t2000.ai/api/sponsor/challenge → { nonce }
+  → Client signs nonce with the new keypair
   → POST /api/sponsor/onboard { address, signature, nonce }
     → Server verifies signature matches address (proves key ownership)
-    → Same flow as web app from here
+    → Same sponsor flow from here
   → User has $1 USDC + 0.05 SUI (existing gas bootstrap)
 ```
 
-**Why signature challenge:** Without it, anyone can script `curl POST /api/sponsor/onboard` with random addresses to drain the treasury. The signature proves the caller actually owns the private key for the address.
+### Funding
+
+The sponsor wallet (`0x7032...`) already has 701 SUI for gas — no top-up needed. For USDC: transfer $100 USDC into the sponsor wallet (separate from existing MPP revenue). This covers 100 new user sponsorships.
+
+| What | Source | Amount |
+|------|--------|--------|
+| Gas for transfers | Sponsor wallet SUI balance (701 SUI) | Already funded |
+| USDC for sponsorship | Manual transfer to sponsor wallet | $100 USDC (covers 100 users) |
+| Future top-ups | MPP revenue or manual | As needed |
 
 ### Abuse Prevention
 
 | Protection | Detail |
 |------------|--------|
 | One-time per address | `sponsor_log` table — address is unique. Duplicate requests return 409 (not 500) |
-| Signature challenge (CLI) | CLI must sign a server-issued nonce — proves key ownership before sponsorship |
+| Auth per client | CLI: signature challenge (proves key ownership). Web app: `x-internal-key` (proves request came from app) |
 | Rate limit | Max 20 sponsorships per hour from treasury |
 | Google account uniqueness | zkLogin derives address from Google `sub` — one Google = one address |
-| Fund monitoring | Alert if treasury USDC drops below threshold |
+| Fund monitoring | Alert if treasury USDC drops below threshold (currently $2.12 USDC in treasury) |
 | Treasury dry graceful degradation | If treasury balance < 1 USDC: show "Sponsorship temporarily unavailable — deposit USDC manually to get started". User can still sign up, just without the free USDC |
 
-### Gas for Sponsored Transfers
+### Stats Integration
 
-The treasury wallet needs SUI to pay gas on USDC transfers. Two options:
+USDC sponsorship stats will appear in the existing `/api/stats` endpoint alongside current tracking:
 
-| Option | How | Leaning |
-|--------|-----|---------|
-| Enoki-sponsored | Use Enoki to sponsor the treasury's transfer tx — zero SUI needed | Preferred if Mysten approves |
-| Self-funded SUI | Keep a small SUI balance in treasury (~10 SUI covers thousands of transfers) | Fallback |
+```
+"sponsor": {
+  "usdc": { "total": 42, "last24h": 3, "last7d": 15, "totalUsdc": 42.0 },
+  "gas":  { "bootstrap": 92, ... }   // existing gas bootstrap stats
+}
+```
 
-### Funding
+This builds on the existing `agents.total` (62), `gas.byType.bootstrap` (92) tracking already live.
 
-- **Now:** Treasury wallet, self-funded
+### Future funding
+
+- **Now:** $100 USDC manual transfer to sponsor wallet
 - **Next:** Mysten subsidy / ecosystem grant (discussed in meeting)
 - **Later:** Apple Pay / Android Pay for top-ups (replaces sponsorship for returning users)
 
@@ -197,16 +244,19 @@ Unlike `mpp.t2000.ai/explorer` (which only shows t2000 gateway payments), `mppsu
 
 ### Compatibility with MPPscan
 
-| Feature | MPPscan (Tempo) | mppsui.dev |
-|---------|-----------------|------------|
-| Chain | Base / Tempo | Sui |
+MPP is now a Stripe + Tempo + Visa backed standard (Mar 2026). `mppx` is the official SDK. 100+ services integrated across Base/Solana/Tempo. Sui is the missing chain — mppsui.dev fills that gap.
+
+| Feature | MPPscan (Tempo/Base) | mppsui.dev |
+|---------|----------------------|------------|
+| Chain | Base / Solana / Tempo | Sui |
 | Discovery | OpenAPI + x-payment-info | Same spec (compatible) |
-| Explorer | 362 servers, 35.6K txs | Sui-only, starting with t2000 |
+| Explorer | 100+ servers | Sui-only, starting with t2000 |
 | Onboarding | AgentCash ($25 USDC on Tempo) | USDC sponsorship ($1 on Sui) |
 | Agent setup | `npx agentcash onboard` | `t2000 init` or Google Sign-In |
-| Payment method | x402 + MPP | MPP via `@mppsui/mpp` (migrated from `@t2000/mpp-sui`) |
+| SDK | `mppx` (official Stripe+Tempo) | `mppx` + `@mppsui/mpp` as Sui payment method |
+| Fiat payments | SPTs (Shared Payment Tokens) | Not yet — monitor for Sui support |
 
-**Strategy: Compatible, not competing.** Adopt the same OpenAPI discovery spec. `mpp.t2000.ai` should also register on MPPscan for cross-chain visibility. `mppsui.dev` is the Sui-native home.
+**Strategy: Compatible, not competing.** Adopt the same OpenAPI discovery spec. `mpp.t2000.ai` should register on MPPscan for cross-chain visibility. `mppsui.dev` is the Sui-native home.
 
 ---
 
@@ -695,14 +745,23 @@ When there are multiple servers and trust matters, add on-chain verification —
 | Register on MPPscan for cross-chain visibility | `mppscan.com/register` |
 | Prepare redirect config (enable AFTER Phase 3 deploys) | `apps/gateway` |
 
-### Phase 3: Package Migration + mppsui.dev — 2-3 weeks
+### Phase 3a: Package Migration — 2-3 days
 
 | Task | Where |
 |------|-------|
 | Create `@mppsui` npm org | npm |
-| Publish `@mppsui/mpp` (copy of `@t2000/mpp-sui`) | `packages/mpp` |
-| Add deprecation notice to `@t2000/mpp-sui` | `packages/mpp-sui` |
+| Publish `@mppsui/mpp` (Sui payment method plugin for `mppx`) | `packages/mpp` |
+| Add deprecation notice to `@t2000/mpp-sui` → re-exports from `@mppsui/mpp` | `packages/mpp-sui` |
 | Update all internal imports | `apps/gateway`, `apps/web-app`, `packages/sdk` |
+
+Ships independently. Immediate ecosystem benefit — better naming, consistent with how `tempo.charge()` and `stripe.charge()` work in the `mppx` SDK.
+
+### Phase 3b: mppsui.dev Site — 1-2 weeks
+
+**Prerequisite:** Domain `mppsui.dev` must be purchased and DNS configured.
+
+| Task | Where |
+|------|-------|
 | New Next.js app | `apps/mppsui` |
 | Homepage — hero, live stats, "what is MPP on Sui" | `/` |
 | Spec page — migrate from gateway, expand for protocol | `/spec` |
@@ -735,19 +794,54 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ## Domain Summary
 
-| Domain | Purpose | Repo |
-|--------|---------|------|
-| `app.t2000.ai` | Consumer web app | `apps/web-app` (monorepo) |
-| `t2000.ai` | Product site, docs, stats | `apps/web` (monorepo) |
-| `mpp.t2000.ai` | t2000 gateway — 40 services | `apps/gateway` (monorepo) |
-| `mppsui.dev` | Sui MPP ecosystem hub | `apps/mppsui` (monorepo, or separate repo later) |
-| `api.t2000.ai` | Server — sponsor, gas, fees | `apps/server` (monorepo) |
+| Domain | Purpose | Repo | Status |
+|--------|---------|------|--------|
+| `app.t2000.ai` | Consumer web app | `apps/web-app` (monorepo) | Live |
+| `t2000.ai` | Product site, docs, stats | `apps/web` (monorepo) | Live |
+| `t2000.ai/mpp` | MPP product page ("use t2000 for MPP on Sui") | `apps/web` (monorepo) | Live |
+| `mpp.t2000.ai` | t2000 gateway — 40 services | `apps/gateway` (monorepo) | Live |
+| `mppsui.dev` | Sui MPP ecosystem hub | `apps/mppsui` (monorepo, or separate repo later) | **Domain needed** |
+| `api.t2000.ai` | Server — sponsor, gas, fees | `apps/server` (monorepo) | Live |
 
-**Note:** Keep `mppsui.dev` in the monorepo initially. Extract to a separate repo when there's real multi-contributor activity or if Mysten wants to co-own it.
+**`t2000.ai/mpp` vs `mppsui.dev`:** The existing `/mpp` page is a product page — "use t2000 to pay for APIs on Sui." `mppsui.dev` is an ecosystem page — "MPP on Sui, any server, any agent." Different audiences: `/mpp` sells t2000, `mppsui.dev` grows the Sui MPP ecosystem.
+
+**Domain:** `mppsui.dev` must be purchased before Phase 3b. Check availability early.
+
+**Monorepo:** Keep `mppsui.dev` in the monorepo initially. Extract to a separate repo when there's real multi-contributor activity or if Mysten wants to co-own it.
 
 ---
 
-## 7. Additional Considerations
+## 7. Mysten Coordination
+
+| Action | When | Status |
+|--------|------|--------|
+| Discuss USDC sponsorship grant (fund treasury for user onboarding) | Phase 1 | ⬜ |
+| Request Enoki approval for treasury gas sponsorship | Phase 1 | ⬜ |
+| Share mppsui.dev plans — gauge interest in co-ownership | Phase 3b | ⬜ |
+| Coordinate listing on Sui ecosystem pages / blog | Phase 3b launch | ⬜ |
+| Discuss `@mppsui` npm org ownership (solo vs shared with Mysten) | Phase 3a | ⬜ |
+
+---
+
+## 8. mppsui.dev Launch Plan
+
+**Goal:** Get registered servers and ecosystem momentum, not just a website.
+
+| Step | What | When |
+|------|------|------|
+| 1 | Register `mpp.t2000.ai` as first server on mppsui.dev | Day 1 |
+| 2 | Register `mpp.t2000.ai` on MPPscan for cross-chain visibility | Day 1 |
+| 3 | Announce on Twitter/X — "MPP on Sui is live" with explorer screenshot | Day 1 |
+| 4 | Post in Sui Discord / forums | Day 1 |
+| 5 | Reach out to Sui builders with APIs (StableAPI, etc.) to register | Week 1 |
+| 6 | Coordinate with Mysten for ecosystem amplification | Week 1-2 |
+| 7 | Submit to Sui ecosystem directory | Week 1 |
+
+Keep it lean. The site speaks for itself — live stats, real payments, real servers.
+
+---
+
+## 9. Additional Considerations
 
 ### Things to keep in mind
 
