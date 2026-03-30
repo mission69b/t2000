@@ -72,7 +72,6 @@ jobs:
           bump_pkg "packages/sdk"
           VERSION=$(bump_pkg "packages/cli")
           bump_pkg "packages/mcp"
-          bump_pkg "packages/mpp-sui"
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 

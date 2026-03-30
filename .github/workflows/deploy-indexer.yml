@@ -37,7 +37,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @mppsui/mpp build
       - run: pnpm --filter @t2000/sdk build
       - run: pnpm --filter @t2000/server exec prisma generate
       - run: pnpm --filter @t2000/server typecheck

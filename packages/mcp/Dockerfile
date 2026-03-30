@@ -6,15 +6,12 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/sdk/package.json packages/sdk/
 COPY packages/mcp/package.json packages/mcp/
-COPY packages/mpp-sui/package.json packages/mpp-sui/
 COPY patches/ patches/
 RUN pnpm install --frozen-lockfile
 
 COPY packages/sdk packages/sdk/
-COPY packages/mpp-sui packages/mpp-sui/
 COPY packages/mcp packages/mcp/
 RUN pnpm --filter @t2000/sdk build && \
-    pnpm --filter @mppsui/mpp build && \
     pnpm --filter @t2000/mcp build
 
 ENV T2000_PIN=glama-inspect
