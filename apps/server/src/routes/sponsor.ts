@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { isValidSuiAddress } from '@mysten/sui/utils';
 import { createChallenge, formatChallenge, verifyStamp } from '../lib/hashcash.js';
-import { checkRateLimit, sponsorWalletInit } from '../services/sponsor.js';
+import { checkRateLimit, checkDailyLimit, isAlreadyFunded, sponsorWalletInit } from '../services/sponsor.js';
 import {
   sponsorUsdc,
   checkUsdcSponsorRateLimit,
@@ -32,6 +32,16 @@ sponsor.post('/api/sponsor', async (c) => {
 
   const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? '127.0.0.1';
 
+  const funded = await isAlreadyFunded(body.address);
+  if (funded) {
+    return c.json({ error: 'ALREADY_FUNDED', message: 'This address has already received SUI bootstrap' }, 409);
+  }
+
+  const withinDaily = await checkDailyLimit();
+  if (!withinDaily) {
+    return c.json({ error: 'DAILY_LIMIT', message: 'Daily SUI sponsorship limit reached' }, 429);
+  }
+
   const withinLimit = await checkRateLimit(ip);
   if (!withinLimit) {
     if (!body.proof) {
@@ -53,6 +63,9 @@ sponsor.post('/api/sponsor', async (c) => {
     return c.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Sponsor failed';
+    if (msg === 'ALREADY_FUNDED') {
+      return c.json({ error: 'ALREADY_FUNDED', message: 'This address has already received SUI bootstrap' }, 409);
+    }
     console.error('[sponsor] Error:', msg);
     return c.json({ error: 'SPONSOR_FAILED', message: msg }, 500);
   }

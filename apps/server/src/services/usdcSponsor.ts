@@ -10,6 +10,8 @@ const RATE_LIMIT_PER_HOUR = 20;
 const DAILY_LIMIT = 50;
 const IP_RATE_LIMIT_PER_HOUR = 3;
 
+const pendingAddresses = new Set<string>();
+
 export interface UsdcSponsorResult {
   digest: string;
   agentAddress: string;
@@ -45,6 +47,7 @@ export async function checkUsdcIpRateLimit(ipAddress: string): Promise<boolean> 
 }
 
 export async function isAlreadySponsored(agentAddress: string): Promise<boolean> {
+  if (pendingAddresses.has(agentAddress)) return true;
   const existing = await prisma.usdcSponsorLog.findUnique({
     where: { agentAddress },
   });
@@ -56,65 +59,75 @@ export async function sponsorUsdc(
   source: 'web' | 'cli',
   ipAddress?: string,
 ): Promise<UsdcSponsorResult> {
+  if (pendingAddresses.has(agentAddress)) {
+    throw new Error('ALREADY_SPONSORED');
+  }
+
   const already = await isAlreadySponsored(agentAddress);
   if (already) {
     throw new Error('ALREADY_SPONSORED');
   }
 
-  const client = getSuiClient();
-  const sponsorKeypair = getSponsorWallet();
-  const sponsorAddress = sponsorKeypair.getPublicKey().toSuiAddress();
+  pendingAddresses.add(agentAddress);
 
-  const coins = await client.getCoins({ owner: sponsorAddress, coinType: USDC_TYPE });
-  const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+  try {
+    const client = getSuiClient();
+    const sponsorKeypair = getSponsorWallet();
+    const sponsorAddress = sponsorKeypair.getPublicKey().toSuiAddress();
 
-  if (totalBalance < SPONSOR_AMOUNT_RAW) {
-    throw new Error('SPONSOR_DEPLETED');
+    const coins = await client.getCoins({ owner: sponsorAddress, coinType: USDC_TYPE });
+    const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+
+    if (totalBalance < SPONSOR_AMOUNT_RAW) {
+      throw new Error('SPONSOR_DEPLETED');
+    }
+
+    const tx = new Transaction();
+    tx.setSender(sponsorAddress);
+
+    if (coins.data.length > 1) {
+      const primary = tx.object(coins.data[0].coinObjectId);
+      const rest = coins.data.slice(1).map((c) => tx.object(c.coinObjectId));
+      tx.mergeCoins(primary, rest);
+      const [split] = tx.splitCoins(primary, [SPONSOR_AMOUNT_RAW]);
+      tx.transferObjects([split], agentAddress);
+    } else {
+      const primary = tx.object(coins.data[0].coinObjectId);
+      const [split] = tx.splitCoins(primary, [SPONSOR_AMOUNT_RAW]);
+      tx.transferObjects([split], agentAddress);
+    }
+
+    const result = await client.signAndExecuteTransaction({
+      signer: sponsorKeypair,
+      transaction: tx,
+      options: { showEffects: true },
+    });
+
+    await client.waitForTransaction({ digest: result.digest });
+
+    await prisma.$transaction([
+      prisma.usdcSponsorLog.create({
+        data: {
+          agentAddress,
+          amount: String(SPONSOR_AMOUNT_USD),
+          txDigest: result.digest,
+          source,
+          ...(ipAddress ? { ipAddress } : {}),
+        },
+      }),
+      prisma.agent.upsert({
+        where: { address: agentAddress },
+        update: { lastSeen: new Date() },
+        create: { address: agentAddress, name: null },
+      }),
+    ]);
+
+    return {
+      digest: result.digest,
+      agentAddress,
+      usdcFunded: String(SPONSOR_AMOUNT_USD),
+    };
+  } finally {
+    pendingAddresses.delete(agentAddress);
   }
-
-  const tx = new Transaction();
-  tx.setSender(sponsorAddress);
-
-  if (coins.data.length > 1) {
-    const primary = tx.object(coins.data[0].coinObjectId);
-    const rest = coins.data.slice(1).map((c) => tx.object(c.coinObjectId));
-    tx.mergeCoins(primary, rest);
-    const [split] = tx.splitCoins(primary, [SPONSOR_AMOUNT_RAW]);
-    tx.transferObjects([split], agentAddress);
-  } else {
-    const primary = tx.object(coins.data[0].coinObjectId);
-    const [split] = tx.splitCoins(primary, [SPONSOR_AMOUNT_RAW]);
-    tx.transferObjects([split], agentAddress);
-  }
-
-  const result = await client.signAndExecuteTransaction({
-    signer: sponsorKeypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-
-  await client.waitForTransaction({ digest: result.digest });
-
-  await prisma.$transaction([
-    prisma.usdcSponsorLog.create({
-      data: {
-        agentAddress,
-        amount: String(SPONSOR_AMOUNT_USD),
-        txDigest: result.digest,
-        source,
-        ...(ipAddress ? { ipAddress } : {}),
-      },
-    }),
-    prisma.agent.upsert({
-      where: { address: agentAddress },
-      update: { lastSeen: new Date() },
-      create: { address: agentAddress, name: null },
-    }),
-  ]);
-
-  return {
-    digest: result.digest,
-    agentAddress,
-    usdcFunded: String(SPONSOR_AMOUNT_USD),
-  };
 }
