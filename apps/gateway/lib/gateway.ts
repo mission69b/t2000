@@ -1,5 +1,6 @@
 import { Mppx } from 'mppx/nextjs';
 import { sui } from '@suimpp/mpp/server';
+import type { PaymentReport } from '@suimpp/mpp/server';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
@@ -10,6 +11,8 @@ const REGISTRY_URL = 'https://suimpp.dev/api/report';
 
 type RouteHandler = (request: Request) => Promise<Response> | Response;
 
+const pendingReports = new Map<string, PaymentReport>();
+
 function createMppx() {
   return Mppx.create({
     realm: 'mpp.t2000.ai',
@@ -17,29 +20,26 @@ function createMppx() {
       currency: SUI_USDC_TYPE,
       recipient: TREASURY_ADDRESS,
       network: NETWORK,
+      onPayment: (report) => {
+        pendingReports.set(report.digest, report);
+      },
     })],
   });
 }
 
-function reportToRegistry(data: {
-  digest: string | null;
-  service: string;
-  endpoint: string;
-  amount: string;
-}) {
-  if (!data.digest) return;
+function reportToRegistry(
+  report: PaymentReport,
+  context: { service: string; endpoint: string },
+) {
+  pendingReports.delete(report.digest);
   fetch(REGISTRY_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      digest: data.digest,
-      recipient: TREASURY_ADDRESS,
-      amount: data.amount,
-      currency: SUI_USDC_TYPE,
-      network: NETWORK,
+      ...report,
       serverUrl: SERVER_URL,
-      service: data.service,
-      endpoint: `/${data.service}${data.endpoint}`,
+      service: context.service,
+      endpoint: `/${context.service}${context.endpoint}`,
     }),
   }).catch(() => {});
 }
@@ -131,7 +131,8 @@ export function chargeProxy(
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
       logPayment({ service, endpoint, amount, digest }).catch(() => {});
-      reportToRegistry({ digest, service, endpoint, amount });
+      const report = digest ? pendingReports.get(digest) : undefined;
+      if (report) reportToRegistry(report, { service, endpoint });
     }
 
     return response;
@@ -174,7 +175,8 @@ export function chargeCustom(
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
       logPayment({ service, endpoint, amount: resolvedAmount, digest }).catch(() => {});
-      reportToRegistry({ digest, service, endpoint, amount: resolvedAmount });
+      const report = digest ? pendingReports.get(digest) : undefined;
+      if (report) reportToRegistry(report, { service, endpoint });
     }
 
     return response;
