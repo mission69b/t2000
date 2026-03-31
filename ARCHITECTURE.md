@@ -188,6 +188,239 @@ Every MPP payment is logged to a dedicated NeonDB (separate from banking DB):
 
 ---
 
+## suimpp.dev — Ecosystem Hub
+
+Protocol-level registry and explorer for all MPP servers on Sui. Separate from the gateway — this is the open standard site.
+
+| App | Domain | Database | Purpose |
+|-----|--------|----------|---------|
+| `apps/suimpp` (suimpp monorepo) | suimpp.dev | NeonDB (separate) | Server registry, payment explorer, spec, docs |
+
+### Server Registration Flow
+
+Any MPP server on Sui can register. The flow uses `@suimpp/discovery` for validation:
+
+```
+Provider enters URL at suimpp.dev/register
+  │
+  ├── POST /api/validate { url }
+  │   │
+  │   ├── Fetch {url}/openapi.json
+  │   │   → Parse OpenAPI 3.x document
+  │   │   → Extract endpoints with x-payment-info
+  │   │   → Validate schemas, 402 responses, pricing
+  │   │
+  │   ├── Probe first POST endpoint
+  │   │   → Send empty request
+  │   │   → Expect 402 Payment Required
+  │   │   → Parse WWW-Authenticate header
+  │   │   → Verify: method=sui, valid USDC currency, valid recipient address
+  │   │
+  │   └── Return CheckResult { ok, discovery, probe, summary }
+  │
+  ├── UI shows pass/fail checklist:
+  │   ✓ OpenAPI document found
+  │   ✓ N payable endpoints detected
+  │   ✓ 402 challenge verified
+  │   ✓ Sui USDC payment method detected
+  │   ✓ Recipient address valid
+  │   ✗ Missing schema on POST /api/translate (if applicable)
+  │
+  ├── Preview card: title, endpoint count, price range
+  │
+  ├── POST /api/register { url }
+  │   → Re-validates (never trust client state)
+  │   → Generates slug from OpenAPI title
+  │   → Extracts categories from endpoint paths
+  │   → Stores endpoints with pricing as JSON
+  │   → Creates Server record in DB
+  │
+  └── Redirect to /servers/{slug}
+```
+
+### Payment Reporting Pattern
+
+Payments are reported by the gateway, not by the protocol library directly. This ensures every report includes both on-chain data (from verification) and request context (from the HTTP layer).
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  @suimpp/mpp (library layer)                                    │
+│                                                                 │
+│  verify() callback fires after on-chain verification:           │
+│    → Extracts: digest, sender, recipient, amount, currency,    │
+│      network from Sui transaction balance changes              │
+│    → Calls onPayment(report) with this data                    │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ onPayment({ digest, sender, ... })
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Gateway (application layer)                                    │
+│                                                                 │
+│  1. onPayment stashes report in pendingReports Map (by digest) │
+│  2. charge() middleware returns                                 │
+│  3. Gateway extracts digest from Payment-Receipt header        │
+│  4. Looks up on-chain report by digest                         │
+│  5. Enriches with request context: service name, endpoint path │
+│  6. Sends single complete POST to registry                     │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ POST /api/report { digest, sender,
+                         │   recipient, amount, currency, network,
+                         │   serverUrl, service, endpoint }
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  suimpp.dev/api/report                                          │
+│                                                                 │
+│  → Match server by URL or recipient address                    │
+│  → Deduplicate by digest (unique constraint)                   │
+│  → Store payment with all fields                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why this pattern (not library-level HTTP)?**
+
+The `verify()` callback inside `@suimpp/mpp` has access to on-chain data (sender address from balance changes) but NOT the HTTP request (endpoint path, service name). The gateway's `chargeProxy`/`chargeCustom` wrappers have request context but NOT on-chain data. The `onPayment` callback bridges the two: the library emits verified payment data, the gateway collects it by digest, enriches with endpoint context, and sends one complete report.
+
+| Data field | Source | Available in |
+|-----------|--------|-------------|
+| `digest` | On-chain TX | verify() |
+| `sender` | Balance changes | verify() |
+| `recipient` | Config | verify() |
+| `amount` | Challenge request | verify() |
+| `currency` | Config | verify() |
+| `network` | Config | verify() |
+| `service` | HTTP request URL | chargeProxy() |
+| `endpoint` | HTTP request URL | chargeProxy() |
+| `serverUrl` | Config | chargeProxy() |
+
+**Gateway integration (reference implementation):**
+
+```typescript
+import { sui } from '@suimpp/mpp/server';
+import type { PaymentReport } from '@suimpp/mpp/server';
+
+const pendingReports = new Map<string, PaymentReport>();
+
+const mppx = Mppx.create({
+  realm: 'mpp.example.com',
+  methods: [sui({
+    currency: SUI_USDC_TYPE,
+    recipient: TREASURY_ADDRESS,
+    network: 'mainnet',
+    onPayment: (report) => {
+      pendingReports.set(report.digest, report);
+    },
+  })],
+});
+
+// After charge() returns successfully:
+const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
+const report = digest ? pendingReports.get(digest) : undefined;
+if (report) {
+  pendingReports.delete(report.digest);
+  fetch('https://suimpp.dev/api/report', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ...report,
+      serverUrl: 'https://mpp.example.com',
+      service: inferredService,
+      endpoint: inferredEndpoint,
+    }),
+  }).catch(() => {});
+}
+```
+
+### Discovery Validation (`@suimpp/discovery`)
+
+The `check()` function runs two phases:
+
+**Phase 1: OpenAPI Discovery**
+- Fetches `{origin}/openapi.json`
+- Validates OpenAPI 3.x structure
+- Extracts endpoints with `x-payment-info` extensions
+- Reports issues: missing schemas, invalid pricing, missing 402 responses
+
+**Phase 2: Endpoint Probe**
+- Sends an empty POST to the first payable endpoint
+- Expects HTTP 402 with `WWW-Authenticate` header
+- Parses MPP challenge parameters: method, amount, currency, recipient, network
+- Validates: `method=sui`, USDC coin type, valid Sui address for recipient
+
+```typescript
+import { check } from '@suimpp/discovery';
+
+const result = await check('https://mpp.example.com');
+// result.ok          → all checks passed (no errors, warnings allowed)
+// result.discovery   → OpenAPI parse results, endpoints, issues
+// result.probe       → 402 challenge results, recipient, currency
+// result.summary     → { totalIssues, errors, warnings }
+```
+
+### Data Model
+
+```prisma
+model Server {
+  id            Int       @id @default(autoincrement())
+  name          String
+  slug          String    @unique
+  url           String    @unique
+  openapiUrl    String
+  description   String?
+  recipient     String?
+  verified      Boolean   @default(false)
+  status        String    @default("active")
+  endpoints     Int       @default(0)
+  categories    String    @default("")
+  endpointData  String    @default("[]")  // JSON array of endpoint info
+  payments      Payment[]
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  serverId  Int
+  server    Server   @relation(...)
+  digest    String?  @unique
+  sender    String?
+  recipient String?
+  amount    String
+  currency  String?
+  network   String   @default("mainnet")
+  service   String   @default("")
+  endpoint  String   @default("")
+  createdAt DateTime @default(now())
+}
+```
+
+### Pages
+
+| Page | Route | What it shows |
+|------|-------|-------------|
+| Spec | `/spec` | Sui MPP charge method specification |
+| Docs | `/docs` | Developer guide — "Pay for APIs" + "Accept Payments" |
+| Explorer | `/explorer` | All payments across all servers — charts, table, filters |
+| Servers | `/servers` | Registered servers with stats, sparklines, sort/filter |
+| Server Detail | `/servers/{slug}` | Stats, volume chart, endpoints table, recent payments |
+| Register | `/register` | URL input → live validation → preview → register |
+
+### FAQ
+
+**Q: How does a new server get its payments tracked?**
+A: Register at `suimpp.dev/register`. The server must serve `/openapi.json` with `x-payment-info` extensions and respond with 402 challenges using the `sui` payment method. After validation passes, the server is created in the DB. The gateway then reports each verified payment to `suimpp.dev/api/report` using the `onPayment` callback pattern.
+
+**Q: What if a server doesn't use `@suimpp/mpp`?**
+A: The `onPayment` pattern is the recommended way. For backwards compatibility, `@suimpp/mpp` also supports `registryUrl` which fires directly from `verify()` — but this lacks endpoint context. Any server can also POST directly to `/api/report` as long as it includes the required fields (digest, amount, serverUrl or recipient).
+
+**Q: How are servers matched to payments?**
+A: The `/api/report` endpoint matches by `serverUrl` first (exact URL match), then falls back to `recipient` address. Both are set during registration.
+
+**Q: What prevents spam registrations?**
+A: The validation flow is the gate. A server must serve a valid OpenAPI document with payable endpoints AND respond to a live 402 probe. You can't register a URL that doesn't actually run an MPP server.
+
+**Q: How are endpoint stats computed?**
+A: During registration, all endpoints with `x-payment-info` are stored as JSON in the `endpointData` column. Per-endpoint transaction counts are computed at render time by aggregating the `endpoint` field from payment records.
+
+---
+
 ## Agent Init (`t2000 init`)
 
 Three-step guided setup that takes a new user from zero to a fully operational AI agent:
@@ -623,11 +856,13 @@ Returns only aggregated numbers:
 | Web App (app.t2000.ai) | Vercel | Next.js, zkLogin + Enoki, Anthropic |
 | Web (t2000.ai) | Vercel | Next.js, ISR |
 | Gateway (mpp.t2000.ai) | Vercel | Next.js, payment logging, explorer |
+| Ecosystem (suimpp.dev) | Vercel | Next.js, server registry, payment explorer |
 | Server (api.t2000.ai) | AWS ECS Fargate | Hono, long-running |
 | Indexer | AWS ECS Fargate | Checkpoint poller, always-on |
 | Database (web app) | NeonDB (Postgres) | Users, preferences, contacts |
 | Database (server) | NeonDB (Postgres) | Agents, transactions, gas ledger |
 | Database (gateway) | NeonDB (Postgres) | MPP payment logs |
+| Database (suimpp.dev) | NeonDB (Postgres) | Servers, payments, endpoints |
 | DNS | Cloudflare | — |
 | CI/CD | GitHub Actions | Lint, typecheck, test, publish, deploy |
 
