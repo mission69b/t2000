@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git stash*)",
+      "Bash(turbo *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Edit(packages/**)",
+      "Edit(apps/**)",
+      "Edit(spec/**)",
+      "Edit(t2000-skills/**)",
+      "Write(packages/**)",
+      "Write(apps/**)",
+      "Write(spec/**)",
+      "Write(t2000-skills/**)",
+      "Read(**)"
+    ]
+  }
+}

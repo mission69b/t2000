@@ -1,333 +1,184 @@
-# CLAUDE.md - Frontend
+# CLAUDE.md
 
-## Single Source of Truth
-
-**Before writing or editing ANY documentation** (READMEs, docs page, skill files, marketing materials, roadmap), **read `PRODUCT_FACTS.md` first**. All product facts — versions, fees, CLI syntax, SDK signatures, output formats, error codes — must match that file. When a product fact changes, update `PRODUCT_FACTS.md` first, then propagate to all other files.
-
-**Before modifying ANY CLI command output**, **read `CLI_UX_SPEC.md` first**. It defines output primitives, formatting rules, dollar/APY precision, header styles, and the exact output format for every command. All CLI output must match that spec.
+> This file is loaded every turn. It is the highest-leverage configuration for any AI assistant working on this codebase.
 
 ---
 
-## Simplicity Principles
+## Architecture — The Big Picture
 
-These govern every decision. Push back if a task violates them.
+### Three brands, three repos
 
-1. **Ship less, ship right.** One feature that works like magic beats five that kinda work.
-2. **Fix before build.** Bugs and missing tests come before new infrastructure.
-3. **Sui first.** Earn the right to go multi-chain by being the best on one chain.
-4. **Watch, don't adopt.** Don't bet on new standards until they're proven (6+ months, real ecosystem).
-5. **Keep what works.** zkLogin, Enoki gas sponsorship, MPP gateway, init wizard — these are advantages, not tech debt.
-6. **Don't chase shiny things.** If current users aren't asking for it, it can wait.
-7. **Push back.** If a direction change doesn't make sense or risks stability, say so.
+```
+t2000 (this repo)    → Infrastructure: CLI, SDK, MCP, engine, gateway, contracts
+audric (separate)    → Consumer product: audric.ai website, app, Chrome extension
+suimpp (separate)    → Protocol: suimpp.dev, @suimpp/mpp, @suimpp/discovery
+```
 
----
+### This repo structure
 
-## Next.js
+```
+t2000/
+├── apps/gateway     ← MPP API gateway (mpp.t2000.ai, 40+ services, 88 endpoints)
+├── apps/server      ← Backend API
+├── apps/web         ← t2000.ai marketing website
+├── apps/web-app     ← Legacy consumer app (being replaced by audric.ai)
+├── packages/cli     ← @t2000/cli (npm)
+├── packages/sdk     ← @t2000/sdk (npm)
+├── packages/mcp     ← @t2000/mcp (npm)
+├── packages/contracts ← Sui Move smart contracts
+├── t2000-skills/    ← Agent skill definitions
+└── spec/            ← Architecture specs, roadmaps, design docs
+```
 
-### Tool Calling
+### Product catalog (5 products, NOT 6)
 
-- `npm run dev` starts development server (use `--turbo` for speed)
-- `npm run build` creates production build
-- `npm run lint` runs ESLint
-- `npm run typecheck` runs TypeScript compiler check
+| Product | Integration | Status |
+|---------|-------------|--------|
+| **Savings** | NAVI MCP + thin tx builders | Live |
+| **Pay** | MPP / t2000 gateway | Live |
+| **Send** | Direct Sui transactions | Live |
+| **Credit** | NAVI MCP + thin tx builders | Live |
+| **Receive** | Direct Sui transactions | Planned |
 
-### App Router Conventions
+**Invest and Swap are REMOVED.** Do not add them back. Savings covers yield. Swap is a utility within deposit flows, not a product. When protocols release MCPs, expansion is a config change.
 
-- Use `layout.tsx` for shared UI (providers, nav, footer)
-- Use `loading.tsx` for Suspense fallbacks, `error.tsx` for error boundaries
-- Prefer Server Components by default, add `'use client'` only when needed
-- Use route groups `(name)` to organize without affecting URL
-- Use `generateMetadata` for dynamic page metadata
+### MCP-first DeFi integration
 
-### File Naming
+NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operations. Writes use thin transaction builders via `@mysten/sui`. No protocol SDK dependencies needed.
 
-- Components: `PascalCase.tsx`
-- Utilities/hooks: `camelCase.ts`
-- Constants: `SCREAMING_SNAKE_CASE` for values
-
----
-
-## React & TypeScript
-
-### Component Patterns
-
-- Use function components with named exports
-- Destructure props in function signature
-- Suffix prop interfaces with `Props`
-- Use `interface` for props, `type` for unions/utilities
-
-### Hooks
-
-- Prefix custom hooks with `use`
-- Return objects for multiple values
-- Use `useCallback` for handlers passed to children
-- Use `useMemo` for expensive computations
-
-### TypeScript
-
-- Enable strict mode, avoid `any`
-- Use `unknown` and narrow with type guards
-- Define return types explicitly for public functions
-- Prefer discriminated unions over optional properties for state
-
-### Naming
-
-- Components: `PascalCase`
-- Hooks: `useCamelCase`
-- Event handlers: `handleEventName` or `onEventName` prop
-- Booleans: `is`, `has`, `should`, `can` prefix
+**Do NOT import** `@naviprotocol/lending`, `@suilend/sdk`, or `@cetusprotocol/aggregator-sdk` in new code. Use MCP for reads, direct Sui `Transaction` building for writes.
 
 ---
 
-## TanStack Query
+## Critical Rules
 
-### Query Keys
+1. **Never add Invest or Swap as products.** Savings covers yield. Swap is a utility.
+2. **Never import protocol SDKs for new features.** Use MCP for reads, thin tx builders for writes.
+3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
+4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.
+5. **Always check PRODUCT_FACTS.md** before writing documentation or marketing copy.
+6. **Always check CLI_UX_SPEC.md** before modifying CLI command output.
+7. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
-- Use factory pattern with nested objects
-- Include all dependencies in key array
-- Pattern: `queryKeys.domain.action(params)`
+---
 
-### Queries
+## Key Documents
 
-- Wrap `useQuery` in custom hooks for reusability
-- Set appropriate `staleTime` (30s for most, 60s for stats)
-- Use `enabled` option for conditional fetching
+| Document | What it covers | Read before |
+|----------|---------------|-------------|
+| `BRAND.md` | Two-brand strategy, positioning, design system, product catalog | Any branding/messaging work |
+| `PRODUCT_FACTS.md` | Versions, fees, CLI syntax, SDK signatures | Documentation or marketing |
+| `CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
+| `spec/CLAUDE_CODE_LEVERAGE.md` | Engine patterns, financial tools, MCP integration, repo separation | Engine or tool work |
+| `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
 
-### Mutations
+---
 
-- Use `useMutation` for all state changes
-- Invalidate related queries on success
-- Handle errors with toast notifications
+## Monorepo Tooling
 
-### Polling
+- **Package manager:** pnpm (v10.6.2, pinned via `packageManager`)
+- **Build orchestration:** Turbo (`turbo build`, `dev`, `lint`, `typecheck`)
+- **Workspaces:** `packages/*` and `apps/*` (defined in `pnpm-workspace.yaml`)
 
-- Use `refetchInterval` for live data (rewards: 30s, health: 30s)
-- Set `refetchIntervalInBackground: false`
+### Common commands
+
+```bash
+pnpm dev                    # Start all dev servers
+pnpm build                  # Build all packages
+pnpm lint                   # Lint all packages
+pnpm typecheck              # TypeScript check all packages
+pnpm --filter @t2000/cli build   # Build specific package
+pnpm --filter gateway dev        # Dev specific app
+```
 
 ---
 
 ## Sui Integration
 
-### Package Imports (`@mysten/sui@2.x`)
+### Package imports (`@mysten/sui@2.x`)
 
 ```ts
-// Client & queries (v2: SuiJsonRpcClient from /jsonRpc, NOT SuiClient from /client)
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-
-// Transaction building
 import { Transaction } from '@mysten/sui/transactions';
-
-// BCS encoding/decoding (for devInspect results, on-chain data parsing)
 import { bcs } from '@mysten/sui/bcs';
-
-// Utilities (MIST_PER_SUI = 1e9, SUI_DECIMALS = 9)
-import {
-  MIST_PER_SUI,
-  SUI_DECIMALS,
-  isValidSuiAddress,
-  normalizeSuiAddress,
-} from '@mysten/sui/utils';
-
-// dApp Kit - wallet & hooks
-import {
-  ConnectButton,
-  createNetworkConfig,
-  SuiClientProvider,
-  WalletProvider,
-  useCurrentAccount,
-  useSignAndExecuteTransaction,
-  useSuiClient,
-  useSuiClientQuery,
-} from '@mysten/dapp-kit';
+import { MIST_PER_SUI, SUI_DECIMALS, isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 ```
 
-### v2 Migration Notes
+### v2 migration notes
 
-- `SuiClient` → `SuiJsonRpcClient` (import from `@mysten/sui/jsonRpc`)
+- `SuiClient` → `SuiJsonRpcClient` (from `@mysten/sui/jsonRpc`)
 - `getFullnodeUrl` → `getJsonRpcFullnodeUrl`
-- Constructor requires `network` parameter: `new SuiJsonRpcClient({ url, network: 'mainnet' })`
-- Protocol integrations use **official SDKs**: `@naviprotocol/lending`, `@suilend/sdk`, `@cetusprotocol/aggregator-sdk` (V3)
-- NAVI adapter: thin wrapper around SDK functions (`getLendingPositions`, `depositCoinPTB`, `withdrawCoinPTB`, etc.)
-- Suilend adapter: uses `SuilendClient.initialize`, `initializeSuilend`, `initializeObligations` for all position/rate data
-- Cetus aggregator SDK V3 handles routing internally; no hardcoded endpoints
-- `PositionEntry.amountUsd` provides USD values directly from protocol SDKs — used for `balance()` totals
-- Pass `SuiJsonRpcClient` as `any` to SDK functions expecting old `SuiClient` type (runtime compatible)
-- Use `as never` cast for `TransactionObjectArgument` → SDK `CoinObject` type bridges
-- `pnpm.overrides` in root `package.json` forces `@mysten/sui@^2.6.0` across all dependencies
+- Constructor: `new SuiJsonRpcClient({ url, network: 'mainnet' })`
+- `pnpm.overrides` in root `package.json` forces `@mysten/sui@^2.6.0`
 
-### Providers
+### Transaction patterns
 
-- Wrap app: `QueryClientProvider` > `SuiClientProvider` > `WalletProvider`
-- Import `@mysten/dapp-kit/dist/index.css` for wallet UI styles
-- Use `createNetworkConfig` for testnet/mainnet switching
-- Set `autoConnect` on `WalletProvider` for returning users
-
-### Transaction Building
-
-- Use `Transaction` class
-- Split coins from gas: `tx.splitCoins(tx.gas, [amount])`
+- Use `Transaction` class for all on-chain operations
+- Split coins: `tx.splitCoins(tx.gas, [amount])`
 - Always transfer created objects to user
-- Use `tx.object()` for shared objects, `tx.pure.type()` for primitives
+- `tx.object()` for shared objects, `tx.pure.type()` for primitives
+- Simulate before signing, validate addresses with `isValidSuiAddress()`
 
-### Transaction Execution
+### Constants
 
-- Use `useSignAndExecuteTransaction`
-- Default return is only `digest` + `effects`
-- For `showObjectChanges`/`showRawEffects`, pass custom `execute` function
-- Call `client.waitForTransaction({ digest })` after success
-- Invalidate queries after transaction confirms
+- `MIST_PER_SUI`: `1_000_000_000n`
+- `MIN_DEPOSIT`: `1_000_000n` (1 USDC, 6 decimals)
+- `BPS_DENOMINATOR`: `10_000n`
+- `CLOCK_ID`: `'0x6'`
+- USDC: `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`
 
-### RPC Hooks
+---
 
-- `useSuiClientQuery(method, params)` - single RPC call, wraps `useQuery`
-- `useSuiClientQueries` - multiple queries with combining
-- `useSuiClientInfiniteQuery` - paginated queries
-- Pass React Query options as third argument (staleTime, enabled, etc.)
+## TypeScript Conventions
 
-### Object Parsing
+- Strict mode, avoid `any` — use `unknown` + type guards
+- Components: `PascalCase.tsx`, named exports, destructured props
+- Hooks: `useCamelCase`, return objects for multiple values
+- Props: `interface FooProps`, types for unions/utilities
+- Booleans: `is`, `has`, `should`, `can` prefix
+- Event handlers: `handleEventName` or `onEventName` prop
 
-- Move `u64`/`u128` arrive as strings - convert to `bigint`
-- Check `content.dataType === 'moveObject'` before accessing fields
-- Access nested fields via `content.fields`
+---
 
-### Address Utilities
+## Next.js (apps/web, apps/web-app)
 
-- `isValidSuiAddress(addr)` - validate format
-- `normalizeSuiAddress(addr)` - normalize (lowercase, 0x prefix)
-- SDK `formatAddress` normalizes but does NOT truncate
-- For display truncation (`0x1234...abcd`), use custom utility
+- App Router: `layout.tsx` for shared UI, `loading.tsx` for Suspense, `error.tsx` for boundaries
+- Server Components by default, `'use client'` only when needed
+- Route groups `(name)` for organization without URL impact
+- `generateMetadata` for dynamic page metadata
 
 ---
 
 ## Styling
 
-### Tailwind Conventions
-
-- Use utilities directly, avoid custom CSS
-- Group: layout → spacing → sizing → colors → effects
-- Use `cn()` helper for conditional classes
-
-### shadcn/ui
-
-- Import from `@/components/ui`
-- Don't modify generated components - wrap them instead
-- Use composition over configuration
-
----
-
-## Constants
-
-### Key Values
-
-- `MIST_PER_SUI`: `1_000_000_000n`
-- `MIN_DEPOSIT`: `1_000_000n` (1 USDC)
-- `BPS_DENOMINATOR`: `10_000n`
-- `PRECISION`: `1_000_000_000_000_000_000n` (10^18, for reward math - matches contract)
-- `CLOCK_ID`: `'0x6'`
-- `STABLE_ASSETS`: `['USDC', 'USDT', 'USDe', 'USDsui']`
-
-### Stablecoin Coin Types
-
-- **USDC**: `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`
-- **suiUSDT**: `0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT`
-- **suiUSDe**: `0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE`
-- **USDsui**: `0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI`
-
-All stablecoins use 6 decimals. All are supported on NAVI and Suilend.
-
-### Rebalance
-
-- `agent.rebalance({ dryRun: true })` — preview yield optimization plan
-- `agent.rebalance()` — execute: withdraw → swap (if cross-asset) → deposit
-- `agent.rebalance({ minYieldDiff: 1.0, maxBreakEven: 14 })` — custom thresholds
-- CLI: `t2000 rebalance --dry-run`, `t2000 rebalance --yes`
-- Safety: refuses if health factor < 1.5, skips if break-even > 30 days
-
----
-
-## Links
-
-| Resource | URL |
-|----------|-----|
-| Website | `t2000.ai` |
-| MPP Gateway | `mpp.t2000.ai` |
-| GitHub | `github.com/mission69b/t2000` |
-| X | `x.com/t2000ai` |
-| Discord | `discord.gg/qE95FPt6Z5` |
-| npm | `npmjs.com/package/@t2000/cli` |
-
----
-
-## Environment Variables
-
-### Required for Production
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | NeonDB connection string | `postgres://...` |
-| `NEXT_PUBLIC_SUI_NETWORK` | Sui network (`testnet` or `mainnet`) | `testnet` |
-| `CRON_SECRET` | Secret for cron job authorization |
-
-### Optional
-
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SITE_URL` | Site URL for OG images |
-
----
-
-## Error Handling
-
-### Move Errors
-
-Map abort codes to user messages:
-- `EPAUSED` → "Protocol is temporarily paused"
-
-### Wallet Errors
-
-- "User rejected" → "Transaction cancelled"
-- "Insufficient" → "Insufficient balance"
-
----
-
-## Formatting Utilities
-
-### Display Rules
-
-- MIST to SUI: divide by `MIST_PER_SUI` (1e9) or use `SUI_DECIMALS` (9)
-- Addresses: custom truncate util for `0x1234...abcd` (SDK doesn't truncate)
-- Percentages from BPS: divide by 100
-- Large numbers: use `K`, `M` suffixes
-- Timestamps: relative time ("2h ago") with absolute on hover
+- **Current apps:** Tailwind + shadcn/ui (dark theme)
+- **Audric (new):** Agentic Design System — white/black, New York Large + Geist + Departure Mono
+- Group utilities: layout → spacing → sizing → colors → effects
+- `cn()` for conditional classes, shadcn components from `@/components/ui`
 
 ---
 
 ## Git Commits
 
-### Format
-
 ```
 emoji type(scope): subject
 ```
 
-### Types
+| Type | Emoji |
+|------|-------|
+| feat | ✨ |
+| fix | 🐛 |
+| docs | 📝 |
+| style | 🎨 |
+| refactor | ♻️ |
+| perf | ⚡ |
+| test | ✅ |
+| build | 📦 |
+| chore | 🔧 |
 
-- `✨ feat` - New feature
-- `🐛 fix` - Bug fix
-- `📝 docs` - Documentation
-- `🎨 style` - Code style
-- `♻️ refactor` - Refactoring
-- `⚡ perf` - Performance
-- `✅ test` - Tests
-- `📦 build` - Dependencies
-- `🔧 chore` - Other
-
-### Rules
-
-- Subject lowercase
-- ALWAYS use emoji
+- Subject lowercase, ALWAYS use emoji
 - Do NOT add "Generated with Claude"
-- Scopes: `sdk`, `mcp`, `cli`, `web`, `wallet`, `api`
+- Scopes: `sdk`, `mcp`, `cli`, `web`, `gateway`, `engine`, `contracts`
 
 ---
 
@@ -341,30 +192,30 @@ emoji type(scope): subject
 
 ---
 
-## Ship Checklist — Update These Files for Every Feature
+## Links
+
+| Resource | URL |
+|----------|-----|
+| t2000 (infra) | `t2000.ai` |
+| Audric (consumer) | `audric.ai` |
+| suimpp (protocol) | `suimpp.dev` |
+| MPP Gateway | `mpp.t2000.ai` |
+| GitHub | `github.com/mission69b/t2000` |
+| npm CLI | `npmjs.com/package/@t2000/cli` |
+| NAVI MCP | `open-api.naviprotocol.io/api/mcp` |
+
+---
+
+## Ship Checklist
+
+When shipping a feature, update these files:
 
 - [ ] SDK implementation + tests (`packages/sdk/src/`)
 - [ ] CLI command + tests (`packages/cli/src/commands/`)
 - [ ] MCP tool/prompt + tests (`packages/mcp/src/`)
 - [ ] Agent Skill (`t2000-skills/skills/`)
-- [ ] Docs page (`apps/web/app/docs/page.tsx`)
-- [ ] Homepage (`apps/web/app/page.tsx` — comparison table, hero, Connect Your AI)
 - [ ] CLI UX spec (`CLI_UX_SPEC.md`)
-- [ ] Product facts (`PRODUCT_FACTS.md` — feature list, counts, versions)
+- [ ] Product facts (`PRODUCT_FACTS.md`)
 - [ ] Root README (`README.md`)
-- [ ] SDK README (`packages/sdk/README.md`)
-- [ ] CLI README (`packages/cli/README.md`)
-- [ ] MCP README (`packages/mcp/README.md`)
-- [ ] Marketing plan (`marketing/marketing-plan.md`)
+- [ ] Package READMEs (`packages/*/README.md`)
 - [ ] Version bump + build all packages
-- [ ] Roadmap update (`spec/t2000-roadmap-v2.md`)
-
----
-
-## Workflow
-
-- Make one logical change at a time
-- Run `npm run lint && npm run typecheck` after changes
-- Prefer small, focused commits
-- Never mix refactoring with feature changes
-- Test in browser before committing UI changes
