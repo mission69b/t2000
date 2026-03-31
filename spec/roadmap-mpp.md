@@ -852,7 +852,7 @@ Ships independently. The `@suimpp` org launches with both packages:
 | ✅ Spec page — Sui charge method specification | `/spec` | Phase 2 |
 | ✅ Docs page — "Pay for APIs" + "Accept Payments" guides | `/docs` | Phase 2 |
 | ✅ Enable `/spec` and `/docs` redirects on gateway | `apps/gateway` | Phase 2 |
-| Full payment explorer — pagination, charts, per-server | `/explorer` | Phase 3 |
+| ✅ Full payment explorer — pagination, charts, per-server | `/explorer` | Phase 3 |
 | Server registration — OpenAPI validation, live preview | `/register` | Phase 4 |
 | Deploy to Vercel with `suimpp.dev` domain | Vercel | Phase 1 |
 

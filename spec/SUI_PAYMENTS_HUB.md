@@ -436,15 +436,17 @@ Gateway already logs payments with unique digest constraint (replay protection).
 - [x] `suimpp.dev/spec` becomes the URL shared in MPP ecosystem
 - [x] Enable redirects on gateway: `/spec` → `suimpp.dev/spec`, `/docs` → `suimpp.dev/docs`
 
-### Phase 3: Full Explorer — 3-4 days
+### Phase 3: Full Explorer — ✅ DONE
 
 **Goal:** On-chain proof that machine payments are real.
 
-- [ ] `/explorer` page with full payment table (pagination, sort, filter)
-- [ ] Payment detail view — full tx info with Suiscan link
-- [ ] Per-server + per-service breakdown charts
-- [ ] Volume over time chart (data from suimpp.dev DB, aggregated across all servers)
-- [ ] Add Explorer nav link
+- [x] `/explorer` page with full payment table (pagination, sort, filter by server)
+- [x] Payment detail view — tx digest + sender linked to Suiscan, amount, time with hover for absolute date
+- [x] Per-server breakdown chart (stacked bar + legend with txn count and volume)
+- [x] Volume over time bar chart (daily aggregation across all servers, hover tooltips)
+- [x] Add Explorer nav link
+- [x] `/api/explorer` endpoint — paginated, filterable payments
+- [x] `/api/explorer/stats` endpoint — totals, per-server breakdown, daily volume timeline
 
 ### Phase 4: Server Registration — 2-3 days
 
@@ -542,7 +544,7 @@ The live payment feed on the homepage IS the explorer for Phase 1. No separate p
 | **Phase 1** | Homepage + servers + own DB | ~~3-4 days~~ | ✅ DONE |
 | **Phase 1.5** | Rename @mppsui → @suimpp + library reporting | ~~1-2 days~~ | ✅ DONE |
 | **Phase 2** | Spec + Docs | ~~2-3 days~~ | ✅ DONE |
-| **Phase 3** | Full Explorer | 3-4 days | Deep on-chain analytics |
+| **Phase 3** | Full Explorer | ~~3-4 days~~ | ✅ DONE |
 | **Phase 4** | Server registration | 2-3 days | Platform play |
 
 **Total: ~2 weeks for full build. Phase 1 ships in 3-4 days.**
