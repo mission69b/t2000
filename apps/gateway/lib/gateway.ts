@@ -4,6 +4,10 @@ import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
 
+const NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
+const SERVER_URL = 'https://mpp.t2000.ai';
+const REGISTRY_URL = 'https://suimpp.dev/api/report';
+
 type RouteHandler = (request: Request) => Promise<Response> | Response;
 
 function createMppx() {
@@ -12,11 +16,32 @@ function createMppx() {
     methods: [sui({
       currency: SUI_USDC_TYPE,
       recipient: TREASURY_ADDRESS,
-      network: (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet',
-      registryUrl: 'https://suimpp.dev/api/report',
-      serverUrl: 'https://mpp.t2000.ai',
+      network: NETWORK,
     })],
   });
+}
+
+function reportToRegistry(data: {
+  digest: string | null;
+  service: string;
+  endpoint: string;
+  amount: string;
+}) {
+  if (!data.digest) return;
+  fetch(REGISTRY_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      digest: data.digest,
+      recipient: TREASURY_ADDRESS,
+      amount: data.amount,
+      currency: SUI_USDC_TYPE,
+      network: NETWORK,
+      serverUrl: SERVER_URL,
+      service: data.service,
+      endpoint: `/${data.service}${data.endpoint}`,
+    }),
+  }).catch(() => {});
 }
 
 let _mppx: ReturnType<typeof createMppx> | undefined;
@@ -104,13 +129,9 @@ export function chargeProxy(
 
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
-      const receipt = response.headers.get('Payment-Receipt');
-      logPayment({
-        service,
-        endpoint,
-        amount,
-        digest: parseReceiptDigest(receipt),
-      }).catch(() => {});
+      const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
+      logPayment({ service, endpoint, amount, digest }).catch(() => {});
+      reportToRegistry({ digest, service, endpoint, amount });
     }
 
     return response;
@@ -151,13 +172,9 @@ export function chargeCustom(
 
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
-      const receipt = response.headers.get('Payment-Receipt');
-      logPayment({
-        service,
-        endpoint,
-        amount: resolvedAmount,
-        digest: parseReceiptDigest(receipt),
-      }).catch(() => {});
+      const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
+      logPayment({ service, endpoint, amount: resolvedAmount, digest }).catch(() => {});
+      reportToRegistry({ digest, service, endpoint, amount: resolvedAmount });
     }
 
     return response;
