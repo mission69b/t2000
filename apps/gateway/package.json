@@ -15,7 +15,7 @@
     "@prisma/client": "^6",
     "@suimpp/mpp": "^0.4.0",
     "@vercel/analytics": "^1.6.1",
-    "mppx": "^0.4.9",
+    "mppx": "^0.5.0",
     "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
