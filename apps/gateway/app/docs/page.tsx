@@ -44,7 +44,7 @@ const result = await agent.pay({ url: 'https://mpp.t2000.ai/openai/v1/chat/compl
             </p>
             <CodeBlock
               code={`import { Mppx } from 'mppx/nextjs';
-import { sui } from '@mppsui/mpp/server';
+import { sui } from '@suimpp/mpp/server';
 export const POST = Mppx.create({ methods: [sui({ currency: SUI_USDC, recipient: '0xYOU' })] }).charge({ amount: '0.01' })(() => Response.json({ ok: true }));`}
             />
           </section>
@@ -82,7 +82,7 @@ export const POST = Mppx.create({ methods: [sui({ currency: SUI_USDC, recipient:
                 </p>
                 <CodeBlock
                   lang="bash"
-                  code="npm install mppx @mppsui/mpp"
+                  code="npm install mppx @suimpp/mpp"
                 />
               </Step>
 
@@ -94,7 +94,7 @@ export const POST = Mppx.create({ methods: [sui({ currency: SUI_USDC, recipient:
                 </p>
                 <CodeBlock
                   code={`import { Mppx } from 'mppx/client';
-import { sui } from '@mppsui/mpp/client';
+import { sui } from '@suimpp/mpp/client';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
@@ -206,7 +206,7 @@ t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \\
                 </p>
                 <CodeBlock
                   lang="bash"
-                  code="npm install mppx @mppsui/mpp"
+                  code="npm install mppx @suimpp/mpp"
                 />
               </Step>
 
@@ -218,7 +218,7 @@ t2000 pay https://mpp.t2000.ai/openai/v1/chat/completions \\
                 </p>
                 <CodeBlock
                   code={`import { Mppx } from 'mppx/nextjs'; // or 'mppx/server'
-import { sui } from '@mppsui/mpp/server';
+import { sui } from '@suimpp/mpp/server';
 
 const SUI_USDC =
   '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
@@ -333,8 +333,8 @@ export const POST = mppx.charge({ amount: '0.01' })(
               { href: '/services', label: 'Browse services' },
               { href: '/explorer', label: 'Payment explorer' },
               {
-                href: 'https://www.npmjs.com/package/@mppsui/mpp',
-                label: 'npm: @mppsui/mpp',
+                href: 'https://www.npmjs.com/package/@suimpp/mpp',
+                label: 'npm: @suimpp/mpp',
               },
               { href: 'https://mpp.dev', label: 'MPP Protocol' },
             ].map((link) => (

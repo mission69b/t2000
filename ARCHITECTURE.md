@@ -30,7 +30,7 @@
 │             │  │             │  │             │  │  USDC · NAVI ·       │
 │ zkLogin     │  │ Sponsor API │  │ 40 services │  │  Suilend · Cetus     │
 │ Enoki gas   │  │ Gas station │  │ 88 endpoints│  │  t2000 Treasury      │
-│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @mppsui/mpp      │
+│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @suimpp/mpp      │
 │ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  (payment method)    │
 └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
        │                │                │
@@ -55,8 +55,8 @@
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
 | `@t2000/mcp` | Published | MCP server — 32 tools, 19 prompts, stdio transport |
-| `@mppsui/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
-| `@mppsui/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
+| `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
+| `@suimpp/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
 
 ## Apps
@@ -657,9 +657,9 @@ Tag v0.22.3 (t2000 monorepo)
   → GitHub Release (auto-generated notes)
   → Discord notification
 
-Tag v0.1.0 (mission69b/mppsui repo)
+Tag v0.1.0 (mission69b/suimpp repo)
   → CI: build + typecheck + test
-  → Publish: @mppsui/mpp, @mppsui/discovery
+  → Publish: @suimpp/mpp, @suimpp/discovery
   → GitHub Release
 ```
 

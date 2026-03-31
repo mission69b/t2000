@@ -1,5 +1,5 @@
 import { Mppx } from 'mppx/nextjs';
-import { sui } from '@mppsui/mpp/server';
+import { sui } from '@suimpp/mpp/server';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
@@ -13,6 +13,8 @@ function createMppx() {
       currency: SUI_USDC_TYPE,
       recipient: TREASURY_ADDRESS,
       network: (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet',
+      registryUrl: 'https://suimpp.dev/api/report',
+      serverUrl: 'https://mpp.t2000.ai',
     })],
   });
 }

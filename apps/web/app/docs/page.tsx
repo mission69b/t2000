@@ -1766,7 +1766,7 @@ function MppSection() {
       <h2 id="mpp-why-sui">Why Sui MPP is different</h2>
       <p>
         EVM MPP typically uses signed transfers verified by a facilitator.
-        On Sui, <InlineCode>@mppsui/mpp</InlineCode> uses direct USDC
+        On Sui, <InlineCode>@suimpp/mpp</InlineCode> uses direct USDC
         transfers verified peer-to-peer via Sui RPC — no intermediary needed.
       </p>
       <p>
@@ -1783,7 +1783,7 @@ function MppSection() {
         rows={[
           ["MPP Gateway (service directory)", <a key="l" href="https://mpp.t2000.ai" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai</a>],
           ["MPP Standard", <a key="l" href="https://mpp.dev" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.dev</a>],
-          ["Sui payment method (npm)", <a key="l" href="https://www.npmjs.com/package/@mppsui/mpp" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">@mppsui/mpp</a>],
+          ["Sui payment method (npm)", <a key="l" href="https://www.npmjs.com/package/@suimpp/mpp" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">@suimpp/mpp</a>],
           ["Agent discovery", <a key="l" href="https://mpp.t2000.ai/llms.txt" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai/llms.txt</a>],
           ["JSON service catalog", <a key="l" href="https://mpp.t2000.ai/api/services" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">mpp.t2000.ai/api/services</a>],
         ]}

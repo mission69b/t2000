@@ -18,7 +18,7 @@ metadata:
 # t2000: Pay for MPP API Service
 
 ## Status
-Active — requires `t2000` CLI with `@mppsui/mpp` installed.
+Active — requires `t2000` CLI with `@suimpp/mpp` installed.
 
 ## Purpose
 Make a paid HTTP request to any MPP-protected endpoint. Handles the 402

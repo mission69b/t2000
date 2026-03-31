@@ -42,12 +42,12 @@ importers:
 
   apps/gateway:
     dependencies:
-      '@mppsui/mpp':
-        specifier: ^0.2.0
-        version: 0.2.0(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
       '@prisma/client':
         specifier: ^6
         version: 6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3)
+      '@suimpp/mpp':
+        specifier: ^0.3.1
+        version: 0.3.1(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
       '@vercel/analytics':
         specifier: ^1.6.1
         version: 1.6.1(next@16.2.1(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -192,9 +192,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.80.0
         version: 0.80.0(zod@4.3.6)
-      '@mppsui/mpp':
-        specifier: ^0.1.0
-        version: 0.1.0(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.11.4)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
       '@mysten/dapp-kit':
         specifier: ^1.0.4
         version: 1.0.4(@mysten/sui@2.11.0(typescript@5.9.3))(@tanstack/react-query@5.95.2(react@19.2.4))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
@@ -210,6 +207,9 @@ importers:
       '@prisma/client':
         specifier: ^7.5.0
         version: 7.5.0(prisma@7.5.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
+      '@suimpp/mpp':
+        specifier: ^0.3.1
+        version: 0.3.1(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.11.4)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
       '@t2000/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
@@ -362,9 +362,6 @@ importers:
       '@cetusprotocol/aggregator-sdk':
         specifier: ^1.4.6
         version: 1.4.6(axios@1.13.6)(typescript@5.9.3)
-      '@mppsui/mpp':
-        specifier: ^0.1.0
-        version: 0.1.0(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
       '@mysten/sui':
         specifier: ^2.11.0
         version: 2.11.0(typescript@5.9.3)
@@ -383,6 +380,9 @@ importers:
       '@suilend/sui-fe':
         specifier: ^2.0.6
         version: 2.0.10(@mysten/sui@2.11.0(typescript@5.9.3))
+      '@suimpp/mpp':
+        specifier: ^0.3.1
+        version: 0.3.1(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
       eventemitter3:
         specifier: ^5
         version: 5.0.4
@@ -1196,12 +1196,6 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@mppsui/mpp@0.1.0':
-    resolution: {integrity: sha512-/m3OkyNkgxvd2NmXSzBRv1BjD0wzxILxpUsdJynLbqGDJulYom0DN+iI56bSiuGiORDv/2MzpSMYD3xkJ6b/LA==}
-
-  '@mppsui/mpp@0.2.0':
-    resolution: {integrity: sha512-8oKMKfElfPauGUQA4laxgeUtNJuQEa2qWCvZxVCoIU9jFJobXDMoJrNLAbCyE+175tqb2i57yZe13SH1miHGGA==}
-
   '@mrleebo/prisma-ast@0.13.1':
     resolution: {integrity: sha512-XyroGQXcHrZdvmrGJvsA9KNeOOgGMg1Vg9OlheUsBOSKznLMDl+YChxbkboRHvtFYJEMRYmlV3uoo/njCw05iw==}
     engines: {node: '>=16'}
@@ -1951,6 +1945,9 @@ packages:
     resolution: {integrity: sha512-z3kXBdlx0aFLJL6xK2XulhJ6ZFHmgx+BpFkdprEDzKvtgtKFR/jlZkiTRGsHltaTH9RiCgHi7yADgrfUe6ipwg==}
     peerDependencies:
       '@mysten/sui': ^2.11.0
+
+  '@suimpp/mpp@0.3.1':
+    resolution: {integrity: sha512-spiNiTpRDunObUkuC5WNkjksbYv5oTtU1AU+ir+q3VzkbzeUgHGVnNZ5iVGjxA6PmrQvXJ1YxC9enStu00dEvg==}
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -6071,60 +6068,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mppsui/mpp@0.1.0(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))':
-    dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
-      mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
-      zod: 4.3.6
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - '@modelcontextprotocol/sdk'
-      - elysia
-      - express
-      - hono
-      - openapi-types
-      - supports-color
-      - typescript
-      - viem
-
-  '@mppsui/mpp@0.1.0(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.11.4)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))':
-    dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
-      mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.11.4)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
-      zod: 4.3.6
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - '@modelcontextprotocol/sdk'
-      - elysia
-      - express
-      - hono
-      - openapi-types
-      - supports-color
-      - typescript
-      - viem
-
-  '@mppsui/mpp@0.2.0(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))':
-    dependencies:
-      '@mysten/sui': 2.11.0(typescript@5.9.3)
-      mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
-      zod: 4.3.6
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - '@modelcontextprotocol/sdk'
-      - elysia
-      - express
-      - hono
-      - openapi-types
-      - supports-color
-      - typescript
-      - viem
-
   '@mrleebo/prisma-ast@0.13.1':
     dependencies:
       chevrotain: 10.5.0
@@ -6950,6 +6893,60 @@ snapshots:
       p-limit: 3.1.0
     transitivePeerDependencies:
       - react-native-b4a
+
+  '@suimpp/mpp@0.3.1(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))':
+    dependencies:
+      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@3.25.76))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@3.25.76))
+      zod: 4.3.6
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - '@modelcontextprotocol/sdk'
+      - elysia
+      - express
+      - hono
+      - openapi-types
+      - supports-color
+      - typescript
+      - viem
+
+  '@suimpp/mpp@0.3.1(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.11.4)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))':
+    dependencies:
+      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.11.4)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
+      zod: 4.3.6
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - '@modelcontextprotocol/sdk'
+      - elysia
+      - express
+      - hono
+      - openapi-types
+      - supports-color
+      - typescript
+      - viem
+
+  '@suimpp/mpp@0.3.1(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))':
+    dependencies:
+      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      mppx: 0.4.9(@modelcontextprotocol/sdk@1.28.0(zod@4.3.6))(express@5.2.1)(hono@4.12.9)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.5(typescript@5.9.3)(zod@4.3.6))
+      zod: 4.3.6
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - '@modelcontextprotocol/sdk'
+      - elysia
+      - express
+      - hono
+      - openapi-types
+      - supports-color
+      - typescript
+      - viem
 
   '@swc/helpers@0.5.15':
     dependencies:

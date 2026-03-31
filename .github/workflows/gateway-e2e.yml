@@ -6,8 +6,8 @@ on:
         description: 'Gateway URL to test against'
         default: 'https://mpp.t2000.ai'
         required: false
-      mppsui_pr:
-        description: 'mppsui PR number to test (e.g. "1"). Leave empty for published npm version.'
+      suimpp_pr:
+        description: 'suimpp PR number to test (e.g. "1"). Leave empty for published npm version.'
         default: ''
         required: false
   schedule:
@@ -45,17 +45,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Override @mppsui/mpp with PR build
-        if: ${{ github.event.inputs.mppsui_pr != '' }}
+      - name: Override @suimpp/mpp with PR build
+        if: ${{ github.event.inputs.suimpp_pr != '' }}
         run: |
-          git clone --depth 1 https://github.com/mission69b/mppsui.git /tmp/mppsui
-          cd /tmp/mppsui
-          git fetch origin pull/${{ github.event.inputs.mppsui_pr }}/head:pr-under-test
+          git clone --depth 1 https://github.com/mission69b/suimpp.git /tmp/suimpp
+          cd /tmp/suimpp
+          git fetch origin pull/${{ github.event.inputs.suimpp_pr }}/head:pr-under-test
           git checkout pr-under-test
           pnpm install --no-frozen-lockfile
-          pnpm --filter @mppsui/mpp build
+          pnpm --filter @suimpp/mpp build
           cd ${{ github.workspace }}
-          pnpm --filter @t2000/gateway add @mppsui/mpp@file:/tmp/mppsui/packages/mpp
+          pnpm --filter @t2000/gateway add @suimpp/mpp@file:/tmp/suimpp/packages/mpp
 
       - name: Run gateway e2e tests
         run: pnpm --filter @t2000/gateway test:e2e

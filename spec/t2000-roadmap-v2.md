@@ -1495,7 +1495,7 @@ MPP: OpenAPI Discovery        ← /openapi.json + MPPscan registration (see road
     ↓
 Phase 13: Dashboard           ← agent network + explorer
     ↓
-MPP: mppsui.dev               ← ecosystem hub (see roadmap-mpp.md)
+MPP: suimpp.dev               ← ecosystem hub (see roadmap-mpp.md)
     ↓
 Phase 15: Cross-Chain USDC    ← Circle CCTP — bridge USDC from any chain
     ↓
@@ -1530,7 +1530,7 @@ Phase 17g: Securities Lending ← borrow against portfolio
 | **MPP-1** | USDC Sponsorship — $1 on wallet creation | **P0** | 2-3 days | ⬜ Planned (roadmap-mpp.md) |
 | **MPP-2** | OpenAPI Discovery + MPPscan registration | **P1** | 2-3 days | ⬜ Planned (roadmap-mpp.md) |
 | **13** | Dashboard + Agent Network + Explorer | **P1** | 2 weeks | 🔶 Foundation built |
-| **MPP-3** | mppsui.dev — ecosystem hub, server registry | **P1** | 2-3 weeks | ⬜ Planned (roadmap-mpp.md) |
+| **MPP-3** | suimpp.dev — ecosystem hub, server registry | **P1** | 2-3 weeks | ⬜ Planned (roadmap-mpp.md) |
 | **15** | Cross-Chain USDC (Circle CCTP V1) | **P1** | 1 week | ⬜ Unblocked — CCTP live on Sui mainnet |
 | **20a** | On-ramp (Stripe Crypto Onramp — embedded) | **P1** | 2-3 days | ⬜ Sui confirmed as destination_network |
 | **17e** | Margin Trading (Bluefin perps) | **P1** | 1-2 weeks | ⬜ Blocked on Bluefin API |
@@ -1570,7 +1570,7 @@ See `spec/T2000_V3_SPEC.md`, `spec/V3_BUILD_PLAN.md`, `spec/AGENT_LOOP_DESIGN.md
 | `spec/V3_BUILD_PLAN.md` | Implementation plan for v3 (phases, tasks, dependencies) |
 | `spec/AGENT_LOOP_DESIGN.md` | Agent loop design — client-driven tool calling, budget model, conversation history |
 | `spec/MPP_GATEWAY_V2.md` | Gateway v2 — payment logging, explorer, live feed, deliver-first pattern |
-| `spec/roadmap-mpp.md` | MPP ecosystem roadmap — USDC sponsorship, mppsui.dev, package migration, server registry |
+| `spec/roadmap-mpp.md` | MPP ecosystem roadmap — USDC sponsorship, suimpp.dev, package migration, server registry |
 | `spec/COMMERCE_V2.md` | Commerce v2 — Phase 24a: gift card removal, Phase 24b: Pepesto EU grocery/recipes |
 
 ---

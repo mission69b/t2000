@@ -6,17 +6,17 @@
 
 ```
 mpp.t2000.ai          →  t2000's gateway (40 services, 88 endpoints)
-mppsui.dev             →  Sui MPP standard (spec, docs, server registry, explorer)
+suimpp.dev             →  Sui MPP standard (spec, docs, server registry, explorer)
 app.t2000.ai           →  Consumer product (web app, banking, AI chat)
 ```
 
 | Domain | What | Audience | Status |
 |--------|------|----------|--------|
 | `mpp.t2000.ai` | t2000 MPP gateway — 40 services, explorer, live feed | AI agents, developers | Live |
-| `mppsui.dev` | Sui MPP ecosystem — spec, docs, server registry, protocol explorer | Builders, providers, Mysten | Planned |
+| `suimpp.dev` | Sui MPP ecosystem — spec, docs, server registry, protocol explorer | Builders, providers, Mysten | Planned |
 | `app.t2000.ai` | Consumer web app — zkLogin, conversational banking | Anyone with Google | Beta |
 
-**Key shift:** `mppsui.dev` is the ecosystem hub. `mpp.t2000.ai` is ONE server registered on it — same way StableEnrich or Modal are servers on MPPscan.
+**Key shift:** `suimpp.dev` is the ecosystem hub. `mpp.t2000.ai` is ONE server registered on it — same way StableEnrich or Modal are servers on MPPscan.
 
 ---
 
@@ -155,13 +155,13 @@ model UsdcSponsorLog {
 
 ---
 
-## 2. mppsui.dev — Sui MPP Ecosystem Hub
+## 2. suimpp.dev — Sui MPP Ecosystem Hub
 
 ### What it is
 
 The canonical home for machine payments on Sui. Protocol spec, developer docs, server registry, and protocol-level explorer.
 
-**Positioning:** "mppsui.dev" is to Sui MPP what "ethereum.org" is to Ethereum — the ecosystem site, not a product.
+**Positioning:** "suimpp.dev" is to Sui MPP what "ethereum.org" is to Ethereum — the ecosystem site, not a product.
 
 ### Site Structure
 
@@ -182,7 +182,7 @@ Any MPP server on Sui can register. Discovery follows the OpenAPI spec pattern f
 1. Provider enters their server base URL
 2. System fetches `{url}/openapi.json`
 3. Validates: `x-payment-info`, `x-discovery`, 402 response behavior
-4. Verifies ownership via `x-discovery.ownershipProofs` (server must include a proof token that mppsui.dev can verify — prevents registering someone else's server)
+4. Verifies ownership via `x-discovery.ownershipProofs` (server must include a proof token that suimpp.dev can verify — prevents registering someone else's server)
 5. If valid → listed on `/servers` with auto-tracked stats
 6. Provider receives an API key for managing their listing (update, remove, re-validate)
 
@@ -222,7 +222,7 @@ Any MPP server on Sui can register. Discovery follows the OpenAPI spec pattern f
 }
 ```
 
-**Validation:** Phase 2 uses `@agentcash/discovery` for MPPscan registration. Phase 3a publishes `@mppsui/discovery` with Sui-specific checks (address format, USDC coin type, network).
+**Validation:** Phase 2 uses `@agentcash/discovery` for MPPscan registration. Phase 3a publishes `@suimpp/discovery` with Sui-specific checks (address format, USDC coin type, network).
 
 **Server card on `/servers`:**
 
@@ -238,7 +238,7 @@ Any MPP server on Sui can register. Discovery follows the OpenAPI spec pattern f
 
 ### Explorer — Protocol Level
 
-Unlike `mpp.t2000.ai/explorer` (which only shows t2000 gateway payments), `mppsui.dev/explorer` tracks ALL MPP payments on Sui across ALL servers.
+Unlike `mpp.t2000.ai/explorer` (which only shows t2000 gateway payments), `suimpp.dev/explorer` tracks ALL MPP payments on Sui across ALL servers.
 
 **Data source options:**
 1. Each registered server provides a payment feed API
@@ -247,41 +247,41 @@ Unlike `mpp.t2000.ai/explorer` (which only shows t2000 gateway payments), `mppsu
 
 ### Compatibility with MPPscan
 
-MPP is now a Stripe + Tempo + Visa backed standard (Mar 2026). `mppx` is the official SDK. 100+ services integrated across Base/Solana/Tempo. Sui is the missing chain — mppsui.dev fills that gap.
+MPP is now a Stripe + Tempo + Visa backed standard (Mar 2026). `mppx` is the official SDK. 100+ services integrated across Base/Solana/Tempo. Sui is the missing chain — suimpp.dev fills that gap.
 
-| Feature | MPPscan (Tempo/Base) | mppsui.dev |
+| Feature | MPPscan (Tempo/Base) | suimpp.dev |
 |---------|----------------------|------------|
 | Chain | Base / Solana / Tempo | Sui |
 | Discovery | OpenAPI + x-payment-info | Same spec (compatible) |
 | Explorer | 100+ servers | Sui-only, starting with t2000 |
 | Onboarding | AgentCash ($25 USDC on Tempo) | USDC sponsorship ($1 on Sui) |
 | Agent setup | `npx agentcash onboard` | `t2000 init` or Google Sign-In |
-| SDK | `mppx` (official Stripe+Tempo) | `mppx` + `@mppsui/mpp` as Sui payment method |
+| SDK | `mppx` (official Stripe+Tempo) | `mppx` + `@suimpp/mpp` as Sui payment method |
 | Fiat payments | SPTs (Shared Payment Tokens) | Not yet — monitor for Sui support |
 
-**Strategy: Compatible, not competing.** Adopt the same OpenAPI discovery spec. `mpp.t2000.ai` should register on MPPscan for cross-chain visibility. `mppsui.dev` is the Sui-native home.
+**Strategy: Compatible, not competing.** Adopt the same OpenAPI discovery spec. `mpp.t2000.ai` should register on MPPscan for cross-chain visibility. `suimpp.dev` is the Sui-native home.
 
 ---
 
 ## 3. mpp.t2000.ai — Gateway Refactoring
 
-### What moves to mppsui.dev
+### What moves to suimpp.dev
 
 | Page | Currently | After |
 |------|-----------|-------|
-| `/spec` | Protocol spec on gateway | **Moves to mppsui.dev/spec** — protocol spec belongs on the ecosystem site |
-| `/docs` | Developer guide on gateway | **Moves to mppsui.dev/docs** — docs are for the standard, not one gateway |
+| `/spec` | Protocol spec on gateway | **Moves to suimpp.dev/spec** — protocol spec belongs on the ecosystem site |
+| `/docs` | Developer guide on gateway | **Moves to suimpp.dev/docs** — docs are for the standard, not one gateway |
 | `/explorer` | t2000 payment explorer | **Stays** — gateway-specific payment history |
 | `/services` | Service catalog | **Stays** — this IS the gateway's product |
 | `/` | Gateway homepage | **Stays** — gateway pitch + live feed |
 | `/llms.txt` | Agent catalog | **Stays** — gateway-specific discovery |
 
-**Redirect timing:** Keep `/spec` and `/docs` live on the gateway until mppsui.dev launches (Phase 4). Only enable redirects to `mppsui.dev/spec` and `mppsui.dev/docs` once the new site is deployed and verified. Otherwise users hit a 404 for weeks.
+**Redirect timing:** Keep `/spec` and `/docs` live on the gateway until suimpp.dev launches (Phase 4). Only enable redirects to `suimpp.dev/spec` and `suimpp.dev/docs` once the new site is deployed and verified. Otherwise users hit a 404 for weeks.
 
 ### Add OpenAPI discovery
 
 Expose `/openapi.json` on `mpp.t2000.ai` with all 40 services documented in the standard format. This enables:
-1. Registration on mppsui.dev as the first server
+1. Registration on suimpp.dev as the first server
 2. Registration on MPPscan for cross-chain visibility
 3. Agent discovery via standard tooling
 
@@ -313,8 +313,8 @@ mpp.t2000.ai/
 ├── /                    → Gateway homepage (stays)
 ├── /services            → Service catalog (stays)
 ├── /explorer            → t2000 payment explorer (stays)
-├── /spec                → REDIRECT → mppsui.dev/spec
-├── /docs                → REDIRECT → mppsui.dev/docs
+├── /spec                → REDIRECT → suimpp.dev/spec
+├── /docs                → REDIRECT → suimpp.dev/docs
 ├── /openapi.json        → NEW: OpenAPI discovery document
 ├── /llms.txt            → Agent-readable catalog (stays)
 └── /api/
@@ -330,35 +330,35 @@ mpp.t2000.ai/
 
 ## 4. Package Migration
 
-### `@t2000/mpp-sui` → `@mppsui/mpp`
+### `@t2000/mpp-sui` → `@suimpp/mpp`
 
 The Sui payment method package outgrows the t2000 namespace. It's a protocol primitive, not a product feature.
 
 | Current | New | Why |
 |---------|-----|-----|
-| `@t2000/mpp-sui` | `@mppsui/mpp` | Protocol package, not product-scoped |
-| Published under `@t2000` org | Published under `@mppsui` org | Ecosystem branding |
+| `@t2000/mpp-sui` | `@suimpp/mpp` | Protocol package, not product-scoped |
+| Published under `@t2000` org | Published under `@suimpp` org | Ecosystem branding |
 
 **Migration plan:**
-1. Create `@mppsui` npm org
-2. Publish `@mppsui/mpp` as the new package (same code, new name)
-3. Publish `@mppsui/discovery` as the Sui-specific validation CLI
-4. Update `@t2000/mpp-sui` to re-export from `@mppsui/mpp` with a deprecation notice
+1. Create `@suimpp` npm org
+2. Publish `@suimpp/mpp` as the new package (same code, new name)
+3. Publish `@suimpp/discovery` as the Sui-specific validation CLI
+4. Update `@t2000/mpp-sui` to re-export from `@suimpp/mpp` with a deprecation notice
 5. Update all internal references (`apps/gateway`, `apps/web-app`, `packages/sdk`)
 6. Keep `@t2000/mpp-sui` alive for 6 months as a shim, then archive
 
-**No breaking changes** — existing users of `@t2000/mpp-sui` get a deprecation warning pointing to `@mppsui/mpp`.
+**No breaking changes** — existing users of `@t2000/mpp-sui` get a deprecation warning pointing to `@suimpp/mpp`.
 
-### `@mppsui/discovery`
+### `@suimpp/discovery`
 
 Sui-specific discovery validation package. Same CLI pattern as `@agentcash/discovery`.
 
 ```bash
-npx @mppsui/discovery check https://mpp.t2000.ai
-npx @mppsui/discovery discover https://mpp.t2000.ai
+npx @suimpp/discovery check https://mpp.t2000.ai
+npx @suimpp/discovery discover https://mpp.t2000.ai
 ```
 
-**Ships in Phase 3a** alongside `@mppsui/mpp` — the `@mppsui` org launches with both packages from day one.
+**Ships in Phase 3a** alongside `@suimpp/mpp` — the `@suimpp` org launches with both packages from day one.
 
 **Validation checks (superset of `@agentcash/discovery`):**
 - OpenAPI 3.1 document at `/openapi.json`
@@ -371,15 +371,15 @@ npx @mppsui/discovery discover https://mpp.t2000.ai
 
 **Relationship to `@agentcash/discovery`:**
 - `@agentcash/discovery` = chain-agnostic OpenAPI validation (used by MPPscan)
-- `@mppsui/discovery` = same checks + Sui-specific validations (address format, USDC coin type, network)
+- `@suimpp/discovery` = same checks + Sui-specific validations (address format, USDC coin type, network)
 - Phase 2 validates with `@agentcash/discovery` to pass MPPscan registration
-- Phase 3a publishes `@mppsui/discovery` for Sui MPP server developers
+- Phase 3a publishes `@suimpp/discovery` for Sui MPP server developers
 
 ---
 
 ## 5. Per-Server Analytics (inspired by MPPscan)
 
-MPPscan tracks rich per-server metrics. mppsui.dev should do the same for every registered Sui MPP server.
+MPPscan tracks rich per-server metrics. suimpp.dev should do the same for every registered Sui MPP server.
 
 ### Server Card Metrics
 
@@ -435,7 +435,7 @@ model MppServerPayment {
 
 ### Payment Feed API Standard
 
-Every registered server should expose a payment feed endpoint. This is what mppsui.dev polls to ingest analytics.
+Every registered server should expose a payment feed endpoint. This is what suimpp.dev polls to ingest analytics.
 
 **Endpoint:** `GET {server_url}/api/mpp/payments?since={iso_timestamp}&limit={n}`
 
@@ -464,7 +464,7 @@ Every registered server should expose a payment feed endpoint. This is what mpps
 
 **Server-reported (MVP):**
 - Each registered server exposes the payment feed API above
-- mppsui.dev polls registered servers on a cron (every 5 min)
+- suimpp.dev polls registered servers on a cron (every 5 min)
 - Uses `?since=` cursor to only fetch new payments since last poll
 - Deduplicates by tx digest
 
@@ -475,11 +475,11 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ## 6. Wireframes
 
-### mppsui.dev Homepage (`/`)
+### suimpp.dev Homepage (`/`)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  mppsui.dev                    Spec  Docs  Servers  GitHub│
+│  suimpp.dev                    Spec  Docs  Servers  GitHub│
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  Machine Payments on Sui              ┌─────────────────┐│
@@ -504,7 +504,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 ├──────────────────────────────────────────────────────────┤
 │  ┌──── Use APIs ──────────┐  ┌──── Accept Payments ───┐ │
 │  │                        │  │                        │ │
-│  │  npm i @mppsui/mpp     │  │  npm i @mppsui/mpp     │ │
+│  │  npm i @suimpp/mpp     │  │  npm i @suimpp/mpp     │ │
 │  │                        │  │                        │ │
 │  │  // 3 lines to pay     │  │  // 3 lines to charge  │ │
 │  │  const mpp = Mppx...   │  │  const mpp = Mppx...   │ │
@@ -514,7 +514,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 │  └────────────────────────┘  └────────────────────────┘ │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
-│  Built on Sui    @mppsui/mpp · GitHub · npm · mppscan    │
+│  Built on Sui    @suimpp/mpp · GitHub · npm · mppscan    │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -522,7 +522,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  mppsui.dev/servers                                      │
+│  suimpp.dev/servers                                      │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  MPP Servers on Sui           [Register yours →]         │
@@ -557,7 +557,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  mppsui.dev/servers/t2000-gateway                        │
+│  suimpp.dev/servers/t2000-gateway                        │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  t2000 Gateway                                           │
@@ -602,7 +602,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  mppsui.dev/explorer                                     │
+│  suimpp.dev/explorer                                     │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  MPP Payment Explorer                                    │
@@ -648,7 +648,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  mppsui.dev/register                                     │
+│  suimpp.dev/register                                     │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  Add your Server                                         │
@@ -697,7 +697,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  mppsui.dev/agent                                        │
+│  suimpp.dev/agent                                        │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  Use MPP APIs on Sui                                     │
@@ -719,7 +719,7 @@ When there are multiple servers and trust matters, add on-chain verification —
 │                                                          │
 │  ── Option 3: SDK ──                                     │
 │                                                          │
-│  npm i @mppsui/mpp mppx                                  │
+│  npm i @suimpp/mpp mppx                                  │
 │                                                          │
 │  const mpp = Mppx.create({                               │
 │    methods: [sui({ client, signer })]                    │
@@ -818,48 +818,57 @@ When there are multiple servers and trust matters, add on-chain verification —
 
 | # | Task | Where |
 |---|------|-------|
-| 1 | ✅ Create `@mppsui` npm org | npm |
-| 2 | ✅ Rename + publish `@mppsui/mpp` (Sui payment method plugin for `mppx`) | `packages/mpp-sui` → rename in `package.json` |
-| 3 | ✅ Create + publish `@mppsui/discovery` (Sui-specific discovery validation CLI) | `packages/discovery` (new) |
-| 4 | ✅ Update internal code imports (`@t2000/mpp-sui` → `@mppsui/mpp`) | `apps/gateway/lib/gateway.ts`, `packages/sdk/src/t2000.ts`, `apps/web-app/app/api/services/complete/route.ts`, `apps/web-app/app/api/services/retry/route.ts` |
+| 1 | ✅ Create `@suimpp` npm org | npm |
+| 2 | ✅ Rename + publish `@suimpp/mpp` (Sui payment method plugin for `mppx`) | `packages/mpp-sui` → rename in `package.json` |
+| 3 | ✅ Create + publish `@suimpp/discovery` (Sui-specific discovery validation CLI) | `packages/discovery` (new) |
+| 4 | ✅ Update internal code imports (`@t2000/mpp-sui` → `@suimpp/mpp`) | `apps/gateway/lib/gateway.ts`, `packages/sdk/src/t2000.ts`, `apps/web-app/app/api/services/complete/route.ts`, `apps/web-app/app/api/services/retry/route.ts` |
 | 5 | ✅ Update `package.json` dependencies | `apps/gateway`, `apps/web-app`, `packages/sdk` |
 | 6 | ✅ Update CI workflows + Dockerfiles | `.github/workflows/publish.yml`, `ci.yml`, `deploy-server.yml`, `deploy-indexer.yml`, `packages/mcp/Dockerfile`, `infra/indexer.Dockerfile`, `apps/server/Dockerfile` |
 | 7 | ✅ Update docs & marketing references | `README.md`, `ARCHITECTURE.md`, `PRODUCT_FACTS.md`, `SECURITY.md`, `packages/sdk/README.md`, `packages/cli/README.md`, `apps/gateway/README.md`, `apps/gateway/app/docs/page.tsx`, `apps/web/app/docs/page.tsx`, `apps/web/app/mpp/page.tsx`, `t2000-skills/skills/t2000-pay/SKILL.md` |
-| 8 | ✅ Deprecate `@t2000/mpp-sui` (all 16 versions) → "Moved to `@mppsui/mpp`" | npm (no re-export shim) |
+| 8 | ✅ Deprecate `@t2000/mpp-sui` (all 16 versions) → "Moved to `@suimpp/mpp`" | npm (no re-export shim) |
 
-Ships independently. The `@mppsui` org launches with both packages:
-- `@mppsui/mpp` — payment method (migrated from `@t2000/mpp-sui`)
-- `@mppsui/discovery` — validation CLI (`npx @mppsui/discovery check <url>`)
+Ships independently. The `@suimpp` org launches with both packages:
+- `@suimpp/mpp` — payment method (migrated from `@t2000/mpp-sui`)
+- `@suimpp/discovery` — validation CLI (`npx @suimpp/discovery check <url>`)
 
-**No deprecation shim** — `@t2000/mpp-sui` gets a final README-only publish pointing to `@mppsui/mpp`. No re-export wrapper to maintain.
+**No deprecation shim** — `@t2000/mpp-sui` gets a final README-only publish pointing to `@suimpp/mpp`. No re-export wrapper to maintain.
 
-### Phase 3b: mppsui.dev Site — 1-2 weeks
+### Phase 3b: suimpp.dev Site — 2-3 weeks
 
-**Prerequisite:** Domain `mppsui.dev` must be purchased and DNS configured.
+**Prerequisite:** Domain `suimpp.dev` registered ✅. DNS must be configured on Vercel.
 
-| Task | Where |
-|------|-------|
-| New Next.js app | `apps/mppsui` |
-| Homepage — hero, live stats, "what is MPP on Sui" | `/` |
-| Spec page — migrate from gateway, expand for protocol | `/spec` |
-| Docs page — migrate from gateway, add provider guide | `/docs` |
-| Agent onboarding page — web/CLI/SDK/MCP options | `/agent` |
-| Enable `/spec` and `/docs` redirects on gateway | `apps/gateway` |
-| Deploy to Vercel with `mppsui.dev` domain | Vercel |
+**Detailed build spec:** See `spec/SUI_PAYMENTS_HUB.md` for full architecture, wireframes, design system, data models, and phased implementation plan.
+
+**Architecture:** Own NeonDB (separate from gateway). Cron ingests payments from registered servers. `mpp.t2000.ai` is server #1. Multi-server from day one.
+
+| Task | Where | Hub Phase |
+|------|-------|-----------|
+| New Next.js app + NeonDB + Prisma (Server + Payment models) | `apps/suimpp` | Phase 1 |
+| Homepage — hero, interactive terminal, live feed, code blocks | `/` | Phase 1 |
+| Server directory — `mpp.t2000.ai` first, "Register" CTA | `/servers` | Phase 1 |
+| OG images + `generateMetadata` + sitemap | `apps/suimpp` | Phase 1 |
+| Ingestion cron — pull payments from registered servers | `/api/cron/ingest` | Phase 1.5 |
+| Live stats — ISR for payment count, volume, server count | `/` | Phase 1.5 |
+| Spec page — migrate from gateway, expand for protocol | `/spec` | Phase 2 |
+| Docs page — "Pay for APIs" + "Accept Payments" guides | `/docs` | Phase 2 |
+| Enable `/spec` and `/docs` redirects on gateway | `apps/gateway` | Phase 2 |
+| Full payment explorer — pagination, charts, per-server | `/explorer` | Phase 3 |
+| Server registration — OpenAPI validation, live preview | `/register` | Phase 4 |
+| Deploy to Vercel with `suimpp.dev` domain | Vercel | Phase 1 |
 
 ### Phase 4: Server Registry + Analytics — 1-2 weeks
 
 | Task | Where |
 |------|-------|
-| `MppServer` + `MppServerPayment` models | `apps/mppsui` (NeonDB) |
-| OpenAPI + Sui validation (uses `@mppsui/discovery`) | `apps/mppsui` |
+| `MppServer` + `MppServerPayment` models | `apps/suimpp` (NeonDB) |
+| OpenAPI + Sui validation (uses `@suimpp/discovery`) | `apps/suimpp` |
 | Server registry page — list registered servers | `/servers` |
 | Register flow — URL → OpenAPI validation → listing | `/register` |
 | Per-server detail page — endpoints, pricing, metrics | `/servers/:id` |
-| Payment feed ingestion cron (poll registered servers) | `apps/mppsui` cron |
+| Payment feed ingestion cron (poll registered servers) | `apps/suimpp` cron |
 | Protocol explorer — live feed, volume charts | `/explorer` |
 
-**Register UX (ref: MPPscan):** The `/register` flow should follow MPPscan's live-preview pattern — paste a server URL, immediately fetch `/openapi.json` and render endpoints with pricing inline, run `@mppsui/discovery` validation in real-time with pass/fail checks, and only enable the "Register" button once validation passes. Show actionable warnings (e.g. high route count) rather than hard blocks.
+**Register UX (ref: MPPscan):** The `/register` flow should follow MPPscan's live-preview pattern — paste a server URL, immediately fetch `/openapi.json` and render endpoints with pricing inline, run `@suimpp/discovery` validation in real-time with pass/fail checks, and only enable the "Register" button once validation passes. Show actionable warnings (e.g. high route count) rather than hard blocks.
 
 ### Phase 5: Fiat On-ramp (Stripe Crypto Onramp) → Absorbed into Phase 20a
 
@@ -883,18 +892,18 @@ See `t2000-roadmap-v2.md` Phase 20a for full spec, architecture, and tasks.
 | `t2000.ai` | Product site, docs, stats | `apps/web` (monorepo) | Live |
 | `t2000.ai/mpp` | MPP product page ("use t2000 for MPP on Sui") | `apps/web` (monorepo) | Live |
 | `mpp.t2000.ai` | t2000 gateway — 40 services | `apps/gateway` (monorepo) | Live |
-| `mppsui.dev` | Sui MPP ecosystem hub | `apps/mppsui` (monorepo) | **Domain needed** |
+| `suimpp.dev` | Sui MPP ecosystem hub | `apps/suimpp` (monorepo) | Domain registered ✅ |
 | `api.t2000.ai` | Server — sponsor, gas, fees | `apps/server` (monorepo) | Live |
 
-**npm org:** `@mppsui` registered on npm (under mission69b). Publishes two packages:
-- `@mppsui/mpp` — Sui USDC payment method for `mppx`
-- `@mppsui/discovery` — discovery validation CLI
+**npm org:** `@suimpp` registered on npm (under mission69b). Publishes two packages:
+- `@suimpp/mpp` — Sui USDC payment method for `mppx`
+- `@suimpp/discovery` — discovery validation CLI
 
-**Separate repo:** `github.com/mission69b/mppsui` — dedicated monorepo with its own CI + automated npm publish on `v*` tags. The t2000 monorepo consumes `@mppsui/mpp` from npm (`^0.1.0`). `@t2000/mpp-sui` deprecated (all versions).
+**Separate repo:** `github.com/mission69b/suimpp` — dedicated monorepo with its own CI + automated npm publish on `v*` tags. The t2000 monorepo consumes `@suimpp/mpp` from npm (`^0.3.1`). `@t2000/mpp-sui` deprecated (all versions).
 
-**`t2000.ai/mpp` vs `mppsui.dev`:** The existing `/mpp` page is a product page — "use t2000 to pay for APIs on Sui." `mppsui.dev` is an ecosystem page — "MPP on Sui, any server, any agent." Different audiences: `/mpp` sells t2000, `mppsui.dev` grows the Sui MPP ecosystem.
+**`t2000.ai/mpp` vs `suimpp.dev`:** The existing `/mpp` page is a product page — "use t2000 to pay for APIs on Sui." `suimpp.dev` is an ecosystem page — "MPP on Sui, any server, any agent." Different audiences: `/mpp` sells t2000, `suimpp.dev` grows the Sui MPP ecosystem.
 
-**Domain:** `mppsui.dev` must be purchased before Phase 3b. Check availability early.
+**Domain:** `suimpp.dev` registered ✅. Configure DNS on Vercel before Phase 3b deploy.
 
 ---
 
@@ -904,19 +913,19 @@ See `t2000-roadmap-v2.md` Phase 20a for full spec, architecture, and tasks.
 |--------|------|--------|
 | Discuss USDC sponsorship grant (fund treasury for user onboarding) | Phase 1 | ✅ Self-funded ($100) |
 | Request Enoki approval for treasury gas sponsorship | Phase 1 | ⬜ |
-| Share mppsui.dev plans — gauge interest in co-ownership | Phase 3b | ⬜ |
+| Share suimpp.dev plans — gauge interest in co-ownership | Phase 3b | ⬜ |
 | Coordinate listing on Sui ecosystem pages / blog | Phase 3b launch | ⬜ |
-| Discuss `@mppsui` npm org ownership (registered under mission69b, shared with Mysten later?) | Phase 3a | ✅ Created, discuss sharing later |
+| Discuss `@suimpp` npm org ownership (registered under mission69b, shared with Mysten later?) | Phase 3a | ✅ Created, discuss sharing later |
 
 ---
 
-## 8. mppsui.dev Launch Plan
+## 8. suimpp.dev Launch Plan
 
 **Goal:** Get registered servers and ecosystem momentum, not just a website.
 
 | Step | What | When |
 |------|------|------|
-| 1 | Register `mpp.t2000.ai` as first server on mppsui.dev | Day 1 |
+| 1 | Register `mpp.t2000.ai` as first server on suimpp.dev | Day 1 |
 | 2 | Register `mpp.t2000.ai` on MPPscan for cross-chain visibility | Day 1 |
 | 3 | Announce on Twitter/X — "MPP on Sui is live" with explorer screenshot | Day 1 |
 | 4 | Post in Sui Discord / forums | Day 1 |
@@ -934,12 +943,12 @@ Keep it lean. The site speaks for itself — live stats, real payments, real ser
 
 | Item | Why it matters |
 |------|---------------|
-| **API versioning** | `@mppsui/mpp` needs semver from day one — other builders will depend on it |
+| **API versioning** | `@suimpp/mpp` needs semver from day one — other builders will depend on it |
 | **Multi-currency future** | Spec currently assumes USDC only. Leave room in `x-payment-info` for SUI, wBTC etc. |
 | **Mysten co-ownership** | Separate repo already created — easy to add Mysten as collaborator |
-| **SEO / discoverability** | mppsui.dev needs to rank for "machine payments Sui", "AI agent payments Sui" |
+| **SEO / discoverability** | suimpp.dev needs to rank for "machine payments Sui", "AI agent payments Sui" |
 | **OpenAPI auto-generation** | 40 services × multiple endpoints = large OpenAPI doc. Auto-generate from service catalog config |
-| **Cross-registration** | `mpp.t2000.ai` registers on both mppsui.dev AND mppscan.com. Keep in sync when services change |
+| **Cross-registration** | `mpp.t2000.ai` registers on both suimpp.dev AND mppscan.com. Keep in sync when services change |
 | **Deliver-first endpoints** | High-value services (merch, physical mail) bypass MPP via internal endpoints. `openapi.json` should only expose the public MPP route, not the internal one. Explorer logging handled separately via `POST /api/internal/log-payment` |
 
 ---
@@ -950,8 +959,9 @@ Keep it lean. The site speaks for itself — live stats, real payments, real ser
 |----------|---------|--------|
 | Sponsorship funding source? | Treasury self-funded vs Mysten grant | ✅ Self-funded ($100), apply for grant to scale |
 | Gas for treasury transfers? | Enoki-sponsored vs self-funded SUI | Enoki if Mysten approves, SUI fallback |
-| mppsui.dev in monorepo or separate? | Monorepo vs new repo | ✅ Separate repo (`mission69b/mppsui`) — own CI/CD cadence |
-| `@mppsui` npm org ownership? | Solo vs shared with Mysten | ✅ Registered under mission69b, discuss with Mysten later |
+| suimpp.dev in monorepo or separate? | Monorepo vs new repo | ✅ Website in t2000 monorepo (`apps/suimpp`). npm packages in separate repo (`mission69b/suimpp`) |
+| suimpp.dev database? | Proxy gateway vs own DB vs shared | ✅ Own NeonDB — multi-server aggregation from day one (Option B) |
+| `@suimpp` npm org ownership? | Solo vs shared with Mysten | ✅ Registered under mission69b, discuss with Mysten later |
 | OpenAPI doc generation? | Manual vs auto-generated from service catalog | ✅ Auto-generate — 88 endpoints is too many to maintain by hand |
 
 ### Deferred (build when needed)

@@ -11,7 +11,7 @@ Proxies requests to upstream APIs (OpenAI, Anthropic, Brave, Firecrawl, etc.) be
 ## Stack
 
 - **Next.js 16** (App Router, Vercel deployment)
-- **mppx** + `@mppsui/mpp` for payment verification
+- **mppx** + `@suimpp/mpp` for payment verification
 - **Prisma** for payment logging (NeonDB)
 - **Tailwind** for the service catalog and explorer UI
 

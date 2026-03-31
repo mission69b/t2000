@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Credential, Method } from 'mppx';
-import { suiCharge } from '@mppsui/mpp/client';
+import { suiCharge } from '@suimpp/mpp/client';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';

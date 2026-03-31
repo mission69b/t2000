@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Mppx } from 'mppx/client';
-import { sui } from '@mppsui/mpp/client';
+import { sui } from '@suimpp/mpp/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 
