@@ -4,6 +4,30 @@ import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
 
+const REGISTRY_URL = 'https://suimpp.dev/api/report';
+const SERVER_URL = 'https://mpp.t2000.ai';
+
+function reportToRegistry(data: {
+  service: string;
+  endpoint: string;
+  amount: string;
+  digest: string | null;
+}) {
+  if (!data.digest) return;
+  fetch(REGISTRY_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      digest: data.digest,
+      amount: data.amount,
+      service: data.service,
+      endpoint: data.endpoint,
+      serverUrl: SERVER_URL,
+      recipient: TREASURY_ADDRESS,
+    }),
+  }).catch(() => {});
+}
+
 type RouteHandler = (request: Request) => Promise<Response> | Response;
 
 function createMppx() {
@@ -105,12 +129,9 @@ export function chargeProxy(
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const receipt = response.headers.get('Payment-Receipt');
-      logPayment({
-        service,
-        endpoint,
-        amount,
-        digest: parseReceiptDigest(receipt),
-      }).catch(() => {});
+      const digest = parseReceiptDigest(receipt);
+      logPayment({ service, endpoint, amount, digest }).catch(() => {});
+      reportToRegistry({ service, endpoint, amount, digest });
     }
 
     return response;
@@ -152,12 +173,9 @@ export function chargeCustom(
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const receipt = response.headers.get('Payment-Receipt');
-      logPayment({
-        service,
-        endpoint,
-        amount: resolvedAmount,
-        digest: parseReceiptDigest(receipt),
-      }).catch(() => {});
+      const digest = parseReceiptDigest(receipt);
+      logPayment({ service, endpoint, amount: resolvedAmount, digest }).catch(() => {});
+      reportToRegistry({ service, endpoint, amount: resolvedAmount, digest });
     }
 
     return response;
