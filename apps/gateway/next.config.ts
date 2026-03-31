@@ -11,6 +11,18 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
+  redirects: async () => [
+    {
+      source: "/spec",
+      destination: "https://suimpp.dev/spec",
+      permanent: true,
+    },
+    {
+      source: "/docs",
+      destination: "https://suimpp.dev/docs",
+      permanent: true,
+    },
+  ],
 };
 
 export default nextConfig;

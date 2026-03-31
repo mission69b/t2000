@@ -425,16 +425,16 @@ Gateway already logs payments with unique digest constraint (replay protection).
 
 **Future (Phase 3+):** Add on-chain re-verification of reported digests for trustless multi-server scenarios.
 
-### Phase 2: Spec + Docs — 2-3 days
+### Phase 2: Spec + Docs — ✅ DONE
 
 **Goal:** Become the canonical reference for Sui MPP.
 
-- [ ] `/spec` page — render the Sui MPP charge method spec (MDX, migrate from gateway's `/spec`)
-- [ ] `/docs` page — developer guide split into "Pay for APIs" and "Accept Payments"
-- [ ] Add Spec and Docs nav links
-- [ ] Code examples with copy buttons
-- [ ] `suimpp.dev/spec` becomes the URL shared in MPP ecosystem
-- [ ] Enable redirects on gateway: `/spec` → `suimpp.dev/spec`, `/docs` → `suimpp.dev/docs`
+- [x] `/spec` page — Sui charge method specification (protocol flow, challenge/credential format, verification logic, security considerations)
+- [x] `/docs` page — developer guide split into "Pay for APIs" and "Accept Payments" tracks with step-by-step walkthroughs
+- [x] Add Spec and Docs nav links
+- [x] Code examples with copy buttons (CopyBlock component)
+- [x] `suimpp.dev/spec` becomes the URL shared in MPP ecosystem
+- [x] Enable redirects on gateway: `/spec` → `suimpp.dev/spec`, `/docs` → `suimpp.dev/docs`
 
 ### Phase 3: Full Explorer — 3-4 days
 
@@ -541,7 +541,7 @@ The live payment feed on the homepage IS the explorer for Phase 1. No separate p
 | **Phase 0** | Payment logging in gateway | ~~1 day~~ | ✅ DONE |
 | **Phase 1** | Homepage + servers + own DB | ~~3-4 days~~ | ✅ DONE |
 | **Phase 1.5** | Rename @mppsui → @suimpp + library reporting | ~~1-2 days~~ | ✅ DONE |
-| **Phase 2** | Spec + Docs | 2-3 days | Become canonical reference |
+| **Phase 2** | Spec + Docs | ~~2-3 days~~ | ✅ DONE |
 | **Phase 3** | Full Explorer | 3-4 days | Deep on-chain analytics |
 | **Phase 4** | Server registration | 2-3 days | Platform play |
 

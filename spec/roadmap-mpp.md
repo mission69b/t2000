@@ -849,9 +849,9 @@ Ships independently. The `@suimpp` org launches with both packages:
 | OG images + `generateMetadata` + sitemap | `apps/suimpp` | Phase 1 |
 | Ingestion cron — pull payments from registered servers | `/api/cron/ingest` | Phase 1.5 |
 | Live stats — ISR for payment count, volume, server count | `/` | Phase 1.5 |
-| Spec page — migrate from gateway, expand for protocol | `/spec` | Phase 2 |
-| Docs page — "Pay for APIs" + "Accept Payments" guides | `/docs` | Phase 2 |
-| Enable `/spec` and `/docs` redirects on gateway | `apps/gateway` | Phase 2 |
+| ✅ Spec page — Sui charge method specification | `/spec` | Phase 2 |
+| ✅ Docs page — "Pay for APIs" + "Accept Payments" guides | `/docs` | Phase 2 |
+| ✅ Enable `/spec` and `/docs` redirects on gateway | `apps/gateway` | Phase 2 |
 | Full payment explorer — pagination, charts, per-server | `/explorer` | Phase 3 |
 | Server registration — OpenAPI validation, live preview | `/register` | Phase 4 |
 | Deploy to Vercel with `suimpp.dev` domain | Vercel | Phase 1 |
