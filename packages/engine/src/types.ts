@@ -68,6 +68,7 @@ export interface ToolContext {
   agent?: unknown; // T2000 instance — typed loosely to avoid circular dep at type level
   mcpManager?: unknown; // McpClientManager — typed loosely to avoid circular dep
   walletAddress?: string; // User's Sui wallet address (required for MCP reads)
+  suiRpcUrl?: string; // Sui JSON-RPC URL for direct chain queries
   signal?: AbortSignal;
 }
 
@@ -97,6 +98,7 @@ export interface EngineConfig {
   agent?: unknown; // T2000 instance
   mcpManager?: unknown; // McpClientManager for MCP-based reads
   walletAddress?: string; // User's Sui wallet address (required for MCP reads)
+  suiRpcUrl?: string; // Sui JSON-RPC URL for direct chain queries (wallet coins, etc.)
   tools?: Tool[];
   systemPrompt?: string;
   model?: string;

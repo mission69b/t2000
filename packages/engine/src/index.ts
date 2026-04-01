@@ -126,5 +126,9 @@ export { getDefaultTools } from './tools/index.js';
 // Tool utilities
 export { requireAgent, hasNaviMcp, getMcpManager, getWalletAddress } from './tools/utils.js';
 
+// Sui RPC utilities
+export { fetchWalletCoins } from './sui-rpc.js';
+export type { WalletCoin, SuiCoinBalance } from './sui-rpc.js';
+
 // System prompt
 export { DEFAULT_SYSTEM_PROMPT } from './prompt.js';

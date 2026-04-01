@@ -34,6 +34,7 @@ export class QueryEngine {
   private readonly agent: unknown;
   private readonly mcpManager: unknown;
   private readonly walletAddress: string | undefined;
+  private readonly suiRpcUrl: string | undefined;
   private readonly txMutex = new TxMutex();
   private readonly costTracker: CostTracker;
 
@@ -45,6 +46,7 @@ export class QueryEngine {
     this.agent = config.agent;
     this.mcpManager = config.mcpManager;
     this.walletAddress = config.walletAddress;
+    this.suiRpcUrl = config.suiRpcUrl;
     this.model = config.model;
     this.maxTurns = config.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
@@ -76,6 +78,7 @@ export class QueryEngine {
       agent: this.agent,
       mcpManager: this.mcpManager,
       walletAddress: this.walletAddress,
+      suiRpcUrl: this.suiRpcUrl,
       signal,
     };
 
