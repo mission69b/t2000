@@ -12,22 +12,22 @@ export function ResultCard({ success, title, details, txUrl, onDismiss }: Result
   return (
     <div
       className={[
-        'rounded-sm p-4 space-y-2 feed-row',
-        success ? 'bg-accent-dim border border-accent/20' : 'bg-red-500/10 border border-red-500/20',
+        'rounded-lg p-4 space-y-2 feed-row',
+        success ? 'bg-success/5 border border-success/20' : 'bg-error/5 border border-error/20',
       ].join(' ')}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           {success ? (
-            <svg className="h-5 w-5 text-accent flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg className="h-5 w-5 text-success flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ) : (
-            <svg className="h-5 w-5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg className="h-5 w-5 text-error flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           )}
-          <p className={`text-sm font-medium ${success ? 'text-accent' : 'text-red-400'}`}>
+          <p className={`text-sm font-medium ${success ? 'text-success' : 'text-error'}`}>
             {title}
           </p>
         </div>
@@ -43,9 +43,9 @@ export function ResultCard({ success, title, details, txUrl, onDismiss }: Result
             href={txUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-sm text-accent/70 hover:text-accent pl-7 font-mono transition"
+            className="block text-sm text-info hover:underline pl-7 font-mono transition"
           >
-            {details} ↗
+            {details} &#8599;
           </a>
         ) : (
           <p className="text-sm text-muted pl-7">{details}</p>

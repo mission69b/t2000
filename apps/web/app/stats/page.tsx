@@ -51,8 +51,8 @@ export default function StatsPage() {
               Docs
             </a>{" "}
             ·{" "}
-            <a href="/demo" className="text-accent hover:underline">
-              Demos
+            <a href="/mpp" className="text-accent hover:underline">
+              MPP
             </a>
           </p>
         </footer>

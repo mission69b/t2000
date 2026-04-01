@@ -579,8 +579,8 @@ export default function MppPage() {
               Docs
             </Link>
             {" · "}
-            <Link href="/demo" className="text-accent hover:underline">
-              Demos
+            <Link href="/stats" className="text-accent hover:underline">
+              Stats
             </Link>
             {" · "}
             <a

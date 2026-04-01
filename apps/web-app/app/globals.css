@@ -1,17 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --background: #040406;
-  --surface: #080a0f;
-  --panel: #0d1018;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-bright: rgba(255, 255, 255, 0.14);
-  --foreground: #e8e6e0;
-  --muted: #7b8494;
-  --dim: #596170;
-  --accent: #00d68f;
-  --accent-dim: rgba(0, 214, 143, 0.12);
-  --accent-glow: rgba(0, 214, 143, 0.25);
+  /* Neutral palette (N100–N900) */
+  --background: #FFFFFF;
+  --surface: #F7F7F7;
+  --panel: #FFFFFF;
+  --border: #E5E5E5;
+  --border-bright: #CCCCCC;
+  --foreground: #191919;
+  --muted: #707070;
+  --dim: #9F9F9F;
+  --accent: #191919;
+  --accent-dim: #F7F7F7;
+
+  /* Semantic colors */
+  --success: #3CC14E;
+  --error: #F0201D;
+  --warning: #FFB014;
+  --info: #0966F6;
+
+  /* Elevation shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 @theme inline {
@@ -23,41 +35,20 @@
   --color-dim: var(--dim);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
-  --color-accent-glow: var(--accent-glow);
   --color-border: var(--border);
   --color-border-bright: var(--border-bright);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-ibm-plex-mono);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.4;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
-  pointer-events: none;
-  z-index: 1;
 }
 
 @keyframes feed-slide-in {
@@ -67,11 +58,6 @@ body::after {
 
 .feed-row {
   animation: feed-slide-in 0.3s ease-out both;
-}
-
-@keyframes line-appear {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes shimmer {

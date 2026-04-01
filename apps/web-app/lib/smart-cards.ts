@@ -137,7 +137,7 @@ export function deriveSmartCards(state: AccountState): SmartCardData[] {
       cards.push({
         type: 'all-good',
         icon: '👋',
-        title: 'Welcome to t2000',
+        title: 'Welcome to Audric',
         body: 'Add funds to get started. Send SUI from any exchange (Binance, Coinbase) or any Sui wallet to your address.',
         actions: [{ label: 'Show my address', variant: 'primary', chipFlow: 'receive' }],
       });

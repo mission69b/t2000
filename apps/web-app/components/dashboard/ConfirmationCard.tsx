@@ -18,7 +18,7 @@ export function ConfirmationCard({
   loading,
 }: ConfirmationCardProps) {
   return (
-    <div className="rounded-sm border border-border bg-surface p-5 space-y-4 feed-row">
+    <div className="rounded-lg border border-border bg-surface p-5 space-y-4 shadow-[var(--shadow-card)] feed-row">
       <p className="font-medium text-foreground">{title}</p>
 
       <div className="space-y-2">
@@ -34,7 +34,7 @@ export function ConfirmationCard({
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex-1 bg-accent py-3 text-sm font-semibold text-background tracking-[0.05em] uppercase transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+          className="flex-1 bg-foreground rounded-lg py-3 text-sm font-semibold text-background tracking-[0.05em] uppercase transition hover:opacity-80 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -42,7 +42,7 @@ export function ConfirmationCard({
               Processing...
             </>
           ) : (
-            <>✓ {confirmLabel}</>
+            <>&#10003; {confirmLabel}</>
           )}
         </button>
         <button

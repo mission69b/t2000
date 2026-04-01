@@ -1,23 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, IBM_Plex_Mono } from 'next/font/google';
+import { Instrument_Serif } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import { Analytics } from '@vercel/analytics/next';
 import { AppProviders } from '@/components/providers/AppProviders';
 import './globals.css';
 
-const inter = Inter({
-  variable: '--font-inter',
+const instrumentSerif = Instrument_Serif({
+  variable: '--font-instrument-serif',
   subsets: ['latin'],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: '--font-ibm-plex-mono',
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: '400',
 });
 
 export const metadata: Metadata = {
-  title: 't2000 — A bank account that works for you',
-  description: 'Earn yield on idle funds. Pay for services without accounts. No seed phrase. No keys.',
+  title: 'Audric — Your money, handled.',
+  description: 'Earn yield on USDC. Pay for APIs. Send instantly. All by conversation.',
 };
 
 export const viewport: Viewport = {
@@ -25,7 +22,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#040406',
+  themeColor: '#FFFFFF',
 };
 
 export default function RootLayout({
@@ -34,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${ibmPlexMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${instrumentSerif.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <AppProviders>{children}</AppProviders>
         <Analytics />

@@ -29,7 +29,7 @@ export function ContextualChips({ chips, onChipFlow, onAgentPrompt, onDismiss }:
               onAgentPrompt(chip.agentPrompt || chip.label);
             }
           }}
-          className="group relative flex shrink-0 items-center gap-1.5 rounded-full border border-accent/20 bg-accent/5 px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-accent/10 hover:border-accent/40 active:scale-[0.97]"
+          className="group relative flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-border/30 hover:border-border-bright active:scale-[0.97]"
         >
           <span className="text-sm leading-none">{chip.icon}</span>
           <span className="whitespace-nowrap">{chip.label}</span>

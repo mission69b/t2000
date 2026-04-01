@@ -24,6 +24,7 @@ t2000/
 ├── apps/web-app     ← Legacy consumer app (being replaced by audric.ai)
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
+├── packages/engine  ← @t2000/engine (agent engine — QueryEngine, tools, MCP)
 ├── packages/mcp     ← @t2000/mcp (npm)
 ├── packages/contracts ← Sui Move smart contracts
 ├── t2000-skills/    ← Agent skill definitions
@@ -90,6 +91,71 @@ pnpm typecheck              # TypeScript check all packages
 pnpm --filter @t2000/cli build   # Build specific package
 pnpm --filter gateway dev        # Dev specific app
 ```
+
+### Engine commands
+
+```bash
+pnpm --filter @t2000/engine build      # Build (tsup → ESM)
+pnpm --filter @t2000/engine test       # Run tests (vitest)
+pnpm --filter @t2000/engine typecheck  # TypeScript strict check
+pnpm --filter @t2000/engine lint       # ESLint
+```
+
+---
+
+## Engine (`@t2000/engine`)
+
+Powers **Audric** — the conversational finance agent. Wraps `@t2000/sdk` in an LLM-driven loop.
+
+### Import patterns
+
+```ts
+// Core
+import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
+
+// Tool building
+import { buildTool, toolsToDefinitions, findTool } from '@t2000/engine';
+
+// Orchestration
+import { TxMutex, runTools } from '@t2000/engine';
+
+// Streaming + sessions
+import { serializeSSE, parseSSE, PermissionBridge, engineToSSE } from '@t2000/engine';
+import { MemorySessionStore } from '@t2000/engine';
+
+// Context + cost
+import { estimateTokens, compactMessages, CostTracker } from '@t2000/engine';
+
+// MCP client (consume external MCPs)
+import { McpClientManager, NAVI_MCP_CONFIG } from '@t2000/engine';
+
+// MCP server adapter (expose engine tools)
+import { buildMcpTools, registerEngineTools } from '@t2000/engine';
+```
+
+### Engine event types
+
+```ts
+type EngineEvent =
+  | { type: 'text_delta'; text: string }
+  | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
+  | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
+  | { type: 'permission_request'; toolName: string; toolUseId: string; input: unknown; description: string; resolve: (approved: boolean) => void }
+  | { type: 'turn_complete'; stopReason: StopReason }
+  | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
+  | { type: 'error'; error: Error };
+```
+
+### Tool permission levels
+
+- `auto` — read-only tools, execute without approval
+- `confirm` — write tools, yield `permission_request` before execution
+- `explicit` — manual-only, never dispatched by LLM
+
+### Built-in tools
+
+Read (5): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`
+Write (7): `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`
 
 ---
 

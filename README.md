@@ -2,16 +2,16 @@
   <strong>t2000</strong>
 </p>
 
-<h3 align="center">A bank account for AI agents.</h3>
+<h3 align="center">The infrastructure behind Audric.</h3>
 
 <p align="center">
-  Checking · Savings · Credit · Pay · Send
+  CLI · SDK · MCP · Engine · Gateway
   <br />
-  Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial · BYOK LLM
+  Built on <a href="https://sui.io">Sui</a> · Open source · Non-custodial
 </p>
 
 <p align="center">
-  <a href="https://t2000.ai">Website</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@suimpp/mpp">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
+  <a href="https://t2000.ai">t2000.ai</a> · <a href="https://audric.ai">Audric</a> · <a href="https://t2000.ai/docs">Docs</a> · <a href="https://www.npmjs.com/package/@t2000/cli">CLI</a> · <a href="https://www.npmjs.com/package/@t2000/sdk">SDK</a> · <a href="https://www.npmjs.com/package/@suimpp/mpp">MPP</a> · <a href="https://mpp.t2000.ai">Services</a> · <a href="https://www.npmjs.com/package/@t2000/mcp">MCP</a>
 </p>
 
 <p align="center">
@@ -20,13 +20,10 @@
 
 ---
 
-Your agent can hold money, earn yield, borrow against savings, and pay for APIs — all in one CLI command. No human in the loop.
+t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. Five packages give AI agents (and developers) everything they need to save, pay, send, borrow, and receive USDC.
 
 ```typescript
-// Load existing wallet
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
-// Or create a new one
-const { agent } = await T2000.init({ pin: 'my-secret' });
 
 await agent.send({ to: '0x...', amount: 50 });
 await agent.save({ amount: 100 });    // earn ~2–8% APY (auto-selects best rate)
@@ -35,51 +32,25 @@ await agent.repay({ amount: 20 });    // repay debt
 await agent.withdraw({ amount: 50 }); // always returns USDC
 ```
 
-## See it work
+## Packages
+
+| Package | Description | Install |
+|---------|-------------|---------|
+| [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
+| [`@t2000/engine`](packages/engine) | Agent engine — QueryEngine, financial tools, MCP client/server | `npm install @t2000/engine` |
+| [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
+| [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
+| [`@suimpp/mpp`](https://github.com/mission69b/suimpp) | MPP payment client (Sui USDC) | `npm install @suimpp/mpp` |
+
+## Brand Architecture
 
 ```
-❯ t2000 init
-
-  Step 1 of 3 — Create wallet
-  Creating agent wallet...
-  ✓ Keypair generated
-  ✓ Network  Sui mainnet
-  ✓ Gas sponsorship  enabled
-  ✓ Checking  ✓ Savings  ✓ Credit
-  🎉 Bank account created
-  Address: 0x8b3e...d412
-
-  Step 2 of 3 — Connect AI platforms
-  ✓ Claude Desktop  configured
-  ✓ Cursor  configured
-
-  Step 3 of 3 — Set safeguards
-  ✓ Safeguards configured
-
-  ✓ You're all set
-  Restart Claude Desktop / Cursor and ask: "What's my t2000 balance?"
-
-❯ t2000 balance
-  Available:  $85.00   (checking — spendable)
-  Savings:    $80.00   (earning 4.86% APY)
-  ──────────────────────────────────────
-  Total:      $165.00
+suimpp.dev     → Protocol (Sui MPP standard, ecosystem, registry)
+t2000.ai       → Infrastructure (CLI, SDK, MCP, engine, gateway)
+audric.ai      → Consumer product (app, conversational banking)
 ```
 
-## Why t2000?
-
-AI agents need money. They need to pay for APIs, receive payments, hold funds, and eventually — fund themselves. But today, giving an agent a wallet means teaching it about gas tokens, transaction signing, RPC endpoints, and DeFi protocols.
-
-**t2000 makes all of that invisible.**
-
-| Problem | t2000 Solution |
-|---------|---------------|
-| Agents can't hold money | Non-custodial bank account in one line of code |
-| Gas tokens are confusing | Auto-managed — agent never sees SUI |
-| Idle funds lose value | Automatic yield via NAVI (~2–8% APY) |
-| DeFi is complex | `save()`, `borrow()`, `repay()`, `withdraw()` — four methods |
-| No standard payment protocol | [MPP](https://mpp.dev) client + [gateway](https://mpp.t2000.ai) — pay per request with Sui USDC |
-| No standard wallet interface | SDK + CLI + HTTP API for any language |
+All npm packages (`@t2000/cli`, `@t2000/sdk`, `@t2000/mcp`, `@t2000/engine`), the GitHub repo, and gateway domain stay as t2000. [Audric](https://audric.ai) is the consumer-facing brand. See [BRAND.md](BRAND.md) for full rationale.
 
 ## Getting Started
 
@@ -99,7 +70,7 @@ t2000 pay https://api.example.com  # Pay for MPP-protected APIs
 
 ## How it works
 
-t2000 wraps five financial primitives into a single interface that any AI agent can use:
+t2000 wraps five financial primitives into a single interface:
 
 | Feature | What it does | How |
 |---------|-------------|-----|
@@ -107,12 +78,10 @@ t2000 wraps five financial primitives into a single interface that any AI agent 
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) (MCP reads + thin tx builders) |
 | **Credit** | Borrow USDC against savings | NAVI collateralized loans |
 | **Payments (MPP)** | Pay for API resources with USDC | [@suimpp/mpp](https://github.com/mission69b/suimpp) + [MPP Gateway](https://mpp.t2000.ai) |
-| **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
+| **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set`, `t2000 lock/unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
-Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
-
-Multi-step on-chain flows execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts — no funds left in intermediate states.
+Gas is invisible — auto-managed SUI with sponsored fallback. Multi-step operations execute as single atomic PTBs.
 
 ### Fees
 
@@ -123,27 +92,7 @@ Multi-step on-chain flows execute as single atomic Programmable Transaction Bloc
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
-| Pay (MPP) | Free | Agent pays the API price, no t2000 surcharge |
-
-### The self-funding loop
-
-At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the agent becomes self-funding.
-
-| Supplied | APY | Monthly Yield | Covers |
-|----------|-----|---------------|--------|
-| $100 | ~8% | $0.67 | — |
-| $500 | ~8% | $3.33 | Light agent ($3/mo) |
-| $2,000 | ~8% | $13.33 | Medium agent ($15/mo) |
-| $10,000 | ~8% | $66.67 | Heavy agent |
-
-## Packages
-
-| Package | Description | Install |
-|---------|-------------|---------|
-| [`@t2000/sdk`](packages/sdk) | TypeScript SDK — core library | `npm install @t2000/sdk` |
-| [`@t2000/cli`](packages/cli) | Terminal bank account + HTTP API | `npm install -g @t2000/cli` |
-| [`@t2000/mcp`](packages/mcp) | MCP server for Claude Desktop, Cursor, Windsurf | Included with CLI |
-| [`@suimpp/mpp`](https://github.com/mission69b/suimpp) | MPP payment client (Sui USDC) | `npm install @suimpp/mpp` |
+| Pay (MPP) | Free | Agent pays the API price, no surcharge |
 
 ## SDK
 
@@ -151,7 +100,6 @@ At ~$2,000 supplied, yield from savings offsets typical AI compute costs — the
 import { T2000 } from '@t2000/sdk';
 
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
-// or: const agent = T2000.fromPrivateKey('suiprivkey1q...');
 ```
 
 | Category | Method | Description |
@@ -169,19 +117,36 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.positions()` | Open DeFi positions |
 | **Safeguards** | `agent.enforcer.getConfig()` | Safeguard settings |
 | | `agent.enforcer.set({ maxPerTx?, maxDailySend? })` | Set limits |
-| | `agent.enforcer.lock()` | Lock agent (freeze all operations) |
+| | `agent.enforcer.lock()` | Lock agent |
 | | `agent.enforcer.unlock(pin)` | Unlock agent |
-| | `agent.enforcer.check(amount)` | Check if amount allowed |
-| | `agent.enforcer.recordUsage(amount)` | Record send for daily limit |
-| | `agent.enforcer.isConfigured()` | Whether safeguards are set up |
-| **Payments** | `agent.pay({ url, maxPrice })` | Pay for MPP-protected API (auto 402 handling) |
+| **Payments** | `agent.pay({ url, maxPrice })` | Pay for MPP-protected API |
 | **Contacts** | `agent.contacts.list()` | List saved contacts |
 | | `agent.contacts.add(name, address)` | Add a contact |
-| | `agent.contacts.remove(name)` | Remove a contact |
-| | `agent.contacts.get(name)` | Get contact address |
-| | `agent.contacts.resolve(nameOrAddress)` | Resolve name → address |
+| | `agent.contacts.resolve(nameOrAddress)` | Resolve name to address |
 
-Full API reference → [`@t2000/sdk` README](packages/sdk)
+Full API reference: [`@t2000/sdk` README](packages/sdk)
+
+## Engine
+
+`@t2000/engine` powers [Audric](https://audric.ai) — the conversational finance agent. It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
+
+```typescript
+import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
+
+const engine = new QueryEngine({
+  provider: new AnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY }),
+  agent,
+  tools: getDefaultTools(),
+});
+
+for await (const event of engine.submitMessage('What is my balance?')) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+}
+```
+
+12 built-in tools (5 read, 7 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP when available, falling back to the SDK.
+
+Full reference: [`@t2000/engine` README](packages/engine)
 
 ## CLI
 
@@ -197,25 +162,19 @@ t2000 save 50                      Earn yield (best rate)
 t2000 withdraw 25                  Withdraw savings (always USDC)
 t2000 borrow 10                    Borrow USDC against collateral
 t2000 repay 10                     Repay debt
-t2000 earnings                     Yield earned
 t2000 health                       Health factor
 t2000 rates                        Current APYs
 
 # MPP Payments
 t2000 pay https://api.example.com  Pay for API resource
 
-# Earn (directory)
-t2000 earn                         Show all earning opportunities
-
 # Contacts
 t2000 contacts                     List saved contacts
 t2000 contacts add <name> <addr>   Save a named contact
-t2000 contacts remove <name>       Remove a contact
 
 # Safeguards
 t2000 config show                  View safeguard settings
 t2000 config set maxPerTx 500      Set per-transaction limit
-t2000 config set maxDailySend 1000 Set daily send limit
 t2000 lock                         Lock agent (freeze all operations)
 t2000 unlock                       Unlock agent (requires PIN)
 
@@ -225,48 +184,21 @@ t2000 serve --port 3001            Start HTTP API server
 
 Every command supports `--json` for structured output and `--yes` to skip confirmations.
 
-Full command reference → [`@t2000/cli` README](packages/cli)
+Full command reference: [`@t2000/cli` README](packages/cli)
 
-## HTTP API
+## MCP Server
 
-For agents written in Python, Go, Rust, or any language:
-
-```bash
-t2000 serve --port 3001
-# ✓ Auth token: t2k_a1b2c3d4e5f6...
-```
+Connect Claude Desktop, Cursor, Windsurf, or any MCP client:
 
 ```bash
-curl -H "Authorization: Bearer t2k_..." http://localhost:3001/v1/balance
-curl -X POST -H "Authorization: Bearer t2k_..." \
-  -d '{"to":"0x...","amount":10}' \
-  http://localhost:3001/v1/send
+t2000 mcp install
 ```
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v1/balance` | Balance breakdown |
-| GET | `/v1/earnings` | Yield summary |
-| GET | `/v1/rates` | Current APYs |
-| GET | `/v1/health-factor` | Health factor |
-| POST | `/v1/send` | Send USDC |
-| POST | `/v1/save` | Deposit to savings |
-| POST | `/v1/withdraw` | Withdraw from savings |
-| POST | `/v1/borrow` | Borrow USDC |
-| POST | `/v1/repay` | Repay debt |
-| GET | `/v1/events` | SSE stream (yield, balance changes) |
+Auto-configures Claude Desktop + Cursor. 25 tools, 16 prompts. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
 
 ## MPP Payments
 
-t2000 supports [MPP (Machine Payments Protocol)](https://mpp.dev) for paid APIs. When a server returns `402 Payment Required`, t2000 automatically pays with Sui USDC and retries — no API keys, no subscriptions, no human approval.
-
-```typescript
-const result = await agent.pay({
-  url: 'https://mpp.t2000.ai/openai/v1/chat/completions',
-  body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'Hello' }] },
-  maxPrice: 0.05,
-});
-```
+t2000 supports [MPP (Machine Payments Protocol)](https://mpp.dev) for paid APIs. When a server returns `402 Payment Required`, t2000 automatically pays with Sui USDC and retries.
 
 ```bash
 t2000 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
@@ -274,60 +206,19 @@ t2000 pay "https://mpp.t2000.ai/openai/v1/chat/completions" \
   --max-price 0.05
 ```
 
-The [MPP Gateway](https://mpp.t2000.ai) proxies 40 services (88 endpoints) — OpenAI, Anthropic, fal.ai, Brave, Lob, and more — all payable with Sui USDC.
+The [MPP Gateway](https://mpp.t2000.ai) proxies 40+ services (88 endpoints) — OpenAI, Anthropic, fal.ai, Brave, Lob, and more.
 
-Full reference → [`@suimpp/mpp` README](https://github.com/mission69b/suimpp/tree/main/packages/mpp)
-
-## MCP Server
-
-Connect Claude Desktop, Cursor, Windsurf, or any MCP client to your t2000 agent:
-
-```bash
-t2000 mcp install
-```
-
-**Architecture:** User → MCP Client (Claude/Cursor/Windsurf) → @t2000/mcp → @t2000/sdk → Sui
-
-Auto-configures Claude Desktop + Cursor. Safeguard enforced. Supports 40 MPP services (88 endpoints). See the [MCP setup guide](docs/mcp-setup.md) for full instructions.
+Full reference: [`@suimpp/mpp` README](https://github.com/mission69b/suimpp/tree/main/packages/mpp)
 
 ## Agent Skills
-
-Install one package and your AI agent gains financial capabilities:
 
 ```bash
 npx skills add mission69b/t2000-skills
 ```
 
-Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goose, and [20+ more](https://agentskills.io).
+Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, and [20+ more](https://agentskills.io).
 
-| Skill | Trigger |
-|-------|---------|
-| `t2000-check-balance` | "check balance", "how much USDC do I have" |
-| `t2000-send` | "send 10 USDC to..." |
-| `t2000-save` | "deposit to savings", "earn yield" |
-| `t2000-withdraw` | "withdraw from savings" |
-| `t2000-borrow` | "borrow 40 USDC" |
-| `t2000-repay` | "repay my loan" |
-| `t2000-pay` | "call that paid API" |
-| `t2000-contacts` | "list contacts", "add contact" |
-
-Full reference → [Agent Skills README](t2000-skills)
-
-## Comparison
-
-| Feature | Coinbase Agent Kit | t2000 |
-|---------|--------------------|-------|
-| Chain | Base only | Sui |
-| Send / receive | ✓ | ✓ |
-| Earn yield on savings | — | ✓ NAVI (~2–8% APY) |
-| Borrow / credit line | — | ✓ Borrow against savings |
-| MPP client | ✓ Base / Solana | ✓ Sui · OpenAI, Anthropic, fal, Firecrawl |
-| Agent Skills | ✓ | ✓ |
-| Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
-| DeFi composability | — | ✓ Atomic PTB multi-step |
-| Health factor protection | — | ✓ On-chain enforcement |
-| Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
-| MCP Server | — | ✓ AI prompts + MPP services |
+Full reference: [Agent Skills README](t2000-skills)
 
 ## Security
 
@@ -335,10 +226,9 @@ Full reference → [Agent Skills README](t2000-skills)
 - **Encrypted storage** — AES-256-GCM with PIN-derived key (scrypt)
 - **Bearer auth** — HTTP API requires token generated at startup
 - **Rate limiting** — 10 req/s default prevents runaway drain
-- **Risk guards** — health factor checks block risky withdrawals/borrows
+- **Risk guards** — health factor checks block risky operations
 - **Transaction simulation** — dry-run before signing with Move abort code parsing
 - **Circuit breaker** — gas station pauses if SUI price moves >20% in 1 hour
-- **Replay protection** — on-chain nonce enforcement via Sui Payment Kit
 
 ## Repository structure
 
@@ -346,17 +236,19 @@ Full reference → [Agent Skills README](t2000-skills)
 t2000/
 ├── packages/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
+│   ├── engine/           @t2000/engine — Agent engine (QueryEngine, tools, MCP)
 │   ├── cli/              @t2000/cli — Terminal bank account
 │   ├── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
-│   └── (moved to github.com/mission69b/suimpp)
+│   └── contracts/        Move smart contracts (mpp-sui)
 │
 ├── apps/
-│   ├── gateway/           MPP Gateway — proxied AI APIs (mpp.t2000.ai)
-│   ├── server/            Gas station + checkpoint indexer
-│   └── web/               Landing page + docs (Next.js)
+│   ├── web-app/          Audric consumer app (audric.ai) — zkLogin, engine chat
+│   ├── web/              t2000.ai — developer/infra landing page + docs
+│   ├── gateway/          MPP Gateway — proxied AI APIs (mpp.t2000.ai)
+│   └── server/           Gas station + checkpoint indexer (api.t2000.ai)
 │
 ├── t2000-skills/         Agent Skills for AI coding assistants
-├── infra/                AWS ECS deployment scripts
+├── spec/                 Product specs, design system
 └── .github/workflows/    CI/CD (lint → typecheck → test → deploy)
 ```
 
@@ -376,11 +268,9 @@ pnpm test         # All unit tests
 
 ```bash
 pnpm --filter @t2000/sdk test
-pnpm --filter @suimpp/mpp test
+pnpm --filter @t2000/engine test
 pnpm --filter @t2000/server test
 ```
-
-Integration tests run real transactions on Sui mainnet and require a funded wallet. See each package README for details.
 
 ## Tech stack
 
@@ -389,10 +279,12 @@ Integration tests run real transactions on Sui mainnet and require a funded wall
 | Chain | Sui (mainnet) |
 | Contracts | Move (treasury, admin, fee collection) |
 | SDK | TypeScript, `@mysten/sui` |
+| Engine | TypeScript, Anthropic Claude, MCP client/server |
 | CLI | Commander.js, Hono (HTTP API) |
 | DeFi | NAVI (lending, MCP-first) |
-| Web | Next.js 16, Tailwind CSS v4, React 19 |
-| Infra | AWS ECS Fargate |
+| Web | Next.js 15, Tailwind CSS v4, React 19 |
+| Consumer | Audric — zkLogin, Enoki gas, Geist + Instrument Serif |
+| Infra | AWS ECS Fargate, Vercel, Upstash Redis |
 | CI/CD | GitHub Actions |
 
 ## License

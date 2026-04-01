@@ -38,10 +38,10 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
           className={[
             'rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.95] border',
             'disabled:opacity-40 disabled:cursor-not-allowed',
-            'focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+            'focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
             activeFlow === chip.id
-              ? 'bg-accent-dim border-accent/40 text-accent'
-              : 'bg-panel border-border text-muted hover:border-border-bright hover:text-foreground',
+              ? 'bg-foreground border-foreground text-background'
+              : 'bg-background border-border text-muted hover:border-border-bright hover:text-foreground',
           ].join(' ')}
         >
           {chip.label}
@@ -50,7 +50,7 @@ export function ChipBar({ onChipClick, activeFlow, disabled }: ChipBarProps) {
       <button
         onClick={() => setExpanded(!expanded)}
         disabled={disabled}
-        className="rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.95] border bg-panel border-border text-muted hover:border-border-bright hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+        className="rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.95] border bg-background border-border text-muted hover:border-border-bright hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
         aria-expanded={expanded}
         aria-label={expanded ? 'Show fewer actions' : 'Show more actions'}
       >

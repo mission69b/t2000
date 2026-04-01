@@ -135,7 +135,7 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
     transformBody: (f) => {
       require(f, 'to', 'subject', 'body');
       return {
-        from: 'T2000 <noreply@t2000.ai>',
+        from: 'Audric <noreply@t2000.ai>',
         to: f.to,
         subject: f.subject,
         text: f.body,
@@ -162,7 +162,7 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
             address_country: f.to_country,
           },
           from: {
-            name: 't2000',
+            name: 'Audric',
             address_line1: '185 Berry St',
             address_city: 'San Francisco',
             address_state: 'CA',
@@ -170,8 +170,8 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
             address_country: 'US',
           },
           use_type: 'operational',
-          front: `<html><body style="margin:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;height:100%;font-family:Georgia,serif"><div style="text-align:center;padding:40px"><p style="color:#ffffff;font-size:18px;line-height:1.6;margin:0 0 24px">${(f.message ?? '').replace(/</g, '&lt;')}</p><div style="color:#00ff88;font-size:11px;font-family:monospace;opacity:0.5">sent with t2000</div></div></body></html>`,
-          back: `<html><body style="padding:40px;font-family:monospace;font-size:10px;color:#666"><div style="margin-bottom:8px;font-size:14px;color:#00ff88;font-weight:bold">t2000</div><div>sent with crypto</div></body></html>`,
+          front: `<html><body style="margin:0;background:#FFFFFF;display:flex;align-items:center;justify-content:center;height:100%;font-family:Georgia,serif"><div style="text-align:center;padding:40px"><p style="color:#191919;font-size:18px;line-height:1.6;margin:0 0 24px">${(f.message ?? '').replace(/</g, '&lt;')}</p><div style="color:#9F9F9F;font-size:11px;font-family:monospace">sent with Audric</div></div></body></html>`,
+          back: `<html><body style="padding:40px;font-family:monospace;font-size:10px;color:#707070"><div style="margin-bottom:8px;font-size:14px;color:#191919;font-weight:bold">Audric</div><div>sent with crypto</div></body></html>`,
           size: '4x6',
         },
       };
@@ -201,7 +201,7 @@ const SERVICE_MAP: Record<string, GatewayMapping> = {
             address_country: f.to_country,
           },
           from: {
-            name: 't2000',
+            name: 'Audric',
             address_line1: '185 Berry St',
             address_city: 'San Francisco',
             address_state: 'CA',

@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-01
+> Last verified: 2026-02-19
 
 ---
 
@@ -15,6 +15,7 @@
 | Package | Version |
 |---------|---------|
 | `@t2000/sdk` | `0.19.0` |
+| `@t2000/engine` | `0.1.0` |
 | `@t2000/cli` | `0.21.0` |
 | `@suimpp/mpp` | `0.1.0` |
 | `@t2000/mcp` | `0.21.0` |
@@ -28,8 +29,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 11 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts` |
+| Skill count | 13 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-engine`, `audric-chat` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -539,13 +540,75 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 
 ---
 
+## Engine (Audric)
+
+| Fact | Value |
+|------|-------|
+| Package | `@t2000/engine` |
+| Version | `0.1.0` |
+| Description | Agent engine for conversational finance — powers Audric |
+| Entry point | `@t2000/engine` (ESM only) |
+| Build | tsup → ESM bundle |
+| Test framework | Vitest |
+| Test count | 166 tests across 13 suites |
+
+### Engine Public Exports
+
+| Export | Type | Purpose |
+|--------|------|---------|
+| `QueryEngine` | class | Stateful conversation loop with tool dispatch |
+| `AnthropicProvider` | class | Streaming LLM provider (Anthropic Claude) |
+| `buildTool` | function | Typed tool factory with Zod + JSON schema |
+| `runTools` | function | Parallel reads / serial writes orchestration |
+| `TxMutex` | class | Transaction serialization lock |
+| `CostTracker` | class | Token usage + USD cost tracking |
+| `MemorySessionStore` | class | In-memory session store with TTL |
+| `McpClientManager` | class | Multi-server MCP client with caching |
+| `McpResponseCache` | class | Client-side TTL cache for MCP responses |
+| `adaptMcpTool` | function | Convert MCP tool → engine Tool |
+| `buildMcpTools` | function | Convert engine tools → MCP descriptors |
+| `registerEngineTools` | function | Register engine tools on MCP server |
+| `serializeSSE` / `parseSSE` | function | SSE wire format |
+| `PermissionBridge` | class | Map SSE permission IDs to resolve callbacks |
+| `engineToSSE` | function | Adapt QueryEngine → SSE stream |
+| `estimateTokens` | function | Rough token estimation |
+| `compactMessages` | function | Context window compaction |
+| `getDefaultTools` | function | All 12 built-in tools |
+| `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
+
+### Engine Tool Names
+
+| Read Tools | Write Tools |
+|-----------|------------|
+| `balance_check` | `save_deposit` |
+| `savings_info` | `withdraw` |
+| `health_check` | `send_transfer` |
+| `rates_info` | `borrow` |
+| `transaction_history` | `repay_debt` |
+| | `claim_rewards` |
+| | `pay_api` |
+
+### Engine Event Types
+
+`text_delta`, `tool_start`, `tool_result`, `permission_request`, `turn_complete`, `usage`, `error`
+
+### Engine Permission Levels
+
+| Level | Behavior |
+|-------|----------|
+| `auto` | Executes without user approval |
+| `confirm` | Yields `permission_request`, waits for `resolve(bool)` |
+| `explicit` | Manual-only — not dispatched by LLM |
+
+---
+
 ## MCP Server (AI Integration)
 
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
 | Version | `0.21.0` |
-| Description | A bank account for AI agents — MCP-first integration for AI platforms. Non-custodial. |
+| Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
 | Setup | `t2000 init` (guided wizard — wallet + MCP + safeguards in one command) |

@@ -75,9 +75,9 @@ Write it as a list of natural language triggers the agent should match against.
 
 ## What is t2000?
 
-t2000 is a bank account for AI agents on Sui — checking (send/receive),
+t2000 is the infrastructure behind [Audric](https://audric.ai) — checking (send/receive),
 savings (earn yield via NAVI), credit (borrow against deposits),
-and MCP-first messaging in one CLI command. USDC in, USDC out.
+and MCP-first integration in one CLI command. USDC in, USDC out.
 
 - **SDK**: `npm install @t2000/sdk`
 - **CLI**: `npx @t2000/cli init`

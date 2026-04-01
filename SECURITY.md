@@ -34,6 +34,7 @@ If you discover a security vulnerability in t2000, please report it responsibly.
 
 The following are in scope:
 - `@t2000/sdk` — Key management, transaction building, adapter routing
+- `@t2000/engine` — LLM orchestration, tool permissions, cost limits, abort handling
 - `@t2000/cli` — Input validation, PIN handling
 - `@suimpp/mpp` — MPP payment method (Sui USDC)
 - Server API — Gas sponsorship, fee ledger, sponsor endpoint
@@ -55,6 +56,16 @@ The following are in scope:
 - Circuit breaker for price volatility
 - Automated security scanning via GitHub Actions (CodeQL, dependency audit)
 - Adapter compliance test suite (317 tests)
+
+### Engine Security Model (`@t2000/engine`)
+
+- **Permission tiers** — Tools are classified as `auto` (read-only, no approval), `confirm` (requires user approval before execution), or `explicit` (manual-only, never auto-dispatched by LLM)
+- **Confirmation flow** — Write tools yield `permission_request` events; execution blocks until the client calls `resolve(true/false)`. `AbortSignal` prevents deadlocks if the client disconnects.
+- **Transaction serialization** — `TxMutex` ensures write tools execute sequentially, preventing Sui object version conflicts from concurrent mutations
+- **Budget limits** — `CostTracker` enforces configurable `budgetLimitUsd`; engine stops when the threshold is reached
+- **Max turns** — `QueryEngine` enforces `maxTurns` to prevent runaway LLM loops
+- **Input validation** — All tool inputs are validated through Zod schemas before execution
+- **Context isolation** — `MemorySessionStore` uses `structuredClone` to prevent cross-session data leaks
 
 ## Audit Status
 

@@ -953,7 +953,7 @@ function CliMoreSection() {
       <h2 id="cmd-mcp">
         t2000 mcp <Badge color="green">NEW</Badge>
       </h2>
-      <p>MCP server for AI platform integration. 32 tools, 19 prompts, safeguard enforced.</p>
+      <p>MCP server for AI platform integration. 25 tools, 16 prompts, safeguard enforced.</p>
       <DocTable
         headers={["Command", "Description"]}
         rows={[
@@ -1242,7 +1242,7 @@ function McpSection() {
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
         Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
-        35 tools, 20 prompts, stdio transport — your AI operates a full bank account.
+        25 tools, 16 prompts, stdio transport — your AI operates a full bank account.
       </p>
 
       <h2 id="mcp-setup">Setup — 2 commands</h2>
@@ -1714,7 +1714,7 @@ function ChangelogSection() {
         MCP-first AI advisor — connect Claude Desktop, Cursor, or Windsurf to your
         t2000 agent. <InlineCode>t2000 init</InlineCode> walks you through setup (wallet, MCP
         platforms, safeguards) and auto-configures your AI platform.
-        35 tools, 20 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
+        25 tools, 16 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
       </p>
 
       <h2 id="cl-0180">

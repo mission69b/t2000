@@ -493,7 +493,7 @@ const result = await agent.pay({
                 <span className="text-[10px] uppercase tracking-wider text-muted">MCP (Claude / Cursor)</span>
               </div>
               <p className="text-[11px] text-muted mb-3 leading-relaxed">
-                35 tools including <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_services</code> and <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_pay</code>. Just ask naturally:
+                25 tools including <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_services</code> and <code className="text-foreground text-[10px] bg-panel px-1 py-0.5 rounded border border-border">t2000_pay</code>. Just ask naturally:
               </p>
               <div className="space-y-2">
                 {[

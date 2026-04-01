@@ -28,7 +28,7 @@ process.on('uncaughtException', (err) => {
 const app = new Hono();
 
 app.use('*', cors({
-  origin: ['https://t2000.ai', 'https://app.t2000.ai', 'https://api.t2000.ai'],
+  origin: ['https://t2000.ai', 'https://audric.ai', 'https://app.t2000.ai', 'https://api.t2000.ai'],
   allowMethods: ['GET', 'POST', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'x-internal-key'],
 }));

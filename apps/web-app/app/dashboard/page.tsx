@@ -16,8 +16,8 @@ import { resolveFlow } from '@/components/dashboard/AgentMarkdown';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { useChipFlow, type ChipFlowResult, type FlowContext } from '@/hooks/useChipFlow';
 import { useFeed } from '@/hooks/useFeed';
-import { useAgentLoop, type AgentStep } from '@/hooks/useAgentLoop';
-import type { AgentStepData } from '@/lib/feed-types';
+import { EngineChat } from '@/components/engine/EngineChat';
+import { useEngine } from '@/hooks/useEngine';
 import { useBalance } from '@/hooks/useBalance';
 import { parseIntent, type ParsedIntent } from '@/lib/intent-parser';
 import { mapError } from '@/lib/errors';
@@ -104,7 +104,7 @@ function SendRecipientInput({
   };
 
   return (
-    <div className="rounded-sm border border-border bg-surface p-4 space-y-3 feed-row">
+    <div className="rounded-lg border border-border bg-surface p-4 space-y-3 feed-row shadow-[var(--shadow-card)]">
       <p className="text-sm text-muted">Who do you want to send to?</p>
       {contacts.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -112,7 +112,7 @@ function SendRecipientInput({
             <button
               key={c.address}
               onClick={() => onSelectContact(c.address, c.name)}
-              className="rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
+              className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted hover:border-border-bright hover:text-foreground transition"
             >
               {c.name}
             </button>
@@ -126,20 +126,20 @@ function SendRecipientInput({
           onChange={(e) => setValue(e.target.value)}
           placeholder="Address (0x...) or contact name"
           autoFocus
-          className="flex-1 rounded-sm border border-border bg-panel px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
+          className="flex-1 rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
           onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
         />
         {value.trim() ? (
           <button
             onClick={handleSubmit}
-            className="bg-accent px-4 py-2 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] active:scale-[0.97]"
+            className="bg-foreground rounded-lg px-4 py-2 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-80 active:scale-[0.97]"
           >
             Go
           </button>
         ) : (
           <button
             onClick={handlePaste}
-            className="rounded-sm border border-border bg-panel px-4 py-2 text-sm text-muted transition hover:text-foreground hover:border-border-bright active:scale-[0.97]"
+            className="rounded-lg border border-border bg-background px-4 py-2 text-sm text-muted transition hover:text-foreground hover:border-border-bright active:scale-[0.97]"
           >
             📋 Paste
           </button>
@@ -183,7 +183,7 @@ function DashboardContent() {
   const feed = useFeed();
   const contactsHook = useContacts(address);
   const { agent } = useAgent();
-  const agentLoop = useAgentLoop();
+  const engine = useEngine({ address, jwt: session?.jwt });
   const balanceQuery = useBalance(address);
   const incomingQuery = useQuery({
     queryKey: ['incoming-tx', address],
@@ -641,132 +641,18 @@ function DashboardContent() {
 
   const handleInputSubmit = useCallback(
     async (text: string) => {
-      feed.addItem({ type: 'user-message', text });
-
       const intent = parseIntent(text);
       if (intent) {
+        feed.addItem({ type: 'user-message', text });
         executeIntent(intent);
         return;
       }
 
       if (!address) return;
 
-      const email = decodeJwtEmail(session?.jwt) ?? '';
-      const balanceCtx = `Total: $${balance.total.toFixed(2)}, Cash: $${balance.cash.toFixed(2)}, Savings: $${balance.savings.toFixed(2)}${balance.borrows > 0 ? `, Debt: $${balance.borrows.toFixed(2)}` : ''}`;
-
-      feed.addItem({
-        type: 'agent-response',
-        steps: [],
-        status: 'running',
-      });
-
-      const stepsAccum: AgentStepData[] = [];
-
-      try {
-      await agentLoop.run(text, {
-        address,
-        email,
-        balanceSummary: balanceCtx,
-        budget: agentBudget,
-        locale: typeof navigator !== 'undefined' ? navigator.language : undefined,
-        timezone: typeof Intl !== 'undefined'
-          ? Intl.DateTimeFormat().resolvedOptions().timeZone
-          : undefined,
-      }, {
-        onStep: (step: AgentStep) => {
-          stepsAccum.push({ ...step });
-          feed.updateLastOfType('agent-response', () => ({
-            type: 'agent-response',
-            steps: [...stepsAccum],
-            status: 'running',
-          }));
-        },
-        onStepUpdate: (tool: string, update: Partial<AgentStep>) => {
-          const idx = stepsAccum.findIndex((s) => s.tool === tool && s.status === 'running');
-          if (idx !== -1) {
-            stepsAccum[idx] = { ...stepsAccum[idx], ...update };
-          }
-          if (update.status === 'done') setLastAgentAction(tool);
-          feed.updateLastOfType('agent-response', () => ({
-            type: 'agent-response',
-            steps: [...stepsAccum],
-            status: 'running',
-          }));
-        },
-        onText: (responseText: string) => {
-          feed.updateLastOfType('agent-response', () => ({
-            type: 'agent-response',
-            steps: [...stepsAccum],
-            text: responseText,
-            status: 'done',
-          }));
-        },
-        onMedia: (media) => {
-          const TOOL_LABELS: Record<string, string> = {
-            generate_image: 'Generated image',
-            text_to_speech: 'Text to speech',
-            take_screenshot: 'Screenshot',
-            generate_qr: 'QR Code',
-          };
-          if (media.type === 'image') {
-            feed.addItem({
-              type: 'image',
-              url: media.dataUri,
-              alt: TOOL_LABELS[media.tool] ?? 'Generated image',
-              cost: media.cost ? `$${media.cost.toFixed(3)}` : undefined,
-            });
-          } else if (media.type === 'audio') {
-            feed.addItem({
-              type: 'audio',
-              url: media.dataUri,
-              title: TOOL_LABELS[media.tool] ?? 'Audio',
-              cost: media.cost ? `$${media.cost.toFixed(3)}` : undefined,
-            });
-          }
-        },
-        onConfirmNeeded: async (tool: string, args: Record<string, unknown>, cost: number) => {
-          const summaryParts: string[] = [];
-          if (args.to_name) summaryParts.push(`To: ${args.to_name}`);
-          if (args.recipient_name) summaryParts.push(`To: ${args.recipient_name}`);
-          if (args.email) summaryParts.push(`Email: ${args.email}`);
-          if (args.to) summaryParts.push(`To: ${args.to}`);
-          if (args.amount) summaryParts.push(`$${args.amount}`);
-          if (args.brand) summaryParts.push(String(args.brand));
-          if (args.message && String(args.message).length <= 60) summaryParts.push(`"${args.message}"`);
-          if (args.path) summaryParts.push(String(args.path));
-          const summary = summaryParts.length > 0 ? summaryParts.join(' · ') : undefined;
-
-          return new Promise<boolean>((resolve) => {
-            confirmResolverRef.current = resolve;
-            feed.updateLastOfType('agent-response', (prev) => {
-              if (prev.type !== 'agent-response') return prev;
-              return { ...prev, confirm: { tool, cost, summary } };
-            });
-          });
-        },
-        onDone: (totalCost: number) => {
-          feed.updateLastOfType('agent-response', (prev) => {
-            if (prev.type !== 'agent-response') return prev;
-            return { ...prev, totalCost, status: 'done' as const };
-          });
-          balanceQuery.refetch();
-          setTimeout(() => balanceQuery.refetch(), 3000);
-        },
-        onError: (error: string) => {
-          feed.updateLastOfType('agent-response', (prev) => {
-            if (prev.type !== 'agent-response') return prev;
-            return { ...prev, status: 'error' as const, error, steps: [...stepsAccum] };
-          });
-        },
-      });
-      } catch (err) {
-        feed.updateLastOfType('agent-response', (prev) => {
-          if (prev.type !== 'agent-response') return prev;
-          return { ...prev, status: 'error' as const, error: err instanceof Error ? err.message : 'Something went wrong', steps: [...stepsAccum] };
-        });
-      }
+      engine.sendMessage(text);
     },
-    [feed, executeIntent, address, session, balance, agentLoop, balanceQuery, agentBudget],
+    [feed, executeIntent, address, engine],
   );
 
   const handleFeedChipClick = useCallback(
@@ -1056,7 +942,7 @@ function DashboardContent() {
           />
         )}
 
-        {/* Conversational Feed */}
+        {/* Conversational Feed (intent-driven items like balance, rates, receipts) */}
         {hasFeedItems && !isInFlow && (
           <FeedRenderer
             items={feed.items}
@@ -1077,15 +963,12 @@ function DashboardContent() {
           />
         )}
 
-        {/* Contextual chips now live in the fixed bottom bar */}
-
-        {/* Agent loading indicator */}
-        {agentLoop.status === 'running' && (
-          <div className="flex items-center gap-2 px-2">
-            <div className="h-4 w-full max-w-[200px] rounded-full overflow-hidden bg-border/30">
-              <div className="h-full w-full animate-shimmer bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
-            </div>
-          </div>
+        {/* Engine streaming chat (freeform AI conversations) */}
+        {!isInFlow && (
+          <EngineChat
+            engine={engine}
+            email={decodeJwtEmail(session?.jwt)}
+          />
         )}
 
         <div ref={feedEndRef} />
@@ -1094,7 +977,7 @@ function DashboardContent() {
       {/* Bottom bar — fixed */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm safe-bottom p-4 z-30">
         <div className="mx-auto max-w-xl space-y-3">
-          {!isInFlow && agentLoop.status !== 'running' && contextualChips.length > 0 && (
+          {!isInFlow && !engine.isStreaming && contextualChips.length > 0 && (
             <ContextualChips
               chips={contextualChips}
               onChipFlow={handleChipClick}
@@ -1104,18 +987,21 @@ function DashboardContent() {
           )}
           <InputBar
             onSubmit={handleInputSubmit}
-            disabled={chipFlow.state.phase === 'executing' || agentLoop.status === 'running'}
+            onCancel={engine.isStreaming ? engine.cancel : undefined}
+            disabled={chipFlow.state.phase === 'executing' || engine.isStreaming}
           />
-          {agentLoop.status === 'running' ? (
+          {engine.isStreaming ? (
             <div className="flex items-center justify-between">
               <button
-                onClick={agentLoop.cancel}
-                className="flex items-center gap-2 rounded-sm border border-border bg-surface px-4 py-2 text-sm text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
+                onClick={engine.cancel}
+                className="flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm text-muted hover:text-foreground hover:border-border-bright transition active:scale-[0.97]"
               >
-                <span className="text-base">■</span> Stop
+                <span className="text-base">&#9632;</span> Stop
               </button>
-              {agentLoop.totalCost > 0 && (
-                <span className="text-xs text-muted">${agentLoop.totalCost.toFixed(3)} spent</span>
+              {engine.usage && (
+                <span className="text-xs text-muted">
+                  {engine.usage.inputTokens + engine.usage.outputTokens} tokens
+                </span>
               )}
             </div>
           ) : (
@@ -1132,6 +1018,21 @@ function DashboardContent() {
                 >
                   Cancel
                 </button>
+              )}
+              {!isInFlow && engine.messages.length > 0 && (
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    onClick={engine.clearMessages}
+                    className="text-xs text-muted hover:text-foreground transition"
+                  >
+                    New conversation
+                  </button>
+                  {engine.usage && (
+                    <span className="text-[10px] text-dim font-mono">
+                      {engine.usage.inputTokens + engine.usage.outputTokens} tokens
+                    </span>
+                  )}
+                </div>
               )}
             </>
           )}
@@ -1150,6 +1051,10 @@ function DashboardContent() {
         onRemoveContact={contactsHook.removeContact}
         onSignOut={logout}
         onRefreshSession={refresh}
+        jwt={session.jwt}
+        activeSessionId={engine.sessionId}
+        onLoadSession={engine.loadSession}
+        onNewConversation={engine.clearMessages}
       />
 
     </main>

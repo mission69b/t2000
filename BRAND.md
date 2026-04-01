@@ -495,8 +495,8 @@ You can. But there is no pressure. The consumer name is the one that matters for
 
 ### Next steps
 
-- [ ] Register audric.ai domain
-- [ ] Register @audric on X (or closest available)
+- [x] Register audric.ai domain
+- [x] Register @audric on X (or closest available)
 - [ ] Check USPTO / EU trademark for "Audric" in fintech
 - [ ] Design wordmark using Agentic Design System typography
 
@@ -593,16 +593,24 @@ Products dropdown:
 
 ## Migration Checklist
 
-### Phase 0: Name (do first, blocks everything)
+### Phase 0: Name (do first, blocks everything) — COMPLETE
 
-- [ ] Brainstorm 20-30 consumer name candidates
-- [ ] Kill anything without available domain
-- [ ] Shortlist to 8-10, check trademarks + social handles
-- [ ] Shortlist to 3-4, test with 5-10 non-crypto people
-- [ ] Final pick
-- [ ] Register domain (.ai and/or .com)
-- [ ] Register X handle, GitHub org (if needed)
-- [ ] Register npm org (only if publishing consumer packages)
+- [x] Brainstorm 20-30 consumer name candidates
+- [x] Kill anything without available domain
+- [x] Shortlist to 8-10, check trademarks + social handles
+- [x] Shortlist to 3-4, test with 5-10 non-crypto people
+- [x] Final pick — **Audric**
+- [x] Register domain (.ai and/or .com) — **audric.ai**
+- [x] Register X handle, GitHub org (if needed) — **@audric**
+- [ ] Register npm org (only if publishing consumer packages — not needed yet)
+
+### Phase 0.5: Codebase cleanup — COMPLETE
+
+- [x] Remove Invest/Swap/Suilend/Cetus dead code across SDK, CLI, MCP, skills, web, specs
+- [x] USDC-only simplification — remove rebalance, simplify to single deposit asset
+- [x] Drop @cetusprotocol/aggregator-sdk, @suilend/sdk, @suilend/sui-fe deps
+- [x] Update lockfile, CI green
+- [x] Write BRAND.md, CLAUDE_CODE_LEVERAGE.md, rewrite CLAUDE.md + .claude/rules
 
 ### Phase 1: Consumer website (Audric.ai)
 

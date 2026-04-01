@@ -24,13 +24,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "t2000 — A Bank Account for AI Agents",
+  title: "t2000 — The Infrastructure Behind Audric",
   description:
-    "A bank account for AI agents. Five products — savings, pay, send, credit, receive. Built on Sui.",
+    "The infrastructure behind Audric. CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway. Open source. Non-custodial. Built on Sui.",
   openGraph: {
-    title: "t2000 — A Bank Account for AI Agents",
+    title: "t2000 — The Infrastructure Behind Audric",
     description:
-      "A bank account for AI agents. Five products — savings, pay, send, credit, receive. Built on Sui.",
+      "The infrastructure behind Audric. CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway. Built on Sui.",
     type: "website",
   },
 };

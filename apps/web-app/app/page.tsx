@@ -22,15 +22,14 @@ export default function LandingPage() {
       <div className="flex flex-col items-center max-w-md w-full space-y-10">
         <div className="space-y-5">
           <div className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-accent rounded-full shadow-[0_0_8px_var(--accent)]" />
-            <span className="font-mono font-semibold text-accent tracking-tight text-lg">t2000</span>
+            <span className="font-mono font-semibold text-foreground tracking-tight text-lg uppercase">Audric</span>
             <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
               beta
             </span>
           </div>
 
-          <h1 className="text-2xl font-mono font-semibold tracking-tight text-foreground">
-            A bank account that works for you.
+          <h1 className="text-2xl font-display tracking-tight text-foreground">
+            Your money, handled.
           </h1>
 
           <p className="text-sm text-muted leading-relaxed">
@@ -45,17 +44,22 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-4 text-xs text-dim font-mono">
-          <a href="https://t2000.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
-            Privacy
-          </a>
-          <span>·</span>
-          <a href="https://t2000.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
-            Terms
-          </a>
-          <span>·</span>
-          <a href="https://t2000.ai/disclaimer" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
-            Disclaimer
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center justify-center gap-4 text-xs text-dim font-mono">
+            <a href="https://audric.ai/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
+              Privacy
+            </a>
+            <span>·</span>
+            <a href="https://audric.ai/terms" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
+              Terms
+            </a>
+            <span>·</span>
+            <a href="https://audric.ai/disclaimer" target="_blank" rel="noopener noreferrer" className="hover:text-muted transition">
+              Disclaimer
+            </a>
+          </div>
+          <a href="https://t2000.ai" target="_blank" rel="noopener noreferrer" className="text-[10px] text-dim/60 font-mono hover:text-dim transition">
+            Built with t2000
           </a>
         </div>
       </div>

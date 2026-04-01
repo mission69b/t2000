@@ -1,0 +1,152 @@
+import type { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Messages — provider-agnostic conversation format
+// ---------------------------------------------------------------------------
+
+export type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: unknown }
+  | {
+      type: 'tool_result';
+      toolUseId: string;
+      content: string;
+      isError?: boolean;
+    };
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: ContentBlock[];
+}
+
+// ---------------------------------------------------------------------------
+// Engine events — yielded by QueryEngine.submitMessage()
+// ---------------------------------------------------------------------------
+
+export type EngineEvent =
+  | { type: 'text_delta'; text: string }
+  | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
+  | {
+      type: 'tool_result';
+      toolName: string;
+      toolUseId: string;
+      result: unknown;
+      isError: boolean;
+    }
+  | {
+      type: 'permission_request';
+      toolName: string;
+      toolUseId: string;
+      input: unknown;
+      description: string;
+      resolve: (approved: boolean) => void;
+    }
+  | { type: 'turn_complete'; stopReason: StopReason }
+  | {
+      type: 'usage';
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+    }
+  | { type: 'error'; error: Error };
+
+export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
+
+// ---------------------------------------------------------------------------
+// Tool types
+// ---------------------------------------------------------------------------
+
+export type PermissionLevel = 'auto' | 'confirm' | 'explicit';
+
+export interface ToolResult<T = unknown> {
+  data: T;
+  displayText?: string;
+}
+
+export interface ToolContext {
+  agent?: unknown; // T2000 instance — typed loosely to avoid circular dep at type level
+  mcpManager?: unknown; // McpClientManager — typed loosely to avoid circular dep
+  walletAddress?: string; // User's Sui wallet address (required for MCP reads)
+  signal?: AbortSignal;
+}
+
+export interface ToolJsonSchema {
+  type: 'object';
+  properties: Record<string, unknown>;
+  required?: string[];
+}
+
+export interface Tool<TInput = unknown, TOutput = unknown> {
+  name: string;
+  description: string;
+  inputSchema: z.ZodType<TInput>;
+  jsonSchema: ToolJsonSchema;
+  call(input: TInput, context: ToolContext): Promise<ToolResult<TOutput>>;
+  isConcurrencySafe: boolean;
+  isReadOnly: boolean;
+  permissionLevel: PermissionLevel;
+}
+
+// ---------------------------------------------------------------------------
+// Engine configuration
+// ---------------------------------------------------------------------------
+
+export interface EngineConfig {
+  provider: LLMProvider;
+  agent?: unknown; // T2000 instance
+  mcpManager?: unknown; // McpClientManager for MCP-based reads
+  walletAddress?: string; // User's Sui wallet address (required for MCP reads)
+  tools?: Tool[];
+  systemPrompt?: string;
+  model?: string;
+  maxTurns?: number;
+  maxTokens?: number;
+  costTracker?: {
+    budgetLimitUsd?: number;
+    inputCostPerToken?: number;
+    outputCostPerToken?: number;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// LLM Provider interface (re-exported from providers/types for convenience)
+// ---------------------------------------------------------------------------
+
+export interface LLMProvider {
+  chat(params: ChatParams): AsyncGenerator<ProviderEvent>;
+}
+
+export interface ChatParams {
+  messages: Message[];
+  systemPrompt: string;
+  tools: ToolDefinition[];
+  model?: string;
+  maxTokens?: number;
+  signal?: AbortSignal;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  input_schema: ToolJsonSchema;
+}
+
+export type ProviderEvent =
+  | { type: 'text_delta'; text: string }
+  | { type: 'tool_use_start'; id: string; name: string }
+  | { type: 'tool_use_delta'; id: string; partialJson: string }
+  | { type: 'tool_use_done'; id: string; name: string; input: unknown }
+  | {
+      type: 'message_start';
+      messageId: string;
+      model: string;
+    }
+  | {
+      type: 'usage';
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+    }
+  | { type: 'stop'; reason: StopReason };

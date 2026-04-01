@@ -37,7 +37,7 @@ export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) 
 
   return (
     <div
-      className={`rounded-sm border border-border bg-surface p-4 transition-all duration-300 feed-row ${
+      className={`rounded-lg border border-border bg-surface p-4 transition-all duration-300 feed-row shadow-[var(--shadow-card)] ${
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
       }`}
     >
@@ -49,13 +49,13 @@ export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) 
           <div className="flex gap-2 shrink-0">
             <button
               onClick={() => setExpanded(true)}
-              className="bg-accent px-3 py-1.5 text-xs font-medium text-background tracking-[0.05em] uppercase transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)]"
+              className="bg-foreground rounded-lg px-3 py-1.5 text-xs font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-80"
             >
               Save
             </button>
             <button
               onClick={() => setVisible(false)}
-              className="rounded-sm border border-border bg-panel px-3 py-1.5 text-xs font-medium text-muted hover:text-foreground transition"
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted hover:text-foreground transition"
             >
               Skip
             </button>
@@ -74,12 +74,12 @@ export function ContactToast({ address, onSave, onDismiss }: ContactToastProps) 
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
               placeholder="e.g. Alice, Rent, Exchange"
               autoFocus
-              className="flex-1 rounded-sm border border-border bg-panel px-3 py-2 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
+              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-dim outline-none focus:border-border-bright"
             />
             <button
               onClick={handleSave}
               disabled={!name.trim()}
-              className="bg-accent px-4 py-2 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:bg-accent/90 hover:bg-[#00f0a0] hover:shadow-[0_0_20px_var(--accent-glow)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="bg-foreground rounded-lg px-4 py-2 text-sm font-medium text-background tracking-[0.05em] uppercase transition hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Save
             </button>

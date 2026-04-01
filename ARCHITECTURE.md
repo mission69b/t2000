@@ -10,18 +10,26 @@
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                           User / AI Agent                                │
 │                                                                          │
-│  Web App · Claude · Cursor · ChatGPT · CLI · any MCP client              │
+│  Audric · Claude · Cursor · ChatGPT · CLI · any MCP client              │
 └──┬─────────┬──────────────┬──────────────┬───────────────────────────────┘
    │         │              │              │
-   │    MCP (stdio)    CLI commands    SDK (TypeScript)
+   │    MCP (stdio)    CLI commands    SDK / Engine (TypeScript)
    │         │              │              │
    │         ▼              ▼              ▼
    │  ┌──────────────────────────────────────────────────────────────────┐
+   │  │                     @t2000/engine                                │
+   │  │                                                                  │
+   │  │  QueryEngine · LLM Provider · Tool System · MCP Client          │
+   │  │  Streaming · Sessions · Cost Tracking · Context Management      │
+   │  └────────┬──────────────────────────────────────────────────────┘
+   │           │
+   │           ▼
+   │  ┌──────────────────────────────────────────────────────────────────┐
    │  │                        @t2000/sdk                                │
    │  │                                                                  │
-  │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
-  │  │  Adapters: NAVI                                                   │
-  │  └────────┬──────────────┬──────────────┬───────────────────────────┘
+   │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
+   │  │  Adapters: NAVI                                                   │
+   │  └────────┬──────────────┬──────────────┬───────────────────────────┘
    │           │              │              │
    ▼           ▼              ▼              ▼
 ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐
@@ -53,8 +61,9 @@
 | Package | npm | What it does |
 |---------|-----|-------------|
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
+| `@t2000/engine` | 0.1.0 | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
-| `@t2000/mcp` | Published | MCP server — 32 tools, 19 prompts, stdio transport |
+| `@t2000/mcp` | Published | MCP server — 25 tools, 16 prompts, stdio transport |
 | `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
 | `@suimpp/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
@@ -63,15 +72,15 @@
 
 | App | Hosting | Domain | What it does |
 |-----|---------|--------|-------------|
-| `apps/web-app` | Vercel | app.t2000.ai | Consumer web app — zkLogin, conversational AI, banking |
-| `apps/web` | Vercel | t2000.ai | Product site — docs, demos, stats |
+| `apps/web-app` | Vercel | audric.ai | Audric consumer app — zkLogin, engine chat, conversational banking |
+| `apps/web` | Vercel | t2000.ai | Infrastructure landing page + docs |
 | `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs |
 | `apps/server` | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger |
 | Indexer | AWS ECS Fargate | — | Checkpoint indexer, yield snapshotter |
 
 ---
 
-## Web App (`app.t2000.ai`)
+## Web App (audric.ai)
 
 Consumer banking product. Anyone with a Google account gets a Sui wallet in 3 seconds.
 
@@ -103,19 +112,21 @@ User taps "Save $50"
 
 All transactions are gas-free for the user. Enoki sponsors gas.
 
-### Agent loop (Anthropic Claude)
+### Engine chat (Audric / @t2000/engine)
 
-For complex queries typed into the chat, an LLM agent loop processes the request:
+For freeform queries typed into the chat, the `QueryEngine` processes the request via SSE streaming:
 
 ```
-User types "search for flights from NYC to Tokyo"
+User types "What's my current balance?"
   │
-  ├── POST /api/agent/chat (conversation history + system prompt)
-  ├── Anthropic Claude responds with tool_use (search_flights)
-  ├── POST /api/agent/tool (executes tool via MPP gateway)
-  │   └── Pays USDC on Sui via Enoki-sponsored tx
-  ├── Tool result → sent back to Claude for final response
-  └── Response rendered in feed with cost breakdown
+  ├── POST /api/engine/chat (SSE stream, JWT auth, Sui address)
+  ├── QueryEngine → AnthropicProvider → Claude with tool definitions
+  ├── Tool calls (balance_check, savings_info, etc.) executed server-side
+  │   └── MCP-first with SDK fallback for financial reads
+  ├── Permission requests → POST /api/engine/permission (user confirm/deny)
+  ├── Streaming text_delta, tool_start, tool_result, usage events
+  ├── Session persisted to Upstash KV
+  └── Response rendered in streaming chat UI
 ```
 
 Simple actions (Save, Send) use client-side chip flows with zero LLM cost.
@@ -804,6 +815,94 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 
 ---
 
+## Engine (`@t2000/engine`)
+
+The engine package powers **Audric**, the conversational finance agent. It sits between the LLM and the SDK, orchestrating multi-turn conversations with financial tool execution.
+
+### QueryEngine
+
+Stateful async-generator loop that drives conversations:
+
+```
+User prompt
+    → LLM (Anthropic Claude via streaming provider)
+    → Tool dispatch (read/write classification)
+    → Permission check (auto / confirm / explicit)
+    → Tool execution
+    → Results fed back to LLM
+    → Repeat until end_turn or max_turns
+```
+
+`QueryEngine.submitMessage(prompt)` returns `AsyncGenerator<EngineEvent>` — consumers iterate over events to build their UI (terminal, web, extension).
+
+### Tool System
+
+Tools are built with `buildTool()` which enforces:
+- **Zod input validation** with auto-generated JSON schema for the LLM
+- **Permission tiers**: `auto` (no approval), `confirm` (user must approve), `explicit` (manual only)
+- **Concurrency flags**: `isReadOnly` and `isConcurrencySafe`
+
+`runTools()` dispatches tool calls:
+- Read-only tools → `Promise.allSettled` (parallel)
+- Write tools → sequential under `TxMutex` (prevents Sui object version conflicts)
+
+### Built-in Financial Tools
+
+| Read (parallel, auto) | Write (serial, confirm) |
+|-----------------------|------------------------|
+| `balance_check` | `save_deposit` |
+| `savings_info` | `withdraw` |
+| `health_check` | `send_transfer` |
+| `rates_info` | `borrow` |
+| `transaction_history` | `repay_debt` |
+| | `claim_rewards` |
+| | `pay_api` |
+
+Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+
+### Permission Flow
+
+Write tools with `permissionLevel: 'confirm'` yield a `permission_request` event:
+
+```
+Engine yields permission_request(toolName, input, description, resolve)
+    → Client displays confirmation UI
+    → Client calls resolve(true) or resolve(false)
+    → Tool executes or aborts
+```
+
+`AbortSignal` prevents deadlocks if the client disconnects.
+
+### MCP Integration
+
+**MCP Client** (`McpClientManager`): Multi-server registry connecting to external MCP servers (e.g., NAVI Protocol). Supports `streamable-http` and `sse` transports with client-side response caching.
+
+**MCP Server** (`buildMcpTools`, `registerEngineTools`): Exposes engine tools to Claude Desktop, Cursor, and other MCP clients with `audric_` namespace prefix.
+
+**MCP Tool Adapter** (`adaptMcpTool`): Converts tools discovered from external MCP servers into engine `Tool` objects with namespacing and configurable permissions.
+
+### Supporting Modules
+
+| Module | Purpose |
+|--------|---------|
+| `AnthropicProvider` | Streaming LLM provider with tool use and usage reporting |
+| `CostTracker` | Cumulative token usage, USD cost estimation, budget kill switch |
+| `MemorySessionStore` | In-memory session store with TTL and data isolation |
+| `compactMessages` | Three-phase context window compaction (summarize → drop → truncate) |
+| `serializeSSE` / `parseSSE` | Wire-safe SSE event format for web transport |
+| `PermissionBridge` | Maps SSE permission IDs to resolve callbacks |
+| `engineToSSE` | Adapts QueryEngine generator to SSE stream |
+
+### NAVI MCP Integration
+
+Dedicated integration layer for NAVI Protocol's MCP server:
+
+- `navi-config.ts` — Server URL, transport config, 26 tool name constants
+- `navi-transforms.ts` — Pure functions converting raw MCP responses to typed engine structures (rates, positions, health factor, balance, savings, rewards) with USD price conversion
+- `navi-reads.ts` — Composite read functions orchestrating parallel MCP calls with transforms
+
+---
+
 ## Analytics & Privacy
 
 ### What IS tracked
@@ -838,8 +937,8 @@ Returns only aggregated numbers:
 
 | Component | Hosting | Notes |
 |-----------|---------|-------|
-| Web App (app.t2000.ai) | Vercel | Next.js, zkLogin + Enoki, Anthropic |
-| Web (t2000.ai) | Vercel | Next.js, ISR |
+| Web App (audric.ai) | Vercel | Next.js, zkLogin + Enoki, @t2000/engine |
+| Web (t2000.ai) | Vercel | Next.js |
 | Gateway (mpp.t2000.ai) | Vercel | Next.js, payment logging, explorer |
 | Ecosystem (suimpp.dev) | Vercel | Next.js, server registry, payment explorer |
 | Server (api.t2000.ai) | AWS ECS Fargate | Hono, long-running |

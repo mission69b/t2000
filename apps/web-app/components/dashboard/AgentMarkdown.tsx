@@ -175,7 +175,7 @@ function InlineSegments({
             );
           case 'code':
             return (
-              <code key={i} className="bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-xs font-mono text-accent">
+              <code key={i} className="bg-surface border border-border rounded px-1.5 py-0.5 text-xs font-mono text-foreground">
                 {seg.content}
               </code>
             );
@@ -186,7 +186,7 @@ function InlineSegments({
                 href={seg.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-accent underline underline-offset-2 hover:text-accent/80 transition"
+                className="text-info underline underline-offset-2 hover:opacity-70 transition"
               >
                 {seg.text}
               </a>
@@ -198,14 +198,14 @@ function InlineSegments({
                 <button
                   key={i}
                   onClick={() => onAction(seg.label)}
-                  className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent hover:bg-accent/20 hover:border-accent/50 transition active:scale-[0.97] mx-0.5 align-baseline"
+                  className="inline-flex items-center rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-border/50 hover:border-border-bright transition active:scale-[0.97] mx-0.5 align-baseline"
                 >
                   {seg.label}
                 </button>
               );
             }
             return (
-              <span key={i} className="font-medium text-accent">
+              <span key={i} className="font-medium text-foreground">
                 {seg.label}
               </span>
             );
@@ -219,24 +219,24 @@ function InlineSegments({
 }
 
 const STATUS_COLORS: Record<StatData['status'], string> = {
-  safe: 'text-green-400',
-  warning: 'text-yellow-400',
-  danger: 'text-red-400',
+  safe: 'text-success',
+  warning: 'text-warning',
+  danger: 'text-error',
   neutral: 'text-foreground',
 };
 
 const STATUS_DOT: Record<StatData['status'], string> = {
-  safe: 'bg-green-400',
-  warning: 'bg-yellow-400',
-  danger: 'bg-red-400',
-  neutral: 'bg-white/20',
+  safe: 'bg-success',
+  warning: 'bg-warning',
+  danger: 'bg-error',
+  neutral: 'bg-border-bright',
 };
 
 function StatGrid({ stats }: { stats: StatData[] }) {
   return (
     <div className="my-2 grid grid-cols-2 gap-1.5">
       {stats.map((s, i) => (
-        <div key={i} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2.5">
+        <div key={i} className="rounded-xl bg-surface border border-border px-3 py-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <div className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[s.status]}`} />
             <span className="text-[10px] uppercase tracking-wider text-muted font-medium">{s.label}</span>
@@ -250,11 +250,11 @@ function StatGrid({ stats }: { stats: StatData[] }) {
 
 function PostcardVisual({ data }: { data: PostcardData }) {
   return (
-    <div className="my-2 rounded-2xl overflow-hidden border border-blue-400/20 bg-gradient-to-br from-blue-500/10 via-surface to-blue-400/5">
+    <div className="my-2 rounded-2xl overflow-hidden border border-info/20 bg-info/5">
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-blue-400/60 font-medium">Postcard Sent</div>
+            <div className="text-[10px] uppercase tracking-widest text-info/60 font-medium">Postcard Sent</div>
             <div className="text-sm font-semibold text-foreground mt-0.5">To: {data.to}</div>
           </div>
           <div className="text-2xl">📬</div>
@@ -266,11 +266,11 @@ function PostcardVisual({ data }: { data: PostcardData }) {
         <div className="px-4 pb-2 flex gap-2">
           {data.front && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.front} alt="Postcard front" className="w-1/2 rounded-lg border border-white/10" />
+            <img src={data.front} alt="Postcard front" className="w-1/2 rounded-lg border border-border" />
           )}
           {data.back && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.back} alt="Postcard back" className="w-1/2 rounded-lg border border-white/10" />
+            <img src={data.back} alt="Postcard back" className="w-1/2 rounded-lg border border-border" />
           )}
         </div>
       )}
@@ -317,7 +317,7 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
     } else if (line.type === 'list-item') {
       elements.push(
         <div key={i} className="flex gap-2 pl-0.5">
-          <span className="text-accent/60 font-mono text-xs leading-relaxed shrink-0 w-4 text-right">
+          <span className="text-dim font-mono text-xs leading-relaxed shrink-0 w-4 text-right">
             {line.number}.
           </span>
           <span>
@@ -328,7 +328,7 @@ export function AgentMarkdown({ text, onAction }: AgentMarkdownProps) {
     } else if (line.type === 'bullet-item') {
       elements.push(
         <div key={i} className="flex gap-2 pl-0.5">
-          <span className="text-accent/60 leading-relaxed shrink-0 w-4 text-center">
+          <span className="text-dim leading-relaxed shrink-0 w-4 text-center">
             •
           </span>
           <span>

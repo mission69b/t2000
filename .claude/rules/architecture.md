@@ -21,13 +21,36 @@ The consumer product (Audric) imports `@t2000/engine` and `@t2000/sdk` from npm.
 - Invest and Swap are REMOVED — do not re-add
 - Gateway is infrastructure behind Pay, not a consumer product
 
-## @t2000/engine (planned)
+## @t2000/engine (v0.1.0)
 
-New package implementing agent engine patterns (from Claude Code analysis):
-- QueryEngine: stateful conversation manager, async generator loop
-- buildTool(): financial tool factory with permissions + concurrency classification
-- runTools(): parallel (read-only) / serial (mutating) orchestration
-- MCP client: connect to protocol MCPs
-- MCP server: expose financial tools to Claude Desktop, Cursor, etc.
+Agent engine powering Audric — conversational finance on Sui.
 
-See `spec/CLAUDE_CODE_LEVERAGE.md` for full design.
+### Core modules
+- `QueryEngine`: stateful async-generator conversation loop with multi-turn support, tool dispatch, and abort handling
+- `AnthropicProvider`: streaming LLM provider with tool use and usage reporting
+- `buildTool()`: typed tool factory with Zod validation, JSON schema, permission levels (`auto` / `confirm` / `explicit`), concurrency flags
+- `runTools()`: parallel read-only dispatch (`Promise.allSettled`) + serial write dispatch (`TxMutex`)
+
+### Financial tools (12 total)
+- Read (5): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`
+- Write (7): `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`
+
+### MCP integration
+- `McpClientManager`: multi-server MCP client with response caching, `streamable-http` + `sse` transports
+- `adaptMcpTool()`: converts external MCP tools into engine `Tool` objects with namespacing
+- `buildMcpTools()` / `registerEngineTools()`: exposes engine tools as MCP server with `audric_` prefix
+- NAVI MCP: config, transforms, and composite reads for all NAVI Protocol data
+
+### Supporting modules
+- `CostTracker`: token usage + USD cost with budget kill switch
+- `MemorySessionStore`: in-memory session store with TTL and `structuredClone` isolation
+- `compactMessages()`: three-phase context window compaction
+- `serializeSSE` / `parseSSE` / `PermissionBridge` / `engineToSSE`: SSE streaming + permission bridging
+
+### Key patterns
+- Read tools use MCP-first strategy (NAVI MCP) with SDK fallback
+- Write tools always go through `@t2000/sdk` + `TxMutex`
+- `ToolContext` passes `agent`, `mcpManager`, `walletAddress`, `signal` to every tool
+- Events are yielded as `EngineEvent` discriminated union
+
+See `spec/CLAUDE_CODE_LEVERAGE.md` for design rationale.

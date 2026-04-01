@@ -82,11 +82,10 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
       <div className="flex items-center justify-between px-1">
         <button
           onClick={() => window.location.reload()}
-          className="font-mono font-semibold text-sm text-accent tracking-tight flex items-center gap-2 hover:opacity-80 transition cursor-pointer"
+          className="font-mono font-semibold text-sm text-foreground tracking-tight flex items-center gap-2 hover:opacity-70 transition cursor-pointer uppercase"
           aria-label="Refresh page"
         >
-          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_var(--accent)]" />
-          t2000
+          Audric
           <span className="text-[9px] uppercase tracking-widest font-medium text-muted border border-border rounded px-1.5 py-0.5 leading-none">
             beta
           </span>
@@ -98,14 +97,14 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
             title="Copy address"
           >
             {copied ? (
-              <span className="text-accent">copied ✓</span>
+              <span className="text-success">copied &#10003;</span>
             ) : (
               truncateAddress(address)
             )}
           </button>
           <button
             onClick={onSettingsClick}
-            className="rounded-sm p-1.5 text-muted hover:text-foreground hover:bg-panel transition"
+            className="rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-surface transition"
             aria-label="Settings"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -118,15 +117,15 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
 
       {balance.loading ? (
         <div className="py-4 space-y-2">
-          <div className="h-10 w-32 mx-auto rounded-sm bg-panel animate-pulse" />
-          <div className="h-4 w-48 mx-auto rounded-sm bg-panel animate-pulse" />
+          <div className="h-10 w-32 mx-auto rounded-lg bg-surface animate-pulse" />
+          <div className="h-4 w-48 mx-auto rounded-lg bg-surface animate-pulse" />
         </div>
       ) : balance.error ? (
         <div className="py-4 text-center">
-          <p className="text-sm font-mono text-muted">Couldn&apos;t load balance</p>
+          <p className="text-sm text-muted">Couldn&apos;t load balance</p>
           <button
             onClick={() => window.location.reload()}
-            className="text-xs font-mono text-accent hover:underline mt-1"
+            className="text-xs text-foreground underline underline-offset-2 hover:opacity-70 mt-1"
           >
             Tap to retry
           </button>
@@ -136,7 +135,7 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
           aria-label={`Balance $${fmtUsd(balance.total)}, ${expanded ? 'collapse' : 'expand'} details`}
-          className="w-full text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm group"
+          className="w-full text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg group"
         >
           <p className="text-4xl font-bold tracking-tight font-mono text-foreground">
             ${fmtUsd(balance.total)}
@@ -148,22 +147,21 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
             {balance.borrows > 0 && (
               <>
                 {' · '}
-                <span className="text-amber-400">
+                <span className="text-warning">
                   <span className="uppercase text-[10px] tracking-[0.1em]">debt</span> ${Math.floor(balance.borrows)}
                 </span>
               </>
             )}
             {' '}
             <span className={`inline-block transition-transform duration-200 text-dim ${expanded ? 'rotate-180' : ''}`}>
-              ▾
+              &#9662;
             </span>
           </p>
         </button>
       )}
 
       {expanded && !balance.loading && (
-        <div className="mt-2 rounded-sm border border-border bg-surface/60 text-left text-xs font-mono divide-y divide-border/50 overflow-hidden transition-all">
-          {/* Account breakdown */}
+        <div className="mt-2 rounded-lg border border-border bg-surface text-left text-xs font-mono divide-y divide-border overflow-hidden shadow-[var(--shadow-card)] transition-all">
           <div className="px-4 py-3 space-y-1.5">
             <Row label="Cash" value={`$${fmtUsd(balance.cash)}`} />
             <Row label="Savings" value={`$${fmtUsd(balance.savings)}`} />
@@ -194,7 +192,6 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
             )}
           </div>
 
-          {/* Holdings detail */}
           {holdings.length > 0 && (
             <div className="px-4 py-3 space-y-1.5">
               <p className="text-[10px] uppercase tracking-[0.1em] text-muted mb-1">Assets</p>
@@ -213,7 +210,7 @@ function Row({ label, value, sublabel, accent, warn }: { label: string; value: s
   return (
     <div className="flex justify-between items-center">
       <span className="text-muted">{label}</span>
-      <span className={accent ? 'text-accent' : warn ? 'text-amber-400' : 'text-foreground'}>
+      <span className={accent ? 'text-foreground font-medium' : warn ? 'text-warning' : 'text-foreground'}>
         {value}
         {sublabel && <span className="text-muted ml-1.5">{sublabel}</span>}
       </span>
