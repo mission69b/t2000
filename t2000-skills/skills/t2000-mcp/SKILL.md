@@ -3,8 +3,8 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server. Provides 32 tools
-  and 19 prompts for AI-driven banking and MPP service operations.
+  client, set up MCP config, or start the MCP server. Provides 24 tools
+  and 14 prompts for AI-driven banking and MPP service operations.
 license: MIT
 metadata:
   author: t2000
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 32 tools, 19 prompts, stdio transport, safeguard enforced.
+account. 24 tools, 14 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -40,7 +40,7 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (32)
+## Available Tools (24)
 
 ### MPP Services (2)
 | Tool | Description |
@@ -48,7 +48,7 @@ Paste into your AI platform's MCP settings:
 | `t2000_services` | List all MPP services and endpoints (41 services, 90 endpoints) |
 | `t2000_pay` | Pay for and call any MPP API service with USDC |
 
-### Read-only (14)
+### Read-only (12)
 | Tool | Description |
 |------|-------------|
 | `t2000_overview` | Complete account snapshot in one call |
@@ -56,17 +56,15 @@ Paste into your AI platform's MCP settings:
 | `t2000_address` | Wallet address |
 | `t2000_positions` | Lending positions |
 | `t2000_rates` | Best interest rates per asset |
-| `t2000_all_rates` | Per-protocol rate comparison (NAVI vs Suilend) |
+| `t2000_all_rates` | Per-protocol rate comparison |
 | `t2000_health` | Health factor |
 | `t2000_history` | Transaction history |
 | `t2000_earnings` | Yield earnings |
 | `t2000_fund_status` | Savings fund status |
 | `t2000_pending_rewards` | Pending protocol rewards |
 | `t2000_deposit_info` | Deposit instructions |
-| `t2000_contacts` | List saved contacts (name → address) |
-| `t2000_portfolio` | Investment portfolio positions + P&L |
 
-### State-changing (14)
+### State-changing (8)
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
@@ -76,15 +74,9 @@ All support `dryRun: true` for previews without signing.
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay debt |
-| `t2000_swap` | Swap assets |
 | `t2000_rebalance` | Optimize yield |
-| `t2000_invest` | Buy/sell investment assets (spot) |
-| `t2000_invest_rebalance` | Move earning positions to better-rate protocols |
-| `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |
-| `t2000_auto_invest` | DCA scheduling — setup, status, run, stop |
 | `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
 | `t2000_contact_add` | Save a contact name → address |
-| `t2000_contact_remove` | Remove a saved contact |
 
 ### Safety (2)
 | Tool | Description |
@@ -92,7 +84,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (19)
+## Prompts (14)
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |
@@ -100,20 +92,15 @@ All support `dryRun: true` for previews without signing.
 | `send-money` | Guided send with preview |
 | `budget-check` | Can I afford $X? |
 | `savings-strategy` | Recommend how much to save and where |
-| `investment-strategy` | Portfolio analysis and allocation |
-| `morning-briefing` | Daily snapshot — balances, yield, portfolio, rewards, alerts |
+| `morning-briefing` | Daily snapshot — balances, yield, rewards, alerts |
 | `what-if` | Scenario planning — model impact before acting |
 | `sweep` | Route idle funds to optimal earning positions |
 | `risk-check` | Health factor, concentration, liquidation risk |
-| `weekly-recap` | Week in review — activity, yield, P&L |
-| `dca-advisor` | Personalized DCA setup from budget |
+| `weekly-recap` | Week in review — activity, yield |
 | `claim-rewards` | Check and claim protocol rewards — auto-converts to USDC |
 | `safeguards` | Review safety settings — limits, lock, PIN-protected operations |
-| `quick-swap` | Guided token swap — preview rate, slippage, impact |
 | `onboarding` | New user setup — deposit, first save, explore features |
 | `emergency` | Lock account, assess damage, recovery guidance |
-| `optimize-all` | One-shot full optimization — sweep, rebalance, claim, earn |
-| `savings-goal` | Goal-based savings — "save $X by date Y" with projections |
 
 ## Security
 - Safeguard gate: server refuses to start without configured limits

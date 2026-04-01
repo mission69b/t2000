@@ -67,7 +67,6 @@ const MAX_AMOUNTS: Record<string, number> = {
   borrow: 50_000,
   repay: 100_000,
   send: 50_000,
-  swap: 100_000,
 };
 
 /**

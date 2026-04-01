@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { truncateAddress } from '@/lib/format';
 import type { Contact } from '@/hooks/useContacts';
-import { useDcaSchedules } from '@/hooks/useDcaSchedules';
-
 interface SettingsPanelProps {
   open: boolean;
   onClose: () => void;
@@ -38,8 +36,6 @@ export function SettingsPanel({
   const [editingLimit, setEditingLimit] = useState<'maxTx' | 'maxDaily' | 'agentBudget' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [now] = useState(() => Date.now());
-  const dcaSchedules = useDcaSchedules(address);
-
   useEffect(() => {
     if (!address) return;
     fetch(`/api/user/preferences?address=${address}`)
@@ -168,50 +164,6 @@ export function SettingsPanel({
               </div>
             )}
           </section>
-
-          {/* DCA Schedules */}
-          {dcaSchedules.schedules.length > 0 && (
-            <section className="space-y-3">
-              <SectionHeader>Investment Schedules</SectionHeader>
-              <div className="space-y-1">
-                {dcaSchedules.schedules.map((s) => (
-                  <div
-                    key={s.id}
-                    className={`group flex items-center justify-between gap-2 rounded-sm px-3 py-2.5 border border-border ${
-                      s.enabled ? 'bg-panel' : 'bg-panel/50 opacity-60'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-foreground font-medium">
-                        ${s.amount} → {s.strategyName}
-                        {!s.enabled && <span className="text-muted ml-1">(paused)</span>}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {s.frequency.charAt(0).toUpperCase() + s.frequency.slice(1)} · since {new Date(s.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => dcaSchedules.toggleEnabled(s.id)}
-                        className="text-muted hover:text-foreground transition p-1 text-xs"
-                        title={s.enabled ? 'Pause' : 'Resume'}
-                      >
-                        {s.enabled ? '⏸' : '▶'}
-                      </button>
-                      <button
-                        onClick={() => dcaSchedules.remove(s.id)}
-                        className="text-muted hover:text-red-400 transition p-1 text-xs"
-                        title="Remove schedule"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted">Recurring schedules run when the app is open. Remove to stop.</p>
-            </section>
-          )}
 
           {/* Safety Limits */}
           <section className="space-y-3">

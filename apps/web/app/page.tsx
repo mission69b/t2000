@@ -14,16 +14,6 @@ const DEMO_URL = "/demo";
 const ACCOUNTS = [
   {
     num: "01 / 05",
-    icon: "⟳",
-    title: "Checking",
-    subtitle: "Send · Receive · Balance",
-    desc: "Send and receive USDC. Gas handled automatically.",
-    prompt: "Send $10 to Alice",
-    cmd: "t2000 send 10 to alice",
-    href: "/accounts",
-  },
-  {
-    num: "02 / 05",
     icon: "◈",
     title: "Savings",
     subtitle: "Earn 2–8% APY",
@@ -33,7 +23,27 @@ const ACCOUNTS = [
     href: "/accounts",
   },
   {
+    num: "02 / 05",
+    icon: "⇌",
+    title: "Pay",
+    subtitle: "Pay-per-use APIs",
+    desc: "Your agent pays for APIs autonomously. No keys, no subscriptions.",
+    prompt: "Ask GPT-4o what it thinks about Sui",
+    cmd: "t2000 pay mpp.t2000.ai/openai ...",
+    href: "/accounts",
+  },
+  {
     num: "03 / 05",
+    icon: "→",
+    title: "Send",
+    subtitle: "Send USDC anywhere",
+    desc: "Send USDC to any address or contact. Gas handled automatically.",
+    prompt: "Send $10 to Alice",
+    cmd: "t2000 send 10 to alice",
+    href: "/accounts",
+  },
+  {
+    num: "04 / 05",
     icon: "◎",
     title: "Credit",
     subtitle: "Borrow · Repay",
@@ -43,24 +53,14 @@ const ACCOUNTS = [
     href: "/accounts",
   },
   {
-    num: "04 / 05",
-    icon: "⇌",
-    title: "Swap",
-    subtitle: "Swap supported assets",
-    desc: "Swap between stablecoins and crypto. Automatic routing.",
-    prompt: "Convert $5 to SUI",
-    cmd: "t2000 swap 5 USDC SUI",
-    href: "/accounts",
-  },
-  {
     num: "05 / 05",
-    icon: "◆",
-    title: "Invest",
-    subtitle: "Buy · Sell · Strategies · DCA",
-    desc: "Buy, sell, earn yield. Strategies and DCA built in.",
-    prompt: "Buy $200 of the layer1 strategy",
-    cmd: "t2000 invest strategy buy layer1 200",
-    href: "/invest",
+    icon: "←",
+    title: "Receive",
+    subtitle: "Receive USDC",
+    desc: "Get your wallet address. Fund from any exchange or wallet.",
+    prompt: "What's my deposit address?",
+    cmd: "t2000 deposit",
+    href: "/accounts",
   },
 ];
 
@@ -184,15 +184,12 @@ const COMPARE_ROWS: {
   { feature: "Chain", coinbase: "Base", t2000: "Sui" },
   { feature: "Send / receive", coinbase: "✓", t2000: "✓", bothCheck: true },
   { feature: "Savings account", coinbase: "—", t2000: "✓ Earn 2–8% APY automatically", coinbaseCross: true },
-  { feature: "Credit line", coinbase: "—", t2000: "✓ Borrow against savings + investments", coinbaseCross: true },
-  { feature: "Token swap", coinbase: "✓ Base tokens", t2000: "✓ Stables + SUI, BTC, ETH, GOLD", bothCheck: true },
-  { feature: "Investment account", coinbase: "—", t2000: "✓ Buy / sell + strategies + DCA", coinbaseCross: true },
-  { feature: "Yield on investments", coinbase: "—", t2000: "✓ Earn while holding", coinbaseCross: true },
+  { feature: "Credit line", coinbase: "—", t2000: "✓ Borrow against savings", coinbaseCross: true },
   { feature: "Pay-per-use APIs (MPP)", coinbase: "✓ Base / Solana", t2000: "✓ Sui · 40 services, 88 endpoints", bothCheck: true },
   { feature: "AI integration", coinbase: "—", t2000: "✓ 35 tools + 20 AI prompts + MCP", coinbaseCross: true },
   { feature: "AI Financial Advisor", coinbase: "—", t2000: "✓ MCP server + 20 AI prompts", coinbaseCross: true },
   { feature: "Agent Safeguards", coinbase: "—", t2000: "✓ Per-tx + daily limits + lock", coinbaseCross: true },
-  { feature: "Margin trading", coinbase: "—", t2000: "Coming soon", coinbaseCross: true, comingSoon: true },
+  { feature: "Receive / deposit", coinbase: "✓", t2000: "✓ Wallet address + QR code", bothCheck: true },
 ];
 
 export default function Home() {
@@ -282,16 +279,16 @@ export default function Home() {
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[420px] mt-4 sm:mt-5">
-            Five accounts. Earn, borrow, invest, swap, pay — autonomously.
+            Five products. Save, borrow, send, pay, receive — autonomously.
           </p>
 
           <div className="flex gap-2 sm:gap-3 mb-8 sm:mb-12 flex-wrap">
             {[
-              { icon: "⟳", label: "Checking", href: "/accounts" },
               { icon: "◈", label: "Savings", href: "/accounts" },
+              { icon: "⇌", label: "Pay", href: "/accounts" },
+              { icon: "→", label: "Send", href: "/accounts" },
               { icon: "◎", label: "Credit", href: "/accounts" },
-              { icon: "◆", label: "Invest", href: "/invest" },
-              { icon: "⇌", label: "Swap", href: "/accounts" },
+              { icon: "←", label: "Receive", href: "/accounts" },
             ].map((pill) => (
               <Link
                 key={pill.label}
@@ -331,7 +328,7 @@ export default function Home() {
       {/* ── Divider ── */}
       <div className="relative z-1 px-6 sm:px-10 lg:px-20 border-t border-border">
         <div className="text-[10px] tracking-[0.2em] uppercase text-dim py-5 flex items-center gap-4">
-          Five accounts. One agent. Zero friction.
+          Five products. One agent. Zero friction.
           <span className="flex-1 h-px bg-border" />
         </div>
       </div>
@@ -353,7 +350,7 @@ export default function Home() {
             </h2>
           </div>
           <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
-            Not just spending. Earning, borrowing, investing, swapping, paying.
+            Not just spending. Saving, paying, sending, borrowing, receiving.
           </p>
         </div>
 
@@ -733,10 +730,10 @@ export default function Home() {
               {[
                 "Move my idle USDC to the highest yield",
                 "Send $50 to alice",
-                "Invest $200 in the all-weather strategy",
+                "Ask GPT-4o about Sui ecosystem",
                 "Give me a full financial report",
                 "Borrow $40 against my savings",
-                "What\u2019s my portfolio performance?",
+                "What\u2019s my deposit address?",
               ].map((q) => (
                 <p key={q} className="text-[11px] sm:text-xs text-muted/80 italic flex items-start gap-2">
                   <span className="text-accent/50 text-[10px] mt-px shrink-0">&gt;</span>

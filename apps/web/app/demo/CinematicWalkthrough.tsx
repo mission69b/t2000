@@ -21,7 +21,7 @@ const scenes: Scene[] = [
       {
         type: "ai",
         tools: ["t2000_balance", "t2000_rates"],
-        html: `<table><tr><td>Checking</td><td class="hi">$96.81 USDC</td><td class="nt">spendable</td></tr><tr><td>Savings</td><td>$5.10</td><td class="nt">4.98% APY</td></tr><tr><td>Credit</td><td>$0.00</td><td class="nt">no active loans</td></tr><tr><td>Investment</td><td class="hi">$521.04</td><td class="nt">SUI \u00b7 BTC \u00b7 ETH \u00b7 GOLD</td></tr><tr><td>Gas</td><td>0.86 SUI</td><td class="nt">~$0.84</td></tr><tr class="bdr"><td><strong>Total</strong></td><td class="hi"><strong>$102.75</strong></td><td></td></tr></table><div class="nt">93% of your funds are idle in checking earning nothing.</div>`,
+        html: `<table><tr><td>Checking</td><td class="hi">$96.81 USDC</td><td class="nt">spendable</td></tr><tr><td>Savings</td><td>$5.10</td><td class="nt">4.98% APY</td></tr><tr><td>Credit</td><td>$0.00</td><td class="nt">no active loans</td></tr><tr><td>Gas</td><td>0.86 SUI</td><td class="nt">~$0.84</td></tr><tr class="bdr"><td><strong>Total</strong></td><td class="hi"><strong>$102.75</strong></td><td></td></tr></table><div class="nt">93% of your funds are idle in checking earning nothing.</div>`,
         hold: 2500,
       },
     ],
@@ -48,16 +48,16 @@ const scenes: Scene[] = [
       },
     ],
   },
-  { kind: "card", text: "Your yield follows\nthe best rate.", hold: 2500 },
+  { kind: "card", text: "Pays for intelligence\nautonomously.", hold: 2500 },
   {
     kind: "chat",
     messages: [
-      { type: "user", text: "Is my SUI earning the best rate?" },
+      { type: "user", text: "Ask GPT-4o about the Sui ecosystem" },
       { type: "think", ms: 1000 },
       {
         type: "ai",
-        tools: ["t2000_invest_rebalance"],
-        html: `<table><tr><td>Current</td><td>NAVI \u00b7 2.42% APY</td></tr><tr><td>Best available</td><td class="hi">Suilend \u00b7 2.61% APY</td></tr><tr><td>Moved</td><td class="hi">4.85 SUI \u2192 Suilend</td></tr><tr><td>APY gain</td><td class="hi">+0.20%</td></tr><tr><td>Tx</td><td class="tx">suiscan.xyz/tx/Hf2D\u2026</td></tr></table>`,
+        tools: ["t2000_pay"],
+        html: `<table><tr><td>API</td><td>mpp.t2000.ai/openai</td></tr><tr><td>Status</td><td class="hi">402 \u2192 paid automatically</td></tr><tr><td>Cost</td><td class="hi">$0.01 USDC</td></tr><tr><td>Tx</td><td class="tx">suiscan.xyz/tx/Hf2D\u2026</td></tr></table>`,
         hold: 2000,
       },
     ],
@@ -108,12 +108,12 @@ const scenes: Scene[] = [
   {
     kind: "chat",
     messages: [
-      { type: "user", text: "Run a risk analysis on my portfolio" },
+      { type: "user", text: "Run a risk analysis on my positions" },
       { type: "think", ms: 1200 },
       {
         type: "ai",
         tools: ["t2000_positions", "t2000_pay"],
-        html: `<div class="nt" style="margin:0 0 8px">Paid <span class="hi">$0.05</span> via MPP to DeFi Risk API.</div><table><tr><td>Risk score</td><td class="hi">Low \u00b7 82/100</td></tr><tr><td>Health factor</td><td>1.8 (liquidation below 1.0)</td></tr><tr><td>Utilization</td><td>52% of borrowing capacity</td></tr><tr><td>Exposure</td><td>Single-protocol (NAVI)</td></tr></table><div class="nt">Position is healthy. Consider splitting across NAVI + Suilend to reduce single-protocol risk.</div>`,
+        html: `<div class="nt" style="margin:0 0 8px">Paid <span class="hi">$0.05</span> via MPP to DeFi Risk API.</div><table><tr><td>Risk score</td><td class="hi">Low \u00b7 82/100</td></tr><tr><td>Health factor</td><td>1.8 (liquidation below 1.0)</td></tr><tr><td>Utilization</td><td>52% of borrowing capacity</td></tr><tr><td>Protocol</td><td>NAVI</td></tr></table><div class="nt">Position is healthy. Savings earning 4.98% APY with safe health factor.</div>`,
         hold: 2800,
       },
     ],

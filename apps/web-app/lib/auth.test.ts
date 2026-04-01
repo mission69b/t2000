@@ -57,7 +57,6 @@ describe('validateAmount', () => {
   it('accepts valid amounts within caps', () => {
     expect(validateAmount('save', 500)).toEqual({ valid: true });
     expect(validateAmount('send', 100)).toEqual({ valid: true });
-    expect(validateAmount('swap', 50_000)).toEqual({ valid: true });
   });
 
   it('rejects amounts exceeding per-flow caps', () => {

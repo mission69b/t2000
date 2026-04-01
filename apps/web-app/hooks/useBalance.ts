@@ -29,8 +29,8 @@ export interface BalanceData {
   total: number;
   /** Liquid spendable balance: USDC + SUI (in USD) */
   cash: number;
-  /** Volatile asset holdings in USD: BTC, ETH, GOLD, USDT */
-  investments: number;
+  /** Other token balances in USD (USDT, USDe, etc.) */
+  otherAssetsUsd: number;
   savings: number;
   borrows: number;
   sui: number;
@@ -136,7 +136,7 @@ export function useBalance(address: string | null) {
       });
 
       const cash = r2(usdc + suiUsd);
-      const investments = r2(tradeableUsd);
+      const otherAssetsUsd = r2(tradeableUsd);
       const savings = r2(posData.savings ?? 0);
       const borrows = posData.borrows ?? 0;
       const savingsRate = r2(posData.savingsRate ?? 0);
@@ -190,9 +190,9 @@ export function useBalance(address: string | null) {
       const currentRate = primaryPosition?.apy ?? savingsRate;
 
       return {
-        total: r2(cash + investments + savings - borrows),
+        total: r2(cash + otherAssetsUsd + savings - borrows),
         cash,
-        investments,
+        otherAssetsUsd,
         savings,
         borrows,
         sui,

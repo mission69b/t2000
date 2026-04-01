@@ -17,14 +17,9 @@ const tests = [
   { name: 'Wallet & Balance', file: 'test-wallet.ts' },
   { name: 'Send', file: 'test-send.ts' },
   { name: 'NAVI Protocol', file: 'test-navi.ts' },
-  { name: 'Suilend Protocol', file: 'test-suilend.ts' },
-  { name: 'Swap', file: 'test-swap.ts' },
   { name: 'Earn', file: 'test-earn.ts' },
-  { name: 'Investment', file: 'test-invest.ts' },
-  { name: 'Strategies', file: 'test-strategy.ts' },
   { name: 'Claim Rewards', file: 'test-claim-rewards.ts' },
   { name: 'MPP Pay', file: 'test-pay.ts' },
-  { name: 'Cross-Feature', file: 'test-cross-features.ts' },
   { name: 'Misc', file: 'test-misc.ts' },
 ];
 

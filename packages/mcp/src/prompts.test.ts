@@ -21,8 +21,8 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 19 prompts', () => {
-    expect(prompts.size).toBe(19);
+  it('should register 16 prompts', () => {
+    expect(prompts.size).toBe(16);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
@@ -33,10 +33,8 @@ describe('prompts', () => {
     expect(prompts.has('sweep')).toBe(true);
     expect(prompts.has('risk-check')).toBe(true);
     expect(prompts.has('weekly-recap')).toBe(true);
-    expect(prompts.has('dca-advisor')).toBe(true);
     expect(prompts.has('claim-rewards')).toBe(true);
     expect(prompts.has('safeguards')).toBe(true);
-    expect(prompts.has('quick-swap')).toBe(true);
     expect(prompts.has('onboarding')).toBe(true);
     expect(prompts.has('emergency')).toBe(true);
     expect(prompts.has('optimize-all')).toBe(true);
@@ -116,18 +114,6 @@ describe('prompts', () => {
     expect(result.messages[0].content.text).toContain('t2000_lock');
   });
 
-  it('quick-swap should work with and without args', async () => {
-    const handler = prompts.get('quick-swap')!;
-    const withArgs = await handler({ from: 'USDC', to: 'SUI', amount: 10 });
-    expect(withArgs.messages).toHaveLength(1);
-    expect(withArgs.messages[0].content.text).toContain('USDC');
-    expect(withArgs.messages[0].content.text).toContain('SUI');
-
-    const withoutArgs = await handler({});
-    expect(withoutArgs.messages).toHaveLength(1);
-    expect(withoutArgs.messages[0].content.text).toContain('t2000_swap');
-  });
-
   it('morning-briefing should use t2000_overview and mention action items', async () => {
     const handler = prompts.get('morning-briefing')!;
     const result = await handler({});
@@ -166,7 +152,6 @@ describe('prompts', () => {
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_overview');
     expect(result.messages[0].content.text).toContain('t2000_rebalance');
-    expect(result.messages[0].content.text).toContain('t2000_invest_rebalance');
   });
 
   it('savings-goal should accept target and months parameters', async () => {

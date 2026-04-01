@@ -1,7 +1,7 @@
 import type { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
-export type AdapterCapability = 'save' | 'withdraw' | 'borrow' | 'repay' | 'swap' | 'perps';
+export type AdapterCapability = 'save' | 'withdraw' | 'borrow' | 'repay';
 
 /**
  * Describes a protocol for indexer event classification.
@@ -59,12 +59,6 @@ export interface HealthInfo {
   liquidationThreshold: number;
 }
 
-export interface SwapQuote {
-  expectedOutput: number;
-  priceImpact: number;
-  poolPrice: number;
-}
-
 export interface LendingAdapter {
   readonly id: string;
   readonly name: string;
@@ -102,60 +96,4 @@ export interface PendingReward {
   symbol: string;
   amount: number;
   estimatedValueUsd: number;
-}
-
-export interface SwapAdapter {
-  readonly id: string;
-  readonly name: string;
-  readonly version: string;
-  readonly capabilities: readonly AdapterCapability[];
-
-  init(client: SuiJsonRpcClient): Promise<void>;
-
-  getQuote(from: string, to: string, amount: number): Promise<SwapQuote>;
-  buildSwapTx(
-    address: string,
-    from: string,
-    to: string,
-    amount: number,
-    maxSlippageBps?: number,
-  ): Promise<AdapterTxResult & { estimatedOut: number; toDecimals: number }>;
-  getSupportedPairs(): Array<{ from: string; to: string }>;
-  getPoolPrice(): Promise<number>;
-
-  addSwapToTx?(
-    tx: Transaction,
-    address: string,
-    inputCoin: TransactionObjectArgument,
-    from: string,
-    to: string,
-    amount: number,
-    maxSlippageBps?: number,
-  ): Promise<{ outputCoin: TransactionObjectArgument; estimatedOut: number; toDecimals: number }>;
-}
-
-export interface PerpsAdapter {
-  readonly id: string;
-  readonly name: string;
-  readonly version: string;
-  readonly capabilities: readonly AdapterCapability[];
-  readonly supportedMarkets: readonly string[];
-
-  init(keypair: unknown, network: 'mainnet' | 'testnet'): Promise<void>;
-
-  getAccountBalance(address: string): Promise<number>;
-  getPositions(address: string): Promise<import('../types.js').PerpsPosition[]>;
-  getMarketPrice(market: string): Promise<number>;
-
-  deposit(amount: number): Promise<string>;
-  withdraw(amount: number): Promise<string>;
-
-  openPosition(params: {
-    market: string;
-    side: import('../types.js').PositionSide;
-    margin: number;
-    leverage: number;
-  }): Promise<import('../types.js').PerpsTradeResult>;
-
-  closePosition(market: string): Promise<import('../types.js').PerpsTradeResult>;
 }

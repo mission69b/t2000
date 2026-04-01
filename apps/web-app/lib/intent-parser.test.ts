@@ -108,93 +108,21 @@ describe('parseIntent', () => {
     });
   });
 
-  describe('buy', () => {
-    it('parses "buy $200 BTC"', () => {
-      expect(parseIntent('buy $200 BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 200 });
+  describe('removed intents fall through to null', () => {
+    it('swap returns null', () => {
+      expect(parseIntent('swap $50 to SUI')).toBeNull();
     });
 
-    it('parses "buy SUI $100"', () => {
-      expect(parseIntent('buy SUI $100')).toEqual({ action: 'swap', from: 'USDC', to: 'SUI', amount: 100 });
+    it('buy returns null', () => {
+      expect(parseIntent('buy $200 BTC')).toBeNull();
     });
 
-    it('parses "invest $100 in SUI" as buy', () => {
-      expect(parseIntent('invest $100 in SUI')).toEqual({ action: 'swap', from: 'USDC', to: 'SUI', amount: 100 });
+    it('sell returns null', () => {
+      expect(parseIntent('sell 0.001 BTC')).toBeNull();
     });
 
-    it('parses "invest 500 in ethereum" as buy', () => {
-      expect(parseIntent('invest 500 in ethereum')).toEqual({ action: 'swap', from: 'USDC', to: 'ETH', amount: 500 });
-    });
-  });
-
-  describe('sell', () => {
-    it('parses "sell 0.001 BTC"', () => {
-      expect(parseIntent('sell 0.001 BTC')).toEqual({ action: 'swap', from: 'BTC', to: 'USDC', amount: 0.001 });
-    });
-
-    it('parses "sell $50 ETH"', () => {
-      expect(parseIntent('sell $50 ETH')).toEqual({ action: 'swap', from: 'ETH', to: 'USDC', amount: 50 });
-    });
-  });
-
-  describe('swap', () => {
-    it('parses "swap $50 to SUI" (assumes from USDC)', () => {
-      expect(parseIntent('swap $50 to SUI')).toEqual({ action: 'swap', from: 'USDC', to: 'SUI', amount: 50 });
-    });
-
-    it('parses "exchange 100 for ETH" (assumes from USDC)', () => {
-      expect(parseIntent('exchange 100 for ETH')).toEqual({ action: 'swap', from: 'USDC', to: 'ETH', amount: 100 });
-    });
-
-    it('parses "swap 50 SUI to ETH"', () => {
-      expect(parseIntent('swap 50 SUI to ETH')).toEqual({ action: 'swap', from: 'SUI', to: 'ETH', amount: 50 });
-    });
-
-    it('parses "trade 10 USDC for BTC"', () => {
-      expect(parseIntent('trade 10 USDC for BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 10 });
-    });
-  });
-
-  describe('swap all', () => {
-    it('parses "swap all USDe to USDC"', () => {
-      expect(parseIntent('swap all USDe to USDC')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
-    });
-
-    it('parses "Swap all USDe to USDC" (case-insensitive)', () => {
-      expect(parseIntent('Swap all USDe to USDC')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
-    });
-
-    it('parses "convert all ETH to USDC"', () => {
-      expect(parseIntent('convert all ETH to USDC')).toEqual({ action: 'swap', from: 'ETH', to: 'USDC', amount: -1 });
-    });
-
-    it('parses "sell all BTC"', () => {
-      expect(parseIntent('sell all BTC')).toEqual({ action: 'swap', from: 'BTC', to: 'USDC', amount: -1 });
-    });
-
-    it('parses "sell all USDe"', () => {
-      expect(parseIntent('sell all USDe')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
-    });
-  });
-
-  describe('swap with unified terminology', () => {
-    it('parses "swap to BTC" without amount as swap intent', () => {
-      expect(parseIntent('swap $100 to BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 100 });
-    });
-
-    it('parses "trade 50 USDT for SUI" as swap intent', () => {
-      expect(parseIntent('trade 50 USDT for SUI')).toEqual({ action: 'swap', from: 'USDT', to: 'SUI', amount: 50 });
-    });
-
-    it('parses "buy $100 GOLD"', () => {
-      expect(parseIntent('buy $100 GOLD')).toEqual({ action: 'swap', from: 'USDC', to: 'GOLD', amount: 100 });
-    });
-
-    it('parses "sell 0.5 ETH" (fractional token amount)', () => {
-      expect(parseIntent('sell 0.5 ETH')).toEqual({ action: 'swap', from: 'ETH', to: 'USDC', amount: 0.5 });
-    });
-
-    it('still parses "invest" as backward-compatible swap', () => {
-      expect(parseIntent('invest $200 in BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 200 });
+    it('invest returns null', () => {
+      expect(parseIntent('invest $100 in SUI')).toBeNull();
     });
   });
 
@@ -205,14 +133,6 @@ describe('parseIntent', () => {
 
     it('parses "could you withdraw all"', () => {
       expect(parseIntent('could you withdraw all')).toEqual({ action: 'withdraw', amount: -1 });
-    });
-
-    it('parses "please swap all USDe to USDC"', () => {
-      expect(parseIntent('please swap all USDe to USDC')).toEqual({ action: 'swap', from: 'USDe', to: 'USDC', amount: -1 });
-    });
-
-    it('parses "i want to buy $100 BTC"', () => {
-      expect(parseIntent('i want to buy $100 BTC')).toEqual({ action: 'swap', from: 'USDC', to: 'BTC', amount: 100 });
     });
 
     it('parses "pls send $50 to alice"', () => {

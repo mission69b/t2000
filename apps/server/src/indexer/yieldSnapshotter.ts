@@ -22,15 +22,6 @@ async function getRegistry(client: SuiJsonRpcClient): Promise<RegistryType> {
   await navi.init(client);
   registry.registerLending(navi);
 
-  try {
-    const { SuilendAdapter } = await import('@t2000/sdk/adapters');
-    const suilend = new SuilendAdapter();
-    await suilend.init(client);
-    registry.registerLending(suilend);
-  } catch (err) {
-    console.warn('[yield] Suilend adapter failed to load — running with NAVI only:', err instanceof Error ? err.message : err);
-  }
-
   return registry;
 }
 

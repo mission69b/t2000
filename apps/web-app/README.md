@@ -7,10 +7,10 @@ Consumer web app — AI-powered banking for Sui agents with zkLogin.
 ## What it does
 
 - **Google Sign-In** via zkLogin — wallet derived from Google account, no seed phrase
-- **Conversational banking** — natural language interface for send, save, invest, swap
+- **Conversational banking** — natural language interface for send, save, borrow, pay
 - **Dashboard** — balances, positions, transaction history, activity feed
 - **USDC sponsorship** — auto-funds $1 USDC on first sign-in
-- **DeFi** — NAVI/Suilend savings, Cetus swaps, auto-invest strategies
+- **DeFi** — NAVI savings and credit via MCP-first integration
 - **MPP payments** — pay for API services directly from the web app
 
 ## Stack

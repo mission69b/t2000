@@ -409,7 +409,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_balance: 'Checking balance',
   get_rates: 'Checking rates',
   get_history: 'Loading history',
-  get_portfolio: 'Checking portfolio',
+  get_positions: 'Checking positions',
   get_health: 'Checking health',
   web_search: 'Searching web',
   get_news: 'Fetching news',

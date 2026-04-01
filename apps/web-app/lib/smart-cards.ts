@@ -26,7 +26,6 @@ export interface SmartCardAction {
 export interface AccountState {
   cash: number;
   savings: number;
-  investments: number;
   borrows: number;
   savingsRate: number;
   pendingRewards: number;

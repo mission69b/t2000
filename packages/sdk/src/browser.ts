@@ -4,8 +4,6 @@
  * Exports everything the web app needs WITHOUT Node-only modules:
  *   - keyManager (fs-based wallet encryption)
  *   - ContactManager (file-based contacts)
- *   - PortfolioManager (file-based portfolio)
- *   - StrategyManager / AutoInvestManager (file-based)
  *
  * Protocol adapters are NOT statically exported here — import them
  * via dynamic import() in the web app to keep the initial bundle small.
@@ -45,10 +43,9 @@ export {
   CLOCK_ID,
   DEFAULT_NETWORK,
 } from './constants.js';
-export type { SupportedAsset, StableAsset, InvestmentAsset } from './constants.js';
+export type { SupportedAsset, StableAsset } from './constants.js';
 export {
   STABLE_ASSETS,
-  INVESTMENT_ASSETS,
   GAS_RESERVE_MIN,
 } from './constants.js';
 
@@ -92,7 +89,6 @@ export type {
   WithdrawResult,
   BorrowResult,
   RepayResult,
-  SwapResult,
   HealthFactorResult,
   MaxWithdrawResult,
   MaxBorrowResult,
@@ -106,13 +102,6 @@ export type {
   RebalanceResult,
   DepositInfo,
   TransactionRecord,
-  InvestmentRecord,
-  InvestmentPosition,
-  PortfolioResult,
-  InvestResult,
-  InvestEarnResult,
-  InvestRebalanceResult,
-  InvestRebalanceMove,
   ClaimRewardsResult,
   PendingReward,
   PayOptions,

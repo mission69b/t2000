@@ -7,13 +7,12 @@ const DEFI_ITEMS = [
   { name: "ETH", value: "$3,201", change: "+0.3%", up: true },
   { name: "Borrow Rate", value: "7.83%", change: "-0.1%", up: false },
   { name: "USDC/SUI", value: "1.0989", change: "+0.42%", up: true },
-  { name: "Gold", value: "$2,934", change: "+0.2%", up: true },
 ];
 
 const AGENT_ITEMS = [
   { name: "agent_0x3f · saved", value: "$200 USDC", change: "✓ 4.21% APY", up: true },
   { name: "agent_0x9a · borrowed", value: "$40 USDC", change: "✓ healthy", up: true },
-  { name: "agent_0x7c · invested", value: "$100 SUI", change: "✓ bluechip", up: true },
+  { name: "agent_0x7c · paid API", value: "$0.03 USDC", change: "✓ GPT-4o", up: true },
   { name: "agent_0xb1 · sent", value: "$25 to alice", change: "✓ confirmed", up: true },
   { name: "agent_0x4e · paid API", value: "$0.01 USDC", change: "✓ 380ms", up: true },
 ];

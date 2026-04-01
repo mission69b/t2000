@@ -25,13 +25,13 @@ describe('shouldAutoTopUp', () => {
     vi.clearAllMocks();
   });
 
-  it('returns true when SUI < reserve target AND USDC >= min', async () => {
+  it('returns false even when SUI < reserve target AND USDC >= min (swap disabled)', async () => {
     const client = mockClient(
       GAS_RESERVE_TARGET - 1n,    // just under 0.15 SUI
       AUTO_TOPUP_MIN_USDC,        // exactly $2 USDC
     );
     const result = await shouldAutoTopUp(client, '0x' + 'a'.repeat(64));
-    expect(result).toBe(true);
+    expect(result).toBe(false);
   });
 
   it('returns false when SUI >= reserve target', async () => {

@@ -1,12 +1,11 @@
 ---
 name: t2000-save
 description: >-
-  Deposit into savings to earn yield on Sui via NAVI or Suilend
-  (auto-selects best rate). Use when asked to save money, earn interest,
-  deposit to savings, or put funds to work. Accepts USDC directly, and
-  auto-converts other stablecoins (suiUSDT, suiUSDe, USDsui) to USDC
-  atomically before depositing. Not for sending to other addresses —
-  use t2000-send for that.
+  Deposit into savings to earn yield on Sui via NAVI Protocol. Use when
+  asked to save money, earn interest, deposit to savings, or put funds
+  to work. Accepts USDC directly, and auto-converts other stablecoins
+  (suiUSDT, suiUSDe, USDsui) to USDC atomically before depositing. Not
+  for sending to other addresses — use t2000-send for that.
 license: MIT
 metadata:
   author: t2000
@@ -17,25 +16,23 @@ metadata:
 # t2000: Save (Deposit to Savings)
 
 ## Purpose
-Deposit into savings to earn yield (auto-selects best rate across
-NAVI and Suilend, or specify `--protocol navi|suilend`). If wallet holds
+Deposit into savings to earn yield on NAVI Protocol. If wallet holds
 non-USDC stablecoins (suiUSDT, suiUSDe, USDsui), they are auto-converted
 to USDC atomically before deposit. Funds remain non-custodial and
 withdrawable at any time.
 
 ## Command
 ```bash
-t2000 save <amount> [--protocol <name>]
+t2000 save <amount>
 t2000 save all
 
 # Examples:
 t2000 save 80
 t2000 save all
-t2000 save 50 --protocol suilend
 ```
 
 - `save all`: deposits full stablecoin balance minus $1 reserve for gas
-- Non-USDC stables are auto-swapped to USDC in the same transaction
+- Non-USDC stables are auto-converted to USDC in the same transaction
 - Rebalance may internally move savings to other stablecoins for better yield
 
 ## Fees

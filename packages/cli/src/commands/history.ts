@@ -8,7 +8,6 @@ import { printHeader, printBlank, printJson, isJsonMode, handleError, printLine,
 const ACTION_LABELS: Record<string, string> = {
   send: '↗ send',
   lending: '🏦 lend',
-  swap: '🔄 swap',
   transaction: '📦 tx',
 };
 

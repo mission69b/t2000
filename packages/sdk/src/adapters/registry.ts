@@ -1,24 +1,16 @@
 import type {
   LendingAdapter,
-  SwapAdapter,
   LendingRates,
-  SwapQuote,
   AdapterPositions,
-  AdapterCapability,
 } from './types.js';
-import { STABLE_ASSETS, INVESTMENT_ASSETS } from '../constants.js';
+import { STABLE_ASSETS } from '../constants.js';
 import { T2000Error } from '../errors.js';
 
 export class ProtocolRegistry {
   private lending: Map<string, LendingAdapter> = new Map();
-  private swap: Map<string, SwapAdapter> = new Map();
 
   registerLending(adapter: LendingAdapter): void {
     this.lending.set(adapter.id, adapter);
-  }
-
-  registerSwap(adapter: SwapAdapter): void {
-    this.swap.set(adapter.id, adapter);
   }
 
   async bestSaveRate(asset: string): Promise<{ adapter: LendingAdapter; rate: LendingRates }> {
@@ -66,28 +58,6 @@ export class ProtocolRegistry {
     return candidates[0];
   }
 
-  async bestSwapQuote(from: string, to: string, amount: number): Promise<{ adapter: SwapAdapter; quote: SwapQuote }> {
-    const candidates: Array<{ adapter: SwapAdapter; quote: SwapQuote }> = [];
-
-    for (const adapter of this.swap.values()) {
-      const pairs = adapter.getSupportedPairs();
-      if (!pairs.some(p => p.from === from && p.to === to)) continue;
-      try {
-        const quote = await adapter.getQuote(from, to, amount);
-        candidates.push({ adapter, quote });
-      } catch {
-        // skip
-      }
-    }
-
-    if (candidates.length === 0) {
-      throw new T2000Error('ASSET_NOT_SUPPORTED', `No swap adapter supports ${from} → ${to}`);
-    }
-
-    candidates.sort((a, b) => b.quote.expectedOutput - a.quote.expectedOutput);
-    return candidates[0];
-  }
-
   async bestSaveRateAcrossAssets(): Promise<{ adapter: LendingAdapter; rate: LendingRates; asset: string }> {
     const candidates: Array<{ adapter: LendingAdapter; rate: LendingRates; asset: string }> = [];
 
@@ -112,9 +82,8 @@ export class ProtocolRegistry {
 
   async allRatesAcrossAssets(): Promise<Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }>> {
     const results: Array<{ protocol: string; protocolId: string; asset: string; rates: LendingRates }> = [];
-    const allAssets = [...STABLE_ASSETS, ...Object.keys(INVESTMENT_ASSETS)];
     const seen = new Set<string>();
-    for (const asset of allAssets) {
+    for (const asset of STABLE_ASSETS) {
       if (seen.has(asset)) continue;
       seen.add(asset);
       for (const adapter of this.lending.values()) {
@@ -167,16 +136,7 @@ export class ProtocolRegistry {
     return this.lending.get(id);
   }
 
-  getSwap(id: string): SwapAdapter | undefined {
-    return this.swap.get(id);
-  }
-
   listLending(): LendingAdapter[] {
     return [...this.lending.values()];
   }
-
-  listSwap(): SwapAdapter[] {
-    return [...this.swap.values()];
-  }
-
 }

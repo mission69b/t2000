@@ -95,34 +95,6 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
     expect(result.current.state.phase).toBe('idle');
   });
 
-  it('starts swap flow in asset-select phase', () => {
-    const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('swap'));
-    expect(result.current.state.phase).toBe('asset-select');
-    expect(result.current.state.flow).toBe('swap');
-  });
-
-  it('swap flow: selects source then destination asset', () => {
-    const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('swap'));
-    act(() => result.current.selectAsset('USDC'));
-    expect(result.current.state.asset).toBe('USDC');
-    expect(result.current.state.phase).toBe('asset-select');
-
-    act(() => result.current.selectAsset('SUI'));
-    expect(result.current.state.toAsset).toBe('SUI');
-    expect(result.current.state.phase).toBe('l2-chips');
-    expect(result.current.state.message).toContain('Buy SUI');
-  });
-
-  it('swap flow: sell labels correctly', () => {
-    const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('swap'));
-    act(() => result.current.selectAsset('BTC'));
-    act(() => result.current.selectAsset('USDC'));
-    expect(result.current.state.message).toContain('Sell BTC');
-  });
-
   it('startFlow with context generates message with balance info', () => {
     const { result } = renderHook(() => useChipFlow());
     act(() => result.current.startFlow('save', { cash: 500, savingsRate: 6.5 }));
@@ -130,22 +102,12 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
     expect(result.current.state.message).toBeTruthy();
   });
 
-  it('handles quoting phase for swaps', () => {
-    const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('swap'));
-    act(() => result.current.selectAsset('USDC'));
-    act(() => result.current.selectAsset('SUI'));
-    act(() => result.current.setQuoting(100));
-    expect(result.current.state.phase).toBe('quoting');
-    expect(result.current.state.amount).toBe(100);
-  });
-
   it('startFlow with protocol context sets protocol on state', () => {
     const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('rebalance', { protocol: 'suilend', savingsRate: 7.2 }));
+    act(() => result.current.startFlow('rebalance', { protocol: 'navi', savingsRate: 7.2 }));
     expect(result.current.state.phase).toBe('l2-chips');
     expect(result.current.state.flow).toBe('rebalance');
-    expect(result.current.state.protocol).toBe('suilend');
+    expect(result.current.state.protocol).toBe('navi');
     expect(result.current.state.message).toContain('7.2%');
   });
 
@@ -159,12 +121,12 @@ describe.skipIf(!renderHook)('useChipFlow', () => {
 
   it('rebalance flow goes through full lifecycle', () => {
     const { result } = renderHook(() => useChipFlow());
-    act(() => result.current.startFlow('rebalance', { protocol: 'suilend' }));
+    act(() => result.current.startFlow('rebalance', { protocol: 'navi' }));
     act(() => result.current.selectAmount(1000));
     expect(result.current.state.phase).toBe('confirming');
     act(() => result.current.confirm());
     expect(result.current.state.phase).toBe('executing');
-    act(() => result.current.setResult({ success: true, title: 'Rebalanced', details: 'Moved to Suilend' }));
+    act(() => result.current.setResult({ success: true, title: 'Rebalanced', details: 'Moved to NAVI USDe' }));
     expect(result.current.state.phase).toBe('result');
     expect(result.current.state.result?.success).toBe(true);
   });

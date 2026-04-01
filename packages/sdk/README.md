@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI + Suilend, borrow against collateral, and auto-rebalance for optimal yield — all from a single class. USDC in, USDC out — multi-stablecoin optimization is handled internally by rebalance.
+The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI, borrow against collateral, and auto-rebalance for optimal yield — all from a single class. USDC in, USDC out — multi-stablecoin optimization is handled internally by rebalance.
 
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -37,14 +37,11 @@ console.log(`$${balance.available} USDC available`);
 // Send USDC
 await agent.send({ to: '0x...', amount: 10 });
 
-// Save (earn yield — auto-selects best rate across NAVI + Suilend)
+// Save (earn yield — auto-selects best rate via NAVI)
 await agent.save({ amount: 50 });
 
 // Borrow USDC against your collateral
 await agent.borrow({ amount: 25 });
-
-// Swap tokens (e.g. USDC ⇌ SUI)
-await agent.swap({ from: 'USDC', to: 'SUI', amount: 5 });
 
 // Rebalance — move savings to the best rate (dry-run first)
 const plan = await agent.rebalance({ dryRun: true });
@@ -53,46 +50,6 @@ await agent.rebalance(); // execute
 
 // Withdraw — always returns USDC (auto-swaps non-USDC positions)
 await agent.withdraw({ amount: 25 });
-
-// Buy crypto assets
-await agent.buy({ asset: 'SUI', usdAmount: 100 });
-await agent.buy({ asset: 'BTC', usdAmount: 500 });
-await agent.buy({ asset: 'ETH', usdAmount: 200 });
-await agent.buy({ asset: 'GOLD', usdAmount: 100 });
-
-// Check portfolio
-const portfolio = await agent.getPortfolio();
-console.log(`P&L: ${portfolio.unrealizedPnL}`);
-
-// Earn yield on investment (deposit into best-rate lending)
-await agent.investEarn({ asset: 'SUI' });
-
-// Stop earning (withdraw from lending, keep in portfolio)
-await agent.investUnearn({ asset: 'SUI' });
-
-// Rebalance earning positions to better-rate protocols
-await agent.investRebalance();                  // execute
-await agent.investRebalance({ dryRun: true });  // preview only
-
-// Sell position (auto-withdraws if earning first)
-await agent.sell({ asset: 'SUI', usdAmount: 'all' });
-
-// Buy into a strategy (single atomic PTB)
-// bluechip: BTC 50%, ETH 30%, SUI 20%; all-weather: BTC 30%, ETH 20%, SUI 20%, GOLD 30%; safe-haven: BTC 50%, GOLD 50%
-await agent.investStrategy({ strategy: 'bluechip', usdAmount: 200 });
-
-// Check strategy status
-const status = await agent.getStrategyStatus({ strategy: 'bluechip' });
-console.log(`Total value: $${status.totalValue}`);
-
-// Rebalance strategy to target weights
-await agent.rebalanceStrategy({ strategy: 'bluechip' });
-
-// Set up dollar-cost averaging
-await agent.setupAutoInvest({ amount: 50, frequency: 'weekly', strategy: 'bluechip' });
-
-// Run pending DCA purchases
-await agent.runAutoInvest();
 ```
 
 ## API Reference
@@ -142,10 +99,6 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
 | `agent.repay({ amount })` | Repay outstanding debt (auto-swaps USDC to borrowed asset if non-USDC). `amount` can be `'all'`. | `RepayResult` |
 | `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins internally. Dry-run for preview. | `RebalanceResult` |
-| `agent.swap({ from, to, amount, maxSlippage? })` | Swap tokens via Cetus DEX (e.g. USDC ⇌ SUI). On-chain slippage protection. | `SwapResult` |
-| `agent.swapQuote({ from, to, amount })` | Get swap quote without executing | `{ expectedOutput, priceImpact, poolPrice, fee }` |
-| `agent.buy({ asset, usdAmount, maxSlippage? })` | Buy crypto asset with USD | `InvestResult` |
-| `agent.sell({ asset, usdAmount \| 'all', maxSlippage? })` | Sell crypto back to USDC (auto-withdraws if earning) | `InvestResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -186,38 +139,6 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.enforcer.isConfigured()` | Whether safeguards are set up | `boolean` |
 
 **Types:** `SafeguardConfig` — `{ maxPerTx?, maxDailySend?, locked? }` · `SafeguardError` — thrown when limits exceeded or agent locked
-
-### Investment Yield Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.investEarn({ asset })` | Deposit held asset into best-rate lending for yield | `InvestEarnResult` |
-| `agent.investUnearn({ asset })` | Withdraw from lending, keep in portfolio | `InvestUnearnResult` |
-| `agent.investRebalance({ dryRun?, minYieldDiff? })` | Move earning positions to better-rate protocols | `InvestRebalanceResult` |
-| `agent.getPortfolio()` | Investment positions + P&L (grouped by strategy) | `PortfolioResult` |
-
-> **Deprecated aliases:** `agent.exchange()` and `agent.exchangeQuote()` still work but are deprecated — use `agent.swap()` and `agent.swapQuote()`. Similarly, `agent.investBuy()` and `agent.investSell()` are deprecated — use `agent.buy()` and `agent.sell()`.
-
-### Strategy Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.investStrategy({ strategy, usdAmount, maxSlippage?, dryRun? })` | Buy into a strategy (single atomic PTB) | `StrategyBuyResult` |
-| `agent.sellStrategy({ strategy, maxSlippage? })` | Sell all positions in a strategy | `StrategySellResult` |
-| `agent.rebalanceStrategy({ strategy, maxSlippage?, driftThreshold? })` | Rebalance to target weights | `StrategyRebalanceResult` |
-| `agent.getStrategyStatus({ strategy })` | Positions, weights, drift for a strategy | `StrategyStatusResult` |
-| `agent.getStrategies()` | List all available strategies | `StrategyDefinition[]` |
-| `agent.createStrategy({ name, allocations, description? })` | Create a custom strategy | `StrategyDefinition` |
-| `agent.deleteStrategy({ name })` | Delete a custom strategy (no active positions) | `void` |
-
-### Auto-Invest (DCA) Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `agent.setupAutoInvest({ amount, frequency, strategy?, asset? })` | Schedule recurring purchases | `AutoInvestSchedule` |
-| `agent.getAutoInvestStatus()` | View schedules and pending runs | `AutoInvestStatus` |
-| `agent.runAutoInvest()` | Execute all pending DCA purchases | `AutoInvestRunResult` |
-| `agent.stopAutoInvest({ id? })` | Stop one or all schedules | `void` |
 
 ### Key Management
 
@@ -294,7 +215,6 @@ import {
   rawToUsdc,
   formatUsd,
   formatSui,
-  formatAssetAmount,
   validateAddress,
   truncateAddress,
 } from '@t2000/sdk';
@@ -304,11 +224,6 @@ usdcToRaw(10.50);               // 10_500_000n
 formatUsd(1234.5);              // "$1234.50"
 truncateAddress('0xabcdef...1234'); // "0xabcd...1234"
 validateAddress('0x...');        // throws if invalid
-
-// Asset-aware decimal formatting
-formatAssetAmount('BTC', 0.00123456); // "0.00123456" (8 decimals)
-formatAssetAmount('ETH', 1.5);        // "1.50000000" (8 decimals)
-formatAssetAmount('SUI', 105.26);     // "105.260000000" (9 decimals)
 ```
 
 ### Advanced: Exposed Internals
@@ -327,13 +242,13 @@ Every operation (send, save, borrow, repay, withdraw) routes through a 3-step ga
 | Step | Strategy | Condition | How it works |
 |------|----------|-----------|--------------|
 | 1 | **Self-funded** | SUI ≥ 0.05 | Uses the agent's own SUI for gas |
-| 2 | **Auto-topup** | SUI < 0.05, USDC ≥ $2 | Swaps $1 USDC → SUI (swap is gas-sponsored), then self-funds |
+| 2 | **Auto-topup** | SUI < 0.05, USDC ≥ $2 | Converts $1 USDC → SUI (currently disabled, falls back to step 3) |
 | 3 | **Sponsored** | Steps 1 & 2 fail | Gas Station sponsors the full transaction |
 | 4 | **Error** | All fail | Throws `INSUFFICIENT_GAS` |
 
 Every transaction result includes a `gasMethod` field (`'self-funded'` | `'auto-topup'` | `'sponsored'`) indicating which strategy was used.
 
-**Architecture:** Each protocol operation (NAVI, Suilend, Cetus, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step operations (save with auto-convert, withdraw with auto-swap, rebalance) compose multiple protocol calls into a single atomic PTB. `executeWithGas()` handles execution with the gas fallback chain. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
+**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step operations (save with auto-convert, withdraw with auto-convert, rebalance) compose multiple protocol calls into a single atomic PTB. `executeWithGas()` handles execution with the gas fallback chain. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
 
 ## Configuration
 
@@ -350,16 +265,13 @@ Save auto-converts non-USDC wallet stablecoins, withdraw auto-swaps non-USDC
 positions back to USDC, and repay auto-swaps USDC to the borrowed asset if
 debt is non-USDC (from rebalance). Rebalance optimizes across all stablecoins internally.
 
-| Asset | Display | Type | Decimals | Save | Borrow | Withdraw | Rebalance (internal) | Invest |
-|-------|---------|------|----------|------|--------|----------|---------------------|--------|
-| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ (always returns USDC) | ✅ | — |
-| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | — (via rebalance) | — | — | ✅ | — |
-| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | — (via rebalance) | — | — | ✅ | — |
-| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | — (via rebalance) | — | — | ✅ | — |
-| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — | — | ✅ |
-| BTC | Bitcoin | `0xaafb...::btc::BTC` | 8 | — | — | — | — | ✅ |
-| ETH | Ethereum | `0xd0e8...::eth::ETH` | 8 | — | — | — | — | ✅ |
-| GOLD | Gold (XAUm) | `0x9d29...::xaum::XAUM` | 9 | — | — | — | — | ✅ |
+| Asset | Display | Type | Decimals | Save | Borrow | Withdraw | Rebalance (internal) |
+|-------|---------|------|----------|------|--------|----------|---------------------|
+| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ (always returns USDC) | ✅ |
+| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | — (via rebalance) | — | — | ✅ |
+| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | — (via rebalance) | — | — | ✅ |
+| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | — (via rebalance) | — | — | ✅ |
+| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — | — |
 
 ## Error Handling
 
@@ -376,49 +288,25 @@ try {
 }
 ```
 
-Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `SLIPPAGE_EXCEEDED` · `ASSET_NOT_SUPPORTED` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE`
+Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE`
 
-## Protocol SDKs
+## Protocol Integration
 
-t2000 uses official protocol SDKs for reliable on-chain data. All position amounts, USD values, and rates come directly from the SDKs — no hand-rolled contract parsing.
+t2000 uses an MCP-first integration model: NAVI MCP for reads, thin transaction builders for writes. No protocol SDK dependencies needed.
 
-| Protocol | SDK | Used for |
-|----------|-----|----------|
-| NAVI | `@naviprotocol/lending` | Lending positions, deposits, withdrawals, borrows, rewards |
-| Suilend | `@suilend/sdk` | Lending positions, obligation management, rewards |
-| Cetus | `@cetusprotocol/aggregator-sdk` (V3) | DEX aggregation, token swaps |
-
-Each `PositionEntry` includes an `amountUsd` field populated by the SDK, giving accurate USD valuations for all assets including non-stablecoins (ETH, SUI, BTC, GOLD).
+| Protocol | Integration | Used for |
+|----------|------------|----------|
+| NAVI | MCP (reads) + thin tx builders (writes) | Lending positions, deposits, withdrawals, borrows, rewards |
 
 ## Testing
 
 ```bash
-# Run all SDK unit tests (568 tests)
+# Run all SDK unit tests
 pnpm --filter @t2000/sdk test
 
 # Run smoke tests against mainnet RPC (read-only, no transactions)
 SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 ```
-
-| Test File | Coverage |
-|-----------|----------|
-| `format.test.ts` | `mistToSui`, `suiToMist`, `usdcToRaw`, `rawToUsdc`, `rawToDisplay`, `displayToRaw`, `bpsToPercent`, `formatUsd`, `formatSui`, `formatLargeNumber` |
-| `sui.test.ts` | `validateAddress`, `truncateAddress` |
-| `simulate.test.ts` | `throwIfSimulationFailed` (success, failure, missing error, metadata) |
-| `hashcash.test.ts` | PoW generation and verification |
-| `keyManager.test.ts` | Key generation, encryption, decryption, import/export |
-| `errors.test.ts` | `T2000Error` construction, serialization, `mapWalletError`, `mapMoveAbortCode` |
-| `navi.test.ts` | NAVI math utilities (health factor, APY, position calculations) |
-| `send.test.ts` | Send transaction building and validation |
-| `manager.test.ts` | Gas resolution chain (self-fund, auto-topup, sponsored fallback) |
-| `autoTopUp.test.ts` | Auto-topup threshold logic and swap execution |
-| `compliance.test.ts` | Adapter contract compliance (49 checks across all adapters) |
-| `registry.test.ts` | Best rates, multi-protocol routing, quote aggregation |
-| `cetus.test.ts` | Cetus swap adapter (metadata, quotes, transaction building) |
-| `suilend.test.ts` | Suilend adapter (rates, positions, health, SDK mocks) |
-| `t2000.integration.test.ts` | End-to-end flows (save, withdraw, borrow, repay, rebalance, auto-swap) |
-| `protocolFee.test.ts` | Protocol fee calculation and collection |
-| `serialization.test.ts` | Transaction JSON serialization roundtrip |
 
 ## Protocol Fees
 
@@ -426,7 +314,6 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 |-----------|-----|-------|
 | Save (deposit) | 0.10% | Protocol fee on deposit |
 | Borrow | 0.05% | Protocol fee on loan |
-| Swap | **Free** | Cetus pool fees only; used internally by rebalance/auto-convert |
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
@@ -436,7 +323,7 @@ Fees are collected by the t2000 protocol treasury on-chain.
 
 ## MCP Server
 
-The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server — 35 tools and 20 prompts for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
+The SDK powers the [`@t2000/mcp`](https://www.npmjs.com/package/@t2000/mcp) server for Claude Desktop, Cursor, and any MCP-compatible AI platform. Run `t2000 mcp` to start.
 
 ## License
 

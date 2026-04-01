@@ -48,10 +48,9 @@
 ```
   Available:  $78.91  (checking — spendable)
   Savings:    $80.00  (earning 4.94% APY)       ← only when savings > $0.01
-  Investment: $250.00  (0.05 BTC, 1.2 ETH, 0.01 GOLD)     ← only when invested > $0; append " (earning X.XX% APY)" when position is earning
   Gas:        0.62 SUI    (~$0.58)
   ──────────────────────────────────────
-  Total:      $409.49
+  Total:      $159.49
   Earning ~$0.01/day                            ← only when daily ≥ $0.005
 ```
 
@@ -111,16 +110,6 @@ Over-borrow warning (before action):
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
-### `t2000 swap <amount> <from> <to>`
-
-> `t2000 exchange` is a deprecated alias for `t2000 swap`.
-
-```
-  ✓ Swapped $5.00 USDC → 4.8500 SUI
-  Tx:  https://suiscan.xyz/mainnet/tx/...
-  Gas:  0.0050 SUI (self-funded)
-```
-
 ### `t2000 rebalance`
 
 ```
@@ -134,13 +123,13 @@ Over-borrow warning (before action):
   ─────────────────────────────────────────────────────
   APY Gain:  +0.53%
   Annual Gain:  $0.11/year
-  Swap Cost:  ~$0.00
+  Conversion cost:  ~$0.00
   Break-even:  6 days
 
   Steps
   ─────────────────────────────────────────────────────
     1. Withdraw $19.98 USDC from navi
-    2. Swap USDC → suiUSDT (~$19.98)
+    2. Convert USDC → suiUSDT (~$19.98)
     3. Deposit $19.98 suiUSDT into navi
 
   ✓ Rebalanced $19.98 → 5.47% APY
@@ -151,7 +140,7 @@ Over-borrow warning (before action):
 Already optimized:
 ```
   Already optimized — 4.94% APY on NAVI Protocol
-    Best available: 5.10% (USDC on Suilend)
+    Best available: 5.10% (suiUSDT on NAVI)
     Difference: 0.16% (below 0.5% threshold)
 ```
 
@@ -160,10 +149,9 @@ Already optimized:
 ```
   Savings
   ─────────────────────────────────────────────────────
-  navi:     0.0013 ETH ($3.06) @ 1.71% APY  +rewards
   navi:     55.2500 USDC ($55.25) @ 4.18% APY  +rewards
-  suilend:  13.5300 SUI ($13.93) @ 2.70% APY
-  Total:    $72.24
+  navi:     13.5300 suiUSDT ($13.53) @ 5.47% APY
+  Total:    $68.78
 
   Borrows
   ─────────────────────────────────────────────────────
@@ -195,17 +183,11 @@ Empty state:
 
   USDC
   ─────────────────────────────────────────────────────
-  NAVI:     Save 4.94%  Borrow 7.99%
-  Suilend:  Save 3.90%  Borrow 5.58%
+  NAVI:  Save 4.94%  Borrow 7.99%
 
   suiUSDT
   ─────────────────────────────────────────────────────
   NAVI:  Save 5.47%  Borrow 8.20%
-
-  SUI / ETH / BTC / GOLD (investment asset lending)
-  ─────────────────────────────────────────────────────
-  NAVI:     SUI Save 2.10%  ETH Save 1.85%  GOLD Save 1.20%
-  Suilend:  SUI Save 1.95%  ETH Save 1.72%  BTC Save 0.50%  GOLD Save 1.10%
 ```
 
 ### `t2000 earn`
@@ -215,9 +197,8 @@ Empty state:
 
   SAVINGS — Passive Yield
   ─────────────────────────────────────────────────────
-  navi:     $300.00 USDC @ 5.60% APY
-  suilend:  $200.00 USDC @ 2.20% APY
-      ~$0.06/day · ~$1.72/month
+  navi:  $500.00 USDC @ 4.94% APY
+      ~$0.07/day · ~$2.06/month
 
   Total Saved:  $500.00
 
@@ -230,10 +211,9 @@ Empty state:
 
 ```
   Total Saved:  $500.00
-    • $300.00 USDC on NAVI @ 5.60% APY
-    • $200.00 USDC on Suilend @ 2.20% APY
-  Blended APY:  4.24%
-  Daily Yield:  ~$0.0581/day
+    • $500.00 USDC on NAVI @ 4.94% APY
+  Blended APY:  4.94%
+  Daily Yield:  ~$0.0676/day
   Est. Earned:  ~$0.1200
 ```
 
@@ -243,12 +223,11 @@ Empty state:
   ✓ Savings: ACTIVE
 
   Total Saved:       $500.00
-    • $300.00 USDC on NAVI @ 5.60% APY
-    • $200.00 USDC on Suilend @ 2.20% APY
-  Blended APY:       4.24%
-  Earned today:      ~$0.0581
+    • $500.00 USDC on NAVI @ 4.94% APY
+  Blended APY:       4.94%
+  Earned today:      ~$0.0676
   Earned all time:   ~$1.2000
-  Monthly projected: ~$1.74/month
+  Monthly projected: ~$2.06/month
 
   Withdraw anytime: t2000 withdraw <amount>
 ```
@@ -260,7 +239,7 @@ Empty state:
 
   0x9f2c...a801  save (sponsored)      2/19/2026, 3:45 PM
   0xa1b2...c3d4  send (self-funded)    2/19/2026, 2:30 PM
-  0xd5e6...f7a8  swap (self-funded)     2/18/2026, 1:15 PM
+  0xd5e6...f7a8  pay (self-funded)     2/18/2026, 1:15 PM
 ```
 
 ### `t2000 pay <url>`
@@ -388,249 +367,6 @@ Empty state:
 
 Starts stdio server (used by AI platforms, not run directly by users).
 
-### `t2000 buy <amount> <asset>`
-
-> `t2000 invest buy` is a deprecated alias for `t2000 buy`.
-
-```
-printBlank()
-printSuccess(`Bought ${amount} ${asset} at ${formatUsd(price)}`)
-printKeyValue('Invested', formatUsd(usdValue))
-printKeyValue('Portfolio', `${totalAmount} ${asset} (avg ${formatUsd(avgPrice)})`)
-printKeyValue('Tx', explorerUrl(digest))
-printBlank()
-```
-
-### `t2000 invest earn <asset>`
-
-```
-printBlank()
-printSuccess(`Deposited ${amount} ${asset} into best-rate lending`)
-printKeyValue('APY', `${apy}%`)
-printKeyValue('Protocol', protocolName)
-printKeyValue('Tx', explorerUrl(digest))
-printBlank()
-```
-
-### `t2000 invest unearn <asset>`
-
-```
-printBlank()
-printSuccess(`Withdrew ${amount} ${asset} from lending`)
-printKeyValue('Portfolio', `${totalAmount} ${asset} (avg ${formatUsd(avgPrice)})`)
-printKeyValue('Tx', explorerUrl(digest))
-printBlank()
-```
-
-### `t2000 sell <amount|all> <asset>`
-
-> `t2000 invest sell` is a deprecated alias for `t2000 sell`.
-
-Auto-withdraws from lending first if position is earning.
-
-```
-printBlank()
-printSuccess(`Sold ${amount} ${asset} at ${formatUsd(price)}`)
-printKeyValue('Proceeds', formatUsd(usdValue))
-printKeyValue('Realized P&L', coloredPnL)  // green if positive, red if negative
-printKeyValue('Remaining', `${remaining} ${asset} (avg ${formatUsd(avgPrice)})`)  // if any
-printKeyValue('Tx', explorerUrl(digest))
-printBlank()
-```
-
-### `t2000 portfolio`
-
-```
-printBlank()
-printHeader('Investment Portfolio')
-printSeparator()
-for each position:
-  apyCol = earning ? `APY: ${apy}%` : '—'
-  printKeyValue(asset, `${amount}    Avg: ${avgPrice}    Now: ${currentPrice}    ${apyCol}    ${coloredPnL}`)
-  // If price unavailable: `${amount}    Avg: ${avgPrice}    Now: unavailable`
-printSeparator()
-printKeyValue('Total invested', formatUsd(totalInvested))
-printKeyValue('Current value', formatUsd(totalValue))
-printKeyValue('Unrealized P&L', coloredPnL)
-printKeyValue('Realized P&L', coloredPnL)  // if non-zero
-printBlank()
-```
-
-### `t2000 invest strategy list`
-
-```
-  Investment Strategies
-  ──────────────────────────────────────
-  bluechip:   BTC 50%, ETH 30%, SUI 20%
-              Large-cap crypto index
-
-  layer1:     ETH 50%, SUI 50%
-              Smart contract platforms
-
-  sui-heavy:  BTC 20%, ETH 20%, SUI 60%
-              Sui-weighted portfolio
-
-  all-weather:  BTC 30%, ETH 20%, SUI 20%, GOLD 30%
-                Crypto and commodities
-
-  safe-haven:   BTC 50%, GOLD 50%
-                Store-of-value assets
-  ──────────────────────────────────────
-  Buy into a strategy: t2000 invest strategy buy bluechip 100
-```
-
-### `t2000 invest strategy buy <name> <amount>`
-
-```
-  ✓ Invested $5.00 in layer1 strategy (1 atomic transaction)
-  ──────────────────────────────────────
-  ETH:  0.001222 @ $2,045.24
-  SUI:  2.5678 @ $0.97
-  ──────────────────────────────────────
-  Total invested:  $5.00
-  Tx:  https://suiscan.xyz/mainnet/tx/...
-```
-
-When single PTB, show "(1 atomic transaction)" and one Tx link at the bottom.
-If multiple transactions, show per-asset Tx links.
-
-### `t2000 invest strategy buy <name> <amount> --dry-run`
-
-```
-  Strategy: layer1 — Dry Run ($5.00)
-  ──────────────────────────────────────
-  ETH:  $2.50 → ~0.001222 ETH @ $2,045.24
-  SUI:  $2.50 → ~2.5678 SUI @ $0.97
-  ──────────────────────────────────────
-  Run without --dry-run to execute
-```
-
-### `t2000 invest strategy sell <name>`
-
-```
-  ✓ Sold all layer1 positions
-  ──────────────────────────────────────
-  ETH:  0.001222 → $2.50    P&L: +$0.01 (+0.4%)
-  SUI:  2.5678 → $2.51      P&L: +$0.01 (+0.4%)
-  ──────────────────────────────────────
-  Total proceeds:  $5.01
-  Realized P&L:    +$0.01 (+0.2%)
-```
-
-### `t2000 invest strategy status <name>`
-
-```
-  Strategy: layer1 (Smart contract platforms)
-  ──────────────────────────────────────
-  Asset     Target    Current    Drift     Value
-  ETH       50.0%     51.2%     +1.2%     $2.56
-  SUI       50.0%     48.8%     -1.2%     $2.44
-  ──────────────────────────────────────
-  Total value:  $5.00
-  Max drift:    1.2% (within tolerance)
-```
-
-### `t2000 invest strategy rebalance <name>`
-
-```
-  ✓ Rebalanced layer1 strategy
-  ──────────────────────────────────────
-  Sold:    0.00003 ETH ($0.06)
-  Bought:  0.062 SUI ($0.06)
-  ──────────────────────────────────────
-  Before:  ETH 51.2%  SUI 48.8%
-  After:   ETH 50.0%  SUI 50.0%
-```
-
-### `t2000 invest strategy create <name> --alloc "ETH:60,SUI:30,GOLD:10"`
-
-```
-  ✓ Created strategy: my-strategy
-  ETH 60%, SUI 40%
-```
-
-### `t2000 invest strategy delete <name>`
-
-```
-  ✓ Deleted strategy: my-strategy
-```
-
-### `t2000 invest auto setup <amount> <frequency> [strategy]`
-
-```
-  ✓ Auto-invest created
-  Strategy:   bluechip (Large-cap crypto index)
-  Amount:     $50.00 per week
-  Next run:   Feb 24, 2026
-  Status:     Active
-
-  Run manually: t2000 invest auto run
-  Stop:         t2000 invest auto stop
-```
-
-### `t2000 invest auto status`
-
-```
-  Auto-Invest Schedules
-  ──────────────────────────────────────
-  #1  $50/week into bluechip
-      Last run:   Feb 17, 2026
-      Next run:   Feb 24, 2026
-      Total:      $200 over 4 runs
-      Status:     Active
-  ──────────────────────────────────────
-```
-
-Empty state:
-```
-  No auto-invest schedules.
-  Set one up: t2000 invest auto setup 50 weekly bluechip
-```
-
-### `t2000 invest auto run`
-
-When pending:
-```
-  ✓ Auto-invest: $50.00 into bluechip (1 atomic transaction)
-  ──────────────────────────────────────
-  BTC:  0.00026 ($25.00)
-  ETH:  0.0056 ($15.00)
-  SUI:  10.204 ($10.00)
-  ──────────────────────────────────────
-  Tx:  https://suiscan.xyz/mainnet/tx/...
-  Next run: Mar 3, 2026
-```
-
-Nothing pending:
-```
-  Auto-invest up to date. Next run: Feb 24, 2026
-```
-
-### `t2000 invest auto stop [id]`
-
-```
-  ✓ Stopped auto-invest: $50/week into bluechip
-```
-
-### `t2000 portfolio` (with strategy positions)
-
-```
-  Investment Portfolio
-  ──────────────────────────────────────
-
-  layer1 strategy
-  ETH:  0.001222    Avg: $2,045    Now: $2,050    +$0.01 (+0.2%)
-  SUI:  2.5678      Avg: $0.97     Now: $0.98     +$0.03 (+1.0%)
-
-  Direct
-  SUI:  5.1398      Avg: $0.97     Now: $0.98     2.6% APY (suilend)    +$0.05 (+1.0%)
-
-  ──────────────────────────────────────
-  Total invested:  $10.00
-  Current value:   $10.09
-  Unrealized P&L:  +$0.09 (+0.9%)
-```
-
 ### Claim Rewards
 
 `t2000 claim-rewards` — claims protocol incentive rewards from all lending protocols and auto-converts to USDC.
@@ -639,7 +375,7 @@ Nothing pending:
   ✓ Claimed and converted rewards to USDC
   ──────────────────────────────────────
   Received:  $0.12 USDC
-  Source:  navi, suilend
+  Source:  navi
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
@@ -650,7 +386,6 @@ No rewards:
 
 Reward indicators appear in other commands:
 - `positions`: `navi: 5.3000 USDC ($5.30) @ 4.09% APY +rewards`
-- `portfolio`: `3.9% APY (navi) +rewards`
 
 ---
 
@@ -674,7 +409,7 @@ Guided setup wizard. Creates wallet, configures MCP for AI platforms, sets safeg
   ✓ Gas sponsorship  enabled
 
   Setting up accounts...
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Trade
+  ✓ Checking  ✓ Savings  ✓ Credit
 
   🎉 Bank account created
   Address: 0x8b3e...d412

@@ -4,7 +4,6 @@ import { deriveSmartCards, type AccountState } from './smart-cards';
 const BASE_STATE: AccountState = {
   cash: 0,
   savings: 0,
-  investments: 0,
   borrows: 0,
   savingsRate: 0,
   pendingRewards: 0,
@@ -71,11 +70,11 @@ describe('deriveSmartCards', () => {
       ...BASE_STATE,
       savings: 1000,
       currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'Suilend', protocolId: 'suilend', asset: 'USDC', rate: 6.5 },
+      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 6.5 },
     });
     const rateCard = cards.find((c) => c.type === 'better-rate');
     expect(rateCard).toBeDefined();
-    expect(rateCard!.title).toContain('Suilend');
+    expect(rateCard!.title).toContain('NAVI');
     expect(rateCard!.actions[0].chipFlow).toBe('rebalance');
   });
 
@@ -84,7 +83,7 @@ describe('deriveSmartCards', () => {
       ...BASE_STATE,
       savings: 1000,
       currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'Suilend', protocolId: 'suilend', asset: 'USDC', rate: 5.2 },
+      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 5.2 },
     });
     expect(cards.find((c) => c.type === 'better-rate')).toBeUndefined();
   });
@@ -94,7 +93,7 @@ describe('deriveSmartCards', () => {
       ...BASE_STATE,
       savings: 0,
       currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'Suilend', protocolId: 'suilend', asset: 'USDC', rate: 8.0 },
+      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 8.0 },
     });
     expect(cards.find((c) => c.type === 'better-rate')).toBeUndefined();
   });

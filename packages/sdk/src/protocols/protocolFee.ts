@@ -2,7 +2,6 @@ import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transac
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import {
   SAVE_FEE_BPS,
-  SWAP_FEE_BPS,
   BORROW_FEE_BPS,
   BPS_DENOMINATOR,
   SUPPORTED_ASSETS,
@@ -13,7 +12,7 @@ import {
 } from '../constants.js';
 import { usdcToRaw } from '../utils/format.js';
 
-export type FeeOperation = 'save' | 'swap' | 'borrow';
+export type FeeOperation = 'save' | 'borrow';
 
 export interface ProtocolFeeInfo {
   amount: number;
@@ -24,13 +23,11 @@ export interface ProtocolFeeInfo {
 
 const FEE_RATES: Record<FeeOperation, bigint> = {
   save: SAVE_FEE_BPS,
-  swap: SWAP_FEE_BPS,
   borrow: BORROW_FEE_BPS,
 };
 
 const OP_CODES: Record<FeeOperation, number> = {
   save: 0,
-  swap: 1,
   borrow: 2,
 };
 

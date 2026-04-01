@@ -14,7 +14,6 @@ export interface SavingsBreakdownEntry {
 export interface BalanceHeaderData {
   total: number;
   cash: number;
-  investments: number;
   savings: number;
   borrows: number;
   savingsRate: number;
@@ -145,12 +144,6 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           </p>
           <p className="text-xs font-mono text-muted tracking-wide">
             <span className="uppercase text-[10px] tracking-[0.1em]">cash</span> ${Math.floor(balance.cash)}
-            {balance.investments > 0 && (
-              <>
-                {' · '}
-                <span className="uppercase text-[10px] tracking-[0.1em]">inv</span> ${Math.floor(balance.investments)}
-              </>
-            )}
             {' · '}
             <span className="uppercase text-[10px] tracking-[0.1em]">sav</span> ${Math.floor(balance.savings)}
             {balance.borrows > 0 && (
@@ -174,9 +167,6 @@ export function BalanceHeader({ address, balance, compact, onSettingsClick }: Ba
           {/* Account breakdown */}
           <div className="px-4 py-3 space-y-1.5">
             <Row label="Cash" value={`$${fmtUsd(balance.cash)}`} />
-            {balance.investments > 0 && (
-              <Row label="Investments" value={`$${fmtUsd(balance.investments)}`} />
-            )}
             <Row label="Savings" value={`$${fmtUsd(balance.savings)}`} />
             {balance.savingsBreakdown && balance.savingsBreakdown.length > 1 && (
               balance.savingsBreakdown.map((s) => (

@@ -49,14 +49,14 @@ async function main() {
     }
   });
 
-  await runSection('claimRewards (claim + swap to USDC)', async () => {
+  await runSection('claimRewards', async () => {
     const balBefore = await agent.balance();
     console.log(`   Balance before: $${balBefore.available.toFixed(2)}`);
 
     const result = await agent.claimRewards();
     console.log(`   Success: ${result.success}`);
     console.log(`   Rewards claimed: ${result.rewards.length}`);
-    console.log(`   USDC received: $${result.usdcReceived.toFixed(4)}`);
+    console.log(`   Total value: $${result.totalValueUsd.toFixed(4)}`);
     console.log(`   Gas method: ${result.gasMethod}`);
 
     assert(result.success === true, 'claim succeeded');

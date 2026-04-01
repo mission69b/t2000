@@ -1,6 +1,6 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import { SUPPORTED_ASSETS, STABLE_ASSETS, INVESTMENT_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
-import type { StableAsset, InvestmentAsset } from '../constants.js';
+import { SUPPORTED_ASSETS, STABLE_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
+import type { StableAsset } from '../constants.js';
 import type { BalanceResponse } from '../types.js';
 
 const SUI_PRICE_FALLBACK = 1.0;
@@ -65,22 +65,11 @@ export async function queryBalance(
       .catch(() => ({ asset, amount: 0 })),
   );
 
-  const nonSuiInvestmentAssets = (Object.keys(INVESTMENT_ASSETS) as InvestmentAsset[]).filter(a => a !== 'SUI');
-  const investBalancePromises = nonSuiInvestmentAssets.map((asset) =>
-    client.getBalance({ owner: address, coinType: INVESTMENT_ASSETS[asset].type })
-      .then((b) => ({ asset, amount: Number(b.totalBalance) / 10 ** INVESTMENT_ASSETS[asset].decimals }))
-      .catch(() => ({ asset, amount: 0 })),
-  );
-
-  const [suiBalance, suiPriceUsd, ...rest] = await Promise.all([
+  const [suiBalance, suiPriceUsd, ...stableResults] = await Promise.all([
     client.getBalance({ owner: address, coinType: SUPPORTED_ASSETS.SUI.type }),
     fetchSuiPrice(client),
     ...stableBalancePromises,
-    ...investBalancePromises,
   ]);
-
-  const stableResults = rest.slice(0, STABLE_ASSETS.length) as Array<{ asset: StableAsset; amount: number }>;
-  const investResults = rest.slice(STABLE_ASSETS.length) as Array<{ asset: string; amount: number }>;
 
   const stables = {} as Record<StableAsset, number>;
   let totalStables = 0;
@@ -94,20 +83,10 @@ export async function queryBalance(
   const usdEquiv = suiAmount * suiPriceUsd;
   const total = totalStables + savings + usdEquiv;
 
-  const assets: Record<string, number> = {
-    USDC: stables.USDC ?? 0,
-    SUI: suiAmount,
-  };
-  for (const { asset, amount } of investResults) {
-    assets[asset] = amount;
-  }
-
   return {
     available: totalStables,
     savings,
     debt: 0,
-    investment: 0,
-    investmentPnL: 0,
     pendingRewards: 0,
     gasReserve: {
       sui: suiAmount,
@@ -115,6 +94,5 @@ export async function queryBalance(
     },
     total,
     stables,
-    assets,
   };
 }

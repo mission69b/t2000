@@ -133,9 +133,7 @@ export function registerInit(program: Command) {
           printLine(
             `  ${pc.green('✓')} Checking  ` +
             `${pc.green('✓')} Savings  ` +
-            `${pc.green('✓')} Credit  ` +
-            `${pc.green('✓')} Swap  ` +
-            `${pc.green('✓')} Investment`
+            `${pc.green('✓')} Credit`
           );
 
           printBlank();
@@ -210,7 +208,7 @@ export function registerInit(program: Command) {
         } else {
           console.log(`  │  Use the CLI directly:                 │`);
           console.log(`  │    ${pc.cyan('t2000 balance')}                        │`);
-          console.log(`  │    ${pc.cyan('t2000 buy 100 BTC')}                   │`);
+          console.log(`  │    ${pc.cyan('t2000 save 100')}                      │`);
           console.log(`  │                                         │`);
         }
 

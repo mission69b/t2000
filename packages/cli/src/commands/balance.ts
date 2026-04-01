@@ -73,24 +73,6 @@ export function registerBalance(program: Command) {
               : 0;
             printKeyValue('Credit', `${pc.red(`-${formatUsd(bal.debt)}`)}  ${pc.dim(`(${borrowApy.toFixed(2)}% APY)`)}`);
           }
-          if (bal.investment > 0.01) {
-            const pnlColor = bal.investmentPnL >= 0 ? pc.green : pc.red;
-            const pnlSign = bal.investmentPnL >= 0 ? '+' : '';
-            const pnlPct = bal.investment > 0 ? ((bal.investmentPnL / (bal.investment - bal.investmentPnL)) * 100) : 0;
-            let earningInfo = '';
-            try {
-              const portfolio = await agent.getPortfolio();
-              const earningPositions = portfolio.positions.filter(p => p.earning && p.earningApy);
-              if (earningPositions.length > 0) {
-                const avgApy = earningPositions.reduce((s, p) => s + (p.earningApy ?? 0) * p.currentValue, 0)
-                  / earningPositions.reduce((s, p) => s + p.currentValue, 0);
-                earningInfo = `, earning ${avgApy.toFixed(1)}% APY`;
-              }
-            } catch { /* skip */ }
-            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%${earningInfo})`)}`);
-          } else {
-            printKeyValue('Investment', pc.dim('—'));
-          }
           if (bal.gasReserve && bal.gasReserve.usdEquiv >= 0.01) {
             printKeyValue('Gas reserve', `${formatUsd(bal.gasReserve.usdEquiv)}  ${pc.dim(`(${bal.gasReserve.sui.toFixed(2)} SUI)`)}`);
           }
@@ -105,24 +87,6 @@ export function registerBalance(program: Command) {
           }
           if (bal.savings > 0.005) {
             printKeyValue('Savings', `${formatUsd(bal.savings)}`);
-          }
-          if (bal.investment > 0.01) {
-            const pnlColor = bal.investmentPnL >= 0 ? pc.green : pc.red;
-            const pnlSign = bal.investmentPnL >= 0 ? '+' : '';
-            const pnlPct = bal.investment > 0 ? ((bal.investmentPnL / (bal.investment - bal.investmentPnL)) * 100) : 0;
-            let earningInfo = '';
-            try {
-              const portfolio = await agent.getPortfolio();
-              const earningPositions = portfolio.positions.filter(p => p.earning && p.earningApy);
-              if (earningPositions.length > 0) {
-                const avgApy = earningPositions.reduce((s, p) => s + (p.earningApy ?? 0) * p.currentValue, 0)
-                  / earningPositions.reduce((s, p) => s + p.currentValue, 0);
-                earningInfo = `, earning ${avgApy.toFixed(1)}% APY`;
-              }
-            } catch { /* skip */ }
-            printKeyValue('Investment', `${formatUsd(bal.investment)}  ${pnlColor(`(${pnlSign}${pnlPct.toFixed(1)}%${earningInfo})`)}`);
-          } else {
-            printKeyValue('Investment', pc.dim('—'));
           }
           if (bal.gasReserve && bal.gasReserve.usdEquiv >= 0.01) {
             printKeyValue('Gas reserve', `${formatUsd(bal.gasReserve.usdEquiv)}  ${pc.dim(`(${bal.gasReserve.sui.toFixed(2)} SUI)`)}`);

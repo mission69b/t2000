@@ -19,17 +19,17 @@
    │  ┌──────────────────────────────────────────────────────────────────┐
    │  │                        @t2000/sdk                                │
    │  │                                                                  │
-   │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
-   │  │  Adapters: NAVI · Suilend · Cetus                                 │
-   │  └────────┬──────────────┬──────────────┬───────────────────────────┘
+  │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
+  │  │  Adapters: NAVI                                                   │
+  │  └────────┬──────────────┬──────────────┬───────────────────────────┘
    │           │              │              │
    ▼           ▼              ▼              ▼
 ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐
 │ Web App     │  │ t2000 Server│  │ MPP Gateway │  │   Sui Blockchain     │
 │ (Vercel)    │  │ (ECS)       │  │ (Vercel)    │  │                      │
 │             │  │             │  │             │  │  USDC · NAVI ·       │
-│ zkLogin     │  │ Sponsor API │  │ 40 services │  │  Suilend · Cetus     │
-│ Enoki gas   │  │ Gas station │  │ 88 endpoints│  │  t2000 Treasury      │
+│ zkLogin     │  │ Sponsor API │  │ 40 services │  │  t2000 Treasury      │
+│ Enoki gas   │  │ Gas station │  │ 88 endpoints│  │  @suimpp/mpp         │
 │ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @suimpp/mpp      │
 │ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  (payment method)    │
 └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
@@ -118,7 +118,7 @@ User types "search for flights from NYC to Tokyo"
   └── Response rendered in feed with cost breakdown
 ```
 
-Simple actions (Save, Send, Swap) use client-side chip flows with zero LLM cost.
+Simple actions (Save, Send) use client-side chip flows with zero LLM cost.
 
 ### Stack
 
@@ -492,7 +492,7 @@ CLI agents need SUI for gas (they self-fund transactions). Web app users do NOT 
 
 ### USDC sponsorship (onboarding — both web + CLI)
 
-One-time $0.25 USDC to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance and can immediately try save, swap, or pay.
+One-time $0.25 USDC to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance and can immediately try save or pay.
 
 - `POST https://api.t2000.ai/api/sponsor/usdc` with `{ address, source }`
 - Server fetches USDC coins from sponsor wallet, splits $0.25, transfers to user
@@ -624,9 +624,8 @@ SDK: executeWithGas(buildTx)
   ├─ 1. Self-funded (agent has ≥ 0.05 SUI)
   │     → sign and execute with agent's keypair
   │
-  ├─ 2. Auto-topup (SUI < 0.15, USDC ≥ $2)
-  │     → swap $1 USDC → SUI via Cetus
-  │     → then self-fund the main TX
+  ├─ 2. Auto-topup (USDC→SUI)
+  │     → disabled — no DEX swap path in product; tier is skipped
   │
   └─ 3. Gas station (fallback)
         → POST /api/gas with serialized TX
@@ -649,13 +648,13 @@ SDK: executeWithGas(buildTx)
 |----------|-------|---------|
 | `AUTO_TOPUP_THRESHOLD` | 0.05 SUI | Minimum to attempt self-funded TX |
 | `GAS_RESERVE_TARGET` | 0.15 SUI | Proactive top-up target |
-| `AUTO_TOPUP_AMOUNT` | $1 USDC | Swapped per top-up |
-| `AUTO_TOPUP_MIN_USDC` | $2 USDC | USDC required to trigger auto-topup |
-| `GAS_RESERVE_MIN` | 0.05 SUI | Always kept when selling/trading |
+| `AUTO_TOPUP_AMOUNT` | $1 USDC | Reserved for future USDC→SUI top-up (unused while auto-topup disabled) |
+| `AUTO_TOPUP_MIN_USDC` | $2 USDC | Threshold checked for maintenance hooks (auto-topup still disabled) |
+| `GAS_RESERVE_MIN` | 0.05 SUI | Minimum SUI left after balance-changing ops |
 
 ### New agent bootstrap
 
-On `t2000 init`, the sponsor endpoint sends 0.05 SUI to the new agent address. After that, the agent self-funds gas or auto-tops up via Cetus.
+On `t2000 init`, the sponsor endpoint sends 0.05 SUI to the new agent address. After that, the agent self-funds gas or auto-tops up.
 
 ### Gas station protections
 
@@ -670,7 +669,7 @@ On `t2000 init`, the sponsor endpoint sends 0.05 SUI to the new agent address. A
 
 ### Proactive maintenance
 
-After every successful TX, the SDK checks if SUI dropped below 0.15. If so and USDC ≥ $2, it runs an auto-topup in the background so the next TX is self-funded. Users never think about gas.
+After every successful TX, the SDK checks if SUI dropped below the reserve target and USDC is sufficient. Auto-topup execution is currently a no-op (no swap path), so agents rely on self-funded SUI or the gas station; constants remain for a future USDC→SUI top-up if reintroduced.
 
 ---
 
@@ -691,7 +690,7 @@ Sui Checkpoints → Indexer → NeonDB
 
 | Data | Model | Fields |
 |------|-------|--------|
-| On-chain actions | `Transaction` | agent, action (save/withdraw/borrow/swap/pay), protocol, asset, amount, gas method |
+| On-chain actions | `Transaction` | agent, action (save/withdraw/borrow/pay), protocol, asset, amount, gas method |
 | Protocol fees | `ProtocolFeeLedger` | agent, operation, fee amount, tx digest |
 | Yield snapshots | `YieldSnapshot` | agent, supplied USD, yield earned, APY |
 | Agent metadata | `Agent` | address, name, last seen |
@@ -706,8 +705,8 @@ The indexer only tracks addresses that went through `t2000 init` (bootstrap spon
 ### Action classification
 
 The indexer uses SDK adapter descriptors to classify transactions:
-- Move call targets → map to protocol (NAVI, Suilend, Cetus)
-- Balance changes → infer action type (save, withdraw, swap, etc.)
+- Move call targets → map to protocol (NAVI)
+- Balance changes → infer action type (save, withdraw, etc.)
 - Events → fee collection
 
 ---
@@ -755,34 +754,20 @@ User TX (save, borrow, etc.)
 
 ### Protocol Registry
 
-The SDK's `ProtocolRegistry` routes operations to the best protocol:
+The SDK's `ProtocolRegistry` picks the best save APY among registered lending adapters (today: NAVI only):
 
 ```
 agent.save('USDC', 100)
   → registry.bestSaveRate('USDC')
-  → compares NAVI APY vs Suilend APY
-  → routes to highest yield
+  → NAVI lending (MCP reads + thin tx builders)
 ```
 
 ### NAVI Adapter
 
 - Lending: save, withdraw, borrow, repay
-- Assets: USDC, USDT, SUI, ETH, GOLD, USDe, USDsui
-- Uses NAVI SDK with dynamic package IDs
+- Assets: USDC, USDT, USDe, USDsui
+- MCP-first integration: reads via NAVI MCP, writes via thin tx builders
 - Supports flash loans for complex operations
-
-### Suilend Adapter
-
-- Lending: save, withdraw, borrow, repay
-- Uses `@suilend/sdk` (SuilendClient)
-- Obligations-based lending model
-
-### Cetus Adapter
-
-- Swap only
-- Uses Cetus Aggregator SDK V3 for routing
-- Supports all pairs: USDC↔SUI, USDC↔BTC, USDC↔ETH, USDC↔GOLD, stable↔stable
-- Also used internally for gas auto-topup (USDC → SUI)
 
 ---
 
@@ -805,15 +790,15 @@ Local-only enforcement on the agent's machine:
 
 ## MCP Server
 
-32 tools across three categories:
+Tools across three categories:
 
-| Category | Count | Examples |
-|----------|-------|---------|
-| Read | 15 | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services`, `t2000_portfolio` |
-| Write | 15 | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_swap`, `t2000_invest` |
-| Safety | 2 | `t2000_config`, `t2000_lock` |
+| Category | Examples |
+|----------|---------|
+| Read | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services` |
+| Write | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_rebalance` |
+| Safety | `t2000_config`, `t2000_lock` |
 
-19 prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, `dca-advisor`, etc.
+Prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, etc.
 
 All write operations go through a `TxMutex` to prevent concurrent transactions (Sui object version conflicts). Safeguards are checked before every write.
 
@@ -827,7 +812,7 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 |------|-------|---------|
 | Page views | Vercel Analytics (t2000.ai + mpp.t2000.ai) | Standard web analytics, no wallet data |
 | Agent addresses | Server DB (agents table) | Only agents that used `t2000 init` |
-| On-chain actions | Indexer → Transaction table | Dashboard stats (save/withdraw/swap counts) |
+| On-chain actions | Indexer → Transaction table | Dashboard stats (save/withdraw/borrow counts) |
 | Gas usage | GasLedger | Accounting for sponsorship costs |
 | Protocol fees | ProtocolFeeLedger | Revenue tracking |
 
@@ -944,7 +929,7 @@ Any write operation (send, save, pay, etc.)
 ```
 
 **Outbound ops** (guarded by daily limit): `send`, `pay`
-**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`, `swap`, `rebalance`, `buy`, `sell`
+**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`, `rebalance`
 
 The daily budget resets automatically when the date changes.
 
@@ -975,7 +960,7 @@ The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can free
 | **Rate limiting** | 20 gas requests per address per hour |
 | **Hashcash proof-of-work** | When rate limited, client must solve 20-bit PoW (~1–2s) |
 | **TX simulation** | `dryRunTransactionBlock` before signing — rejects if gas estimate > $0.05 |
-| **Circuit breaker** | Polls Cetus USDC/SUI pool every 30s, trips if >20% price swing in 1 hour |
+| **Circuit breaker** | Polls an on-chain USDC/SUI reference price every 30s, trips if >20% price swing in 1 hour |
 | **Pool minimum** | Rejects sponsorship when gas wallet < 100 SUI |
 | **Serialized signing** | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts |
 | **SUI bootstrap limit** | One-time per address, 10/IP/hr, 100/day global, hashcash above limit |

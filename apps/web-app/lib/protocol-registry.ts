@@ -2,8 +2,6 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import {
   ProtocolRegistry,
   NaviAdapter,
-  SuilendAdapter,
-  CetusAdapter,
 } from '@t2000/sdk/adapters';
 
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
@@ -23,14 +21,6 @@ function createRegistry(): RegistryInstance {
   const navi = new NaviAdapter();
   navi.initSync(client);
   registry.registerLending(navi);
-
-  const suilend = new SuilendAdapter();
-  suilend.initSync(client);
-  registry.registerLending(suilend);
-
-  const cetus = new CetusAdapter();
-  cetus.initSync(client);
-  registry.registerSwap(cetus);
 
   return registry;
 }

@@ -82,7 +82,7 @@ describe('getEstimatedCost', () => {
     expect(getEstimatedCost('get_balance')).toBe(0);
     expect(getEstimatedCost('get_rates')).toBe(0);
     expect(getEstimatedCost('get_history')).toBe(0);
-    expect(getEstimatedCost('get_portfolio')).toBe(0);
+    expect(getEstimatedCost('get_positions')).toBe(0);
     expect(getEstimatedCost('get_health')).toBe(0);
   });
 
@@ -139,11 +139,10 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('First-time users');
   });
 
-  it('includes multi-protocol DeFi section', () => {
+  it('includes DeFi integration section', () => {
     const prompt = buildSystemPrompt('0xabc123', 'user@test.com');
-    expect(prompt).toContain('Multi-Protocol DeFi');
-    expect(prompt).toContain('NAVI');
-    expect(prompt).toContain('Suilend');
+    expect(prompt).toContain('DeFi Integration');
+    expect(prompt).toContain('NAVI Protocol');
     expect(prompt).toContain('rebalancing');
   });
 

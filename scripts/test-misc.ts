@@ -82,24 +82,6 @@ async function main() {
       );
     }
 
-    try {
-      await agent.swap({ from: 'USDC', to: 'USDC', amount: 1 });
-      assert(false, 'Should throw for same-asset swap');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      assert(msg.includes('same') || msg.includes('INVALID'), 'Same-asset swap caught');
-    }
-
-    try {
-      await agent.swap({ from: 'DOGE', to: 'SUI', amount: 1 });
-      assert(false, 'Should throw for unsupported asset');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      assert(
-        msg.includes('not supported') || msg.includes('ASSET_NOT_SUPPORTED'),
-        'Unsupported asset caught',
-      );
-    }
   });
 
   await runSection('Event Emitter', async () => {

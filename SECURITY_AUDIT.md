@@ -50,7 +50,7 @@ An attacker could:
 **Recommendation:**
 - Add authentication (API key or hashcash challenge) to the `/api/gas` endpoint.
 - Implement per-sender rate limiting (by address and/or IP).
-- Allowlist permitted Move call targets (e.g., only NAVI, Cetus, and t2000 package calls).
+- Allowlist permitted Move call targets (e.g., only NAVI and t2000 package calls).
 - Validate the `type` parameter server-side rather than trusting client input — derive it from `determineGasType()` always.
 - Consider a per-address daily gas budget.
 
@@ -244,21 +244,18 @@ const nextConfig: NextConfig = {
 
 ### M-5: Price Oracle Fallback to Hardcoded Value on Failure — ✅ REMEDIATED
 
-**Location:** `apps/server/src/lib/priceCache.ts:50-51`, `packages/sdk/src/protocols/cetus.ts:184`
+**Location:** `apps/server/src/lib/priceCache.ts:50-51`
 
 **Status:** Fixed. Added `isPriceStale()` check (5-minute threshold). Gas sponsorship is refused when price data is stale. Warning logged when fallback price is used.
 
 ```ts
 // priceCache.ts
 return 1.0; // fallback
-
-// cetus.ts
-return 3.5; // fallback
 ```
 
 **Description:** When the on-chain price fetch fails, the code falls back to hardcoded SUI prices ($1.00 and $3.50 respectively). If the RPC is temporarily unavailable, the gas fee ceiling calculation could use an incorrect price, either under-charging (allowing expensive transactions) or over-charging.
 
-In `priceCache.ts`, if all initial price fetches fail, the TWAP returns $1.00. If SUI is actually $4.00, the gas fee ceiling is effectively 4x lower than intended, potentially blocking legitimate transactions. Conversely, if SUI drops to $0.50, the ceiling is 2x too generous.
+If all initial price fetches fail, the TWAP returns $1.00. If SUI is actually $4.00, the gas fee ceiling is effectively 4x lower than intended, potentially blocking legitimate transactions. Conversely, if SUI drops to $0.50, the ceiling is 2x too generous.
 
 **Impact:** Incorrect gas fee calculations during RPC outages could lead to financial loss or denial of service.
 
@@ -471,7 +468,6 @@ The price cache (`apps/server/src/lib/priceCache.ts`) implements a circuit break
 - `gas/autoTopUp.ts` — USDC→SUI auto top-up
 - `gas/manager.ts` — Gas resolution chain
 - `protocols/navi.ts` — NAVI lending integration
-- `protocols/cetus.ts` — Cetus DEX integration
 - `protocols/protocolFee.ts` — On-chain fee collection
 - `utils/simulate.ts` — Transaction simulation
 - `utils/sui.ts` — Address validation

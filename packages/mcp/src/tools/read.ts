@@ -11,15 +11,14 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_overview',
-    'Complete account snapshot in ONE call — balance, savings positions, investment portfolio, health factor, yield earnings, fund status, and pending rewards. Use this for morning briefings, general account questions, or any time you need the full picture. Prefer this over calling individual tools.',
+    'Complete account snapshot in ONE call — balance, savings positions, health factor, yield earnings, fund status, and pending rewards. Use this for morning briefings, general account questions, or any time you need the full picture. Prefer this over calling individual tools.',
     {},
     async () => {
       try {
-        const [balance, positions, portfolio, health, earnings, fundStatus, pendingRewards] =
+        const [balance, positions, health, earnings, fundStatus, pendingRewards] =
           await Promise.allSettled([
             agent.balance(),
             agent.positions(),
-            agent.getPortfolio(),
             agent.healthFactor(),
             agent.earnings(),
             agent.fundStatus(),
@@ -29,13 +28,6 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
         const result = {
           balance: balance.status === 'fulfilled' ? balance.value : null,
           positions: positions.status === 'fulfilled' ? positions.value : null,
-          portfolio: portfolio.status === 'fulfilled' ? {
-            ...portfolio.value,
-            positions: portfolio.value.positions.map(p => ({
-              ...p,
-              ...(p.currentPrice === 0 && p.totalAmount > 0 ? { note: 'price unavailable' } : {}),
-            })),
-          } : null,
           health: health.status === 'fulfilled' ? health.value : null,
           earnings: earnings.status === 'fulfilled' ? earnings.value : null,
           fundStatus: fundStatus.status === 'fulfilled' ? fundStatus.value : null,
@@ -83,7 +75,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_positions',
-    'View current lending positions across protocols (NAVI, Suilend) — deposits, borrows, APYs. For a full account snapshot, prefer t2000_overview instead.',
+    'View current lending positions on NAVI — deposits, borrows, APYs. For a full account snapshot, prefer t2000_overview instead.',
     {},
     async () => {
       try {
@@ -125,7 +117,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_history',
-    'View recent transactions — sends, saves, borrows, swaps, MPP (paid API) payments, and investments. Each entry includes a transaction digest that can be viewed on Suiscan (https://suiscan.xyz/mainnet/tx/{digest}). Use for activity summaries and weekly recaps.',
+    'View recent transactions — sends, saves, borrows, MPP (paid API) payments. Each entry includes a transaction digest that can be viewed on Suiscan (https://suiscan.xyz/mainnet/tx/{digest}). Use for activity summaries and weekly recaps.',
     { limit: z.number().optional().describe('Number of transactions to return (default: 20)') },
     async ({ limit }) => {
       try {
@@ -195,7 +187,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_all_rates',
-    'Compare interest rates across ALL protocols side-by-side for every asset. Shows NAVI vs Suilend rates per asset. Use when the user asks "am I getting the best rate?" or wants to compare protocols. NOTE: Do NOT use this to decide where to save — t2000_save always saves USDC at the best USDC rate. This tool is for informational comparisons and for deciding whether to t2000_rebalance into a different asset.',
+    'Compare interest rates across all protocols side-by-side for every asset. Use when the user asks "am I getting the best rate?" or wants to compare protocols. NOTE: Do NOT use this to decide where to save — t2000_save always saves USDC at the best USDC rate. This tool is for informational comparisons and for deciding whether to t2000_rebalance into a different asset.',
     {},
     async () => {
       try {
@@ -241,7 +233,7 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
   );
 
   // ---------------------------------------------------------------------------
-  // Contacts & Portfolio
+  // Contacts
   // ---------------------------------------------------------------------------
 
   server.tool(
@@ -252,27 +244,6 @@ Call t2000_services first to discover the right endpoint, then t2000_pay to exec
       try {
         const contacts = agent.contacts.list();
         return { content: [{ type: 'text', text: JSON.stringify({ contacts }) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_portfolio',
-    'Show investment portfolio — positions, cost basis, current value, unrealized/realized P&L, strategy groupings. For a full account snapshot, prefer t2000_overview instead.',
-    {},
-    async () => {
-      try {
-        const result = await agent.getPortfolio();
-        const enriched = {
-          ...result,
-          positions: result.positions.map(p => ({
-            ...p,
-            ...(p.currentPrice === 0 && p.totalAmount > 0 ? { note: 'price unavailable' } : {}),
-          })),
-        };
-        return { content: [{ type: 'text', text: JSON.stringify(enriched) }] };
       } catch (err) {
         return errorResult(err);
       }

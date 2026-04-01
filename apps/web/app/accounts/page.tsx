@@ -4,11 +4,11 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "t2000 — Accounts",
   description:
-    "Five accounts, one wallet. Checking, savings, credit, swap, and invest — everything your AI agent needs to manage money.",
+    "Five products, one wallet. Savings, pay, send, credit, and receive — everything your AI agent needs to manage money.",
   openGraph: {
     title: "t2000 — Accounts",
     description:
-      "Five accounts, one wallet. Everything your AI agent needs to manage money.",
+      "Five products, one wallet. Everything your AI agent needs to manage money.",
     type: "website",
   },
 };
@@ -42,7 +42,7 @@ export default function AccountsPage() {
           </h1>
 
           <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] max-w-[520px] mt-5">
-            Spend, save, borrow, swap, and invest — all from one wallet.
+            Save, pay, send, borrow, and receive — all from one wallet.
           </p>
 
           <div className="flex items-center gap-3 sm:gap-5 mt-8 sm:mt-10 flex-wrap">
@@ -239,28 +239,28 @@ export default function AccountsPage() {
           </div>
         </section>
 
-        {/* ── Swap ── */}
+        {/* ── Pay (MPP) ── */}
         <section className="py-16 sm:py-24 border-b border-border">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-xl">⇌</span>
                 <div className="text-[10px] tracking-[0.2em] uppercase text-accent">
-                  Swap
+                  Pay
                 </div>
               </div>
               <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-                Swap between{" "}
-                <em className="italic text-accent">supported assets.</em>
+                Pay for APIs{" "}
+                <em className="italic text-accent">autonomously.</em>
               </h2>
               <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Swap stablecoins and crypto at market rates with on-chain slippage protection.
+                Your agent pays per request via MPP. No API keys, no subscriptions. 40+ services.
               </p>
 
               <div className="space-y-4">
                 {[
-                  { cmd: "t2000 swap 5 USDC SUI", desc: "Swap USDC for SUI" },
-                  { cmd: "t2000 swap 2 SUI USDC", desc: "Swap SUI back to USDC" },
+                  { cmd: "t2000 pay mpp.t2000.ai/openai ...", desc: "Pay for an API call with USDC on Sui" },
+                  { cmd: "t2000 balance", desc: "See spending across all services" },
                 ].map((step) => (
                   <div key={step.cmd} className="flex items-start gap-3">
                     <span className="text-accent text-xs mt-0.5">▸</span>
@@ -277,100 +277,21 @@ export default function AccountsPage() {
 
             <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
               <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-                t2000 swap
+                t2000 pay — MPP
               </div>
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">❯ t2000 swap 10 USDC SUI</span>
+                <span className="text-foreground">❯ t2000 pay mpp.t2000.ai/openai ...</span>
                 {"\n\n"}
-                <span className="text-accent">  ✓ Swapped $10.00 USDC → 9.71 SUI</span>
+                <span className="text-muted">  ← 402 Payment Required</span>
                 {"\n"}
-                <span className="text-muted">  Rate:  1 SUI = $1.03</span>
+                <span className="text-muted">  Amount: $0.01 USDC</span>
                 {"\n"}
-                <span className="text-muted">  Slippage:  0.12%</span>
+                <span className="text-accent">  ✓ Paid $0.01 USDC</span>
+                {"\n"}
+                <span className="text-accent">  ← 200 OK</span>
                 {"\n"}
                 <span className="text-muted">  Tx:  </span>
                 <span className="text-accent/50">https://suiscan.xyz/mainnet/tx/0xf7a8...</span>
-              </pre>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Investment (link to invest page) ── */}
-        <section className="py-16 sm:py-24 border-b border-border">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-xl">◆</span>
-                <div className="text-[10px] tracking-[0.2em] uppercase text-accent">
-                  Investment
-                </div>
-              </div>
-              <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-6 tracking-tight">
-                Invest. Earn.{" "}
-                <em className="italic text-accent">Grow.</em>
-              </h2>
-              <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mb-8">
-                Earn yield while holding. Protected by default.
-              </p>
-
-              <Link
-                href="/invest"
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono text-accent border border-accent/30 rounded transition-all hover:bg-accent-dim hover:shadow-[0_0_20px_rgba(0,214,143,0.08)]"
-              >
-                Explore investment account →
-              </Link>
-            </div>
-
-            <div className="bg-panel border border-border-bright rounded-sm overflow-hidden">
-              <div className="px-4 py-3 bg-white/[0.02] border-b border-border text-[10px] text-muted tracking-[0.1em] uppercase">
-                t2000 portfolio
-              </div>
-              <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
-                <span className="text-foreground">Investment Portfolio</span>
-                {"\n"}
-                <span className="text-muted/30">─────────────────────────────────────────</span>
-                {"\n"}
-                <span className="text-foreground">SUI:</span>
-                {"  "}
-                <span className="text-muted">4.85</span>
-                {"    "}
-                <span className="text-muted">Avg: $1.03</span>
-                {"  "}
-                <span className="text-accent">+2.0%</span>
-                {"  "}
-                <span className="text-accent">2.61% APY</span>
-                {"\n"}
-                <span className="text-foreground">BTC:</span>
-                {"  "}
-                <span className="text-muted">0.00035</span>
-                {"  "}
-                <span className="text-muted">Avg: $71k</span>
-                {"   "}
-                <span className="text-accent">+1.4%</span>
-                {"\n"}
-                <span className="text-foreground">ETH:</span>
-                {"  "}
-                <span className="text-muted">0.00070</span>
-                {"  "}
-                <span className="text-muted">Avg: $2.1k</span>
-                {"  "}
-                <span className="text-accent">+0.9%</span>
-                {"\n"}
-                <span className="text-foreground">GOLD:</span>
-                {" "}
-                <span className="text-muted">0.01005</span>
-                {"  "}
-                <span className="text-muted">Avg: $4.9k</span>
-                {"  "}
-                <span className="text-accent">+1.2%</span>
-                {"\n"}
-                <span className="text-muted/30">─────────────────────────────────────────</span>
-                {"\n"}
-                <span className="text-muted">Total:</span>
-                {"  "}
-                <span className="text-foreground">$82.60</span>
-                {"  "}
-                <span className="text-accent">+$3.32 (+4.2%)</span>
               </pre>
             </div>
           </div>
@@ -414,10 +335,10 @@ export default function AccountsPage() {
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
                 <span className="text-foreground">❯ t2000 positions</span>
                 {"\n"}
-                <span className="text-muted">  navi:  $5.30 USDC @ 4.09% APY  </span>
+                <span className="text-muted">  navi USDC:  $5.30 @ 4.09% APY  </span>
                 <span className="text-accent">+rewards</span>
                 {"\n"}
-                <span className="text-muted">  suilend:  $6.15 SUI @ 2.61% APY  </span>
+                <span className="text-muted">  navi suiUSDT:  $6.15 @ 5.37% APY  </span>
                 <span className="text-accent">+rewards</span>
                 {"\n\n"}
                 <span className="text-foreground">❯ t2000 claim-rewards</span>
@@ -427,7 +348,7 @@ export default function AccountsPage() {
                 <span className="text-muted">  Received:  </span>
                 <span className="text-accent">$0.42 USDC</span>
                 {"\n"}
-                <span className="text-muted">  Source:  navi, suilend</span>
+                <span className="text-muted">  Source:  navi</span>
                 {"\n"}
                 <span className="text-muted">  Tx:  </span>
                 <span className="text-accent/50">https://suiscan.xyz/mainnet/tx/0xd9f2...</span>
@@ -460,20 +381,20 @@ export default function AccountsPage() {
                 desc: "Borrow from credit, spend from checking, repay when ready.",
               },
               {
-                title: "Sell → save → earn",
-                desc: "Sell an investment, route proceeds to savings automatically.",
+                title: "Pay → deliver → log",
+                desc: "Agent pays for an API, gets the result, logs the spend.",
               },
               {
                 title: "Rebalance across protocols",
                 desc: "Move savings to the highest-yield protocol in one transaction.",
               },
               {
-                title: "Investment locking",
-                desc: "Invested assets are protected from send and swap.",
+                title: "Safeguard limits",
+                desc: "Per-transaction and daily limits protect against overspending.",
               },
               {
                 title: "Unified balance",
-                desc: "One command shows all accounts with APY and P&L.",
+                desc: "One command shows all accounts with APY and earnings.",
               },
             ].map((item) => (
               <div
@@ -530,8 +451,6 @@ export default function AccountsPage() {
           <p className="text-muted text-xs">
             t2000 — A bank account for AI agents.{" "}
             <Link href="/" className="text-accent hover:underline">Home</Link>
-            {" · "}
-            <Link href="/invest" className="text-accent hover:underline">Invest</Link>
             {" · "}
             <Link href="/docs" className="text-accent hover:underline">Docs</Link>
             {" · "}

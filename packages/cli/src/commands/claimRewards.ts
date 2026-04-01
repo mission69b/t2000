@@ -30,16 +30,16 @@ export function registerClaimRewards(program: Command) {
         }
 
         const protocols = [...new Set(result.rewards.map(r => r.protocol))];
-        printLine(`  ${pc.green('✓')} Claimed and converted rewards to USDC`);
+        printLine(`  ${pc.green('✓')} Claimed rewards`);
         printSeparator();
 
-        const received = result.usdcReceived;
+        const received = result.totalValueUsd;
         if (received >= 0.01) {
-          printKeyValue('Received', `${pc.green(formatUsd(received))} USDC`);
+          printKeyValue('Value', `${pc.green(formatUsd(received))}`);
         } else if (received > 0) {
-          printKeyValue('Received', `${pc.green('< $0.01')} USDC`);
+          printKeyValue('Value', `${pc.green('< $0.01')}`);
         } else {
-          printKeyValue('Received', `${pc.dim('< $0.01 USDC (rewards are still accruing)')}`);
+          printKeyValue('Value', `${pc.dim('< $0.01 (rewards are still accruing)')}`);
         }
         printKeyValue('Source', protocols.join(', '));
 

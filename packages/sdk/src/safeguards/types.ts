@@ -15,11 +15,8 @@ export interface TxMetadata {
     | 'withdraw'
     | 'borrow'
     | 'repay'
-    | 'exchange'
     | 'rebalance'
-    | 'pay'
-    | 'invest'
-    | 'trade';
+    | 'pay';
   amount?: number;
 }
 

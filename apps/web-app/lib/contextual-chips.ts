@@ -118,12 +118,12 @@ export function deriveContextualChips(
 
   // --- Discovery: AI-powered insights ---
 
-  if (state.investments > 0) {
+  if (state.savings > 0) {
     chips.push({
-      id: 'portfolio-check',
+      id: 'positions-check',
       icon: '📊',
-      label: 'Portfolio P&L',
-      agentPrompt: 'Show me my portfolio performance. What are my holdings, gains/losses, and should I rebalance anything?',
+      label: 'My positions',
+      agentPrompt: 'Show me my lending positions. What are my savings, APYs, and should I rebalance for a better rate?',
       priority: 28,
       dismissible: true,
     });
@@ -145,7 +145,7 @@ export function deriveContextualChips(
       id: 'yield-check',
       icon: '🔍',
       label: 'Best yield?',
-      agentPrompt: 'Am I getting the best yield on my savings? Compare rates across all protocols (NAVI, Suilend) and all stablecoins (USDC, USDT, USDe) and tell me if I should rebalance to a better rate — even if it means switching to a different stablecoin.',
+      agentPrompt: 'Am I getting the best yield on my savings? Compare rates across all stablecoins (USDC, USDT, USDe) on NAVI and tell me if I should rebalance to a better rate.',
       priority: 22,
       dismissible: true,
     });
@@ -229,7 +229,7 @@ export function deriveContextualChips(
         id: 'morning',
         icon: '☀',
         label: 'Morning report',
-        agentPrompt: 'Give me my morning financial report. Check my balances, compare savings yield across all protocols and stablecoins (USDC, USDT, USDe on NAVI and Suilend), review portfolio holdings and health factor, and suggest any actions I should take today — including rebalancing to a different asset if a better rate is available.',
+        agentPrompt: 'Give me my morning financial report. Check my balances, compare savings yield across all stablecoins (USDC, USDT, USDe) on NAVI, review health factor, and suggest any actions I should take today — including rebalancing to a different asset if a better rate is available.',
         priority: 15,
       });
     } else if (hour >= 17 && hour < 21) {
@@ -237,7 +237,7 @@ export function deriveContextualChips(
         id: 'evening',
         icon: '📊',
         label: 'Daily summary',
-        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, compare yields across all protocols and stablecoins, review portfolio performance, and note any changes today.',
+        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, compare yields across all stablecoins on NAVI, review savings performance, and note any changes today.',
         priority: 15,
       });
     }
@@ -247,7 +247,7 @@ export function deriveContextualChips(
         id: 'weekly-recap',
         icon: '📅',
         label: 'Weekly recap',
-        agentPrompt: 'Give me my weekly recap. Summarize my balances, transactions this week, portfolio changes, savings earnings, and any action items.',
+        agentPrompt: 'Give me my weekly recap. Summarize my balances, transactions this week, savings earnings, and any action items.',
         priority: 14,
         dismissible: true,
       });
@@ -256,7 +256,7 @@ export function deriveContextualChips(
 
   // --- Fallback: onboarding + discovery ---
 
-  if (state.cash === 0 && state.savings === 0 && state.investments === 0) {
+  if (state.cash === 0 && state.savings === 0) {
     chips.push({
       id: 'welcome',
       icon: '👋',
@@ -302,8 +302,8 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
       return { id: 'post-search', icon: '🔍', label: 'Search again', agentPrompt: '', priority: 40 };
     case 'get_balance':
       return { id: 'post-balance', icon: '🤔', label: 'What if I save it all?', agentPrompt: 'What would happen if I saved all my idle cash? Project my earnings over 1 month, 6 months, and 1 year.', priority: 40 };
-    case 'get_portfolio':
-      return { id: 'post-portfolio', icon: '📊', label: 'Full report', agentPrompt: 'Give me a full financial report covering my balances, portfolio performance, yields, and action items.', priority: 40 };
+    case 'get_positions':
+      return { id: 'post-positions', icon: '📊', label: 'Full report', agentPrompt: 'Give me a full financial report covering my balances, savings positions, yields, and action items.', priority: 40 };
     case 'get_rates':
       return { id: 'post-rates', icon: '🔍', label: 'Best yield?', agentPrompt: 'Am I getting the best yield? Compare my current rate to what\'s available and tell me if I should switch.', priority: 40 };
     case 'get_health':
@@ -320,7 +320,7 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
       return { id: 'post-merch', icon: '💌', label: 'Send them a note?', agentPrompt: 'Send a postcard to the person I just ordered the gift for. Help me write a nice message.', priority: 45 };
     case 'get_crypto_price':
     case 'get_stock_quote':
-      return { id: 'post-price', icon: '💹', label: 'Check portfolio', agentPrompt: 'How does my portfolio compare to what I just looked up? Show me my holdings and P&L.', priority: 40 };
+      return { id: 'post-price', icon: '💹', label: 'Check positions', agentPrompt: 'Show me my current savings positions and how they compare to the best available rates.', priority: 40 };
     case 'translate':
       return { id: 'post-translate', icon: '🌐', label: 'Translate more', agentPrompt: '', priority: 40 };
     case 'convert_currency':

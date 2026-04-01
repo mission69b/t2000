@@ -3,10 +3,6 @@ export type { TransactionSigner } from './signer.js';
 export { KeypairSigner } from './wallet/keypairSigner.js';
 export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 export { ContactManager } from './contacts.js';
-export type { Contact, ContactMap } from './contacts.js';
-export { PortfolioManager } from './portfolio.js';
-export { StrategyManager } from './strategy.js';
-export { AutoInvestManager } from './auto-invest.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';
 export type {
@@ -19,7 +15,6 @@ export type {
   WithdrawResult,
   BorrowResult,
   RepayResult,
-  SwapResult,
   HealthFactorResult,
   MaxWithdrawResult,
   MaxBorrowResult,
@@ -33,25 +28,6 @@ export type {
   RebalanceResult,
   DepositInfo,
   TransactionRecord,
-  InvestmentRecord,
-  InvestmentPosition,
-  PortfolioResult,
-  InvestResult,
-  InvestEarnResult,
-  InvestRebalanceResult,
-  InvestRebalanceMove,
-  StrategyDefinition,
-  StrategyBuyResult,
-  StrategySellResult,
-  StrategyRebalanceResult,
-  StrategyStatusResult,
-  AutoInvestSchedule,
-  AutoInvestStatus,
-  AutoInvestRunResult,
-  PositionSide,
-  PerpsPosition,
-  PerpsTradeResult,
-  PerpsPositionsResult,
   PendingReward,
   ClaimRewardsResult,
   PayOptions,
@@ -66,15 +42,11 @@ export {
   CLOCK_ID,
   DEFAULT_NETWORK,
 } from './constants.js';
-export type { SupportedAsset, StableAsset, InvestmentAsset, PerpsMarket } from './constants.js';
+export type { SupportedAsset, StableAsset } from './constants.js';
 export {
   STABLE_ASSETS,
-  INVESTMENT_ASSETS,
-  PERPS_MARKETS,
-  DEFAULT_MAX_LEVERAGE,
-  DEFAULT_MAX_POSITION_SIZE,
   GAS_RESERVE_MIN,
-  DEFAULT_STRATEGIES,
+  CETUS_USDC_SUI_POOL,
 } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {
@@ -103,7 +75,6 @@ export { calculateFee, addCollectFeeToTx } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
-export { getPoolPrice } from './protocols/cetus.js';
 export { getRates } from './protocols/navi.js';
 export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';

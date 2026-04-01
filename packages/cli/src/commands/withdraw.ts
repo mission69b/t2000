@@ -9,7 +9,7 @@ export function registerWithdraw(program: Command) {
     .description('Withdraw USDC from savings')
     .argument('<amount>', 'Amount to withdraw (or "all")')
     .option('--key <path>', 'Key file path')
-    .option('--protocol <name>', 'Protocol to use (e.g. navi, suilend)')
+    .option('--protocol <name>', 'Protocol to use (e.g. navi)')
     .action(async (amountStr, opts) => {
       try {
         const amount: number | 'all' = amountStr === 'all' ? 'all' : parseFloat(amountStr);

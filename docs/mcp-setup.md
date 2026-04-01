@@ -57,13 +57,13 @@ When no session file exists, pass PIN via environment variable:
 
 ---
 
-## Available Tools (33)
+## Available Tools
 
-### Read-Only (9)
+### Read-Only
 
 | Tool | Description |
 |------|-------------|
-| `t2000_balance` | Current balance — checking, savings, investment, total |
+| `t2000_balance` | Current balance — checking, savings, total |
 | `t2000_address` | Agent's Sui wallet address |
 | `t2000_positions` | Lending positions across protocols |
 | `t2000_rates` | Best interest rates per asset |
@@ -71,9 +71,8 @@ When no session file exists, pass PIN via environment variable:
 | `t2000_history` | Recent transactions |
 | `t2000_earnings` | Yield earnings from savings |
 | `t2000_contacts` | List and resolve named contacts |
-| `t2000_portfolio` | Investment portfolio — positions, cost basis, P&L |
 
-### State-Changing (11)
+### State-Changing
 
 All support `dryRun: true` for previews without signing.
 
@@ -84,14 +83,10 @@ All support `dryRun: true` for previews without signing.
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay borrowed USDC |
-| `t2000_swap` | Swap assets via DEX |
 | `t2000_rebalance` | Optimize yield across protocols |
-| `t2000_invest` | Buy, sell, earn, or unearn investment assets (SUI, BTC, ETH) |
-| `t2000_strategy` | Manage strategies — list, buy, sell, status, rebalance, create, delete |
-| `t2000_auto_invest` | DCA scheduling — setup, status, run, stop |
 | `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
 
-### Safety (2)
+### Safety
 
 | Tool | Description |
 |------|-------------|
@@ -100,9 +95,9 @@ All support `dryRun: true` for previews without signing.
 
 > `unlock` is intentionally CLI-only — only a human can resume operations.
 
-## Prompts (15)
+## Prompts
 
-### Utility (6)
+### Utility
 
 | Prompt | Description |
 |--------|-------------|
@@ -111,26 +106,23 @@ All support `dryRun: true` for previews without signing.
 | `send-money` | Guided send flow with preview |
 | `budget-check` | Can I afford $X? — checks balance, limits, spending impact |
 | `savings-strategy` | Analyze idle funds, recommend how much to save and where |
-| `investment-strategy` | Portfolio analysis — allocation, P&L, buy/sell recommendations |
 
-### AI Financial Advisor (6)
+### AI Financial Advisor
 
 | Prompt | Description |
 |--------|-------------|
-| `morning-briefing` | Daily snapshot — balances, yield earned, portfolio movement, rewards, alerts |
-| `what-if` | Scenario planning — model impact of invest/save/borrow decisions |
+| `morning-briefing` | Daily snapshot — balances, yield earned, rewards, alerts |
+| `what-if` | Scenario planning — model impact of save/borrow decisions |
 | `sweep` | Find idle checking funds and route to optimal earning positions |
 | `risk-check` | Full risk analysis — health factor, concentration, liquidation proximity |
-| `weekly-recap` | Week in review — activity, yield, portfolio P&L, highlights |
-| `dca-advisor` | Personalized DCA setup — budget → strategy, frequency, projected growth |
+| `weekly-recap` | Week in review — activity, yield, highlights |
 
-### Operational (3)
+### Operational
 
 | Prompt | Description |
 |--------|-------------|
 | `claim-rewards` | Check and claim pending protocol rewards — auto-converts to USDC |
 | `safeguards` | Review safety settings — per-tx limits, daily caps, emergency lock |
-| `quick-exchange` | Guided token swap — preview rate, slippage, impact before executing |
 
 ---
 

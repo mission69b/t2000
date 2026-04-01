@@ -1,6 +1,6 @@
 # @t2000/cli
 
-A bank account for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, invest, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
+A bank account for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -32,7 +32,7 @@ t2000 init
   ✓ Keypair generated
   ✓ Network  Sui mainnet
   ✓ Gas sponsorship  enabled
-  ✓ Checking  ✓ Savings  ✓ Credit  ✓ Swap  ✓ Investment
+  ✓ Checking  ✓ Savings  ✓ Credit
 
   🎉 Bank account created
   Address: 0x8b3e...d412
@@ -96,51 +96,6 @@ t2000 init
   Gas:        0.31 SUI     (~$0.28)
   ──────────────────────────────────────
   Total:      $85.28
-❯ t2000 buy 100 SUI
-  ✓ Bought 105.26 SUI at $0.95
-    Invested:       $100.00
-    Portfolio:      105.26 SUI (avg $0.95)
-    Tx:  https://suiscan.xyz/mainnet/tx/...
-
-❯ t2000 buy 500 BTC
-  ✓ Bought 0.00512820 BTC at $97,500.00
-    Invested:       $500.00
-    Portfolio:      0.00512820 BTC (avg $97,500.00)
-    Tx:  https://suiscan.xyz/mainnet/tx/...
-
-❯ t2000 buy 200 ETH
-  ✓ Bought 0.10526316 ETH at $1,900.00
-    Invested:       $200.00
-    Portfolio:      0.10526316 ETH (avg $1,900.00)
-    Tx:  https://suiscan.xyz/mainnet/tx/...
-
-❯ t2000 portfolio
-  Investment Portfolio
-  ─────────────────────────────────────────────────────
-  SUI     105.26000000  Avg: $0.95    Now: $0.97    APY: 2.10%    +$2.10 (+2.1%)
-  BTC     0.00512820    Avg: $97,500  Now: $98,200  —              +$3.59 (+0.7%)
-  ETH     0.10526316    Avg: $1,900   Now: $1,920   APY: 1.85%    +$2.11 (+1.1%)
-  ─────────────────────────────────────────────────────
-  Total invested:   $800.00
-  Current value:    $807.80
-  Unrealized P&L:   +$7.80 (+1.0%)
-```
-
-```
-❯ t2000 invest strategy buy layer1 5
-  ✓ Invested $5.00 in layer1 strategy (1 atomic transaction)
-  ──────────────────────────────────────
-  ETH:  0.001222 @ $2,045.24
-  SUI:  2.5678 @ $0.97
-  ──────────────────────────────────────
-  Total invested:  $5.00
-  Tx:  https://suiscan.xyz/mainnet/tx/BKYu8s...
-
-❯ t2000 invest auto setup 50 weekly bluechip
-  ✓ Auto-invest created
-  Strategy:   bluechip (Large-cap crypto index)
-  Amount:     $50.00 per week
-  Next run:   Feb 24, 2026
 ```
 
 30 seconds. Send → save → borrow → pay → repay → withdraw.
@@ -194,7 +149,7 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount> [--protocol <name>]` | Deposit to savings (earn ~2–8% APY). Auto-converts non-USDC stables. Auto-selects best rate or use `--protocol navi\|suilend`. |
+| `t2000 save <amount> [--protocol <name>]` | Deposit to savings (earn ~2–8% APY). Auto-converts non-USDC stables. |
 | `t2000 save all` | Deposit all available stablecoins (auto-converts to USDC) |
 | `t2000 withdraw <amount>` | Withdraw from savings. Always returns USDC (auto-swaps non-USDC positions). |
 | `t2000 borrow <amount>` | Borrow USDC against savings collateral |
@@ -222,7 +177,7 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 earn` | Show all earning opportunities — savings yield + investment yield |
+| `t2000 earn` | Show all earning opportunities — savings yield |
 
 ### Contacts
 
@@ -231,45 +186,6 @@ t2000 init
 | `t2000 contacts` | List saved contacts |
 | `t2000 contacts add <name> <address>` | Save a named contact |
 | `t2000 contacts remove <name>` | Remove a contact |
-
-### Invest
-
-| Command | Description |
-|---------|-------------|
-| `t2000 buy <amount> <asset>` | Buy crypto with USDC (e.g. `t2000 buy 500 BTC`) |
-| `t2000 sell <amount\|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
-| `t2000 swap <amount> <from> <to>` | Swap tokens via Cetus DEX (e.g. `t2000 swap 5 USDC SUI`) |
-| `t2000 invest earn <asset>` | Deposit held asset into best-rate lending for yield |
-| `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
-| `t2000 invest rebalance` | Move earning positions to better-rate protocols |
-| `t2000 portfolio` | View investment portfolio with cost-basis P&L (strategy grouping) |
-
-> **Deprecated:** `t2000 exchange` still works but prints a deprecation notice — use `t2000 swap`. `t2000 invest buy` / `t2000 invest sell` still work but are deprecated — use `t2000 buy` / `t2000 sell`.
-
-### Strategies (PTB Atomic)
-
-| Command | Description |
-|---------|-------------|
-| `t2000 invest strategy list` | List available strategies with allocations |
-| `t2000 invest strategy buy <name> <amount>` | Buy into a strategy — single atomic transaction. Options: `--dry-run` |
-| `t2000 invest strategy sell <name>` | Sell all positions in a strategy |
-| `t2000 invest strategy status <name>` | Show positions, current weights, and drift |
-| `t2000 invest strategy rebalance <name>` | Rebalance to target weights |
-| `t2000 invest strategy create <name> --alloc "BTC:40,ETH:60"` | Create a custom strategy |
-| `t2000 invest strategy delete <name>` | Delete a custom strategy (must have no positions) |
-
-Built-in strategies: `bluechip` (BTC 50%, ETH 30%, SUI 20%), `all-weather` (BTC 30%, ETH 20%, SUI 20%, GOLD 30%), `safe-haven` (BTC 50%, GOLD 50%), `layer1` (ETH 50%, SUI 50%), `sui-heavy` (BTC 20%, ETH 20%, SUI 60%).
-
-### Auto-Invest (DCA)
-
-| Command | Description |
-|---------|-------------|
-| `t2000 invest auto setup <amount> <frequency> [strategy]` | Set up DCA (daily/weekly/monthly) |
-| `t2000 invest auto status` | Show auto-invest schedules |
-| `t2000 invest auto run` | Execute pending DCA purchases |
-| `t2000 invest auto stop [id]` | Stop one or all schedules |
-
-Supported assets: SUI, BTC, ETH, GOLD. Dollar-denominated — `amount` is in USD.
 
 ### Safeguards
 
@@ -301,7 +217,7 @@ t2000 mcp uninstall
 t2000 mcp
 ```
 
-35 tools, 20 prompts, safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
+Safeguard enforced. See [MCP setup guide](../../docs/mcp-setup.md) for details.
 
 ### HTTP API Server
 
@@ -363,7 +279,7 @@ Gas is fully automated:
 
 You never need to manually acquire SUI for gas.
 
-All multi-step operations (save with auto-convert, withdraw with auto-swap, rebalance) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts.
+All multi-step operations (save with auto-convert, withdraw with auto-convert, rebalance) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts.
 
 ## Protocol Fees
 
@@ -371,7 +287,6 @@ All multi-step operations (save with auto-convert, withdraw with auto-swap, reba
 |-----------|-----|
 | Save | 0.1% |
 | Borrow | 0.05% |
-| Swap | **Free** |
 | Withdraw | Free |
 | Repay | Free |
 | Send | Free |

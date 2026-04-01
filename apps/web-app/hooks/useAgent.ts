@@ -3,8 +3,6 @@
 import { useMemo } from 'react';
 import { useZkLogin } from '@/components/auth/useZkLogin';
 import { deserializeKeypair } from '@/lib/zklogin';
-import { getStrategyAllocations } from '@/lib/strategies';
-
 export interface ServiceResult {
   success: boolean;
   paymentDigest: string;
@@ -32,14 +30,6 @@ export class ServiceDeliveryError extends Error {
   }
 }
 
-export interface StrategyBuyResult {
-  buys: { asset: string; amount: number; tx: string }[];
-  totalInvested: number;
-  partial?: boolean;
-  failedAsset?: string;
-  error?: string;
-}
-
 export interface AgentActions {
   address: string;
   send(params: { to: string; amount: number; asset?: string }): Promise<{ tx: string }>;
@@ -47,9 +37,7 @@ export interface AgentActions {
   withdraw(params: { amount: number; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<{ tx: string }>;
   borrow(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   repay(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
-  swap(params: { from: string; to: string; amount: number }): Promise<{ tx: string }>;
   rebalance(params: { amount: number; fromProtocol: string; toProtocol: string; fromAsset?: string; toAsset?: string }): Promise<{ tx: string }>;
-  strategyBuy(params: { strategy: string; amount: number }): Promise<StrategyBuyResult>;
   claimRewards(): Promise<{ tx: string }>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
@@ -148,43 +136,8 @@ export function useAgent() {
             return sponsoredTransaction('repay', { amount, protocol });
           },
 
-          async swap({ from, to, amount }) {
-            return sponsoredTransaction('swap', { amount, fromAsset: from, toAsset: to });
-          },
-
           async rebalance({ amount, fromProtocol, toProtocol, fromAsset, toAsset }) {
             return sponsoredTransaction('rebalance', { amount, fromProtocol, toProtocol, fromAsset, toAsset });
-          },
-
-          async strategyBuy({ strategy, amount }) {
-            const alloc = getStrategyAllocations(strategy);
-            if (!alloc) throw new Error(`Unknown strategy: ${strategy}`);
-
-            const buys: { asset: string; amount: number; tx: string }[] = [];
-            for (const [asset, pct] of Object.entries(alloc)) {
-              const assetAmount = (amount * pct) / 100;
-              if (assetAmount < 0.01) continue;
-              try {
-                const res = await sponsoredTransaction('swap', {
-                  amount: assetAmount,
-                  fromAsset: 'USDC',
-                  toAsset: asset,
-                });
-                buys.push({ asset, amount: assetAmount, tx: res.tx });
-              } catch (err) {
-                if (buys.length > 0) {
-                  return {
-                    buys,
-                    totalInvested: buys.reduce((sum, b) => sum + b.amount, 0),
-                    partial: true,
-                    failedAsset: asset,
-                    error: err instanceof Error ? err.message : 'Swap failed',
-                  };
-                }
-                throw err;
-              }
-            }
-            return { buys, totalInvested: amount };
           },
 
           async claimRewards() {

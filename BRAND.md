@@ -57,7 +57,7 @@ Products are how we organize and sell capabilities. Inside the app, it is still 
 
 | Product | Tagline | Description | Integration | Status |
 |---------|---------|-------------|-------------|--------|
-| **Savings** | Earn yield on USDC | Deposit USDC, earn 4-5% APY via NAVI. Auto-compounding. | NAVI MCP (reads) + thin tx builders (writes) | Live |
+| **Savings** | Earn yield on USDC | Deposit USDC, earn ~2–8% APY via NAVI. Auto-compounding. | NAVI MCP (reads) + thin tx builders (writes) | Live |
 | **Pay** | Access APIs with micropayments | Pay for 88+ APIs (AI, search, commerce) with USDC. No API keys. | MPP / t2000 gateway | Live |
 | **Send** | USDC transfers, instantly | Send to contacts, any Sui address. Cross-border, no fees beyond gas. | Direct Sui transactions | Live |
 | **Credit** | Borrow against your balance | Collateralized borrowing via NAVI. Manage debt with chat. | NAVI MCP (reads) + thin tx builders (writes) | Live |
@@ -183,7 +183,7 @@ Anthropic's open-sourced Claude Code provides production-grade patterns for the 
 
 ### MCP-first DeFi integration
 
-NAVI Protocol released a free, public MCP server (`https://open-api.naviprotocol.io/api/mcp`) covering all read operations (rates, positions, health, rewards, quotes). This enables an MCP-first integration model: **MCP for reads, thin transaction builders for writes**. No SDK per protocol needed — just connect the engine's MCP client. If other protocols (Suilend, Cetus) follow, the engine becomes a universal DeFi aggregator through MCP alone. This could eliminate the patched `@naviprotocol/lending` dependency.
+NAVI Protocol released a free, public MCP server (`https://open-api.naviprotocol.io/api/mcp`) covering all read operations (rates, positions, health, rewards, quotes). This enables an MCP-first integration model: **MCP for reads, thin transaction builders for writes**. No SDK per protocol needed — just connect the engine's MCP client. If other protocols follow with their own MCPs, the engine becomes a universal DeFi aggregator through MCP alone.
 
 ### Repository separation
 
@@ -397,7 +397,7 @@ Like Anthropic > Claude, Square > Cash App, or OpenAI > ChatGPT — the infrastr
 |-------|---------|-------|
 | Consumer app | app.t2000.ai | **Audric.ai** |
 | Marketing website | t2000.ai (homepage) | **Audric.ai** |
-| Product pages | t2000.ai/accounts, /invest | **Audric.ai/savings, /pay, /send** |
+| Product pages | t2000.ai/accounts | **Audric.ai/savings, /pay, /send** |
 | CLI | @t2000/cli | **@t2000/cli** (no change) |
 | SDK | @t2000/sdk | **@t2000/sdk** (no change) |
 | MCP | @t2000/mcp | **@t2000/mcp** (no change) |

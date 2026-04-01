@@ -90,8 +90,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
     items: [
       { id: "cli-wallet", name: "Wallet" },
       { id: "cli-savings", name: "Savings & Credit" },
-      { id: "cli-invest", name: "Invest" },
-      { id: "cli-more", name: "Swap & More" },
+      { id: "cli-more", name: "Pay & More" },
     ],
   },
   {
@@ -387,8 +386,8 @@ function QuickStart({
         Up and running <em className="italic text-accent">in 45 seconds.</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        t2000 is a bank account for AI agents on Sui — checking, savings,
-        credit, and investment via MCP. Works with Claude Desktop, Cursor, and Windsurf.
+        t2000 is a bank account for AI agents on Sui — savings, pay, send,
+        credit, and receive via MCP. Works with Claude Desktop, Cursor, and Windsurf.
       </p>
 
       <h2 id="qs-install">1. Install t2000</h2>
@@ -413,7 +412,7 @@ function QuickStart({
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Investment{"\n\n"}
+        {"  "}{S.g("✓")} Savings  {S.g("✓")} Pay  {S.g("✓")} Send  {S.g("✓")} Credit  {S.g("✓")} Receive{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
         {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
@@ -599,11 +598,11 @@ function ConceptsSection() {
       <DocTable
         headers={["Account", "What it is", "CLI"]}
         rows={[
-          [<InlineCode key="k">checking</InlineCode>, "USDC available for immediate use. Shown as Available in balance output.", <InlineCode key="v">t2000 send</InlineCode>],
-          [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI, Suilend), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
+          [<InlineCode key="k">savings</InlineCode>, "USDC deposited to lending protocols (NAVI), earning variable APY. Auto-routed to best rate.", <><InlineCode>t2000 save</InlineCode> / <InlineCode>withdraw</InlineCode></>],
+          [<InlineCode key="k">pay</InlineCode>, "Pay-per-use APIs via MPP. Agent pays with USDC on Sui — no API keys, no subscriptions.", <InlineCode key="v">t2000 pay</InlineCode>],
+          [<InlineCode key="k">send</InlineCode>, "Send USDC to any address or contact. Gas handled automatically.", <InlineCode key="v">t2000 send</InlineCode>],
           [<InlineCode key="k">credit</InlineCode>, "USDC borrowed against savings collateral. Health factor enforced on-chain.", <><InlineCode>t2000 borrow</InlineCode> / <InlineCode>repay</InlineCode></>],
-          [<InlineCode key="k">swap</InlineCode>, "Token swap via Cetus DEX. Use t2000 swap to convert between USDC, SUI, and stablecoins. Also used internally by rebalance and auto-swap.", <InlineCode key="v">t2000 swap</InlineCode>],
-          [<InlineCode key="k">investment</InlineCode>, "Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands. Cost-basis P&L tracking. Investment locking guard prevents accidental liquidation.", <><InlineCode>t2000 buy</InlineCode> / <InlineCode>sell</InlineCode> / <InlineCode>portfolio</InlineCode></>],
+          [<InlineCode key="k">receive</InlineCode>, "Get your wallet address to receive USDC from any exchange or wallet.", <InlineCode key="v">t2000 deposit</InlineCode>],
         ]}
       />
 
@@ -617,7 +616,7 @@ function ConceptsSection() {
         headers={["Step", "Strategy", "Condition"]}
         rows={[
           ["1", "Self-funded", "SUI ≥ 0.05 — uses agent's own SUI"],
-          ["2", "Auto-topup", "SUI < 0.05, USDC ≥ $2 — swaps $1 USDC → SUI (sponsored), then self-funds"],
+          ["2", "Auto-topup", "SUI < 0.05, USDC ≥ $2 — converts $1 USDC → SUI (sponsored), then self-funds (currently disabled, falls back to step 3)"],
           ["3", "Sponsored", "Steps 1 & 2 fail — Gas Station sponsors the full transaction"],
         ]}
       />
@@ -641,7 +640,6 @@ function ConceptsSection() {
         rows={[
           ["Save", "0.1%", "Protocol fee on deposit"],
           ["Borrow", "0.05%", "Protocol fee on loan"],
-          ["Swap", <strong key="f">Free</strong>, "Cetus pool fees only (slippage protected on-chain)"],
           ["Withdraw", <strong key="f">Free</strong>, ""],
           ["Repay", <strong key="f">Free</strong>, ""],
           ["Send", <strong key="f">Free</strong>, ""],
@@ -708,7 +706,7 @@ function CliWalletSection() {
         {S.g("✓")} Keypair generated{"\n"}
         {S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n"}
-        {S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Investment{"\n\n"}
+        {S.g("✓")} Savings  {S.g("✓")} Pay  {S.g("✓")} Send  {S.g("✓")} Credit  {S.g("✓")} Receive{"\n\n"}
         {"🎉 "}{S.g("Bank account created")}{"\n"}
         {"Address: "}{S.a("0x8b3e...d412")}{"\n\n"}
         {S.g("✓")} MCP configured (Claude Desktop, Cursor){"\n"}
@@ -727,9 +725,8 @@ function CliWalletSection() {
         {"  "}Available:  {S.a("$69.60")}  {S.c("(checking — spendable)")}{"\n"}
         {"  "}Savings:  {S.a("$9.26")}  {S.c("(earning 4.15% APY)")}{"\n"}
         {"  "}Credit:  {S.r("-$1.00")}  {S.c("(7.67% APY)")}{"\n"}
-        {"  "}Investment:  {S.a("$5.01")}  {S.c("(+0.1%)")}{"\n"}
         {"  "}{S.m("──────────────────────────────────────")}{"\n"}
-        {"  "}Total:  {S.a("$82.87")}
+        {"  "}Total:  {S.a("$77.86")}
       </CodeBlock>
 
       <h2 id="cmd-send">t2000 send</h2>
@@ -747,7 +744,7 @@ function CliWalletSection() {
       </CodeBlock>
 
       <h2 id="cmd-history">t2000 history</h2>
-      <p>View recent transactions with action classification, amounts, recipients, and Suiscan links. Recognizes sends, lending, swaps, and MPP (paid API) payments.</p>
+      <p>View recent transactions with action classification, amounts, recipients, and Suiscan links. Recognizes sends, lending, and MPP (paid API) payments.</p>
       <CodeBlock lang="bash">
         t2000 history [--limit &lt;n&gt;]{"\n\n"}
         {"  "}{S.a("--limit")}   Number of transactions (default: 20){"\n"}
@@ -785,7 +782,7 @@ function CliWalletSection() {
         rows={[
           [<InlineCode key="k">t2000 address</InlineCode>, "Print wallet address"],
           [<InlineCode key="k">t2000 deposit</InlineCode>, "Show step-by-step funding instructions"],
-          [<InlineCode key="k">t2000 history</InlineCode>, "Transaction history — sends, lending, swaps, MPP payments, amounts, recipients, Suiscan links"],
+          [<InlineCode key="k">t2000 history</InlineCode>, "Transaction history — sends, lending, MPP payments, amounts, recipients, Suiscan links"],
           [<InlineCode key="k">t2000 import &lt;key&gt;</InlineCode>, <>Import wallet from private key (<InlineCode>suiprivkey1...</InlineCode> or hex)</>],
           [<InlineCode key="k">t2000 export</InlineCode>, "Export private key (Ed25519, hex)"],
         ]}
@@ -818,11 +815,11 @@ function CliSavingsSection() {
       </div>
 
       <h2 id="cmd-save">t2000 save</h2>
-      <p>Deposit USDC into savings to earn variable APY. Auto-routes to the best rate across NAVI and Suilend, or specify a protocol with <InlineCode>--protocol</InlineCode>.</p>
+      <p>Deposit USDC into savings to earn variable APY. Auto-routes to the best rate across lending protocols, or specify a protocol with <InlineCode>--protocol</InlineCode>.</p>
       <CodeBlock lang="bash">
         t2000 save &lt;amount&gt; [--protocol &lt;name&gt;]{"\n"}
         t2000 save all              {S.c("# saves everything; gas manager runs first if needed")}{"\n"}
-        t2000 save {S.a("80")} --protocol suilend  {S.c("# target a specific protocol")}
+        t2000 save {S.a("80")} --protocol navi  {S.c("# target a specific protocol")}
       </CodeBlock>
       <CodeBlock lang="output">
         {"  "}{S.g("✓")} Saved {S.a("$80.00")} USDC to best rate{"\n"}
@@ -873,7 +870,7 @@ function CliSavingsSection() {
       </CodeBlock>
 
       <h2 id="cmd-rebalance">t2000 rebalance</h2>
-      <p>Optimize yield by moving savings to the best rate across protocols and stablecoins. Executes as a single atomic PTB (withdraw → swap → deposit).</p>
+      <p>Optimize yield by moving savings to the best rate across protocols and stablecoins. Executes as a single atomic PTB (withdraw → deposit).</p>
       <CodeBlock lang="bash">
         t2000 rebalance [--dry-run] [--min-diff &lt;pct&gt;] [--max-break-even &lt;days&gt;]{"\n\n"}
         t2000 rebalance --dry-run   {S.c("# preview without executing")}{"\n"}
@@ -889,14 +886,13 @@ function CliSavingsSection() {
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
         {"  "}APY Gain:  {S.g("+0.51%")}{"\n"}
         {"  "}Annual Gain:  {S.a("$0.03")}/year{"\n"}
-        {"  "}Swap Cost:  ~$0.00{"\n"}
-        {"  "}Break-even:  6 days{"\n\n"}
+        {"  "}Conversion Cost:  ~$0.00{"\n\n"}
         {"  "}{S.g("✓")} Rebalanced {S.a("$5.10")} → {S.a("5.37%")} APY{"\n"}
         {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/84qXk...")}
       </CodeBlock>
 
       <h2 id="cmd-earn">t2000 earn</h2>
-      <p>Show all earning opportunities in one dashboard — savings yield and investment yield.</p>
+      <p>Show all earning opportunities in one dashboard — savings yield across protocols.</p>
       <CodeBlock lang="bash">
         t2000 earn [--json]
       </CodeBlock>
@@ -904,13 +900,10 @@ function CliSavingsSection() {
         {"  "}Earning Opportunities{"\n\n"}
         {"  "}{S.b("SAVINGS — Passive Yield")}{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}navi:  {S.a("$5.10")} USDC @ {S.g("4.86%")} APY{"\n"}
-        {"  "}suilend:  {S.a("$3.15")} SUI @ {S.g("2.61%")} APY{"\n"}
+        {"  "}navi USDC:  {S.a("$5.10")} @ {S.g("4.86%")} APY{"\n"}
+        {"  "}navi suiUSDT:  {S.a("$3.15")} @ {S.g("5.37%")} APY{"\n"}
         {"  "}    ~$0.00/day · ~$0.03/month{"\n\n"}
-        {"  "}Total Saved:  {S.a("$8.25")}{"\n\n"}
-        {"  "}{S.b("INVESTMENTS — Earning Yield")}{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}SUI via Suilend:  {S.a("$1.00")} (0.9734 SUI) @ {S.g("2.61%")} APY
+        {"  "}Total Saved:  {S.a("$8.25")}
       </CodeBlock>
 
       <h2 id="cmd-savings-more">More savings commands</h2>
@@ -928,135 +921,6 @@ function CliSavingsSection() {
   );
 }
 
-function CliInvestSection() {
-  return (
-    <>
-      <div className="text-[11px] tracking-[0.12em] uppercase text-accent mb-3">
-        CLI
-      </div>
-      <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        <em className="italic text-accent">Invest</em>
-      </h1>
-      <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Buy and sell SUI, BTC, ETH, GOLD with dollar-denominated commands.
-        Cost-basis P&L tracking, strategy allocations, yield on holdings,
-        and investment locking guard.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
-        <CmdCard name="t2000 buy / sell" desc="Buy or sell SUI, BTC, ETH, GOLD" onClick={() => scrollTo("cmd-invest")} />
-        <CmdCard name="t2000 invest earn" desc="Earn yield on holdings" onClick={() => scrollTo("cmd-invest-earn")} />
-        <CmdCard name="t2000 invest rebalance" desc="Move earning to better rate" onClick={() => scrollTo("cmd-invest-rebalance")} />
-        <CmdCard name="t2000 invest strategy" desc="Themed allocations (bluechip, layer1)" onClick={() => scrollTo("cmd-strategy")} />
-        <CmdCard name="t2000 invest auto" desc="Dollar-cost averaging (DCA)" onClick={() => scrollTo("cmd-auto-invest")} />
-        <CmdCard name="t2000 portfolio" desc="View portfolio with cost-basis P&L" onClick={() => scrollTo("cmd-portfolio")} />
-      </div>
-
-      <h2 id="cmd-invest">t2000 buy / sell</h2>
-      <p>Buy or sell SUI, BTC, or ETH. Portfolio tracks cost basis, average price, and realized P&L. Investment assets are locked from <InlineCode>send</InlineCode> and <InlineCode>swap</InlineCode> — use <InlineCode>sell</InlineCode> to liquidate.</p>
-      <CodeBlock lang="bash">
-        t2000 buy &lt;amount&gt; &lt;asset&gt;{"\n"}
-        t2000 sell &lt;amount|all&gt; &lt;asset&gt;{"\n\n"}
-        t2000 buy {S.a("5")} SUI            {S.c("# buy $5 of SUI")}{"\n"}
-        t2000 buy {S.a("10")} BTC           {S.c("# buy $10 of BTC")}{"\n"}
-        t2000 sell all ETH       {S.c("# sell entire ETH position")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}{S.g("✓")} Bought {S.a("4.8500")} SUI at {S.a("$1.03")}{"\n"}
-        {"  "}Invested:  {S.a("$5.00")}{"\n"}
-        {"  "}Portfolio:  {S.a("4.8500")} SUI (avg {S.a("$1.03")}){"\n"}
-        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
-      </CodeBlock>
-
-      <h2 id="cmd-invest-earn">invest earn / unearn</h2>
-      <p>Deposit an invested asset into the best-rate lending protocol to earn yield while keeping price exposure. <InlineCode>unearn</InlineCode> withdraws from lending but keeps the asset in your portfolio. Auto-withdraw on sell.</p>
-      <CodeBlock lang="bash">
-        t2000 invest earn &lt;asset&gt;     {S.c("# deposit to best lending rate")}{"\n"}
-        t2000 invest unearn &lt;asset&gt;   {S.c("# withdraw from lending, keep invested")}{"\n\n"}
-        t2000 invest earn SUI         {S.c("# earn 2.6% APY on SUI via Suilend")}{"\n"}
-        t2000 invest earn ETH         {S.c("# earn 0.04% APY on ETH via NAVI")}{"\n"}
-        t2000 invest unearn SUI       {S.c("# pull SUI back from lending")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}{S.g("✓")} SUI deposited into Suilend (2.6% APY){"\n"}
-        {"  "}Amount:  {S.a("0.9734")} SUI{"\n"}
-        {"  "}Protocol:  Suilend{"\n"}
-        {"  "}APY:  {S.g("2.61%")}{"\n"}
-        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
-      </CodeBlock>
-
-      <h2 id="cmd-invest-rebalance">invest rebalance</h2>
-      <p>Move earning investment positions to higher-rate protocols. Compares APY across NAVI and Suilend and moves any position where a better rate is available (0.1% minimum difference).</p>
-      <CodeBlock lang="bash">
-        t2000 invest rebalance            {S.c("# move earning positions to best rate")}{"\n"}
-        t2000 invest rebalance --dry-run  {S.c("# preview moves without executing")}{"\n"}
-        t2000 invest rebalance --min-diff 0.5  {S.c("# only move if 0.5%+ APY gain")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}{S.g("✓")} Rebalanced earning positions{"\n"}
-        {"  "}──────────────────────────────────────{"\n"}
-        {"    "}SUI: NAVI Protocol (2.42%) → Suilend (2.61%){"\n"}
-        {"  "}Amount:  {S.a("1.0639")} SUI{"\n"}
-        {"  "}APY gain:  {S.g("+0.20%")}{"\n"}
-        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}
-      </CodeBlock>
-
-      <h2 id="cmd-strategy">invest strategy</h2>
-      <p>Buy into themed allocations with a single atomic transaction. Built-in strategies: <InlineCode>bluechip</InlineCode> (BTC/ETH/SUI), <InlineCode>layer1</InlineCode> (ETH/SUI), <InlineCode>sui-heavy</InlineCode> (80% SUI). Create custom strategies with <InlineCode>invest strategy create</InlineCode>.</p>
-      <CodeBlock lang="bash">
-        t2000 invest strategy buy &lt;name&gt; &lt;amount&gt;{"\n"}
-        t2000 invest strategy sell &lt;name&gt;{"\n"}
-        t2000 invest strategy list{"\n"}
-        t2000 invest strategy status &lt;name&gt;{"\n\n"}
-        t2000 invest strategy buy bluechip {S.a("10")}   {S.c("# $10 split across BTC/ETH/SUI")}{"\n"}
-        t2000 invest strategy sell bluechip     {S.c("# sell all strategy positions")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}{S.g("✓")} Invested {S.a("$10.00")} in bluechip strategy{"\n"}
-        {"  "}BTC:  {S.a("0.00003505")} @ {S.a("$71,326")}{"\n"}
-        {"  "}ETH:  {S.a("0.000708")} @ {S.a("$2,119")}{"\n"}
-        {"  "}SUI:  {S.a("0.9783")} @ {S.a("$1.02")}{"\n"}
-        {"  "}Total invested:  {S.a("$10.00")}
-      </CodeBlock>
-
-      <h2 id="cmd-auto-invest">invest auto (DCA)</h2>
-      <p>Dollar-cost averaging — schedule recurring investments.</p>
-      <CodeBlock lang="bash">
-        t2000 invest auto setup &lt;amount&gt; &lt;frequency&gt; &lt;strategy&gt;{"\n"}
-        t2000 invest auto status{"\n"}
-        t2000 invest auto run{"\n"}
-        t2000 invest auto stop{"\n\n"}
-        t2000 invest auto setup {S.a("50")} weekly bluechip   {S.c("# $50/week into bluechip")}{"\n"}
-        t2000 invest auto run                     {S.c("# execute pending DCA")}
-      </CodeBlock>
-
-      <h2 id="cmd-portfolio">t2000 portfolio</h2>
-      <p>View your investment portfolio with cost-basis P&L, strategy grouping, and earning status.</p>
-      <CodeBlock lang="bash">
-        t2000 portfolio [--json]
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}Investment Portfolio{"\n\n"}
-        {"    "}▸ Bluechip / Large-Cap{"\n"}
-        {"  "}{S.m("──────────────────────────────────────")}{"\n"}
-        {"  "}BTC:  {S.a("0.00003500")}    Avg: $71,000    Now: $71,200    {S.g("+$0.01 (+0.3%)")}{"\n"}
-        {"  "}ETH:  {S.a("0.000700")}    Avg: $2,100    Now: $2,120    {S.g("+$0.01 (+1.0%)")}{"\n"}
-        {"  "}SUI:  {S.a("0.9700")}    Avg: $1.03    Now: $1.03    {S.g("+$0.00 (+0.1%)")}{"\n"}
-        {"    "}Subtotal: {S.a("$5.01")}{"\n\n"}
-        {"    "}▸ Direct{"\n"}
-        {"  "}{S.m("──────────────────────────────────────")}{"\n"}
-        {"  "}ETH:  {S.a("0.000950")}    Avg: $2,115    Now: $2,120    {S.g("+$0.00 (+0.2%)")}{"\n"}
-        {"    "}Subtotal: {S.a("$2.01")}{"\n"}
-        {"  "}{S.m("──────────────────────────────────────")}{"\n"}
-        {"  "}Total invested:  {S.a("$7.00")}{"\n"}
-        {"  "}Current value:  {S.a("$7.02")}{"\n"}
-        {"  "}Unrealized P&L:  {S.g("+$0.02 (+0.3%)")}{"\n"}
-        {"  "}Realized P&L:  {S.a("+$0.00")}
-      </CodeBlock>
-    </>
-  );
-}
-
 function CliMoreSection() {
   return (
     <>
@@ -1064,33 +928,18 @@ function CliMoreSection() {
         CLI
       </div>
       <h1 className="font-serif text-[28px] sm:text-4xl font-normal leading-[1.2] text-white/95 mb-4">
-        Swap <em className="italic text-accent">& More</em>
+        Pay <em className="italic text-accent">& More</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Token swaps, MPP payments, MCP integration,
+        MPP payments, MCP integration,
         and agent safeguards.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
-        <CmdCard name="t2000 swap" desc="Swap tokens (USDC ⇌ SUI)" onClick={() => scrollTo("cmd-exchange")} />
         <CmdCard name="t2000 pay" desc="Pay for MPP-protected APIs" badge="addon" onClick={() => scrollTo("cmd-pay")} />
         <CmdCard name="t2000 mcp" desc="MCP server for AI platforms" badge="NEW" onClick={() => scrollTo("cmd-mcp")} />
         <CmdCard name="t2000 safeguards" desc="Spending limits, lock/unlock" onClick={() => scrollTo("cmd-safeguards")} />
       </div>
-
-      <h2 id="cmd-exchange">t2000 swap</h2>
-      <p>Swap tokens via Cetus DEX with on-chain slippage protection. Supports USDC ⇌ SUI and stablecoin pairs.</p>
-      <CodeBlock lang="bash">
-        t2000 swap &lt;amount&gt; &lt;from&gt; &lt;to&gt; [--slippage &lt;pct&gt;]{"\n\n"}
-        t2000 swap 5 USDC SUI            {S.c("# buy SUI with USDC")}{"\n"}
-        t2000 swap 2 SUI USDC            {S.c("# sell SUI for USDC")}{"\n"}
-        t2000 swap 10 USDC suiUSDT --slippage 0.5
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}{S.g("✓")} Swapped {S.a("$5.00")} USDC → {S.a("4.8500")} SUI{"\n"}
-        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/...")}{"\n"}
-        {"  "}Gas:  {S.a("0.0050")} SUI (self-funded)
-      </CodeBlock>
 
       <h2 id="cmd-pay">
         t2000 pay <Badge color="amber">MPP</Badge>
@@ -1297,7 +1146,6 @@ function ErrorsSection() {
           [<InlineCode key="k">HEALTH_FACTOR_TOO_LOW</InlineCode>, <InlineCode key="d">{`{ maxBorrow, currentHF }`}</InlineCode>, "Borrow drops HF below 1.5"],
           [<InlineCode key="k">WITHDRAW_WOULD_LIQUIDATE</InlineCode>, <InlineCode key="d">{`{ safeWithdrawAmount }`}</InlineCode>, "Withdrawal drops HF below 1.5"],
           [<InlineCode key="k">NO_COLLATERAL</InlineCode>, "—", "No savings to borrow against"],
-          [<InlineCode key="k">SLIPPAGE_EXCEEDED</InlineCode>, "—", "Swap price moved beyond tolerance"],
           [<InlineCode key="k">PROTOCOL_PAUSED</InlineCode>, "—", "Protocol is temporarily paused"],
         ]}
       />
@@ -1367,7 +1215,7 @@ function InitWizardSection() {
         {"  "}{S.g("✓")} Network {S.m("Sui mainnet")}{"\n"}
         {"  "}{S.g("✓")} Gas sponsorship {S.m("enabled")}{"\n\n"}
         {"  "}{S.m("Setting up accounts...")}{"\n"}
-        {"  "}{S.g("✓")} Checking  {S.g("✓")} Savings  {S.g("✓")} Credit  {S.g("✓")} Swap  {S.g("✓")} Investment{"\n\n"}
+        {"  "}{S.g("✓")} Savings  {S.g("✓")} Pay  {S.g("✓")} Send  {S.g("✓")} Credit  {S.g("✓")} Receive{"\n\n"}
         {"  "}🎉 {S.g("Bank account created")}{"\n"}
         {"  "}Address: {S.a("0x8b3e...d412")}{"\n\n"}
         {"  "}{S.b("Step 2 of 3")} — Connect AI platforms{"\n"}
@@ -1443,31 +1291,30 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (30)</h2>
+      <h2 id="mcp-tools">Available tools (22)</h2>
 
-      <h3 id="mcp-tools-read">Read-only (15)</h3>
+      <h3 id="mcp-tools-read">Read-only (12)</h3>
       <DocTable
         headers={["Tool", "Description"]}
         rows={[
-          [<InlineCode key="k">t2000_overview</InlineCode>, "Complete account snapshot — balance, positions, portfolio, health, earnings, rewards in one call"],
+          [<InlineCode key="k">t2000_overview</InlineCode>, "Complete account snapshot — balance, positions, health, earnings, rewards in one call"],
           [<InlineCode key="k">t2000_balance</InlineCode>, "Current balance — checking, savings, gas, total"],
           [<InlineCode key="k">t2000_address</InlineCode>, "Agent's Sui wallet address"],
           [<InlineCode key="k">t2000_positions</InlineCode>, "Lending positions across protocols"],
           [<InlineCode key="k">t2000_rates</InlineCode>, "Best interest rates per asset"],
-          [<InlineCode key="k">t2000_all_rates</InlineCode>, "Per-protocol rate comparison (NAVI vs Suilend)"],
+          [<InlineCode key="k">t2000_all_rates</InlineCode>, "Per-protocol rate comparison"],
           [<InlineCode key="k">t2000_health</InlineCode>, "Health factor for borrows"],
-          [<InlineCode key="k">t2000_history</InlineCode>, "Transaction history — sends, lending, swaps, MPP payments + Suiscan digests"],
+          [<InlineCode key="k">t2000_history</InlineCode>, "Transaction history — sends, lending, MPP payments + Suiscan digests"],
           [<InlineCode key="k">t2000_earnings</InlineCode>, "Yield earnings from savings"],
           [<InlineCode key="k">t2000_fund_status</InlineCode>, "Savings fund status — supplied, APY, projections"],
           [<InlineCode key="k">t2000_pending_rewards</InlineCode>, "Pending protocol rewards"],
           [<InlineCode key="k">t2000_deposit_info</InlineCode>, "Deposit instructions — address, network, supported assets"],
           [<InlineCode key="k">t2000_contacts</InlineCode>, "List and resolve named contacts"],
-          [<InlineCode key="k">t2000_portfolio</InlineCode>, "View investment portfolio with cost-basis P&L"],
           [<InlineCode key="k">t2000_services</InlineCode>, "Discover all MPP services, endpoints, and prices"],
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (15)</h3>
+      <h3 id="mcp-tools-write">State-changing (10)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1480,14 +1327,7 @@ function McpSection() {
           [<InlineCode key="k">t2000_withdraw</InlineCode>, "Withdraw from savings"],
           [<InlineCode key="k">t2000_borrow</InlineCode>, "Borrow against collateral"],
           [<InlineCode key="k">t2000_repay</InlineCode>, "Repay borrowed USDC"],
-          [<InlineCode key="k">t2000_swap</InlineCode>, "Swap assets via DEX"],
           [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
-          [<InlineCode key="k">t2000_buy</InlineCode>, "Buy SUI, BTC, ETH, GOLD"],
-          [<InlineCode key="k">t2000_sell</InlineCode>, "Sell SUI, BTC, ETH, GOLD"],
-          [<InlineCode key="k">t2000_invest</InlineCode>, "Earn or unearn yield on holdings"],
-          [<InlineCode key="k">t2000_invest_rebalance</InlineCode>, "Move earning positions to better-rate protocols"],
-          [<InlineCode key="k">t2000_strategy</InlineCode>, "Manage strategies — list, buy, sell, status, rebalance, create"],
-          [<InlineCode key="k">t2000_auto_invest</InlineCode>, "DCA scheduling — setup, status, run, stop"],
           [<InlineCode key="k">t2000_claim_rewards</InlineCode>, "Claim protocol rewards and auto-convert to USDC"],
           [<InlineCode key="k">t2000_pay</InlineCode>, "Pay for an MPP-protected API (handles 402 challenge automatically)"],
           [<InlineCode key="k">t2000_contact_add</InlineCode>, "Save a contact name → Sui address"],
@@ -1509,7 +1349,7 @@ function McpSection() {
         <InlineCode>t2000 unlock</InlineCode> in the terminal.
       </Callout>
 
-      <h2 id="mcp-prompts">Prompts (19)</h2>
+      <h2 id="mcp-prompts">Prompts (15)</h2>
       <p>
         Reusable conversation templates that help AI assistants interact with t2000 effectively.
       </p>
@@ -1521,20 +1361,16 @@ function McpSection() {
           [<InlineCode key="k">send-money</InlineCode>, "Guided send flow — validate, preview, confirm, execute"],
           [<InlineCode key="k">budget-check</InlineCode>, "Can I afford $X? — checks balance, daily limit, spending impact"],
           [<InlineCode key="k">savings-strategy</InlineCode>, "Analyze idle funds, recommend how much to save and where"],
-          [<InlineCode key="k">investment-strategy</InlineCode>, "Portfolio analysis — allocation, P&L, buy/sell recommendations"],
-          [<InlineCode key="k">morning-briefing</InlineCode>, "Daily snapshot — balances, yield earned, portfolio movement, alerts"],
-          [<InlineCode key="k">what-if</InlineCode>, "Scenario planning — model the impact of invest/save/borrow decisions"],
+          [<InlineCode key="k">morning-briefing</InlineCode>, "Daily snapshot — balances, yield earned, alerts"],
+          [<InlineCode key="k">what-if</InlineCode>, "Scenario planning — model the impact of save/borrow decisions"],
           [<InlineCode key="k">sweep</InlineCode>, "Find idle checking funds and route to optimal earning positions"],
           [<InlineCode key="k">risk-check</InlineCode>, "Full risk analysis — health factor, concentration, liquidation proximity"],
-          [<InlineCode key="k">weekly-recap</InlineCode>, "Week in review — activity, yield earned, portfolio P&L, highlights"],
-          [<InlineCode key="k">dca-advisor</InlineCode>, "Personalized DCA setup — budget → strategy, frequency, projected growth"],
+          [<InlineCode key="k">weekly-recap</InlineCode>, "Week in review — activity, yield earned, highlights"],
           [<InlineCode key="k">claim-rewards</InlineCode>, "Check and claim pending protocol rewards — auto-converts to USDC"],
           [<InlineCode key="k">safeguards</InlineCode>, "Review safety settings — per-tx limits, daily caps, emergency lock"],
-          [<InlineCode key="k">quick-swap</InlineCode>, "Guided token swap — preview rate, slippage, impact before executing"],
           [<InlineCode key="k">onboarding</InlineCode>, "New user setup — deposit, first save, explore features"],
           [<InlineCode key="k">emergency</InlineCode>, "Lock account, assess damage, recovery guidance"],
           [<InlineCode key="k">optimize-all</InlineCode>, "One-shot full optimization — sweep, rebalance, claim, earn"],
-          [<InlineCode key="k">savings-goal</InlineCode>, "Goal-based savings — save $X by date Y with yield projections"],
         ]}
       />
 
@@ -1621,10 +1457,8 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-withdraw</InlineCode>, <>&#34;withdraw from savings&#34;, &#34;access deposits&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-borrow</InlineCode>, <>&#34;borrow 40 USDC&#34;, &#34;take out a loan&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-swap</InlineCode>, <>&#34;swap USDC to SUI&#34;, &#34;swap tokens&#34;, &#34;convert to...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;search the web&#34;, &#34;generate an image&#34;, &#34;send mail&#34;, &#34;translate this&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-invest</InlineCode>, <>&#34;buy SUI&#34;, &#34;invest $100 in BTC&#34;, &#34;sell my ETH&#34;, &#34;show portfolio&#34;</>, <Badge color="green" key="b">live</Badge>],
         ]}
       />
 
@@ -1638,7 +1472,7 @@ function SkillsSection() {
       <CodeBlock lang="yaml" filename="skills/t2000-save/SKILL.md">
         {S.m("---")}{"\n"}
         {S.a("name")}: t2000-save{"\n"}
-        {S.a("description")}: {S.s(`>-\n  Deposit USDC into savings to earn yield on Sui.\n  Auto-routes to best rate across NAVI and Suilend.\n  Use when asked to save money, earn interest, or maximize yield.`)}{"\n"}
+        {S.a("description")}: {S.s(`>-\n  Deposit USDC into savings to earn yield on Sui.\n  Auto-routes to best rate across lending protocols.\n  Use when asked to save money, earn interest, or maximize yield.`)}{"\n"}
         {S.m("---")}{"\n"}
         {S.c("# Full instructions follow below...")}
       </CodeBlock>
@@ -1802,17 +1636,16 @@ function DefiSection() {
         DeFi <em className="italic text-accent">& Yield</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        t2000 integrates NAVI Protocol and Suilend for savings and borrowing, and Cetus DEX
-        for token swaps. All protocols are composed atomically via PTBs using direct Move contract calls — no external SDK dependencies.
+        t2000 integrates NAVI Protocol for savings and borrowing.
+        All protocols are composed atomically via PTBs using direct Move contract calls — no external SDK dependencies.
       </p>
 
       <h2 id="defi-navi">Lending protocol integration</h2>
       <p>
-        t2000 supports multiple lending protocols on Sui. When you call{" "}
+        t2000 supports lending protocols on Sui. When you call{" "}
         <InlineCode>t2000 save</InlineCode>, your USDC is auto-routed to the protocol
-        offering the best APY (currently NAVI and Suilend). You can also target a specific
-        protocol with <InlineCode>--protocol navi</InlineCode> or{" "}
-        <InlineCode>--protocol suilend</InlineCode>. You earn yield continuously as each
+        offering the best APY. You can also target a specific
+        protocol with <InlineCode>--protocol navi</InlineCode>. You earn yield continuously as each
         pool&#39;s interest accrues.
       </p>
       <Callout type="tip" label="Tip">
@@ -1820,14 +1653,6 @@ function DefiSection() {
         borrowers) = higher yield for depositors. Check live APY with{" "}
         <InlineCode>t2000 balance</InlineCode>.
       </Callout>
-
-      <h2 id="defi-cetus">Cetus DEX integration</h2>
-      <p>
-        Token swaps route through Cetus DEX with on-chain slippage protection.
-        The <InlineCode>amount_limit</InlineCode> parameter ensures the
-        transaction reverts automatically if the received amount falls below
-        your tolerance — no partial fills, no silent slippage.
-      </p>
 
       <h2 id="defi-borrow">Collateralized borrowing</h2>
       <p>
@@ -1919,41 +1744,11 @@ function ChangelogSection() {
         35 tools, 20 prompts, stdio transport. <InlineCode>@t2000/mcp</InlineCode> package.
       </p>
 
-      <h2 id="cl-0170">
-        v0.17.0
+      <h2 id="cl-0180">
+        v0.18.0
       </h2>
       <p>
-        Gold (XAUm) — tokenized physical gold is now the fourth investment asset. New built-in strategies: all-weather (BTC/ETH/SUI/GOLD) and safe-haven (BTC/GOLD). GOLD earns yield via NAVI and Suilend. Crypto and commodities in one portfolio.
-      </p>
-
-      <h2 id="cl-0163">
-        v0.16.30
-      </h2>
-      <p>
-        Strategies + Auto-Invest — <InlineCode>t2000 invest strategy buy bluechip 200</InlineCode> splits investment across a themed allocation in a single transaction. Built-in strategies: bluechip (BTC/ETH/SUI), layer1 (ETH/SUI), sui-heavy. Custom strategies via <InlineCode>t2000 invest strategy create</InlineCode>. Dollar-cost averaging with <InlineCode>t2000 invest auto setup 50 weekly bluechip</InlineCode>. Strategy rebalancing, portfolio grouping by strategy, 21 MCP tools.
-      </p>
-
-      <h2 id="cl-0150">
-        v0.15.0
-      </h2>
-      <p>
-        Investment yield — <InlineCode>t2000 invest earn &lt;asset&gt;</InlineCode> deposits SUI or ETH into best-rate lending (NAVI/Suilend) for yield while keeping price exposure. <InlineCode>t2000 invest unearn &lt;asset&gt;</InlineCode> withdraws from lending. <InlineCode>t2000 invest rebalance</InlineCode> moves earning positions to better-rate protocols. Auto-withdraw on sell, portfolio yield column, borrow guard, rebalance guard.
-      </p>
-
-      <h2 id="cl-0141">
-        v0.14.1
-      </h2>
-      <p>
-        Multi-asset investing — BTC and ETH via SuiBridge. Asset-aware decimal display
-        with <InlineCode>formatAssetAmount()</InlineCode> (8 decimals for BTC/ETH, 9 for SUI, 6 for stablecoins).
-      </p>
-
-      <h2 id="cl-0140">
-        v0.14.0
-      </h2>
-      <p>
-        Investment account: buy/sell SUI, BTC, ETH, GOLD with portfolio tracking, cost-basis P&L,
-        and investment locking guard. 19 MCP tools, 6 prompts, 14 agent skills.
+        Product simplification — removed Invest, Swap, Suilend, and Cetus integrations. Five core products: Savings, Pay, Send, Credit, Receive. MCP-first architecture with NAVI for DeFi reads, thin tx builders for writes.
       </p>
 
       <h2 id="cl-0130">
@@ -2003,16 +1798,6 @@ function ChangelogSection() {
         <InlineCode>t2000 balance</InlineCode> output.
       </p>
 
-      <h2 id="cl-0101">
-        v0.10.1
-      </h2>
-      <p>
-        New <InlineCode>t2000 swap</InlineCode> command for token swaps via
-        Cetus DEX with on-chain slippage protection. Public SDK methods{" "}
-        <InlineCode>swap()</InlineCode> and{" "}
-        <InlineCode>swapQuote()</InlineCode>.
-      </p>
-
       <h2 id="cl-0100">
         v0.10.0
       </h2>
@@ -2035,7 +1820,7 @@ function ChangelogSection() {
         v0.6.3
       </h2>
       <p>
-        Multi-protocol lending: NAVI + Suilend with auto-routing to best APY.
+        Multi-protocol lending: NAVI with auto-routing to best APY.
         Contract-first architecture — no external SDK dependencies. Migrated to{" "}
         <InlineCode>@mysten/sui@2.x</InlineCode>. Dynamic package ID resolution
         for NAVI contract upgrades. Oracle price updates for withdraw/borrow.
@@ -2054,8 +1839,7 @@ function ChangelogSection() {
         v0.2.12
       </h2>
       <p>
-        Full bank account model: checking, savings, credit, and token
-        swap. Programmable Transaction Block architecture for atomic
+        Full bank account model: savings, pay, send, credit, receive. Programmable Transaction Block architecture for atomic
         multi-step operations. Gas manager with auto-topup. MPP payment support
         on Sui. Agent Skills integration.
       </p>
@@ -2280,7 +2064,6 @@ export default function DocsPage() {
             {activeSection === "concepts" && <ConceptsSection />}
             {activeSection === "cli-wallet" && <CliWalletSection />}
             {activeSection === "cli-savings" && <CliSavingsSection />}
-            {activeSection === "cli-invest" && <CliInvestSection />}
             {activeSection === "cli-more" && <CliMoreSection />}
             {activeSection === "sdk" && <SdkSection />}
             {activeSection === "config" && <ConfigSection />}

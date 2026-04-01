@@ -17,25 +17,22 @@ import pc from 'picocolors';
 export function registerEarn(program: Command) {
   program
     .command('earn')
-    .description('Show all earning opportunities — savings yield + investment yield')
+    .description('Show all earning opportunities — savings yield')
     .option('--key <path>', 'Key file path')
     .action(async (opts: { key?: string }) => {
       try {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        const [positionsResult, portfolioResult, ratesResult] = await Promise.allSettled([
+        const [positionsResult, ratesResult] = await Promise.allSettled([
           agent.positions(),
-          agent.getPortfolio(),
           agent.allRates('USDC'),
         ]);
 
         const posData = positionsResult.status === 'fulfilled' ? positionsResult.value : null;
-        const portfolio = portfolioResult.status === 'fulfilled' ? portfolioResult.value : null;
         const ratesData = ratesResult.status === 'fulfilled' ? ratesResult.value : null;
         const savePositions = posData?.positions.filter((p) => p.type === 'save') ?? [];
         const totalSaved = savePositions.reduce((s, p) => s + p.amount, 0);
-        const earningInvestments = portfolio?.positions.filter((p) => p.earning && p.currentValue > 0) ?? [];
         const bestSaveApy = ratesData?.length
           ? Math.max(...ratesData.map(r => r.rates.saveApy))
           : 0;
@@ -54,13 +51,6 @@ export function registerEarn(program: Command) {
               asset: 'USDC',
               saveApy: r.rates.saveApy,
             })) ?? [],
-            investments: earningInvestments.map((p) => ({
-              asset: p.asset,
-              amount: p.totalAmount,
-              value: p.currentValue,
-              protocol: p.earningProtocol,
-              apy: p.earningApy,
-            })),
           });
           return;
         }
@@ -102,41 +92,11 @@ export function registerEarn(program: Command) {
           printInfo('Savings data unavailable');
         }
 
-        // --- Investment yield section ---
-        if (earningInvestments.length > 0) {
-          printBlank();
-          printLine(pc.bold('INVESTMENTS') + pc.dim(' — Earning Yield'));
-          printDivider();
-
-          let totalInvestValue = 0;
-          for (const pos of earningInvestments) {
-            const dailyYield = (pos.currentValue * (pos.earningApy ?? 0) / 100) / 365;
-            const apyStr = pos.earningApy ? `${pos.earningApy.toFixed(2)}%` : '—';
-            printKeyValue(
-              `${pos.asset} via ${pos.earningProtocol ?? 'unknown'}`,
-              `${formatUsd(pos.currentValue)} (${pos.totalAmount.toFixed(4)} ${pos.asset}) @ ${apyStr} APY`,
-            );
-            if (dailyYield > 0.0001) {
-              const dailyStr = dailyYield < 0.01 ? `$${dailyYield.toFixed(4)}` : formatUsd(dailyYield);
-              const monthlyStr = dailyYield * 30 < 0.01 ? `$${(dailyYield * 30).toFixed(4)}` : formatUsd(dailyYield * 30);
-              printLine(pc.dim(`    ~${dailyStr}/day · ~${monthlyStr}/month`));
-            }
-            totalInvestValue += pos.currentValue;
-          }
-
-          if (earningInvestments.length > 1) {
-            printBlank();
-            printKeyValue('Total Earning', formatUsd(totalInvestValue));
-          }
-        }
-
         printBlank();
 
-        // --- Quick actions ---
         printLine(pc.bold('Quick Actions'));
         printDivider();
         printLine(`  ${pc.dim('t2000 save <amount> [asset]')}     Save stablecoins for yield`);
-        printLine(`  ${pc.dim('t2000 invest earn <asset>')}     Earn yield on investments`);
         printBlank();
       } catch (error) {
         handleError(error);

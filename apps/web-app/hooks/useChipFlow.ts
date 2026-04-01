@@ -4,37 +4,21 @@ import { useCallback, useState } from 'react';
 
 export type ChipFlowPhase =
   | 'idle'
-  | 'asset-select'     // picking an asset (trade/swap)
-  | 'strategy-select'  // picking an investment strategy (DCA)
-  | 'dca-frequency'    // choosing DCA frequency
-  | 'l2-chips'         // showing sub-chips (amount, recipient, etc.)
-  | 'quoting'          // fetching a swap quote
-  | 'confirming'       // showing confirmation card
-  | 'executing'        // transaction in progress
-  | 'result';          // showing result
-
-export interface SwapQuoteData {
-  expectedOutput: number;
-  priceImpact: number;
-  poolPrice: number;
-  fromAsset: string;
-  toAsset: string;
-  fromAmount: number;
-}
+  | 'l2-chips'
+  | 'confirming'
+  | 'executing'
+  | 'result';
 
 export interface ChipFlowState {
   phase: ChipFlowPhase;
-  flow: string | null;           // 'save', 'send', 'withdraw', 'borrow', 'repay', 'swap', 'invest', 'rebalance'
-  subFlow: string | null;        // recipient name, asset type, etc.
+  flow: string | null;
+  subFlow: string | null;
   amount: number | null;
   recipient: string | null;
-  asset: string | null;          // swap source asset (e.g. USDC for buy, BTC for sell)
-  toAsset: string | null;        // swap destination asset
-  quote: SwapQuoteData | null;   // swap quote data
-  strategy: string | null;       // DCA strategy key (e.g. 'bluechip')
-  frequency: 'once' | 'daily' | 'weekly' | 'monthly' | null;
-  protocol: string | null;       // target lending protocol ID (e.g. 'navi', 'suilend')
-  message: string | null;        // AI context message
+  asset: string | null;
+  toAsset: string | null;
+  protocol: string | null;
+  message: string | null;
   result: ChipFlowResult | null;
   error: string | null;
 }
@@ -59,9 +43,6 @@ const INITIAL_STATE: ChipFlowState = {
   recipient: null,
   asset: null,
   toAsset: null,
-  quote: null,
-  strategy: null,
-  frequency: null,
   protocol: null,
   message: null,
   result: null,
@@ -83,11 +64,9 @@ export function useChipFlow() {
   const [state, setState] = useState<ChipFlowState>(INITIAL_STATE);
 
   const startFlow = useCallback((flow: string, context?: FlowContext) => {
-    const needsAssetSelect = flow === 'swap';
-    const needsStrategy = flow === 'invest';
     setState({
       ...INITIAL_STATE,
-      phase: needsStrategy ? 'strategy-select' : needsAssetSelect ? 'asset-select' : 'l2-chips',
+      phase: 'l2-chips',
       flow,
       protocol: context?.protocol ?? null,
       asset: context?.asset ?? null,
@@ -96,74 +75,8 @@ export function useChipFlow() {
     });
   }, []);
 
-  const selectAsset = useCallback((asset: string, context?: FlowContext) => {
-    setState((prev) => {
-      if (prev.flow === 'swap' && !prev.asset) {
-        return {
-          ...prev,
-          asset,
-          message: `Swap from ${asset}. What do you want to receive?`,
-        };
-      }
-      if (prev.flow === 'swap' && prev.asset) {
-        const isBuy = prev.asset === 'USDC';
-        const isSell = asset === 'USDC';
-        let label: string;
-        if (isBuy) label = `Buy ${asset} with USDC.`;
-        else if (isSell) label = `Sell ${prev.asset} for USDC.`;
-        else label = `Swap ${prev.asset} → ${asset}.`;
-        return {
-          ...prev,
-          toAsset: asset,
-          phase: 'l2-chips',
-          message: `${label}\nChoose an amount:`,
-        };
-      }
-      return prev;
-    });
-  }, []);
-
-  const selectStrategy = useCallback((strategyKey: string, strategyName: string) => {
-    setState((prev) => ({
-      ...prev,
-      strategy: strategyKey,
-      subFlow: strategyName,
-      phase: 'l2-chips',
-      message: `${strategyName} strategy selected.\nHow much do you want to invest?`,
-    }));
-  }, []);
-
-  const selectFrequency = useCallback((frequency: 'once' | 'daily' | 'weekly' | 'monthly') => {
-    setState((prev) => ({
-      ...prev,
-      frequency,
-      phase: 'confirming',
-    }));
-  }, []);
-
   const selectAmount = useCallback((amount: number) => {
-    setState((prev) => {
-      if (prev.flow === 'invest' && prev.strategy) {
-        return { ...prev, amount, phase: 'dca-frequency', message: 'How often?' };
-      }
-      return { ...prev, amount, phase: 'confirming' };
-    });
-  }, []);
-
-  const setQuoting = useCallback((amount: number) => {
-    setState((prev) => ({
-      ...prev,
-      amount,
-      phase: 'quoting',
-    }));
-  }, []);
-
-  const setQuote = useCallback((quote: SwapQuoteData) => {
-    setState((prev) => ({
-      ...prev,
-      quote,
-      phase: 'confirming',
-    }));
+    setState((prev) => ({ ...prev, amount, phase: 'confirming' }));
   }, []);
 
   const selectRecipient = useCallback((recipient: string, label?: string, cash?: number) => {
@@ -177,19 +90,11 @@ export function useChipFlow() {
   }, []);
 
   const confirm = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      phase: 'executing',
-    }));
+    setState((prev) => ({ ...prev, phase: 'executing' }));
   }, []);
 
   const setResult = useCallback((result: ChipFlowResult) => {
-    setState((prev) => ({
-      ...prev,
-      phase: 'result',
-      result,
-      error: null,
-    }));
+    setState((prev) => ({ ...prev, phase: 'result', result, error: null }));
   }, []);
 
   const setError = useCallback((error: string) => {
@@ -208,12 +113,7 @@ export function useChipFlow() {
   return {
     state,
     startFlow,
-    selectAsset,
-    selectStrategy,
-    selectFrequency,
     selectAmount,
-    setQuoting,
-    setQuote,
     selectRecipient,
     confirm,
     setResult,
@@ -252,10 +152,6 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
       const debt = ctx?.borrows ? ` Outstanding debt: ${fmtAmount(ctx.borrows)}.` : '';
       return `Repay your loan.${debt}\nChoose an amount:`;
     }
-    case 'swap':
-      return 'What do you want to trade? Pick an asset:';
-    case 'invest':
-      return 'Choose an investment strategy:';
     case 'rebalance': {
       const rate = ctx?.savingsRate ? ` for ${ctx.savingsRate.toFixed(1)}% APY` : '';
       return `Moving savings to a better rate${rate}.\nConfirm to proceed:`;

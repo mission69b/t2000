@@ -76,7 +76,6 @@ describe('SafeguardEnforcer', () => {
       expect(() => enforcer.check({ operation: 'withdraw', amount: 5000 })).not.toThrow();
       expect(() => enforcer.check({ operation: 'borrow', amount: 5000 })).not.toThrow();
       expect(() => enforcer.check({ operation: 'repay', amount: 5000 })).not.toThrow();
-      expect(() => enforcer.check({ operation: 'exchange', amount: 5000 })).not.toThrow();
       expect(() => enforcer.check({ operation: 'rebalance', amount: 5000 })).not.toThrow();
     });
 

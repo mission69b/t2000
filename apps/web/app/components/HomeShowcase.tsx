@@ -7,7 +7,7 @@ import { demos } from "../demo/demoData";
 import { chatDemos } from "../demo/chatDemoData";
 import Link from "next/link";
 
-const cliIds = ["save", "invest"];
+const cliIds = ["save", "safeguards", "pay"];
 const chatIds = ["chat-morning", "chat-send", "chat-optimize", "chat-whatif"];
 
 const cliDemos = demos.filter((d) => cliIds.includes(d.id));
@@ -188,7 +188,7 @@ export function HomeShowcase() {
           className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono text-accent border border-accent/30 rounded transition-all hover:bg-accent-dim hover:shadow-[0_0_20px_rgba(0,214,143,0.08)]"
         >
           View all demos →
-          <span className="text-[10px] text-muted/60">5 AI chats + 4 CLI demos</span>
+          <span className="text-[10px] text-muted/60">6 AI chats + 4 CLI demos</span>
         </Link>
       </div>
     </section>

@@ -44,8 +44,8 @@ export default function TermsPage() {
             <p>
               t2000 is a financial platform built on the Sui blockchain. It
               provides an AI-powered assistant that can manage savings, earn
-              yield through DeFi protocols, send and receive tokens, swap
-              assets, mail postcards and letters, search
+              yield through DeFi protocols, send and receive tokens,
+              pay for APIs, mail postcards and letters, search
               flights, generate images, and access other paid services. The
               Service is provided as-is and is currently in{" "}
               <strong className="text-amber-400">beta</strong>.
@@ -96,7 +96,7 @@ export default function TermsPage() {
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
               <li>
                 <strong className="text-foreground">DeFi protocols</strong>{" "}
-                (NAVI, Suilend, Cetus) — via on-chain smart contracts
+                (NAVI) — via on-chain smart contracts
               </li>
               <li>
                 <strong className="text-foreground">Physical mail</strong>{" "}
@@ -131,7 +131,7 @@ export default function TermsPage() {
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
               <li>
                 <strong className="text-foreground">Read operations</strong>{" "}
-                (balance, rates, portfolio) — free
+                (balance, rates, positions) — free
               </li>
               <li>
                 <strong className="text-foreground">
@@ -176,7 +176,7 @@ export default function TermsPage() {
               To protect users, the consumer app enforces spending limits on
               service purchases: $50 USD per day and $500 USD per month per
               wallet address. These limits may be adjusted without notice. DeFi
-              operations (deposits, withdrawals, swaps) are not subject to these
+              operations (deposits, withdrawals) are not subject to these
               limits.
             </p>
           </section>

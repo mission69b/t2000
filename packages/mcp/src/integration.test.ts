@@ -49,15 +49,8 @@ function createMockAgent() {
     withdraw: vi.fn().mockResolvedValue({ digest: '0xwithdraw123', amount: 25 }),
     borrow: vi.fn().mockResolvedValue({ digest: '0xborrow123', amount: 5 }),
     repay: vi.fn().mockResolvedValue({ digest: '0xrepay123', amount: 5 }),
-    swap: vi.fn().mockResolvedValue({ digest: '0xswap123' }),
-    swapQuote: vi.fn().mockResolvedValue({
-      expectedOutput: 10.25, priceImpact: 0.01, fee: { amount: 0.03 },
-    }),
-    exchange: vi.fn().mockResolvedValue({ digest: '0xswap123' }),
-    exchangeQuote: vi.fn().mockResolvedValue({
-      expectedOutput: 10.25, priceImpact: 0.01, fee: { amount: 0.03 },
-    }),
     rebalance: vi.fn().mockResolvedValue({ moved: false, reason: 'no improvement' }),
+    claimRewards: vi.fn().mockResolvedValue({ claimed: [] }),
     maxBorrow: vi.fn().mockResolvedValue({ maxAmount: 3.50, healthFactorAfter: 2.1 }),
     enforcer: {
       assertNotLocked: vi.fn(),
@@ -78,26 +71,6 @@ function createMockAgent() {
       add: vi.fn().mockReturnValue({ action: 'added' }),
       remove: vi.fn().mockReturnValue(true),
     },
-    portfolio: {
-      getPositions: vi.fn().mockReturnValue([]),
-      getRealizedPnL: vi.fn().mockReturnValue(0),
-    },
-    getPortfolio: vi.fn().mockResolvedValue({
-      positions: [],
-      totalInvested: 0,
-      totalValue: 0,
-      unrealizedPnL: 0,
-      unrealizedPnLPct: 0,
-      realizedPnL: 0,
-    }),
-    investBuy: vi.fn().mockResolvedValue({
-      success: true, tx: '0xinvest123', type: 'buy', asset: 'SUI',
-      amount: 100, price: 0.95, usdValue: 95, fee: 0, gasCost: 0.001,
-    }),
-    investSell: vi.fn().mockResolvedValue({
-      success: true, tx: '0xinvest456', type: 'sell', asset: 'SUI',
-      amount: 50, price: 0.97, usdValue: 48.5, fee: 0, gasCost: 0.001,
-    }),
     allRatesAcrossAssets: vi.fn().mockResolvedValue([
       { protocol: 'navi', asset: 'USDC', rates: { saveApy: 4.08, borrowApy: 4.94 } },
     ]),
@@ -136,15 +109,14 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 32 tools', async () => {
+  it('lists all 26 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(32);
+    expect(tools).toHaveLength(26);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
       't2000_address',
       't2000_all_rates',
-      't2000_auto_invest',
       't2000_balance',
       't2000_borrow',
       't2000_claim_rewards',
@@ -157,13 +129,10 @@ describe('integration: MCP client ↔ server', () => {
       't2000_fund_status',
       't2000_health',
       't2000_history',
-      't2000_invest',
-      't2000_invest_rebalance',
       't2000_lock',
       't2000_overview',
       't2000_pay',
       't2000_pending_rewards',
-      't2000_portfolio',
       't2000_positions',
       't2000_rates',
       't2000_rebalance',
@@ -171,18 +140,16 @@ describe('integration: MCP client ↔ server', () => {
       't2000_save',
       't2000_send',
       't2000_services',
-      't2000_strategy',
-      't2000_swap',
       't2000_withdraw',
     ]);
   });
 
-  it('lists all 19 prompts', async () => {
+  it('lists all 16 prompts', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts).toHaveLength(19);
+    expect(prompts).toHaveLength(16);
 
     const names = prompts.map(p => p.name).sort();
-    expect(names).toEqual(['budget-check', 'claim-rewards', 'dca-advisor', 'emergency', 'financial-report', 'investment-strategy', 'morning-briefing', 'onboarding', 'optimize-all', 'optimize-yield', 'quick-swap', 'risk-check', 'safeguards', 'savings-goal', 'savings-strategy', 'send-money', 'sweep', 'weekly-recap', 'what-if']);
+    expect(names).toEqual(['budget-check', 'claim-rewards', 'emergency', 'financial-report', 'morning-briefing', 'onboarding', 'optimize-all', 'optimize-yield', 'risk-check', 'safeguards', 'savings-goal', 'savings-strategy', 'send-money', 'sweep', 'weekly-recap', 'what-if']);
   });
 
   it('calls t2000_balance and returns structured JSON', async () => {

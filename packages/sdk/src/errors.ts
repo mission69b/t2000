@@ -15,8 +15,6 @@ export type T2000ErrorCode =
   | 'SIMULATION_FAILED'
   | 'TRANSACTION_FAILED'
   | 'ASSET_NOT_SUPPORTED'
-  | 'SWAP_FAILED'
-  | 'SLIPPAGE_EXCEEDED'
   | 'HEALTH_FACTOR_TOO_LOW'
   | 'WITHDRAW_WOULD_LIQUIDATE'
   | 'WITHDRAW_FAILED'
@@ -36,24 +34,6 @@ export type T2000ErrorCode =
   | 'INVALID_CONTACT_NAME'
   | 'FACILITATOR_TIMEOUT'
   | 'SAFEGUARD_BLOCKED'
-  | 'INSUFFICIENT_INVESTMENT'
-  | 'INVESTMENT_LOCKED'
-  | 'INVEST_ALREADY_EARNING'
-  | 'INVEST_NOT_EARNING'
-  | 'BORROW_GUARD_INVESTMENT'
-  | 'STRATEGY_NOT_FOUND'
-  | 'STRATEGY_INVALID_ALLOCATIONS'
-  | 'STRATEGY_HAS_POSITIONS'
-  | 'STRATEGY_BUILTIN'
-  | 'STRATEGY_MIN_AMOUNT'
-  | 'AUTO_INVEST_NOT_FOUND'
-  | 'AUTO_INVEST_INSUFFICIENT'
-  | 'MARKET_NOT_SUPPORTED'
-  | 'LEVERAGE_EXCEEDED'
-  | 'POSITION_SIZE_EXCEEDED'
-  | 'BLUEFIN_AUTH_FAILED'
-  | 'BLUEFIN_API_ERROR'
-  | 'POSITION_NOT_FOUND'
   | 'UNKNOWN';
 
 export interface T2000ErrorData {
@@ -116,8 +96,6 @@ export function mapMoveAbortCode(code: number): string {
     1605: 'Asset borrowing is disabled or at capacity on this protocol',
     // NAVI utils abort codes
     46000: 'Insufficient balance to repay — withdraw some savings first to get cash',
-    // Cetus DEX abort codes
-    46001: 'Swap failed — the DEX pool rejected the trade (liquidity or routing issue). Try again.',
   };
   return abortMessages[code] ?? `Move abort code: ${code}`;
 }
@@ -143,7 +121,7 @@ export function parseMoveAbortMessage(msg: string): string {
       : '';
 
     if (context.includes('slippage')) {
-      return `Swap slippage too high — price moved during execution${suffix}`;
+      return `Slippage too high — price moved during execution${suffix}`;
     }
     if (context.includes('balance::split') || context.includes('balance::ENotEnough')) {
       return `Insufficient on-chain balance${suffix}`;

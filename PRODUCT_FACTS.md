@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-03-12
+> Last verified: 2026-04-01
 
 ---
 
@@ -28,8 +28,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 13 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-exchange`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-invest` |
+| Skill count | 11 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -41,15 +41,14 @@
 |-----------|-----|------|-------|
 | Save | 10 | 0.1% | Protocol fee on deposit |
 | Borrow | 5 | 0.05% | Protocol fee on loan |
-| Swap | 0 | **Free** | Only standard Cetus pool fees apply; swap is used internally by rebalance, auto-convert, and auto-swap |
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
 | Pay (MPP) | — | Free | Agent pays the API price, no t2000 surcharge |
 
-Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `SWAP_FEE_BPS`, `BORROW_FEE_BPS`
+Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `BORROW_FEE_BPS`
 
-Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same PTB as the operation. The Move function takes `&mut Coin<T>` and splits the fee into the Treasury's internal `Balance<T>`. Swap is exempt (0 BPS) — Cetus pool fees apply separately.
+Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same PTB as the operation. The Move function takes `&mut Coin<T>` and splits the fee into the Treasury's internal `Balance<T>`.
 
 ---
 
@@ -57,24 +56,24 @@ Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same
 
 ### Programmable Transaction Blocks (PTBs)
 
-All multi-step operations use single atomic PTBs. This means withdraw+swap+deposit (rebalance), save with auto-convert, withdraw with auto-swap, and repay with auto-swap all execute in one on-chain transaction. If any step fails, the entire transaction reverts — no funds left in intermediate states.
+All multi-step operations use single atomic PTBs. This means withdraw+deposit (rebalance), save with auto-convert, and repay with auto-convert all execute in one on-chain transaction. If any step fails, the entire transaction reverts — no funds left in intermediate states.
 
 | Operation | PTB Composition |
 |-----------|----------------|
-| Save (with non-USDC wallet stables) | Merge wallet stables → swap to USDC → collect fee → deposit — single PTB |
-| Withdraw (non-USDC position) | Withdraw from protocol → swap to USDC → transfer — single PTB |
-| Repay (non-USDC debt) | Split USDC → swap to borrowed asset → repay — single PTB |
-| Rebalance | Withdraw from source → swap (if cross-asset) → deposit to target — single PTB |
-| Withdraw all | Withdraw all positions → swap non-USDC → merge → transfer — single PTB |
+| Save (with non-USDC wallet stables) | Merge wallet stables → convert to USDC → collect fee → deposit — single PTB |
+| Withdraw (non-USDC position) | Withdraw from protocol → convert to USDC → transfer — single PTB |
+| Repay (non-USDC debt) | Split USDC → convert to borrowed asset → repay — single PTB |
+| Rebalance | Withdraw from source → convert (if cross-asset) → deposit to target — single PTB |
+| Withdraw all | Withdraw all positions → convert non-USDC → merge → transfer — single PTB |
 
 ### Auto-Convert (Save)
 
 `save all` or `save <amount>` when wallet USDC is insufficient automatically converts non-USDC stablecoins (suiUSDT, suiUSDe, USDsui) to USDC within the same PTB before depositing.
 
-### Auto-Swap (Withdraw / Repay)
+### Auto-Convert (Withdraw / Repay)
 
-- **Withdraw:** Non-USDC positions are automatically swapped back to USDC within the same PTB.
-- **Repay:** When debt is in a non-USDC asset, USDC is automatically swapped to the borrowed asset within the same PTB.
+- **Withdraw:** Non-USDC positions are automatically converted back to USDC within the same PTB.
+- **Repay:** When debt is in a non-USDC asset, USDC is automatically converted to the borrowed asset within the same PTB.
 
 ### Dust Filtering
 
@@ -89,7 +88,6 @@ Protocol adapters expose composable PTB methods alongside standalone transaction
 | `addWithdrawToTx(tx, ...)` | Adds withdraw commands to existing PTB, returns `TransactionObjectArgument` |
 | `addSaveToTx(tx, ...)` | Adds deposit commands, accepts coin as `TransactionObjectArgument` |
 | `addRepayToTx(tx, ...)` | Adds repay commands, accepts coin as `TransactionObjectArgument` |
-| `addSwapToTx(tx, ...)` | Adds swap commands, accepts/returns `TransactionObjectArgument` |
 
 Source: `packages/sdk/src/adapters/types.ts`, `packages/sdk/src/t2000.ts`
 
@@ -97,21 +95,18 @@ Source: `packages/sdk/src/adapters/types.ts`, `packages/sdk/src/t2000.ts`
 
 ## Protocol Adapters
 
-t2000 uses a pluggable adapter architecture for DeFi protocol integrations.
+t2000 uses an MCP-first integration model for DeFi protocol reads, with thin transaction builders for writes.
 
 | Adapter | Type | Capabilities | Status |
 |---------|------|-------------|--------|
-| NAVI (`navi`) | Lending | save, withdraw, borrow, repay; SUI, ETH, GOLD (invest earn); claim rewards | Built-in |
-| Cetus (`cetus`) | Swap | swap, reward-token-to-USDC conversion | Built-in |
-| Suilend (`suilend`) | Lending | save, withdraw, borrow, repay; SUI, ETH, BTC, GOLD (invest earn); claim rewards | Built-in |
+| NAVI (`navi`) | Lending | save, withdraw, borrow, repay; claim rewards | Built-in |
 
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth, getPendingRewards, addClaimRewardsToTx
-- `SwapAdapter` interface: swap, getQuote, getSupportedPairs, getPoolPrice
-- `ProtocolRegistry` auto-selects best rates/quotes across registered adapters
+- `ProtocolRegistry` auto-selects best rates across registered adapters
 - CLI `--protocol <name>` flag on save/withdraw/borrow/repay to pin a specific protocol
 - Third-party adapters can be registered via `agent.registerAdapter(new MyAdapter())`
 
-Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts, cetus.ts, suilend.ts
+Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts
 
 ---
 
@@ -119,32 +114,19 @@ Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts, cetus.t
 
 User-facing commands are denominated in **USDC** — the user always thinks in USDC.
 Internally, save auto-converts non-USDC wallet stablecoins to USDC, withdraw
-auto-swaps non-USDC positions back to USDC, and repay auto-swaps USDC to the
+auto-converts non-USDC positions back to USDC, and repay auto-converts USDC to the
 borrowed asset if debt is in a non-USDC stablecoin (from rebalance).
 Rebalance optimizes across all stablecoins internally.
 
-| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Swap | Rebalance |
-|--------|---------|----------|------|------|--------|----------|-----------------|-----------|
-| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ (always returns USDC) | ✅ | ✅ |
-| USDT | suiUSDT | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
-| USDe | suiUSDe | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
-| USDsui | USDsui | 6 | — | — (via rebalance) | — | — | ✅ | ✅ |
-| SUI | SUI | 9 | ✅ (gas) | — | — | — | ✅ | — |
-| BTC | Bitcoin | 8 | — | — | — | — | ✅ (buy/sell) | — |
-| ETH | Ethereum | 8 | — | — | — | — | ✅ (buy/sell) | — |
-| GOLD | Gold | 9 | — | — | — | — | ✅ (buy/sell) | — |
+| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Rebalance |
+|--------|---------|----------|------|------|--------|----------|-----------|
+| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ (always returns USDC) | ✅ |
+| USDT | suiUSDT | 6 | — | — (via rebalance) | — | — | ✅ |
+| USDe | suiUSDe | 6 | — | — (via rebalance) | — | — | ✅ |
+| USDsui | USDsui | 6 | — | — (via rebalance) | — | — | ✅ |
+| SUI | SUI | 9 | ✅ (gas) | — | — | — | — |
 
-**Coin Types (investment assets):**
-
-| Symbol | Coin Type |
-|--------|-----------|
-| BTC | `0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC` |
-| ETH | `0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH` |
-| GOLD | `0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM` |
-
-**Format utility:** `formatAssetAmount(asset, rawAmount)` returns human-readable display with asset-appropriate decimals: 8 for BTC (e.g. `0.00123456`), 8 for ETH (e.g. `0.12345678`), 9 for SUI, 9 for GOLD, 6 for stablecoins. Exported from `@t2000/sdk`.
-
-Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/src/utils/format.ts` → `formatAssetAmount()`
+Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 ---
 
@@ -158,9 +140,9 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
 | save | `t2000 save <amount>` | Deposits USDC (auto-converts non-USDC stables). Alias: `supply`. `amount` accepts `all`. |
-| withdraw | `t2000 withdraw <amount>` | Always returns USDC (auto-swaps non-USDC positions). `amount` accepts `all` |
+| withdraw | `t2000 withdraw <amount>` | Always returns USDC (auto-converts non-USDC positions). `amount` accepts `all` |
 | borrow | `t2000 borrow <amount>` | USDC only |
-| repay | `t2000 repay <amount>` | Pays with USDC (auto-swaps to borrowed asset if non-USDC debt). `amount` accepts `all` |
+| repay | `t2000 repay <amount>` | Pays with USDC (auto-converts to borrowed asset if non-USDC debt). `amount` accepts `all` |
 | pay | `t2000 pay <url>` | Options: `--method`, `--data`, `--header`, `--max-price`, `--timeout`, `--dry-run` |
 | history | `t2000 history` | Options: `--limit <n>` (default: 20) |
 | earnings | `t2000 earnings` | |
@@ -177,33 +159,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | import | `t2000 import` | |
 | lock | `t2000 lock` | Clear saved session |
 | rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
-| swap | `t2000 swap <amount> <from> <to>` | Swap tokens via Cetus DEX (e.g. USDC ⇌ SUI). Options: `--slippage <pct>` (default: 3%) |
-| exchange | `t2000 exchange <amount> <from> <to>` | **Deprecated** — alias for `swap`. Use `t2000 swap` instead |
 | contacts | `t2000 contacts` | List saved contacts |
 | contacts add | `t2000 contacts add <name> <address>` | Save a named contact |
 | contacts remove | `t2000 contacts remove <name>` | Remove a contact |
-| buy | `t2000 buy <amount> <asset>` | Buy crypto asset with USD |
-| sell | `t2000 sell <amount\|all> <asset>` | Sell crypto back to USDC (auto-withdraws if earning) |
-| invest buy | `t2000 invest buy <amount> <asset>` | **Deprecated** — alias for `buy`. Use `t2000 buy` instead |
-| invest sell | `t2000 invest sell <amount\|all> <asset>` | **Deprecated** — alias for `sell`. Use `t2000 sell` instead |
-| invest earn | `t2000 invest earn <asset>` | Deposit invested asset into best-rate lending for yield |
-| invest unearn | `t2000 invest unearn <asset>` | Withdraw from lending, keep in portfolio |
-| invest rebalance | `t2000 invest rebalance` | Move earning positions to better-rate protocols |
 | claim-rewards | `t2000 claim-rewards` | Claim protocol rewards and auto-convert to USDC |
-| portfolio | `t2000 portfolio` | Show investment portfolio + P&L (APY column when earning, strategy grouping) |
-| invest strategy list | `t2000 invest strategy list` | List available strategies with allocations (5 built-in) |
-| invest strategy buy | `t2000 invest strategy buy <name> <amount>` | Buy into a strategy (single atomic PTB). Options: `--dry-run` |
-| invest strategy sell | `t2000 invest strategy sell <name>` | Sell all positions in a strategy |
-| invest strategy status | `t2000 invest strategy status <name>` | Show strategy positions, weights, drift |
-| invest strategy rebalance | `t2000 invest strategy rebalance <name>` | Rebalance strategy to target weights |
-| invest strategy create | `t2000 invest strategy create <name> --alloc "BTC:40,ETH:40,GOLD:20"` | Create custom strategy |
-| invest strategy delete | `t2000 invest strategy delete <name>` | Delete custom strategy (no active positions) |
-| invest auto setup | `t2000 invest auto setup <amount> <frequency> [strategy]` | Set up DCA schedule (daily/weekly/monthly) |
-| invest auto status | `t2000 invest auto status` | Show auto-invest schedules |
-| invest auto run | `t2000 invest auto run` | Execute pending DCA purchases |
-| invest auto stop | `t2000 invest auto stop [id]` | Stop auto-invest schedule |
-
-**Investment yield (v0.15.0):** SUI, ETH, BTC, and GOLD positions can earn lending APY via `invest earn`. `sell` auto-withdraws if earning. `balance` and `portfolio` show APY when earning. `rates` includes investment-asset lending rates. Borrow guard excludes investment collateral (SUI/ETH/BTC/GOLD) from borrowable collateral. Savings rebalance skips earning investment positions. `invest rebalance` moves earning positions to better-rate protocols (0.1% minimum APY difference). `claim-rewards` claims DeFi incentive rewards from all protocols and auto-converts to USDC in a single operation.
 | earn | `t2000 earn` | Show all earning opportunities — savings yield |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -223,7 +182,6 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 ```
   Available:  $4.00  (checking — spendable)
   Savings:    $1.00  (earning 3.31% APY)
-  Investment: $250.00  (0.05 BTC, 1.2 ETH)  (earning 2.10% APY on SUI)  ← APY shown when position is earning
   Gas:        1.04 SUI    (~$0.98)
   ──────────────────────────────────────
   Total:      $5.98
@@ -318,25 +276,6 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | `earnings()` | — | `EarningsResult` |
 | `fundStatus()` | — | `FundStatusResult` |
 | `rebalance()` | `{ dryRun?, minYieldDiff?, maxBreakEven? }` | `RebalanceResult` |
-| `exchange()` | `{ from, to, amount, maxSlippage? }` | `SwapResult` — CLI: `t2000 swap` (alias: `exchange`) |
-| `exchangeQuote()` | `{ from, to, amount }` | `{ expectedOutput, priceImpact, poolPrice, fee }` |
-| `investBuy()` | `{ asset, usdAmount, maxSlippage? }` | `InvestBuyResult` — CLI: `t2000 buy` (alias: `invest buy`) |
-| `investSell()` | `{ asset, usdAmount \| 'all', maxSlippage? }` | `InvestSellResult` — CLI: `t2000 sell` (alias: `invest sell`) |
-| `investEarn()` | `{ asset }` | `InvestEarnResult` |
-| `investUnearn()` | `{ asset }` | `InvestUnearnResult` |
-| `investRebalance()` | `{ dryRun?, minYieldDiff? }` | `InvestRebalanceResult` |
-| `getPortfolio()` | — | `PortfolioResult` |
-| `investStrategy()` | `{ strategy, usdAmount, maxSlippage?, dryRun? }` | `StrategyBuyResult` |
-| `sellStrategy()` | `{ strategy, maxSlippage? }` | `StrategySellResult` |
-| `rebalanceStrategy()` | `{ strategy, maxSlippage?, driftThreshold? }` | `StrategyRebalanceResult` |
-| `getStrategyStatus()` | `{ strategy }` | `StrategyStatusResult` |
-| `getStrategies()` | — | `StrategyDefinition[]` |
-| `createStrategy()` | `{ name, allocations, description? }` | `StrategyDefinition` |
-| `deleteStrategy()` | `{ name }` | `void` |
-| `setupAutoInvest()` | `{ amount, frequency, strategy?, asset?, ... }` | `AutoInvestSchedule` |
-| `getAutoInvestStatus()` | — | `AutoInvestStatus` |
-| `runAutoInvest()` | — | `AutoInvestRunResult` |
-| `stopAutoInvest()` | `{ id? }` | `void` |
 
 ### Safeguards
 
@@ -366,7 +305,7 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`, `packages/sdk/sr
 | `balanceChange` | Balance changed |
 | `healthWarning` | HF dropping, attention recommended |
 | `healthCritical` | HF dangerous, action required |
-| `gasAutoTopUp` | Auto-topped up gas via USDC→SUI swap |
+| `gasAutoTopUp` | Auto-topped up gas via USDC→SUI conversion |
 | `gasStationFallback` | Gas resolution fell back to sponsor |
 | `error` | SDK error |
 
@@ -391,7 +330,6 @@ interface BalanceResponse {
   savings: number;
   gasReserve: { sui: number; usdEquiv: number };  // GasReserve
   total: number;
-  assets: Record<string, number>;
 }
 
 interface SendResult {
@@ -427,16 +365,8 @@ interface RepayResult {
   remainingDebt: number; gasCost: number; gasMethod: GasMethod;
 }
 
-interface SwapResult {
-  success: boolean; tx: string;
-  fromAmount: number; fromAsset: string;
-  toAmount: number; toAsset: string;
-  priceImpact: number; fee: number;
-  gasCost: number; gasMethod: GasMethod;
-}
-
 interface RebalanceStep {
-  action: 'withdraw' | 'swap' | 'deposit';
+  action: 'withdraw' | 'deposit';
   protocol?: string;
   fromAsset?: string; toAsset?: string;
   amount: number; estimatedOutput?: number;
@@ -448,7 +378,7 @@ interface RebalanceResult {
   fromProtocol: string; fromAsset: string;
   toProtocol: string; toAsset: string;
   amount: number; currentApy: number; newApy: number;
-  annualGain: number; estimatedSwapCost: number;
+  annualGain: number;
   breakEvenDays: number;
   txDigests: string[]; totalGasCost: number;
 }
@@ -474,16 +404,14 @@ Source: `packages/sdk/src/types.ts`
 | `SPONSOR_UNAVAILABLE` | Sponsor service down | Yes |
 | `GAS_STATION_UNAVAILABLE` | Gas station unreachable | Yes |
 | `GAS_FEE_EXCEEDED` | Gas cost > $0.05 ceiling | No |
-| `AUTO_TOPUP_FAILED` | USDC→SUI auto-swap failed | Yes |
+| `AUTO_TOPUP_FAILED` | USDC→SUI gas conversion failed | Yes |
 | `SIMULATION_FAILED` | Dry-run failed | No |
 | `TRANSACTION_FAILED` | On-chain execution failed | No |
-| `ASSET_NOT_SUPPORTED` | Asset not in whitelist | No |
-| `SLIPPAGE_EXCEEDED` | Price moved too much | Yes |
 | `HEALTH_FACTOR_TOO_LOW` | Borrow would risk liquidation | No |
 | `WITHDRAW_WOULD_LIQUIDATE` | Withdraw would drop HF below safe | No |
 | `NO_COLLATERAL` | No savings to borrow against | No |
 | `PROTOCOL_PAUSED` | t2000 contract paused | No |
-| `PROTOCOL_UNAVAILABLE` | NAVI/Suilend/Cetus unavailable | Yes |
+| `PROTOCOL_UNAVAILABLE` | NAVI unavailable | Yes |
 | `RPC_ERROR` | Sui RPC error | Yes |
 | `RPC_UNREACHABLE` | Sui RPC unreachable | Yes |
 | `PRICE_EXCEEDS_LIMIT` | MPP price > maxPrice | No |
@@ -493,17 +421,6 @@ Source: `packages/sdk/src/types.ts`
 | `FACILITATOR_REJECTION` | Facilitator rejected payment | No |
 | `FACILITATOR_TIMEOUT` | Facilitator timed out | Yes |
 | `SAFEGUARD_BLOCKED` | Safeguard rule violated (locked, maxPerTx, maxDailySend) | No |
-| `INVESTMENT_LOCKED` | Attempted to send/exchange invested assets | No |
-| `INVEST_ALREADY_EARNING` | Asset is already earning via a protocol | No |
-| `INVEST_NOT_EARNING` | Asset is not currently earning | No |
-| `BORROW_GUARD_INVESTMENT` | Borrow blocked — investment collateral excluded | No |
-| `STRATEGY_NOT_FOUND` | Strategy name doesn't exist | No |
-| `STRATEGY_INVALID_ALLOCATIONS` | Allocations don't sum to 100, or contain non-investment assets | No |
-| `STRATEGY_HAS_POSITIONS` | Cannot delete strategy with active positions | No |
-| `STRATEGY_BUILTIN` | Cannot delete built-in strategy | No |
-| `STRATEGY_MIN_AMOUNT` | Per-asset allocation < $1 | No |
-| `AUTO_INVEST_NOT_FOUND` | Schedule ID doesn't exist | No |
-| `AUTO_INVEST_INSUFFICIENT` | Insufficient balance for DCA run | No |
 | `UNKNOWN` | Unclassified error | Yes |
 
 Source: `packages/sdk/src/errors.ts`
@@ -525,7 +442,6 @@ Source: `packages/sdk/src/errors.ts`
 | 9 | No pending change to execute (`ENO_PENDING_CHANGE`) |
 | 10 | Already at current version (`EALREADY_MIGRATED`) |
 | 1503 | Invalid withdrawal amount (zero or dust balance) |
-| 46001 | Swap failed — DEX pool rejected the trade (Cetus liquidity/routing issue) |
 
 Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`, `packages/contracts/sources/errors.move`
 
@@ -543,12 +459,11 @@ Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`, `packages/contrac
 | `MIN_DEPOSIT` | `1_000_000n` (1 USDC) | Minimum deposit |
 | `GAS_RESERVE_USDC` | `1_000_000n` ($1) | USDC reserved for gas on `save all` |
 | `AUTO_TOPUP_THRESHOLD` | `50_000_000n` (0.05 SUI) | SUI balance below this triggers topup |
-| `AUTO_TOPUP_AMOUNT` | `1_000_000n` ($1 USDC) | Amount swapped per topup |
+| `AUTO_TOPUP_AMOUNT` | `1_000_000n` ($1 USDC) | USDC amount converted per top-up |
 | `AUTO_TOPUP_MIN_USDC` | `2_000_000n` ($2) | Min USDC required to trigger topup |
 | `BOOTSTRAP_LIMIT` | `10` | Max sponsored bootstrap transactions |
 | `GAS_FEE_CEILING_USD` | `$0.05` | Max gas fee before rejection |
 | `CLOCK_ID` | `'0x6'` | Sui Clock shared object |
-| `DEFAULT_SLIPPAGE` | `3%` | Default swap slippage (CLI `--slippage` default) |
 | `DEFAULT_RATE_LIMIT` | `10 req/s` | Default HTTP API rate limit (CLI `--rate-limit` default) |
 
 Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/commands/*.ts` (CLI defaults)
@@ -606,7 +521,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 ## Gas Resolution Chain
 
 1. **Self-funded** — agent has enough SUI
-2. **Auto-topup** — SUI < 0.05 and USDC >= $2 → swap $1 USDC to SUI (swap itself is sponsored)
+2. **Auto-topup** — SUI < 0.05 and USDC >= $2 → convert $1 USDC to SUI (conversion is sponsored)
 3. **Sponsored** — fallback for bootstrap (up to 10 txs)
 
 ---
@@ -632,8 +547,6 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Version | `0.21.0` |
 | Description | A bank account for AI agents — MCP-first integration for AI platforms. Non-custodial. |
 | Transport | stdio |
-| Tools | 23 |
-| Prompts | 15 |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
 | Setup | `t2000 init` (guided wizard — wallet + MCP + safeguards in one command) |
 | MCP auto-configured during init | Yes — Step 2 of init wizard auto-writes configs for Claude Desktop, Cursor, Windsurf |

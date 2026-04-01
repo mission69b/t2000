@@ -155,7 +155,7 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong className="text-foreground">
-                  DeFi protocols (NAVI, Suilend, Cetus)
+                  DeFi protocols (NAVI)
                 </strong>{" "}
                 — Via on-chain smart contracts (public blockchain data only)
               </li>

@@ -57,7 +57,7 @@ export function registerSave(program: Command) {
     .description('Deposit USDC into savings')
     .argument('<amount>', 'Amount to save (or "all")')
     .option('--key <path>', 'Key file path')
-    .option('--protocol <name>', 'Protocol to use (e.g. navi, suilend)')
+    .option('--protocol <name>', 'Protocol to use (e.g. navi)')
     .action(action);
 
   program
@@ -65,6 +65,6 @@ export function registerSave(program: Command) {
     .description('Deposit USDC into savings (alias for save)')
     .argument('<amount>', 'Amount to save (or "all")')
     .option('--key <path>', 'Key file path')
-    .option('--protocol <name>', 'Protocol to use (e.g. navi, suilend)')
+    .option('--protocol <name>', 'Protocol to use (e.g. navi)')
     .action(action);
 }

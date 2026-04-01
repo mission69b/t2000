@@ -53,10 +53,6 @@ function createMockAgent() {
         return { address: '0x8b3etest', contactName: 'Tom' };
       }),
     },
-    getPortfolio: vi.fn().mockResolvedValue({
-      positions: [{ asset: 'SUI', totalAmount: 100, costBasis: 95, avgPrice: 0.95, currentPrice: 0.97, currentValue: 97, unrealizedPnL: 2, unrealizedPnLPct: 2.1, trades: [] }],
-      totalInvested: 95, totalValue: 97, unrealizedPnL: 2, unrealizedPnLPct: 2.1, realizedPnL: 0,
-    }),
     fundStatus: vi.fn().mockResolvedValue({
       supplied: 5.10, apy: 4.92, earnedToday: 0.0007, earnedAllTime: 0.15, projectedMonthly: 0.021,
     }),
@@ -68,7 +64,6 @@ function createMockAgent() {
     }),
     allRatesAcrossAssets: vi.fn().mockResolvedValue([
       { protocol: 'navi', asset: 'USDC', rates: { saveApy: 4.08, borrowApy: 4.94 } },
-      { protocol: 'suilend', asset: 'USDC', rates: { saveApy: 2.14, borrowApy: 3.5 } },
     ]),
   } as any;
 }
@@ -94,8 +89,8 @@ describe('read tools', () => {
     registerReadTools(server, agent);
   });
 
-  it('should register 15 read tools', () => {
-    expect(tools.size).toBe(15);
+  it('should register 14 read tools', () => {
+    expect(tools.size).toBe(14);
     expect(tools.has('t2000_overview')).toBe(true);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
@@ -110,7 +105,6 @@ describe('read tools', () => {
     expect(tools.has('t2000_all_rates')).toBe(true);
     expect(tools.has('t2000_services')).toBe(true);
     expect(tools.has('t2000_contacts')).toBe(true);
-    expect(tools.has('t2000_portfolio')).toBe(true);
   });
 
   it('t2000_balance should return balance JSON', async () => {
@@ -201,46 +195,12 @@ describe('read tools', () => {
     expect(data.message).toBe('RPC timeout');
   });
 
-  it('t2000_portfolio should return portfolio with P&L', async () => {
-    const handler = tools.get('t2000_portfolio')!;
-    const result = await handler({});
-    const data = JSON.parse(result.content[0].text);
-    expect(data.positions).toHaveLength(1);
-    expect(data.positions[0].asset).toBe('SUI');
-    expect(data.positions[0].unrealizedPnL).toBe(2);
-    expect(data.totalValue).toBe(97);
-  });
-
-  it('t2000_portfolio should return empty when no positions', async () => {
-    agent.getPortfolio.mockResolvedValue({
-      positions: [], totalInvested: 0, totalValue: 0,
-      unrealizedPnL: 0, unrealizedPnLPct: 0, realizedPnL: 0,
-    });
-    const handler = tools.get('t2000_portfolio')!;
-    const result = await handler({});
-    const data = JSON.parse(result.content[0].text);
-    expect(data.positions).toEqual([]);
-    expect(data.totalValue).toBe(0);
-  });
-
-  it('t2000_portfolio should add price unavailable note', async () => {
-    agent.getPortfolio.mockResolvedValue({
-      positions: [{ asset: 'SUI', totalAmount: 100, costBasis: 95, avgPrice: 0.95, currentPrice: 0, currentValue: 0, unrealizedPnL: 0, unrealizedPnLPct: 0, trades: [] }],
-      totalInvested: 95, totalValue: 0, unrealizedPnL: -95, unrealizedPnLPct: -100, realizedPnL: 0,
-    });
-    const handler = tools.get('t2000_portfolio')!;
-    const result = await handler({});
-    const data = JSON.parse(result.content[0].text);
-    expect(data.positions[0].note).toBe('price unavailable');
-  });
-
   it('t2000_overview should return composite data', async () => {
     const handler = tools.get('t2000_overview')!;
     const result = await handler({});
     const data = JSON.parse(result.content[0].text);
     expect(data.balance.available).toBe(96.81);
     expect(data.positions.positions).toHaveLength(1);
-    expect(data.portfolio.totalValue).toBe(97);
     expect(data.health.healthFactor).toBe(4.24);
     expect(data.earnings.totalYieldEarned).toBe(0.15);
     expect(data.fundStatus.supplied).toBe(5.10);
@@ -285,9 +245,8 @@ describe('read tools', () => {
     const handler = tools.get('t2000_all_rates')!;
     const result = await handler({});
     const data = JSON.parse(result.content[0].text);
-    expect(data).toHaveLength(2);
+    expect(data).toHaveLength(1);
     expect(data[0].protocol).toBe('navi');
-    expect(data[1].protocol).toBe('suilend');
   });
 
   it('t2000_services should return service catalog', async () => {

@@ -2,7 +2,7 @@
 
 MCP server for AI agent bank accounts on Sui. Connect Claude Desktop, Cursor, or any MCP client to your t2000 agent.
 
-**32 tools · 19 prompts · stdio transport · safeguard enforced**
+**Safeguard enforced · stdio transport**
 
 > **New to t2000?** Run `t2000 init` — it creates your wallet, configures MCP for your AI platforms, and sets safeguards in one command.
 
@@ -34,7 +34,7 @@ For other platforms, paste manually:
 | `t2000_address` | read | Wallet address |
 | `t2000_positions` | read | Lending positions |
 | `t2000_rates` | read | Best interest rates per asset |
-| `t2000_all_rates` | read | Per-protocol rate comparison (NAVI vs Suilend) |
+| `t2000_all_rates` | read | Per-protocol rate comparison |
 | `t2000_health` | read | Health factor |
 | `t2000_history` | read | Transaction history |
 | `t2000_earnings` | read | Yield earnings |
@@ -42,7 +42,6 @@ For other platforms, paste manually:
 | `t2000_pending_rewards` | read | Pending protocol rewards |
 | `t2000_deposit_info` | read | Deposit instructions |
 | `t2000_contacts` | read | List saved contacts (name → address) |
-| `t2000_portfolio` | read | Investment portfolio + P&L |
 | `t2000_services` | read | Discover MPP services, endpoints, and prices |
 | `t2000_pay` | write | Make a paid API request via MPP |
 | `t2000_send` | write | Send USDC |
@@ -50,12 +49,7 @@ For other platforms, paste manually:
 | `t2000_withdraw` | write | Withdraw from savings |
 | `t2000_borrow` | write | Borrow against collateral |
 | `t2000_repay` | write | Repay debt |
-| `t2000_swap` | write | Swap assets |
 | `t2000_rebalance` | write | Optimize yield |
-| `t2000_invest` | write | Buy/sell investment assets; earn/unearn yield |
-| `t2000_invest_rebalance` | write | Move earning positions to better-rate protocols |
-| `t2000_strategy` | write | Investment strategies — list, buy, sell, status, rebalance, create, delete |
-| `t2000_auto_invest` | write | DCA scheduling — setup, status, run, stop |
 | `t2000_claim_rewards` | write | Claim protocol rewards and auto-convert to USDC |
 | `t2000_contact_add` | write | Save a contact name → address |
 | `t2000_contact_remove` | write | Remove a saved contact |

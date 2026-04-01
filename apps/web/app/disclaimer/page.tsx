@@ -52,7 +52,7 @@ export default function DisclaimerPage() {
             </h2>
             <p>
               t2000 interacts with third-party smart contracts on the Sui
-              blockchain (NAVI Protocol, Suilend, Cetus, and others). These
+              blockchain (NAVI Protocol and others). These
               contracts have been audited by their respective teams but are not
               guaranteed to be free of vulnerabilities. t2000 does not audit or
               guarantee the safety of any third-party protocol.

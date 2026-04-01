@@ -23,25 +23,22 @@ export function registerRebalance(program: Command) {
     .option('--key <path>', 'Key file path')
     .option('--dry-run', 'Show what would happen without executing')
     .option('--min-diff <pct>', 'Minimum APY difference to trigger (default: 0.5)', '0.5')
-    .option('--max-break-even <days>', 'Max break-even days for cross-asset moves (default: 30)', '30')
     .action(async (opts) => {
       try {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
         const minYieldDiff = parseFloat(opts.minDiff ?? '0.5');
-        const maxBreakEven = parseInt(opts.maxBreakEven ?? '30', 10);
 
         const plan = await agent.rebalance({
           dryRun: true,
           minYieldDiff,
-          maxBreakEven,
         });
 
         if (isJsonMode()) {
           if (opts.dryRun) {
             printJson(plan);
           } else {
-            const result = await agent.rebalance({ dryRun: false, minYieldDiff, maxBreakEven });
+            const result = await agent.rebalance({ dryRun: false, minYieldDiff });
             printJson(result);
           }
           return;
@@ -55,9 +52,6 @@ export function registerRebalance(program: Command) {
             printInfo(`Already optimized — ${plan.currentApy.toFixed(2)}% APY on ${plan.fromProtocol}`);
             printLine(pc.dim(`  Best available: ${plan.newApy.toFixed(2)}% (${displayAsset(plan.toAsset)} on ${plan.toProtocol})`));
             printLine(pc.dim(`  Difference: ${diff.toFixed(2)}% (below ${minYieldDiff}% threshold)`));
-          } else if (plan.breakEvenDays > maxBreakEven && plan.estimatedSwapCost > 0) {
-            printInfo(`Skipped — break-even of ${plan.breakEvenDays} days exceeds ${maxBreakEven}-day limit`);
-            printLine(pc.dim(`  ${displayAsset(plan.fromAsset)} on ${plan.fromProtocol} (${plan.currentApy.toFixed(2)}%) → ${displayAsset(plan.toAsset)} on ${plan.toProtocol} (${plan.newApy.toFixed(2)}%)`));
           } else {
             printInfo('Already at the best rate. Nothing to rebalance.');
           }
@@ -76,10 +70,6 @@ export function registerRebalance(program: Command) {
         printDivider();
         printKeyValue('APY Gain', `+${(plan.newApy - plan.currentApy).toFixed(2)}%`);
         printKeyValue('Annual Gain', `${formatUsd(plan.annualGain)}/year`);
-        if (plan.estimatedSwapCost > 0) {
-          printKeyValue('Swap Cost', `~${formatUsd(plan.estimatedSwapCost)}`);
-          printKeyValue('Break-even', `${plan.breakEvenDays} days`);
-        }
         printBlank();
 
         if (plan.steps.length > 0) {
@@ -90,8 +80,6 @@ export function registerRebalance(program: Command) {
             const num = `${i + 1}.`;
             if (step.action === 'withdraw') {
               printLine(`  ${num} Withdraw ${formatUsd(step.amount)} ${displayAsset(step.fromAsset ?? '')} from ${step.protocol}`);
-            } else if (step.action === 'swap') {
-              printLine(`  ${num} Swap ${displayAsset(step.fromAsset ?? '')} → ${displayAsset(step.toAsset ?? '')} (~${formatUsd(step.estimatedOutput ?? 0)})`);
             } else if (step.action === 'deposit') {
               printLine(`  ${num} Deposit ${formatUsd(step.amount)} ${displayAsset(step.toAsset ?? '')} into ${step.protocol}`);
             }
@@ -106,7 +94,7 @@ export function registerRebalance(program: Command) {
           return;
         }
 
-        const result = await agent.rebalance({ dryRun: false, minYieldDiff, maxBreakEven });
+        const result = await agent.rebalance({ dryRun: false, minYieldDiff });
 
         if (result.executed) {
           printSuccess(`Rebalanced ${formatUsd(result.amount)} → ${result.newApy.toFixed(2)}% APY`);

@@ -190,7 +190,6 @@ function main() {
     't2000-send',
     't2000-save',
     't2000-withdraw',
-    't2000-exchange',
     't2000-borrow',
     't2000-repay',
     't2000-pay',

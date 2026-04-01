@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProtocolRegistry } from './registry.js';
-import type { LendingAdapter, SwapAdapter, AdapterCapability } from './types.js';
-import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import type { LendingAdapter, AdapterCapability } from './types.js';
 
 function mockLending(overrides: Partial<LendingAdapter> = {}): LendingAdapter {
   return {
@@ -25,21 +24,6 @@ function mockLending(overrides: Partial<LendingAdapter> = {}): LendingAdapter {
   };
 }
 
-function mockSwap(overrides: Partial<SwapAdapter> = {}): SwapAdapter {
-  return {
-    id: 'mock-swap',
-    name: 'Mock Swap',
-    version: '1.0.0',
-    capabilities: ['swap'] as readonly AdapterCapability[],
-    init: vi.fn(),
-    getQuote: vi.fn().mockResolvedValue({ expectedOutput: 100, priceImpact: 0.01, poolPrice: 3.5 }),
-    buildSwapTx: vi.fn(),
-    getSupportedPairs: vi.fn().mockReturnValue([{ from: 'USDC', to: 'SUI' }, { from: 'SUI', to: 'USDC' }]),
-    getPoolPrice: vi.fn().mockResolvedValue(3.5),
-    ...overrides,
-  };
-}
-
 describe('ProtocolRegistry', () => {
   let registry: ProtocolRegistry;
 
@@ -55,16 +39,8 @@ describe('ProtocolRegistry', () => {
       expect(registry.listLending()).toHaveLength(1);
     });
 
-    it('registers and retrieves swap adapters', () => {
-      const adapter = mockSwap({ id: 'cetus' });
-      registry.registerSwap(adapter);
-      expect(registry.getSwap('cetus')).toBe(adapter);
-      expect(registry.listSwap()).toHaveLength(1);
-    });
-
     it('returns undefined for unknown adapters', () => {
       expect(registry.getLending('unknown')).toBeUndefined();
-      expect(registry.getSwap('unknown')).toBeUndefined();
     });
   });
 
@@ -119,31 +95,13 @@ describe('ProtocolRegistry', () => {
     });
 
     it('filters adapters requiring same-asset borrow', async () => {
-      const noSame = mockLending({ id: 'suilend', supportsSameAssetBorrow: false });
+      const noSame = mockLending({ id: 'nosame', supportsSameAssetBorrow: false });
       const yesSame = mockLending({ id: 'navi', supportsSameAssetBorrow: true });
       registry.registerLending(noSame);
       registry.registerLending(yesSame);
 
       const result = await registry.bestBorrowRate('USDC', { requireSameAssetBorrow: true });
       expect(result.adapter.id).toBe('navi');
-    });
-  });
-
-  describe('bestSwapQuote', () => {
-    it('returns adapter with best output', async () => {
-      const worse = mockSwap({ id: 'worse', getQuote: vi.fn().mockResolvedValue({ expectedOutput: 90, priceImpact: 0.02, poolPrice: 3.5 }) });
-      const better = mockSwap({ id: 'better', getQuote: vi.fn().mockResolvedValue({ expectedOutput: 100, priceImpact: 0.01, poolPrice: 3.5 }) });
-      registry.registerSwap(worse);
-      registry.registerSwap(better);
-
-      const result = await registry.bestSwapQuote('USDC', 'SUI', 100);
-      expect(result.adapter.id).toBe('better');
-      expect(result.quote.expectedOutput).toBe(100);
-    });
-
-    it('throws when no adapter supports the pair', async () => {
-      registry.registerSwap(mockSwap({ getSupportedPairs: vi.fn().mockReturnValue([{ from: 'USDC', to: 'SUI' }]) }));
-      await expect(registry.bestSwapQuote('BTC', 'ETH', 1)).rejects.toThrow('No swap adapter supports BTC → ETH');
     });
   });
 
@@ -277,5 +235,4 @@ describe('ProtocolRegistry', () => {
       expect(results.some(r => r.asset === 'USDT')).toBe(true);
     });
   });
-
 });

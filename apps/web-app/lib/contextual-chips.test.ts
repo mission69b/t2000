@@ -4,7 +4,6 @@ import { deriveContextualChips, type AccountState } from './contextual-chips';
 const BASE_STATE: AccountState = {
   cash: 0,
   savings: 0,
-  investments: 0,
   borrows: 0,
   savingsRate: 0,
   pendingRewards: 0,
@@ -86,11 +85,11 @@ describe('deriveContextualChips', () => {
       ...BASE_STATE,
       savings: 1000,
       currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'Suilend', protocolId: 'suilend', asset: 'USDC', rate: 6.5 },
+      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 6.5 },
     });
     const chip = chips.find((c) => c.id === 'rate');
     expect(chip).toBeDefined();
-    expect(chip!.label).toContain('Suilend');
+    expect(chip!.label).toContain('NAVI');
     expect(chip!.chipFlow).toBe('rebalance');
     expect(chip!.dismissible).toBe(true);
   });
@@ -199,11 +198,11 @@ describe('post-agent suggestions', () => {
 });
 
 describe('discovery chips', () => {
-  it('shows portfolio check when user has investments', () => {
-    const chips = deriveContextualChips({ ...BASE_STATE, investments: 500 });
-    const chip = chips.find((c) => c.id === 'portfolio-check');
+  it('shows positions check when user has savings', () => {
+    const chips = deriveContextualChips({ ...BASE_STATE, savings: 500 });
+    const chip = chips.find((c) => c.id === 'positions-check');
     expect(chip).toBeDefined();
-    expect(chip!.agentPrompt).toContain('portfolio');
+    expect(chip!.agentPrompt).toContain('positions');
   });
 
   it('shows risk analysis when user has borrows and HF >= 1.5', () => {

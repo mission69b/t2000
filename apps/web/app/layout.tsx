@@ -26,11 +26,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "t2000 — A Bank Account for AI Agents",
   description:
-    "A bank account for AI agents. Five accounts — checking, savings, credit, swap, invest. Built on Sui.",
+    "A bank account for AI agents. Five products — savings, pay, send, credit, receive. Built on Sui.",
   openGraph: {
     title: "t2000 — A Bank Account for AI Agents",
     description:
-      "A bank account for AI agents. Five accounts — checking, savings, credit, swap, invest. Built on Sui.",
+      "A bank account for AI agents. Five products — savings, pay, send, credit, receive. Built on Sui.",
     type: "website",
   },
 };

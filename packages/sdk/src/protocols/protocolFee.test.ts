@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { TransactionObjectArgument } from '@mysten/sui/transactions';
 import { calculateFee, addCollectFeeToTx } from './protocolFee.js';
-import { SAVE_FEE_BPS, SWAP_FEE_BPS, BORROW_FEE_BPS, BPS_DENOMINATOR, T2000_PACKAGE_ID, T2000_TREASURY_ID, T2000_CONFIG_ID, SUPPORTED_ASSETS } from '../constants.js';
+import { SAVE_FEE_BPS, BORROW_FEE_BPS, BPS_DENOMINATOR, T2000_PACKAGE_ID, T2000_TREASURY_ID, T2000_CONFIG_ID, SUPPORTED_ASSETS } from '../constants.js';
 
 function mockCoinArg(): TransactionObjectArgument {
   return { $kind: 'Result', Result: 0 } as unknown as TransactionObjectArgument;
@@ -20,13 +20,6 @@ describe('protocolFee', () => {
       const fee = calculateFee('borrow', 100);
       expect(fee.rate).toBeCloseTo(0.0005);
       expect(fee.amount).toBeCloseTo(0.05);
-    });
-
-    it('swap fee is 0%', () => {
-      const fee = calculateFee('swap', 100);
-      expect(fee.rate).toBe(0);
-      expect(fee.amount).toBe(0);
-      expect(fee.rawAmount).toBe(0n);
     });
 
     it('calculates correct raw USDC amount (6 decimals)', () => {
@@ -49,10 +42,6 @@ describe('protocolFee', () => {
   describe('fee constants', () => {
     it('SAVE_FEE_BPS is 10 (0.1%)', () => {
       expect(SAVE_FEE_BPS).toBe(10n);
-    });
-
-    it('SWAP_FEE_BPS is 0 (free)', () => {
-      expect(SWAP_FEE_BPS).toBe(0n);
     });
 
     it('BORROW_FEE_BPS is 5 (0.05%)', () => {
@@ -102,23 +91,6 @@ describe('protocolFee', () => {
       expect(moveCallSpy).toHaveBeenCalledOnce();
       const call = moveCallSpy.mock.calls[0][0];
       expect(call.target).toBe(`${T2000_PACKAGE_ID}::treasury::collect_fee`);
-    });
-
-    it('skips moveCall for swap (0% fee)', () => {
-      const mockCoin = mockCoinArg();
-      const moveCallSpy = vi.fn();
-
-      const mockTx = {
-        moveCall: moveCallSpy,
-        object: vi.fn((id: string) => ({ objectId: id })),
-        pure: {
-          u8: vi.fn((v: number) => ({ value: v })),
-        },
-      } as unknown as Parameters<typeof addCollectFeeToTx>[0];
-
-      addCollectFeeToTx(mockTx, mockCoin, 'swap');
-
-      expect(moveCallSpy).not.toHaveBeenCalled();
     });
 
     it('passes correct object IDs', () => {

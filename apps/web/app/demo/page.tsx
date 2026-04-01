@@ -5,7 +5,7 @@ import { DemoShowcase } from "./DemoShowcase";
 export const metadata: Metadata = {
   title: "t2000 — Live Demos",
   description:
-    "Interactive terminal demos of t2000: investing, safeguards, savings, borrowing, swaps, MPP payments, and the full financial dashboard for AI agents on Sui.",
+    "Interactive terminal demos of t2000: savings, safeguards, MPP payments, sending, borrowing, and the full financial dashboard for AI agents on Sui.",
   openGraph: {
     title: "t2000 — Live Demos",
     description:

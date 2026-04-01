@@ -42,7 +42,7 @@ The following are in scope:
 
 ### Out of scope
 
-- Third-party protocol vulnerabilities (NAVI, Suilend, Cetus contracts)
+- Third-party protocol vulnerabilities (NAVI contracts)
 - Social engineering attacks
 - Denial of service via rate limiting (already implemented)
 - Issues in dependencies (report to upstream maintainers)

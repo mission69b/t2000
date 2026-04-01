@@ -6,11 +6,9 @@ This guide covers how to build a new DeFi protocol adapter for t2000.
 
 ```
 adapters/
-  types.ts              # LendingAdapter, SwapAdapter, ProtocolDescriptor interfaces
+  types.ts              # LendingAdapter, ProtocolDescriptor interfaces
   registry.ts           # ProtocolRegistry (routing + discovery)
-  navi.ts               # NaviAdapter + descriptor (reference, contract-first)
-  cetus.ts              # CetusAdapter + descriptor (swap, Aggregator V3)
-  suilend.ts            # SuilendAdapter + descriptor (save + withdraw, contract-first)
+  navi.ts               # NaviAdapter + descriptor (reference, MCP-first)
   compliance.test.ts    # Adapter + descriptor compliance test suite
   index.ts              # Barrel exports + allDescriptors registry
 ```
@@ -44,7 +42,7 @@ export const descriptor: ProtocolDescriptor = {
 | `id` | Yes | Lowercase kebab-case, must match adapter's `id` field |
 | `name` | Yes | Human-readable protocol name |
 | `packages` | Yes | On-chain package IDs (base/original package for upgradeable contracts) |
-| `actionMap` | Yes | Maps `module::function` to action type (`save`, `withdraw`, `borrow`, `repay`, `swap`) |
+| `actionMap` | Yes | Maps `module::function` to action type (`save`, `withdraw`, `borrow`, `repay`) |
 | `dynamicPackageId` | No | Set `true` if the protocol uses frequently upgraded package IDs (like NAVI). Indexer matches by `module::function` only, ignoring package prefix |
 
 ### 2. Implement the interface
@@ -79,8 +77,6 @@ export class MyProtocolAdapter implements LendingAdapter {
 > via `client.getObject()`, `client.devInspectTransactionBlock()`, and `tx.moveCall()`.
 > Do not add external protocol SDKs as dependencies — this avoids `@mysten/sui`
 > version conflicts and keeps the dependency tree clean.
-
-For swap protocols, implement `SwapAdapter`.
 
 ### 3. Register the adapter
 
@@ -121,16 +117,6 @@ t2000 save 100
 | `buildRepayTx(address, amount, asset)` | Yes | Build repay PTB |
 | `maxWithdraw(address, asset)` | Yes | Max safe withdrawal amount |
 | `maxBorrow(address, asset)` | Yes | Max safe borrow amount |
-
-### SwapAdapter
-
-| Method | Required | Description |
-|--------|----------|-------------|
-| `init(client)` | Yes | Initialize with SuiJsonRpcClient |
-| `getQuote(from, to, amount)` | Yes | Get swap quote |
-| `buildSwapTx(address, from, to, amount, slippage?)` | Yes | Build swap PTB |
-| `getSupportedPairs()` | Yes | List tradeable pairs |
-| `getPoolPrice()` | Yes | Get current pool price |
 
 ## Fee Collection
 
@@ -201,7 +187,7 @@ Each adapter should test:
 - Metadata (id, name, capabilities, supportedAssets)
 - All interface methods delegate correctly to the underlying protocol (contract calls or API)
 - Error cases (unsupported assets, insufficient balance)
-- Edge cases specific to the protocol (e.g., Suilend obligation creation)
+- Edge cases specific to the protocol
 
 ### What CI Checks on Your PR
 
@@ -218,7 +204,7 @@ The CI output shows verbose results so you can see exactly which checks passed/f
 
 1. **Create your adapter file**: `packages/sdk/src/adapters/<protocol>.ts`
    - Export `descriptor: ProtocolDescriptor` with package IDs and action mappings
-   - Export the adapter class implementing `LendingAdapter` or `SwapAdapter`
+   - Export the adapter class implementing `LendingAdapter`
 2. **Create unit tests**: `packages/sdk/src/adapters/<protocol>.test.ts`
 3. **Register in compliance suite**: Add both adapter and descriptor to `compliance.test.ts`
 4. **Export from barrel**: Add adapter, descriptor, and `allDescriptors` entry to `index.ts`
