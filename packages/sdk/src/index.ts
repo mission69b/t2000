@@ -24,8 +24,6 @@ export type {
   PositionsResult,
   EarningsResult,
   FundStatusResult,
-  RebalanceStep,
-  RebalanceResult,
   DepositInfo,
   TransactionRecord,
   PendingReward,

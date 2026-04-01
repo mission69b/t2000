@@ -195,21 +195,18 @@ describe('ProtocolRegistry', () => {
   });
 
   describe('bestSaveRateAcrossAssets', () => {
-    it('finds best rate across all stablecoins', async () => {
+    it('finds best USDC rate', async () => {
       const navi = mockLending({
         id: 'navi',
         name: 'NAVI',
-        supportedAssets: ['USDC', 'USDT', 'USDe', 'USDsui'],
-        getRates: vi.fn().mockImplementation((asset: string) => {
-          if (asset === 'USDT') return Promise.resolve({ asset, saveApy: 8.5, borrowApy: 5 });
-          return Promise.resolve({ asset, saveApy: 4.0, borrowApy: 6 });
-        }),
+        supportedAssets: ['USDC'],
+        getRates: vi.fn().mockResolvedValue({ asset: 'USDC', saveApy: 4.86, borrowApy: 5 }),
       });
       registry.registerLending(navi);
 
       const result = await registry.bestSaveRateAcrossAssets();
-      expect(result.asset).toBe('USDT');
-      expect(result.rate.saveApy).toBe(8.5);
+      expect(result.asset).toBe('USDC');
+      expect(result.rate.saveApy).toBe(4.86);
     });
 
     it('throws when no adapters registered', async () => {
@@ -218,21 +215,18 @@ describe('ProtocolRegistry', () => {
   });
 
   describe('allRatesAcrossAssets', () => {
-    it('returns rates for all supported assets', async () => {
+    it('returns USDC rates', async () => {
       const adapter = mockLending({
-        id: 'multi',
-        name: 'Multi',
-        supportedAssets: ['USDC', 'USDT'],
-        getRates: vi.fn().mockImplementation((asset: string) =>
-          Promise.resolve({ asset, saveApy: asset === 'USDT' ? 7 : 4, borrowApy: 5 }),
-        ),
+        id: 'navi',
+        name: 'NAVI',
+        supportedAssets: ['USDC'],
+        getRates: vi.fn().mockResolvedValue({ asset: 'USDC', saveApy: 4, borrowApy: 5 }),
       });
       registry.registerLending(adapter);
 
       const results = await registry.allRatesAcrossAssets();
-      expect(results.length).toBeGreaterThanOrEqual(2);
-      expect(results.some(r => r.asset === 'USDC')).toBe(true);
-      expect(results.some(r => r.asset === 'USDT')).toBe(true);
+      expect(results.length).toBe(1);
+      expect(results[0].asset).toBe('USDC');
     });
   });
 });

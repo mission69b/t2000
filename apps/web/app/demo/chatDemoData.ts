@@ -222,41 +222,4 @@ export const chatDemos: ChatDemo[] = [
       },
     ],
   },
-
-  {
-    id: "chat-optimize",
-    title: "Optimize Yield",
-    description:
-      "Find a better rate and rebalance in one conversation.",
-    messages: [
-      { role: "user", text: "Am I getting the best yield?", delay: 0 },
-      { role: "thinking", delay: 400 },
-      {
-        role: "ai",
-        tools: ["t2000_positions", "t2000_rates", "t2000_rebalance"],
-        html:
-          `<div style="font-size:11px;font-weight:600;margin-bottom:10px">📊 YIELD ANALYSIS</div>` +
-          tbl([
-            ["Current", "USDC on NAVI · 4.86% APY", ""],
-            ["Best available", "suiUSDT on NAVI · 5.37% APY", "hi"],
-            ["APY gain", "+0.51%", "hi"],
-            ["Break-even", "6 days", ""],
-          ]) +
-          note("Better rate available. Want me to rebalance?"),
-        delay: 300,
-      },
-      { role: "user", text: "Do it", delay: 600 },
-      { role: "thinking", delay: 400 },
-      {
-        role: "ai",
-        tools: ["t2000_rebalance"],
-        html: tbl([
-          ["Rebalanced", "$9.26 USDC → suiUSDT", "hi"],
-          ["New APY", "5.37%", "hi"],
-          ["Tx", '<span style="color:#4a90e2">suiscan.xyz/tx/HgXg…</span>', ""],
-        ]) + note("Now earning at the best available rate."),
-        delay: 300,
-      },
-    ],
-  },
 ];

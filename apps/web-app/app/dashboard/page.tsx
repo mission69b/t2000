@@ -58,7 +58,6 @@ function capForFlow(
     case 'withdraw': return bal.savings;
     case 'repay': return bal.borrows;
     case 'borrow': return bal.maxBorrow;
-    case 'rebalance': return bal.savings;
     default: return bal.cash;
   }
 }
@@ -230,7 +229,6 @@ function DashboardContent() {
     maxBorrow: balanceQuery.data?.maxBorrow ?? 0,
     pendingRewards: balanceQuery.data?.pendingRewards ?? 0,
     bestSaveRate: balanceQuery.data?.bestSaveRate ?? null,
-    bestAlternativeRate: balanceQuery.data?.bestAlternativeRate ?? null,
     currentRate: balanceQuery.data?.currentRate ?? 0,
     savingsBreakdown: balanceQuery.data?.savingsBreakdown ?? [],
     sui: balanceQuery.data?.sui ?? 0,
@@ -304,7 +302,6 @@ function DashboardContent() {
     borrows: balance.borrows,
     savingsRate: balance.savingsRate,
     pendingRewards: balance.pendingRewards,
-    bestAlternativeRate: balance.bestAlternativeRate ?? undefined,
     currentRate: balance.currentRate > 0 ? balance.currentRate : undefined,
     healthFactor: balance.healthFactor ?? undefined,
     overnightEarnings: overnightData.earnings,
@@ -585,7 +582,7 @@ function DashboardContent() {
         case 'help':
           feed.addItem({
             type: 'ai-text',
-            text: 'Here\'s what I can help with:\n\n• Save — Earn yield on idle USDC\n• Send — Transfer USDC to anyone\n• Borrow — Against your savings\n• Rebalance — Move savings to the best rate\n• Report — Full financial summary\n\nI can also search the web, send emails, translate, generate images, and more — just type what you need.',
+            text: 'Here\'s what I can help with:\n\n• Save — Earn yield on idle USDC\n• Send — Transfer USDC to anyone\n• Borrow — Against your savings\n• Report — Full financial summary\n\nI can also search the web, send emails, translate, generate images, and more — just type what you need.',
           });
           break;
       }
@@ -608,24 +605,6 @@ function DashboardContent() {
       if (flow === 'save-all') {
         chipFlow.startFlow('save', flowContext);
         chipFlow.selectAmount(balance.cash);
-        return;
-      }
-      if (flow === 'rebalance') {
-        const alt = balance.bestAlternativeRate;
-        if (alt && balance.savings > 0) {
-          chipFlow.startFlow('rebalance', {
-            ...flowContext,
-            protocol: alt.protocolId,
-            toAsset: alt.asset,
-          });
-          chipFlow.selectAmount(balance.savings);
-        } else {
-          chipFlow.reset();
-          feed.addItem({
-            type: 'ai-text',
-            text: 'No better rates found right now. Your savings are already at the best available rate.',
-          });
-        }
         return;
       }
       if (flow === 'risk-explain') {
@@ -898,34 +877,17 @@ function DashboardContent() {
           flowLabel = 'Repaid';
           break;
         }
-        case 'rebalance': {
-          const toProtocol = protocol;
-          const primary = balance.savingsBreakdown.length > 0
-            ? balance.savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
-            : null;
-          const fromProtocol = primary?.protocolId ?? 'navi';
-          if (!toProtocol) throw new Error('No target protocol for rebalance');
-          const fromAsset = primary?.asset ?? 'USDC';
-          const toAsset = chipFlow.state.toAsset ?? balance.bestAlternativeRate?.asset ?? fromAsset;
-          const res = await sdk.rebalance({ amount, fromProtocol, toProtocol, fromAsset, toAsset });
-          txDigest = res.tx;
-          const alt = balance.bestAlternativeRate;
-          const toLabel = alt ? `${alt.protocol}${alt.asset !== 'USDC' ? ` ${alt.asset}` : ''}` : toProtocol;
-          flowLabel = `Rebalanced $${amount.toFixed(2)} to ${toLabel}`;
-          break;
-        }
         default:
           throw new Error(`Unknown flow: ${flow}`);
       }
 
-      const hasAmountInLabel = flow === 'rebalance';
       const explorerBase = SUI_NETWORK === 'testnet'
         ? 'https://suiscan.xyz/testnet/tx'
         : 'https://suiscan.xyz/mainnet/tx';
       const txUrl = txDigest ? `${explorerBase}/${txDigest}` : undefined;
       const result: ChipFlowResult = {
         success: true,
-        title: hasAmountInLabel ? flowLabel : `${flowLabel} $${amount.toFixed(2)}`,
+        title: `${flowLabel} $${amount.toFixed(2)}`,
         details: txDigest
           ? `Tx: ${txDigest.slice(0, 8)}...${txDigest.slice(-6)}`
           : 'Transaction confirmed on-chain.',
@@ -965,31 +927,6 @@ function DashboardContent() {
     const flow = chipFlow.state.flow;
     const amount = chipFlow.state.amount ?? 0;
     const details: { label: string; value: string }[] = [];
-
-    if (flow === 'rebalance') {
-      const alt = balance.bestAlternativeRate;
-      const fromEntry = balance.savingsBreakdown.length > 0
-        ? balance.savingsBreakdown.reduce((a, b) => a.amount > b.amount ? a : b)
-        : null;
-      const fromAsset = fromEntry?.asset ?? 'USDC';
-      const toAsset = chipFlow.state.toAsset ?? alt?.asset ?? fromAsset;
-      const fromName = fromEntry?.protocol ?? 'current';
-      const toProtocol = alt?.protocol ?? chipFlow.state.protocol ?? 'target';
-      const toLabel = `${toProtocol}${toAsset !== 'USDC' ? ` ${toAsset}` : ''}`;
-      const fromLabel = `${fromName}${fromAsset !== 'USDC' ? ` ${fromAsset}` : ''}`;
-      details.push({ label: 'From', value: `${fromLabel} (${(fromEntry?.apy ?? balance.savingsRate).toFixed(1)}%)` });
-      details.push({ label: 'To', value: `${toLabel} (${(alt?.rate ?? 0).toFixed(1)}%)` });
-      if (fromAsset !== toAsset) {
-        details.push({ label: 'Conversion', value: `${fromAsset} → ${toAsset} (auto)` });
-      }
-      details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
-      details.push({ label: 'Gas', value: 'Sponsored' });
-      return {
-        title: `Rebalance to ${toLabel}`,
-        confirmLabel: `Switch $${amount.toFixed(0)} to ${toLabel}`,
-        details,
-      };
-    }
 
     details.push({ label: 'Amount', value: `$${amount.toFixed(2)}` });
 

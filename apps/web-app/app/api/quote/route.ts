@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
  */
 export async function GET() {
   return NextResponse.json(
-    { error: 'This endpoint has been removed. Use rebalance for yield optimization.' },
+    { error: 'This endpoint has been removed. Savings yield is USDC-only via NAVI; use the in-app Save flow or agent rate tools.' },
     { status: 410 },
   );
 }

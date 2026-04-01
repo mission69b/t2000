@@ -134,30 +134,6 @@ export interface FundStatusResult {
   projectedMonthly: number;
 }
 
-export interface RebalanceStep {
-  action: 'withdraw' | 'deposit';
-  protocol?: string;
-  fromAsset?: string;
-  toAsset?: string;
-  amount: number;
-  estimatedOutput?: number;
-}
-
-export interface RebalanceResult {
-  executed: boolean;
-  steps: RebalanceStep[];
-  fromProtocol: string;
-  fromAsset: string;
-  toProtocol: string;
-  toAsset: string;
-  amount: number;
-  currentApy: number;
-  newApy: number;
-  annualGain: number;
-  txDigests: string[];
-  totalGasCost: number;
-}
-
 export interface DepositInfo {
   address: string;
   network: string;

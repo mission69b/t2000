@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRegistry } from '@/lib/protocol-registry';
-import { STABLE_ASSETS } from '@t2000/sdk';
 
 export const runtime = 'nodejs';
-
-const STABLECOINS = new Set<string>(STABLE_ASSETS);
 
 interface RateEntry {
   protocol: string;
@@ -27,7 +24,7 @@ let ratesCache: { data: { rates: RateEntry[]; bestSaveRate: BestSaveRate | null 
 /**
  * GET /api/rates
  *
- * Returns current lending rates across all protocols and all stablecoins.
+ * Returns current USDC lending rates (save/borrow APY) per protocol.
  * Cached for 30s since rates change slowly.
  */
 export async function GET() {
@@ -39,17 +36,18 @@ export async function GET() {
     const registry = getRegistry();
     const allRates = await registry.allRatesAcrossAssets();
 
-    const rates: RateEntry[] = allRates.map((r) => ({
-      protocol: r.protocol,
-      protocolId: r.protocolId,
-      asset: r.asset,
-      saveApy: r.rates.saveApy,
-      borrowApy: r.rates.borrowApy,
-    }));
+    const rates: RateEntry[] = allRates
+      .filter((r) => r.asset === 'USDC')
+      .map((r) => ({
+        protocol: r.protocol,
+        protocolId: r.protocolId,
+        asset: r.asset,
+        saveApy: r.rates.saveApy,
+        borrowApy: r.rates.borrowApy,
+      }));
 
     let bestSaveRate: BestSaveRate | null = null;
     for (const r of rates) {
-      if (!STABLECOINS.has(r.asset)) continue;
       if (!bestSaveRate || r.saveApy > bestSaveRate.rate) {
         bestSaveRate = { protocol: r.protocol, protocolId: r.protocolId, asset: r.asset, rate: r.saveApy };
       }

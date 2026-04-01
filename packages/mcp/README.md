@@ -49,7 +49,6 @@ For other platforms, paste manually:
 | `t2000_withdraw` | write | Withdraw from savings |
 | `t2000_borrow` | write | Borrow against collateral |
 | `t2000_repay` | write | Repay debt |
-| `t2000_rebalance` | write | Optimize yield |
 | `t2000_claim_rewards` | write | Claim protocol rewards and auto-convert to USDC |
 | `t2000_contact_add` | write | Save a contact name → address |
 | `t2000_contact_remove` | write | Remove a saved contact |

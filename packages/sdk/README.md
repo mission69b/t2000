@@ -1,6 +1,6 @@
 # @t2000/sdk
 
-The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI, borrow against collateral, and auto-rebalance for optimal yield — all from a single class. USDC in, USDC out — multi-stablecoin optimization is handled internally by rebalance.
+The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI, and borrow against collateral — all from a single class. USDC in, USDC out.
 
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -43,12 +43,7 @@ await agent.save({ amount: 50 });
 // Borrow USDC against your collateral
 await agent.borrow({ amount: 25 });
 
-// Rebalance — move savings to the best rate (dry-run first)
-const plan = await agent.rebalance({ dryRun: true });
-console.log(`+${plan.annualGain.toFixed(2)}/year, break-even: ${plan.breakEvenDays} days`);
-await agent.rebalance(); // execute
-
-// Withdraw — always returns USDC (auto-swaps non-USDC positions)
+// Withdraw from savings (USDC)
 await agent.withdraw({ amount: 25 });
 ```
 
@@ -94,11 +89,10 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, protocol? })` | Deposit to savings (earn APY). Auto-converts non-USDC stables. Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
-| `agent.withdraw({ amount })` | Withdraw from savings. Always returns USDC (auto-swaps non-USDC positions). `amount` can be `'all'`. | `WithdrawResult` |
+| `agent.save({ amount, protocol? })` | Deposit USDC to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
+| `agent.withdraw({ amount })` | Withdraw USDC from savings. `amount` can be `'all'`. | `WithdrawResult` |
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
-| `agent.repay({ amount })` | Repay outstanding debt (auto-swaps USDC to borrowed asset if non-USDC). `amount` can be `'all'`. | `RepayResult` |
-| `agent.rebalance({ dryRun?, minYieldDiff?, maxBreakEven? })` | Optimize yield — move savings to best rate across protocols/stablecoins internally. Dry-run for preview. | `RebalanceResult` |
+| `agent.repay({ amount })` | Repay outstanding debt in USDC. `amount` can be `'all'`. | `RepayResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -108,7 +102,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.healthFactor()` | Lending health factor | `HealthFactorResult` |
 | `agent.earnings()` | Yield earned to date | `EarningsResult` |
 | `agent.rates()` | Best save/borrow APYs across protocols | `RatesResult` |
-| `agent.allRatesAcrossAssets()` | All rates for all stablecoins across all protocols | `Array<{ protocol, asset, rates }>` |
+| `agent.allRatesAcrossAssets()` | Per-protocol rate data across assets | `Array<{ protocol, asset, rates }>` |
 | `agent.positions()` | All open DeFi positions | `PositionsResult` |
 | `agent.fundStatus()` | Complete savings summary | `FundStatusResult` |
 | `agent.maxWithdraw()` | Max safe withdrawal amount | `MaxWithdrawResult` |
@@ -248,7 +242,7 @@ Every operation (send, save, borrow, repay, withdraw) routes through a 3-step ga
 
 Every transaction result includes a `gasMethod` field (`'self-funded'` | `'auto-topup'` | `'sponsored'`) indicating which strategy was used.
 
-**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step operations (save with auto-convert, withdraw with auto-convert, rebalance) compose multiple protocol calls into a single atomic PTB. `executeWithGas()` handles execution with the gas fallback chain. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
+**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step flows compose multiple protocol calls into a single atomic PTB. `executeWithGas()` handles execution with the gas fallback chain. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
 
 ## Configuration
 
@@ -260,18 +254,12 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 
 ## Supported Assets
 
-User-facing commands are denominated in USDC — the user always thinks in USDC.
-Save auto-converts non-USDC wallet stablecoins, withdraw auto-swaps non-USDC
-positions back to USDC, and repay auto-swaps USDC to the borrowed asset if
-debt is non-USDC (from rebalance). Rebalance optimizes across all stablecoins internally.
+User-facing savings, credit, and transfers are denominated in **USDC**.
 
-| Asset | Display | Type | Decimals | Save | Borrow | Withdraw | Rebalance (internal) |
-|-------|---------|------|----------|------|--------|----------|---------------------|
-| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ (always returns USDC) | ✅ |
-| USDT | suiUSDT | `0x375f...::usdt::USDT` | 6 | — (via rebalance) | — | — | ✅ |
-| USDe | suiUSDe | `0x41d5...::sui_usde::SUI_USDE` | 6 | — (via rebalance) | — | — | ✅ |
-| USDsui | USDsui | `0x44f8...::usdsui::USDSUI` | 6 | — (via rebalance) | — | — | ✅ |
-| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — | — |
+| Asset | Display | Type | Decimals | Save | Borrow | Withdraw |
+|-------|---------|------|----------|------|--------|----------|
+| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ |
+| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — |
 
 ## Error Handling
 

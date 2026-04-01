@@ -22,7 +22,6 @@ export const demos: Demo[] = [
       { type: "output", text: "  USDC", delay: 150 },
       { type: "info", text: "  ─────────────────────────────────────────────────────", delay: 80 },
       { type: "info", text: "  NAVI:  Save 4.86%  Borrow 7.67%", delay: 150 },
-      { type: "info", text: "  suiUSDT:  Save 5.37%  Borrow 8.12%", delay: 150 },
 
       { type: "command", text: "❯ t2000 save 80", delay: 1200 },
       { type: "success", text: "  ✓ Saved $80.00 USDC to best rate", delay: 600 },

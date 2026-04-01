@@ -1,6 +1,6 @@
 # @t2000/cli
 
-A bank account for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, auto-rebalance, and pay for APIs. USDC in, USDC out — multi-stablecoin optimization happens internally.
+A bank account for AI agents on Sui. Guided setup, MCP integration for Claude Desktop / Cursor / Windsurf, send USDC, earn yield, borrow, and pay for APIs. USDC in, USDC out.
 
 [![npm](https://img.shields.io/npm/v/@t2000/cli)](https://www.npmjs.com/package/@t2000/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -149,14 +149,13 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount> [--protocol <name>]` | Deposit to savings (earn ~2–8% APY). Auto-converts non-USDC stables. |
-| `t2000 save all` | Deposit all available stablecoins (auto-converts to USDC) |
-| `t2000 withdraw <amount>` | Withdraw from savings. Always returns USDC (auto-swaps non-USDC positions). |
+| `t2000 save <amount> [--protocol <name>]` | Deposit USDC to savings (earn ~2–8% APY) |
+| `t2000 save all` | Deposit all available USDC (minus gas reserve) |
+| `t2000 withdraw <amount>` | Withdraw USDC from savings |
 | `t2000 borrow <amount>` | Borrow USDC against savings collateral |
-| `t2000 repay <amount>` | Repay outstanding debt (auto-swaps USDC to borrowed asset if non-USDC). Use `repay all` for full repayment. |
-| `t2000 rebalance [--dry-run]` | Optimize yield — move savings to best rate across protocols and stablecoins internally |
+| `t2000 repay <amount>` | Repay outstanding debt in USDC. Use `repay all` for full repayment. |
 | `t2000 health` | Check savings health factor |
-| `t2000 rates` | Best save/borrow APYs across protocols and all stablecoins |
+| `t2000 rates` | Best save/borrow APYs across protocols (USDC) |
 | `t2000 positions` | Open savings & borrow positions across all assets |
 | `t2000 claim-rewards` | Claim protocol rewards and auto-convert to USDC |
 | `t2000 earnings` | Yield earned to date |
@@ -279,7 +278,7 @@ Gas is fully automated:
 
 You never need to manually acquire SUI for gas.
 
-All multi-step operations (save with auto-convert, withdraw with auto-convert, rebalance) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts.
+Multi-step operations (for example save or withdraw flows that compose several on-chain steps) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts.
 
 ## Protocol Fees
 

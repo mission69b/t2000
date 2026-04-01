@@ -54,7 +54,9 @@ export const SUPPORTED_ASSETS = {
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
 export type StableAsset = Exclude<SupportedAsset, 'SUI'>;
-export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'] as const;
+// USDC is the only actively supported deposit/save asset.
+// USDT, USDe, USDsui remain in SUPPORTED_ASSETS for reading legacy positions and withdrawals.
+export const STABLE_ASSETS: readonly StableAsset[] = ['USDC'] as const;
 
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
 export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0x408add9aa9322f93cfd87523d8f603006eb8713894f4c460283c58a6888dae8a';

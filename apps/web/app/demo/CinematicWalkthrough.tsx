@@ -36,14 +36,6 @@ const scenes: Scene[] = [
         type: "ai",
         tools: ["t2000_rates", "t2000_save"],
         html: `<table><tr><td>Deposited</td><td class="hi">$95.81 USDC \u2192 savings</td></tr><tr><td>Protocol</td><td>NAVI \u00b7 4.98% APY</td></tr><tr><td>Projected</td><td class="hi">~$4.77 / year</td></tr><tr><td>Tx</td><td class="tx">suiscan.xyz/tx/Ae7q\u2026</td></tr></table>`,
-        hold: 1200,
-      },
-      { type: "user", text: "Rebalance to maximize APY" },
-      { type: "think", ms: 1200 },
-      {
-        type: "ai",
-        tools: ["t2000_rebalance"],
-        html: `<table><tr><td>Before</td><td>USDC \u00b7 4.98% APY \u00b7 ~$4.77/yr</td></tr><tr><td>After</td><td class="hi">USDT \u00b7 5.55% APY \u00b7 ~$5.32/yr \u2191</td></tr><tr><td>Extra yield</td><td class="hi">+$0.55/yr \u00b7 break-even 6 days</td></tr><tr><td>Tx</td><td class="tx">suiscan.xyz/tx/Rw3n\u2026</td></tr></table>`,
         hold: 2000,
       },
     ],
@@ -71,7 +63,7 @@ const scenes: Scene[] = [
       {
         type: "ai",
         tools: ["t2000_balance", "t2000_health", "t2000_borrow", "t2000_send"],
-        html: `<div class="nt" style="margin:0 0 8px">Checking is $1.00. Borrowing $50 against savings collateral.</div><table><tr><td>Resolved</td><td>Tom \u2192 0x8b3e\u2026f4a2</td></tr><tr><td>Borrowed</td><td class="hi">$50.00 USDC from NAVI</td></tr><tr><td>Collateral</td><td>$95.81 USDT \u00b7 health: 1.8</td></tr><tr><td>Sent</td><td class="hi">$50.00 \u2192 0x8b3e\u2026f4a2</td></tr><tr><td>Tx</td><td class="tx">suiscan.xyz/tx/Hk9m\u2026</td></tr></table><div class="nt">Borrowed and sent in one step. Savings keep earning as collateral.</div>`,
+        html: `<div class="nt" style="margin:0 0 8px">Checking is $1.00. Borrowing $50 against savings collateral.</div><table><tr><td>Resolved</td><td>Tom \u2192 0x8b3e\u2026f4a2</td></tr><tr><td>Borrowed</td><td class="hi">$50.00 USDC from NAVI</td></tr><tr><td>Collateral</td><td>$95.81 USDC \u00b7 health: 1.8</td></tr><tr><td>Sent</td><td class="hi">$50.00 \u2192 0x8b3e\u2026f4a2</td></tr><tr><td>Tx</td><td class="tx">suiscan.xyz/tx/Hk9m\u2026</td></tr></table><div class="nt">Borrowed and sent in one step. Savings keep earning as collateral.</div>`,
         hold: 2800,
       },
     ],

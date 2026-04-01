@@ -3,7 +3,7 @@
 import { DemoChat } from "./DemoChat";
 import { chatDemos } from "../demo/chatDemoData";
 
-const demo = chatDemos.find((d) => d.id === "chat-optimize") ?? chatDemos[0];
+const demo = chatDemos.find((d) => d.id === "chat-whatif") ?? chatDemos[0];
 
 export function McpLiveDemo() {
   return (

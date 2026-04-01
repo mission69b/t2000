@@ -23,7 +23,6 @@ export interface BalanceHeaderData {
   usdc: number;
   assetBalances: Record<string, number>;
   assetUsdValues: Record<string, number>;
-  bestSaveRate: { protocol: string; protocolId: string; rate: number } | null;
   savingsBreakdown?: SavingsBreakdownEntry[];
   loading: boolean;
   error?: boolean;

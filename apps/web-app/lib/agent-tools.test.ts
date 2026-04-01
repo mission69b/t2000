@@ -142,15 +142,16 @@ describe('buildSystemPrompt', () => {
   it('includes DeFi integration section', () => {
     const prompt = buildSystemPrompt('0xabc123', 'user@test.com');
     expect(prompt).toContain('DeFi Integration');
-    expect(prompt).toContain('NAVI Protocol');
-    expect(prompt).toContain('rebalancing');
+    expect(prompt).toContain('USDC-only');
+    expect(prompt).toContain('NAVI');
   });
 
-  it('get_rates tool description mentions multi-protocol', () => {
+  it('get_rates tool description is USDC-focused', () => {
     const tools = getAnthropicTools();
     const ratesTool = tools.find((t) => t.name === 'get_rates');
     expect(ratesTool).toBeDefined();
     expect(ratesTool!.description).toContain('protocolId');
+    expect(ratesTool!.description).toContain('USDC');
     expect(ratesTool!.description).toContain('bestSaveRate');
   });
 

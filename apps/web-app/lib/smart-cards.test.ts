@@ -65,39 +65,6 @@ describe('deriveSmartCards', () => {
     expect(cards.find((c) => c.type === 'idle-funds')).toBeUndefined();
   });
 
-  it('surfaces better-rate card when rate diff > 0.3%', () => {
-    const cards = deriveSmartCards({
-      ...BASE_STATE,
-      savings: 1000,
-      currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 6.5 },
-    });
-    const rateCard = cards.find((c) => c.type === 'better-rate');
-    expect(rateCard).toBeDefined();
-    expect(rateCard!.title).toContain('NAVI');
-    expect(rateCard!.actions[0].chipFlow).toBe('rebalance');
-  });
-
-  it('does not surface better-rate card when diff <= 0.3%', () => {
-    const cards = deriveSmartCards({
-      ...BASE_STATE,
-      savings: 1000,
-      currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 5.2 },
-    });
-    expect(cards.find((c) => c.type === 'better-rate')).toBeUndefined();
-  });
-
-  it('does not surface better-rate card when savings is 0', () => {
-    const cards = deriveSmartCards({
-      ...BASE_STATE,
-      savings: 0,
-      currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 8.0 },
-    });
-    expect(cards.find((c) => c.type === 'better-rate')).toBeUndefined();
-  });
-
   it('surfaces risk card when healthFactor < 1.5', () => {
     const cards = deriveSmartCards({ ...BASE_STATE, healthFactor: 1.2 });
     const riskCard = cards.find((c) => c.type === 'risk');

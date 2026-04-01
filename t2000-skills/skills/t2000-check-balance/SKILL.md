@@ -49,5 +49,3 @@ Limits:
 - If balance shows $0.00 available and wallet was just created, fund it first
   via Coinbase Onramp or a direct USDC transfer to the wallet address
 - `--json` is a global flag that works on all t2000 commands, not just balance
-- Internally, savings may be held in non-USDC stablecoins due to rebalance;
-  the balance shows the USDC-equivalent value

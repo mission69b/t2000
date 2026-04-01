@@ -89,7 +89,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_rates',
-    'Get best available interest rates per asset across all lending protocols. Use alongside t2000_positions to compare current vs best rates. Use with t2000_rebalance (dryRun: true) to preview optimization.',
+    'Get best available interest rates per asset across all lending protocols. Use alongside t2000_positions to compare current vs best rates.',
     {},
     async () => {
       try {
@@ -187,7 +187,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_all_rates',
-    'Compare interest rates across all protocols side-by-side for every asset. Use when the user asks "am I getting the best rate?" or wants to compare protocols. NOTE: Do NOT use this to decide where to save — t2000_save always saves USDC at the best USDC rate. This tool is for informational comparisons and for deciding whether to t2000_rebalance into a different asset.',
+    'Compare USDC (and other) interest rates across all protocols side-by-side. Use when the user asks "am I getting the best rate?" or wants to compare protocols. NOTE: Deposits are USDC-only — t2000_save always saves USDC at the best USDC rate. This tool is for informational comparisons.',
     {},
     async () => {
       try {

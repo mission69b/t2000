@@ -55,7 +55,7 @@ describe('prompts', () => {
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_overview');
-    expect(result.messages[0].content.text).toContain('t2000_rebalance');
+    expect(result.messages[0].content.text).toContain('t2000_all_rates');
   });
 
   it('send-money should return valid message with context', async () => {
@@ -151,7 +151,7 @@ describe('prompts', () => {
     const result = await handler({});
     expect(result.messages).toHaveLength(1);
     expect(result.messages[0].content.text).toContain('t2000_overview');
-    expect(result.messages[0].content.text).toContain('t2000_rebalance');
+    expect(result.messages[0].content.text).toContain('t2000_all_rates');
   });
 
   it('savings-goal should accept target and months parameters', async () => {

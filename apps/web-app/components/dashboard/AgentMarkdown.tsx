@@ -14,8 +14,6 @@ const ACTION_FLOW_MAP: [RegExp, string][] = [
   [/^send/i, 'send'],
   [/^borrow/i, 'borrow'],
   [/^claim/i, 'claim-rewards'],
-  [/^rebalance/i, 'rebalance'],
-  [/^switch to/i, 'rebalance'],
   [/^check rate/i, 'report'],
   [/^view/i, 'report'],
 ];

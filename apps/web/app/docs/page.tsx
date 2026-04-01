@@ -801,8 +801,7 @@ function CliSavingsSection() {
         Savings <em className="italic text-accent">& Credit</em>
       </h1>
       <p className="text-[13px] sm:text-[14.5px] text-white/55 leading-[1.7] mb-8 sm:mb-10 max-w-[580px]">
-        Earn yield on idle USDC, borrow against collateral, and optimize
-        rates across protocols — all with health factor protection.
+        Earn yield on idle USDC and borrow against collateral — all with health factor protection.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 my-4 mb-7">
@@ -810,7 +809,6 @@ function CliSavingsSection() {
         <CmdCard name="t2000 withdraw" desc="Pull funds from savings" onClick={() => scrollTo("cmd-withdraw")} />
         <CmdCard name="t2000 borrow" desc="Borrow against collateral" onClick={() => scrollTo("cmd-borrow")} />
         <CmdCard name="t2000 repay" desc="Repay outstanding loan" onClick={() => scrollTo("cmd-repay")} />
-        <CmdCard name="t2000 rebalance" desc="Optimize yield across protocols" onClick={() => scrollTo("cmd-rebalance")} />
         <CmdCard name="t2000 earn" desc="All earning opportunities" onClick={() => scrollTo("cmd-earn")} />
       </div>
 
@@ -869,28 +867,6 @@ function CliSavingsSection() {
         {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/0xe7f8...")}
       </CodeBlock>
 
-      <h2 id="cmd-rebalance">t2000 rebalance</h2>
-      <p>Optimize yield by moving savings to the best rate across protocols and stablecoins. Executes as a single atomic PTB (withdraw → deposit).</p>
-      <CodeBlock lang="bash">
-        t2000 rebalance [--dry-run] [--min-diff &lt;pct&gt;] [--max-break-even &lt;days&gt;]{"\n\n"}
-        t2000 rebalance --dry-run   {S.c("# preview without executing")}{"\n"}
-        t2000 rebalance             {S.c("# execute rebalance")}
-      </CodeBlock>
-      <CodeBlock lang="output">
-        {"  "}{S.b("Rebalance Plan")}{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}From:  USDC on NAVI Protocol ({S.m("4.86%")} APY){"\n"}
-        {"  "}To:  suiUSDT on NAVI Protocol ({S.g("5.37%")} APY){"\n"}
-        {"  "}Amount:  {S.a("$5.10")}{"\n\n"}
-        {"  "}{S.b("Economics")}{"\n"}
-        {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}APY Gain:  {S.g("+0.51%")}{"\n"}
-        {"  "}Annual Gain:  {S.a("$0.03")}/year{"\n"}
-        {"  "}Conversion Cost:  ~$0.00{"\n\n"}
-        {"  "}{S.g("✓")} Rebalanced {S.a("$5.10")} → {S.a("5.37%")} APY{"\n"}
-        {"  "}Tx:  {S.b("https://suiscan.xyz/mainnet/tx/84qXk...")}
-      </CodeBlock>
-
       <h2 id="cmd-earn">t2000 earn</h2>
       <p>Show all earning opportunities in one dashboard — savings yield across protocols.</p>
       <CodeBlock lang="bash">
@@ -900,8 +876,7 @@ function CliSavingsSection() {
         {"  "}Earning Opportunities{"\n\n"}
         {"  "}{S.b("SAVINGS — Passive Yield")}{"\n"}
         {"  "}{S.m("─────────────────────────────────────────────────────")}{"\n"}
-        {"  "}navi USDC:  {S.a("$5.10")} @ {S.g("4.86%")} APY{"\n"}
-        {"  "}navi suiUSDT:  {S.a("$3.15")} @ {S.g("5.37%")} APY{"\n"}
+        {"  "}navi USDC:  {S.a("$8.25")} @ {S.g("4.86%")} APY{"\n"}
         {"  "}    ~$0.00/day · ~$0.03/month{"\n\n"}
         {"  "}Total Saved:  {S.a("$8.25")}
       </CodeBlock>
@@ -1291,7 +1266,7 @@ function McpSection() {
         {`{\n  "mcpServers": {\n    "t2000": {\n      "command": "t2000",\n      "args": ["mcp"]\n    }\n  }\n}`}
       </CodeBlock>
 
-      <h2 id="mcp-tools">Available tools (22)</h2>
+      <h2 id="mcp-tools">Available tools (21)</h2>
 
       <h3 id="mcp-tools-read">Read-only (12)</h3>
       <DocTable
@@ -1314,7 +1289,7 @@ function McpSection() {
         ]}
       />
 
-      <h3 id="mcp-tools-write">State-changing (10)</h3>
+      <h3 id="mcp-tools-write">State-changing (9)</h3>
       <p>
         All support <InlineCode>dryRun: true</InlineCode> for previews without signing.
         Subject to safeguard enforcement.
@@ -1327,7 +1302,6 @@ function McpSection() {
           [<InlineCode key="k">t2000_withdraw</InlineCode>, "Withdraw from savings"],
           [<InlineCode key="k">t2000_borrow</InlineCode>, "Borrow against collateral"],
           [<InlineCode key="k">t2000_repay</InlineCode>, "Repay borrowed USDC"],
-          [<InlineCode key="k">t2000_rebalance</InlineCode>, "Optimize yield across protocols"],
           [<InlineCode key="k">t2000_claim_rewards</InlineCode>, "Claim protocol rewards and auto-convert to USDC"],
           [<InlineCode key="k">t2000_pay</InlineCode>, "Pay for an MPP-protected API (handles 402 challenge automatically)"],
           [<InlineCode key="k">t2000_contact_add</InlineCode>, "Save a contact name → Sui address"],
@@ -1357,7 +1331,7 @@ function McpSection() {
         headers={["Prompt", "Description"]}
         rows={[
           [<InlineCode key="k">financial-report</InlineCode>, "Comprehensive financial summary — balance, positions, health, earnings"],
-          [<InlineCode key="k">optimize-yield</InlineCode>, "Yield optimization analysis with rebalance recommendations"],
+          [<InlineCode key="k">optimize-yield</InlineCode>, "Yield optimization analysis — compare rates and savings"],
           [<InlineCode key="k">send-money</InlineCode>, "Guided send flow — validate, preview, confirm, execute"],
           [<InlineCode key="k">budget-check</InlineCode>, "Can I afford $X? — checks balance, daily limit, spending impact"],
           [<InlineCode key="k">savings-strategy</InlineCode>, "Analyze idle funds, recommend how much to save and where"],
@@ -1370,7 +1344,7 @@ function McpSection() {
           [<InlineCode key="k">safeguards</InlineCode>, "Review safety settings — per-tx limits, daily caps, emergency lock"],
           [<InlineCode key="k">onboarding</InlineCode>, "New user setup — deposit, first save, explore features"],
           [<InlineCode key="k">emergency</InlineCode>, "Lock account, assess damage, recovery guidance"],
-          [<InlineCode key="k">optimize-all</InlineCode>, "One-shot full optimization — sweep, rebalance, claim, earn"],
+          [<InlineCode key="k">optimize-all</InlineCode>, "One-shot full optimization — sweep idle funds, claim, earn"],
         ]}
       />
 
@@ -1458,7 +1432,6 @@ function SkillsSection() {
           [<InlineCode key="k">t2000-borrow</InlineCode>, <>&#34;borrow 40 USDC&#34;, &#34;take out a loan&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-repay</InlineCode>, <>&#34;repay my loan&#34;, &#34;pay back...&#34;</>, <Badge color="green" key="b">live</Badge>],
           [<InlineCode key="k">t2000-pay</InlineCode>, <>&#34;search the web&#34;, &#34;generate an image&#34;, &#34;send mail&#34;, &#34;translate this&#34;</>, <Badge color="green" key="b">live</Badge>],
-          [<InlineCode key="k">t2000-rebalance</InlineCode>, <>&#34;optimize yield&#34;, &#34;rebalance savings&#34;, &#34;find better rate&#34;</>, <Badge color="green" key="b">live</Badge>],
         ]}
       />
 
@@ -1785,7 +1758,7 @@ function ChangelogSection() {
       </h2>
       <p>
         Fix health factor display showing large numbers instead of ∞ when no
-        active borrows. Fix asset display names in rates output (suiUSDT, suiUSDe, USDsui).
+        active borrows. Fix asset display names in rates output.
       </p>
 
       <h2 id="cl-0102">

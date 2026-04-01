@@ -3,7 +3,7 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server. Provides 24 tools
+  client, set up MCP config, or start the MCP server. Provides 23 tools
   and 14 prompts for AI-driven banking and MPP service operations.
 license: MIT
 metadata:
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 24 tools, 14 prompts, stdio transport, safeguard enforced.
+account. 23 tools, 14 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -40,7 +40,7 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (24)
+## Available Tools (23)
 
 ### MPP Services (2)
 | Tool | Description |
@@ -64,7 +64,7 @@ Paste into your AI platform's MCP settings:
 | `t2000_pending_rewards` | Pending protocol rewards |
 | `t2000_deposit_info` | Deposit instructions |
 
-### State-changing (8)
+### State-changing (7)
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
@@ -74,7 +74,6 @@ All support `dryRun: true` for previews without signing.
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay debt |
-| `t2000_rebalance` | Optimize yield |
 | `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
 | `t2000_contact_add` | Save a contact name → address |
 

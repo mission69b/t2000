@@ -27,7 +27,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_send',
-    'Send USDC or stablecoins to a Sui address or contact name. Amount is in dollars. Subject to per-transaction and daily send limits. Set dryRun: true to preview without signing.',
+    'Send USDC to a Sui address or contact name. Amount is in dollars. Subject to per-transaction and daily send limits. Set dryRun: true to preview without signing.',
     {
       to: z.string().describe("Recipient Sui address (0x...) or contact name (e.g. 'Tom')"),
       amount: z.number().describe('Amount in dollars to send'),
@@ -74,7 +74,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_save',
-    'Deposit USDC to savings at the best USDC rate (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview. This saves USDC as USDC. If the user later wants to chase higher yields on other assets (e.g. USDe), use t2000_rebalance AFTER saving.',
+    'Deposit USDC to savings at the best USDC rate (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview.',
     {
       amount: z.union([z.number(), z.literal('all')]).describe('Dollar amount to save, or "all"'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
@@ -213,28 +213,6 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
         }
 
         const result = await mutex.run(() => agent.repay({ amount }));
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      } catch (err) {
-        return errorResult(err);
-      }
-    },
-  );
-
-  server.tool(
-    't2000_rebalance',
-    'Optimize savings yield — finds the best rate across protocols and moves funds. Always previews first — set dryRun: false to execute. Shows plan with APY gain and annual earnings increase. This is the ONE tool to use when the user asks "am I getting the best yield?" or "rebalance my savings".',
-    {
-      dryRun: z.boolean().optional().describe('Preview without executing (default: true)'),
-      minYieldDiff: z.number().optional().describe('Min APY difference to rebalance (default: 0.5%)'),
-    },
-    async ({ dryRun, minYieldDiff }) => {
-      try {
-        const result = await mutex.run(() =>
-          agent.rebalance({
-            dryRun: dryRun ?? true,
-            minYieldDiff,
-          }),
-        );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);

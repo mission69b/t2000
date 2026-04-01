@@ -11,7 +11,7 @@ const ENOKI_SECRET_KEY = process.env.ENOKI_SECRET_KEY;
 const ENOKI_BASE = 'https://api.enoki.mystenlabs.com/v1';
 const SUI_NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet') as 'mainnet' | 'testnet';
 
-type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'claim-rewards' | 'rebalance';
+type TxType = 'send' | 'save' | 'withdraw' | 'borrow' | 'repay' | 'claim-rewards';
 
 interface BuildRequest {
   type: TxType;
@@ -22,20 +22,10 @@ interface BuildRequest {
   fromAsset?: string;
   toAsset?: string;
   protocol?: string;
-  fromProtocol?: string;
-  toProtocol?: string;
 }
 
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const SUI_TYPE = '0x2::sui::SUI';
-
-const ASSET_COIN_TYPES: Record<string, { type: string; decimals: number }> = {
-  USDC: { type: USDC_TYPE, decimals: 6 },
-  USDT: { type: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT', decimals: 6 },
-  USDe: { type: '0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE', decimals: 6 },
-  USDsui: { type: '0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI', decimals: 6 },
-  SUI: { type: SUI_TYPE, decimals: 9 },
-};
 
 function getLendingAdapter(protocolId?: string) {
   const registry = getRegistry();
@@ -109,7 +99,7 @@ export async function POST(request: NextRequest) {
     const params: BuildRequest = {
       type, address, amount, recipient, asset,
       fromAsset: body.fromAsset, toAsset: body.toAsset,
-      protocol: body.protocol, fromProtocol: body.fromProtocol, toProtocol: body.toProtocol,
+      protocol: body.protocol,
     };
     const result = await buildAndSponsor(params, jwt);
 
@@ -263,21 +253,6 @@ async function buildTransaction(params: BuildRequest): Promise<Transaction> {
         skipOracle: true,
       });
       return result.tx;
-    }
-
-    case 'rebalance': {
-      const fromAdapter = getLendingAdapter(params.fromProtocol);
-      const toAdapter = getLendingAdapter(params.toProtocol);
-      if (!fromAdapter.addWithdrawToTx) throw new Error(`${params.fromProtocol} does not support composable withdraw`);
-      if (!toAdapter.addSaveToTx) throw new Error(`${params.toProtocol} does not support composable deposit`);
-
-      const withdrawAsset = params.fromAsset ?? asset ?? 'USDC';
-      const { coin: withdrawnCoin, effectiveAmount } = await fromAdapter.addWithdrawToTx(
-        tx, address, amount, withdrawAsset,
-      );
-      const depositAsset = params.toAsset ?? withdrawAsset;
-      await toAdapter.addSaveToTx(tx, address, withdrawnCoin, depositAsset, { collectFee: depositAsset === 'USDC' });
-      break;
     }
 
     case 'claim-rewards': {

@@ -138,7 +138,7 @@ export default function AccountsPage() {
                 {[
                   { cmd: "t2000 save all", desc: "Deposit everything — gas handled automatically" },
                   { cmd: "t2000 withdraw 50", desc: "Pull funds back to checking instantly" },
-                  { cmd: "t2000 rebalance", desc: "Optimize yield across protocols" },
+                  { cmd: "t2000 rates", desc: "See current save and borrow APYs" },
                 ].map((step) => (
                   <div key={step.cmd} className="flex items-start gap-3">
                     <span className="text-accent text-xs mt-0.5">▸</span>
@@ -335,10 +335,7 @@ export default function AccountsPage() {
               <pre className="px-5 py-5 text-[11px] sm:text-[12px] font-mono leading-[2] overflow-x-auto scrollbar-hide">
                 <span className="text-foreground">❯ t2000 positions</span>
                 {"\n"}
-                <span className="text-muted">  navi USDC:  $5.30 @ 4.09% APY  </span>
-                <span className="text-accent">+rewards</span>
-                {"\n"}
-                <span className="text-muted">  navi suiUSDT:  $6.15 @ 5.37% APY  </span>
+                <span className="text-muted">  navi USDC:  $11.45 @ 4.09% APY  </span>
                 <span className="text-accent">+rewards</span>
                 {"\n\n"}
                 <span className="text-foreground">❯ t2000 claim-rewards</span>
@@ -383,10 +380,6 @@ export default function AccountsPage() {
               {
                 title: "Pay → deliver → log",
                 desc: "Agent pays for an API, gets the result, logs the spend.",
-              },
-              {
-                title: "Rebalance across protocols",
-                desc: "Move savings to the highest-yield protocol in one transaction.",
               },
               {
                 title: "Safeguard limits",

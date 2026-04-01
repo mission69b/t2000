@@ -49,7 +49,6 @@ function createMockAgent() {
     withdraw: vi.fn().mockResolvedValue({ digest: '0xwithdraw123', amount: 25 }),
     borrow: vi.fn().mockResolvedValue({ digest: '0xborrow123', amount: 5 }),
     repay: vi.fn().mockResolvedValue({ digest: '0xrepay123', amount: 5 }),
-    rebalance: vi.fn().mockResolvedValue({ moved: false, reason: 'no improvement' }),
     claimRewards: vi.fn().mockResolvedValue({ claimed: [] }),
     maxBorrow: vi.fn().mockResolvedValue({ maxAmount: 3.50, healthFactorAfter: 2.1 }),
     enforcer: {
@@ -109,9 +108,9 @@ describe('integration: MCP client ↔ server', () => {
     await server.close();
   });
 
-  it('lists all 26 tools', async () => {
+  it('lists all 25 tools', async () => {
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(26);
+    expect(tools).toHaveLength(25);
 
     const names = tools.map(t => t.name).sort();
     expect(names).toEqual([
@@ -135,7 +134,6 @@ describe('integration: MCP client ↔ server', () => {
       't2000_pending_rewards',
       't2000_positions',
       't2000_rates',
-      't2000_rebalance',
       't2000_repay',
       't2000_save',
       't2000_send',

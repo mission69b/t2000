@@ -44,7 +44,7 @@ t2000 unlock                         # resume operations (requires PIN)
 - `t2000 pay` — MPP API payments
 
 ## What is NOT limited
-Internal operations (save, withdraw, borrow, repay, rebalance)
+Internal operations (save, withdraw, borrow, repay)
 move funds within the agent's own wallet and protocol positions. They
 are not subject to send limits.
 

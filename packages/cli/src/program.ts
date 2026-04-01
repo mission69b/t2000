@@ -26,7 +26,6 @@ import { registerServe } from './commands/serve.js';
 import { registerPay } from './commands/pay.js';
 import { registerLock } from './commands/lock.js';
 import { registerEarn } from './commands/earn.js';
-import { registerRebalance } from './commands/rebalance.js';
 import { registerMcp } from './commands/mcp.js';
 import { registerContacts } from './commands/contacts.js';
 import { registerClaimRewards } from './commands/claimRewards.js';
@@ -75,7 +74,6 @@ Examples:
   registerPay(program);
   registerLock(program);
   registerEarn(program);
-  registerRebalance(program);
   registerMcp(program);
   registerContacts(program);
   registerClaimRewards(program);

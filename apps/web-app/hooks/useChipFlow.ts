@@ -16,7 +16,6 @@ export interface ChipFlowState {
   amount: number | null;
   recipient: string | null;
   asset: string | null;
-  toAsset: string | null;
   protocol: string | null;
   message: string | null;
   result: ChipFlowResult | null;
@@ -42,7 +41,6 @@ const INITIAL_STATE: ChipFlowState = {
   amount: null,
   recipient: null,
   asset: null,
-  toAsset: null,
   protocol: null,
   message: null,
   result: null,
@@ -57,7 +55,6 @@ export interface FlowContext {
   maxBorrow?: number;
   protocol?: string;
   asset?: string;
-  toAsset?: string;
 }
 
 export function useChipFlow() {
@@ -70,7 +67,6 @@ export function useChipFlow() {
       flow,
       protocol: context?.protocol ?? null,
       asset: context?.asset ?? null,
-      toAsset: context?.toAsset ?? null,
       message: getFlowMessage(flow, context),
     });
   }, []);
@@ -151,10 +147,6 @@ function getFlowMessage(flow: string, ctx?: FlowContext): string {
     case 'repay': {
       const debt = ctx?.borrows ? ` Outstanding debt: ${fmtAmount(ctx.borrows)}.` : '';
       return `Repay your loan.${debt}\nChoose an amount:`;
-    }
-    case 'rebalance': {
-      const rate = ctx?.savingsRate ? ` for ${ctx.savingsRate.toFixed(1)}% APY` : '';
-      return `Moving savings to a better rate${rate}.\nConfirm to proceed:`;
     }
     default: return 'Choose an option:';
   }

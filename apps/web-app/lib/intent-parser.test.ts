@@ -124,6 +124,11 @@ describe('parseIntent', () => {
     it('invest returns null', () => {
       expect(parseIntent('invest $100 in SUI')).toBeNull();
     });
+
+    it('rebalance returns null', () => {
+      expect(parseIntent('rebalance my savings')).toBeNull();
+      expect(parseIntent('rebalance to NAVI')).toBeNull();
+    });
   });
 
   describe('preamble stripping', () => {

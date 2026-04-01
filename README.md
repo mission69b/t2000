@@ -106,14 +106,13 @@ t2000 wraps five financial primitives into a single interface that any AI agent 
 | **Checking** | Send and receive USDC | Direct Sui transfers |
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) (MCP reads + thin tx builders) |
 | **Credit** | Borrow USDC against savings | NAVI collateralized loans |
-| **Yield Optimizer** | Auto-rebalance across 4 stablecoins | `t2000 rebalance` — moves savings to highest APY in a single atomic PTB |
 | **Payments (MPP)** | Pay for API resources with USDC | [@suimpp/mpp](https://github.com/mission69b/suimpp) + [MPP Gateway](https://mpp.t2000.ai) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set maxPerTx/maxDailySend`, `t2000 lock`, `t2000 unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
 Gas is invisible. t2000 handles it automatically: self-funded SUI → auto-topup ($1 USDC → SUI when low) → sponsored fallback for bootstrapping.
 
-All multi-step operations (save with auto-convert, withdraw with auto-convert, rebalance) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts — no funds left in intermediate states.
+Multi-step on-chain flows execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts — no funds left in intermediate states.
 
 ### Fees
 
@@ -198,7 +197,6 @@ t2000 save 50                      Earn yield (best rate)
 t2000 withdraw 25                  Withdraw savings (always USDC)
 t2000 borrow 10                    Borrow USDC against collateral
 t2000 repay 10                     Repay debt
-t2000 rebalance                    Optimize yield across stablecoins
 t2000 earnings                     Yield earned
 t2000 health                       Health factor
 t2000 rates                        Current APYs
@@ -311,7 +309,6 @@ Works with Claude Code, OpenAI Codex, GitHub Copilot, Cursor, VS Code, Amp, Goos
 | `t2000-borrow` | "borrow 40 USDC" |
 | `t2000-repay` | "repay my loan" |
 | `t2000-pay` | "call that paid API" |
-| `t2000-rebalance` | "optimize yield", "rebalance savings" |
 | `t2000-contacts` | "list contacts", "add contact" |
 
 Full reference → [Agent Skills README](t2000-skills)
@@ -329,7 +326,6 @@ Full reference → [Agent Skills README](t2000-skills)
 | Gas abstraction | ✓ Gasless (Base) | ✓ Auto-topup (Sui) |
 | DeFi composability | — | ✓ Atomic PTB multi-step |
 | Health factor protection | — | ✓ On-chain enforcement |
-| Yield Optimizer | — | ✓ Auto-rebalance across 4 stablecoins |
 | Agent Safeguards | — | ✓ Per-tx + daily limits + lock |
 | MCP Server | — | ✓ AI prompts + MPP services |
 

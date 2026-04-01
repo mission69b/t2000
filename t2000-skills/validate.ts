@@ -193,7 +193,6 @@ function main() {
     't2000-borrow',
     't2000-repay',
     't2000-pay',
-    't2000-rebalance',
   ];
 
   const missing = expectedSkills.filter(s => !skillDirs.includes(s));

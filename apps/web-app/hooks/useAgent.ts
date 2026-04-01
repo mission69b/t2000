@@ -37,7 +37,6 @@ export interface AgentActions {
   withdraw(params: { amount: number; protocol?: string; fromAsset?: string; toAsset?: string }): Promise<{ tx: string }>;
   borrow(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
   repay(params: { amount: number; protocol?: string }): Promise<{ tx: string }>;
-  rebalance(params: { amount: number; fromProtocol: string; toProtocol: string; fromAsset?: string; toAsset?: string }): Promise<{ tx: string }>;
   claimRewards(): Promise<{ tx: string }>;
   payService(params: { serviceId?: string; fields?: Record<string, string>; url?: string; rawBody?: Record<string, unknown> }): Promise<ServiceResult>;
   retryServiceDelivery(paymentDigest: string, meta: ServiceRetryMeta): Promise<ServiceResult>;
@@ -134,10 +133,6 @@ export function useAgent() {
 
           async repay({ amount, protocol }) {
             return sponsoredTransaction('repay', { amount, protocol });
-          },
-
-          async rebalance({ amount, fromProtocol, toProtocol, fromAsset, toAsset }) {
-            return sponsoredTransaction('rebalance', { amount, fromProtocol, toProtocol, fromAsset, toAsset });
           },
 
           async claimRewards() {

@@ -80,21 +80,7 @@ describe('deriveContextualChips', () => {
     expect(chips.find((c) => c.id === 'idle')).toBeUndefined();
   });
 
-  it('shows better rate chip when diff > 0.3%', () => {
-    const chips = deriveContextualChips({
-      ...BASE_STATE,
-      savings: 1000,
-      currentRate: 5.0,
-      bestAlternativeRate: { protocol: 'NAVI', protocolId: 'navi', asset: 'USDe', rate: 6.5 },
-    });
-    const chip = chips.find((c) => c.id === 'rate');
-    expect(chip).toBeDefined();
-    expect(chip!.label).toContain('NAVI');
-    expect(chip!.chipFlow).toBe('rebalance');
-    expect(chip!.dismissible).toBe(true);
-  });
-
-  it('does not show rate chip when same protocol is best', () => {
+  it('does not show deprecated rate-switch chip (USDC-only product)', () => {
     const chips = deriveContextualChips({
       ...BASE_STATE,
       savings: 1000,
@@ -221,7 +207,7 @@ describe('discovery chips', () => {
     const chips = deriveContextualChips({ ...BASE_STATE, savings: 50, savingsRate: 4.0 });
     const chip = chips.find((c) => c.id === 'yield-check');
     expect(chip).toBeDefined();
-    expect(chip!.agentPrompt).toContain('best yield');
+    expect(chip!.agentPrompt).toContain('USDC');
   });
 
   it('shows what-if chip when cash > $10', () => {

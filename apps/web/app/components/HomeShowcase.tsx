@@ -8,7 +8,7 @@ import { chatDemos } from "../demo/chatDemoData";
 import Link from "next/link";
 
 const cliIds = ["save", "safeguards", "pay"];
-const chatIds = ["chat-morning", "chat-send", "chat-optimize", "chat-whatif"];
+const chatIds = ["chat-morning", "chat-send", "chat-pay", "chat-whatif"];
 
 const cliDemos = demos.filter((d) => cliIds.includes(d.id));
 const chatList = chatDemos.filter((d) => chatIds.includes(d.id));

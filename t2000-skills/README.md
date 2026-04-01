@@ -38,7 +38,6 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 | `t2000-borrow` | "borrow 40 USDC", "take out a loan" |
 | `t2000-repay` | "repay my loan", "pay back..." |
 | `t2000-pay` | "call that paid API", "pay for MPP service" |
-| `t2000-rebalance` | "optimize yield", "rebalance savings" |
 | `t2000-contacts` | "add contact", "send to alice", "list contacts" |
 | `t2000-safeguards` | "set spending limit", "lock agent", "show config" |
 | `t2000-mcp` | "install MCP server", "connect to Claude" |
@@ -78,8 +77,7 @@ Write it as a list of natural language triggers the agent should match against.
 
 t2000 is a bank account for AI agents on Sui — checking (send/receive),
 savings (earn yield via NAVI), credit (borrow against deposits),
-and MCP-first messaging in one CLI command. USDC in, USDC out — multi-stablecoin optimization happens
-internally via rebalance.
+and MCP-first messaging in one CLI command. USDC in, USDC out.
 
 - **SDK**: `npm install @t2000/sdk`
 - **CLI**: `npx @t2000/cli init`

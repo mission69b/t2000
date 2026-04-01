@@ -80,22 +80,6 @@ export function deriveContextualChips(
     });
   }
 
-  if (state.bestAlternativeRate && state.currentRate) {
-    const diff = state.bestAlternativeRate.rate - state.currentRate;
-    if (diff > 0.3 && state.savings > 0) {
-      const alt = state.bestAlternativeRate;
-      const assetLabel = alt.asset && alt.asset !== 'USDC' ? ` ${alt.asset}` : '';
-      chips.push({
-        id: 'rate',
-        icon: '📈',
-        label: `Switch to ${alt.rate.toFixed(1)}% ${alt.protocol}${assetLabel}`,
-        chipFlow: 'rebalance',
-        priority: 65,
-        dismissible: true,
-      });
-    }
-  }
-
   // --- Informational ---
 
   if (state.isFirstOpenToday && state.overnightEarnings && state.overnightEarnings > 0) {
@@ -123,7 +107,7 @@ export function deriveContextualChips(
       id: 'positions-check',
       icon: '📊',
       label: 'My positions',
-      agentPrompt: 'Show me my lending positions. What are my savings, APYs, and should I rebalance for a better rate?',
+      agentPrompt: 'Show me my lending positions: savings, APYs, and debt if any.',
       priority: 28,
       dismissible: true,
     });
@@ -145,7 +129,7 @@ export function deriveContextualChips(
       id: 'yield-check',
       icon: '🔍',
       label: 'Best yield?',
-      agentPrompt: 'Am I getting the best yield on my savings? Compare rates across all stablecoins (USDC, USDT, USDe) on NAVI and tell me if I should rebalance to a better rate.',
+      agentPrompt: 'Am I getting a competitive USDC savings rate on NAVI? Compare my current APY to the best published USDC supply rate.',
       priority: 22,
       dismissible: true,
     });
@@ -229,7 +213,7 @@ export function deriveContextualChips(
         id: 'morning',
         icon: '☀',
         label: 'Morning report',
-        agentPrompt: 'Give me my morning financial report. Check my balances, compare savings yield across all stablecoins (USDC, USDT, USDe) on NAVI, review health factor, and suggest any actions I should take today — including rebalancing to a different asset if a better rate is available.',
+        agentPrompt: 'Give me my morning financial report. Check my balances, USDC savings yield on NAVI, health factor if I have debt, and any actions I should take today.',
         priority: 15,
       });
     } else if (hour >= 17 && hour < 21) {
@@ -237,7 +221,7 @@ export function deriveContextualChips(
         id: 'evening',
         icon: '📊',
         label: 'Daily summary',
-        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, compare yields across all stablecoins on NAVI, review savings performance, and note any changes today.',
+        agentPrompt: 'Give me my end-of-day financial summary. Check my balances, USDC savings yield on NAVI, and note any changes today.',
         priority: 15,
       });
     }
@@ -305,7 +289,7 @@ function getPostAgentSuggestion(lastAction: string): ContextualChip | null {
     case 'get_positions':
       return { id: 'post-positions', icon: '📊', label: 'Full report', agentPrompt: 'Give me a full financial report covering my balances, savings positions, yields, and action items.', priority: 40 };
     case 'get_rates':
-      return { id: 'post-rates', icon: '🔍', label: 'Best yield?', agentPrompt: 'Am I getting the best yield? Compare my current rate to what\'s available and tell me if I should switch.', priority: 40 };
+      return { id: 'post-rates', icon: '🔍', label: 'Rate check', agentPrompt: 'How does my current USDC savings APY compare to the best available USDC supply rate on NAVI?', priority: 40 };
     case 'get_health':
       return { id: 'post-health', icon: '📉', label: 'Liquidation risk?', agentPrompt: 'How much could prices drop before I get liquidated? Show me the exact thresholds.', priority: 40 };
     case 'search_flights':

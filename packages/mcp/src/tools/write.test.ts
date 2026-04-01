@@ -35,12 +35,6 @@ function createMockAgent() {
       success: true, tx: '0xdigest', amount: 2,
       remainingDebt: 0, gasCost: 0.001, gasMethod: 'self-funded',
     }),
-    rebalance: vi.fn().mockResolvedValue({
-      executed: false, steps: [], fromProtocol: 'navi', fromAsset: 'USDC',
-      toProtocol: 'navi', toAsset: 'USDC', amount: 5.10,
-      currentApy: 4.92, newApy: 5.50, annualGain: 0.30,
-      txDigests: [], totalGasCost: 0,
-    }),
     rates: vi.fn().mockResolvedValue({ USDC: { saveApy: 4.92, borrowApy: 8.5 } }),
     positions: vi.fn().mockResolvedValue({
       positions: [
@@ -97,14 +91,13 @@ describe('write tools', () => {
     registerWriteTools(server, agent);
   });
 
-  it('should register 10 write tools', () => {
-    expect(tools.size).toBe(10);
+  it('should register 9 write tools', () => {
+    expect(tools.size).toBe(9);
     expect(tools.has('t2000_send')).toBe(true);
     expect(tools.has('t2000_save')).toBe(true);
     expect(tools.has('t2000_withdraw')).toBe(true);
     expect(tools.has('t2000_borrow')).toBe(true);
     expect(tools.has('t2000_repay')).toBe(true);
-    expect(tools.has('t2000_rebalance')).toBe(true);
     expect(tools.has('t2000_claim_rewards')).toBe(true);
     expect(tools.has('t2000_pay')).toBe(true);
     expect(tools.has('t2000_contact_add')).toBe(true);
@@ -240,23 +233,6 @@ describe('write tools', () => {
       const result = await handler({ amount: 2, dryRun: true });
       const data = JSON.parse(result.content[0].text);
       expect(data.preview).toBe(true);
-    });
-  });
-
-  describe('t2000_rebalance', () => {
-    it('should default to dryRun: true', async () => {
-      const handler = tools.get('t2000_rebalance')!;
-      await handler({});
-      expect(agent.rebalance).toHaveBeenCalledWith({
-        dryRun: true,
-        minYieldDiff: undefined,
-      });
-    });
-
-    it('should execute when dryRun: false', async () => {
-      const handler = tools.get('t2000_rebalance')!;
-      await handler({ dryRun: false });
-      expect(agent.rebalance).toHaveBeenCalledWith(expect.objectContaining({ dryRun: false }));
     });
   });
 
