@@ -415,38 +415,87 @@ function isCorruptHistoryError(err: unknown): boolean {
 
 /**
  * Pre-flight validation: ensures message history meets Anthropic's requirements
- * right before every API call. Strips orphaned tool_use/tool_result blocks and
- * fixes role alternation. This is the single point of defense — no corrupt
- * messages can reach the API regardless of how they got into the session.
+ * right before every API call. Anthropic requires that every tool_use in an
+ * assistant message has a matching tool_result in the IMMEDIATELY NEXT user
+ * message — not just anywhere in the history. This function strips any
+ * tool_use/tool_result blocks that violate this positional constraint and
+ * fixes role alternation. Single point of defense — no corrupt messages can
+ * reach the API regardless of how they got into the session.
  */
 export function validateHistory(messages: Message[]): Message[] {
-  // Collect every tool_use id and every tool_result id across the whole history
-  const allToolUseIds = new Set<string>();
-  const allToolResultIds = new Set<string>();
+  const result: Message[] = [];
+  let i = 0;
 
-  for (const msg of messages) {
-    for (const b of msg.content) {
-      if (b.type === 'tool_use') allToolUseIds.add(b.id);
-      if (b.type === 'tool_result') allToolResultIds.add(b.toolUseId);
-    }
-  }
+  while (i < messages.length) {
+    const msg = messages[i];
 
-  // Strip orphaned blocks: tool_use without any result, tool_result without any use
-  const filtered = messages
-    .map((msg) => {
-      const content = msg.content.filter((b) => {
-        if (b.type === 'tool_use') return allToolResultIds.has(b.id);
-        if (b.type === 'tool_result') return allToolUseIds.has(b.toolUseId);
+    // For assistant messages with tool_use, verify the next message has ALL results
+    const toolUseIds = msg.content
+      .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
+      .map((b) => b.id);
+
+    if (toolUseIds.length > 0 && msg.role === 'assistant') {
+      const next = messages[i + 1];
+      const nextResultIds = new Set(
+        (next?.content ?? [])
+          .filter((b): b is { type: 'tool_result'; toolUseId: string; content: string } => b.type === 'tool_result')
+          .map((b) => b.toolUseId),
+      );
+
+      // Strip tool_use blocks that have no result in the next message
+      const cleanAssistant = msg.content.filter((b) => {
+        if (b.type === 'tool_use') return nextResultIds.has(b.id);
         return true;
       });
-      if (content.length === 0) return null;
-      return { role: msg.role, content } as Message;
-    })
-    .filter((m): m is Message => m !== null);
+
+      // Strip tool_result blocks from next message whose tool_use was removed
+      const keptToolUseIds = new Set(
+        cleanAssistant
+          .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
+          .map((b) => b.id),
+      );
+      const cleanNext = next?.content.filter((b) => {
+        if (b.type === 'tool_result') return keptToolUseIds.has(b.toolUseId);
+        return true;
+      });
+
+      if (cleanAssistant.length > 0) {
+        result.push({ role: msg.role, content: cleanAssistant });
+      }
+      if (cleanNext && cleanNext.length > 0) {
+        result.push({ role: next!.role, content: cleanNext });
+      }
+      i += 2;
+      continue;
+    }
+
+    // For user messages: strip any tool_result blocks that reference a tool_use
+    // not present in the immediately preceding assistant message
+    if (msg.role === 'user' && msg.content.some((b) => b.type === 'tool_result')) {
+      const prevAssistant = result[result.length - 1];
+      const prevToolUseIds = new Set(
+        (prevAssistant?.role === 'assistant' ? prevAssistant.content : [])
+          .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
+          .map((b) => b.id),
+      );
+      const cleanContent = msg.content.filter((b) => {
+        if (b.type === 'tool_result') return prevToolUseIds.has(b.toolUseId);
+        return true;
+      });
+      if (cleanContent.length > 0) {
+        result.push({ role: msg.role, content: cleanContent });
+      }
+      i++;
+      continue;
+    }
+
+    result.push(msg);
+    i++;
+  }
 
   // Merge consecutive same-role messages (can happen after stripping)
   const merged: Message[] = [];
-  for (const msg of filtered) {
+  for (const msg of result) {
     const last = merged[merged.length - 1];
     if (last && last.role === msg.role) {
       last.content = [...last.content, ...msg.content];
