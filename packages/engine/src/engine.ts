@@ -87,6 +87,7 @@ export class QueryEngine {
     };
 
     let turns = 0;
+    let hasRetriedWithCleanHistory = false;
 
     while (turns < this.maxTurns) {
       if (signal.aborted) {
@@ -104,17 +105,31 @@ export class QueryEngine {
         pendingToolCalls: [],
       };
 
-      const stream = this.provider.chat({
-        messages: this.messages,
-        systemPrompt: this.systemPrompt,
-        tools: toolDefs,
-        model: this.model,
-        maxTokens: this.maxTokens,
-        signal,
-      });
+      let providerFailed = false;
+      try {
+        const stream = this.provider.chat({
+          messages: this.messages,
+          systemPrompt: this.systemPrompt,
+          tools: toolDefs,
+          model: this.model,
+          maxTokens: this.maxTokens,
+          signal,
+        });
 
-      for await (const event of stream) {
-        yield* this.handleProviderEvent(event, acc);
+        for await (const event of stream) {
+          yield* this.handleProviderEvent(event, acc);
+        }
+      } catch (err) {
+        if (!hasRetriedWithCleanHistory && isCorruptHistoryError(err)) {
+          hasRetriedWithCleanHistory = true;
+          console.warn('[engine] Corrupt session history detected, resetting to fresh conversation');
+          this.messages = [
+            { role: 'user', content: [{ type: 'text', text: prompt }] },
+          ];
+          turns--;
+          continue;
+        }
+        throw err;
       }
 
       if (acc.text) {
@@ -352,12 +367,27 @@ export class QueryEngine {
 // ---------------------------------------------------------------------------
 
 /**
- * Ensure every tool_use in an assistant message has a matching tool_result
- * in the next user message. Strips trailing orphaned messages to prevent
- * Anthropic API 400 errors from corrupted session state.
+ * Detect Anthropic API errors caused by corrupt message history
+ * (orphaned tool_use blocks, missing tool_results, role alternation violations).
+ */
+function isCorruptHistoryError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('tool_use') && msg.includes('tool_result') ||
+    msg.includes('roles must alternate') ||
+    (msg.includes('400') && msg.includes('invalid_request_error'))
+  );
+}
+
+/**
+ * Sanitize message history to prevent Anthropic API 400 errors.
+ * 1. Strip trailing messages with orphaned tool_use (no matching tool_result).
+ * 2. Ensure roles alternate (user → assistant → user → ...).
+ * 3. Ensure the first message is from the user role.
  */
 function sanitizeMessages(messages: Message[]): Message[] {
-  const result: Message[] = [];
+  // Phase 1: strip orphaned tool_use at the tail
+  const trimmed: Message[] = [];
 
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
@@ -379,7 +409,26 @@ function sanitizeMessages(messages: Message[]): Message[] {
       }
     }
 
+    trimmed.push(msg);
+  }
+
+  // Phase 2: ensure alternating roles — drop messages that break the pattern
+  // and remove trailing user messages (the engine will add the new one)
+  const result: Message[] = [];
+  let lastRole: 'user' | 'assistant' | null = null;
+
+  for (const msg of trimmed) {
+    if (msg.role === lastRole) {
+      // Consecutive same-role: keep the later one (drop the previous)
+      result.pop();
+    }
     result.push(msg);
+    lastRole = msg.role;
+  }
+
+  // Ensure the last message is from assistant (engine adds user message next)
+  while (result.length > 0 && result[result.length - 1].role === 'user') {
+    result.pop();
   }
 
   return result;
