@@ -108,6 +108,12 @@ export default function Home() {
           t2000
         </div>
         <nav className="flex items-center gap-4 sm:gap-6">
+          <Link
+            href="/docs"
+            className="hidden md:flex items-center font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition-colors min-h-[36px]"
+          >
+            Docs
+          </Link>
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -489,14 +495,12 @@ export default function Home() {
               >
                 GitHub
               </a>
-              <a
-                href={`${GITHUB_URL}#readme`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/docs"
                 className="px-5 sm:px-7 py-3 min-h-[40px] flex items-center text-muted font-mono text-[10px] tracking-[0.12em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
               >
                 Docs
-              </a>
+              </Link>
             </div>
 
             <div className="font-mono text-[10px] text-dim tracking-wider uppercase mt-6">
