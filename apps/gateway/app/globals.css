@@ -1,32 +1,59 @@
 @import "tailwindcss";
 
+/* ── Agentic Design System — Dark Theme (t2000 gateway) ── */
+
 :root {
-  --background: #040406;
-  --surface: #080a0f;
-  --panel: #0d1018;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-bright: rgba(255, 255, 255, 0.14);
-  --foreground: #e8e6e0;
-  --muted: #5a6070;
-  --dim: #333844;
-  --accent: #00d68f;
+  /* Neutral scale */
+  --n100: #FFFFFF;
+  --n200: #F7F7F7;
+  --n300: #E5E5E5;
+  --n400: #CCCCCC;
+  --n500: #8F8F8F;
+  --n600: #707070;
+  --n700: #363636;
+  --n800: #191919;
+  --n900: #000000;
+
+  /* Semantic */
+  --color-error: #D50000;
+  --color-warning: #FF9800;
+  --color-success: #3CC14E;
+  --color-info: #0D9DFC;
+
+  /* t2000 brand accent */
+  --accent: #00D68F;
   --accent-dim: rgba(0, 214, 143, 0.12);
 
-  --sh-class: #e8e6e0;
-  --sh-identifier: #c4c0b8;
+  /* Dark theme tokens */
+  --background: var(--n900);
+  --surface: var(--n800);
+  --foreground: var(--n100);
+  --muted: var(--n500);
+  --dim: var(--n600);
+  --border: var(--n700);
+  --border-bright: var(--n600);
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-dropdown: 0 4px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-drawer: 0 8px 24px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+  --shadow-modal: 0 16px 48px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4);
+
+  /* Sugar-high syntax */
+  --sh-class: var(--n100);
+  --sh-identifier: var(--n400);
   --sh-keyword: #c792ea;
   --sh-string: #c3e88d;
-  --sh-sign: #5a6070;
+  --sh-sign: var(--n500);
   --sh-property: #82aaff;
-  --sh-entity: #e8e6e0;
+  --sh-entity: var(--n100);
   --sh-jsxliterals: #89ddff;
-  --sh-comment: #444d5a;
+  --sh-comment: var(--n600);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
-  --color-panel: var(--panel);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-dim: var(--dim);
@@ -34,7 +61,15 @@
   --color-accent-dim: var(--accent-dim);
   --color-border: var(--border);
   --color-border-bright: var(--border-bright);
-  --font-mono: var(--font-ibm-plex-mono);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --color-info: var(--color-info);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --color-panel: var(--surface);
 }
 
 html {
@@ -44,20 +79,26 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
-  font-size: 14px;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 15px;
   line-height: 1.6;
 }
 
+/* Noise overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.3;
+}
+
+/* Terminal animations */
 @keyframes feed-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .feed-row {
@@ -87,13 +128,3 @@ body {
 
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.4;
-}

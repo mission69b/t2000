@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <header className="mb-12">
           <Link
             href="/"
-            className="inline-block text-muted hover:text-accent text-xs font-mono mb-8 transition-colors"
+            className="inline-block text-muted hover:text-accent font-mono text-[10px] tracking-[0.12em] uppercase mb-8 transition-colors"
           >
             ← t2000.ai
           </Link>
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           </p>
         </header>
 
-        <div className="prose prose-invert prose-sm max-w-none space-y-8 text-muted leading-relaxed font-mono text-[13px]">
+        <div className="prose prose-invert prose-sm max-w-none space-y-8 text-muted leading-relaxed text-[13.5px]">
           <section>
             <h2 className="text-foreground text-lg font-serif italic mb-3">
               Overview

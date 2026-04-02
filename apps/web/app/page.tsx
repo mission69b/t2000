@@ -127,40 +127,34 @@ export default function Home() {
     <>
       {/* ── Header ── */}
       <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background">
-        <div className="font-mono font-semibold text-base sm:text-lg text-accent tracking-tight flex items-center gap-2">
+        <div className="font-mono text-sm sm:text-base text-accent tracking-[0.08em] flex items-center gap-2">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
           t2000
         </div>
         <nav className="flex items-center gap-4 sm:gap-8">
-          <Link
-            href="/docs"
-            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+          <a
+            href="https://audric.ai/docs"
+            className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition-colors min-h-[36px] flex items-center"
           >
             Docs
-          </Link>
-          <Link
-            href="/mpp"
-            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+          </a>
+          <a
+            href="https://mpp.t2000.ai"
+            className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition-colors min-h-[36px] flex items-center"
           >
-            MPP
-          </Link>
-          <Link
-            href="/stats"
-            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
-          >
-            Stats
-          </Link>
+            Gateway
+          </a>
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden md:inline text-muted text-xs tracking-[0.08em] uppercase hover:text-foreground transition-colors"
+            className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-muted uppercase hover:text-foreground transition-colors min-h-[36px] flex items-center"
           >
             GitHub
           </a>
           <a
             href="#install"
-            className="px-4 sm:px-5 py-2 border border-accent text-accent text-[11px] sm:text-xs tracking-[0.1em] uppercase transition-all hover:bg-accent-dim hover:shadow-[0_0_20px_var(--accent-glow)]"
+            className="px-4 sm:px-5 py-2 min-h-[36px] flex items-center bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
           >
             Install
           </a>
@@ -185,23 +179,23 @@ export default function Home() {
               behind <em className="italic text-accent">Audric.</em>
             </h1>
 
-            <p className="font-mono text-[12px] sm:text-[13px] text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[440px] mt-4 sm:mt-5">
+            <p className="text-sm text-muted leading-[1.7] mb-8 sm:mb-12 max-w-[440px] mt-4 sm:mt-5">
               CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway. Open source. Non-custodial. Built on Sui.
             </p>
 
             <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
               <a
                 href="#install"
-                className="px-5 sm:px-7 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 min-h-[40px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
               >
                 Get started
               </a>
-              <Link
-                href="/docs"
-                className="px-5 sm:px-7 py-3 sm:py-3.5 bg-transparent text-muted font-mono text-[11px] sm:text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              <a
+                href="https://audric.ai/docs"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 min-h-[40px] text-muted font-mono text-[10px] tracking-[0.12em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
               >
                 Documentation
-              </Link>
+              </a>
             </div>
 
             <a
@@ -232,7 +226,7 @@ export default function Home() {
                 One <em className="italic text-accent">stack.</em>
               </h2>
             </div>
-            <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
+            <p className="text-sm text-muted leading-[1.7] max-w-[400px]">
               From terminal commands to full conversational finance — pick the integration level that fits.
             </p>
           </div>
@@ -254,7 +248,7 @@ export default function Home() {
                 <div className="text-[11px] text-accent tracking-[0.05em] mb-4 sm:mb-5">
                   {pkg.pkg}
                 </div>
-                <p className="text-xs text-muted leading-[1.7] mb-5 sm:mb-6">
+                <p className="text-[13px] text-muted leading-[1.7] mb-5 sm:mb-6">
                   {pkg.desc}
                 </p>
                 <div className="text-[11px] text-accent bg-accent-dim px-3 py-2 tracking-wide overflow-x-auto scrollbar-hide">
@@ -279,7 +273,7 @@ export default function Home() {
                 in 30 seconds.
               </h2>
             </div>
-            <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
+            <p className="text-sm text-muted leading-[1.7] max-w-[400px]">
               Install. Fund. Connect your AI. Walk away.
             </p>
           </div>
@@ -300,7 +294,7 @@ export default function Home() {
                       {step.badge}
                     </span>
                   </div>
-                  <div className="text-xs text-muted leading-[1.7]">
+                  <div className="text-[13px] text-muted leading-[1.7]">
                     {step.code && (
                       <>
                         <code className="text-accent text-xs">
@@ -337,7 +331,7 @@ export default function Home() {
                   <em className="italic text-accent">No API keys.</em>
                 </h2>
               </div>
-              <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[400px]">
+              <p className="text-sm text-muted leading-[1.7] max-w-[400px]">
                 Your agent calls MPP. MPP handles auth, billing, and routing.
                 From $0.001 per request.
               </p>
@@ -419,7 +413,7 @@ export default function Home() {
                 href="https://mpp.t2000.ai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 sm:px-8 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 min-h-[40px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
               >
                 Explore all services
               </a>
@@ -444,7 +438,7 @@ export default function Home() {
                 Any AI that speaks{" "}
                 <em className="italic text-accent">MCP.</em>
               </h2>
-              <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[480px] mx-auto">
+              <p className="text-sm text-muted leading-[1.7] max-w-[480px] mx-auto">
                 Every AI platform that supports MCP gets t2000 for free.
                 No adapters. No plugins. No code changes.
               </p>
@@ -528,13 +522,13 @@ export default function Home() {
             <h2 className="font-serif text-[28px] sm:text-[clamp(28px,3.5vw,42px)] font-normal leading-[1.1] text-foreground mb-5">
               Meet <em className="italic text-accent">Audric.</em>
             </h2>
-            <p className="text-muted text-[12px] sm:text-[13px] leading-[1.8] max-w-[460px] mx-auto mb-8">
+            <p className="text-sm text-muted leading-[1.7] max-w-[460px] mx-auto mb-8">
               Banking by conversation. Sign in with email, talk to your money, earn yield.
               No seed phrase, no gas fees, no crypto jargon. Powered by t2000 infrastructure.
             </p>
             <a
               href={AUDRIC_URL}
-              className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-accent text-background font-mono text-[11px] sm:text-xs font-semibold tracking-[0.1em] uppercase transition-all hover:bg-[#00f0a0] hover:shadow-[0_0_40px_var(--accent-glow)] hover:-translate-y-px"
+              className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 min-h-[40px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
             >
               audric.ai &#8594;
             </a>
@@ -556,7 +550,7 @@ export default function Home() {
               Start{" "}
               <em className="italic text-accent">building.</em>
             </h2>
-            <p className="text-muted text-[12px] sm:text-[13px] max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.8]">
+            <p className="text-sm text-muted max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.7]">
               Open source. Non-custodial. MIT licensed. Built on Sui.
             </p>
 
@@ -569,16 +563,16 @@ export default function Home() {
                 href={GITHUB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+                className="px-5 sm:px-7 py-3 min-h-[40px] text-muted font-mono text-[10px] tracking-[0.12em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
               >
                 GitHub
               </a>
-              <Link
-                href="/docs"
-                className="px-5 sm:px-7 py-3.5 sm:py-4 bg-transparent text-muted font-mono text-xs tracking-[0.1em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
+              <a
+                href="https://audric.ai/docs"
+                className="px-5 sm:px-7 py-3 min-h-[40px] text-muted font-mono text-[10px] tracking-[0.12em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground"
               >
                 Docs
-              </Link>
+              </a>
             </div>
 
             <div className="text-[10px] sm:text-[11px] text-dim tracking-wide mt-6">
@@ -589,84 +583,20 @@ export default function Home() {
 
         {/* ── Footer ── */}
         <footer className="relative z-1 px-6 sm:px-8 lg:px-20 py-6 sm:py-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div className="text-xs text-dim">t2000 · The infrastructure behind Audric</div>
-          <div className="flex gap-4 sm:gap-6 flex-wrap justify-center">
-            <Link href="/docs" className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors">
-              Docs
-            </Link>
-            <Link href="/mpp" className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors">
-              MPP
-            </Link>
-            <a
-              href="https://mpp.t2000.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-            >
-              Services
-            </a>
-            <Link href="/stats" className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors">
-              Stats
-            </Link>
-            <Link href="/security" className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors">
-              Security
-            </Link>
-            <Link href="/terms" className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors">
-              Terms
-            </Link>
-            <Link href="/privacy" className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors">
-              Privacy
-            </Link>
-            <Link href="/disclaimer" className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors">
-              Disclaimer
-            </Link>
-            <a
-              href="https://www.npmjs.com/package/@t2000/cli"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-            >
-              npm
-            </a>
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-            >
-              GitHub
-            </a>
-            <a
-              href={TWITTER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-            >
-              X
-            </a>
-            <a
-              href={DISCORD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-            >
-              Discord
-            </a>
-            <a
-              href="https://suimpp.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-dim tracking-wide hover:text-muted transition-colors"
-            >
-              suimpp
-            </a>
-            <a
-              href={AUDRIC_URL}
-              className="text-[11px] text-accent tracking-wide hover:text-foreground transition-colors"
-            >
-              Audric
-            </a>
+          <div className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase">
+            t2000 · The infrastructure behind Audric
           </div>
+          <nav className="flex gap-4 sm:gap-5 flex-wrap justify-center">
+            <a href="https://mpp.t2000.ai" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">Gateway</a>
+            <a href="https://www.npmjs.com/package/@t2000/cli" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">npm</a>
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">GitHub</a>
+            <a href={TWITTER_URL} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">X</a>
+            <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">Discord</a>
+            <a href="https://suimpp.dev" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">suimpp</a>
+            <a href={AUDRIC_URL} className="font-mono text-[10px] tracking-[0.1em] text-accent uppercase hover:text-foreground transition-colors">Audric</a>
+            <Link href="/terms" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">Terms</Link>
+            <Link href="/privacy" className="font-mono text-[10px] tracking-[0.1em] text-dim uppercase hover:text-muted transition-colors">Privacy</Link>
+          </nav>
         </footer>
       </div>
     </>
