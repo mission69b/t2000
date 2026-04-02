@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function DocsPage() {
-  redirect('https://audric.ai/docs');
+  redirect('https://github.com/mission69b/t2000#readme');
 }
