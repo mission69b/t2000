@@ -370,6 +370,13 @@ export class QueryEngine {
       }
 
       case 'tool_use_done': {
+        // Flush accumulated text BEFORE the tool_use block to preserve
+        // the original LLM output ordering (text → tool_use). Anthropic
+        // rejects assistant messages where text follows tool_use blocks.
+        if (acc.text) {
+          acc.assistantBlocks.push({ type: 'text', text: acc.text });
+          acc.text = '';
+        }
         acc.assistantBlocks.push({
           type: 'tool_use',
           id: event.id,
