@@ -14,12 +14,12 @@
 │  docs, ecosystem discovery                      │
 ├─────────────────────────────────────────────────┤
 │  Layer 2: mpp.t2000.ai                          │
-│  The service layer — 40 services, 88 endpoints, │
+│  The service layer — 41 services, 90+ endpoints,│
 │  pay-per-use APIs with Sui USDC                 │
 ├─────────────────────────────────────────────────┤
 │  Layer 1: t2000.ai                              │
-│  The product — Agent Banking Stack, CLI, SDK,   │
-│  MCP tools, DeFi, wallet                        │
+│  The infrastructure — CLI, SDK, MCP, Engine,    │
+│  Gateway, contracts (powers Audric)             │
 └─────────────────────────────────────────────────┘
          ▲               ▲               ▲
          │               │               │
@@ -28,36 +28,36 @@
 
 | Layer | Domain | What it is | Audience | Status |
 |-------|--------|-----------|----------|--------|
-| **1. Product** | `t2000.ai` | Agent Banking Stack — the full financial OS | End users, developers using t2000 | ✅ Live |
-| **2. Service** | `mpp.t2000.ai` | MPP Gateway — pay-per-use APIs with Sui USDC | AI agents, MCP clients | ✅ Live |
+| **1. Infrastructure** | `t2000.ai` | CLI, SDK, MCP, Engine, Gateway — the infra behind Audric | Developers, integrators | ✅ Live |
+| **2. Service** | `mpp.t2000.ai` | MPP Gateway — 41 services, 90+ endpoints, pay-per-use APIs with Sui USDC | AI agents, MCP clients | ✅ Live |
 | **3. Standard** | `suimpp.dev` | Sui MPP Standard — the open protocol | Ecosystem builders, Mysten, other gateways | 🔶 Planned |
 
 Same pattern as: **Stripe** (Dashboard → API → Connect), **Ethereum** (MetaMask → Uniswap → ERC-20), **AWS** (Console → S3 → CloudFormation).
 
 ---
 
-## Layer 1: t2000.ai — The Product ✅ Live
+## Layer 1: t2000.ai — The Infrastructure ✅ Live
 
-Not a wallet — a bank account. Agents save, borrow, invest, pay, and earn yield.
+The engine behind Audric. CLI, SDK, MCP, engine, gateway — five packages for agentic finance.
 
 | Component | What | Count |
 |-----------|------|-------|
-| SDK | `@t2000/sdk` — TypeScript, full DeFi + payments | 1 package |
-| CLI | `@t2000/cli` — 30+ commands, `--json` output, `t2000 serve` | 1 package |
-| MCP | `@t2000/mcp` — 35 tools, 20 prompts, 6 resources | 1 package |
-| Adapters | NAVI, Suilend, Cetus — auto-routing, rate comparison | 3 protocols |
+| SDK | `@t2000/sdk` — TypeScript, wallet management, transactions, NAVI adapter | 1 package |
+| CLI | `@t2000/cli` — terminal-first agent banking | 1 package |
+| MCP | `@t2000/mcp` — 25 tools, 16 prompts | 1 package |
+| Engine | `@t2000/engine` — QueryEngine, financial tools, MCP client/server | 1 package |
+| Adapters | NAVI (MCP reads + thin tx builders for writes) | 1 protocol |
 | Contracts | Fee collection, treasury, governance (timelocked) | Sui mainnet |
 | Server | Sponsor API, gas station, fee ledger | ECS Fargate |
-| Indexer | Checkpoint-based, yield snapshotter, crash-safe | ECS Fargate |
-| Website | Docs, demos, stats, live dashboard | Vercel |
+| Website | Developer hub, infra landing page, stats | Vercel |
 
-**Capabilities:** save, withdraw, borrow, repay, swap, invest, rebalance, sentinel, contacts, pay.
+**Capabilities:** save, withdraw, borrow, repay, send, pay, claim rewards, balance check, health monitor.
 
 ---
 
 ## Layer 2: mpp.t2000.ai — The Service Layer ✅ Live
 
-The gateway where AI agents spend USDC on real APIs. 40 services, 88 endpoints, 10 categories.
+The gateway where AI agents spend USDC on real APIs. 41 services, 90+ endpoints, 9 categories.
 
 | Category | Services | Endpoints |
 |----------|----------|-----------|
@@ -128,14 +128,15 @@ suimpp.dev must feel different from t2000.ai and mpp.t2000.ai. It's a protocol s
 
 | Property | t2000.ai | mpp.t2000.ai | suimpp.dev |
 |----------|----------|--------------|------------|
-| Vibe | Product / hacker | Service catalog | Protocol / spec |
-| Background | `#040406` (near-black) | `#040406` (near-black) | `#0a0e1a` (deep navy) |
+| Vibe | Infra / developer | Service catalog | Protocol / spec |
+| Background | `#000000` (N900 black) | `#000000` (N900 black) | `#0a0e1a` (deep navy) |
 | Accent | `#00d68f` (green) | `#00d68f` (green) | `#60a5fa` (sky blue) |
 | Hover | — | — | `#818cf8` (indigo) |
-| Font body | IBM Plex Mono | IBM Plex Mono | Geist Sans |
-| Font code | IBM Plex Mono | IBM Plex Mono | Geist Mono |
-| Feel | Terminal | Service directory | Developer docs |
-| Tone | "Your AI's bank" | "Browse & pay" | "The open standard" |
+| Font body | Geist Sans | Geist Sans | Geist Sans |
+| Font headings | Instrument Serif | Instrument Serif | — |
+| Font code/labels | Geist Mono | Geist Mono | Geist Mono |
+| Feel | Agentic DS dark | Agentic DS dark | Developer docs |
+| Tone | "The engine behind Audric" | "Browse & pay" | "The open standard" |
 
 ### Colors
 

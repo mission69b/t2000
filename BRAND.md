@@ -58,7 +58,7 @@ Products are how we organize and sell capabilities. Inside the app, it is still 
 | Product | Tagline | Description | Integration | Status |
 |---------|---------|-------------|-------------|--------|
 | **Savings** | Earn yield on USDC | Deposit USDC, earn ~2–8% APY via NAVI. Auto-compounding. | NAVI MCP (reads) + thin tx builders (writes) | Live |
-| **Pay** | Access APIs with micropayments | Pay for 88+ APIs (AI, search, commerce) with USDC. No API keys. | MPP / t2000 gateway | Live |
+| **Pay** | Access APIs with micropayments | Pay for 40+ API services (AI, search, commerce) with USDC. No API keys. | MPP / t2000 gateway | Live |
 | **Send** | USDC transfers, instantly | Send to contacts, any Sui address. Cross-border, no fees beyond gas. | Direct Sui transactions | Live |
 | **Credit** | Borrow against your balance | Collateralized borrowing via NAVI. Manage debt with chat. | NAVI MCP (reads) + thin tx builders (writes) | Live |
 | **Receive** | Accept payments anywhere | QR codes, payment links, invoices, merchant receive. | Direct Sui transactions | Planned |
@@ -404,8 +404,8 @@ Like Anthropic > Claude, Square > Cash App, or OpenAI > ChatGPT — the infrastr
 | GitHub repo | mission69b/t2000 | **mission69b/t2000** (no change) |
 | Gateway | mpp.t2000.ai | **mpp.t2000.ai** (no change) |
 | Protocol hub | suimpp.dev | **suimpp.dev** (no change) |
-| Docs (consumer) | t2000.ai/docs | **Audric.ai/docs** |
-| Docs (developer) | t2000.ai/docs (same page) | **Audric.ai/docs** (references @t2000/* packages) |
+| Docs (consumer) | t2000.ai/docs | **Audric.ai/docs** (planned) |
+| Docs (developer) | t2000.ai/docs (same page) | **t2000.ai/docs** (developer hub — package cards, install commands, links to GitHub/npm) |
 | X account | @t2000ai | Keep for infra/dev audience, create **@Audric** for consumer |
 | npm org | @t2000 | **@t2000** (no change) |
 
@@ -517,14 +517,14 @@ Design system: Agentic UI (white, black, New York + Geist + Departure Mono).
 
 | Property | Domain | Purpose | Change |
 |----------|--------|---------|--------|
-| **Developer site** | t2000.ai | Infra landing, "the engine behind Audric" | Reskin (Phase 3) |
-| **Gateway** | mpp.t2000.ai | MPP API gateway (40 services, 88 endpoints) | Reskin (Phase 3) |
+| **Developer site** | t2000.ai | Infra landing, "the engine behind Audric" + developer hub /docs | ✅ Reskinned (Agentic DS dark) |
+| **Gateway** | mpp.t2000.ai | MPP API gateway (41 services, 90+ endpoints) | ✅ Reskinned (Agentic DS dark) |
 | **CLI** | npm: @t2000/cli | Developer CLI | No change |
 | **SDK** | npm: @t2000/sdk | TypeScript SDK | No change |
 | **MCP** | npm: @t2000/mcp | AI agent tools | No change |
 | **GitHub** | mission69b/t2000 | Monorepo | No change |
 
-Design system: Can adopt a lighter version of Agentic UI, or stay distinct. Lower priority.
+Design system: Agentic UI dark theme — Geist Sans (body), Geist Mono (labels/code), Instrument Serif (headings). N900 background, N800 surfaces, #00D68F accent.
 
 ### Protocol brand: suimpp
 
@@ -564,14 +564,17 @@ Audric.ai
 └── /disclaimer          Legal
 ```
 
-### t2000.ai — Developer/infra site (simplified)
+### t2000.ai — Developer/infra site (simplified) ✅ DONE
 
 ```
 t2000.ai
-├── /                    "The engine behind Audric" — infra overview
-├── /docs                Developer docs (or redirect to Audric.ai/docs)
-├── /gateway             MPP gateway info
-└──                      Links to: Audric.ai (product), suimpp.dev (protocol)
+├── /                    "The engine behind Audric" — hero, product showcase, 5 packages, gateway marquee, MCP integrations, install CTA
+├── /docs                Developer hub — quick start, 5 package cards (install + GitHub + npm), resources grid
+├── /terms               Legal
+├── /privacy             Legal
+├── /disclaimer          Legal
+└──                      Header: Docs · GitHub · Gateway · [Try Audric →]
+                         Links to: audric.ai (product), mpp.t2000.ai (gateway), suimpp.dev (protocol), GitHub
 ```
 
 ### Navigation (Audric.ai)
@@ -612,31 +615,36 @@ Products dropdown:
 - [x] Update lockfile, CI green
 - [x] Write BRAND.md, CLAUDE_CODE_LEVERAGE.md, rewrite CLAUDE.md + .claude/rules
 
-### Phase 1: Consumer website (Audric.ai)
+### Phase 1: Consumer website (Audric.ai) — COMPLETE
 
-- [ ] Extract design tokens from Agentic UI kit into Tailwind config
-- [ ] Build homepage — hero, product grid, trust, CTA
-- [ ] Build product pages (start with Savings, Pay, Send)
-- [ ] Build docs shell (can redirect to existing t2000.ai/docs initially)
-- [ ] Set up Audric.ai domain + Vercel
-- [ ] Go live with consumer site
+- [x] Extract design tokens from Agentic UI kit into Tailwind config
+- [x] Build homepage — app-first conversational UI (ChatShell)
+- [x] Build product pages (/savings, /pay, /send, /credit)
+- [x] Dynamic product stats (rates from protocol registry, API counts from gateway)
+- [x] Set up audric.ai domain + Vercel
+- [x] Go live with consumer site
 
-### Phase 2: Consumer app
+### Phase 2: Consumer app — COMPLETE
 
-- [ ] Reskin app with Agentic UI (light mode, new tokens)
-- [ ] Move app.t2000.ai → Audric.ai (or app.Audric.ai)
-- [ ] Update all in-app copy from "t2000" to "Audric"
-- [ ] Keep @t2000/* package references in developer-facing contexts
+- [x] Reskin app with Agentic UI (light mode, new tokens)
+- [x] Engine-powered chat (QueryEngine + SSE streaming + confirmation flow)
+- [x] Settings panel reskin (Agentic DS — mono labels, DS buttons, session management)
+- [x] Update all in-app copy from "t2000" to "Audric"
+- [x] Keep @t2000/* package references in developer-facing contexts
 
-### Phase 3: Developer properties
+### Phase 3: Developer properties — COMPLETE
 
-- [ ] Simplify t2000.ai to "infra landing page" pointing to Audric.ai + suimpp.dev
-- [ ] Optionally reskin gateway UI (mpp.t2000.ai)
-- [ ] Reskin t2000.ai/docs or redirect to Audric.ai/docs
+- [x] Simplify t2000.ai to infra landing page ("The engine behind Audric")
+- [x] Reskin t2000.ai with Agentic DS dark theme (Geist fonts, neutral scale, accent)
+- [x] Reskin gateway UI (mpp.t2000.ai) with Agentic DS dark theme
+- [x] t2000.ai/docs → developer hub (5 package cards, quick start, resources)
+- [x] Gateway /docs and /spec → external links to suimpp.dev
+- [x] Header: Docs · GitHub · Gateway · [Try Audric →]
+- [x] Homepage flow: Hero → Product showcase → Stack → Gateway → Integrations → Get started
 
-### Phase 4: Cleanup
+### Phase 4: Cleanup — IN PROGRESS
 
-- [ ] Set up domain redirects (old → new)
-- [ ] Update README, ARCHITECTURE.md, PRODUCT_FACTS.md
-- [ ] Update suimpp.dev references if needed
+- [x] Update README, ARCHITECTURE.md, PRODUCT_FACTS.md
+- [x] Update suimpp.dev references (@mppsui → @suimpp)
+- [ ] Set up domain redirects (app.t2000.ai → audric.ai)
 - [ ] Social announcement (new brand launch)
