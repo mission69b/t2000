@@ -219,6 +219,18 @@ export class QueryEngine {
       try {
         this.messages = validateHistory(this.messages);
 
+        if (process.env.NODE_ENV !== 'test') {
+          const summary = this.messages.map((m, idx) => {
+            const blocks = m.content.map((b) => {
+              if (b.type === 'text') return `text(${b.text.slice(0, 40)}…)`;
+              if (b.type === 'tool_use') return `tool_use:${b.id.slice(-8)}/${b.name}`;
+              return `tool_result:${(b as { toolUseId: string }).toolUseId.slice(-8)}`;
+            });
+            return `  [${idx}] ${m.role}: [${blocks.join(', ')}]`;
+          });
+          console.log(`[engine] provider.chat turn=${turns} msgs=${this.messages.length}\n${summary.join('\n')}`);
+        }
+
         const stream = this.provider.chat({
           messages: this.messages,
           systemPrompt: this.systemPrompt,
