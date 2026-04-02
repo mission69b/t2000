@@ -60,7 +60,7 @@ The following are in scope:
 ### Engine Security Model (`@t2000/engine`)
 
 - **Permission tiers** — Tools are classified as `auto` (read-only, no approval), `confirm` (requires user approval before execution), or `explicit` (manual-only, never auto-dispatched by LLM)
-- **Confirmation flow** — Write tools yield `permission_request` events; execution blocks until the client calls `resolve(true/false)`. `AbortSignal` prevents deadlocks if the client disconnects.
+- **Delegated execution** — Write tools yield `pending_action` events; the client executes the transaction on-chain and resumes the engine via `resumeWithToolResult`. Session state is persisted so the flow is stateless and serverless-friendly.
 - **Transaction serialization** — `TxMutex` ensures write tools execute sequentially, preventing Sui object version conflicts from concurrent mutations
 - **Budget limits** — `CostTracker` enforces configurable `budgetLimitUsd`; engine stops when the threshold is reached
 - **Max turns** — `QueryEngine` enforces `maxTurns` to prevent runaway LLM loops

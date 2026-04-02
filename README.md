@@ -242,7 +242,6 @@ t2000/
 │   └── contracts/        Move smart contracts (mpp-sui)
 │
 ├── apps/
-│   ├── web-app/          Audric consumer app (audric.ai) — zkLogin, engine chat
 │   ├── web/              t2000.ai — developer/infra landing page + docs
 │   ├── gateway/          MPP Gateway — proxied AI APIs (mpp.t2000.ai)
 │   └── server/           Gas station + checkpoint indexer (api.t2000.ai)

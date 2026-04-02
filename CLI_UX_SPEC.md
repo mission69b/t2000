@@ -110,40 +110,6 @@ Over-borrow warning (before action):
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
-### `t2000 rebalance`
-
-```
-  Rebalance Plan
-  ─────────────────────────────────────────────────────
-  From:  USDC on NAVI Protocol (4.94% APY)
-  To:  suiUSDT on NAVI Protocol (5.47% APY)
-  Amount:  $19.98
-
-  Economics
-  ─────────────────────────────────────────────────────
-  APY Gain:  +0.53%
-  Annual Gain:  $0.11/year
-  Conversion cost:  ~$0.00
-  Break-even:  6 days
-
-  Steps
-  ─────────────────────────────────────────────────────
-    1. Withdraw $19.98 USDC from navi
-    2. Convert USDC → suiUSDT (~$19.98)
-    3. Deposit $19.98 suiUSDT into navi
-
-  ✓ Rebalanced $19.98 → 5.47% APY
-  Tx:  https://suiscan.xyz/mainnet/tx/...
-  Gas:  0.0106 SUI
-```
-
-Already optimized:
-```
-  Already optimized — 4.94% APY on NAVI Protocol
-    Best available: 5.10% (suiUSDT on NAVI)
-    Difference: 0.16% (below 0.5% threshold)
-```
-
 ### `t2000 positions`
 
 ```
@@ -369,10 +335,10 @@ Starts stdio server (used by AI platforms, not run directly by users).
 
 ### Claim Rewards
 
-`t2000 claim-rewards` — claims protocol incentive rewards from all lending protocols and auto-converts to USDC.
+`t2000 claim-rewards` — claims pending protocol incentive rewards from all lending protocols.
 
 ```
-  ✓ Claimed and converted rewards to USDC
+  ✓ Claimed rewards
   ──────────────────────────────────────
   Received:  $0.12 USDC
   Source:  navi

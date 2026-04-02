@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-02-19
+> Last verified: 2026-04-02
 
 ---
 
@@ -15,7 +15,7 @@
 | Package | Version |
 |---------|---------|
 | `@t2000/sdk` | `0.19.0` |
-| `@t2000/engine` | `0.1.0` |
+| `@t2000/engine` | `0.4.5` |
 | `@t2000/cli` | `0.21.0` |
 | `@suimpp/mpp` | `0.1.0` |
 | `@t2000/mcp` | `0.21.0` |
@@ -29,8 +29,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 13 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-rebalance`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-engine`, `audric-chat` |
+| Skill count | 11 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-engine` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -57,24 +57,14 @@ Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same
 
 ### Programmable Transaction Blocks (PTBs)
 
-All multi-step operations use single atomic PTBs. This means withdraw+deposit (rebalance), save with auto-convert, and repay with auto-convert all execute in one on-chain transaction. If any step fails, the entire transaction reverts — no funds left in intermediate states.
+All multi-step operations use single atomic PTBs. If any step fails, the entire transaction reverts — no funds left in intermediate states.
 
 | Operation | PTB Composition |
 |-----------|----------------|
-| Save (with non-USDC wallet stables) | Merge wallet stables → convert to USDC → collect fee → deposit — single PTB |
-| Withdraw (non-USDC position) | Withdraw from protocol → convert to USDC → transfer — single PTB |
-| Repay (non-USDC debt) | Split USDC → convert to borrowed asset → repay — single PTB |
-| Rebalance | Withdraw from source → convert (if cross-asset) → deposit to target — single PTB |
-| Withdraw all | Withdraw all positions → convert non-USDC → merge → transfer — single PTB |
-
-### Auto-Convert (Save)
-
-`save all` or `save <amount>` when wallet USDC is insufficient automatically converts non-USDC stablecoins (suiUSDT, suiUSDe, USDsui) to USDC within the same PTB before depositing.
-
-### Auto-Convert (Withdraw / Repay)
-
-- **Withdraw:** Non-USDC positions are automatically converted back to USDC within the same PTB.
-- **Repay:** When debt is in a non-USDC asset, USDC is automatically converted to the borrowed asset within the same PTB.
+| Save | Collect fee → deposit USDC — single PTB |
+| Withdraw | Withdraw USDC from protocol → transfer — single PTB |
+| Repay | Split USDC → repay debt — single PTB |
+| Withdraw all | Withdraw all USDC positions → merge → transfer — single PTB |
 
 ### Dust Filtering
 
@@ -114,18 +104,11 @@ Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts
 ## Supported Assets
 
 User-facing commands are denominated in **USDC** — the user always thinks in USDC.
-Internally, save auto-converts non-USDC wallet stablecoins to USDC, withdraw
-auto-converts non-USDC positions back to USDC, and repay auto-converts USDC to the
-borrowed asset if debt is in a non-USDC stablecoin (from rebalance).
-Rebalance optimizes across all stablecoins internally.
 
-| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw | Rebalance |
-|--------|---------|----------|------|------|--------|----------|-----------|
-| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ (always returns USDC) | ✅ |
-| USDT | suiUSDT | 6 | — | — (via rebalance) | — | — | ✅ |
-| USDe | suiUSDe | 6 | — | — (via rebalance) | — | — | ✅ |
-| USDsui | USDsui | 6 | — | — (via rebalance) | — | — | ✅ |
-| SUI | SUI | 9 | ✅ (gas) | — | — | — | — |
+| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw |
+|--------|---------|----------|------|------|--------|----------|
+| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ |
+| SUI | SUI | 9 | ✅ (gas) | — | — | — |
 
 Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
@@ -140,10 +123,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
-| save | `t2000 save <amount>` | Deposits USDC (auto-converts non-USDC stables). Alias: `supply`. `amount` accepts `all`. |
-| withdraw | `t2000 withdraw <amount>` | Always returns USDC (auto-converts non-USDC positions). `amount` accepts `all` |
+| save | `t2000 save <amount>` | Deposits USDC. Alias: `supply`. `amount` accepts `all`. |
+| withdraw | `t2000 withdraw <amount>` | Withdraws USDC from savings. `amount` accepts `all` |
 | borrow | `t2000 borrow <amount>` | USDC only |
-| repay | `t2000 repay <amount>` | Pays with USDC (auto-converts to borrowed asset if non-USDC debt). `amount` accepts `all` |
+| repay | `t2000 repay <amount>` | Repays with USDC. `amount` accepts `all` |
 | pay | `t2000 pay <url>` | Options: `--method`, `--data`, `--header`, `--max-price`, `--timeout`, `--dry-run` |
 | history | `t2000 history` | Options: `--limit <n>` (default: 20) |
 | earnings | `t2000 earnings` | |
@@ -159,11 +142,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | export | `t2000 export` | Options: `--yes` to skip confirmation |
 | import | `t2000 import` | |
 | lock | `t2000 lock` | Clear saved session |
-| rebalance | `t2000 rebalance` | Options: `--dry-run`, `--min-diff <pct>`, `--max-break-even <days>`, `--yes` |
 | contacts | `t2000 contacts` | List saved contacts |
 | contacts add | `t2000 contacts add <name> <address>` | Save a named contact |
 | contacts remove | `t2000 contacts remove <name>` | Remove a contact |
-| claim-rewards | `t2000 claim-rewards` | Claim protocol rewards and auto-convert to USDC |
+| claim-rewards | `t2000 claim-rewards` | Claim pending protocol rewards |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -276,7 +258,6 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | `positions()` | — | `PositionsResult` |
 | `earnings()` | — | `EarningsResult` |
 | `fundStatus()` | — | `FundStatusResult` |
-| `rebalance()` | `{ dryRun?, minYieldDiff?, maxBreakEven? }` | `RebalanceResult` |
 
 ### Safeguards
 
@@ -366,23 +347,6 @@ interface RepayResult {
   remainingDebt: number; gasCost: number; gasMethod: GasMethod;
 }
 
-interface RebalanceStep {
-  action: 'withdraw' | 'deposit';
-  protocol?: string;
-  fromAsset?: string; toAsset?: string;
-  amount: number; estimatedOutput?: number;
-}
-
-interface RebalanceResult {
-  executed: boolean;
-  steps: RebalanceStep[];
-  fromProtocol: string; fromAsset: string;
-  toProtocol: string; toAsset: string;
-  amount: number; currentApy: number; newApy: number;
-  annualGain: number;
-  breakEvenDays: number;
-  txDigests: string[]; totalGasCost: number;
-}
 ```
 
 Source: `packages/sdk/src/types.ts`
@@ -545,7 +509,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.1.0` |
+| Version | `0.4.5` |
 | Description | Agent engine for conversational finance — powers Audric |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
@@ -557,6 +521,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Export | Type | Purpose |
 |--------|------|---------|
 | `QueryEngine` | class | Stateful conversation loop with tool dispatch |
+| `validateHistory` | function | Pre-flight message history validation |
 | `AnthropicProvider` | class | Streaming LLM provider (Anthropic Claude) |
 | `buildTool` | function | Typed tool factory with Zod + JSON schema |
 | `runTools` | function | Parallel reads / serial writes orchestration |
@@ -569,7 +534,6 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `buildMcpTools` | function | Convert engine tools → MCP descriptors |
 | `registerEngineTools` | function | Register engine tools on MCP server |
 | `serializeSSE` / `parseSSE` | function | SSE wire format |
-| `PermissionBridge` | class | Map SSE permission IDs to resolve callbacks |
 | `engineToSSE` | function | Adapt QueryEngine → SSE stream |
 | `estimateTokens` | function | Rough token estimation |
 | `compactMessages` | function | Context window compaction |
@@ -590,14 +554,14 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 
 ### Engine Event Types
 
-`text_delta`, `tool_start`, `tool_result`, `permission_request`, `turn_complete`, `usage`, `error`
+`text_delta`, `tool_start`, `tool_result`, `pending_action`, `turn_complete`, `usage`, `error`
 
 ### Engine Permission Levels
 
 | Level | Behavior |
 |-------|----------|
 | `auto` | Executes without user approval |
-| `confirm` | Yields `permission_request`, waits for `resolve(bool)` |
+| `confirm` | Yields `pending_action`, client executes and resumes via `resumeWithToolResult` |
 | `explicit` | Manual-only — not dispatched by LLM |
 
 ---

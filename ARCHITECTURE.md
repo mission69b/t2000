@@ -61,7 +61,7 @@
 | Package | npm | What it does |
 |---------|-----|-------------|
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
-| `@t2000/engine` | 0.1.0 | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
+| `@t2000/engine` | 0.4.5 | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
 | `@t2000/mcp` | Published | MCP server — 25 tools, 16 prompts, stdio transport |
 | `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
@@ -72,7 +72,7 @@
 
 | App | Hosting | Domain | What it does |
 |-----|---------|--------|-------------|
-| `apps/web-app` | Vercel | audric.ai | Audric consumer app — zkLogin, engine chat, conversational banking |
+| Audric | Vercel | audric.ai | Consumer product — zkLogin, engine chat, conversational banking (separate repo) |
 | `apps/web` | Vercel | t2000.ai | Infrastructure landing page + docs |
 | `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs |
 | `apps/server` | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger |
@@ -123,7 +123,7 @@ User types "What's my current balance?"
   ├── QueryEngine → AnthropicProvider → Claude with tool definitions
   ├── Tool calls (balance_check, savings_info, etc.) executed server-side
   │   └── MCP-first with SDK fallback for financial reads
-  ├── Permission requests → POST /api/engine/permission (user confirm/deny)
+  ├── Write tools → pending_action event → POST /api/engine/resume (delegated execution)
   ├── Streaming text_delta, tool_start, tool_result, usage events
   ├── Session persisted to Upstash KV
   └── Response rendered in streaming chat UI
@@ -806,7 +806,7 @@ Tools across three categories:
 | Category | Examples |
 |----------|---------|
 | Read | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services` |
-| Write | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_rebalance` |
+| Write | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_borrow`, `t2000_repay` |
 | Safety | `t2000_config`, `t2000_lock` |
 
 Prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, etc.
@@ -860,18 +860,19 @@ Tools are built with `buildTool()` which enforces:
 
 Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
 
-### Permission Flow
+### Delegated Execution Flow
 
-Write tools with `permissionLevel: 'confirm'` yield a `permission_request` event:
+Write tools with `permissionLevel: 'confirm'` yield a `pending_action` event:
 
 ```
-Engine yields permission_request(toolName, input, description, resolve)
+Engine yields pending_action(toolName, toolUseId, input, description, assistantContent)
     → Client displays confirmation UI
-    → Client calls resolve(true) or resolve(false)
-    → Tool executes or aborts
+    → Client executes the transaction on-chain
+    → Client calls POST /api/engine/resume with the execution result
+    → Engine reconstructs the full turn and continues the conversation
 ```
 
-`AbortSignal` prevents deadlocks if the client disconnects.
+This stateless flow is serverless-friendly — no long-lived SSE connections needed for write operations.
 
 ### MCP Integration
 
@@ -890,7 +891,7 @@ Engine yields permission_request(toolName, input, description, resolve)
 | `MemorySessionStore` | In-memory session store with TTL and data isolation |
 | `compactMessages` | Three-phase context window compaction (summarize → drop → truncate) |
 | `serializeSSE` / `parseSSE` | Wire-safe SSE event format for web transport |
-| `PermissionBridge` | Maps SSE permission IDs to resolve callbacks |
+| `validateHistory` | Pre-flight message history validation before every LLM call |
 | `engineToSSE` | Adapts QueryEngine generator to SSE stream |
 
 ### NAVI MCP Integration
@@ -1028,7 +1029,7 @@ Any write operation (send, save, pay, etc.)
 ```
 
 **Outbound ops** (guarded by daily limit): `send`, `pay`
-**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`, `rebalance`
+**Non-outbound ops** (no daily limit): `save`, `withdraw`, `borrow`, `repay`
 
 The daily budget resets automatically when the date changes.
 

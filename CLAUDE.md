@@ -21,7 +21,6 @@ t2000/
 ├── apps/gateway     ← MPP API gateway (mpp.t2000.ai, 40+ services, 88 endpoints)
 ├── apps/server      ← Backend API
 ├── apps/web         ← t2000.ai marketing website
-├── apps/web-app     ← Legacy consumer app (being replaced by audric.ai)
 ├── packages/cli     ← @t2000/cli (npm)
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/engine  ← @t2000/engine (agent engine — QueryEngine, tools, MCP)
@@ -120,7 +119,7 @@ import { buildTool, toolsToDefinitions, findTool } from '@t2000/engine';
 import { TxMutex, runTools } from '@t2000/engine';
 
 // Streaming + sessions
-import { serializeSSE, parseSSE, PermissionBridge, engineToSSE } from '@t2000/engine';
+import { serializeSSE, parseSSE, engineToSSE } from '@t2000/engine';
 import { MemorySessionStore } from '@t2000/engine';
 
 // Context + cost
@@ -140,7 +139,7 @@ type EngineEvent =
   | { type: 'text_delta'; text: string }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
-  | { type: 'permission_request'; toolName: string; toolUseId: string; input: unknown; description: string; resolve: (approved: boolean) => void }
+  | { type: 'pending_action'; action: PendingAction }
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
   | { type: 'error'; error: Error };
@@ -149,7 +148,7 @@ type EngineEvent =
 ### Tool permission levels
 
 - `auto` — read-only tools, execute without approval
-- `confirm` — write tools, yield `permission_request` before execution
+- `confirm` — write tools, yield `pending_action` for client-side execution
 - `explicit` — manual-only, never dispatched by LLM
 
 ### Built-in tools
@@ -206,7 +205,7 @@ import { MIST_PER_SUI, SUI_DECIMALS, isValidSuiAddress, normalizeSuiAddress } fr
 
 ---
 
-## Next.js (apps/web, apps/web-app)
+## Next.js (apps/web)
 
 - App Router: `layout.tsx` for shared UI, `loading.tsx` for Suspense, `error.tsx` for boundaries
 - Server Components by default, `'use client'` only when needed

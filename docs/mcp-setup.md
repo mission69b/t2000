@@ -83,8 +83,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay borrowed USDC |
-| `t2000_rebalance` | Optimize yield across protocols |
-| `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
+| `t2000_claim_rewards` | Claim protocol rewards |
 
 ### Safety
 
@@ -121,7 +120,7 @@ All support `dryRun: true` for previews without signing.
 
 | Prompt | Description |
 |--------|-------------|
-| `claim-rewards` | Check and claim pending protocol rewards — auto-converts to USDC |
+| `claim-rewards` | Check and claim pending protocol rewards |
 | `safeguards` | Review safety settings — per-tx limits, daily caps, emergency lock |
 
 ---

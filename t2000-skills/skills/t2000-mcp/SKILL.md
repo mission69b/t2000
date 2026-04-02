@@ -70,7 +70,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_withdraw` | Withdraw from savings |
 | `t2000_borrow` | Borrow against collateral |
 | `t2000_repay` | Repay debt |
-| `t2000_claim_rewards` | Claim protocol rewards and auto-convert to USDC |
+| `t2000_claim_rewards` | Claim pending protocol rewards |
 | `t2000_pay` | Pay for and call any MPP API service with USDC |
 | `t2000_contact_add` | Save a contact name → address |
 | `t2000_contact_remove` | Remove a saved contact |
@@ -94,7 +94,7 @@ All support `dryRun: true` for previews without signing.
 | `sweep` | Route idle funds to optimal earning positions |
 | `risk-check` | Health factor, concentration, liquidation risk |
 | `weekly-recap` | Week in review — activity, yield |
-| `claim-rewards` | Check and claim protocol rewards — auto-converts to USDC |
+| `claim-rewards` | Check and claim pending protocol rewards |
 | `safeguards` | Review safety settings — limits, lock, PIN-protected operations |
 | `onboarding` | New user setup — deposit, first save, explore features |
 | `emergency` | Lock account, assess damage, recovery guidance |

@@ -26,8 +26,8 @@ for await (const event of engine.submitMessage('What is my balance?')) {
     case 'tool_start':
       console.log(`\n[calling ${event.toolName}]`);
       break;
-    case 'permission_request':
-      event.resolve(true); // auto-approve (or prompt the user)
+    case 'pending_action':
+      // Write tool needs approval — client executes, then calls engine.resumeWithToolResult()
       break;
   }
 }
@@ -49,9 +49,9 @@ QueryEngine.submitMessage()
     │       ├── Read-only tools  → parallel (Promise.allSettled)
     │       └── Write tools      → serial (TxMutex)
     │
-    ├── Permission Flow
-    │       └── confirm-level tools yield permission_request
-    │           → client resolves → tool executes or aborts
+    ├── Delegated Execution
+    │       └── confirm-level tools yield pending_action
+    │           → client executes on-chain → resumeWithToolResult()
     │
     └── MCP Integration
             ├── MCP Client (McpClientManager) → consume external MCPs
@@ -65,7 +65,7 @@ QueryEngine.submitMessage()
 | `engine.ts` | `QueryEngine` | Stateful conversation loop with tool dispatch |
 | `tool.ts` | `buildTool` | Typed tool factory with Zod validation |
 | `orchestration.ts` | `runTools`, `TxMutex` | Parallel reads, serial writes |
-| `streaming.ts` | `serializeSSE`, `parseSSE`, `PermissionBridge`, `engineToSSE` | SSE wire format + permission bridging |
+| `streaming.ts` | `serializeSSE`, `parseSSE`, `engineToSSE` | SSE wire format |
 | `session.ts` | `MemorySessionStore` | In-memory session store with TTL |
 | `context.ts` | `estimateTokens`, `compactMessages` | Token estimation + message compaction |
 | `cost.ts` | `CostTracker` | Token usage + USD cost tracking with budget limits |
@@ -132,7 +132,7 @@ The `submitMessage()` async generator yields `EngineEvent`:
 | `text_delta` | `text` | LLM streams a text chunk |
 | `tool_start` | `toolName`, `toolUseId`, `input` | Tool execution begins |
 | `tool_result` | `toolName`, `toolUseId`, `result`, `isError` | Tool execution completes |
-| `permission_request` | `toolName`, `toolUseId`, `input`, `description`, `resolve` | Write tool awaiting approval |
+| `pending_action` | `action` (PendingAction) | Write tool awaiting client-side execution |
 | `turn_complete` | `stopReason` | Conversation turn finished |
 | `usage` | `inputTokens`, `outputTokens`, `cacheReadTokens?`, `cacheWriteTokens?` | Token usage report |
 | `error` | `error` | Unrecoverable error |

@@ -21,7 +21,7 @@ The consumer product (Audric) imports `@t2000/engine` and `@t2000/sdk` from npm.
 - Invest and Swap are REMOVED — do not re-add
 - Gateway is infrastructure behind Pay, not a consumer product
 
-## @t2000/engine (v0.1.0)
+## @t2000/engine (v0.4.5)
 
 Agent engine powering Audric — conversational finance on Sui.
 
@@ -45,7 +45,8 @@ Agent engine powering Audric — conversational finance on Sui.
 - `CostTracker`: token usage + USD cost with budget kill switch
 - `MemorySessionStore`: in-memory session store with TTL and `structuredClone` isolation
 - `compactMessages()`: three-phase context window compaction
-- `serializeSSE` / `parseSSE` / `PermissionBridge` / `engineToSSE`: SSE streaming + permission bridging
+- `serializeSSE` / `parseSSE` / `engineToSSE`: SSE streaming
+- `validateHistory()`: pre-flight message history validation before every LLM call
 
 ### Key patterns
 - Read tools use MCP-first strategy (NAVI MCP) with SDK fallback

@@ -58,7 +58,7 @@ const myTool = buildTool({
 | Level | Behavior | Use for |
 |-------|----------|---------|
 | `auto` | Executes immediately | Read-only queries |
-| `confirm` | Yields `permission_request`, waits for user approval | Financial writes |
+| `confirm` | Yields `pending_action`, client executes and resumes | Financial writes |
 | `explicit` | Never auto-dispatched by LLM | Dangerous operations |
 
 ## Event Types
@@ -69,7 +69,7 @@ for await (const event of engine.submitMessage(prompt)) {
     case 'text_delta':       // LLM text chunk
     case 'tool_start':       // Tool execution beginning
     case 'tool_result':      // Tool execution complete
-    case 'permission_request': // Write tool needs approval → call event.resolve(true/false)
+    case 'pending_action':     // Write tool needs approval → client executes, then resumes
     case 'turn_complete':    // Conversation turn finished
     case 'usage':            // Token usage report
     case 'error':            // Unrecoverable error
@@ -106,13 +106,12 @@ registerEngineTools(server, getDefaultTools());
 
 ## SSE Streaming (web apps)
 ```typescript
-import { engineToSSE, PermissionBridge } from '@t2000/engine';
+import { engineToSSE } from '@t2000/engine';
 
-const bridge = new PermissionBridge();
-for await (const chunk of engineToSSE(engine.submitMessage(prompt), bridge)) {
+for await (const chunk of engineToSSE(engine.submitMessage(prompt))) {
   // Send chunk to client via SSE
 }
-// Client sends permission response → bridge.resolve(permissionId, true)
+// Write tools yield pending_action → client executes on-chain → POST /api/engine/resume
 ```
 
 ## Built-in Tools (12)
@@ -146,7 +145,7 @@ import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
 // Tools
 import { buildTool, READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
 // Streaming
-import { serializeSSE, parseSSE, PermissionBridge, engineToSSE } from '@t2000/engine';
+import { serializeSSE, parseSSE, engineToSSE } from '@t2000/engine';
 // Sessions
 import { MemorySessionStore } from '@t2000/engine';
 // Cost

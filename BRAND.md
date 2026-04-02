@@ -16,7 +16,7 @@ The financial operating system for humans and agents.
 |--------|-------|
 | "A bank account for AI agents" | "Your money, handled." |
 | Developer tool with a consumer app | Consumer product with developer tools |
-| Five accounts | Six products |
+| Five accounts | Five products |
 | Terminal-first | App-first |
 | Dark hacker aesthetic | Clean, trustworthy, precise |
 
