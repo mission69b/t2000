@@ -125,6 +125,7 @@ export class QueryEngine {
       }
 
       if (signal.aborted) {
+        this.addErrorResults(acc.pendingToolCalls, 'Aborted');
         yield { type: 'error', error: new Error('Aborted') };
         return;
       }
@@ -172,6 +173,7 @@ export class QueryEngine {
             }),
           ]);
         } catch {
+          this.addErrorResults(acc.pendingToolCalls, 'Aborted');
           yield { type: 'error', error: new Error('Aborted') };
           return;
         }
@@ -236,7 +238,7 @@ export class QueryEngine {
   }
 
   loadMessages(messages: Message[]): void {
-    this.messages = [...messages];
+    this.messages = sanitizeMessages(messages);
   }
 
   getUsage(): CostSnapshot {
@@ -246,6 +248,18 @@ export class QueryEngine {
   // ---------------------------------------------------------------------------
   // Internal
   // ---------------------------------------------------------------------------
+
+  private addErrorResults(pendingCalls: PendingToolCall[], reason: string): void {
+    const errorBlocks: ContentBlock[] = pendingCalls.map((call) => ({
+      type: 'tool_result' as const,
+      toolUseId: call.id,
+      content: JSON.stringify({ error: reason }),
+      isError: true,
+    }));
+    if (errorBlocks.length > 0) {
+      this.messages.push({ role: 'user', content: errorBlocks });
+    }
+  }
 
   private *handleProviderEvent(
     event: ProviderEvent,
@@ -304,6 +318,40 @@ export class QueryEngine {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Ensure every tool_use in an assistant message has a matching tool_result
+ * in the next user message. Strips trailing orphaned messages to prevent
+ * Anthropic API 400 errors from corrupted session state.
+ */
+function sanitizeMessages(messages: Message[]): Message[] {
+  const result: Message[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    const toolUseIds = msg.content
+      .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
+      .map((b) => b.id);
+
+    if (toolUseIds.length > 0) {
+      const next = messages[i + 1];
+      const toolResultIds = new Set(
+        (next?.content ?? [])
+          .filter((b): b is { type: 'tool_result'; toolUseId: string; content: string } => b.type === 'tool_result')
+          .map((b) => b.toolUseId),
+      );
+
+      const allMatched = toolUseIds.every((id) => toolResultIds.has(id));
+      if (!allMatched) {
+        break;
+      }
+    }
+
+    result.push(msg);
+  }
+
+  return result;
+}
 
 function describeAction(tool: Tool, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
