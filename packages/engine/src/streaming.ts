@@ -1,4 +1,4 @@
-import type { EngineEvent, StopReason } from './types.js';
+import type { EngineEvent, PermissionResponse, StopReason } from './types.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
@@ -46,14 +46,14 @@ export function parseSSE(raw: string): SSEEvent | null {
 // ---------------------------------------------------------------------------
 
 export class PermissionBridge {
-  private pending = new Map<string, (approved: boolean) => void>();
+  private pending = new Map<string, (response: PermissionResponse) => void>();
   private counter = 0;
 
   /**
    * Register a permission_request resolve callback.
    * Returns the permissionId to send to the client.
    */
-  register(resolve: (approved: boolean) => void): string {
+  register(resolve: (response: PermissionResponse) => void): string {
     const id = `perm_${++this.counter}_${Date.now()}`;
     this.pending.set(id, resolve);
     return id;
@@ -61,12 +61,13 @@ export class PermissionBridge {
 
   /**
    * Resolve a pending permission request from the client.
-   * Returns false if the permissionId is unknown (expired or invalid).
+   * Pass `executionResult` when the client executed the action itself
+   * (e.g., signed a transaction) so the engine can skip server-side execution.
    */
-  resolve(permissionId: string, approved: boolean): boolean {
+  resolve(permissionId: string, approved: boolean, executionResult?: unknown): boolean {
     const resolver = this.pending.get(permissionId);
     if (!resolver) return false;
-    resolver(approved);
+    resolver({ approved, executionResult });
     this.pending.delete(permissionId);
     return true;
   }
@@ -79,7 +80,7 @@ export class PermissionBridge {
   /** Reject all pending permissions (e.g., on disconnect). */
   rejectAll(): void {
     for (const resolver of this.pending.values()) {
-      resolver(false);
+      resolver({ approved: false });
     }
     this.pending.clear();
   }

@@ -14,6 +14,7 @@ export type {
   ToolJsonSchema,
   ToolDefinition,
   PermissionLevel,
+  PermissionResponse,
   LLMProvider,
   ChatParams,
   ProviderEvent,

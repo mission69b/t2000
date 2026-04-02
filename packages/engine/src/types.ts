@@ -39,7 +39,7 @@ export type EngineEvent =
       toolUseId: string;
       input: unknown;
       description: string;
-      resolve: (approved: boolean) => void;
+      resolve: (response: PermissionResponse) => void;
     }
   | { type: 'turn_complete'; stopReason: StopReason }
   | {
@@ -52,6 +52,18 @@ export type EngineEvent =
   | { type: 'error'; error: Error };
 
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
+
+/**
+ * Response from the client when resolving a permission request.
+ * - `approved: false` → tool is declined, LLM is told "user declined"
+ * - `approved: true` without `executionResult` → engine executes the tool server-side
+ * - `approved: true` with `executionResult` → engine skips server-side execution
+ *   and uses the client-provided result (for client-side tx signing flows)
+ */
+export interface PermissionResponse {
+  approved: boolean;
+  executionResult?: unknown;
+}
 
 // ---------------------------------------------------------------------------
 // Tool types

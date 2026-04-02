@@ -5,6 +5,7 @@ import type {
   ContentBlock,
   Tool,
   ToolContext,
+  PermissionResponse,
   ProviderEvent,
   StopReason,
 } from './types.js';
@@ -152,8 +153,8 @@ export class QueryEngine {
         // then await the promise. The consumer calls resolve() in their loop body
         // before the generator advances to the await.
         // Race with abort signal to prevent deadlock if resolve is never called.
-        let resolvePermission!: (v: boolean) => void;
-        const permissionPromise = new Promise<boolean>((r) => {
+        let resolvePermission!: (v: PermissionResponse) => void;
+        const permissionPromise = new Promise<PermissionResponse>((r) => {
           resolvePermission = r;
         });
 
@@ -166,9 +167,9 @@ export class QueryEngine {
           resolve: resolvePermission,
         };
 
-        let userApproved: boolean;
+        let response: PermissionResponse;
         try {
-          userApproved = await Promise.race([
+          response = await Promise.race([
             permissionPromise,
             new Promise<never>((_, reject) => {
               if (signal.aborted) reject(new Error('Aborted'));
@@ -181,10 +182,7 @@ export class QueryEngine {
           return;
         }
 
-        if (userApproved) {
-          approved.push(call);
-          yield { type: 'tool_start', toolName: call.name, toolUseId: call.id, input: call.input };
-        } else {
+        if (!response.approved) {
           toolResultBlocks.push({
             type: 'tool_result',
             toolUseId: call.id,
@@ -198,10 +196,37 @@ export class QueryEngine {
             result: { error: 'User declined this action' },
             isError: true,
           };
+        } else if (response.executionResult !== undefined) {
+          // Client executed the action (e.g., signed a transaction) and
+          // provided the result. Skip server-side execution entirely.
+          const clientResult = response.executionResult;
+          toolResultBlocks.push({
+            type: 'tool_result',
+            toolUseId: call.id,
+            content: JSON.stringify(clientResult),
+            isError: false,
+          });
+          yield {
+            type: 'tool_start',
+            toolName: call.name,
+            toolUseId: call.id,
+            input: call.input,
+          };
+          yield {
+            type: 'tool_result',
+            toolName: call.name,
+            toolUseId: call.id,
+            result: clientResult,
+            isError: false,
+          };
+        } else {
+          // Approved but no client result — execute server-side
+          approved.push(call);
+          yield { type: 'tool_start', toolName: call.name, toolUseId: call.id, input: call.input };
         }
       }
 
-      // Execute approved tool calls
+      // Execute approved tool calls (only those not already handled by client)
       for await (const toolEvent of runTools(approved, this.tools, context, this.txMutex)) {
         yield toolEvent;
 
