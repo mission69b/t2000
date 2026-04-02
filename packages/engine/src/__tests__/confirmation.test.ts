@@ -136,7 +136,7 @@ describe('Confirmation flow', () => {
       if (event.type === 'permission_request') {
         expect(event.toolName).toBe('transfer');
         expect(event.description).toContain('transfer');
-        event.resolve(true); // approve
+        event.resolve({ approved: true });
       }
       events.push(event);
     }
@@ -166,7 +166,7 @@ describe('Confirmation flow', () => {
     const events: EngineEvent[] = [];
     for await (const event of engine.submitMessage('Send $50')) {
       if (event.type === 'permission_request') {
-        event.resolve(false); // reject
+        event.resolve({ approved: false });
       }
       events.push(event);
     }
@@ -226,7 +226,7 @@ describe('Confirmation flow', () => {
     const events: EngineEvent[] = [];
     for await (const event of engine.submitMessage('Check and send')) {
       if (event.type === 'permission_request') {
-        event.resolve(true);
+        event.resolve({ approved: true });
       }
       events.push(event);
     }
@@ -378,7 +378,7 @@ describe('Confirmation edge cases', () => {
     const events: EngineEvent[] = [];
     for await (const event of engine.submitMessage('Do it')) {
       if (event.type === 'permission_request') {
-        event.resolve(true);
+        event.resolve({ approved: true });
       }
       events.push(event);
     }

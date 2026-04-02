@@ -5,7 +5,7 @@ import {
   PermissionBridge,
   engineToSSE,
 } from '../streaming.js';
-import type { EngineEvent, SSEEvent } from '../index.js';
+import type { EngineEvent, PermissionResponse, SSEEvent } from '../index.js';
 
 describe('serializeSSE', () => {
   it('serialises a text_delta event', () => {
@@ -60,14 +60,14 @@ describe('parseSSE', () => {
 describe('PermissionBridge', () => {
   it('registers and resolves permissions', () => {
     const bridge = new PermissionBridge();
-    let result: boolean | null = null;
+    let result: PermissionResponse | null = null;
 
-    const id = bridge.register((approved) => { result = approved; });
+    const id = bridge.register((response) => { result = response; });
     expect(bridge.size).toBe(1);
 
     const found = bridge.resolve(id, true);
     expect(found).toBe(true);
-    expect(result).toBe(true);
+    expect(result).toEqual({ approved: true, executionResult: undefined });
     expect(bridge.size).toBe(0);
   });
 
@@ -78,7 +78,7 @@ describe('PermissionBridge', () => {
 
   it('rejects all pending permissions on rejectAll', () => {
     const bridge = new PermissionBridge();
-    const results: boolean[] = [];
+    const results: PermissionResponse[] = [];
 
     bridge.register((v) => results.push(v));
     bridge.register((v) => results.push(v));
@@ -87,7 +87,11 @@ describe('PermissionBridge', () => {
     expect(bridge.size).toBe(3);
     bridge.rejectAll();
 
-    expect(results).toEqual([false, false, false]);
+    expect(results).toEqual([
+      { approved: false },
+      { approved: false },
+      { approved: false },
+    ]);
     expect(bridge.size).toBe(0);
   });
 
@@ -118,7 +122,7 @@ describe('engineToSSE', () => {
   });
 
   it('routes permission_request through the bridge', async () => {
-    let _capturedResolve: ((v: boolean) => void) | null = null;
+    let _capturedResolve: (() => PermissionResponse) | null = null;
 
     async function* fakeEngine(): AsyncGenerator<EngineEvent> {
       yield {
@@ -127,7 +131,7 @@ describe('engineToSSE', () => {
         toolUseId: 'tc-1',
         input: { to: '0x1', amount: 10 },
         description: 'Send $10',
-        resolve: (v: boolean) => { _capturedResolve = () => v; },
+        resolve: (v: PermissionResponse) => { _capturedResolve = () => v; },
       };
     }
 
