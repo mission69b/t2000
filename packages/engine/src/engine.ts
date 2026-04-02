@@ -98,6 +98,25 @@ export class QueryEngine {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
+    // sanitizeMessages strips the trailing assistant tool_use (it has no
+    // matching tool_result yet — that's why we're resuming). Re-add it so
+    // Anthropic sees the tool_use → tool_result pair.
+    const lastMsg = this.messages[this.messages.length - 1];
+    const hasToolUse = lastMsg?.role === 'assistant' &&
+      lastMsg.content.some((b) => b.type === 'tool_use' && b.id === action.toolUseId);
+
+    if (!hasToolUse) {
+      this.messages.push({
+        role: 'assistant',
+        content: [{
+          type: 'tool_use',
+          id: action.toolUseId,
+          name: action.toolName,
+          input: action.input,
+        }],
+      });
+    }
+
     const toolResultBlock: ContentBlock = response.approved
       ? {
           type: 'tool_result',
