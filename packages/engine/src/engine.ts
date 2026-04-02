@@ -535,15 +535,15 @@ function describeAction(tool: Tool, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
   switch (tool.name) {
     case 'save_deposit':
-      return `Save ${input.amount === 'all' ? 'all available' : `$${input.amount}`} into savings`;
+      return `Save $${input.amount} into savings`;
     case 'withdraw':
-      return `Withdraw ${input.amount === 'all' ? 'all' : `$${input.amount}`} from savings`;
+      return `Withdraw $${input.amount} from savings`;
     case 'send_transfer':
       return `Send $${input.amount} to ${input.to}`;
     case 'borrow':
       return `Borrow $${input.amount} against collateral`;
     case 'repay_debt':
-      return `Repay ${input.amount === 'all' ? 'all' : `$${input.amount}`} of outstanding debt`;
+      return `Repay $${input.amount} of outstanding debt`;
     case 'claim_rewards':
       return 'Claim all pending protocol rewards';
     case 'pay_api':

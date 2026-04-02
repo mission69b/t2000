@@ -5,15 +5,15 @@ import { requireAgent } from './utils.js';
 export const repayDebtTool = buildTool({
   name: 'repay_debt',
   description:
-    'Repay outstanding USDC debt. Specify an amount or "all" to repay everything. Prioritises the highest-APY borrow first. Returns tx hash, amount repaid, and remaining debt.',
+    'Repay outstanding USDC debt. Always call balance_check first to know the debt amount, then pass the exact number here. Prioritises the highest-APY borrow first. Returns tx hash, amount repaid, and remaining debt.',
   inputSchema: z.object({
-    amount: z.union([z.number().positive(), z.literal('all')]),
+    amount: z.number().positive(),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       amount: {
-        description: 'Amount in USD to repay, or "all" to repay everything',
+        description: 'Exact amount in USD to repay (call balance_check first to get debt amount)',
       },
     },
     required: ['amount'],

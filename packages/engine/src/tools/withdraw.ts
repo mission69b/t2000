@@ -5,15 +5,15 @@ import { requireAgent } from './utils.js';
 export const withdrawTool = buildTool({
   name: 'withdraw',
   description:
-    'Withdraw USDC from savings back to wallet. Specify an amount in USD or "all" to withdraw everything safely. Checks health factor to prevent liquidation if there is outstanding debt.',
+    'Withdraw USDC from savings back to wallet. Always call savings_info first to know the deposited amount, then pass the exact number here. Checks health factor to prevent liquidation if there is outstanding debt.',
   inputSchema: z.object({
-    amount: z.union([z.number().positive(), z.literal('all')]),
+    amount: z.number().positive(),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       amount: {
-        description: 'Amount in USD to withdraw, or "all" for full withdrawal',
+        description: 'Exact amount in USD to withdraw (call savings_info first to get deposited amount)',
       },
     },
     required: ['amount'],

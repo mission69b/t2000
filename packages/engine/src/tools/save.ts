@@ -5,15 +5,15 @@ import { requireAgent } from './utils.js';
 export const saveDepositTool = buildTool({
   name: 'save_deposit',
   description:
-    'Deposit USDC into savings to earn yield. Specify an amount in USD or "all" to save everything except a $1 gas reserve. Returns tx hash, APY, fee, and updated savings balance.',
+    'Deposit USDC into savings to earn yield. Always call balance_check first to know the available amount, then pass the exact number here. Returns tx hash, APY, fee, and updated savings balance.',
   inputSchema: z.object({
-    amount: z.union([z.number().positive(), z.literal('all')]),
+    amount: z.number().positive(),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       amount: {
-        description: 'Amount in USD to save, or "all" for maximum deposit',
+        description: 'Exact amount in USD to save (call balance_check first to get available amount)',
       },
     },
     required: ['amount'],
