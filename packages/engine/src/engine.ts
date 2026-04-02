@@ -98,7 +98,7 @@ export class QueryEngine {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
-    const toolResultBlock: ContentBlock = response.approved
+    const writeResult: ContentBlock = response.approved
       ? {
           type: 'tool_result',
           toolUseId: action.toolUseId,
@@ -112,7 +112,19 @@ export class QueryEngine {
           isError: true,
         };
 
-    this.messages.push({ role: 'user', content: [toolResultBlock] });
+    // Combine auto-approved tool results from the same turn with the write result.
+    // Anthropic requires ALL tool_results in one user message.
+    const allResults: ContentBlock[] = [
+      ...(action.completedResults ?? []).map((r) => ({
+        type: 'tool_result' as const,
+        toolUseId: r.toolUseId,
+        content: r.content,
+        isError: r.isError,
+      })),
+      writeResult,
+    ];
+
+    this.messages.push({ role: 'user', content: allResults });
 
     yield {
       type: 'tool_result',
@@ -245,6 +257,7 @@ export class QueryEngine {
       // --- Permission gate ---
       const approved: PendingToolCall[] = [];
       const toolResultBlocks: ContentBlock[] = [];
+      let pendingWrite: { call: PendingToolCall; tool: Tool } | null = null;
 
       for (const call of acc.pendingToolCalls) {
         const tool = findTool(this.tools, call.name);
@@ -257,22 +270,12 @@ export class QueryEngine {
           continue;
         }
 
-        // Yield the pending action and RETURN — stream ends cleanly.
-        // The caller saves session state (including messages and pendingAction),
-        // then the client calls resumeWithToolResult() in a new HTTP request.
-        yield {
-          type: 'pending_action',
-          action: {
-            toolName: call.name,
-            toolUseId: call.id,
-            input: call.input,
-            description: describeAction(tool!, call),
-          },
-        };
-        return;
+        pendingWrite = { call, tool: tool! };
+        break;
       }
 
-      // Execute auto-approved tool calls
+      // Execute auto-approved tool calls (reads) even if a write is pending —
+      // Anthropic requires ALL tool_use ids to have matching tool_results.
       for await (const toolEvent of runTools(approved, this.tools, context, this.txMutex)) {
         yield toolEvent;
 
@@ -284,6 +287,27 @@ export class QueryEngine {
             isError: toolEvent.isError,
           });
         }
+      }
+
+      if (pendingWrite) {
+        // Don't push partial results — Anthropic needs ALL tool_results in one
+        // user message. The completedResults are carried in the PendingAction
+        // so resumeWithToolResult can combine them with the write tool's result.
+        yield {
+          type: 'pending_action',
+          action: {
+            toolName: pendingWrite.call.name,
+            toolUseId: pendingWrite.call.id,
+            input: pendingWrite.call.input,
+            description: describeAction(pendingWrite.tool, pendingWrite.call),
+            completedResults: toolResultBlocks.map((b) => ({
+              toolUseId: (b as { toolUseId: string }).toolUseId,
+              content: (b as { content: string }).content,
+              isError: (b as { isError?: boolean }).isError ?? false,
+            })),
+          },
+        };
+        return;
       }
 
       this.messages.push({ role: 'user', content: toolResultBlocks });

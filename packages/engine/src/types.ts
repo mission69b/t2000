@@ -58,6 +58,8 @@ export interface PendingAction {
   toolUseId: string;
   input: unknown;
   description: string;
+  /** Results from auto-approved tools in the same LLM turn (e.g. balance_check). */
+  completedResults?: Array<{ toolUseId: string; content: string; isError: boolean }>;
 }
 
 /**
