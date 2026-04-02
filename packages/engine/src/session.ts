@@ -1,4 +1,4 @@
-import type { Message } from './types.js';
+import type { Message, PendingAction } from './types.js';
 import type { CostSnapshot } from './cost.js';
 
 // ---------------------------------------------------------------------------
@@ -11,6 +11,8 @@ export interface SessionData {
   usage: CostSnapshot;
   createdAt: number;
   updatedAt: number;
+  /** Set when the engine is paused waiting for user approval of a write action. */
+  pendingAction?: PendingAction | null;
   metadata?: Record<string, unknown>;
 }
 

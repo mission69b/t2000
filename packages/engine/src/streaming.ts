@@ -1,25 +1,20 @@
-import type { EngineEvent, PermissionResponse, StopReason } from './types.js';
+import type { EngineEvent, PendingAction, StopReason } from './types.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
 // ---------------------------------------------------------------------------
 
-/**
- * Wire-safe representation of EngineEvent for SSE transport.
- * `permission_request` replaces the `resolve` callback with a `permissionId`
- * that the client sends back via a separate HTTP endpoint.
- */
 export type SSEEvent =
   | { type: 'text_delta'; text: string }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
-  | { type: 'permission_request'; permissionId: string; toolName: string; toolUseId: string; input: unknown; description: string }
+  | { type: 'pending_action'; action: PendingAction }
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
   | { type: 'error'; message: string };
 
 // ---------------------------------------------------------------------------
-// Serialise: EngineEvent → SSE text
+// Serialise: SSEEvent → SSE text
 // ---------------------------------------------------------------------------
 
 export function serializeSSE(event: SSEEvent): string {
@@ -42,89 +37,17 @@ export function parseSSE(raw: string): SSEEvent | null {
 }
 
 // ---------------------------------------------------------------------------
-// Permission bridge — maps permissionIds to resolve callbacks
-// ---------------------------------------------------------------------------
-
-export class PermissionBridge {
-  private pending = new Map<string, (response: PermissionResponse) => void>();
-  private counter = 0;
-
-  /**
-   * Register a permission_request resolve callback.
-   * Returns the permissionId to send to the client.
-   */
-  register(resolve: (response: PermissionResponse) => void): string {
-    const id = `perm_${++this.counter}_${Date.now()}`;
-    this.pending.set(id, resolve);
-    return id;
-  }
-
-  /**
-   * Resolve a pending permission request from the client.
-   * Pass `executionResult` when the client executed the action itself
-   * (e.g., signed a transaction) so the engine can skip server-side execution.
-   */
-  resolve(permissionId: string, approved: boolean, executionResult?: unknown): boolean {
-    const resolver = this.pending.get(permissionId);
-    if (!resolver) return false;
-    resolver({ approved, executionResult });
-    this.pending.delete(permissionId);
-    return true;
-  }
-
-  /** Number of pending (unresolved) permission requests. */
-  get size(): number {
-    return this.pending.size;
-  }
-
-  /** Reject all pending permissions (e.g., on disconnect). */
-  rejectAll(): void {
-    for (const resolver of this.pending.values()) {
-      resolver({ approved: false });
-    }
-    this.pending.clear();
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Stream adapter: engine async generator → SSE text stream
 // ---------------------------------------------------------------------------
 
-/**
- * Wraps a QueryEngine.submitMessage() generator, converting EngineEvents
- * to SSE text. Permission requests are routed through the bridge.
- */
 export async function* engineToSSE(
   events: AsyncGenerator<EngineEvent>,
-  bridge: PermissionBridge,
 ): AsyncGenerator<string> {
   for await (const event of events) {
-    switch (event.type) {
-      case 'permission_request': {
-        const permissionId = bridge.register(event.resolve);
-        yield serializeSSE({
-          type: 'permission_request',
-          permissionId,
-          toolName: event.toolName,
-          toolUseId: event.toolUseId,
-          input: event.input,
-          description: event.description,
-        });
-        break;
-      }
-
-      case 'error': {
-        yield serializeSSE({
-          type: 'error',
-          message: event.error.message,
-        });
-        break;
-      }
-
-      default: {
-        yield serializeSSE(event as SSEEvent);
-        break;
-      }
+    if (event.type === 'error') {
+      yield serializeSSE({ type: 'error', message: event.error.message });
+    } else {
+      yield serializeSSE(event as SSEEvent);
     }
   }
 }

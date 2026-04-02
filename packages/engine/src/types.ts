@@ -34,12 +34,8 @@ export type EngineEvent =
       isError: boolean;
     }
   | {
-      type: 'permission_request';
-      toolName: string;
-      toolUseId: string;
-      input: unknown;
-      description: string;
-      resolve: (response: PermissionResponse) => void;
+      type: 'pending_action';
+      action: PendingAction;
     }
   | { type: 'turn_complete'; stopReason: StopReason }
   | {
@@ -54,11 +50,20 @@ export type EngineEvent =
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
 
 /**
- * Response from the client when resolving a permission request.
+ * Serializable description of a write tool that needs user approval.
+ * Stored in the session so the client can act on it in a separate request.
+ */
+export interface PendingAction {
+  toolName: string;
+  toolUseId: string;
+  input: unknown;
+  description: string;
+}
+
+/**
+ * Response from the client when resolving a pending action.
  * - `approved: false` → tool is declined, LLM is told "user declined"
- * - `approved: true` without `executionResult` → engine executes the tool server-side
- * - `approved: true` with `executionResult` → engine skips server-side execution
- *   and uses the client-provided result (for client-side tx signing flows)
+ * - `approved: true` with `executionResult` → engine uses the client-provided result
  */
 export interface PermissionResponse {
   approved: boolean;

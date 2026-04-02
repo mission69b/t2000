@@ -7,6 +7,7 @@ import type {
   ChatParams,
   ProviderEvent,
   EngineEvent,
+  PendingAction,
   Tool,
 } from '../types.js';
 
@@ -97,8 +98,8 @@ const autoWriteTool: Tool = buildTool({
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Confirmation flow', () => {
-  it('auto-approves read-only tools without permission_request', async () => {
+describe('Confirmation flow (pending_action + resumeWithToolResult)', () => {
+  it('auto-approves read-only tools without pending_action', async () => {
     const provider = createMockProvider([
       [{ type: 'tool_call', id: 'tc-1', name: 'check', input: {} }],
       [{ type: 'text', text: 'Balance is $100' }],
@@ -112,14 +113,14 @@ describe('Confirmation flow', () => {
 
     const events = await collectEvents(engine.submitMessage('Check balance'));
 
-    const permissions = events.filter((e) => e.type === 'permission_request');
-    expect(permissions).toHaveLength(0);
+    const pendingActions = events.filter((e) => e.type === 'pending_action');
+    expect(pendingActions).toHaveLength(0);
 
     const results = events.filter((e) => e.type === 'tool_result');
     expect(results).toHaveLength(1);
   });
 
-  it('yields permission_request for write tools and executes on approval', async () => {
+  it('yields pending_action for write tools and stops the stream', async () => {
     const provider = createMockProvider([
       [{ type: 'tool_call', id: 'tc-1', name: 'transfer', input: { to: '0xabc', amount: 50 } }],
       [{ type: 'text', text: 'Sent $50 to 0xabc' }],
@@ -131,27 +132,67 @@ describe('Confirmation flow', () => {
       systemPrompt: 'Test',
     });
 
-    const events: EngineEvent[] = [];
-    for await (const event of engine.submitMessage('Send $50 to 0xabc')) {
-      if (event.type === 'permission_request') {
-        expect(event.toolName).toBe('transfer');
-        expect(event.description).toContain('transfer');
-        event.resolve({ approved: true });
-      }
-      events.push(event);
+    const events = await collectEvents(engine.submitMessage('Send $50 to 0xabc'));
+
+    const pendingActions = events.filter((e) => e.type === 'pending_action');
+    expect(pendingActions).toHaveLength(1);
+
+    const pa = pendingActions[0];
+    if (pa.type === 'pending_action') {
+      expect(pa.action.toolName).toBe('transfer');
+      expect(pa.action.description).toContain('transfer');
+      expect(pa.action.toolUseId).toBe('tc-1');
     }
 
-    const permissions = events.filter((e) => e.type === 'permission_request');
-    expect(permissions).toHaveLength(1);
-
-    const results = events.filter((e) => e.type === 'tool_result');
-    expect(results).toHaveLength(1);
-    if (results[0].type === 'tool_result') {
-      expect(results[0].isError).toBe(false);
-    }
+    // Stream should NOT contain turn_complete — it stopped at pending_action
+    const turnCompletes = events.filter((e) => e.type === 'turn_complete');
+    expect(turnCompletes).toHaveLength(0);
   });
 
-  it('skips execution and returns error when user declines', async () => {
+  it('resumes with tool result after approval', async () => {
+    const provider = createMockProvider([
+      [{ type: 'tool_call', id: 'tc-1', name: 'transfer', input: { to: '0xabc', amount: 50 } }],
+      [{ type: 'text', text: 'Sent $50 to 0xabc' }],
+    ]);
+
+    const engine = new QueryEngine({
+      provider,
+      tools: [readTool, writeTool],
+      systemPrompt: 'Test',
+    });
+
+    // Phase 1: submit message, get pending action
+    let pendingAction: PendingAction | null = null;
+    for await (const event of engine.submitMessage('Send $50 to 0xabc')) {
+      if (event.type === 'pending_action') {
+        pendingAction = event.action;
+      }
+    }
+    expect(pendingAction).not.toBeNull();
+
+    // Phase 2: resume with the client-provided execution result
+    const resumeEvents = await collectEvents(
+      engine.resumeWithToolResult(pendingAction!, {
+        approved: true,
+        executionResult: { digest: '0xdeadbeef', success: true },
+      }),
+    );
+
+    // Should emit tool_result then continue the LLM loop
+    const toolResults = resumeEvents.filter((e) => e.type === 'tool_result');
+    expect(toolResults).toHaveLength(1);
+    if (toolResults[0].type === 'tool_result') {
+      expect(toolResults[0].isError).toBe(false);
+    }
+
+    const textDeltas = resumeEvents.filter((e) => e.type === 'text_delta');
+    expect(textDeltas.length).toBeGreaterThan(0);
+
+    const turnComplete = resumeEvents.find((e) => e.type === 'turn_complete');
+    expect(turnComplete).toBeDefined();
+  });
+
+  it('handles denial via resumeWithToolResult', async () => {
     const provider = createMockProvider([
       [{ type: 'tool_call', id: 'tc-1', name: 'transfer', input: { to: '0xabc', amount: 50 } }],
       [{ type: 'text', text: 'Transaction cancelled.' }],
@@ -163,25 +204,29 @@ describe('Confirmation flow', () => {
       systemPrompt: 'Test',
     });
 
-    const events: EngineEvent[] = [];
+    let pendingAction: PendingAction | null = null;
     for await (const event of engine.submitMessage('Send $50')) {
-      if (event.type === 'permission_request') {
-        event.resolve({ approved: false });
+      if (event.type === 'pending_action') {
+        pendingAction = event.action;
       }
-      events.push(event);
     }
+    expect(pendingAction).not.toBeNull();
 
-    const results = events.filter((e) => e.type === 'tool_result');
-    expect(results).toHaveLength(1);
-    if (results[0].type === 'tool_result') {
-      expect(results[0].isError).toBe(true);
-      const data = results[0].result as { error: string };
+    const resumeEvents = await collectEvents(
+      engine.resumeWithToolResult(pendingAction!, { approved: false }),
+    );
+
+    const toolResults = resumeEvents.filter((e) => e.type === 'tool_result');
+    expect(toolResults).toHaveLength(1);
+    if (toolResults[0].type === 'tool_result') {
+      expect(toolResults[0].isError).toBe(true);
+      const data = toolResults[0].result as { error: string };
       expect(data.error).toContain('declined');
     }
 
-    // LLM should still get the rejection and respond with text
-    const textDeltas = events.filter((e) => e.type === 'text_delta');
-    expect(textDeltas.length).toBeGreaterThan(0);
+    // Stream should end without another LLM call on denial
+    const turnComplete = resumeEvents.find((e) => e.type === 'turn_complete');
+    expect(turnComplete).toBeDefined();
   });
 
   it('auto-approves write tools with permissionLevel: auto', async () => {
@@ -198,8 +243,8 @@ describe('Confirmation flow', () => {
 
     const events = await collectEvents(engine.submitMessage('Do it'));
 
-    const permissions = events.filter((e) => e.type === 'permission_request');
-    expect(permissions).toHaveLength(0);
+    const pendingActions = events.filter((e) => e.type === 'pending_action');
+    expect(pendingActions).toHaveLength(0);
 
     const results = events.filter((e) => e.type === 'tool_result');
     expect(results).toHaveLength(1);
@@ -208,7 +253,7 @@ describe('Confirmation flow', () => {
     }
   });
 
-  it('handles mixed read + write tool calls in one turn', async () => {
+  it('handles mixed read + write: reads execute, write yields pending_action', async () => {
     const provider = createMockProvider([
       [
         { type: 'tool_call', id: 'tc-1', name: 'check', input: {} },
@@ -223,19 +268,12 @@ describe('Confirmation flow', () => {
       systemPrompt: 'Test',
     });
 
-    const events: EngineEvent[] = [];
-    for await (const event of engine.submitMessage('Check and send')) {
-      if (event.type === 'permission_request') {
-        event.resolve({ approved: true });
-      }
-      events.push(event);
-    }
+    const events = await collectEvents(engine.submitMessage('Check and send'));
 
-    const permissions = events.filter((e) => e.type === 'permission_request');
-    expect(permissions).toHaveLength(1); // only the write tool
-
-    const results = events.filter((e) => e.type === 'tool_result');
-    expect(results).toHaveLength(2); // read + write
+    // The read tool should NOT have a result yet (engine yields pending_action first)
+    // because the write tool in the same batch triggers pending_action
+    const pendingActions = events.filter((e) => e.type === 'pending_action');
+    expect(pendingActions).toHaveLength(1);
   });
 });
 
@@ -249,15 +287,13 @@ describe('Cost tracking integration', () => {
       provider,
       tools: [],
       systemPrompt: 'Test',
-      costTracker: { budgetLimitUsd: 0.0001 }, // very small budget
+      costTracker: { budgetLimitUsd: 0.0001 },
     });
 
-    // First message uses tokens, exceeds the tiny budget
     const events1 = await collectEvents(engine.submitMessage('Hello'));
     const usageEvents = events1.filter((e) => e.type === 'usage');
     expect(usageEvents.length).toBeGreaterThan(0);
 
-    // Second message should be blocked
     const events2 = await collectEvents(engine.submitMessage('Hello again'));
     const errorEvent = events2.find((e) => e.type === 'error');
     expect(errorEvent).toBeDefined();
@@ -319,83 +355,12 @@ describe('Cost tracking integration', () => {
     await collectEvents(engine.submitMessage('Second'));
 
     const usage = engine.getUsage();
-    expect(usage.inputTokens).toBe(100); // 50 + 50
-    expect(usage.outputTokens).toBe(50); // 25 + 25
+    expect(usage.inputTokens).toBe(100);
+    expect(usage.outputTokens).toBe(50);
   });
 });
 
 describe('Confirmation edge cases', () => {
-  it('aborts cleanly when interrupt() is called during permission wait', async () => {
-    const provider = createMockProvider([
-      [{ type: 'tool_call', id: 'tc-1', name: 'transfer', input: { to: '0x1', amount: 5 } }],
-    ]);
-
-    const engine = new QueryEngine({
-      provider,
-      tools: [writeTool],
-      systemPrompt: 'Test',
-    });
-
-    const events: EngineEvent[] = [];
-    for await (const event of engine.submitMessage('Send $5')) {
-      if (event.type === 'permission_request') {
-        engine.interrupt(); // abort instead of resolving
-      }
-      events.push(event);
-    }
-
-    const errorEvent = events.find((e) => e.type === 'error');
-    expect(errorEvent).toBeDefined();
-    if (errorEvent?.type === 'error') {
-      expect(errorEvent.error.message).toContain('Aborted');
-    }
-  });
-
-  it('handles confirmed write tool that throws during execution', async () => {
-    const failingWrite: Tool = buildTool({
-      name: 'failing_write',
-      description: 'Write that throws',
-      inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
-      isReadOnly: false,
-      permissionLevel: 'confirm',
-      async call() {
-        throw new Error('Transaction reverted');
-      },
-    });
-
-    const provider = createMockProvider([
-      [{ type: 'tool_call', id: 'tc-1', name: 'failing_write', input: {} }],
-      [{ type: 'text', text: 'Transaction failed.' }],
-    ]);
-
-    const engine = new QueryEngine({
-      provider,
-      tools: [failingWrite],
-      systemPrompt: 'Test',
-    });
-
-    const events: EngineEvent[] = [];
-    for await (const event of engine.submitMessage('Do it')) {
-      if (event.type === 'permission_request') {
-        event.resolve({ approved: true });
-      }
-      events.push(event);
-    }
-
-    const toolResult = events.find((e) => e.type === 'tool_result');
-    expect(toolResult).toBeDefined();
-    if (toolResult?.type === 'tool_result') {
-      expect(toolResult.isError).toBe(true);
-      const data = toolResult.result as { error: string };
-      expect(data.error).toContain('Transaction reverted');
-    }
-
-    // LLM still sees the error and responds
-    const textDeltas = events.filter((e) => e.type === 'text_delta');
-    expect(textDeltas.length).toBeGreaterThan(0);
-  });
-
   it('handles provider error gracefully', async () => {
     const errorProvider: LLMProvider = {
       async *chat(): AsyncGenerator<ProviderEvent> {

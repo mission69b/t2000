@@ -3,6 +3,7 @@ import type {
   EngineEvent,
   Message,
   ContentBlock,
+  PendingAction,
   Tool,
   ToolContext,
   PermissionResponse,
@@ -60,8 +61,12 @@ export class QueryEngine {
   }
 
   /**
-   * Submit a user message and receive a stream of engine events.
-   * Handles the full agent loop: LLM → permission check → tool execution → LLM → ...
+   * Submit a user message and stream engine events.
+   *
+   * Read-only tools execute inline. Write tools that need confirmation yield a
+   * `pending_action` event and the stream ends — no persistent connection needed.
+   * The caller should save messages + pendingAction to the session store, then
+   * call `resumeWithToolResult()` after the user approves/denies and executes.
    */
   async *submitMessage(prompt: string): AsyncGenerator<EngineEvent> {
     if (this.costTracker.isOverBudget()) {
@@ -77,6 +82,95 @@ export class QueryEngine {
       content: [{ type: 'text', text: prompt }],
     });
 
+    yield* this.agentLoop(prompt, signal);
+  }
+
+  /**
+   * Resume the conversation after a pending action is resolved.
+   * Called with the user's approval/denial and optional client-side execution result.
+   *
+   * This is a separate HTTP request — no persistent connection from submitMessage.
+   */
+  async *resumeWithToolResult(
+    action: PendingAction,
+    response: PermissionResponse,
+  ): AsyncGenerator<EngineEvent> {
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
+
+    const toolResultBlock: ContentBlock = response.approved
+      ? {
+          type: 'tool_result',
+          toolUseId: action.toolUseId,
+          content: JSON.stringify(response.executionResult ?? { success: true }),
+          isError: false,
+        }
+      : {
+          type: 'tool_result',
+          toolUseId: action.toolUseId,
+          content: JSON.stringify({ error: 'User declined this action' }),
+          isError: true,
+        };
+
+    this.messages.push({ role: 'user', content: [toolResultBlock] });
+
+    yield {
+      type: 'tool_result',
+      toolName: action.toolName,
+      toolUseId: action.toolUseId,
+      result: response.approved
+        ? (response.executionResult ?? { success: true })
+        : { error: 'User declined this action' },
+      isError: !response.approved,
+    };
+
+    if (!response.approved) {
+      yield { type: 'turn_complete', stopReason: 'end_turn' };
+      return;
+    }
+
+    yield* this.agentLoop(null, signal);
+  }
+
+  interrupt(): void {
+    this.abortController?.abort();
+  }
+
+  getMessages(): readonly Message[] {
+    return this.messages;
+  }
+
+  reset(): void {
+    this.messages = [];
+    this.costTracker.reset();
+  }
+
+  loadMessages(messages: Message[]): void {
+    this.messages = sanitizeMessages(messages);
+  }
+
+  setServerPositions(data: EngineConfig['serverPositions']): void {
+    this.serverPositions = data;
+  }
+
+  getUsage(): CostSnapshot {
+    return this.costTracker.getSnapshot();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Core agent loop — shared by submitMessage and resumeWithToolResult
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Run the LLM → tool → LLM loop. When a write tool needs confirmation,
+   * yields `pending_action` and returns immediately (stream ends cleanly).
+   *
+   * @param freshPrompt - The original user prompt (for corrupt-history retry). Null on resume.
+   */
+  private async *agentLoop(
+    freshPrompt: string | null,
+    signal: AbortSignal,
+  ): AsyncGenerator<EngineEvent> {
     const context: ToolContext = {
       agent: this.agent,
       mcpManager: this.mcpManager,
@@ -105,7 +199,6 @@ export class QueryEngine {
         pendingToolCalls: [],
       };
 
-      let providerFailed = false;
       try {
         const stream = this.provider.chat({
           messages: this.messages,
@@ -120,11 +213,11 @@ export class QueryEngine {
           yield* this.handleProviderEvent(event, acc);
         }
       } catch (err) {
-        if (!hasRetriedWithCleanHistory && isCorruptHistoryError(err)) {
+        if (freshPrompt && !hasRetriedWithCleanHistory && isCorruptHistoryError(err)) {
           hasRetriedWithCleanHistory = true;
           console.warn('[engine] Corrupt session history detected, resetting to fresh conversation');
           this.messages = [
-            { role: 'user', content: [{ type: 'text', text: prompt }] },
+            { role: 'user', content: [{ type: 'text', text: freshPrompt }] },
           ];
           turns--;
           continue;
@@ -149,7 +242,7 @@ export class QueryEngine {
         return;
       }
 
-      // --- Permission gate: separate auto-approved from needs-confirmation ---
+      // --- Permission gate ---
       const approved: PendingToolCall[] = [];
       const toolResultBlocks: ContentBlock[] = [];
 
@@ -164,84 +257,22 @@ export class QueryEngine {
           continue;
         }
 
-        // Two-phase confirmation: yield permission_request with a resolve callback,
-        // then await the promise. The consumer calls resolve() in their loop body
-        // before the generator advances to the await.
-        // Race with abort signal to prevent deadlock if resolve is never called.
-        let resolvePermission!: (v: PermissionResponse) => void;
-        const permissionPromise = new Promise<PermissionResponse>((r) => {
-          resolvePermission = r;
-        });
-
+        // Yield the pending action and RETURN — stream ends cleanly.
+        // The caller saves session state (including messages and pendingAction),
+        // then the client calls resumeWithToolResult() in a new HTTP request.
         yield {
-          type: 'permission_request',
-          toolName: call.name,
-          toolUseId: call.id,
-          input: call.input,
-          description: describeAction(tool!, call),
-          resolve: resolvePermission,
-        };
-
-        let response: PermissionResponse;
-        try {
-          response = await Promise.race([
-            permissionPromise,
-            new Promise<never>((_, reject) => {
-              if (signal.aborted) reject(new Error('Aborted'));
-              signal.addEventListener('abort', () => reject(new Error('Aborted')), { once: true });
-            }),
-          ]);
-        } catch {
-          this.addErrorResults(acc.pendingToolCalls, 'Aborted');
-          yield { type: 'error', error: new Error('Aborted') };
-          return;
-        }
-
-        if (!response.approved) {
-          toolResultBlocks.push({
-            type: 'tool_result',
-            toolUseId: call.id,
-            content: JSON.stringify({ error: 'User declined this action' }),
-            isError: true,
-          });
-          yield {
-            type: 'tool_result',
-            toolName: call.name,
-            toolUseId: call.id,
-            result: { error: 'User declined this action' },
-            isError: true,
-          };
-        } else if (response.executionResult !== undefined) {
-          // Client executed the action (e.g., signed a transaction) and
-          // provided the result. Skip server-side execution entirely.
-          const clientResult = response.executionResult;
-          toolResultBlocks.push({
-            type: 'tool_result',
-            toolUseId: call.id,
-            content: JSON.stringify(clientResult),
-            isError: false,
-          });
-          yield {
-            type: 'tool_start',
+          type: 'pending_action',
+          action: {
             toolName: call.name,
             toolUseId: call.id,
             input: call.input,
-          };
-          yield {
-            type: 'tool_result',
-            toolName: call.name,
-            toolUseId: call.id,
-            result: clientResult,
-            isError: false,
-          };
-        } else {
-          // Approved but no client result — execute server-side
-          approved.push(call);
-          yield { type: 'tool_start', toolName: call.name, toolUseId: call.id, input: call.input };
-        }
+            description: describeAction(tool!, call),
+          },
+        };
+        return;
       }
 
-      // Execute approved tool calls (only those not already handled by client)
+      // Execute auto-approved tool calls
       for await (const toolEvent of runTools(approved, this.tools, context, this.txMutex)) {
         yield toolEvent;
 
@@ -257,7 +288,6 @@ export class QueryEngine {
 
       this.messages.push({ role: 'user', content: toolResultBlocks });
 
-      // Budget check between turns
       if (this.costTracker.isOverBudget()) {
         yield { type: 'error', error: new Error('Session budget exceeded') };
         return;
@@ -265,31 +295,6 @@ export class QueryEngine {
     }
 
     yield { type: 'turn_complete', stopReason: 'max_turns' };
-  }
-
-  interrupt(): void {
-    this.abortController?.abort();
-  }
-
-  getMessages(): readonly Message[] {
-    return this.messages;
-  }
-
-  reset(): void {
-    this.messages = [];
-    this.costTracker.reset();
-  }
-
-  loadMessages(messages: Message[]): void {
-    this.messages = sanitizeMessages(messages);
-  }
-
-  setServerPositions(data: EngineConfig['serverPositions']): void {
-    this.serverPositions = data;
-  }
-
-  getUsage(): CostSnapshot {
-    return this.costTracker.getSnapshot();
   }
 
   // ---------------------------------------------------------------------------
@@ -366,27 +371,16 @@ export class QueryEngine {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Detect Anthropic API errors caused by corrupt message history
- * (orphaned tool_use blocks, missing tool_results, role alternation violations).
- */
 function isCorruptHistoryError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return (
-    msg.includes('tool_use') && msg.includes('tool_result') ||
+    (msg.includes('tool_use') && msg.includes('tool_result')) ||
     msg.includes('roles must alternate') ||
     (msg.includes('400') && msg.includes('invalid_request_error'))
   );
 }
 
-/**
- * Sanitize message history to prevent Anthropic API 400 errors.
- * 1. Strip trailing messages with orphaned tool_use (no matching tool_result).
- * 2. Ensure roles alternate (user → assistant → user → ...).
- * 3. Ensure the first message is from the user role.
- */
 function sanitizeMessages(messages: Message[]): Message[] {
-  // Phase 1: strip orphaned tool_use at the tail
   const trimmed: Message[] = [];
 
   for (let i = 0; i < messages.length; i++) {
@@ -412,21 +406,17 @@ function sanitizeMessages(messages: Message[]): Message[] {
     trimmed.push(msg);
   }
 
-  // Phase 2: ensure alternating roles — drop messages that break the pattern
-  // and remove trailing user messages (the engine will add the new one)
   const result: Message[] = [];
   let lastRole: 'user' | 'assistant' | null = null;
 
   for (const msg of trimmed) {
     if (msg.role === lastRole) {
-      // Consecutive same-role: keep the later one (drop the previous)
       result.pop();
     }
     result.push(msg);
     lastRole = msg.role;
   }
 
-  // Ensure the last message is from assistant (engine adds user message next)
   while (result.length > 0 && result[result.length - 1].role === 'user') {
     result.pop();
   }

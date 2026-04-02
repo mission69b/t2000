@@ -8,6 +8,7 @@ export type {
   EngineEvent,
   EngineConfig,
   StopReason,
+  PendingAction,
   Tool,
   ToolResult,
   ToolContext,
@@ -34,7 +35,7 @@ export { CostTracker } from './cost.js';
 export type { CostSnapshot, CostTrackerConfig } from './cost.js';
 
 // Streaming (SSE)
-export { serializeSSE, parseSSE, PermissionBridge, engineToSSE } from './streaming.js';
+export { serializeSSE, parseSSE, engineToSSE } from './streaming.js';
 export type { SSEEvent } from './streaming.js';
 
 // Session store
