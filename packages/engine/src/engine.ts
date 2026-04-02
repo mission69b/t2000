@@ -157,8 +157,15 @@ export class QueryEngine {
     this.costTracker.reset();
   }
 
-  loadMessages(messages: Message[], opts?: { skipSanitize?: boolean }): void {
-    this.messages = opts?.skipSanitize ? [...messages] : sanitizeMessages(messages);
+  loadMessages(messages: Message[], opts?: { pendingAction?: PendingAction }): void {
+    const preserveIds = new Set<string>();
+    if (opts?.pendingAction) {
+      preserveIds.add(opts.pendingAction.toolUseId);
+      for (const r of opts.pendingAction.completedResults ?? []) {
+        preserveIds.add(r.toolUseId);
+      }
+    }
+    this.messages = sanitizeMessages(messages, preserveIds);
   }
 
   setServerPositions(data: EngineConfig['serverPositions']): void {
@@ -404,10 +411,11 @@ function isCorruptHistoryError(err: unknown): boolean {
   );
 }
 
-function sanitizeMessages(messages: Message[]): Message[] {
+function sanitizeMessages(messages: Message[], preserveToolUseIds = new Set<string>()): Message[] {
   const trimmed: Message[] = [];
+  let i = 0;
 
-  for (let i = 0; i < messages.length; i++) {
+  while (i < messages.length) {
     const msg = messages[i];
     const toolUseIds = msg.content
       .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
@@ -421,31 +429,43 @@ function sanitizeMessages(messages: Message[]): Message[] {
           .map((b) => b.toolUseId),
       );
 
-      const allMatched = toolUseIds.every((id) => toolResultIds.has(id));
-      if (!allMatched) {
-        break;
+      const unmatchedIds = toolUseIds.filter((id) => !toolResultIds.has(id));
+
+      if (unmatchedIds.length > 0) {
+        if (unmatchedIds.every((id) => preserveToolUseIds.has(id))) {
+          // Pending action message — keep it
+          trimmed.push(msg);
+          i++;
+          continue;
+        }
+        // Corrupt pair — skip assistant msg and its partial tool_results
+        const hasPartialResults = next?.content.some((b) => b.type === 'tool_result');
+        i += hasPartialResults ? 2 : 1;
+        continue;
       }
     }
 
     trimmed.push(msg);
+    i++;
   }
 
-  const result: Message[] = [];
-  let lastRole: 'user' | 'assistant' | null = null;
-
+  // Merge consecutive same-role messages (can happen after skipping corrupt pairs)
+  const merged: Message[] = [];
   for (const msg of trimmed) {
-    if (msg.role === lastRole) {
-      result.pop();
+    const last = merged[merged.length - 1];
+    if (last && last.role === msg.role) {
+      last.content = [...last.content, ...msg.content];
+    } else {
+      merged.push({ role: msg.role, content: [...msg.content] });
     }
-    result.push(msg);
-    lastRole = msg.role;
   }
 
-  while (result.length > 0 && result[result.length - 1].role === 'user') {
-    result.pop();
+  // First message must be user
+  while (merged.length > 0 && merged[0].role !== 'user') {
+    merged.shift();
   }
 
-  return result;
+  return merged;
 }
 
 function describeAction(tool: Tool, call: PendingToolCall): string {
