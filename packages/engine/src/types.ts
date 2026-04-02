@@ -69,7 +69,19 @@ export interface ToolContext {
   mcpManager?: unknown; // McpClientManager — typed loosely to avoid circular dep
   walletAddress?: string; // User's Sui wallet address (required for MCP reads)
   suiRpcUrl?: string; // Sui JSON-RPC URL for direct chain queries
+  serverPositions?: ServerPositionData; // Pre-fetched positions from the server (avoids stale MCP data)
   signal?: AbortSignal;
+}
+
+export interface ServerPositionData {
+  savings: number;
+  borrows: number;
+  savingsRate: number;
+  healthFactor: number | null;
+  maxBorrow: number;
+  pendingRewards: number;
+  supplies: Array<{ asset: string; amount: number; amountUsd: number; apy: number; protocol: string }>;
+  borrows_detail: Array<{ asset: string; amount: number; amountUsd: number; apy: number; protocol: string }>;
 }
 
 export interface ToolJsonSchema {
@@ -99,6 +111,7 @@ export interface EngineConfig {
   mcpManager?: unknown; // McpClientManager for MCP-based reads
   walletAddress?: string; // User's Sui wallet address (required for MCP reads)
   suiRpcUrl?: string; // Sui JSON-RPC URL for direct chain queries (wallet coins, etc.)
+  serverPositions?: ServerPositionData; // Pre-fetched positions from the host app
   tools?: Tool[];
   systemPrompt?: string;
   model?: string;

@@ -17,6 +17,7 @@ export type {
   LLMProvider,
   ChatParams,
   ProviderEvent,
+  ServerPositionData,
 } from './types.js';
 
 // Tool factory

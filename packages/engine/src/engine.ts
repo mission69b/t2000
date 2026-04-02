@@ -35,6 +35,7 @@ export class QueryEngine {
   private readonly mcpManager: unknown;
   private readonly walletAddress: string | undefined;
   private readonly suiRpcUrl: string | undefined;
+  private serverPositions: EngineConfig['serverPositions'];
   private readonly txMutex = new TxMutex();
   private readonly costTracker: CostTracker;
 
@@ -47,6 +48,7 @@ export class QueryEngine {
     this.mcpManager = config.mcpManager;
     this.walletAddress = config.walletAddress;
     this.suiRpcUrl = config.suiRpcUrl;
+    this.serverPositions = config.serverPositions;
     this.model = config.model;
     this.maxTurns = config.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
@@ -79,6 +81,7 @@ export class QueryEngine {
       mcpManager: this.mcpManager,
       walletAddress: this.walletAddress,
       suiRpcUrl: this.suiRpcUrl,
+      serverPositions: this.serverPositions,
       signal,
     };
 
@@ -239,6 +242,10 @@ export class QueryEngine {
 
   loadMessages(messages: Message[]): void {
     this.messages = sanitizeMessages(messages);
+  }
+
+  setServerPositions(data: EngineConfig['serverPositions']): void {
+    this.serverPositions = data;
   }
 
   getUsage(): CostSnapshot {

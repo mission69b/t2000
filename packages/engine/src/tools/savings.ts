@@ -2,6 +2,53 @@ import { z } from 'zod';
 import { fetchSavings } from '../navi-reads.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcp, getMcpManager, getWalletAddress, requireAgent } from './utils.js';
+import type { PositionEntry, SavingsResult } from '../navi-transforms.js';
+
+function buildSavingsFromServer(
+  sp: NonNullable<import('../types.js').ServerPositionData>,
+): SavingsResult {
+  const positions: PositionEntry[] = [
+    ...sp.supplies.map((s) => ({
+      protocol: s.protocol,
+      type: 'supply' as const,
+      symbol: s.asset,
+      amount: s.amount,
+      valueUsd: s.amountUsd,
+      apy: s.apy,
+      liquidationThreshold: 0,
+    })),
+    ...sp.borrows_detail.map((b) => ({
+      protocol: b.protocol,
+      type: 'borrow' as const,
+      symbol: b.asset,
+      amount: b.amount,
+      valueUsd: b.amountUsd,
+      apy: b.apy,
+      liquidationThreshold: 0,
+    })),
+  ];
+
+  const supplied = sp.savings;
+  const weightedApy = supplied > 0 ? sp.savingsRate : 0;
+  const dailyEarning = (supplied * weightedApy) / 365;
+
+  return {
+    positions,
+    earnings: {
+      totalYieldEarned: 0,
+      currentApy: weightedApy,
+      dailyEarning,
+      supplied,
+    },
+    fundStatus: {
+      supplied,
+      apy: weightedApy,
+      earnedToday: dailyEarning,
+      earnedAllTime: 0,
+      projectedMonthly: dailyEarning * 30,
+    },
+  };
+}
 
 export const savingsInfoTool = buildTool({
   name: 'savings_info',
@@ -12,6 +59,10 @@ export const savingsInfoTool = buildTool({
   isReadOnly: true,
 
   async call(_input, context) {
+    if (context.serverPositions) {
+      return { data: buildSavingsFromServer(context.serverPositions) };
+    }
+
     if (hasNaviMcp(context)) {
       const savings = await fetchSavings(
         getMcpManager(context),
