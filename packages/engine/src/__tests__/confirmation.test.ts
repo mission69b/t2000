@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { QueryEngine } from '../engine.js';
+import { QueryEngine, validateHistory } from '../engine.js';
 import { buildTool } from '../tool.js';
 import type {
   LLMProvider,
@@ -8,6 +8,7 @@ import type {
   ProviderEvent,
   EngineEvent,
   PendingAction,
+  Message,
   Tool,
 } from '../types.js';
 
@@ -270,10 +271,101 @@ describe('Confirmation flow (pending_action + resumeWithToolResult)', () => {
 
     const events = await collectEvents(engine.submitMessage('Check and send'));
 
-    // The read tool should NOT have a result yet (engine yields pending_action first)
-    // because the write tool in the same batch triggers pending_action
     const pendingActions = events.filter((e) => e.type === 'pending_action');
     expect(pendingActions).toHaveLength(1);
+
+    if (pendingActions[0].type === 'pending_action') {
+      expect(pendingActions[0].action.completedResults).toHaveLength(1);
+      expect(pendingActions[0].action.assistantContent.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('does NOT push incomplete assistant message to messages on pending_action', async () => {
+    const provider = createMockProvider([
+      [{ type: 'tool_call', id: 'tc-1', name: 'transfer', input: { to: '0xabc', amount: 50 } }],
+    ]);
+
+    const engine = new QueryEngine({
+      provider,
+      tools: [readTool, writeTool],
+      systemPrompt: 'Test',
+    });
+
+    let pendingAction: PendingAction | null = null;
+    for await (const event of engine.submitMessage('Send $50')) {
+      if (event.type === 'pending_action') pendingAction = event.action;
+    }
+    expect(pendingAction).not.toBeNull();
+
+    const messages = [...engine.getMessages()];
+    const assistantMsgs = messages.filter((m) => m.role === 'assistant');
+    const allToolUseIds = assistantMsgs.flatMap((m) =>
+      m.content.filter((b) => b.type === 'tool_use').map((b) => (b as { id: string }).id),
+    );
+    const allToolResultIds = messages.flatMap((m) =>
+      m.content.filter((b) => b.type === 'tool_result').map((b) => (b as { toolUseId: string }).toolUseId),
+    );
+
+    for (const id of allToolUseIds) {
+      expect(allToolResultIds).toContain(id);
+    }
+  });
+
+  it('reconstructs full turn atomically on resumeWithToolResult', async () => {
+    const provider = createMockProvider([
+      [
+        { type: 'tool_call', id: 'tc-1', name: 'check', input: {} },
+        { type: 'tool_call', id: 'tc-2', name: 'transfer', input: { to: '0x123', amount: 10 } },
+      ],
+      [{ type: 'text', text: 'Done' }],
+    ]);
+
+    const engine = new QueryEngine({
+      provider,
+      tools: [readTool, writeTool],
+      systemPrompt: 'Test',
+    });
+
+    let pendingAction: PendingAction | null = null;
+    for await (const event of engine.submitMessage('Check and send')) {
+      if (event.type === 'pending_action') pendingAction = event.action;
+    }
+    expect(pendingAction).not.toBeNull();
+    expect(pendingAction!.assistantContent.length).toBeGreaterThan(0);
+    expect(pendingAction!.completedResults).toHaveLength(1);
+
+    await collectEvents(
+      engine.resumeWithToolResult(pendingAction!, {
+        approved: true,
+        executionResult: { digest: '0xabc', success: true },
+      }),
+    );
+
+    const messages = [...engine.getMessages()];
+
+    // Find the assistant message with tool_use blocks (the reconstructed one)
+    const toolAssistant = messages.find(
+      (m) => m.role === 'assistant' && m.content.some((b) => b.type === 'tool_use'),
+    );
+    expect(toolAssistant).toBeDefined();
+
+    const toolUseIds = toolAssistant!.content
+      .filter((b) => b.type === 'tool_use')
+      .map((b) => (b as { id: string }).id);
+
+    const nextUserIdx = messages.indexOf(toolAssistant!) + 1;
+    const nextUser = messages[nextUserIdx];
+    expect(nextUser).toBeDefined();
+    expect(nextUser.role).toBe('user');
+
+    const resultIds = nextUser.content
+      .filter((b) => b.type === 'tool_result')
+      .map((b) => (b as { toolUseId: string }).toolUseId);
+
+    // Every tool_use id should have a matching tool_result
+    for (const id of toolUseIds) {
+      expect(resultIds).toContain(id);
+    }
   });
 });
 
@@ -386,5 +478,144 @@ describe('Confirmation edge cases', () => {
 
     expect(caughtError).not.toBeNull();
     expect(caughtError!.message).toContain('Network timeout');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// validateHistory
+// ---------------------------------------------------------------------------
+
+describe('validateHistory', () => {
+  it('passes through clean history unchanged', () => {
+    const messages: Message[] = [
+      { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'hello' }] },
+    ];
+    const result = validateHistory(messages);
+    expect(result).toEqual(messages);
+  });
+
+  it('strips orphaned tool_use blocks (no matching tool_result)', () => {
+    const messages: Message[] = [
+      { role: 'user', content: [{ type: 'text', text: 'check' }] },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'checking' },
+          { type: 'tool_use', id: 'tc-1', name: 'balance', input: {} },
+        ],
+      },
+    ];
+    const result = validateHistory(messages);
+    expect(result).toHaveLength(2);
+    expect(result[1].content).toHaveLength(1);
+    expect(result[1].content[0].type).toBe('text');
+  });
+
+  it('strips orphaned tool_result blocks (no matching tool_use)', () => {
+    const messages: Message[] = [
+      { role: 'user', content: [{ type: 'text', text: 'check' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', toolUseId: 'ghost', content: '{}', isError: false }],
+      },
+    ];
+    const result = validateHistory(messages);
+    expect(result).toHaveLength(2);
+  });
+
+  it('merges consecutive same-role messages after stripping', () => {
+    const messages: Message[] = [
+      { role: 'user', content: [{ type: 'text', text: 'a' }] },
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'no-result', name: 'x', input: {} }],
+      },
+      // No tool_result for 'no-result' — so the above gets stripped
+      { role: 'user', content: [{ type: 'text', text: 'b' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'reply' }] },
+    ];
+    const result = validateHistory(messages);
+    // After stripping the orphaned assistant, user "a" and user "b" merge
+    expect(result[0].role).toBe('user');
+    expect(result[0].content).toHaveLength(2);
+    expect(result[1].role).toBe('assistant');
+    expect(result).toHaveLength(2);
+  });
+
+  it('ensures first message is user', () => {
+    const messages: Message[] = [
+      { role: 'assistant', content: [{ type: 'text', text: 'stale' }] },
+      { role: 'user', content: [{ type: 'text', text: 'hi' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'hello' }] },
+    ];
+    const result = validateHistory(messages);
+    expect(result[0].role).toBe('user');
+    expect(result).toHaveLength(2);
+  });
+
+  it('keeps matched tool_use + tool_result pairs', () => {
+    const messages: Message[] = [
+      { role: 'user', content: [{ type: 'text', text: 'check' }] },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'let me check' },
+          { type: 'tool_use', id: 'tc-1', name: 'balance', input: {} },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', toolUseId: 'tc-1', content: '{"balance":100}', isError: false }],
+      },
+      { role: 'assistant', content: [{ type: 'text', text: 'Your balance is $100' }] },
+    ];
+    const result = validateHistory(messages);
+    expect(result).toHaveLength(4);
+  });
+
+  it('handles mixed corruption: keeps good pairs, strips bad ones', () => {
+    const messages: Message[] = [
+      { role: 'user', content: [{ type: 'text', text: 'check' }] },
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'good', name: 'balance', input: {} }],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', toolUseId: 'good', content: '{}', isError: false }],
+      },
+      { role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
+      { role: 'user', content: [{ type: 'text', text: 'withdraw' }] },
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'orphan-read', name: 'savings', input: {} },
+          { type: 'tool_use', id: 'orphan-write', name: 'withdraw', input: {} },
+        ],
+      },
+      { role: 'user', content: [{ type: 'text', text: 'show positions' }] },
+    ];
+    const result = validateHistory(messages);
+    expect(result.length).toBeGreaterThanOrEqual(4);
+
+    const allToolUseIds = result.flatMap((m) =>
+      m.content.filter((b) => b.type === 'tool_use').map((b) => (b as { id: string }).id),
+    );
+    expect(allToolUseIds).not.toContain('orphan-read');
+    expect(allToolUseIds).not.toContain('orphan-write');
+    expect(allToolUseIds).toContain('good');
+  });
+
+  it('returns empty array for completely corrupt input', () => {
+    const messages: Message[] = [
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'tc-1', name: 'x', input: {} }],
+      },
+    ];
+    const result = validateHistory(messages);
+    expect(result).toHaveLength(0);
   });
 });

@@ -112,8 +112,13 @@ export class QueryEngine {
           isError: true,
         };
 
-    // Combine auto-approved tool results from the same turn with the write result.
-    // Anthropic requires ALL tool_results in one user message.
+    // Reconstruct the full turn atomically:
+    // 1. Push the assistant message that was deferred during pending_action
+    // 2. Push ALL tool_results (completed reads + write) in one user message
+    if (action.assistantContent?.length) {
+      this.messages.push({ role: 'assistant', content: action.assistantContent });
+    }
+
     const allResults: ContentBlock[] = [
       ...(action.completedResults ?? []).map((r) => ({
         type: 'tool_result' as const,
@@ -157,15 +162,8 @@ export class QueryEngine {
     this.costTracker.reset();
   }
 
-  loadMessages(messages: Message[], opts?: { pendingAction?: PendingAction }): void {
-    const preserveIds = new Set<string>();
-    if (opts?.pendingAction) {
-      preserveIds.add(opts.pendingAction.toolUseId);
-      for (const r of opts.pendingAction.completedResults ?? []) {
-        preserveIds.add(r.toolUseId);
-      }
-    }
-    this.messages = sanitizeMessages(messages, preserveIds);
+  loadMessages(messages: Message[]): void {
+    this.messages = [...messages];
   }
 
   setServerPositions(data: EngineConfig['serverPositions']): void {
@@ -219,6 +217,8 @@ export class QueryEngine {
       };
 
       try {
+        this.messages = validateHistory(this.messages);
+
         const stream = this.provider.chat({
           messages: this.messages,
           systemPrompt: this.systemPrompt,
@@ -248,14 +248,14 @@ export class QueryEngine {
         acc.assistantBlocks.push({ type: 'text', text: acc.text });
       }
 
-      this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
-
       if (acc.pendingToolCalls.length === 0) {
+        this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
         yield { type: 'turn_complete', stopReason: acc.stopReason };
         return;
       }
 
       if (signal.aborted) {
+        this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
         this.addErrorResults(acc.pendingToolCalls, 'Aborted');
         yield { type: 'error', error: new Error('Aborted') };
         return;
@@ -281,8 +281,7 @@ export class QueryEngine {
         break;
       }
 
-      // Execute auto-approved tool calls (reads) even if a write is pending —
-      // Anthropic requires ALL tool_use ids to have matching tool_results.
+      // Execute auto-approved tool calls (reads) even if a write is pending
       for await (const toolEvent of runTools(approved, this.tools, context, this.txMutex)) {
         yield toolEvent;
 
@@ -297,9 +296,9 @@ export class QueryEngine {
       }
 
       if (pendingWrite) {
-        // Don't push partial results — Anthropic needs ALL tool_results in one
-        // user message. The completedResults are carried in the PendingAction
-        // so resumeWithToolResult can combine them with the write tool's result.
+        // Do NOT push assistant message to this.messages — session stays clean.
+        // The full assistant content is stored in PendingAction so
+        // resumeWithToolResult can reconstruct the turn atomically.
         yield {
           type: 'pending_action',
           action: {
@@ -307,6 +306,7 @@ export class QueryEngine {
             toolUseId: pendingWrite.call.id,
             input: pendingWrite.call.input,
             description: describeAction(pendingWrite.tool, pendingWrite.call),
+            assistantContent: acc.assistantBlocks,
             completedResults: toolResultBlocks.map((b) => ({
               toolUseId: (b as { toolUseId: string }).toolUseId,
               content: (b as { content: string }).content,
@@ -317,6 +317,8 @@ export class QueryEngine {
         return;
       }
 
+      // All tools auto-approved — push the complete turn (assistant + results)
+      this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
       this.messages.push({ role: 'user', content: toolResultBlocks });
 
       if (this.costTracker.isOverBudget()) {
@@ -411,47 +413,40 @@ function isCorruptHistoryError(err: unknown): boolean {
   );
 }
 
-function sanitizeMessages(messages: Message[], preserveToolUseIds = new Set<string>()): Message[] {
-  const trimmed: Message[] = [];
-  let i = 0;
+/**
+ * Pre-flight validation: ensures message history meets Anthropic's requirements
+ * right before every API call. Strips orphaned tool_use/tool_result blocks and
+ * fixes role alternation. This is the single point of defense — no corrupt
+ * messages can reach the API regardless of how they got into the session.
+ */
+export function validateHistory(messages: Message[]): Message[] {
+  // Collect every tool_use id and every tool_result id across the whole history
+  const allToolUseIds = new Set<string>();
+  const allToolResultIds = new Set<string>();
 
-  while (i < messages.length) {
-    const msg = messages[i];
-    const toolUseIds = msg.content
-      .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
-      .map((b) => b.id);
-
-    if (toolUseIds.length > 0) {
-      const next = messages[i + 1];
-      const toolResultIds = new Set(
-        (next?.content ?? [])
-          .filter((b): b is { type: 'tool_result'; toolUseId: string; content: string } => b.type === 'tool_result')
-          .map((b) => b.toolUseId),
-      );
-
-      const unmatchedIds = toolUseIds.filter((id) => !toolResultIds.has(id));
-
-      if (unmatchedIds.length > 0) {
-        if (unmatchedIds.every((id) => preserveToolUseIds.has(id))) {
-          // Pending action message — keep it
-          trimmed.push(msg);
-          i++;
-          continue;
-        }
-        // Corrupt pair — skip assistant msg and its partial tool_results
-        const hasPartialResults = next?.content.some((b) => b.type === 'tool_result');
-        i += hasPartialResults ? 2 : 1;
-        continue;
-      }
+  for (const msg of messages) {
+    for (const b of msg.content) {
+      if (b.type === 'tool_use') allToolUseIds.add(b.id);
+      if (b.type === 'tool_result') allToolResultIds.add(b.toolUseId);
     }
-
-    trimmed.push(msg);
-    i++;
   }
 
-  // Merge consecutive same-role messages (can happen after skipping corrupt pairs)
+  // Strip orphaned blocks: tool_use without any result, tool_result without any use
+  const filtered = messages
+    .map((msg) => {
+      const content = msg.content.filter((b) => {
+        if (b.type === 'tool_use') return allToolResultIds.has(b.id);
+        if (b.type === 'tool_result') return allToolUseIds.has(b.toolUseId);
+        return true;
+      });
+      if (content.length === 0) return null;
+      return { role: msg.role, content } as Message;
+    })
+    .filter((m): m is Message => m !== null);
+
+  // Merge consecutive same-role messages (can happen after stripping)
   const merged: Message[] = [];
-  for (const msg of trimmed) {
+  for (const msg of filtered) {
     const last = merged[merged.length - 1];
     if (last && last.role === msg.role) {
       last.content = [...last.content, ...msg.content];

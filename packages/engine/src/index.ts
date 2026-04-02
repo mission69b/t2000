@@ -1,5 +1,5 @@
 // Core engine
-export { QueryEngine } from './engine.js';
+export { QueryEngine, validateHistory } from './engine.js';
 
 // Types
 export type {
