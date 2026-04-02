@@ -449,16 +449,14 @@ Gateway already logs payments with unique digest constraint (replay protection).
 - [x] `/api/explorer` endpoint — paginated, filterable payments
 - [x] `/api/explorer/stats` endpoint — totals, per-server breakdown, daily volume timeline
 
-### Phase 4: Server Registration — 2-3 days
+### Phase 4: Server Registration — ✅ DONE
 
-**Goal:** Other providers can register their MPP servers.
-
-- [ ] `/register` page — paste URL, fetch OpenAPI, run `@suimpp/discovery` validation
-- [ ] Live-preview pattern (like MPPscan) — render endpoints + pricing inline
-- [ ] Pass/fail validation checks in real-time
-- [ ] Enable "Register" button only once validation passes
-- [ ] Server detail page — `/servers/:id` with endpoints, pricing, metrics
-- [ ] Multi-server aggregation in explorer (already supported by DB schema)
+- [x] `/register` page — paste URL, fetch OpenAPI, run `@suimpp/discovery` validation
+- [x] Live-preview pattern — render endpoints + pricing inline
+- [x] Pass/fail validation checks in real-time
+- [x] Enable "Register" button only once validation passes
+- [x] Server detail page — `/servers/:id` with endpoints, pricing, metrics
+- [x] Multi-server aggregation in explorer (already supported by DB schema)
 
 ---
 

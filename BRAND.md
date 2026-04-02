@@ -404,7 +404,7 @@ Like Anthropic > Claude, Square > Cash App, or OpenAI > ChatGPT — the infrastr
 | GitHub repo | mission69b/t2000 | **mission69b/t2000** (no change) |
 | Gateway | mpp.t2000.ai | **mpp.t2000.ai** (no change) |
 | Protocol hub | suimpp.dev | **suimpp.dev** (no change) |
-| Docs (consumer) | t2000.ai/docs | **Audric.ai/docs** (planned) |
+| Docs (consumer) | t2000.ai/docs | Not needed — the app IS the experience; developer docs at **t2000.ai/docs** |
 | Docs (developer) | t2000.ai/docs (same page) | **t2000.ai/docs** (developer hub — package cards, install commands, links to GitHub/npm) |
 | X account | @t2000ai | Keep for infra/dev audience, create **@Audric** for consumer |
 | npm org | @t2000 | **@t2000** (no change) |
@@ -497,8 +497,31 @@ You can. But there is no pressure. The consumer name is the one that matters for
 
 - [x] Register audric.ai domain
 - [x] Register @audric on X (or closest available)
-- [ ] Check USPTO / EU trademark for "Audric" in fintech
-- [ ] Design wordmark using Agentic Design System typography
+- [ ] Check USPTO / EU trademark for "Audric" in fintech (low priority — do before major launch)
+- [x] ~~Design wordmark~~ → Icon-first approach: geometric mark + "Audr\c" text treatment (see Icon section below)
+
+### Icon & Identity
+
+The Agentic Design System's logo mark (pixelated geometric cross pattern made of rounded squares) is the design DNA. The `\` backslash in "Agent\c" carries meaning (escape character, terminal, the unexpected).
+
+**Audric adopts the same `\` treatment: "Audr\c"**
+
+The icon mark should:
+- Work as favicon (16–32px), app icon (180–512px), social pfp, and chat avatar
+- Be animatable (pulse, rotate, or shimmer for loading states / AI thinking)
+- Use the same geometric pixel grid as the Agentic DS mark, but distinct
+- Be monochrome (N900 on light, N100 on dark) — no color needed
+- The "A" letterform or a simplified geometric pattern derived from the cross mark
+
+**Usage:**
+| Surface | Treatment |
+|---------|-----------|
+| Social pfp | Icon mark on white/black bg |
+| Favicon | Icon mark, 32px |
+| App loading | Animated icon mark (pulse/shimmer) |
+| Chat avatar | Icon mark in circle, shown on AI responses |
+| Header | "Audr\c" text or icon mark alone |
+| Footer | "Built with t2000" small text (unchanged) |
 
 ---
 
@@ -539,29 +562,21 @@ Design system: Stays independent (deep navy + blue). Not part of this redesign.
 
 ## Website Information Architecture
 
-### Audric.ai — Consumer site
+### Audric.ai — Consumer site (app-first)
 
 ```
 Audric.ai
-├── /                    Homepage — hero, product grid, trust, how it works
-├── /savings             Product page — yield, rates, how it works
-├── /pay                 Product page — API catalog, pricing, MPP
-├── /send                Product page — transfers, contacts
-├── /credit              Product page — borrowing, collateral
-├── /receive             Product page — merchant receive (coming soon)
-├── /docs                Documentation hub
-│   ├── /docs/quickstart Getting started (consumer-friendly)
-│   ├── /docs/cli        t2000 CLI reference (cross-brand)
-│   ├── /docs/sdk        t2000 SDK reference (cross-brand)
-│   ├── /docs/mcp        t2000 MCP reference (cross-brand)
-│   └── /docs/api        API reference
-├── /pricing             Consolidated pricing across products
-├── /security            Trust, audits, architecture
-├── /about               Story, mission
-├── /demo                Live demos (moved from homepage)
+├── /                    App — conversational UI (the app IS the homepage)
+├── /savings             Product info page — yield, rates, how it works
+├── /pay                 Product info page — API catalog, pricing, MPP
+├── /send                Product info page — transfers, contacts
+├── /credit              Product info page — borrowing, collateral
 ├── /terms               Legal
 ├── /privacy             Legal
 └── /disclaimer          Legal
+
+No /docs — the app teaches through conversation. Developer docs live at t2000.ai/docs.
+No /pricing — rates are live in-app via protocol registry.
 ```
 
 ### t2000.ai — Developer/infra site (simplified) ✅ DONE
@@ -605,7 +620,7 @@ Products dropdown:
 - [x] Final pick — **Audric**
 - [x] Register domain (.ai and/or .com) — **audric.ai**
 - [x] Register X handle, GitHub org (if needed) — **@audric**
-- [ ] Register npm org (only if publishing consumer packages — not needed yet)
+- [x] ~~Register npm org~~ — not needed (consumer app uses @t2000/* from npm)
 
 ### Phase 0.5: Codebase cleanup — COMPLETE
 
@@ -646,5 +661,7 @@ Products dropdown:
 
 - [x] Update README, ARCHITECTURE.md, PRODUCT_FACTS.md
 - [x] Update suimpp.dev references (@mppsui → @suimpp)
-- [ ] Set up domain redirects (app.t2000.ai → audric.ai)
+- [x] Set up domain redirects (app.t2000.ai → audric.ai)
+- [ ] Design Audric icon mark (geometric pixel grid, animatable, works 16–512px)
+- [ ] Fix bugs + testing pass before launch
 - [ ] Social announcement (new brand launch)
