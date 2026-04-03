@@ -79,6 +79,23 @@ export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.j
 export type { SimulationResult } from './utils/simulate.js';
 export { getRates } from './protocols/navi.js';
 export { getSwapQuote } from './swap-quote.js';
+export {
+  findSwapRoute,
+  buildSwapTx,
+  resolveTokenType,
+  TOKEN_MAP,
+} from './protocols/cetus-swap.js';
+export type { SwapRouteResult } from './protocols/cetus-swap.js';
+export {
+  buildStakeVSuiTx,
+  buildUnstakeVSuiTx,
+  getVoloStats,
+  VSUI_TYPE,
+  VOLO_PKG,
+  VOLO_POOL,
+  VOLO_METADATA,
+} from './protocols/volo.js';
+export type { VoloStats } from './protocols/volo.js';
 export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
