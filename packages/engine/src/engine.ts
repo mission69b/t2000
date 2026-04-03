@@ -559,6 +559,12 @@ export function validateHistory(messages: Message[]): Message[] {
   return merged;
 }
 
+function resolveTokenSymbol(nameOrType: string): string {
+  if (!nameOrType.includes('::')) return nameOrType;
+  const parts = nameOrType.split('::');
+  return parts[parts.length - 1];
+}
+
 function describeAction(tool: Tool, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
   switch (tool.name) {
@@ -584,8 +590,8 @@ function describeAction(tool: Tool, call: PendingToolCall): string {
       return `Pay for API call to ${url} (~$${cost})`;
     }
     case 'swap_execute': {
-      const from = input.from ?? '?';
-      const to = input.to ?? '?';
+      const from = resolveTokenSymbol(String(input.from ?? '?'));
+      const to = resolveTokenSymbol(String(input.to ?? '?'));
       const amt = input.amount ?? '?';
       const slippagePct = ((input.slippage as number) ?? 0.01) * 100;
       return `Swap ${amt} ${from} for ${to} (${slippagePct}% max slippage)`;
