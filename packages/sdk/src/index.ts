@@ -78,6 +78,7 @@ export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
 export { getRates } from './protocols/navi.js';
+export { getSwapQuote } from './swap-quote.js';
 export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';

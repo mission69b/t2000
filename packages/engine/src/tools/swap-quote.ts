@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { getSwapQuote } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
-import { requireAgent } from './utils.js';
+import { getWalletAddress } from './utils.js';
 
 export const swapQuoteTool = buildTool({
   name: 'swap_quote',
@@ -25,8 +26,12 @@ export const swapQuoteTool = buildTool({
   isReadOnly: true,
 
   async call(input, context) {
-    const agent = requireAgent(context);
-    const result = await agent.swapQuote({
+    const walletAddress = context.agent
+      ? (context.agent as { address(): string }).address()
+      : getWalletAddress(context);
+
+    const result = await getSwapQuote({
+      walletAddress,
       from: input.from,
       to: input.to,
       amount: input.amount,
