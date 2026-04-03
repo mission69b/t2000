@@ -151,7 +151,7 @@ export class QueryEngine {
       return;
     }
 
-    yield* this.agentLoop(null, signal);
+    yield* this.agentLoop(null, signal, false);
   }
 
   interrupt(): void {
@@ -192,6 +192,7 @@ export class QueryEngine {
   private async *agentLoop(
     freshPrompt: string | null,
     signal: AbortSignal,
+    applyToolChoice = true,
   ): AsyncGenerator<EngineEvent> {
     const context: ToolContext = {
       agent: this.agent,
@@ -243,7 +244,7 @@ export class QueryEngine {
           model: this.model,
           maxTokens: this.maxTokens,
           temperature: this.temperature,
-          toolChoice: turns === 1 ? this.toolChoice : undefined,
+          toolChoice: (applyToolChoice && turns === 1) ? this.toolChoice : undefined,
           signal,
         });
 
