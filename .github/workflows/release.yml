@@ -70,6 +70,7 @@ jobs:
           }
 
           bump_pkg "packages/sdk"
+          bump_pkg "packages/engine"
           VERSION=$(bump_pkg "packages/cli")
           bump_pkg "packages/mcp"
 
