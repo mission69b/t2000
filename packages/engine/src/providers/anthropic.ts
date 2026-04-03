@@ -40,6 +40,7 @@ export class AnthropicProvider implements LLMProvider {
       system: params.systemPrompt,
       messages,
       tools: tools.length > 0 ? tools : undefined,
+      ...(params.temperature !== undefined && { temperature: params.temperature }),
     };
 
     const stream = params.signal

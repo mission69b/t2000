@@ -138,6 +138,7 @@ export interface EngineConfig {
   model?: string;
   maxTurns?: number;
   maxTokens?: number;
+  temperature?: number;
   costTracker?: {
     budgetLimitUsd?: number;
     inputCostPerToken?: number;
@@ -159,6 +160,7 @@ export interface ChatParams {
   tools: ToolDefinition[];
   model?: string;
   maxTokens?: number;
+  temperature?: number;
   signal?: AbortSignal;
 }
 
