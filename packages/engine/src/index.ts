@@ -20,6 +20,7 @@ export type {
   ChatParams,
   ProviderEvent,
   ServerPositionData,
+  ToolChoice,
 } from './types.js';
 
 // Tool factory

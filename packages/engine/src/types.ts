@@ -139,6 +139,8 @@ export interface EngineConfig {
   maxTurns?: number;
   maxTokens?: number;
   temperature?: number;
+  /** Force tool usage on the first LLM turn (prevents text-only refusals). */
+  toolChoice?: ToolChoice;
   costTracker?: {
     budgetLimitUsd?: number;
     inputCostPerToken?: number;
@@ -154,6 +156,8 @@ export interface LLMProvider {
   chat(params: ChatParams): AsyncGenerator<ProviderEvent>;
 }
 
+export type ToolChoice = 'auto' | 'any' | { type: 'tool'; name: string };
+
 export interface ChatParams {
   messages: Message[];
   systemPrompt: string;
@@ -161,6 +165,7 @@ export interface ChatParams {
   model?: string;
   maxTokens?: number;
   temperature?: number;
+  toolChoice?: ToolChoice;
   signal?: AbortSignal;
 }
 

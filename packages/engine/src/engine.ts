@@ -35,6 +35,7 @@ export class QueryEngine {
   private readonly maxTurns: number;
   private readonly maxTokens: number;
   private readonly temperature: number | undefined;
+  private readonly toolChoice: EngineConfig['toolChoice'];
   private readonly agent: unknown;
   private readonly mcpManager: unknown;
   private readonly walletAddress: string | undefined;
@@ -57,6 +58,7 @@ export class QueryEngine {
     this.maxTurns = config.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
     this.temperature = config.temperature;
+    this.toolChoice = config.toolChoice;
     this.systemPrompt = config.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
     this.costTracker = new CostTracker(config.costTracker);
 
@@ -241,6 +243,7 @@ export class QueryEngine {
           model: this.model,
           maxTokens: this.maxTokens,
           temperature: this.temperature,
+          toolChoice: turns === 1 ? this.toolChoice : undefined,
           signal,
         });
 

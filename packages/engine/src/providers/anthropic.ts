@@ -34,6 +34,17 @@ export class AnthropicProvider implements LLMProvider {
     );
     const tools = params.tools.map(toAnthropicTool);
 
+    let toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] | undefined;
+    if (params.toolChoice && tools.length > 0) {
+      if (params.toolChoice === 'any') {
+        toolChoice = { type: 'any' };
+      } else if (params.toolChoice === 'auto') {
+        toolChoice = { type: 'auto' };
+      } else if (typeof params.toolChoice === 'object') {
+        toolChoice = { type: 'tool', name: params.toolChoice.name };
+      }
+    }
+
     const streamParams = {
       model: params.model ?? this.defaultModel,
       max_tokens: params.maxTokens ?? this.defaultMaxTokens,
@@ -41,6 +52,7 @@ export class AnthropicProvider implements LLMProvider {
       messages,
       tools: tools.length > 0 ? tools : undefined,
       ...(params.temperature !== undefined && { temperature: params.temperature }),
+      ...(toolChoice && { tool_choice: toolChoice }),
     };
 
     const stream = params.signal
