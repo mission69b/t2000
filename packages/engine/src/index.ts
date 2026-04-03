@@ -127,6 +127,7 @@ export {
   swapExecuteTool,
   voloStakeTool,
   voloUnstakeTool,
+  saveContactTool,
 } from './tools/index.js';
 
 // All default tools

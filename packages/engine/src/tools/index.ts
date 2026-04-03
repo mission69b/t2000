@@ -16,6 +16,7 @@ import { swapQuoteTool } from './swap-quote.js';
 import { voloStakeTool } from './volo-stake.js';
 import { voloUnstakeTool } from './volo-unstake.js';
 import { voloStatsTool } from './volo-stats.js';
+import { saveContactTool } from './contacts.js';
 import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
@@ -54,6 +55,7 @@ export const WRITE_TOOLS: Tool[] = [
   swapExecuteTool,
   voloStakeTool,
   voloUnstakeTool,
+  saveContactTool,
 ];
 
 export function getDefaultTools(): Tool[] {
@@ -85,4 +87,5 @@ export {
   defillamaChainTvlTool,
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
+  saveContactTool,
 };
