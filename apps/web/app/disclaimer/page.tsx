@@ -21,7 +21,7 @@ export default function DisclaimerPage() {
             Disclaimer
           </h1>
           <p className="text-sm text-muted font-mono">
-            Last updated: February 2026
+            Last updated: April 2026
           </p>
         </header>
 
@@ -31,7 +31,25 @@ export default function DisclaimerPage() {
               t2000 is beta software.
             </strong>{" "}
             This software is provided &quot;as is&quot; without warranty of any kind. Use
-            at your own risk.
+            at your own risk. The consumer product{" "}
+            <a
+              href="https://audric.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              Audric
+            </a>
+            {" "}has its own{" "}
+            <a
+              href="https://audric.ai/disclaimer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              disclaimer
+            </a>
+            .
           </div>
 
           <section>

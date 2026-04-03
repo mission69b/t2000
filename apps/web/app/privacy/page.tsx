@@ -21,7 +21,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="text-sm text-muted font-mono">
-            Last updated: February 2026
+            Last updated: April 2026
           </p>
         </header>
 
@@ -33,8 +33,26 @@ export default function PrivacyPage() {
             <p>
               t2000 is designed with privacy as a core principle. We collect
               minimal data, operate non-custodially, and never store your
-              private keys. This policy covers all t2000 surfaces: the consumer
-              web app, CLI, SDK, MCP tools, and the t2000.ai website.
+              private keys. This policy covers t2000 infrastructure: the CLI,
+              SDK, MCP tools, and the t2000.ai website. The consumer product{" "}
+              <a
+                href="https://audric.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                Audric
+              </a>
+              {" "}has its own{" "}
+              <a
+                href="https://audric.ai/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                privacy policy
+              </a>
+              .
             </p>
           </section>
 

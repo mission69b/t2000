@@ -21,7 +21,7 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p className="text-sm text-muted font-mono">
-            Last updated: February 2026
+            Last updated: April 2026
           </p>
         </header>
 
@@ -42,12 +42,29 @@ export default function TermsPage() {
               2. Description of Service
             </h2>
             <p>
-              t2000 is a financial platform built on the Sui blockchain. It
-              provides an AI-powered assistant that can manage savings, earn
-              yield through DeFi protocols, send and receive tokens,
-              pay for APIs, mail postcards and letters, search
-              flights, generate images, and access other paid services. The
-              Service is provided as-is and is currently in{" "}
+              t2000 is a financial infrastructure platform built on the Sui
+              blockchain. It provides an SDK, CLI, MCP tools, and agent engine
+              that power financial applications. The consumer-facing product is{" "}
+              <a
+                href="https://audric.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                Audric
+              </a>
+              {" "}(audric.ai), an AI-powered assistant for managing savings,
+              yield, token swaps, sends, borrowing, and on-chain services.
+              Audric users are also subject to the{" "}
+              <a
+                href="https://audric.ai/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                Audric Terms of Service
+              </a>
+              . The Service is provided as-is and is currently in{" "}
               <strong className="text-amber-400">beta</strong>.
             </p>
           </section>
