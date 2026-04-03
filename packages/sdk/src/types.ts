@@ -172,6 +172,47 @@ export interface ClaimRewardsResult {
   gasMethod: GasMethod;
 }
 
+export interface StakeVSuiResult {
+  success: boolean;
+  tx: string;
+  amountSui: number;
+  vSuiReceived: number;
+  apy: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface UnstakeVSuiResult {
+  success: boolean;
+  tx: string;
+  vSuiAmount: number;
+  suiReceived: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface SwapResult {
+  success: boolean;
+  tx: string;
+  fromToken: string;
+  toToken: string;
+  fromAmount: number;
+  toAmount: number;
+  priceImpact: number;
+  route: string;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface SwapQuoteResult {
+  fromToken: string;
+  toToken: string;
+  fromAmount: number;
+  toAmount: number;
+  priceImpact: number;
+  route: string;
+}
+
 export interface PayOptions {
   url: string;
   method?: string;

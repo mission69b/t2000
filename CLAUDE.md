@@ -46,14 +46,16 @@ t2000/
 
 NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operations. Writes use thin transaction builders via `@mysten/sui`. No protocol SDK dependencies needed.
 
-**Do NOT import** `@naviprotocol/lending`, `@suilend/sdk`, or `@cetusprotocol/aggregator-sdk` in new code. Use MCP for reads, direct Sui `Transaction` building for writes.
+**Do NOT import** `@naviprotocol/lending` or `@suilend/sdk` in new code. Use MCP for reads, direct Sui `Transaction` building for writes.
+
+**Exception:** `@cetusprotocol/aggregator-sdk` is allowed for swap execution — multi-DEX routing across 20+ DEXs cannot be feasibly replaced by thin tx builders. All usage is isolated to `packages/sdk/src/protocols/cetus-swap.ts`.
 
 ---
 
 ## Critical Rules
 
 1. **Never add Invest or Swap as products.** Savings covers yield. Swap is a utility.
-2. **Never import protocol SDKs for new features.** Use MCP for reads, thin tx builders for writes.
+2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP for reads, thin tx builders for writes.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.
 5. **Always check PRODUCT_FACTS.md** before writing documentation or marketing copy.
@@ -153,8 +155,8 @@ type EngineEvent =
 
 ### Built-in tools
 
-Read (5): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`
-Write (7): `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`
+Read (5 + 9 market/data): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`
+Write (10): `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`
 
 ---
 

@@ -109,6 +109,8 @@ export {
   healthCheckTool,
   ratesInfoTool,
   transactionHistoryTool,
+  swapQuoteTool,
+  voloStatsTool,
 } from './tools/index.js';
 
 // Built-in tools — writes
@@ -121,6 +123,9 @@ export {
   repayDebtTool,
   claimRewardsTool,
   payApiTool,
+  swapExecuteTool,
+  voloStakeTool,
+  voloUnstakeTool,
 } from './tools/index.js';
 
 // All default tools
@@ -132,6 +137,20 @@ export { requireAgent, hasNaviMcp, getMcpManager, getWalletAddress } from './too
 // Sui RPC utilities
 export { fetchWalletCoins } from './sui-rpc.js';
 export type { WalletCoin, SuiCoinBalance } from './sui-rpc.js';
+
+// DefiLlama price resolver
+export { fetchTokenPrices, clearPriceCache } from './defillama-prices.js';
+
+// DefiLlama tools
+export {
+  defillamaYieldPoolsTool,
+  defillamaProtocolInfoTool,
+  defillamaTokenPricesTool,
+  defillamaPriceChangeTool,
+  defillamaChainTvlTool,
+  defillamaProtocolFeesTool,
+  defillamaSuiProtocolsTool,
+} from './tools/defillama.js';
 
 // System prompt
 export { DEFAULT_SYSTEM_PROMPT } from './prompt.js';

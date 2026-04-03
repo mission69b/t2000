@@ -8,12 +8,8 @@ import {
   parseMcpJson,
   transformPositions,
   transformRewards,
-  transformRates,
 } from '../navi-transforms.js';
-
-const STABLECOIN_SYMBOLS = new Set([
-  'USDC', 'USDT', 'wUSDC', 'wUSDT', 'FDUSD', 'AUSD', 'BUCK', 'suiUSDe', 'USDSUI',
-]);
+import { fetchTokenPrices } from '../defillama-prices.js';
 
 const GAS_RESERVE_SUI = 0.05;
 
@@ -46,7 +42,7 @@ export const balanceCheckTool = buildTool({
       const address = getWalletAddress(context);
       const mgr = getMcpManager(context);
 
-      const [walletCoins, positions, rewards, pools] = await Promise.all([
+      const [walletCoins, positions, rewards] = await Promise.all([
         fetchWalletCoins(address, context.suiRpcUrl).catch((err) => {
           console.warn('[balance_check] Sui RPC coin fetch failed, falling back to MCP:', err);
           return null;
@@ -57,54 +53,75 @@ export const balanceCheckTool = buildTool({
           format: 'json',
         }),
         callNavi(mgr, NaviTools.GET_AVAILABLE_REWARDS, { address }),
-        callNavi(mgr, NaviTools.GET_POOLS, {}),
       ]);
 
-      const rates = transformRates(pools);
-      const prices: Record<string, number> = {};
-      for (const [symbol, rate] of Object.entries(rates)) {
-        prices[symbol] = rate.price;
+      let coins = walletCoins;
+      if (!coins || coins.length === 0) {
+        const mcpCoins = await callNavi(mgr, NaviTools.GET_COINS, { address }).catch(() => []);
+        const coinArr = Array.isArray(mcpCoins) ? mcpCoins as Array<{ coinType?: string; totalBalance?: string; symbol?: string; decimals?: number }> : [];
+        coins = coinArr.map((c) => ({
+          coinType: c.coinType ?? '',
+          symbol: c.symbol ?? '',
+          decimals: c.decimals ?? (c.symbol === 'SUI' ? 9 : 6),
+          totalBalance: c.totalBalance ?? '0',
+          coinObjectCount: 0,
+        }));
+      }
+
+      const VSUI_COIN_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
+      const coinTypes = coins.map((c) => c.coinType).filter(Boolean);
+      const prices = await fetchTokenPrices(coinTypes).catch((err) => {
+        console.warn('[balance_check] DefiLlama price fetch failed:', err);
+        return {} as Record<string, number>;
+      });
+
+      if (coins.some((c) => c.coinType === VSUI_COIN_TYPE) && !prices[VSUI_COIN_TYPE]) {
+        try {
+          const statsRes = await fetch('https://open-api.naviprotocol.io/api/volo/stats', {
+            signal: AbortSignal.timeout(5_000),
+          });
+          if (statsRes.ok) {
+            const statsJson = await statsRes.json() as { data?: { exchange_rate?: number; exchangeRate?: number } };
+            const d = statsJson.data ?? statsJson as { exchange_rate?: number; exchangeRate?: number };
+            const rate = d.exchange_rate ?? d.exchangeRate ?? 1.05;
+            const suiPrice = prices['0x2::sui::SUI'] ?? 0;
+            prices[VSUI_COIN_TYPE] = rate * suiPrice;
+          }
+        } catch {
+          const suiPrice = prices['0x2::sui::SUI'] ?? 0;
+          prices[VSUI_COIN_TYPE] = suiPrice * 1.05;
+        }
       }
 
       let availableUsd = 0;
       let stablesUsd = 0;
       let gasReserveUsd = 0;
 
-      if (walletCoins && walletCoins.length > 0) {
-        for (const coin of walletCoins) {
-          const balance = Number(coin.totalBalance) / 10 ** coin.decimals;
-          const price = prices[coin.symbol] ?? (STABLECOIN_SYMBOLS.has(coin.symbol) ? 1 : 0);
+      const STABLE_SYMBOLS = new Set(['USDC', 'USDT', 'wUSDC', 'wUSDT', 'FDUSD', 'AUSD', 'BUCK']);
+      const holdings: Array<{ symbol: string; coinType: string; balance: number; usdValue: number }> = [];
 
-          if (coin.symbol === 'SUI' || coin.coinType === '0x2::sui::SUI') {
-            const reserveAmount = Math.min(balance, GAS_RESERVE_SUI);
-            gasReserveUsd = reserveAmount * price;
-            availableUsd += (balance - reserveAmount) * price;
-          } else {
-            availableUsd += balance * price;
-            if (STABLECOIN_SYMBOLS.has(coin.symbol)) {
-              stablesUsd += balance * price;
-            }
+      for (const coin of coins) {
+        const balance = Number(coin.totalBalance) / 10 ** coin.decimals;
+        const price = prices[coin.coinType] ?? 0;
+
+        if (coin.symbol === 'SUI' || coin.coinType === '0x2::sui::SUI') {
+          const reserveAmount = Math.min(balance, GAS_RESERVE_SUI);
+          gasReserveUsd = reserveAmount * price;
+          availableUsd += (balance - reserveAmount) * price;
+        } else {
+          availableUsd += balance * price;
+          if (STABLE_SYMBOLS.has(coin.symbol)) {
+            stablesUsd += balance * price;
           }
         }
-      } else {
-        const mcpCoins = await callNavi(mgr, NaviTools.GET_COINS, { address }).catch(() => []);
-        const coinArr = Array.isArray(mcpCoins) ? mcpCoins as Array<{ coinType?: string; totalBalance?: string; symbol?: string; decimals?: number }> : [];
-        for (const c of coinArr) {
-          const symbol = c.symbol ?? '';
-          const decimals = c.decimals ?? (symbol === 'SUI' ? 9 : 6);
-          const balance = Number(c.totalBalance ?? '0') / 10 ** decimals;
-          const price = prices[symbol] ?? (STABLECOIN_SYMBOLS.has(symbol) ? 1 : 0);
 
-          if (symbol === 'SUI' || c.coinType === '0x2::sui::SUI') {
-            const reserveAmount = Math.min(balance, GAS_RESERVE_SUI);
-            gasReserveUsd = reserveAmount * price;
-            availableUsd += (balance - reserveAmount) * price;
-          } else {
-            availableUsd += balance * price;
-            if (STABLECOIN_SYMBOLS.has(symbol)) {
-              stablesUsd += balance * price;
-            }
-          }
+        if (balance > 0) {
+          holdings.push({
+            symbol: coin.symbol || coin.coinType.split('::').pop() || coin.coinType,
+            coinType: coin.coinType,
+            balance,
+            usdValue: balance * price,
+          });
         }
       }
 
@@ -138,6 +155,7 @@ export const balanceCheckTool = buildTool({
         gasReserve: gasReserveUsd,
         total: availableUsd + savings + gasReserveUsd + pendingRewardsUsd - debt,
         stables: stablesUsd,
+        holdings: holdings.sort((a, b) => b.usdValue - a.usdValue),
       };
 
       return {
@@ -156,6 +174,9 @@ export const balanceCheckTool = buildTool({
       ? balance.stables
       : Object.values(balance.stables as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
 
+    const sdkHoldings = (balance as unknown as Record<string, unknown>).holdings;
+    const holdingsArr = Array.isArray(sdkHoldings) ? sdkHoldings : [];
+
     return {
       data: {
         available: balance.available,
@@ -165,6 +186,7 @@ export const balanceCheckTool = buildTool({
         gasReserve: gasReserveUsd,
         total: balance.total,
         stables: stablesTotal,
+        holdings: holdingsArr,
       },
       displayText: `Balance: $${balance.total.toFixed(2)} (Available: $${balance.available.toFixed(2)}, Savings: $${balance.savings.toFixed(2)})`,
     };

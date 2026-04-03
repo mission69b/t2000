@@ -11,6 +11,20 @@ import { borrowTool } from './borrow.js';
 import { repayDebtTool } from './repay.js';
 import { claimRewardsTool } from './claim.js';
 import { payApiTool } from './pay.js';
+import { swapExecuteTool } from './swap.js';
+import { swapQuoteTool } from './swap-quote.js';
+import { voloStakeTool } from './volo-stake.js';
+import { voloUnstakeTool } from './volo-unstake.js';
+import { voloStatsTool } from './volo-stats.js';
+import {
+  defillamaYieldPoolsTool,
+  defillamaProtocolInfoTool,
+  defillamaTokenPricesTool,
+  defillamaPriceChangeTool,
+  defillamaChainTvlTool,
+  defillamaProtocolFeesTool,
+  defillamaSuiProtocolsTool,
+} from './defillama.js';
 
 export const READ_TOOLS: Tool[] = [
   balanceCheckTool,
@@ -18,6 +32,15 @@ export const READ_TOOLS: Tool[] = [
   healthCheckTool,
   ratesInfoTool,
   transactionHistoryTool,
+  swapQuoteTool,
+  voloStatsTool,
+  defillamaYieldPoolsTool,
+  defillamaProtocolInfoTool,
+  defillamaTokenPricesTool,
+  defillamaPriceChangeTool,
+  defillamaChainTvlTool,
+  defillamaProtocolFeesTool,
+  defillamaSuiProtocolsTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -28,6 +51,9 @@ export const WRITE_TOOLS: Tool[] = [
   repayDebtTool,
   claimRewardsTool,
   payApiTool,
+  swapExecuteTool,
+  voloStakeTool,
+  voloUnstakeTool,
 ];
 
 export function getDefaultTools(): Tool[] {
@@ -47,4 +73,16 @@ export {
   repayDebtTool,
   claimRewardsTool,
   payApiTool,
+  swapExecuteTool,
+  swapQuoteTool,
+  voloStakeTool,
+  voloUnstakeTool,
+  voloStatsTool,
+  defillamaYieldPoolsTool,
+  defillamaProtocolInfoTool,
+  defillamaTokenPricesTool,
+  defillamaPriceChangeTool,
+  defillamaChainTvlTool,
+  defillamaProtocolFeesTool,
+  defillamaSuiProtocolsTool,
 };

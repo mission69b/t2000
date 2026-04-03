@@ -45,6 +45,9 @@
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
+| Swap | — | Free | Cetus Aggregator network fees only |
+| Stake (vSUI) | — | Free | VOLO protocol fees only |
+| Unstake (vSUI) | — | Free | |
 | Pay (MPP) | — | Free | Agent pays the API price, no t2000 surcharge |
 
 Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `BORROW_FEE_BPS`
@@ -91,13 +94,19 @@ t2000 uses an MCP-first integration model for DeFi protocol reads, with thin tra
 | Adapter | Type | Capabilities | Status |
 |---------|------|-------------|--------|
 | NAVI (`navi`) | Lending | save, withdraw, borrow, repay; claim rewards | Built-in |
+| Cetus Aggregator V3 | Swap | Multi-DEX swap routing (20+ DEXs, any token pair) | Built-in |
+| VOLO | Liquid Staking | Stake SUI → vSUI, unstake vSUI → SUI | Built-in |
+| DefiLlama | Market Data | Token prices, yields, TVL, protocol info, fees | Built-in (engine) |
 
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth, getPendingRewards, addClaimRewardsToTx
 - `ProtocolRegistry` auto-selects best rates across registered adapters
 - CLI `--protocol <name>` flag on save/withdraw/borrow/repay to pin a specific protocol
 - Third-party adapters can be registered via `agent.registerAdapter(new MyAdapter())`
+- Cetus SDK (`@cetusprotocol/aggregator-sdk`) is isolated to `packages/sdk/src/protocols/cetus-swap.ts`
+- VOLO uses thin tx builders (direct Move calls) — no SDK dependency
+- DefiLlama uses free public REST API (`coins.llama.fi`, `yields.llama.fi`, `api.llama.fi`)
 
-Source: `packages/sdk/src/adapters/` — types.ts, registry.ts, navi.ts
+Source: `packages/sdk/src/adapters/`, `packages/sdk/src/protocols/`, `packages/engine/src/tools/defillama.ts`
 
 ---
 
@@ -123,8 +132,8 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
-| save | `t2000 save <amount>` | Deposits USDC. Alias: `supply`. `amount` accepts `all`. |
-| withdraw | `t2000 withdraw <amount>` | Withdraws USDC from savings. `amount` accepts `all` |
+| save | `t2000 save <amount> [--asset TOKEN]` | Deposits to NAVI lending. Alias: `supply`. `amount` accepts `all`. `--asset` for multi-asset (default: USDC). |
+| withdraw | `t2000 withdraw <amount> [--asset TOKEN]` | Withdraws from NAVI lending. `amount` accepts `all`. `--asset` for specific token. |
 | borrow | `t2000 borrow <amount>` | USDC only |
 | repay | `t2000 repay <amount>` | Repays with USDC. `amount` accepts `all` |
 | pay | `t2000 pay <url>` | Options: `--method`, `--data`, `--header`, `--max-price`, `--timeout`, `--dry-run` |
@@ -146,6 +155,10 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | contacts add | `t2000 contacts add <name> <address>` | Save a named contact |
 | contacts remove | `t2000 contacts remove <name>` | Remove a contact |
 | claim-rewards | `t2000 claim-rewards` | Claim pending protocol rewards |
+| swap | `t2000 swap <amount> <from> [for] <to>` | Swap tokens via Cetus Aggregator. Options: `--slippage <pct>` (default: 1%) |
+| swap-quote | `t2000 swap-quote <amount> <from> [for] <to>` | Preview swap quote (read-only, no execution) |
+| stake | `t2000 stake <amount>` | Stake SUI for vSUI (VOLO liquid staking, min 1 SUI) |
+| unstake | `t2000 unstake <amount>` | Unstake vSUI back to SUI. `amount` accepts `all` |
 | earn | `t2000 earn` | Show all earning opportunities — savings yield |
 | mcp install | `t2000 mcp install` | Auto-configure MCP in Claude Desktop + Cursor |
 | mcp uninstall | `t2000 mcp uninstall` | Remove t2000 MCP config from platforms |
@@ -202,6 +215,30 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
 
+**swap:**
+```
+  ✓ Swapped 10 SUI for 38.4200 USDC
+  Route:  SUI → USDC (Cetus)
+  Gas:    0.0031 SUI (self-funded)
+  Tx:  https://suiscan.xyz/mainnet/tx/<digest>
+```
+
+**stake:**
+```
+  ✓ Staked 5 SUI for 4.7619 vSUI
+  ✓ APY: 3.85%
+  Gas:    0.0028 SUI (self-funded)
+  Tx:  https://suiscan.xyz/mainnet/tx/<digest>
+```
+
+**unstake:**
+```
+  ✓ Unstaked 4.7619 vSUI
+  ✓ Received 5.0500 SUI
+  Gas:    0.0028 SUI (self-funded)
+  Tx:  https://suiscan.xyz/mainnet/tx/<digest>
+```
+
 **pay:**
 ```
   → GET https://api.example.com/data
@@ -236,8 +273,8 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 
 | Method | Params | Returns |
 |--------|--------|---------|
-| `save()` | `{ amount: number \| 'all' }` | `SaveResult` |
-| `withdraw()` | `{ amount: number \| 'all' }` | `WithdrawResult` |
+| `save()` | `{ amount: number \| 'all', asset?: string }` | `SaveResult` |
+| `withdraw()` | `{ amount: number \| 'all', asset?: string }` | `WithdrawResult` |
 | `maxWithdraw()` | — | `MaxWithdrawResult` |
 
 ### Credit
@@ -248,6 +285,19 @@ Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
 | `repay()` | `{ amount: number \| 'all' }` | `RepayResult` |
 | `maxBorrow()` | — | `MaxBorrowResult` |
 | `healthFactor()` | — | `HealthFactorResult` |
+
+### Swap
+
+| Method | Params | Returns |
+|--------|--------|---------|
+| `swap()` | `{ from, to, amount, byAmountIn?, slippage? }` | `SwapResult` |
+
+### Liquid Staking (VOLO)
+
+| Method | Params | Returns |
+|--------|--------|---------|
+| `stakeVSui()` | `{ amount }` | `StakeVSuiResult` |
+| `unstakeVSui()` | `{ amount: number \| 'all' }` | `UnstakeVSuiResult` |
 
 ### Info
 
@@ -347,6 +397,25 @@ interface RepayResult {
   remainingDebt: number; gasCost: number; gasMethod: GasMethod;
 }
 
+interface SwapResult {
+  success: boolean; tx: string;
+  fromToken: string; toToken: string;
+  fromAmount: number; toAmount: number;
+  priceImpact: number; route: string;
+  gasCost: number; gasMethod: GasMethod;
+}
+
+interface StakeVSuiResult {
+  success: boolean; tx: string;
+  amountSui: number; vSuiReceived: number;
+  apy: number; gasCost: number; gasMethod: GasMethod;
+}
+
+interface UnstakeVSuiResult {
+  success: boolean; tx: string;
+  vSuiAmount: number; suiReceived: number;
+  gasCost: number; gasMethod: GasMethod;
+}
 ```
 
 Source: `packages/sdk/src/types.ts`
@@ -385,6 +454,8 @@ Source: `packages/sdk/src/types.ts`
 | `DUPLICATE_PAYMENT` | MPP nonce already used | No |
 | `FACILITATOR_REJECTION` | Facilitator rejected payment | No |
 | `FACILITATOR_TIMEOUT` | Facilitator timed out | Yes |
+| `SWAP_NO_ROUTE` | No swap route found (insufficient liquidity or unsupported pair) | No |
+| `SWAP_FAILED` | Swap execution or routing error | Yes |
 | `SAFEGUARD_BLOCKED` | Safeguard rule violated (locked, maxPerTx, maxDailySend) | No |
 | `UNKNOWN` | Unclassified error | Yes |
 
@@ -514,7 +585,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
-| Test count | 166 tests across 13 suites |
+| Test count | 171 tests across 13 suites |
 
 ### Engine Public Exports
 
@@ -537,20 +608,29 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `engineToSSE` | function | Adapt QueryEngine → SSE stream |
 | `estimateTokens` | function | Rough token estimation |
 | `compactMessages` | function | Context window compaction |
-| `getDefaultTools` | function | All 12 built-in tools |
+| `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
+| `clearPriceCache` | function | Clear the DefiLlama price cache |
+| `getDefaultTools` | function | All 24 built-in tools |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 
 ### Engine Tool Names
 
-| Read Tools | Write Tools |
+| Read Tools (14) | Write Tools (10) |
 |-----------|------------|
 | `balance_check` | `save_deposit` |
 | `savings_info` | `withdraw` |
 | `health_check` | `send_transfer` |
 | `rates_info` | `borrow` |
 | `transaction_history` | `repay_debt` |
-| | `claim_rewards` |
-| | `pay_api` |
+| `swap_quote` | `claim_rewards` |
+| `volo_stats` | `pay_api` |
+| `defillama_yield_pools` | `swap_execute` |
+| `defillama_protocol_info` | `volo_stake` |
+| `defillama_token_prices` | `volo_unstake` |
+| `defillama_price_change` | |
+| `defillama_chain_tvl` | |
+| `defillama_protocol_fees` | |
+| `defillama_sui_protocols` | |
 
 ### Engine Event Types
 
@@ -572,6 +652,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 |------|-------|
 | Package | `@t2000/mcp` |
 | Version | `0.21.0` |
+| Tool count | 28 (14 read, 12 write, 2 safety) |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |

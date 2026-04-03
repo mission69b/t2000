@@ -34,6 +34,8 @@ export type T2000ErrorCode =
   | 'INVALID_CONTACT_NAME'
   | 'FACILITATOR_TIMEOUT'
   | 'SAFEGUARD_BLOCKED'
+  | 'SWAP_NO_ROUTE'
+  | 'SWAP_FAILED'
   | 'UNKNOWN';
 
 export interface T2000ErrorData {

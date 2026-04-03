@@ -30,6 +30,10 @@ import { registerMcp } from './commands/mcp.js';
 import { registerContacts } from './commands/contacts.js';
 import { registerClaimRewards } from './commands/claimRewards.js';
 import { registerGas } from './commands/gas.js';
+import { registerSwap } from './commands/swap.js';
+import { registerSwapQuote } from './commands/swapQuote.js';
+import { registerStake } from './commands/stake.js';
+import { registerUnstake } from './commands/unstake.js';
 export function createProgram(): Command {
   const program = new Command();
 
@@ -78,6 +82,10 @@ Examples:
   registerContacts(program);
   registerClaimRewards(program);
   registerGas(program);
+  registerSwap(program);
+  registerSwapQuote(program);
+  registerStake(program);
+  registerUnstake(program);
 
   return program;
 }

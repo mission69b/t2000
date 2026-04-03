@@ -30,6 +30,8 @@ await agent.save({ amount: 100 });    // earn ~2–8% APY (auto-selects best rat
 await agent.borrow({ amount: 20 });   // borrow against savings
 await agent.repay({ amount: 20 });    // repay debt
 await agent.withdraw({ amount: 50 }); // always returns USDC
+await agent.swap({ from: 'SUI', to: 'USDC', amount: 10 });  // 20+ DEX routing
+await agent.stakeVSui({ amount: 5 }); // liquid staking → vSUI (~3-5% APY)
 ```
 
 ## Packages
@@ -77,7 +79,10 @@ t2000 wraps five financial primitives into a single interface:
 | **Checking** | Send and receive USDC | Direct Sui transfers |
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) (MCP reads + thin tx builders) |
 | **Credit** | Borrow USDC against savings | NAVI collateralized loans |
+| **Swap** | Trade any token pair on Sui | [Cetus Aggregator V3](https://www.cetus.zone) (20+ DEXs) |
+| **Liquid Staking** | Stake SUI for vSUI (~3-5% APY) | [VOLO](https://www.volosui.com) (thin tx builders) |
 | **Payments (MPP)** | Pay for API resources with USDC | [@suimpp/mpp](https://github.com/mission69b/suimpp) + [MPP Gateway](https://mpp.t2000.ai) |
+| **Market Data** | Token prices, yields, TVL, protocol info | [DefiLlama](https://defillama.com) (free REST API) |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set`, `t2000 lock/unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
@@ -110,6 +115,9 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | **Savings** | `agent.save({ amount })` | Deposit USDC to savings, earn APY |
 | | `agent.withdraw({ amount })` | Withdraw from savings (always USDC) |
 | | `agent.earnings()` | Yield earned, daily rate |
+| **Swap** | `agent.swap({ from, to, amount })` | Swap any token pair (Cetus, 20+ DEXs) |
+| **Staking** | `agent.stakeVSui({ amount })` | Stake SUI → vSUI (VOLO, ~3-5% APY) |
+| | `agent.unstakeVSui({ amount })` | Unstake vSUI → SUI |
 | **Credit** | `agent.borrow({ amount })` | Borrow USDC against collateral |
 | | `agent.repay({ amount })` | Repay debt |
 | | `agent.healthFactor()` | Liquidation safety |
@@ -144,7 +152,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-12 built-in tools (5 read, 7 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP when available, falling back to the SDK.
+24 built-in tools (14 read, 10 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 
@@ -162,6 +170,9 @@ t2000 save 50                      Earn yield (best rate)
 t2000 withdraw 25                  Withdraw savings (always USDC)
 t2000 borrow 10                    Borrow USDC against collateral
 t2000 repay 10                     Repay debt
+t2000 swap 10 SUI for USDC        Swap any token (20+ DEXs)
+t2000 stake 5                      Stake SUI for vSUI (~3-5% APY)
+t2000 unstake all                  Unstake vSUI back to SUI
 t2000 health                       Health factor
 t2000 rates                        Current APYs
 
@@ -194,7 +205,7 @@ Connect Claude Desktop, Cursor, Windsurf, or any MCP client:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 25 tools, 16 prompts. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
+Auto-configures Claude Desktop + Cursor. 28 tools, 16 prompts. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
 
 ## MPP Payments
 
@@ -280,7 +291,7 @@ pnpm --filter @t2000/server test
 | SDK | TypeScript, `@mysten/sui` |
 | Engine | TypeScript, Anthropic Claude, MCP client/server |
 | CLI | Commander.js, Hono (HTTP API) |
-| DeFi | NAVI (lending, MCP-first) |
+| DeFi | NAVI (lending), Cetus (swap), VOLO (liquid staking), DefiLlama (market data) |
 | Web | Next.js 15, Tailwind CSS v4, React 19 |
 | Consumer | Audric — zkLogin, Enoki gas, Geist + Instrument Serif |
 | Infra | AWS ECS Fargate, Vercel, Upstash Redis |

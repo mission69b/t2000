@@ -89,10 +89,13 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, protocol? })` | Deposit USDC to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
-| `agent.withdraw({ amount })` | Withdraw USDC from savings. `amount` can be `'all'`. | `WithdrawResult` |
+| `agent.save({ amount, asset?, protocol? })` | Deposit to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. Optional `asset` for multi-asset NAVI deposits (default: USDC). | `SaveResult` |
+| `agent.withdraw({ amount, asset? })` | Withdraw from savings. `amount` can be `'all'`. Optional `asset` for multi-asset withdrawals (default: USDC). | `WithdrawResult` |
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
 | `agent.repay({ amount })` | Repay outstanding debt in USDC. `amount` can be `'all'`. | `RepayResult` |
+| `agent.swap({ from, to, amount, slippage? })` | Swap tokens via Cetus Aggregator (20+ DEXs). User-friendly names or full coin types. | `SwapResult` |
+| `agent.stakeVSui({ amount })` | Stake SUI for vSUI via VOLO liquid staking (min 1 SUI) | `StakeVSuiResult` |
+| `agent.unstakeVSui({ amount })` | Unstake vSUI back to SUI. `amount` can be `'all'`. | `UnstakeVSuiResult` |
 | `agent.exportKey()` | Export private key (bech32 format) | `string` |
 
 ### Query Methods
@@ -109,6 +112,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.maxBorrow()` | Max safe borrow amount | `MaxBorrowResult` |
 | `agent.deposit()` | Wallet address + funding instructions | `DepositInfo` |
 | `agent.history({ limit? })` | Transaction history (default: all) | `TransactionRecord[]` |
+| `agent.swapQuote({ from, to, amount })` | Preview swap route, output amount, and price impact (no execution) | `SwapQuoteResult` |
 
 ### Contacts Methods
 
@@ -276,7 +280,7 @@ try {
 }
 ```
 
-Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE`
+Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE` · `SWAP_NO_ROUTE` · `SWAP_FAILED`
 
 ## Protocol Integration
 
@@ -285,6 +289,8 @@ t2000 uses an MCP-first integration model: NAVI MCP for reads, thin transaction 
 | Protocol | Integration | Used for |
 |----------|------------|----------|
 | NAVI | MCP (reads) + thin tx builders (writes) | Lending positions, deposits, withdrawals, borrows, rewards |
+| Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated) | Multi-DEX swap routing — any token pair with liquidity |
+| VOLO | Thin tx builders (direct Move calls) | Stake SUI → vSUI, unstake vSUI → SUI |
 
 ## Testing
 
@@ -305,6 +311,9 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
+| Swap | Free | Cetus Aggregator network fees only |
+| Stake (vSUI) | Free | VOLO protocol fees only |
+| Unstake (vSUI) | Free | |
 | Pay (MPP) | Free | Agent pays the API price, no t2000 surcharge |
 
 Fees are collected by the t2000 protocol treasury on-chain.

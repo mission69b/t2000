@@ -30,6 +30,10 @@ export type {
   ClaimRewardsResult,
   PayOptions,
   PayResult,
+  SwapResult,
+  SwapQuoteResult,
+  StakeVSuiResult,
+  UnstakeVSuiResult,
 } from './types.js';
 export {
   MIST_PER_SUI,

@@ -4,6 +4,31 @@ import { requireAgent } from './utils.js';
 
 const MPP_GATEWAY = 'https://mpp.t2000.ai';
 
+const SERVICE_PRICES: [RegExp, number][] = [
+  [/\/fal\//, 0.03],
+  [/\/googlemaps\//, 0.01],
+  [/\/perplexity\//, 0.01],
+  [/\/firecrawl\//, 0.01],
+  [/\/serpapi\//, 0.01],
+  [/\/openweather\//, 0.005],
+  [/\/brave\//, 0.005],
+  [/\/serper\//, 0.005],
+  [/\/newsapi\//, 0.005],
+  [/\/coingecko\//, 0.005],
+  [/\/alphavantage\//, 0.005],
+  [/\/exchangerate\//, 0.005],
+  [/\/deepl\//, 0.005],
+  [/\/jina\//, 0.005],
+  [/\/resend\//, 0.005],
+];
+
+export function estimatePayApiCost(url: string): number {
+  for (const [pattern, price] of SERVICE_PRICES) {
+    if (pattern.test(url)) return price;
+  }
+  return 0.005;
+}
+
 export const payApiTool = buildTool({
   name: 'pay_api',
   description: `Call any MPP (Machine Payment Protocol) service via on-chain USDC micropayment. The gateway at ${MPP_GATEWAY} hosts 40+ services (88 endpoints). All endpoints accept POST with JSON body. Payment is handled automatically.

@@ -46,9 +46,13 @@ import type {
   PendingReward,
   PayOptions,
   PayResult,
+  SwapResult,
+  SwapQuoteResult,
+  StakeVSuiResult,
+  UnstakeVSuiResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, STABLE_ASSETS, DEFAULT_NETWORK, API_BASE_URL } from './constants.js';
+import { SUPPORTED_ASSETS, STABLE_ASSETS, DEFAULT_NETWORK, API_BASE_URL, MIST_PER_SUI, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
@@ -261,6 +265,211 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
+  // -- VOLO vSUI Staking --
+
+  async stakeVSui(params: { amount: number }): Promise<StakeVSuiResult> {
+    this.enforcer.assertNotLocked();
+    const { buildStakeVSuiTx, getVoloStats } = await import('./protocols/volo.js');
+
+    const amountMist = BigInt(Math.floor(params.amount * Number(MIST_PER_SUI)));
+    const stats = await getVoloStats();
+
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+      return buildStakeVSuiTx(this.client, this._address, amountMist);
+    });
+
+    const vSuiReceived = params.amount / stats.exchangeRate;
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      amountSui: params.amount,
+      vSuiReceived,
+      apy: stats.apy,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  async unstakeVSui(params: { amount: number | 'all' }): Promise<UnstakeVSuiResult> {
+    this.enforcer.assertNotLocked();
+    const { buildUnstakeVSuiTx, getVoloStats, VSUI_TYPE } = await import('./protocols/volo.js');
+
+    let amountMist: bigint | 'all';
+    let vSuiAmount: number;
+
+    if (params.amount === 'all') {
+      amountMist = 'all';
+      const coins = await this._fetchCoins(VSUI_TYPE);
+      vSuiAmount = coins.reduce((sum, c) => sum + Number(c.balance), 0) / 1e9;
+    } else {
+      amountMist = BigInt(Math.floor(params.amount * 1e9));
+      vSuiAmount = params.amount;
+    }
+
+    const stats = await getVoloStats();
+
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+      return buildUnstakeVSuiTx(this.client, this._address, amountMist);
+    });
+
+    const suiReceived = vSuiAmount * stats.exchangeRate;
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      vSuiAmount,
+      suiReceived,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  // -- Swap --
+
+  async swap(params: {
+    from: string;
+    to: string;
+    amount: number;
+    byAmountIn?: boolean;
+    slippage?: number;
+  }): Promise<SwapResult> {
+    this.enforcer.assertNotLocked();
+
+    const { findSwapRoute, buildSwapTx, resolveTokenType, TOKEN_MAP } = await import('./protocols/cetus-swap.js');
+
+    const fromType = resolveTokenType(params.from);
+    const toType = resolveTokenType(params.to);
+    if (!fromType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${params.from}. Provide the full coin type.`);
+    if (!toType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${params.to}. Provide the full coin type.`);
+
+    const byAmountIn = params.byAmountIn ?? true;
+    const slippage = Math.min(params.slippage ?? 0.01, 0.05);
+
+    const fromEntry = Object.values(TOKEN_MAP).includes(fromType)
+      ? Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === fromType)
+      : null;
+    const fromDecimals = fromEntry ? fromEntry[1].decimals : (fromType === '0x2::sui::SUI' ? 9 : 6);
+    const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
+
+    const route = await findSwapRoute({
+      walletAddress: this._address,
+      from: fromType,
+      to: toType,
+      amount: rawAmount,
+      byAmountIn,
+    });
+
+    if (!route) throw new T2000Error('SWAP_NO_ROUTE', `No swap route found for ${params.from} -> ${params.to}.`);
+    if (route.insufficientLiquidity) throw new T2000Error('SWAP_NO_ROUTE', `Insufficient liquidity for ${params.from} -> ${params.to}.`);
+    if (route.priceImpact > 0.05) {
+      console.warn(`[swap] High price impact: ${(route.priceImpact * 100).toFixed(2)}%`);
+    }
+
+    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+      const tx = new Transaction();
+      tx.setSender(this._address);
+
+      let inputCoin: TransactionObjectArgument;
+      if (fromType === '0x2::sui::SUI') {
+        [inputCoin] = tx.splitCoins(tx.gas, [rawAmount]);
+      } else {
+        const coins = await this._fetchCoins(fromType);
+        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${params.from} coins found.`);
+        const merged = this._mergeCoinsInTx(tx, coins);
+        [inputCoin] = tx.splitCoins(merged, [rawAmount]);
+      }
+
+      const outputCoin = await buildSwapTx({
+        walletAddress: this._address,
+        route,
+        tx,
+        inputCoin,
+        slippage,
+      });
+
+      tx.transferObjects([outputCoin], this._address);
+      return tx;
+    });
+
+    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
+    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
+    const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
+    const toAmount = Number(route.amountOut) / 10 ** toDecimals;
+
+    const routeDesc = route.routerData.paths
+      ?.map((p) => p.provider)
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(' + ') ?? 'Cetus Aggregator';
+
+    return {
+      success: true,
+      tx: gasResult.digest,
+      fromToken: params.from,
+      toToken: params.to,
+      fromAmount,
+      toAmount,
+      priceImpact: route.priceImpact,
+      route: routeDesc,
+      gasCost: gasResult.gasCostSui,
+      gasMethod: gasResult.gasMethod,
+    };
+  }
+
+  async swapQuote(params: {
+    from: string;
+    to: string;
+    amount: number;
+    byAmountIn?: boolean;
+  }): Promise<SwapQuoteResult> {
+    const { findSwapRoute, resolveTokenType, TOKEN_MAP } = await import('./protocols/cetus-swap.js');
+
+    const fromType = resolveTokenType(params.from);
+    const toType = resolveTokenType(params.to);
+    if (!fromType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${params.from}. Provide the full coin type.`);
+    if (!toType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${params.to}. Provide the full coin type.`);
+
+    const byAmountIn = params.byAmountIn ?? true;
+
+    const fromEntry = Object.values(TOKEN_MAP).includes(fromType)
+      ? Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === fromType)
+      : null;
+    const fromDecimals = fromEntry ? fromEntry[1].decimals : (fromType === '0x2::sui::SUI' ? 9 : 6);
+    const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
+
+    const route = await findSwapRoute({
+      walletAddress: this._address,
+      from: fromType,
+      to: toType,
+      amount: rawAmount,
+      byAmountIn,
+    });
+
+    if (!route) throw new T2000Error('SWAP_NO_ROUTE', `No swap route found for ${params.from} -> ${params.to}.`);
+    if (route.insufficientLiquidity) throw new T2000Error('SWAP_NO_ROUTE', `Insufficient liquidity for ${params.from} -> ${params.to}.`);
+
+    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
+    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
+    const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
+    const toAmount = Number(route.amountOut) / 10 ** toDecimals;
+
+    const routeDesc = route.routerData.paths
+      ?.map((p) => p.provider)
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(' + ') ?? 'Cetus Aggregator';
+
+    return {
+      fromToken: params.from,
+      toToken: params.to,
+      fromAmount,
+      toAmount,
+      priceImpact: route.priceImpact,
+      route: routeDesc,
+    };
+  }
+
   // -- Wallet --
 
   address(): string {
@@ -379,9 +588,12 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Savings --
 
-  async save(params: { amount: number | 'all'; protocol?: string }): Promise<SaveResult> {
+  async save(params: { amount: number | 'all'; asset?: SupportedAsset; protocol?: string }): Promise<SaveResult> {
     this.enforcer.assertNotLocked();
-    const asset = 'USDC';
+    const asset: SupportedAsset = params.asset ?? 'USDC';
+    const assetInfo = SUPPORTED_ASSETS[asset];
+    if (!assetInfo) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unsupported asset: ${asset}`);
+
     const bal = await queryBalance(this.client, this._address);
 
     let amount: number;
@@ -408,13 +620,20 @@ export class T2000 extends EventEmitter<T2000Events> {
       if (canPTB) {
         const tx = new Transaction();
         tx.setSender(this._address);
-        const existingUsdc = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
-        if (existingUsdc.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins found');
 
-        const merged = this._mergeCoinsInTx(tx, existingUsdc);
-        const rawAmount = BigInt(Math.floor(saveAmount * 10 ** SUPPORTED_ASSETS.USDC.decimals));
-        const [depositCoin] = tx.splitCoins(merged, [rawAmount]);
-        await adapter.addSaveToTx!(tx, this._address, depositCoin, asset, { collectFee: true });
+        let inputCoin;
+        if (asset === 'SUI') {
+          const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
+          [inputCoin] = tx.splitCoins(tx.gas, [rawAmount]);
+        } else {
+          const coins = await this._fetchCoins(assetInfo.type);
+          if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${asset} coins found`);
+          const merged = this._mergeCoinsInTx(tx, coins);
+          const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
+          [inputCoin] = tx.splitCoins(merged, [rawAmount]);
+        }
+
+        await adapter.addSaveToTx!(tx, this._address, inputCoin, asset, { collectFee: true });
         return tx;
       }
 
@@ -453,9 +672,9 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async withdraw(params: { amount: number | 'all'; protocol?: string }): Promise<WithdrawResult> {
+  async withdraw(params: { amount: number | 'all'; asset?: string; protocol?: string }): Promise<WithdrawResult> {
     this.enforcer.assertNotLocked();
-    if (params.amount === 'all' && !params.protocol) {
+    if (params.amount === 'all' && !params.protocol && !params.asset) {
       return this.withdrawAllProtocols();
     }
 
@@ -465,13 +684,14 @@ export class T2000 extends EventEmitter<T2000Events> {
       if (params.protocol && pos.protocolId !== params.protocol) continue;
       for (const s of pos.positions.supplies) {
         if (s.amount > 0.001) {
+          if (params.asset && s.asset !== params.asset) continue;
           supplies.push({ protocolId: pos.protocolId, asset: s.asset, amount: s.amount, apy: s.apy });
         }
       }
     }
 
     if (supplies.length === 0) {
-      throw new T2000Error('NO_COLLATERAL', 'No savings to withdraw');
+      throw new T2000Error('NO_COLLATERAL', params.asset ? `No ${params.asset} savings to withdraw` : 'No savings to withdraw');
     }
 
     supplies.sort((a, b) => {

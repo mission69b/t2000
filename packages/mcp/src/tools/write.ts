@@ -74,17 +74,19 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_save',
-    'Deposit USDC to savings at the best USDC rate (earns yield). Amount is in dollars. Use "all" to save entire available balance. Set dryRun: true to preview.',
+    'Deposit to NAVI lending to earn yield. Supports USDC (default), USDT, SUI, USDe, USDsui. Amount is in token units. Use "all" to save entire available balance. Set dryRun: true to preview.',
     {
-      amount: z.union([z.number(), z.literal('all')]).describe('Dollar amount to save, or "all"'),
+      amount: z.union([z.number(), z.literal('all')]).describe('Amount to save, or "all"'),
+      asset: z.enum(['USDC', 'USDT', 'SUI', 'USDe', 'USDsui']).optional().describe('Asset to deposit (default: USDC)'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
-    async ({ amount, dryRun }) => {
+    async ({ amount, asset, dryRun }) => {
       try {
         if (dryRun) {
           agent.enforcer.assertNotLocked();
           const balance = await agent.balance();
           const rates = await agent.rates();
+          const assetKey = asset ?? 'USDC';
           const saveAmount = amount === 'all' ? balance.available - 1.0 : amount;
 
           return {
@@ -93,14 +95,15 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
               text: JSON.stringify({
                 preview: true,
                 amount: saveAmount,
-                currentApy: rates.USDC?.saveApy ?? 0,
+                asset: assetKey,
+                currentApy: rates[assetKey]?.saveApy ?? rates.USDC?.saveApy ?? 0,
                 savingsBalanceAfter: balance.savings + saveAmount,
               }),
             }],
           };
         }
 
-        const result = await mutex.run(() => agent.save({ amount }));
+        const result = await mutex.run(() => agent.save({ amount, asset: asset as 'USDC' | 'USDT' | 'SUI' | 'USDe' | 'USDsui' }));
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
@@ -110,19 +113,20 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_withdraw',
-    'Withdraw from savings back to checking. Amount is in dollars. Use "all" to withdraw everything. Set dryRun: true to preview.',
+    'Withdraw from NAVI lending back to wallet. Supports any deposited asset. Amount is in token units. Use "all" to withdraw everything. Set dryRun: true to preview.',
     {
-      amount: z.union([z.number(), z.literal('all')]).describe('Dollar amount to withdraw, or "all"'),
+      amount: z.union([z.number(), z.literal('all')]).describe('Amount to withdraw, or "all"'),
+      asset: z.string().optional().describe('Asset to withdraw (default: auto-selects largest position)'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
-    async ({ amount, dryRun }) => {
+    async ({ amount, asset, dryRun }) => {
       try {
         if (dryRun) {
           agent.enforcer.assertNotLocked();
           const positions = await agent.positions();
           const health = await agent.healthFactor();
           const savings = positions.positions
-            .filter(p => p.type === 'save')
+            .filter(p => p.type === 'save' && (!asset || p.asset === asset))
             .reduce((sum, p) => sum + p.amount, 0);
 
           return {
@@ -131,6 +135,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
               text: JSON.stringify({
                 preview: true,
                 amount: amount === 'all' ? savings : amount,
+                asset: asset ?? 'auto',
                 currentSavings: savings,
                 currentHealthFactor: health.healthFactor,
               }),
@@ -138,7 +143,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
           };
         }
 
-        const result = await mutex.run(() => agent.withdraw({ amount }));
+        const result = await mutex.run(() => agent.withdraw({ amount, asset }));
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
@@ -301,6 +306,69 @@ Common examples:
         }
 
         return { content: [{ type: 'text' as const, text }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Contact management
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Swap (Cetus Aggregator)
+  // ---------------------------------------------------------------------------
+
+  server.tool(
+    't2000_swap',
+    'Swap tokens on Sui via Cetus Aggregator (20+ DEXs). Supports any token pair with liquidity. Use user-friendly names (SUI, USDC, CETUS, DEEP, etc.) or full coin types.',
+    {
+      from: z.string().describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
+      to: z.string().describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),
+      amount: z.number().positive().describe('Amount to swap'),
+      slippage: z.number().min(0.001).max(0.05).optional().describe('Max slippage (default 0.01 = 1%, max 5%)'),
+    },
+    async ({ from, to, amount, slippage }) => {
+      try {
+        const result = await mutex.run(() => agent.swap({ from, to, amount, slippage }));
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // VOLO vSUI Liquid Staking
+  // ---------------------------------------------------------------------------
+
+  server.tool(
+    't2000_stake',
+    'Stake SUI for vSUI via VOLO liquid staking. Earn ~3-5% APY. Rewards compound automatically via exchange rate. Minimum 1 SUI.',
+    {
+      amount: z.number().min(1).describe('Amount of SUI to stake (minimum 1)'),
+    },
+    async ({ amount }) => {
+      try {
+        const result = await mutex.run(() => agent.stakeVSui({ amount }));
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    't2000_unstake',
+    'Unstake vSUI back to SUI. Returns SUI including accumulated yield. Use amount in vSUI units or "all" to unstake entire position.',
+    {
+      amount: z.union([z.number().positive(), z.literal('all')]).describe('Amount of vSUI to unstake, or "all"'),
+    },
+    async ({ amount }) => {
+      try {
+        const result = await mutex.run(() => agent.unstakeVSui({ amount }));
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
       }

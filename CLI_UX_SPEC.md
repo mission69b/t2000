@@ -62,21 +62,23 @@ With `--show-limits`:
     Health factor: ∞  (no active loan)
 ```
 
-### `t2000 save <amount>`
+### `t2000 save <amount> [--asset TOKEN]`
 
 ```
   ✓ Gas manager: $1.00 USDC → SUI              ← only when auto-topup fires
-  ✓ Saved $80.00 USDC to best rate
+  ✓ Saved $80.00 USDC to best rate             ← asset name varies with --asset
   ✓ Protocol fee: $0.08 USDC (0.1%)            ← only when fee > 0
   ✓ Current APY: 4.94%
   ✓ Savings balance: $79.92 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
-### `t2000 withdraw <amount>`
+Supported assets: USDC (default), USDT, SUI, USDe, USDsui.
+
+### `t2000 withdraw <amount> [--asset TOKEN]`
 
 ```
-  ✓ Withdrew $50.00 USDC
+  ✓ Withdrew $50.00 USDC                       ← asset name varies with --asset
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
@@ -352,6 +354,91 @@ No rewards:
 
 Reward indicators appear in other commands:
 - `positions`: `navi: 5.3000 USDC ($5.30) @ 4.09% APY +rewards`
+
+---
+
+## `t2000 swap` (token swap)
+
+Swap tokens via Cetus Aggregator (20+ DEXs).
+
+```
+  ✓ Swapped 10 SUI for 38.4200 USDC
+  Route:     SUI → USDC (Cetus)
+  Gas:       0.0031 SUI (self-funded)
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+```
+
+High price impact warning (shown when >0.5%):
+```
+  ✓ Swapped 10000 SUI for 37842.1200 USDC
+  Price Impact:  1.52%
+  Route:     SUI → USDC (Cetus → DeepBook)
+  Gas:       0.0035 SUI (self-funded)
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+```
+
+| Element | Format |
+|---------|--------|
+| Amounts | Source amount as-is, target to 4 decimal places |
+| Price impact | Only shown when >0.5%, formatted as `X.XX%` |
+| Route | Token path and DEX names |
+
+---
+
+## `t2000 swap-quote` (swap preview)
+
+Preview a swap quote without executing. Read-only, no transaction signed.
+
+```
+  Input:     10 SUI
+  Output:    38.421200 USDC
+  Price Impact:  0.05%                         ← only shown when >0.1%
+  Route:     SUI → USDC (Cetus)
+```
+
+| Element | Format |
+|---------|--------|
+| Input | Amount + source token |
+| Output | 6 decimal places + target token |
+| Price impact | Only shown when >0.1%, formatted as `X.XX%` |
+| Route | Token path and DEX names |
+
+---
+
+## `t2000 stake` (liquid staking)
+
+Stake SUI for vSUI via VOLO liquid staking.
+
+```
+  ✓ Staked 5 SUI for 4.7619 vSUI
+  ✓ APY: 3.85%
+  Gas:       0.0028 SUI (self-funded)
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+```
+
+| Element | Format |
+|---------|--------|
+| SUI amount | As-is |
+| vSUI received | 4 decimal places |
+| APY | Percentage with 2 decimal places |
+
+---
+
+## `t2000 unstake` (liquid unstaking)
+
+Unstake vSUI back to SUI (includes accumulated yield).
+
+```
+  ✓ Unstaked 4.7619 vSUI
+  ✓ Received 5.0500 SUI
+  Gas:       0.0028 SUI (self-funded)
+  Tx:  https://suiscan.xyz/mainnet/tx/...
+```
+
+| Element | Format |
+|---------|--------|
+| vSUI amount | 4 decimal places |
+| SUI received | 4 decimal places |
 
 ---
 

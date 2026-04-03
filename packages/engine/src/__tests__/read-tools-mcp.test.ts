@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -12,6 +12,13 @@ import { balanceCheckTool } from '../tools/balance.js';
 import { savingsInfoTool } from '../tools/savings.js';
 import { healthCheckTool } from '../tools/health.js';
 import { ratesInfoTool } from '../tools/rates.js';
+
+vi.mock('../defillama-prices.js', () => ({
+  fetchTokenPrices: vi.fn(async () => ({
+    '0x2::sui::SUI': 3.50,
+    '0xdba::usdc::USDC': 1.00,
+  })),
+}));
 
 // ---------------------------------------------------------------------------
 // Mock NAVI MCP server fixtures

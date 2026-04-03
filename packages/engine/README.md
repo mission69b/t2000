@@ -75,32 +75,51 @@ QueryEngine.submitMessage()
 | `navi-config.ts` | `NAVI_MCP_CONFIG`, `NaviTools` | NAVI MCP server configuration |
 | `navi-transforms.ts` | `transformRates`, `transformBalance`, ... | Raw MCP response → engine types |
 | `navi-reads.ts` | `fetchRates`, `fetchBalance`, ... | Composite MCP read functions |
+| `defillama-prices.ts` | `fetchTokenPrices`, `clearPriceCache` | Batch USD prices from DefiLlama (single price source) |
+| `tools/defillama.ts` | 7 DefiLlama tools | Yield pools, protocol info, token prices, price changes, chain TVL, fees, Sui protocols |
+| `tools/swap-quote.ts` | `swapQuoteTool` | Preview swap route + price impact (read-only) |
+| `tools/swap.ts` | `swapExecuteTool` | Cetus Aggregator multi-DEX swap |
+| `tools/volo-stats.ts` | `voloStatsTool` | VOLO liquid staking stats (vSUI/SUI rate, APY, TVL) |
+| `tools/volo-stake.ts` | `voloStakeTool` | Stake SUI → vSUI |
+| `tools/volo-unstake.ts` | `voloUnstakeTool` | Unstake vSUI → SUI |
 | `prompt.ts` | `DEFAULT_SYSTEM_PROMPT` | Audric system prompt |
 | `providers/anthropic.ts` | `AnthropicProvider` | Anthropic Claude LLM provider |
 
 ## Built-in Tools
 
-### Read Tools (parallel, auto-approved)
+### Read Tools (14 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
-| `balance_check` | Available, savings, debt, rewards, gas reserve |
+| `balance_check` | Available, savings, debt, rewards, gas reserve (DefiLlama pricing) |
 | `savings_info` | Positions, earnings, fund status |
 | `health_check` | Health factor with risk assessment |
 | `rates_info` | Current supply/borrow APYs |
 | `transaction_history` | Recent transaction log |
+| `swap_quote` | Preview swap route, output amount, and price impact (no execution) |
+| `volo_stats` | VOLO liquid staking stats — vSUI/SUI rate, APY, TVL |
+| `defillama_yield_pools` | Top yield pools by APY, filterable by chain |
+| `defillama_protocol_info` | Protocol TVL, category, chains |
+| `defillama_token_prices` | Current USD prices for Sui tokens |
+| `defillama_price_change` | Token price % change over period |
+| `defillama_chain_tvl` | Chain TVL rankings |
+| `defillama_protocol_fees` | Protocol fees/revenue rankings |
+| `defillama_sui_protocols` | Sui ecosystem protocols — TVL, category, changes |
 
-### Write Tools (serial, confirmation required)
+### Write Tools (10 — serial, confirmation required)
 
 | Tool | Description |
 |------|-------------|
-| `save_deposit` | Deposit USDC to savings |
-| `withdraw` | Withdraw from savings |
+| `save_deposit` | Deposit to savings (optional `asset` for multi-asset NAVI deposits) |
+| `withdraw` | Withdraw from savings (optional `asset` for multi-asset withdrawals) |
 | `send_transfer` | Send USDC to an address |
 | `borrow` | Borrow USDC against collateral |
 | `repay_debt` | Repay outstanding debt |
 | `claim_rewards` | Claim pending yield rewards |
 | `pay_api` | Pay for an API service via MPP |
+| `swap_execute` | Swap any token pair via Cetus Aggregator (20+ DEXs) |
+| `volo_stake` | Stake SUI for vSUI (VOLO liquid staking) |
+| `volo_unstake` | Unstake vSUI back to SUI |
 
 ## Configuration
 

@@ -15,6 +15,7 @@ import { TxMutex, runTools, type PendingToolCall } from './orchestration.js';
 import { getDefaultTools } from './tools/index.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
 import { CostTracker, type CostSnapshot } from './cost.js';
+import { estimatePayApiCost } from './tools/pay.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -295,6 +296,26 @@ export class QueryEngine {
 
       // Execute auto-approved tool calls (reads) even if a write is pending
       for await (const toolEvent of runTools(approved, this.tools, context, this.txMutex)) {
+        if (toolEvent.type === 'tool_result' && !toolEvent.isError) {
+          const warning = flagSuspiciousResult(toolEvent.toolName, toolEvent.result);
+          if (warning) {
+            const flagged = {
+              ...toolEvent,
+              result: typeof toolEvent.result === 'object' && toolEvent.result
+                ? { ...toolEvent.result as Record<string, unknown>, _warning: warning }
+                : { data: toolEvent.result, _warning: warning },
+            };
+            yield flagged;
+            toolResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: flagged.toolUseId,
+              content: JSON.stringify(flagged.result),
+              isError: flagged.isError,
+            });
+            continue;
+          }
+        }
+
         yield toolEvent;
 
         if (toolEvent.type === 'tool_result') {
@@ -534,10 +555,14 @@ export function validateHistory(messages: Message[]): Message[] {
 function describeAction(tool: Tool, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
   switch (tool.name) {
-    case 'save_deposit':
-      return `Save $${input.amount} into savings`;
-    case 'withdraw':
-      return `Withdraw $${input.amount} from savings`;
+    case 'save_deposit': {
+      const asset = input.asset ?? 'USDC';
+      return `Save ${input.amount} ${asset} into lending`;
+    }
+    case 'withdraw': {
+      const wAsset = input.asset ?? '';
+      return `Withdraw ${input.amount}${wAsset ? ' ' + wAsset : ''} from lending`;
+    }
     case 'send_transfer':
       return `Send $${input.amount} to ${input.to}`;
     case 'borrow':
@@ -546,9 +571,40 @@ function describeAction(tool: Tool, call: PendingToolCall): string {
       return `Repay $${input.amount} of outstanding debt`;
     case 'claim_rewards':
       return 'Claim all pending protocol rewards';
-    case 'pay_api':
-      return `Pay for API call to ${input.url}${input.maxPrice ? ` (max $${input.maxPrice})` : ''}`;
+    case 'pay_api': {
+      const url = String(input.url ?? '');
+      const cost = estimatePayApiCost(url);
+      return `Pay for API call to ${url} (~$${cost})`;
+    }
+    case 'swap_execute': {
+      const from = input.from ?? '?';
+      const to = input.to ?? '?';
+      const amt = input.amount ?? '?';
+      const slippagePct = ((input.slippage as number) ?? 0.01) * 100;
+      return `Swap ${amt} ${from} for ${to} (${slippagePct}% max slippage)`;
+    }
+    case 'volo_stake':
+      return `Stake ${input.amount} SUI for vSUI`;
+    case 'volo_unstake':
+      return `Unstake ${input.amount === 'all' ? 'all' : input.amount} vSUI`;
     default:
       return `Execute ${tool.name}`;
   }
+}
+
+function flagSuspiciousResult(toolName: string, result: unknown): string | null {
+  if (!result || typeof result !== 'object') return null;
+  const r = result as Record<string, unknown>;
+  if (toolName === 'swap_execute') {
+    const outAmt = Number(r.toAmount ?? r.outputAmount ?? 0);
+    const inAmt = Number(r.fromAmount ?? r.inputAmount ?? 1);
+    if (inAmt > 0 && outAmt / inAmt > 1_000_000) {
+      return '[Warning: This quote may contain inaccurate data. Verify on-chain before executing.]';
+    }
+  }
+  const apy = Number(r.apy ?? r.APY ?? NaN);
+  if (!isNaN(apy) && apy < 0) {
+    return '[Warning: Negative APY detected — data may be stale.]';
+  }
+  return null;
 }
