@@ -19,6 +19,24 @@ export const healthCheckTool = buildTool({
   isReadOnly: true,
 
   async call(_input, context) {
+    if (context.positionFetcher && context.walletAddress) {
+      const sp = await context.positionFetcher(context.walletAddress);
+      const hfVal = sp.healthFactor ?? (sp.borrows > 0 ? 0 : Infinity);
+      const status = hfStatus(hfVal);
+      const displayHf = Number.isFinite(hfVal) ? hfVal.toFixed(2) : '∞';
+      return {
+        data: {
+          healthFactor: hfVal,
+          supplied: sp.savings,
+          borrowed: sp.borrows,
+          maxBorrow: sp.maxBorrow,
+          liquidationThreshold: 0,
+          status,
+        },
+        displayText: `Health Factor: ${displayHf} (${status})`,
+      };
+    }
+
     if (hasNaviMcp(context)) {
       const hf = await fetchHealthFactor(
         getMcpManager(context),

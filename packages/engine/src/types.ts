@@ -91,6 +91,8 @@ export interface ToolContext {
   walletAddress?: string; // User's Sui wallet address (required for MCP reads)
   suiRpcUrl?: string; // Sui JSON-RPC URL for direct chain queries
   serverPositions?: ServerPositionData; // Pre-fetched positions from the server (avoids stale MCP data)
+  /** Fresh on-chain position reader — bypasses MCP caching. If provided, read tools prefer this. */
+  positionFetcher?: (address: string) => Promise<ServerPositionData>;
   signal?: AbortSignal;
 }
 
@@ -133,6 +135,8 @@ export interface EngineConfig {
   walletAddress?: string; // User's Sui wallet address (required for MCP reads)
   suiRpcUrl?: string; // Sui JSON-RPC URL for direct chain queries (wallet coins, etc.)
   serverPositions?: ServerPositionData; // Pre-fetched positions from the host app
+  /** Fresh on-chain position reader — called per tool invocation, bypasses MCP caching. */
+  positionFetcher?: (address: string) => Promise<ServerPositionData>;
   tools?: Tool[];
   systemPrompt?: string;
   model?: string;
