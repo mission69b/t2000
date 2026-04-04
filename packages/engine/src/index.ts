@@ -113,6 +113,10 @@ export {
   swapQuoteTool,
   voloStatsTool,
   mppServicesTool,
+  webSearchTool,
+  explainTxTool,
+  portfolioAnalysisTool,
+  protocolDeepDiveTool,
 } from './tools/index.js';
 
 // Built-in tools — writes

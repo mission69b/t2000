@@ -18,6 +18,10 @@ import { voloStakeTool } from './volo-stake.js';
 import { voloUnstakeTool } from './volo-unstake.js';
 import { voloStatsTool } from './volo-stats.js';
 import { saveContactTool } from './contacts.js';
+import { webSearchTool } from './web-search.js';
+import { explainTxTool } from './explain-tx.js';
+import { portfolioAnalysisTool } from './portfolio-analysis.js';
+import { protocolDeepDiveTool } from './protocol-deep-dive.js';
 import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
@@ -37,6 +41,10 @@ export const READ_TOOLS: Tool[] = [
   swapQuoteTool,
   voloStatsTool,
   mppServicesTool,
+  webSearchTool,
+  explainTxTool,
+  portfolioAnalysisTool,
+  protocolDeepDiveTool,
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
   defillamaTokenPricesTool,
@@ -83,6 +91,10 @@ export {
   voloStakeTool,
   voloUnstakeTool,
   voloStatsTool,
+  webSearchTool,
+  explainTxTool,
+  portfolioAnalysisTool,
+  protocolDeepDiveTool,
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
   defillamaTokenPricesTool,

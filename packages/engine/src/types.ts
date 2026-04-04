@@ -93,6 +93,8 @@ export interface ToolContext {
   serverPositions?: ServerPositionData; // Pre-fetched positions from the server (avoids stale MCP data)
   /** Fresh on-chain position reader — bypasses MCP caching. If provided, read tools prefer this. */
   positionFetcher?: (address: string) => Promise<ServerPositionData>;
+  /** Environment variables passed to tools (e.g. API keys not in process.env) */
+  env?: Record<string, string>;
   signal?: AbortSignal;
 }
 
