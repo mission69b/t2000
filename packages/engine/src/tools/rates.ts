@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { fetchRates } from '../navi-reads.js';
 import { buildTool } from '../tool.js';
-import { hasNaviMcp, getMcpManager, hasAgent, requireAgent } from './utils.js';
+import { hasNaviMcpGlobal, getMcpManager, hasAgent, requireAgent } from './utils.js';
 
 const YIELDS_API = 'https://yields.llama.fi';
 
@@ -47,17 +47,20 @@ export const ratesInfoTool = buildTool({
   isReadOnly: true,
 
   async call(_input, context) {
-    if (hasNaviMcp(context)) {
+    // MCP first (real-time, includes borrow rates) — no wallet needed for global rates
+    if (hasNaviMcpGlobal(context)) {
       const rates = await fetchRates(getMcpManager(context));
       return { data: rates, displayText: formatRatesSummary(rates) };
     }
 
+    // SDK agent second
     if (hasAgent(context)) {
       const agent = requireAgent(context);
       const rates = await agent.rates();
       return { data: rates, displayText: formatRatesSummary(rates) };
     }
 
+    // DefiLlama fallback (supply-only, no borrow rates)
     const rates = await fetchRatesFromDefiLlama();
     return { data: rates, displayText: formatRatesSummary(rates) };
   },

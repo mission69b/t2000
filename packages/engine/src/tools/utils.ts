@@ -27,6 +27,16 @@ export function hasNaviMcp(context: ToolContext): boolean {
 }
 
 /**
+ * Check if context has a connected NAVI MCP (no wallet required).
+ * Use for global reads like rates/pools that don't depend on a user address.
+ */
+export function hasNaviMcpGlobal(context: ToolContext): boolean {
+  if (!context.mcpManager) return false;
+  const mgr = context.mcpManager as McpClientManager;
+  return mgr.isConnected(NAVI_SERVER_NAME);
+}
+
+/**
  * Get the MCP client manager from context (assumes hasNaviMcp() is true).
  */
 export function getMcpManager(context: ToolContext): McpClientManager {
