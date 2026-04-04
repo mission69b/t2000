@@ -5,7 +5,7 @@ import { requireAgent } from './utils.js';
 export const saveDepositTool = buildTool({
   name: 'save_deposit',
   description:
-    'Deposit into NAVI lending to earn yield. Supports any NAVI-listed asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Always call balance_check first to know the available amount.',
+    'Deposit into NAVI lending to earn yield. Supports any NAVI-listed asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Amount is in token units (not USD).',
   inputSchema: z.object({
     amount: z.number().positive(),
     asset: z.string().optional().describe('Asset to deposit (default: USDC). Supports: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui'),

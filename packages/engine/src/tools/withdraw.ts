@@ -5,7 +5,7 @@ import { requireAgent } from './utils.js';
 export const withdrawTool = buildTool({
   name: 'withdraw',
   description:
-    'Withdraw from NAVI lending back to wallet. Supports any deposited asset (USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, etc). Always call savings_info first. Checks health factor to prevent liquidation if there is outstanding debt.',
+    'Withdraw from NAVI lending back to wallet. Supports any deposited asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Checks health factor to prevent liquidation if there is outstanding debt.',
   inputSchema: z.object({
     amount: z.number().positive(),
     asset: z.string().optional().describe('Asset to withdraw (default: picks largest position). Supports: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui'),
