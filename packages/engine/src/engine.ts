@@ -16,7 +16,6 @@ import { getDefaultTools } from './tools/index.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { estimatePayApiCost } from './tools/pay.js';
-import type { McpClientManager } from './mcp-client.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -152,12 +151,6 @@ export class QueryEngine {
     if (!response.approved) {
       yield { type: 'turn_complete', stopReason: 'end_turn' };
       return;
-    }
-
-    // After a write tool succeeds, invalidate MCP cache so subsequent reads
-    // (savings_info, balance_check, health_check) return fresh on-chain data.
-    if (this.mcpManager && typeof (this.mcpManager as McpClientManager).cache?.invalidate === 'function') {
-      (this.mcpManager as McpClientManager).cache.invalidate();
     }
 
     yield* this.agentLoop(null, signal, false);
