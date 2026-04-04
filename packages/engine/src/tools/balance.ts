@@ -125,27 +125,16 @@ export const balanceCheckTool = buildTool({
         }
       }
 
-      const sp = context.serverPositions;
-      let savings: number;
-      let debt: number;
-      let pendingRewardsUsd: number;
+      const posEntries = transformPositions(positions);
+      const rewardEntries = transformRewards(rewards);
 
-      if (sp) {
-        savings = sp.savings;
-        debt = sp.borrows;
-        pendingRewardsUsd = sp.pendingRewards;
-      } else {
-        const posEntries = transformPositions(positions);
-        const rewardEntries = transformRewards(rewards);
-
-        savings = posEntries
-          .filter((p) => p.type === 'supply')
-          .reduce((sum, p) => sum + p.valueUsd, 0);
-        debt = posEntries
-          .filter((p) => p.type === 'borrow')
-          .reduce((sum, p) => sum + p.valueUsd, 0);
-        pendingRewardsUsd = rewardEntries.reduce((sum, r) => sum + r.valueUsd, 0);
-      }
+      const savings = posEntries
+        .filter((p) => p.type === 'supply')
+        .reduce((sum, p) => sum + p.valueUsd, 0);
+      const debt = posEntries
+        .filter((p) => p.type === 'borrow')
+        .reduce((sum, p) => sum + p.valueUsd, 0);
+      const pendingRewardsUsd = rewardEntries.reduce((sum, r) => sum + r.valueUsd, 0);
 
       const bal = {
         available: availableUsd,
