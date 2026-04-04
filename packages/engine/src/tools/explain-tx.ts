@@ -20,6 +20,16 @@ interface ExplainedTx {
   summary: string;
 }
 
+const SIX_DECIMAL_TOKENS = new Set(['USDC', 'USDT', 'USDe', 'WBTC']);
+const EIGHT_DECIMAL_TOKENS = new Set(['WETH', 'ETH']);
+
+function guessDecimals(coinType: string): number {
+  const symbol = coinType.split('::').pop()?.toUpperCase() ?? '';
+  if (SIX_DECIMAL_TOKENS.has(symbol)) return 6;
+  if (EIGHT_DECIMAL_TOKENS.has(symbol)) return 8;
+  return 9;
+}
+
 export const explainTxTool = buildTool({
   name: 'explain_tx',
   description:
@@ -86,10 +96,11 @@ export const explainTxTool = buildTool({
         const symbol = coinParts[coinParts.length - 1] ?? bc.coinType;
         const amount = Number(bc.amount);
         const isNegative = amount < 0;
+        const decimals = guessDecimals(bc.coinType);
 
         txEffects.push({
           type: isNegative ? 'send' : 'receive',
-          description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} ${isNegative ? 'sent' : 'received'} ${Math.abs(amount / 1e9).toFixed(4)} ${symbol}`,
+          description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} ${isNegative ? 'sent' : 'received'} ${Math.abs(amount / 10 ** decimals).toFixed(decimals > 6 ? 4 : 2)} ${symbol}`,
         });
       }
     }
