@@ -1,6 +1,6 @@
 {
   "name": "@t2000/cli",
-  "version": "0.24.1",
+  "version": "0.24.2",
   "description": "A bank account for AI agents on Sui — guided setup, MCP, send, save, borrow, rebalance",
   "type": "module",
   "bin": {
