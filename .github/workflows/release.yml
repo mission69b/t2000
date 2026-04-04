@@ -85,3 +85,8 @@ jobs:
           git push origin HEAD:refs/heads/main
           git push origin "refs/tags/$VERSION"
 
+      - name: Trigger publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run publish.yml --ref "v${{ steps.bump.outputs.version }}"
+
