@@ -5,20 +5,20 @@ import { requireAgent } from './utils.js';
 export const withdrawTool = buildTool({
   name: 'withdraw',
   description:
-    'Withdraw from NAVI lending back to wallet. Supports any deposited asset: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui. Checks health factor to prevent liquidation if there is outstanding debt.',
+    'Withdraw from NAVI lending back to wallet. Supported assets: USDC, USDT, SUI, USDe, USDsui. Checks health factor to prevent liquidation if there is outstanding debt.',
   inputSchema: z.object({
     amount: z.number().positive(),
-    asset: z.string().optional().describe('Asset to withdraw (default: picks largest position). Supports: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui'),
+    asset: z.string().optional().describe('Asset to withdraw (default: picks largest position). Supported: USDC, USDT, SUI, USDe, USDsui'),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       amount: {
-        description: 'Exact amount to withdraw (call savings_info first to get deposited amount)',
+        description: 'Exact amount to withdraw in token units',
       },
       asset: {
         type: 'string',
-        description: 'Asset to withdraw (default: picks largest position). Supports: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui',
+        description: 'Asset to withdraw (default: picks largest position). Supported: USDC, USDT, SUI, USDe, USDsui',
       },
     },
     required: ['amount'],
