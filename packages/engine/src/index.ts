@@ -112,6 +112,7 @@ export {
   transactionHistoryTool,
   swapQuoteTool,
   voloStatsTool,
+  mppServicesTool,
 } from './tools/index.js';
 
 // Built-in tools — writes

@@ -11,6 +11,7 @@ import { borrowTool } from './borrow.js';
 import { repayDebtTool } from './repay.js';
 import { claimRewardsTool } from './claim.js';
 import { payApiTool } from './pay.js';
+import { mppServicesTool } from './mpp-services.js';
 import { swapExecuteTool } from './swap.js';
 import { swapQuoteTool } from './swap-quote.js';
 import { voloStakeTool } from './volo-stake.js';
@@ -35,6 +36,7 @@ export const READ_TOOLS: Tool[] = [
   transactionHistoryTool,
   swapQuoteTool,
   voloStatsTool,
+  mppServicesTool,
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
   defillamaTokenPricesTool,
@@ -75,6 +77,7 @@ export {
   repayDebtTool,
   claimRewardsTool,
   payApiTool,
+  mppServicesTool,
   swapExecuteTool,
   swapQuoteTool,
   voloStakeTool,
