@@ -5,10 +5,10 @@ import { requireAgent } from './utils.js';
 export const withdrawTool = buildTool({
   name: 'withdraw',
   description:
-    'Withdraw from NAVI lending back to wallet. Supports any deposited asset (USDC, USDT, SUI, etc). Always call savings_info first. Checks health factor to prevent liquidation if there is outstanding debt.',
+    'Withdraw from NAVI lending back to wallet. Supports any deposited asset (USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, etc). Always call savings_info first. Checks health factor to prevent liquidation if there is outstanding debt.',
   inputSchema: z.object({
     amount: z.number().positive(),
-    asset: z.string().optional().describe('Asset to withdraw (default: picks largest position). Options: USDC, USDT, SUI, USDe, USDsui'),
+    asset: z.string().optional().describe('Asset to withdraw (default: picks largest position). Supports: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui'),
   }),
   jsonSchema: {
     type: 'object',
@@ -18,7 +18,7 @@ export const withdrawTool = buildTool({
       },
       asset: {
         type: 'string',
-        description: 'Asset to withdraw (default: picks largest position). Options: USDC, USDT, SUI, USDe, USDsui',
+        description: 'Asset to withdraw (default: picks largest position). Supports: USDC, USDT, SUI, WAL, ETH, NAVX, GOLD, USDe, USDsui',
       },
     },
     required: ['amount'],
@@ -33,14 +33,16 @@ export const withdrawTool = buildTool({
       asset: input.asset,
     });
 
+    const withdrawnAsset = (result as { asset?: string }).asset ?? input.asset ?? '';
     return {
       data: {
         success: result.success,
         tx: result.tx,
         amount: result.amount,
+        asset: withdrawnAsset,
         gasCost: result.gasCost,
       },
-      displayText: `Withdrew ${result.amount.toFixed(2)}${input.asset ? ' ' + input.asset : ''} (tx: ${result.tx.slice(0, 8)}…)`,
+      displayText: `Withdrew ${result.amount.toFixed(result.amount < 1 ? 6 : 2)}${withdrawnAsset ? ' ' + withdrawnAsset : ''} (tx: ${result.tx.slice(0, 8)}…)`,
     };
   },
 });

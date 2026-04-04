@@ -9,7 +9,7 @@ import type {
   AdapterCapability,
   PendingReward,
 } from './types.js';
-import { STABLE_ASSETS } from '../constants.js';
+import { ALL_NAVI_ASSETS } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { normalizeAsset } from '../utils/format.js';
 import * as naviProtocol from '../protocols/navi.js';
@@ -21,7 +21,7 @@ export class NaviAdapter implements LendingAdapter {
   readonly name = 'NAVI Protocol';
   readonly version = '1.0.0';
   readonly capabilities: readonly AdapterCapability[] = ['save', 'withdraw', 'borrow', 'repay'];
-  readonly supportedAssets: readonly string[] = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'];
+  readonly supportedAssets: readonly string[] = [...ALL_NAVI_ASSETS];
   readonly supportsSameAssetBorrow = true;
 
   private client!: SuiJsonRpcClient;

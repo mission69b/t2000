@@ -594,20 +594,34 @@ export class T2000 extends EventEmitter<T2000Events> {
     const assetInfo = SUPPORTED_ASSETS[asset];
     if (!assetInfo) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unsupported asset: ${asset}`);
 
-    const bal = await queryBalance(this.client, this._address);
+    const isStable = (STABLE_ASSETS as readonly string[]).includes(asset);
 
     let amount: number;
     if (params.amount === 'all') {
-      amount = (bal.available ?? 0) - 1.0;
+      if (isStable) {
+        const bal = await queryBalance(this.client, this._address);
+        amount = (bal.available ?? 0) - 1.0;
+      } else if (asset === 'SUI') {
+        const suiBal = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
+        const suiAmount = Number(suiBal.totalBalance) / (10 ** assetInfo.decimals);
+        amount = suiAmount - 0.15; // reserve SUI for gas
+      } else {
+        const coins = await this._fetchCoins(assetInfo.type);
+        const totalRaw = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+        amount = Number(totalRaw) / (10 ** assetInfo.decimals);
+      }
       if (amount <= 0) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', 'Balance too low to save after $1 gas reserve', {
-          reason: 'gas_reserve_required', available: bal.available ?? 0,
+        throw new T2000Error('INSUFFICIENT_BALANCE', `No ${asset} available to save`, {
+          reason: 'insufficient_balance', asset,
         });
       }
     } else {
       amount = params.amount;
-      if (amount > (bal.available ?? 0)) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${(bal.available ?? 0).toFixed(2)}, requested: $${amount.toFixed(2)}`);
+      if (isStable) {
+        const bal = await queryBalance(this.client, this._address);
+        if (amount > (bal.available ?? 0)) {
+          throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${(bal.available ?? 0).toFixed(2)}, requested: $${amount.toFixed(2)}`);
+        }
       }
     }
 
@@ -750,12 +764,13 @@ export class T2000 extends EventEmitter<T2000Events> {
       return built.tx;
     });
 
-    this.emitBalanceChange('USDC', finalAmount, 'withdraw', gasResult.digest);
+    this.emitBalanceChange(target.asset, finalAmount, 'withdraw', gasResult.digest);
 
     return {
       success: true,
       tx: gasResult.digest,
       amount: finalAmount,
+      asset: target.asset,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
     };

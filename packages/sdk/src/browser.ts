@@ -46,6 +46,7 @@ export {
 export type { SupportedAsset, StableAsset } from './constants.js';
 export {
   STABLE_ASSETS,
+  ALL_NAVI_ASSETS,
   GAS_RESERVE_MIN,
 } from './constants.js';
 

@@ -14,7 +14,7 @@ import {
   updateOraclePriceBeforeUserOperationPTB,
   type Pool,
 } from '@naviprotocol/lending';
-import { SUPPORTED_ASSETS, STABLE_ASSETS } from '../constants.js';
+import { SUPPORTED_ASSETS, ALL_NAVI_ASSETS } from '../constants.js';
 import type { SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { stableToRaw } from '../utils/format.js';
@@ -30,7 +30,6 @@ import type {
 } from '../types.js';
 
 const MIN_HEALTH_FACTOR = 1.5;
-const NAVI_SUPPORTED_ASSETS = [...STABLE_ASSETS, 'SUI', 'ETH', 'GOLD'] as const;
 
 // NAVI SDK expects SuiClient (v1 name), our code uses SuiJsonRpcClient (v2 name).
 // They're the same runtime class, so the cast is safe.
@@ -99,6 +98,10 @@ const NAVI_SYMBOL_MAP: Record<string, string> = {
   USDT: 'USDT',
   USDe: 'USDe',
   USDsui: 'USDsui',
+  WAL: 'WAL',
+  NAVX: 'NAVX',
+  ETH: 'ETH',
+  GOLD: 'GOLD',
 };
 
 function resolveNaviSymbol(sdkSymbol: string, coinType: string): string {
@@ -207,7 +210,7 @@ export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
     const pools = await naviGetPools(sdkOptions(client));
     const result: RatesResult = {};
 
-    for (const asset of NAVI_SUPPORTED_ASSETS) {
+    for (const asset of ALL_NAVI_ASSETS) {
       const targetType = SUPPORTED_ASSETS[asset as keyof typeof SUPPORTED_ASSETS].type;
       const pool = pools.find((p: Pool) => {
         const poolSuffix = (p.suiCoinType || p.coinType || '').split('::').slice(1).join('::').toLowerCase();

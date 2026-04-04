@@ -50,13 +50,36 @@ export const SUPPORTED_ASSETS = {
     symbol: 'SUI',
     displayName: 'SUI',
   },
+  WAL: {
+    type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL',
+    decimals: 9,
+    symbol: 'WAL',
+    displayName: 'WAL',
+  },
+  ETH: {
+    type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH',
+    decimals: 8,
+    symbol: 'ETH',
+    displayName: 'suiETH',
+  },
+  NAVX: {
+    type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+    decimals: 9,
+    symbol: 'NAVX',
+    displayName: 'NAVX',
+  },
+  GOLD: {
+    type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM',
+    decimals: 6,
+    symbol: 'GOLD',
+    displayName: 'XAUM',
+  },
 } as const;
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
-export type StableAsset = Exclude<SupportedAsset, 'SUI'>;
-// USDC is the only actively supported deposit/save asset.
-// USDT, USDe, USDsui remain in SUPPORTED_ASSETS for reading legacy positions and withdrawals.
-export const STABLE_ASSETS: readonly StableAsset[] = ['USDC'] as const;
+export type StableAsset = 'USDC' | 'USDT' | 'USDe' | 'USDsui';
+export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'] as const;
+export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_ASSETS) as SupportedAsset[];
 
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
 export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0x408add9aa9322f93cfd87523d8f603006eb8713894f4c460283c58a6888dae8a';

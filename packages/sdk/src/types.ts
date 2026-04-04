@@ -54,6 +54,7 @@ export interface WithdrawResult {
   success: boolean;
   tx: string;
   amount: number;
+  asset?: string;
   gasCost: number;
   gasMethod: GasMethod;
 }
