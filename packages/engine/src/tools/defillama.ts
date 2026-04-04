@@ -35,19 +35,28 @@ interface YieldPool {
   apyReward?: number;
 }
 
+function fmtToolTvl(tvl: number): string {
+  if (tvl >= 1e9) return `$${(tvl / 1e9).toFixed(1)}B`;
+  if (tvl >= 1e6) return `$${(tvl / 1e6).toFixed(1)}M`;
+  if (tvl >= 1e3) return `$${(tvl / 1e3).toFixed(0)}K`;
+  return `$${tvl}`;
+}
+
 export const defillamaYieldPoolsTool = buildTool({
   name: 'defillama_yield_pools',
   description:
-    'Get top DeFi yield pools across all protocols. Filter by chain (e.g. "Sui") and sort by APY. Shows pool name, protocol, TVL, and APY breakdown.',
+    'Get top DeFi yield pools across all protocols. Filter by chain (e.g. "Sui") and sort by APY. Shows pool name, protocol, TVL, and APY breakdown. Use minTvl to filter out low-liquidity pools.',
   inputSchema: z.object({
     chain: z.string().optional().describe('Filter by chain name (e.g. "Sui", "Ethereum")'),
     limit: z.number().min(1).max(20).optional().describe('Max results (default 5)'),
+    minTvl: z.number().optional().describe('Minimum TVL in USD to filter out small/risky pools (default 100000)'),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       chain: { type: 'string', description: 'Filter by chain name' },
       limit: { type: 'number', description: 'Max results (default 5)' },
+      minTvl: { type: 'number', description: 'Minimum TVL in USD (default 100000)' },
     },
     required: [],
   },
@@ -61,6 +70,9 @@ export const defillamaYieldPoolsTool = buildTool({
       const chain = input.chain.toLowerCase();
       pools = pools.filter((p) => p.chain.toLowerCase() === chain);
     }
+
+    const minTvl = input.minTvl ?? 100_000;
+    pools = pools.filter((p) => p.tvlUsd >= minTvl);
 
     pools.sort((a, b) => b.apy - a.apy);
     const limit = input.limit ?? 5;
@@ -79,7 +91,7 @@ export const defillamaYieldPoolsTool = buildTool({
     return {
       data: results,
       displayText: results
-        .map((r) => `${r.pool} (${r.protocol}): ${r.apy}% APY, $${(r.tvl / 1e6).toFixed(1)}M TVL`)
+        .map((r) => `${r.pool} (${r.protocol}): ${r.apy}% APY, ${fmtToolTvl(r.tvl)} TVL`)
         .join('\n'),
     };
   },
@@ -132,7 +144,7 @@ export const defillamaProtocolInfoTool = buildTool({
 
     return {
       data: result,
-      displayText: `${result.name}: $${(result.tvl / 1e6).toFixed(1)}M TVL (${result.category}) on ${result.chains.join(', ')}`,
+      displayText: `${result.name}: ${fmtToolTvl(result.tvl)} TVL (${result.category}) on ${result.chains.join(', ')}`,
     };
   },
 });
@@ -394,7 +406,7 @@ export const defillamaSuiProtocolsTool = buildTool({
     return {
       data: results,
       displayText: results
-        .map((r, i) => `${i + 1}. ${r.name} ($${(r.tvl / 1e6).toFixed(1)}M TVL, ${r.category})`)
+        .map((r, i) => `${i + 1}. ${r.name} (${fmtToolTvl(r.tvl)} TVL, ${r.category})`)
         .join('\n'),
     };
   },
