@@ -45,9 +45,10 @@ function fmtToolTvl(tvl: number): string {
 export const defillamaYieldPoolsTool = buildTool({
   name: 'defillama_yield_pools',
   description:
-    'Get top DeFi yield pools across all protocols. Filter by chain (e.g. "Sui") and sort by APY. Shows pool name, protocol, TVL, and APY breakdown. Use minTvl to filter out low-liquidity pools.',
+    'Get top DeFi yield pools across protocols. Filter by chain (e.g. "Sui"), project (e.g. "navi-lending"), and minimum TVL. For NAVI lending rates, use project "navi-lending".',
   inputSchema: z.object({
     chain: z.string().optional().describe('Filter by chain name (e.g. "Sui", "Ethereum")'),
+    project: z.string().optional().describe('Filter by protocol project name (e.g. "navi-lending", "cetus-clmm")'),
     limit: z.number().min(1).max(20).optional().describe('Max results (default 5)'),
     minTvl: z.number().optional().describe('Minimum TVL in USD to filter out small/risky pools (default 100000)'),
   }),
@@ -55,6 +56,7 @@ export const defillamaYieldPoolsTool = buildTool({
     type: 'object',
     properties: {
       chain: { type: 'string', description: 'Filter by chain name' },
+      project: { type: 'string', description: 'Filter by protocol project name (e.g. "navi-lending")' },
       limit: { type: 'number', description: 'Max results (default 5)' },
       minTvl: { type: 'number', description: 'Minimum TVL in USD (default 100000)' },
     },
@@ -69,6 +71,11 @@ export const defillamaYieldPoolsTool = buildTool({
     if (input.chain) {
       const chain = input.chain.toLowerCase();
       pools = pools.filter((p) => p.chain.toLowerCase() === chain);
+    }
+
+    if (input.project) {
+      const project = input.project.toLowerCase();
+      pools = pools.filter((p) => p.project.toLowerCase() === project);
     }
 
     const minTvl = input.minTvl ?? 100_000;

@@ -3,6 +3,10 @@ import type { McpClientManager } from '../mcp-client.js';
 import { NAVI_SERVER_NAME } from '../navi-config.js';
 import type { ToolContext } from '../types.js';
 
+export function hasAgent(context: ToolContext): boolean {
+  return !!context.agent;
+}
+
 export function requireAgent(context: ToolContext): T2000 {
   if (!context.agent) {
     throw new Error(
