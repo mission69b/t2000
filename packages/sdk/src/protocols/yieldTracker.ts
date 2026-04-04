@@ -10,7 +10,7 @@ export async function getEarnings(
   const rates = await navi.getRates(client);
 
   const supplied = hf.supplied;
-  const apy = rates.USDC.saveApy / 100;
+  const apy = rates.USDC.saveApy;
   const dailyRate = apy / 365;
   const dailyEarning = supplied * dailyRate;
 

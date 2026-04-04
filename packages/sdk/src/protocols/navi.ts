@@ -181,9 +181,9 @@ export async function getPositions(
       const amountUsd = parseFloat(data.valueUSD);
       const pool = data.pool;
 
-      const apy = isBorrow
+      const apy = (isBorrow
         ? parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0')
-        : parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0');
+        : parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0')) / 100;
 
       if (amountUsd > 0.01 || amount > 1e-10) {
         positions.push({
@@ -219,18 +219,18 @@ export async function getRates(client: SuiJsonRpcClient): Promise<RatesResult> {
       });
       if (!pool) continue;
 
-      const saveApy = parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0');
-      const borrowApy = parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0');
+      const saveApy = parseFloat(pool.supplyIncentiveApyInfo?.apy ?? '0') / 100;
+      const borrowApy = parseFloat(pool.borrowIncentiveApyInfo?.apy ?? '0') / 100;
 
-      if (saveApy >= 0 && saveApy < 200) {
-        result[asset] = { saveApy, borrowApy: borrowApy >= 0 && borrowApy < 200 ? borrowApy : 0 };
+      if (saveApy >= 0 && saveApy < 2.0) {
+        result[asset] = { saveApy, borrowApy: borrowApy >= 0 && borrowApy < 2.0 ? borrowApy : 0 };
       }
     }
 
-    if (!result.USDC) result.USDC = { saveApy: 4.0, borrowApy: 6.0 };
+    if (!result.USDC) result.USDC = { saveApy: 0.04, borrowApy: 0.06 };
     return result;
   } catch {
-    return { USDC: { saveApy: 4.0, borrowApy: 6.0 } };
+    return { USDC: { saveApy: 0.04, borrowApy: 0.06 } };
   }
 }
 
