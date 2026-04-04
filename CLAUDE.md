@@ -102,6 +102,32 @@ pnpm --filter @t2000/engine typecheck  # TypeScript strict check
 pnpm --filter @t2000/engine lint       # ESLint
 ```
 
+### Release process (npm publish)
+
+**One command releases all 4 packages** (`@t2000/sdk`, `@t2000/engine`, `@t2000/mcp`, `@t2000/cli`):
+
+```bash
+gh workflow run release.yml --field bump=patch   # patch | minor | major
+```
+
+This triggers the full pipeline:
+1. **Release workflow** — bumps all package versions, commits, creates git tag, pushes
+2. **Publish workflow** — triggered explicitly by Release (not by tag push — `GITHUB_TOKEN` pushes don't trigger downstream workflows, this is a GitHub Actions limitation by design)
+3. Publish runs: CI (lint + typecheck + test) → npm publish → GitHub Release → Discord notification
+
+**After npm release, update downstream repos:**
+```bash
+# In audric repo:
+pnpm update @t2000/engine@latest @t2000/sdk@latest --filter web
+git add -A && git commit -m "📦 build(web): upgrade @t2000/engine + sdk" && git push
+# Vercel auto-deploys on push to main
+```
+
+**Key details:**
+- Versions are kept in sync across all 4 packages (same bump applied to each)
+- `continue-on-error: true` on publish steps — idempotent if a version already exists
+- `workflow_dispatch` on publish.yml serves as backup trigger
+
 ---
 
 ## Engine (`@t2000/engine`)
