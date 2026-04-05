@@ -73,6 +73,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 | `CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
 | `spec/CLAUDE_CODE_LEVERAGE.md` | Engine patterns, financial tools, MCP integration, repo separation | Engine or tool work |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
+| `spec/UPSTREAM_WORKAROUNDS.md` | Workarounds for NAVI MCP, Sui RPC, Cetus bugs + cleanup checklist | Adding tokens, touching NAVI/swap code |
 
 ---
 
