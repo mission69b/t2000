@@ -1,7 +1,6 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { TransactionRecord } from '../types.js';
-
-const SUI_TYPE = '0x2::sui::SUI';
+import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '../token-registry.js';
 
 const KNOWN_TARGETS: [RegExp, string][] = [
   [/::suilend|::obligation/, 'lending'],
@@ -103,9 +102,9 @@ function extractTransferDetails(
   if (!primaryOutflow) return {};
 
   const coinType = primaryOutflow.coinType;
-  const decimals = coinType.includes('::usdc::') ? 6 : 9;
+  const decimals = getDecimalsForCoinType(coinType);
   const amount = Math.abs(Number(BigInt(primaryOutflow.amount))) / 10 ** decimals;
-  const asset = coinType === SUI_TYPE ? 'SUI' : coinType.includes('::usdc::') ? 'USDC' : coinType.split('::').pop() ?? 'unknown';
+  const asset = resolveSymbol(coinType);
 
   const recipientChange = inflows.find((c) => c.coinType === coinType);
   const recipient = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;

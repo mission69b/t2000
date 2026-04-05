@@ -18,6 +18,7 @@ import { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
+import { getDecimalsForCoinType, resolveSymbol } from './token-registry.js';
 import { calculateFee, reportFee } from './protocols/protocolFee.js';
 import * as yieldTracker from './protocols/yieldTracker.js';
 import { ProtocolRegistry } from './adapters/registry.js';
@@ -346,10 +347,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const byAmountIn = params.byAmountIn ?? true;
     const slippage = Math.min(params.slippage ?? 0.01, 0.05);
 
-    const fromEntry = Object.values(TOKEN_MAP).includes(fromType)
-      ? Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === fromType)
-      : null;
-    const fromDecimals = fromEntry ? fromEntry[1].decimals : (fromType === '0x2::sui::SUI' ? 9 : 6);
+    const fromDecimals = getDecimalsForCoinType(fromType);
     const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
 
     const route = await findSwapRoute({
@@ -366,8 +364,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       console.warn(`[swap] High price impact: ${(route.priceImpact * 100).toFixed(2)}%`);
     }
 
-    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
-    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
+    const toDecimals = getDecimalsForCoinType(toType);
 
     // Snapshot pre-swap balance for fallback diff calculation
     let preBalRaw = 0n;
@@ -416,10 +413,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       });
       type BalChange = { coinType: string; amount: string; owner: { AddressOwner?: string } };
       const changes = ((fullTx as { balanceChanges?: BalChange[] }).balanceChanges ?? []);
-      console.error(`[swap] balanceChanges count=${changes.length}, toType=${toType}, suffix=${toTypeSuffix}`);
-      for (const c of changes) {
-        console.error(`[swap]   coinType=${c.coinType} amount=${c.amount} owner=${JSON.stringify(c.owner)}`);
-      }
       const received = changes.find((c) => {
         if (BigInt(c.amount) <= 0n) return false;
         const ownerAddr = (c.owner as { AddressOwner?: string })?.AddressOwner;
@@ -430,36 +423,28 @@ export class T2000 extends EventEmitter<T2000Events> {
       if (received) {
         const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
         if (actual > 0) toAmount = actual;
-        console.error(`[swap] Primary: toAmount=${toAmount}`);
-      } else {
-        console.error(`[swap] Primary: no matching balance change found`);
       }
-    } catch (err) {
-      console.error(`[swap] Primary failed:`, err);
+    } catch {
+      // waitForTransaction timeout — fall through to balance diff
     }
 
     // --- Fallback: pre/post getBalance diff ---
     const cetusEstimate = Number(route.amountOut) / 10 ** toDecimals;
     if (Math.abs(toAmount - cetusEstimate) < 0.001) {
-      console.error(`[swap] toAmount still equals Cetus estimate (${cetusEstimate}), trying balance diff`);
       try {
         await new Promise((r) => setTimeout(r, 2000));
         const postBal = await this.client.getBalance({ owner: this._address, coinType: toType });
         const postRaw = BigInt(postBal.totalBalance);
         const delta = Number(postRaw - preBalRaw) / 10 ** toDecimals;
-        console.error(`[swap] Fallback: pre=${preBalRaw} post=${postRaw} delta=${delta}`);
-        if (delta > 0) {
-          toAmount = delta;
-          console.error(`[swap] Fallback: using balance diff: ${toAmount}`);
-        }
-      } catch (err) {
-        console.error(`[swap] Fallback failed:`, err);
+        if (delta > 0) toAmount = delta;
+      } catch {
+        // Balance diff fallback failed — use Cetus estimate
       }
     }
 
     // Resolve full coin types to user-friendly token names
-    const fromName = fromEntry ? fromEntry[0] : this._resolveTokenName(fromType, params.from);
-    const toName = toEntry ? toEntry[0] : this._resolveTokenName(toType, params.to);
+    const fromName = resolveSymbol(fromType);
+    const toName = resolveSymbol(toType);
 
     const routeDesc = route.routerData.paths
       ?.map((p) => p.provider)
@@ -496,10 +481,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const byAmountIn = params.byAmountIn ?? true;
 
-    const fromEntry = Object.values(TOKEN_MAP).includes(fromType)
-      ? Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === fromType)
-      : null;
-    const fromDecimals = fromEntry ? fromEntry[1].decimals : (fromType === '0x2::sui::SUI' ? 9 : 6);
+    const fromDecimals = getDecimalsForCoinType(fromType);
     const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
 
     const route = await findSwapRoute({
@@ -513,8 +495,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     if (!route) throw new T2000Error('SWAP_NO_ROUTE', `No swap route found for ${params.from} -> ${params.to}.`);
     if (route.insufficientLiquidity) throw new T2000Error('SWAP_NO_ROUTE', `Insufficient liquidity for ${params.from} -> ${params.to}.`);
 
-    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
-    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
+    const toDecimals = getDecimalsForCoinType(toType);
     const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
     const toAmount = Number(route.amountOut) / 10 ** toDecimals;
 
@@ -969,13 +950,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     return all;
-  }
-
-  private _resolveTokenName(coinType: string, fallback: string): string {
-    const entry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === coinType);
-    if (entry) return entry[0];
-    const suffix = coinType.split('::').pop();
-    return suffix && suffix !== coinType ? suffix : fallback;
   }
 
   private _mergeCoinsInTx(tx: Transaction, coins: Array<{ coinObjectId: string; balance: string }>): TransactionObjectArgument {

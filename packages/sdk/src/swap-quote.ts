@@ -2,7 +2,7 @@
  * Standalone swap quote — no T2000 agent instance required.
  * Only needs a wallet address for Cetus Aggregator routing.
  */
-import { SUPPORTED_ASSETS } from './constants.js';
+import { getDecimalsForCoinType } from './token-registry.js';
 import type { SwapQuoteResult } from './types.js';
 
 export async function getSwapQuote(params: {
@@ -21,10 +21,7 @@ export async function getSwapQuote(params: {
 
   const byAmountIn = params.byAmountIn ?? true;
 
-  const fromEntry = Object.values(TOKEN_MAP).includes(fromType)
-    ? Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === fromType)
-    : null;
-  const fromDecimals = fromEntry ? fromEntry[1].decimals : (fromType === '0x2::sui::SUI' ? 9 : 6);
+  const fromDecimals = getDecimalsForCoinType(fromType);
   const rawAmount = BigInt(Math.floor(params.amount * 10 ** fromDecimals));
 
   const route = await findSwapRoute({
@@ -38,8 +35,7 @@ export async function getSwapQuote(params: {
   if (!route) throw new Error(`No swap route found for ${params.from} -> ${params.to}.`);
   if (route.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${params.from} -> ${params.to}.`);
 
-  const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
-  const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
+  const toDecimals = getDecimalsForCoinType(toType);
   const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
   const toAmount = Number(route.amountOut) / 10 ** toDecimals;
 

@@ -83,10 +83,25 @@ export { getSwapQuote } from './swap-quote.js';
 export {
   findSwapRoute,
   buildSwapTx,
-  resolveTokenType,
-  TOKEN_MAP,
 } from './protocols/cetus-swap.js';
 export type { SwapRouteResult } from './protocols/cetus-swap.js';
+export {
+  COIN_REGISTRY,
+  TOKEN_MAP,
+  resolveTokenType,
+  resolveSymbol,
+  getDecimalsForCoinType,
+  SUI_TYPE,
+  USDC_TYPE,
+  USDT_TYPE,
+  USDSUI_TYPE,
+  USDE_TYPE,
+  ETH_TYPE,
+  WBTC_TYPE,
+  WAL_TYPE,
+  NAVX_TYPE,
+} from './token-registry.js';
+export type { CoinMeta } from './token-registry.js';
 export {
   buildStakeVSuiTx,
   buildUnstakeVSuiTx,

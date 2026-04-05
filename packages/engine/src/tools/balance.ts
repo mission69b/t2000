@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getDecimalsForCoinType } from '@t2000/sdk';
 import { fetchWalletCoins } from '../sui-rpc.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcp, getMcpManager, getWalletAddress, requireAgent } from './utils.js';
@@ -62,7 +63,7 @@ export const balanceCheckTool = buildTool({
         coins = coinArr.map((c) => ({
           coinType: c.coinType ?? '',
           symbol: c.symbol ?? '',
-          decimals: c.decimals ?? (c.symbol === 'SUI' ? 9 : 6),
+          decimals: c.decimals ?? getDecimalsForCoinType(c.coinType ?? ''),
           totalBalance: c.totalBalance ?? '0',
           coinObjectCount: 0,
         }));

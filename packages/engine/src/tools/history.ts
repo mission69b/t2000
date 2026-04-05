@@ -1,10 +1,9 @@
 import { z } from 'zod';
+import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 
 const SUI_MAINNET_URL = 'https://fullnode.mainnet.sui.io:443';
-
-const SUI_TYPE = '0x2::sui::SUI';
 
 const KNOWN_TARGETS: [RegExp, string][] = [
   [/::suilend|::obligation/, 'lending'],
@@ -90,9 +89,9 @@ function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
 
   if (primaryOutflow) {
     const coinType = primaryOutflow.coinType;
-    const decimals = coinType.includes('::usdc::') ? 6 : 9;
+    const decimals = getDecimalsForCoinType(coinType);
     amount = Math.abs(Number(BigInt(primaryOutflow.amount))) / 10 ** decimals;
-    asset = coinType === SUI_TYPE ? 'SUI' : coinType.includes('::usdc::') ? 'USDC' : coinType.split('::').pop() ?? 'unknown';
+    asset = resolveSymbol(coinType);
     const recipientChange = inflows.find((c) => c.coinType === coinType);
     recipient = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;
   }

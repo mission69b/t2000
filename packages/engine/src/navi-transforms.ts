@@ -1,3 +1,5 @@
+import { getDecimalsForCoinType } from '@t2000/sdk';
+
 // ---------------------------------------------------------------------------
 // Raw NAVI MCP response types (as returned by the live NAVI MCP server)
 // ---------------------------------------------------------------------------
@@ -301,7 +303,7 @@ export function transformBalance(
 
   for (const coin of coins) {
     const symbol = coin.symbol ?? '';
-    const decimals = coin.decimals ?? (symbol === 'SUI' ? 9 : 6);
+    const decimals = coin.decimals ?? getDecimalsForCoinType(coin.coinType ?? '');
     const balance = toNum(coin.totalBalance) / 10 ** decimals;
     const price = prices?.[symbol] ?? (STABLECOIN_SYMBOLS.has(symbol) ? 1 : 0);
 

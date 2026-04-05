@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getDecimalsForCoinType } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 
 const inputSchema = z.object({
@@ -18,16 +19,6 @@ interface ExplainedTx {
   timestamp?: string;
   effects: TxEffect[];
   summary: string;
-}
-
-const SIX_DECIMAL_TOKENS = new Set(['USDC', 'USDT', 'USDe', 'WBTC']);
-const EIGHT_DECIMAL_TOKENS = new Set(['WETH', 'ETH']);
-
-function guessDecimals(coinType: string): number {
-  const symbol = coinType.split('::').pop()?.toUpperCase() ?? '';
-  if (SIX_DECIMAL_TOKENS.has(symbol)) return 6;
-  if (EIGHT_DECIMAL_TOKENS.has(symbol)) return 8;
-  return 9;
 }
 
 export const explainTxTool = buildTool({
@@ -99,7 +90,7 @@ export const explainTxTool = buildTool({
         const symbol = coinParts[coinParts.length - 1] ?? bc.coinType;
         const amount = Number(bc.amount);
         const isNegative = amount < 0;
-        const decimals = guessDecimals(bc.coinType);
+        const decimals = getDecimalsForCoinType(bc.coinType);
         const absHuman = Math.abs(amount / 10 ** decimals);
 
         if (bc.coinType.endsWith('::sui::SUI') && isNegative) {

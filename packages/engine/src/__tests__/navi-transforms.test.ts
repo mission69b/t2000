@@ -239,6 +239,105 @@ describe('transformPositions', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Tests: NAVI 1000x correction factor for newer pools
+// ---------------------------------------------------------------------------
+
+// UPSTREAM WORKAROUND: NAVI MCP divides ALL position amounts by 10^9
+// regardless of the pool's native decimals. For 6-decimal stablecoins in
+// newer pools (USDSUI, USDe, suiUSDT), this means amounts are 1000x too small.
+// Correction: multiply by 10^(9-6) = 1000.
+// REMOVAL TRIGGER: When NAVI MCP fixes pool-aware decimal handling, these
+// tests should FAIL (amounts will be 1000x too large). At that point,
+// remove NAVI_NEWER_POOL_SYMBOLS + naviDecimalFactor from navi-transforms.ts.
+// See: spec/UPSTREAM_WORKAROUNDS.md §1
+describe('transformPositions — newer pool correction (USDSUI/USDe/suiUSDT)', () => {
+  it('applies 1000x correction for USDSUI positions', () => {
+    const raw: NaviRawPositionsResponse = {
+      address: '0xabc',
+      positions: [{
+        id: 'pos-usdsui',
+        protocol: 'navi',
+        type: 'navi-lending-supply',
+        market: 'main',
+        tokenASymbol: 'USDSUI',
+        tokenAPrice: 1.0,
+        amountA: '0.01',  // NAVI MCP returns 0.01 for 10 USDSUI (divided by 10^9 instead of 10^6)
+        valueUSD: '0.01',
+        apr: '8.76',
+        liquidationThreshold: '0.85',
+      }],
+    };
+    const positions = transformPositions(raw);
+    expect(positions).toHaveLength(1);
+    expect(positions[0].amount).toBeCloseTo(10, 0);
+    expect(positions[0].valueUsd).toBeCloseTo(10, 0);
+  });
+
+  it('applies 1000x correction for SUI_USDE positions', () => {
+    const raw: NaviRawPositionsResponse = {
+      address: '0xabc',
+      positions: [{
+        id: 'pos-usde',
+        protocol: 'navi',
+        type: 'navi-lending-supply',
+        market: 'main',
+        tokenASymbol: 'SUI_USDE',
+        tokenAPrice: 1.0,
+        amountA: '0.005',
+        valueUSD: '0.005',
+        apr: '1.3',
+        liquidationThreshold: '0.85',
+      }],
+    };
+    const positions = transformPositions(raw);
+    expect(positions[0].amount).toBeCloseTo(5, 0);
+    expect(positions[0].valueUsd).toBeCloseTo(5, 0);
+  });
+
+  it('does NOT apply correction for SUI, USDC, or other legacy pool tokens', () => {
+    const raw: NaviRawPositionsResponse = {
+      address: '0xabc',
+      positions: [{
+        id: 'pos-usdc',
+        protocol: 'navi',
+        type: 'navi-lending-supply',
+        market: 'main',
+        tokenASymbol: 'USDC',
+        tokenAPrice: 1.0,
+        amountA: '100.00',
+        valueUSD: '100.00',
+        apr: '5.0',
+        liquidationThreshold: '0.85',
+      }],
+    };
+    const positions = transformPositions(raw);
+    expect(positions[0].amount).toBe(100);
+    expect(positions[0].valueUsd).toBe(100);
+  });
+
+  it('applies correction for USDsui (alternative casing)', () => {
+    const raw: NaviRawPositionsResponse = {
+      address: '0xabc',
+      positions: [{
+        id: 'pos-usdsui-lc',
+        protocol: 'navi',
+        type: 'navi-lending-supply',
+        market: 'main',
+        tokenASymbol: 'USDsui',
+        tokenAPrice: 1.0,
+        amountA: '0.02',
+        valueUSD: '0.02',
+        apr: '8.5',
+        liquidationThreshold: '0.85',
+      }],
+    };
+    const positions = transformPositions(raw);
+    expect(positions[0].amount).toBeCloseTo(20, 0);
+    expect(positions[0].valueUsd).toBeCloseTo(20, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Tests: transformHealthFactor
 // ---------------------------------------------------------------------------
 
