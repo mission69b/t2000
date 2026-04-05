@@ -397,27 +397,23 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
     let toAmount = Number(route.amountOut) / 10 ** toDecimals;
 
-    // Parse actual on-chain received amount — Cetus estimate can be wrong for
-    // tokens whose decimals differ from what the aggregator expects (e.g. USDSUI).
-    try {
-      const txBlock = await this.client.getTransactionBlock({
-        digest: gasResult.digest,
-        options: { showBalanceChanges: true },
-      });
-      type BalChangeEntry = { coinType: string; amount: string; owner: { AddressOwner?: string } | { ObjectOwner?: string } };
-      const changes = ((txBlock as { balanceChanges?: BalChangeEntry[] }).balanceChanges ?? []) as BalChangeEntry[];
-      const received = changes.find((c) =>
-        c.coinType === toType &&
-        BigInt(c.amount) > 0n &&
-        (c.owner as { AddressOwner?: string }).AddressOwner === this._address,
-      );
-      if (received) {
-        const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
-        if (actual > 0) toAmount = actual;
-      }
-    } catch (e) {
-      console.warn('[swap] Could not parse on-chain balance changes, using route estimate:', e);
+    // Parse actual on-chain received amount from balance changes returned by
+    // executeTransactionBlock — more reliable than the Cetus route estimate.
+    type BalChangeEntry = { coinType: string; amount: string; owner: { AddressOwner?: string } | { ObjectOwner?: string } };
+    const changes = (gasResult.balanceChanges ?? []) as BalChangeEntry[];
+    const received = changes.find((c) =>
+      c.coinType === toType &&
+      BigInt(c.amount) > 0n &&
+      (c.owner as { AddressOwner?: string }).AddressOwner === this._address,
+    );
+    if (received) {
+      const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
+      if (actual > 0) toAmount = actual;
     }
+
+    // Resolve full coin types to user-friendly token names
+    const fromName = fromEntry ? fromEntry[0] : this._resolveTokenName(fromType, params.from);
+    const toName = toEntry ? toEntry[0] : this._resolveTokenName(toType, params.to);
 
     const routeDesc = route.routerData.paths
       ?.map((p) => p.provider)
@@ -428,8 +424,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     return {
       success: true,
       tx: gasResult.digest,
-      fromToken: params.from,
-      toToken: params.to,
+      fromToken: fromName,
+      toToken: toName,
       fromAmount,
       toAmount,
       priceImpact: route.priceImpact,
@@ -927,6 +923,13 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     return all;
+  }
+
+  private _resolveTokenName(coinType: string, fallback: string): string {
+    const entry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === coinType);
+    if (entry) return entry[0];
+    const suffix = coinType.split('::').pop();
+    return suffix && suffix !== coinType ? suffix : fallback;
   }
 
   private _mergeCoinsInTx(tx: Transaction, coins: Array<{ coinObjectId: string; balance: string }>): TransactionObjectArgument {

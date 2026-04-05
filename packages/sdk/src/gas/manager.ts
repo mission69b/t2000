@@ -19,6 +19,7 @@ import { toBase64, fromBase64 } from '../utils/base64.js';
 export interface GasExecutionResult {
   digest: string;
   effects: unknown;
+  balanceChanges?: unknown[];
   gasMethod: GasMethod;
   gasCostSui: number;
   /** Pre-TX SUI balance in MIST — used internally for proactive gas maintenance. */
@@ -69,7 +70,7 @@ async function trySelfFunded(
   const result = await client.executeTransactionBlock({
     transactionBlock: toBase64(builtBytes),
     signature: [signature],
-    options: { showEffects: true },
+    options: { showEffects: true, showBalanceChanges: true },
   });
   await client.waitForTransaction({ digest: result.digest });
   await assertTxSuccess(result.effects, result.digest);
@@ -77,6 +78,7 @@ async function trySelfFunded(
   return {
     digest: result.digest,
     effects: result.effects,
+    balanceChanges: (result as { balanceChanges?: unknown[] }).balanceChanges,
     gasMethod: 'self-funded',
     gasCostSui: extractGasCost(result.effects as Parameters<typeof extractGasCost>[0]),
     preTxSuiMist: suiBalance,
@@ -106,7 +108,7 @@ async function tryAutoTopUpThenSelfFund(
   const result = await client.executeTransactionBlock({
     transactionBlock: toBase64(builtBytes),
     signature: [signature],
-    options: { showEffects: true },
+    options: { showEffects: true, showBalanceChanges: true },
   });
   await client.waitForTransaction({ digest: result.digest });
   await assertTxSuccess(result.effects, result.digest);
@@ -114,6 +116,7 @@ async function tryAutoTopUpThenSelfFund(
   return {
     digest: result.digest,
     effects: result.effects,
+    balanceChanges: (result as { balanceChanges?: unknown[] }).balanceChanges,
     gasMethod: 'auto-topup',
     gasCostSui: extractGasCost(result.effects as Parameters<typeof extractGasCost>[0]),
     preTxSuiMist: suiAfterTopUp,
@@ -148,7 +151,7 @@ async function trySponsored(
   const result = await client.executeTransactionBlock({
     transactionBlock: sponsoredResult.txBytes,
     signature: [agentSig, sponsoredResult.sponsorSignature],
-    options: { showEffects: true },
+    options: { showEffects: true, showBalanceChanges: true },
   });
 
   await client.waitForTransaction({ digest: result.digest });
@@ -160,6 +163,7 @@ async function trySponsored(
   return {
     digest: result.digest,
     effects: result.effects,
+    balanceChanges: (result as { balanceChanges?: unknown[] }).balanceChanges,
     gasMethod: 'sponsored',
     gasCostSui: gasCost,
     preTxSuiMist: suiBalance,
