@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-02
+> Last verified: 2026-04-05
 
 ---
 
@@ -14,11 +14,11 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.19.0` |
-| `@t2000/engine` | `0.4.5` |
-| `@t2000/cli` | `0.21.0` |
+| `@t2000/sdk` | `0.21.16` |
+| `@t2000/engine` | `0.6.16` |
+| `@t2000/cli` | `0.25.16` |
 | `@suimpp/mpp` | `0.1.0` |
-| `@t2000/mcp` | `0.21.0` |
+| `@t2000/mcp` | `0.25.16` |
 | Agent Skills | `3.0` |
 
 ---
@@ -112,14 +112,37 @@ Source: `packages/sdk/src/adapters/`, `packages/sdk/src/protocols/`, `packages/e
 
 ## Supported Assets
 
-User-facing commands are denominated in **USDC** — the user always thinks in USDC.
+All token metadata (type, decimals, symbol) lives in a **single canonical registry**: `packages/sdk/src/token-registry.ts` → `COIN_REGISTRY`. When adding a new token, add ONE entry there — everything else derives from it.
 
-| Symbol | Display | Decimals | Send | Save | Borrow | Withdraw |
-|--------|---------|----------|------|------|--------|----------|
+| Symbol | Display | Decimals | Send | Save | Borrow | Swap |
+|--------|---------|----------|------|------|--------|------|
 | USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ |
-| SUI | SUI | 9 | ✅ (gas) | — | — | — |
+| SUI | SUI | 9 | ✅ | ✅ | — | ✅ |
+| USDSUI | USDsui | 6 | ✅ | ✅ | — | ✅ |
+| USDe | USDe | 6 | ✅ | ✅ | — | ✅ |
+| WAL | WAL | 9 | ✅ | ✅ | — | ✅ |
+| ETH | ETH | 8 | ✅ | ✅ | — | ✅ |
+| wBTC | wBTC | 8 | ✅ | — | — | ✅ |
+| DEEP | DEEP | 6 | ✅ | — | — | ✅ |
+| NS | NS | 6 | ✅ | — | — | ✅ |
+| NAVX | NAVX | 9 | ✅ | — | — | ✅ |
+| CETUS | CETUS | 9 | ✅ | — | — | ✅ |
+| MANIFEST | MANIFEST | 9 | ✅ | — | — | ✅ |
+| HAEDAL | HAEDAL | 9 | ✅ | — | — | ✅ |
+| IKA | IKA | 9 | ✅ | — | — | ✅ |
+| GOLD | GOLD (XAUM) | 6 | ✅ | — | — | ✅ |
 
-Source: `packages/sdk/src/constants.ts` → `SUPPORTED_ASSETS`
+**24 tokens** total in the registry (including vSUI, haSUI, afSUI, FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS, USDT). Swap supports any token pair via Cetus Aggregator V3.
+
+Key SDK exports from `token-registry.ts`:
+- `COIN_REGISTRY` — full registry (`Record<string, CoinMeta>`)
+- `getDecimalsForCoinType(coinType)` — decimals lookup with suffix fallback
+- `resolveSymbol(coinType)` — friendly name from full coin type
+- `resolveTokenType(name)` — name → full coin type
+- `TOKEN_MAP` — case-insensitive name → type mapping
+- Type constants: `SUI_TYPE`, `USDC_TYPE`, `USDT_TYPE`, `USDSUI_TYPE`, `ETH_TYPE`, `WAL_TYPE`, etc.
+
+Source: `packages/sdk/src/token-registry.ts`
 
 ---
 
@@ -580,12 +603,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.4.5` |
+| Version | `0.6.16` |
 | Description | Agent engine for conversational finance — powers Audric |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
-| Test count | 171 tests across 13 suites |
+| Test count | 175 tests across 13 suites |
 
 ### Engine Public Exports
 
@@ -610,12 +633,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `compactMessages` | function | Context window compaction |
 | `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
 | `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 24 built-in tools |
+| `getDefaultTools` | function | All 26 built-in tools |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 
 ### Engine Tool Names
 
-| Read Tools (14) | Write Tools (10) |
+| Read Tools (16) | Write Tools (10) |
 |-----------|------------|
 | `balance_check` | `save_deposit` |
 | `savings_info` | `withdraw` |
@@ -623,10 +646,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `rates_info` | `borrow` |
 | `transaction_history` | `repay_debt` |
 | `swap_quote` | `claim_rewards` |
-| `volo_stats` | `pay_api` |
-| `defillama_yield_pools` | `swap_execute` |
-| `defillama_protocol_info` | `volo_stake` |
-| `defillama_token_prices` | `volo_unstake` |
+| `explain_tx` | `pay_api` |
+| `web_search` | `swap_execute` |
+| `volo_stats` | `volo_stake` |
+| `defillama_yield_pools` | `volo_unstake` |
+| `defillama_protocol_info` | |
+| `defillama_token_prices` | |
 | `defillama_price_change` | |
 | `defillama_chain_tvl` | |
 | `defillama_protocol_fees` | |
@@ -651,8 +676,8 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.21.0` |
-| Tool count | 28 (14 read, 12 write, 2 safety) |
+| Version | `0.25.16` |
+| Tool count | 30 (16 read, 12 write, 2 safety) |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |

@@ -60,6 +60,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.
 5. **Always check PRODUCT_FACTS.md** before writing documentation or marketing copy.
 6. **Always check CLI_UX_SPEC.md** before modifying CLI command output.
+8. **Always use `token-registry.ts`** for token metadata. Never hardcode decimals or coin types.
 7. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
 ---
@@ -68,7 +69,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
-| `BRAND.md` | Two-brand strategy, positioning, design system, product catalog | Any branding/messaging work |
+| `spec/DESIGN_SYSTEM.md` | Design tokens, typography, color system | Any branding/design work |
 | `PRODUCT_FACTS.md` | Versions, fees, CLI syntax, SDK signatures | Documentation or marketing |
 | `CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
 | `spec/CLAUDE_CODE_LEVERAGE.md` | Engine patterns, financial tools, MCP integration, repo separation | Engine or tool work |
@@ -185,7 +186,7 @@ type EngineEvent =
 
 ### Built-in tools
 
-Read (5 + 9 market/data): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`
+Read (16): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `explain_tx`, `web_search`, `swap_quote`, `volo_stats`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`
 Write (10): `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`
 
 ---

@@ -52,7 +52,7 @@ t2000.ai       → Infrastructure (CLI, SDK, MCP, engine, gateway)
 audric.ai      → Consumer product (app, conversational banking)
 ```
 
-All npm packages (`@t2000/cli`, `@t2000/sdk`, `@t2000/mcp`, `@t2000/engine`), the GitHub repo, and gateway domain stay as t2000. [Audric](https://audric.ai) is the consumer-facing brand. See [BRAND.md](BRAND.md) for full rationale.
+All npm packages (`@t2000/cli`, `@t2000/sdk`, `@t2000/mcp`, `@t2000/engine`), the GitHub repo, and gateway domain stay as t2000. [Audric](https://audric.ai) is the consumer-facing brand.
 
 ## Getting Started
 
@@ -152,7 +152,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-24 built-in tools (14 read, 10 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
+26 built-in tools (16 read, 10 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 
@@ -205,7 +205,7 @@ Connect Claude Desktop, Cursor, Windsurf, or any MCP client:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 28 tools, 16 prompts. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
+Auto-configures Claude Desktop + Cursor. 30 tools, 16 prompts. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
 
 ## MPP Payments
 

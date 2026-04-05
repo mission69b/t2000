@@ -61,9 +61,9 @@
 | Package | npm | What it does |
 |---------|-----|-------------|
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
-| `@t2000/engine` | 0.4.5 | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
+| `@t2000/engine` | Published | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
-| `@t2000/mcp` | Published | MCP server — 25 tools, 16 prompts, stdio transport |
+| `@t2000/mcp` | Published | MCP server — 30 tools, 16 prompts, stdio transport |
 | `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
 | `@suimpp/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
@@ -855,10 +855,39 @@ Tools are built with `buildTool()` which enforces:
 | `health_check` | `send_transfer` |
 | `rates_info` | `borrow` |
 | `transaction_history` | `repay_debt` |
-| | `claim_rewards` |
-| | `pay_api` |
+| `explain_tx` | `claim_rewards` |
+| `web_search` | `pay_api` |
+| `swap_quote` | `swap_execute` |
+| `volo_stats` | `volo_stake` |
+| `defillama_yield_pools` | `volo_unstake` |
+| `defillama_protocol_info` | |
+| `defillama_token_prices` | |
+| `defillama_price_change` | |
+| `defillama_chain_tvl` | |
+| `defillama_protocol_fees` | |
+| `defillama_sui_protocols` | |
 
-Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+16 read tools, 10 write tools, 26 total. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+
+### Token Registry
+
+All token metadata is centralized in `packages/sdk/src/token-registry.ts`:
+
+- `COIN_REGISTRY` — 24 tokens with type, decimals, symbol
+- `getDecimalsForCoinType(coinType)` — decimals lookup with suffix matching
+- `resolveSymbol(coinType)` — human-friendly name from full coin type
+- `resolveTokenType(name)` — case-insensitive name → full coin type
+- `TOKEN_MAP` — name → type mapping for swap resolution
+
+No hardcoded decimal heuristics anywhere in the codebase. All tools, adapters, and UI components derive token data from this registry.
+
+### Balance Validation (Defense-in-Depth)
+
+Three-layer validation prevents impossible transactions:
+
+1. **LLM prompt** (probabilistic) — system prompt instructs the LLM to check balances before calling write tools
+2. **Client-side `validateAction`** (deterministic) — pre-flight check using cached balance data, auto-denies over-balance actions before the confirm dialog renders
+3. **Server-side `validateBalance`** (deterministic) — final on-chain balance check in the API route before transaction building
 
 ### Delegated Execution Flow
 
@@ -970,10 +999,10 @@ Push to main
 ### Publish pipeline (on tag `v*`)
 
 ```
-Tag v0.22.3 (t2000 monorepo)
+Tag v0.25.16 (t2000 monorepo)
   → CI: lint + typecheck + test
   → Build all packages
-  → Publish: @t2000/sdk, @t2000/mcp, @t2000/cli
+  → Publish: @t2000/sdk, @t2000/engine, @t2000/mcp, @t2000/cli
   → GitHub Release (auto-generated notes)
   → Discord notification
 

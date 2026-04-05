@@ -258,12 +258,18 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 
 ## Supported Assets
 
-User-facing savings, credit, and transfers are denominated in **USDC**.
+Multi-asset support via `token-registry.ts` — 24 tokens with full type, decimals, and symbol metadata. Key assets:
 
-| Asset | Display | Type | Decimals | Save | Borrow | Withdraw |
-|-------|---------|------|----------|------|--------|----------|
-| USDC | USDC | `0xdba3...::usdc::USDC` | 6 | ✅ | ✅ | ✅ |
-| SUI | SUI | `0x2::sui::SUI` | 9 | — | — | — |
+| Asset | Decimals | Send | Save | Borrow | Swap |
+|-------|----------|------|------|--------|------|
+| USDC  | 6        | ✅   | ✅   | ✅     | ✅   |
+| SUI   | 9        | ✅   | ✅   | —      | ✅   |
+| USDSUI | 6       | ✅   | ✅   | —      | ✅   |
+| USDe  | 6        | ✅   | ✅   | —      | ✅   |
+| WAL   | 9        | ✅   | ✅   | —      | ✅   |
+| ETH   | 8        | ✅   | ✅   | —      | ✅   |
+
+Swap supports any token pair via Cetus Aggregator V3. Use `COIN_REGISTRY`, `getDecimalsForCoinType()`, `resolveSymbol()`, and `resolveTokenType()` from `@t2000/sdk` for token data.
 
 ## Error Handling
 
