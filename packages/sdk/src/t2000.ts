@@ -395,7 +395,29 @@ export class T2000 extends EventEmitter<T2000Events> {
     const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
     const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
     const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
-    const toAmount = Number(route.amountOut) / 10 ** toDecimals;
+    let toAmount = Number(route.amountOut) / 10 ** toDecimals;
+
+    // Parse actual on-chain received amount — Cetus estimate can be wrong for
+    // tokens whose decimals differ from what the aggregator expects (e.g. USDSUI).
+    try {
+      const txBlock = await this.client.getTransactionBlock({
+        digest: gasResult.digest,
+        options: { showBalanceChanges: true },
+      });
+      type BalChangeEntry = { coinType: string; amount: string; owner: { AddressOwner?: string } | { ObjectOwner?: string } };
+      const changes = ((txBlock as { balanceChanges?: BalChangeEntry[] }).balanceChanges ?? []) as BalChangeEntry[];
+      const received = changes.find((c) =>
+        c.coinType === toType &&
+        BigInt(c.amount) > 0n &&
+        (c.owner as { AddressOwner?: string }).AddressOwner === this._address,
+      );
+      if (received) {
+        const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
+        if (actual > 0) toAmount = actual;
+      }
+    } catch (e) {
+      console.warn('[swap] Could not parse on-chain balance changes, using route estimate:', e);
+    }
 
     const routeDesc = route.routerData.paths
       ?.map((p) => p.provider)

@@ -178,19 +178,39 @@ export function transformRates(raw: unknown): RatesResult {
 // Transform: positions → typed PositionEntry[]
 // ---------------------------------------------------------------------------
 
+// NAVI MCP divides ALL position amounts by 10^9 (original storage precision),
+// but newer pools (id > 10) store at the token's native decimals. For 6-decimal
+// stablecoins in newer pools, this makes amounts 1000x too small.
+// Correction factor: 10^(9 - 6) = 1000.
+// Remove this map if/when the NAVI MCP fixes pool-aware decimal handling.
+const NAVI_NEWER_POOL_SYMBOLS = new Set([
+  'USDSUI', 'USDsui',
+  'SUI_USDE', 'suiUSDe', 'USDe',
+  'suiUSDT',
+]);
+const NEWER_POOL_FACTOR = 1000;
+
+function naviDecimalFactor(symbol: string): number {
+  return NAVI_NEWER_POOL_SYMBOLS.has(symbol) ? NEWER_POOL_FACTOR : 1;
+}
+
 export function transformPositions(raw: unknown): PositionEntry[] {
   const data = raw as NaviRawPositionsResponse | undefined;
   const positions = data?.positions ?? (Array.isArray(raw) ? (raw as NaviRawPosition[]) : []);
 
-  return positions.map((p) => ({
-    protocol: p.protocol ?? 'navi',
-    type: p.type?.includes('borrow') ? ('borrow' as const) : ('supply' as const),
-    symbol: p.tokenASymbol ?? 'UNKNOWN',
-    amount: toNum(p.amountA),
-    valueUsd: toNum(p.valueUSD),
-    apy: toNum(p.apr) / 100,
-    liquidationThreshold: toNum(p.liquidationThreshold),
-  }));
+  return positions.map((p) => {
+    const symbol = p.tokenASymbol ?? 'UNKNOWN';
+    const factor = naviDecimalFactor(symbol);
+    return {
+      protocol: p.protocol ?? 'navi',
+      type: p.type?.includes('borrow') ? ('borrow' as const) : ('supply' as const),
+      symbol,
+      amount: toNum(p.amountA) * factor,
+      valueUsd: toNum(p.valueUSD) * factor,
+      apy: toNum(p.apr) / 100,
+      liquidationThreshold: toNum(p.liquidationThreshold),
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
