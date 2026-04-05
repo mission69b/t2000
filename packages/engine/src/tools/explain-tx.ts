@@ -97,10 +97,22 @@ export const explainTxTool = buildTool({
         const amount = Number(bc.amount);
         const isNegative = amount < 0;
         const decimals = guessDecimals(bc.coinType);
+        const absHuman = Math.abs(amount / 10 ** decimals);
+
+        const isSenderSui = ownerAddr === sender && bc.coinType.endsWith('::sui::SUI') && isNegative;
+        if (isSenderSui) {
+          const netTransfer = absHuman - gasCost;
+          if (netTransfer < 0.0001) continue;
+          txEffects.push({
+            type: 'send',
+            description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} sent ${netTransfer.toFixed(4)} ${symbol}`,
+          });
+          continue;
+        }
 
         txEffects.push({
           type: isNegative ? 'send' : 'receive',
-          description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} ${isNegative ? 'sent' : 'received'} ${Math.abs(amount / 10 ** decimals).toFixed(decimals > 6 ? 4 : 2)} ${symbol}`,
+          description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} ${isNegative ? 'sent' : 'received'} ${absHuman.toFixed(decimals > 6 ? 4 : 2)} ${symbol}`,
         });
       }
     }
