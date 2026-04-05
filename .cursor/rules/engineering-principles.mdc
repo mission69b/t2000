@@ -1,0 +1,55 @@
+---
+description: Core engineering principles — scalability, single source of truth, trace before fix
+alwaysApply: true
+---
+
+# Engineering Principles
+
+## 1. Trace the full path BEFORE writing code
+
+Before fixing any bug, trace the ACTUAL execution path from user action → API route → handler → SDK → on-chain → response → UI render. Verify which functions/routes/handlers are actually called. Never assume.
+
+**Example of what went wrong:** Spent 4 iterations fixing `sdk.swap()` balance-change parsing when the Audric web app uses a sponsored transaction flow (`/api/transactions/prepare` → sign → `/api/transactions/execute`) that never calls `sdk.swap()` directly. The fix needed to be in the client-side `handleExecuteAction`, not the SDK.
+
+## 2. Single source of truth — never duplicate
+
+If data exists in one place, import it. Never copy token maps, decimal maps, or config into multiple files.
+
+```typescript
+// ❌ BAD — hardcoded list that gets stale
+const COMMON_TOKENS = 'SUI, USDC, USDT, USDSUI';
+
+// ✅ GOOD — derived from canonical source
+const { TOKEN_MAP } = await import('@t2000/sdk');
+const supportedTokens = Object.keys(TOKEN_MAP).join(', ');
+```
+
+## 3. Ask "does this scale?" before every implementation
+
+Before hardcoding any list, map, or constant, ask: "Where is the source of truth? Can I derive this dynamically? Will someone have to manually update this when things change?"
+
+If the answer to the last question is yes, the approach is wrong.
+
+## 4. Fix at the root, not the symptom
+
+When a fix requires changes in 3+ places or multiple retry attempts, the architecture is wrong. Step back and find the single point of failure.
+
+**Checklist before implementing a fix:**
+1. What is the ACTUAL data flow? (trace it, don't guess)
+2. Where does the data first become wrong? (that's where to fix)
+3. Does this fix introduce duplication? (if yes, rethink)
+4. Will this fix survive adding a new token/asset/feature? (if no, rethink)
+
+## 5. Understand which layer you're in
+
+This codebase has distinct layers. Fixes in the wrong layer waste time:
+
+| Layer | Runs where | Changes how |
+|-------|-----------|-------------|
+| `@t2000/sdk` | Server (engine) OR client (sponsored flow) | npm release required |
+| `@t2000/engine` | Server-side API routes | npm release required |
+| Audric `page.tsx` | Client browser | Vercel deploy |
+| Audric API routes | Vercel serverless | Vercel deploy |
+| System prompt | Runtime (built at engine creation) | Vercel deploy |
+
+Before coding, identify which layer owns the bug.

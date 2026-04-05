@@ -1,0 +1,33 @@
+---
+description: Audric transaction execution flow — sponsored vs SDK direct
+globs: "**/audric/**/*.ts,**/audric/**/*.tsx"
+alwaysApply: false
+---
+
+# Audric Transaction Flow
+
+## CRITICAL: Two different execution paths exist
+
+### Path 1: Engine tool execution (server-side)
+```
+LLM → engine tool (e.g. swap_execute) → sdk.swap() → SwapResult
+```
+- Returns full `SwapResult` with `fromToken`, `toToken`, `toAmount`, etc.
+- Used when engine runs tools directly (auto-permission tools)
+
+### Path 2: Client-side confirm execution (sponsored transactions)
+```
+LLM → pending_action → user confirms → handleExecuteAction() → sponsoredTransaction() → TxResult
+```
+- Returns only `{ tx: string, balanceChanges?: [] }` (TxResult)
+- Does NOT call `sdk.swap()` directly — goes through `/api/transactions/prepare` + `/api/transactions/execute`
+- `balanceChanges` must be parsed CLIENT-SIDE for actual amounts
+
+### Confirm-gated tools use Path 2
+All write tools (`swap_execute`, `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`) go through Path 2 because they have `permissionLevel: 'confirm'`.
+
+### When fixing transaction receipt display
+1. The data comes from `handleExecuteAction` in `page.tsx`
+2. NOT from the SDK's return type
+3. Parse `res.balanceChanges` for actual on-chain amounts
+4. Use `inp.*` fields for token names (strip full coin types with `split('::').pop()`)
