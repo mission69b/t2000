@@ -397,26 +397,34 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
     let toAmount = Number(route.amountOut) / 10 ** toDecimals;
 
-    // Read actual received amount from the indexed transaction (READ API).
-    // executeWithGas already calls waitForIndexer, so balance changes are available.
-    try {
-      const txBlock = await this.client.getTransactionBlock({
-        digest: gasResult.digest,
-        options: { showBalanceChanges: true },
-      });
-      type BalChange = { coinType: string; amount: string; owner: { AddressOwner?: string } };
-      const changes = ((txBlock as { balanceChanges?: BalChange[] }).balanceChanges ?? []);
-      const received = changes.find((c) =>
-        c.coinType === toType &&
-        BigInt(c.amount) > 0n &&
-        (c.owner as { AddressOwner?: string }).AddressOwner === this._address,
-      );
-      if (received) {
-        const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
-        if (actual > 0) toAmount = actual;
-      }
-    } catch {
-      console.warn('[swap] Could not read balance changes, using route estimate');
+    // Read actual received amount from balance changes with retry.
+    // Load-balanced RPCs may need multiple attempts before balance changes
+    // are available even after waitForIndexer confirms object changes.
+    const toTypeSuffix = toType.split('::').slice(1).join('::');
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const txBlock = await this.client.getTransactionBlock({
+          digest: gasResult.digest,
+          options: { showBalanceChanges: true },
+        });
+        type BalChange = { coinType: string; amount: string; owner: { AddressOwner?: string } };
+        const changes = ((txBlock as { balanceChanges?: BalChange[] }).balanceChanges ?? []);
+        const received = changes.find((c) => {
+          if (BigInt(c.amount) <= 0n) return false;
+          const ownerAddr = (c.owner as { AddressOwner?: string })?.AddressOwner;
+          if (!ownerAddr || ownerAddr.toLowerCase() !== this._address.toLowerCase()) return false;
+          if (c.coinType === toType) return true;
+          return c.coinType.endsWith(toTypeSuffix);
+        });
+        if (received) {
+          const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
+          if (actual > 0) {
+            toAmount = actual;
+            break;
+          }
+        }
+      } catch { /* retry */ }
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 600));
     }
 
     // Resolve full coin types to user-friendly token names
