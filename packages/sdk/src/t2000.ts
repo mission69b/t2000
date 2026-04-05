@@ -366,6 +366,16 @@ export class T2000 extends EventEmitter<T2000Events> {
       console.warn(`[swap] High price impact: ${(route.priceImpact * 100).toFixed(2)}%`);
     }
 
+    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
+    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
+
+    // Snapshot pre-swap balance for fallback diff calculation
+    let preBalRaw = 0n;
+    try {
+      const preBal = await this.client.getBalance({ owner: this._address, coinType: toType });
+      preBalRaw = BigInt(preBal.totalBalance);
+    } catch { /* first time holding this token — balance is 0 */ }
+
     const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const tx = new Transaction();
       tx.setSender(this._address);
@@ -392,12 +402,10 @@ export class T2000 extends EventEmitter<T2000Events> {
       return tx;
     });
 
-    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
-    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
     const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
     let toAmount = Number(route.amountOut) / 10 ** toDecimals;
 
-    // --- Approach 1: waitForTransaction with showBalanceChanges ---
+    // --- Primary: parse balance changes from the finalized transaction ---
     const toTypeSuffix = toType.split('::').slice(1).join('::');
     try {
       const fullTx = await this.client.waitForTransaction({
@@ -408,7 +416,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       });
       type BalChange = { coinType: string; amount: string; owner: { AddressOwner?: string } };
       const changes = ((fullTx as { balanceChanges?: BalChange[] }).balanceChanges ?? []);
-      console.error(`[swap] balanceChanges count=${changes.length}, toType=${toType}`);
+      console.error(`[swap] balanceChanges count=${changes.length}, toType=${toType}, suffix=${toTypeSuffix}`);
       for (const c of changes) {
         console.error(`[swap]   coinType=${c.coinType} amount=${c.amount} owner=${JSON.stringify(c.owner)}`);
       }
@@ -422,15 +430,15 @@ export class T2000 extends EventEmitter<T2000Events> {
       if (received) {
         const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
         if (actual > 0) toAmount = actual;
-        console.error(`[swap] Approach 1 success: toAmount=${toAmount}`);
+        console.error(`[swap] Primary: toAmount=${toAmount}`);
       } else {
-        console.error(`[swap] Approach 1: no matching balance change found`);
+        console.error(`[swap] Primary: no matching balance change found`);
       }
     } catch (err) {
-      console.error(`[swap] Approach 1 failed:`, err);
+      console.error(`[swap] Primary failed:`, err);
     }
 
-    // --- Approach 2: pre/post getBalance diff (fallback) ---
+    // --- Fallback: pre/post getBalance diff ---
     const cetusEstimate = Number(route.amountOut) / 10 ** toDecimals;
     if (Math.abs(toAmount - cetusEstimate) < 0.001) {
       console.error(`[swap] toAmount still equals Cetus estimate (${cetusEstimate}), trying balance diff`);
@@ -438,14 +446,14 @@ export class T2000 extends EventEmitter<T2000Events> {
         await new Promise((r) => setTimeout(r, 2000));
         const postBal = await this.client.getBalance({ owner: this._address, coinType: toType });
         const postRaw = BigInt(postBal.totalBalance);
-        const human = Number(postRaw) / 10 ** toDecimals;
-        console.error(`[swap] Approach 2: postBalance raw=${postRaw} human=${human}`);
-        if (human > toAmount * 10) {
-          toAmount = human;
-          console.error(`[swap] Approach 2: using total balance as estimate: ${toAmount}`);
+        const delta = Number(postRaw - preBalRaw) / 10 ** toDecimals;
+        console.error(`[swap] Fallback: pre=${preBalRaw} post=${postRaw} delta=${delta}`);
+        if (delta > 0) {
+          toAmount = delta;
+          console.error(`[swap] Fallback: using balance diff: ${toAmount}`);
         }
       } catch (err) {
-        console.error(`[swap] Approach 2 failed:`, err);
+        console.error(`[swap] Fallback failed:`, err);
       }
     }
 
