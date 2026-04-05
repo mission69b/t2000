@@ -79,7 +79,10 @@ export const explainTxTool = buildTool({
     const balanceChanges = tx.balanceChanges as Array<{ owner: Record<string, string>; coinType: string; amount: string }> | undefined;
     const events = tx.events as Array<{ type: string; parsedJson?: Record<string, unknown> }> | undefined;
 
-    const sender = (txInput?.data as Record<string, unknown>)?.sender as string ?? 'unknown';
+    const txData = txInput?.data as Record<string, unknown> | undefined;
+    const sender = txData?.sender as string ?? 'unknown';
+    const gasData = txData?.gasData as Record<string, unknown> | undefined;
+    const gasPayer = gasData?.owner as string ?? sender;
     const status = (effects?.status as Record<string, string>)?.status ?? 'unknown';
     const gasUsed = effects?.gasUsed as Record<string, string> | undefined;
     const gasCost = gasUsed
@@ -99,14 +102,20 @@ export const explainTxTool = buildTool({
         const decimals = guessDecimals(bc.coinType);
         const absHuman = Math.abs(amount / 10 ** decimals);
 
-        const isSenderSui = ownerAddr === sender && bc.coinType.endsWith('::sui::SUI') && isNegative;
-        if (isSenderSui) {
-          const netTransfer = absHuman - gasCost;
-          if (netTransfer < 0.0001) continue;
-          txEffects.push({
-            type: 'send',
-            description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} sent ${netTransfer.toFixed(4)} ${symbol}`,
-          });
+        if (bc.coinType.endsWith('::sui::SUI') && isNegative) {
+          if (ownerAddr === gasPayer) {
+            const netTransfer = absHuman - gasCost;
+            if (netTransfer < 0.0001) continue;
+            txEffects.push({
+              type: 'send',
+              description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} sent ${netTransfer.toFixed(4)} ${symbol}`,
+            });
+          } else {
+            txEffects.push({
+              type: 'send',
+              description: `${ownerAddr.slice(0, 8)}...${ownerAddr.slice(-4)} sent ${absHuman.toFixed(4)} ${symbol}`,
+            });
+          }
           continue;
         }
 
