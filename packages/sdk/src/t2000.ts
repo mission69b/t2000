@@ -366,6 +366,16 @@ export class T2000 extends EventEmitter<T2000Events> {
       console.warn(`[swap] High price impact: ${(route.priceImpact * 100).toFixed(2)}%`);
     }
 
+    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
+    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
+
+    // Snapshot pre-swap balance to compute actual received amount after execution
+    let preBalance = 0n;
+    try {
+      const bal = await this.client.getBalance({ owner: this._address, coinType: toType });
+      preBalance = BigInt(bal.totalBalance);
+    } catch { /* token might not exist in wallet yet */ }
+
     const gasResult = await executeWithGas(this.client, this._signer, async () => {
       const tx = new Transaction();
       tx.setSender(this._address);
@@ -392,23 +402,20 @@ export class T2000 extends EventEmitter<T2000Events> {
       return tx;
     });
 
-    const toEntry = Object.entries(SUPPORTED_ASSETS).find(([, v]) => v.type === toType);
-    const toDecimals = toEntry ? toEntry[1].decimals : (toType === '0x2::sui::SUI' ? 9 : 6);
     const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
     let toAmount = Number(route.amountOut) / 10 ** toDecimals;
 
-    // Parse actual on-chain received amount from balance changes returned by
-    // executeTransactionBlock — more reliable than the Cetus route estimate.
-    type BalChangeEntry = { coinType: string; amount: string; owner: { AddressOwner?: string } | { ObjectOwner?: string } };
-    const changes = (gasResult.balanceChanges ?? []) as BalChangeEntry[];
-    const received = changes.find((c) =>
-      c.coinType === toType &&
-      BigInt(c.amount) > 0n &&
-      (c.owner as { AddressOwner?: string }).AddressOwner === this._address,
-    );
-    if (received) {
-      const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
-      if (actual > 0) toAmount = actual;
+    // Get actual received amount by comparing post-swap balance to pre-swap snapshot.
+    // This is more reliable than Cetus route estimates or balanceChanges parsing.
+    try {
+      const postBal = await this.client.getBalance({ owner: this._address, coinType: toType });
+      const postBalance = BigInt(postBal.totalBalance);
+      const diff = postBalance - preBalance;
+      if (diff > 0n) {
+        toAmount = Number(diff) / 10 ** toDecimals;
+      }
+    } catch {
+      console.warn('[swap] Could not read post-swap balance, using route estimate');
     }
 
     // Resolve full coin types to user-friendly token names
