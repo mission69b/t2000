@@ -106,3 +106,22 @@ export type {
   PayOptions,
   PayResult,
 } from './types.js';
+
+// Token registry — zero Node.js deps, safe for client-side use
+export {
+  COIN_REGISTRY,
+  TOKEN_MAP,
+  resolveTokenType,
+  resolveSymbol,
+  getDecimalsForCoinType,
+  SUI_TYPE,
+  USDC_TYPE,
+  USDT_TYPE,
+  USDSUI_TYPE,
+  USDE_TYPE,
+  ETH_TYPE,
+  WBTC_TYPE,
+  WAL_TYPE,
+  NAVX_TYPE,
+} from './token-registry.js';
+export type { CoinMeta } from './token-registry.js';
