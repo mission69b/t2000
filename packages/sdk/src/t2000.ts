@@ -397,34 +397,56 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;
     let toAmount = Number(route.amountOut) / 10 ** toDecimals;
 
-    // Read actual received amount from balance changes with retry.
-    // Load-balanced RPCs may need multiple attempts before balance changes
-    // are available even after waitForIndexer confirms object changes.
+    // --- Approach 1: waitForTransaction with showBalanceChanges ---
     const toTypeSuffix = toType.split('::').slice(1).join('::');
-    for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const fullTx = await this.client.waitForTransaction({
+        digest: gasResult.digest,
+        options: { showBalanceChanges: true },
+        timeout: 8_000,
+        pollInterval: 400,
+      });
+      type BalChange = { coinType: string; amount: string; owner: { AddressOwner?: string } };
+      const changes = ((fullTx as { balanceChanges?: BalChange[] }).balanceChanges ?? []);
+      console.error(`[swap] balanceChanges count=${changes.length}, toType=${toType}`);
+      for (const c of changes) {
+        console.error(`[swap]   coinType=${c.coinType} amount=${c.amount} owner=${JSON.stringify(c.owner)}`);
+      }
+      const received = changes.find((c) => {
+        if (BigInt(c.amount) <= 0n) return false;
+        const ownerAddr = (c.owner as { AddressOwner?: string })?.AddressOwner;
+        if (!ownerAddr || ownerAddr.toLowerCase() !== this._address.toLowerCase()) return false;
+        if (c.coinType === toType) return true;
+        return c.coinType.endsWith(toTypeSuffix);
+      });
+      if (received) {
+        const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
+        if (actual > 0) toAmount = actual;
+        console.error(`[swap] Approach 1 success: toAmount=${toAmount}`);
+      } else {
+        console.error(`[swap] Approach 1: no matching balance change found`);
+      }
+    } catch (err) {
+      console.error(`[swap] Approach 1 failed:`, err);
+    }
+
+    // --- Approach 2: pre/post getBalance diff (fallback) ---
+    const cetusEstimate = Number(route.amountOut) / 10 ** toDecimals;
+    if (Math.abs(toAmount - cetusEstimate) < 0.001) {
+      console.error(`[swap] toAmount still equals Cetus estimate (${cetusEstimate}), trying balance diff`);
       try {
-        const txBlock = await this.client.getTransactionBlock({
-          digest: gasResult.digest,
-          options: { showBalanceChanges: true },
-        });
-        type BalChange = { coinType: string; amount: string; owner: { AddressOwner?: string } };
-        const changes = ((txBlock as { balanceChanges?: BalChange[] }).balanceChanges ?? []);
-        const received = changes.find((c) => {
-          if (BigInt(c.amount) <= 0n) return false;
-          const ownerAddr = (c.owner as { AddressOwner?: string })?.AddressOwner;
-          if (!ownerAddr || ownerAddr.toLowerCase() !== this._address.toLowerCase()) return false;
-          if (c.coinType === toType) return true;
-          return c.coinType.endsWith(toTypeSuffix);
-        });
-        if (received) {
-          const actual = Number(BigInt(received.amount)) / 10 ** toDecimals;
-          if (actual > 0) {
-            toAmount = actual;
-            break;
-          }
+        await new Promise((r) => setTimeout(r, 2000));
+        const postBal = await this.client.getBalance({ owner: this._address, coinType: toType });
+        const postRaw = BigInt(postBal.totalBalance);
+        const human = Number(postRaw) / 10 ** toDecimals;
+        console.error(`[swap] Approach 2: postBalance raw=${postRaw} human=${human}`);
+        if (human > toAmount * 10) {
+          toAmount = human;
+          console.error(`[swap] Approach 2: using total balance as estimate: ${toAmount}`);
         }
-      } catch { /* retry */ }
-      if (attempt < 3) await new Promise((r) => setTimeout(r, 600));
+      } catch (err) {
+        console.error(`[swap] Approach 2 failed:`, err);
+      }
     }
 
     // Resolve full coin types to user-friendly token names
