@@ -14,22 +14,22 @@
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| 0.1 | Conversation logging | ~2h | not started | — | audric | — |
+| 0.1 | Conversation logging | ~2h | done | — | audric | — |
 | 0.2 | Strip multi-asset save/borrow | ~3h | done | — | both | — |
-| 0.3 | Add User table to Prisma | ~2h | not started | — | audric | — |
-| 0.4 | Email capture + verification | ~4h | not started | 0.3 | audric | — |
+| 0.3 | Add User table to Prisma | ~2h | done | — | audric | — |
+| 0.4 | Email capture + verification | ~4h | done | 0.3 | audric | — |
 | 0.5 | Asset architecture (token-registry.ts) | ~3h | done | — | both | — |
-| 0.6 | Fix savings APY display | ~1h | not started | — | audric | — |
+| 0.6 | Fix savings APY display | ~1h | done | — | audric | — |
 | 0.7 | Swap fee (Cetus Overlay Fee) | ~30m | done | — | t2000 | — |
-| 0.8 | Allowance top-up flow | ~2h | not started | 0.3 | audric | — |
-| 0.9 | Settings page architecture (scaffold) | ~3h | not started | — | audric | — |
-| 0.10 | Error boundaries + route loading states | ~1h | not started | — | audric | — |
+| 0.8 | Allowance top-up flow | ~2h | blocked | allowance.move | audric | — |
+| 0.9 | Settings page architecture (scaffold) | ~3h | done | — | audric | — |
+| 0.10 | Error boundaries + route loading states | ~1h | done | — | audric | — |
 
 **Execution order:**
-- **Phase A (t2000 repo first):** 0.5 → 0.2 → 0.7 → tests → docs → npm release
-- **Phase B (audric repo after release):** pnpm update → 0.5a, 0.2a → 0.10 → 0.6 → 0.1 → 0.3 → 0.9 → 0.4 → 0.8 → deploy
+- **Phase A (t2000 repo first):** 0.5 → 0.2 → 0.7 → tests → docs → npm release — **DONE (v0.26.0)**
+- **Phase B (audric repo after release):** pnpm update → 0.5a, 0.2a → 0.10 → 0.6 → 0.1 → 0.3 → 0.9 → 0.4 — **DONE**
 
-**Critical path:** 0.3 → 0.4, 0.8 (email + allowance need User table). t2000 npm release unblocks all audric work.
+**Status:** Pre-work 9/10 complete. 0.8 (allowance top-up) blocked on `allowance.move` contract — deferred to Phase 1. npm v0.26.0 released. Audric updated and deployed.
 
 ---
 
