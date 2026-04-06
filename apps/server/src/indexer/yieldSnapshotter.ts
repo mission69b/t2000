@@ -3,6 +3,7 @@ import { prisma } from '../db/prisma.js';
 import type { ProtocolRegistry as RegistryType } from '@t2000/sdk/adapters';
 
 const SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const AGENT_DELAY_MS = 2000; // 2s between agents to avoid RPC 429s
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let registry: RegistryType | null = null;
@@ -56,7 +57,8 @@ async function takeSnapshots(): Promise<void> {
   const reg = await getRegistry(client);
   let snapshotCount = 0;
 
-  for (const agent of agents) {
+  for (let i = 0; i < agents.length; i++) {
+    const agent = agents[i];
     try {
       const position = await getPositionsForAgent(reg, agent.address);
       if (!position || position.supplied <= 0) continue;
@@ -81,6 +83,10 @@ async function takeSnapshots(): Promise<void> {
       snapshotCount++;
     } catch (err) {
       console.error(`[yield] Error for ${agent.address}:`, err instanceof Error ? err.message : err);
+    }
+
+    if (i < agents.length - 1) {
+      await new Promise((r) => setTimeout(r, AGENT_DELAY_MS));
     }
   }
 
