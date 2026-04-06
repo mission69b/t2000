@@ -50,6 +50,8 @@ jobs:
       - run: pnpm --filter @t2000/engine test
       - run: pnpm --filter @t2000/server test
       - run: pnpm --filter @t2000/mcp test
+      - run: pnpm --filter @t2000/cli build
+      - run: pnpm --filter @t2000/cli test
 
   adapters:
     name: Adapter Compliance
