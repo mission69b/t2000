@@ -10,12 +10,14 @@
  * Cost: ~$0.02-0.05 per run (gas only, amounts are minimal).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import type { T2000Error as T2000ErrorType } from '../errors.js';
 
 const SMOKE = !!process.env.SMOKE;
 const PRIVATE_KEY = process.env.E2E_TEST_PRIVATE_KEY;
 
-let T2000: typeof import('../t2000.js').T2000;
-let T2000Error: typeof import('../errors.js').T2000Error;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let T2000Class: any;
+let T2000Error: typeof T2000ErrorType;
 let assertAllowedAsset: typeof import('../constants.js').assertAllowedAsset;
 
 beforeAll(async () => {
@@ -23,7 +25,7 @@ beforeAll(async () => {
   const sdk = await import('../t2000.js');
   const errors = await import('../errors.js');
   const constants = await import('../constants.js');
-  T2000 = sdk.T2000;
+  T2000Class = sdk.T2000;
   T2000Error = errors.T2000Error;
   assertAllowedAsset = constants.assertAllowedAsset;
 });
@@ -43,10 +45,11 @@ describe.skipIf(!SMOKE)('Smoke: USDC enforcement (no-cost)', () => {
 });
 
 describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: balance check (read-only)', () => {
-  let agent: InstanceType<typeof T2000>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let agent: any;
 
   beforeAll(() => {
-    agent = T2000.fromPrivateKey(PRIVATE_KEY!);
+    agent = T2000Class.fromPrivateKey(PRIVATE_KEY!);
   });
 
   it('returns a valid balance response', async () => {
@@ -66,10 +69,11 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: balance check (read-only)', () =
 });
 
 describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: swap quote (read-only)', () => {
-  let agent: InstanceType<typeof T2000>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let agent: any;
 
   beforeAll(() => {
-    agent = T2000.fromPrivateKey(PRIVATE_KEY!);
+    agent = T2000Class.fromPrivateKey(PRIVATE_KEY!);
   });
 
   it('returns a valid quote for USDC -> USDT', async () => {
@@ -99,10 +103,11 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: swap quote (read-only)', () => {
 });
 
 describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: swap USDC -> USDT (real tx)', () => {
-  let agent: InstanceType<typeof T2000>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let agent: any;
 
   beforeAll(() => {
-    agent = T2000.fromPrivateKey(PRIVATE_KEY!);
+    agent = T2000Class.fromPrivateKey(PRIVATE_KEY!);
   });
 
   it('executes a small swap and returns correct SwapResult shape', async () => {
@@ -127,10 +132,11 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: swap USDC -> USDT (real tx)', ()
 });
 
 describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: save + withdraw USDC (real tx)', () => {
-  let agent: InstanceType<typeof T2000>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let agent: any;
 
   beforeAll(() => {
-    agent = T2000.fromPrivateKey(PRIVATE_KEY!);
+    agent = T2000Class.fromPrivateKey(PRIVATE_KEY!);
   });
 
   it('deposits USDC into savings', async () => {
@@ -143,7 +149,7 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: save + withdraw USDC (real tx)',
 
   it('rejects save("USDT") even with funds', async () => {
     await expect(
-      agent.save({ amount: 0.01, asset: 'USDT' as 'USDC' }),
+      agent.save({ amount: 0.01, asset: 'USDT' }),
     ).rejects.toThrow(T2000Error);
   });
 

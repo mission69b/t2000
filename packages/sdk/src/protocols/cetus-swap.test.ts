@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SwapResult, SwapQuoteResult } from '../types.js';
+import type { SwapResult, SwapQuoteResult, GasMethod } from '../types.js';
 
 const SWAP_RESULT_KEYS: (keyof SwapResult)[] = [
   'success', 'tx', 'fromToken', 'toToken',
@@ -23,7 +23,7 @@ describe('SwapResult shape contract', () => {
       priceImpact: 0.001,
       route: 'Cetus Aggregator',
       gasCost: 0.002,
-      gasMethod: 'self',
+      gasMethod: 'self-funded' as GasMethod,
     };
 
     for (const key of SWAP_RESULT_KEYS) {
