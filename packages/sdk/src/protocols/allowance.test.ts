@@ -174,6 +174,23 @@ describe('getAllowance', () => {
     expect(info.coinType).toBe(USDC_TYPE);
   });
 
+  it('handles Balance<T> returned as object with value field', async () => {
+    const client = mockClient({
+      id: { id: FAKE_ALLOWANCE },
+      owner: '0x1234',
+      balance: { value: '5000000' },
+      total_deposited: { value: '10000000' },
+      total_spent: { value: '5000000' },
+      created_at: '1700000000000',
+    });
+
+    const info = await getAllowance(client, FAKE_ALLOWANCE);
+
+    expect(info.balance).toBe(5_000_000n);
+    expect(info.totalDeposited).toBe(10_000_000n);
+    expect(info.totalSpent).toBe(5_000_000n);
+  });
+
   it('throws for missing object', async () => {
     const client = {
       getObject: vi.fn().mockResolvedValue({ data: null }),

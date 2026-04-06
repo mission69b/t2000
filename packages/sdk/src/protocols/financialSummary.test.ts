@@ -121,12 +121,27 @@ describe('getFinancialSummary', () => {
     setupMocks();
     const client = {
       getBalance: vi.fn().mockRejectedValue(new Error('RPC timeout')),
+      getObject: vi.fn().mockRejectedValue(new Error('RPC timeout')),
     } as unknown as Parameters<typeof getFinancialSummary>[0];
 
     const summary = await getFinancialSummary(client, '0xuser');
 
     expect(summary.usdcAvailable).toBe(0);
     expect(summary.gasReserveSui).toBe(0);
+  });
+
+  it('survives getHealthFactor failure with fallback', async () => {
+    vi.mocked(getHealthFactor).mockRejectedValue(new Error('NAVI down'));
+    vi.mocked(getRates).mockResolvedValue({
+      USDC: { saveApy: 0.05, borrowApy: 0.08 },
+    });
+
+    const summary = await getFinancialSummary(mockClient(), '0xuser');
+
+    expect(summary.savingsBalance).toBe(0);
+    expect(summary.debtBalance).toBe(0);
+    expect(summary.healthFactor).toBe(Infinity);
+    expect(summary.hfAlertLevel).toBe('none');
   });
 
   it('computes idle USDC correctly', async () => {

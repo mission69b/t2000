@@ -171,9 +171,9 @@ export async function getAllowance(
   return {
     id: allowanceId,
     owner: fields.owner,
-    balance: BigInt(fields.balance),
-    totalDeposited: BigInt(fields.total_deposited),
-    totalSpent: BigInt(fields.total_spent),
+    balance: parseU64Field(fields.balance),
+    totalDeposited: parseU64Field(fields.total_deposited),
+    totalSpent: parseU64Field(fields.total_spent),
     createdAt: Number(fields.created_at),
     coinType,
   };
@@ -193,6 +193,18 @@ export async function getAllowanceBalance(
 // ---------------------------------------------------------------------------
 // Internals
 // ---------------------------------------------------------------------------
+
+/**
+ * Sui RPC usually flattens Balance<T> to its inner u64 string, but some
+ * edge cases return `{ value: "..." }`. Handle both.
+ */
+function parseU64Field(raw: unknown): bigint {
+  if (typeof raw === 'string' || typeof raw === 'number') return BigInt(raw);
+  if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+    return BigInt((raw as { value: string }).value);
+  }
+  return 0n;
+}
 
 function extractCoinType(objectType: string): string {
   const match = objectType.match(/<(.+)>/);
