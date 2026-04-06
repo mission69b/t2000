@@ -25,7 +25,7 @@ fun test_collect_save_fee() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
         scenario.return_to_sender(admin_cap);
     };
@@ -71,7 +71,7 @@ fun test_collect_borrow_fee() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
         scenario.return_to_sender(admin_cap);
     };
@@ -115,7 +115,7 @@ fun test_withdraw_fees() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
         scenario.return_to_sender(admin_cap);
     };
@@ -138,7 +138,7 @@ fun test_withdraw_fees() {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let mut treasury = scenario.take_shared<treasury::Treasury<SUI>>();
 
-        treasury::withdraw_fees(&mut treasury, &admin_cap, 10, scenario.ctx());
+        treasury::withdraw_fees(&mut treasury, 10, scenario.ctx());
         assert!(treasury::treasury_balance(&treasury) == 0);
 
         test_scenario::return_shared(treasury);
@@ -163,7 +163,7 @@ fun test_withdraw_not_admin() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
 
         transfer::public_transfer(admin_cap, attacker);
@@ -173,7 +173,7 @@ fun test_withdraw_not_admin() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let mut treasury = scenario.take_shared<treasury::Treasury<SUI>>();
-        treasury::withdraw_fees(&mut treasury, &admin_cap, 1, scenario.ctx());
+        treasury::withdraw_fees(&mut treasury, 1, scenario.ctx());
         test_scenario::return_shared(treasury);
         scenario.return_to_sender(admin_cap);
     };
@@ -196,7 +196,7 @@ fun test_collect_fee_when_paused() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
         scenario.return_to_sender(admin_cap);
     };
@@ -239,7 +239,7 @@ fun test_receive_coins() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
         scenario.return_to_sender(admin_cap);
     };
@@ -287,7 +287,7 @@ fun test_propose_and_accept_admin_transfer() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
         scenario.return_to_sender(admin_cap);
     };
@@ -297,7 +297,7 @@ fun test_propose_and_accept_admin_transfer() {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let mut treasury = scenario.take_shared<treasury::Treasury<SUI>>();
 
-        treasury::propose_admin_transfer(&mut treasury, &admin_cap, new_admin, scenario.ctx());
+        treasury::propose_admin_transfer(&mut treasury, new_admin, scenario.ctx());
         assert!(treasury::admin(&treasury) == admin_addr);
 
         test_scenario::return_shared(treasury);
@@ -329,7 +329,7 @@ fun test_zero_fee_operation() {
     {
         let admin_cap = scenario.take_from_sender<AdminCap>();
         let clock = clock::create_for_testing(scenario.ctx());
-        treasury::create_treasury<SUI>(&admin_cap, &clock, scenario.ctx());
+        treasury::create_treasury<SUI>(&clock, scenario.ctx());
         clock::destroy_for_testing(clock);
         scenario.return_to_sender(admin_cap);
     };

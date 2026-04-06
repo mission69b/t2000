@@ -14,3 +14,11 @@ public macro fun DEFAULT_SWAP_FEE_BPS(): u64 { 0 }    // 0% — Cetus already ch
 public macro fun DEFAULT_BORROW_FEE_BPS(): u64 { 5 }  // 0.05%
 
 public macro fun FEE_TIMELOCK_MS(): u64 { 604_800_000 } // 7 days
+
+// Allowance feature tags (u8)
+public macro fun FEATURE_BRIEFING(): u8 { 0 }
+public macro fun FEATURE_RATE_ALERT(): u8 { 1 }
+public macro fun FEATURE_SESSION(): u8 { 2 }
+public macro fun FEATURE_PAYMENT_ALERT(): u8 { 3 }
+public macro fun FEATURE_DCA(): u8 { 4 }
+public macro fun MAX_FEATURE(): u8 { 4 }

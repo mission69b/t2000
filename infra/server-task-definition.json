@@ -32,7 +32,10 @@
         { "name": "PORT", "value": "3000" },
         { "name": "SUI_RPC_URL", "value": "https://fullnode.mainnet.sui.io:443" },
         { "name": "PAYMENT_KIT_PACKAGE", "value": "0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6" },
-        { "name": "T2000_PAYMENT_REGISTRY_ID", "value": "0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291" }
+        { "name": "T2000_PAYMENT_REGISTRY_ID", "value": "0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291" },
+        { "name": "T2000_PACKAGE_ID", "value": "0x2bc71368b1d6ea50718c4899c6562906d787a33fc31c6330bb8455aca4f9810d" },
+        { "name": "T2000_CONFIG_ID", "value": "0xd30408960ac38eced670acc102df9e178b5b46b3a8c0e96a53ec2fd3f39b5936" },
+        { "name": "T2000_TREASURY_ID", "value": "0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8" }
       ],
       "secrets": [
         { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/database-url" },

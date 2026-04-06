@@ -78,3 +78,44 @@ public(package) fun emit_admin_transfer_proposed(current_admin: address, propose
 public(package) fun emit_admin_transfer_accepted(old_admin: address, new_admin: address) {
     event::emit(AdminTransferAccepted { old_admin, new_admin });
 }
+
+// --- Allowance events ---
+
+public struct AllowanceCreated has copy, drop {
+    owner: address,
+    allowance_id: ID,
+}
+
+public struct AllowanceDeposited has copy, drop {
+    owner: address,
+    amount: u64,
+    new_balance: u64,
+}
+
+public struct AllowanceDeducted has copy, drop {
+    owner: address,
+    amount: u64,
+    feature: u8,
+    remaining: u64,
+}
+
+public struct AllowanceWithdrawn has copy, drop {
+    owner: address,
+    amount: u64,
+}
+
+public(package) fun emit_allowance_created(owner: address, allowance_id: ID) {
+    event::emit(AllowanceCreated { owner, allowance_id });
+}
+
+public(package) fun emit_allowance_deposited(owner: address, amount: u64, new_balance: u64) {
+    event::emit(AllowanceDeposited { owner, amount, new_balance });
+}
+
+public(package) fun emit_allowance_deducted(owner: address, amount: u64, feature: u8, remaining: u64) {
+    event::emit(AllowanceDeducted { owner, amount, feature, remaining });
+}
+
+public(package) fun emit_allowance_withdrawn(owner: address, amount: u64) {
+    event::emit(AllowanceWithdrawn { owner, amount });
+}

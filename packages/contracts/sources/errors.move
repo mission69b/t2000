@@ -11,6 +11,9 @@ public(package) macro fun version_mismatch(): u64 { 7 }
 public(package) macro fun timelock_active(): u64 { 8 }
 public(package) macro fun no_pending_change(): u64 { 9 }
 public(package) macro fun already_migrated(): u64 { 10 }
+public(package) macro fun not_owner(): u64 { 11 }
+public(package) macro fun insufficient_allowance(): u64 { 12 }
+public(package) macro fun invalid_feature(): u64 { 13 }
 
 const EPaused: u64 = 1;
 const EZeroAmount: u64 = 2;
@@ -22,3 +25,6 @@ const EVersionMismatch: u64 = 7;
 const ETimelockActive: u64 = 8;
 const ENoPendingChange: u64 = 9;
 const EAlreadyMigrated: u64 = 10;
+const ENotOwner: u64 = 11;
+const EInsufficientAllowance: u64 = 12;
+const EInvalidFeature: u64 = 13;

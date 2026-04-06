@@ -11,11 +11,12 @@ Audric is a conversational banking app built on Sui. Users sign in with Google, 
 This roadmap covers the path from 100 beta users to a product people open every day without being asked. The central thesis: Audric must shift from reactive (you ask, it does) to proactive (it watches your money and acts on your behalf). The killer loop is a financial copilot that runs on USDC micropayments from the user's own wallet — costing less per day than a fraction of a cent, funded many times over by the yield it helps generate.
 
 - 100 beta users
-- Save, Send, Credit, Pay live
+- Save, Send, Credit, Swap live (Swap replaced Pay chip in pre-work)
 - Receive coming soon
 - All reactive — user must ask
 - No notification infrastructure
 - MPP gateway: 40 services, 88 endpoints
+- Chip bar: Save | Send | Swap | Credit | Receive (guided multi-step flows)
 
 - Daily habit via morning briefing + goals
 - Proactive agent: HF alerts, yield optimisation, DCA
@@ -51,7 +52,7 @@ Audric has two distinct user types that need different experiences but share the
 **Consumer (audric.ai)**
 
 - Signs in with Google
-- Saves, sends, borrows, pays by chat
+- Saves, sends, borrows, swaps by chat (or guided chip flows)
 - Morning briefings, goals, alerts
 - Doesn't know or care about Sui
 - Target: anyone with a smartphone
@@ -70,9 +71,9 @@ Audric has two distinct user types that need different experiences but share the
 
 - NAVI lending integration: working
 
-- APY display: FIX URGENTLY — showing 0.05%, should show live NAVI rate (~3–8%)
+- APY display: ✅ Fixed — showing live NAVI rate (~3–8%) via `rates_info` tool
 
-- Save asset: USDC only. Multi-asset save currently live — **must be actively stripped in pre-work 0.2** — simplifies edge cases and reduces NAVI integration surface
+- Save asset: USDC only. ✅ Enforced at SDK level (`assertAllowedAsset`), engine tool descriptions, LLM system prompt, and all UI flows (chips, smart cards, contextual suggestions). `balance.usdc` used everywhere instead of `balance.cash` for save-related amounts.
 
 - Protocol: NAVI only. ProtocolRegistry retained for future multi-protocol support, but single-asset path kept clean
 
@@ -112,13 +113,113 @@ Audric has two distinct user types that need different experiences but share the
 
 ### Receive
 
-- Status: coming soon — not yet built
+- Deposit address + QR code: ✅ Live — tapping the Receive chip shows the user's Sui address with a QR code, network label (Sui mainnet), token label (USDC), and step-by-step instructions for depositing from Binance, Coinbase, or any Sui wallet
 
-- Planned: QR codes, payment links, invoices
+- Warning: "Only send USDC on the Sui network. Other tokens or networks may result in lost funds."
 
-- Fiat on-ramp: Transak embed for senders without USDC (v1 USDC-only, fiat as optional secondary)
+- Phase 2 expansion: payment links, invoices, Transak fiat on-ramp (see Phase 2 spec below)
 
 - NFC: out of scope — requires native app + payment processor certification
+
+### Swap
+
+- Cetus Aggregator integration: ✅ Live — supports all 13 Tier 2 assets + USDC
+
+- 0.1% overlay fee on output: ✅ Live — sent to treasury address
+
+- Available via LLM chat ("swap 1 USDC to USDT") or guided chip flow (see below)
+
+- Dust filtering: amounts floored (never rounded up) to prevent "insufficient balance" errors
+
+## Chip flows — guided multi-step interactions
+
+The chip bar at the bottom of the dashboard provides guided flows for users who prefer tapping over typing. Each chip follows the same pattern: **select target → select amount → review confirmation → execute**. LLM chat remains available for all the same operations with more flexibility.
+
+**Chip bar:** `Save | Send | Swap | Credit | Receive`
+
+### Save chip flow
+
+```
+[Save] → "Save to earn 5.0%. You have $44 USDC available."
+       → Amount presets: $5 | $10 | $25 | All $44 | Custom
+       → Confirmation card: Deposit $25 USDC · 5.0% APY · Gas Sponsored ✓
+       → Execute → Success card with tx link
+```
+
+- Amount source: `balance.usdc` (USDC-only — never total cash)
+- "All" uses floored USDC balance to prevent insufficient balance errors
+
+### Send chip flow
+
+```
+[Send] → "Who do you want to send to?"
+       → Address input or contact picker
+       → Amount presets based on held balance
+       → Confirmation card: Send $10 USDC to 0x... · Gas Sponsored ✓
+       → Execute → Success card with tx link
+```
+
+### Swap chip flow
+
+```
+[Swap] → "What do you want to swap? Select an asset:"
+       → Asset picker grid: USDC $44 | GOLD $2.01 | SUI $1.01
+       → Auto-selects USDC as target for non-USDC assets (and vice versa)
+       → "How much [ASSET] to swap for [TARGET]?"
+       → Amount presets: 25% | 50% | 75% | All [amount] | Custom
+       → "Change target" link to override auto-selected target
+       → Live quote fetched from /api/swap/quote (Cetus Aggregator)
+       → Confirmation card: Sell 1.12 SUI · Receive ~1.01 USDC
+         Rate · Price impact · Fee 0.1% · Gas Sponsored ✓
+       → Execute → Success card with actual received amount from balance changes
+```
+
+- Amount presets use dynamic precision: ≥1 → 2dp, ≥0.01 → 4dp, smaller → 8dp
+- All amounts floored (never rounded up) to prevent "insufficient balance" on "All"
+- Quote refreshes on amount change
+- Any Tier 2 ↔ Tier 2 swap supported (not just to/from USDC)
+
+### Credit chip flow
+
+```
+[Credit] → "Borrow against your savings. You can borrow up to $12."
+         → Amount presets: $1 | $5 | $10 | Max $12 | Custom
+         → Confirmation card: Borrow $5 USDC · APR · Health factor preview
+           Gas Sponsored ✓
+         → Execute → Success card
+```
+
+- Max borrow calculated from current savings collateral
+- If user has no savings: suggests saving USDC first before borrowing
+- Health factor shown in confirmation
+
+### Receive chip flow
+
+```
+[Receive] → Deposit address screen:
+          → QR code for user's Sui address
+          → Network: Sui (mainnet) · Token: USDC
+          → Copy address button
+          → Step-by-step instructions:
+            From Binance: Withdraw → USDC → Sui network → paste address
+            From Coinbase: Send → USDC → Sui network → paste address
+            From any Sui wallet: Send USDC to address
+          → Warning: "Only send USDC on the Sui network"
+```
+
+- Phase 2 expansion adds: payment links, invoices, Transak on-ramp
+- Currently read-only — no transaction executed
+
+### Contextual chips + smart cards
+
+In addition to the chip bar, the dashboard shows contextual suggestion chips and smart cards based on account state:
+
+- **Idle USDC nudge:** "Save $44 idle — 5.0%" (only when `balance.usdc > 5`)
+- **What-if projections:** "What if I save it all?" → agent prompt
+- **Rates card:** Shows current USDC savings APY with "Save" button
+- **Post-action suggestions:** After balance check, "What if I save it all?"
+
+All contextual chips use `balance.usdc` for save-related amounts, never `balance.cash`.
 
 ## The allowance model
 
@@ -178,8 +279,8 @@ The allowance onboarding is the single most trust-sensitive UX in the product. I
 │  │  Your balance, yield, and one       │    │
 │  │  action item — every morning.       │    │
 │  ├─────────────────────────────────────┤    │
-│  │  📈  Yield alerts              $0.002/ea │
-│  │  Know when a better rate appears.   │    │
+│  │  📈  USDC rate alerts          $0.002/ea │
+│  │  Know when USDC savings rate moves. │    │
 │  ├─────────────────────────────────────┤    │
 │  │  💸  Payment alerts            $0.001/ea │
 │  │  Instant notification when USDC     │    │
@@ -269,7 +370,7 @@ The allowance onboarding is the single most trust-sensitive UX in the product. I
 │  └─────────────────────────────────────┘    │
 │                                             │
 │  ☀️  Morning briefing         ON            │
-│  📈  Yield alerts             ON            │
+│  📈  USDC rate alerts         ON            │
 │  💸  Payment alerts           ON            │
 │  🛡️  Health factor alerts    Always ON     │
 │                                             │
@@ -304,7 +405,7 @@ The allowance onboarding is the single most trust-sensitive UX in the product. I
 |----------------------------|-----------------|---------------|-----------------------------|
 | **Feature**                | **Cost**        | **Delivery**  | **Notes**                   |
 | Morning briefing           | \$0.005 / day   | MPP → Resend  | 8am user timezone, ECS cron |
-| Yield optimization alerts  | \$0.002 / alert | MPP → Resend  | Hourly rate comparison      |
+| USDC rate alerts           | \$0.002 / alert | MPP → Resend  | NAVI USDC rate monitoring   |
 | Payment received alert     | \$0.001 / alert | Direct Resend | Indexer detection, urgent   |
 | Scheduled action reminders | \$0.001 / run   | MPP → Resend  | Night-before confirmation   |
 | Health factor alerts       | Free            | Direct Resend | Always on, non-custodial    |
@@ -324,13 +425,13 @@ Health factor alerts are always free and always on. Liquidation protection is a 
 
 Urgent notifications (health factor, inbound payments) bypass MPP and call Resend directly from ECS — zero latency. Non-urgent notifications route via MPP gateway, dogfooding the product's own micropayment infrastructure.
 
-## Pre-work — ✅ COMPLETE (9/10)
+## Pre-work — ✅ COMPLETE (10/10)
 
 |                                                    |
 |----------------------------------------------------|
 | > ~4 days | foundation for everything that follows |
-| > **Status:** 9/10 done. 0.8 (allowance top-up) blocked on `allowance.move` — deferred to Phase 1. |
-| > **Releases:** t2000 v0.26.0 (Phase A) + v0.26.1 patch (dust filtering). Audric updated and deployed. |
+| > **Status:** All 10 items complete. Allowance top-up (0.8) deferred to Phase 1 but all other pre-work shipped. |
+| > **Releases:** t2000 v0.26.2 (SDK 0.22.3, Engine 0.7.6). Audric deployed with USDC-only enforcement, Swap chip, dust filtering, financial amount safety (flooring), and Cursor rules. |
 
 ### 0.1 Conversation logging
 
@@ -348,9 +449,9 @@ Add one DB write per engine turn to the SSE handler. Every day without this is f
 
 Effort: ~2 hours
 
-### 0.2 Strip multi-asset save/borrow — USDC-only financial layer
+### 0.2 Strip multi-asset save/borrow — USDC-only financial layer ✅
 
-Multi-asset save is currently **live** in production. The SDK `save()` accepts an optional `asset` parameter and the engine tool schema lists USDC, USDT, SUI, USDe, USDsui. This must be actively stripped — not just "removed from docs" but hardcoded to reject non-USDC at the SDK level.
+USDC-only enforcement is live at every layer: SDK (`assertAllowedAsset` rejects non-USDC with `INVALID_ASSET` error), engine tool descriptions (forbid auto-chain swap+deposit), LLM system prompt (explicit USDC-only savings section), and UI (all save flows use `balance.usdc`, contextual chips/smart cards reference idle USDC only).
 
 **What to change:**
 
@@ -359,7 +460,7 @@ Multi-asset save is currently **live** in production. The SDK `save()` accepts a
 - `packages/engine/src/tools/save.ts`: remove `asset` from zod schema, hardcode USDC
 - `packages/engine/src/tools/withdraw.ts`: same treatment
 - `audric/apps/web/app/api/transactions/prepare/route.ts`: remove `asset` from prepare payload, always USDC
-- Existing multi-asset NAVI positions (USDe, SUI, USDsui) stay untouched — users can still withdraw them. Only **new** operations are USDC-only
+- Existing multi-asset NAVI positions (USDe, SUI, USDsui) stay untouched — users can still withdraw them. Only **new** save/borrow operations are USDC-only. ✅ Enforced at SDK level with `assertAllowedAsset()`
 
 Effort: ~3 hours
 
@@ -503,7 +604,7 @@ The swap fee is the highest-priority missing revenue stream. Instead of modifyin
 clientInstance = new AggregatorClient({
   signer: walletAddress,
   env: Env.Mainnet,
-  overlayFeeRate: 0.0025,              // 0.25% on output
+  overlayFeeRate: 0.001,               // 0.1% on output
   overlayFeeReceiver: TREASURY_ADDRESS, // admin wallet
 });
 ```
@@ -514,15 +615,15 @@ clientInstance = new AggregatorClient({
 - Slippage calculation already accounts for the fee (built into Cetus pre-calculation)
 - No Move contract changes needed
 - Fee is deducted from output amount — user sees slightly less output than raw quote
-- Maximum configurable threshold is 1% (we use 0.25%)
+- Maximum configurable threshold is 1% (we use 0.1%)
 
 **Fee collection:** Set `overlayFeeReceiver` to the admin wallet. Periodically sweep accumulated fees into the treasury contract via `receive_coins()` for on-chain tracking, or simply track revenue from the receiver address balance.
 
-**Applies automatically** to all swap paths: manual swaps via chat, DCA executions, and auto-compound NAVX→USDC swaps — all use the same `AggregatorClient` instance.
+**Applies automatically** to all swap paths: manual swaps via chat (LLM + chip flow), DCA executions, and auto-compound NAVX→USDC swaps — all use the same `AggregatorClient` instance.
 
-**Disclosure:** Add one line to terms of service: “Audric charges a 0.25% platform fee on all swaps”
+**Disclosure:** Add one line to terms of service: “Audric charges a 0.1% platform fee on all swaps”
 
-Effort: ~30 minutes
+Effort: ~30 minutes (✅ DONE — live in SDK + Audric)
 
 ### 0.8 Allowance top-up flow
 
@@ -593,7 +694,7 @@ The current settings is a right-hand slide-over panel (`SettingsPanel.tsx`). By 
 │  │              │  │                            │   │
 │  │              │  │  Active features            │   │
 │  │              │  │  ☀️ Morning briefing   [ON] │   │
-│  │              │  │  📈 Yield alerts       [ON] │   │
+│  │              │  │  📈 USDC rate alerts   [ON] │   │
 │  │              │  │  💸 Payment alerts     [ON] │   │
 │  │              │  │  ⏰ DCA / scheduled   [ON] │   │
 │  │              │  │  🛡️ Health alerts   Always  │   │
@@ -627,6 +728,15 @@ The current settings is a right-hand slide-over panel (`SettingsPanel.tsx`). By 
 │  └──────────────┘  └────────────────────────────┘   │
 └─────────────────────────────────────────────────────┘
 ```
+
+**Two budget concepts — important distinction:**
+
+| Budget | Purpose | Where it lives | Scope |
+|--------|---------|-----------------|-------|
+| **Features budget** (allowance) | Pays for proactive features: briefings, alerts, DCA, AI sessions | On-chain `Allowance` contract (USDC escrow) | $0.25–$1.00, lasts weeks–months |
+| **Agent budget** (auto-approve) | Max USDC value Audric can auto-approve per transaction without user confirmation | Client-side preference in `UserPreferences` | e.g., $5 — transactions above this require manual confirm |
+
+These are deliberately separate. The features budget is a pre-funded pool for micro-charges. The agent budget is a safety threshold for how much the LLM can spend in a single action without asking. Both appear in Settings but under different sections (Features vs Safety) to avoid confusion.
 
 **Mobile:** On mobile (<640px), the left nav collapses into a horizontal tab bar at the top: `Account | Features | Safety | Contacts | Sessions`. Each tab scrolls the right panel to the relevant section. Single column layout.
 
@@ -688,6 +798,8 @@ Effort: ~1 hour
 
 Everything proactive depends on the notification infrastructure built in this phase. Build it once here — it powers every alert, briefing, and scheduled action that follows. The morning briefing is the forcing function that makes you build the backbone.
 
+**Hard blocker: `allowance.move` contract.** Morning briefings, USDC rate alerts, AI session charges, and all proactive features require the on-chain allowance model to deduct micro-payments. The contract must be deployed before any Phase 1 feature that charges the user can go live. Notification infrastructure (1.1) and health factor alerts (1.2, free) can ship without it, but 1.3 (morning briefing, $0.005/day) and 1.5 (onboarding) need it. **Priority: deploy `allowance.move` in Week 1 alongside 1.1.**
+
 ### 1.1 Notification infrastructure
 
 - ECS cron scheduler (EventBridge rules on existing Fargate cluster)
@@ -718,7 +830,7 @@ Effort: 2 days
 
 ### 1.3 Morning briefing — email + in-app card
 
-Single hourly ECS cron fires for all users whose timezone maps to 8am at the current UTC hour. Queries: yesterday's yield earned, current APY vs best available across DefiLlama pools, health factor if the user has debt, one suggested action. 40 words maximum. Sent via MPP Resend (user's allowance pays).
+Single hourly ECS cron fires for all users whose timezone maps to 8am at the current UTC hour. Queries: yesterday's USDC yield earned, current NAVI USDC APY, health factor if the user has debt, idle USDC balance, one suggested action. 40 words maximum. Sent via MPP Resend (user's allowance pays).
 
 - Template: 'Good morning. Your savings earned \$X yesterday. Current APY: Y%. \[One action if applicable.\]'
 
@@ -727,6 +839,8 @@ Single hourly ECS cron fires for all users whose timezone maps to 8am at the cur
 - Respect opt-out: if user turns off in settings, cron skips them
 
 - Source data: balance_check + rates_info + savings_info tools (already in engine)
+
+- **No-savings variant:** If user has idle USDC but no savings, the briefing shifts from "earned $X overnight" to "You have $44 idle USDC. Save it to start earning 5.0% APY." — the briefing is always useful, never an empty report
 
 **In-app briefing card:**
 
@@ -737,17 +851,18 @@ The morning briefing isn't just an email — it must also appear in-app. When th
 │  ☀️  Morning Briefing · Apr 6             × │
 │                                             │
 │  ┌─────────────┐ ┌─────────────────────┐    │
-│  │ Earned      │ │ Savings APY         │    │
-│  │ $0.27       │ │ 5.00% USDC          │    │
-│  │ yesterday   │ │ 8.56% USDsui        │    │
+│  │ Earned      │ │ USDC Savings APY    │    │
+│  │ $0.27       │ │ 5.00%               │    │
+│  │ yesterday   │ │                     │    │
 │  └─────────────┘ └─────────────────────┘    │
 │                                             │
-│  Your $20 USDC deposit earned $0.003        │
-│  overnight. NAVI's USDsui pool is paying    │
-│  8.56% — 71% more than USDC.               │
+│  Your $500 USDC savings earned $0.27        │
+│  overnight at 5.00% APY. You have $44       │
+│  idle USDC — saving it would add ~$0.006    │
+│  per day.                                   │
 │                                             │
 │  ┌──────────────────────┐                   │
-│  │  Move to USDsui →   │  ← one-tap CTA    │
+│  │  Save idle USDC →   │  ← one-tap CTA    │
 │  └──────────────────────┘                   │
 │                                             │
 │  [Dismiss]        [View full report →]      │
@@ -762,25 +877,25 @@ The morning briefing isn't just an email — it must also appear in-app. When th
 - `useOvernightBriefing()` hook fetches on mount. If exists and not dismissed, render `BriefingCard` pinned above the feed
 - Dismissing sets `dismissedAt` via `POST /api/user/briefing/dismiss`
 - "View full report" sends "Give me my daily briefing" to the engine — triggers the `WEEKLY REPORT` action chip flow with today's data
-- One-tap CTA is context-dependent: if yield optimization exists, show it; if savings goal is behind, show "Deposit $X to catch up"; if idle balance, show "Save idle $X"
+- One-tap CTA is context-dependent (USDC-only logic): if idle USDC > $5, show "Save idle USDC"; if savings goal is behind, show "Deposit $X to catch up"; if health factor < 2, show "Repay debt"; otherwise omit CTA
 
 **Email template:**
 
 ```
 Subject: ☀️ Your $0.27 overnight — Apr 6
 
-Your savings earned $0.27 overnight.
+Your USDC savings earned $0.27 overnight.
 
-  USDC savings:   $500.00 at 5.00% APY
-  USDsui savings: $200.00 at 8.56% APY
+  USDC savings: $500.00 at 5.00% APY
 
-USDsui is paying 71% more than USDC right now.
-→ Move USDC to USDsui (one tap)
+You have $44 idle USDC. Saving it would
+add ~$0.006 per day.
+→ Save idle USDC (one tap)
 
 — Audric
 ```
 
-- Email CTA links to `audric.ai/action?type=rebalance&from=USDC&to=USDSUI` (deep link system, see 1.3.1 below)
+- Email CTA links to `audric.ai/action?type=save&amount=44` (deep link system, see 1.3.1 below)
 - Plain text email, no HTML templates — clean, fast, trustworthy. HTML templates look like marketing spam
 - Unsubscribe footer: "Turn off in Settings" — links to `audric.ai/settings?section=features`
 
@@ -788,13 +903,12 @@ Effort: 3 days
 
 ### 1.3.1 Deep link action system
 
-Every email CTA and notification needs to open the app in the right state and trigger the right action. Without a deep link system, users click "Move to USDsui" in an email and land on an empty dashboard with no context. This is the plumbing that makes one-tap email actions work.
+Every email CTA and notification needs to open the app in the right state and trigger the right action. Without a deep link system, users click "Save idle USDC" in an email and land on an empty dashboard with no context. This is the plumbing that makes one-tap email actions work.
 
 **URL scheme:** `audric.ai/action?type=<action>&<params>`
 
 | Deep link | Action | Opens as |
 |-----------|--------|----------|
-| `/action?type=rebalance&from=USDC&to=USDSUI` | Rebalance savings | Pre-fills chat with "Move my USDC savings to USDsui" |
 | `/action?type=save&amount=50` | Quick save | Pre-fills chat with "Save $50 USDC" |
 | `/action?type=topup&amount=0.50` | Allowance top-up | Opens Settings > Features with top-up pre-filled |
 | `/action?type=goal&id=xxx&deposit=50` | Goal deposit | Pre-fills chat with "Save $50 toward [goal name]" |
@@ -816,7 +930,7 @@ Effort: 1 day (simple routing page, shares infra with auth callback pattern)
 
 ### 1.4 Savings goals — chat + management UI
 
-Users set a target amount and optional deadline via chat or a goals screen. Audric tracks progress and includes it in the morning briefing. Milestones (25%, 50%, 75%, 100%) trigger a celebratory email. Makes passive savings emotionally engaging.
+Users set a USDC savings target and optional deadline via chat or a goals screen. Audric tracks progress against USDC savings balance and includes it in the morning briefing. Milestones (25%, 50%, 75%, 100%) trigger a celebratory email. Makes passive USDC savings emotionally engaging.
 
 - SavingsGoal table: userId, name, targetAmount, deadline, createdAt
 
@@ -843,7 +957,7 @@ Goals need a persistent visual presence beyond chat. When the user sets a goal v
 │  │  Deadline: Aug 15 · 3 days ahead    │    │
 │  │  Earning: $0.04/day at 5.00% APY    │    │
 │  │                                     │    │
-│  │  [Deposit $50 →]      [Edit] [···]  │    │
+│  │  [Save $50 USDC →]    [Edit] [···]  │    │
 │  │                                     │    │
 │  └─────────────────────────────────────┘    │
 │                                             │
@@ -853,10 +967,10 @@ Goals need a persistent visual presence beyond chat. When the user sets a goal v
 │  │  $89 of $350            25%         │    │
 │  │  ██████░░░░░░░░░░░░░░░░             │    │
 │  │                                     │    │
-│  │  No deadline · $89 saved so far     │    │
+│  │  No deadline · $89 USDC saved       │    │
 │  │  Earning: $0.01/day at 5.00% APY    │    │
 │  │                                     │    │
-│  │  [Deposit $25 →]      [Edit] [···]  │    │
+│  │  [Save $25 USDC →]    [Edit] [···]  │    │
 │  │                                     │    │
 │  └─────────────────────────────────────┘    │
 │                                             │
@@ -870,7 +984,7 @@ Goals need a persistent visual presence beyond chat. When the user sets a goal v
 
 **Interaction model:**
 
-- "Deposit $50" on a goal card sends the message "Save $50 USDC" to the engine with the goal context — goes through the normal save flow with one confirmation
+- "Save $50 USDC" on a goal card sends the message to the engine with the goal context — goes through the normal USDC save flow with one confirmation
 - "Edit" opens an inline editor for name, target, deadline
 - "..." menu: Delete goal, Share progress (future Phase 5 social feature)
 - "Set a new savings goal" taps open the chat with a pre-filled prompt
@@ -914,19 +1028,33 @@ Users who sign up receive \$0.25 USDC sponsored from the Sponsor address managed
 
 - Trigger: first sign-in, balance = \$0.25, no prior transactions (check via `balance_check` tool)
 
-- Prompt in chat: 'You have \$0.25 USDC. Want to put it to work? Save it and earn ~5% APY — takes 2 seconds.'
+- First-run welcome message (auto-sent by engine on first session):
 
-- One-tap save action pre-fills the confirm flow
+```
+Welcome to Audric. You have $0.25 USDC to get started.
+
+Here's what you can do:
+
+💰 Save it — earn ~5% APY on your USDC
+🔄 Swap it — trade for SUI, GOLD, or 13 other tokens
+💬 Ask me anything — "what can you do?" to explore
+
+What would you like to try first?
+```
+
+- One-tap save action pre-fills the confirm flow via chip
 
 - Follow-up 24h later (via morning briefing infra from 1.3): 'Your \$0.25 is earning. Here is what else Audric can do for you.'
 
-- **Already implemented:** Sponsor address funding. **Still needed:** first-run detection logic, chat prompt, follow-up email
+- **Future expansion (Phase 5):** "Create and sell" — once the marketplace launches, the onboarding can add a third path: generate AI content and list it for sale. This turns the \$0.25 from a savings demo into a creative tool.
+
+- **Already implemented:** Sponsor address funding, chip flows (Save, Swap, Receive). **Still needed:** first-run detection logic, welcome message, follow-up email
 
 Effort: 1 day
 
 ### 1.6 Unified activity feed — with filter navigation
 
-A single chronological view across all activity: save, send, receive, pay, yield earned, alerts fired, goals updated. This makes Audric feel like it is watching over your money even when you are not in the app. It is also the data source for the morning briefing summary.
+A single chronological view across all activity: save, send, receive, swap, yield earned, alerts fired, goals updated. This makes Audric feel like it is watching over your money even when you are not in the app. It is also the data source for the morning briefing summary.
 
 - Pull from existing Transaction table (indexer) + NeonDB app events
 
@@ -949,7 +1077,7 @@ The current `UnifiedTimeline` interleaves chat and feed items. The activity feed
 │  ─────────────────────────                  │
 │                                             │
 │  ┌─ Filter: ─────────────────────────────┐  │
-│  │ [All]  [Savings]  [Send]  [Pay]  [DCA]│  │
+│  │ [All] [Savings] [Send] [Swap] [Pay] [DCA]│
 │  └───────────────────────────────────────┘  │
 │                                             │
 │  Today                                      │
@@ -986,6 +1114,7 @@ The current `UnifiedTimeline` interleaves chat and feed items. The activity feed
 - `All` — everything (default)
 - `Savings` — deposits, withdrawals, yield earned, auto-compound
 - `Send` — outgoing transfers
+- `Swap` — token swaps (LLM or chip flow)
 - `Receive` — incoming transfers (detected by indexer)
 - `Pay` — MPP service calls
 - `DCA` — scheduled action executions (visible after Phase 3)
@@ -1230,21 +1359,25 @@ NAVI distributes both NAVX and vSUI (CERT) as lending rewards in addition to bas
 
 Effort: 3 days
 
-### 3.2 Yield optimization alerts
+### 3.2 USDC rate monitoring alerts
 
-DefiLlama yield pool data is already in the engine. Add an hourly ECS cron comparing each user's current rate against the best available rate for their asset. Alert if the delta exceeds a threshold.
+Since savings are USDC-only on NAVI, yield optimization is simpler — monitor NAVI's USDC supply rate and alert on significant changes. No cross-asset rebalancing needed.
 
-- Hourly cron: fetch all_rates_across_assets, compare to user positions
+- Hourly cron: fetch NAVI USDC supply rate via MCP, compare to last notified rate
 
-- Alert threshold: only notify if better rate is \>1.5% higher (avoid alert fatigue)
+- Alert threshold: notify if rate change exceeds ±1% (e.g., 5% → 6.5% or 5% → 3.5%)
 
-- Message: 'USDe yield jumped to 12%. You are earning 3.3% on USDC. Move \$100?'
+- Rate increase message: 'USDC savings rate jumped to 6.5% — your $500 now earns $0.09/day'
 
-- One-tap action in email: deep link to pre-filled move confirmation in Audric
+- Rate decrease message: 'USDC savings rate dropped to 3.0%. Your $500 earns $0.04/day. Consider withdrawing.'
 
-- Max one yield alert per 24 hours per user
+- Idle USDC nudge: 'You have $44 idle USDC earning 0%. Save it to earn 5.0% APY → one tap'
 
-Effort: 3 days
+- One-tap action in email: deep link to `/action?type=save&amount=44`
+
+- Max one rate alert per 24 hours per user
+
+Effort: 2 days (simpler than multi-asset — single rate to track)
 
 ### 3.3 Scheduled actions — DCA and recurring saves
 
@@ -1261,6 +1394,8 @@ Users set standing instructions via chat: 'Save \$50 every Friday', 'Buy \$20 SU
 - Chat creation: natural language parsed by engine into structured ScheduledAction
 
 - Trust-critical: one failed autonomous transaction causes churn. Test extensively.
+
+- Fee disclosure: recurring swap actions (e.g., "Buy $20 SUI every Monday") incur the 0.1% swap fee on each execution. The scheduled action confirmation should state: "Each execution incurs a 0.1% swap fee."
 
 **Trust ladder UI — the "5 confirmations then autonomous" mechanic:**
 
@@ -1466,17 +1601,17 @@ Audric has six distinct revenue streams, all passive once built. Every stream sc
 
 ### Swap fee implementation
 
-Swap fees are the highest-priority missing revenue stream. The implementation uses the **Cetus Aggregator Overlay Fee** — a built-in SDK feature that deducts a configurable percentage from swap output and sends it directly to a receiver address. No PTB modification needed, no Move contract changes. The recommended rate is 25 bps (0.25%), consistent with Jupiter's platform fee on Solana, below typical DEX interface fees, and invisible to users in the confirmation screen.
+Swap fees are **live**. The implementation uses the **Cetus Aggregator Overlay Fee** — a built-in SDK feature that deducts a configurable percentage from swap output and sends it directly to a receiver address. No PTB modification needed, no Move contract changes. The rate is 10 bps (0.1%), displayed in the swap confirmation screen for transparency.
 
-- Set `overlayFeeRate: 0.0025` and `overlayFeeReceiver: TREASURY_ADDRESS` on `AggregatorClient` initialization in `cetus-swap.ts`
+- ✅ `overlayFeeRate: 0.001` and `overlayFeeReceiver: TREASURY_ADDRESS` set on `AggregatorClient` initialization in both `cetus-swap.ts` (SDK) and `audric/prepare/route.ts`
 
-- Charge on output amount (not input) — user sees slightly less output than raw quote, fee is invisible
+- Charge on output amount (not input) — user sees slightly less output than raw quote, fee shown in confirmation screen
 
-- Apply to all swap paths automatically: manual swaps, DCA executions, and auto-compound NAVX→USDC swaps (all use the same client instance)
+- Apply to all swap paths automatically: manual swaps (LLM + chip flow), DCA executions, and auto-compound NAVX→USDC swaps (all use the same client instance)
 
 - Fee sent directly to receiver address. Periodically sweep into treasury contract via `receive_coins()` for on-chain tracking
 
-- Disclose in terms of service: "Audric charges a 0.25% platform fee on swaps"
+- Disclose in terms of service: "Audric charges a 0.1% platform fee on swaps"
 
 - Future: explore positive slippage capture (surplus when execution beats quote goes to treasury)
 
@@ -1710,7 +1845,7 @@ Displayed in portfolio. Swappable to/from USDC via Cetus Aggregator. Not saveabl
 
 - SDK save() and borrow() reject non-USDC assets with INVALID_ASSET error. Single-line guard checks at the top of each function. send() supports Tier 1 (USDC) and Tier 2 assets (SUI, ETH, etc.) — users should be able to send any featured token they hold. No architectural change needed.
 
-- Existing NAVI positions (USDe, SUI, USDsui) stay untouched — users can still withdraw them. Tokens not in the registry are invisible in Audric. Users who hold unsupported tokens can manage them via SuiVision or any Sui wallet.
+- Existing NAVI positions (USDe, SUI, USDsui) stay untouched — users can still withdraw them via the LLM ("withdraw my USDe"). New save/borrow operations are USDC-only, enforced at SDK level. Tokens not in the registry are invisible in Audric. Users who hold unsupported tokens can manage them via SuiVision or any Sui wallet.
 
 - Gate for adding new tokens to Tier 2: confirmed deep Cetus liquidity + clear user need (store of value, ecosystem participation, or reward token). If both conditions met, add to registry. Otherwise do not add — Audric does not support it.
 

@@ -19,7 +19,7 @@ public struct Treasury<phantom T> has key {
     created_at: u64,
 }
 
-public fun create_treasury<T>(_: &AdminCap, clock: &sui::clock::Clock, ctx: &mut TxContext) {
+public fun create_treasury<T>(clock: &sui::clock::Clock, ctx: &mut TxContext) {
     let treasury = Treasury<T> {
         id: object::new(ctx),
         version: constants::VERSION!(),
@@ -97,7 +97,6 @@ public fun admin<T>(treasury: &Treasury<T>): address {
 #[allow(lint(self_transfer))]
 public fun withdraw_fees<T>(
     treasury: &mut Treasury<T>,
-    _: &AdminCap,
     amount: u64,
     ctx: &mut TxContext,
 ) {
@@ -114,7 +113,6 @@ public fun withdraw_fees<T>(
 
 public fun propose_admin_transfer<T>(
     treasury: &mut Treasury<T>,
-    _: &AdminCap,
     new_admin: address,
     ctx: &mut TxContext,
 ) {
@@ -145,7 +143,6 @@ public fun accept_admin_transfer<T>(
 /// and disable old package calls.
 public fun migrate_treasury<T>(
     treasury: &mut Treasury<T>,
-    _: &AdminCap,
     ctx: &mut TxContext,
 ) {
     assert!(treasury.version < constants::VERSION!(), errors::already_migrated!());
