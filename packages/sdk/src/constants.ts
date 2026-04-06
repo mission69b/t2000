@@ -1,3 +1,5 @@
+import { T2000Error } from './errors.js';
+
 export const MIST_PER_SUI = 1_000_000_000n;
 export const SUI_DECIMALS = 9;
 export const USDC_DECIMALS = 6;
@@ -80,6 +82,43 @@ export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
 export type StableAsset = 'USDC';
 export const STABLE_ASSETS: readonly StableAsset[] = ['USDC'] as const;
 export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_ASSETS) as SupportedAsset[];
+
+// ---------------------------------------------------------------------------
+// Operation → allowed asset rules (single source of truth)
+// ---------------------------------------------------------------------------
+
+export const OPERATION_ASSETS = {
+  save:     ['USDC'],
+  borrow:   ['USDC'],
+  withdraw: '*',
+  repay:    '*',
+  send:     '*',
+  swap:     '*',
+} as const;
+
+export type Operation = keyof typeof OPERATION_ASSETS;
+
+export function isAllowedAsset(op: Operation, asset: string): boolean {
+  const allowed = OPERATION_ASSETS[op];
+  if (allowed === '*') return true;
+  return (allowed as readonly string[]).includes(asset.toUpperCase());
+}
+
+/**
+ * Throws if the asset is not permitted for the given operation.
+ * Passing `undefined` (omitted) is always valid — defaults to USDC.
+ */
+export function assertAllowedAsset(op: Operation, asset: string | undefined): void {
+  if (!asset) return;
+  if (!isAllowedAsset(op, asset)) {
+    const allowed = OPERATION_ASSETS[op];
+    const list = Array.isArray(allowed) ? allowed.join(', ') : 'any';
+    throw new T2000Error(
+      'INVALID_ASSET',
+      `${op} only supports ${list}. Cannot use ${asset}.${op === 'save' ? ' Swap to USDC first.' : ''}`,
+    );
+  }
+}
 
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';
 export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0x408add9aa9322f93cfd87523d8f603006eb8713894f4c460283c58a6888dae8a';

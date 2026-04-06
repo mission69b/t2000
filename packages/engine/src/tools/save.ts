@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assertAllowedAsset } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 
@@ -27,9 +28,7 @@ export const saveDepositTool = buildTool({
   permissionLevel: 'confirm',
 
   async call(input, context) {
-    if (input.asset && input.asset.toUpperCase() !== 'USDC') {
-      throw new Error(`Only USDC deposits are supported. Cannot deposit ${input.asset}. Swap to USDC first, then deposit.`);
-    }
+    assertAllowedAsset('save', input.asset);
 
     const agent = requireAgent(context);
     const result = await agent.save({ amount: input.amount });

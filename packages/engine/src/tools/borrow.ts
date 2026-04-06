@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assertAllowedAsset } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 
@@ -28,9 +29,7 @@ export const borrowTool = buildTool({
   permissionLevel: 'confirm',
 
   async call(input, context) {
-    if (input.asset && input.asset.toUpperCase() !== 'USDC') {
-      throw new Error(`Only USDC borrows are supported. Cannot borrow ${input.asset}.`);
-    }
+    assertAllowedAsset('borrow', input.asset);
 
     const agent = requireAgent(context);
     const result = await agent.borrow({ amount: input.amount });

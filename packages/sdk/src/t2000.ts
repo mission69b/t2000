@@ -53,7 +53,7 @@ import type {
   UnstakeVSuiResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, MIST_PER_SUI, type SupportedAsset } from './constants.js';
+import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, MIST_PER_SUI, assertAllowedAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
@@ -635,9 +635,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async save(params: { amount: number | 'all'; asset?: SupportedAsset; protocol?: string }): Promise<SaveResult> {
     this.enforcer.assertNotLocked();
-    if (params.asset && params.asset !== 'USDC') {
-      throw new T2000Error('INVALID_ASSET', 'Only USDC deposits are supported. Swap to USDC first.');
-    }
+    assertAllowedAsset('save', params.asset);
     const asset: SupportedAsset = 'USDC';
     const assetInfo = SUPPORTED_ASSETS[asset];
 

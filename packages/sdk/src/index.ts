@@ -50,7 +50,11 @@ export {
   ALL_NAVI_ASSETS,
   GAS_RESERVE_MIN,
   CETUS_USDC_SUI_POOL,
+  OPERATION_ASSETS,
+  isAllowedAsset,
+  assertAllowedAsset,
 } from './constants.js';
+export type { Operation } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {
   mistToSui,
