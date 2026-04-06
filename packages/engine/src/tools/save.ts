@@ -5,15 +5,20 @@ import { requireAgent } from './utils.js';
 export const saveDepositTool = buildTool({
   name: 'save_deposit',
   description:
-    'Deposit USDC into NAVI lending to earn yield. Amount is in USDC.',
+    'Deposit USDC into NAVI savings to earn yield. ONLY USDC is accepted — if the user asks to save any other token (USDT, SUI, USDe, etc.), do NOT call this tool. Instead tell them to swap to USDC first, then deposit.',
   inputSchema: z.object({
     amount: z.number().positive(),
+    asset: z.string().optional().describe('Must be USDC or omitted. Any other asset is rejected.'),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       amount: {
         description: 'Exact amount of USDC to deposit',
+      },
+      asset: {
+        type: 'string',
+        description: 'Must be USDC or omitted. Any other asset is rejected.',
       },
     },
     required: ['amount'],
@@ -22,6 +27,10 @@ export const saveDepositTool = buildTool({
   permissionLevel: 'confirm',
 
   async call(input, context) {
+    if (input.asset && input.asset.toUpperCase() !== 'USDC') {
+      throw new Error(`Only USDC deposits are supported. Cannot deposit ${input.asset}. Swap to USDC first, then deposit.`);
+    }
+
     const agent = requireAgent(context);
     const result = await agent.save({ amount: input.amount });
 
