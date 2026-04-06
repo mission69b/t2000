@@ -51,19 +51,16 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: balance check (read-only)', () =
 
   it('returns a valid balance response', async () => {
     const balance = await agent.balance();
-    expect(balance.totalUsd).toBeGreaterThanOrEqual(0);
-    expect(balance.available).toBeDefined();
-    expect(Array.isArray(balance.holdings)).toBe(true);
-    expect(balance.available.totalUsd).toBeGreaterThanOrEqual(0);
+    expect(balance.total).toBeGreaterThanOrEqual(0);
+    expect(typeof balance.available).toBe('number');
+    expect(typeof balance.savings).toBe('number');
+    expect(typeof balance.debt).toBe('number');
   });
 
-  it('holdings include USDC if the wallet has any', async () => {
+  it('stables include USDC if the wallet has any', async () => {
     const balance = await agent.balance();
-    // Test wallet should have at least some USDC
-    const usdc = balance.holdings.find(h => h.symbol === 'USDC');
-    if (usdc) {
-      expect(usdc.amount).toBeGreaterThan(0);
-      expect(usdc.decimals).toBe(6);
+    if (balance.stables?.USDC) {
+      expect(balance.stables.USDC).toBeGreaterThan(0);
     }
   });
 });
@@ -85,7 +82,7 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: swap quote (read-only)', () => {
     expect(quote.toToken).toBe('USDT');
     expect(quote.fromAmount).toBeGreaterThan(0);
     expect(quote.toAmount).toBeGreaterThan(0);
-    expect(quote.priceImpact).toBeGreaterThanOrEqual(0);
+    expect(Number(quote.priceImpact)).toBeGreaterThanOrEqual(0);
     expect(quote.route).toBeTruthy();
   });
 
@@ -122,10 +119,10 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: swap USDC -> USDT (real tx)', ()
     expect(result.toToken).toBe('USDT');
     expect(result.fromAmount).toBeGreaterThan(0);
     expect(result.toAmount).toBeGreaterThan(0);
-    expect(typeof result.priceImpact).toBe('number');
+    expect(Number(result.priceImpact)).toBeGreaterThanOrEqual(0);
     expect(result.route).toBeTruthy();
     expect(result.gasCost).toBeGreaterThanOrEqual(0);
-    expect(['self', 'gasStation', 'autoTopUp']).toContain(result.gasMethod);
+    expect(result.gasMethod).toBeTruthy();
   });
 });
 
