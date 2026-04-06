@@ -33,7 +33,7 @@ async function callNavi<T = unknown>(
 export const balanceCheckTool = buildTool({
   name: 'balance_check',
   description:
-    'Get the user\'s full balance breakdown: available USDC, savings deposits, outstanding debt, pending rewards, gas reserve, and total net worth.',
+    'Get the user\'s full balance breakdown. Returns wallet holdings (tokens the user owns — NOT savings), NAVI savings deposits (USDC deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, and saveableUsdc (only USDC can be deposited into savings). IMPORTANT: wallet holdings like GOLD, SUI, USDT are NOT savings positions — they are just tokens sitting in the wallet.',
   inputSchema: z.object({}),
   jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
@@ -151,6 +151,9 @@ export const balanceCheckTool = buildTool({
         .filter((h) => h.usdValue >= 0.01)
         .sort((a, b) => b.usdValue - a.usdValue);
 
+      const usdcHolding = holdings.find((h) => h.symbol === 'USDC');
+      const saveableUsdc = usdcHolding ? usdcHolding.balance : 0;
+
       const bal = {
         available: availableUsd,
         savings,
@@ -160,11 +163,13 @@ export const balanceCheckTool = buildTool({
         total: availableUsd + savings + gasReserveUsd + pendingRewardsUsd - debt,
         stables: stablesUsd,
         holdings: visibleHoldings,
+        saveableUsdc,
       };
 
+      const holdingsList = visibleHoldings.map((h) => `${h.symbol}: ${h.balance < 1 ? h.balance.toFixed(6) : h.balance.toFixed(2)} ($${h.usdValue.toFixed(2)})`).join(', ');
       return {
         data: bal,
-        displayText: `Balance: $${bal.total.toFixed(2)} (Available: $${bal.available.toFixed(2)}, Savings: $${bal.savings.toFixed(2)})`,
+        displayText: `Balance: $${bal.total.toFixed(2)} total. Wallet holdings (NOT savings): ${holdingsList || 'none'}. NAVI savings deposits: $${bal.savings.toFixed(2)}. Saveable USDC (only USDC can be saved): ${saveableUsdc.toFixed(2)} USDC.`,
       };
     }
 
@@ -181,6 +186,9 @@ export const balanceCheckTool = buildTool({
     const sdkHoldings = (balance as unknown as Record<string, unknown>).holdings;
     const holdingsArr = Array.isArray(sdkHoldings) ? sdkHoldings : [];
 
+    const usdcHolding = holdingsArr.find((h: { symbol?: string }) => h.symbol === 'USDC');
+    const sdkSaveableUsdc = usdcHolding ? ((usdcHolding as { balance?: number }).balance ?? 0) : 0;
+
     return {
       data: {
         available: balance.available,
@@ -191,8 +199,9 @@ export const balanceCheckTool = buildTool({
         total: balance.total,
         stables: stablesTotal,
         holdings: holdingsArr,
+        saveableUsdc: sdkSaveableUsdc,
       },
-      displayText: `Balance: $${balance.total.toFixed(2)} (Available: $${balance.available.toFixed(2)}, Savings: $${balance.savings.toFixed(2)})`,
+      displayText: `Balance: $${balance.total.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}. Saveable USDC (only USDC can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`,
     };
   },
 });
