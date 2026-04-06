@@ -6,7 +6,7 @@ import { requireAgent } from './utils.js';
 export const saveDepositTool = buildTool({
   name: 'save_deposit',
   description:
-    'Deposit USDC into NAVI savings to earn yield. ONLY USDC is accepted — if the user asks to save any other token (USDT, SUI, USDe, etc.), do NOT call this tool. Instead tell them to swap to USDC first, then deposit.',
+    'Deposit USDC into NAVI savings to earn yield. ONLY USDC is accepted. If the user asks to save/deposit any other token (USDT, SUI, USDe, etc.), do NOT call this tool and do NOT automatically swap their tokens and deposit. Instead, tell the user that only USDC deposits are supported and ask if they would like to swap to USDC first. Let the user decide — never auto-chain swap + deposit.',
   inputSchema: z.object({
     amount: z.number().positive(),
     asset: z.string().optional().describe('Must be USDC or omitted. Any other asset is rejected.'),
