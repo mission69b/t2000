@@ -1,0 +1,39 @@
+---
+description: Financial amount safety — floor vs round, on-chain precision, no rounding up
+alwaysApply: true
+---
+
+# Financial Amount Safety
+
+## Floor display amounts — never round up
+
+Any amount shown to users or passed to SDK transaction builders must be **<=** the actual on-chain balance. `Math.round` can round up, causing "Insufficient balance" errors.
+
+```typescript
+// ❌ BAD — Math.round(1.1286 * 100) / 100 = 1.13 (more than on-chain!)
+const amount = Math.round(rawAmount * 100) / 100;
+
+// ✅ GOOD — Math.floor always produces amount <= actual
+const amount = Math.floor(rawAmount * 10000) / 10000;
+```
+
+## Token decimal precision
+
+Floor to the token's on-chain decimals (capped at 8):
+- SUI: 9 decimals → floor at 4dp for display
+- USDC: 6 decimals → floor at 2dp for display
+- GOLD (XAUM): 9 decimals → floor at 8dp for display
+- Other assets: `Math.min(decimals, 8)` dp
+
+## SDK transaction amounts
+
+When `sdk.swap()` or `sdk.save()` receives an amount, it converts to raw units via `amount * 10^decimals`. If the display amount was rounded UP, this produces more raw units than the user actually has → transaction fails.
+
+## Preset amounts for chip flows
+
+For assets with tiny balances (< 0.01), use dynamic precision:
+
+```typescript
+const dp = held >= 1 ? 100 : held >= 0.01 ? 10000 : 100000000;
+const preset = Math.floor(held * fraction * dp) / dp;
+```

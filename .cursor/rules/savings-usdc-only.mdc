@@ -1,0 +1,37 @@
+---
+description: Savings is USDC-only — engine tools and prompts must enforce this clearly
+alwaysApply: true
+---
+
+# Savings = USDC Only (Engine)
+
+## balance_check tool
+
+Must return `saveableUsdc` field (only USDC wallet balance). `displayText` must distinguish:
+- **Wallet holdings** (GOLD, SUI, USDT) — tokens in the wallet, NOT savings
+- **NAVI savings deposits** — USDC deposited into NAVI earning yield
+- **Saveable USDC** — the amount that CAN be saved
+
+```typescript
+// ❌ BAD — LLM confuses holdings with savings
+displayText: `Balance: $${total} (Available: $${available}, Savings: $${savings})`
+
+// ✅ GOOD — explicit separation
+displayText: `Wallet holdings (NOT savings): ${list}. NAVI savings: $${savings}. Saveable USDC: ${usdc} USDC.`
+```
+
+## System prompt
+
+Must include "Savings = USDC only (critical)" section that tells LLM:
+- Only USDC can be saved via `save_deposit`
+- Wallet holdings ≠ savings positions
+- Never say non-USDC tokens are "earning APY in savings"
+- When asked "how much can I save?", report only `saveableUsdc`
+
+## save_deposit tool
+
+Description must explicitly forbid auto-chaining swap + deposit. The user decides.
+
+## Adding new assets
+
+When adding assets to the token registry, they are holdable/swappable but NOT saveable. Only USDC goes through `save_deposit`. This is enforced by `assertAllowedAsset('save', asset)` in the SDK.
