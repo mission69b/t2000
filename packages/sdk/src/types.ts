@@ -232,3 +232,71 @@ export interface PayResult {
     timestamp: string;
   };
 }
+
+// --- Allowance types ---
+
+export interface AllowanceInfo {
+  id: string;
+  owner: string;
+  balance: bigint;
+  totalDeposited: bigint;
+  totalSpent: bigint;
+  createdAt: number;
+  coinType: string;
+}
+
+export interface AllowanceCreateResult {
+  success: boolean;
+  tx: string;
+  allowanceId: string;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface AllowanceDepositResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  newBalance: bigint;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface AllowanceWithdrawResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+export interface AllowanceDeductResult {
+  success: boolean;
+  tx: string;
+  amount: number;
+  feature: number;
+  remaining: bigint;
+  gasCost: number;
+  gasMethod: GasMethod;
+}
+
+// --- Financial summary (for notifications / cron) ---
+
+export type HFAlertLevel = 'none' | 'warn' | 'critical';
+
+export interface FinancialSummary {
+  walletAddress: string;
+  usdcAvailable: number;
+  savingsBalance: number;
+  debtBalance: number;
+  idleUsdc: number;
+  healthFactor: number;
+  hfAlertLevel: HFAlertLevel;
+  saveApy: number;
+  borrowApy: number;
+  dailyYield: number;
+  gasReserveSui: number;
+  gasReserveUsd: number;
+  allowanceBalance: bigint | null;
+  fetchedAt: number;
+}

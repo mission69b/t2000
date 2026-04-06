@@ -48,13 +48,13 @@
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| — | **Deploy `allowance.move` contract** | 1d | in progress | — | t2000 | ✅ Contract written + 12 tests passing. Needs `sui client upgrade` to mainnet |
-| 1.1 | Notification infrastructure | 3d | not started | 0.3, 0.4 | both | ECS cron, EventBridge, Resend, UserNotificationPrefs table |
-| 1.2 | Health factor alerts (free) | 2d | not started | 1.1 | both | Indexer HF check, dedup, email template. Ships without allowance |
+| — | **Deploy `allowance.move` contract** | 1d | done | — | t2000 | ✅ Upgraded to v2 on mainnet (`0x2bc7…`). Config + treasury migrated. SDK allowance methods + `getFinancialSummary()` built (24 tests). Server + indexer redeployed |
+| 1.1 | Notification infrastructure | 3d | in progress | 0.3, 0.4 | both | Vercel cron + Resend + NotificationPrefs schema. SDK `getFinancialSummary()` done. Audric repo: cron route, email service, prefs API |
+| 1.2 | Health factor alerts (free) | 2d | not started | 1.1 | both | Hourly HF check in Vercel cron, dedup, email template. Ships without allowance |
 | 1.6 | Unified activity feed + filter navigation | 3d | not started | — | audric | Includes Swap filter. Independent — no blockers |
 | — | CostTracker instrumentation | 0.5d | not started | — | both | Pipe @t2000/engine CostTracker data to NeonDB analytics |
 
-**Week 1 total: ~9.5 days effort.** allowance.move + 1.1 run in parallel (both 1–3d). 1.2 starts after 1.1. 1.6 and CostTracker are independent.
+**Week 1 total: ~9.5 days effort.** allowance.move done. 1.1 in progress (Vercel cron approach, not ECS). 1.2 starts after 1.1. 1.6 and CostTracker are independent.
 
 ### Week 2 — Paid features + onboarding (needs allowance deployed)
 
@@ -69,7 +69,7 @@
 
 **Week 2 total: ~9.5 days effort.** Onboarding wizard first (unblocks paid features). 1.3 + 1.3.1 ship together. 1.4 and 1.5 are independent once deps met.
 
-**Critical path:** allowance.move must deploy by end of Week 1. 1.1 unblocks 1.2 (Week 1) and 1.3 (Week 2). Onboarding wizard gates all paid features. 1.4, 1.5 can run in parallel.
+**Critical path:** allowance.move deployed ✅. 1.1 unblocks 1.2 (Week 1) and 1.3 (Week 2). Onboarding wizard gates all paid features. 1.4, 1.5 can run in parallel.
 
 ---
 
@@ -136,7 +136,7 @@
 |------|--------|-------|
 | Move Audric repo to BSL 1.1 licence | not started | Change Date: April 2030 |
 | Add Suno commercial licence ($12/mo) | not started | Required before Phase 5 |
-| Allowance Move contract (allowance.move) | done | v3 — `create`, `deposit`, `deduct`, `withdraw`, `balance`. 12 Move tests passing. Needs mainnet upgrade publish |
+| Allowance Move contract (allowance.move) | done | v2 — `create`, `deposit`, `admin_deposit`, `deduct`, `withdraw`, `withdraw_amount`, `balance`. 32 Move tests + 24 SDK tests. Deployed to mainnet, config + treasury migrated |
 | Confirm MPP gateway margin (10–20%) | not started | Revenue validation |
 | Allowance onboarding wizard (app/setup) | not started | Required before Phase 1 features launch |
 | Terms of Service page | not started | Disclose: swap fee 0.1%, allowance model, session charge, yield spread. Required before charging users |
@@ -171,5 +171,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8      5.4
 
 ---
 
-*Last updated: April 2026*
+*Last updated: April 6 2026*
 *Source of truth for specs: `audric-roadmap.md`*

@@ -34,6 +34,13 @@ export type {
   SwapQuoteResult,
   StakeVSuiResult,
   UnstakeVSuiResult,
+  AllowanceInfo,
+  AllowanceCreateResult,
+  AllowanceDepositResult,
+  AllowanceWithdrawResult,
+  AllowanceDeductResult,
+  FinancialSummary,
+  HFAlertLevel,
 } from './types.js';
 export {
   MIST_PER_SUI,
@@ -51,10 +58,11 @@ export {
   GAS_RESERVE_MIN,
   CETUS_USDC_SUI_POOL,
   OPERATION_ASSETS,
+  ALLOWANCE_FEATURES,
   isAllowedAsset,
   assertAllowedAsset,
 } from './constants.js';
-export type { Operation } from './constants.js';
+export type { Operation, AllowanceFeature } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {
   mistToSui,
@@ -80,6 +88,23 @@ export {
 export { solveHashcash } from './utils/hashcash.js';
 export { calculateFee, addCollectFeeToTx } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
+export {
+  buildCreateAllowanceTx,
+  addDepositAllowanceTx,
+  buildDepositAllowanceTx,
+  buildAdminDepositAllowanceTx,
+  buildDeductAllowanceTx,
+  buildWithdrawAllowanceTx,
+  buildWithdrawAmountAllowanceTx,
+  getAllowance,
+  getAllowanceBalance,
+} from './protocols/allowance.js';
+export {
+  getFinancialSummary,
+  HF_WARN_THRESHOLD,
+  HF_CRITICAL_THRESHOLD,
+} from './protocols/financialSummary.js';
+export type { FinancialSummaryOptions } from './protocols/financialSummary.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
 export { getRates } from './protocols/navi.js';
