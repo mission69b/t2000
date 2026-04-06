@@ -42,8 +42,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39",
-    "@modelcontextprotocol/sdk": "^1.28.0",
+    "@anthropic-ai/sdk": "^0.82",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@t2000/sdk": "workspace:*",
     "zod": "^3.25.0"
   },
