@@ -7,6 +7,7 @@ import {
   SUPPORTED_ASSETS,
   CLOCK_ID,
   ALLOWANCE_FEATURES,
+  FEATURES_ALL,
 } from '../constants.js';
 import type { AllowanceFeature } from '../constants.js';
 import type { AllowanceInfo } from '../types.js';
@@ -17,15 +18,26 @@ const USDC_TYPE = SUPPORTED_ASSETS.USDC.type;
 // Transaction builders
 // ---------------------------------------------------------------------------
 
+export interface CreateAllowanceOptions {
+  permittedFeatures?: bigint;
+  expiresAt?: bigint;
+  dailyLimit?: bigint;
+}
+
 /**
  * Build a PTB that creates a new shared Allowance<USDC> for the signer.
  */
-export function buildCreateAllowanceTx(): Transaction {
+export function buildCreateAllowanceTx(options: CreateAllowanceOptions = {}): Transaction {
   const tx = new Transaction();
   tx.moveCall({
     target: `${T2000_PACKAGE_ID}::allowance::create`,
     typeArguments: [USDC_TYPE],
-    arguments: [tx.object(CLOCK_ID)],
+    arguments: [
+      tx.pure.u64(options.permittedFeatures ?? BigInt(FEATURES_ALL)),
+      tx.pure.u64(options.expiresAt ?? 0n),
+      tx.pure.u64(options.dailyLimit ?? 0n),
+      tx.object(CLOCK_ID),
+    ],
   });
   return tx;
 }
@@ -85,7 +97,7 @@ export function buildAdminDepositAllowanceTx(
 
 /**
  * Build a deduct PTB. Only callable by the AdminCap holder (server/cron).
- * Deducted USDC is transferred to the signer (admin wallet).
+ * Enforces on-chain: feature permission, expiry, daily limit.
  */
 export function buildDeductAllowanceTx(
   allowanceId: string,
@@ -102,6 +114,31 @@ export function buildDeductAllowanceTx(
       tx.object(T2000_ADMIN_CAP_ID),
       tx.pure.u64(amount),
       tx.pure.u8(feature),
+      tx.object(CLOCK_ID),
+    ],
+  });
+  return tx;
+}
+
+/**
+ * Build an update_scope PTB. Owner updates permitted features, expiry, and daily limit.
+ */
+export function buildUpdateScopeTx(
+  allowanceId: string,
+  permittedFeatures: bigint,
+  expiresAt: bigint,
+  dailyLimit: bigint,
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${T2000_PACKAGE_ID}::allowance::update_scope`,
+    typeArguments: [USDC_TYPE],
+    arguments: [
+      tx.object(allowanceId),
+      tx.pure.u64(permittedFeatures),
+      tx.pure.u64(expiresAt),
+      tx.pure.u64(dailyLimit),
+      tx.object(CLOCK_ID),
     ],
   });
   return tx;
@@ -147,6 +184,11 @@ interface AllowanceFields {
   total_deposited: string;
   total_spent: string;
   created_at: string;
+  permitted_features: string;
+  expires_at: string;
+  daily_limit: string;
+  daily_spent: string;
+  window_start: string;
 }
 
 /**
@@ -176,6 +218,11 @@ export async function getAllowance(
     totalSpent: parseU64Field(fields.total_spent),
     createdAt: Number(fields.created_at),
     coinType,
+    permittedFeatures: parseU64Field(fields.permitted_features),
+    expiresAt: Number(fields.expires_at),
+    dailyLimit: parseU64Field(fields.daily_limit),
+    dailySpent: parseU64Field(fields.daily_spent),
+    windowStart: Number(fields.window_start),
   };
 }
 
@@ -211,5 +258,5 @@ function extractCoinType(objectType: string): string {
   return match ? match[1] : 'unknown';
 }
 
-export { ALLOWANCE_FEATURES };
+export { ALLOWANCE_FEATURES, FEATURES_ALL };
 export type { AllowanceFeature };

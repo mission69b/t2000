@@ -9,9 +9,11 @@ import {
   buildDeductAllowanceTx,
   buildWithdrawAllowanceTx,
   buildWithdrawAmountAllowanceTx,
+  buildUpdateScopeTx,
   getAllowance,
   getAllowanceBalance,
   ALLOWANCE_FEATURES,
+  FEATURES_ALL,
 } from './allowance.js';
 import {
   T2000_PACKAGE_ID,
@@ -47,8 +49,17 @@ function mockTx() {
 
 describe('allowance transaction builders', () => {
   describe('buildCreateAllowanceTx', () => {
-    it('returns a Transaction', () => {
+    it('returns a Transaction with default options', () => {
       const tx = buildCreateAllowanceTx();
+      expect(tx).toBeInstanceOf(Transaction);
+    });
+
+    it('returns a Transaction with custom scope options', () => {
+      const tx = buildCreateAllowanceTx({
+        permittedFeatures: 0xFFn,
+        expiresAt: 1000000n,
+        dailyLimit: 500000n,
+      });
       expect(tx).toBeInstanceOf(Transaction);
     });
   });
@@ -88,7 +99,7 @@ describe('allowance transaction builders', () => {
   });
 
   describe('buildDeductAllowanceTx', () => {
-    it('returns a Transaction', () => {
+    it('returns a Transaction with CLOCK_ID argument', () => {
       const tx = buildDeductAllowanceTx(FAKE_ALLOWANCE, 10_000n, ALLOWANCE_FEATURES.BRIEFING);
       expect(tx).toBeInstanceOf(Transaction);
     });
@@ -98,6 +109,13 @@ describe('allowance transaction builders', () => {
         const tx = buildDeductAllowanceTx(FAKE_ALLOWANCE, 10_000n, feature);
         expect(tx).toBeInstanceOf(Transaction);
       }
+    });
+  });
+
+  describe('buildUpdateScopeTx', () => {
+    it('returns a Transaction', () => {
+      const tx = buildUpdateScopeTx(FAKE_ALLOWANCE, 0xFFn, 0n, 500_000n);
+      expect(tx).toBeInstanceOf(Transaction);
     });
   });
 
@@ -121,16 +139,23 @@ describe('allowance transaction builders', () => {
 // ---------------------------------------------------------------------------
 
 describe('ALLOWANCE_FEATURES', () => {
-  it('has expected feature tags', () => {
+  it('has expected feature tags matching contracts', () => {
     expect(ALLOWANCE_FEATURES.BRIEFING).toBe(0);
-    expect(ALLOWANCE_FEATURES.RATE_ALERT).toBe(1);
-    expect(ALLOWANCE_FEATURES.SESSION).toBe(2);
-    expect(ALLOWANCE_FEATURES.PAYMENT_ALERT).toBe(3);
-    expect(ALLOWANCE_FEATURES.DCA).toBe(4);
+    expect(ALLOWANCE_FEATURES.YIELD_ALERT).toBe(1);
+    expect(ALLOWANCE_FEATURES.PAYMENT_ALERT).toBe(2);
+    expect(ALLOWANCE_FEATURES.ACTION_REMIND).toBe(3);
+    expect(ALLOWANCE_FEATURES.SESSION).toBe(4);
+    expect(ALLOWANCE_FEATURES.AUTO_COMPOUND).toBe(5);
+    expect(ALLOWANCE_FEATURES.DCA).toBe(6);
+    expect(ALLOWANCE_FEATURES.HF_ALERT).toBe(7);
   });
 
-  it('has 5 features', () => {
-    expect(Object.keys(ALLOWANCE_FEATURES)).toHaveLength(5);
+  it('has 8 features', () => {
+    expect(Object.keys(ALLOWANCE_FEATURES)).toHaveLength(8);
+  });
+
+  it('FEATURES_ALL covers all 8 features', () => {
+    expect(FEATURES_ALL).toBe(0xFF);
   });
 });
 
@@ -153,7 +178,7 @@ function mockClient(fields: Record<string, unknown>, type = `${T2000_PACKAGE_ID}
 }
 
 describe('getAllowance', () => {
-  it('parses on-chain object fields', async () => {
+  it('parses on-chain object fields including scope fields', async () => {
     const client = mockClient({
       id: { id: FAKE_ALLOWANCE },
       owner: '0x1234',
@@ -161,6 +186,11 @@ describe('getAllowance', () => {
       total_deposited: '10000000',
       total_spent: '5000000',
       created_at: '1700000000000',
+      permitted_features: '255',
+      expires_at: '1800000000000',
+      daily_limit: '500000',
+      daily_spent: '100000',
+      window_start: '1700000000000',
     });
 
     const info = await getAllowance(client, FAKE_ALLOWANCE);
@@ -172,6 +202,11 @@ describe('getAllowance', () => {
     expect(info.totalSpent).toBe(5_000_000n);
     expect(info.createdAt).toBe(1_700_000_000_000);
     expect(info.coinType).toBe(USDC_TYPE);
+    expect(info.permittedFeatures).toBe(255n);
+    expect(info.expiresAt).toBe(1_800_000_000_000);
+    expect(info.dailyLimit).toBe(500_000n);
+    expect(info.dailySpent).toBe(100_000n);
+    expect(info.windowStart).toBe(1_700_000_000_000);
   });
 
   it('handles Balance<T> returned as object with value field', async () => {
@@ -182,6 +217,11 @@ describe('getAllowance', () => {
       total_deposited: { value: '10000000' },
       total_spent: { value: '5000000' },
       created_at: '1700000000000',
+      permitted_features: '255',
+      expires_at: '0',
+      daily_limit: '0',
+      daily_spent: '0',
+      window_start: '1700000000000',
     });
 
     const info = await getAllowance(client, FAKE_ALLOWANCE);
@@ -209,6 +249,11 @@ describe('getAllowanceBalance', () => {
       total_deposited: '3000000',
       total_spent: '0',
       created_at: '1700000000000',
+      permitted_features: '255',
+      expires_at: '0',
+      daily_limit: '0',
+      daily_spent: '0',
+      window_start: '1700000000000',
     });
 
     const balance = await getAllowanceBalance(client, FAKE_ALLOWANCE);

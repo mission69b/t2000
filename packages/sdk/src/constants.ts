@@ -120,10 +120,10 @@ export function assertAllowedAsset(op: Operation, asset: string | undefined): vo
   }
 }
 
-export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0x2bc71368b1d6ea50718c4899c6562906d787a33fc31c6330bb8455aca4f9810d';
-export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0xd30408960ac38eced670acc102df9e178b5b46b3a8c0e96a53ec2fd3f39b5936';
-export const T2000_ADMIN_CAP_ID = '0x8f8a1147f9e52738485817ee499736d878546f079fc99d5560cdd570fec7d13e';
-export const T2000_TREASURY_ID = process.env.T2000_TREASURY_ID ?? '0x2398c2759cfce40f1b0f2b3e524eeba9e8f6428fcb1d1e39235dd042d48defc8';
+export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
+export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0x08ba26f0d260b5edf6a19c71492b3eb914906a7419baf2df1426765157e5862a';
+export const T2000_ADMIN_CAP_ID = '0xa97bfff140f5a2c268a03fe5422d382c228057deb7bcfdaf2967ca18b9bdbbd9';
+export const T2000_TREASURY_ID = process.env.T2000_TREASURY_ID ?? '0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8';
 
 export const DEFAULT_NETWORK = 'mainnet' as const;
 export const DEFAULT_RPC_URL = 'https://fullnode.mainnet.sui.io:443';
@@ -140,9 +140,14 @@ export const GAS_RESERVE_MIN = 0.05; // minimum SUI to keep for gas
 // Allowance feature tags — must match constants.move
 export const ALLOWANCE_FEATURES = {
   BRIEFING: 0,
-  RATE_ALERT: 1,
-  SESSION: 2,
-  PAYMENT_ALERT: 3,
-  DCA: 4,
+  YIELD_ALERT: 1,
+  PAYMENT_ALERT: 2,
+  ACTION_REMIND: 3,
+  SESSION: 4,
+  AUTO_COMPOUND: 5,
+  DCA: 6,
+  HF_ALERT: 7,
 } as const;
 export type AllowanceFeature = typeof ALLOWANCE_FEATURES[keyof typeof ALLOWANCE_FEATURES];
+
+export const FEATURES_ALL = 0xFF;

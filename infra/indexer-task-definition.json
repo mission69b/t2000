@@ -31,7 +31,7 @@
         { "name": "INDEXER_POLL_INTERVAL_MS", "value": "2000" },
         { "name": "INDEXER_BATCH_SIZE", "value": "10" },
         { "name": "MPP_GATEWAY_TREASURIES", "value": "0x703284465d889aa19cbd6806f5e60445d40f558ba1470e96240abf6b65509d2f" },
-        { "name": "T2000_PACKAGE_ID", "value": "0x2bc71368b1d6ea50718c4899c6562906d787a33fc31c6330bb8455aca4f9810d" }
+        { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" }
       ],
       "secrets": [
         {

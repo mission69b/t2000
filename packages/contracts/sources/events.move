@@ -104,6 +104,13 @@ public struct AllowanceWithdrawn has copy, drop {
     amount: u64,
 }
 
+public struct AllowanceScopeUpdated has copy, drop {
+    owner: address,
+    permitted_features: u64,
+    expires_at: u64,
+    daily_limit: u64,
+}
+
 public(package) fun emit_allowance_created(owner: address, allowance_id: ID) {
     event::emit(AllowanceCreated { owner, allowance_id });
 }
@@ -118,4 +125,13 @@ public(package) fun emit_allowance_deducted(owner: address, amount: u64, feature
 
 public(package) fun emit_allowance_withdrawn(owner: address, amount: u64) {
     event::emit(AllowanceWithdrawn { owner, amount });
+}
+
+public(package) fun emit_allowance_scope_updated(
+    owner: address,
+    permitted_features: u64,
+    expires_at: u64,
+    daily_limit: u64,
+) {
+    event::emit(AllowanceScopeUpdated { owner, permitted_features, expires_at, daily_limit });
 }

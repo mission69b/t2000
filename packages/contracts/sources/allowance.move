@@ -8,9 +8,11 @@ use t2000::errors;
 use t2000::events;
 use t2000::core::{Self, Config, AdminCap};
 
-/// Per-user USDC allowance escrow. The owner deposits USDC once,
-/// and the admin (ECS cron) deducts micro-amounts for enabled features.
-/// The owner can withdraw the remaining balance at any time.
+/// Per-user USDC allowance escrow with on-chain scoping.
+/// The owner deposits USDC and configures which features the admin may
+/// deduct for, an optional expiry, and a daily spend limit.
+/// The admin (ECS cron) deducts micro-amounts within those bounds.
+/// The owner can withdraw the remaining balance or update scope at any time.
 public struct Allowance<phantom T> has key {
     id: UID,
     owner: address,
@@ -18,19 +20,38 @@ public struct Allowance<phantom T> has key {
     total_deposited: u64,
     total_spent: u64,
     created_at: u64,
+    permitted_features: u64,
+    expires_at: u64,
+    daily_limit: u64,
+    daily_spent: u64,
+    window_start: u64,
 }
 
-/// Create a new empty allowance for the caller.
-/// One per user — the object is owned by nobody (shared) so the
-/// admin can call deduct() without the owner being online.
-public fun create<T>(clock: &Clock, ctx: &mut TxContext) {
+/// Create a new shared Allowance for the caller with scoping parameters.
+public fun create<T>(
+    permitted_features: u64,
+    expires_at: u64,
+    daily_limit: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let now = sui::clock::timestamp_ms(clock);
+    if (expires_at > 0) {
+        assert!(expires_at > now, errors::invalid_expires_at!());
+    };
+
     let allowance = Allowance<T> {
         id: object::new(ctx),
         owner: ctx.sender(),
         balance: balance::zero<T>(),
         total_deposited: 0,
         total_spent: 0,
-        created_at: sui::clock::timestamp_ms(clock),
+        created_at: now,
+        permitted_features,
+        expires_at,
+        daily_limit,
+        daily_spent: 0,
+        window_start: now,
     };
     let allowance_id = object::id(&allowance);
     events::emit_allowance_created(ctx.sender(), allowance_id);
@@ -78,8 +99,7 @@ public fun admin_deposit<T>(
 }
 
 /// Admin deducts a micro-amount for a specific feature.
-/// Only callable with AdminCap. Respects protocol version and pause flag.
-/// Deducted USDC is sent to the admin (Audric treasury wallet) as revenue.
+/// Enforces on-chain: feature permission, expiry, daily limit.
 #[allow(lint(self_transfer))]
 public fun deduct<T>(
     allowance: &mut Allowance<T>,
@@ -87,12 +107,41 @@ public fun deduct<T>(
     _: &AdminCap,
     amount: u64,
     feature: u8,
+    clock: &Clock,
     ctx: &mut TxContext,
 ) {
     core::assert_version(config);
     assert!(!core::is_paused(config), errors::paused!());
     assert!(amount > 0, errors::zero_amount!());
     assert!(feature <= constants::MAX_FEATURE!(), errors::invalid_feature!());
+
+    let now = sui::clock::timestamp_ms(clock);
+
+    // Guard 1 — expiry
+    if (allowance.expires_at > 0) {
+        assert!(now < allowance.expires_at, errors::allowance_expired!());
+    };
+
+    // Guard 2 — feature bitmask
+    let feature_bit = 1u64 << (feature as u8);
+    assert!(
+        allowance.permitted_features & feature_bit != 0,
+        errors::feature_not_permitted!(),
+    );
+
+    // Guard 3 — daily limit with rolling 24h window
+    if (allowance.daily_limit > 0) {
+        if (now >= allowance.window_start + constants::WINDOW_MS!()) {
+            allowance.daily_spent = 0;
+            allowance.window_start = now;
+        };
+        assert!(
+            allowance.daily_spent + amount <= allowance.daily_limit,
+            errors::daily_limit_exceeded!(),
+        );
+        allowance.daily_spent = allowance.daily_spent + amount;
+    };
+
     assert!(allowance.balance.value() >= amount, errors::insufficient_allowance!());
 
     let deducted = coin::from_balance(allowance.balance.split(amount), ctx);
@@ -106,6 +155,39 @@ public fun deduct<T>(
     );
 
     transfer::public_transfer(deducted, ctx.sender());
+}
+
+/// Owner updates the scoping parameters on their allowance.
+public fun update_scope<T>(
+    allowance: &mut Allowance<T>,
+    permitted_features: u64,
+    expires_at: u64,
+    daily_limit: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    assert!(allowance.owner == ctx.sender(), errors::not_owner!());
+
+    let now = sui::clock::timestamp_ms(clock);
+    if (expires_at > 0) {
+        assert!(expires_at > now, errors::invalid_expires_at!());
+    };
+
+    allowance.permitted_features = permitted_features;
+    allowance.expires_at = expires_at;
+
+    if (allowance.daily_limit != daily_limit) {
+        allowance.daily_limit = daily_limit;
+        allowance.daily_spent = 0;
+        allowance.window_start = now;
+    };
+
+    events::emit_allowance_scope_updated(
+        allowance.owner,
+        permitted_features,
+        expires_at,
+        daily_limit,
+    );
 }
 
 /// Owner withdraws their entire remaining balance.
@@ -156,4 +238,30 @@ public fun total_deposited<T>(allowance: &Allowance<T>): u64 {
 
 public fun total_spent<T>(allowance: &Allowance<T>): u64 {
     allowance.total_spent
+}
+
+public fun permitted_features<T>(allowance: &Allowance<T>): u64 {
+    allowance.permitted_features
+}
+
+public fun expires_at<T>(allowance: &Allowance<T>): u64 {
+    allowance.expires_at
+}
+
+public fun daily_limit<T>(allowance: &Allowance<T>): u64 {
+    allowance.daily_limit
+}
+
+public fun daily_spent<T>(allowance: &Allowance<T>): u64 {
+    allowance.daily_spent
+}
+
+public fun is_feature_permitted<T>(allowance: &Allowance<T>, feature: u8): bool {
+    let feature_bit = 1u64 << (feature as u8);
+    allowance.permitted_features & feature_bit != 0
+}
+
+public fun is_expired<T>(allowance: &Allowance<T>, clock: &Clock): bool {
+    if (allowance.expires_at == 0) { return false };
+    sui::clock::timestamp_ms(clock) >= allowance.expires_at
 }

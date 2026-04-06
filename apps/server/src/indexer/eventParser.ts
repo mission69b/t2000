@@ -2,7 +2,7 @@ import type { SuiEvent } from '@mysten/sui/jsonRpc';
 import type { ParsedTransaction } from './checkpoint.js';
 import { allDescriptors, type ProtocolDescriptor } from '@t2000/sdk/descriptors';
 
-const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0x2bc71368b1d6ea50718c4899c6562906d787a33fc31c6330bb8455aca4f9810d';
+const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
 
 const MPP_GATEWAY_TREASURIES = new Set(
   (process.env.MPP_GATEWAY_TREASURIES ?? '').split(',').map((s) => s.trim()).filter(Boolean),

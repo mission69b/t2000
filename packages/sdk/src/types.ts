@@ -243,6 +243,11 @@ export interface AllowanceInfo {
   totalSpent: bigint;
   createdAt: number;
   coinType: string;
+  permittedFeatures: bigint;
+  expiresAt: number;
+  dailyLimit: bigint;
+  dailySpent: bigint;
+  windowStart: number;
 }
 
 export interface AllowanceCreateResult {
