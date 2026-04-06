@@ -77,8 +77,8 @@ export const SUPPORTED_ASSETS = {
 } as const;
 
 export type SupportedAsset = keyof typeof SUPPORTED_ASSETS;
-export type StableAsset = 'USDC' | 'USDT' | 'USDe' | 'USDsui';
-export const STABLE_ASSETS: readonly StableAsset[] = ['USDC', 'USDT', 'USDe', 'USDsui'] as const;
+export type StableAsset = 'USDC';
+export const STABLE_ASSETS: readonly StableAsset[] = ['USDC'] as const;
 export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_ASSETS) as SupportedAsset[];
 
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3';

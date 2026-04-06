@@ -89,7 +89,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.save({ amount, asset?, protocol? })` | Deposit to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. Optional `asset` for multi-asset NAVI deposits (default: USDC). | `SaveResult` |
+| `agent.save({ amount, protocol? })` | Deposit **USDC** to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
 | `agent.withdraw({ amount, asset? })` | Withdraw from savings. `amount` can be `'all'`. Optional `asset` for multi-asset withdrawals (default: USDC). | `WithdrawResult` |
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
 | `agent.repay({ amount })` | Repay outstanding debt in USDC. `amount` can be `'all'`. | `RepayResult` |
@@ -258,18 +258,40 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 
 ## Supported Assets
 
-Multi-asset support via `token-registry.ts` — 24 tokens with full type, decimals, and symbol metadata. Key assets:
+Token metadata and **tiers** live in `token-registry.ts` (`COIN_REGISTRY`). **17 tokens** total:
 
-| Asset | Decimals | Send | Save | Borrow | Swap |
-|-------|----------|------|------|--------|------|
-| USDC  | 6        | ✅   | ✅   | ✅     | ✅   |
-| SUI   | 9        | ✅   | ✅   | —      | ✅   |
-| USDSUI | 6       | ✅   | ✅   | —      | ✅   |
-| USDe  | 6        | ✅   | ✅   | —      | ✅   |
-| WAL   | 9        | ✅   | ✅   | —      | ✅   |
-| ETH   | 8        | ✅   | ✅   | —      | ✅   |
+- **Tier 1:** USDC — save, borrow, send, swap.
+- **Tier 2 (13):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST — send and swap only (not for new save/borrow deposits).
+- **Legacy (no tier):** USDT, USDe, USDSUI — display and withdraw of existing positions; still send/swap where applicable.
 
-Swap supports any token pair via Cetus Aggregator V3. Use `COIN_REGISTRY`, `getDecimalsForCoinType()`, `resolveSymbol()`, and `resolveTokenType()` from `@t2000/sdk` for token data.
+Eight tokens were removed from the registry (haSUI, afSUI, FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS). **`STABLE_ASSETS`** is `['USDC']` only.
+
+```typescript
+import {
+  COIN_REGISTRY,
+  TOKEN_MAP,
+  isTier1,
+  isTier2,
+  isSupported,
+  getTier,
+  getDecimalsForCoinType,
+  resolveSymbol,
+  resolveTokenType,
+  SUI_TYPE,
+  USDC_TYPE,
+  USDT_TYPE,
+  IKA_TYPE,
+  LOFI_TYPE,
+  MANIFEST_TYPE,
+} from '@t2000/sdk';
+
+isTier1(USDC_TYPE); // true
+isTier2(SUI_TYPE); // true
+isSupported(USDT_TYPE); // false (legacy — no tier)
+getTier(SUI_TYPE); // 2
+```
+
+Swap uses Cetus Aggregator V3 (with a **0.1% t2000 overlay fee** on executed swaps). Use `COIN_REGISTRY`, `getDecimalsForCoinType()`, `resolveSymbol()`, and `resolveTokenType()` for token data.
 
 ## Error Handling
 
@@ -286,7 +308,7 @@ try {
 }
 ```
 
-Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE` · `SWAP_NO_ROUTE` · `SWAP_FAILED`
+Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE` · `SWAP_NO_ROUTE` · `SWAP_FAILED`
 
 ## Protocol Integration
 
@@ -295,7 +317,7 @@ t2000 uses an MCP-first integration model: NAVI MCP for reads, thin transaction 
 | Protocol | Integration | Used for |
 |----------|------------|----------|
 | NAVI | MCP (reads) + thin tx builders (writes) | Lending positions, deposits, withdrawals, borrows, rewards |
-| Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated) | Multi-DEX swap routing — any token pair with liquidity |
+| Cetus Aggregator V3 | `@cetusprotocol/aggregator-sdk` (isolated) | Multi-DEX swap routing — overlay fee on swaps (`cetus-swap.ts`) |
 | VOLO | Thin tx builders (direct Move calls) | Stake SUI → vSUI, unstake vSUI → SUI |
 
 ## Testing
@@ -317,7 +339,7 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
-| Swap | Free | Cetus Aggregator network fees only |
+| Swap | 0.10% | t2000 overlay on swap amount; Cetus Aggregator network fees still apply |
 | Stake (vSUI) | Free | VOLO protocol fees only |
 | Unstake (vSUI) | Free | |
 | Pay (MPP) | Free | Agent pays the API price, no t2000 surcharge |

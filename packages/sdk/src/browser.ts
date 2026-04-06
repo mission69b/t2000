@@ -114,6 +114,10 @@ export {
   resolveTokenType,
   resolveSymbol,
   getDecimalsForCoinType,
+  isTier1,
+  isTier2,
+  isSupported,
+  getTier,
   SUI_TYPE,
   USDC_TYPE,
   USDT_TYPE,
@@ -123,5 +127,8 @@ export {
   WBTC_TYPE,
   WAL_TYPE,
   NAVX_TYPE,
+  IKA_TYPE,
+  LOFI_TYPE,
+  MANIFEST_TYPE,
 } from './token-registry.js';
 export type { CoinMeta } from './token-registry.js';

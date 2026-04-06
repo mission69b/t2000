@@ -5,10 +5,10 @@ import { requireAgent } from './utils.js';
 export const withdrawTool = buildTool({
   name: 'withdraw',
   description:
-    'Withdraw from NAVI lending back to wallet. Supported assets: USDC, USDT, SUI, USDe, USDsui. Checks health factor to prevent liquidation if there is outstanding debt.',
+    'Withdraw from NAVI lending back to wallet. Defaults to USDC. Also supports withdrawing legacy positions (USDe, USDsui, SUI) if the user has them.',
   inputSchema: z.object({
     amount: z.number().positive(),
-    asset: z.string().optional().describe('Asset to withdraw (default: picks largest position). Supported: USDC, USDT, SUI, USDe, USDsui'),
+    asset: z.string().optional().describe('Asset to withdraw (default: USDC). Legacy positions: USDe, USDsui, SUI'),
   }),
   jsonSchema: {
     type: 'object',
@@ -18,7 +18,7 @@ export const withdrawTool = buildTool({
       },
       asset: {
         type: 'string',
-        description: 'Asset to withdraw (default: picks largest position). Supported: USDC, USDT, SUI, USDe, USDsui',
+        description: 'Asset to withdraw (default: USDC). Legacy positions: USDe, USDsui, SUI',
       },
     },
     required: ['amount'],
@@ -33,7 +33,7 @@ export const withdrawTool = buildTool({
       asset: input.asset,
     });
 
-    const withdrawnAsset = (result as { asset?: string }).asset ?? input.asset ?? '';
+    const withdrawnAsset = (result as { asset?: string }).asset ?? input.asset ?? 'USDC';
     return {
       data: {
         success: result.success,
@@ -42,7 +42,7 @@ export const withdrawTool = buildTool({
         asset: withdrawnAsset,
         gasCost: result.gasCost,
       },
-      displayText: `Withdrew ${result.amount.toFixed(result.amount < 1 ? 6 : 2)}${withdrawnAsset ? ' ' + withdrawnAsset : ''} (tx: ${result.tx.slice(0, 8)}…)`,
+      displayText: `Withdrew ${result.amount.toFixed(result.amount < 1 ? 6 : 2)} ${withdrawnAsset} (tx: ${result.tx.slice(0, 8)}…)`,
     };
   },
 });

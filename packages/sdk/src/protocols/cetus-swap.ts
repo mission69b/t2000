@@ -14,6 +14,10 @@ export interface SwapRouteResult {
   insufficientLiquidity: boolean;
 }
 
+const OVERLAY_FEE_RATE = 0.001; // 0.1% swap fee
+const OVERLAY_FEE_RECEIVER = process.env.T2000_TREASURY_ADDRESS
+  ?? '0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91';
+
 let clientInstance: AggregatorClient | null = null;
 
 function getClient(walletAddress: string): AggregatorClient {
@@ -21,6 +25,8 @@ function getClient(walletAddress: string): AggregatorClient {
   clientInstance = new AggregatorClient({
     signer: walletAddress,
     env: Env.Mainnet,
+    overlayFeeRate: OVERLAY_FEE_RATE,
+    overlayFeeReceiver: OVERLAY_FEE_RECEIVER,
   });
   return clientInstance;
 }

@@ -112,7 +112,7 @@ QueryEngine.submitMessage()
 
 | Tool | Description |
 |------|-------------|
-| `save_deposit` | Deposit to savings (optional `asset` for multi-asset NAVI deposits) |
+| `save_deposit` | Deposit **USDC** to savings (NAVI); non-USDC collateral must be swapped first |
 | `withdraw` | Withdraw from savings (optional `asset` for multi-asset withdrawals) |
 | `send_transfer` | Send USDC to an address |
 | `borrow` | Borrow USDC against collateral |

@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-05
+> Last verified: 2026-04-06
 
 ---
 
@@ -45,7 +45,7 @@
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
-| Swap | — | Free | Cetus Aggregator network fees only |
+| Swap | 10 | 0.1% | t2000 overlay fee on swap (`overlayFeeRate` / `overlayFeeReceiver` in `cetus-swap.ts`); Cetus Aggregator network fees still apply |
 | Stake (vSUI) | — | Free | VOLO protocol fees only |
 | Unstake (vSUI) | — | Free | |
 | Pay (MPP) | — | Free | Agent pays the API price, no t2000 surcharge |
@@ -94,7 +94,7 @@ t2000 uses an MCP-first integration model for DeFi protocol reads, with thin tra
 | Adapter | Type | Capabilities | Status |
 |---------|------|-------------|--------|
 | NAVI (`navi`) | Lending | save, withdraw, borrow, repay; claim rewards | Built-in |
-| Cetus Aggregator V3 | Swap | Multi-DEX swap routing (20+ DEXs, any token pair) | Built-in |
+| Cetus Aggregator V3 | Swap | Multi-DEX swap routing (20+ DEXs); t2000 **0.1% overlay** on swaps (`overlayFeeRate` / `overlayFeeReceiver`) | Built-in |
 | VOLO | Liquid Staking | Stake SUI → vSUI, unstake vSUI → SUI | Built-in |
 | DefiLlama | Market Data | Token prices, yields, TVL, protocol info, fees | Built-in (engine) |
 
@@ -112,37 +112,36 @@ Source: `packages/sdk/src/adapters/`, `packages/sdk/src/protocols/`, `packages/e
 
 ## Supported Assets
 
-All token metadata (type, decimals, symbol) lives in a **single canonical registry**: `packages/sdk/src/token-registry.ts` → `COIN_REGISTRY`. When adding a new token, add ONE entry there — everything else derives from it.
+All token metadata (type, decimals, symbol, optional tier) lives in a **single canonical registry**: `packages/sdk/src/token-registry.ts` → `COIN_REGISTRY`. When adding a new token, add ONE entry there — everything else derives from it.
 
-| Symbol | Display | Decimals | Send | Save | Borrow | Swap |
-|--------|---------|----------|------|------|--------|------|
-| USDC | USDC | 6 | ✅ | ✅ | ✅ | ✅ |
-| SUI | SUI | 9 | ✅ | ✅ | — | ✅ |
-| USDSUI | USDsui | 6 | ✅ | ✅ | — | ✅ |
-| USDe | USDe | 6 | ✅ | ✅ | — | ✅ |
-| WAL | WAL | 9 | ✅ | ✅ | — | ✅ |
-| ETH | ETH | 8 | ✅ | ✅ | — | ✅ |
-| wBTC | wBTC | 8 | ✅ | — | — | ✅ |
-| DEEP | DEEP | 6 | ✅ | — | — | ✅ |
-| NS | NS | 6 | ✅ | — | — | ✅ |
-| NAVX | NAVX | 9 | ✅ | — | — | ✅ |
-| CETUS | CETUS | 9 | ✅ | — | — | ✅ |
-| MANIFEST | MANIFEST | 9 | ✅ | — | — | ✅ |
-| HAEDAL | HAEDAL | 9 | ✅ | — | — | ✅ |
-| IKA | IKA | 9 | ✅ | — | — | ✅ |
-| GOLD | GOLD (XAUM) | 6 | ✅ | — | — | ✅ |
+**Tier model**
 
-**24 tokens** total in the registry (including vSUI, haSUI, afSUI, FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS, USDT). Swap supports any token pair via Cetus Aggregator V3.
+- **Tier 1 (1 token):** USDC — financial layer (save, borrow, send, swap, MPP, etc.).
+- **Tier 2 (13 swap assets):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST — send and swap; not used for new save/borrow deposits.
+- **Legacy (no tier, 3 tokens):** USDT, USDe, USDSUI — kept for accurate display and **withdraw** of existing positions; not tier-gated for new Tier 1/2 flows.
+
+**17 tokens** in `COIN_REGISTRY`. Removed from the registry: haSUI, afSUI, FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS.
+
+| Tier | Symbols | Send | Save | Borrow | Swap |
+|------|---------|------|------|--------|------|
+| 1 | USDC | ✅ | ✅ (USDC only) | ✅ (USDC only) | ✅ |
+| 2 | SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST | ✅ | — | — | ✅ |
+| Legacy | USDT, USDe, USDSUI | ✅ | — | — | ✅ |
+
+New **save** and **borrow** flows accept **USDC only** (SDK throws `INVALID_ASSET` if another asset is requested). **Withdraw** still supports legacy positions. Swap routing uses Cetus Aggregator V3 (with t2000 overlay fee — see Fees).
 
 Key SDK exports from `token-registry.ts`:
 - `COIN_REGISTRY` — full registry (`Record<string, CoinMeta>`)
+- `isTier1(coinType)`, `isTier2(coinType)`, `isSupported(coinType)`, `getTier(coinType)`
 - `getDecimalsForCoinType(coinType)` — decimals lookup with suffix fallback
 - `resolveSymbol(coinType)` — friendly name from full coin type
 - `resolveTokenType(name)` — name → full coin type
 - `TOKEN_MAP` — case-insensitive name → type mapping
-- Type constants: `SUI_TYPE`, `USDC_TYPE`, `USDT_TYPE`, `USDSUI_TYPE`, `ETH_TYPE`, `WAL_TYPE`, etc.
+- Type constants: `SUI_TYPE`, `USDC_TYPE`, `USDT_TYPE`, `USDSUI_TYPE`, `ETH_TYPE`, `WAL_TYPE`, `IKA_TYPE`, `LOFI_TYPE`, `MANIFEST_TYPE`, etc.
 
-Source: `packages/sdk/src/token-registry.ts`
+`STABLE_ASSETS` in `constants.ts` is **`['USDC']` only** (stable display and balance breakdowns).
+
+Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 
 ---
 
@@ -155,7 +154,7 @@ Source: `packages/sdk/src/token-registry.ts`
 | init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
-| save | `t2000 save <amount> [--asset TOKEN]` | Deposits to NAVI lending. Alias: `supply`. `amount` accepts `all`. `--asset` for multi-asset (default: USDC). |
+| save | `t2000 save <amount>` | Deposits **USDC** to NAVI lending. Alias: `supply`. `amount` accepts `all`. |
 | withdraw | `t2000 withdraw <amount> [--asset TOKEN]` | Withdraws from NAVI lending. `amount` accepts `all`. `--asset` for specific token. |
 | borrow | `t2000 borrow <amount>` | USDC only |
 | repay | `t2000 repay <amount>` | Repays with USDC. `amount` accepts `all` |
@@ -296,7 +295,7 @@ Source: `packages/sdk/src/token-registry.ts`
 
 | Method | Params | Returns |
 |--------|--------|---------|
-| `save()` | `{ amount: number \| 'all', asset?: string }` | `SaveResult` |
+| `save()` | `{ amount: number \| 'all', protocol? }` | `SaveResult` — **USDC only**; non-USDC `asset` throws `INVALID_ASSET` |
 | `withdraw()` | `{ amount: number \| 'all', asset?: string }` | `WithdrawResult` |
 | `maxWithdraw()` | — | `MaxWithdrawResult` |
 
@@ -453,6 +452,7 @@ Source: `packages/sdk/src/types.ts`
 | `INSUFFICIENT_GAS` | Not enough SUI for gas | Yes |
 | `INVALID_ADDRESS` | Bad Sui address | No |
 | `INVALID_AMOUNT` | Amount <= 0 or NaN | No |
+| `INVALID_ASSET` | Save called with a non-USDC asset (borrow is USDC-only by API) | No |
 | `WALLET_NOT_FOUND` | No key file at path | No |
 | `WALLET_LOCKED` | Wrong PIN | No |
 | `WALLET_EXISTS` | Key already exists at path | No |
@@ -523,6 +523,7 @@ Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`, `packages/contrac
 | `BOOTSTRAP_LIMIT` | `10` | Max sponsored bootstrap transactions |
 | `GAS_FEE_CEILING_USD` | `$0.05` | Max gas fee before rejection |
 | `CLOCK_ID` | `'0x6'` | Sui Clock shared object |
+| `STABLE_ASSETS` | `['USDC']` | Stablecoins used for balance breakdown / stable-specific logic |
 | `DEFAULT_RATE_LIMIT` | `10 req/s` | Default HTTP API rate limit (CLI `--rate-limit` default) |
 
 Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/commands/*.ts` (CLI defaults)
@@ -633,12 +634,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `compactMessages` | function | Context window compaction |
 | `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
 | `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 26 built-in tools |
+| `getDefaultTools` | function | All 30 built-in tools (19 read, 11 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 
 ### Engine Tool Names
 
-| Read Tools (16) | Write Tools (10) |
+| Read Tools (19) | Write Tools (11) |
 |-----------|------------|
 | `balance_check` | `save_deposit` |
 | `savings_info` | `withdraw` |
@@ -646,10 +647,13 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `rates_info` | `borrow` |
 | `transaction_history` | `repay_debt` |
 | `swap_quote` | `claim_rewards` |
-| `explain_tx` | `pay_api` |
-| `web_search` | `swap_execute` |
-| `volo_stats` | `volo_stake` |
-| `defillama_yield_pools` | `volo_unstake` |
+| `volo_stats` | `pay_api` |
+| `mpp_services` | `swap_execute` |
+| `web_search` | `volo_stake` |
+| `explain_tx` | `volo_unstake` |
+| `portfolio_analysis` | `save_contact` |
+| `protocol_deep_dive` | |
+| `defillama_yield_pools` | |
 | `defillama_protocol_info` | |
 | `defillama_token_prices` | |
 | `defillama_price_change` | |

@@ -28,9 +28,9 @@ Only offer to execute actions you have tools for. If you retrieved a quote, data
 - "Swap then save": swap_execute → balance_check → save_deposit. Confirm each step.
 - "Buy $X of token": defillama_token_prices → calculate amount → swap_execute.
 - "Best yield on SUI": compare rates_info (NAVI lending) + defillama_yield_pools (broader) + volo_stats.
-- save_deposit supports: USDC (default), USDT, SUI, USDe, USDsui. Pass asset param for non-USDC.
-- withdraw supports: USDC, USDT, SUI, USDe, USDsui. Pass asset param to withdraw a specific token.
-- "Deposit SUI to earn yield": save_deposit with asset="SUI" for NAVI lending, or volo_stake for SUI liquid staking.
+- save_deposit: USDC only. To save other tokens, swap to USDC first.
+- withdraw supports legacy positions: USDC, USDe, USDsui, SUI. Pass asset param to withdraw a specific token.
+- "Deposit SUI to earn yield": volo_stake for SUI liquid staking. save_deposit is USDC only.
 - "What protocols are on Sui?": defillama_sui_protocols → defillama_protocol_info for details.
 
 ## Safety

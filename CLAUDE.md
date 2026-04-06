@@ -60,7 +60,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.
 5. **Always check PRODUCT_FACTS.md** before writing documentation or marketing copy.
 6. **Always check CLI_UX_SPEC.md** before modifying CLI command output.
-8. **Always use `token-registry.ts`** for token metadata. Never hardcode decimals or coin types.
+8. **Always use `token-registry.ts`** for token metadata (tiers, `COIN_REGISTRY`, `isTier1` / `isTier2` / `isSupported` / `getTier`). Never hardcode decimals or coin types.
 7. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
 ---
@@ -163,6 +163,16 @@ import { McpClientManager, NAVI_MCP_CONFIG } from '@t2000/engine';
 
 // MCP server adapter (expose engine tools)
 import { buildMcpTools, registerEngineTools } from '@t2000/engine';
+
+// Token registry (shared with CLI/MCP — import from SDK)
+import {
+  isTier1,
+  isTier2,
+  isSupported,
+  getTier,
+  COIN_REGISTRY,
+  TOKEN_MAP,
+} from '@t2000/sdk';
 ```
 
 ### Engine event types
@@ -186,8 +196,8 @@ type EngineEvent =
 
 ### Built-in tools
 
-Read (16): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `explain_tx`, `web_search`, `swap_quote`, `volo_stats`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`
-Write (10): `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`
+Read (19): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`, `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`
+Write (11): `save_deposit` (USDC only), `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact`
 
 ---
 

@@ -53,7 +53,7 @@ import type {
   UnstakeVSuiResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, STABLE_ASSETS, DEFAULT_NETWORK, API_BASE_URL, MIST_PER_SUI, type SupportedAsset } from './constants.js';
+import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, MIST_PER_SUI, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
@@ -635,38 +635,26 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   async save(params: { amount: number | 'all'; asset?: SupportedAsset; protocol?: string }): Promise<SaveResult> {
     this.enforcer.assertNotLocked();
-    const asset: SupportedAsset = params.asset ?? 'USDC';
+    if (params.asset && params.asset !== 'USDC') {
+      throw new T2000Error('INVALID_ASSET', 'Only USDC deposits are supported. Swap to USDC first.');
+    }
+    const asset: SupportedAsset = 'USDC';
     const assetInfo = SUPPORTED_ASSETS[asset];
-    if (!assetInfo) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unsupported asset: ${asset}`);
-
-    const isStable = (STABLE_ASSETS as readonly string[]).includes(asset);
 
     let amount: number;
     if (params.amount === 'all') {
-      if (isStable) {
-        const bal = await queryBalance(this.client, this._address);
-        amount = (bal.available ?? 0) - 1.0;
-      } else if (asset === 'SUI') {
-        const suiBal = await this.client.getBalance({ owner: this._address, coinType: assetInfo.type });
-        const suiAmount = Number(suiBal.totalBalance) / (10 ** assetInfo.decimals);
-        amount = suiAmount - 0.15; // reserve SUI for gas
-      } else {
-        const coins = await this._fetchCoins(assetInfo.type);
-        const totalRaw = coins.reduce((sum, c) => sum + BigInt(c.balance), 0n);
-        amount = Number(totalRaw) / (10 ** assetInfo.decimals);
-      }
+      const bal = await queryBalance(this.client, this._address);
+      amount = (bal.available ?? 0) - 1.0;
       if (amount <= 0) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', `No ${asset} available to save`, {
+        throw new T2000Error('INSUFFICIENT_BALANCE', `No USDC available to save`, {
           reason: 'insufficient_balance', asset,
         });
       }
     } else {
       amount = params.amount;
-      if (isStable) {
-        const bal = await queryBalance(this.client, this._address);
-        if (amount > (bal.available ?? 0)) {
-          throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${(bal.available ?? 0).toFixed(2)}, requested: $${amount.toFixed(2)}`);
-        }
+      const bal = await queryBalance(this.client, this._address);
+      if (amount > (bal.available ?? 0)) {
+        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${(bal.available ?? 0).toFixed(2)}, requested: $${amount.toFixed(2)}`);
       }
     }
 
@@ -680,17 +668,11 @@ export class T2000 extends EventEmitter<T2000Events> {
         const tx = new Transaction();
         tx.setSender(this._address);
 
-        let inputCoin;
-        if (asset === 'SUI') {
-          const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
-          [inputCoin] = tx.splitCoins(tx.gas, [rawAmount]);
-        } else {
-          const coins = await this._fetchCoins(assetInfo.type);
-          if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${asset} coins found`);
-          const merged = this._mergeCoinsInTx(tx, coins);
-          const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
-          [inputCoin] = tx.splitCoins(merged, [rawAmount]);
-        }
+        const coins = await this._fetchCoins(assetInfo.type);
+        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins found');
+        const merged = this._mergeCoinsInTx(tx, coins);
+        const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
+        const [inputCoin] = tx.splitCoins(merged, [rawAmount]);
 
         await adapter.addSaveToTx!(tx, this._address, inputCoin, asset, { collectFee: true });
         return tx;

@@ -572,8 +572,7 @@ function describeAction(tool: Tool, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
   switch (tool.name) {
     case 'save_deposit': {
-      const asset = input.asset ?? 'USDC';
-      return `Save ${input.amount} ${asset} into lending`;
+      return `Save ${input.amount} USDC into lending`;
     }
     case 'withdraw': {
       const wAsset = input.asset ?? '';

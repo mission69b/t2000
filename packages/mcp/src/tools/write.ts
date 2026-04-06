@@ -74,19 +74,17 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_save',
-    'Deposit to NAVI lending to earn yield. Supports USDC (default), USDT, SUI, USDe, USDsui. Amount is in token units. Use "all" to save entire available balance. Set dryRun: true to preview.',
+    'Deposit USDC into NAVI lending to earn yield. Amount is in USDC. Use "all" to save entire available balance. Set dryRun: true to preview.',
     {
-      amount: z.union([z.number(), z.literal('all')]).describe('Amount to save, or "all"'),
-      asset: z.enum(['USDC', 'USDT', 'SUI', 'USDe', 'USDsui']).optional().describe('Asset to deposit (default: USDC)'),
+      amount: z.union([z.number(), z.literal('all')]).describe('Amount of USDC to save, or "all"'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
-    async ({ amount, asset, dryRun }) => {
+    async ({ amount, dryRun }) => {
       try {
         if (dryRun) {
           agent.enforcer.assertNotLocked();
           const balance = await agent.balance();
           const rates = await agent.rates();
-          const assetKey = asset ?? 'USDC';
           const saveAmount = amount === 'all' ? balance.available - 1.0 : amount;
 
           return {
@@ -95,15 +93,15 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
               text: JSON.stringify({
                 preview: true,
                 amount: saveAmount,
-                asset: assetKey,
-                currentApy: rates[assetKey]?.saveApy ?? rates.USDC?.saveApy ?? 0,
+                asset: 'USDC',
+                currentApy: rates.USDC?.saveApy ?? 0,
                 savingsBalanceAfter: balance.savings + saveAmount,
               }),
             }],
           };
         }
 
-        const result = await mutex.run(() => agent.save({ amount, asset: asset as 'USDC' | 'USDT' | 'SUI' | 'USDe' | 'USDsui' }));
+        const result = await mutex.run(() => agent.save({ amount }));
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
