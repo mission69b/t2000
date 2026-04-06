@@ -1,42 +1,33 @@
 {
-  "family": "t2000-indexer",
+  "family": "t2000-cron",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "512",
-  "memory": "1024",
+  "cpu": "256",
+  "memory": "512",
   "executionRoleArn": "${EXEC_ROLE_ARN}",
   "containerDefinitions": [
     {
-      "name": "t2000-indexer",
+      "name": "t2000-cron",
       "image": "${ECR_BASE}/t2000-indexer:latest",
+      "command": ["node", "dist/cron/index.js"],
       "essential": true,
-      "healthCheck": {
-        "command": ["CMD-SHELL", "test $(( $(date +%s) - $(cat /tmp/indexer-heartbeat 2>/dev/null || echo 0) )) -lt 300 || exit 1"],
-        "interval": 60,
-        "timeout": 5,
-        "retries": 3,
-        "startPeriod": 120
-      },
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "${LOG_GROUP}",
           "awslogs-region": "${AWS_REGION}",
-          "awslogs-stream-prefix": "t2000-indexer"
+          "awslogs-stream-prefix": "t2000-cron"
         }
       },
       "environment": [
         { "name": "NODE_ENV", "value": "production" },
         { "name": "SUI_RPC_URL", "value": "https://fullnode.mainnet.sui.io:443" },
-        { "name": "INDEXER_POLL_INTERVAL_MS", "value": "2000" },
-        { "name": "INDEXER_BATCH_SIZE", "value": "10" },
-        { "name": "MPP_GATEWAY_TREASURIES", "value": "0x703284465d889aa19cbd6806f5e60445d40f558ba1470e96240abf6b65509d2f" },
         { "name": "T2000_PACKAGE_ID", "value": "0x2bc71368b1d6ea50718c4899c6562906d787a33fc31c6330bb8455aca4f9810d" }
       ],
       "secrets": [
         {
-          "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/database-url"
+          "name": "RESEND_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/resend-api-key"
         },
         {
           "name": "AUDRIC_INTERNAL_URL",

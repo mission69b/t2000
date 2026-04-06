@@ -12,9 +12,12 @@ on:
     branches: [main]
     paths:
       - "apps/server/src/indexer/**"
+      - "apps/server/src/cron/**"
+      - "apps/server/src/services/email.ts"
       - "apps/server/src/db/**"
       - "apps/server/prisma/**"
       - "infra/indexer*"
+      - "infra/cron-task-definition.json"
 
 concurrency:
   group: deploy-indexer

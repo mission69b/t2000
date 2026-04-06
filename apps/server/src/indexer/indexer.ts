@@ -3,6 +3,7 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { prisma } from '../db/prisma.js';
 import { fetchCheckpoints, getLatestCheckpoint } from './checkpoint.js';
 import { parseFeeEvents, parseTransfers } from './eventParser.js';
+import { checkCriticalHF } from './hfHook.js';
 
 const POLL_INTERVAL_MS = parseInt(process.env.INDEXER_POLL_INTERVAL_MS ?? '2000', 10);
 const BATCH_SIZE = parseInt(process.env.INDEXER_BATCH_SIZE ?? '10', 10);
@@ -118,6 +119,13 @@ async function processCheckpoints(
           where: { address: addr },
           data: { lastSeen: new Date(tx.timestamp) },
         }).catch(() => {});
+      }
+
+      // Real-time HF check for lending-related transactions
+      if (transfers.length > 0) {
+        checkCriticalHF(client, transfers).catch((err) => {
+          console.error('[indexer] HF hook error:', err instanceof Error ? err.message : err);
+        });
       }
     }
 

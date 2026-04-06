@@ -49,12 +49,12 @@
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
 | — | **Deploy `allowance.move` contract** | 1d | done | — | t2000 | ✅ Upgraded to v2 on mainnet (`0x2bc7…`). Config + treasury migrated. SDK allowance methods + `getFinancialSummary()` built (24 tests). Server + indexer redeployed |
-| 1.1 | Notification infrastructure | 3d | in progress | 0.3, 0.4 | both | Vercel cron + Resend + NotificationPrefs schema. SDK `getFinancialSummary()` done. Audric repo: cron route, email service, prefs API |
-| 1.2 | Health factor alerts (free) | 2d | not started | 1.1 | both | Hourly HF check in Vercel cron, dedup, email template. Ships without allowance |
+| 1.1 | Notification infrastructure | 3d | in progress | 0.3, 0.4 | both | ECS scheduled task (EventBridge hourly) + Resend + internal API. SDK `getFinancialSummary()` done. Cron task calls `GET audric/api/internal/notification-users`, processes financial data, sends emails via Resend. Indexer gets real-time HF hook. Audric exposes user API + prefs UI |
+| 1.2 | Health factor alerts (free) | 2d | not started | 1.1 | both | Real-time HF hook in indexer (critical) + hourly batch safety net in cron (warn). Dedup, email template. Ships without allowance |
 | 1.6 | Unified activity feed + filter navigation | 3d | not started | — | audric | Includes Swap filter. Independent — no blockers |
 | — | CostTracker instrumentation | 0.5d | not started | — | both | Pipe @t2000/engine CostTracker data to NeonDB analytics |
 
-**Week 1 total: ~9.5 days effort.** allowance.move done. 1.1 in progress (Vercel cron approach, not ECS). 1.2 starts after 1.1. 1.6 and CostTracker are independent.
+**Week 1 total: ~9.5 days effort.** allowance.move done. 1.1 in progress (ECS scheduled task + EventBridge + indexer HF hook + audric internal API). 1.2 starts after 1.1. 1.6 and CostTracker are independent.
 
 ### Week 2 — Paid features + onboarding (needs allowance deployed)
 

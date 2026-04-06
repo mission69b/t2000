@@ -1,0 +1,69 @@
+name: Deploy Cron
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/server/src/cron/**"
+      - "apps/server/src/services/email.ts"
+      - "infra/cron-task-definition.json"
+
+concurrency:
+  group: deploy-cron
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: mission69b-mainnet
+
+jobs:
+  check:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @t2000/sdk build
+      - run: pnpm --filter @t2000/server exec prisma generate
+      - run: pnpm --filter @t2000/server typecheck
+
+  deploy:
+    name: Update task definition
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Register task definition
+        id: taskdef
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_BASE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+          ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/mission69b-mainnet-ecs-execution-role"
+          sed \
+            -e "s|\${AWS_ACCOUNT_ID}|$ACCOUNT_ID|g" \
+            -e "s|\${AWS_REGION}|$AWS_REGION|g" \
+            -e "s|\${ECR_BASE}|$ECR_BASE|g" \
+            -e "s|\${EXEC_ROLE_ARN}|$ROLE_ARN|g" \
+            -e "s|\${LOG_GROUP}|/ecs/mission69b-mainnet|g" \
+            infra/cron-task-definition.json > /tmp/task-def.json
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/task-def.json \
+            --query "taskDefinition.taskDefinitionArn" --output text)
+          echo "arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
+          echo "Registered: $TASK_DEF_ARN"
