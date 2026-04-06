@@ -30,7 +30,7 @@ export const COIN_REGISTRY: Record<string, CoinMeta> = {
   SUI:      { type: '0x2::sui::SUI', decimals: 9, symbol: 'SUI', tier: 2 },
   wBTC:     { type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC', decimals: 8, symbol: 'wBTC', tier: 2 },
   ETH:      { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8, symbol: 'ETH', tier: 2 },
-  GOLD:     { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 6, symbol: 'GOLD', tier: 2 },
+  GOLD:     { type: '0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM', decimals: 9, symbol: 'GOLD', tier: 2 },
   DEEP:     { type: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP', decimals: 6, symbol: 'DEEP', tier: 2 },
   WAL:      { type: '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL', decimals: 9, symbol: 'WAL', tier: 2 },
   NS:       { type: '0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS', decimals: 6, symbol: 'NS', tier: 2 },

@@ -62,7 +62,7 @@ describe('COIN_REGISTRY', () => {
     expect(COIN_REGISTRY.USDSUI.decimals).toBe(6);
     expect(COIN_REGISTRY.DEEP.decimals).toBe(6);
     expect(COIN_REGISTRY.NS.decimals).toBe(6);
-    expect(COIN_REGISTRY.GOLD.decimals).toBe(6);
+    expect(COIN_REGISTRY.GOLD.decimals).toBe(9);
   });
 
   it('has correct decimals for SUI-based tokens (9)', () => {
@@ -81,8 +81,8 @@ describe('COIN_REGISTRY', () => {
     expect(COIN_REGISTRY.wBTC.decimals).toBe(8);
   });
 
-  it('GOLD/XAUM has 6 decimals (not 9)', () => {
-    expect(COIN_REGISTRY.GOLD.decimals).toBe(6);
+  it('GOLD/XAUM has 9 decimals (on-chain CoinMetadata)', () => {
+    expect(COIN_REGISTRY.GOLD.decimals).toBe(9);
     expect(COIN_REGISTRY.GOLD.type).toContain('xaum::XAUM');
   });
 
