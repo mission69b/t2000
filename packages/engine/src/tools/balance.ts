@@ -147,6 +147,10 @@ export const balanceCheckTool = buildTool({
         pendingRewardsUsd = rewardEntries.reduce((sum, r) => sum + r.valueUsd, 0);
       }
 
+      const visibleHoldings = holdings
+        .filter((h) => h.usdValue >= 0.01)
+        .sort((a, b) => b.usdValue - a.usdValue);
+
       const bal = {
         available: availableUsd,
         savings,
@@ -155,7 +159,7 @@ export const balanceCheckTool = buildTool({
         gasReserve: gasReserveUsd,
         total: availableUsd + savings + gasReserveUsd + pendingRewardsUsd - debt,
         stables: stablesUsd,
-        holdings: holdings.sort((a, b) => b.usdValue - a.usdValue),
+        holdings: visibleHoldings,
       };
 
       return {
