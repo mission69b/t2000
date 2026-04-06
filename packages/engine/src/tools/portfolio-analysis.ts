@@ -30,7 +30,7 @@ interface PortfolioResult {
   insights: PortfolioInsight[];
 }
 
-const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui', 'DAI', 'BUCK']);
+const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
 
 export const portfolioAnalysisTool = buildTool({
   name: 'portfolio_analysis',

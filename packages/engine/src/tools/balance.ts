@@ -98,7 +98,7 @@ export const balanceCheckTool = buildTool({
       let stablesUsd = 0;
       let gasReserveUsd = 0;
 
-      const STABLE_SYMBOLS = new Set(['USDC', 'USDT', 'wUSDC', 'wUSDT', 'FDUSD', 'AUSD', 'BUCK']);
+      const STABLE_SYMBOLS = new Set(['USDC', 'USDT', 'USDe', 'USDsui', 'wUSDC', 'wUSDT']);
       const holdings: Array<{ symbol: string; coinType: string; balance: number; usdValue: number }> = [];
 
       for (const coin of coins) {

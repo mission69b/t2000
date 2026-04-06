@@ -87,7 +87,7 @@ QueryEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (16 — parallel, auto-approved)
+### Read Tools (19 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
@@ -100,6 +100,9 @@ QueryEngine.submitMessage()
 | `web_search` | Web search via Brave Search API |
 | `swap_quote` | Preview swap route, output amount, and price impact (no execution) |
 | `volo_stats` | VOLO liquid staking stats — vSUI/SUI rate, APY, TVL |
+| `portfolio_analysis` | Portfolio breakdown with diversification insights |
+| `protocol_deep_dive` | Deep protocol analysis — TVL, yields, risks, alternatives |
+| `mpp_services` | Browse available MPP gateway services and endpoints |
 | `defillama_yield_pools` | Top yield pools by APY, filterable by chain |
 | `defillama_protocol_info` | Protocol TVL, category, chains |
 | `defillama_token_prices` | Current USD prices for Sui tokens |
@@ -108,7 +111,7 @@ QueryEngine.submitMessage()
 | `defillama_protocol_fees` | Protocol fees/revenue rankings |
 | `defillama_sui_protocols` | Sui ecosystem protocols — TVL, category, changes |
 
-### Write Tools (10 — serial, confirmation required)
+### Write Tools (11 — serial, confirmation required)
 
 | Tool | Description |
 |------|-------------|
@@ -122,6 +125,7 @@ QueryEngine.submitMessage()
 | `swap_execute` | Swap any token pair via Cetus Aggregator (20+ DEXs) |
 | `volo_stake` | Stake SUI for vSUI (VOLO liquid staking) |
 | `volo_unstake` | Unstake vSUI back to SUI |
+| `save_contact` | Save a contact name + address for quick sends |
 
 ## Configuration
 

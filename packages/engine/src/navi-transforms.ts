@@ -278,7 +278,7 @@ export function transformRewards(raw: unknown): PendingReward[] {
 // ---------------------------------------------------------------------------
 
 const STABLECOIN_SYMBOLS = new Set([
-  'USDC', 'USDT', 'wUSDC', 'wUSDT', 'FDUSD', 'AUSD', 'BUCK', 'suiUSDe', 'USDSUI',
+  'USDC', 'USDT', 'USDe', 'USDsui', 'wUSDC', 'wUSDT', 'suiUSDe', 'USDSUI',
 ]);
 
 const GAS_RESERVE_SUI = 0.05;
