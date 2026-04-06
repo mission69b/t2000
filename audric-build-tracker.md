@@ -27,9 +27,10 @@
 
 **Execution order:**
 - **Phase A (t2000 repo first):** 0.5 → 0.2 → 0.7 → tests → docs → npm release — **DONE (v0.26.0)**
-- **Phase B (audric repo after release):** pnpm update → 0.5a, 0.2a → 0.10 → 0.6 → 0.1 → 0.3 → 0.9 → 0.4 — **DONE**
+- **Patch (t2000):** Dust filtering in `balance_check` + stablecoin set cleanup — **DONE (v0.26.1)**
+- **Phase B (audric repo after release):** pnpm update → 0.5a, 0.2a → 0.10 → 0.6 → 0.1 → 0.3 → 0.9 → 0.4 → dust filtering UI — **DONE**
 
-**Status:** Pre-work 9/10 complete. 0.8 (allowance top-up) blocked on `allowance.move` contract — deferred to Phase 1. npm v0.26.0 released. Audric updated and deployed.
+**Status:** Pre-work 9/10 complete. 0.8 (allowance top-up) blocked on `allowance.move` contract — deferred to Phase 1. npm v0.26.1 released. Audric updated and deployed. Prisma schema pushed (User + ConversationLog tables).
 
 ---
 

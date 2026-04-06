@@ -53,20 +53,24 @@ export const portfolioAnalysisTool = buildTool({
 
     const rpcUrl = context.suiRpcUrl ?? 'https://fullnode.mainnet.sui.io:443';
 
+    const DUST_USD = 0.01;
+
     const coins = await fetchWalletCoins(address, rpcUrl);
     const nonZero = coins.filter((c) => Number(c.totalBalance) > 0);
     const prices = await fetchTokenPrices(nonZero.map((c) => c.coinType)).catch(() => ({} as Record<string, number>));
 
     let walletValue = 0;
-    const allocations: AssetAllocation[] = [];
+    const allAllocations: AssetAllocation[] = [];
 
     for (const coin of nonZero) {
       const amount = Number(coin.totalBalance) / 10 ** coin.decimals;
       const price = prices[coin.coinType] ?? 0;
       const usdValue = amount * price;
       walletValue += usdValue;
-      allocations.push({ symbol: coin.symbol, amount, usdValue, percentage: 0 });
+      allAllocations.push({ symbol: coin.symbol, amount, usdValue, percentage: 0 });
     }
+
+    const allocations = allAllocations.filter((a) => a.usdValue >= DUST_USD);
 
     let savingsValue = 0;
     let debtValue = 0;

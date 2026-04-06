@@ -324,11 +324,13 @@ Health factor alerts are always free and always on. Liquidation protection is a 
 
 Urgent notifications (health factor, inbound payments) bypass MPP and call Resend directly from ECS — zero latency. Non-urgent notifications route via MPP gateway, dogfooding the product's own micropayment infrastructure.
 
-## Pre-work — do today
+## Pre-work — ✅ COMPLETE (9/10)
 
 |                                                    |
 |----------------------------------------------------|
-| > Do today | ~4 days | foundation for everything that follows |
+| > ~4 days | foundation for everything that follows |
+| > **Status:** 9/10 done. 0.8 (allowance top-up) blocked on `allowance.move` — deferred to Phase 1. |
+| > **Releases:** t2000 v0.26.0 (Phase A) + v0.26.1 patch (dust filtering). Audric updated and deployed. |
 
 ### 0.1 Conversation logging
 
@@ -1454,7 +1456,7 @@ Audric has six distinct revenue streams, all passive once built. Every stream sc
 | **Stream**             | **Rate**          | **Status**       | **Notes**                                                                                                                                                  | **Scales with** |
 | Protocol fees (save)   | 10 bps (0.1%)     | **Live**         | On-chain via treasury::collect_fee in same PTB                                                                                                             | Deposit volume  |
 | Protocol fees (borrow) | 5 bps (0.05%)     | **Live**         | On-chain via treasury::collect_fee in same PTB                                                                                                             | Borrow volume   |
-| Swap fees (Overlay)    | 25 bps (0.25%)    | **Pre-work**    | Cetus Overlay Fee on AggregatorClient init. Charge on output amount. Compounds with auto-compound swaps.                                                          | Swap volume     |
+| Swap fees (Overlay)    | 10 bps (0.1%)     | **Live**         | Cetus Overlay Fee on AggregatorClient init. Charge on output amount. Compounds with auto-compound swaps.                                                          | Swap volume     |
 | MPP gateway margin     | 10–20%            | **Confirm now**  | Verify gateway runs with margin not at cost. Auth, billing, routing, reliability justify markup.                                                           | API call volume |
 | Feature allowances     | \$0.001–0.005/use | **Phase 1**      | Pre-approved USDC allowance. Briefings, alerts, scheduled actions. Scales linearly with active users.                                                      | Active users    |
 | Yield spread           | 0.1–0.2%          | **Consider now** | Display net APY to users. Requires clear disclosure in terms. \$1M TVL = \$1,000–\$2,000/yr passively.                                                     | TVL             |

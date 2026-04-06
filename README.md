@@ -72,7 +72,7 @@ t2000 pay https://api.example.com  # Pay for MPP-protected APIs
 
 ## How it works
 
-t2000 wraps five financial primitives into a single interface:
+t2000 wraps financial primitives into a single interface:
 
 | Feature | What it does | How |
 |---------|-------------|-----|
@@ -97,6 +97,8 @@ Gas is invisible — auto-managed SUI with sponsored fallback. Multi-step operat
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
+| Swap | 0.1% | t2000 overlay fee; Cetus Aggregator network fees still apply |
+| Stake/Unstake | Free | VOLO protocol fees only |
 | Pay (MPP) | Free | Agent pays the API price, no surcharge |
 
 ## SDK

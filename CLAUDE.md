@@ -27,7 +27,7 @@ t2000/
 ├── packages/mcp     ← @t2000/mcp (npm)
 ├── packages/contracts ← Sui Move smart contracts
 ├── t2000-skills/    ← Agent skill definitions
-└── spec/            ← Architecture specs, roadmaps, design docs
+└── audric-roadmap.md ← Product roadmap + build tracker
 ```
 
 ### Product catalog (5 products, NOT 6)
@@ -69,12 +69,11 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 
 | Document | What it covers | Read before |
 |----------|---------------|-------------|
-| `spec/DESIGN_SYSTEM.md` | Design tokens, typography, color system | Any branding/design work |
 | `PRODUCT_FACTS.md` | Versions, fees, CLI syntax, SDK signatures | Documentation or marketing |
 | `CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
-| `spec/CLAUDE_CODE_LEVERAGE.md` | Engine patterns, financial tools, MCP integration, repo separation | Engine or tool work |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
-| `spec/UPSTREAM_WORKAROUNDS.md` | Workarounds for NAVI MCP, Sui RPC, Cetus bugs + cleanup checklist | Adding tokens, touching NAVI/swap code |
+| `audric-roadmap.md` | Product roadmap, feature specs, revenue model | Feature planning |
+| `audric-build-tracker.md` | Execution status per phase and task | Status checks |
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
 | `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources (TOKEN_MAP, SUPPORTED_ASSETS, etc.) | Adding tokens, fixing decimal/display bugs |
 | `.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which code path runs when | Any Audric transaction/receipt bug |
