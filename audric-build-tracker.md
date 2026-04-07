@@ -178,5 +178,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8      5.4
 
 ---
 
-*Last updated: April 9 2026 (1.3 morning briefing done — ECS cron runBriefings, allowance deduct $0.005/day, BriefingCard in-app, deep link system /action. 1.3.1 deep links done)*
+*Last updated: April 9 2026 (1.3 morning briefing done — ECS cron runBriefings, allowance deduct $0.005/day, BriefingCard in-app, deep link system /action. 1.3.1 deep links done. Post-ship fixes: timezone date mismatch in cron (UTC→user local), notification-users allowanceId lookup by address instead of userId relation)*
 *Source of truth for specs: `audric-roadmap.md`*
