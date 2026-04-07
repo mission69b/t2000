@@ -62,15 +62,15 @@
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
 | — | Allowance onboarding wizard (`/setup`) | 1d | done | allowance.move | audric | ✅ 4-step wizard, two-tx flow (create→deposit), `useAllowanceStatus` hook, /new→/setup redirect, Settings budget card, top-up mode, zero-balance UX. SDK 0.23.0 published |
-| 1.3 | Morning briefing (email + in-app card) | 3d | not started | 1.1, allowance.move | both | $0.005/day charge via allowance deduct() |
-| 1.3.1 | Deep link action system | 1d | not started | — | audric | Ships with 1.3. `/action?type=` routing page |
+| 1.3 | Morning briefing (email + in-app card) | 3d | done | 1.1, allowance.move | both | ✅ ECS cron `runBriefings()`: getFinancialSummary → content → allowance deduct ($0.005) → Resend email → store via internal API. 3 variants (savings/idle/debt_warning), context-dependent CTAs, idempotency guard. DailyBriefing table, BriefingCard pinned on chat+activity, useOvernightBriefing hook. 18 unit tests |
+| 1.3.1 | Deep link action system | 1d | done | — | audric | ✅ /action page (save/repay/briefing/topup routing), ?prefill in /new auto-sends to engine, ?section in /settings. notification-users now returns allowanceId from UserPreferences |
 | 1.4 | Savings goals (chat + management UI) | 3d | not started | 0.3 | audric | USDC-denominated goals, milestone emails |
 | 1.5 | New user onboarding ($0.25) | 1d | not started | 0.6 | audric | Welcome message + save/swap/explore paths |
 | — | AI session charge ($0.01/session) | 0.5d | not started | allowance.move | both | Deducted via same ECS cron as briefing fees |
 
-**Week 2 total: ~9.5 days effort.** Onboarding wizard done ✅ (unblocks paid features). 1.3 + 1.3.1 ship together. 1.4 and 1.5 are independent once deps met.
+**Week 2 total: ~9.5 days effort.** Onboarding wizard done ✅ (unblocks paid features). 1.3 + 1.3.1 done ✅ (first paid feature live). 1.4 and 1.5 are independent once deps met.
 
-**Critical path:** allowance.move ✅, Spec 2 (session auth) ✅, digest replay protection ✅, 1.1 ✅ + 1.2 ✅ (Week 1 infra complete), onboarding wizard ✅ (paid features unblocked), 1.6 activity feed ✅, CostTracker ✅. **Week 1 complete.** Next: 1.3 morning briefing.
+**Critical path:** allowance.move ✅, Spec 2 (session auth) ✅, digest replay protection ✅, 1.1 ✅ + 1.2 ✅ (Week 1 infra complete), onboarding wizard ✅ (paid features unblocked), 1.6 activity feed ✅, CostTracker ✅, 1.3 morning briefing ✅ + 1.3.1 deep links ✅. **Week 1 + Week 2 partially complete.** Next: 1.4 savings goals.
 
 ---
 
@@ -161,7 +161,7 @@ Phase 1 Week 1:   allowance.move ✅ ── Spec 2 ✅ ────────�
                   1.6 ✅ (activity feed)                   │
                   CostTracker ✅ + Stats API ✅             │
                                                            ▼
-Phase 1 Week 2:   onboarding wizard ✅ ──→ 1.3 (paid briefing) → 1.3.1
+Phase 1 Week 2:   onboarding wizard ✅ ──→ 1.3 ✅ (paid briefing) → 1.3.1 ✅
 (needs allowance)                         session charge ($0.01)
                   1.4 (savings goals)   1.5 (new user $0.25)
                    │
@@ -178,5 +178,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8      5.4
 
 ---
 
-*Last updated: April 8 2026 (CostTracker done — SessionUsage table replaces dead LlmUsage, per-invocation cost tracking with cache breakdown + tool names, Stats API at GET /api/stats)*
+*Last updated: April 9 2026 (1.3 morning briefing done — ECS cron runBriefings, allowance deduct $0.005/day, BriefingCard in-app, deep link system /action. 1.3.1 deep links done)*
 *Source of truth for specs: `audric-roadmap.md`*

@@ -842,7 +842,9 @@ Effort: 3 days
 
 Effort: 2 days (shipped as part of 1.1)
 
-### 1.3 Morning briefing — email + in-app card
+### 1.3 Morning briefing — email + in-app card ✅
+
+**Status:** Shipped. ECS cron `runBriefings()` live. DailyBriefing table, BriefingCard, deep link system deployed. First paid feature ($0.005/day via allowance deduct).
 
 Single hourly ECS cron fires for all users whose timezone maps to 8am at the current UTC hour. Queries: yesterday's USDC yield earned, current NAVI USDC APY, health factor if the user has debt, idle USDC balance, one suggested action. 40 words maximum. Sent via MPP Resend (user's allowance pays).
 
@@ -915,7 +917,9 @@ add ~$0.006 per day.
 
 Effort: 3 days
 
-### 1.3.1 Deep link action system
+### 1.3.1 Deep link action system ✅
+
+**Status:** Shipped. `/action` page routes save/repay/briefing/topup. `/new?prefill=` auto-sends to engine. `/settings?section=` deep links to features tab.
 
 Every email CTA and notification needs to open the app in the right state and trigger the right action. Without a deep link system, users click "Save idle USDC" in an email and land on an empty dashboard with no context. This is the plumbing that makes one-tap email actions work.
 
