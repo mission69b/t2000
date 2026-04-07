@@ -26,6 +26,7 @@ describe('logPayment', () => {
       endpoint: '/v1/chat/completions',
       amount: '0.01',
       digest: 'abc123',
+      sender: '0xsender',
     });
 
     expect(mockCreate).toHaveBeenCalledWith({
@@ -34,6 +35,7 @@ describe('logPayment', () => {
         endpoint: '/v1/chat/completions',
         amount: '0.01',
         digest: 'abc123',
+        sender: '0xsender',
       },
     });
   });

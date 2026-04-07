@@ -5,6 +5,7 @@ export async function logPayment(data: {
   endpoint: string;
   amount: string;
   digest: string | null;
+  sender?: string | null;
 }) {
   try {
     await prisma.mppPayment.create({
@@ -13,9 +14,10 @@ export async function logPayment(data: {
         endpoint: data.endpoint,
         amount: data.amount,
         digest: data.digest,
+        sender: data.sender ?? undefined,
       },
     });
-  } catch {
-    // fire-and-forget — never break payment flow
+  } catch (err) {
+    console.error('[logPayment] failed:', err instanceof Error ? err.message : err);
   }
 }

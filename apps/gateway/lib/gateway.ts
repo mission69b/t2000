@@ -4,6 +4,7 @@ import type { PaymentReport } from '@suimpp/mpp/server';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from './constants';
 import { logPayment } from './log-payment';
 import { parseReceiptDigest } from './receipt';
+import { getDigestStore } from './upstash-digest-store';
 
 const NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
 const SERVER_URL = 'https://mpp.t2000.ai';
@@ -20,6 +21,7 @@ function createMppx() {
       currency: SUI_USDC_TYPE,
       recipient: TREASURY_ADDRESS,
       network: NETWORK,
+      store: getDigestStore(),
       onPayment: (report) => {
         pendingReports.set(report.digest, report);
       },
@@ -130,8 +132,8 @@ export function chargeProxy(
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
-      logPayment({ service, endpoint, amount, digest }).catch(() => {});
       const report = digest ? pendingReports.get(digest) : undefined;
+      logPayment({ service, endpoint, amount, digest, sender: report?.sender }).catch(() => {});
       if (report) reportToRegistry(report, { service, endpoint });
     }
 
@@ -174,8 +176,8 @@ export function chargeCustom(
     if (response.status !== 402) {
       const { service, endpoint } = inferServiceEndpoint(req.url);
       const digest = parseReceiptDigest(response.headers.get('Payment-Receipt'));
-      logPayment({ service, endpoint, amount: resolvedAmount, digest }).catch(() => {});
       const report = digest ? pendingReports.get(digest) : undefined;
+      logPayment({ service, endpoint, amount: resolvedAmount, digest, sender: report?.sender }).catch(() => {});
       if (report) reportToRegistry(report, { service, endpoint });
     }
 
