@@ -86,7 +86,7 @@ ECS_TARGET='{
     "TaskCount": 1,
     "LaunchType": "FARGATE",
     "NetworkConfiguration": {
-      "AwsvpcConfiguration": {
+      "awsvpcConfiguration": {
         "Subnets": ["'"$SUBNET_A"'", "'"$SUBNET_B"'"],
         "SecurityGroups": ["'"$SECURITY_GROUP_ID"'"],
         "AssignPublicIp": "ENABLED"

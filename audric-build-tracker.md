@@ -48,13 +48,13 @@
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| — | **Deploy `allowance.move` contract** | 1d | done | — | t2000 | ✅ Upgraded to v2 on mainnet (`0x2bc7…`). Config + treasury migrated. SDK allowance methods + `getFinancialSummary()` built (24 tests). Server + indexer redeployed |
-| 1.1 | Notification infrastructure | 3d | in progress | 0.3, 0.4 | both | ECS scheduled task (EventBridge hourly) + Resend + internal API. SDK `getFinancialSummary()` done. Cron task calls `GET audric/api/internal/notification-users`, processes financial data, sends emails via Resend. Indexer gets real-time HF hook. Audric exposes user API + prefs UI |
+| — | **Deploy `allowance.move` contract** | 1d | done | — | t2000 | ✅ Fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). Config + treasury migrated. SDK allowance methods + `getFinancialSummary()` built (24 tests). Server + indexer redeployed |
+| 1.1 | Notification infrastructure | 3d | done | 0.3, 0.4 | both | ✅ ECS cron (hourly EventBridge → Fargate), Resend emails, SDK `getFinancialSummary()`, real-time HF hook in indexer, audric internal API (notification-users, notification-log, hf-alert), NotificationPrefs + NotificationLog tables, settings UI toggles, `T2000_INTERNAL_KEY` in Vercel |
 | 1.2 | Health factor alerts (free) | 2d | not started | 1.1 | both | Real-time HF hook in indexer (critical) + hourly batch safety net in cron (warn). Dedup, email template. Ships without allowance |
 | 1.6 | Unified activity feed + filter navigation | 3d | not started | — | audric | Includes Swap filter. Independent — no blockers |
 | — | CostTracker instrumentation | 0.5d | not started | — | both | Pipe @t2000/engine CostTracker data to NeonDB analytics |
 
-**Week 1 total: ~9.5 days effort.** allowance.move done. 1.1 in progress (ECS scheduled task + EventBridge + indexer HF hook + audric internal API). 1.2 starts after 1.1. 1.6 and CostTracker are independent.
+**Week 1 total: ~9.5 days effort.** allowance.move done. 1.1 done (EventBridge hourly schedule, audric internal APIs, notification prefs, DB tables, settings UI). 1.2 starts next. 1.6 and CostTracker are independent.
 
 ### Week 2 — Paid features + onboarding (needs allowance deployed)
 
@@ -136,7 +136,7 @@
 |------|--------|-------|
 | Move Audric repo to BSL 1.1 licence | not started | Change Date: April 2030 |
 | Add Suno commercial licence ($12/mo) | not started | Required before Phase 5 |
-| Allowance Move contract (allowance.move) | done | v2 — `create`, `deposit`, `admin_deposit`, `deduct`, `withdraw`, `withdraw_amount`, `balance`. 32 Move tests + 24 SDK tests. Deployed to mainnet, config + treasury migrated |
+| Allowance Move contract (allowance.move) | done | Fresh deploy — scoped allowance with `permitted_features`, `expires_at`, `daily_limit`. 23 Move tests + 24 SDK tests. Package `0xd775…968ad` on mainnet |
 | Confirm MPP gateway margin (10–20%) | not started | Revenue validation |
 | Allowance onboarding wizard (app/setup) | not started | Required before Phase 1 features launch |
 | Terms of Service page | not started | Disclose: swap fee 0.1%, allowance model, session charge, yield spread. Required before charging users |
@@ -171,5 +171,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8      5.4
 
 ---
 
-*Last updated: April 6 2026*
+*Last updated: April 7 2026*
 *Source of truth for specs: `audric-roadmap.md`*
