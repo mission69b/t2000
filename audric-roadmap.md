@@ -227,7 +227,9 @@ Proactive features (morning briefing, alerts, scheduled actions) require Audric 
 
 This model is crypto-native, transparent, and consumer-friendly. It is not a subscription — the remaining allowance always stays in the user's wallet, features can be toggled off instantly, and the cost is low enough that yield covers it many times over.
 
-### Move contract — allowance.move
+### Move contract — allowance.move — ✅ DEPLOYED
+
+> **Deployed:** Fresh deploy on mainnet (`0xd775…968ad`). Scoped allowance with `permitted_features` bitmask, `expires_at`, `daily_limit`, daily spend tracking. 23 Move tests + 24 SDK tests.
 
 The allowance model requires a new Move contract. Because Audric is non-custodial, the user's USDC sits in their zkLogin wallet — Audric cannot push charges when the user is offline. The solution is an on-chain escrow: the user deposits USDC into a shared `Allowance` object, and Audric's admin key can deduct from it for enabled features. The user can withdraw remaining balance at any time.
 
@@ -798,35 +800,43 @@ Effort: ~1 hour
 
 Everything proactive depends on the notification infrastructure built in this phase. Build it once here — it powers every alert, briefing, and scheduled action that follows. The morning briefing is the forcing function that makes you build the backbone.
 
-**Hard blocker: `allowance.move` contract.** Morning briefings, USDC rate alerts, AI session charges, and all proactive features require the on-chain allowance model to deduct micro-payments. The contract must be deployed before any Phase 1 feature that charges the user can go live. Notification infrastructure (1.1) and health factor alerts (1.2, free) can ship without it, but 1.3 (morning briefing, $0.005/day) and 1.5 (onboarding) need it. **Priority: deploy `allowance.move` in Week 1 alongside 1.1.**
+**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). Morning briefings, USDC rate alerts, AI session charges, and all proactive features require the on-chain allowance model to deduct micro-payments. Notification infrastructure (1.1) and health factor alerts (1.2, free) are done. 1.3 (morning briefing, $0.005/day) and 1.5 (onboarding) need the allowance onboarding wizard.
 
-### 1.1 Notification infrastructure
+### 1.1 Notification infrastructure — ✅ DONE
 
-- ECS cron scheduler (EventBridge rules on existing Fargate cluster)
+- ECS cron scheduler (EventBridge rules on existing Fargate cluster) ✅
 
-- Single hourly EventBridge cron (not per-user). Handler queries NeonDB for users whose `timezoneOffset` maps to 8am local time at the current UTC hour. Batches notifications in a single execution. Scales to 100K+ users without additional cron rules
+- Single hourly EventBridge cron (not per-user). Handler queries NeonDB for users whose `timezoneOffset` maps to 8am local time at the current UTC hour. Batches notifications in a single execution. Scales to 100K+ users without additional cron rules ✅
 
-- Resend direct client in ECS server for urgent notifications
+- Resend direct client in ECS server for urgent notifications ✅
 
 - MPP gateway Resend routing for async notifications
 
-- UserNotificationPrefs table: userId, feature, enabled, lastSentAt
+- NotificationPrefs + NotificationLog tables in NeonDB ✅
+
+- Settings UI toggles (hf_alert, briefing, rate_alert) ✅
+
+- Internal API auth (`T2000_INTERNAL_KEY`) between t2000 ECS and audric Vercel ✅
+
+- `CRON_OVERRIDE_HOUR` env var for manual testing ✅
 
 Effort: 3 days
 
-### 1.2 Health factor alerts
+### 1.2 Health factor alerts — ✅ DONE (shipped with 1.1)
 
-Your indexer already polls Sui checkpoints every 2 seconds. Add a health factor check after each NAVI position update. Thresholds: warn at 1.8, critical at 1.3. Direct Resend call from ECS — no MPP latency for this one. Most important safety feature in the product.
+- Indexer HF hook: real-time critical alerts via `POST /api/internal/hf-alert` on audric ✅
 
-- Indexer: add HF computation after balance change events
+- Cron batch: hourly warn-level alerts via `getFinancialSummary()` + direct Resend from ECS ✅
 
-- Alert deduplication: max one warn alert per 4 hours, critical unlimited
+- Alert deduplication: 30min for critical, 4h for warn ✅
 
-- Email template: plain English explanation of what HF means and what to do
+- Email templates: plain English explanation of what HF means and what to do (both warn + critical) ✅
 
-- Deep link back to Audric credit page with pre-filled repay suggestion
+- Deep link to `/action?type=repay` in both email templates ✅
 
-Effort: 2 days
+- Settings UI toggle for `hf_alert` ✅
+
+Effort: 2 days (shipped as part of 1.1)
 
 ### 1.3 Morning briefing — email + in-app card
 
@@ -1934,8 +1944,8 @@ These are valid features that should not be built yet. Revisit when the core hab
 |              |              |                                                                                                             |                      |
 |--------------|--------------|-------------------------------------------------------------------------------------------------------------|----------------------|
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
-| **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation      |
-| **Phase 1**  | Weeks 1–2    | Notifications, HF alerts, morning briefing, goals, onboarding, activity feed                                | Daily habit          |
+| **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
+| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ notifications (1.1), ✅ HF alerts (1.2). Remaining: briefing, goals, onboarding, activity feed | Daily habit          |
 | **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, Transak on-ramp, send memo                                            | New acquisition      |
 | **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, gifting reminders, credit UX                     | Copilot moat         |
 | **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |

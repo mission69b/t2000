@@ -26,6 +26,14 @@
       ],
       "secrets": [
         {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/database-url"
+        },
+        {
+          "name": "ADMIN_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/admin-key"
+        },
+        {
           "name": "RESEND_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/resend-api-key"
         },

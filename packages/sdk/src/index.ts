@@ -152,6 +152,9 @@ export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
 export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';
+export type { ScopedIntent, ScopedIntentPayload } from './types/scoped-intent.js';
+export { buildScopedIntent, verifyScopedIntent } from './auth/intent-builder.js';
+export type { BuildIntentParams } from './auth/intent-builder.js';
 export {
   executeWithGas,
   shouldAutoTopUp,

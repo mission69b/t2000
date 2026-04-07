@@ -16,6 +16,7 @@ function loadKeypair(envVar: string): Ed25519Keypair {
 
 let _sponsorWallet: Ed25519Keypair | null = null;
 let _gasStationWallet: Ed25519Keypair | null = null;
+let _adminWallet: Ed25519Keypair | null = null;
 let _suiClient: SuiJsonRpcClient | null = null;
 
 export function getSponsorWallet(): Ed25519Keypair {
@@ -26,6 +27,11 @@ export function getSponsorWallet(): Ed25519Keypair {
 export function getGasStationWallet(): Ed25519Keypair {
   if (!_gasStationWallet) _gasStationWallet = loadKeypair('GAS_STATION_PRIVATE_KEY');
   return _gasStationWallet;
+}
+
+export function getAdminWallet(): Ed25519Keypair {
+  if (!_adminWallet) _adminWallet = loadKeypair('ADMIN_PRIVATE_KEY');
+  return _adminWallet;
 }
 
 export function getSuiClient(): SuiJsonRpcClient {
