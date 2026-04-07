@@ -12,7 +12,9 @@ function getClient(): SuiJsonRpcClient {
 
 async function runCron(): Promise<void> {
   const startTime = Date.now();
-  const utcHour = new Date().getUTCHours();
+  const utcHour = process.env.CRON_OVERRIDE_HOUR
+    ? parseInt(process.env.CRON_OVERRIDE_HOUR, 10)
+    : new Date().getUTCHours();
 
   console.log(`[cron] Starting notification run for UTC hour ${utcHour}`);
 
