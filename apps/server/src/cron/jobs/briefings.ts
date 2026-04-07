@@ -74,20 +74,24 @@ function fmtPct(n: number): string {
   return `${(n * 100).toFixed(2)}%`;
 }
 
-function todayDateStr(): string {
-  return new Date().toISOString().slice(0, 10);
+function userLocalDateStr(timezoneOffset: number): string {
+  const now = new Date();
+  const localMs = now.getTime() - timezoneOffset * 60 * 1000;
+  return new Date(localMs).toISOString().slice(0, 10);
 }
 
-function briefingDateLabel(): string {
-  return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function briefingDateLabel(timezoneOffset: number): string {
+  const now = new Date();
+  const localMs = now.getTime() - timezoneOffset * 60 * 1000;
+  return new Date(localMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 // -------------------------------------------------------------------------
 // Email template
 // -------------------------------------------------------------------------
 
-function buildSubject(content: BriefingContent): string {
-  const dateLabel = briefingDateLabel();
+function buildSubject(content: BriefingContent, timezoneOffset: number): string {
+  const dateLabel = briefingDateLabel(timezoneOffset);
   if (content.variant === 'savings' && content.earned > 0) {
     return `Your ${fmtUsd(content.earned)} overnight — ${dateLabel}`;
   }
@@ -97,8 +101,8 @@ function buildSubject(content: BriefingContent): string {
   return `Morning briefing — ${dateLabel}`;
 }
 
-function buildEmailHtml(content: BriefingContent): string {
-  const dateLabel = briefingDateLabel();
+function buildEmailHtml(content: BriefingContent, timezoneOffset: number): string {
+  const dateLabel = briefingDateLabel(timezoneOffset);
 
   let headline = '';
   let body = '';
@@ -204,7 +208,7 @@ async function processUser(
   client: SuiJsonRpcClient,
   user: NotificationUser,
 ): Promise<ProcessResult> {
-  const date = todayDateStr();
+  const date = userLocalDateStr(user.timezoneOffset);
 
   try {
     if (!user.allowanceId) {
@@ -241,8 +245,8 @@ async function processUser(
 
     const emailResult = await sendEmail({
       to: user.email,
-      subject: buildSubject(content),
-      html: buildEmailHtml(content),
+      subject: buildSubject(content, user.timezoneOffset),
+      html: buildEmailHtml(content, user.timezoneOffset),
       tags: [
         { name: 'category', value: 'briefing' },
         { name: 'variant', value: content.variant },
@@ -293,4 +297,4 @@ export async function runBriefings(
   return { job: 'briefings', processed: eligible.length, sent, errors };
 }
 
-export { buildBriefingContent, buildSubject, buildEmailHtml, deriveCta, deriveVariant };
+export { buildBriefingContent, buildSubject, buildEmailHtml, deriveCta, deriveVariant, userLocalDateStr };
