@@ -53,9 +53,9 @@
 | 1.1 | Notification infrastructure | 3d | done | 0.3, 0.4 | both | ✅ ECS cron (hourly EventBridge → Fargate), Resend emails, SDK `getFinancialSummary()`, real-time HF hook in indexer, audric internal API (notification-users, notification-log, hf-alert), NotificationPrefs + NotificationLog tables, settings UI toggles, `T2000_INTERNAL_KEY` in Vercel |
 | 1.2 | Health factor alerts (free) | 2d | done | 1.1 | both | ✅ Shipped with 1.1 — indexer HF hook (critical, 30min dedup, Resend via audric internal API), cron batch (warn, 4h dedup, direct Resend from ECS). Email templates for both levels. Deep link to `/action?type=repay`. Settings UI toggle |
 | 1.6 | Unified activity feed + filter navigation | 3d | done | — | audric | ✅ DashboardTabs (Chat/Activity), FilterChips, ActivityCard, ActivityFeed. AppEvent NeonDB table. GET /api/activity: two-layer chain classifier (NAVI/Suilend/Cetus protocol regex + balance heuristics), MPP treasury detection for pay labeling, Sui RPC v2 `transactions` field fix, cursor pagination, dedup. useActivityFeed hook (useInfiniteQuery, date grouping, red dot). Event writers in services/complete for standard MPP + deliver-first |
-| — | CostTracker instrumentation | 0.5d | not started | — | both | Pipe @t2000/engine CostTracker data to NeonDB analytics |
+| — | CostTracker instrumentation | 0.5d | done | — | audric | ✅ SessionUsage table (per-invocation: full token breakdown + cache + costUsd + toolNames + model). Dropped unused LlmUsage. logSessionUsage fires on both chat + resume routes. Demo sessions logged as 'anonymous'. GET /api/stats: public cached endpoint (users, sessions, tokens, cost, cache savings, transactions, top tools) |
 
-**Week 1 total: ~10 days effort.** allowance.move done. Spec 2 (session auth) done. 1.1 done. 1.2 done (shipped with 1.1). 1.6 done ✅. CostTracker remaining.
+**Week 1 total: ~10 days effort.** allowance.move done. Spec 2 (session auth) done. 1.1 done. 1.2 done (shipped with 1.1). 1.6 done ✅. CostTracker done ✅. Week 1 complete.
 
 ### Week 2 — Paid features + onboarding (needs allowance deployed)
 
@@ -70,7 +70,7 @@
 
 **Week 2 total: ~9.5 days effort.** Onboarding wizard done ✅ (unblocks paid features). 1.3 + 1.3.1 ship together. 1.4 and 1.5 are independent once deps met.
 
-**Critical path:** allowance.move ✅, Spec 2 (session auth) ✅, digest replay protection ✅, 1.1 ✅ + 1.2 ✅ (Week 1 infra complete), onboarding wizard ✅ (paid features unblocked), 1.6 activity feed ✅. Next: CostTracker instrumentation, then 1.3 morning briefing.
+**Critical path:** allowance.move ✅, Spec 2 (session auth) ✅, digest replay protection ✅, 1.1 ✅ + 1.2 ✅ (Week 1 infra complete), onboarding wizard ✅ (paid features unblocked), 1.6 activity feed ✅, CostTracker ✅. **Week 1 complete.** Next: 1.3 morning briefing.
 
 ---
 
@@ -138,14 +138,14 @@
 | Move Audric repo to BSL 1.1 licence | not started | Change Date: April 2030 |
 | Add Suno commercial licence ($12/mo) | not started | Required before Phase 5 |
 | Allowance Move contract (allowance.move) | done | Fresh deploy — scoped allowance with `permitted_features`, `expires_at`, `daily_limit`. 23 Move tests + 24 SDK tests. Package `0xd775…968ad` on mainnet |
-| **MPP digest replay protection** | done | DigestStore interface + InMemoryDigestStore in `@suimpp/mpp` v0.5.0. UpstashDigestStore (Upstash Redis, 24h TTL, atomic SET NX) in gateway. logPayment now logs errors + passes sender. 6 new tests |
+| **MPP digest replay protection** | done | DigestStore interface + InMemoryDigestStore in `@suimpp/mpp` v0.5.0 → v0.6.0 (removed deprecated registryUrl/serverUrl/digestTtlMs per Mysten feedback). UpstashDigestStore (Upstash Redis, 24h TTL, atomic SET NX) in gateway. logPayment now logs errors + passes sender. 6 new tests |
 | Confirm MPP gateway margin (10–20%) | not started | Revenue validation |
 | Allowance onboarding wizard (app/setup) | done | ✅ 4-step wizard live at audric.ai/setup. SDK 0.23.0 published with `buildCreateAllowanceTx`, `addDepositAllowanceTx`, `getAllowance`. Race condition + zero-balance UX fixed post-deploy |
 | Terms of Service page | not started | Disclose: swap fee 0.1%, allowance model, session charge, yield spread. Required before charging users |
 | **audric.ai landing page** | not started | After Phase 2. Logged-out → marketing (live chat demo hero + Audric Passport + Audric Store + suimpp section). Logged-in → redirect to /new. White UI. Full spec in `marketing/landing-page-spec.md` |
 | **t2000.ai white UI refresh** | not started | After Phase 2. CSS theme swap (dark→white, same Audric design system). Add 3-product section (Audric / suimpp / Build) + architecture diagram. Spec in `marketing/landing-page-spec.md` |
 | **docs.t2000.ai** | not started | After landing pages. GitBook or Mintlify. Content from CLAUDE.md, ARCHITECTURE.md, audric-roadmap.md, audric-security-specs.md, package READMEs. Structure in `marketing/landing-page-spec.md` |
-| **Stats API for landing pages** | not started | Piggyback on CostTracker task. NeonDB aggregate: total users, yield earned, transactions, uptime. Expose via `GET /api/stats` (public, cached). Feed landing page social proof numbers |
+| **Stats API for landing pages** | done | ✅ GET /api/stats (public, 60s cache). Aggregates: totalUsers, totalSessions, totalTurns, totalTokens, totalCostUsd, avgCostPerSession, cacheSavingsPercent, totalTransactions, topTools. Piggybacks on SessionUsage table from CostTracker |
 | **Brand naming locked** | done | Audric Passport (identity), Audric Store / "the agent store" (marketplace). Dual-naming for payment: "Audric Pay" on consumer surfaces (audric.ai), "Gateway" on t2000.ai, "suimpp" for open protocol (suimpp.dev), `@suimpp/mpp` npm package. "Audric Wallet" and "Sui Pay" not used. See `marketing/landing-page-spec.md` |
 
 ---
@@ -178,5 +178,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8      5.4
 
 ---
 
-*Last updated: April 7 2026 (1.6 Activity feed done — two-layer chain classifier (protocol regex + balance heuristics), MPP treasury detection for pay labeling, extractCommands fix for Sui RPC v2 `transactions` field, AppEvent table, GET /api/activity with merge+pagination+dedup, useActivityFeed hook, event writers in services/complete)*
+*Last updated: April 8 2026 (CostTracker done — SessionUsage table replaces dead LlmUsage, per-invocation cost tracking with cache breakdown + tool names, Stats API at GET /api/stats)*
 *Source of truth for specs: `audric-roadmap.md`*

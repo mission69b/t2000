@@ -804,7 +804,7 @@ Effort: ~1 hour
 
 Everything proactive depends on the notification infrastructure built in this phase. Build it once here — it powers every alert, briefing, and scheduled action that follows. The morning briefing is the forcing function that makes you build the backbone.
 
-**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). **Onboarding wizard** ✅ DONE — live at `audric.ai/setup`, SDK 0.23.0 published. Paid features are now unblocked. Notification infrastructure (1.1), health factor alerts (1.2, free), and activity feed (1.6) are done. Next: 1.3 (morning briefing), CostTracker.
+**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). **Onboarding wizard** ✅ DONE — live at `audric.ai/setup`, SDK 0.23.0 published. Paid features are now unblocked. Notification infrastructure (1.1), health factor alerts (1.2, free), activity feed (1.6), and CostTracker are all done. **Week 1 complete.** Next: 1.3 (morning briefing).
 
 ### 1.1 Notification infrastructure — ✅ DONE
 
@@ -1887,7 +1887,7 @@ Every user conversation in Audric hits the Claude API. At 100 beta users this is
 
 \$0.01 USDC per AI conversation, deducted via the pre-approved feature allowance. At 2x the actual Claude cost this provides margin and funds the path to self-hosted. The user does not see this as “paying for AI” — it is part of the Audric features budget that already covers morning briefings and alerts. A heavy user doing 3 conversations per day pays \$0.90/month in AI usage — less than a single coffee.
 
-- Phase 1 action: instrument token usage now. Add CostTracker data from @t2000/engine to NeonDB analytics. Without this data you cannot know which tool calls cost most or what each query type actually costs.
+- Phase 1 action: instrument token usage now. ✅ DONE — SessionUsage table tracks per-invocation tokens (input, output, cache read, cache write), costUsd (with proper cache pricing), toolNames array, and model. Dropped unused LlmUsage table. logSessionUsage fires on both chat + resume routes (demo sessions as 'anonymous'). GET /api/stats exposes aggregates.
 
 - Phase 1 action: add \$0.01/session deduction to the allowance model alongside morning briefing and yield alert fees. Deducted via the same ECS cron that handles other feature charges.
 
@@ -1922,7 +1922,7 @@ Once self-hosted is running, it becomes a trust and privacy differentiator: “P
 
 ### Sequencing
 
-- Now (100 users): absorb costs entirely, instrument CostTracker to NeonDB, add \$0.01/session allowance charge
+- Now (100 users): absorb costs entirely, ✅ CostTracker instrumented to NeonDB (SessionUsage), add \$0.01/session allowance charge
 
 - 1,000 users: session charge covers most API cost, conversation logs start accumulating fine-tuning data
 
@@ -1951,7 +1951,7 @@ These are valid features that should not be built yet. Revisit when the core hab
 |--------------|--------------|-------------------------------------------------------------------------------------------------------------|----------------------|
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
 | **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
-| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ Spec 2 (session auth), ✅ digest replay protection, ✅ notifications (1.1), ✅ HF alerts (1.2), ✅ onboarding wizard (SDK 0.23.0), ✅ activity feed (1.6). Remaining: briefing (1.3), goals (1.4), CostTracker | Daily habit          |
+| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ Spec 2 (session auth), ✅ digest replay protection, ✅ notifications (1.1), ✅ HF alerts (1.2), ✅ onboarding wizard (SDK 0.23.0), ✅ activity feed (1.6), ✅ CostTracker + Stats API. Remaining: briefing (1.3), goals (1.4) | Daily habit          |
 | **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, Transak on-ramp, send memo                                            | New acquisition      |
 | **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, gifting reminders, credit UX                     | Copilot moat         |
 | **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |
