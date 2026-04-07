@@ -159,7 +159,7 @@ Pre-work: 0.1  0.2  0.3 ──→ 0.4  0.5  0.6  0.7  0.8  0.9  0.10  [swap chip
 Phase 1 Week 1:   allowance.move ✅ ── Spec 2 ✅ ──────────┐
 (no allowance)    1.1 ✅ ──→ 1.2 ✅ (free HF alerts)     │
                   1.6 ✅ (activity feed)                   │
-                  CostTracker instrumentation              │
+                  CostTracker ✅ + Stats API ✅             │
                                                            ▼
 Phase 1 Week 2:   onboarding wizard ✅ ──→ 1.3 (paid briefing) → 1.3.1
 (needs allowance)                         session charge ($0.01)
