@@ -52,7 +52,7 @@
 | — | **Spec 2 — Session authorization** | 0.5d | done | allowance.move | t2000 | ✅ ScopedIntent type + `buildScopedIntent()`/`verifyScopedIntent()` in SDK. IntentLog table in NeonDB. `executeWithIntent()` wrapper in server. `ADMIN_PRIVATE_KEY` in AWS Secrets Manager. Cron task def updated with DATABASE_URL + admin key. 10 tests. Gates all autonomous deductions. |
 | 1.1 | Notification infrastructure | 3d | done | 0.3, 0.4 | both | ✅ ECS cron (hourly EventBridge → Fargate), Resend emails, SDK `getFinancialSummary()`, real-time HF hook in indexer, audric internal API (notification-users, notification-log, hf-alert), NotificationPrefs + NotificationLog tables, settings UI toggles, `T2000_INTERNAL_KEY` in Vercel |
 | 1.2 | Health factor alerts (free) | 2d | done | 1.1 | both | ✅ Shipped with 1.1 — indexer HF hook (critical, 30min dedup, Resend via audric internal API), cron batch (warn, 4h dedup, direct Resend from ECS). Email templates for both levels. Deep link to `/action?type=repay`. Settings UI toggle |
-| 1.6 | Unified activity feed + filter navigation | 3d | done | — | audric | ✅ DashboardTabs (Chat/Activity), FilterChips, ActivityCard, ActivityFeed. AppEvent NeonDB table. GET /api/activity (Sui RPC + AppEvent merge, cursor pagination, type filter, allowance tx filtering, dedup). useActivityFeed hook (useInfiniteQuery, date grouping, red dot). Event writers: ServicePurchase + HF alert both write AppEvent |
+| 1.6 | Unified activity feed + filter navigation | 3d | done | — | audric | ✅ DashboardTabs (Chat/Activity), FilterChips, ActivityCard, ActivityFeed. AppEvent NeonDB table. GET /api/activity: two-layer chain classifier (NAVI/Suilend/Cetus protocol regex + balance heuristics), MPP treasury detection for pay labeling, Sui RPC v2 `transactions` field fix, cursor pagination, dedup. useActivityFeed hook (useInfiniteQuery, date grouping, red dot). Event writers in services/complete for standard MPP + deliver-first |
 | — | CostTracker instrumentation | 0.5d | not started | — | both | Pipe @t2000/engine CostTracker data to NeonDB analytics |
 
 **Week 1 total: ~10 days effort.** allowance.move done. Spec 2 (session auth) done. 1.1 done. 1.2 done (shipped with 1.1). 1.6 done ✅. CostTracker remaining.
@@ -70,7 +70,7 @@
 
 **Week 2 total: ~9.5 days effort.** Onboarding wizard done ✅ (unblocks paid features). 1.3 + 1.3.1 ship together. 1.4 and 1.5 are independent once deps met.
 
-**Critical path:** allowance.move deployed ✅. 1.1 ✅ + 1.2 ✅ (Week 1 infra complete). Onboarding wizard ✅ (paid features unblocked). 1.6 activity feed ✅. Next: CostTracker instrumentation, then 1.3 morning briefing.
+**Critical path:** allowance.move ✅, Spec 2 (session auth) ✅, digest replay protection ✅, 1.1 ✅ + 1.2 ✅ (Week 1 infra complete), onboarding wizard ✅ (paid features unblocked), 1.6 activity feed ✅. Next: CostTracker instrumentation, then 1.3 morning briefing.
 
 ---
 
@@ -178,5 +178,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8      5.4
 
 ---
 
-*Last updated: April 7 2026 (1.6 Activity feed done — DashboardTabs, FilterChips, ActivityCard, ActivityFeed, AppEvent table, GET /api/activity with merge+pagination+dedup, useActivityFeed hook, event writers for ServicePurchase + HF alerts)*
+*Last updated: April 7 2026 (1.6 Activity feed done — two-layer chain classifier (protocol regex + balance heuristics), MPP treasury detection for pay labeling, extractCommands fix for Sui RPC v2 `transactions` field, AppEvent table, GET /api/activity with merge+pagination+dedup, useActivityFeed hook, event writers in services/complete)*
 *Source of truth for specs: `audric-roadmap.md`*

@@ -804,7 +804,7 @@ Effort: ~1 hour
 
 Everything proactive depends on the notification infrastructure built in this phase. Build it once here — it powers every alert, briefing, and scheduled action that follows. The morning briefing is the forcing function that makes you build the backbone.
 
-**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). **Onboarding wizard** ✅ DONE — live at `audric.ai/setup`, SDK 0.23.0 published. Paid features are now unblocked. Notification infrastructure (1.1) and health factor alerts (1.2, free) are done. Next: 1.3 (morning briefing), 1.6 (activity feed), CostTracker.
+**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). **Onboarding wizard** ✅ DONE — live at `audric.ai/setup`, SDK 0.23.0 published. Paid features are now unblocked. Notification infrastructure (1.1), health factor alerts (1.2, free), and activity feed (1.6) are done. Next: 1.3 (morning briefing), CostTracker.
 
 ### 1.1 Notification infrastructure — ✅ DONE
 
@@ -1951,7 +1951,7 @@ These are valid features that should not be built yet. Revisit when the core hab
 |--------------|--------------|-------------------------------------------------------------------------------------------------------------|----------------------|
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
 | **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
-| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ Spec 2 (session auth), ✅ digest replay protection, ✅ notifications (1.1), ✅ HF alerts (1.2), ✅ onboarding wizard (SDK 0.23.0). Remaining: briefing (1.3), goals (1.4), activity feed (1.6), CostTracker | Daily habit          |
+| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ Spec 2 (session auth), ✅ digest replay protection, ✅ notifications (1.1), ✅ HF alerts (1.2), ✅ onboarding wizard (SDK 0.23.0), ✅ activity feed (1.6). Remaining: briefing (1.3), goals (1.4), CostTracker | Daily habit          |
 | **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, Transak on-ramp, send memo                                            | New acquisition      |
 | **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, gifting reminders, credit UX                     | Copilot moat         |
 | **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |
