@@ -138,6 +138,7 @@
 | Move Audric repo to BSL 1.1 licence | not started | Change Date: April 2030 |
 | Add Suno commercial licence ($12/mo) | not started | Required before Phase 5 |
 | Allowance Move contract (allowance.move) | done | Fresh deploy — scoped allowance with `permitted_features`, `expires_at`, `daily_limit`. 23 Move tests + 24 SDK tests. Package `0xd775…968ad` on mainnet |
+| **MPP digest replay protection** | done | DigestStore interface + InMemoryDigestStore in `@suimpp/mpp` v0.5.0. UpstashDigestStore (Upstash Redis, 24h TTL, atomic SET NX) in gateway. logPayment now logs errors + passes sender. 6 new tests |
 | Confirm MPP gateway margin (10–20%) | not started | Revenue validation |
 | Allowance onboarding wizard (app/setup) | not started | Required before Phase 1 features launch |
 | Terms of Service page | not started | Disclose: swap fee 0.1%, allowance model, session charge, yield spread. Required before charging users |
