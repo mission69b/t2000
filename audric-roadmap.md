@@ -259,13 +259,15 @@ public fun balance(allowance: &Allowance): u64
 
 **Integration:** ECS cron calls `deduct()` via the admin key for each enabled feature charge. The audric web app calls `deposit()` during the onboarding flow. `withdraw()` is available in settings at any time.
 
-### Onboarding flow — full-screen wizard
+### Onboarding flow — full-screen wizard — ✅ DONE
+
+> **Deployed:** Live at `audric.ai/setup`. 4-step wizard with two-tx flow (create → deposit), `useAllowanceStatus` hook (localStorage + prefs API + on-chain RPC), `/new` → `/setup` redirect, Settings budget card with top-up link, top-up mode (skips creation), zero-balance UX (wallet address + copy + skip). SDK 0.23.0 published with `buildCreateAllowanceTx`, `addDepositAllowanceTx`, `getAllowance`.
 
 The allowance onboarding is the single most trust-sensitive UX in the product. It must be a **dedicated full-screen flow** — not a modal, not a chat message, not a bottom sheet. A modal feels like a paywall popup. A chat message feels too casual for a financial commitment. Full-screen communicates "this matters, take a moment."
 
-**Route:** `audric.ai/setup` — shown once after first sign-in when the user has no Allowance object on-chain. Accessible again from Settings > Features.
+**Route:** `audric.ai/setup` — shown once after first sign-in when the user has no Allowance object on-chain. Accessible again from Settings > Features > Top Up.
 
-**Trigger:** After auth callback redirects to `/new`, check for on-chain Allowance object. If none exists, redirect to `/setup`. User can skip — but features remain off until they complete it.
+**Trigger:** After auth callback redirects to `/new`, `useAllowanceStatus` hook checks localStorage → `/api/user/preferences` → on-chain RPC. If no allowance and user hasn't skipped, redirect to `/setup`. Skip state persists in localStorage.
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -383,20 +385,22 @@ The allowance onboarding is the single most trust-sensitive UX in the product. I
 └─────────────────────────────────────────────┘
 ```
 
-**Implementation notes:**
+**Implementation (shipped):**
 
-- Route: `audric.ai/setup` — new page in `app/setup/page.tsx`, protected by `AuthGuard`
+- Route: `audric.ai/setup` — `app/setup/page.tsx`, protected by `AuthGuard`
 - State: local React state for step progression, no server round-trips between steps
-- Step 3 triggers the on-chain `deposit()` call — show a spinner on the button ("Approving..."), then transition to Step 4 on success
-- If the deposit transaction fails, stay on Step 3 with inline error: "Something went wrong — try again"
-- Skip button on Step 1 only — redirects to `/new` with features off
-- After Step 4, redirect to `/new`. The `useOvernightEarnings` hook or a new `useAllowanceStatus` hook prevents showing `/setup` again
+- Two-tx flow: Step 3 calls `allowance-create` (via `/api/transactions/prepare` + `/api/transactions/execute`), extracts allowance ID from `objectChanges`, then calls `allowance-deposit` with the ID. Top-up mode skips creation
+- `useAllowanceStatus` hook: checks localStorage → `/api/user/preferences` → on-chain RPC (`getObject`). Inlined RPC query to avoid pulling SDK server-only deps (`@naviprotocol/lending` → `node:buffer`) into the client bundle
+- `flowType` state locked at mount (`'setup'` or `'topup'`) so step 4 heading doesn't flip when `setAllowanceId` is called mid-flow
+- Zero-balance UX: if wallet USDC < selected budget, shows warning with wallet address (copyable) + "Skip for now" link. Approve button disabled
+- Top-up mode: Settings > Features "Top Up" link → `/setup` starts at step 3 with "Cancel" (→ `/settings`) instead of "Back"
+- Race condition fix: hook keeps `loading=true` until `fetchStatus` completes with a real address — prevents premature redirect on `/new` when `useZkLogin()` resolves `address` asynchronously
 
-**Critical UX rules:**
+**Critical UX rules (all followed in implementation):**
 
 - Never show raw USDC decimals (show "$0.50" not "500000")
 - Never use the word "contract" — frame as "spending cap you control"
-- Never show Sui addresses or transaction hashes during onboarding
+- Never show Sui addresses or transaction hashes during onboarding (exception: zero-balance state shows wallet address for receiving USDC)
 - The progress bar is continuous, not segmented — feels like one smooth flow
 - Back button on Steps 2-3, skip only on Step 1 — once they start, guide them forward
 - Pre-select $0.50 on Step 3 — don't make the user choose from scratch
@@ -800,7 +804,7 @@ Effort: ~1 hour
 
 Everything proactive depends on the notification infrastructure built in this phase. Build it once here — it powers every alert, briefing, and scheduled action that follows. The morning briefing is the forcing function that makes you build the backbone.
 
-**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). Morning briefings, USDC rate alerts, AI session charges, and all proactive features require the on-chain allowance model to deduct micro-payments. Notification infrastructure (1.1) and health factor alerts (1.2, free) are done. 1.3 (morning briefing, $0.005/day) and 1.5 (onboarding) need the allowance onboarding wizard.
+**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). **Onboarding wizard** ✅ DONE — live at `audric.ai/setup`, SDK 0.23.0 published. Paid features are now unblocked. Notification infrastructure (1.1) and health factor alerts (1.2, free) are done. Next: 1.3 (morning briefing), 1.6 (activity feed), CostTracker.
 
 ### 1.1 Notification infrastructure — ✅ DONE
 
@@ -1062,15 +1066,17 @@ What would you like to try first?
 
 Effort: 1 day
 
-### 1.6 Unified activity feed — with filter navigation
+### 1.6 Unified activity feed — with filter navigation — DONE
 
 A single chronological view across all activity: save, send, receive, swap, yield earned, alerts fired, goals updated. This makes Audric feel like it is watching over your money even when you are not in the app. It is also the data source for the morning briefing summary.
 
-- Pull from existing Transaction table (indexer) + NeonDB app events
+**Shipped:** DashboardTabs (Chat/Activity with red dot unread indicator), FilterChips (All/Savings/Send/Receive/Swap/Pay), ActivityCard (individual transaction cards with icons, natural language titles, amounts, Suiscan links), ActivityFeed (date-grouped sections, skeleton loading, per-filter empty states with contextual CTAs, "Load more" pagination). AppEvent NeonDB table for future-proof event sourcing. GET /api/activity merges Sui RPC on-chain history + AppEvent rows with timestamp-based cursor pagination, type filtering, digest deduplication (AppEvent preferred over chain when digest matches), and allowance transaction filtering (internal budget ops excluded). useActivityFeed hook with useInfiniteQuery, date grouping by local timezone, red dot tracking via localStorage. Event writers wired: ServicePurchase + HF alerts both create AppEvent rows.
 
-- Natural language descriptions: 'Audric auto-compounded \$0.43 of NAVX rewards'
+- Pull from Sui RPC on-chain history + NeonDB AppEvent table (merged, deduplicated)
 
-- Filter by type: all, savings, payments, alerts
+- Natural language titles generated server-side: "Saved $50 USDC into NAVI", "Received $10 USDC from 0x1bf...", "Paid $0.003 for web search"
+
+- Filter by type: All, Savings, Send, Receive, Swap, Pay
 
 - Accessible from dashboard and as /history chat command
 
@@ -1945,7 +1951,7 @@ These are valid features that should not be built yet. Revisit when the core hab
 |--------------|--------------|-------------------------------------------------------------------------------------------------------------|----------------------|
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
 | **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
-| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ notifications (1.1), ✅ HF alerts (1.2). Remaining: briefing, goals, onboarding, activity feed | Daily habit          |
+| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ Spec 2 (session auth), ✅ digest replay protection, ✅ notifications (1.1), ✅ HF alerts (1.2), ✅ onboarding wizard (SDK 0.23.0). Remaining: briefing (1.3), goals (1.4), activity feed (1.6), CostTracker | Daily habit          |
 | **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, Transak on-ramp, send memo                                            | New acquisition      |
 | **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, gifting reminders, credit UX                     | Copilot moat         |
 | **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |
