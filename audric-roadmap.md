@@ -117,7 +117,7 @@ Audric has two distinct user types that need different experiences but share the
 
 - Warning: "Only send USDC on the Sui network. Other tokens or networks may result in lost funds."
 
-- Phase 2 expansion: payment links, invoices, Transak fiat on-ramp (see Phase 2 spec below)
+- Phase 2 expansion: payment links, invoices, AlchemyPay fiat on/off-ramp (see Phase 2 spec below)
 
 - NFC: out of scope — requires native app + payment processor certification
 
@@ -207,7 +207,7 @@ The chip bar at the bottom of the dashboard provides guided flows for users who 
           → Warning: "Only send USDC on the Sui network"
 ```
 
-- Phase 2 expansion adds: payment links, invoices, Transak on-ramp
+- Phase 2 expansion adds: payment links, invoices, AlchemyPay on/off-ramp
 - Currently read-only — no transaction executed
 
 ### Contextual chips + smart cards
@@ -1216,7 +1216,7 @@ State: Active (awaiting payment)
 │  automatically.                             │
 │                                             │
 │  Don't have USDC?                           │
-│  [ Buy USDC with card → ]  (Transak)        │
+│  [ Buy USDC with card → ]  (AlchemyPay)     │
 │                                             │
 │  ─────────────────────────────────────      │
 │  Want to get paid like this?                │
@@ -1317,17 +1317,19 @@ Named invoices with line items, due date, and total. Generates a payment link au
 
 Effort: 3 days
 
-### 2.3 Transak fiat on-ramp (optional, on payment page)
+### 2.3 AlchemyPay fiat on/off-ramp (optional, on payment page)
 
-A 'Don't have USDC?' link on the payment page opens a Transak embed. The sender buys USDC via card or bank transfer, destination is the recipient's Sui address. Audric touches zero fiat — Transak handles KYC, compliance, and FX. Fee is ~1–2% on Transak's end, still beating the 3% card processing story.
+A 'Don't have USDC?' link on the payment page opens an AlchemyPay embed. The sender buys USDC via card, bank transfer, Apple Pay, or regional mobile wallet — destination is the recipient's Sui address. Audric touches zero fiat — AlchemyPay handles KYC (via Sumsub), compliance, and FX. Fee is ~1–2% on AlchemyPay's end, still beating the 3% card processing story.
 
-- Transak widget embed: 2-day integration, well-documented SDK
+- AlchemyPay page integration: iframe/redirect embed with custom parameters. Native API available for programmatic flows (CLI `t2000 onramp` in future). Well-documented SDK, 40+ countries, bank transfer + mobile wallets + cards.
+
+- Off-ramp also available: users can sell USDC back to fiat via bank account. AlchemyPay handles the conversion and withdrawal. This closes the full loop — on-chain yield → fiat cashout.
 
 - Position as secondary option — USDC-first is the primary pitch
 
 - Copy: 'Save 3% vs card processing. Your clients pay USDC, you receive instantly.'
 
-- v1 scope: Transak only. Do not build custom fiat rails.
+- v1 scope: AlchemyPay only. Do not build custom fiat rails. KYC is handled by AlchemyPay (Sumsub) — Audric does not own KYC.
 
 Effort: 2 days
 
@@ -1956,7 +1958,7 @@ These are valid features that should not be built yet. Revisit when the core hab
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
 | **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
 | **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ Spec 2 (session auth), ✅ digest replay protection, ✅ notifications (1.1), ✅ HF alerts (1.2), ✅ onboarding wizard (SDK 0.23.0), ✅ activity feed (1.6), ✅ CostTracker + Stats API, ✅ morning briefing (1.3) + deep links (1.3.1). Remaining: goals (1.4), onboarding (1.5), session charge | Daily habit          |
-| **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, Transak on-ramp, send memo                                            | New acquisition      |
+| **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, AlchemyPay on/off-ramp, send memo                                     | New acquisition      |
 | **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, gifting reminders, credit UX                     | Copilot moat         |
 | **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |
 | **Phase 5**  | Weeks 11–13  | audric.ai/username storefronts, song + art listing, tweet-to-pay, merch bundles (Printful), 8% platform fee | Creator acquisition  |
@@ -1973,7 +1975,7 @@ These are valid features that should not be built yet. Revisit when the core hab
 
 - Suno commercial licence costs $12/mo — confirmed available, budget line item from Phase 4 onwards
 
-- Receive is USDC on Sui only for v1 — Transak is optional secondary, not the primary pitch
+- Receive is USDC on Sui only for v1 — AlchemyPay is optional secondary, not the primary pitch
 
 - Log conversations from day one — every day without data is fine-tuning capacity permanently lost
 

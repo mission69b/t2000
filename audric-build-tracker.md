@@ -80,7 +80,7 @@
 |---|------|--------|--------|------------|------|-----|
 | 2.1 | Payment links + QR codes (all 5 page states) | 4d | not started | 1.1 | audric | Receive chip already shows deposit address + QR |
 | 2.2 | Invoices | 3d | not started | 2.1 | audric | — |
-| 2.3 | Transak fiat on-ramp (optional) | 2d | not started | 2.1 | audric | — |
+| 2.3 | AlchemyPay fiat on/off-ramp (optional) | 2d | not started | 2.1 | audric | Page integration + off-ramp. KYC via AlchemyPay/Sumsub. Future: CLI `t2000 onramp` via native API |
 | 2.4 | Send UX improvements (memo) | 1d | not started | — | both | — |
 | 2.5 | Mini-storefront (sync products) | 2d | not started | 2.1 | audric | — |
 
