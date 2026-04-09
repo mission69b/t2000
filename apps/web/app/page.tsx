@@ -218,7 +218,7 @@ export default function Home() {
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                 What we build
               </div>
-              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
+              <h2 className="font-serif text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
                 Three products. One stack.
               </h2>
             </div>
@@ -252,7 +252,7 @@ export default function Home() {
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                 What you get
               </div>
-              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-4">
+              <h2 className="font-serif text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-4">
                 One install. Your agent gets<br />
                 <em className="italic text-accent">a financial brain.</em>
               </h2>
@@ -286,7 +286,7 @@ export default function Home() {
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                 For developers
               </div>
-              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
+              <h2 className="font-serif text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
                 Five packages.<br />
                 <em className="italic text-accent">Pick your depth.</em>
               </h2>
@@ -328,7 +328,7 @@ export default function Home() {
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                 Architecture
               </div>
-              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
+              <h2 className="font-serif text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
                 Four layers. One stack.
               </h2>
             </div>
@@ -387,7 +387,7 @@ export default function Home() {
                 <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                   MPP Gateway
                 </div>
-                <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
+                <h2 className="font-serif text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
                   40+ services.<br />
                   <em className="italic text-accent">No API keys.</em>
                 </h2>
@@ -493,7 +493,7 @@ export default function Home() {
             <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-5">
               Get started
             </div>
-            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-5">
+            <h2 className="font-serif text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-5">
               Start <em className="italic text-accent">building.</em>
             </h2>
             <p className="text-sm text-muted max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.7]">
