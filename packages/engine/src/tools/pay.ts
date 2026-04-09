@@ -39,7 +39,11 @@ Always use POST. Construct the URL from the gateway base + service path. Pass pa
 
 CRITICAL — non-retryable errors: If the result contains "doNotRetry": true or "paymentConfirmed": true, the user has ALREADY been charged. NEVER call pay_api again for the same request. Report the error to the user.
 
-Lob (postcards/letters): Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("from") is added automatically — do not include one. For postcards, include: to (name, address_line1, address_city, address_state, address_zip, address_country), front (HTML), back (HTML), size ("4x6").`,
+Lob (postcards/letters) — MULTI-STEP, NEVER skip:
+1. Generate design image FIRST via fal/fal-ai/flux/dev ($0.03). Show the image to the user as markdown ![design](url).
+2. Ask the user to confirm before mailing ("Here's the design. Print and mail for $1.00?").
+3. ONLY after user confirms: call lob/v1/postcards with the image URL in the front HTML (<img src="URL" style="width:100%;height:100%;object-fit:cover"/>).
+Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("from") is added automatically — do not include one.`,
   inputSchema: z.object({
     url: z.string().url(),
     method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).optional(),
