@@ -62,25 +62,6 @@ const TABS: TerminalTab[] = [
     ],
   },
   {
-    label: "Pay",
-    lines: [
-      { text: "$ t2000 pay mpp.t2000.ai/openai/chat", color: "white", delay: 0 },
-      { text: '  --data \'{"model":"gpt-4o","messages":[...]}\'', color: "dim", delay: 100 },
-      { text: "", delay: 400 },
-      { text: "  → POST mpp.t2000.ai/openai/chat", color: "dim", delay: 300 },
-      { text: "  ✓ Paid via MPP (tx: 7xQm3kLp...)", color: "green", delay: 500 },
-      { text: "  ← 200 OK  [342ms]", color: "white", delay: 300 },
-      { text: "", delay: 500 },
-      { text: "$ t2000 pay mpp.t2000.ai/elevenlabs/tts", color: "white", delay: 800 },
-      { text: '  --data \'{"text":"Hello from t2000"}\'', color: "dim", delay: 100 },
-      { text: "", delay: 400 },
-      { text: "  → POST mpp.t2000.ai/elevenlabs/tts", color: "dim", delay: 300 },
-      { text: "  ✓ Paid via MPP (tx: 2nRt8wZq...)", color: "green", delay: 500 },
-      { text: "  ← 200 OK  [1204ms]", color: "white", delay: 300 },
-      { text: "  Cost: $0.002 USDC", color: "dim", delay: 200 },
-    ],
-  },
-  {
     label: "Balance",
     lines: [
       { text: "$ t2000 balance", color: "white", delay: 0 },
@@ -105,9 +86,45 @@ const TABS: TerminalTab[] = [
     ],
   },
   {
+    label: "Pay",
+    lines: [
+      { text: "$ t2000 pay mpp.t2000.ai/openai/chat", color: "white", delay: 0 },
+      { text: '  --data \'{"model":"gpt-4o","messages":[...]}\'', color: "dim", delay: 100 },
+      { text: "", delay: 400 },
+      { text: "  → POST mpp.t2000.ai/openai/chat", color: "dim", delay: 300 },
+      { text: "  ✓ Paid via MPP (tx: 7xQm3kLp...)", color: "green", delay: 500 },
+      { text: "  ← 200 OK  [342ms]", color: "white", delay: 300 },
+      { text: "", delay: 500 },
+      { text: "$ t2000 pay mpp.t2000.ai/elevenlabs/tts", color: "white", delay: 800 },
+      { text: '  --data \'{"text":"Hello from t2000"}\'', color: "dim", delay: 100 },
+      { text: "", delay: 400 },
+      { text: "  → POST mpp.t2000.ai/elevenlabs/tts", color: "dim", delay: 300 },
+      { text: "  ✓ Paid via MPP (tx: 2nRt8wZq...)", color: "green", delay: 500 },
+      { text: "  ← 200 OK  [1204ms]", color: "white", delay: 300 },
+      { text: "  Cost: $0.002 USDC", color: "dim", delay: 200 },
+    ],
+  },
+  {
     label: "Receive",
-    disabled: true,
-    lines: [],
+    lines: [
+      { text: "$ t2000 receive 25", color: "white", delay: 0 },
+      { text: "", delay: 400 },
+      { text: "  ✓ Payment link created", color: "green", delay: 500 },
+      { text: "", delay: 200 },
+      { text: "  Amount    $25.00 USDC", color: "white", delay: 200 },
+      { text: "  Link      audric.ai/pay/t2k_8xNm...Qz3f", color: "cyan", delay: 200 },
+      { text: "  QR code   saved to ./qr-t2k_8xNm.png", color: "dim", delay: 200 },
+      { text: "  Expires   24h", color: "dim", delay: 200 },
+      { text: "", delay: 600 },
+      { text: "$ t2000 receive 10 --memo \"Coffee\"", color: "white", delay: 800 },
+      { text: "", delay: 400 },
+      { text: "  ✓ Payment link created", color: "green", delay: 500 },
+      { text: "", delay: 200 },
+      { text: "  Amount    $10.00 USDC", color: "white", delay: 200 },
+      { text: "  Memo      Coffee", color: "white", delay: 150 },
+      { text: "  Link      audric.ai/pay/t2k_3kRp...Lm7w", color: "cyan", delay: 200 },
+      { text: "  QR code   saved to ./qr-t2k_3kRp.png", color: "dim", delay: 200 },
+    ],
   },
 ];
 
@@ -215,8 +232,9 @@ export function TabbedTerminal() {
       >
         {activeTab === 0 && "One command sets up wallet, MCP, and safeguards"}
         {activeTab === 1 && "Save, send, borrow — all from the terminal"}
-        {activeTab === 2 && "Pay for any API with USDC — no keys, no signup"}
-        {activeTab === 3 && "Full portfolio view with DeFi positions and limits"}
+        {activeTab === 2 && "Full portfolio view with DeFi positions and limits"}
+        {activeTab === 3 && "Pay for any API with USDC — no keys, no signup"}
+        {activeTab === 4 && "Generate payment links and QR codes from the CLI"}
       </div>
     </div>
   );

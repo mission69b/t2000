@@ -114,9 +114,8 @@ export default function DocsPage() {
       <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background/90 backdrop-blur-sm">
         <Link
           href="/"
-          className="font-mono text-sm text-accent tracking-[0.08em] flex items-center gap-2"
+          className="font-mono text-[13px] font-medium text-foreground tracking-[0.08em]"
         >
-          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
           t2000
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6">
@@ -144,7 +143,7 @@ export default function DocsPage() {
             <span className="block w-8 h-px bg-accent" />
             Developer hub
           </div>
-          <h1 className="font-serif text-[36px] sm:text-[clamp(40px,5vw,56px)] leading-[1.1] text-foreground mb-4 font-normal">
+          <h1 className="text-[36px] sm:text-[44px] leading-[1.1] tracking-[-1px] text-foreground mb-4 font-normal">
             Documentation
           </h1>
           <p className="text-sm sm:text-base text-muted leading-[1.7] max-w-[560px]">
