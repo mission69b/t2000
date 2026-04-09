@@ -104,28 +104,6 @@ const TABS: TerminalTab[] = [
       { text: "  Cost: $0.002 USDC", color: "dim", delay: 200 },
     ],
   },
-  {
-    label: "Receive",
-    lines: [
-      { text: "$ t2000 receive 25", color: "white", delay: 0 },
-      { text: "", delay: 400 },
-      { text: "  ✓ Payment link created", color: "green", delay: 500 },
-      { text: "", delay: 200 },
-      { text: "  Amount    $25.00 USDC", color: "white", delay: 200 },
-      { text: "  Link      audric.ai/pay/t2k_8xNm...Qz3f", color: "cyan", delay: 200 },
-      { text: "  QR code   saved to ./qr-t2k_8xNm.png", color: "dim", delay: 200 },
-      { text: "  Expires   24h", color: "dim", delay: 200 },
-      { text: "", delay: 600 },
-      { text: "$ t2000 receive 10 --memo \"Coffee\"", color: "white", delay: 800 },
-      { text: "", delay: 400 },
-      { text: "  ✓ Payment link created", color: "green", delay: 500 },
-      { text: "", delay: 200 },
-      { text: "  Amount    $10.00 USDC", color: "white", delay: 200 },
-      { text: "  Memo      Coffee", color: "white", delay: 150 },
-      { text: "  Link      audric.ai/pay/t2k_3kRp...Lm7w", color: "cyan", delay: 200 },
-      { text: "  QR code   saved to ./qr-t2k_3kRp.png", color: "dim", delay: 200 },
-    ],
-  },
 ];
 
 const COLOR_MAP: Record<string, string> = {
@@ -234,7 +212,6 @@ export function TabbedTerminal() {
         {activeTab === 1 && "Save, send, borrow — all from the terminal"}
         {activeTab === 2 && "Full portfolio view with DeFi positions and limits"}
         {activeTab === 3 && "Pay for any API with USDC — no keys, no signup"}
-        {activeTab === 4 && "Generate payment links and QR codes from the CLI"}
       </div>
     </div>
   );
