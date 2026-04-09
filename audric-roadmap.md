@@ -1040,6 +1040,26 @@ Goals need a persistent visual presence beyond chat. When the user sets a goal v
 
 Effort: 3 days
 
+#### Goals v2 — evolve from savings goals to life goals (future)
+
+The v1 savings goals track USDC savings balance only. This is deliberately narrow for launch but the concept should expand once more product surface exists. The refactor is a schema extension (not a rewrite) — add `goalType` and `trackingMetric` columns.
+
+**Goal types to support:**
+
+| Type | Tracks against | Example | Unlocked by |
+|------|---------------|---------|-------------|
+| `savings` | USDC savings balance | "Save $500 for Thailand" | Live (v1) |
+| `wealth` | Total portfolio value (savings + wallet + investments) | "Grow portfolio to $100k by 2027" | Swap + portfolio tracking |
+| `investment` | Specific asset holdings | "Accumulate $10k in Gold and BTC" | Swap + DCA (3.3) |
+| `earning` | Store revenue / yield earned | "Earn $1,000 from my first product" | Store (Phase 5) |
+| `compound` | Cumulative yield over time | "Earn $500 in passive yield this year" | Yield tracking API |
+
+**Check-in cadence:** Weekly + monthly summaries for aspirational goals instead of daily briefing progress. Daily 0.001% changes on a $100k goal are noise. "You're up $47 this week, on track for year-end" is motivating.
+
+**Schema change:** One migration — add `goalType TEXT DEFAULT 'savings'` and `trackingMetric TEXT DEFAULT 'savings_balance'` to `SavingsGoal`. Existing goals auto-classify as `savings` type. Engine tools get a `goalType` input parameter. Briefing cron routes to the right metric per type.
+
+**Timing:** Refactor when Store (Phase 5) or DCA (3.3) ships — whichever comes first. Until then, savings-only goals cover the live product surface.
+
 ### 1.5 New user onboarding — meet your copilot
 
 Users who sign up receive \$0.25 USDC sponsored from the Sponsor address managed by the ECS server (already implemented — Enoki sponsors gas, the \$0.25 USDC comes from the sponsor wallet). Without guidance, many will see a small balance and leave. The onboarding converts that sponsored amount into an activated user who understands what Audric *is*, not just one feature.

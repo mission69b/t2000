@@ -130,7 +130,9 @@
 | 5.7 | Storefront content catalogue | — | not started | 5.1 | audric | — |
 | 5.8 | In-chat marketplace recommendations | — | not started | 5.1 | both | — |
 
-**Critical path:** 5.1 unblocks nearly everything. 5.4 (Walrus + Seal) is independent.
+| 5.9 | Goals v2 — life goals (wealth, investment, earning) | 2d | not started | 3.3 or 5.1 | both | Extend `SavingsGoal` with `goalType` + `trackingMetric` columns. Types: savings (live), wealth (total portfolio), investment (specific assets), earning (Store revenue), compound (cumulative yield). Weekly/monthly check-ins instead of daily. Refactor when Store or DCA ships. Spec: `audric-roadmap.md` §1.4 |
+
+**Critical path:** 5.1 unblocks nearly everything. 5.4 (Walrus + Seal) is independent. 5.9 triggers on first of DCA (3.3) or Store (5.1).
 
 ---
 
