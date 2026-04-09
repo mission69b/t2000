@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 interface TerminalTab {
   label: string;
   lines: TabLine[];
+  disabled?: boolean;
 }
 
 interface TabLine {
@@ -103,6 +104,11 @@ const TABS: TerminalTab[] = [
       { text: "    Health factor  ∞  (no active loan)", color: "green", delay: 150 },
     ],
   },
+  {
+    label: "Receive",
+    disabled: true,
+    lines: [],
+  },
 ];
 
 const COLOR_MAP: Record<string, string> = {
@@ -162,12 +168,12 @@ export function TabbedTerminal() {
           {TABS.map((tab, i) => (
             <button
               key={tab.label}
-              onClick={() => { setActiveTab(i); setCycle((c) => c + 1); }}
-              className="px-3.5 py-1 font-mono text-[11px] tracking-wide rounded-sm transition-all cursor-pointer"
+              onClick={() => { if (!tab.disabled) { setActiveTab(i); setCycle((c) => c + 1); } }}
+              className={`px-3.5 py-1 font-mono text-[11px] tracking-wide rounded-sm transition-all ${tab.disabled ? 'cursor-default opacity-40' : 'cursor-pointer'}`}
               style={{
-                background: i === activeTab ? "var(--n100)" : "transparent",
-                color: i === activeTab ? "var(--n900)" : "var(--n500)",
-                fontWeight: i === activeTab ? 600 : 400,
+                background: !tab.disabled && i === activeTab ? "var(--n100)" : "transparent",
+                color: !tab.disabled && i === activeTab ? "var(--n900)" : "var(--n500)",
+                fontWeight: !tab.disabled && i === activeTab ? 600 : 400,
               }}
             >
               {tab.label}
