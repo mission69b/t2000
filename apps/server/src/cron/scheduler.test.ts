@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('fetchNotificationUsers', () => {
-  it('fetches users for the given UTC hour', async () => {
+  it('fetches all eligible users', async () => {
     const mockUsers = [
       {
         userId: 'u1',
@@ -34,11 +34,11 @@ describe('fetchNotificationUsers', () => {
       json: async () => ({ users: mockUsers }),
     });
 
-    const users = await fetchNotificationUsers(14);
+    const users = await fetchNotificationUsers();
     expect(users).toEqual(mockUsers);
 
     const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://test.audric.ai/api/internal/notification-users?hour=14');
+    expect(url).toBe('https://test.audric.ai/api/internal/notification-users');
     expect(opts.headers['x-internal-key']).toBe('test-internal-key');
   });
 
@@ -48,14 +48,14 @@ describe('fetchNotificationUsers', () => {
       status: 500,
     });
 
-    const users = await fetchNotificationUsers(8);
+    const users = await fetchNotificationUsers();
     expect(users).toEqual([]);
   });
 
   it('returns empty array on network error', async () => {
     mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
 
-    const users = await fetchNotificationUsers(8);
+    const users = await fetchNotificationUsers();
     expect(users).toEqual([]);
   });
 });
