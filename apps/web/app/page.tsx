@@ -14,6 +14,7 @@ const PACKAGES = [
     pkg: "@t2000/cli",
     desc: "Save, send, borrow, pay — all from the command line.",
     install: "npm i -g @t2000/cli",
+    href: "https://www.npmjs.com/package/@t2000/cli",
   },
   {
     icon: "{ }",
@@ -21,6 +22,7 @@ const PACKAGES = [
     pkg: "@t2000/sdk",
     desc: "Wallet management, balance queries, transaction building.",
     install: "npm i @t2000/sdk",
+    href: "https://www.npmjs.com/package/@t2000/sdk",
   },
   {
     icon: "⟡",
@@ -28,6 +30,7 @@ const PACKAGES = [
     pkg: "@t2000/mcp",
     desc: "25 tools, 16 prompts. Works with Claude, Cursor, any MCP client.",
     install: "npx @t2000/mcp",
+    href: "https://www.npmjs.com/package/@t2000/mcp",
   },
   {
     icon: "◈",
@@ -35,6 +38,7 @@ const PACKAGES = [
     pkg: "@t2000/engine",
     desc: "Conversational finance runtime. Streaming, tools, sessions.",
     install: "npm i @t2000/engine",
+    href: "https://www.npmjs.com/package/@t2000/engine",
   },
   {
     icon: "⇌",
@@ -42,6 +46,7 @@ const PACKAGES = [
     pkg: "mpp.t2000.ai",
     desc: "Pay-per-use APIs for agents. No keys, just USDC.",
     install: "POST mpp.t2000.ai/{service}",
+    href: "https://mpp.t2000.ai",
   },
 ];
 
@@ -298,9 +303,12 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-px bg-border border border-border">
             {PACKAGES.map((pkg) => (
-              <div
+              <a
                 key={pkg.title}
-                className="bg-surface p-6 sm:p-7 lg:p-8 relative overflow-hidden group transition-colors hover:bg-[rgba(0,214,143,0.03)]"
+                href={pkg.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-surface p-6 sm:p-7 lg:p-8 relative overflow-hidden group transition-colors hover:bg-[rgba(0,214,143,0.03)] no-underline"
               >
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent scale-x-0 origin-left transition-transform duration-400 group-hover:scale-x-100" />
                 <span className="text-[24px] sm:text-[28px] block mb-3">{pkg.icon}</span>
@@ -308,7 +316,7 @@ export default function Home() {
                   {pkg.title}
                 </div>
                 <div className="font-mono text-[11px] text-accent tracking-[0.05em] mb-4">
-                  {pkg.pkg}
+                  {pkg.pkg} <span className="text-dim opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
                 </div>
                 <p className="text-[13px] text-muted leading-[1.7] mb-5">
                   {pkg.desc}
@@ -316,7 +324,7 @@ export default function Home() {
                 <div className="font-mono text-[11px] text-accent bg-accent-dim px-3 py-2 tracking-wide overflow-x-auto scrollbar-hide">
                   {pkg.install}
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </section>
