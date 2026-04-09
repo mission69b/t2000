@@ -9,6 +9,15 @@ const FEATURE_KEY = 'briefing';
 const BRIEFING_CHARGE = 5000n; // $0.005 USDC (6 decimals)
 const MIN_IDLE_USDC = 1; // only send if user has >= $1 idle or savings
 
+export interface GoalProgress {
+  id: string;
+  name: string;
+  emoji: string;
+  targetAmount: number;
+  progress: number;
+  remaining: number;
+}
+
 export interface BriefingContent {
   earned: number;
   savingsBalance: number;
@@ -19,6 +28,7 @@ export interface BriefingContent {
   debtBalance: number;
   cta: { type: string; label: string; amount?: number } | null;
   variant: 'savings' | 'idle' | 'debt_warning';
+  goals?: GoalProgress[];
 }
 
 function deriveCta(content: BriefingContent): BriefingContent['cta'] {
@@ -123,12 +133,27 @@ function buildEmailHtml(content: BriefingContent, timezoneOffset: number): strin
     ? `<a href="https://audric.ai/action?type=${content.cta.type}${content.cta.amount ? `&amount=${content.cta.amount}` : ''}" style="display:inline-block;background:#111;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;margin-top:16px;">${content.cta.label} →</a>`
     : '';
 
+  const goalsHtml = content.goals?.length
+    ? `<div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb;">
+        <p style="color:#9ca3af;font-size:12px;margin:0 0 8px;">Savings Goals</p>
+        ${content.goals.map((g) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span>${g.emoji}</span>
+          <span style="color:#374151;font-size:13px;flex:1;">${g.name}</span>
+          <span style="color:#111;font-size:13px;font-weight:600;">${g.progress}%</span>
+        </div>
+        <div style="height:4px;background:#f3f4f6;border-radius:2px;margin-bottom:10px;">
+          <div style="height:100%;background:${g.progress >= 100 ? '#10b981' : '#111'};border-radius:2px;width:${g.progress}%;"></div>
+        </div>`).join('')}
+      </div>`
+    : '';
+
   return `
     <div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
       <p style="color:#9ca3af;font-size:12px;margin:0 0 16px;">☀️ Morning Briefing · ${dateLabel}</p>
       <h2 style="margin:0 0 8px;color:#111;font-size:18px;font-weight:600;">${headline}</h2>
       <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 16px;">${body}</p>
       ${ctaHtml}
+      ${goalsHtml}
       <p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #e5e7eb;padding-top:16px;">
         <a href="https://audric.ai/settings?section=features" style="color:#9ca3af;">Turn off in Settings</a>
         · <a href="https://audric.ai" style="color:#9ca3af;">Open Audric</a>
@@ -177,6 +202,156 @@ async function storeBriefing(
   }
 }
 
+interface InternalGoal {
+  id: string;
+  name: string;
+  emoji: string;
+  targetAmount: number;
+  deadline: string | null;
+  currentMilestone: number;
+  status: string;
+}
+
+async function fetchGoals(walletAddress: string): Promise<InternalGoal[]> {
+  try {
+    const res = await fetch(
+      `${getInternalUrl()}/api/internal/goals?address=${walletAddress}`,
+      { headers: { 'x-internal-key': getInternalKey() } },
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { goals?: InternalGoal[] };
+    return data.goals ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function buildGoalProgress(goals: InternalGoal[], savingsBalance: number): GoalProgress[] {
+  return goals.map((g) => {
+    const progress = Math.min(Math.round((savingsBalance / g.targetAmount) * 100), 100);
+    return {
+      id: g.id,
+      name: g.name,
+      emoji: g.emoji,
+      targetAmount: g.targetAmount,
+      progress,
+      remaining: Math.max(g.targetAmount - savingsBalance, 0),
+    };
+  });
+}
+
+const MILESTONES = [25, 50, 75, 100] as const;
+
+function detectNewMilestone(progress: number, currentMilestone: number): number | null {
+  for (const m of MILESTONES) {
+    if (progress >= m && currentMilestone < m) return m;
+  }
+  return null;
+}
+
+async function updateGoalMilestone(goalId: string, milestone: number, status?: string): Promise<void> {
+  try {
+    const body: Record<string, unknown> = { goalId, currentMilestone: milestone };
+    if (status) body.status = status;
+    await fetch(`${getInternalUrl()}/api/internal/goals`, {
+      method: 'PATCH',
+      headers: {
+        'x-internal-key': getInternalKey(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // best effort
+  }
+}
+
+async function storeAppEvent(walletAddress: string, type: string, title: string, details?: unknown): Promise<void> {
+  try {
+    await fetch(`${getInternalUrl()}/api/internal/app-event`, {
+      method: 'POST',
+      headers: {
+        'x-internal-key': getInternalKey(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ address: walletAddress, type, title, details }),
+    });
+  } catch {
+    // best effort
+  }
+}
+
+function buildMilestoneEmailHtml(
+  goalName: string,
+  goalEmoji: string,
+  milestone: number,
+  savingsBalance: number,
+  targetAmount: number,
+): string {
+  const isComplete = milestone >= 100;
+  const headline = isComplete
+    ? `${goalEmoji} You reached your "${goalName}" goal!`
+    : `${goalEmoji} ${milestone}% of your "${goalName}" goal!`;
+  const body = isComplete
+    ? `Congratulations! Your savings reached ${fmtUsd(savingsBalance)}, hitting your ${fmtUsd(targetAmount)} target. Time to set a new goal or celebrate.`
+    : `Your savings balance (${fmtUsd(savingsBalance)}) is ${milestone}% of the way to ${fmtUsd(targetAmount)}. Keep going!`;
+
+  return `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+      <p style="color:#9ca3af;font-size:12px;margin:0 0 16px;">🎯 Goal Milestone</p>
+      <h2 style="margin:0 0 8px;color:#111;font-size:18px;font-weight:600;">${headline}</h2>
+      <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 16px;">${body}</p>
+      <div style="height:6px;background:#f3f4f6;border-radius:3px;margin-bottom:16px;">
+        <div style="height:100%;background:${isComplete ? '#10b981' : '#111'};border-radius:3px;width:${Math.min(milestone, 100)}%;"></div>
+      </div>
+      <a href="https://audric.ai/settings?section=goals" style="display:inline-block;background:#111;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;">${isComplete ? 'Set a new goal' : 'View goals'} →</a>
+      <p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #e5e7eb;padding-top:16px;">
+        <a href="https://audric.ai/settings?section=features" style="color:#9ca3af;">Notification settings</a>
+        · <a href="https://audric.ai" style="color:#9ca3af;">Open Audric</a>
+      </p>
+    </div>
+  `.trim();
+}
+
+async function processMilestones(
+  user: NotificationUser,
+  goals: InternalGoal[],
+  savingsBalance: number,
+): Promise<void> {
+  for (const goal of goals) {
+    const progress = Math.min(Math.round((savingsBalance / goal.targetAmount) * 100), 100);
+    const newMilestone = detectNewMilestone(progress, goal.currentMilestone);
+
+    if (newMilestone === null) continue;
+
+    await updateGoalMilestone(
+      goal.id,
+      newMilestone,
+      newMilestone >= 100 ? 'completed' : undefined,
+    );
+
+    await storeAppEvent(user.walletAddress, 'goal_milestone', `${goal.emoji} ${goal.name} — ${newMilestone}%`, {
+      goalId: goal.id,
+      goalName: goal.name,
+      milestone: newMilestone,
+      savingsBalance,
+      targetAmount: goal.targetAmount,
+    });
+
+    await sendEmail({
+      to: user.email,
+      subject: newMilestone >= 100
+        ? `🎉 You reached your "${goal.name}" savings goal!`
+        : `${goal.emoji} ${newMilestone}% — "${goal.name}" savings goal`,
+      html: buildMilestoneEmailHtml(goal.name, goal.emoji, newMilestone, savingsBalance, goal.targetAmount),
+      tags: [
+        { name: 'category', value: 'goal_milestone' },
+        { name: 'milestone', value: String(newMilestone) },
+      ],
+    });
+  }
+}
+
 async function checkBriefingExists(walletAddress: string, date: string): Promise<boolean> {
   try {
     const res = await fetch(
@@ -216,15 +391,21 @@ async function processUser(
     const alreadySent = await checkBriefingExists(user.walletAddress, date);
     if (alreadySent) return 'skipped';
 
-    const summary = await getFinancialSummary(client, user.walletAddress, {
-      allowanceId: user.allowanceId,
-    });
+    const [summary, goals] = await Promise.all([
+      getFinancialSummary(client, user.walletAddress, {
+        allowanceId: user.allowanceId,
+      }),
+      fetchGoals(user.walletAddress),
+    ]);
 
     if (summary.savingsBalance === 0 && summary.idleUsdc < MIN_IDLE_USDC) {
       return 'skipped';
     }
 
     const content = buildBriefingContent(summary);
+    if (goals.length > 0) {
+      content.goals = buildGoalProgress(goals, summary.savingsBalance);
+    }
 
     // Charge allowance first — if it fails, skip this user
     let chargeDigest: string | null = null;
@@ -256,6 +437,12 @@ async function processUser(
     }
 
     await storeBriefing(user.walletAddress, date, content, chargeDigest);
+
+    if (goals.length > 0) {
+      await processMilestones(user, goals, summary.savingsBalance).catch((err) =>
+        console.warn(`[briefing] Milestone check failed for ${user.walletAddress}:`, err instanceof Error ? err.message : err),
+      );
+    }
 
     return 'sent';
   } catch (err) {
