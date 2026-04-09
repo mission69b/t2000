@@ -132,7 +132,7 @@ const COLOR_MAP: Record<string, string> = {
   green: "var(--accent)",
   yellow: "#FEBC2E",
   dim: "var(--n500)",
-  white: "var(--terminal-text)",
+  white: "var(--foreground)",
   cyan: "#60A5FA",
 };
 
@@ -167,13 +167,13 @@ export function TabbedTerminal() {
 
   return (
     <div
-      className="w-full max-w-[580px] rounded-lg overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
-      style={{ background: "var(--terminal-bg)", border: "1px solid var(--terminal-border)" }}
+      className="w-full max-w-[580px] rounded-lg overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
     >
       {/* Tab bar */}
       <div
         className="flex items-center gap-0 px-4 py-2.5"
-        style={{ borderBottom: "1px solid var(--terminal-border)" }}
+        style={{ borderBottom: "1px solid var(--border)" }}
       >
         <div className="flex items-center gap-1.5 mr-4">
           <div className="h-[10px] w-[10px] rounded-full bg-[#ff5f57]" />
@@ -188,8 +188,8 @@ export function TabbedTerminal() {
               onClick={() => { if (!tab.disabled) { setActiveTab(i); setCycle((c) => c + 1); } }}
               className={`px-3.5 py-1 font-mono text-[11px] tracking-wide rounded-sm transition-all ${tab.disabled ? 'cursor-default opacity-40' : 'cursor-pointer'}`}
               style={{
-                background: !tab.disabled && i === activeTab ? "var(--n100)" : "transparent",
-                color: !tab.disabled && i === activeTab ? "var(--n900)" : "var(--n500)",
+                background: !tab.disabled && i === activeTab ? "var(--n700)" : "transparent",
+                color: !tab.disabled && i === activeTab ? "var(--n100)" : "var(--n500)",
                 fontWeight: !tab.disabled && i === activeTab ? 600 : 400,
               }}
             >
@@ -228,7 +228,7 @@ export function TabbedTerminal() {
       {/* Caption */}
       <div
         className="px-5 py-2.5 font-mono text-[10px] tracking-wide text-center"
-        style={{ color: "var(--n500)", borderTop: "1px solid var(--terminal-border)" }}
+        style={{ color: "var(--n500)", borderTop: "1px solid var(--border)" }}
       >
         {activeTab === 0 && "One command sets up wallet, MCP, and safeguards"}
         {activeTab === 1 && "Save, send, borrow — all from the terminal"}
