@@ -79,32 +79,62 @@ const MPP_SERVICES = [
   { name: "Short.io", id: "shortio" },
 ];
 
-const INTEGRATIONS = [
-  "Claude Desktop",
-  "Cursor",
-  "Claude Code",
-  "Windsurf",
-  "OpenAI Codex",
-  "GitHub Copilot",
-  "Amp",
-  "Any MCP client",
+const THREE_PRODUCTS = [
+  {
+    tag: "Consumer",
+    name: "Audric",
+    desc: "The consumer app. Banking by conversation. Sign in with Google. Chat with your money.",
+    cta: { label: "Try Audric", href: AUDRIC_URL, primary: true },
+  },
+  {
+    tag: "Gateway",
+    name: "Gateway",
+    desc: "Pay-per-use API gateway for AI agents. 40+ services, 90+ endpoints. One USDC wallet. No API keys.",
+    cta: { label: "mpp.t2000.ai", href: "https://mpp.t2000.ai", primary: false },
+    accent: true,
+  },
+  {
+    tag: "Developer",
+    name: "Build",
+    desc: "SDK, MCP, Engine, CLI. The full stack that powers Audric — open for builders.",
+    cta: { label: "See what\u2019s included", href: "#stack", primary: false },
+  },
 ];
 
-const PRODUCTS = [
-  { name: "Savings", desc: "Earn yield on USDC", icon: "◎" },
-  { name: "Pay", desc: "APIs via micropayments", icon: "⬡" },
-  { name: "Send", desc: "Instant USDC transfers", icon: "→" },
-  { name: "Credit", desc: "Borrow against savings", icon: "⊞" },
-  { name: "Receive", desc: "Accept payments", icon: "↙" },
+const PRIMITIVES = [
+  { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
+  { title: "DeFi access", desc: "Savings at 3\u20138% APY, credit/borrow \u2014 NAVI Protocol on Sui mainnet." },
+  { title: "Allowance model", desc: "On-chain scoped permissions. User-funded micropayment budget. Deduct $0.005/day \u2014 never more than the cap." },
+  { title: "Intent signing", desc: "Short-lived signed intents. Every autonomous action is cryptographically scoped and time-bounded." },
+  { title: "Financial data", desc: "getFinancialSummary(), health factor, rates, yield \u2014 free with the SDK." },
+  { title: "Payment rail", desc: "40+ APIs via MPP gateway. No API keys. Pay per request in USDC." },
+];
+
+const ARCH_LAYERS = [
+  { label: "Layer 1 \u2014 Sui L1", content: "400ms finality \u00B7 USDC \u00B7 PTBs \u00B7 zkLogin primitive" },
+  {
+    label: "Layer 2 \u2014 Protocols",
+    split: [
+      { title: "t2000 (owned)", items: "allowance.move \u00B7 treasury.move", sub: "Scoped \u00B7 time-bounded \u00B7 daily-limited" },
+      { title: "Third-party (via MCP)", items: "NAVI lending + yield \u00B7 Cetus swaps" },
+    ],
+  },
+  {
+    label: "Layer 3 \u2014 t2000 Stack",
+    split: [
+      { title: "Packages (npm)", items: "@t2000/sdk \u00B7 @t2000/engine \u00B7 @t2000/mcp \u00B7 @t2000/cli \u00B7 @suimpp/mpp" },
+      { title: "Services", items: "api.t2000.ai (gas station + indexer) \u00B7 mpp.t2000.ai (gateway, 40+ services)", sub: "Identity: zkLogin via Enoki (web) \u00B7 Ed25519 AES-256-GCM (CLI)" },
+    ],
+  },
 ];
 
 export default function Home() {
   return (
     <>
       {/* ── Header ── */}
-      <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="font-mono text-sm text-accent tracking-[0.08em] flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_8px_var(--accent)]" />
+      <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="font-mono text-sm text-foreground tracking-[0.08em] flex items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_6px_var(--accent)]" />
           t2000
         </div>
         <nav className="flex items-center gap-4 sm:gap-6">
@@ -130,7 +160,7 @@ export default function Home() {
           </a>
           <a
             href={AUDRIC_URL}
-            className="px-4 sm:px-5 py-2 min-h-[36px] flex items-center bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
+            className="px-4 sm:px-5 py-2 min-h-[36px] flex items-center bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:bg-accent hover:text-foreground"
           >
             Try Audric
           </a>
@@ -138,7 +168,7 @@ export default function Home() {
       </header>
 
       <div className="min-h-screen bg-background">
-        <div className="fixed inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(0,214,143,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,214,143,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        <div className="fixed inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
         {/* ── Hero ── */}
         <section className="relative z-1 min-h-screen grid grid-cols-1 lg:grid-cols-2 gap-0 pt-16 sm:pt-20">
@@ -162,7 +192,7 @@ export default function Home() {
             <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
               <a
                 href={AUDRIC_URL}
-                className="px-6 sm:px-8 py-3 sm:py-3.5 min-h-[44px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80 flex items-center gap-2"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 min-h-[44px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:bg-accent hover:text-foreground flex items-center gap-2"
               >
                 Try Audric <span aria-hidden="true">&rarr;</span>
               </a>
@@ -184,39 +214,70 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── What Audric does — the product showcase ── */}
+        {/* ── S2: Three products ── */}
         <section className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface">
-          <div className="max-w-[900px] mx-auto">
-            <div className="text-center mb-10 sm:mb-14">
+          <div className="max-w-[1000px] mx-auto">
+            <div className="mb-10 sm:mb-14">
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-                The product
+                What we build
               </div>
-              <h2 className="font-serif text-[28px] sm:text-[clamp(32px,4vw,48px)] font-normal leading-[1.1] text-foreground mb-4">
-                Audric is banking by conversation.
+              <h2 className="font-serif text-[28px] sm:text-[clamp(32px,4vw,48px)] font-normal leading-[1.1] text-foreground">
+                Three products. One stack.
               </h2>
-              <p className="text-sm text-muted leading-[1.7] max-w-[520px] mx-auto">
-                Sign in with Google. Talk to your money. Earn yield, pay for APIs, send USDC,
-                borrow against savings — all by chat. No seed phrase. No crypto jargon.
-              </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-px bg-border border border-border mb-10">
-              {PRODUCTS.map((p) => (
-                <div key={p.name} className="bg-surface p-4 sm:p-5 text-center">
-                  <div className="text-lg sm:text-xl mb-2 text-accent">{p.icon}</div>
-                  <div className="text-sm font-medium text-foreground mb-1">{p.name}</div>
-                  <div className="text-xs text-muted">{p.desc}</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border border border-border">
+              {THREE_PRODUCTS.map((p) => (
+                <div key={p.name} className={`bg-background p-7 sm:p-8 flex flex-col ${p.accent ? 'border-t-2 border-t-accent' : ''}`}>
+                  <div className="font-mono text-[9px] tracking-[0.15em] uppercase text-muted mb-3">{p.tag}</div>
+                  <h3 className={`text-[22px] font-semibold mb-3 tracking-tight ${p.accent ? 'text-accent' : 'text-foreground'}`}>{p.name}</h3>
+                  <p className="text-[13px] text-muted leading-[1.7] mb-6 flex-1">{p.desc}</p>
+                  <a
+                    href={p.cta.href}
+                    className={`inline-flex items-center gap-2 px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase transition-all w-fit ${
+                      p.cta.primary
+                        ? 'bg-foreground text-background hover:bg-accent hover:text-foreground'
+                        : 'border border-border-bright text-muted hover:text-foreground hover:border-foreground'
+                    }`}
+                  >
+                    {p.cta.label} <span aria-hidden="true">&rarr;</span>
+                  </a>
                 </div>
               ))}
             </div>
+          </div>
+        </section>
 
-            <div className="text-center">
-              <a
-                href={AUDRIC_URL}
-                className="inline-flex items-center gap-2 px-6 py-3 min-h-[40px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
-              >
-                Try Audric <span aria-hidden="true">&rarr;</span>
-              </a>
+        {/* ── S3: What you get ── */}
+        <section className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
+          <div className="max-w-[900px] mx-auto">
+            <div className="mb-10 sm:mb-14">
+              <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+                What you get
+              </div>
+              <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-4">
+                One install. Your agent gets<br />
+                <em className="italic text-accent">a financial brain.</em>
+              </h2>
+              <p className="text-sm text-muted leading-[1.7] max-w-[540px] mt-3">
+                Wallet, DeFi access, allowance model, intent signing, payment rail — open source, non-custodial, Sui-native.
+              </p>
+            </div>
+
+            <div className="border border-border bg-background overflow-hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-2">
+                {PRIMITIVES.map((item, i) => (
+                  <div
+                    key={item.title}
+                    className={`p-5 sm:p-6 ${
+                      i < PRIMITIVES.length - 1 ? 'border-b border-border' : ''
+                    } ${i % 2 === 0 ? 'sm:border-r sm:border-border' : ''}`}
+                  >
+                    <div className="text-[11px] font-semibold text-foreground mb-1">{item.title}</div>
+                    <p className="font-mono text-[10px] text-muted leading-[1.7]">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -270,7 +331,7 @@ export default function Home() {
           id="gateway"
           className="relative z-1 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface overflow-hidden"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,214,143,0.04)_0%,transparent_60%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,214,143,0.06)_0%,transparent_60%)] pointer-events-none" />
 
           <div className="relative px-6 sm:px-8 lg:px-20">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-14">
@@ -310,13 +371,13 @@ export default function Home() {
 
           {/* Marquee row 1 */}
           <div className="relative mb-2.5 overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-[var(--surface)] to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-[var(--surface)] to-transparent z-10 pointer-events-none" />
+            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-surface to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-surface to-transparent z-10 pointer-events-none" />
             <div className="flex animate-marquee w-max">
               {[...MPP_SERVICES.slice(0, 16), ...MPP_SERVICES.slice(0, 16)].map((svc, i) => (
                 <div
                   key={`m1-${svc.id}-${i}`}
-                  className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-surface mx-1 sm:mx-1.5 shrink-0"
+                  className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-background mx-1 sm:mx-1.5 shrink-0"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -336,13 +397,13 @@ export default function Home() {
 
           {/* Marquee row 2 (reverse) */}
           <div className="relative mb-10 sm:mb-14 overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-[var(--surface)] to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-[var(--surface)] to-transparent z-10 pointer-events-none" />
+            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-surface to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-surface to-transparent z-10 pointer-events-none" />
             <div className="flex animate-marquee-reverse w-max">
               {[...MPP_SERVICES.slice(16), ...MPP_SERVICES.slice(16)].map((svc, i) => (
                 <div
                   key={`m2-${svc.id}-${i}`}
-                  className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-surface mx-1 sm:mx-1.5 shrink-0"
+                  className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 border border-border bg-background mx-1 sm:mx-1.5 shrink-0"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -365,7 +426,7 @@ export default function Home() {
               href="https://mpp.t2000.ai/services"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 min-h-[40px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:opacity-80"
+              className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 min-h-[40px] bg-foreground text-background font-mono text-[10px] tracking-[0.12em] uppercase transition-all hover:bg-accent hover:text-foreground"
             >
               Explore all services <span aria-hidden="true">&rarr;</span>
             </a>
@@ -375,90 +436,57 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Integrations ── */}
-        <section
-          id="integrations"
-          className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border"
-        >
-          <div className="max-w-[900px] mx-auto">
-            <div className="text-center mb-12 sm:mb-16">
+        {/* ── S5: Architecture ── */}
+        <section className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
+          <div className="max-w-[700px] mx-auto">
+            <div className="text-center mb-10 sm:mb-14">
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-                Integrations
+                Architecture
               </div>
-              <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
-                Any AI that speaks{" "}
-                <em className="italic text-accent">MCP.</em>
+              <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,48px)] font-normal leading-[1.1] text-foreground">
+                Four layers. One stack.
               </h2>
-              <p className="text-sm text-muted leading-[1.7] max-w-[480px] mx-auto">
-                Every AI platform that supports MCP gets t2000 for free.
-                No adapters. No plugins. No code changes.
-              </p>
             </div>
 
-            <div className="mb-12 sm:mb-16">
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-4 sm:gap-0 max-w-[700px] mx-auto">
-                <div className="bg-surface border border-border-bright p-5 sm:p-6 text-center">
-                  <div className="font-mono text-[10px] tracking-[0.15em] uppercase text-dim mb-3">Your AI</div>
-                  <div className="flex flex-col gap-1.5">
-                    {["Claude Desktop", "Cursor", "Windsurf", "Any MCP client"].map((name) => (
-                      <div key={name} className="text-[12px] text-muted">{name}</div>
-                    ))}
-                  </div>
-                </div>
-                <div className="hidden sm:flex flex-col items-center px-2">
-                  <div className="w-8 h-px bg-accent/40" />
-                  <div className="font-mono text-[9px] text-accent/60 mt-1">stdio</div>
-                </div>
-                <div className="sm:hidden flex justify-center">
-                  <div className="h-6 w-px bg-accent/40" />
-                </div>
-                <div className="bg-surface border border-accent/30 p-5 sm:p-6 text-center relative">
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 font-mono text-[9px] px-2 py-0.5 bg-accent text-background tracking-[0.1em] uppercase font-medium">
-                    MCP
-                  </div>
-                  <div className="font-mono text-[10px] tracking-[0.15em] uppercase text-accent mb-3">@t2000/mcp</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-accent-dim px-2.5 py-1.5">
-                      <div className="text-[18px] sm:text-[20px] font-medium text-accent leading-none">25</div>
-                      <div className="font-mono text-[9px] text-accent/70 tracking-wider uppercase">tools</div>
+            <div className="flex flex-col items-center">
+              {ARCH_LAYERS.map((layer, i) => (
+                <div key={layer.label} className="w-full">
+                  {i > 0 && (
+                    <div className="text-center text-accent text-lg py-1">↓</div>
+                  )}
+                  <div className="border border-border bg-background p-4 sm:p-5 text-center">
+                    <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-2">
+                      {layer.label}
                     </div>
-                    <div className="bg-accent-dim px-2.5 py-1.5">
-                      <div className="text-[18px] sm:text-[20px] font-medium text-accent leading-none">16</div>
-                      <div className="font-mono text-[9px] text-accent/70 tracking-wider uppercase">prompts</div>
-                    </div>
+                    {layer.content && (
+                      <div className="text-[13px] font-medium text-foreground">{layer.content}</div>
+                    )}
+                    {layer.split && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 text-left">
+                        {layer.split.map((col) => (
+                          <div key={col.title}>
+                            <div className="text-[10px] font-semibold text-accent mb-1">{col.title}</div>
+                            <div className="text-[12px] text-foreground">{col.items}</div>
+                            {col.sub && <div className="font-mono text-[9px] text-muted mt-1">{col.sub}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="hidden sm:flex flex-col items-center px-2">
-                  <div className="w-8 h-px bg-accent/40" />
-                  <div className="font-mono text-[9px] text-accent/60 mt-1">SDK</div>
+              ))}
+
+              <div className="text-center text-accent text-lg py-1">↓</div>
+              <div className="grid grid-cols-2 gap-px bg-border border border-border w-full">
+                <div className="bg-surface p-4 text-center">
+                  <div className="font-semibold text-foreground mb-1 text-sm">Audric</div>
+                  <div className="font-mono text-[10px] text-muted">Consumer app — audric.ai</div>
                 </div>
-                <div className="sm:hidden flex justify-center">
-                  <div className="h-6 w-px bg-accent/40" />
-                </div>
-                <div className="bg-surface border border-border-bright p-5 sm:p-6 text-center">
-                  <div className="font-mono text-[10px] tracking-[0.15em] uppercase text-dim mb-3">On-chain</div>
-                  <div className="flex flex-col gap-1.5">
-                    {["Savings + Credit", "Payments (MPP)", "Send + Receive", "Sui mainnet"].map((item) => (
-                      <div key={item} className="text-[12px] text-muted">{item}</div>
-                    ))}
-                  </div>
+                <div className="bg-surface p-4 text-center">
+                  <div className="font-semibold text-foreground mb-1 text-sm">Your app</div>
+                  <div className="font-mono text-[10px] text-muted">Build on t2000</div>
                 </div>
               </div>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
-              {INTEGRATIONS.map((name, i) => (
-                <span
-                  key={name}
-                  className={`font-mono text-[10px] tracking-[0.08em] uppercase px-3.5 sm:px-4 py-1.5 sm:py-2 border transition-all hover:border-accent hover:text-foreground hover:bg-accent-dim ${
-                    i < 2
-                      ? "border-accent/30 text-foreground bg-accent-dim"
-                      : "border-border-bright text-muted"
-                  }`}
-                >
-                  {name}
-                </span>
-              ))}
             </div>
           </div>
         </section>
@@ -468,7 +496,7 @@ export default function Home() {
           id="install"
           className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-24 lg:py-32 border-t border-border text-center overflow-hidden"
         >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-[radial-gradient(ellipse,rgba(0,214,143,0.08)_0%,transparent_70%)] pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-[radial-gradient(ellipse,rgba(0,214,143,0.1)_0%,transparent_70%)] pointer-events-none" />
 
           <div className="relative">
             <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-5">

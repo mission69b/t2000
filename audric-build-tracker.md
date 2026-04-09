@@ -68,6 +68,7 @@
 | 1.4.1 | Feedback loop data layer | 2d | done | 1.4 | both | ✅ `AdviceLog` + `SavingsGoalDeposit` tables, `AppEvent` +4 fields (adviceLogId, goalId, suiTxVerified, source). `record_advice` engine tool (auto permission), `handleAdviceResults()` in chat route, `buildAdviceContext()` memory injection (last 5 advice, 30d). Outcome checker + follow-up queue deferred to Phase 3.3 |
 | 1.5 | New user onboarding + ToS | 1.5d | done | 0.6 | both | ✅ **ToS:** 2 new sections (Fees + Allowance), `tosAcceptedAt` on User, consent checkbox in `/setup`, catch-up banner for existing users. **Onboarding:** WelcomeCard (Passport + Save/Swap/Send/Ask), `onboardedAt` first-run detection, `useUserStatus` hook, 24h follow-up cron job (3 email variants). Migration backfills existing users |
 | — | AI session charge ($0.01/session) | 0.5d | done | allowance.move | both | ✅ `POST /api/internal/charge` on t2000 server (Hono, x-internal-key auth). Audric chat route calls on new sessions via `chargeSession()`. Fire-and-forget, graceful degradation. Uses `ALLOWANCE_FEATURES.SESSION` (4) |
+| — | Grace period for empty allowance | 1d | not started | session charge | both | When balance=0: allow 5 free sessions then hard wall + top-up CTA. Needs: distinct `insufficient_allowance` error from charge endpoint, synchronous charge, grace counter in `UserPreferences.limits`, reset on success, banner + wall UI. Briefings just stop. **Trigger: first real "insufficient balance" in prod logs** |
 
 **Week 2 total: ~12 days effort.** Onboarding wizard done ✅ (unblocks paid features). 1.3 + 1.3.1 done ✅ (first paid feature live). 1.4 → 1.4.1 → 1.5 are the remaining sequence.
 
@@ -151,6 +152,7 @@
 | **t2000.ai white UI refresh** | not started | **Ship parallel to Phase 1 Week 2.** 7 sections: Hero → Three products → What you get → Five packages → Architecture → Gateway → Get started. Wireframes + spec done in brand plan + `marketing/wireframes.html` |
 | **docs.t2000.ai** | not started | After landing pages. GitBook or Mintlify. Content from CLAUDE.md, ARCHITECTURE.md, audric-roadmap.md, audric-security-specs.md, package READMEs |
 | **Stats API for landing pages** | done | ✅ GET /api/stats (public, 60s cache). Aggregates: totalUsers, totalSessions, totalTurns, totalTokens, totalCostUsd, avgCostPerSession, cacheSavingsPercent, totalTransactions, topTools. Piggybacks on SessionUsage table from CostTracker |
+| **suimpp.dev reskin** | not started | Apply Agentic Design System (white theme, proper typography, green accent). Currently generic blue-gray. Do after audric.ai + t2000.ai landing pages ship |
 | **Brand naming locked** | done | Audric Passport (identity), Audric Store / "the agent store" (marketplace). Dual-naming for payment: "Audric Pay" on consumer surfaces (audric.ai), "Gateway" on t2000.ai, "suimpp" for open protocol (suimpp.dev), `@suimpp/mpp` npm package. "Audric Wallet" and "Sui Pay" not used. See `marketing/landing-page-spec.md` |
 
 ---
