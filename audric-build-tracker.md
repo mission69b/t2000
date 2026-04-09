@@ -96,7 +96,7 @@
 | 3.1 | Auto-compound rewards | 3d | not started | 0.7 | both | — |
 | 3.2 | USDC rate monitoring alerts | 1d | not started | 1.1 | both | Settings UI already built. Backend cron job + Resend template only |
 | 3.3 | Scheduled actions (DCA) + trust ladder UI | 5d | not started | 1.1 | both | Includes 0.1% swap fee disclosure |
-| 3.3.1 | Feedback loop processing layer | 3d | not started | 1.4.1, 3.3 | both | `OutcomeCheck` + `FollowUpQueue` tables, `runOutcomeChecks()` + `detectAnomalies()` + `deliverFollowUps()` in daily ECS cron, `canSendFollowUp()` fatigue cap (2/day non-urgent), follow-up card (reuses BriefingCard), `follow_up` activity feed chip. Spec: `audric-feedback-loop-spec.md` |
+| 3.3.1 | Feedback loop processing layer | 3d | not started | 1.4.1, 3.3 | both | `OutcomeCheck` + `FollowUpQueue` tables, `runOutcomeChecks()` + `detectAnomalies()` + `deliverFollowUps()` in daily ECS cron, `canSendFollowUp()` fatigue cap (2/day non-urgent), follow-up card (reuses BriefingCard), `follow_up` activity feed chip, `SavingsGoalDeposit` write (thread goalId through pending_action→resume pipeline). Spec: `audric-feedback-loop-spec.md` |
 | 3.4 | MPP consumer discovery | 3d | not started | — | audric | Pre-Store: users discover AI services (Suno, ElevenLabs) via Audric Pay |
 | 3.4.1 | MPP reputation layer (Spec 3) | 2d | not started | 3.4 | t2000 | `computeScore()`, `scoreToTier()`, tiered rate limits (new→trusted→established→premium). Data already in ProtocolFeeLedger. Spec: `spec/audric-security-specs.md` |
 | ~~3.5~~ | ~~Gifting reminders~~ | — | skipped | — | — | Deferred post-Store. Low priority |
