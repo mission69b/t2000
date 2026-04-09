@@ -35,7 +35,11 @@ export const payApiTool = buildTool({
 
 Use mpp_services tool first to discover available services and get the correct endpoint URL, required body parameters, and pricing. Then call this tool with the full URL and JSON body.
 
-Always use POST. Construct the URL from the gateway base + service path. Pass parameters as a JSON string in body.`,
+Always use POST. Construct the URL from the gateway base + service path. Pass parameters as a JSON string in body.
+
+CRITICAL — non-retryable errors: If the result contains "doNotRetry": true or "paymentConfirmed": true, the user has ALREADY been charged. NEVER call pay_api again for the same request. Report the error to the user.
+
+Lob (postcards/letters): Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("from") is added automatically — do not include one. For postcards, include: to (name, address_line1, address_city, address_state, address_zip, address_country), front (HTML), back (HTML), size ("4x6").`,
   inputSchema: z.object({
     url: z.string().url(),
     method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).optional(),
