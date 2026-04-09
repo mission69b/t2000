@@ -10,6 +10,9 @@ function getClient(): SuiJsonRpcClient {
   return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 
+// Briefings fire once daily at this UTC hour (≈ 8am US East, 2pm UK, 8pm Thailand).
+const BRIEFING_UTC_HOUR = 13;
+
 async function runCron(): Promise<void> {
   const startTime = Date.now();
   const utcHour = process.env.CRON_OVERRIDE_HOUR
@@ -18,9 +21,9 @@ async function runCron(): Promise<void> {
 
   console.log(`[cron] Starting notification run for UTC hour ${utcHour}`);
 
-  const users = await fetchNotificationUsers(utcHour);
+  const users = await fetchNotificationUsers();
   if (users.length === 0) {
-    console.log('[cron] No users eligible this hour — exiting');
+    console.log('[cron] No users found — exiting');
     return;
   }
 
@@ -30,11 +33,15 @@ async function runCron(): Promise<void> {
 
   // --- Hourly jobs (every run) ---
   results.push(await runHFAlerts(client, users));
-  results.push(await runBriefings(client, users));
   results.push(await runRateAlerts(client, users));
 
-  // --- Daily jobs (UTC midnight only) ---
-  if (utcHour === 0) {
+  // --- Daily briefings (fixed UTC hour only) ---
+  if (utcHour === BRIEFING_UTC_HOUR) {
+    results.push(await runBriefings(client, users));
+  }
+
+  // --- Future daily jobs ---
+  if (utcHour === BRIEFING_UTC_HOUR) {
     // TODO: Phase 3.1 — runAutoCompound(client, users)
     // TODO: Phase 2.2 — runInvoiceChecks(client, users)
     // TODO: Phase 3.5 — runGiftingReminders(client, users)

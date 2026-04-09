@@ -9,12 +9,12 @@ function getInternalKey(): string {
 }
 
 /**
- * Fetch users eligible for notifications at the given UTC hour.
- * Calls the audric app's internal API which queries its own NeonDB
- * for users whose timezoneOffset maps to 8am at this UTC hour.
+ * Fetch all eligible notification users from the audric internal API.
+ * No timezone filtering — all users are returned and the cron decides
+ * which jobs to run based on the current UTC hour.
  */
-export async function fetchNotificationUsers(utcHour: number): Promise<NotificationUser[]> {
-  const url = `${getInternalUrl()}/api/internal/notification-users?hour=${utcHour}`;
+export async function fetchNotificationUsers(): Promise<NotificationUser[]> {
+  const url = `${getInternalUrl()}/api/internal/notification-users`;
 
   try {
     const res = await fetch(url, {

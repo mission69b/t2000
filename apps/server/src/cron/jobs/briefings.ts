@@ -74,10 +74,8 @@ function fmtPct(n: number): string {
   return `${(n * 100).toFixed(2)}%`;
 }
 
-function userLocalDateStr(timezoneOffset: number): string {
-  const now = new Date();
-  const localMs = now.getTime() - timezoneOffset * 60 * 1000;
-  return new Date(localMs).toISOString().slice(0, 10);
+function utcDateStr(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function briefingDateLabel(timezoneOffset: number): string {
@@ -208,7 +206,7 @@ async function processUser(
   client: SuiJsonRpcClient,
   user: NotificationUser,
 ): Promise<ProcessResult> {
-  const date = userLocalDateStr(user.timezoneOffset);
+  const date = utcDateStr();
 
   try {
     if (!user.allowanceId) {
@@ -297,4 +295,4 @@ export async function runBriefings(
   return { job: 'briefings', processed: eligible.length, sent, errors };
 }
 
-export { buildBriefingContent, buildSubject, buildEmailHtml, deriveCta, deriveVariant, userLocalDateStr };
+export { buildBriefingContent, buildSubject, buildEmailHtml, deriveCta, deriveVariant, utcDateStr };
