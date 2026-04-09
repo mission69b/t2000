@@ -1040,35 +1040,67 @@ Goals need a persistent visual presence beyond chat. When the user sets a goal v
 
 Effort: 3 days
 
-### 1.5 New user onboarding — put \$0.25 to work
+### 1.5 New user onboarding — meet your copilot
 
-Users who sign up receive \$0.25 USDC sponsored from the Sponsor address managed by the ECS server (already implemented — Enoki sponsors gas, the \$0.25 USDC comes from the sponsor wallet). Without guidance, many will see a small balance and leave. A first-run prompt converts that sponsored amount into an activated user.
+Users who sign up receive \$0.25 USDC sponsored from the Sponsor address managed by the ECS server (already implemented — Enoki sponsors gas, the \$0.25 USDC comes from the sponsor wallet). Without guidance, many will see a small balance and leave. The onboarding converts that sponsored amount into an activated user who understands what Audric *is*, not just one feature.
 
-- Trigger: first sign-in, balance = \$0.25, no prior transactions (check via `balance_check` tool)
+#### Terms of Service gate (ships with 1.5)
 
-- First-run welcome message (auto-sent by engine on first session):
+Already charging via allowance without ToS — fix this first.
+
+- **Update existing `/terms` page:** Add "Fees and Charges" section disclosing: swap overlay fee (0.1%), allowance model (on-chain USDC escrow deducted for paid features), session charge (\$0.01/AI session), morning briefing (\$0.005/day), yield spread. Add "Allowance System" section explaining non-custodial spending cap, deposit/withdraw anytime.
+- **Add `tosAcceptedAt DateTime?` to User model** — Prisma migration.
+- **Consent gate in `/setup` wizard:** Checkbox "I agree to the Terms of Service" (linked) required before allowance creation. Stamps `tosAcceptedAt` on proceed.
+- **Existing user catch-up:** On `/new`, if `tosAcceptedAt` is null, show a non-dismissible bottom banner: "We've updated our Terms of Service." Tap to review → accept → stamps `tosAcceptedAt` via API. Cannot dismiss without accepting.
+
+Effort: 0.5 days
+
+#### Welcome card — product surface, not just savings
+
+- **Trigger:** `onboardedAt === null` on User record when loading `/new` dashboard.
+
+- **WelcomeCard component** (pinned at top of chat tab, similar style to `BriefingCard`):
 
 ```
-Welcome to Audric. You have $0.25 USDC to get started.
+Welcome to Audric
 
-Here's what you can do:
+Your AI copilot for money on Sui.
 
-💰 Save it — earn ~5% APY on your USDC
-🔄 Swap it — trade for SUI, GOLD, or 13 other tokens
-💬 Ask me anything — "what can you do?" to explore
+You signed in with Google — no seed phrase, no extension.
+That's your Audric Passport. A wallet you already own.
 
-What would you like to try first?
+You have $0.25 USDC to explore:
+
+💰 Save      Earn 4.85% APY while you sleep
+💱 Swap      Trade tokens in one message
+💸 Send      Pay anyone, anywhere
+🤖 Ask       Translate, weather, images — Audric pays
+
+               [Save $0.25]  [Ask Audric]
 ```
 
-- One-tap save action pre-fills the confirm flow via chip
+- **Two CTAs:** "Save \$0.25" pre-fills the save chip flow. "Ask Audric" pre-fills a message: "What can you do?" — lets the copilot showcase itself.
+- **Content adapts** to balance state: if USDC > 0 show save amount, if already saved show "You're earning" variant, if zero balance show wallet address + copy + "Fund your wallet" CTA.
+- **Stamps `onboardedAt`** when user interacts with any CTA or dismisses the card.
 
-- Follow-up 24h later (via morning briefing infra from 1.3): 'Your \$0.25 is earning. Here is what else Audric can do for you.'
+#### Follow-up email (24h)
 
-- **Future expansion (Phase 5):** "Create and sell" — once the marketplace launches, the onboarding can add a third path: generate AI content and list it for sale. This turns the \$0.25 from a savings demo into a creative tool.
+Uses existing ECS cron + Resend infra (same pattern as morning briefing). One-time, not recurring.
 
-- **Already implemented:** Sponsor address funding, chip flows (Save, Swap, Receive). **Still needed:** first-run detection logic, welcome message, follow-up email
+- **Query:** Users where `onboardedAt` is 24–48h ago AND no `DailyBriefing` record (i.e., haven't been active long enough for briefings) AND no savings position (checked via `getFinancialSummary()`).
+- **Content adapts to behavior:**
+  - Saved → "Your \$0.25 is earning. Try asking Audric to translate something or check the weather."
+  - Used Pay → "You tried Audric Pay. Did you know you can earn yield on your USDC?"
+  - Did nothing → "Your \$0.25 is waiting. Here are 3 things to try." + deep links to `/action?type=save`, `/new?prefill=what+can+you+do`
+- **Idempotency:** Store as `AppEvent` type `onboarding_followup` — skip if already exists for this user.
 
-Effort: 1 day
+#### Future expansion (Phase 5)
+
+"Create and sell" — once the marketplace launches, the welcome card adds a 5th row: "🎨 Create — Generate AI content and sell it." This turns the \$0.25 from a financial demo into a creative tool.
+
+**Already implemented:** Sponsor address funding, chip flows (Save, Swap, Receive), `/setup` wizard, `BriefingCard` pattern, `?prefill` deep links, existing `/terms` page (13 sections). **Still needed:** fee disclosure sections in ToS, `tosAcceptedAt` field + consent gate, first-run detection (`onboardedAt`), WelcomeCard component, follow-up cron job, catch-up banner for existing users.
+
+Effort: 1.5 days (1d onboarding + 0.5d ToS)
 
 ### 1.6 Unified activity feed — with filter navigation — DONE
 

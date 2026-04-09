@@ -3,6 +3,7 @@ import { fetchNotificationUsers, reportNotifications } from './scheduler.js';
 import { runHFAlerts } from './jobs/hfAlerts.js';
 import { runBriefings } from './jobs/briefings.js';
 import { runRateAlerts } from './jobs/rateAlerts.js';
+import { runOnboardingFollowup } from './jobs/onboardingFollowup.js';
 import type { JobResult } from './types.js';
 
 function getClient(): SuiJsonRpcClient {
@@ -40,11 +41,15 @@ async function runCron(): Promise<void> {
     results.push(await runBriefings(client, users));
   }
 
+  // --- Daily onboarding follow-up (24h after sign-up) ---
+  if (utcHour === BRIEFING_UTC_HOUR) {
+    results.push(await runOnboardingFollowup(client));
+  }
+
   // --- Future daily jobs ---
   if (utcHour === BRIEFING_UTC_HOUR) {
     // TODO: Phase 3.1 — runAutoCompound(client, users)
     // TODO: Phase 2.2 — runInvoiceChecks(client, users)
-    // TODO: Phase 3.5 — runGiftingReminders(client, users)
   }
 
   // --- Per-schedule jobs (check nextRunAt) ---
