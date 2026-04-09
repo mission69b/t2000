@@ -30,17 +30,18 @@ t2000/
 └── audric-roadmap.md ← Product roadmap + build tracker
 ```
 
-### Product catalog (5 products, NOT 6)
+### Product catalog (6 products)
 
 | Product | Integration | Status |
 |---------|-------------|--------|
 | **Savings** | NAVI MCP + thin tx builders | Live |
 | **Pay** | MPP / t2000 gateway | Live |
 | **Send** | Direct Sui transactions | Live |
+| **Swap** | Cetus Aggregator V3 (20+ DEXs) | Live |
 | **Credit** | NAVI MCP + thin tx builders | Live |
 | **Receive** | Direct Sui transactions | Planned |
 
-**Invest and Swap are REMOVED.** Do not add them back. Savings covers yield. Swap is a utility within deposit flows, not a product. When protocols release MCPs, expansion is a config change.
+**Invest is REMOVED.** Do not add it back. Savings covers yield. When protocols release MCPs, expansion is a config change.
 
 ### MCP-first DeFi integration
 
@@ -54,7 +55,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 
 ## Critical Rules
 
-1. **Never add Invest or Swap as products.** Savings covers yield. Swap is a utility.
+1. **Never add Invest as a product.** Savings covers yield.
 2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP for reads, thin tx builders for writes.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.

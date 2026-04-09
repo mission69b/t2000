@@ -64,14 +64,14 @@
 | — | Allowance onboarding wizard (`/setup`) | 1d | done | allowance.move | audric | ✅ 4-step wizard, two-tx flow (create→deposit), `useAllowanceStatus` hook, /new→/setup redirect, Settings budget card, top-up mode, zero-balance UX. SDK 0.23.0 published |
 | 1.3 | Morning briefing (email + in-app card) | 3d | done | 1.1, allowance.move | both | ✅ ECS cron `runBriefings()`: getFinancialSummary → content → allowance deduct ($0.005) → Resend email → store via internal API. 3 variants (savings/idle/debt_warning), context-dependent CTAs, idempotency guard. DailyBriefing table, BriefingCard pinned on chat+activity, useOvernightBriefing hook. 18 unit tests |
 | 1.3.1 | Deep link action system | 1d | done | — | audric | ✅ /action page (save/repay/briefing/topup routing), ?prefill in /new auto-sends to engine, ?section in /settings. notification-users now returns allowanceId from UserPreferences |
-| 1.4 | Savings goals (chat + management UI) | 3d | not started | 0.3 | audric | USDC-denominated goals, milestone emails |
+| 1.4 | Savings goals (chat + management UI) | 3d | done | 0.3 | audric | ✅ SavingsGoal Prisma model + CRUD API, 4 engine tools (create/list/update/delete), Goals section in settings (GoalCard + GoalEditor), useGoals hook, progress bars in BriefingCard, cron milestone detection (25/50/75/100%) with celebration emails + AppEvents |
 | 1.4.1 | Feedback loop data layer | 2d | not started | 1.4 | both | `AdviceLog` + `SavingsGoalDeposit` tables, AppEvent extensions, `record_advice` engine tool, `handleAdviceResults()`, `buildAdviceContext()` system prompt injection. Spec: `audric-feedback-loop-spec.md` |
-| 1.5 | New user onboarding + ToS | 1.5d | not started | 0.6 | both | **ToS (0.5d):** Fee disclosures (swap 0.1%, allowance, session charge, yield spread), `tosAcceptedAt` on User, consent gate in `/setup`, catch-up banner for existing users. **Onboarding (1d):** WelcomeCard (Passport + Save/Swap/Send/Ask), first-run detection via `onboardedAt`, 24h follow-up email (behavior-adaptive) |
+| 1.5 | New user onboarding + ToS | 1.5d | done | 0.6 | both | ✅ **ToS:** 2 new sections (Fees + Allowance), `tosAcceptedAt` on User, consent checkbox in `/setup`, catch-up banner for existing users. **Onboarding:** WelcomeCard (Passport + Save/Swap/Send/Ask), `onboardedAt` first-run detection, `useUserStatus` hook, 24h follow-up cron job (3 email variants). Migration backfills existing users |
 | — | AI session charge ($0.01/session) | 0.5d | not started | allowance.move | both | Deducted via same ECS cron as briefing fees |
 
 **Week 2 total: ~12 days effort.** Onboarding wizard done ✅ (unblocks paid features). 1.3 + 1.3.1 done ✅ (first paid feature live). 1.4 → 1.4.1 → 1.5 are the remaining sequence.
 
-**Critical path:** allowance.move ✅, Spec 2 (session auth) ✅, digest replay protection ✅, 1.1 ✅ + 1.2 ✅ (Week 1 infra complete), onboarding wizard ✅ (paid features unblocked), 1.6 activity feed ✅, CostTracker ✅, 1.3 morning briefing ✅ + 1.3.1 deep links ✅. **Week 1 + Week 2 partially complete.** Next: 1.4 savings goals → 1.4.1 feedback loop data layer.
+**Critical path:** allowance.move ✅, Spec 2 (session auth) ✅, digest replay protection ✅, 1.1 ✅ + 1.2 ✅ (Week 1 infra complete), onboarding wizard ✅ (paid features unblocked), 1.6 activity feed ✅, CostTracker ✅, 1.3 morning briefing ✅ + 1.3.1 deep links ✅, 1.5 onboarding + ToS ✅, 1.4 savings goals ✅. **Next:** 1.4.1 feedback loop data layer → session charge.
 
 ---
 
