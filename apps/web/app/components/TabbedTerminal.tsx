@@ -61,6 +61,25 @@ const TABS: TerminalTab[] = [
     ],
   },
   {
+    label: "Pay",
+    lines: [
+      { text: "$ t2000 pay mpp.t2000.ai/openai/chat", color: "white", delay: 0 },
+      { text: '  --data \'{"model":"gpt-4o","messages":[...]}\'', color: "dim", delay: 100 },
+      { text: "", delay: 400 },
+      { text: "  → POST mpp.t2000.ai/openai/chat", color: "dim", delay: 300 },
+      { text: "  ✓ Paid via MPP (tx: 7xQm3kLp...)", color: "green", delay: 500 },
+      { text: "  ← 200 OK  [342ms]", color: "white", delay: 300 },
+      { text: "", delay: 500 },
+      { text: "$ t2000 pay mpp.t2000.ai/elevenlabs/tts", color: "white", delay: 800 },
+      { text: '  --data \'{"text":"Hello from t2000"}\'', color: "dim", delay: 100 },
+      { text: "", delay: 400 },
+      { text: "  → POST mpp.t2000.ai/elevenlabs/tts", color: "dim", delay: 300 },
+      { text: "  ✓ Paid via MPP (tx: 2nRt8wZq...)", color: "green", delay: 500 },
+      { text: "  ← 200 OK  [1204ms]", color: "white", delay: 300 },
+      { text: "  Cost: $0.002 USDC", color: "dim", delay: 200 },
+    ],
+  },
+  {
     label: "Balance",
     lines: [
       { text: "$ t2000 balance", color: "white", delay: 0 },
@@ -189,8 +208,9 @@ export function TabbedTerminal() {
         style={{ color: "var(--n500)", borderTop: "1px solid var(--terminal-border)" }}
       >
         {activeTab === 0 && "One command sets up wallet, MCP, and safeguards"}
-        {activeTab === 1 && "Save, send, borrow, pay — all from the terminal"}
-        {activeTab === 2 && "Full portfolio view with DeFi positions and limits"}
+        {activeTab === 1 && "Save, send, borrow — all from the terminal"}
+        {activeTab === 2 && "Pay for any API with USDC — no keys, no signup"}
+        {activeTab === 3 && "Full portfolio view with DeFi positions and limits"}
       </div>
     </div>
   );

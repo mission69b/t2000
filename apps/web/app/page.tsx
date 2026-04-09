@@ -133,8 +133,7 @@ export default function Home() {
     <>
       {/* ── Header ── */}
       <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="font-mono text-sm text-foreground tracking-[0.08em] flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse-dot shadow-[0_0_6px_var(--accent)]" />
+        <div className="font-mono text-[13px] font-medium text-foreground tracking-[0.08em]">
           t2000
         </div>
         <nav className="flex items-center gap-4 sm:gap-6">
@@ -176,7 +175,7 @@ export default function Home() {
               Agentic finance infrastructure
             </div>
 
-            <h1 className="font-serif text-[40px] sm:text-[clamp(48px,5vw,72px)] leading-[1.05] text-foreground mb-2 font-normal">
+            <h1 className="font-serif text-[40px] sm:text-[52px] leading-[1.05] tracking-[-2px] text-foreground mb-2 font-normal">
               The engine behind
               <br />
               <em className="italic text-accent">Audric.</em>
@@ -219,7 +218,7 @@ export default function Home() {
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                 What we build
               </div>
-              <h2 className="font-serif text-[28px] sm:text-[clamp(32px,4vw,48px)] font-normal leading-[1.1] text-foreground">
+              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
                 Three products. One stack.
               </h2>
             </div>
@@ -253,7 +252,7 @@ export default function Home() {
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                 What you get
               </div>
-              <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-4">
+              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-4">
                 One install. Your agent gets<br />
                 <em className="italic text-accent">a financial brain.</em>
               </h2>
@@ -281,21 +280,19 @@ export default function Home() {
         </section>
 
         {/* ── The stack ── */}
-        <section id="stack" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
+        <section id="stack" className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-16">
             <div>
               <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                 For developers
               </div>
-              <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
-                Five packages.
-                <br />
-                One <em className="italic text-accent">stack.</em>
+              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
+                Five packages.<br />
+                <em className="italic text-accent">Pick your depth.</em>
               </h2>
             </div>
-            <p className="text-sm text-muted leading-[1.7] max-w-[400px]">
-              From terminal commands to full conversational finance —
-              pick the integration level that fits.
+            <p className="text-sm text-muted leading-[1.7] max-w-[360px]">
+              From a single terminal command to a full conversational finance runtime — every layer is open source and composable.
             </p>
           </div>
 
@@ -324,39 +321,91 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ── Architecture ── */}
+        <section className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface">
+          <div className="max-w-[700px] mx-auto">
+            <div className="text-center mb-10 sm:mb-14">
+              <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
+                Architecture
+              </div>
+              <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
+                Four layers. One stack.
+              </h2>
+            </div>
+
+            <div className="flex flex-col items-center">
+              {ARCH_LAYERS.map((layer, i) => (
+                <div key={layer.label} className="w-full">
+                  {i > 0 && (
+                    <div className="text-center text-accent text-lg py-1">↓</div>
+                  )}
+                  <div className="border border-border bg-background p-4 sm:p-5 text-center">
+                    <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-2">
+                      {layer.label}
+                    </div>
+                    {layer.content && (
+                      <div className="text-[13px] font-medium text-foreground">{layer.content}</div>
+                    )}
+                    {layer.split && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 text-left">
+                        {layer.split.map((col) => (
+                          <div key={col.title}>
+                            <div className="text-[10px] font-semibold text-accent mb-1">{col.title}</div>
+                            <div className="text-[12px] text-foreground">{col.items}</div>
+                            {col.sub && <div className="font-mono text-[9px] text-muted mt-1">{col.sub}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              <div className="text-center text-accent text-lg py-1">↓</div>
+              <div className="grid grid-cols-2 gap-px bg-border border border-border w-full">
+                <div className="bg-background p-4 text-center">
+                  <div className="font-semibold text-foreground mb-1 text-sm">Audric</div>
+                  <div className="font-mono text-[10px] text-muted">Consumer app — audric.ai</div>
+                </div>
+                <div className="bg-background p-4 text-center">
+                  <div className="font-semibold text-foreground mb-1 text-sm">Your app</div>
+                  <div className="font-mono text-[10px] text-muted">Build on t2000</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Gateway ── */}
         <section
           id="gateway"
-          className="relative z-1 py-16 sm:py-20 lg:py-24 border-t border-border bg-surface overflow-hidden"
+          className="relative z-1 py-16 sm:py-20 lg:py-24 border-t border-border overflow-hidden"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,214,143,0.06)_0%,transparent_60%)] pointer-events-none" />
-
           <div className="relative px-6 sm:px-8 lg:px-20">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 items-end mb-10 sm:mb-14">
               <div>
                 <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
                   MPP Gateway
                 </div>
-                <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground">
-                  40+ services.
-                  <br />
+                <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
+                  40+ services.<br />
                   <em className="italic text-accent">No API keys.</em>
                 </h2>
               </div>
               <p className="text-sm text-muted leading-[1.7] max-w-[400px]">
                 Your agent calls MPP. MPP handles auth, billing, and routing.
-                From $0.001 per request.
+                Powered by suimpp. From $0.001/request.
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-px bg-border border border-border mb-10 sm:mb-14">
+            <div className="grid grid-cols-3 gap-px bg-border border border-border mb-10 sm:mb-14 max-w-[500px]">
               {[
                 { value: "41", label: "Services" },
                 { value: "90+", label: "Endpoints" },
-                { value: "$0.001", label: "Starting price" },
+                { value: "$0.001", label: "From" },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface px-5 py-5 sm:py-6 text-center">
-                  <div className="text-[24px] sm:text-[32px] font-medium text-foreground leading-none mb-1.5">
+                  <div className="text-[20px] sm:text-[24px] font-semibold text-foreground leading-none mb-1.5 tracking-tight">
                     {stat.value}
                   </div>
                   <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted">
@@ -369,8 +418,8 @@ export default function Home() {
 
           {/* Marquee row 1 */}
           <div className="relative mb-2.5 overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-surface to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-surface to-transparent z-10 pointer-events-none" />
+            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
             <div className="flex animate-marquee w-max">
               {[...MPP_SERVICES.slice(0, 16), ...MPP_SERVICES.slice(0, 16)].map((svc, i) => (
                 <div
@@ -395,8 +444,8 @@ export default function Home() {
 
           {/* Marquee row 2 (reverse) */}
           <div className="relative mb-10 sm:mb-14 overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-surface to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-surface to-transparent z-10 pointer-events-none" />
+            <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
             <div className="flex animate-marquee-reverse w-max">
               {[...MPP_SERVICES.slice(16), ...MPP_SERVICES.slice(16)].map((svc, i) => (
                 <div
@@ -434,75 +483,18 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── S5: Architecture ── */}
-        <section className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-20 lg:py-24 border-t border-border">
-          <div className="max-w-[700px] mx-auto">
-            <div className="text-center mb-10 sm:mb-14">
-              <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-4">
-                Architecture
-              </div>
-              <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,48px)] font-normal leading-[1.1] text-foreground">
-                Four layers. One stack.
-              </h2>
-            </div>
-
-            <div className="flex flex-col items-center">
-              {ARCH_LAYERS.map((layer, i) => (
-                <div key={layer.label} className="w-full">
-                  {i > 0 && (
-                    <div className="text-center text-accent text-lg py-1">↓</div>
-                  )}
-                  <div className="border border-border bg-background p-4 sm:p-5 text-center">
-                    <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-2">
-                      {layer.label}
-                    </div>
-                    {layer.content && (
-                      <div className="text-[13px] font-medium text-foreground">{layer.content}</div>
-                    )}
-                    {layer.split && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 text-left">
-                        {layer.split.map((col) => (
-                          <div key={col.title}>
-                            <div className="text-[10px] font-semibold text-accent mb-1">{col.title}</div>
-                            <div className="text-[12px] text-foreground">{col.items}</div>
-                            {col.sub && <div className="font-mono text-[9px] text-muted mt-1">{col.sub}</div>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              <div className="text-center text-accent text-lg py-1">↓</div>
-              <div className="grid grid-cols-2 gap-px bg-border border border-border w-full">
-                <div className="bg-surface p-4 text-center">
-                  <div className="font-semibold text-foreground mb-1 text-sm">Audric</div>
-                  <div className="font-mono text-[10px] text-muted">Consumer app — audric.ai</div>
-                </div>
-                <div className="bg-surface p-4 text-center">
-                  <div className="font-semibold text-foreground mb-1 text-sm">Your app</div>
-                  <div className="font-mono text-[10px] text-muted">Build on t2000</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* ── Get started ── */}
         <section
           id="install"
-          className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-24 lg:py-32 border-t border-border text-center overflow-hidden"
+          className="relative z-1 px-6 sm:px-8 lg:px-20 py-16 sm:py-24 lg:py-32 border-t border-border bg-surface text-center overflow-hidden"
         >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-[radial-gradient(ellipse,rgba(0,214,143,0.1)_0%,transparent_70%)] pointer-events-none" />
 
           <div className="relative">
             <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-accent mb-5">
               Get started
             </div>
-            <h2 className="font-serif text-[32px] sm:text-[clamp(32px,4vw,52px)] font-normal leading-[1.1] text-foreground mb-5">
-              Start{" "}
-              <em className="italic text-accent">building.</em>
+            <h2 className="text-[28px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground mb-5">
+              Start <em className="italic text-accent">building.</em>
             </h2>
             <p className="text-sm text-muted max-w-[500px] mx-auto mb-8 sm:mb-12 leading-[1.7]">
               Open source. Non-custodial. MIT licensed. Built on Sui.

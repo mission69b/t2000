@@ -20,10 +20,11 @@ export function InstallCommand({
   return (
     <button
       onClick={handleCopy}
-      className="group inline-flex items-center gap-3 border border-border-bright bg-surface px-6 py-4 rounded font-mono text-sm transition-all hover:border-accent hover:text-accent hover:shadow-[0_0_20px_var(--accent-glow)] cursor-pointer max-w-full overflow-x-auto scrollbar-hide"
+      className="group inline-flex items-center gap-3 px-7 py-4 rounded-md font-mono text-[13px] transition-all hover:shadow-[0_0_24px_var(--accent-glow)] cursor-pointer max-w-full overflow-x-auto scrollbar-hide"
+      style={{ background: "var(--terminal-bg)", border: "1px solid var(--terminal-border)" }}
     >
       <span className="text-accent shrink-0">$</span>
-      <span className="text-foreground whitespace-nowrap group-hover:text-accent transition-colors">{command}</span>
+      <span className="whitespace-nowrap transition-colors" style={{ color: "var(--terminal-text)" }}>{command}</span>
       <span className="ml-2 text-accent text-[11px] shrink-0">
         {copied ? "Copied!" : ""}
       </span>
