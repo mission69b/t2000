@@ -199,12 +199,10 @@ export default function Home() {
                 Try Audric <span aria-hidden="true">&rarr;</span>
               </a>
               <a
-                href={GITHUB_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#install"
                 className="px-6 sm:px-8 py-3 sm:py-3.5 min-h-[44px] text-muted font-mono text-[10px] tracking-[0.12em] uppercase border border-border-bright transition-all hover:text-foreground hover:border-foreground flex items-center"
               >
-                GitHub
+                Install
               </a>
             </div>
           </div>
