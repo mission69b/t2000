@@ -91,6 +91,22 @@ Supported assets: USDC (default), USDT, SUI, USDe, USDsui.
   Tx:  https://suiscan.xyz/mainnet/tx/...
 ```
 
+### `t2000 receive`
+
+```
+  ✓ Payment Request
+
+  Address:   0x8b3e...d412
+  Amount:    $25.00 USDC
+  Memo:      Office supplies
+  QR URI:    sui:0x8b3e...d412?amount=25&currency=USDC&memo=Office%20supplies
+
+  Share this address or scan the QR code to receive funds.
+```
+
+Options: `--amount <n>`, `--currency <sym>`, `--memo <text>`, `--label <text>`.
+All optional. Without `--amount`, shows address only. QR data URI encodes the Sui payment URI for wallet scanning.
+
 ### `t2000 borrow <amount>`
 
 ```

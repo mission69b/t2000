@@ -41,6 +41,7 @@ import type {
   PositionsResult,
   TransactionRecord,
   DepositInfo,
+  PaymentRequest,
   EarningsResult,
   FundStatusResult,
   ClaimRewardsResult,
@@ -607,6 +608,36 @@ export class T2000 extends EventEmitter<T2000Events> {
         `Or buy USDC on an exchange and withdraw to this address.`,
         `USDC contract: ${SUPPORTED_ASSETS.USDC.type}`,
       ].join('\n'),
+    };
+  }
+
+  receive(params?: { amount?: number; currency?: string; memo?: string; label?: string }): PaymentRequest {
+    const amount = params?.amount ?? null;
+    const currency = params?.currency ?? 'USDC';
+    const memo = params?.memo ?? null;
+    const label = params?.label ?? null;
+
+    const qrParts = [`sui:${this._address}`];
+    const queryParams: string[] = [];
+    if (amount != null) queryParams.push(`amount=${amount}`);
+    if (currency !== 'SUI') queryParams.push(`currency=${currency}`);
+    if (memo) queryParams.push(`memo=${encodeURIComponent(memo)}`);
+    if (label) queryParams.push(`label=${encodeURIComponent(label)}`);
+    const qrUri = queryParams.length > 0 ? `${qrParts[0]}?${queryParams.join('&')}` : qrParts[0];
+
+    const amountStr = amount != null ? `$${amount.toFixed(2)} ` : '';
+    const displayParts = [`Send ${amountStr}${currency} to ${truncateAddress(this._address)}`];
+    if (memo) displayParts.push(`Memo: ${memo}`);
+
+    return {
+      address: this._address,
+      network: 'mainnet',
+      amount,
+      currency,
+      memo,
+      label,
+      qrUri,
+      displayText: displayParts.join('\n'),
     };
   }
 

@@ -76,7 +76,8 @@ t2000 wraps financial primitives into a single interface:
 
 | Feature | What it does | How |
 |---------|-------------|-----|
-| **Checking** | Send and receive USDC | Direct Sui transfers |
+| **Checking** | Send USDC | Direct Sui transfers |
+| **Receive** | Payment requests with QR & address | Local generation, Sui payment URI |
 | **Savings** | Earn ~2–8% APY on idle funds | [NAVI](https://naviprotocol.io) (MCP reads + thin tx builders) |
 | **Credit** | Borrow USDC against savings | NAVI collateralized loans |
 | **Swap** | Trade any token pair on Sui | [Cetus Aggregator V3](https://www.cetus.zone) (20+ DEXs) |
@@ -97,6 +98,7 @@ Gas is invisible — auto-managed SUI with sponsored fallback. Multi-step operat
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
+| Receive | Free | Local payment request generation |
 | Swap | 0.1% | t2000 overlay fee; Cetus Aggregator network fees still apply |
 | Stake/Unstake | Free | VOLO protocol fees only |
 | Pay (MPP) | Free | Agent pays the API price, no surcharge |
@@ -113,6 +115,7 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 |----------|--------|-------------|
 | **Wallet** | `agent.balance()` | Available + savings + gas breakdown |
 | | `agent.send({ to, amount })` | Send USDC |
+| | `agent.receive({ amount?, memo? })` | Generate payment request with QR URI |
 | | `agent.history()` | Transaction log |
 | **Savings** | `agent.save({ amount })` | Deposit USDC to savings, earn APY |
 | | `agent.withdraw({ amount })` | Withdraw from savings (always USDC) |
@@ -154,7 +157,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-26 built-in tools (16 read, 10 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
+31 built-in tools (20 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 
@@ -165,6 +168,7 @@ Full reference: [`@t2000/engine` README](packages/engine)
 t2000 init                         Guided setup (wallet, AI, safeguards)
 t2000 balance                      Check balance
 t2000 send 10 USDC to 0x...       Send USDC
+t2000 receive --amount 25          Generate payment request with QR
 t2000 history                      Transaction history
 
 # Savings & DeFi
@@ -207,7 +211,7 @@ Connect Claude Desktop, Cursor, Windsurf, or any MCP client:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 30 tools, 16 prompts. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
+Auto-configures Claude Desktop + Cursor. 31 tools, 16 prompts. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
 
 ## MPP Payments
 

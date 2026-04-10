@@ -437,7 +437,7 @@ Urgent notifications (health factor, inbound payments) bypass MPP and call Resen
 |----------------------------------------------------|
 | > ~4 days | foundation for everything that follows |
 | > **Status:** All 10 items complete. Allowance top-up (0.8) deferred to Phase 1 but all other pre-work shipped. |
-| > **Releases:** t2000 v0.26.2 (SDK 0.22.3, Engine 0.7.6). Audric deployed with USDC-only enforcement, Swap chip, dust filtering, financial amount safety (flooring), and Cursor rules. |
+| > **Releases:** t2000 v0.26.2 (SDK 0.23.0, Engine 0.7.6). Audric deployed with USDC-only enforcement, Swap chip, dust filtering, financial amount safety (flooring), and Cursor rules. |
 
 ### 0.1 Conversation logging
 
@@ -804,7 +804,7 @@ Effort: ~1 hour
 
 Everything proactive depends on the notification infrastructure built in this phase. Build it once here — it powers every alert, briefing, and scheduled action that follows. The morning briefing is the forcing function that makes you build the backbone.
 
-**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). **Onboarding wizard** ✅ DONE — live at `audric.ai/setup`, SDK 0.23.0 published. Paid features are now unblocked. Notification infrastructure (1.1), health factor alerts (1.2, free), activity feed (1.6), and CostTracker are all done. **Week 1 complete.** Morning briefing (1.3) + deep links (1.3.1) are done. **Next: 1.4 (savings goals).**
+**Hard blocker: `allowance.move` contract.** ✅ DEPLOYED — fresh deploy with scoped allowance on mainnet (`0xd775…968ad`). **Onboarding wizard** ✅ DONE — live at `audric.ai/setup`, SDK 0.23.0 published. Paid features are now unblocked. Notification infrastructure (1.1), health factor alerts (1.2, free), activity feed (1.6), and CostTracker are all done. **Week 1 complete.** Morning briefing (1.3) + deep links (1.3.1) done. Savings goals (1.4) + feedback data layer (1.4.1) done. Onboarding + ToS (1.5) done. Session charge done. **Phase 1 complete.** Next: Phase 2 (Receive + payments) with Phase 2.5 (engine foundation) in parallel. Landing pages (audric.ai, t2000.ai, suimpp.dev) all shipped.
 
 ### 1.1 Notification infrastructure — ✅ DONE
 
@@ -820,7 +820,7 @@ Everything proactive depends on the notification infrastructure built in this ph
 
 - Settings UI toggles (hf_alert, briefing, rate_alert) ✅
 
-- Internal API auth (`T2000_INTERNAL_KEY`) between t2000 ECS and audric Vercel ✅
+- Internal API auth (`AUDRIC_INTERNAL_KEY`) between t2000 ECS and audric Vercel ✅
 
 - `CRON_OVERRIDE_HOUR` env var for manual testing ✅
 
@@ -1206,7 +1206,7 @@ The current `UnifiedTimeline` interleaves chat and feed items. The activity feed
 
 Each empty state has a contextual CTA that sends the relevant action to the chat.
 
-**Pagination:** Infinite scroll with `cursor` param on `GET /api/history?type=savings&cursor=xxx`. Load 20 items at a time. Show "Load more" button at bottom (not infinite scroll autofetch — saves API calls for mobile users).
+**Pagination:** Infinite scroll with `cursor` param on `GET /api/activity?cursor=xxx`. Load 20 items at a time. Show "Load more" button at bottom (not infinite scroll autofetch — saves API calls for mobile users).
 
 Effort: 3 days
 
@@ -1369,7 +1369,9 @@ Named invoices with line items, due date, and total. Generates a payment link au
 
 Effort: 3 days
 
-### 2.3 AlchemyPay fiat on/off-ramp (optional, on payment page)
+### ~~2.3 AlchemyPay fiat on/off-ramp~~ — DEFERRED post-Store
+
+> **Status:** Skipped from Phase 2. Not on the critical path. Can add later as a config change when Store ships.
 
 A 'Don't have USDC?' link on the payment page opens an AlchemyPay embed. The sender buys USDC via card, bank transfer, Apple Pay, or regional mobile wallet — destination is the recipient's Sui address. Audric touches zero fiat — AlchemyPay handles KYC (via Sumsub), compliance, and FX. Fee is ~1–2% on AlchemyPay's end, still beating the 3% card processing story.
 
@@ -1393,7 +1395,9 @@ Effort: 2 days
 
 Effort: 1 day
 
-### 2.5 Mini-storefront (sync products only)
+### ~~2.5 Mini-storefront~~ — SKIPPED (building real storefront in Phase 5)
+
+> **Status:** Skipped to avoid building twice. Phase 5 storefront supersedes this.
 
 The Phase 2 Receive infrastructure (payment links, public pages, indexer detection) is everything needed to run a basic storefront. Rather than waiting until Phase 5, ship a minimal storefront in Phase 2 with sync-only products — no async queue required. This provides real validation data before investing weeks into the async music and video features in Phase 5.
 
@@ -1406,6 +1410,21 @@ The Phase 2 Receive infrastructure (payment links, public pages, indexer detecti
 - 8% platform fee applies from day one. Powered by Audric badge on every storefront page.
 
 Effort: 2 days (Listing table + public page + payment link wiring, reuses Receive infrastructure)
+
+## Phase 2.5 — Engine foundation (parallel with Phase 2)
+
+> ~3 days | Zero feature risk — internal structural changes that prepare the engine for the Reasoning Engine + Intelligence Layer. Can run in parallel with Phase 2. **Must complete before Phase 3.5.**
+
+These are refactoring tasks with no user-facing changes:
+
+- **2.5.1** Extract `engine-context.ts` — move `buildAdviceContext` from `engine-factory.ts`, export it (0.5d)
+- **2.5.2** Restructure `buildSystemPrompt` — split static (cacheable) vs dynamic (per-session) blocks. Matches `spec/REASONING_ENGINE.md` prompt caching strategy (1d)
+- **2.5.3** `maxTokens: 2048 → 8192` (configurable) — current 2048 silently truncates when thinking is enabled (0.5h)
+- **2.5.4** `toolChoice: 'any' → 'auto'` with thinking guard — `'any'` forces tool use every turn, conflicts with thinking (0.5h)
+- **2.5.5** Settings > Memory page scaffold + nav entry — empty page populated when F3 ships (0.5d)
+- **2.5.6** Optional onboarding profile prompt — seeds `UserFinancialProfile` immediately instead of waiting 10 sessions (0.5d)
+
+Full task tracking in `audric-build-tracker.md` Phase 2.5.
 
 ## Phase 3 — Proactive agent + MPP discovery
 
@@ -1585,7 +1604,9 @@ Users have no idea what the Pay feature can do. A capabilities screen turns Pay 
 
 Effort: 3 days
 
-### 3.5 Gifting reminders — flowers, postcards, letters
+### ~~3.5 Gifting reminders~~ — DEFERRED post-Store
+
+> **Status:** Deferred. Low priority relative to intelligence layer. Phase 3.5 now refers to the Intelligence Layer in the build tracker.
 
 Audric is already aware of the user’s financial life — it should also be aware of the moments that matter. Gifting reminders use the proactive notification infrastructure from Phase 1, the MPP gateway for fulfilment, and the contacts system already in the SDK. Three days before a key date, Audric surfaces a nudge; the user replies and Audric places the order entirely by chat.
 
@@ -1610,6 +1631,41 @@ Effort: 3 days (flower API + reminder cron + chat parsing for personal dates)
 - Borrow APR: verify display is annualised, not per-period
 
 Effort: 1 day
+
+## Phase 3.5 — Intelligence Layer (~3 weeks)
+
+> Depends on Phase 2.5 (engine foundation) being complete and Phase 3 features (DCA, auto-compound, feedback processing) being stable. The full tool set must be built before wrapping intelligence around it.
+>
+> **Specs:** `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`
+
+This is the phase that makes Audric genuinely intelligent rather than just reliable. Three sub-phases:
+
+### RE Phase 1: Extended Thinking + F2, F4, F5 (~7 days)
+
+- Wire adaptive thinking to `AnthropicProvider` — `thinking: { type: 'adaptive' }` + `output_config: { effort }`
+- Complexity classifier — `classifyEffort()` routes `low`/`medium`/`high`/`max` per turn
+- Prompt caching — split static/dynamic system prompt, add `cache_control` breakpoints
+- Thinking display — `ReasoningAccordion` UI component, `thinking_delta` event streaming
+- F2: Proactive Awareness — prompt-only, `buildProactivenessInstructions()`
+- F4: Conversation State Machine — Redis manager, context injection, transitions in chat + resume + hf-alert routes
+- F5: Post-Action Self-Evaluation — prompt-only, `buildSelfEvaluationInstruction()`
+
+### RE Phase 2: Step Guards + F1 (~7 days)
+
+- Tool flags — `ToolFlags` type, tag all ~30 tools
+- Guard runner — priority tiers (Safety > Financial > UX), `GuardEvent` Prisma model
+- Preflight validation — country code, address, amount validation before tool execution
+- F1: User Financial Profile — Prisma migration, internal route, cron job, `buildProfileContext()`
+
+### RE Phase 3: Skill Recipes + F3 (~7 days)
+
+- Recipe format — YAML loader, trigger matching (longest match wins)
+- Financial recipes — `swap-and-save.yaml`, `safe-borrow.yaml`, `send-to-contact.yaml`, `portfolio-rebalance.yaml`, `emergency-withdraw.yaml`
+- Context compaction — summarise old turns at 85% context capacity
+- F3: Episodic Memory — Prisma migration, internal route, cron job, Settings > Memory page
+- Unified context assembly — `buildFullDynamicContext()`, wire to chat route
+
+Full task tracking and dependencies in `audric-build-tracker.md` Phase 3.5.
 
 ## Phase 4 — Async job queue
 
@@ -2009,9 +2065,11 @@ These are valid features that should not be built yet. Revisit when the core hab
 |--------------|--------------|-------------------------------------------------------------------------------------------------------------|----------------------|
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
 | **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
-| **Phase 1**  | Weeks 1–2    | ✅ allowance.move, ✅ Spec 2 (session auth), ✅ digest replay protection, ✅ notifications (1.1), ✅ HF alerts (1.2), ✅ onboarding wizard (SDK 0.23.0), ✅ activity feed (1.6), ✅ CostTracker + Stats API, ✅ morning briefing (1.3) + deep links (1.3.1). Remaining: goals (1.4), onboarding (1.5), session charge | Daily habit          |
-| **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, AlchemyPay on/off-ramp, send memo                                     | New acquisition      |
-| **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, gifting reminders, credit UX                     | Copilot moat         |
+| **Phase 1**  | Weeks 1–2    | ✅ COMPLETE. allowance.move, Spec 2, digest replay, notifications (1.1), HF alerts (1.2), onboarding wizard (SDK 0.23.0), activity feed (1.6), CostTracker + Stats API, morning briefing (1.3) + deep links (1.3.1), savings goals (1.4), feedback data layer (1.4.1), onboarding + ToS (1.5), session charge. Landing pages shipped (audric.ai, t2000.ai, suimpp.dev) | Daily habit          |
+| **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, send memo. **+ Rich UX P0:** card primitives, HealthCard, TransactionHistoryCard, SwapQuoteCard, enhanced receipts, AllowanceCard. Spec: `spec/audric-rich-ux-spec.md` | New acquisition + UX |
+| **Phase 2.5** | Parallel     | Engine foundation + **Rich UX P1:** ServiceCatalogCard, SearchResultsCard, allowance control tools (pause/limit/permissions). See `audric-build-tracker.md` | RE prerequisite + UX |
+| **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, credit UX. **+ Analytics:** portfolio snapshots, spending/yield/activity summaries, insight cards (idle USDC, HF warning), weekly briefing. ~~Gifting~~ deferred | Copilot moat + analytics |
+| **Phase 3.5** | ~3 weeks     | Intelligence Layer: Reasoning Engine (adaptive thinking, guards, recipes) + F1–F5 (profile, proactive awareness, memory, state machine, self-eval). **+ Rich UX P2:** StakingCard, ProtocolCard, PriceCard. Specs: `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`, `spec/audric-rich-ux-spec.md` | Agent intelligence   |
 | **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |
 | **Phase 5**  | Weeks 11–13  | audric.ai/username storefronts, song + art listing, tweet-to-pay, merch bundles (Printful), 8% platform fee | Creator acquisition  |
 

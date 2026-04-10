@@ -56,7 +56,7 @@ This is distinct from the existing notification infrastructure (Phase 1.1). Noti
 | `AppEvent` extensions | Adds `adviceLogId`, `goalId`, `suiTxVerified`, `source` to existing table — replaces a separate ActionRecord |
 | `OutcomeCheck` table | Stores outcome measurements from Sui verification |
 | `FollowUpQueue` table | Pending follow-ups with per-user daily cap enforcement |
-| `advice_given` engine event | Structured engine output replacing post-hoc regex classification |
+| `record_advice` engine tool | Structured advice recording replacing post-hoc regex classification |
 | Engine context injection | Past advice injected into system prompt each turn so Audric can reference its own history |
 | Outcome checker (ECS daily) | Daily batch comparing Postgres state to Sui state |
 | Follow-up generator | Produces contextual re-engagement messages |
@@ -65,7 +65,7 @@ This is distinct from the existing notification infrastructure (Phase 1.1). Noti
 
 - **Advice and actions are separate records.** Audric sometimes advises but does not act (user declines). It sometimes acts without explicit prior advice (automated rule execution). Tracking them independently enables accurate outcome attribution.
 - **AppEvent is the single audit trail.** There is no separate ActionRecord table. AppEvent is extended with advisory context fields so the same row serves both the activity feed and the feedback loop. Two parallel audit trails for the same transactions would drift.
-- **The engine is the source of truth for advice classification.** Post-hoc regex on assistant output is replaced by structured `advice_given` events emitted by the engine itself. The LLM knows when it's recommending an action vs answering a question — let it signal that explicitly.
+- **The engine is the source of truth for advice classification.** Post-hoc regex on assistant output is replaced by the structured `record_advice` tool called by the engine itself. The LLM knows when it's recommending an action vs answering a question — let it signal that explicitly.
 
 ---
 
@@ -100,7 +100,7 @@ model AdviceLog {
 }
 ```
 
-**When to write:** The engine emits one or more `advice_given` events per turn (see Engine Integration section). Each event item maps to one `AdviceLog` row. Multiple advice records per turn are supported — a turn that suggests both saving idle USDC and repaying debt writes two rows.
+**When to write:** The engine calls `record_advice` one or more times per turn (see Engine Integration section). Each call maps to one `AdviceLog` row. Multiple advice records per turn are supported — a turn that suggests both saving idle USDC and repaying debt writes two rows.
 
 **`followUpDue` values by advice type:**
 
@@ -146,7 +146,7 @@ const deposits = await db.savingsGoalDeposit.aggregate({
 const progress = (deposits._sum.amountUsdc ?? 0) / goal.targetAmount;
 ```
 
-**When to write:** When a user saves USDC and a `goalId` is present in the engine event context (because the save was goal-directed), write a `SavingsGoalDeposit` row alongside the `AppEvent` row. The `goalId` comes from the `advice_given` event or from the user explicitly naming a goal in their message.
+**When to write:** When a user saves USDC and a `goalId` is present in the engine event context (because the save was goal-directed), write a `SavingsGoalDeposit` row alongside the `AppEvent` row. The `goalId` comes from the `record_advice` tool call or from the user explicitly naming a goal in their message.
 
 ---
 
@@ -250,7 +250,7 @@ async function canSendFollowUp(userId: string, priority: string): Promise<boolea
 
 ## Engine integration
 
-### The advice_given engine event
+### The record_advice engine tool
 
 The v1.0 spec used post-hoc regex on the assistant's text output to classify advice. This approach was removed after review for three reasons:
 
@@ -804,14 +804,14 @@ Ship alongside savings goals since `SavingsGoal` is a dependency for goal-type o
 **Ship with Phase 1.4:**
 - `AdviceLog` + `SavingsGoalDeposit` Prisma migration
 - `AppEvent` migration (add `adviceLogId`, `goalId`, `suiTxVerified`, `source` columns)
-- `advice_given` engine event type + system prompt addition
-- `handleAdviceEvents()` in chat route
+- `record_advice` engine tool (auto permission) + system prompt addition
+- `handleAdviceResults()` in chat route
 - `buildAdviceContext()` + system prompt injection in chat route
 - `SavingsGoalDeposit` write in save transaction handler (when `goalId` present)
 
 ### Phase 1.5 (new user onboarding)
 
-The `$0.25 welcome → save path` is the first real advice→action loop. The onboarding message suggests saving and emits an `advice_given` event. When the user acts, `AppEvent` is written with `adviceLogId` linked. This validates the full pipeline with live data before Phase 3.
+The `$0.25 welcome → save path` is the first real advice→action loop. The onboarding message suggests saving and calls `record_advice`. When the user acts, `AppEvent` is written with `adviceLogId` linked. This validates the full pipeline with live data before Phase 3.
 
 ### Phase 3.3 (with scheduled actions / DCA)
 

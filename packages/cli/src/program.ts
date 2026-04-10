@@ -34,6 +34,7 @@ import { registerSwap } from './commands/swap.js';
 import { registerSwapQuote } from './commands/swapQuote.js';
 import { registerStake } from './commands/stake.js';
 import { registerUnstake } from './commands/unstake.js';
+import { registerReceive } from './commands/receive.js';
 export function createProgram(): Command {
   const program = new Command();
 
@@ -86,6 +87,7 @@ Examples:
   registerSwapQuote(program);
   registerStake(program);
   registerUnstake(program);
+  registerReceive(program);
 
   return program;
 }

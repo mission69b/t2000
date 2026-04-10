@@ -22,6 +22,7 @@ import { webSearchTool } from './web-search.js';
 import { explainTxTool } from './explain-tx.js';
 import { portfolioAnalysisTool } from './portfolio-analysis.js';
 import { protocolDeepDiveTool } from './protocol-deep-dive.js';
+import { allowanceStatusTool } from './allowance.js';
 import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
@@ -52,6 +53,7 @@ export const READ_TOOLS: Tool[] = [
   defillamaChainTvlTool,
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
+  allowanceStatusTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -103,4 +105,5 @@ export {
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
   saveContactTool,
+  allowanceStatusTool,
 };

@@ -9,6 +9,7 @@ export const sendTransferTool = buildTool({
   inputSchema: z.object({
     to: z.string().min(1),
     amount: z.number().positive(),
+    memo: z.string().optional(),
   }),
   jsonSchema: {
     type: 'object',
@@ -20,6 +21,10 @@ export const sendTransferTool = buildTool({
       amount: {
         type: 'number',
         description: 'Amount in USD to send',
+      },
+      memo: {
+        type: 'string',
+        description: 'Optional note attached to the transfer (shown in transaction receipt)',
       },
     },
     required: ['to', 'amount'],
@@ -41,6 +46,7 @@ export const sendTransferTool = buildTool({
         gasCost: result.gasCost,
         gasMethod: result.gasMethod,
         balance: result.balance,
+        memo: input.memo ?? null,
       },
       displayText: `Sent $${result.amount.toFixed(2)} to ${result.contactName ?? result.to.slice(0, 10)}… (tx: ${result.tx.slice(0, 8)}…)`,
     };

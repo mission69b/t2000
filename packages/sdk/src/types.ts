@@ -142,6 +142,19 @@ export interface DepositInfo {
   instructions: string;
 }
 
+export interface PaymentRequest {
+  address: string;
+  network: string;
+  amount: number | null;
+  currency: string;
+  memo: string | null;
+  label: string | null;
+  /** URI suitable for QR code encoding (e.g. sui:0x...?amount=50&currency=USDC&memo=Coffee) */
+  qrUri: string;
+  /** Human-readable summary */
+  displayText: string;
+}
+
 export interface TransactionRecord {
   digest: string;
   action: string;

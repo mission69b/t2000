@@ -186,6 +186,25 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
   );
 
   server.tool(
+    't2000_receive',
+    'Generate a payment request — returns wallet address, QR-ready URI, and optional amount/memo. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds.',
+    {
+      amount: z.number().optional().describe('Amount to request (omit for open amount)'),
+      currency: z.string().optional().describe('Currency symbol (default: USDC)'),
+      memo: z.string().optional().describe('Payment note'),
+      label: z.string().optional().describe('Description for the request'),
+    },
+    async ({ amount, currency, memo, label }) => {
+      try {
+        const result = agent.receive({ amount, currency, memo, label });
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
     't2000_all_rates',
     'Compare USDC (and other) interest rates across all protocols side-by-side. Use when the user asks "am I getting the best rate?" or wants to compare protocols. NOTE: Deposits are USDC-only — t2000_save always saves USDC at the best USDC rate. This tool is for informational comparisons.',
     {},

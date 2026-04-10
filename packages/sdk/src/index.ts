@@ -25,6 +25,7 @@ export type {
   EarningsResult,
   FundStatusResult,
   DepositInfo,
+  PaymentRequest,
   TransactionRecord,
   PendingReward,
   ClaimRewardsResult,

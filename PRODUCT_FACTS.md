@@ -29,8 +29,8 @@
 |------|-------|
 | Install command | `npx skills add mission69b/t2000-skills` |
 | Repo | `https://github.com/mission69b/t2000-skills` |
-| Skill count | 11 |
-| Skills | `t2000-check-balance`, `t2000-send`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-engine` |
+| Skill count | 12 |
+| Skills | `t2000-check-balance`, `t2000-send`, `t2000-receive`, `t2000-save`, `t2000-withdraw`, `t2000-borrow`, `t2000-repay`, `t2000-pay`, `t2000-safeguards`, `t2000-mcp`, `t2000-contacts`, `t2000-engine` |
 | Supported platforms | Claude Code, Cursor, Codex, Copilot, Amp, Cline, Gemini CLI, VS Code, + more |
 | Source (monorepo) | `t2000-skills/` — auto-synced to standalone repo via GitHub Action |
 
@@ -45,6 +45,7 @@
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
+| Receive | — | Free | Payment request generation is local; no on-chain cost |
 | Swap | 10 | 0.1% | t2000 overlay fee on swap (`overlayFeeRate` / `overlayFeeReceiver` in `cetus-swap.ts`); Cetus Aggregator network fees still apply |
 | Stake (vSUI) | — | Free | VOLO protocol fees only |
 | Unstake (vSUI) | — | Free | |
@@ -166,6 +167,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | rates | `t2000 rates` | |
 | positions | `t2000 positions` | |
 | deposit | `t2000 deposit` | Shows funding instructions |
+| receive | `t2000 receive` | Options: `--amount <n>`, `--currency <sym>`, `--memo <text>`, `--label <text>` |
 | address | `t2000 address` | |
 | serve | `t2000 serve` | Options: `--port` (default: 3001), `--rate-limit` (default: 10) |
 | config get | `t2000 config get [key]` | Omit key for all |
@@ -261,6 +263,18 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
 
+**receive:**
+```
+  ✓ Payment Request
+
+  Address:   0x8b3e...d412
+  Amount:    $25.00 USDC
+  Memo:      Office supplies
+  QR URI:    sui:0x8b3e...d412?amount=25&currency=USDC&memo=Office%20supplies
+
+  Share this address or scan the QR code to receive funds.
+```
+
 **pay:**
 ```
   → GET https://api.example.com/data
@@ -290,6 +304,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | `history()` | `{ limit? }` | `TransactionRecord[]` |
 | `address()` | — (sync) | `string` |
 | `deposit()` | — | `DepositInfo` |
+| `receive()` | `{ amount?, currency?, memo?, label? }` | `PaymentRequest` — address, QR URI, display text |
 
 ### Savings
 
@@ -437,6 +452,17 @@ interface UnstakeVSuiResult {
   success: boolean; tx: string;
   vSuiAmount: number; suiReceived: number;
   gasCost: number; gasMethod: GasMethod;
+}
+
+interface PaymentRequest {
+  address: string;
+  network: string;
+  amount: number | null;
+  currency: string;
+  memo: string | null;
+  label: string | null;
+  qrUri: string;
+  displayText: string;
 }
 ```
 
@@ -639,19 +665,20 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 
 ### Engine Tool Names
 
-| Read Tools (19) | Write Tools (11) |
+| Read Tools (20) | Write Tools (11) |
 |-----------|------------|
 | `balance_check` | `save_deposit` |
 | `savings_info` | `withdraw` |
 | `health_check` | `send_transfer` |
 | `rates_info` | `borrow` |
 | `transaction_history` | `repay_debt` |
-| `swap_quote` | `claim_rewards` |
-| `volo_stats` | `pay_api` |
-| `mpp_services` | `swap_execute` |
-| `web_search` | `volo_stake` |
-| `explain_tx` | `volo_unstake` |
-| `portfolio_analysis` | `save_contact` |
+| `allowance_status` | `claim_rewards` |
+| `swap_quote` | `pay_api` |
+| `volo_stats` | `swap_execute` |
+| `mpp_services` | `volo_stake` |
+| `web_search` | `volo_unstake` |
+| `explain_tx` | `save_contact` |
+| `portfolio_analysis` | |
 | `protocol_deep_dive` | |
 | `defillama_yield_pools` | |
 | `defillama_protocol_info` | |
@@ -681,7 +708,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 |------|-------|
 | Package | `@t2000/mcp` |
 | Version | `0.25.16` |
-| Tool count | 30 (16 read, 12 write, 2 safety) |
+| Tool count | 31 (17 read, 12 write, 2 safety) |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |

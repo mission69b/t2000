@@ -41,6 +41,7 @@ For other platforms, paste manually:
 | `t2000_fund_status` | read | Savings fund status |
 | `t2000_pending_rewards` | read | Pending protocol rewards |
 | `t2000_deposit_info` | read | Deposit instructions |
+| `t2000_receive` | read | Generate payment request with address and QR URI |
 | `t2000_contacts` | read | List saved contacts (name → address) |
 | `t2000_services` | read | Discover MPP services, endpoints, and prices |
 | `t2000_pay` | write | Make a paid API request via MPP |

@@ -87,7 +87,7 @@ QueryEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (19 — parallel, auto-approved)
+### Read Tools (20 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
@@ -96,6 +96,7 @@ QueryEngine.submitMessage()
 | `health_check` | Health factor with risk assessment |
 | `rates_info` | Current supply/borrow APYs |
 | `transaction_history` | Recent transaction log |
+| `allowance_status` | Agent budget allowance and permissions |
 | `explain_tx` | Human-readable transaction explanation from digest |
 | `web_search` | Web search via Brave Search API |
 | `swap_quote` | Preview swap route, output amount, and price impact (no execution) |
