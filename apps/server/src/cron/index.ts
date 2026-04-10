@@ -4,6 +4,7 @@ import { runHFAlerts } from './jobs/hfAlerts.js';
 import { runBriefings } from './jobs/briefings.js';
 import { runRateAlerts } from './jobs/rateAlerts.js';
 import { runOnboardingFollowup } from './jobs/onboardingFollowup.js';
+import { runPortfolioSnapshots } from './jobs/portfolioSnapshots.js';
 import type { JobResult } from './types.js';
 
 function getClient(): SuiJsonRpcClient {
@@ -44,6 +45,11 @@ async function runCron(): Promise<void> {
   // --- Daily onboarding follow-up (24h after sign-up) ---
   if (utcHour === BRIEFING_UTC_HOUR) {
     results.push(await runOnboardingFollowup(client));
+  }
+
+  // --- Daily portfolio snapshots ---
+  if (utcHour === BRIEFING_UTC_HOUR) {
+    results.push(await runPortfolioSnapshots());
   }
 
   // --- Future daily jobs ---

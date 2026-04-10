@@ -127,8 +127,8 @@
 
 **Estimated effort:** ~3 days (engine) + ~1.75 days (rich UX) + ~2.5 days (canvas infra). No external dependencies. Can be done during Phase 2 downtime.
 
-**Completed so far:** 2.5.1 ✅ · 2.5.2 ✅ · 2.5.3 ✅ · 2.5.4 ✅ · 2.5.5 ✅ · 2.5.6 ✅ · RC-4 ✅ · RC-5 ✅ · AC-2 ✅ · AC-3 ✅ · AC-4 ✅ · CA-0 ✅ · CA-1 ✅ (all production-tested). Engine at `@t2000/engine@0.28.8`.
-**Remaining:** CA-2 through CA-8 (canvas templates + watch address)
+**Completed so far:** All Phase 2.5 tasks ✅. Engine at `@t2000/engine@0.28.9`.
+**Phase AC:** ✅ COMPLETE. All 8 canvas templates live (CA-0 through CA-8). FA-4 (portfolio snapshots) + FA-2 (spending analytics) built as prerequisites. `spending_analytics` + `render_canvas` engine tools. `WatchAddress` Prisma model + CRUD APIs. `PortfolioSnapshot` Prisma model + daily cron job.
 
 ---
 
@@ -144,8 +144,8 @@
 | 3.4.1 | MPP reputation layer (Spec 3) | 2d | not started | 3.4 | t2000 | `computeScore()`, `scoreToTier()`, tiered rate limits (new→trusted→established→premium). Data already in ProtocolFeeLedger. Spec: `spec/audric-security-specs.md` |
 | ~~3.5~~ | ~~Gifting reminders~~ | — | skipped | — | — | Deferred post-Store. Low priority |
 | 3.6 | Credit UX improvements | 1d | not started | — | audric | — |
-| FA-4 | Portfolio history snapshots — `PortfolioSnapshot` Prisma model, daily cron, internal route, `GET /api/analytics/portfolio-history` | 1.5d | not started | — | both | Backend infra. Cron in `t2000/apps/server/src/cron/jobs/`, calls `POST /api/internal/portfolio-snapshot` on Audric. Unlocks week-over-week changes + sparklines. Spec: `spec/audric-rich-ux-spec.md` §FA-4 |
-| FA-2 | Spending analytics — `GET /api/analytics/spending`, `spending_analytics` engine tool, `SpendingCard` | 1d | not started | RC-0 | both | Aggregates `AppEvent` by service/category. MiniBar chart. Spec: §FA-2 |
+| FA-4 | Portfolio history snapshots — `PortfolioSnapshot` Prisma model, daily cron, internal route, `GET /api/analytics/portfolio-history` | 1.5d | done | — | both | ✅ Built as Phase AC prerequisite. `PortfolioSnapshot` Prisma model (userId, date, wallet/savings/debt/netWorth/yield/HF/allocations). Cron job `runPortfolioSnapshots()` in `t2000/apps/server/src/cron/jobs/`. `POST /api/internal/portfolio-snapshot` fetches NAVI positions + Sui balances for all active users. `GET /api/analytics/portfolio-history?userId=&days=` with period change calculation. |
+| FA-2 | Spending analytics — `GET /api/analytics/spending`, `spending_analytics` engine tool, `SpendingCard` | 1d | done | RC-0 | both | ✅ Built as Phase AC prerequisite. `GET /api/analytics/spending?address=&period=` aggregates `ServicePurchase` + `AppEvent(type:pay)` by service/category. `spending_analytics` engine tool in `@t2000/engine`. Categories: AI Images, Audio, Mail, Search, Utilities, Video, Other. SpendingCard deferred (canvas handles visualization via SpendingBreakdownCanvas). |
 | FA-3 | Yield summary — `yield_summary` engine tool, `YieldEarningsCard` with sparkline | 1d | not started | RC-0, FA-4 | both | Today/week/month/all-time breakdown. Sparkline from portfolio snapshots. Spec: §FA-3 |
 | FA-5 | Activity summary — `GET /api/analytics/activity-summary`, `activity_summary` engine tool, `ActivitySummaryCard` | 1d | not started | RC-0 | both | Categorised breakdown (saves/sends/borrows/pays). MiniBar chart. Spec: §FA-5 |
 | FA-1 | Enhanced `PortfolioCard` — week-over-week change, allocation bar, inline APY + HF | 0.5d | not started | RC-0, FA-4 | audric | Enhances existing card. Spec: §FA-1 |
@@ -167,16 +167,16 @@
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| CA-2 | Activity Heatmap — `GET /api/analytics/activity-heatmap` + `ActivityHeatmapCanvas.tsx` (GitHub-style grid, hover tooltip, click-to-chat) | 2d | not started | CA-0, CA-1 | audric | AppEvent table exists. Canvas plan §CA-2 |
-| CA-4 | Strategy simulators — `YieldProjectorCanvas`, `HealthSimulatorCanvas`, `DCAPlanner` — interactive sliders, no API needed | 1.5d | not started | CA-0 | audric | Client-side only (uses existing `/api/positions`). Canvas plan §CA-4 |
-| CA-6 | Multi-wallet watch list — `WatchAddress` Prisma model, CRUD APIs, `analyze_address` engine tool, `WatchAddressCanvas` template, settings page | 2d | not started | CA-1 | both | Any public Sui address. Canvas plan §CA-6 |
-| CA-3 | Portfolio Timeline canvas — `PortfolioTimelineCanvas.tsx`, stacked line chart (wallet/savings/debt) | 1d | not started | CA-0, FA-4 | audric | Canvas plan §CA-3 |
-| CA-5 | Spending Breakdown canvas — `SpendingBreakdownCanvas.tsx`, donut chart + time period tabs | 0.5d | not started | CA-0, FA-2 | audric | Canvas plan §CA-5 |
-| CA-7 | Full Portfolio canvas — `FullPortfolioCanvas.tsx`, 4-panel multi-view (heatmap, timeline, yield, HF), miniaturized panels that expand | 2d | not started | CA-2, CA-3, CA-5 | audric | The "Perplexity moment". Canvas plan §CA-7 |
-| CA-8 | Contextual canvas suggestions — update dynamic prompt block to suggest canvas after tool results, add Charts chip to chip bar | 0.5d | not started | 2.5.2, CA-1 | audric | Prompt layer only. Canvas plan §CA-8 |
+| CA-2 | Activity Heatmap — `GET /api/analytics/activity-heatmap` + `ActivityHeatmapCanvas.tsx` (GitHub-style grid, hover tooltip, click-to-chat) | 2d | done | CA-0, CA-1 | audric | ✅ API endpoint aggregates AppEvent + chain txns into daily buckets. Canvas: 53-week GitHub-style grid, intensity-coded cells, hover tooltips, click-to-chat ("Show me what happened on…"). Engine: removed from PHASE_3_TEMPLATES, emits `available: true` with wallet address. |
+| CA-4 | Strategy simulators — `YieldProjectorCanvas`, `HealthSimulatorCanvas`, `DCAPlanner` — interactive sliders, no API needed | 1.5d | done | CA-0 | audric | ✅ All three shipped in CA-1. Client-side compound yield simulator, health factor simulator with scenario analysis, DCA planner with savings curve. All seeded with live position data. |
+| CA-6 | Multi-wallet watch list — `WatchAddress` Prisma model, CRUD APIs, `render_canvas(watch_address)`, `WatchAddressCanvas` template | 2d | done | CA-1 | both | ✅ `WatchAddress` Prisma model (max 10 per user), CRUD API (`POST/GET/DELETE /api/user/watch-addresses`). `WatchAddressCanvas` fetches balances from `/api/balances`. Engine `watch_address` handler validates address, emits `available: true`. Action buttons: Activity → and Send →. |
+| CA-3 | Portfolio Timeline canvas — `PortfolioTimelineCanvas.tsx`, stacked line chart (wallet/savings/debt) | 1d | done | CA-0, FA-4 | audric | ✅ Multi-line SVG chart (wallet/savings/debt), 4 period tabs (7D/30D/90D/1Y), net worth header with change %, breakdown table. Fetches from `GET /api/analytics/portfolio-history`. Graceful empty state until snapshots accumulate. |
+| CA-5 | Spending Breakdown canvas — `SpendingBreakdownCanvas.tsx`, donut chart + time period tabs | 0.5d | done | CA-0, FA-2 | audric | ✅ SVG donut chart with category segments, 4 period tabs (Week/Month/Year/All), color-coded legend, service breakdown list, avg cost per request. Fetches from `GET /api/analytics/spending`. |
+| CA-7 | Full Portfolio canvas — `FullPortfolioCanvas.tsx`, 4-panel multi-view (savings+yield, health, activity, spending), miniaturized panels that expand | 2d | done | CA-2, CA-3, CA-5 | audric | ✅ The "Perplexity moment". 4-panel grid: Savings (APY), Health (HF + debt), Activity (30d count), Spending (total + requests). Each panel clickable → opens dedicated canvas. Net worth header, quick breakdown, Full Report action. Fetches heatmap + spending APIs in parallel. |
+| CA-8 | Contextual canvas suggestions — Charts chip in ChipBar, canvas follow-ups in suggested-actions, contextual chips for yield/health | 0.5d | done | 2.5.2, CA-1 | audric | ✅ "Charts" chip added to ChipBar (sends "Show me my activity heatmap and a yield projector"). `render_canvas` follow-ups in suggested-actions. Canvas contextual chips (yield-chart, health-sim) with priority 30/27. Post-agent `render_canvas` suggestion in contextual-chips. |
 
-**Critical path:** CA-0 (Phase 2.5) → CA-1 (Phase 2.5) → CA-2 + CA-4 + CA-6 (parallel, start Phase AC) → CA-7 (capstone). CA-3 + CA-5 gate on FA-4 + FA-2 from Phase 3. CA-8 gates on 2.5.2.
-**Estimated effort:** ~9.5 days. First interactive canvas (CA-2 heatmap) ships before Phase 3.5. CA-7 ships as Phase 3 analytics complete.
+**Critical path:** CA-0 → CA-1 → CA-2 + CA-4 + CA-6 (parallel) → FA-4 + FA-2 (analytics prereqs) → CA-3 + CA-5 → CA-7 (capstone) + CA-8 (suggestions). **All complete.**
+**Actual effort:** ~9 days. All 8 canvas templates live. FA-4 (portfolio snapshots) + FA-2 (spending analytics) built as prerequisites. `spending_analytics` engine tool added.
 
 ---
 
@@ -372,5 +372,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4
 
 ---
 
-*Last updated: April 10 2026. Phase 1 ✅ complete. Phase 2 ✅ complete (payment links, invoices, memo send, P0 rich cards RC-0–RC-3/RC-9/RC-reg, AC-1 allowance tool, SDK/CLI/MCP receive feature). Landing pages ✅ complete. Next: Phase 2.5 (engine foundation + P1 cards + AC-2/3/4 allowance tools + CA-0/CA-1 canvas infra — all parallel, no blocking deps). Phase 3 includes proactive agent + financial analytics (FA-2, FA-4, FA-5). Phase AC (Audric Canvas — ~9.5 days) runs parallel to Phase 3. Phase 3.5 (Intelligence Layer) is the capstone before Phase 5 Store.*
+*Last updated: April 10 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete (all 8 canvas templates, FA-4 portfolio snapshots, FA-2 spending analytics). Landing pages ✅ complete. Next: Phase 3 (proactive agent, auto-compound, DCA, feedback processing) + remaining financial analytics (FA-1, FA-3, FA-5, FI-1, FI-2, FI-3). Phase 3.5 (Intelligence Layer) follows.*
 *Source of truth for specs: `audric-roadmap.md`, `audric-feedback-loop-spec.md`, `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`, `spec/audric-rich-ux-spec.md`, `.cursor/plans/audric_canvas_feature_cfe76b5b.plan.md`*

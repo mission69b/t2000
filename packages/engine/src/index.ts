@@ -122,6 +122,7 @@ export {
   explainTxTool,
   portfolioAnalysisTool,
   protocolDeepDiveTool,
+  spendingAnalyticsTool,
 } from './tools/index.js';
 
 // Built-in tools — writes

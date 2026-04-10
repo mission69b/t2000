@@ -19,6 +19,14 @@ export const CANVAS_TEMPLATES = [
 
 export type CanvasTemplate = (typeof CANVAS_TEMPLATES)[number];
 
+/** Normalize savings rate: if < 1 treat as decimal → multiply by 100, else use as-is. Default 4.5%. */
+function normalizeSavingsRate(raw: number | undefined | null, fallback = 4.5): number {
+  const r = raw ?? 0;
+  if (r > 0 && r < 1) return r * 100;
+  if (r > 0) return r;
+  return fallback;
+}
+
 const CANVAS_TITLES: Record<CanvasTemplate, string> = {
   activity_heatmap: 'On-Chain Activity',
   portfolio_timeline: 'Net Worth Over Time',
@@ -31,17 +39,6 @@ const CANVAS_TITLES: Record<CanvasTemplate, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Templates that need Phase 3 analytics APIs — return available: false for now
-// ---------------------------------------------------------------------------
-
-const PHASE_3_TEMPLATES = new Set<CanvasTemplate>([
-  'activity_heatmap',
-  'portfolio_timeline',
-  'spending_breakdown',
-  'full_portfolio',
-]);
-
-// ---------------------------------------------------------------------------
 // render_canvas tool
 // ---------------------------------------------------------------------------
 
@@ -51,14 +48,14 @@ export const renderCanvasTool = buildTool({
 
 Use when the user asks for a visual chart, simulator, or financial overview. Pick the most relevant template:
 
-- activity_heatmap — on-chain transaction history as a GitHub-style heatmap (coming soon — needs Phase 3 data)
-- portfolio_timeline — net worth over time, wallet/savings/debt breakdown (coming soon — needs Phase 3 data)
+- activity_heatmap — on-chain transaction history as a GitHub-style heatmap (WORKS NOW — loads from wallet)
+- portfolio_timeline — net worth over time, wallet/savings/debt breakdown (WORKS NOW — daily snapshots)
 - yield_projector — compound yield simulator with amount/APY/period sliders (WORKS NOW — client-side)
 - health_simulator — borrow health factor simulator with collateral/debt sliders (WORKS NOW — uses current position)
 - dca_planner — savings plan curve for regular monthly deposits (WORKS NOW — client-side)
-- spending_breakdown — spending by service category (coming soon — needs Phase 3 data)
-- watch_address — portfolio overview for any public Sui address (coming soon — CA-6)
-- full_portfolio — 4-panel overview: heatmap, timeline, yield, HF (coming soon — CA-7)
+- spending_breakdown — spending by service category (WORKS NOW — from AppEvent + ServicePurchase)
+- watch_address — portfolio overview for any public Sui address (WORKS NOW — pass address in params)
+- full_portfolio — 4-panel overview: savings, health, activity, spending (WORKS NOW — aggregates all data)
 
 Always prefer the canvas for visualisation requests. After rendering, offer to explain what the user sees.`,
   inputSchema: z.object({
@@ -94,37 +91,106 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
     const { template, params } = input;
     const title = CANVAS_TITLES[template];
 
-    // Phase 3 templates — analytics APIs not yet built
-    if (PHASE_3_TEMPLATES.has(template)) {
+    // Full portfolio — 4-panel capstone with live position data
+    if (template === 'full_portfolio') {
+      const pos = context.serverPositions;
+      const rate = normalizeSavingsRate(pos?.savingsRate);
+      const savings = pos?.savings ?? 0;
+      const borrows = pos?.borrows ?? 0;
       return {
         data: {
           __canvas: true,
           template,
           title,
-          templateData: { available: false, message: 'This canvas will be available in Phase 3 when analytics APIs are ready.' },
+          templateData: {
+            available: true,
+            address: context.walletAddress ?? '',
+            currentSavings: savings,
+            currentDebt: borrows,
+            healthFactor: pos?.healthFactor ?? null,
+            savingsRate: rate,
+          },
         },
-        displayText: `Canvas template "${title}" is coming soon.`,
+        displayText: `Opened Full Portfolio Overview.`,
       };
     }
 
-    // watch_address — CA-6 (not yet built)
+    // Watch address — show balances for any public Sui address
     if (template === 'watch_address') {
+      const targetAddress = params?.address ?? '';
+      if (!targetAddress || !targetAddress.startsWith('0x')) {
+        return {
+          data: {
+            __canvas: true,
+            template,
+            title,
+            templateData: { available: false, message: 'Please provide a valid Sui address to watch.' },
+          },
+          displayText: 'No valid address provided. Ask the user for a Sui address.',
+        };
+      }
+      return {
+        data: {
+          __canvas: true,
+          template,
+          title: `Watch ${targetAddress.slice(0, 6)}…${targetAddress.slice(-4)}`,
+          templateData: { available: true, address: targetAddress },
+        },
+        displayText: `Opened Watch Address canvas for ${targetAddress.slice(0, 6)}…${targetAddress.slice(-4)}.`,
+      };
+    }
+
+    // Portfolio timeline — fetches from /api/analytics/portfolio-history
+    if (template === 'portfolio_timeline') {
       return {
         data: {
           __canvas: true,
           template,
           title,
-          templateData: { available: false, address: params?.address ?? null, message: 'Watch Address canvas is coming soon.' },
+          templateData: {
+            available: true,
+            address: context.walletAddress ?? '',
+          },
         },
-        displayText: `Canvas template "${title}" is coming soon.`,
+        displayText: `Opened Portfolio Timeline. Shows your net worth, savings, and debt over time.`,
+      };
+    }
+
+    // Spending breakdown — fetches from /api/analytics/spending
+    if (template === 'spending_breakdown') {
+      return {
+        data: {
+          __canvas: true,
+          template,
+          title,
+          templateData: {
+            available: true,
+            address: context.walletAddress ?? '',
+          },
+        },
+        displayText: `Opened Spending Breakdown. Shows your service spending by category.`,
+      };
+    }
+
+    // Activity heatmap — client-side fetches from /api/analytics/activity-heatmap
+    if (template === 'activity_heatmap') {
+      return {
+        data: {
+          __canvas: true,
+          template,
+          title,
+          templateData: {
+            available: true,
+            address: context.walletAddress ?? '',
+          },
+        },
+        displayText: `Opened Activity Heatmap for your wallet. Click any day to explore transactions.`,
       };
     }
 
     // Strategy simulators — client-side, seed with live position data
     const positions = context.serverPositions;
-    // savingsRate is stored as a decimal (0.051 = 5.1%), convert to percentage for display
-    const rawRate = positions?.savingsRate ?? 0;
-    const savingsRate = rawRate > 0 && rawRate < 1 ? rawRate * 100 : rawRate > 0 ? rawRate : 4.5;
+    const savingsRate = normalizeSavingsRate(positions?.savingsRate);
     const healthFactor = positions?.healthFactor ?? null;
     const totalSavings = positions?.savings ?? 0;
     const totalBorrows = positions?.borrows ?? 0;
