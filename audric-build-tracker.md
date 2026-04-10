@@ -110,8 +110,8 @@
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| 2.5.1 | Extract `engine-context.ts` — create file, move `buildAdviceContext` from `engine-factory.ts`, export it | 0.5d | not started | — | audric | `buildAdviceContext` is currently a non-exported local function in `engine-factory.ts`. Must be in `engine-context.ts` before intelligence layer can wire `buildFullDynamicContext()` |
-| 2.5.2 | Restructure `buildSystemPrompt` — split static (cacheable) vs dynamic (per-session) blocks | 1d | not started | 2.5.1 | audric | Currently a 200-line string-concat monolith. Split matches `spec/REASONING_ENGINE.md` caching strategy. Static block: tool descriptions, safety rules, response rules. Dynamic block: balances, contacts, goals, advice, state |
+| 2.5.1 | Extract `engine-context.ts` — create file, move `buildAdviceContext` from `engine-factory.ts`, export it | 0.5d | done | — | audric | ✅ `lib/engine/engine-context.ts` created. `buildAdviceContext` moved + exported. Shared types (`WalletBalanceSummary`, `Contact`, `GoalSummary`) extracted. Stubs for all Phase 3.5 functions (F1–F5 + `buildFullDynamicContext`) scaffolded with TODOs. |
+| 2.5.2 | Restructure `buildSystemPrompt` — split static (cacheable) vs dynamic (per-session) blocks | 1d | done | 2.5.1 | audric | ✅ `STATIC_SYSTEM_PROMPT` (constant, no interpolation, cache-ready for RE-1.3) + `buildDynamicBlock()` (wallet, balances, write tools, contacts, goals, advice) both in `engine-context.ts`. `buildSystemPrompt()` in `engine-factory.ts` is now a 3-line wrapper. Zero behaviour change. |
 | 2.5.3 | `maxTokens: 2048 → 8192` (configurable) | 0.5h | done | — | audric | ✅ `engine-factory.ts` authenticated engine: 2048 → 8192. Unauth engine stays at 1536. |
 | 2.5.4 | `toolChoice: 'any' → 'auto'` with thinking guard | 0.5h | done | — | audric | ✅ `engine-factory.ts` authenticated engine: `'any'` → `'auto'`. Full thinking guard wires in with RE-1.1. |
 | 2.5.5 | Settings > Memory page scaffold + nav entry | 0.5d | not started | — | audric | No `app/settings/` directory exists. Create scaffold with sidebar nav. Empty memory page (populated when F3 ships). Also surface F1 profile data: "Audric thinks you prefer brief responses, intermediate literacy" with correction affordance |
@@ -127,8 +127,8 @@
 
 **Estimated effort:** ~3 days (engine) + ~1.75 days (rich UX) + ~2.5 days (canvas infra). No external dependencies. Can be done during Phase 2 downtime.
 
-**Completed so far:** 2.5.3 ✅ · 2.5.4 ✅ · RC-4 ✅ · RC-5 ✅ · AC-2 ✅ · AC-3 ✅ · AC-4 ✅ (all production-tested). Engine at `@t2000/engine@0.28.7`.
-**Remaining:** 2.5.1 · 2.5.2 · 2.5.5 · 2.5.6 · CA-0 · CA-1
+**Completed so far:** 2.5.1 ✅ · 2.5.2 ✅ · 2.5.3 ✅ · 2.5.4 ✅ · RC-4 ✅ · RC-5 ✅ · AC-2 ✅ · AC-3 ✅ · AC-4 ✅ (all production-tested). Engine at `@t2000/engine@0.28.7`.
+**Remaining:** 2.5.5 · 2.5.6 · CA-0 · CA-1
 
 ---
 
