@@ -252,6 +252,58 @@ export const cancelPaymentLinkTool = buildTool({
   },
 });
 
+export const cancelInvoiceTool = buildTool({
+  name: 'cancel_invoice',
+  description:
+    'Cancel an invoice that has not yet been paid. Use when the user says "cancel my invoice", "delete invoice", or refers to a specific invoice slug or label. Use list_invoices first if the slug is not known.',
+  inputSchema: z.object({
+    slug: z.string().describe('The slug of the invoice to cancel (e.g. "xFYKBWy5")'),
+  }),
+  jsonSchema: {
+    type: 'object',
+    properties: {
+      slug: { type: 'string', description: 'The slug of the invoice to cancel' },
+    },
+    required: ['slug'],
+  },
+  isReadOnly: true,
+
+  async call(input, context) {
+    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+
+    if (!apiUrl || !context.walletAddress) {
+      return { data: null, displayText: 'Invoice cancellation is not available.' };
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/api/internal/invoices`, {
+        method: 'PATCH',
+        signal: context.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-sui-address': context.walletAddress,
+          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+        },
+        body: JSON.stringify({ slug: input.slug, action: 'cancel' }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        return { data: null, displayText: err.error ?? 'Failed to cancel invoice.' };
+      }
+
+      const result = await res.json() as { slug: string; status: string };
+      return {
+        data: result,
+        displayText: `Invoice ${result.slug} cancelled.`,
+      };
+    } catch {
+      return { data: null, displayText: 'Failed to cancel invoice.' };
+    }
+  },
+});
+
 export const listInvoicesTool = buildTool({
   name: 'list_invoices',
   description:

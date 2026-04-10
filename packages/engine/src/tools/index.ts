@@ -28,6 +28,7 @@ import {
   listPaymentLinksTool,
   cancelPaymentLinkTool,
   createInvoiceTool,
+  cancelInvoiceTool,
   listInvoicesTool,
 } from './receive.js';
 import {
@@ -64,6 +65,7 @@ export const READ_TOOLS: Tool[] = [
   listPaymentLinksTool,
   cancelPaymentLinkTool,
   listInvoicesTool,
+  cancelInvoiceTool,
   createPaymentLinkTool,
   createInvoiceTool,
 ];
@@ -122,5 +124,6 @@ export {
   listPaymentLinksTool,
   cancelPaymentLinkTool,
   createInvoiceTool,
+  cancelInvoiceTool,
   listInvoicesTool,
 };
