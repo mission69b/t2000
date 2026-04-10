@@ -144,7 +144,7 @@ t2000 init
 | Command | Description |
 |---------|-------------|
 | `t2000 send <amount> <asset> [to] <address>` | Send USDC, SUI, or other assets to any Sui address (the `to` keyword is optional) |
-| `t2000 receive` | Generate a payment request with address and QR URI. Options: `--amount`, `--currency`, `--memo`, `--label` |
+| `t2000 receive` | Generate a payment request with address and QR URI. Options: `--amount`, `--currency`, `--memo`, `--label`, `--key` |
 
 ### Savings & DeFi
 

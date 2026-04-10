@@ -340,6 +340,7 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 | Withdraw | Free | |
 | Repay | Free | |
 | Send | Free | |
+| Receive | Free | QR payment request generation, no fee |
 | Swap | 0.10% | t2000 overlay on swap amount; Cetus Aggregator network fees still apply |
 | Stake (vSUI) | Free | VOLO protocol fees only |
 | Unstake (vSUI) | Free | |

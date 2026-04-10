@@ -28,7 +28,7 @@ const PACKAGES = [
     icon: "⟡",
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "25 tools, 16 prompts. Works with Claude, Cursor, any MCP client.",
+    desc: "29 tools, 16 prompts. Works with Claude, Cursor, any MCP client.",
     install: "npx @t2000/mcp",
     href: "https://www.npmjs.com/package/@t2000/mcp",
   },

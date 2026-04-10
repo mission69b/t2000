@@ -87,7 +87,7 @@ QueryEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (20 — parallel, auto-approved)
+### Read Tools (26 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
@@ -111,6 +111,12 @@ QueryEngine.submitMessage()
 | `defillama_chain_tvl` | Chain TVL rankings |
 | `defillama_protocol_fees` | Protocol fees/revenue rankings |
 | `defillama_sui_protocols` | Sui ecosystem protocols — TVL, category, changes |
+| `create_payment_link` | Create a shareable USDC payment link |
+| `list_payment_links` | List payment links with statuses |
+| `cancel_payment_link` | Cancel an active payment link |
+| `create_invoice` | Create a formal invoice with due date and line items |
+| `list_invoices` | List invoices with statuses |
+| `cancel_invoice` | Cancel an unpaid invoice |
 
 ### Write Tools (11 — serial, confirmation required)
 

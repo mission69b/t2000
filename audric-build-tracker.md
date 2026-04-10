@@ -92,9 +92,15 @@
 | RC-3 | `SwapQuoteCard` — rate, impact warning, route | 0.25d | done | RC-0 | audric | ✅ Rate display, impact amber >1% / red >3%, divide-by-zero guard. |
 | RC-9 | Enhanced `TransactionReceiptCard` — per-tool hero lines, service-specific rendering | 0.5d | done | RC-0 | audric | ✅ `getHeroLines()` dispatches per write tool. Displays memo if present. |
 | RC-reg | Register all new cards in `CARD_RENDERERS` | 0.25d | done | RC-1, RC-2, RC-3 | audric | ✅ `ToolResultCard.tsx` refactored to thin registry. All cards wired. |
-| AC-1 | `allowance_status` engine tool + `AllowanceCard` | 0.5d | done | RC-0 | both | ✅ Read tool (auto). `try/catch` around fetch. `AllowanceCard` uses `colorMode="usage"` on Gauge. `allowance_status` added to engine read tools (count: 20). |
+| AC-1 | `allowance_status` engine tool + `AllowanceCard` | 0.5d | done | RC-0 | both | ✅ Read tool (auto). `try/catch` around fetch. `AllowanceCard` uses `colorMode="usage"` on Gauge. |
+| PL-1 | `create_payment_link`, `list_payment_links` engine tools + `PaymentLinkCard` | 0.5d | done | 2.1 | both | ✅ Engine tools call internal Audric API. `PaymentLinkCard` renders created/list views with slug display + copy feedback. |
+| PL-2 | `cancel_payment_link` engine tool + PATCH `/api/internal/payment-links` | 0.25d | done | PL-1 | both | ✅ Confirmation-first cancellation flow enforced in system prompt. |
+| PL-3 | On-chain payment detection for payment links | 0.5d | done | 2.1 | audric | ✅ `POST /api/payment-links/[slug]/verify` queries Sui RPC for USDC transfers. Client-side polling every 8s with "Checking for payment..." indicator. |
+| INV-1 | `create_invoice`, `list_invoices` engine tools + `InvoiceCard` | 0.5d | done | 2.2 | both | ✅ Engine tools call internal Audric API. `InvoiceCard` renders created/list views with slug + memo display. |
+| INV-2 | `cancel_invoice` engine tool + PATCH `/api/internal/invoices` | 0.25d | done | INV-1 | both | ✅ Confirmation-first, ambiguity-safe cancellation enforced in system prompt. |
+| INV-3 | On-chain payment detection for invoices | 0.5d | done | 2.2 | audric | ✅ `POST /api/invoices/[slug]/verify` queries Sui RPC for USDC transfers. Client-side polling every 8s with "Checking for payment..." indicator. |
 
-**Critical path:** 2.1 → 2.2. 2.4 is independent. RC-0 unblocks all cards. ~4 days saved by skipping 2.3 + 2.5. **Phase 2 complete ✅**
+**Critical path:** 2.1 → 2.2. 2.4 is independent. RC-0 unblocks all cards. Engine read tools: 26 total. **Phase 2 complete ✅**
 
 ---
 

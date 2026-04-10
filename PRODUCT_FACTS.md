@@ -167,7 +167,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | rates | `t2000 rates` | |
 | positions | `t2000 positions` | |
 | deposit | `t2000 deposit` | Shows funding instructions |
-| receive | `t2000 receive` | Options: `--amount <n>`, `--currency <sym>`, `--memo <text>`, `--label <text>` |
+| receive | `t2000 receive` | Options: `--amount <n>`, `--currency <sym>`, `--memo <text>`, `--label <text>`, `--key <path>` |
 | address | `t2000 address` | |
 | serve | `t2000 serve` | Options: `--port` (default: 3001), `--rate-limit` (default: 10) |
 | config get | `t2000 config get [key]` | Omit key for all |
@@ -660,12 +660,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `compactMessages` | function | Context window compaction |
 | `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
 | `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 30 built-in tools (19 read, 11 write) |
+| `getDefaultTools` | function | All 37 built-in tools (26 read, 11 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 
 ### Engine Tool Names
 
-| Read Tools (20) | Write Tools (11) |
+| Read Tools (26) | Write Tools (11) |
 |-----------|------------|
 | `balance_check` | `save_deposit` |
 | `savings_info` | `withdraw` |
@@ -687,6 +687,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `defillama_chain_tvl` | |
 | `defillama_protocol_fees` | |
 | `defillama_sui_protocols` | |
+| `create_payment_link` | |
+| `list_payment_links` | |
+| `cancel_payment_link` | |
+| `create_invoice` | |
+| `list_invoices` | |
+| `cancel_invoice` | |
 
 ### Engine Event Types
 
@@ -708,7 +714,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 |------|-------|
 | Package | `@t2000/mcp` |
 | Version | `0.25.16` |
-| Tool count | 31 (17 read, 12 write, 2 safety) |
+| Tool count | 29 (15 read, 12 write, 2 safety) |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |
