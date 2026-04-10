@@ -200,6 +200,58 @@ export const createInvoiceTool = buildTool({
   },
 });
 
+export const cancelPaymentLinkTool = buildTool({
+  name: 'cancel_payment_link',
+  description:
+    'Cancel an active payment link so it can no longer be used. Use when the user says "cancel my payment link", "delete my payment link", or "remove the link [slug/label]". Ask for the slug if ambiguous — use list_payment_links first to find it.',
+  inputSchema: z.object({
+    slug: z.string().describe('The slug of the payment link to cancel (e.g. "LzLawhY7")'),
+  }),
+  jsonSchema: {
+    type: 'object',
+    properties: {
+      slug: { type: 'string', description: 'The slug of the payment link to cancel' },
+    },
+    required: ['slug'],
+  },
+  isReadOnly: true,
+
+  async call(input, context) {
+    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+
+    if (!apiUrl || !context.walletAddress) {
+      return { data: null, displayText: 'Payment link cancellation is not available.' };
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/api/internal/payment-links`, {
+        method: 'PATCH',
+        signal: context.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-sui-address': context.walletAddress,
+          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+        },
+        body: JSON.stringify({ slug: input.slug, action: 'cancel' }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        return { data: null, displayText: err.error ?? 'Failed to cancel payment link.' };
+      }
+
+      const result = await res.json() as { slug: string; status: string };
+      return {
+        data: result,
+        displayText: `Payment link ${result.slug} cancelled.`,
+      };
+    } catch {
+      return { data: null, displayText: 'Failed to cancel payment link.' };
+    }
+  },
+});
+
 export const listInvoicesTool = buildTool({
   name: 'list_invoices',
   description:

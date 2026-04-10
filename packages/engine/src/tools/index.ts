@@ -26,6 +26,7 @@ import { allowanceStatusTool } from './allowance.js';
 import {
   createPaymentLinkTool,
   listPaymentLinksTool,
+  cancelPaymentLinkTool,
   createInvoiceTool,
   listInvoicesTool,
 } from './receive.js';
@@ -61,6 +62,7 @@ export const READ_TOOLS: Tool[] = [
   defillamaSuiProtocolsTool,
   allowanceStatusTool,
   listPaymentLinksTool,
+  cancelPaymentLinkTool,
   listInvoicesTool,
   createPaymentLinkTool,
   createInvoiceTool,
@@ -118,6 +120,7 @@ export {
   allowanceStatusTool,
   createPaymentLinkTool,
   listPaymentLinksTool,
+  cancelPaymentLinkTool,
   createInvoiceTool,
   listInvoicesTool,
 };
