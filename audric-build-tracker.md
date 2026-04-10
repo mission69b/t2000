@@ -117,15 +117,18 @@
 | 2.5.5 | Settings > Memory page scaffold + nav entry | 0.5d | not started | — | audric | No `app/settings/` directory exists. Create scaffold with sidebar nav. Empty memory page (populated when F3 ships). Also surface F1 profile data: "Audric thinks you prefer brief responses, intermediate literacy" with correction affordance |
 | 2.5.6 | Optional onboarding profile prompt | 0.5d | not started | 2.5.5 | audric | Add one optional step to `/setup` wizard: "Tell us about your financial goals" — 3 radio buttons (conservative/balanced/growth) + text field. Seeds `UserFinancialProfile` immediately instead of waiting 10 sessions. Not required for launch but accelerates F1 value |
 
-| RC-4 | `ServiceCatalogCard` — grouped by category, prices per request | 0.5d | done | RC-0 | audric | ✅ `ServiceCatalogCard.tsx` — categories collapsible, endpoint rows show service·name·price. Wired in `ToolResultCard.tsx` for `mpp_services`. |
-| RC-5 | `SearchResultsCard` — title, URL, snippet, expandable | 0.25d | done | RC-0 | audric | ✅ `SearchResultsCard.tsx` — max 3 shown, "Show N more" expander, clickable titles, domain display. Wired for `web_search`. |
-| AC-2 | `toggle_allowance` engine tool — pause/resume agent | 0.5d | done | AC-1 | both | ✅ Read tool (isReadOnly: true). PATCH `/api/allowance/[address]` with `{ action: 'toggle', enabled }`. Returns updated AllowanceCard. System prompt confirms before call. |
-| AC-3 | `update_daily_limit` engine tool — change spending cap via chat | 0.25d | done | AC-1 | both | ✅ Read tool. PATCH with `{ action: 'setLimit', dailyLimitUsdc }`. Validates 0–10000 range. |
-| AC-4 | `update_permissions` engine tool — enable/disable feature categories via chat | 0.25d | done | AC-1 | both | ✅ Read tool. PATCH with `{ action: 'setPermissions', permissions }`. Valid: savings, send, pay, credit, swap, stake. |
+| RC-4 | `ServiceCatalogCard` — grouped by category, prices per request | 0.5d | done | RC-0 | audric | ✅ `ServiceCatalogCard.tsx` — categories collapsible, endpoint rows show service·name·price. Wired in `ToolResultCard.tsx` for `mpp_services`. **Production-tested ✅** |
+| RC-5 | `SearchResultsCard` — title, URL, snippet, expandable | 0.25d | done | RC-0 | audric | ✅ `SearchResultsCard.tsx` — max 3 shown, "Show N more" expander, clickable titles, domain display. Wired for `web_search`. **Production-tested ✅** |
+| AC-2 | `toggle_allowance` engine tool — pause/resume agent | 0.5d | done | AC-1 | both | ✅ Read tool (isReadOnly: true). PATCH `/api/allowance/[address]` with `{ action: 'toggle', enabled }`. Returns updated AllowanceCard. System prompt confirms before call. **Production-tested ✅** |
+| AC-3 | `update_daily_limit` engine tool — change spending cap via chat | 0.25d | done | AC-1 | both | ✅ Read tool. PATCH with `{ action: 'setLimit', dailyLimitUsdc }`. Validates 0–10000 range. **Production-tested ✅** |
+| AC-4 | `update_permissions` engine tool — enable/disable feature categories via chat | 0.25d | done | AC-1 | both | ✅ Read tool. PATCH with `{ action: 'setPermissions', permissions }`. Valid: savings, send, pay, credit, swap, stake. **Production-tested ✅** Post-release fixes: default permissions expanded to all 6, gauge 80% label removed, reset time formatted, duplicate card dedup in `ChatMessage.tsx`. |
 | CA-0 | Canvas infrastructure — `canvas` EngineEvent type, `CanvasCard.tsx`, `CanvasModal.tsx`, wire into `ToolResultCard` registry | 1.5d | not started | RC-0 | audric | No external deps. Spec: Canvas plan §CA-0 |
 | CA-1 | `render_canvas` engine tool — template enum, params schema, data fetcher, canvas event emission | 1d | not started | CA-0 | both | Register alongside read tools. Spec: Canvas plan §CA-1 |
 
 **Estimated effort:** ~3 days (engine) + ~1.75 days (rich UX) + ~2.5 days (canvas infra). No external dependencies. Can be done during Phase 2 downtime.
+
+**Completed so far:** 2.5.3 ✅ · 2.5.4 ✅ · RC-4 ✅ · RC-5 ✅ · AC-2 ✅ · AC-3 ✅ · AC-4 ✅ (all production-tested). Engine at `@t2000/engine@0.28.7`.
+**Remaining:** 2.5.1 · 2.5.2 · 2.5.5 · 2.5.6 · CA-0 · CA-1
 
 ---
 
