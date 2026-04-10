@@ -1,0 +1,239 @@
+import { z } from 'zod';
+import { buildTool } from '../tool.js';
+
+const PaymentLinkSchema = z.object({
+  amount: z.number().positive().optional().describe('Amount in USDC. Omit for open-amount links.'),
+  label: z.string().optional().describe('Human-readable label e.g. "Consulting fee March"'),
+  memo: z.string().optional().describe('Optional note shown to the payer'),
+  expiresInHours: z.number().positive().optional().describe('Hours until the link expires. Omit for permanent links.'),
+});
+
+const InvoiceSchema = z.object({
+  amount: z.number().positive().describe('Total invoice amount in USDC'),
+  label: z.string().describe('Invoice title e.g. "Web design — March 2026"'),
+  memo: z.string().optional().describe('Optional note or payment terms'),
+  recipientName: z.string().optional().describe('Name of the person or company being invoiced'),
+  recipientEmail: z.string().optional().describe('Email address of the recipient'),
+  dueDays: z.number().int().positive().optional().describe('Days until payment is due. Omit for no due date.'),
+  items: z.array(z.object({
+    description: z.string(),
+    amount: z.number().positive(),
+  })).optional().describe('Line items. If omitted, a single line item matching the total is implied.'),
+});
+
+export const createPaymentLinkTool = buildTool({
+  name: 'create_payment_link',
+  description:
+    'Create a shareable payment link so someone can send USDC to the user. Returns a URL the user can share. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", or similar.',
+  inputSchema: PaymentLinkSchema,
+  jsonSchema: {
+    type: 'object',
+    properties: {
+      amount: { type: 'number', description: 'Amount in USDC. Omit for open-amount links.' },
+      label: { type: 'string', description: 'Human-readable label e.g. "Consulting fee March"' },
+      memo: { type: 'string', description: 'Optional note shown to the payer' },
+      expiresInHours: { type: 'number', description: 'Hours until the link expires. Omit for permanent links.' },
+    },
+    required: [],
+  },
+  isReadOnly: false,
+
+  async call(input, context) {
+    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+
+    if (!apiUrl || !context.walletAddress) {
+      return { data: null, displayText: 'Payment link creation is not available.' };
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/api/internal/payment-links`, {
+        method: 'POST',
+        signal: context.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-sui-address': context.walletAddress,
+          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+        },
+        body: JSON.stringify(input),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        return { data: null, displayText: err.error ?? 'Failed to create payment link.' };
+      }
+
+      const link = await res.json() as {
+        slug: string;
+        url: string;
+        amount: number | null;
+        currency: string;
+        label: string | null;
+        memo: string | null;
+        expiresAt: string | null;
+      };
+
+      const amountStr = link.amount != null ? `$${link.amount.toFixed(2)} ${link.currency}` : `any amount ${link.currency}`;
+      return {
+        data: link,
+        displayText: `Payment link created for ${amountStr}${link.label ? ` — ${link.label}` : ''}. Share: ${link.url}`,
+      };
+    } catch {
+      return { data: null, displayText: 'Failed to create payment link.' };
+    }
+  },
+});
+
+export const listPaymentLinksTool = buildTool({
+  name: 'list_payment_links',
+  description:
+    'List the user\'s payment links — active, paid, expired, and cancelled. Use when the user asks "show my payment links", "what payment links do I have", or wants to check payment status.',
+  inputSchema: z.object({}),
+  jsonSchema: { type: 'object', properties: {}, required: [] },
+  isReadOnly: true,
+
+  async call(_input, context) {
+    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+
+    if (!apiUrl || !context.walletAddress) {
+      return { data: { links: [] }, displayText: 'No payment links found.' };
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/api/internal/payment-links`, {
+        signal: context.signal,
+        headers: {
+          'x-sui-address': context.walletAddress,
+          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+        },
+      });
+
+      if (!res.ok) return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
+
+      const data = await res.json() as { links: unknown[] };
+      const count = data.links.length;
+      return {
+        data,
+        displayText: count === 0 ? 'No payment links yet.' : `${count} payment link${count !== 1 ? 's' : ''} found.`,
+      };
+    } catch {
+      return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
+    }
+  },
+});
+
+export const createInvoiceTool = buildTool({
+  name: 'create_invoice',
+  description:
+    'Create a formal invoice that the user can share with a client or customer. Returns a URL for the invoice page. Use when the user says "create an invoice", "generate an invoice", "bill a client", or similar.',
+  inputSchema: InvoiceSchema,
+  jsonSchema: {
+    type: 'object',
+    properties: {
+      amount: { type: 'number', description: 'Total invoice amount in USDC' },
+      label: { type: 'string', description: 'Invoice title e.g. "Web design — March 2026"' },
+      memo: { type: 'string', description: 'Optional note or payment terms' },
+      recipientName: { type: 'string', description: 'Name of the person or company being invoiced' },
+      recipientEmail: { type: 'string', description: 'Email address of the recipient' },
+      dueDays: { type: 'number', description: 'Days until payment is due. Omit for no due date.' },
+      items: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            description: { type: 'string' },
+            amount: { type: 'number' },
+          },
+          required: ['description', 'amount'],
+        },
+        description: 'Line items. If omitted, a single line item matching the total is implied.',
+      },
+    },
+    required: ['amount', 'label'],
+  },
+  isReadOnly: false,
+
+  async call(input, context) {
+    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+
+    if (!apiUrl || !context.walletAddress) {
+      return { data: null, displayText: 'Invoice creation is not available.' };
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/api/internal/invoices`, {
+        method: 'POST',
+        signal: context.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-sui-address': context.walletAddress,
+          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+        },
+        body: JSON.stringify(input),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        return { data: null, displayText: err.error ?? 'Failed to create invoice.' };
+      }
+
+      const invoice = await res.json() as {
+        slug: string;
+        url: string;
+        amount: number;
+        currency: string;
+        label: string;
+        dueDate: string | null;
+      };
+
+      const dueStr = invoice.dueDate ? ` due ${new Date(invoice.dueDate).toLocaleDateString()}` : '';
+      return {
+        data: invoice,
+        displayText: `Invoice created for $${invoice.amount.toFixed(2)} ${invoice.currency}${dueStr} — ${invoice.label}. Share: ${invoice.url}`,
+      };
+    } catch {
+      return { data: null, displayText: 'Failed to create invoice.' };
+    }
+  },
+});
+
+export const listInvoicesTool = buildTool({
+  name: 'list_invoices',
+  description:
+    'List the user\'s invoices — pending, overdue, paid, and cancelled. Use when the user asks "show my invoices", "what invoices do I have", or wants to check invoice status.',
+  inputSchema: z.object({}),
+  jsonSchema: { type: 'object', properties: {}, required: [] },
+  isReadOnly: true,
+
+  async call(_input, context) {
+    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+
+    if (!apiUrl || !context.walletAddress) {
+      return { data: { invoices: [] }, displayText: 'No invoices found.' };
+    }
+
+    try {
+      const res = await fetch(`${apiUrl}/api/internal/invoices`, {
+        signal: context.signal,
+        headers: {
+          'x-sui-address': context.walletAddress,
+          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+        },
+      });
+
+      if (!res.ok) return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
+
+      const data = await res.json() as { invoices: unknown[] };
+      const count = data.invoices.length;
+      return {
+        data,
+        displayText: count === 0 ? 'No invoices yet.' : `${count} invoice${count !== 1 ? 's' : ''} found.`,
+      };
+    } catch {
+      return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
+    }
+  },
+});

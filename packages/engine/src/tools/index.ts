@@ -24,6 +24,12 @@ import { portfolioAnalysisTool } from './portfolio-analysis.js';
 import { protocolDeepDiveTool } from './protocol-deep-dive.js';
 import { allowanceStatusTool } from './allowance.js';
 import {
+  createPaymentLinkTool,
+  listPaymentLinksTool,
+  createInvoiceTool,
+  listInvoicesTool,
+} from './receive.js';
+import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
   defillamaTokenPricesTool,
@@ -54,6 +60,8 @@ export const READ_TOOLS: Tool[] = [
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
   allowanceStatusTool,
+  listPaymentLinksTool,
+  listInvoicesTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -68,6 +76,8 @@ export const WRITE_TOOLS: Tool[] = [
   voloStakeTool,
   voloUnstakeTool,
   saveContactTool,
+  createPaymentLinkTool,
+  createInvoiceTool,
 ];
 
 export function getDefaultTools(): Tool[] {
@@ -106,4 +116,8 @@ export {
   defillamaSuiProtocolsTool,
   saveContactTool,
   allowanceStatusTool,
+  createPaymentLinkTool,
+  listPaymentLinksTool,
+  createInvoiceTool,
+  listInvoicesTool,
 };
