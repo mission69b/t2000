@@ -122,13 +122,13 @@
 | AC-2 | `toggle_allowance` engine tool — pause/resume agent | 0.5d | done | AC-1 | both | ✅ Read tool (isReadOnly: true). PATCH `/api/allowance/[address]` with `{ action: 'toggle', enabled }`. Returns updated AllowanceCard. System prompt confirms before call. **Production-tested ✅** |
 | AC-3 | `update_daily_limit` engine tool — change spending cap via chat | 0.25d | done | AC-1 | both | ✅ Read tool. PATCH with `{ action: 'setLimit', dailyLimitUsdc }`. Validates 0–10000 range. **Production-tested ✅** |
 | AC-4 | `update_permissions` engine tool — enable/disable feature categories via chat | 0.25d | done | AC-1 | both | ✅ Read tool. PATCH with `{ action: 'setPermissions', permissions }`. Valid: savings, send, pay, credit, swap, stake. **Production-tested ✅** Post-release fixes: default permissions expanded to all 6, gauge 80% label removed, reset time formatted, duplicate card dedup in `ChatMessage.tsx`. |
-| CA-0 | Canvas infrastructure — `canvas` EngineEvent type, `CanvasCard.tsx`, `CanvasModal.tsx`, wire into `ToolResultCard` registry | 1.5d | not started | RC-0 | audric | No external deps. Spec: Canvas plan §CA-0 |
-| CA-1 | `render_canvas` engine tool — template enum, params schema, data fetcher, canvas event emission | 1d | not started | CA-0 | both | Register alongside read tools. Spec: Canvas plan §CA-1 |
+| CA-0 | Canvas infrastructure — `canvas` EngineEvent type, `CanvasCard.tsx`, `CanvasModal.tsx`, wire into `ToolResultCard` registry | 1.5d | done | RC-0 | audric | ✅ `canvas` variant added to `EngineEvent` + `SSEEvent`. `CanvasCard.tsx` (inline, expandable to modal), `CanvasModal.tsx` (fullscreen, Escape closes), `CanvasTemplateRenderer.tsx` (switch registry), `onSendMessage` prop wired: `UnifiedTimeline → ChatMessage → CanvasCard`. `render_canvas` suppressed in `ToolResultCard` (no card rendered — canvas only). `render_canvas` icon/label added to `AgentStep`. |
+| CA-1 | `render_canvas` engine tool — template enum, params schema, data fetcher, canvas event emission | 1d | done | CA-0 | both | ✅ `tools/canvas.ts`: 8 templates (3 live: yield_projector, health_simulator, dca_planner — seeded with live serverPositions; 5 stubs: activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, full_portfolio). Engine emits `canvas` event after `tool_result` when `__canvas: true`. Exported from `@t2000/engine` index. Bump to `0.28.8`. |
 
 **Estimated effort:** ~3 days (engine) + ~1.75 days (rich UX) + ~2.5 days (canvas infra). No external dependencies. Can be done during Phase 2 downtime.
 
-**Completed so far:** 2.5.1 ✅ · 2.5.2 ✅ · 2.5.3 ✅ · 2.5.4 ✅ · 2.5.5 ✅ · 2.5.6 ✅ · RC-4 ✅ · RC-5 ✅ · AC-2 ✅ · AC-3 ✅ · AC-4 ✅ (all production-tested). Engine at `@t2000/engine@0.28.7`.
-**Remaining:** CA-0 · CA-1
+**Completed so far:** 2.5.1 ✅ · 2.5.2 ✅ · 2.5.3 ✅ · 2.5.4 ✅ · 2.5.5 ✅ · 2.5.6 ✅ · RC-4 ✅ · RC-5 ✅ · AC-2 ✅ · AC-3 ✅ · AC-4 ✅ · CA-0 ✅ · CA-1 ✅ (all production-tested). Engine at `@t2000/engine@0.28.8`.
+**Remaining:** CA-2 through CA-8 (canvas templates + watch address)
 
 ---
 
