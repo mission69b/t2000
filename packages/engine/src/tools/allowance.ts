@@ -5,13 +5,22 @@ import { buildTool } from '../tool.js';
 // Shared helper — calls the Audric PATCH /api/allowance/[address] endpoint
 // ---------------------------------------------------------------------------
 
+interface AllowanceState {
+  enabled: boolean;
+  dailyLimit: number;
+  spent: number;
+  remaining: number;
+  permissions: string[];
+  resetsAt: string | null;
+}
+
 async function patchAllowance(
   apiUrl: string,
   walletAddress: string,
   internalKey: string | undefined,
   body: Record<string, unknown>,
   signal?: AbortSignal,
-): Promise<{ data: unknown; displayText: string } | null> {
+): Promise<AllowanceState | null> {
   const res = await fetch(`${apiUrl}/api/allowance/${walletAddress}`, {
     method: 'PATCH',
     headers: {
@@ -23,7 +32,7 @@ async function patchAllowance(
     signal,
   });
   if (!res.ok) return null;
-  return res.json() as Promise<{ data: unknown; displayText: string }>;
+  return res.json() as Promise<AllowanceState>;
 }
 
 export const allowanceStatusTool = buildTool({
