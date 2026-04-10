@@ -660,12 +660,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `compactMessages` | function | Context window compaction |
 | `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
 | `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 37 built-in tools (26 read, 11 write) |
+| `getDefaultTools` | function | All 40 built-in tools (29 read, 11 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 
 ### Engine Tool Names
 
-| Read Tools (26) | Write Tools (11) |
+| Read Tools (29) | Write Tools (11) |
 |-----------|------------|
 | `balance_check` | `save_deposit` |
 | `savings_info` | `withdraw` |
@@ -693,6 +693,9 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `create_invoice` | |
 | `list_invoices` | |
 | `cancel_invoice` | |
+| `toggle_allowance` | |
+| `update_daily_limit` | |
+| `update_permissions` | |
 
 ### Engine Event Types
 

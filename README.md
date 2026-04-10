@@ -157,7 +157,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-37 built-in tools (26 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
+40 built-in tools (29 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 

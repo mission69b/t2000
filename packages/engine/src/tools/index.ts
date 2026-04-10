@@ -22,7 +22,7 @@ import { webSearchTool } from './web-search.js';
 import { explainTxTool } from './explain-tx.js';
 import { portfolioAnalysisTool } from './portfolio-analysis.js';
 import { protocolDeepDiveTool } from './protocol-deep-dive.js';
-import { allowanceStatusTool } from './allowance.js';
+import { allowanceStatusTool, toggleAllowanceTool, updateDailyLimitTool, updatePermissionsTool } from './allowance.js';
 import {
   createPaymentLinkTool,
   listPaymentLinksTool,
@@ -62,6 +62,9 @@ export const READ_TOOLS: Tool[] = [
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
   allowanceStatusTool,
+  toggleAllowanceTool,
+  updateDailyLimitTool,
+  updatePermissionsTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
   listInvoicesTool,
@@ -120,6 +123,9 @@ export {
   defillamaSuiProtocolsTool,
   saveContactTool,
   allowanceStatusTool,
+  toggleAllowanceTool,
+  updateDailyLimitTool,
+  updatePermissionsTool,
   createPaymentLinkTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,

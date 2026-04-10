@@ -87,7 +87,7 @@ QueryEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (26 — parallel, auto-approved)
+### Read Tools (29 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
@@ -117,6 +117,9 @@ QueryEngine.submitMessage()
 | `create_invoice` | Create a formal invoice with due date and line items |
 | `list_invoices` | List invoices with statuses |
 | `cancel_invoice` | Cancel an unpaid invoice |
+| `toggle_allowance` | Pause or resume agent autonomous spending |
+| `update_daily_limit` | Change the daily USDC spending cap |
+| `update_permissions` | Update which service categories the agent can act on |
 
 ### Write Tools (11 — serial, confirmation required)
 
