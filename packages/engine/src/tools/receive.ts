@@ -185,6 +185,7 @@ export const createInvoiceTool = buildTool({
         amount: number;
         currency: string;
         label: string;
+        memo: string | null;
         dueDate: string | null;
       };
 
