@@ -113,8 +113,25 @@ pnpm --filter @t2000/engine lint       # ESLint
 
 #### Step 1 — Trigger the Release workflow (one command)
 
+> **Prerequisite:** `release.yml` requires a `RELEASE_TOKEN` secret in GitHub repo settings — a Personal Access Token with `contents: write` and branch protection bypass rights. Without it, the workflow's push to main will fail. If the secret is not configured, use the manual fallback below.
+
 ```bash
 gh workflow run release.yml --field bump=patch   # patch | minor | major
+```
+
+**Manual fallback (if RELEASE_TOKEN not set):**
+```bash
+cd /Users/funkii/dev/t2000
+npm --prefix packages/sdk version X.Y.Z --no-git-tag-version
+npm --prefix packages/engine version X.Y.Z --no-git-tag-version
+npm --prefix packages/cli version X.Y.Z --no-git-tag-version
+npm --prefix packages/mcp version X.Y.Z --no-git-tag-version
+git add packages/*/package.json
+git commit -m "📦 build: vX.Y.Z"
+git push origin main
+git tag -a vX.Y.Z -m "vX.Y.Z — description"
+git push origin vX.Y.Z
+# publish.yml triggers automatically from the tag push
 ```
 
 This runs `.github/workflows/release.yml`, which:
