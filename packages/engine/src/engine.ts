@@ -42,6 +42,7 @@ export class QueryEngine {
   private readonly suiRpcUrl: string | undefined;
   private serverPositions: EngineConfig['serverPositions'];
   private readonly positionFetcher: EngineConfig['positionFetcher'];
+  private readonly env: Record<string, string> | undefined;
   private readonly txMutex = new TxMutex();
   private readonly costTracker: CostTracker;
 
@@ -56,6 +57,7 @@ export class QueryEngine {
     this.suiRpcUrl = config.suiRpcUrl;
     this.serverPositions = config.serverPositions;
     this.positionFetcher = config.positionFetcher;
+    this.env = config.env;
     this.model = config.model;
     this.maxTurns = config.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
@@ -203,6 +205,7 @@ export class QueryEngine {
       suiRpcUrl: this.suiRpcUrl,
       serverPositions: this.serverPositions,
       positionFetcher: this.positionFetcher,
+      env: this.env,
       signal,
     };
 

@@ -147,6 +147,8 @@ export interface EngineConfig {
   temperature?: number;
   /** Force tool usage on the first LLM turn (prevents text-only refusals). */
   toolChoice?: ToolChoice;
+  /** Environment variables forwarded to tool context (API keys, URLs). */
+  env?: Record<string, string>;
   costTracker?: {
     budgetLimitUsd?: number;
     inputCostPerToken?: number;
