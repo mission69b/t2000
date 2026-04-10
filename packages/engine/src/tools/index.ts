@@ -33,6 +33,8 @@ import {
 } from './receive.js';
 import { renderCanvasTool } from './canvas.js';
 import { spendingAnalyticsTool } from './spending.js';
+import { yieldSummaryTool } from './yield-summary.js';
+import { activitySummaryTool } from './activity-summary.js';
 import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
@@ -75,6 +77,8 @@ export const READ_TOOLS: Tool[] = [
   createPaymentLinkTool,
   createInvoiceTool,
   spendingAnalyticsTool,
+  yieldSummaryTool,
+  activitySummaryTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -138,4 +142,6 @@ export {
   cancelInvoiceTool,
   listInvoicesTool,
   spendingAnalyticsTool,
+  yieldSummaryTool,
+  activitySummaryTool,
 };

@@ -19,6 +19,11 @@ interface PortfolioInsight {
   message: string;
 }
 
+interface WeekChange {
+  absoluteUsd: number;
+  percentChange: number;
+}
+
 interface PortfolioResult {
   totalValue: number;
   walletValue: number;
@@ -28,6 +33,9 @@ interface PortfolioResult {
   allocations: AssetAllocation[];
   stablePercentage: number;
   insights: PortfolioInsight[];
+  savingsApy?: number;
+  dailyEarning?: number;
+  weekChange?: WeekChange;
 }
 
 const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
@@ -75,6 +83,8 @@ export const portfolioAnalysisTool = buildTool({
     let savingsValue = 0;
     let debtValue = 0;
     let healthFactor: number | null = null;
+    let savingsApy: number | undefined;
+    let dailyEarning: number | undefined;
 
     if (context.positionFetcher) {
       try {
@@ -82,7 +92,28 @@ export const portfolioAnalysisTool = buildTool({
         savingsValue = positions.savings ?? 0;
         debtValue = positions.borrows ?? 0;
         healthFactor = positions.healthFactor ?? null;
+        if (typeof positions.savingsRate === 'number' && positions.savingsRate > 0) {
+          savingsApy = positions.savingsRate;
+          dailyEarning = savingsValue * savingsApy / 365;
+        }
       } catch { /* fallback to wallet only */ }
+    }
+
+    let weekChange: WeekChange | undefined;
+    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    if (apiUrl && address) {
+      try {
+        const histRes = await fetch(
+          `${apiUrl}/api/analytics/portfolio-history?days=7`,
+          { headers: { 'x-sui-address': address }, signal: context.signal },
+        );
+        if (histRes.ok) {
+          const hist = (await histRes.json()) as { change?: WeekChange };
+          if (hist.change && hist.change.absoluteUsd !== 0) {
+            weekChange = hist.change;
+          }
+        }
+      } catch { /* supplementary data */ }
     }
 
     const totalValue = walletValue + savingsValue;
@@ -142,6 +173,9 @@ export const portfolioAnalysisTool = buildTool({
       allocations: allocations.slice(0, 10),
       stablePercentage,
       insights,
+      savingsApy,
+      dailyEarning,
+      weekChange,
     };
 
     const topLine = `Total: $${totalValue.toFixed(2)} | Wallet: $${walletValue.toFixed(2)} | Savings: $${savingsValue.toFixed(2)}`;

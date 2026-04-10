@@ -5,6 +5,7 @@ import { runBriefings } from './jobs/briefings.js';
 import { runRateAlerts } from './jobs/rateAlerts.js';
 import { runOnboardingFollowup } from './jobs/onboardingFollowup.js';
 import { runPortfolioSnapshots } from './jobs/portfolioSnapshots.js';
+import { runWeeklyBriefing } from './jobs/weeklyBriefing.js';
 import type { JobResult } from './types.js';
 
 function getClient(): SuiJsonRpcClient {
@@ -50,6 +51,12 @@ async function runCron(): Promise<void> {
   // --- Daily portfolio snapshots ---
   if (utcHour === BRIEFING_UTC_HOUR) {
     results.push(await runPortfolioSnapshots());
+  }
+
+  // --- Weekly briefing (Sundays at briefing hour) ---
+  const dayOfWeek = new Date().getUTCDay();
+  if (utcHour === BRIEFING_UTC_HOUR && dayOfWeek === 0) {
+    results.push(await runWeeklyBriefing(client, users));
   }
 
   // --- Future daily jobs ---

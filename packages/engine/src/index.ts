@@ -123,6 +123,8 @@ export {
   portfolioAnalysisTool,
   protocolDeepDiveTool,
   spendingAnalyticsTool,
+  yieldSummaryTool,
+  activitySummaryTool,
 } from './tools/index.js';
 
 // Built-in tools — writes
