@@ -102,9 +102,14 @@ export type { NaviReadOptions, ProtocolStats } from './navi-reads.js';
 export { AnthropicProvider } from './providers/anthropic.js';
 export type { AnthropicProviderConfig } from './providers/anthropic.js';
 
+// Canvas
+export { CANVAS_TEMPLATES } from './tools/canvas.js';
+export type { CanvasTemplate } from './tools/canvas.js';
+
 // Built-in tools — reads
 export {
   READ_TOOLS,
+  renderCanvasTool,
   balanceCheckTool,
   savingsInfoTool,
   healthCheckTool,

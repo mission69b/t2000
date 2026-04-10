@@ -331,6 +331,21 @@ export class QueryEngine {
 
         yield toolEvent;
 
+        // If the tool result carries a canvas payload, emit a canvas event
+        // so the client can render an interactive canvas template.
+        if (toolEvent.type === 'tool_result' && !toolEvent.isError) {
+          const r = toolEvent.result as Record<string, unknown> | null;
+          if (r && r.__canvas === true) {
+            yield {
+              type: 'canvas',
+              template: String(r.template ?? ''),
+              title: String(r.title ?? ''),
+              data: r.templateData ?? null,
+              toolUseId: toolEvent.toolUseId,
+            };
+          }
+        }
+
         if (toolEvent.type === 'tool_result') {
           toolResultBlocks.push({
             type: 'tool_result',

@@ -31,6 +31,7 @@ import {
   cancelInvoiceTool,
   listInvoicesTool,
 } from './receive.js';
+import { renderCanvasTool } from './canvas.js';
 import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
@@ -42,6 +43,7 @@ import {
 } from './defillama.js';
 
 export const READ_TOOLS: Tool[] = [
+  renderCanvasTool,
   balanceCheckTool,
   savingsInfoTool,
   healthCheckTool,
@@ -92,6 +94,7 @@ export function getDefaultTools(): Tool[] {
 }
 
 export {
+  renderCanvasTool,
   balanceCheckTool,
   savingsInfoTool,
   healthCheckTool,

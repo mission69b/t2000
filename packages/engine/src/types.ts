@@ -45,7 +45,15 @@ export type EngineEvent =
       cacheReadTokens?: number;
       cacheWriteTokens?: number;
     }
-  | { type: 'error'; error: Error };
+  | { type: 'error'; error: Error }
+  | {
+      /** Emitted when a tool result carries a canvas payload (__canvas: true). */
+      type: 'canvas';
+      template: string;
+      data: unknown;
+      title: string;
+      toolUseId: string;
+    };
 
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
 

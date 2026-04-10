@@ -11,7 +11,8 @@ export type SSEEvent =
   | { type: 'pending_action'; action: PendingAction }
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'canvas'; template: string; data: unknown; title: string; toolUseId: string };
 
 // ---------------------------------------------------------------------------
 // Serialise: SSEEvent → SSE text
