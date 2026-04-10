@@ -109,29 +109,58 @@ pnpm --filter @t2000/engine lint       # ESLint
 
 ### Release process (npm publish)
 
-**One command releases all 4 packages** (`@t2000/sdk`, `@t2000/engine`, `@t2000/mcp`, `@t2000/cli`):
+> **MANDATORY — always use this process. Never manually bump versions, push tags, or run `npm publish` locally.**
+
+#### Step 1 — Trigger the Release workflow (one command)
 
 ```bash
 gh workflow run release.yml --field bump=patch   # patch | minor | major
 ```
 
-This triggers the full pipeline:
-1. **Release workflow** — bumps all package versions, commits, creates git tag, pushes
-2. **Publish workflow** — triggered explicitly by Release (not by tag push — `GITHUB_TOKEN` pushes don't trigger downstream workflows, this is a GitHub Actions limitation by design)
-3. Publish runs: CI (lint + typecheck + test) → npm publish → GitHub Release → Discord notification
+This runs `.github/workflows/release.yml`, which:
+1. Bumps all 4 package versions together (`sdk`, `engine`, `cli`, `mcp`) to the same version
+2. Commits `📦 build: vX.Y.Z` to main
+3. Creates and pushes the `vX.Y.Z` annotated tag
+4. Explicitly triggers `.github/workflows/publish.yml` via `workflow_dispatch`
 
-**After npm release, update downstream repos:**
+#### Step 2 — Publish pipeline runs automatically
+
+`.github/workflows/publish.yml` (triggered by Step 1):
+1. **CI** — lint + typecheck + test + build all packages
+2. **Publish** — `pnpm publish` for each of the 4 packages (`continue-on-error: true` — safe if version already exists)
+3. **GitHub Release** — `gh release create vX.Y.Z --generate-notes`
+4. **Discord** — posts release notification to `#releases` channel
+
+#### Step 3 — Update audric (downstream)
+
 ```bash
-# In audric repo:
-pnpm update @t2000/engine@latest @t2000/sdk@latest --filter web
-git add -A && git commit -m "📦 build(web): upgrade @t2000/engine + sdk" && git push
+# In audric repo after npm publish completes:
+cd /Users/funkii/dev/audric/apps/web
+pnpm add @t2000/sdk@latest @t2000/engine@latest
+cd /Users/funkii/dev/audric
+git add -A && git commit -m "📦 build(web): bump @t2000/sdk + @t2000/engine to vX.Y.Z" && git push
 # Vercel auto-deploys on push to main
 ```
 
+#### When to bump what
+
+| Change | Bump |
+|--------|------|
+| New tool, method, or command | `minor` |
+| Bug fix, type fix, test fix | `patch` |
+| Breaking API change | `major` |
+
+#### ⚠️ What NOT to do
+
+- **Never** run `npm --prefix packages/X version Y` manually before pushing a tag
+- **Never** push a `vX.Y.Z` tag by hand — let the release workflow do it
+- **Never** run `pnpm publish` locally
+- **Never** push multiple tags in the same session to fix failures — fix the code and re-run the workflow
+
 **Key details:**
-- Versions are kept in sync across all 4 packages (same bump applied to each)
+- All 4 packages are always at the same version number (e.g. `0.28.0`) — no drift
 - `continue-on-error: true` on publish steps — idempotent if a version already exists
-- `workflow_dispatch` on publish.yml serves as backup trigger
+- `workflow_dispatch` on `publish.yml` serves as a manual fallback if needed
 
 ---
 
