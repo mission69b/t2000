@@ -122,7 +122,9 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
 
     // Strategy simulators — client-side, seed with live position data
     const positions = context.serverPositions;
-    const savingsRate = positions?.savingsRate ?? 4.5;
+    // savingsRate is stored as a decimal (0.051 = 5.1%), convert to percentage for display
+    const rawRate = positions?.savingsRate ?? 0;
+    const savingsRate = rawRate > 0 && rawRate < 1 ? rawRate * 100 : rawRate > 0 ? rawRate : 4.5;
     const healthFactor = positions?.healthFactor ?? null;
     const totalSavings = positions?.savings ?? 0;
     const totalBorrows = positions?.borrows ?? 0;
