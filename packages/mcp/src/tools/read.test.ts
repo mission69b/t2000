@@ -89,8 +89,8 @@ describe('read tools', () => {
     registerReadTools(server, agent);
   });
 
-  it('should register 14 read tools', () => {
-    expect(tools.size).toBe(14);
+  it('should register 15 read tools', () => {
+    expect(tools.size).toBe(15);
     expect(tools.has('t2000_overview')).toBe(true);
     expect(tools.has('t2000_balance')).toBe(true);
     expect(tools.has('t2000_address')).toBe(true);
@@ -105,6 +105,7 @@ describe('read tools', () => {
     expect(tools.has('t2000_all_rates')).toBe(true);
     expect(tools.has('t2000_services')).toBe(true);
     expect(tools.has('t2000_contacts')).toBe(true);
+    expect(tools.has('t2000_receive')).toBe(true);
   });
 
   it('t2000_balance should return balance JSON', async () => {
