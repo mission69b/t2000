@@ -177,6 +177,7 @@
 
 **Critical path:** CA-0 → CA-1 → CA-2 + CA-4 + CA-6 (parallel) → FA-4 + FA-2 (analytics prereqs) → CA-3 + CA-5 → CA-7 (capstone) + CA-8 (suggestions). **All complete.**
 **Actual effort:** ~9 days. All 8 canvas templates live. FA-4 (portfolio snapshots) + FA-2 (spending analytics) built as prerequisites. `spending_analytics` engine tool added.
+**Post-deploy review fixes (v0.29.0):** normalizeSavingsRate helper (consistent 4.5% fallback), FullPortfolio wallet fetched from /api/balances (was $0), auth added to watch-addresses + portfolio-history (x-sui-address header), spending dedup (ServicePurchase takes priority), portfolio-history try/catch, address validation ≥40 chars. Heatmap auto-scrolls to rightmost (recent) cells. Canvas chip priority lowered to 15/14 to avoid bumping status chips. **All 8 canvases production-tested ✅.**
 
 ---
 
@@ -372,5 +373,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4
 
 ---
 
-*Last updated: April 10 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete (all 8 canvas templates, FA-4 portfolio snapshots, FA-2 spending analytics). Landing pages ✅ complete. Next: Phase 3 (proactive agent, auto-compound, DCA, feedback processing) + remaining financial analytics (FA-1, FA-3, FA-5, FI-1, FI-2, FI-3). Phase 3.5 (Intelligence Layer) follows.*
+*Last updated: April 10 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete (all 8 canvases production-tested, FA-4 portfolio snapshots, FA-2 spending analytics, review fixes deployed). Landing pages ✅ complete. Engine: `@t2000/engine@0.29.0`. Next: Phase 3 (proactive agent, auto-compound, DCA, feedback processing) + remaining financial analytics (FA-1, FA-3, FA-5, FI-1, FI-2, FI-3). Phase 3.5 (Intelligence Layer) follows.*
 *Source of truth for specs: `audric-roadmap.md`, `audric-feedback-loop-spec.md`, `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`, `spec/audric-rich-ux-spec.md`, `.cursor/plans/audric_canvas_feature_cfe76b5b.plan.md`*
