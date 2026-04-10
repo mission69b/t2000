@@ -104,6 +104,31 @@ const TABS: TerminalTab[] = [
       { text: "  Cost: $0.002 USDC", color: "dim", delay: 200 },
     ],
   },
+  {
+    label: "Receive",
+    lines: [
+      { text: "$ t2000 receive --amount 50 --label \"Consulting fee\"", color: "white", delay: 0 },
+      { text: "", delay: 400 },
+      { text: "  Payment Request", color: "white", delay: 300 },
+      { text: "  ──────────────────────────────────────", color: "dim", delay: 100 },
+      { text: "  Amount    $50.00 USDC", color: "white", delay: 150 },
+      { text: "  Label     Consulting fee", color: "white", delay: 100 },
+      { text: "  Address   0x8b3e...d412", color: "yellow", delay: 150 },
+      { text: "  ──────────────────────────────────────", color: "dim", delay: 100 },
+      { text: "  QR        sui:0x8b3e...d412?amount=50000000", color: "dim", delay: 150 },
+      { text: "             &label=Consulting+fee", color: "dim", delay: 80 },
+      { text: "", delay: 400 },
+      { text: "  Share this QR or address to receive USDC.", color: "dim", delay: 300 },
+      { text: "  Network: Sui mainnet · Token: USDC", color: "dim", delay: 150 },
+      { text: "", delay: 800 },
+      { text: "$ t2000 receive", color: "white", delay: 800 },
+      { text: "", delay: 400 },
+      { text: "  Address   0x8b3e...d412", color: "yellow", delay: 300 },
+      { text: "  QR        sui:0x8b3e...d412", color: "dim", delay: 150 },
+      { text: "", delay: 200 },
+      { text: "  Open amount — sender decides how much to send.", color: "dim", delay: 200 },
+    ],
+  },
 ];
 
 const COLOR_MAP: Record<string, string> = {
@@ -212,6 +237,7 @@ export function TabbedTerminal() {
         {activeTab === 1 && "Save, send, borrow — all from the terminal"}
         {activeTab === 2 && "Full portfolio view with DeFi positions and limits"}
         {activeTab === 3 && "Pay for any API with USDC — no keys, no signup"}
+        {activeTab === 4 && "Accept USDC from anyone — fixed amount or open"}
       </div>
     </div>
   );
