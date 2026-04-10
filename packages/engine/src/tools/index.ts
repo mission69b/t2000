@@ -62,6 +62,8 @@ export const READ_TOOLS: Tool[] = [
   allowanceStatusTool,
   listPaymentLinksTool,
   listInvoicesTool,
+  createPaymentLinkTool,
+  createInvoiceTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -76,8 +78,6 @@ export const WRITE_TOOLS: Tool[] = [
   voloStakeTool,
   voloUnstakeTool,
   saveContactTool,
-  createPaymentLinkTool,
-  createInvoiceTool,
 ];
 
 export function getDefaultTools(): Tool[] {

@@ -36,7 +36,7 @@ export const createPaymentLinkTool = buildTool({
     },
     required: [],
   },
-  isReadOnly: false,
+  isReadOnly: true,
 
   async call(input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
@@ -152,7 +152,7 @@ export const createInvoiceTool = buildTool({
     },
     required: ['amount', 'label'],
   },
-  isReadOnly: false,
+  isReadOnly: true,
 
   async call(input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
