@@ -34,6 +34,7 @@ interface TxRecord {
   asset?: string;
   recipient?: string;
   timestamp: number;
+  date?: string;
   gasCost?: number;
 }
 
@@ -96,13 +97,15 @@ function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
     recipient = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;
   }
 
+  const timestampMs = Number(tx.timestampMs ?? 0);
   return {
     digest: tx.digest,
     action: classifyAction(moveCallTargets, commandTypes),
     amount,
     asset,
     recipient,
-    timestamp: Number(tx.timestampMs ?? 0),
+    timestamp: timestampMs,
+    date: timestampMs > 0 ? new Date(timestampMs).toISOString() : undefined,
     gasCost,
   };
 }
