@@ -20,3 +20,20 @@ model MppPayment {
   @@index([service])
   @@map("mpp_payments")
 }
+
+model ReputationCache {
+  walletAddress   String   @id @map("wallet_address")
+  score           Int
+  tier            String
+  totalPayments   Int      @map("total_payments")
+  totalVolumeUsdc Int      @map("total_volume_usdc")
+  failureRate     Float    @map("failure_rate")
+  daysSinceFirst  Float    @map("days_since_first")
+  lastActivity    DateTime @map("last_activity")
+  computedAt      DateTime @map("computed_at")
+  expiresAt       DateTime @map("expires_at")
+
+  @@index([tier])
+  @@index([expiresAt])
+  @@map("reputation_cache")
+}

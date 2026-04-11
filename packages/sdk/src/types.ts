@@ -186,6 +186,16 @@ export interface ClaimRewardsResult {
   gasMethod: GasMethod;
 }
 
+export interface CompoundRewardsResult {
+  success: boolean;
+  claimTx: string;
+  swapTxs: string[];
+  depositTx: string;
+  rewards: PendingReward[];
+  totalCompoundedUsdc: number;
+  totalGasCost: number;
+}
+
 export interface StakeVSuiResult {
   success: boolean;
   tx: string;

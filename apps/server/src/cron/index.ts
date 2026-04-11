@@ -6,6 +6,12 @@ import { runRateAlerts } from './jobs/rateAlerts.js';
 import { runOnboardingFollowup } from './jobs/onboardingFollowup.js';
 import { runPortfolioSnapshots } from './jobs/portfolioSnapshots.js';
 import { runWeeklyBriefing } from './jobs/weeklyBriefing.js';
+import { runAutoCompound } from './jobs/autoCompound.js';
+import { runScheduledActions } from './jobs/scheduledActions.js';
+import { runScheduledReminders } from './jobs/scheduledReminders.js';
+import { runOutcomeChecks } from './jobs/outcomeChecker.js';
+import { detectAnomaliesJob } from './jobs/anomalyDetector.js';
+import { deliverFollowUps } from './jobs/followUpDelivery.js';
 import type { JobResult } from './types.js';
 
 function getClient(): SuiJsonRpcClient {
@@ -59,14 +65,26 @@ async function runCron(): Promise<void> {
     results.push(await runWeeklyBriefing(client, users));
   }
 
-  // --- Future daily jobs ---
+  // --- Daily auto-compound check ---
   if (utcHour === BRIEFING_UTC_HOUR) {
-    // TODO: Phase 3.1 — runAutoCompound(client, users)
+    results.push(await runAutoCompound(client, users));
     // TODO: Phase 2.2 — runInvoiceChecks(client, users)
   }
 
   // --- Per-schedule jobs (check nextRunAt) ---
-  // TODO: Phase 3.3 — runScheduledActions(client)
+  results.push(await runScheduledActions(client));
+
+  // --- Scheduled action reminders (at briefing hour) ---
+  if (utcHour === BRIEFING_UTC_HOUR) {
+    results.push(await runScheduledReminders(client, users));
+  }
+
+  // --- Feedback loop: outcome checks, anomaly detection, follow-up delivery ---
+  if (utcHour === BRIEFING_UTC_HOUR) {
+    results.push(await runOutcomeChecks(client));
+    results.push(await detectAnomaliesJob(client, users));
+    results.push(await deliverFollowUps(client));
+  }
 
   await reportNotifications(results);
 
