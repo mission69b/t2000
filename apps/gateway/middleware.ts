@@ -29,9 +29,13 @@ function checkRateLimit(key: string, maxPerMinute: number): boolean {
   return entry.count > maxPerMinute;
 }
 
+const WALLET_RE = /^0x[a-fA-F0-9]{64}$/;
+
 async function resolveTier(walletAddress: string, origin: string): Promise<string> {
+  if (!WALLET_RE.test(walletAddress)) return 'new';
   try {
-    const res = await fetch(`${origin}/api/reputation/${walletAddress}`, {
+    const url = new URL(`/api/reputation/${encodeURIComponent(walletAddress)}`, origin);
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(2000),
     });
     if (!res.ok) return 'new';

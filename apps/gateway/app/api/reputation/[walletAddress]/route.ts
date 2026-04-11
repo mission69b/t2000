@@ -12,7 +12,7 @@ export async function GET(
 ) {
   const { walletAddress } = await params;
 
-  if (!walletAddress || walletAddress.length < 20) {
+  if (!walletAddress || !/^0x[a-fA-F0-9]{64}$/.test(walletAddress)) {
     return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 });
   }
 
