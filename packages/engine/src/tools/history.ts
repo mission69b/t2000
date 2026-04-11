@@ -224,7 +224,7 @@ export const transactionHistoryTool = buildTool({
       const agent = requireAgent(context);
       const records = await agent.history({ limit });
       return {
-        data: { transactions: records, count: records.length },
+        data: { transactions: records, count: records.length, date: input.date ?? null },
         displayText: `${records.length} recent transaction(s)`,
       };
     }
@@ -246,7 +246,7 @@ export const transactionHistoryTool = buildTool({
 
     const records = await queryHistoryRpc(context.suiRpcUrl, context.walletAddress, limit);
     return {
-      data: { transactions: records, count: records.length },
+      data: { transactions: records, count: records.length, date: null },
       displayText: `${records.length} recent transaction(s)`,
     };
   },
