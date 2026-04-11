@@ -47,33 +47,28 @@ jobs:
         run: |
           BUMP="${{ inputs.bump }}"
 
-          bump_pkg() {
-            local pkg=$1
-            local current=$(node -p "require('./$pkg/package.json').version")
-            local IFS='.'
-            read -r major minor patch <<< "$current"
+          # Use sdk as source of truth, apply same version to all packages
+          CURRENT=$(node -p "require('./packages/sdk/package.json').version")
+          IFS='.' read -r major minor patch <<< "$CURRENT"
 
-            case "$BUMP" in
-              major) major=$((major + 1)); minor=0; patch=0 ;;
-              minor) minor=$((minor + 1)); patch=0 ;;
-              patch) patch=$((patch + 1)) ;;
-            esac
+          case "$BUMP" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
 
-            local next="$major.$minor.$patch"
+          VERSION="$major.$minor.$patch"
+          echo "Bumping all packages: $CURRENT → $VERSION"
+
+          for pkg in packages/sdk packages/engine packages/cli packages/mcp; do
             node -e "
               const fs = require('fs');
-              const pkg = JSON.parse(fs.readFileSync('./$pkg/package.json', 'utf8'));
-              pkg.version = '$next';
-              fs.writeFileSync('./$pkg/package.json', JSON.stringify(pkg, null, 2) + '\n');
+              const p = JSON.parse(fs.readFileSync('./$pkg/package.json', 'utf8'));
+              p.version = '$VERSION';
+              fs.writeFileSync('./$pkg/package.json', JSON.stringify(p, null, 2) + '\n');
             "
-            echo "$pkg: $current → $next" >&2
-            printf '%s' "$next"
-          }
-
-          bump_pkg "packages/sdk"
-          bump_pkg "packages/engine"
-          VERSION=$(bump_pkg "packages/cli")
-          bump_pkg "packages/mcp"
+            echo "  $pkg → $VERSION"
+          done
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -86,8 +81,5 @@ jobs:
           git push origin HEAD:refs/heads/main
           git push origin "refs/tags/$VERSION"
 
-      - name: Trigger publish
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run publish.yml --ref "v${{ steps.bump.outputs.version }}"
+      # publish.yml is triggered automatically by the v* tag push above
 

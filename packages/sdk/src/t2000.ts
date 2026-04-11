@@ -45,6 +45,7 @@ import type {
   EarningsResult,
   FundStatusResult,
   ClaimRewardsResult,
+  CompoundRewardsResult,
   PendingReward,
   PayOptions,
   PayResult,
@@ -1239,6 +1240,142 @@ export class T2000 extends EventEmitter<T2000Events> {
       totalValueUsd,
       gasCost: claimResult.gasCostSui,
       gasMethod: claimResult.gasMethod,
+    };
+  }
+
+  /**
+   * Claim pending rewards, swap non-USDC tokens to USDC via Cetus, and deposit into NAVI.
+   * Multi-step: claim (transfers to wallet) -> swap each reward token to USDC -> deposit USDC.
+   * Minimum threshold: skips if total rewards < $0.10 (gas not worth it).
+   */
+  async compoundRewards(options: { minValueUsd?: number } = {}): Promise<CompoundRewardsResult> {
+    this.enforcer.assertNotLocked();
+    const minValue = options.minValueUsd ?? 0.10;
+    const USDC_TYPE = SUPPORTED_ASSETS.USDC.type;
+    const USDC_DEC = SUPPORTED_ASSETS.USDC.decimals;
+
+    const pending = await this.getPendingRewards();
+    const nonTrivial = pending.filter((r) => r.amount > 0);
+    if (nonTrivial.length === 0) {
+      return {
+        success: true, claimTx: '', swapTxs: [], depositTx: '',
+        rewards: pending, totalCompoundedUsdc: 0, totalGasCost: 0,
+      };
+    }
+
+    const totalPendingUsd = pending.reduce((s, r) => s + r.estimatedValueUsd, 0);
+    if (totalPendingUsd > 0 && totalPendingUsd < minValue) {
+      return {
+        success: true, claimTx: '', swapTxs: [], depositTx: '',
+        rewards: pending, totalCompoundedUsdc: 0, totalGasCost: 0,
+      };
+    }
+
+    // Snapshot USDC balance before compounding to scope deposit correctly
+    const preUsdcCoins = await this._fetchCoins(USDC_TYPE);
+    const preUsdcRaw = preUsdcCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
+
+    // Step 1: Claim — transfers reward tokens to wallet
+    const claimResult = await this.claimRewards();
+    if (!claimResult.tx) {
+      return {
+        success: false, claimTx: '', swapTxs: [], depositTx: '',
+        rewards: pending, totalCompoundedUsdc: 0, totalGasCost: 0,
+      };
+    }
+
+    // Step 2: Swap each non-USDC reward token to USDC via Cetus
+    const { findSwapRoute, buildSwapTx } = await import('./protocols/cetus-swap.js');
+    const swapTxs: string[] = [];
+    let totalGasCost = claimResult.gasCost;
+
+    for (const reward of nonTrivial) {
+      if (!reward.coinType) continue;
+      if (reward.coinType === USDC_TYPE) continue;
+
+      try {
+        const decimals = getDecimalsForCoinType(reward.coinType) ?? 9;
+        const rawAmount = BigInt(Math.floor(reward.amount * 10 ** decimals));
+        if (rawAmount <= 0n) continue;
+
+        const coins = await this._fetchCoins(reward.coinType);
+        if (coins.length === 0) continue;
+
+        const route = await findSwapRoute({
+          walletAddress: this._address,
+          from: reward.coinType,
+          to: USDC_TYPE,
+          amount: rawAmount,
+          byAmountIn: true,
+        });
+
+        if (!route || route.insufficientLiquidity) continue;
+
+        const swapResult = await executeWithGas(this.client, this._signer, async () => {
+          const tx = new Transaction();
+          tx.setSender(this._address);
+
+          const freshCoins = await this._fetchCoins(reward.coinType);
+          if (freshCoins.length === 0) return tx;
+
+          const merged = this._mergeCoinsInTx(tx, freshCoins);
+          const [inputCoin] = tx.splitCoins(merged, [rawAmount]);
+
+          const outputCoin = await buildSwapTx({
+            walletAddress: this._address,
+            route,
+            tx,
+            inputCoin,
+            slippage: 0.01,
+          });
+
+          tx.transferObjects([outputCoin], this._address);
+          return tx;
+        });
+
+        swapTxs.push(swapResult.digest);
+        totalGasCost += swapResult.gasCostSui;
+      } catch (err) {
+        console.warn(`[compound] Failed to swap ${reward.symbol}:`, err instanceof Error ? err.message : err);
+      }
+    }
+
+    // Step 3: Deposit only the NEW USDC gained from compounding (not pre-existing balance)
+    const postUsdcCoins = await this._fetchCoins(USDC_TYPE);
+    const postUsdcRaw = postUsdcCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
+    const gainedRaw = postUsdcRaw > preUsdcRaw ? postUsdcRaw - preUsdcRaw : 0n;
+    const depositUsdc = Number(gainedRaw) / 10 ** USDC_DEC;
+
+    let depositTx = '';
+    if (gainedRaw > 0n) {
+      try {
+        const adapter = await this.resolveLending(undefined, 'USDC', 'save');
+        const depositResult = await executeWithGas(this.client, this._signer, async () => {
+          const tx = new Transaction();
+          tx.setSender(this._address);
+          const coins = await this._fetchCoins(USDC_TYPE);
+          if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins after swap');
+          const merged = this._mergeCoinsInTx(tx, coins);
+          const [inputCoin] = tx.splitCoins(merged, [gainedRaw]);
+          await adapter.addSaveToTx!(tx, this._address, inputCoin, 'USDC', { collectFee: false });
+          return tx;
+        });
+        depositTx = depositResult.digest;
+        totalGasCost += depositResult.gasCostSui;
+      } catch (err) {
+        console.warn('[compound] NAVI deposit failed:', err instanceof Error ? err.message : err);
+      }
+    }
+
+    const hasSubstantiveResult = swapTxs.length > 0 || depositTx !== '';
+    return {
+      success: hasSubstantiveResult,
+      claimTx: claimResult.tx,
+      swapTxs,
+      depositTx,
+      rewards: nonTrivial,
+      totalCompoundedUsdc: depositUsdc,
+      totalGasCost,
     };
   }
 
