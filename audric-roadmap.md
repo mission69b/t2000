@@ -1588,21 +1588,17 @@ Post-execution notification (autonomous):
 
 Effort: 5 days
 
-### 3.4 MPP consumer discovery
+### 3.4 MPP consumer discovery — conversational approach
 
-Users have no idea what the Pay feature can do. A capabilities screen turns Pay from a mystery into a feature people explore. Spend tracking makes micropayments feel controlled.
+> **Revised:** A standalone `/discover` page listing raw API services adds no user value. Capabilities surface naturally through conversation — the engine already knows available services and suggests them contextually (e.g., generating an image when asked, offering PDF export after a chart). This is the right pattern for a conversational agent.
 
-- Capabilities grid: 'What can Audric do?' — cards for image gen, web search, translation, TTS, code execution
+- Capabilities are discovered through use, not a catalog — the engine system prompt lists available services and the LLM suggests them when relevant
+- "What can you help me with?" contextual chip triggers agent explanation in chat
+- Spend tracker: monthly API usage breakdown in Settings > Safety
+- Daily API budget: user sets a limit in Settings > Safety, Audric warns before exceeding it
+- Usage history: per-service breakdown in Settings > Safety
 
-- Each card pre-fills the chat with an example prompt
-
-- Spend tracker: 'You used \$0.08 today across 6 API calls'
-
-- Daily API budget: user sets a limit, Audric warns before exceeding it
-
-- Usage history: per-service breakdown in activity feed
-
-Effort: 3 days
+Effort: 3 days (including refactor from page-based to conversational approach)
 
 ### ~~3.5 Gifting reminders~~ — DEFERRED post-Store
 
