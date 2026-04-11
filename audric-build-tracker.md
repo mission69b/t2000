@@ -154,6 +154,7 @@
 | FI-3 | Weekly summary briefing variant — new `BriefingCard` template with net worth change, yield, tx count | 0.5d | done | FA-4 | both | ✅ `runWeeklyBriefing()` cron (Sundays UTC 13:00). `GET /api/analytics/weekly-summary` aggregates snapshots + events + purchases. Resend email template. Allowance charge ($0.005 via ALLOWANCE_FEATURES.BRIEFING). Stored as `DailyBriefing` with `weekly-` date prefix |
 
 **Critical path:** 3.3 → 3.3.1 is the longest chain. 3.2 reduced to 1d (UI done). 3.4 primes users for Store. FA-4 (portfolio snapshots) unblocks FA-1, FA-3, FI-3. 3 days saved by skipping 3.5.
+**Phase 3 testing (v0.31.0):** All unit tests pass — SDK (372), engine (197), audric web (273). Reputation scorer verified: new=0pts, active=666pts (established), power=898pts (premium), failure penalty applied correctly, tier thresholds descending. Engine schedule tools: correct permissions (list=auto, create/cancel=confirm), bad schedule throws helpful error, missing env returns "not available". Live endpoints: `/discover` 200, `/api/scheduled-actions` returns 401 without JWT, all internal routes return 401 without key, `/api/reputation/invalid` returns 400. cron-parser v5 migration verified (CronExpressionParser.parse + tz:'UTC'). CI: npm publish pipeline operational, all 4 packages aligned at 0.31.0. **Phase 3 production-tested ✅**
 
 ---
 
