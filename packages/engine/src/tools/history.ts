@@ -110,7 +110,12 @@ function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
   };
 }
 
-async function queryHistoryRpc(rpcUrl: string, address: string, limit: number): Promise<TxRecord[]> {
+async function queryHistoryPage(
+  rpcUrl: string,
+  address: string,
+  limit: number,
+  cursor: string | null,
+): Promise<{ data: RpcTxBlock[]; nextCursor: string | null; hasNextPage: boolean }> {
   const res = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -120,7 +125,7 @@ async function queryHistoryRpc(rpcUrl: string, address: string, limit: number): 
       method: 'suix_queryTransactionBlocks',
       params: [
         { filter: { FromAddress: address }, options: { showEffects: true, showInput: true, showBalanceChanges: true } },
-        null,
+        cursor,
         limit,
         true,
       ],
@@ -129,19 +134,73 @@ async function queryHistoryRpc(rpcUrl: string, address: string, limit: number): 
   });
 
   if (!res.ok) throw new Error(`Sui RPC error: ${res.status}`);
-
-  const json = (await res.json()) as { result?: { data: RpcTxBlock[] }; error?: { message: string } };
+  const json = (await res.json()) as {
+    result?: { data: RpcTxBlock[]; nextCursor: string | null; hasNextPage: boolean };
+    error?: { message: string };
+  };
   if (json.error) throw new Error(`RPC error: ${json.error.message}`);
+  return {
+    data: json.result?.data ?? [],
+    nextCursor: json.result?.nextCursor ?? null,
+    hasNextPage: json.result?.hasNextPage ?? false,
+  };
+}
 
-  return (json.result?.data ?? []).map((tx) => parseRpcTx(tx, address));
+async function queryHistoryRpc(rpcUrl: string, address: string, limit: number): Promise<TxRecord[]> {
+  const page = await queryHistoryPage(rpcUrl, address, limit, null);
+  return page.data.map((tx) => parseRpcTx(tx, address));
+}
+
+/**
+ * Paginate backwards through transaction history to find transactions
+ * around a specific date. Returns up to `limit` transactions from that day.
+ */
+async function queryHistoryByDate(
+  rpcUrl: string,
+  address: string,
+  targetDate: string,
+  limit: number,
+): Promise<TxRecord[]> {
+  const target = new Date(targetDate);
+  const dayStart = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+  const dayEnd = dayStart + 86_400_000;
+  const MAX_PAGES = 20;
+  const PAGE_SIZE = 50;
+
+  const results: TxRecord[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const res = await queryHistoryPage(rpcUrl, address, PAGE_SIZE, cursor);
+    if (res.data.length === 0) break;
+
+    for (const tx of res.data) {
+      const ts = Number(tx.timestampMs ?? 0);
+      if (ts === 0) continue;
+
+      if (ts < dayStart) {
+        return results.slice(0, limit);
+      }
+
+      if (ts >= dayStart && ts < dayEnd) {
+        results.push(parseRpcTx(tx, address));
+      }
+    }
+
+    if (!res.hasNextPage || !res.nextCursor) break;
+    cursor = res.nextCursor;
+  }
+
+  return results.slice(0, limit);
 }
 
 export const transactionHistoryTool = buildTool({
   name: 'transaction_history',
   description:
-    'Retrieve recent transaction history: past sends, saves, withdrawals, borrows, repayments, and rewards claims. Optionally limit the number of results.',
+    'Retrieve transaction history: past sends, saves, withdrawals, borrows, repayments, and rewards claims. Pass a date (YYYY-MM-DD) to find transactions from a specific day, or omit for the most recent.',
   inputSchema: z.object({
     limit: z.number().int().min(1).max(50).optional(),
+    date: z.string().optional().describe('Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.'),
   }),
   jsonSchema: {
     type: 'object',
@@ -149,6 +208,10 @@ export const transactionHistoryTool = buildTool({
       limit: {
         type: 'number',
         description: 'Maximum number of transactions to return (1-50, default 10)',
+      },
+      date: {
+        type: 'string',
+        description: 'Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.',
       },
     },
   },
@@ -168,6 +231,17 @@ export const transactionHistoryTool = buildTool({
 
     if (!context.walletAddress || !context.suiRpcUrl) {
       throw new Error('Transaction history requires a wallet address');
+    }
+
+    if (input.date) {
+      const records = await queryHistoryByDate(context.suiRpcUrl, context.walletAddress, input.date, limit);
+      const dateLabel = new Date(input.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      return {
+        data: { transactions: records, count: records.length, date: input.date },
+        displayText: records.length > 0
+          ? `${records.length} transaction(s) on ${dateLabel}`
+          : `No transactions found on ${dateLabel}`,
+      };
     }
 
     const records = await queryHistoryRpc(context.suiRpcUrl, context.walletAddress, limit);
