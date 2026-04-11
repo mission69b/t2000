@@ -212,6 +212,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
     }
 
     if (template === 'health_simulator') {
+      const roundedDebt = totalBorrows >= 1 ? Math.round(totalBorrows) : (totalBorrows > 0 ? parseFloat(totalBorrows.toFixed(4)) : 0);
       return {
         data: {
           __canvas: true,
@@ -220,7 +221,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
           templateData: {
             available: true,
             initialCollateral: totalSavings > 0 ? Math.round(totalSavings) : 1500,
-            initialDebt: totalBorrows > 0 ? Math.round(totalBorrows) : 500,
+            initialDebt: roundedDebt > 0 ? roundedDebt : (totalSavings > 0 ? 0 : 500),
             currentHf: healthFactor,
           },
         },
