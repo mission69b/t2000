@@ -78,13 +78,12 @@ export const createScheduleTool = buildTool({
     },
     required: ['actionType', 'amount', 'schedule'],
   },
-  isReadOnly: false,
-  permissionLevel: 'confirm',
+  isReadOnly: true,
 
   async call(input, context) {
     const { apiUrl, internalKey, address } = getApiConfig(context);
     if (!apiUrl || !address) {
-      return { data: null, displayText: 'Scheduled actions are not available.' };
+      return { data: null, displayText: 'Scheduled actions are not available — missing wallet or API configuration.' };
     }
 
     let cronExpr: string;
@@ -203,8 +202,7 @@ export const cancelScheduleTool = buildTool({
     },
     required: ['scheduleId'],
   },
-  isReadOnly: false,
-  permissionLevel: 'confirm',
+  isReadOnly: true,
 
   async call(input, context) {
     const { apiUrl, internalKey, address } = getApiConfig(context);

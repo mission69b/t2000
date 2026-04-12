@@ -230,6 +230,23 @@
 | RC-8 | `PriceCard` — token list with trend indicators | 0.25d | done | RC-0 | audric | ✅ Token price list + single-token price change hero. Registered for `defillama_token_prices` + `defillama_price_change` |
 
 **Estimated effort:** 3–4 days (RE) + 3 days (F3 + unified) + 1 day (remaining cards) = ~7–8 days
+**RE Phase 3 complete (both repos).** Published `@t2000/engine@0.33.0` + `0.33.1`. Recipes: 7 YAML with `on_error` branches + `RecipeRegistry` (longest-trigger-match-wins). Context compaction: `ContextBudget` (200k limit, 85% compact) + LLM summarizer fallback. F3 episodic memory: `UserMemory` Prisma model + Claude extraction + Jaccard dedup + 50-memory cap + Settings UI. F1-audric: `UserFinancialProfile` Prisma model + inference cron. RC-6/7/8 all registered. **Production-tested ✅**
+
+**Post-deploy fixes (Phase 3.5 stabilization):**
+- `send_transfer` burn address preflight validation (zero address `0x000…` now blocked)
+- `SavingsCard` renders when earnings exist but positions below $0.01 dust threshold
+- Prisma migration for `UserFinancialProfile` + `UserMemory` tables (was missing in prod → `P2021` error on settings page)
+- Portfolio timeline: replaced SELF_URL HTTP calls (fail silently on Vercel serverless) with direct `getClient()`/`getRegistry()` calls
+- Yield summary: live positions + APY from registry when snapshot data is zero
+- **Unified Financial Data Layer** — `lib/portfolio-data.ts` + `lib/activity-data.ts`:
+  - Single `getClient()` / `getRegistry()` singletons (was 5+ independent instances)
+  - `fetchWalletBalances()`, `fetchPositions()`, `fetchPortfolio()` — throw on error, callers decide
+  - `fetchActivityBuckets()`, `fetchActivitySummary()` — merges AppEvent + on-chain txs
+  - 15 consumer files refactored to use shared modules
+  - Aligned time windows (chain and app use same `since: Date`)
+  - Normalized API auth to `x-sui-address` header across all analytics routes
+  - Allocations precision: rounded consistently (no raw vs display mismatch)
+  - `fmtYield()` simplified to single-arg (checks formatted output for sub-cent display)
 
 **Phase 3.5 total: ~19–22 days across 3 sub-phases (includes 1d for low-priority rich cards). Ships alongside the full feature set from Phases 2–3.**
 
@@ -377,5 +394,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4
 
 ---
 
-*Last updated: April 12 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 RE Phase 1 + RE Phase 2 complete (both repos). Published `@t2000/engine@0.32.0`.** RE Phase 1: adaptive thinking, classifier, prompt caching, proactive awareness, state machine, self-evaluation, thinking UI. RE Phase 2: tool flags (47 tools), guard runner (9 guards, 3 tiers), preflight validation (5 tools), F1 profile context. **RE Phase 3 complete (both repos). Published `@t2000/engine@0.33.0`.** RE Phase 3: recipe format + registry, 7 financial recipes, context compaction (ContextBudget + LLM summarizer), F1-audric (Prisma + cron + inference), F3 episodic memory (Prisma + extraction + dedup + Settings UI). All 5 intelligence features (F1-F5) wired. Feature-flagged behind `ENABLE_THINKING=true`. **Phase 3.5 COMPLETE.** All intelligence features, recipes, context compaction, rich cards shipped. Next: Phase 4 (async job queue).*
+*Last updated: April 12 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Published `@t2000/engine@0.33.1`. RE Phase 1: adaptive thinking, classifier, prompt caching, F2/F4/F5 intelligence, thinking UI. RE Phase 2: tool flags (47 tools), guard runner (9 guards, 3 tiers), preflight validation (5 tools), F1 profile. RE Phase 3: recipe format + 7 YAML recipes, context compaction, F3 episodic memory, RC-6/7/8 rich cards. Post-deploy: Unified Financial Data Layer (`lib/portfolio-data.ts` + `lib/activity-data.ts`), 15 files refactored to single source of truth, Prisma migration fix, burn address guard, analytics consistency fixes. Feature-flagged behind `ENABLE_THINKING=true`. **All shipped and production-tested.** Next: Phase 4 (async job queue).*
 *Source of truth for specs: `audric-roadmap.md`, `audric-feedback-loop-spec.md`, `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`, `spec/audric-rich-ux-spec.md`, `.cursor/plans/audric_canvas_feature_cfe76b5b.plan.md`*

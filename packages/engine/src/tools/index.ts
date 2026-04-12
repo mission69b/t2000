@@ -82,6 +82,8 @@ export const READ_TOOLS: Tool[] = [
   yieldSummaryTool,
   activitySummaryTool,
   listSchedulesTool,
+  createScheduleTool,
+  cancelScheduleTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -96,8 +98,6 @@ export const WRITE_TOOLS: Tool[] = [
   voloStakeTool,
   voloUnstakeTool,
   saveContactTool,
-  createScheduleTool,
-  cancelScheduleTool,
 ];
 
 export function getDefaultTools(): Tool[] {
