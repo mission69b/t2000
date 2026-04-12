@@ -201,7 +201,7 @@
 | F5 | Post-Action Self-Evaluation — `buildSelfEvaluationInstruction()` in dynamic block | 0.5d | done | 2.5.1 | both | ✅ Engine: `intelligence.ts` 4-point checklist. Audric: wired into `buildFullDynamicContext()` in `engine-context.ts`, injected into every session's dynamic block |
 
 **Estimated effort:** 3–4 days (RE) + 3 days (F2+F4+F5) = ~6–7 days
-**RE Phase 1 complete (both repos).** Engine: RE-1.1 ✅, RE-1.2 ✅, RE-1.3 ✅, F2 ✅, F4 ✅, F5 ✅. 197/197 tests pass, typecheck clean. Audric: RE-1.3 wiring ✅, RE-1.4 UI ✅, F2 wiring ✅, F4 full wiring ✅ (Upstash store + state transitions), F5 wiring ✅, unified context assembly ✅. **Feature-flagged behind `ENABLE_THINKING=true`.** Next: publish `@t2000/engine@0.32.0` → `pnpm update` in audric → RE Phase 2 (guards + F1).
+**RE Phase 1 complete (both repos).** Engine: RE-1.1 ✅, RE-1.2 ✅, RE-1.3 ✅, F2 ✅, F4 ✅, F5 ✅. 197/197 tests pass, typecheck clean. Audric: RE-1.3 wiring ✅, RE-1.4 UI ✅, F2 wiring ✅, F4 full wiring ✅ (Upstash store + state transitions), F5 wiring ✅, unified context assembly ✅. **Feature-flagged behind `ENABLE_THINKING=true`.**
 
 ### RE Phase 2: Step Guards + Intelligence F1
 
@@ -214,7 +214,7 @@
 | F1-audric | User Financial Profile — Prisma migration, internal route, cron job, audric wiring | 1.5d | pending | F1 | both | Prisma model, `/api/internal/profile-inference`, t2000 cron, wire into `buildFullDynamicContext()` |
 
 **Estimated effort:** 4–5 days (RE) + 2 days (F1) = ~6–7 days
-**RE Phase 2 engine-side complete + reviewed.** RE-2.1 ✅, RE-2.2 ✅, RE-2.3 ✅, F1 engine ✅. 197/197 tests pass, typecheck clean, build OK. Guards integrated into `agentLoop` with tiered priority (Safety > Financial > UX). Post-review fixes: RetryTracker key collision (null input → lookup by toolUseId), `getDefaultTools()` now calls `applyToolFlags()` for consistency, irreversibility regex hardened. F1 Audric-side (Prisma + cron + route) pending. Next: publish `@t2000/engine` → audric wiring.
+**RE Phase 2 complete (both repos).** Published `@t2000/engine@0.32.0`. Engine: RE-2.1 ✅, RE-2.2 ✅, RE-2.3 ✅, F1 engine types ✅. Audric: `DEFAULT_GUARD_CONFIG` wired to `createEngine()`, `applyToolFlags()` on all tools, `guardInjections` displayed on `PermissionCard`, `buildProfileContext()` wired into `buildFullDynamicContext()`. Typecheck clean. F1-audric (Prisma migration + cron + inference route) pending.
 
 ### RE Phase 3: Skill Recipes + Intelligence F3
 
@@ -377,5 +377,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4
 
 ---
 
-*Last updated: April 12 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 RE Phase 1 + RE Phase 2 engine-side complete.** RE Phase 1 (both repos): adaptive thinking, classifier, prompt caching, proactive awareness, state machine, self-evaluation, thinking UI. RE Phase 2 (engine): tool flags (47 tools tagged), guard runner (9 guards, 3 tiers), preflight validation (5 tools), F1 profile types + `buildProfileContext()`. 197/197 tests pass. Feature-flagged behind `ENABLE_THINKING=true`. Next: Publish `@t2000/engine` → audric wiring (guards + F1 Prisma + cron) → RE Phase 3 (recipes + F3).*
+*Last updated: April 12 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 RE Phase 1 + RE Phase 2 complete (both repos). Published `@t2000/engine@0.32.0`.** RE Phase 1: adaptive thinking, classifier, prompt caching, proactive awareness, state machine, self-evaluation, thinking UI. RE Phase 2: tool flags (47 tools), guard runner (9 guards, 3 tiers), preflight validation (5 tools), F1 profile context. Audric wired: `DEFAULT_GUARD_CONFIG`, `guardInjections` on PermissionCard, `buildProfileContext()` in dynamic context. Feature-flagged behind `ENABLE_THINKING=true`. Next: F1-audric (Prisma + cron + inference) → RE Phase 3 (recipes + F3).*
 *Source of truth for specs: `audric-roadmap.md`, `audric-feedback-loop-spec.md`, `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`, `spec/audric-rich-ux-spec.md`, `.cursor/plans/audric_canvas_feature_cfe76b5b.plan.md`*

@@ -2,8 +2,9 @@ name: send_to_contact
 description: Send tokens to a saved contact or new address
 triggers:
   - "send to"
-  - "pay"
   - "transfer to"
+  - "send USDC to"
+  - "pay to"
 
 steps:
   - name: resolve_recipient

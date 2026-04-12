@@ -43,7 +43,7 @@ function blockCharCount(block: ContentBlock): number {
 export interface CompactOptions {
   /** Max token budget for the conversation. Default 100_000. */
   maxTokens?: number;
-  /** Number of recent messages to always keep uncompacted. Default 6. */
+  /** Number of recent messages to always keep uncompacted. Default 8. */
   keepRecentCount?: number;
   /** System prompt token estimate (subtracted from budget). Default 500. */
   systemPromptTokens?: number;
@@ -185,9 +185,13 @@ export async function compactMessages(
   if (estimateTokens(mutable) <= budget) return mutable;
 
   // Phase 2: drop old messages from the middle, keep first + recent
+  if (splitIdx <= 1) {
+    // All messages are recent (or only the first message is "old") — skip middle-drop
+    return sanitizeMessages(mutable);
+  }
+
   const first = mutable[0];
   const recentFromMutable = mutable.slice(splitIdx);
-
   const oldSection = mutable.slice(1, splitIdx);
 
   while (oldSection.length > 0 && estimateTokens([first, ...oldSection, ...recentFromMutable]) > budget) {

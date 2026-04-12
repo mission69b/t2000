@@ -30,7 +30,7 @@ steps:
     tool: borrow
     purpose: Execute the borrow
     requires:
-      - step: check_health
+      - step: evaluate_risk
       - confirmation: true
     on_error:
       action: abort
