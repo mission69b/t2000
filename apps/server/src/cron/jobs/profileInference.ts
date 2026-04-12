@@ -57,7 +57,7 @@ async function inferProfile(userId: string): Promise<boolean> {
       return false;
     }
 
-    const result = await res.json();
+    const result = (await res.json()) as { skipped?: boolean; reason?: string; fields?: string[] };
     if (result.skipped) {
       console.log(`[profile-inference] Skipped ${userId}: ${result.reason}`);
       return true;

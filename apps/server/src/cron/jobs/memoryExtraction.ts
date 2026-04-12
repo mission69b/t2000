@@ -57,7 +57,7 @@ async function extractMemories(userId: string): Promise<boolean> {
       return false;
     }
 
-    const result = await res.json();
+    const result = (await res.json()) as { skipped?: boolean; reason?: string; extracted?: number };
     if (result.skipped) {
       console.log(`[memory-extraction] Skipped ${userId}: ${result.reason}`);
       return true;
