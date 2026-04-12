@@ -26,6 +26,13 @@ export const saveDepositTool = buildTool({
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true, requiresBalance: true },
+  preflight: (input) => {
+    if (input.asset && input.asset.toUpperCase() !== 'USDC') {
+      return { valid: false, error: `Only USDC deposits are supported. Got: "${input.asset}"` };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     assertAllowedAsset('save', input.asset);

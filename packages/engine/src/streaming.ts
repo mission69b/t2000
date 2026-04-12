@@ -5,6 +5,8 @@ import type { EngineEvent, PendingAction, StopReason } from './types.js';
 // ---------------------------------------------------------------------------
 
 export type SSEEvent =
+  | { type: 'thinking_delta'; text: string }
+  | { type: 'thinking_done'; signature?: string }
   | { type: 'text_delta'; text: string }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }

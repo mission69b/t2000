@@ -10,6 +10,8 @@ export type {
   StopReason,
   PendingAction,
   Tool,
+  ToolFlags,
+  PreflightResult,
   ToolResult,
   ToolContext,
   ToolJsonSchema,
@@ -21,6 +23,11 @@ export type {
   ProviderEvent,
   ServerPositionData,
   ToolChoice,
+  ThinkingConfig,
+  ThinkingEffort,
+  OutputConfig,
+  SystemBlock,
+  SystemPrompt,
 } from './types.js';
 
 // Tool factory
@@ -42,6 +49,54 @@ export type { SSEEvent } from './streaming.js';
 // Session store
 export { MemorySessionStore } from './session.js';
 export type { SessionData, SessionStore } from './session.js';
+
+// Tool flags (RE-2.1)
+export { TOOL_FLAGS, applyToolFlags, getToolFlags } from './tool-flags.js';
+
+// Guard runner (RE-2.2)
+export {
+  DEFAULT_GUARD_CONFIG,
+  BalanceTracker,
+  RetryTracker,
+  runGuards,
+  createGuardRunnerState,
+  updateGuardStateAfterToolResult,
+  extractConversationText,
+  guardArtifactPreview,
+  guardStaleData,
+} from './guards.js';
+export type {
+  GuardVerdict,
+  GuardTier,
+  GuardResult,
+  GuardInjection,
+  GuardCheckResult,
+  GuardEvent,
+  GuardConfig,
+  GuardRunnerState,
+} from './guards.js';
+
+// Complexity classifier
+export { classifyEffort } from './classify-effort.js';
+
+// Prompt caching
+export { buildCachedSystemPrompt } from './prompt-cache.js';
+
+// Intelligence Layer (F1, F2, F5)
+export {
+  buildProfileContext,
+  buildProactivenessInstructions,
+  buildSelfEvaluationInstruction,
+} from './intelligence.js';
+export type { UserFinancialProfile } from './intelligence.js';
+
+// Conversation State Machine (F4)
+export { buildStateContext } from './state/conversation-state.js';
+export type {
+  ConversationState,
+  ConversationStateStore,
+  StateType,
+} from './state/conversation-state.js';
 
 // Context management
 export { estimateTokens, compactMessages } from './context.js';

@@ -31,6 +31,16 @@ export const sendTransferTool = buildTool({
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true, requiresBalance: true, irreversible: true },
+  preflight: (input) => {
+    if (input.to.startsWith('0x') && !/^0x[a-fA-F0-9]{64}$/.test(input.to)) {
+      return { valid: false, error: `Invalid Sui address format: "${input.to}". Must be 0x followed by 64 hex characters.` };
+    }
+    if (input.amount <= 0) {
+      return { valid: false, error: 'Amount must be positive.' };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     const agent = requireAgent(context);

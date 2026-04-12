@@ -27,6 +27,13 @@ export const borrowTool = buildTool({
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true, affectsHealth: true },
+  preflight: (input) => {
+    if (input.asset && input.asset.toUpperCase() !== 'USDC') {
+      return { valid: false, error: `Only USDC borrows are supported. Got: "${input.asset}"` };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     assertAllowedAsset('borrow', input.asset);

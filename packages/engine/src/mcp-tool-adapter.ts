@@ -54,6 +54,7 @@ export function adaptMcpTool(
     isReadOnly,
     isConcurrencySafe: isReadOnly,
     permissionLevel,
+    flags: {},
 
     async call(input, _context) {
       const result = await config.manager.callTool(

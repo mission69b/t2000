@@ -6,6 +6,8 @@ import type { z } from 'zod';
 
 export type ContentBlock =
   | { type: 'text'; text: string }
+  | { type: 'thinking'; thinking: string; signature: string }
+  | { type: 'redacted_thinking'; data: string }
   | { type: 'tool_use'; id: string; name: string; input: unknown }
   | {
       type: 'tool_result';
@@ -24,6 +26,8 @@ export interface Message {
 // ---------------------------------------------------------------------------
 
 export type EngineEvent =
+  | { type: 'thinking_delta'; text: string }
+  | { type: 'thinking_done'; signature?: string }
   | { type: 'text_delta'; text: string }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | {
@@ -70,6 +74,8 @@ export interface PendingAction {
   assistantContent: ContentBlock[];
   /** Results from auto-approved tools in the same LLM turn (e.g. balance_check). */
   completedResults?: Array<{ toolUseId: string; content: string; isError: boolean }>;
+  /** Guard injections (hints/warnings) from pre-execution checks. */
+  guardInjections?: Array<{ _gate: string; _hint?: string; _warning?: string }>;
 }
 
 /**
@@ -123,6 +129,20 @@ export interface ToolJsonSchema {
   required?: string[];
 }
 
+export interface ToolFlags {
+  mutating?: boolean;
+  requiresBalance?: boolean;
+  affectsHealth?: boolean;
+  irreversible?: boolean;
+  producesArtifact?: boolean;
+  costAware?: boolean;
+  maxRetries?: number;
+}
+
+export type PreflightResult =
+  | { valid: true }
+  | { valid: false; error: string };
+
 export interface Tool<TInput = unknown, TOutput = unknown> {
   name: string;
   description: string;
@@ -132,7 +152,32 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
   isConcurrencySafe: boolean;
   isReadOnly: boolean;
   permissionLevel: PermissionLevel;
+  flags: ToolFlags;
+  preflight?: (input: unknown) => PreflightResult;
 }
+
+// ---------------------------------------------------------------------------
+// Thinking configuration (Anthropic extended thinking / adaptive)
+// ---------------------------------------------------------------------------
+
+export type ThinkingEffort = 'low' | 'medium' | 'high' | 'max';
+
+export type ThinkingConfig =
+  | { type: 'disabled' }
+  | { type: 'adaptive'; display?: 'summarized' | 'omitted' }
+  | { type: 'enabled'; budgetTokens: number; display?: 'summarized' | 'omitted' };
+
+export interface OutputConfig {
+  effort?: ThinkingEffort;
+}
+
+export interface SystemBlock {
+  type: 'text';
+  text: string;
+  cache_control?: { type: 'ephemeral' };
+}
+
+export type SystemPrompt = string | SystemBlock[];
 
 // ---------------------------------------------------------------------------
 // Engine configuration
@@ -148,13 +193,15 @@ export interface EngineConfig {
   /** Fresh on-chain position reader — called per tool invocation, bypasses MCP caching. */
   positionFetcher?: (address: string) => Promise<ServerPositionData>;
   tools?: Tool[];
-  systemPrompt?: string;
+  systemPrompt?: SystemPrompt;
   model?: string;
   maxTurns?: number;
   maxTokens?: number;
   temperature?: number;
   /** Force tool usage on the first LLM turn (prevents text-only refusals). */
   toolChoice?: ToolChoice;
+  thinking?: ThinkingConfig;
+  outputConfig?: OutputConfig;
   /** Environment variables forwarded to tool context (API keys, URLs). */
   env?: Record<string, string>;
   costTracker?: {
@@ -162,6 +209,8 @@ export interface EngineConfig {
     inputCostPerToken?: number;
     outputCostPerToken?: number;
   };
+  /** Guard runner configuration (RE-2.2). Omit to disable guards. */
+  guards?: import('./guards.js').GuardConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,12 +225,14 @@ export type ToolChoice = 'auto' | 'any' | { type: 'tool'; name: string };
 
 export interface ChatParams {
   messages: Message[];
-  systemPrompt: string;
+  systemPrompt: SystemPrompt;
   tools: ToolDefinition[];
   model?: string;
   maxTokens?: number;
   temperature?: number;
   toolChoice?: ToolChoice;
+  thinking?: ThinkingConfig;
+  outputConfig?: OutputConfig;
   signal?: AbortSignal;
 }
 
@@ -192,6 +243,9 @@ export interface ToolDefinition {
 }
 
 export type ProviderEvent =
+  | { type: 'thinking_delta'; text: string }
+  | { type: 'thinking_done'; thinking: string; signature: string }
+  | { type: 'redacted_thinking'; data: string }
   | { type: 'text_delta'; text: string }
   | { type: 'tool_use_start'; id: string; name: string }
   | { type: 'tool_use_delta'; id: string; partialJson: string }

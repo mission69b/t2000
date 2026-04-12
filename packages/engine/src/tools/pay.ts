@@ -64,6 +64,28 @@ Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("fr
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true, requiresBalance: true, costAware: true, producesArtifact: true, maxRetries: 1 },
+  preflight: (input) => {
+    if (!input.url.startsWith(MPP_GATEWAY)) {
+      return { valid: false, error: `URL must start with ${MPP_GATEWAY}. Got: "${input.url}"` };
+    }
+    if (input.body) {
+      try {
+        JSON.parse(input.body);
+      } catch {
+        return { valid: false, error: 'body must be valid JSON.' };
+      }
+      if (input.url.includes('lob/')) {
+        const body = JSON.parse(input.body) as Record<string, unknown>;
+        const to = body.to as Record<string, unknown> | undefined;
+        const country = to?.address_country;
+        if (typeof country === 'string' && country.length !== 2) {
+          return { valid: false, error: `Country must be ISO-3166 2-letter code (got "${country}")` };
+        }
+      }
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     const agent = requireAgent(context);

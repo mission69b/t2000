@@ -10,6 +10,7 @@ export const claimRewardsTool = buildTool({
   jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true },
 
   async call(_input, context) {
     const agent = requireAgent(context);

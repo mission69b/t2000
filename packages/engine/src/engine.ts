@@ -4,6 +4,7 @@ import type {
   Message,
   ContentBlock,
   PendingAction,
+  SystemPrompt,
   Tool,
   ToolContext,
   PermissionResponse,
@@ -16,6 +17,17 @@ import { getDefaultTools } from './tools/index.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { estimatePayApiCost } from './tools/pay.js';
+import {
+  type GuardConfig,
+  type GuardRunnerState,
+  type GuardEvent,
+  createGuardRunnerState,
+  runGuards,
+  updateGuardStateAfterToolResult,
+  extractConversationText,
+  guardArtifactPreview,
+  guardStaleData,
+} from './guards.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -30,12 +42,14 @@ interface TurnAccumulator {
 export class QueryEngine {
   private readonly provider: EngineConfig['provider'];
   private readonly tools: Tool[];
-  private readonly systemPrompt: string;
+  private readonly systemPrompt: SystemPrompt;
   private readonly model: string | undefined;
   private readonly maxTurns: number;
   private readonly maxTokens: number;
   private readonly temperature: number | undefined;
   private readonly toolChoice: EngineConfig['toolChoice'];
+  private readonly thinking: EngineConfig['thinking'];
+  private readonly outputConfig: EngineConfig['outputConfig'];
   private readonly agent: unknown;
   private readonly mcpManager: unknown;
   private readonly walletAddress: string | undefined;
@@ -45,9 +59,12 @@ export class QueryEngine {
   private readonly env: Record<string, string> | undefined;
   private readonly txMutex = new TxMutex();
   private readonly costTracker: CostTracker;
+  private readonly guardConfig: GuardConfig | undefined;
+  private readonly guardState: GuardRunnerState;
 
   private messages: Message[] = [];
   private abortController: AbortController | null = null;
+  private guardEvents: GuardEvent[] = [];
 
   constructor(config: EngineConfig) {
     this.provider = config.provider;
@@ -63,8 +80,12 @@ export class QueryEngine {
     this.maxTokens = config.maxTokens ?? DEFAULT_MAX_TOKENS;
     this.temperature = config.temperature;
     this.toolChoice = config.toolChoice;
+    this.thinking = config.thinking;
+    this.outputConfig = config.outputConfig;
     this.systemPrompt = config.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
     this.costTracker = new CostTracker(config.costTracker);
+    this.guardConfig = config.guards;
+    this.guardState = createGuardRunnerState();
 
     this.tools = config.tools ?? (config.agent ? getDefaultTools() : []);
   }
@@ -169,6 +190,11 @@ export class QueryEngine {
   reset(): void {
     this.messages = [];
     this.costTracker.reset();
+    this.guardEvents = [];
+  }
+
+  getGuardEvents(): readonly GuardEvent[] {
+    return this.guardEvents;
   }
 
   loadMessages(messages: Message[]): void {
@@ -235,6 +261,8 @@ export class QueryEngine {
           const summary = this.messages.map((m, idx) => {
             const blocks = m.content.map((b) => {
               if (b.type === 'text') return `text(${b.text.slice(0, 40)}…)`;
+              if (b.type === 'thinking') return `thinking(${b.thinking.length}ch)`;
+              if (b.type === 'redacted_thinking') return `redacted_thinking`;
               if (b.type === 'tool_use') return `tool_use:${b.id.slice(-8)}/${b.name}`;
               return `tool_result:${(b as { toolUseId: string }).toolUseId.slice(-8)}`;
             });
@@ -243,6 +271,12 @@ export class QueryEngine {
           console.log(`[engine] provider.chat turn=${turns} msgs=${this.messages.length}\n${summary.join('\n')}`);
         }
 
+        const thinkingEnabled = this.thinking && this.thinking.type !== 'disabled';
+        // Anthropic requires toolChoice 'auto' (not 'any') when thinking is enabled
+        const effectiveToolChoice = thinkingEnabled
+          ? ((applyToolChoice && turns === 1) ? 'auto' as const : undefined)
+          : ((applyToolChoice && turns === 1) ? this.toolChoice : undefined);
+
         const stream = this.provider.chat({
           messages: this.messages,
           systemPrompt: this.systemPrompt,
@@ -250,7 +284,9 @@ export class QueryEngine {
           model: this.model,
           maxTokens: this.maxTokens,
           temperature: this.temperature,
-          toolChoice: (applyToolChoice && turns === 1) ? this.toolChoice : undefined,
+          toolChoice: effectiveToolChoice,
+          thinking: this.thinking,
+          outputConfig: this.outputConfig,
           signal,
         });
 
@@ -307,8 +343,47 @@ export class QueryEngine {
         break;
       }
 
+      // --- Guard checks (pre-execution) ---
+      const guardedApproved: PendingToolCall[] = [];
+
+      if (this.guardConfig) {
+        const convCtx = extractConversationText(this.messages);
+
+        for (const call of approved) {
+          const tool = findTool(this.tools, call.name);
+          if (!tool) { guardedApproved.push(call); continue; }
+
+          const check = runGuards(tool, call, this.guardState, this.guardConfig, convCtx);
+          this.guardEvents.push(...check.events);
+
+          if (check.blocked) {
+            yield {
+              type: 'tool_result',
+              toolName: call.name,
+              toolUseId: call.id,
+              result: { error: check.blockReason, _gate: check.blockGate },
+              isError: true,
+            };
+            toolResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: call.id,
+              content: JSON.stringify({ error: check.blockReason, _gate: check.blockGate }),
+              isError: true,
+            });
+            continue;
+          }
+
+          if (check.injections.length > 0) {
+            (call as PendingToolCall & { _guardInjections?: unknown[] })._guardInjections = check.injections;
+          }
+          guardedApproved.push(call);
+        }
+      } else {
+        guardedApproved.push(...approved);
+      }
+
       // Execute auto-approved tool calls (reads) even if a write is pending
-      for await (const toolEvent of runTools(approved, this.tools, context, this.txMutex)) {
+      for await (const toolEvent of runTools(guardedApproved, this.tools, context, this.txMutex)) {
         if (toolEvent.type === 'tool_result' && !toolEvent.isError) {
           const warning = flagSuspiciousResult(toolEvent.toolName, toolEvent.result);
           if (warning) {
@@ -329,30 +404,102 @@ export class QueryEngine {
           }
         }
 
-        yield toolEvent;
-
-        // If the tool result carries a canvas payload, emit a canvas event
-        // so the client can render an interactive canvas template.
-        if (toolEvent.type === 'tool_result' && !toolEvent.isError) {
-          const r = toolEvent.result as Record<string, unknown> | null;
-          if (r && r.__canvas === true) {
-            yield {
-              type: 'canvas',
-              template: String(r.template ?? ''),
-              title: String(r.title ?? ''),
-              data: r.templateData ?? null,
-              toolUseId: toolEvent.toolUseId,
-            };
-          }
-        }
-
+        // Post-execution: update guard state & apply injections
         if (toolEvent.type === 'tool_result') {
+          const tool = findTool(this.tools, toolEvent.toolName);
+          const originalCall = guardedApproved.find((c) => c.id === toolEvent.toolUseId);
+          updateGuardStateAfterToolResult(
+            toolEvent.toolName, tool, originalCall?.input ?? null, toolEvent.result, toolEvent.isError, this.guardState,
+          );
+
+          let enrichedResult = toolEvent.result;
+
+          if (this.guardConfig && !toolEvent.isError && tool) {
+            // Post-execution guards: artifact preview, stale data hint
+            const artifactInj = this.guardConfig.artifactPreview !== false
+              ? guardArtifactPreview(toolEvent.result)
+              : null;
+            const staleInj = this.guardConfig.staleData !== false
+              ? guardStaleData(tool.flags)
+              : null;
+
+            // Merge pre-execution injections from guard check
+            const preInjections =
+              (guardedApproved.find((c) => c.id === toolEvent.toolUseId) as
+                PendingToolCall & { _guardInjections?: unknown[] })?._guardInjections ?? [];
+
+            const allInjections = [
+              ...preInjections,
+              ...(artifactInj ? [artifactInj] : []),
+              ...(staleInj ? [staleInj] : []),
+            ];
+
+            if (allInjections.length > 0 && typeof enrichedResult === 'object' && enrichedResult) {
+              enrichedResult = { ...enrichedResult as Record<string, unknown>, _guards: allInjections };
+            }
+          }
+
+          const finalEvent = enrichedResult !== toolEvent.result
+            ? { ...toolEvent, result: enrichedResult }
+            : toolEvent;
+
+          yield finalEvent;
+
+          if (finalEvent.type === 'tool_result' && !finalEvent.isError) {
+            const r = finalEvent.result as Record<string, unknown> | null;
+            if (r && r.__canvas === true) {
+              yield {
+                type: 'canvas',
+                template: String(r.template ?? ''),
+                title: String(r.title ?? ''),
+                data: r.templateData ?? null,
+                toolUseId: finalEvent.toolUseId,
+              };
+            }
+          }
+
           toolResultBlocks.push({
             type: 'tool_result',
-            toolUseId: toolEvent.toolUseId,
-            content: JSON.stringify(toolEvent.result),
-            isError: toolEvent.isError,
+            toolUseId: finalEvent.toolUseId,
+            content: JSON.stringify(finalEvent.result),
+            isError: finalEvent.isError,
           });
+          continue;
+        }
+
+        yield toolEvent;
+      }
+
+      // --- Guard check on pending write tool ---
+      if (pendingWrite && this.guardConfig) {
+        const convCtx = extractConversationText(this.messages);
+        const check = runGuards(
+          pendingWrite.tool, pendingWrite.call, this.guardState, this.guardConfig, convCtx,
+        );
+        this.guardEvents.push(...check.events);
+
+        if (check.blocked) {
+          yield {
+            type: 'tool_result',
+            toolName: pendingWrite.call.name,
+            toolUseId: pendingWrite.call.id,
+            result: { error: check.blockReason, _gate: check.blockGate },
+            isError: true,
+          };
+          toolResultBlocks.push({
+            type: 'tool_result',
+            toolUseId: pendingWrite.call.id,
+            content: JSON.stringify({ error: check.blockReason, _gate: check.blockGate }),
+            isError: true,
+          });
+          // Blocked write — don't yield pending_action, feed error back to LLM
+          this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+          this.messages.push({ role: 'user', content: toolResultBlocks });
+          continue;
+        }
+
+        if (check.injections.length > 0) {
+          (pendingWrite.call as PendingToolCall & { _guardInjections?: unknown[] })._guardInjections = check.injections;
         }
       }
 
@@ -360,6 +507,9 @@ export class QueryEngine {
         // Do NOT push assistant message to this.messages — session stays clean.
         // The full assistant content is stored in PendingAction so
         // resumeWithToolResult can reconstruct the turn atomically.
+        const writeGuardInjections =
+          (pendingWrite.call as PendingToolCall & { _guardInjections?: Array<{ _gate: string; _hint?: string; _warning?: string }> })._guardInjections;
+
         yield {
           type: 'pending_action',
           action: {
@@ -373,6 +523,7 @@ export class QueryEngine {
               content: (b as { content: string }).content,
               isError: (b as { isError?: boolean }).isError ?? false,
             })),
+            ...(writeGuardInjections?.length ? { guardInjections: writeGuardInjections } : {}),
           },
         };
         return;
@@ -412,6 +563,29 @@ export class QueryEngine {
     acc: TurnAccumulator,
   ): Generator<EngineEvent> {
     switch (event.type) {
+      case 'thinking_delta': {
+        yield { type: 'thinking_delta', text: event.text };
+        break;
+      }
+
+      case 'thinking_done': {
+        acc.assistantBlocks.push({
+          type: 'thinking',
+          thinking: event.thinking,
+          signature: event.signature,
+        });
+        yield { type: 'thinking_done', signature: event.signature };
+        break;
+      }
+
+      case 'redacted_thinking': {
+        acc.assistantBlocks.push({
+          type: 'redacted_thinking',
+          data: event.data,
+        });
+        break;
+      }
+
       case 'text_delta': {
         acc.text += event.text;
         yield { type: 'text_delta', text: event.text };

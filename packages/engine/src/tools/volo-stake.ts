@@ -18,6 +18,7 @@ export const voloStakeTool = buildTool({
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true, requiresBalance: true },
 
   async call(input, context) {
     const agent = requireAgent(context);

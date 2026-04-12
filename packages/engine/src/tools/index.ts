@@ -1,4 +1,5 @@
 import type { Tool } from '../types.js';
+import { applyToolFlags } from '../tool-flags.js';
 import { balanceCheckTool } from './balance.js';
 import { savingsInfoTool } from './savings.js';
 import { healthCheckTool } from './health.js';
@@ -100,7 +101,7 @@ export const WRITE_TOOLS: Tool[] = [
 ];
 
 export function getDefaultTools(): Tool[] {
-  return [...READ_TOOLS, ...WRITE_TOOLS];
+  return applyToolFlags([...READ_TOOLS, ...WRITE_TOOLS]);
 }
 
 export {

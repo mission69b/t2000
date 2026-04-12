@@ -18,6 +18,7 @@ export const voloUnstakeTool = buildTool({
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true },
 
   async call(input, context) {
     const agent = requireAgent(context);

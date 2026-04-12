@@ -25,6 +25,7 @@ export const withdrawTool = buildTool({
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true, affectsHealth: true },
 
   async call(input, context) {
     const agent = requireAgent(context);

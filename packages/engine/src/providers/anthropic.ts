@@ -5,6 +5,8 @@ import type {
   Message,
   ProviderEvent,
   StopReason,
+  SystemPrompt,
+  ThinkingConfig,
   ToolDefinition,
 } from '../types.js';
 
@@ -45,21 +47,34 @@ export class AnthropicProvider implements LLMProvider {
       }
     }
 
-    const streamParams = {
+    const thinkingParam = toAnthropicThinking(params.thinking);
+
+    const systemParam = toAnthropicSystem(params.systemPrompt);
+
+    const baseParams: Anthropic.Messages.MessageCreateParamsStreaming = {
       model: params.model ?? this.defaultModel,
       max_tokens: params.maxTokens ?? this.defaultMaxTokens,
-      system: params.systemPrompt,
+      system: systemParam,
       messages,
+      stream: true as const,
       tools: tools.length > 0 ? tools : undefined,
-      ...(params.temperature !== undefined && { temperature: params.temperature }),
+      ...(!thinkingParam && params.temperature !== undefined && { temperature: params.temperature }),
       ...(toolChoice && { tool_choice: toolChoice }),
     };
 
+    const streamParams = {
+      ...baseParams,
+      ...(thinkingParam && { thinking: thinkingParam }),
+      ...(params.outputConfig?.effort && { output_config: { effort: params.outputConfig.effort } }),
+    };
+
+    // Cast to satisfy SDK types — thinking/output_config may not be in the type defs yet
     const stream = params.signal
-      ? this.client.messages.stream(streamParams, { signal: params.signal })
-      : this.client.messages.stream(streamParams);
+      ? this.client.messages.stream(streamParams as Anthropic.Messages.MessageCreateParamsStreaming, { signal: params.signal })
+      : this.client.messages.stream(streamParams as Anthropic.Messages.MessageCreateParamsStreaming);
 
     const toolInputBuffers = new Map<number, { id: string; name: string; json: string }>();
+    const thinkingBuffers = new Map<number, { type: 'thinking'; text: string; signature: string } | { type: 'redacted_thinking'; data: string }>();
     let outputTokensFromStart = 0;
 
     try {
@@ -87,56 +102,75 @@ export class AnthropicProvider implements LLMProvider {
           }
 
           case 'content_block_start': {
-            const block = event.content_block;
+            const block = event.content_block as { type: string; id?: string; name?: string; data?: string };
             if (block.type === 'tool_use') {
               toolInputBuffers.set(event.index, {
-                id: block.id,
-                name: block.name,
+                id: block.id!,
+                name: block.name!,
                 json: '',
               });
               yield {
                 type: 'tool_use_start',
-                id: block.id,
-                name: block.name,
+                id: block.id!,
+                name: block.name!,
               };
+            } else if (block.type === 'thinking') {
+              thinkingBuffers.set(event.index, { type: 'thinking', text: '', signature: '' });
+            } else if (block.type === 'redacted_thinking') {
+              thinkingBuffers.set(event.index, { type: 'redacted_thinking', data: block.data ?? '' });
             }
             break;
           }
 
           case 'content_block_delta': {
-            const delta = event.delta;
+            const delta = event.delta as { type: string; text?: string; partial_json?: string; thinking?: string; signature?: string };
             if (delta.type === 'text_delta') {
-              yield { type: 'text_delta', text: delta.text };
+              yield { type: 'text_delta', text: delta.text! };
             } else if (delta.type === 'input_json_delta') {
               const buf = toolInputBuffers.get(event.index);
               if (buf) {
-                buf.json += delta.partial_json;
+                buf.json += delta.partial_json!;
                 yield {
                   type: 'tool_use_delta',
                   id: buf.id,
-                  partialJson: delta.partial_json,
+                  partialJson: delta.partial_json!,
                 };
               }
+            } else if (delta.type === 'thinking_delta') {
+              const buf = thinkingBuffers.get(event.index);
+              if (buf?.type === 'thinking') buf.text += delta.thinking ?? '';
+              yield { type: 'thinking_delta', text: delta.thinking ?? '' };
+            } else if (delta.type === 'signature_delta') {
+              const buf = thinkingBuffers.get(event.index);
+              if (buf?.type === 'thinking') buf.signature = delta.signature ?? '';
             }
             break;
           }
 
           case 'content_block_stop': {
-            const buf = toolInputBuffers.get(event.index);
-            if (buf) {
+            const toolBuf = toolInputBuffers.get(event.index);
+            if (toolBuf) {
               let input: unknown = {};
               try {
-                input = JSON.parse(buf.json || '{}');
+                input = JSON.parse(toolBuf.json || '{}');
               } catch {
                 input = {};
               }
               yield {
                 type: 'tool_use_done',
-                id: buf.id,
-                name: buf.name,
+                id: toolBuf.id,
+                name: toolBuf.name,
                 input,
               };
               toolInputBuffers.delete(event.index);
+            }
+            const thinkBuf = thinkingBuffers.get(event.index);
+            if (thinkBuf?.type === 'thinking') {
+              yield { type: 'thinking_done', thinking: thinkBuf.text, signature: thinkBuf.signature };
+              thinkingBuffers.delete(event.index);
+            } else if (thinkBuf?.type === 'redacted_thinking') {
+              yield { type: 'redacted_thinking', data: thinkBuf.data };
+              thinkingBuffers.delete(event.index);
             }
             break;
           }
@@ -174,27 +208,48 @@ export class AnthropicProvider implements LLMProvider {
 // Conversion helpers
 // ---------------------------------------------------------------------------
 
+function toAnthropicSystem(prompt: SystemPrompt): string | Anthropic.Messages.TextBlockParam[] {
+  if (typeof prompt === 'string') return prompt;
+  return prompt.map((block) => ({
+    type: 'text' as const,
+    text: block.text,
+    ...(block.cache_control && { cache_control: block.cache_control }),
+  }));
+}
+
+function toAnthropicThinking(config?: ThinkingConfig): Record<string, unknown> | undefined {
+  if (!config || config.type === 'disabled') return undefined;
+  if (config.type === 'adaptive') return { type: 'adaptive' };
+  return { type: 'enabled', budget_tokens: config.budgetTokens };
+}
+
 function toAnthropicMessage(msg: Message): Anthropic.MessageParam {
-  const content: Anthropic.ContentBlockParam[] = msg.content.map((block) => {
-    switch (block.type) {
-      case 'text':
-        return { type: 'text' as const, text: block.text };
-      case 'tool_use':
-        return {
-          type: 'tool_use' as const,
-          id: block.id,
-          name: block.name,
-          input: block.input as Record<string, unknown>,
-        };
-      case 'tool_result':
-        return {
-          type: 'tool_result' as const,
-          tool_use_id: block.toolUseId,
-          content: block.content,
-          is_error: block.isError,
-        };
-    }
-  });
+  const content: Anthropic.ContentBlockParam[] = msg.content
+    .map((block): Anthropic.ContentBlockParam | null => {
+      switch (block.type) {
+        case 'text':
+          return { type: 'text' as const, text: block.text };
+        case 'thinking':
+          return { type: 'thinking' as const, thinking: block.thinking, signature: block.signature } as unknown as Anthropic.ContentBlockParam;
+        case 'redacted_thinking':
+          return { type: 'redacted_thinking' as const, data: block.data } as unknown as Anthropic.ContentBlockParam;
+        case 'tool_use':
+          return {
+            type: 'tool_use' as const,
+            id: block.id,
+            name: block.name,
+            input: block.input as Record<string, unknown>,
+          };
+        case 'tool_result':
+          return {
+            type: 'tool_result' as const,
+            tool_use_id: block.toolUseId,
+            content: block.content,
+            is_error: block.isError,
+          };
+      }
+    })
+    .filter((b): b is Anthropic.ContentBlockParam => b !== null);
 
   return { role: msg.role, content };
 }

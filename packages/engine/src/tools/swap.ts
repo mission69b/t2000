@@ -26,6 +26,13 @@ export const swapExecuteTool = buildTool({
   },
   isReadOnly: false,
   permissionLevel: 'confirm',
+  flags: { mutating: true, requiresBalance: true },
+  preflight: (input) => {
+    if (input.from.toLowerCase() === input.to.toLowerCase()) {
+      return { valid: false, error: `Cannot swap ${input.from} to itself.` };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     const agent = requireAgent(context);

@@ -1,8 +1,10 @@
 import type { z } from 'zod';
 import type {
   PermissionLevel,
+  PreflightResult,
   Tool,
   ToolContext,
+  ToolFlags,
   ToolJsonSchema,
   ToolResult,
 } from './types.js';
@@ -19,20 +21,27 @@ export interface BuildToolOptions<TInput, TOutput> {
   call: (input: TInput, context: ToolContext) => Promise<ToolResult<TOutput>>;
   isReadOnly?: boolean;
   permissionLevel?: PermissionLevel;
+  flags?: ToolFlags;
+  preflight?: (input: TInput) => PreflightResult;
 }
+
+type AnyPreflight = (input: unknown) => PreflightResult;
 
 export function buildTool<TInput, TOutput>(
   opts: BuildToolOptions<TInput, TOutput>,
 ): Tool<TInput, TOutput> {
+  const isReadOnly = opts.isReadOnly ?? true;
   return {
     name: opts.name,
     description: opts.description,
     inputSchema: opts.inputSchema,
     jsonSchema: opts.jsonSchema,
     call: opts.call,
-    isReadOnly: opts.isReadOnly ?? true,
-    isConcurrencySafe: opts.isReadOnly ?? true,
-    permissionLevel: opts.permissionLevel ?? (opts.isReadOnly === false ? 'confirm' : 'auto'),
+    isReadOnly,
+    isConcurrencySafe: isReadOnly,
+    permissionLevel: opts.permissionLevel ?? (isReadOnly ? 'auto' : 'confirm'),
+    flags: opts.flags ?? {},
+    preflight: opts.preflight as AnyPreflight | undefined,
   };
 }
 
