@@ -1,0 +1,40 @@
+name: swap_and_save
+description: Swap a token to USDC and deposit into savings
+triggers:
+  - "swap and save"
+  - "convert and deposit"
+  - "swap to USDC then save"
+  - "move everything to savings"
+
+steps:
+  - name: check_balance
+    tool: balance_check
+    purpose: Get current token balances
+    gate: none
+    on_error:
+      action: retry
+      message: "Balance check failed. Retrying once."
+
+  - name: swap_to_usdc
+    tool: swap_execute
+    purpose: Swap source token to USDC
+    requires:
+      - step: check_balance
+        field: available_amount
+    gate: estimate
+    gate_prompt: "At ${{price}}/{{token}}, you'll receive ~${{estimate}} USDC."
+    on_error:
+      action: abort
+      message: "Swap failed — {{error}}. No deposit attempted. Your original balance is unchanged."
+
+  - name: deposit
+    tool: save_deposit
+    purpose: Deposit received USDC into savings
+    requires:
+      - step: swap_to_usdc
+        field: received
+    gate: none
+    notes: "Use the 'received' field from the swap result — NOT the estimated amount."
+    on_error:
+      action: report
+      message: "Swap succeeded (received {{received}} USDC) but deposit failed — {{error}}. Your USDC is in your wallet. Try depositing manually."

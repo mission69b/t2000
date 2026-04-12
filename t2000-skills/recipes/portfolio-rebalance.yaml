@@ -1,0 +1,39 @@
+name: portfolio_rebalance
+description: Rebalance portfolio to target allocation
+triggers:
+  - "rebalance"
+  - "rebalance my portfolio"
+  - "adjust my allocation"
+
+steps:
+  - name: check_positions
+    tool: balance_check
+    purpose: Get current portfolio breakdown
+    gate: none
+    on_error:
+      action: retry
+      message: "Balance check failed. Retrying once."
+
+  - name: plan_trades
+    purpose: Calculate required swaps to reach target allocation
+    gate: review
+    gate_prompt: "Here's the rebalance plan:\n{{trades}}\nEstimated cost: {{slippage}}. Proceed?"
+    rules:
+      - "Show current allocation vs target allocation"
+      - "List each swap with estimated amounts"
+      - "Calculate total slippage across all swaps"
+
+  - name: execute_swaps
+    tool: swap_execute
+    purpose: Execute each swap in sequence
+    requires:
+      - step: plan_trades
+        confirmation: true
+    notes: "Execute one swap at a time. Check balance after each before the next."
+    on_error:
+      action: report
+      message: "Swap {{current}} of {{total}} failed — {{error}}. Previous swaps completed. Check balance for current state."
+
+  - name: summary
+    purpose: Report final positions
+    tool: balance_check

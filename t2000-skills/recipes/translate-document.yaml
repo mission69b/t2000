@@ -1,0 +1,32 @@
+name: translate_document
+description: Scrape a webpage and translate it
+triggers:
+  - "translate this page"
+  - "translate this article"
+services:
+  - jina/v1/read
+  - deepl/v1/translate
+
+steps:
+  - name: extract
+    tool: pay_api
+    service: jina/v1/read
+    purpose: Extract page content as markdown
+    cost: "$0.005"
+    gate: none
+    on_error:
+      action: abort
+      message: "Page extraction failed — {{error}}. Cannot translate without content."
+
+  - name: translate
+    tool: pay_api
+    service: deepl/v1/translate
+    purpose: Translate to target language
+    cost: "$0.005"
+    requires:
+      - step: extract
+        field: content
+    gate: none
+    on_error:
+      action: abort
+      message: "Translation failed — {{error}}. Original content was extracted but not translated."

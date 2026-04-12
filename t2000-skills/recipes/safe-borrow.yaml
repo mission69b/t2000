@@ -1,0 +1,37 @@
+name: safe_borrow
+description: Borrow USDC with health factor validation
+triggers:
+  - "borrow"
+  - "take out a loan"
+  - "borrow against"
+
+steps:
+  - name: check_health
+    tool: health_check
+    purpose: Get current health factor and max borrow capacity
+    gate: none
+    on_error:
+      action: abort
+      message: "Cannot check health factor. Refusing borrow until health data is available."
+
+  - name: evaluate_risk
+    purpose: Assess whether borrowing is safe
+    gate: review
+    rules:
+      - "If health factor after borrow < 1.5: refuse with reason"
+      - "If health factor after borrow 1.5-2.0: warn, require explicit confirmation"
+      - "Always state: borrow amount, interest rate, projected health factor"
+    on_error:
+      action: refuse
+      message: "Health factor would drop to {{projected_hf}}. Refusing to protect from liquidation."
+      suggest: "Repay existing debt or deposit more collateral first."
+
+  - name: execute_borrow
+    tool: borrow
+    purpose: Execute the borrow
+    requires:
+      - step: check_health
+      - confirmation: true
+    on_error:
+      action: abort
+      message: "Borrow transaction failed. No funds were moved. {{error}}"

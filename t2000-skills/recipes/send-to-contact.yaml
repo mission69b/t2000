@@ -1,0 +1,40 @@
+name: send_to_contact
+description: Send tokens to a saved contact or new address
+triggers:
+  - "send to"
+  - "pay"
+  - "transfer to"
+
+steps:
+  - name: resolve_recipient
+    purpose: Resolve the recipient — check contacts first, then validate raw address
+    gate: none
+    rules:
+      - "If user gives a name: match against contacts list"
+      - "If user gives an address: validate with isValidSuiAddress()"
+      - "If ambiguous: ask the user to clarify"
+
+  - name: check_balance
+    tool: balance_check
+    purpose: Verify sufficient funds
+    gate: none
+    on_error:
+      action: retry
+      message: "Balance check failed. Retrying once."
+
+  - name: execute_send
+    tool: send_transfer
+    purpose: Send the tokens
+    requires:
+      - step: resolve_recipient
+      - step: check_balance
+        field: sufficient_funds
+    gate: none
+    on_error:
+      action: abort
+      message: "Transfer failed. No funds were moved. {{error}}"
+
+  - name: offer_save_contact
+    purpose: If recipient was a raw address, offer to save as contact
+    gate: none
+    condition: "recipient was not already a contact"

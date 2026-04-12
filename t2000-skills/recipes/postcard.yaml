@@ -1,0 +1,50 @@
+name: postcard
+description: Send a physical postcard with a generated design
+triggers:
+  - "send a postcard"
+  - "mail a card"
+  - "physical mail"
+  - "postcard to"
+services:
+  - fal/fal-ai/flux/dev
+  - lob/v1/postcards
+
+prerequisites:
+  - field: recipient_name
+    prompt: "What's the recipient's full name?"
+  - field: recipient_address
+    prompt: "What's the mailing address? (Include city, state/region, zip, country)"
+
+steps:
+  - name: generate_design
+    tool: pay_api
+    service: fal/fal-ai/flux/dev
+    purpose: Generate card design image
+    cost: "$0.03"
+    output:
+      type: image
+      key: "images[0].url"
+    gate: preview
+    gate_prompt: "Here's the design. Print and mail for $1.00?"
+    on_error:
+      action: abort
+      message: "Image generation failed — {{error}}. No charge."
+
+  - name: print_and_mail
+    tool: pay_api
+    service: lob/v1/postcards
+    purpose: Print and mail physical postcard
+    cost: "$1.00"
+    requires:
+      - step: generate_design
+        field: image_url
+      - confirmation: true
+    input_template:
+      to: "{{recipient_address}}"
+      front: '<html><body style="margin:0"><img src="{{generate_design.image_url}}" style="width:100%;height:100%;object-fit:cover"/></body></html>'
+      back: '<html><body style="padding:40px;font-family:Georgia,serif"><p style="font-size:14px">{{message}}</p><div style="margin-top:20px;font-family:monospace;font-size:10px;color:#707070">sent with Audric</div></body></html>'
+    flags:
+      irreversible: true
+    on_error:
+      action: abort
+      message: "Postcard printing failed — {{error}}. Design was generated but not mailed."

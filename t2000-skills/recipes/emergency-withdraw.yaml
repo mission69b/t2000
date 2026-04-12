@@ -1,0 +1,38 @@
+name: emergency_withdraw
+description: Safely withdraw from savings while managing health factor
+triggers:
+  - "withdraw everything"
+  - "emergency withdraw"
+  - "close my position"
+
+steps:
+  - name: check_health
+    tool: health_check
+    purpose: Check health factor and outstanding borrows
+    gate: none
+    on_error:
+      action: abort
+      message: "Cannot check health data. Refusing emergency withdraw without safety validation."
+
+  - name: evaluate_safety
+    purpose: Determine safe withdrawal amount
+    gate: review
+    rules:
+      - "If borrows > 0: calculate max safe withdrawal that keeps health > 1.5"
+      - "If no borrows: full withdrawal is safe"
+      - "Warn user about goal impact if active goals exist"
+    gate_prompt: "You can safely withdraw ${{safe_amount}}. {{health_warning}}"
+    on_error:
+      action: refuse
+      message: "Cannot determine safe withdrawal amount. {{error}}"
+      suggest: "Try repaying some debt first to increase safe withdrawal capacity."
+
+  - name: execute_withdraw
+    tool: withdraw
+    purpose: Withdraw the safe amount
+    requires:
+      - step: evaluate_safety
+        confirmation: true
+    on_error:
+      action: abort
+      message: "Withdrawal failed. No funds were moved. {{error}}"

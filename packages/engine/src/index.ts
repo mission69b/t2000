@@ -76,6 +76,10 @@ export type {
   GuardRunnerState,
 } from './guards.js';
 
+// Recipes (RE-3.1)
+export { RecipeRegistry, loadRecipes, parseRecipe } from './recipes/index.js';
+export type { Recipe, RecipeStep, RecipeStepOnError, RecipePrerequisite } from './recipes/index.js';
+
 // Complexity classifier
 export { classifyEffort } from './classify-effort.js';
 
@@ -99,8 +103,8 @@ export type {
 } from './state/conversation-state.js';
 
 // Context management
-export { estimateTokens, compactMessages } from './context.js';
-export type { CompactOptions } from './context.js';
+export { estimateTokens, compactMessages, ContextBudget } from './context.js';
+export type { CompactOptions, ContextBudgetConfig } from './context.js';
 
 // MCP server adapter
 export { buildMcpTools, registerEngineTools } from './mcp.js';

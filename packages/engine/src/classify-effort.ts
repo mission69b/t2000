@@ -1,9 +1,5 @@
 import type { ThinkingEffort } from './types.js';
-
-interface Recipe {
-  name: string;
-  steps: unknown[];
-}
+import type { Recipe } from './recipes/index.js';
 
 /**
  * Routes each turn to the appropriate thinking effort level based on

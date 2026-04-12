@@ -28,6 +28,8 @@ import {
   guardArtifactPreview,
   guardStaleData,
 } from './guards.js';
+import type { RecipeRegistry, Recipe } from './recipes/index.js';
+import { ContextBudget, compactMessages } from './context.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -61,6 +63,10 @@ export class QueryEngine {
   private readonly costTracker: CostTracker;
   private readonly guardConfig: GuardConfig | undefined;
   private readonly guardState: GuardRunnerState;
+  private readonly recipes: RecipeRegistry | undefined;
+  private readonly contextBudget: ContextBudget;
+  private readonly contextSummarizer: EngineConfig['contextSummarizer'];
+  private matchedRecipe: Recipe | null = null;
 
   private messages: Message[] = [];
   private abortController: AbortController | null = null;
@@ -86,6 +92,9 @@ export class QueryEngine {
     this.costTracker = new CostTracker(config.costTracker);
     this.guardConfig = config.guards;
     this.guardState = createGuardRunnerState();
+    this.recipes = config.recipes;
+    this.contextBudget = new ContextBudget(config.contextBudget);
+    this.contextSummarizer = config.contextSummarizer;
 
     this.tools = config.tools ?? (config.agent ? getDefaultTools() : []);
   }
@@ -106,6 +115,9 @@ export class QueryEngine {
 
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
+
+    // RE-3.1: Match recipe before pushing message
+    this.matchedRecipe = this.recipes?.match(prompt) ?? null;
 
     this.messages.push({
       role: 'user',
@@ -187,10 +199,20 @@ export class QueryEngine {
     return this.messages;
   }
 
+  getMatchedRecipe(): Recipe | null {
+    return this.matchedRecipe;
+  }
+
+  getContextBudget(): ContextBudget {
+    return this.contextBudget;
+  }
+
   reset(): void {
     this.messages = [];
     this.costTracker.reset();
+    this.contextBudget.reset();
     this.guardEvents = [];
+    this.matchedRecipe = null;
   }
 
   getGuardEvents(): readonly GuardEvent[] {
@@ -255,6 +277,15 @@ export class QueryEngine {
       };
 
       try {
+        // RE-3.3: Compact context if budget is exceeded
+        if (this.contextBudget.shouldCompact()) {
+          this.messages = await compactMessages(this.messages, {
+            maxTokens: 100_000,
+            keepRecentCount: 8,
+            summarizer: this.contextSummarizer,
+          });
+        }
+
         this.messages = validateHistory(this.messages);
 
         if (process.env.NODE_ENV !== 'test') {
@@ -277,9 +308,23 @@ export class QueryEngine {
           ? ((applyToolChoice && turns === 1) ? 'auto' as const : undefined)
           : ((applyToolChoice && turns === 1) ? this.toolChoice : undefined);
 
+        // RE-3.1: Inject matched recipe context into system prompt for this turn
+        let effectivePrompt = this.systemPrompt;
+        if (this.matchedRecipe && this.recipes) {
+          const recipeCtx = this.recipes.toPromptContext(this.matchedRecipe);
+          if (typeof effectivePrompt === 'string') {
+            effectivePrompt = `${effectivePrompt}\n\n${recipeCtx}`;
+          } else if (Array.isArray(effectivePrompt)) {
+            effectivePrompt = [
+              ...effectivePrompt,
+              { type: 'text' as const, text: recipeCtx },
+            ];
+          }
+        }
+
         const stream = this.provider.chat({
           messages: this.messages,
-          systemPrompt: this.systemPrompt,
+          systemPrompt: effectivePrompt,
           tools: toolDefs,
           model: this.model,
           maxTokens: this.maxTokens,
@@ -621,6 +666,7 @@ export class QueryEngine {
           event.cacheReadTokens,
           event.cacheWriteTokens,
         );
+        this.contextBudget.update(event.inputTokens);
         yield {
           type: 'usage',
           inputTokens: event.inputTokens,

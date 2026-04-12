@@ -211,6 +211,12 @@ export interface EngineConfig {
   };
   /** Guard runner configuration (RE-2.2). Omit to disable guards. */
   guards?: import('./guards.js').GuardConfig;
+  /** Recipe registry for multi-step workflow guidance (RE-3.1). */
+  recipes?: import('./recipes/index.js').RecipeRegistry;
+  /** Context budget tracking configuration (RE-3.3). */
+  contextBudget?: import('./context.js').ContextBudgetConfig;
+  /** LLM-based summarizer for context compaction (RE-3.3). */
+  contextSummarizer?: (messages: import('./types.js').Message[]) => Promise<string>;
 }
 
 // ---------------------------------------------------------------------------
