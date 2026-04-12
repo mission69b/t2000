@@ -36,6 +36,10 @@ export const sendTransferTool = buildTool({
     if (input.to.startsWith('0x') && !/^0x[a-fA-F0-9]{64}$/.test(input.to)) {
       return { valid: false, error: `Invalid Sui address format: "${input.to}". Must be 0x followed by 64 hex characters.` };
     }
+    const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    if (input.to === ZERO_ADDRESS) {
+      return { valid: false, error: 'This is the zero address (burn address). Sending funds here will permanently destroy them. If you really intend to burn tokens, please confirm explicitly.' };
+    }
     if (input.amount <= 0) {
       return { valid: false, error: 'Amount must be positive.' };
     }
