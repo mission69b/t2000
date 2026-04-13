@@ -297,12 +297,12 @@
 | B.4 | Granular permission rules (USD-aware) | 1d | done | — | both | ✅ `permission-rules.ts`: `resolvePermissionTier` + `resolveUsdValue` + `toolNameToOperation`. 3 presets (conservative/balanced/aggressive). Engine permission gate uses USD resolution when `priceCache` + `permissionConfig` available. 19 tests |
 | B.1 | Streaming tool execution | 5d | done | — | both | ✅ `EarlyToolDispatcher` class: dispatches `isReadOnly && isConcurrencySafe` tools mid-stream via `tryDispatch`. Results collected in dispatch order via `collectResults()` async generator. `abort()` for cancellation. Integrated into `agentLoop` + `handleProviderEvent`. 10 tests |
 
-### Phase C: Chain-native memory (Week 4-6, ~3 days)
+### Phase C: Chain-native memory (Week 4-6, ~3 days) — ✅ COMPLETE
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| C.1 | AppEvent + PortfolioSnapshot classifiers | 2d | not started | — | audric | Derive facts from on-chain data |
-| C.2 | Memory pipeline cron | 1d | not started | C.1 | audric | Nightly classification job |
+| C.1 | AppEvent + PortfolioSnapshot classifiers | 2d | done | — | audric | ✅ 7 classifiers in `lib/chain-memory/classifiers.ts`: deposit_pattern, risk_profile, yield_behavior, borrow_behavior, near_liquidation, large_transaction, compounding_streak. `ChainFact` + `AppEventRecord` + `SnapshotRecord` types. `UserMemory.source` field ('conversation' \| 'chain'). 31 tests |
+| C.2 | Memory pipeline cron | 1d | done | C.1 | both | ✅ `POST /api/internal/chain-memory` route (90-day lookback, Jaccard dedup, 50-memory cap). `handleChainMemorySource()` in notification-users (24h cooldown). `runChainMemory()` cron in t2000 server (nightly, concurrency 5). `buildMemoryContext` labels chain facts as `[on-chain observation]` |
 
 ### Phase D: Autonomous action loop (Week 6-9, ~8 days)
 
@@ -493,5 +493,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4  (deferred)
 
 ---
 
-*Last updated: April 13 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks). **Audric 2.0 Phase B COMPLETE** (4/4 tasks: microcompact, tool budgeting, granular permissions, streaming tool execution). Engine at `@t2000/engine@0.34.0`, 249 tests, typecheck clean. **Next: Phase C** (chain-native memory: AppEvent + PortfolioSnapshot classifiers, memory pipeline cron — ~3 days).*
+*Last updated: April 13 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks). **Audric 2.0 Phase B COMPLETE** (4/4 tasks + v0.35.1 hotfix). **Audric 2.0 Phase C COMPLETE** (7 classifiers, chain memory pipeline, 31 tests). Engine at `@t2000/engine@0.35.1`, 250 tests. **Next: Phase D** (autonomous action loop: behavioral pattern detector, trust ladder, trigger cron, notifications, safety — ~8 days).*
 *Source of truth for specs: `audric-roadmap.md`, `spec/REASONING_ENGINE.md`, `AUDRIC_2_SPEC.md`. Archived design specs (fully implemented): `spec/archive/audric-feedback-loop-spec.md`, `spec/archive/audric-intelligence-spec.md`, `spec/archive/audric-rich-ux-spec.md`.*
