@@ -63,7 +63,7 @@
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
 | `@t2000/engine` | Published | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
-| `@t2000/mcp` | Published | MCP server — 30 tools, 16 prompts, stdio transport |
+| `@t2000/mcp` | Published | MCP server — 47 tools (mirrors engine), stdio transport |
 | `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
 | `@suimpp/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
@@ -850,30 +850,78 @@ Tools are built with `buildTool()` which enforces:
 
 | Read (parallel, auto) | Write (serial, confirm) |
 |-----------------------|------------------------|
-| `balance_check` | `save_deposit` |
-| `savings_info` | `withdraw` |
-| `health_check` | `send_transfer` |
-| `rates_info` | `borrow` |
-| `transaction_history` | `repay_debt` |
-| `explain_tx` | `claim_rewards` |
-| `web_search` | `pay_api` |
-| `swap_quote` | `swap_execute` |
-| `volo_stats` | `volo_stake` |
-| `defillama_yield_pools` | `volo_unstake` |
+| `render_canvas` | `save_deposit` |
+| `balance_check` | `withdraw` |
+| `savings_info` | `send_transfer` |
+| `health_check` | `borrow` |
+| `rates_info` | `repay_debt` |
+| `transaction_history` | `claim_rewards` |
+| `swap_quote` | `pay_api` |
+| `volo_stats` | `swap_execute` |
+| `mpp_services` | `volo_stake` |
+| `web_search` | `volo_unstake` |
+| `explain_tx` | `save_contact` |
+| `portfolio_analysis` | |
+| `protocol_deep_dive` | |
+| `defillama_yield_pools` | |
 | `defillama_protocol_info` | |
 | `defillama_token_prices` | |
 | `defillama_price_change` | |
 | `defillama_chain_tvl` | |
 | `defillama_protocol_fees` | |
 | `defillama_sui_protocols` | |
+| `allowance_status` | |
+| `toggle_allowance` | |
+| `update_daily_limit` | |
+| `update_permissions` | |
+| `create_payment_link` | |
+| `list_payment_links` | |
+| `cancel_payment_link` | |
+| `create_invoice` | |
+| `list_invoices` | |
+| `cancel_invoice` | |
+| `spending_analytics` | |
+| `yield_summary` | |
+| `activity_summary` | |
+| `create_schedule` | |
+| `list_schedules` | |
+| `cancel_schedule` | |
 
-16 read tools, 10 write tools, 26 total. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+36 read tools, 11 write tools, **47 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+
+### Reasoning Engine (Phase 1-3 — Shipped)
+
+The engine includes a three-layer reasoning system, feature-flagged behind `ENABLE_THINKING=true`:
+
+1. **Adaptive thinking** (`classify-effort.ts`) — routes queries to `low`/`medium`/`high` thinking effort based on financial complexity
+2. **Guard runner** (`guards.ts`) — 9 guards across 3 priority tiers (Safety > Financial > UX) enforce balance checks, health factor limits, slippage, irreversibility warnings, etc.
+3. **Skill recipes** (`recipes/registry.ts`) — YAML recipe files loaded by `RecipeRegistry` with longest-trigger-match-wins, injected as prompt context
+
+Additional features:
+- **Prompt caching** — system prompt + tool definitions cached across turns (Anthropic `cache_control`)
+- **Context compaction** — `ContextBudget` (200k limit, 85% compact trigger) with LLM summarizer + truncation fallback
+- **Tool flags** — `ToolFlags` interface on all tools (mutating, requiresBalance, affectsHealth, irreversible, etc.)
+- **Preflight validation** — input validation gate on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`
+
+### Canvas System
+
+The engine supports rich interactive visualizations via HTML canvases:
+- `render_canvas` tool generates HTML content for charts, timelines, heatmaps
+- `canvas` SSE event type delivers rendered content to the client
+- Used for portfolio timeline, spending breakdown, activity heatmap, financial reports
+
+### Scheduled Actions (DCA)
+
+Server-side scheduled actions with a trust ladder:
+- `create_schedule` / `list_schedules` / `cancel_schedule` tools (read-only, execute server-side)
+- First 5 executions require user confirmation (trust ladder), then autonomous
+- Supports: save, swap, repay on cron schedules
 
 ### Token Registry
 
 All token metadata is centralized in `packages/sdk/src/token-registry.ts`:
 
-- `COIN_REGISTRY` — 24 tokens with type, decimals, symbol
+- `COIN_REGISTRY` — 17 tokens with type, decimals, symbol (Tier 1: USDC, Tier 2: 13 swap assets, Legacy: 3)
 - `getDecimalsForCoinType(coinType)` — decimals lookup with suffix matching
 - `resolveSymbol(coinType)` — human-friendly name from full coin type
 - `resolveTokenType(name)` — case-insensitive name → full coin type
@@ -999,7 +1047,7 @@ Push to main
 ### Publish pipeline (on tag `v*`)
 
 ```
-Tag v0.25.16 (t2000 monorepo)
+Tag v0.33.2 (t2000 monorepo)
   → CI: lint + typecheck + test
   → Build all packages
   → Publish: @t2000/sdk, @t2000/engine, @t2000/mcp, @t2000/cli

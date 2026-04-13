@@ -54,4 +54,4 @@ Agent engine powering Audric — conversational finance on Sui.
 - `ToolContext` passes `agent`, `mcpManager`, `walletAddress`, `signal` to every tool
 - Events are yielded as `EngineEvent` discriminated union
 
-See `spec/CLAUDE_CODE_LEVERAGE.md` for design rationale.
+See `spec/REASONING_ENGINE.md` for the reasoning engine design (thinking, guards, recipes).

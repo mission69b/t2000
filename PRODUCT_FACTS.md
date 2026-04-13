@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-06
+> Last verified: 2026-04-13
 
 ---
 
@@ -14,11 +14,11 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.22.2` |
-| `@t2000/engine` | `0.7.5` |
-| `@t2000/cli` | `0.26.1` |
+| `@t2000/sdk` | `0.33.2` |
+| `@t2000/engine` | `0.33.2` |
+| `@t2000/cli` | `0.33.2` |
 | `@suimpp/mpp` | `0.1.0` |
-| `@t2000/mcp` | `0.26.1` |
+| `@t2000/mcp` | `0.33.2` |
 | Agent Skills | `3.0` |
 
 ---
@@ -630,20 +630,19 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.6.16` |
+| Version | `0.33.2` |
 | Description | Agent engine for conversational finance — powers Audric |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
-| Test count | 175 tests across 13 suites |
 
 ### Engine Public Exports
 
 | Export | Type | Purpose |
 |--------|------|---------|
-| `QueryEngine` | class | Stateful conversation loop with tool dispatch |
+| `QueryEngine` | class | Stateful conversation loop with tool dispatch, thinking, guards |
 | `validateHistory` | function | Pre-flight message history validation |
-| `AnthropicProvider` | class | Streaming LLM provider (Anthropic Claude) |
+| `AnthropicProvider` | class | Streaming LLM provider (Anthropic Claude, extended thinking) |
 | `buildTool` | function | Typed tool factory with Zod + JSON schema |
 | `runTools` | function | Parallel reads / serial writes orchestration |
 | `TxMutex` | class | Transaction serialization lock |
@@ -657,22 +656,43 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `serializeSSE` / `parseSSE` | function | SSE wire format |
 | `engineToSSE` | function | Adapt QueryEngine → SSE stream |
 | `estimateTokens` | function | Rough token estimation |
-| `compactMessages` | function | Context window compaction |
+| `compactMessages` | function | Context window compaction (ContextBudget) |
 | `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
 | `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 40 built-in tools (29 read, 11 write) |
+| `getDefaultTools` | function | All 47 built-in tools (36 read, 11 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
+| `classifyEffort` | function | Adaptive thinking effort classifier |
+| `ContextBudget` | class | Context window budget tracking + compaction trigger |
+| `RecipeRegistry` | class | YAML skill recipe loader + longest-trigger matching |
+| `runGuards` | function | Pre/post-execution guard runner (9 guards, 3 tiers) |
+| `applyToolFlags` | function | Apply `ToolFlags` to tool definitions |
+| `buildProfileContext` | function | User financial profile → prompt context |
+| `buildMemoryContext` | function | Episodic user memory → prompt context |
+
+### Reasoning Engine (Phase 1-3 — Shipped)
+
+| Feature | Module | Description |
+|---------|--------|-------------|
+| Adaptive thinking | `classify-effort.ts` | Routes queries to `low`/`medium`/`high` thinking effort based on financial complexity |
+| Prompt caching | `engine.ts` | System prompt + tool definitions cached across turns (Anthropic cache_control) |
+| Guard runner | `guards.ts` | 9 guards across 3 priority tiers (Safety > Financial > UX): retry, irreversibility, balance, health factor, large transfer, slippage, cost, artifact preview, stale data |
+| Tool flags | `tool-flags.ts` | `ToolFlags` interface (mutating, requiresBalance, affectsHealth, irreversible, producesArtifact, costAware, maxRetries) on all tools |
+| Preflight validation | `preflight` on Tool | Input validation gate on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit` |
+| Skill recipes | `recipes/registry.ts` | YAML recipe loader, `RecipeRegistry` with longest-trigger-match-wins, `toPromptContext()` |
+| Context compaction | `context.ts` | `ContextBudget` (200k limit, 85% compact, 70% warn), LLM summarizer + truncation fallback |
+
+Feature-flagged behind `ENABLE_THINKING=true`.
 
 ### Engine Tool Names
 
-| Read Tools (29) | Write Tools (11) |
+| Read Tools (36) | Write Tools (11) |
 |-----------|------------|
-| `balance_check` | `save_deposit` |
-| `savings_info` | `withdraw` |
-| `health_check` | `send_transfer` |
-| `rates_info` | `borrow` |
-| `transaction_history` | `repay_debt` |
-| `allowance_status` | `claim_rewards` |
+| `render_canvas` | `save_deposit` |
+| `balance_check` | `withdraw` |
+| `savings_info` | `send_transfer` |
+| `health_check` | `borrow` |
+| `rates_info` | `repay_debt` |
+| `transaction_history` | `claim_rewards` |
 | `swap_quote` | `pay_api` |
 | `volo_stats` | `swap_execute` |
 | `mpp_services` | `volo_stake` |
@@ -687,19 +707,26 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `defillama_chain_tvl` | |
 | `defillama_protocol_fees` | |
 | `defillama_sui_protocols` | |
+| `allowance_status` | |
+| `toggle_allowance` | |
+| `update_daily_limit` | |
+| `update_permissions` | |
 | `create_payment_link` | |
 | `list_payment_links` | |
 | `cancel_payment_link` | |
 | `create_invoice` | |
 | `list_invoices` | |
 | `cancel_invoice` | |
-| `toggle_allowance` | |
-| `update_daily_limit` | |
-| `update_permissions` | |
+| `spending_analytics` | |
+| `yield_summary` | |
+| `activity_summary` | |
+| `create_schedule` | |
+| `list_schedules` | |
+| `cancel_schedule` | |
 
 ### Engine Event Types
 
-`text_delta`, `tool_start`, `tool_result`, `pending_action`, `turn_complete`, `usage`, `error`
+`text_delta`, `thinking_delta`, `thinking_done`, `tool_start`, `tool_result`, `pending_action`, `canvas`, `turn_complete`, `usage`, `error`
 
 ### Engine Permission Levels
 
@@ -716,8 +743,8 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.25.16` |
-| Tool count | 29 (15 read, 12 write, 2 safety) |
+| Version | `0.33.2` |
+| Tool count | 47 (36 read, 11 write) — mirrors engine tool set |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |

@@ -1,10 +1,9 @@
 # Product Specification
 
 > Consolidated product spec for t2000 infrastructure. Covers products, architecture, integration, and technical reference.
-> For engine patterns: see `spec/CLAUDE_CODE_LEVERAGE.md`.
 > For CLI formatting details: see `CLI_UX_SPEC.md`. For detailed SDK/CLI reference: see `PRODUCT_FACTS.md`.
 >
-> Last updated: 2026-04-05
+> Last updated: 2026-04-13
 
 ---
 
@@ -16,9 +15,9 @@
 | **Pay**     | Access APIs with micropayments | MPP / t2000 gateway         | Live    |
 | **Send**    | Token transfers, instantly     | Direct Sui transactions     | Live    |
 | **Credit**  | Borrow against your balance    | NAVI MCP + thin tx builders | Live    |
-| **Receive** | Accept payments anywhere       | Direct Sui transactions     | Planned |
+| **Receive** | Accept payments anywhere       | Direct Sui transactions     | Live    |
 
-**Removed:** Invest (multi-protocol optimization is a power-user DeFi feature), Swap (utility within deposit flow, not a product). Suilend and Cetus SDKs dropped. When they release MCPs, adding them is a config change.
+**Removed:** Invest (multi-protocol optimization is a power-user DeFi feature), Swap (utility within deposit flows, not a standalone product). Suilend SDK removed. Cetus Aggregator SDK retained for swap routing only. When protocols release MCPs, expansion is a config change.
 
 ---
 
@@ -46,7 +45,7 @@ t2000/                    Infrastructure monorepo
 │   ├── sdk/              Core SDK — wallet, balance, transactions, adapters
 │   ├── engine/           Agent engine — QueryEngine, financial tools, MCP client/server
 │   ├── cli/              CLI — Commander.js, all user commands
-│   ├── mcp/              MCP server — 30 tools, 16 prompts
+│   ├── mcp/              MCP server — 47 tools, mirrors engine tool set
 │   └── contracts/        Move smart contracts (mpp-sui)
 ├── t2000-skills/         Agent skills for Claude Code, Cursor, etc.
 └── spec/                 Product specs, design system
@@ -75,7 +74,7 @@ Writes use thin transaction builders via `@mysten/sui`:
 |------------|--------|---------|
 | `@mysten/sui` | Active | Transaction building, RPC, utilities |
 | `@mysten/dapp-kit` | Active | Wallet connection (web app) |
-| `@naviprotocol/lending` (patched) | Active | TX builders for save/withdraw/borrow/repay |
+| `@naviprotocol/lending` (patched) | Legacy | TX builders for save/withdraw/borrow/repay (reads migrated to NAVI MCP) |
 | `@cetusprotocol/aggregator-sdk` | Active | Swap routing via Cetus Aggregator V3 |
 | `@suilend/sdk` | Removed | — |
 
@@ -90,18 +89,15 @@ SUI/USD price is read from the Cetus USDC/SUI pool on-chain object (read-only, n
 
 ## Supported Assets
 
-Multi-asset support via canonical token registry (`packages/sdk/src/token-registry.ts`). 24 tokens registered. Key assets:
+Multi-asset support via canonical token registry (`packages/sdk/src/token-registry.ts`). **17 tokens** registered across 3 tiers. Save and borrow are **USDC only**.
 
-| Symbol | Decimals | Send | Save | Borrow | Swap |
-|--------|----------|------|------|--------|------|
-| USDC   | 6        | ✅   | ✅   | ✅     | ✅   |
-| SUI    | 9        | ✅   | ✅   | —      | ✅   |
-| USDSUI | 6        | ✅   | ✅   | —      | ✅   |
-| USDe   | 6        | ✅   | ✅   | —      | ✅   |
-| WAL    | 9        | ✅   | ✅   | —      | ✅   |
-| ETH    | 8        | ✅   | ✅   | —      | ✅   |
+| Tier | Symbols | Send | Save | Borrow | Swap |
+|------|---------|------|------|--------|------|
+| 1 | USDC | ✅ | ✅ (USDC only) | ✅ (USDC only) | ✅ |
+| 2 | SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST | ✅ | — | — | ✅ |
+| Legacy | USDT, USDe, USDSUI | ✅ | — | — | ✅ |
 
-Swap supports any token pair via Cetus Aggregator V3. See `PRODUCT_FACTS.md` for the full 24-token list.
+Swap supports any token pair via Cetus Aggregator V3. See `PRODUCT_FACTS.md` for the full token list.
 
 ---
 
@@ -125,7 +121,7 @@ Fees collected on-chain via `t2000::treasury::collect_fee()` within the same PTB
 | Constant | Value | Purpose |
 |----------|-------|---------|
 | `MIST_PER_SUI` | `1_000_000_000n` | SUI atomic units |
-| `MIN_DEPOSIT` | `1_000_000_000n` | 1 SUI minimum deposit |
+| `MIN_DEPOSIT` | `1_000_000n` | 1 USDC minimum deposit (6 decimals) |
 | `BPS_DENOMINATOR` | `10_000n` | Basis point math |
 | `PRECISION` | `10^18` | Reward math (matches contract) |
 | `CLOCK_ID` | `'0x6'` | Sui shared clock object |
@@ -160,34 +156,32 @@ Commands: `save`, `send`, `withdraw`, `borrow`, `repay`, `claim-rewards`, `balan
 
 ### MCP (`@t2000/mcp`)
 
-30 tools (16 read, 12 write, 2 safety), 16 prompts. Exposes full t2000 functionality to Claude Desktop, Cursor, and any MCP-compatible client.
+47 tools (36 read, 11 write) — mirrors the engine tool set. Exposes full t2000 functionality to Claude Desktop, Cursor, and any MCP-compatible client.
 
 ### Engine (`@t2000/engine`)
 
-Agent engine extracted from Claude Code patterns (see `spec/CLAUDE_CODE_LEVERAGE.md`):
-- `QueryEngine` — stateful conversation manager, async generator `submitMessage()` loop
-- `buildTool()` — typed tool factory with Zod validation, permission tiers (`auto` / `confirm` / `explicit`), concurrency flags
+Conversational finance engine powering Audric:
+- `QueryEngine` — stateful conversation manager with adaptive thinking, guard runner, recipe injection
+- `buildTool()` — typed tool factory with Zod validation, permission tiers, `ToolFlags`, preflight validation
 - `runTools()` — parallel reads (`Promise.allSettled`) / serial writes (`TxMutex`)
-- `AnthropicProvider` — streaming LLM integration with tool parsing
-- Confirmation flow — `permission_request` event with async `resolve` callback
+- `AnthropicProvider` — streaming LLM with extended thinking, prompt caching
+- Reasoning engine — `classifyEffort` (adaptive thinking), `runGuards` (9 guards, 3 tiers), `RecipeRegistry` (YAML skills)
+- `ContextBudget` — 200k token limit, 85% compact trigger, LLM summarizer fallback
 - `CostTracker` — token usage + USD cost estimation with budget limits
 - SSE streaming — `serializeSSE` / `parseSSE` / `engineToSSE`
-- `SessionStore` interface + `MemorySessionStore` (TTL, deep-clone isolation)
-- Context management — `compactMessages` (summarise → drop → truncate → sanitize)
-- MCP adapter — `buildMcpTools` / `registerEngineTools` (engine tools → MCP `audric_*` tools)
-- MCP client (`McpClientManager`) — multi-server MCP client with caching
-- MCP tool adapter — converts external MCP tools into engine tools
-- NAVI MCP integration — config, transforms, composite reads for all NAVI data
-- Read tools use MCP-first strategy with SDK fallback
-- 26 tools (16 read, 10 write) including `explain_tx`, `web_search`, DefiLlama suite, and swap/volo tools
-- 175 tests across 13 suites
+- Canvas system — `render_canvas` tool, `canvas` SSE event type
+- Scheduled actions — `create_schedule`, `list_schedules`, `cancel_schedule` (DCA)
+- MCP client (`McpClientManager`) — multi-server MCP client with caching, NAVI MCP integration
+- MCP server adapter — `buildMcpTools` / `registerEngineTools` (engine tools → MCP tools)
+- 47 tools (36 read, 11 write) — see `PRODUCT_FACTS.md` for full list
+- Feature-flagged behind `ENABLE_THINKING=true`
 
 ---
 
 ## Phased Execution
 
 ### Phase 0: Foundation ✅
-- BRAND.md, CLAUDE.md, .claude/rules
+- CLAUDE.md, .claude/rules
 - Product simplification (5 products)
 - Claude Code architecture analysis
 - Consumer brand: Audric
@@ -348,14 +342,14 @@ Retrofit `@t2000/engine` into the Audric consumer app (separate `audric/` repo),
   - Centered input bar with model/attachment affordances
   - Quick-action category chips below input (DeFi-specific: "Check balance", "Save SUI", "View rates")
   - Collapsible sidebar with session history
-  - Dark warm-toned palette matching Audric brand from `BRAND.md`
+  - Dark warm-toned palette matching Audric brand (N100-N900 neutral scale)
 
 #### 2c: Agentic UI Reskin (design system) ✅
 - **Fonts**: Geist Sans (body), Geist Mono (code/labels), Instrument Serif (display headings) via `geist` npm + `next/font/google`
 - **Color tokens**: Neutrals N100–N900 (white-to-black palette) in globals.css `:root`
   - Removed dark theme (#040406 bg → #FFFFFF), removed noise/scanline `body` overlays
   - Semantic colors added: `--success` (#3CC14E), `--error` (#F0201D), `--warning` (#FFB014), `--info` (#0966F6)
-  - Primary action color: N800/N900 (black) — no brand accent color, per BRAND.md rule
+  - Primary action color: N800/N900 (black) — no brand accent color
   - All `text-accent` green references replaced with semantic or neutral equivalents
 - **Shadow tokens**: `--shadow-card`, `--shadow-dropdown`, `--shadow-drawer`, `--shadow-modal` as CSS vars mapped in `@theme inline`
 - **Branding**: "t2000" → "Audric" in app header, landing page, metadata title
@@ -394,7 +388,7 @@ Retrofit `@t2000/engine` into the Audric consumer app (separate `audric/` repo),
 #### 4a: t2000.ai Simplification ✅
 Redesigned `apps/web` from an 11-page consumer-marketing site into a focused developer/infra landing page.
 
-- **Homepage rewritten**: hero repositioned to "The infrastructure behind Audric" (per BRAND.md), product grid shows 5 packages (CLI, SDK, MCP, Engine, Gateway) with install commands, kept MPP services marquee, MCP integrations diagram, install CTA
+- **Homepage rewritten**: hero repositioned to "The infrastructure behind Audric", product grid shows 5 packages (CLI, SDK, MCP, Engine, Gateway) with install commands, kept MPP services marquee, MCP integrations diagram, install CTA
 - **Audric CTA section**: "Meet Audric" section with description and link to audric.ai; also linked in hero and footer
 - **Kept infra pages**: `/docs`, `/stats`, `/mpp`, `/security`, legal pages
 - **Removed consumer pages**: deleted `/accounts` (5 files), `/demo` (5 files), `/app` (1 file)
@@ -476,8 +470,7 @@ Final documentation pass and pre-launch verification.
 
 | Document | What it covers |
 |----------|---------------|
-| `spec/CLAUDE_CODE_LEVERAGE.md` | Engine patterns, tool system, MCP integration |
-| `PRODUCT_FACTS.md` | Detailed SDK/CLI/MCP technical reference |
+| `PRODUCT_FACTS.md` | Detailed SDK/CLI/MCP/engine technical reference (SSOT) |
 | `CLI_UX_SPEC.md` | CLI output formatting, command signatures |
 | `ARCHITECTURE.md` | Deep architecture: PTB flow, gas, adapters, security |
 | `SECURITY.md` / `SECURITY_AUDIT.md` | Security model and audit |
