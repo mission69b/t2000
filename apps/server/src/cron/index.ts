@@ -14,6 +14,7 @@ import { detectAnomaliesJob } from './jobs/anomalyDetector.js';
 import { deliverFollowUps } from './jobs/followUpDelivery.js';
 import { runProfileInference } from './jobs/profileInference.js';
 import { runMemoryExtraction } from './jobs/memoryExtraction.js';
+import { runChainMemory } from './jobs/chainMemory.js';
 import type { JobResult } from './types.js';
 
 function getClient(): SuiJsonRpcClient {
@@ -88,10 +89,11 @@ async function runCron(): Promise<void> {
     results.push(await deliverFollowUps(client));
   }
 
-  // --- Intelligence layer: profile inference + memory extraction ---
+  // --- Intelligence layer: profile inference + memory extraction + chain memory ---
   if (utcHour === BRIEFING_UTC_HOUR) {
     results.push(await runProfileInference());
     results.push(await runMemoryExtraction());
+    results.push(await runChainMemory());
   }
 
   await reportNotifications(results);
