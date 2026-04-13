@@ -37,6 +37,7 @@ import { spendingAnalyticsTool } from './spending.js';
 import { yieldSummaryTool } from './yield-summary.js';
 import { activitySummaryTool } from './activity-summary.js';
 import { createScheduleTool, listSchedulesTool, cancelScheduleTool } from './schedule.js';
+import { patternStatusTool, pausePatternTool } from './autonomy.js';
 import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
@@ -84,6 +85,7 @@ export const READ_TOOLS: Tool[] = [
   listSchedulesTool,
   createScheduleTool,
   cancelScheduleTool,
+  patternStatusTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -98,6 +100,7 @@ export const WRITE_TOOLS: Tool[] = [
   voloStakeTool,
   voloUnstakeTool,
   saveContactTool,
+  pausePatternTool,
 ];
 
 export function getDefaultTools(): Tool[] {
@@ -152,4 +155,6 @@ export {
   createScheduleTool,
   listSchedulesTool,
   cancelScheduleTool,
+  patternStatusTool,
+  pausePatternTool,
 };

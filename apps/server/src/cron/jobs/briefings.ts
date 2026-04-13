@@ -29,6 +29,7 @@ export interface BriefingContent {
   cta: { type: string; label: string; amount?: number } | null;
   variant: 'savings' | 'idle' | 'debt_warning';
   goals?: GoalProgress[];
+  autonomySummary?: string;
 }
 
 function deriveCta(content: BriefingContent): BriefingContent['cta'] {
@@ -147,6 +148,13 @@ function buildEmailHtml(content: BriefingContent, timezoneOffset: number): strin
       </div>`
     : '';
 
+  const autonomyHtml = content.autonomySummary
+    ? `<div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+        <p style="color:#9ca3af;font-size:11px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.5px;">Automations</p>
+        <p style="color:#374151;font-size:13px;margin:0;">${content.autonomySummary}</p>
+      </div>`
+    : '';
+
   return `
     <div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
       <p style="color:#9ca3af;font-size:12px;margin:0 0 16px;">☀️ Morning Briefing · ${dateLabel}</p>
@@ -154,6 +162,7 @@ function buildEmailHtml(content: BriefingContent, timezoneOffset: number): strin
       <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 16px;">${body}</p>
       ${ctaHtml}
       ${goalsHtml}
+      ${autonomyHtml}
       <p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #e5e7eb;padding-top:16px;">
         <a href="https://audric.ai/settings?section=features" style="color:#9ca3af;">Turn off in Settings</a>
         · <a href="https://audric.ai" style="color:#9ca3af;">Open Audric</a>
@@ -406,6 +415,20 @@ async function processUser(
     if (goals.length > 0) {
       content.goals = buildGoalProgress(goals, summary.savingsBalance);
     }
+
+    // Phase D: fetch yesterday's autonomous execution summary
+    try {
+      const autonomyRes = await fetch(
+        `${getInternalUrl()}/api/internal/autonomous-spend?address=${user.walletAddress}`,
+        { headers: { 'x-internal-key': getInternalKey() } },
+      );
+      if (autonomyRes.ok) {
+        const autonomyData = (await autonomyRes.json()) as { totalUsd?: number };
+        if (autonomyData.totalUsd && autonomyData.totalUsd > 0) {
+          content.autonomySummary = `Auto-saved $${autonomyData.totalUsd.toFixed(2)} yesterday. Savings balance: ${fmtUsd(summary.savingsBalance)}.`;
+        }
+      }
+    } catch { /* best effort */ }
 
     // Charge allowance first — if it fails, skip this user
     let chargeDigest: string | null = null;
