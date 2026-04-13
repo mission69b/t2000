@@ -67,3 +67,35 @@ jobs:
             --query "taskDefinition.taskDefinitionArn" --output text)
           echo "arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
           echo "Registered: $TASK_DEF_ARN"
+      - name: Update EventBridge schedule target
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          SCHEDULE_NAME="t2000-cron-hourly"
+          SCHEDULER_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/t2000-cron-scheduler-role"
+          CLUSTER_ARN="arn:aws:ecs:${{ env.AWS_REGION }}:${ACCOUNT_ID}:cluster/${{ env.ECS_CLUSTER }}"
+          SUBNETS=$(aws ec2 describe-subnets --filters "Name=defaultForAz,Values=true" --query "Subnets[*].SubnetId" --output json | jq -r '[.[0:2] | .[]] | join("\",\"")' )
+          SG_ID=$(aws ec2 describe-security-groups --filters "Name=tag:Name,Values=mission69b-mainnet-ecs-sg" --query "SecurityGroups[0].GroupId" --output text)
+          aws scheduler update-schedule \
+            --name "$SCHEDULE_NAME" \
+            --group-name "default" \
+            --schedule-expression "rate(1 hour)" \
+            --flexible-time-window '{"Mode": "OFF"}' \
+            --target '{
+              "RoleArn": "'"$SCHEDULER_ROLE_ARN"'",
+              "Arn": "'"$CLUSTER_ARN"'",
+              "EcsParameters": {
+                "TaskDefinitionArn": "${{ steps.taskdef.outputs.arn }}",
+                "TaskCount": 1,
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {
+                  "awsvpcConfiguration": {
+                    "Subnets": ["'"$SUBNETS"'"],
+                    "SecurityGroups": ["'"$SG_ID"'"],
+                    "AssignPublicIp": "ENABLED"
+                  }
+                },
+                "PlatformVersion": "LATEST"
+              }
+            }' \
+            --state ENABLED
+          echo "Updated EventBridge schedule to use ${{ steps.taskdef.outputs.arn }}"
