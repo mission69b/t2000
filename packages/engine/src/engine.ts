@@ -396,26 +396,52 @@ export class QueryEngine {
                 continue;
               }
             }
-            yield earlyEvent;
+            const tool = findTool(this.tools, earlyEvent.toolName);
+            updateGuardStateAfterToolResult(
+              earlyEvent.toolName, tool, null, earlyEvent.result, earlyEvent.isError, this.guardState,
+            );
 
-            if (!earlyEvent.isError) {
-              const r = earlyEvent.result as Record<string, unknown> | null;
+            let enrichedResult = earlyEvent.result;
+            if (this.guardConfig && !earlyEvent.isError && tool) {
+              const artifactInj = this.guardConfig.artifactPreview !== false
+                ? guardArtifactPreview(earlyEvent.result)
+                : null;
+              const staleInj = this.guardConfig.staleData !== false
+                ? guardStaleData(tool.flags)
+                : null;
+              const allInjections = [
+                ...(artifactInj ? [artifactInj] : []),
+                ...(staleInj ? [staleInj] : []),
+              ];
+              if (allInjections.length > 0 && typeof enrichedResult === 'object' && enrichedResult) {
+                enrichedResult = { ...enrichedResult as Record<string, unknown>, _guards: allInjections };
+              }
+            }
+
+            const finalEvent = enrichedResult !== earlyEvent.result
+              ? { ...earlyEvent, result: enrichedResult }
+              : earlyEvent;
+
+            yield finalEvent;
+
+            if (!finalEvent.isError) {
+              const r = finalEvent.result as Record<string, unknown> | null;
               if (r && r.__canvas === true) {
                 yield {
                   type: 'canvas',
                   template: String(r.template ?? ''),
                   title: String(r.title ?? ''),
                   data: r.templateData ?? null,
-                  toolUseId: earlyEvent.toolUseId,
+                  toolUseId: finalEvent.toolUseId,
                 };
               }
             }
 
             earlyResultBlocks.push({
               type: 'tool_result',
-              toolUseId: earlyEvent.toolUseId,
-              content: JSON.stringify(earlyEvent.result),
-              isError: earlyEvent.isError,
+              toolUseId: finalEvent.toolUseId,
+              content: JSON.stringify(finalEvent.result),
+              isError: finalEvent.isError,
             });
           }
         }
