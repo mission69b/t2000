@@ -68,7 +68,7 @@
 | 1.4.1 | Feedback loop data layer | 2d | done | 1.4 | both | ✅ `AdviceLog` + `SavingsGoalDeposit` tables, `AppEvent` +4 fields (adviceLogId, goalId, suiTxVerified, source). `record_advice` engine tool (auto permission), `handleAdviceResults()` in chat route, `buildAdviceContext()` memory injection (last 5 advice, 30d). Outcome checker + follow-up queue deferred to Phase 3.3 |
 | 1.5 | New user onboarding + ToS | 1.5d | done | 0.6 | both | ✅ **ToS:** 2 new sections (Fees + Allowance), `tosAcceptedAt` on User, consent checkbox in `/setup`, catch-up banner for existing users. **Onboarding:** WelcomeCard (Passport + Save/Swap/Send/Ask), `onboardedAt` first-run detection, `useUserStatus` hook, 24h follow-up cron job (3 email variants). Migration backfills existing users |
 | — | AI session charge ($0.01/session) | 0.5d | done | allowance.move | both | ✅ `POST /api/internal/charge` on t2000 server (Hono, x-internal-key auth). Audric chat route calls on new sessions via `chargeSession()`. Fire-and-forget, graceful degradation. Uses `ALLOWANCE_FEATURES.SESSION` (4) |
-| — | Grace period for empty allowance | 1d | not started | session charge | both | → **Moved to Audric 2.0 Phase A (item 5).** When balance=0: allow 5 free sessions then hard wall + top-up CTA. See `AUDRIC_2_SPEC.md` Phase A |
+| — | Grace period for empty allowance | 1d | done | session charge | both | ✅ **Shipped in Audric 2.0 Phase A (A.5).** 5 free sessions, `GracePeriodBanner`, 402 limit enforcement |
 
 **Week 2 total: ~12 days effort.** All tasks complete. Onboarding wizard ✅, 1.3 + 1.3.1 ✅, 1.4 + 1.4.1 ✅, 1.5 ✅, session charge ✅. Grace period deferred (triggered by first prod insufficient balance).
 
@@ -277,16 +277,16 @@
 
 > **Spec:** `AUDRIC_2_SPEC.md`. Makes Audric proactive, autonomous, and memory-native. 7 initiatives across 7 phases (~28 days total).
 
-### Phase A: Quick wins (Week 1-2, ~3.5 days)
+### Phase A: Quick wins (Week 1-2, ~3.5 days) — ✅ COMPLETE
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| A.1 | Session pre-fetch (synthetic tool results) | 0.5d | not started | — | audric | 1d Session Pre-fetch |
-| A.2 | Extended thinking on by default | 0.5d | not started | — | both | Remove `ENABLE_THINKING` flag |
-| A.3 | Model routing: Haiku for low effort | 0.5d | not started | — | both | + validation step |
-| A.4 | Live stats on audric.ai | 0.5d | not started | Stats API ✅ | audric | Trust signal |
-| A.5 | Grace period UX for empty allowance | 1d | not started | session charge | both | From one-time actions |
-| A.6 | Session URL routing | 0.5d | not started | — | audric | `app/chat/[sessionId]/page.tsx` |
+| A.1 | Session pre-fetch (synthetic tool results) | 0.5d | done | — | audric | ✅ `buildSyntheticPrefetch()`: injects balance_check + savings_info as synthetic tool_result messages at turn 0. System prompt references prefetched data. Existing sessions load their own history unchanged |
+| A.2 | Extended thinking on by default | 0.5d | done | — | both | ✅ Removed `ENABLE_THINKING` env flag. Thinking always on for Sonnet/Opus (adaptive mode). `buildCachedSystemPrompt` always used |
+| A.3 | Model routing: Haiku for low effort | 0.5d | done | — | both | ✅ `classifyEffort` → `low` routes to `claude-haiku-4-5`. Thinking disabled for Haiku (`.includes('haiku')` guard). Unauth demo engine also uses Haiku. `MODEL_OVERRIDE` env respected as override |
+| A.4 | Live stats on audric.ai | 0.5d | done | Stats API ✅ | audric | ✅ Stats strip: Users, On-chain txs, Tool calls, Tokens processed. All dynamic from DB. Added `totalToolExecutions` to `/api/stats` |
+| A.5 | Grace period UX for empty allowance | 1d | done | session charge | both | ✅ Removed hard redirect to `/setup`. 5 free sessions tracked via SessionUsage count. `GracePeriodBanner` with amber urgent state. 402 response when limit exceeded. `useUserStatus` exposes `sessionsUsed` |
+| A.6 | Session URL routing | 0.5d | done | — | audric | ✅ `app/chat/[sessionId]/page.tsx` for bookmarks/deep links. URL syncs via `window.history.replaceState` when sessionId changes. "New Conversation" resets to `/new`. Settings session load auto-updates URL |
 
 ### Phase B: Harness upgrades (Week 2-4, ~8.5 days)
 
@@ -493,5 +493,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4  (deferred)
 
 ---
 
-*Last updated: April 13 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Published `@t2000/engine@0.33.2`. Phase 4 + 5 deferred. **Next: Audric 2.0** (7 phases + testing/docs, ~31.5 days — see `AUDRIC_2_SPEC.md`).*
+*Last updated: April 2 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Published `@t2000/engine@0.33.2`. Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks: pre-fetch, thinking, Haiku routing, live stats, grace period, session URLs). **Next: Phase B** (harness upgrades: streaming tools, result budgeting, microcompact, granular permissions — ~8.5 days).*
 *Source of truth for specs: `audric-roadmap.md`, `spec/REASONING_ENGINE.md`, `AUDRIC_2_SPEC.md`. Archived design specs (fully implemented): `spec/archive/audric-feedback-loop-spec.md`, `spec/archive/audric-intelligence-spec.md`, `spec/archive/audric-rich-ux-spec.md`.*
