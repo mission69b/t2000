@@ -437,6 +437,9 @@ export class QueryEngine {
         const needsConfirmation = (() => {
           if (!tool || tool.isReadOnly) return false;
           if (tool.permissionLevel === 'explicit') return true;
+          // Without an agent, write tools can't execute server-side —
+          // always require confirmation so the client handles execution.
+          if (!context.agent && !tool.isReadOnly) return true;
           if (context.permissionConfig && context.priceCache) {
             const operation = toolNameToOperation(call.name);
             if (operation) {

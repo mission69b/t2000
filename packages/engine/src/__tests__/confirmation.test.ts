@@ -240,6 +240,7 @@ describe('Confirmation flow (pending_action + resumeWithToolResult)', () => {
       provider,
       tools: [autoWriteTool],
       systemPrompt: 'Test',
+      agent: {} as unknown,
     });
 
     const events = await collectEvents(engine.submitMessage('Do it'));

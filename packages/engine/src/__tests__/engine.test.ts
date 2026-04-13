@@ -306,6 +306,48 @@ describe('QueryEngine', () => {
     expect(messages[0].content[0]).toEqual({ type: 'text', text: 'Previous message' });
   });
 
+  it('yields pending_action for write tools when no agent is configured', async () => {
+    const writeTool: Tool = buildTool({
+      name: 'save_deposit',
+      description: 'Save USDC',
+      inputSchema: z.object({ amount: z.number() }),
+      jsonSchema: {
+        type: 'object',
+        properties: { amount: { type: 'number' } },
+        required: ['amount'],
+      },
+      isReadOnly: false,
+      permissionLevel: 'confirm',
+      async call(input) {
+        return { data: { success: true, amount: input.amount } };
+      },
+    });
+
+    const provider = createMockProvider([
+      [{ type: 'tool_call', id: 'tc-1', name: 'save_deposit', input: { amount: 1 } }],
+    ]);
+
+    const engine = new QueryEngine({
+      provider,
+      tools: [writeTool],
+      systemPrompt: 'Test',
+      priceCache: new Map([['SUI', 3.5], ['USDC', 1]]),
+      permissionConfig: {
+        globalAutoBelow: 10,
+        autonomousDailyLimit: 200,
+        rules: [{ operation: 'save' as const, autoBelow: 50, confirmBetween: 1000 }],
+      },
+    });
+
+    const events = await collectEvents(engine.submitMessage('Save $1'));
+
+    const pendingActions = events.filter((e) => e.type === 'pending_action');
+    expect(pendingActions).toHaveLength(1);
+
+    const toolResults = events.filter((e) => e.type === 'tool_result' && !e.isError);
+    expect(toolResults).toHaveLength(0);
+  });
+
   it('can reset conversation state', async () => {
     const provider = createMockProvider([
       [{ type: 'text', text: 'Hi' }],
