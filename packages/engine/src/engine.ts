@@ -30,6 +30,9 @@ import {
 } from './guards.js';
 import type { RecipeRegistry, Recipe } from './recipes/index.js';
 import { ContextBudget, compactMessages } from './context.js';
+import { microcompact } from './compact/microcompact.js';
+import { resolvePermissionTier, resolveUsdValue, toolNameToOperation } from './permission-rules.js';
+import { EarlyToolDispatcher } from './early-dispatcher.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -66,6 +69,8 @@ export class QueryEngine {
   private readonly recipes: RecipeRegistry | undefined;
   private readonly contextBudget: ContextBudget;
   private readonly contextSummarizer: EngineConfig['contextSummarizer'];
+  private readonly priceCache: Map<string, number> | undefined;
+  private readonly permissionConfig: import('./permission-rules.js').UserPermissionConfig | undefined;
   private matchedRecipe: Recipe | null = null;
 
   private messages: Message[] = [];
@@ -95,6 +100,8 @@ export class QueryEngine {
     this.recipes = config.recipes;
     this.contextBudget = new ContextBudget(config.contextBudget);
     this.contextSummarizer = config.contextSummarizer;
+    this.priceCache = config.priceCache;
+    this.permissionConfig = config.permissionConfig;
 
     this.tools = config.tools ?? (config.agent ? getDefaultTools() : []);
   }
@@ -255,6 +262,8 @@ export class QueryEngine {
       positionFetcher: this.positionFetcher,
       env: this.env,
       signal,
+      priceCache: this.priceCache,
+      permissionConfig: this.permissionConfig,
     };
 
     let turns = 0;
@@ -276,7 +285,12 @@ export class QueryEngine {
         pendingToolCalls: [],
       };
 
+      const dispatcher = new EarlyToolDispatcher(this.tools, context);
+
       try {
+        // B.3: Zero-cost dedup of identical tool calls every turn
+        this.messages = microcompact(this.messages);
+
         // RE-3.3: Compact context if budget is exceeded
         if (this.contextBudget.shouldCompact()) {
           this.messages = await compactMessages(this.messages, {
@@ -336,7 +350,7 @@ export class QueryEngine {
         });
 
         for await (const event of stream) {
-          yield* this.handleProviderEvent(event, acc);
+          yield* this.handleProviderEvent(event, acc, dispatcher);
         }
       } catch (err) {
         if (freshPrompt && !hasRetriedWithCleanHistory && isCorruptHistoryError(err)) {
@@ -355,7 +369,48 @@ export class QueryEngine {
         acc.assistantBlocks.push({ type: 'text', text: acc.text });
       }
 
-      if (acc.pendingToolCalls.length === 0) {
+      // B.1: Collect results from early-dispatched tools
+      const earlyResultBlocks: ContentBlock[] = [];
+      if (dispatcher.hasPending()) {
+        if (signal.aborted) {
+          dispatcher.abort();
+        }
+        for await (const earlyEvent of dispatcher.collectResults()) {
+          if (earlyEvent.type === 'tool_result') {
+            if (!earlyEvent.isError) {
+              const warning = flagSuspiciousResult(earlyEvent.toolName, earlyEvent.result);
+              if (warning) {
+                const flagged = {
+                  ...earlyEvent,
+                  result: typeof earlyEvent.result === 'object' && earlyEvent.result
+                    ? { ...earlyEvent.result as Record<string, unknown>, _warning: warning }
+                    : { data: earlyEvent.result, _warning: warning },
+                };
+                yield flagged;
+                earlyResultBlocks.push({
+                  type: 'tool_result',
+                  toolUseId: flagged.toolUseId,
+                  content: JSON.stringify(flagged.result),
+                  isError: flagged.isError,
+                });
+                continue;
+              }
+            }
+            yield earlyEvent;
+            earlyResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: earlyEvent.toolUseId,
+              content: JSON.stringify(earlyEvent.result),
+              isError: earlyEvent.isError,
+            });
+          }
+        }
+      }
+
+      const hasEarlyResults = earlyResultBlocks.length > 0;
+      const hasRemainingCalls = acc.pendingToolCalls.length > 0;
+
+      if (!hasEarlyResults && !hasRemainingCalls) {
         this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
         yield { type: 'turn_complete', stopReason: acc.stopReason };
         return;
@@ -363,20 +418,35 @@ export class QueryEngine {
 
       if (signal.aborted) {
         this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+        if (hasEarlyResults) {
+          this.messages.push({ role: 'user', content: earlyResultBlocks });
+        }
         this.addErrorResults(acc.pendingToolCalls, 'Aborted');
         yield { type: 'error', error: new Error('Aborted') };
         return;
       }
 
-      // --- Permission gate ---
+      // --- Permission gate (only for non-early-dispatched calls) ---
       const approved: PendingToolCall[] = [];
-      const toolResultBlocks: ContentBlock[] = [];
+      const toolResultBlocks: ContentBlock[] = [...earlyResultBlocks];
       let pendingWrite: { call: PendingToolCall; tool: Tool } | null = null;
 
       for (const call of acc.pendingToolCalls) {
         const tool = findTool(this.tools, call.name);
-        const needsConfirmation =
-          tool && !tool.isReadOnly && tool.permissionLevel !== 'auto';
+
+        const needsConfirmation = (() => {
+          if (!tool || tool.isReadOnly) return false;
+          if (tool.permissionLevel === 'explicit') return true;
+          if (context.permissionConfig && context.priceCache) {
+            const operation = toolNameToOperation(call.name);
+            if (operation) {
+              const usdValue = resolveUsdValue(call.name, call.input as Record<string, unknown>, context.priceCache);
+              const tier = resolvePermissionTier(operation, usdValue, context.permissionConfig);
+              return tier !== 'auto';
+            }
+          }
+          return tool.permissionLevel !== 'auto';
+        })();
 
         if (!needsConfirmation) {
           approved.push(call);
@@ -606,6 +676,7 @@ export class QueryEngine {
   private *handleProviderEvent(
     event: ProviderEvent,
     acc: TurnAccumulator,
+    dispatcher?: EarlyToolDispatcher,
   ): Generator<EngineEvent> {
     switch (event.type) {
       case 'thinking_delta': {
@@ -638,9 +709,6 @@ export class QueryEngine {
       }
 
       case 'tool_use_done': {
-        // Flush accumulated text BEFORE the tool_use block to preserve
-        // the original LLM output ordering (text → tool_use). Anthropic
-        // rejects assistant messages where text follows tool_use blocks.
         if (acc.text) {
           acc.assistantBlocks.push({ type: 'text', text: acc.text });
           acc.text = '';
@@ -651,11 +719,15 @@ export class QueryEngine {
           name: event.name,
           input: event.input,
         });
-        acc.pendingToolCalls.push({
-          id: event.id,
-          name: event.name,
-          input: event.input,
-        });
+
+        const call: PendingToolCall = { id: event.id, name: event.name, input: event.input };
+
+        // B.1: Try early dispatch for read-only tools mid-stream
+        if (dispatcher?.tryDispatch(call)) {
+          yield { type: 'tool_start', toolName: call.name, toolUseId: call.id, input: call.input };
+        } else {
+          acc.pendingToolCalls.push(call);
+        }
         break;
       }
 

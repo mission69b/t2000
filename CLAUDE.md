@@ -194,15 +194,25 @@ import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
 // Tool building
 import { buildTool, toolsToDefinitions, findTool } from '@t2000/engine';
 
-// Orchestration
-import { TxMutex, runTools } from '@t2000/engine';
+// Orchestration + tool budgeting
+import { TxMutex, runTools, budgetToolResult } from '@t2000/engine';
+
+// Streaming tool execution (early dispatch)
+import { EarlyToolDispatcher } from '@t2000/engine';
 
 // Streaming + sessions
 import { serializeSSE, parseSSE, engineToSSE } from '@t2000/engine';
 import { MemorySessionStore } from '@t2000/engine';
 
-// Context + cost
-import { estimateTokens, compactMessages, CostTracker } from '@t2000/engine';
+// Context + cost + microcompact
+import { estimateTokens, compactMessages, CostTracker, microcompact } from '@t2000/engine';
+
+// Granular permissions (USD-aware)
+import {
+  resolvePermissionTier, resolveUsdValue, toolNameToOperation,
+  DEFAULT_PERMISSION_CONFIG, PERMISSION_PRESETS,
+} from '@t2000/engine';
+import type { PermissionRule, UserPermissionConfig } from '@t2000/engine';
 
 // MCP client (consume external MCPs)
 import { McpClientManager, NAVI_MCP_CONFIG } from '@t2000/engine';
@@ -239,6 +249,20 @@ type EngineEvent =
 - `auto` — read-only tools, execute without approval
 - `confirm` — write tools, yield `pending_action` for client-side execution
 - `explicit` — manual-only, never dispatched by LLM
+
+**Granular USD-aware permissions (B.4):** When `permissionConfig` + `priceCache` are set on `ToolContext`, write tool permission is resolved dynamically via `resolvePermissionTier(operation, amountUsd, config)`. Small amounts auto-execute; large amounts require confirmation. Three presets: `conservative`, `balanced`, `aggressive`.
+
+### Tool result budgeting (B.2)
+
+Tools can set `maxResultSizeChars` to cap output size. Results exceeding the limit are truncated with a hint: `[Truncated — N lines omitted. Call toolName with narrower parameters.]`. Custom `summarizeOnTruncate` callbacks supported.
+
+### Streaming tool execution (B.1)
+
+`EarlyToolDispatcher` dispatches read-only tools mid-stream (before `message_stop`). Tools with `isReadOnly && isConcurrencySafe` are fired as soon as their `tool_use` block completes. Write tools still go through the permission gate after stream ends. Results yield in original dispatch order.
+
+### Microcompact (B.3)
+
+`microcompact(messages)` deduplicates identical tool calls (same name + input) in conversation history, replacing repeated results with `[Same result as turn N]`. Runs as Phase -1 in `compactMessages` and every turn in `agentLoop`.
 
 ### Built-in tools
 

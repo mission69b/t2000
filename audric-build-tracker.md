@@ -288,14 +288,14 @@
 | A.5 | Grace period UX for empty allowance | 1d | done | session charge | both | ✅ Removed hard redirect to `/setup`. 5 free sessions tracked via SessionUsage count. `GracePeriodBanner` with amber urgent state. 402 response when limit exceeded. `useUserStatus` exposes `sessionsUsed` |
 | A.6 | Session URL routing | 0.5d | done | — | audric | ✅ `app/chat/[sessionId]/page.tsx` for bookmarks/deep links. URL syncs via `window.history.replaceState` when sessionId changes. "New Conversation" resets to `/new`. Settings session load auto-updates URL |
 
-### Phase B: Harness upgrades (Week 2-4, ~8.5 days)
+### Phase B: Harness upgrades (Week 2-4, ~8.5 days) — ✅ COMPLETE
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| B.1 | Streaming tool execution | 5d | not started | — | both | Parallel tool dispatch in engine |
-| B.2 | Tool result budgeting | 1.5d | not started | — | t2000 | Truncation with hint |
-| B.3 | Microcompact tier | 1d | not started | — | t2000 | Add to compaction hierarchy |
-| B.4 | Granular permission rules (USD-aware) | 1d | not started | — | both | Price cache in ToolContext |
+| B.3 | Microcompact tier | 0.5d | done | — | t2000 | ✅ `compact/microcompact.ts`: dedup identical tool calls (same name+input) with back-reference. Integrated into `compactMessages` (Phase -1) + `agentLoop` (every turn). 8 tests |
+| B.2 | Tool result budgeting | 1.5d | done | — | t2000 | ✅ `budgetToolResult` in `orchestration.ts`: truncate with re-call hint. Limits: `transaction_history` 8k, `defillama_yield_pools` 6k, `mpp_services` 5k, `defillama_protocol_info` 4k, `web_search` 8k. Custom `summarizeOnTruncate` support. 6 tests |
+| B.4 | Granular permission rules (USD-aware) | 1d | done | — | both | ✅ `permission-rules.ts`: `resolvePermissionTier` + `resolveUsdValue` + `toolNameToOperation`. 3 presets (conservative/balanced/aggressive). Engine permission gate uses USD resolution when `priceCache` + `permissionConfig` available. 19 tests |
+| B.1 | Streaming tool execution | 5d | done | — | both | ✅ `EarlyToolDispatcher` class: dispatches `isReadOnly && isConcurrencySafe` tools mid-stream via `tryDispatch`. Results collected in dispatch order via `collectResults()` async generator. `abort()` for cancellation. Integrated into `agentLoop` + `handleProviderEvent`. 10 tests |
 
 ### Phase C: Chain-native memory (Week 4-6, ~3 days)
 
@@ -493,5 +493,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4  (deferred)
 
 ---
 
-*Last updated: April 2 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Published `@t2000/engine@0.33.2`. Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks: pre-fetch, thinking, Haiku routing, live stats, grace period, session URLs). **Next: Phase B** (harness upgrades: streaming tools, result budgeting, microcompact, granular permissions — ~8.5 days).*
+*Last updated: April 13 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks). **Audric 2.0 Phase B COMPLETE** (4/4 tasks: microcompact, tool budgeting, granular permissions, streaming tool execution). Engine at `@t2000/engine@0.34.0`, 249 tests, typecheck clean. **Next: Phase C** (chain-native memory: AppEvent + PortfolioSnapshot classifiers, memory pipeline cron — ~3 days).*
 *Source of truth for specs: `audric-roadmap.md`, `spec/REASONING_ENGINE.md`, `AUDRIC_2_SPEC.md`. Archived design specs (fully implemented): `spec/archive/audric-feedback-loop-spec.md`, `spec/archive/audric-intelligence-spec.md`, `spec/archive/audric-rich-ux-spec.md`.*

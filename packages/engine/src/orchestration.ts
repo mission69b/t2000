@@ -60,6 +60,9 @@ export async function* runTools(
           return { call, result: { data: { error: `Unknown tool: ${call.name}` } }, isError: true };
         }
         const execResult = await executeSingleTool(tool, call, context);
+        if (!execResult.isError) {
+          execResult.data = budgetToolResult(execResult.data, tool);
+        }
         return { call, result: execResult, isError: execResult.isError };
       }),
     );
@@ -104,6 +107,9 @@ export async function* runTools(
     await txMutex.acquire();
     try {
       const result = await executeSingleTool(tool, call, context);
+      if (!result.isError) {
+        result.data = budgetToolResult(result.data, tool);
+      }
       yield {
         type: 'tool_result',
         toolName: call.name,
@@ -169,4 +175,29 @@ async function executeSingleTool(
 
   const result = await tool.call(parsed.data, context);
   return { data: result.data, isError: false };
+}
+
+/**
+ * Enforce per-tool result size limits. When a serialized result exceeds
+ * `maxResultSizeChars`, truncate it with a hint to re-call with narrower
+ * parameters. Uses the tool's custom `summarizeOnTruncate` when available.
+ */
+export function budgetToolResult(
+  data: unknown,
+  tool: Tool,
+): unknown {
+  if (!tool.maxResultSizeChars) return data;
+
+  const serialized = typeof data === 'string' ? data : JSON.stringify(data);
+  if (serialized.length <= tool.maxResultSizeChars) return data;
+
+  if (tool.summarizeOnTruncate) {
+    const summarized = tool.summarizeOnTruncate(serialized, tool.maxResultSizeChars);
+    try { return JSON.parse(summarized); } catch { return summarized; }
+  }
+
+  const preview = serialized.slice(0, tool.maxResultSizeChars);
+  const linesOmitted = serialized.split('\n').length - preview.split('\n').length;
+  const truncated = `${preview}\n\n[Truncated — ${linesOmitted} lines omitted. Call ${tool.name} with narrower parameters (e.g. smaller date range or limit) to see more.]`;
+  try { return JSON.parse(truncated); } catch { return truncated; }
 }

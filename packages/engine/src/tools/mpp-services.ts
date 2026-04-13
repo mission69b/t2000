@@ -66,6 +66,7 @@ export const mppServicesTool = buildTool({
     required: [],
   },
   isReadOnly: true,
+  maxResultSizeChars: 5_000,
 
   async call(input) {
     const catalog = await fetchCatalog();

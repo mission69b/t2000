@@ -63,6 +63,7 @@ export const defillamaYieldPoolsTool = buildTool({
     required: [],
   },
   isReadOnly: true,
+  maxResultSizeChars: 6_000,
 
   async call(input) {
     const data = await cachedFetch<{ data: YieldPool[] }>(`${YIELDS_API}/pools`);
@@ -134,6 +135,7 @@ export const defillamaProtocolInfoTool = buildTool({
     required: ['name'],
   },
   isReadOnly: true,
+  maxResultSizeChars: 4_000,
 
   async call(input) {
     const data = await cachedFetch<ProtocolInfo>(`${LLAMA_API}/protocol/${encodeURIComponent(input.name)}`);

@@ -33,6 +33,7 @@ export const webSearchTool = buildTool({
     required: ['query'],
   },
   isReadOnly: true,
+  maxResultSizeChars: 8_000,
   async call(input, context): Promise<{ data: WebSearchData; displayText: string }> {
     const apiKey = context.env?.BRAVE_API_KEY ?? process.env.BRAVE_API_KEY;
     if (!apiKey) {

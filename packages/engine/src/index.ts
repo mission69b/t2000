@@ -35,7 +35,7 @@ export { buildTool, toolsToDefinitions, findTool } from './tool.js';
 export type { BuildToolOptions } from './tool.js';
 
 // Orchestration
-export { TxMutex, runTools } from './orchestration.js';
+export { TxMutex, runTools, budgetToolResult } from './orchestration.js';
 export type { PendingToolCall } from './orchestration.js';
 
 // Cost tracking
@@ -105,6 +105,26 @@ export type {
 // Context management
 export { estimateTokens, compactMessages, ContextBudget } from './context.js';
 export type { CompactOptions, ContextBudgetConfig } from './context.js';
+
+// Microcompact (B.3)
+export { microcompact } from './compact/microcompact.js';
+
+// Early tool dispatch (B.1)
+export { EarlyToolDispatcher } from './early-dispatcher.js';
+
+// Permission rules (B.4)
+export {
+  resolvePermissionTier,
+  resolveUsdValue,
+  toolNameToOperation,
+  DEFAULT_PERMISSION_CONFIG,
+  PERMISSION_PRESETS,
+} from './permission-rules.js';
+export type {
+  PermissionRule,
+  PermissionOperation,
+  UserPermissionConfig,
+} from './permission-rules.js';
 
 // MCP server adapter
 export { buildMcpTools, registerEngineTools } from './mcp.js';

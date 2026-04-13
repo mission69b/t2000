@@ -216,6 +216,7 @@ export const transactionHistoryTool = buildTool({
     },
   },
   isReadOnly: true,
+  maxResultSizeChars: 8_000,
 
   async call(input, context) {
     const limit = input.limit ?? 10;

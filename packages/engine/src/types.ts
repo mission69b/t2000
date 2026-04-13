@@ -110,6 +110,10 @@ export interface ToolContext {
   /** Environment variables passed to tools (e.g. API keys not in process.env) */
   env?: Record<string, string>;
   signal?: AbortSignal;
+  /** Token symbol → USD price map for USD-aware permission resolution (B.4). */
+  priceCache?: Map<string, number>;
+  /** Per-user permission config for USD-threshold write tool gating (B.4). */
+  permissionConfig?: import('./permission-rules.js').UserPermissionConfig;
 }
 
 export interface ServerPositionData {
@@ -154,6 +158,10 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
   permissionLevel: PermissionLevel;
   flags: ToolFlags;
   preflight?: (input: unknown) => PreflightResult;
+  /** Max chars for the serialized tool result. Truncated with a re-call hint when exceeded. */
+  maxResultSizeChars?: number;
+  /** Custom truncation strategy. Falls back to generic slice + hint when omitted. */
+  summarizeOnTruncate?: (result: string, maxChars: number) => string;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +225,10 @@ export interface EngineConfig {
   contextBudget?: import('./context.js').ContextBudgetConfig;
   /** LLM-based summarizer for context compaction (RE-3.3). */
   contextSummarizer?: (messages: import('./types.js').Message[]) => Promise<string>;
+  /** Token symbol → USD price map for USD-aware permission resolution (B.4). */
+  priceCache?: Map<string, number>;
+  /** Per-user permission config for USD-threshold write tool gating (B.4). */
+  permissionConfig?: import('./permission-rules.js').UserPermissionConfig;
 }
 
 // ---------------------------------------------------------------------------

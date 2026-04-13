@@ -23,6 +23,8 @@ export interface BuildToolOptions<TInput, TOutput> {
   permissionLevel?: PermissionLevel;
   flags?: ToolFlags;
   preflight?: (input: TInput) => PreflightResult;
+  maxResultSizeChars?: number;
+  summarizeOnTruncate?: (result: string, maxChars: number) => string;
 }
 
 type AnyPreflight = (input: unknown) => PreflightResult;
@@ -42,6 +44,8 @@ export function buildTool<TInput, TOutput>(
     permissionLevel: opts.permissionLevel ?? (isReadOnly ? 'auto' : 'confirm'),
     flags: opts.flags ?? {},
     preflight: opts.preflight as AnyPreflight | undefined,
+    maxResultSizeChars: opts.maxResultSizeChars,
+    summarizeOnTruncate: opts.summarizeOnTruncate,
   };
 }
 

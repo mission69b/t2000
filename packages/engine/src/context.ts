@@ -1,4 +1,5 @@
 import type { Message, ContentBlock } from './types.js';
+import { microcompact } from './compact/microcompact.js';
 
 // Rough token estimation: ~4 chars per token (conservative for English + JSON)
 const CHARS_PER_TOKEN = 4;
@@ -135,7 +136,10 @@ export async function compactMessages(
 
   if (messages.length === 0) return [];
 
-  const mutable = messages.map((m) => ({
+  // Phase -1: zero-cost deduplication of identical tool calls
+  const deduped = microcompact(messages);
+
+  const mutable = deduped.map((m) => ({
     role: m.role,
     content: m.content.map((b) => ({ ...b })),
   })) as Message[];
