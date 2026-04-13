@@ -397,6 +397,20 @@ export class QueryEngine {
               }
             }
             yield earlyEvent;
+
+            if (!earlyEvent.isError) {
+              const r = earlyEvent.result as Record<string, unknown> | null;
+              if (r && r.__canvas === true) {
+                yield {
+                  type: 'canvas',
+                  template: String(r.template ?? ''),
+                  title: String(r.title ?? ''),
+                  data: r.templateData ?? null,
+                  toolUseId: earlyEvent.toolUseId,
+                };
+              }
+            }
+
             earlyResultBlocks.push({
               type: 'tool_result',
               toolUseId: earlyEvent.toolUseId,
