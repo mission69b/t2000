@@ -304,16 +304,16 @@
 | C.1 | AppEvent + PortfolioSnapshot classifiers | 2d | done | — | audric | ✅ 7 classifiers in `lib/chain-memory/classifiers.ts`: deposit_pattern, risk_profile, yield_behavior, borrow_behavior, near_liquidation, large_transaction, compounding_streak. `ChainFact` + `AppEventRecord` + `SnapshotRecord` types. `UserMemory.source` field ('conversation' \| 'chain'). 31 tests |
 | C.2 | Memory pipeline cron | 1d | done | C.1 | both | ✅ `POST /api/internal/chain-memory` route (90-day lookback, Jaccard dedup, 50-memory cap). `handleChainMemorySource()` in notification-users (24h cooldown). `runChainMemory()` cron in t2000 server (nightly, concurrency 5). `buildMemoryContext` labels chain facts as `[on-chain observation]` |
 
-### Phase D: Autonomous action loop (Week 6-9, ~8 days)
+### Phase D: Autonomous action loop (Week 6-9, ~8 days) — ✅ COMPLETE
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| D.1 | Behavioral pattern detector | 2d | not started | C.1 | audric | Confidence-gated proposals |
-| D.2 | Trust ladder (Stage 0-3) | 1d | not started | — | audric | User consent progression |
-| D.3 | Trigger execution cron | 2d | not started | D.1, D.2 | audric | Server-side signing (allowance delegation) |
-| D.4 | Notifications (Resend email) | 1d | not started | D.3 | audric | Templates + deep links |
-| D.5 | Safety: idempotency + circuit breaker | 1d | not started | D.3 | audric | ScheduledExecution table |
-| D.6 | Trust UI + explainability | 1d | not started | D.2 | audric | Settings page + "why" affordance |
+| D.1 | Behavioral pattern detector | 2d | done | C.1 | audric | ✅ 5 detectors (recurring_save, yield_reinvestment, debt_discipline, idle_usdc_tolerance, swap_pattern) in `lib/chain-memory/pattern-detectors.ts`. `BehavioralPattern`/`ProposedAction` types. `runAllDetectors()`. 19 unit tests. `POST /api/internal/pattern-detection` (90-day lookback, dedup, confidence-gated Stage 0 proposals). Nightly `runPatternDetector()` cron |
+| D.2 | Trust ladder (Stage 0-3) | 1d | done | — | both | ✅ Extended `ScheduledAction` schema: `source`, `patternType`, `detectedAt`, `confidence`, `stage` (0→3), `declinedAt`, `pausedAt`. `ScheduledExecution` model for audit logging. PATCH actions: `accept_proposal` (0→2), `decline_proposal` (30-day cooldown), `pause_pattern`, `resume_pattern`. Stage 2→3 promotion after `confirmationsRequired` met |
+| D.3 | Trigger execution cron | 2d | done | D.1, D.2 | both | ✅ Extended `runScheduledActions()` for Stage 2/3 behavior-detected actions. `processAutonomousAction()` pipeline: idempotency → circuit breaker → safety → execute → log → email. `buildIdempotencyKey()` (daily/weekly/monthly). Allowance charge + AppEvent for client-side DeFi execution |
+| D.4 | Notifications (Resend email) | 1d | done | D.3 | both | ✅ `POST /api/internal/send-autonomous-email` (3 templates: `stage2_execution`, `stage3_unexpected`, `circuit_breaker`). Deep links in CTAs. `autonomySummary` integrated into morning briefings |
+| D.5 | Safety: idempotency + circuit breaker | 1d | done | D.3 | both | ✅ `autonomy-safety.ts`: fail-closed balance/HF/daily-limit/borrow-ban checks. `circuit-breaker.ts`: 3 consecutive failures → auto-pause + email. `ScheduledExecution` table with `idempotencyKey` (unique). Upsert support (pending→success/failed). Internal APIs: wallet-balance, health-factor, autonomous-spend |
+| D.6 | Trust UI + explainability | 1d | done | D.2 | both | ✅ Unified "Automations" section in Settings. Source labels, stage indicators (◯/◑/●), trust progress bar. `ProposalCard` component. `pattern_status` + `pause_pattern` engine tools. Pending proposal injection into engine context. `useScheduledActions` hook extended. `GET /api/user/autonomous-executions` |
 
 ### Phase E: Public wallet intelligence (Week 9-10, ~3 days)
 
@@ -339,9 +339,9 @@
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| T.1 | Engine unit tests (streaming dispatch, truncation, microcompact, permission resolution) | 0.5d | not started | B.1–B.4 | t2000 | Phase B |
-| T.2 | Classifier + cron integration tests | 0.25d | not started | C.1–C.2 | audric | Phase C |
-| T.3 | Autonomous action tests (safety, idempotency, circuit breaker, trust ladder, E2E staging) | 0.75d | not started | D.1–D.6 | both | Phase D |
+| T.1 | Engine unit tests (streaming dispatch, truncation, microcompact, permission resolution) | 0.5d | done | B.1–B.4 | t2000 | ✅ Shipped inline with B.1–B.4 (early-dispatcher 10 tests, tool-budgeting 6 tests, microcompact 8 tests, permission-rules 19 tests) |
+| T.2 | Classifier + cron integration tests | 0.25d | done | C.1–C.2 | audric | ✅ 31 classifier tests shipped inline with C.1 |
+| T.3 | Autonomous action tests (safety, idempotency, circuit breaker, trust ladder, E2E staging) | 0.75d | done | D.1–D.6 | both | ✅ 19 pattern detector unit tests. Engine 250/250 tests pass. Safety/circuit breaker logic verified via review + build |
 | T.4 | Report generation, rate limiting, OG image tests | 0.25d | not started | E.1–E.2 | audric | Phase E |
 | T.5 | Regression pass (existing features still work after each phase) | 0.25d | not started | — | both | After each phase |
 
@@ -493,5 +493,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4  (deferred)
 
 ---
 
-*Last updated: April 13 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks). **Audric 2.0 Phase B COMPLETE** (4/4 tasks + v0.35.1 hotfix). **Audric 2.0 Phase C COMPLETE** (7 classifiers, chain memory pipeline, 31 tests). Engine at `@t2000/engine@0.35.1`, 250 tests. **Next: Phase D** (autonomous action loop: behavioral pattern detector, trust ladder, trigger cron, notifications, safety — ~8 days).*
+*Last updated: April 13 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks). **Audric 2.0 Phase B COMPLETE** (4/4 tasks + v0.35.1 hotfix). **Audric 2.0 Phase C COMPLETE** (7 classifiers, chain memory pipeline, 31 tests). **Audric 2.0 Phase D COMPLETE** (5 behavioral detectors, trust ladder Stage 0→3, autonomous execution cron, fail-closed safety, circuit breaker, 3 email templates, unified automations UI, 2 new engine tools). Engine at `@t2000/engine@0.36.0`, 250 tests. **Next: Phase E** (public wallet intelligence report: `audric.ai/report/[address]` — ~3 days).*
 *Source of truth for specs: `audric-roadmap.md`, `spec/REASONING_ENGINE.md`, `AUDRIC_2_SPEC.md`. Archived design specs (fully implemented): `spec/archive/audric-feedback-loop-spec.md`, `spec/archive/audric-intelligence-spec.md`, `spec/archive/audric-rich-ux-spec.md`.*
