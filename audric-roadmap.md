@@ -12,9 +12,9 @@ This roadmap covers the path from 100 beta users to a product people open every 
 
 - 100 beta users
 - Save, Send, Credit, Swap live (Swap replaced Pay chip in pre-work)
-- Receive coming soon
-- All reactive — user must ask
-- No notification infrastructure
+- Receive: payment links, invoices, QR — live (Phase 2)
+- Proactive: notifications, briefings, HF alerts, intelligence layer — live (Phase 1-3.5)
+- Reasoning engine: adaptive thinking, guards, recipes, memory — live (Phase 3.5)
 - MPP gateway: 40 services, 88 endpoints
 - Chip bar: Save | Send | Swap | Credit | Receive (guided multi-step flows)
 
@@ -77,7 +77,7 @@ Audric has two distinct user types that need different experiences but share the
 
 - Protocol: NAVI only. ProtocolRegistry retained for future multi-protocol support, but single-asset path kept clean
 
-- Pending rewards (NAVX + vSUI/CERT): `claim_rewards` tool already built in engine + SDK. Manual claim working. Next step: auto-compound (Phase 3.1)
+- Pending rewards (NAVX + vSUI/CERT): `claim_rewards` tool already built in engine + SDK. Manual claim working. Auto-compound shipped (Phase 3.1) ✅
 
 ### Send
 
@@ -87,7 +87,7 @@ Audric has two distinct user types that need different experiences but share the
 
 - Send supports USDC and all Tier 2 assets (SUI, ETH, etc.) — users can transfer any featured token they hold
 
-- Gap: payment memo field — recipients get USDC with no context
+- ~~Gap: payment memo field~~ — ✅ Shipped (Phase 2.4): memo on `send_transfer` tool + receipt
 
 - Gap: non-Audric recipients see no explanation of what arrived
 
@@ -97,17 +97,17 @@ Audric has two distinct user types that need different experiences but share the
 
 - Borrow APR display: verify — 0.06% may be a per-period rate shown as APR
 
-- Gap: liquidation education — non-crypto users don't know what liquidation means
+- ~~Gap: liquidation education~~ — ✅ Shipped (Phase 3.6): prompt-based HF education + HealthCard
 
-- Gap: health factor not surfaced prominently enough for new users
+- ~~Gap: health factor not surfaced prominently enough~~ — ✅ Shipped: HealthCard with color-coded HF bands (<1.2 critical, <1.5 danger, <2.0 warning)
 
 ### Pay (MPP)
 
 - 40 services, 88 endpoints: working
 
-- Gap: consumer discovery — users don't know what they can ask Audric to do
+- ~~Gap: consumer discovery~~ — ✅ Shipped (Phase 3.4): conversational discovery in chat
 
-- Gap: spend tracker — no visibility into API usage costs
+- ~~Gap: spend tracker~~ — ✅ Shipped (Phase 3.4): spend tracker in Settings > Safety
 
 - Gap: async services (Suno, Runway, Heygen) blocked by sync-only architecture
 
@@ -117,7 +117,7 @@ Audric has two distinct user types that need different experiences but share the
 
 - Warning: "Only send USDC on the Sui network. Other tokens or networks may result in lost funds."
 
-- Phase 2 expansion: payment links, invoices, AlchemyPay fiat on/off-ramp (see Phase 2 spec below)
+- Phase 2 expansion: ✅ payment links + invoices shipped (Phase 2.1, 2.2). AlchemyPay skipped (deferred)
 
 - NFC: out of scope — requires native app + payment processor certification
 
@@ -1354,7 +1354,7 @@ State: Not found (invalid slug)
 - Accessibility: QR code has a text alternative ("Sui address" + copy button below it)
 
 Effort: 4 days
-
+AUDRIC_2_SPEC.md
 ### 2.2 Invoices
 
 Named invoices with line items, due date, and total. Generates a payment link automatically. Marks as paid when the USDC transfer is detected. Designed for freelancers, consultants, and small businesses.
@@ -1632,7 +1632,7 @@ Effort: 1 day
 
 > Depends on Phase 2.5 (engine foundation) being complete and Phase 3 features (DCA, auto-compound, feedback processing) being stable. The full tool set must be built before wrapping intelligence around it.
 >
-> **Specs:** `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`
+> **Specs:** `spec/REASONING_ENGINE.md`, `spec/archive/audric-intelligence-spec.md` (archived)
 
 This is the phase that makes Audric genuinely intelligent rather than just reliable. Three sub-phases:
 
@@ -2062,10 +2062,10 @@ These are valid features that should not be built yet. Revisit when the core hab
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
 | **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
 | **Phase 1**  | Weeks 1–2    | ✅ COMPLETE. allowance.move, Spec 2, digest replay, notifications (1.1), HF alerts (1.2), onboarding wizard (SDK 0.23.0), activity feed (1.6), CostTracker + Stats API, morning briefing (1.3) + deep links (1.3.1), savings goals (1.4), feedback data layer (1.4.1), onboarding + ToS (1.5), session charge. Landing pages shipped (audric.ai, t2000.ai, suimpp.dev) | Daily habit          |
-| **Phase 2**  | Weeks 3–5    | Receive: payment links, QR, invoices, send memo. **+ Rich UX P0:** card primitives, HealthCard, TransactionHistoryCard, SwapQuoteCard, enhanced receipts, AllowanceCard. Spec: `spec/audric-rich-ux-spec.md` | New acquisition + UX |
-| **Phase 2.5** | Parallel     | Engine foundation + **Rich UX P1:** ServiceCatalogCard, SearchResultsCard, allowance control tools (pause/limit/permissions). See `audric-build-tracker.md` | RE prerequisite + UX |
-| **Phase 3**  | Weeks 6–8    | Auto-compound, yield alerts, DCA/scheduled, MPP discovery, credit UX. **+ Analytics:** portfolio snapshots, spending/yield/activity summaries, insight cards (idle USDC, HF warning), weekly briefing. ~~Gifting~~ deferred | Copilot moat + analytics |
-| **Phase 3.5** | ~3 weeks     | Intelligence Layer: Reasoning Engine (adaptive thinking, guards, recipes) + F1–F5 (profile, proactive awareness, memory, state machine, self-eval). **+ Rich UX P2:** StakingCard, ProtocolCard, PriceCard. Specs: `spec/REASONING_ENGINE.md`, `spec/audric-intelligence-spec.md`, `spec/audric-rich-ux-spec.md` | Agent intelligence   |
+| **Phase 2**  | Weeks 3–5    | ✅ COMPLETE. Receive: payment links, QR, invoices, send memo. **+ Rich UX P0:** card primitives, HealthCard, TransactionHistoryCard, SwapQuoteCard, enhanced receipts, AllowanceCard. AlchemyPay skipped. | New acquisition + UX |
+| **Phase 2.5** | Parallel     | ✅ COMPLETE. Engine foundation + **Rich UX P1:** ServiceCatalogCard, SearchResultsCard, allowance control tools (pause/limit/permissions). See `audric-build-tracker.md` | RE prerequisite + UX |
+| **Phase 3**  | Weeks 6–8    | ✅ COMPLETE. Auto-compound, yield alerts, DCA/scheduled, MPP discovery, credit UX. **+ Analytics:** portfolio snapshots, spending/yield/activity summaries, insight cards (idle USDC, HF warning), weekly briefing. ~~Gifting~~ deferred | Copilot moat + analytics |
+| **Phase 3.5** | ~3 weeks     | ✅ COMPLETE. Intelligence Layer: Reasoning Engine (adaptive thinking, guards, recipes) + F1–F5 (profile, proactive awareness, memory, state machine, self-eval). **+ Rich UX P2:** StakingCard, ProtocolCard, PriceCard. Post-deploy: Unified Financial Data Layer, DCA scheduling, burn address guard. Published `@t2000/engine@0.33.2`. | Agent intelligence   |
 | **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |
 | **Phase 5**  | Weeks 11–13  | audric.ai/username storefronts, song + art listing, tweet-to-pay, merch bundles (Printful), 8% platform fee | Creator acquisition  |
 
@@ -2094,5 +2094,13 @@ These are valid features that should not be built yet. Revisit when the core hab
 - Marketplace recommendations never trigger on financial queries — Audric’s role as a financial copilot always takes precedence over storefront discovery
 
 - t2000 remains MIT. Audric repo moves to BSL 1.1 (Change Date: April 2030) — code is auditable, not commercially forkable. One-time action before scaling
+
+---
+
+## What's next: Audric 2.0
+
+Phases 1–3.5 made Audric reactive-intelligent: it understands context, remembers you, and answers well. **Audric 2.0 makes it autonomous.** The full spec lives in `AUDRIC_2_SPEC.md` and is tracked in `audric-build-tracker.md`.
+
+Seven initiatives (~28 days): streaming tool execution, tool result budgeting, microcompact, chain-native memory, granular permissions with USD-awareness, autonomous action loop (detect patterns → propose → execute on your behalf), public wallet intelligence reports, self-hosting groundwork, and gRPC migration prep. Phases 4 (async jobs) and 5 (marketplace) are deferred until user volume justifies them.
 
 audric.ai | t2000.ai | mpp.t2000.ai | April 2026 | Confidential
