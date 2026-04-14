@@ -172,22 +172,20 @@ async function processAction(
   action: DueAction,
 ): Promise<ProcessResult> {
   try {
-    if (!action.allowanceId) {
-      console.warn(`[scheduled-actions] No allowance for ${action.walletAddress}, skipping`);
-      return 'skipped';
-    }
-
-    // Skip paused actions
     if (action.pausedAt) {
       return 'skipped';
     }
 
-    // Behavior-detected actions go through the autonomous pipeline
+    // Behavior-detected actions go through the autonomous pipeline (requires allowance)
     if (action.source === 'behavior_detected') {
+      if (!action.allowanceId) {
+        console.warn(`[scheduled-actions] No allowance for ${action.walletAddress}, skipping autonomous action`);
+        return 'skipped';
+      }
       return processAutonomousAction(_client, action);
     }
 
-    // User-created actions: existing trust ladder
+    // User-created actions still building trust: send confirmation to next chat session (no charge)
     if (!action.isAutonomous) {
       await storeAppEvent(action.walletAddress, 'schedule_confirm', 'Confirm scheduled action', {
         actionId: action.id,
@@ -201,7 +199,11 @@ async function processAction(
       return 'confirmation_sent';
     }
 
-    // Autonomous user-created action — charge and notify
+    // Autonomous user-created action — charge and notify (requires allowance)
+    if (!action.allowanceId) {
+      console.warn(`[scheduled-actions] No allowance for ${action.walletAddress}, skipping autonomous action`);
+      return 'skipped';
+    }
     return executeWithChargeAndNotify(_client, action);
   } catch (err) {
     console.error(`[scheduled-actions] Error for action ${action.id}:`, err instanceof Error ? err.message : err);
