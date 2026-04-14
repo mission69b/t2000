@@ -1,13 +1,13 @@
 # @t2000/server
 
-Backend server for agent management, gas sponsorship, USDC sponsorship, and protocol fee indexing.
+Backend server for agent management, gas sponsorship, USDC onboarding, and protocol fee indexing.
 
 **Live:** [api.t2000.ai](https://api.t2000.ai) (AWS ECS Fargate)
 
 ## What it does
 
 - **Gas sponsorship** — bootstraps new agents with 0.05 SUI via `POST /api/sponsor`
-- **USDC sponsorship** — funds new agents with $1 USDC via `POST /api/sponsor/usdc`
+- **USDC onboarding** — funds new web sign-ups with $0.25 USDC via `POST /api/sponsor/usdc` (internal key required)
 - **Protocol fee indexer** — watches on-chain events and indexes fees to NeonDB
 - **Agent registry** — tracks agent addresses, names, and activity
 - **Health endpoint** — `GET /api/health` for ECS health checks
@@ -25,7 +25,7 @@ Backend server for agent management, gas sponsorship, USDC sponsorship, and prot
 |-------|--------|------|-------------|
 | `/api/health` | GET | None | Health check |
 | `/api/sponsor` | POST | Hashcash (rate-limited) | SUI gas bootstrap |
-| `/api/sponsor/usdc` | POST | Hashcash (CLI) / x-internal-key (web) | USDC onboarding |
+| `/api/sponsor/usdc` | POST | x-internal-key (required) | USDC onboarding (web only) |
 | `/api/stats` | GET | None | Aggregate stats |
 
 ## Development

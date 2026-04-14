@@ -6,8 +6,7 @@ const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f
 const USDC_DECIMALS = 6;
 const SPONSOR_AMOUNT_USD = 0.25;
 const SPONSOR_AMOUNT_RAW = BigInt(Math.round(SPONSOR_AMOUNT_USD * 10 ** USDC_DECIMALS));
-const RATE_LIMIT_PER_HOUR = 20;
-const DAILY_LIMIT = 50;
+const DAILY_LIMIT = 20;
 const IP_RATE_LIMIT_PER_HOUR = 3;
 
 const pendingAddresses = new Set<string>();
@@ -20,14 +19,6 @@ export interface UsdcSponsorResult {
 
 export function isSponsorPaused(): boolean {
   return process.env.USDC_SPONSOR_PAUSED === '1' || process.env.USDC_SPONSOR_PAUSED === 'true';
-}
-
-export async function checkUsdcSponsorRateLimit(): Promise<boolean> {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const count = await prisma.usdcSponsorLog.count({
-    where: { createdAt: { gte: oneHourAgo } },
-  });
-  return count < RATE_LIMIT_PER_HOUR;
 }
 
 export async function checkUsdcDailyLimit(): Promise<boolean> {

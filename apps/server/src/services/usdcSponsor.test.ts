@@ -32,43 +32,64 @@ vi.mock('../lib/wallets.js', () => {
 
 import { prisma } from '../db/prisma.js';
 import {
-  checkUsdcSponsorRateLimit,
+  checkUsdcDailyLimit,
+  checkUsdcIpRateLimit,
   isAlreadySponsored,
 } from './usdcSponsor.js';
 
-describe('checkUsdcSponsorRateLimit', () => {
+describe('checkUsdcDailyLimit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('returns true when under rate limit', async () => {
+  it('returns true when under daily limit', async () => {
     vi.mocked(prisma.usdcSponsorLog.count).mockResolvedValue(5);
-    const result = await checkUsdcSponsorRateLimit();
+    const result = await checkUsdcDailyLimit();
     expect(result).toBe(true);
   });
 
-  it('returns false when at rate limit', async () => {
+  it('returns false when at daily limit', async () => {
     vi.mocked(prisma.usdcSponsorLog.count).mockResolvedValue(20);
-    const result = await checkUsdcSponsorRateLimit();
+    const result = await checkUsdcDailyLimit();
     expect(result).toBe(false);
   });
 
-  it('returns false when over rate limit', async () => {
-    vi.mocked(prisma.usdcSponsorLog.count).mockResolvedValue(25);
-    const result = await checkUsdcSponsorRateLimit();
-    expect(result).toBe(false);
-  });
-
-  it('queries with one-hour window', async () => {
+  it('queries with 24-hour window', async () => {
     vi.mocked(prisma.usdcSponsorLog.count).mockResolvedValue(0);
     const before = Date.now();
-    await checkUsdcSponsorRateLimit();
+    await checkUsdcDailyLimit();
 
     const call = vi.mocked(prisma.usdcSponsorLog.count).mock.calls[0][0]!;
     const gte = (call.where!.createdAt as { gte: Date }).gte;
     const diff = before - gte.getTime();
-    expect(diff).toBeGreaterThanOrEqual(3_590_000);
-    expect(diff).toBeLessThanOrEqual(3_610_000);
+    expect(diff).toBeGreaterThanOrEqual(86_390_000);
+    expect(diff).toBeLessThanOrEqual(86_410_000);
+  });
+});
+
+describe('checkUsdcIpRateLimit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns true when under IP limit', async () => {
+    vi.mocked(prisma.usdcSponsorLog.count).mockResolvedValue(1);
+    const result = await checkUsdcIpRateLimit('1.2.3.4');
+    expect(result).toBe(true);
+  });
+
+  it('returns false when at IP limit', async () => {
+    vi.mocked(prisma.usdcSponsorLog.count).mockResolvedValue(3);
+    const result = await checkUsdcIpRateLimit('1.2.3.4');
+    expect(result).toBe(false);
+  });
+
+  it('queries with correct IP and one-hour window', async () => {
+    vi.mocked(prisma.usdcSponsorLog.count).mockResolvedValue(0);
+    await checkUsdcIpRateLimit('5.6.7.8');
+
+    const call = vi.mocked(prisma.usdcSponsorLog.count).mock.calls[0][0]!;
+    expect(call.where!.ipAddress).toBe('5.6.7.8');
   });
 });
 
@@ -83,7 +104,7 @@ describe('isAlreadySponsored', () => {
       agentAddress: '0xabc',
       amount: '1',
       txDigest: '0xdigest',
-      source: 'cli',
+      source: 'web',
       ipAddress: null,
       createdAt: new Date(),
     });

@@ -50,7 +50,7 @@
 │ Users       │  │ Agents      │  │ OpenAI      │
 │ Preferences │  │ Transactions│  │ Anthropic   │
 │ Sessions    │  │ Gas ledger  │  │ Brave       │
-│             │  │ USDC sponsor│  │ + 37 more   │
+│             │  │ USDC onboard│  │ + 37 more   │
 └─────────────┘  └─────────────┘  └─────────────┘
 ```
 
@@ -445,8 +445,7 @@ t2000 init
   │   ├─ Encrypt with AES-256-GCM (scrypt-derived key)
   │   ├─ Write to ~/.t2000/wallet.key (mode 0600)
   │   ├─ Cache PIN in ~/.t2000/.session (mode 0600)
-  │   ├─ POST /api/sponsor → receive 0.05 SUI for gas (CLI only)
-  │   └─ POST /api/sponsor/usdc → receive $0.25 USDC to try the product
+  │   └─ POST /api/sponsor → receive 0.05 SUI for gas (CLI only)
   │
   ├─ Step 2: MCP platforms
   │   ├─ Detect installed: Claude Desktop / Cursor / Windsurf
@@ -501,11 +500,11 @@ CLI agents need SUI for gas (they self-fund transactions). Web app users do NOT 
 - Upserts agent in DB (makes address "known" to the indexer)
 - One-time per address, 10 per IP per hour, 100/day global cap, hashcash above limit
 
-### USDC sponsorship (onboarding — both web + CLI)
+### USDC onboarding (web only)
 
-One-time $0.25 USDC to new wallet addresses. Removes the #1 friction point — users sign up with $0 balance and can immediately try save or pay.
+One-time $0.25 USDC to new web sign-ups. Removes the #1 friction point — users sign up with $0 balance and can immediately try save or pay. CLI users fund their own wallets.
 
-- `POST https://api.t2000.ai/api/sponsor/usdc` with `{ address, source }`
+- `POST https://api.t2000.ai/api/sponsor/usdc` with `{ address }` + `x-internal-key` header (required)
 - Server fetches USDC coins from sponsor wallet, splits $0.25, transfers to user
 - Records in `UsdcSponsorLog` (address is `@unique` — one-time per address)
 - Tracks IP address for forensics and per-IP rate limiting
@@ -516,20 +515,18 @@ One-time $0.25 USDC to new wallet addresses. Removes the #1 friction point — u
 | Client | SUI bootstrap | USDC onboarding | Gas method |
 |--------|--------------|-----------------|------------|
 | Web app (zkLogin) | No — Enoki sponsors gas | $0.25 USDC | Enoki sponsored |
-| CLI (`t2000 init`) | 0.05 SUI | $0.25 USDC | Self-funded → auto-topup → gas station |
+| CLI (`t2000 init`) | 0.05 SUI | None — fund manually | Self-funded → auto-topup → gas station |
 
 **Protections:**
 
 | Layer | Rule |
 |-------|------|
+| Authentication | `x-internal-key` header required on ALL requests — no unauthenticated access |
 | Kill switch | `USDC_SPONSOR_PAUSED` env var → instant 503 |
 | Per-address | One-time only (DB unique constraint) |
-| Per-IP | 3 sponsorships per IP per hour |
-| Hourly global | 20/hour, then hashcash proof-of-work |
-| Daily global | 50/day hard cap ($12.50 max daily exposure) |
+| Per-IP | 3 sponsorships per IP per hour (rightmost x-forwarded-for, not spoofable) |
+| Daily global | 20/day hard cap ($5 max daily exposure) |
 | Race condition | In-memory lock prevents concurrent double-spend for same address |
-| Auth (web) | `x-internal-key` header — Next.js proxy holds the secret |
-| Auth (CLI) | Hashcash proof-of-work when rate limited |
 
 **Flow (web app):**
 ```
@@ -537,18 +534,9 @@ User signs in with Google → zkLogin → wallet derived
   → useUsdcSponsor hook fires (localStorage check)
   → POST /api/sponsor/usdc (Next.js server route)
     → adds x-internal-key + forwards caller IP, proxies to api.t2000.ai
-  → Server sends $0.25 USDC from sponsor wallet
+  → Server validates internal key, sends $0.25 USDC from sponsor wallet
   → Hook marks address in localStorage
   → Dashboard shows $0.25 USDC balance
-```
-
-**Flow (CLI):**
-```
-t2000 init
-  → Generate keypair, encrypt with PIN
-  → POST /api/sponsor → 0.05 SUI (for gas)
-  → POST /api/sponsor/usdc → $0.25 USDC (to use the product)
-  → Agent is ready with gas + funds
 ```
 
 **Wallet separation:** The sponsor wallet (sends USDC/SUI to new users) and the MPP gateway treasury (receives payment revenue) are separate addresses. A drain on sponsorship cannot touch revenue.
@@ -563,7 +551,7 @@ t2000 init
 ```
 
 The agent now has:
-- A Sui address with 0.05 SUI for gas + $0.25 USDC (both sponsored)
+- A Sui address with 0.05 SUI for gas (sponsored)
 - Safeguard limits configured
 - MCP server registered in AI clients
 - Ready for `t2000 save`, `t2000 pay`, or any MCP tool call
@@ -1216,7 +1204,7 @@ The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can free
 | **Pool minimum** | Rejects sponsorship when gas wallet < 100 SUI |
 | **Serialized signing** | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts |
 | **SUI bootstrap limit** | One-time per address, 10/IP/hr, 100/day global, hashcash above limit |
-| **USDC sponsor limit** | $0.25 per address (ever), 3/IP/hr, 20/hr global, 50/day cap, hashcash above limit |
+| **USDC onboarding** | Web only, `x-internal-key` required, $0.25/address (ever), 3/IP/hr, 20/day cap |
 | **Sponsor kill switch** | `USDC_SPONSOR_PAUSED` env var stops all USDC sponsorship instantly |
 
 ### Hashcash flow
@@ -1280,5 +1268,5 @@ All write operations go through a `TxMutex` that ensures only one transaction ex
 | Gas usage amounts | Wallet balance |
 | Sponsored TX digests | What the TX does (opaque bytes) |
 | Bootstrap requests (IP, address) | CLI usage, local commands |
-| USDC sponsorship (address, amount, digest) | — |
+| USDC onboarding log (address, amount, digest) | — |
 | Protocol fee events (from chain) | Which AI client is used |

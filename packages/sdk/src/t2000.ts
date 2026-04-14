@@ -156,7 +156,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     return new T2000(keypair, client);
   }
 
-  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean; usdcSponsored: boolean }> {
+  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean }> {
     const secret = options.pin ?? options.passphrase ?? '';
     const keypair = generateKeypair();
     await saveKey(keypair, secret, options.keyPath);
@@ -166,7 +166,6 @@ export class T2000 extends EventEmitter<T2000Events> {
     const address = agent.address();
 
     let sponsored = false;
-    let usdcSponsored = false;
     if (options.sponsored !== false) {
       try {
         await callSponsorApi(address, options.name);
@@ -174,16 +173,9 @@ export class T2000 extends EventEmitter<T2000Events> {
       } catch {
         // SUI gas sponsor unavailable — agent can still be funded manually
       }
-
-      try {
-        await callUsdcSponsorApi(address);
-        usdcSponsored = true;
-      } catch {
-        // USDC sponsor unavailable — not critical, user can deposit manually
-      }
     }
 
-    return { agent, address, sponsored, usdcSponsored };
+    return { agent, address, sponsored };
   }
 
   // -- Gas --
@@ -1531,30 +1523,3 @@ async function callSponsorApi(address: string, name?: string): Promise<void> {
   }
 }
 
-async function callUsdcSponsorApi(address: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/sponsor/usdc`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address, source: 'cli' }),
-  });
-
-  if (res.status === 429) {
-    const data = await res.json() as { challenge?: string };
-    if (data.challenge) {
-      const proof = solveHashcash(data.challenge);
-      const retry = await fetch(`${API_BASE_URL}/api/sponsor/usdc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, source: 'cli', proof }),
-      });
-      if (!retry.ok) throw new T2000Error('USDC_SPONSOR_RATE_LIMITED', 'USDC sponsor rate limited');
-      return;
-    }
-  }
-
-  if (res.status === 409) return; // Already sponsored — not an error
-
-  if (!res.ok) {
-    throw new T2000Error('USDC_SPONSOR_FAILED', 'USDC sponsor unavailable');
-  }
-}

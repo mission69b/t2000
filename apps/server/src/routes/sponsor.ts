@@ -4,7 +4,6 @@ import { createChallenge, formatChallenge, verifyStamp } from '../lib/hashcash.j
 import { checkRateLimit, checkDailyLimit, isAlreadyFunded, sponsorWalletInit } from '../services/sponsor.js';
 import {
   sponsorUsdc,
-  checkUsdcSponsorRateLimit,
   checkUsdcDailyLimit,
   checkUsdcIpRateLimit,
   isAlreadySponsored,
@@ -76,11 +75,12 @@ sponsor.post('/api/sponsor/usdc', async (c) => {
     return c.json({ error: 'SPONSOR_PAUSED', message: 'USDC sponsorship is temporarily paused' }, 503);
   }
 
-  const body = await c.req.json<{
-    address: string;
-    source?: 'web' | 'cli';
-    proof?: string;
-  }>();
+  const internalKey = c.req.header('x-internal-key');
+  if (!SPONSOR_INTERNAL_KEY || internalKey !== SPONSOR_INTERNAL_KEY) {
+    return c.json({ error: 'UNAUTHORIZED', message: 'Invalid internal key' }, 401);
+  }
+
+  const body = await c.req.json<{ address: string }>();
 
   if (!body.address) {
     return c.json({ error: 'address is required' }, 400);
@@ -90,15 +90,8 @@ sponsor.post('/api/sponsor/usdc', async (c) => {
     return c.json({ error: 'INVALID_ADDRESS', message: 'Invalid Sui address format' }, 400);
   }
 
-  const source = body.source ?? 'cli';
-  const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? '127.0.0.1';
-
-  if (source === 'web') {
-    const internalKey = c.req.header('x-internal-key');
-    if (!SPONSOR_INTERNAL_KEY || internalKey !== SPONSOR_INTERNAL_KEY) {
-      return c.json({ error: 'UNAUTHORIZED', message: 'Invalid internal key' }, 401);
-    }
-  }
+  const forwarded = c.req.header('x-forwarded-for') ?? '';
+  const ip = forwarded.split(',').pop()?.trim() || c.req.header('x-real-ip') || '127.0.0.1';
 
   const withinDaily = await checkUsdcDailyLimit();
   if (!withinDaily) {
@@ -110,29 +103,13 @@ sponsor.post('/api/sponsor/usdc', async (c) => {
     return c.json({ error: 'RATE_LIMITED', message: 'Too many sponsorship requests from this IP' }, 429);
   }
 
-  const withinHourly = await checkUsdcSponsorRateLimit();
-  if (!withinHourly) {
-    if (!body.proof) {
-      const challenge = createChallenge(body.address);
-      return c.json({
-        error: 'RATE_LIMITED',
-        challenge: formatChallenge(challenge),
-        message: 'Solve the hashcash challenge and resubmit with proof field',
-      }, 429);
-    }
-
-    if (!verifyStamp(body.proof, body.address)) {
-      return c.json({ error: 'INVALID_PROOF', message: 'Hashcash proof is invalid' }, 403);
-    }
-  }
-
   const already = await isAlreadySponsored(body.address);
   if (already) {
     return c.json({ error: 'ALREADY_SPONSORED', message: 'This address has already received USDC sponsorship' }, 409);
   }
 
   try {
-    const result = await sponsorUsdc(body.address, source, ip);
+    const result = await sponsorUsdc(body.address, 'web', ip);
     return c.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'USDC sponsor failed';
@@ -142,7 +119,7 @@ sponsor.post('/api/sponsor/usdc', async (c) => {
     }
     if (msg === 'SPONSOR_DEPLETED') {
       console.error('[sponsor/usdc] SPONSOR_DEPLETED — refill the sponsor wallet with USDC');
-      return c.json({ error: 'SPONSOR_DEPLETED', message: 'USDC sponsorship temporarily unavailable — deposit USDC manually to get started' }, 503);
+      return c.json({ error: 'SPONSOR_DEPLETED', message: 'USDC sponsorship temporarily unavailable' }, 503);
     }
 
     console.error('[sponsor/usdc] Error:', msg);
