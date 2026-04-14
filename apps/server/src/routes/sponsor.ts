@@ -141,6 +141,7 @@ sponsor.post('/api/sponsor/usdc', async (c) => {
       return c.json({ error: 'ALREADY_SPONSORED', message: 'This address has already received USDC sponsorship' }, 409);
     }
     if (msg === 'SPONSOR_DEPLETED') {
+      console.error('[sponsor/usdc] SPONSOR_DEPLETED — refill the sponsor wallet with USDC');
       return c.json({ error: 'SPONSOR_DEPLETED', message: 'USDC sponsorship temporarily unavailable — deposit USDC manually to get started' }, 503);
     }
 
