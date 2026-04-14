@@ -22,6 +22,21 @@ export const metadata: Metadata = {
   title: "t2000 MPP Gateway — Sui USDC",
   description:
     "MPP-enabled APIs payable with Sui USDC. OpenAI, Anthropic, fal.ai, and Firecrawl — no API keys, no accounts, just pay.",
+  metadataBase: new URL("https://mpp.t2000.ai"),
+  openGraph: {
+    title: "t2000 MPP Gateway — Pay-per-request APIs on Sui",
+    description:
+      "No API keys. No accounts. No subscriptions. Your agent pays per request with USDC on Sui.",
+    siteName: "t2000 MPP Gateway",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@t2000ai",
+    title: "t2000 MPP Gateway — Pay-per-request APIs on Sui",
+    description:
+      "No API keys. No accounts. Your agent pays per request with USDC on Sui.",
+  },
 };
 
 export default function RootLayout({
