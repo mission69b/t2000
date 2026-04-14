@@ -87,7 +87,7 @@ QueryEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (29 — parallel, auto-approved)
+### Read Tools (38 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
@@ -120,8 +120,17 @@ QueryEngine.submitMessage()
 | `toggle_allowance` | Pause or resume agent autonomous spending |
 | `update_daily_limit` | Change the daily USDC spending cap |
 | `update_permissions` | Update which service categories the agent can act on |
+| `spending_analytics` | Spending breakdown by service/category over time period |
+| `yield_summary` | Yield earned + projections with sparkline data |
+| `activity_summary` | Activity breakdown by action type |
+| `create_schedule` | Create a recurring scheduled action (DCA) |
+| `list_schedules` | List scheduled actions with trust stage |
+| `cancel_schedule` | Cancel a scheduled action |
+| `render_canvas` | Generate interactive HTML canvas visualizations |
+| `pattern_status` | View behavioral pattern proposals and trust stage |
+| `record_advice` | Record financial advice given for outcome tracking |
 
-### Write Tools (11 — serial, confirmation required)
+### Write Tools (12 — serial, confirmation required)
 
 | Tool | Description |
 |------|-------------|
@@ -136,6 +145,34 @@ QueryEngine.submitMessage()
 | `volo_stake` | Stake SUI for vSUI (VOLO liquid staking) |
 | `volo_unstake` | Unstake vSUI back to SUI |
 | `save_contact` | Save a contact name + address for quick sends |
+| `pause_pattern` | Pause an autonomous behavioral pattern |
+
+## Audric 2.0 Engine Features
+
+### Streaming Tool Execution (Early Dispatch)
+
+`EarlyToolDispatcher` dispatches read-only tools mid-stream before `message_stop`. Tools with `isReadOnly && isConcurrencySafe` fire as soon as their `tool_use` block completes. Write tools still go through the permission gate.
+
+### Tool Result Budgeting
+
+Tools can set `maxResultSizeChars` to cap output size. Results exceeding the limit are truncated with a hint to narrow parameters. Custom `summarizeOnTruncate` callbacks supported.
+
+### Microcompact
+
+`microcompact(messages)` deduplicates identical tool calls (same name + input) in conversation history, replacing repeated results with `[Same result as turn N]`.
+
+### Granular Permissions (USD-aware)
+
+Write tool permission resolved dynamically via `resolvePermissionTier(operation, amountUsd, config)`. Small amounts auto-execute; large amounts require confirmation. Three presets: `conservative`, `balanced`, `aggressive`.
+
+### Reasoning Engine
+
+- **Adaptive thinking** — routes queries to `low`/`medium`/`high` effort based on financial complexity
+- **Guard runner** — 9 guards across 3 priority tiers (Safety > Financial > UX)
+- **Skill recipes** — YAML recipe files with longest-trigger-match-wins
+- **Context compaction** — 200k limit, 85% compact trigger, LLM summarizer fallback
+- **Tool flags** — `mutating`, `requiresBalance`, `affectsHealth`, `irreversible` etc.
+- **Preflight validation** — input validation on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`
 
 ## Configuration
 
@@ -165,9 +202,12 @@ The `submitMessage()` async generator yields `EngineEvent`:
 | Event | Fields | When |
 |-------|--------|------|
 | `text_delta` | `text` | LLM streams a text chunk |
+| `thinking_delta` | `text` | Extended thinking chunk (reasoning accordion) |
+| `thinking_done` | — | Extended thinking complete |
 | `tool_start` | `toolName`, `toolUseId`, `input` | Tool execution begins |
 | `tool_result` | `toolName`, `toolUseId`, `result`, `isError` | Tool execution completes |
 | `pending_action` | `action` (PendingAction) | Write tool awaiting client-side execution |
+| `canvas` | `html` | Interactive HTML visualization from `render_canvas` |
 | `turn_complete` | `stopReason` | Conversation turn finished |
 | `usage` | `inputTokens`, `outputTokens`, `cacheReadTokens?`, `cacheWriteTokens?` | Token usage report |
 | `error` | `error` | Unrecoverable error |

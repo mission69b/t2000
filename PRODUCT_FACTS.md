@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-13
+> Last verified: 2026-04-14
 
 ---
 
@@ -630,11 +630,12 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.33.2` |
+| Version | `0.36.0` |
 | Description | Agent engine for conversational finance — powers Audric |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
+| Test count | 250 |
 
 ### Engine Public Exports
 
@@ -659,7 +660,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `compactMessages` | function | Context window compaction (ContextBudget) |
 | `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
 | `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 47 built-in tools (36 read, 11 write) |
+| `getDefaultTools` | function | All 50 built-in tools (38 read, 12 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 | `classifyEffort` | function | Adaptive thinking effort classifier |
 | `ContextBudget` | class | Context window budget tracking + compaction trigger |
@@ -681,11 +682,11 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Skill recipes | `recipes/registry.ts` | YAML recipe loader, `RecipeRegistry` with longest-trigger-match-wins, `toPromptContext()` |
 | Context compaction | `context.ts` | `ContextBudget` (200k limit, 85% compact, 70% warn), LLM summarizer + truncation fallback |
 
-Feature-flagged behind `ENABLE_THINKING=true`.
+Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THINKING` env flag removed in Audric 2.0 Phase A.
 
 ### Engine Tool Names
 
-| Read Tools (36) | Write Tools (11) |
+| Read Tools (38) | Write Tools (12) |
 |-----------|------------|
 | `render_canvas` | `save_deposit` |
 | `balance_check` | `withdraw` |
@@ -723,6 +724,9 @@ Feature-flagged behind `ENABLE_THINKING=true`.
 | `create_schedule` | |
 | `list_schedules` | |
 | `cancel_schedule` | |
+| `render_canvas` | |
+| `pattern_status` | |
+| `record_advice` | `pause_pattern` |
 
 ### Engine Event Types
 
@@ -744,7 +748,7 @@ Feature-flagged behind `ENABLE_THINKING=true`.
 |------|-------|
 | Package | `@t2000/mcp` |
 | Version | `0.33.2` |
-| Tool count | 47 (36 read, 11 write) — mirrors engine tool set |
+| Tool count | 50 (38 read, 12 write) — mirrors engine tool set |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |

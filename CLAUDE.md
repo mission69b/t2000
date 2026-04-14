@@ -236,9 +236,12 @@ import {
 ```ts
 type EngineEvent =
   | { type: 'text_delta'; text: string }
+  | { type: 'thinking_delta'; text: string }
+  | { type: 'thinking_done' }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
   | { type: 'pending_action'; action: PendingAction }
+  | { type: 'canvas'; html: string }
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
   | { type: 'error'; error: Error };
@@ -266,7 +269,7 @@ Tools can set `maxResultSizeChars` to cap output size. Results exceeding the lim
 
 ### Built-in tools
 
-Read (31): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`, `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`, `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_payment_link`, `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`, `pattern_status`
+Read (38): `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`, `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`, `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_payment_link`, `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`, `yield_summary`, `activity_summary`, `create_schedule`, `list_schedules`, `cancel_schedule`, `render_canvas`, `pattern_status`, `record_advice`
 Write (12): `save_deposit` (USDC only), `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact`, `pause_pattern`
 
 ---

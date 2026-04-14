@@ -63,7 +63,7 @@
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
 | `@t2000/engine` | Published | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
-| `@t2000/mcp` | Published | MCP server — 47 tools (mirrors engine), stdio transport |
+| `@t2000/mcp` | Published | MCP server — 50 tools (mirrors engine), stdio transport |
 | `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
 | `@suimpp/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
@@ -887,13 +887,13 @@ Tools are built with `buildTool()` which enforces:
 | `list_schedules` | |
 | `cancel_schedule` | |
 
-36 read tools, 11 write tools, **47 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+38 read tools, 12 write tools, **50 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
 
-### Reasoning Engine (Phase 1-3 — Shipped)
+### Reasoning Engine (Shipped — always on)
 
-The engine includes a three-layer reasoning system, feature-flagged behind `ENABLE_THINKING=true`:
+The engine includes a three-layer reasoning system (extended thinking always on for Sonnet/Opus):
 
-1. **Adaptive thinking** (`classify-effort.ts`) — routes queries to `low`/`medium`/`high` thinking effort based on financial complexity
+1. **Adaptive thinking** (`classify-effort.ts`) — routes queries to `low`/`medium`/`high`/`max` thinking effort. `low` routes to Haiku; `max` reserved for Opus
 2. **Guard runner** (`guards.ts`) — 9 guards across 3 priority tiers (Safety > Financial > UX) enforce balance checks, health factor limits, slippage, irreversibility warnings, etc.
 3. **Skill recipes** (`recipes/registry.ts`) — YAML recipe files loaded by `RecipeRegistry` with longest-trigger-match-wins, injected as prompt context
 
@@ -902,6 +902,10 @@ Additional features:
 - **Context compaction** — `ContextBudget` (200k limit, 85% compact trigger) with LLM summarizer + truncation fallback
 - **Tool flags** — `ToolFlags` interface on all tools (mutating, requiresBalance, affectsHealth, irreversible, etc.)
 - **Preflight validation** — input validation gate on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`
+- **Streaming tool dispatch** — `EarlyToolDispatcher` fires read-only tools mid-stream before `message_stop`
+- **Tool result budgeting** — `maxResultSizeChars` caps output; truncated with re-call hint
+- **Microcompact** — deduplicates identical tool calls in history with back-references
+- **Granular permissions** — USD-aware `resolvePermissionTier()` with conservative/balanced/aggressive presets
 
 ### Canvas System
 
@@ -978,6 +982,77 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 - `navi-config.ts` — Server URL, transport config, 26 tool name constants
 - `navi-transforms.ts` — Pure functions converting raw MCP responses to typed engine structures (rates, positions, health factor, balance, savings, rewards) with USD price conversion
 - `navi-reads.ts` — Composite read functions orchestrating parallel MCP calls with transforms
+
+---
+
+## Audric 2.0 — Autonomous Financial Agent
+
+### Autonomous Action Loop
+
+```
+Nightly cron (t2000 server)
+  │
+  ├── Pattern Detection
+  │   → 5 detectors: recurring_save, yield_reinvestment, debt_discipline,
+  │     idle_usdc_tolerance, swap_pattern
+  │   → Analyze 90-day AppEvent + PortfolioSnapshot history
+  │   → Create Stage 0 proposals (ScheduledAction with source='pattern')
+  │
+  ├── Trust Ladder
+  │   → Stage 0: Proposal created → user reviews in Settings > Automations
+  │   → Stage 1: (reserved)
+  │   → Stage 2: User accepts → runs with notification
+  │   → Stage 3: Auto-promoted after N successful runs → fully autonomous
+  │
+  ├── Execution (runScheduledActions cron)
+  │   → Idempotency key (daily/weekly/monthly)
+  │   → Safety checks: balance, health factor, daily limit, borrow ban
+  │   → Circuit breaker: 3 consecutive failures → auto-pause + email
+  │   → Execute via t2000 server internal API
+  │   → Log to ScheduledExecution for audit
+  │
+  └── Notifications (Resend email)
+      → 3 templates: stage2_execution, stage3_unexpected, circuit_breaker
+      → Deep link CTAs back to Audric
+```
+
+### Chain Memory
+
+7 classifiers extract financial patterns from on-chain data:
+
+| Classifier | Source | Detects |
+|-----------|--------|---------|
+| `deposit_pattern` | AppEvent | Regular savings deposits |
+| `risk_profile` | PortfolioSnapshot | Leverage behavior, HF patterns |
+| `yield_behavior` | PortfolioSnapshot | APY optimization, farming |
+| `borrow_behavior` | AppEvent | Borrow/repay patterns |
+| `near_liquidation` | PortfolioSnapshot | HF < 1.5 events |
+| `large_transaction` | AppEvent | Amounts > $500 |
+| `compounding_streak` | AppEvent | Consecutive compound actions |
+
+Chain facts stored as `UserMemory` with `source: 'chain'` and injected into engine context via `buildMemoryContext()`.
+
+### Public Wallet Intelligence Report
+
+Public acquisition funnel at `audric.ai/report/[address]` — no sign-up required.
+
+- **Generator** (`lib/report/generator.ts`): parallel fetch of wallet balances, NAVI positions, and activity via unified data layer
+- **Analyzers** (`lib/report/analyzers.ts`): 5 pattern detectors, 3 risk signals, 4 "Audric would do" suggestions — all heuristic, no LLM
+- **API** (`GET /api/report/[address]`): rate limited (5/hr/IP via Upstash), 24h Prisma cache, internal secret bypass for OG images
+- **UI**: 8 sections (portfolio, yield efficiency gauge, activity, patterns, risk signals, suggestions, share, footer)
+- **Sharing**: copy link, Twitter, Telegram, image download (html2canvas), QR code
+- **OG image**: dynamic 1200×630 edge-rendered image with net worth, yield efficiency, suggestions count
+- **Multi-wallet**: link up to 10 wallets, aggregated portfolio view, tab switcher in FullPortfolioCanvas
+
+### Intelligence Layer (F1–F5)
+
+| Feature | What it does |
+|---------|-------------|
+| F1 — Financial Profile | `UserFinancialProfile` model: risk tolerance, goals, investment horizon. Claude inference cron |
+| F2 — Proactive Awareness | `buildProactivenessInstructions()` injected each turn. Idle USDC, HF warnings, follow-ups |
+| F3 — Episodic Memory | `UserMemory` model: key facts, preferences, past decisions. Claude extraction cron + Jaccard dedup |
+| F4 — Conversation State | 6 states (idle, exploring, confirming, executing, post_error, awaiting_confirmation). Redis-backed |
+| F5 — Self-Evaluation | 4-point checklist injected post-action for outcome tracking |
 
 ---
 

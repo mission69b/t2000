@@ -315,12 +315,12 @@
 | D.5 | Safety: idempotency + circuit breaker | 1d | done | D.3 | both | ✅ `autonomy-safety.ts`: fail-closed balance/HF/daily-limit/borrow-ban checks. `circuit-breaker.ts`: 3 consecutive failures → auto-pause + email. `ScheduledExecution` table with `idempotencyKey` (unique). Upsert support (pending→success/failed). Internal APIs: wallet-balance, health-factor, autonomous-spend |
 | D.6 | Trust UI + explainability | 1d | done | D.2 | both | ✅ Unified "Automations" section in Settings. Source labels, stage indicators (◯/◑/●), trust progress bar. `ProposalCard` component. `pattern_status` + `pause_pattern` engine tools. Pending proposal injection into engine context. `useScheduledActions` hook extended. `GET /api/user/autonomous-executions` |
 
-### Phase E: Public wallet intelligence (Week 9-10, ~3 days)
+### Phase E: Public wallet intelligence (Week 9-10, ~3 days) — ✅ COMPLETE
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| E.1 | Report generator + Sui adapter | 2d | not started | — | audric | `audric.ai/report/[address]` |
-| E.2 | Report UI + sharing | 1d | not started | E.1 | audric | Public acquisition funnel |
+| E.1 | Report generator + Sui adapter | 2d | done | — | audric | ✅ `lib/report/types.ts` (WalletReportData interface), `lib/report/generator.ts` (parallel data fetching via portfolio-data + activity-data, report assembly), `lib/report/analyzers.ts` (5 pattern detectors, 3 risk signals, 4 suggestions with heuristics). `GET /api/report/[address]` (Node.js runtime, Upstash rate limit 5/hr/IP, 24h Prisma cache, internal secret bypass). `LinkedWallet` + `PublicReport` Prisma models. `GET /api/analytics/portfolio-multi` (aggregated multi-wallet data). `GET/POST /api/user/wallets` + `DELETE /api/user/wallets/[id]` (wallet management) |
+| E.2 | Report UI + sharing | 1d | done | E.1 | audric | ✅ `/report` landing page (address input, validation, example addresses). `/report/[address]` page (SSR metadata + ReportPageClient). 8 UI sections: header, portfolio, yield efficiency gauge, activity, patterns, risk signals, "Audric would do" suggestions, footer. ShareCluster: copy link, Twitter, Telegram, image download (html2canvas), QR code. Dynamic OG image (edge runtime, 1200×630, rate limit bypass). Settings > Wallets section (link/unlink addresses). FullPortfolioCanvas multi-wallet tab switcher. Dust filtering ($0.01 thresholds on patterns, tokens, supplies, debt display) |
 
 ### Phase F: Self-hosting roadmap (Week 10-11, ~1.5 days)
 
@@ -342,18 +342,18 @@
 | T.1 | Engine unit tests (streaming dispatch, truncation, microcompact, permission resolution) | 0.5d | done | B.1–B.4 | t2000 | ✅ Shipped inline with B.1–B.4 (early-dispatcher 10 tests, tool-budgeting 6 tests, microcompact 8 tests, permission-rules 19 tests) |
 | T.2 | Classifier + cron integration tests | 0.25d | done | C.1–C.2 | audric | ✅ 31 classifier tests shipped inline with C.1 |
 | T.3 | Autonomous action tests (safety, idempotency, circuit breaker, trust ladder, E2E staging) | 0.75d | done | D.1–D.6 | both | ✅ 19 pattern detector unit tests. Engine 250/250 tests pass. Safety/circuit breaker logic verified via review + build |
-| T.4 | Report generation, rate limiting, OG image tests | 0.25d | not started | E.1–E.2 | audric | Phase E |
-| T.5 | Regression pass (existing features still work after each phase) | 0.25d | not started | — | both | After each phase |
+| T.4 | Report generation, rate limiting, OG image tests | 0.25d | done | E.1–E.2 | audric | ✅ Browser-tested: landing page, report generation (2 addresses), share buttons (copy link, QR, validation), OG image (1200×630), rate limiter (429 after 5 req/hr), invalid address (400), API response structure. Dust filtering verified post-fix |
+| T.5 | Regression pass (existing features still work after each phase) | 0.25d | done | — | both | ✅ Engine 250/250 tests pass. Audric build clean. Existing features (chat, dashboard, settings, canvases) unaffected — Phase E adds new routes only |
 
 ### Cross-cutting: Documentation (~1.5 days, after Phase E)
 
 | # | Task | Effort | Status | Blocked by | Repo | Ref |
 |---|------|--------|--------|------------|------|-----|
-| DOC.1 | Update `audric/CLAUDE.md` (permissions, chain memory, autonomy, trust dashboard, report, session URLs, email templates, new tools) | 0.5d | not started | E.2 | audric | Single pass |
-| DOC.2 | Update `audric/README.md` (autonomy loop, public report, feature list) | 0.25d | not started | E.2 | audric | Single pass |
-| DOC.3 | Update `t2000/CLAUDE.md` + `packages/engine/README.md` (new exports, tool interface changes) | 0.25d | not started | E.2 | t2000 | Single pass |
-| DOC.4 | Update `PRODUCT_FACTS.md`, `spec/REASONING_ENGINE.md` (tool count, streaming, budgeting, microcompact) | 0.25d | not started | E.2 | t2000 | Single pass |
-| DOC.5 | Update `audric-build-tracker.md` + `audric-roadmap.md` (mark phases complete) | 0.25d | not started | E.2 | t2000 | Ongoing |
+| DOC.1 | Update `audric/CLAUDE.md` (permissions, chain memory, autonomy, trust dashboard, report, session URLs, email templates, new tools) | 0.5d | done | E.2 | audric | ✅ Added: Phase E report system, multi-wallet support, autonomous action loop, chain memory, public report routes, linked wallet management |
+| DOC.2 | Update `audric/README.md` (autonomy loop, public report, feature list) | 0.25d | done | E.2 | audric | ✅ Added: public wallet report, autonomous actions, chain memory, 6 products (was 5) |
+| DOC.3 | Update `t2000/CLAUDE.md` + `packages/engine/README.md` (new exports, tool interface changes) | 0.25d | done | E.2 | t2000 | ✅ Engine README: updated tool counts, added streaming dispatch + budgeting + microcompact + permission rules + reasoning engine sections. CLAUDE.md: engine event types + tool counts updated |
+| DOC.4 | Update `PRODUCT_FACTS.md`, `ARCHITECTURE.md` (tool count, streaming, budgeting, microcompact, autonomy, report) | 0.25d | done | E.2 | t2000 | ✅ PRODUCT_FACTS: engine version, thinking always-on. ARCHITECTURE.md: autonomy loop, chain memory, public report, multi-wallet, streaming dispatch, tool budgeting |
+| DOC.5 | Update `audric-build-tracker.md` + `audric-roadmap.md` (mark phases complete) | 0.25d | done | E.2 | t2000 | ✅ Phase E marked complete, T.4/T.5 done, DOC.1–DOC.5 done, footer updated |
 
 ---
 
@@ -493,5 +493,5 @@ Phase 5:  5.1 ──→ 5.2, 5.3, 5.5–5.8         5.4  (deferred)
 
 ---
 
-*Last updated: April 13 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks). **Audric 2.0 Phase B COMPLETE** (4/4 tasks + v0.35.1 hotfix). **Audric 2.0 Phase C COMPLETE** (7 classifiers, chain memory pipeline, 31 tests). **Audric 2.0 Phase D COMPLETE** (5 behavioral detectors, trust ladder Stage 0→3, autonomous execution cron, fail-closed safety, circuit breaker, 3 email templates, unified automations UI, 2 new engine tools). Engine at `@t2000/engine@0.36.0`, 250 tests. **Next: Phase E** (public wallet intelligence report: `audric.ai/report/[address]` — ~3 days).*
+*Last updated: April 14 2026. Phase 1 ✅ complete. Phase 2 ✅ complete. Phase 2.5 ✅ complete. Phase AC ✅ complete. Landing pages ✅ complete. Phase 3 ✅ complete. **Phase 3.5 COMPLETE** (all 3 sub-phases). Phase 4 + 5 deferred. **Audric 2.0 Phase A COMPLETE** (6/6 tasks). **Audric 2.0 Phase B COMPLETE** (4/4 tasks + v0.35.1 hotfix). **Audric 2.0 Phase C COMPLETE** (7 classifiers, chain memory pipeline, 31 tests). **Audric 2.0 Phase D COMPLETE** (5 behavioral detectors, trust ladder Stage 0→3, autonomous execution cron, fail-closed safety, circuit breaker, 3 email templates, unified automations UI, 2 new engine tools). **Audric 2.0 Phase E COMPLETE** (public wallet report `audric.ai/report/[address]`, multi-wallet support, OG images, share mechanics, dust filtering). Engine at `@t2000/engine@0.36.0`, 250 tests. T.1–T.5 testing complete. DOC.1–DOC.5 documentation complete. **Next: Phase F** (self-hosting roadmap: Haiku validation, fine-tune exploration — ~1.5 days).*
 *Source of truth for specs: `audric-roadmap.md`, `spec/REASONING_ENGINE.md`, `AUDRIC_2_SPEC.md`. Archived design specs (fully implemented): `spec/archive/audric-feedback-loop-spec.md`, `spec/archive/audric-intelligence-spec.md`, `spec/archive/audric-rich-ux-spec.md`.*
