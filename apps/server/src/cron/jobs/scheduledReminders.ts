@@ -102,8 +102,9 @@ async function processReminder(
 
     // Charge for the reminder
     try {
+      const aid = action.allowanceId;
       const result = await withRetry(() => {
-        const tx = buildDeductAllowanceTx(action.allowanceId, REMIND_CHARGE, ALLOWANCE_FEATURES.ACTION_REMIND);
+        const tx = buildDeductAllowanceTx(aid, REMIND_CHARGE, ALLOWANCE_FEATURES.ACTION_REMIND);
         return executeAdminTx(tx);
       });
       if (result.status !== 'success') return 'skipped';

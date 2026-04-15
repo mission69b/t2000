@@ -437,8 +437,9 @@ async function processUser(
     // Rebuild tx on each retry so object versions are fresh
     let chargeDigest: string | null = null;
     try {
+      const aid = user.allowanceId;
       const result = await withRetry(() => {
-        const tx = buildDeductAllowanceTx(user.allowanceId, BRIEFING_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
+        const tx = buildDeductAllowanceTx(aid, BRIEFING_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
         return executeAdminTx(tx);
       });
       if (result.status !== 'success') {

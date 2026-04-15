@@ -149,8 +149,9 @@ async function processUser(
 
     let chargeDigest: string | null = null;
     try {
+      const aid = user.allowanceId;
       const result = await withRetry(() => {
-        const tx = buildDeductAllowanceTx(user.allowanceId, WEEKLY_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
+        const tx = buildDeductAllowanceTx(aid, WEEKLY_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
         return executeAdminTx(tx);
       });
       if (result.status !== 'success') {

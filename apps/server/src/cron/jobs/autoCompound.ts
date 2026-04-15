@@ -54,8 +54,9 @@ async function processUser(
     const totalEstUsd = nonTrivial.reduce((s, r) => s + r.estimatedValueUsd, 0);
 
     try {
+      const aid = user.allowanceId;
       const result = await withRetry(() => {
-        const tx = buildDeductAllowanceTx(user.allowanceId, COMPOUND_CHARGE, ALLOWANCE_FEATURES.AUTO_COMPOUND);
+        const tx = buildDeductAllowanceTx(aid, COMPOUND_CHARGE, ALLOWANCE_FEATURES.AUTO_COMPOUND);
         return executeAdminTx(tx);
       });
       if (result.status !== 'success') {
