@@ -21,10 +21,19 @@ const InvoiceSchema = z.object({
   })).optional().describe('Line items. If omitted, a single line item matching the total is implied.'),
 });
 
+function internalHeaders(context: { walletAddress?: string; env?: Record<string, string | undefined>; signal?: AbortSignal }) {
+  const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+  return {
+    'Content-Type': 'application/json',
+    'x-sui-address': context.walletAddress ?? '',
+    ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+  };
+}
+
 export const createPaymentLinkTool = buildTool({
   name: 'create_payment_link',
   description:
-    'Create a shareable payment link so someone can send USDC to the user. Returns a URL the user can share. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", or similar.',
+    'Create a shareable payment link so someone can send USDC to the user. Returns a URL the user can share. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", or similar.',
   inputSchema: PaymentLinkSchema,
   jsonSchema: {
     type: 'object',
@@ -40,22 +49,16 @@ export const createPaymentLinkTool = buildTool({
 
   async call(input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
-    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
-
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Payment link creation is not available.' };
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/internal/payment-links`, {
+      const res = await fetch(`${apiUrl}/api/internal/payments`, {
         method: 'POST',
         signal: context.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-sui-address': context.walletAddress,
-          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
-        },
-        body: JSON.stringify(input),
+        headers: internalHeaders(context),
+        body: JSON.stringify({ ...input, type: 'link' }),
       });
 
       if (!res.ok) {
@@ -65,6 +68,7 @@ export const createPaymentLinkTool = buildTool({
 
       const link = await res.json() as {
         slug: string;
+        nonce: string;
         url: string;
         amount: number | null;
         currency: string;
@@ -76,7 +80,7 @@ export const createPaymentLinkTool = buildTool({
       const amountStr = link.amount != null ? `$${link.amount.toFixed(2)} ${link.currency}` : `any amount ${link.currency}`;
       return {
         data: link,
-        displayText: `Payment link created for ${amountStr}${link.label ? ` — ${link.label}` : ''}. Share: ${link.url}`,
+        displayText: `Payment link created for ${amountStr}${link.label ? ` — ${link.label}` : ''}. Payers can connect their wallet, scan the QR code, or send manually. Share: ${link.url}`,
       };
     } catch {
       return { data: null, displayText: 'Failed to create payment link.' };
@@ -94,31 +98,26 @@ export const listPaymentLinksTool = buildTool({
 
   async call(_input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
-    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
-
     if (!apiUrl || !context.walletAddress) {
-      return { data: { links: [] }, displayText: 'No payment links found.' };
+      return { data: { payments: [] }, displayText: 'No payment links found.' };
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/internal/payment-links`, {
+      const res = await fetch(`${apiUrl}/api/internal/payments?type=link`, {
         signal: context.signal,
-        headers: {
-          'x-sui-address': context.walletAddress,
-          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
-        },
+        headers: internalHeaders(context),
       });
 
-      if (!res.ok) return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
+      if (!res.ok) return { data: { payments: [] }, displayText: 'Could not fetch payment links.' };
 
-      const data = await res.json() as { links: unknown[] };
-      const count = data.links.length;
+      const data = await res.json() as { payments: unknown[] };
+      const count = data.payments.length;
       return {
         data,
         displayText: count === 0 ? 'No payment links yet.' : `${count} payment link${count !== 1 ? 's' : ''} found.`,
       };
     } catch {
-      return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
+      return { data: { payments: [] }, displayText: 'Could not fetch payment links.' };
     }
   },
 });
@@ -126,7 +125,7 @@ export const listPaymentLinksTool = buildTool({
 export const createInvoiceTool = buildTool({
   name: 'create_invoice',
   description:
-    'Create a formal invoice that the user can share with a client or customer. Returns a URL for the invoice page. Use when the user says "create an invoice", "generate an invoice", "bill a client", or similar.',
+    'Create a formal invoice that the user can share with a client or customer. Returns a URL for the invoice page. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create an invoice", "generate an invoice", "bill a client", or similar.',
   inputSchema: InvoiceSchema,
   jsonSchema: {
     type: 'object',
@@ -156,22 +155,16 @@ export const createInvoiceTool = buildTool({
 
   async call(input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
-    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
-
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Invoice creation is not available.' };
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/internal/invoices`, {
+      const res = await fetch(`${apiUrl}/api/internal/payments`, {
         method: 'POST',
         signal: context.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-sui-address': context.walletAddress,
-          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
-        },
-        body: JSON.stringify(input),
+        headers: internalHeaders(context),
+        body: JSON.stringify({ ...input, type: 'invoice' }),
       });
 
       if (!res.ok) {
@@ -181,6 +174,7 @@ export const createInvoiceTool = buildTool({
 
       const invoice = await res.json() as {
         slug: string;
+        nonce: string;
         url: string;
         amount: number;
         currency: string;
@@ -192,7 +186,7 @@ export const createInvoiceTool = buildTool({
       const dueStr = invoice.dueDate ? ` due ${new Date(invoice.dueDate).toLocaleDateString()}` : '';
       return {
         data: invoice,
-        displayText: `Invoice created for $${invoice.amount.toFixed(2)} ${invoice.currency}${dueStr} — ${invoice.label}. Share: ${invoice.url}`,
+        displayText: `Invoice created for $${invoice.amount.toFixed(2)} ${invoice.currency}${dueStr} — ${invoice.label}. Payers can connect their wallet, scan the QR code, or send manually. Share: ${invoice.url}`,
       };
     } catch {
       return { data: null, displayText: 'Failed to create invoice.' };
@@ -218,21 +212,15 @@ export const cancelPaymentLinkTool = buildTool({
 
   async call(input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
-    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
-
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Payment link cancellation is not available.' };
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/internal/payment-links`, {
+      const res = await fetch(`${apiUrl}/api/internal/payments`, {
         method: 'PATCH',
         signal: context.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-sui-address': context.walletAddress,
-          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
-        },
+        headers: internalHeaders(context),
         body: JSON.stringify({ slug: input.slug, action: 'cancel' }),
       });
 
@@ -270,21 +258,15 @@ export const cancelInvoiceTool = buildTool({
 
   async call(input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
-    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
-
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Invoice cancellation is not available.' };
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/internal/invoices`, {
+      const res = await fetch(`${apiUrl}/api/internal/payments`, {
         method: 'PATCH',
         signal: context.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-sui-address': context.walletAddress,
-          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
-        },
+        headers: internalHeaders(context),
         body: JSON.stringify({ slug: input.slug, action: 'cancel' }),
       });
 
@@ -314,31 +296,26 @@ export const listInvoicesTool = buildTool({
 
   async call(_input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
-    const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
-
     if (!apiUrl || !context.walletAddress) {
-      return { data: { invoices: [] }, displayText: 'No invoices found.' };
+      return { data: { payments: [] }, displayText: 'No invoices found.' };
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/internal/invoices`, {
+      const res = await fetch(`${apiUrl}/api/internal/payments?type=invoice`, {
         signal: context.signal,
-        headers: {
-          'x-sui-address': context.walletAddress,
-          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
-        },
+        headers: internalHeaders(context),
       });
 
-      if (!res.ok) return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
+      if (!res.ok) return { data: { payments: [] }, displayText: 'Could not fetch invoices.' };
 
-      const data = await res.json() as { invoices: unknown[] };
-      const count = data.invoices.length;
+      const data = await res.json() as { payments: unknown[] };
+      const count = data.payments.length;
       return {
         data,
         displayText: count === 0 ? 'No invoices yet.' : `${count} invoice${count !== 1 ? 's' : ''} found.`,
       };
     } catch {
-      return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
+      return { data: { payments: [] }, displayText: 'Could not fetch invoices.' };
     }
   },
 });
