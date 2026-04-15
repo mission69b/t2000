@@ -16,7 +16,10 @@ import { runProfileInference } from './jobs/profileInference.js';
 import { runMemoryExtraction } from './jobs/memoryExtraction.js';
 import { runChainMemory } from './jobs/chainMemory.js';
 import { runPatternDetector } from './jobs/patternDetector.js';
+import { sleep } from './utils.js';
 import type { JobResult } from './types.js';
+
+const INTER_JOB_DELAY_MS = 2000;
 
 function getClient(): SuiJsonRpcClient {
   const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
@@ -56,7 +59,9 @@ async function runCron(): Promise<void> {
   // --- Group: hourly (RPC-heavy, runs every hour) ---
   if (run('hourly')) {
     results.push(await runHFAlerts(client, users));
+    await sleep(INTER_JOB_DELAY_MS);
     results.push(await runRateAlerts(client, users));
+    await sleep(INTER_JOB_DELAY_MS);
     results.push(await runScheduledActions(client));
   }
 

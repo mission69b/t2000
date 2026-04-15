@@ -4,8 +4,8 @@ import { sendEmail } from '../../services/email.js';
 import type { NotificationUser, JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 10;
-const BATCH_DELAY_MS = 100;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 500;
 const DEDUP_WARN_MS = 4 * 60 * 60 * 1000;
 const FEATURE_KEY = 'hf_alert';
 
