@@ -3,8 +3,10 @@ import { buildDeductAllowanceTx, ALLOWANCE_FEATURES } from '@t2000/sdk';
 import { executeAdminTx } from '../../services/sui-executor.js';
 import { sendEmail } from '../../services/email.js';
 import type { NotificationUser, JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
 const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 const REMIND_CHARGE = 1000n; // $0.001 USDC (6 decimals)
 
 interface DueAction {
@@ -101,7 +103,7 @@ async function processReminder(
     // Charge for the reminder
     try {
       const tx = buildDeductAllowanceTx(action.allowanceId, REMIND_CHARGE, ALLOWANCE_FEATURES.ACTION_REMIND);
-      const result = await executeAdminTx(tx);
+      const result = await withRetry(() => executeAdminTx(tx));
       if (result.status !== 'success') return 'skipped';
     } catch {
       return 'skipped';
@@ -155,6 +157,8 @@ export async function runScheduledReminders(
   let errors = 0;
 
   for (let i = 0; i < upcoming.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = upcoming.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((action) => processReminder(action, usersMap)),

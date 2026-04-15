@@ -3,8 +3,10 @@ import { getFinancialSummary, buildDeductAllowanceTx, ALLOWANCE_FEATURES } from 
 import { sendEmail } from '../../services/email.js';
 import { executeAdminTx } from '../../services/sui-executor.js';
 import type { NotificationUser, JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
 const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 const FEATURE_KEY = 'briefing';
 const BRIEFING_CHARGE = 5000n; // $0.005 USDC (6 decimals)
 const MIN_IDLE_USDC = 1; // only send if user has >= $1 idle or savings
@@ -401,9 +403,9 @@ async function processUser(
     if (alreadySent) return 'skipped';
 
     const [summary, goals] = await Promise.all([
-      getFinancialSummary(client, user.walletAddress, {
+      withRetry(() => getFinancialSummary(client, user.walletAddress, {
         allowanceId: user.allowanceId,
-      }),
+      })),
       fetchGoals(user.walletAddress),
     ]);
 
@@ -434,7 +436,7 @@ async function processUser(
     let chargeDigest: string | null = null;
     try {
       const tx = buildDeductAllowanceTx(user.allowanceId, BRIEFING_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
-      const result = await executeAdminTx(tx);
+      const result = await withRetry(() => executeAdminTx(tx));
       if (result.status !== 'success') {
         console.warn(`[briefing] Charge failed for ${user.walletAddress}: tx ${result.digest} status=${result.status}`);
         return 'skipped';
@@ -487,6 +489,8 @@ export async function runBriefings(
   let errors = 0;
 
   for (let i = 0; i < eligible.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = eligible.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((user) => processUser(client, user)),

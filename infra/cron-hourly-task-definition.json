@@ -1,5 +1,5 @@
 {
-  "family": "t2000-cron",
+  "family": "t2000-cron-hourly",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
@@ -7,7 +7,7 @@
   "executionRoleArn": "${EXEC_ROLE_ARN}",
   "containerDefinitions": [
     {
-      "name": "t2000-cron",
+      "name": "t2000-cron-hourly",
       "image": "${ECR_BASE}/t2000-indexer:latest",
       "command": ["node", "dist/cron/index.js"],
       "essential": true,
@@ -16,11 +16,12 @@
         "options": {
           "awslogs-group": "${LOG_GROUP}",
           "awslogs-region": "${AWS_REGION}",
-          "awslogs-stream-prefix": "t2000-cron"
+          "awslogs-stream-prefix": "t2000-cron-hourly"
         }
       },
       "environment": [
         { "name": "NODE_ENV", "value": "production" },
+        { "name": "CRON_GROUP", "value": "hourly" },
         { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" }
       ],
       "secrets": [

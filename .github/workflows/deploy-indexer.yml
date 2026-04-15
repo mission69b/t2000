@@ -17,6 +17,7 @@ on:
       - "apps/server/src/db/**"
       - "apps/server/prisma/**"
       - "infra/indexer*"
+      - "infra/cron-*-task-definition.json"
       - "infra/cron-task-definition.json"
 
 concurrency:
@@ -125,48 +126,84 @@ jobs:
         run: |
           aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services t2000-indexer \
             && echo "Stable" || echo "Check ECS console"
-      - name: Update cron task definition + EventBridge schedule
+      - name: Register cron task definitions + update EventBridge schedules
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           ECR_BASE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
           ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/mission69b-mainnet-ecs-execution-role"
-          sed \
-            -e "s|\${AWS_ACCOUNT_ID}|$ACCOUNT_ID|g" \
-            -e "s|\${AWS_REGION}|$AWS_REGION|g" \
-            -e "s|\${ECR_BASE}|$ECR_BASE|g" \
-            -e "s|\${EXEC_ROLE_ARN}|$ROLE_ARN|g" \
-            -e "s|\${LOG_GROUP}|/ecs/mission69b-mainnet|g" \
-            infra/cron-task-definition.json > /tmp/cron-task-def.json
-          CRON_TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --cli-input-json file:///tmp/cron-task-def.json \
-            --query "taskDefinition.taskDefinitionArn" --output text)
-          echo "Registered cron: $CRON_TASK_DEF_ARN"
           SCHEDULER_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/t2000-cron-scheduler-role"
           CLUSTER_ARN="arn:aws:ecs:$AWS_REGION:${ACCOUNT_ID}:cluster/${{ env.ECS_CLUSTER }}"
           VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text)
-          SUBNETS=$(aws ec2 describe-subnets --filters "Name=defaultForAz,Values=true" "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].SubnetId" --output json | jq -r '[.[0:2] | .[]] | join("\",\"")' )
+          SUBNET_A=$(aws ec2 describe-subnets --filters "Name=defaultForAz,Values=true" "Name=vpc-id,Values=$VPC_ID" --query "Subnets[0].SubnetId" --output text)
+          SUBNET_B=$(aws ec2 describe-subnets --filters "Name=defaultForAz,Values=true" "Name=vpc-id,Values=$VPC_ID" --query "Subnets[1].SubnetId" --output text)
           SG_ID=$(aws ec2 describe-security-groups --filters "Name=tag:Name,Values=mission69b-mainnet-ecs-sg" "Name=vpc-id,Values=$VPC_ID" --query "SecurityGroups[0].GroupId" --output text)
-          aws scheduler update-schedule \
-            --name "t2000-cron-hourly" \
-            --group-name "default" \
-            --schedule-expression "rate(1 hour)" \
-            --flexible-time-window '{"Mode": "OFF"}' \
-            --target '{
-              "RoleArn": "'"$SCHEDULER_ROLE_ARN"'",
-              "Arn": "'"$CLUSTER_ARN"'",
-              "EcsParameters": {
-                "TaskDefinitionArn": "'"$CRON_TASK_DEF_ARN"'",
-                "TaskCount": 1,
-                "LaunchType": "FARGATE",
-                "NetworkConfiguration": {
-                  "awsvpcConfiguration": {
-                    "Subnets": ["'"$SUBNETS"'"],
-                    "SecurityGroups": ["'"$SG_ID"'"],
-                    "AssignPublicIp": "ENABLED"
-                  }
-                },
-                "PlatformVersion": "LATEST"
-              }
-            }' \
-            --state ENABLED
-          echo "Updated EventBridge schedule to use $CRON_TASK_DEF_ARN"
+
+          register_and_schedule() {
+            local TASK_FILE="$1"
+            local SCHEDULE_NAME="$2"
+            local SCHEDULE_EXPR="$3"
+
+            sed \
+              -e "s|\${AWS_ACCOUNT_ID}|$ACCOUNT_ID|g" \
+              -e "s|\${AWS_REGION}|$AWS_REGION|g" \
+              -e "s|\${ECR_BASE}|$ECR_BASE|g" \
+              -e "s|\${EXEC_ROLE_ARN}|$ROLE_ARN|g" \
+              -e "s|\${LOG_GROUP}|/ecs/mission69b-mainnet|g" \
+              "infra/$TASK_FILE" > "/tmp/$TASK_FILE"
+
+            TASK_DEF_ARN=$(aws ecs register-task-definition \
+              --cli-input-json "file:///tmp/$TASK_FILE" \
+              --query "taskDefinition.taskDefinitionArn" --output text)
+            echo "Registered: $TASK_DEF_ARN"
+
+            local TARGET='{
+                "RoleArn": "'"$SCHEDULER_ROLE_ARN"'",
+                "Arn": "'"$CLUSTER_ARN"'",
+                "EcsParameters": {
+                  "TaskDefinitionArn": "'"$TASK_DEF_ARN"'",
+                  "TaskCount": 1,
+                  "LaunchType": "FARGATE",
+                  "NetworkConfiguration": {
+                    "awsvpcConfiguration": {
+                      "Subnets": ["'"$SUBNET_A"'","'"$SUBNET_B"'"],
+                      "SecurityGroups": ["'"$SG_ID"'"],
+                      "AssignPublicIp": "ENABLED"
+                    }
+                  },
+                  "PlatformVersion": "LATEST"
+                }
+              }'
+
+            if aws scheduler get-schedule --name "$SCHEDULE_NAME" --group-name "default" > /dev/null 2>&1; then
+              aws scheduler update-schedule \
+                --name "$SCHEDULE_NAME" \
+                --group-name "default" \
+                --schedule-expression "$SCHEDULE_EXPR" \
+                --schedule-expression-timezone "UTC" \
+                --flexible-time-window '{"Mode": "OFF"}' \
+                --target "$TARGET" \
+                --state ENABLED
+              echo "Updated schedule: $SCHEDULE_NAME"
+            else
+              aws scheduler create-schedule \
+                --name "$SCHEDULE_NAME" \
+                --group-name "default" \
+                --schedule-expression "$SCHEDULE_EXPR" \
+                --schedule-expression-timezone "UTC" \
+                --flexible-time-window '{"Mode": "OFF"}' \
+                --target "$TARGET" \
+                --state ENABLED > /dev/null
+              echo "Created schedule: $SCHEDULE_NAME"
+            fi
+          }
+
+          echo "--- Hourly ---"
+          register_and_schedule "cron-hourly-task-definition.json" "t2000-cron-hourly" "rate(1 hour)"
+
+          echo "--- Daily Chain (hours 7,10,13 UTC) ---"
+          register_and_schedule "cron-daily-chain-task-definition.json" "t2000-cron-daily-chain" "cron(0 7,10,13 * * ? *)"
+
+          echo "--- Daily Intel (hours 7,19 UTC) ---"
+          register_and_schedule "cron-daily-intel-task-definition.json" "t2000-cron-daily-intel" "cron(0 7,19 * * ? *)"
+
+          echo "All 3 cron task definitions registered and schedules updated."

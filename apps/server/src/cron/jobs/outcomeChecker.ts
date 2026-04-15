@@ -1,6 +1,10 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { getFinancialSummary } from '@t2000/sdk';
 import type { JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
+
+const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 
 function getInternalUrl(): string {
   return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';
@@ -121,9 +125,9 @@ async function processAdvice(
   advice: PendingAdvice,
 ): Promise<'checked' | 'skipped' | 'error'> {
   try {
-    const summary = await getFinancialSummary(client, advice.walletAddress, {
+    const summary = await withRetry(() => getFinancialSummary(client, advice.walletAddress, {
       allowanceId: advice.allowanceId ?? undefined,
-    });
+    }));
 
     let onTrack: boolean | null = null;
     let actualValue: number | null = null;
@@ -255,10 +259,22 @@ export async function runOutcomeChecks(
   let sent = 0;
   let errors = 0;
 
-  for (const advice of pending) {
-    const result = await processAdvice(client, advice);
-    if (result === 'checked') sent++;
-    else if (result === 'error') errors++;
+  for (let i = 0; i < pending.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
+    const batch = pending.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map((advice) => processAdvice(client, advice)),
+    );
+
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        if (r.value === 'checked') sent++;
+        else if (r.value === 'error') errors++;
+      } else {
+        errors++;
+      }
+    }
   }
 
   return { job: 'outcome_checker', processed: pending.length, sent, errors };

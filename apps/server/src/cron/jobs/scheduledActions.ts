@@ -6,8 +6,8 @@ import { checkCircuitBreaker, pauseAction } from './circuit-breaker.js';
 import type { JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 3;
-const BATCH_DELAY_MS = 500;
+const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 const DCA_CHARGE = 10_000n; // $0.01 USDC (6 decimals) per execution
 
 interface DueAction {

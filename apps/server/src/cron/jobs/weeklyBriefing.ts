@@ -3,8 +3,10 @@ import { ALLOWANCE_FEATURES, buildDeductAllowanceTx } from '@t2000/sdk';
 import { sendEmail } from '../../services/email.js';
 import { executeAdminTx } from '../../services/sui-executor.js';
 import type { NotificationUser, JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
 const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 const FEATURE_KEY = 'briefing';
 const WEEKLY_CHARGE = 5000n; // $0.005 USDC
 
@@ -148,7 +150,7 @@ async function processUser(
     let chargeDigest: string | null = null;
     try {
       const tx = buildDeductAllowanceTx(user.allowanceId, WEEKLY_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
-      const result = await executeAdminTx(tx);
+      const result = await withRetry(() => executeAdminTx(tx));
       if (result.status !== 'success') {
         console.warn(`[weekly_briefing] Charge failed for ${user.walletAddress}: tx ${result.digest} status=${result.status}`);
         return 'skipped';
@@ -188,6 +190,8 @@ export async function runWeeklyBriefing(
   let errors = 0;
 
   for (let i = 0; i < eligible.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = eligible.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((user) => processUser(client, user)),

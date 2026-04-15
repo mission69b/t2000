@@ -23,12 +23,15 @@ function getClient(): SuiJsonRpcClient {
   return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 
-// Daily jobs spread across 4 UTC hours to avoid Sui RPC 429 rate limits.
-// Each hour only runs 3–4 jobs instead of all 14 at once.
-const HOUR_DATA        = 7;  // midnight US East — data collection (no user-facing emails)
-const HOUR_COMPOUND    = 10; // 5am US East — RPC-heavy DeFi operations
-const HOUR_BRIEFING    = 13; // 8am US East — user-facing briefings + reminders
-const HOUR_INTELLIGENCE = 19; // 2pm US East — Anthropic API calls (no Sui RPC)
+// CRON_GROUP controls which jobs this task instance runs.
+// "all" (default) = legacy single-task mode; split into groups for scale.
+const CRON_GROUP = process.env.CRON_GROUP ?? 'all';
+
+// Daily hour gates (only relevant for daily-chain and daily-intel groups)
+const HOUR_DATA        = 7;  // midnight US East
+const HOUR_COMPOUND    = 10; // 5am US East
+const HOUR_BRIEFING    = 13; // 8am US East
+const HOUR_INTELLIGENCE = 19; // 2pm US East
 
 async function runCron(): Promise<void> {
   const startTime = Date.now();
@@ -36,7 +39,7 @@ async function runCron(): Promise<void> {
     ? parseInt(process.env.CRON_OVERRIDE_HOUR, 10)
     : new Date().getUTCHours();
 
-  console.log(`[cron] Starting notification run for UTC hour ${utcHour}`);
+  console.log(`[cron] Starting group=${CRON_GROUP} UTC hour ${utcHour}`);
 
   const users = await fetchNotificationUsers();
   if (users.length === 0) {
@@ -48,42 +51,48 @@ async function runCron(): Promise<void> {
   const client = getClient();
   const results: JobResult[] = [];
 
-  // --- Hourly jobs (every run) ---
-  results.push(await runHFAlerts(client, users));
-  results.push(await runRateAlerts(client, users));
-  results.push(await runScheduledActions(client));
+  const run = (group: string) => CRON_GROUP === 'all' || CRON_GROUP === group;
 
-  // --- Hour 7: data collection (portfolio snapshots, chain memory, pattern detection) ---
-  if (utcHour === HOUR_DATA) {
-    results.push(await runPortfolioSnapshots());
-    results.push(await runChainMemory());
-    results.push(await runPatternDetector());
+  // --- Group: hourly (RPC-heavy, runs every hour) ---
+  if (run('hourly')) {
+    results.push(await runHFAlerts(client, users));
+    results.push(await runRateAlerts(client, users));
+    results.push(await runScheduledActions(client));
   }
 
-  // --- Hour 10: DeFi operations (RPC-heavy, isolated from other RPC jobs) ---
-  if (utcHour === HOUR_COMPOUND) {
-    results.push(await runAutoCompound(client, users));
-    results.push(await runOutcomeChecks(client));
-    results.push(await detectAnomaliesJob(client, users));
-    results.push(await deliverFollowUps(client));
-  }
+  // --- Group: daily-chain (RPC-heavy, runs at specific hours) ---
+  if (run('daily-chain')) {
+    if (utcHour === HOUR_COMPOUND) {
+      results.push(await runAutoCompound(client, users));
+      results.push(await runOutcomeChecks(client));
+      results.push(await detectAnomaliesJob(client, users));
+      results.push(await deliverFollowUps(client));
+    }
 
-  // --- Hour 13: user-facing briefings + reminders ---
-  if (utcHour === HOUR_BRIEFING) {
-    results.push(await runBriefings(client, users));
-    results.push(await runOnboardingFollowup(client));
-    results.push(await runScheduledReminders(client, users));
+    if (utcHour === HOUR_BRIEFING) {
+      results.push(await runBriefings(client, users));
+      results.push(await runOnboardingFollowup(client));
+      results.push(await runScheduledReminders(client, users));
 
-    const dayOfWeek = new Date().getUTCDay();
-    if (dayOfWeek === 0) {
-      results.push(await runWeeklyBriefing(client, users));
+      const dayOfWeek = new Date().getUTCDay();
+      if (dayOfWeek === 0) {
+        results.push(await runWeeklyBriefing(client, users));
+      }
     }
   }
 
-  // --- Hour 19: intelligence layer (Anthropic API, no Sui RPC) ---
-  if (utcHour === HOUR_INTELLIGENCE) {
-    results.push(await runProfileInference());
-    results.push(await runMemoryExtraction());
+  // --- Group: daily-intel (API/LLM only, no Sui RPC) ---
+  if (run('daily-intel')) {
+    if (utcHour === HOUR_DATA) {
+      results.push(await runPortfolioSnapshots());
+      results.push(await runChainMemory());
+      results.push(await runPatternDetector());
+    }
+
+    if (utcHour === HOUR_INTELLIGENCE) {
+      results.push(await runProfileInference());
+      results.push(await runMemoryExtraction());
+    }
   }
 
   await reportNotifications(results);

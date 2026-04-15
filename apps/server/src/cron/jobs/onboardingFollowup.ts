@@ -2,8 +2,10 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { getFinancialSummary } from '@t2000/sdk';
 import { sendEmail } from '../../services/email.js';
 import type { JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
 const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 const JOB_NAME = 'onboarding_followup';
 
 interface FollowupUser {
@@ -139,7 +141,7 @@ async function processUser(
   user: FollowupUser,
 ): Promise<'sent' | 'skipped' | 'error'> {
   try {
-    const summary = await getFinancialSummary(client, user.walletAddress);
+    const summary = await withRetry(() => getFinancialSummary(client, user.walletAddress));
     const variant = deriveVariant(summary);
     const subject = buildSubject(variant);
     const html = buildEmailHtml(variant, summary);
@@ -176,13 +178,19 @@ export async function runOnboardingFollowup(client: SuiJsonRpcClient): Promise<J
   console.log(`[${JOB_NAME}] Processing ${users.length} users`);
 
   for (let i = 0; i < users.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = users.slice(i, i + CONCURRENCY);
-    const outcomes = await Promise.all(
+    const outcomes = await Promise.allSettled(
       batch.map((u) => processUser(client, u)),
     );
     for (const o of outcomes) {
-      if (o === 'sent') result.sent++;
-      if (o === 'error') result.errors++;
+      if (o.status === 'fulfilled') {
+        if (o.value === 'sent') result.sent++;
+        if (o.value === 'error') result.errors++;
+      } else {
+        result.errors++;
+      }
     }
   }
 

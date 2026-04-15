@@ -1,6 +1,8 @@
 import type { JobResult } from '../types.js';
+import { sleep } from '../utils.js';
 
-const CONCURRENCY = 5;
+const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 
 interface ChainMemoryUser {
   userId: string;
@@ -84,6 +86,8 @@ export async function runChainMemory(): Promise<JobResult> {
   let errors = 0;
 
   for (let i = 0; i < users.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = users.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((u) => extractChainMemory(u.userId)),

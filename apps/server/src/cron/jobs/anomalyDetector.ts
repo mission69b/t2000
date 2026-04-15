@@ -1,8 +1,10 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { getFinancialSummary } from '@t2000/sdk';
 import type { NotificationUser, JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 5;
+const CONCURRENCY = 10;
+const BATCH_DELAY_MS = 100;
 
 function getInternalUrl(): string {
   return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';
@@ -98,9 +100,9 @@ async function detectAnomalies(
   client: SuiJsonRpcClient,
   user: NotificationUser,
 ): Promise<Anomaly[]> {
-  const summary = await getFinancialSummary(client, user.walletAddress, {
+  const summary = await withRetry(() => getFinancialSummary(client, user.walletAddress, {
     allowanceId: user.allowanceId ?? undefined,
-  });
+  }));
 
   const anomalies: Anomaly[] = [];
 
@@ -203,6 +205,8 @@ export async function detectAnomaliesJob(
   let errors = 0;
 
   for (let i = 0; i < eligible.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = eligible.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((user) => processUser(client, user)),
