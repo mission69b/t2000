@@ -99,7 +99,7 @@ export const listPaymentLinksTool = buildTool({
   async call(_input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
     if (!apiUrl || !context.walletAddress) {
-      return { data: { payments: [] }, displayText: 'No payment links found.' };
+      return { data: { links: [] }, displayText: 'No payment links found.' };
     }
 
     try {
@@ -108,16 +108,17 @@ export const listPaymentLinksTool = buildTool({
         headers: internalHeaders(context),
       });
 
-      if (!res.ok) return { data: { payments: [] }, displayText: 'Could not fetch payment links.' };
+      if (!res.ok) return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
 
-      const data = await res.json() as { payments: unknown[] };
-      const count = data.payments.length;
+      const raw = await res.json() as { payments: unknown[] };
+      const links = raw.payments;
+      const count = links.length;
       return {
-        data,
+        data: { links },
         displayText: count === 0 ? 'No payment links yet.' : `${count} payment link${count !== 1 ? 's' : ''} found.`,
       };
     } catch {
-      return { data: { payments: [] }, displayText: 'Could not fetch payment links.' };
+      return { data: { links: [] }, displayText: 'Could not fetch payment links.' };
     }
   },
 });
@@ -297,7 +298,7 @@ export const listInvoicesTool = buildTool({
   async call(_input, context) {
     const apiUrl = context.env?.ALLOWANCE_API_URL;
     if (!apiUrl || !context.walletAddress) {
-      return { data: { payments: [] }, displayText: 'No invoices found.' };
+      return { data: { invoices: [] }, displayText: 'No invoices found.' };
     }
 
     try {
@@ -306,16 +307,17 @@ export const listInvoicesTool = buildTool({
         headers: internalHeaders(context),
       });
 
-      if (!res.ok) return { data: { payments: [] }, displayText: 'Could not fetch invoices.' };
+      if (!res.ok) return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
 
-      const data = await res.json() as { payments: unknown[] };
-      const count = data.payments.length;
+      const raw = await res.json() as { payments: unknown[] };
+      const invoices = raw.payments;
+      const count = invoices.length;
       return {
-        data,
+        data: { invoices },
         displayText: count === 0 ? 'No invoices yet.' : `${count} invoice${count !== 1 ? 's' : ''} found.`,
       };
     } catch {
-      return { data: { payments: [] }, displayText: 'Could not fetch invoices.' };
+      return { data: { invoices: [] }, displayText: 'Could not fetch invoices.' };
     }
   },
 });
