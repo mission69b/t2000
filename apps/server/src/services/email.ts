@@ -24,10 +24,11 @@ function getApiKey(): string {
 
 export async function sendEmail(msg: EmailMessage): Promise<string | null> {
   try {
+    const apiKey = getApiKey();
     const res = await fetch(`${RESEND_API_URL}/emails`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getApiKey()}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -46,7 +47,11 @@ export async function sendEmail(msg: EmailMessage): Promise<string | null> {
     }
 
     const data = (await res.json()) as ResendResponse;
-    return data.id ?? null;
+    const emailId = data.id ?? null;
+    if (emailId) {
+      console.log(`[email] Sent to ${msg.to}: id=${emailId} subject="${msg.subject}"`);
+    }
+    return emailId;
   } catch (err) {
     console.error(`[email] Error sending to ${msg.to}:`, err instanceof Error ? err.message : err);
     return null;

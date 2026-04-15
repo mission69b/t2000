@@ -5,8 +5,8 @@ import { executeAdminTx } from '../../services/sui-executor.js';
 import type { NotificationUser, JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 10;
-const BATCH_DELAY_MS = 100;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 500;
 const FEATURE_KEY = 'briefing';
 const BRIEFING_CHARGE = 5000n; // $0.005 USDC (6 decimals)
 const MIN_IDLE_USDC = 1; // only send if user has >= $1 idle or savings
@@ -190,6 +190,7 @@ async function storeBriefing(
   date: string,
   content: BriefingContent,
   chargeDigest: string | null,
+  emailSent = true,
 ): Promise<boolean> {
   try {
     const res = await fetch(`${getInternalUrl()}/api/internal/briefing`, {
@@ -202,7 +203,7 @@ async function storeBriefing(
         walletAddress,
         date,
         content,
-        emailSentAt: new Date().toISOString(),
+        ...(emailSent && { emailSentAt: new Date().toISOString() }),
         chargeDigest,
       }),
     });
@@ -433,10 +434,13 @@ async function processUser(
     } catch { /* best effort */ }
 
     // Charge allowance first — if it fails, skip this user
+    // Rebuild tx on each retry so object versions are fresh
     let chargeDigest: string | null = null;
     try {
-      const tx = buildDeductAllowanceTx(user.allowanceId, BRIEFING_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
-      const result = await withRetry(() => executeAdminTx(tx));
+      const result = await withRetry(() => {
+        const tx = buildDeductAllowanceTx(user.allowanceId, BRIEFING_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
+        return executeAdminTx(tx);
+      });
       if (result.status !== 'success') {
         console.warn(`[briefing] Charge failed for ${user.walletAddress}: tx ${result.digest} status=${result.status}`);
         return 'skipped';
@@ -461,7 +465,7 @@ async function processUser(
       console.error(`[briefing] Email send failed for ${user.walletAddress}`);
     }
 
-    await storeBriefing(user.walletAddress, date, content, chargeDigest);
+    await storeBriefing(user.walletAddress, date, content, chargeDigest, !!emailResult);
 
     if (goals.length > 0) {
       await processMilestones(user, goals, summary.savingsBalance).catch((err) =>

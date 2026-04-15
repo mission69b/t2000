@@ -54,8 +54,10 @@ async function processUser(
     const totalEstUsd = nonTrivial.reduce((s, r) => s + r.estimatedValueUsd, 0);
 
     try {
-      const tx = buildDeductAllowanceTx(user.allowanceId, COMPOUND_CHARGE, ALLOWANCE_FEATURES.AUTO_COMPOUND);
-      const result = await withRetry(() => executeAdminTx(tx));
+      const result = await withRetry(() => {
+        const tx = buildDeductAllowanceTx(user.allowanceId, COMPOUND_CHARGE, ALLOWANCE_FEATURES.AUTO_COMPOUND);
+        return executeAdminTx(tx);
+      });
       if (result.status !== 'success') {
         console.warn(`[auto-compound] Charge failed for ${user.walletAddress}: ${result.digest}`);
         return 'skipped';

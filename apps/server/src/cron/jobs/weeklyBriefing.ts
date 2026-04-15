@@ -149,8 +149,10 @@ async function processUser(
 
     let chargeDigest: string | null = null;
     try {
-      const tx = buildDeductAllowanceTx(user.allowanceId, WEEKLY_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
-      const result = await withRetry(() => executeAdminTx(tx));
+      const result = await withRetry(() => {
+        const tx = buildDeductAllowanceTx(user.allowanceId, WEEKLY_CHARGE, ALLOWANCE_FEATURES.BRIEFING);
+        return executeAdminTx(tx);
+      });
       if (result.status !== 'success') {
         console.warn(`[weekly_briefing] Charge failed for ${user.walletAddress}: tx ${result.digest} status=${result.status}`);
         return 'skipped';

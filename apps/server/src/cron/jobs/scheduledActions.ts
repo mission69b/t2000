@@ -319,8 +319,10 @@ async function executeWithChargeAndNotify(
   action: DueAction,
 ): Promise<ProcessResult> {
   try {
-    const tx = buildDeductAllowanceTx(action.allowanceId!, DCA_CHARGE, ALLOWANCE_FEATURES.DCA);
-    const result = await withRetry(() => executeAdminTx(tx));
+    const result = await withRetry(() => {
+      const tx = buildDeductAllowanceTx(action.allowanceId!, DCA_CHARGE, ALLOWANCE_FEATURES.DCA);
+      return executeAdminTx(tx);
+    });
     if (result.status !== 'success') {
       console.warn(`[scheduled-actions] Charge failed for ${action.walletAddress}: ${result.digest}`);
       return 'skipped';
