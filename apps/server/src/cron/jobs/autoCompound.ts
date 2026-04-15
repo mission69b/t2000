@@ -3,10 +3,31 @@ import { getPendingRewards, buildDeductAllowanceTx, ALLOWANCE_FEATURES } from '@
 import { executeAdminTx } from '../../services/sui-executor.js';
 import type { NotificationUser, JobResult } from '../types.js';
 
-const CONCURRENCY = 5;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 500;
 const FEATURE_KEY = 'auto_compound';
 const MIN_REWARD_VALUE_USD = 0.10;
 const COMPOUND_CHARGE = 5000n; // $0.005 USDC (6 decimals)
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('429') && !msg.includes('Too Many Requests')) throw err;
+      if (attempt === maxRetries) break;
+      await sleep(2000 * 2 ** attempt + Math.random() * 500);
+    }
+  }
+  throw lastError;
+}
 
 function getInternalUrl(): string {
   return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';
@@ -45,16 +66,15 @@ async function processUser(
   try {
     if (!user.allowanceId) return 'skipped';
 
-    const rewards = await getPendingRewards(client, user.walletAddress);
+    const rewards = await withRetry(() => getPendingRewards(client, user.walletAddress));
     const nonTrivial = rewards.filter((r) => r.amount > 0);
     if (nonTrivial.length === 0) return 'skipped';
 
     const totalEstUsd = nonTrivial.reduce((s, r) => s + r.estimatedValueUsd, 0);
 
-    // Charge allowance for the notification
     try {
       const tx = buildDeductAllowanceTx(user.allowanceId, COMPOUND_CHARGE, ALLOWANCE_FEATURES.AUTO_COMPOUND);
-      const result = await executeAdminTx(tx);
+      const result = await withRetry(() => executeAdminTx(tx));
       if (result.status !== 'success') {
         console.warn(`[auto-compound] Charge failed for ${user.walletAddress}: ${result.digest}`);
         return 'skipped';
@@ -96,6 +116,8 @@ export async function runAutoCompound(
   let errors = 0;
 
   for (let i = 0; i < eligible.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = eligible.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((user) => processUser(client, user)),

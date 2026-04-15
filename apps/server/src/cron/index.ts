@@ -23,8 +23,12 @@ function getClient(): SuiJsonRpcClient {
   return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 
-// Briefings fire once daily at this UTC hour (≈ 8am US East, 2pm UK, 8pm Thailand).
-const BRIEFING_UTC_HOUR = 13;
+// Daily jobs spread across 4 UTC hours to avoid Sui RPC 429 rate limits.
+// Each hour only runs 3–4 jobs instead of all 14 at once.
+const HOUR_DATA        = 7;  // midnight US East — data collection (no user-facing emails)
+const HOUR_COMPOUND    = 10; // 5am US East — RPC-heavy DeFi operations
+const HOUR_BRIEFING    = 13; // 8am US East — user-facing briefings + reminders
+const HOUR_INTELLIGENCE = 19; // 2pm US East — Anthropic API calls (no Sui RPC)
 
 async function runCron(): Promise<void> {
   const startTime = Date.now();
@@ -47,55 +51,39 @@ async function runCron(): Promise<void> {
   // --- Hourly jobs (every run) ---
   results.push(await runHFAlerts(client, users));
   results.push(await runRateAlerts(client, users));
-
-  // --- Daily briefings (fixed UTC hour only) ---
-  if (utcHour === BRIEFING_UTC_HOUR) {
-    results.push(await runBriefings(client, users));
-  }
-
-  // --- Daily onboarding follow-up (24h after sign-up) ---
-  if (utcHour === BRIEFING_UTC_HOUR) {
-    results.push(await runOnboardingFollowup(client));
-  }
-
-  // --- Daily portfolio snapshots ---
-  if (utcHour === BRIEFING_UTC_HOUR) {
-    results.push(await runPortfolioSnapshots());
-  }
-
-  // --- Weekly briefing (Sundays at briefing hour) ---
-  const dayOfWeek = new Date().getUTCDay();
-  if (utcHour === BRIEFING_UTC_HOUR && dayOfWeek === 0) {
-    results.push(await runWeeklyBriefing(client, users));
-  }
-
-  // --- Daily auto-compound check ---
-  if (utcHour === BRIEFING_UTC_HOUR) {
-    results.push(await runAutoCompound(client, users));
-    // TODO: Phase 2.2 — runInvoiceChecks(client, users)
-  }
-
-  // --- Per-schedule jobs (check nextRunAt) ---
   results.push(await runScheduledActions(client));
 
-  // --- Scheduled action reminders (at briefing hour) ---
-  if (utcHour === BRIEFING_UTC_HOUR) {
-    results.push(await runScheduledReminders(client, users));
+  // --- Hour 7: data collection (portfolio snapshots, chain memory, pattern detection) ---
+  if (utcHour === HOUR_DATA) {
+    results.push(await runPortfolioSnapshots());
+    results.push(await runChainMemory());
+    results.push(await runPatternDetector());
   }
 
-  // --- Feedback loop: outcome checks, anomaly detection, follow-up delivery ---
-  if (utcHour === BRIEFING_UTC_HOUR) {
+  // --- Hour 10: DeFi operations (RPC-heavy, isolated from other RPC jobs) ---
+  if (utcHour === HOUR_COMPOUND) {
+    results.push(await runAutoCompound(client, users));
     results.push(await runOutcomeChecks(client));
     results.push(await detectAnomaliesJob(client, users));
     results.push(await deliverFollowUps(client));
   }
 
-  // --- Intelligence layer: profile inference + memory extraction + chain memory ---
-  if (utcHour === BRIEFING_UTC_HOUR) {
+  // --- Hour 13: user-facing briefings + reminders ---
+  if (utcHour === HOUR_BRIEFING) {
+    results.push(await runBriefings(client, users));
+    results.push(await runOnboardingFollowup(client));
+    results.push(await runScheduledReminders(client, users));
+
+    const dayOfWeek = new Date().getUTCDay();
+    if (dayOfWeek === 0) {
+      results.push(await runWeeklyBriefing(client, users));
+    }
+  }
+
+  // --- Hour 19: intelligence layer (Anthropic API, no Sui RPC) ---
+  if (utcHour === HOUR_INTELLIGENCE) {
     results.push(await runProfileInference());
     results.push(await runMemoryExtraction());
-    results.push(await runChainMemory());
-    results.push(await runPatternDetector());
   }
 
   await reportNotifications(results);
