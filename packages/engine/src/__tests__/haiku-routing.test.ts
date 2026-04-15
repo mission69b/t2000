@@ -66,11 +66,13 @@ describe('Haiku model routing validation (Phase F.1)', () => {
       properties: {},
       required: [],
     },
-    permission: 'auto',
-    execute: async () => ({
-      displayText: 'Balance: $106.28',
-      data: { total: 106.28, usdc: 100, sui: 0.5 },
-    }),
+    permissionLevel: 'auto',
+    async call() {
+      return {
+        displayText: 'Balance: $106.28',
+        data: { total: 106.28, usdc: 100, sui: 0.5 },
+      };
+    },
   });
 
   const saveTool: Tool = buildTool({
@@ -99,7 +101,7 @@ describe('Haiku model routing validation (Phase F.1)', () => {
       provider,
       tools: [balanceTool],
       model: HAIKU_MODEL,
-      systemPrompt: { type: 'text', text: 'You are a financial assistant.' },
+      systemPrompt: 'You are a financial assistant.',
     });
 
     const events = await collectEvents(engine.submitMessage('Check my balance'));
@@ -122,7 +124,7 @@ describe('Haiku model routing validation (Phase F.1)', () => {
       provider,
       tools: [balanceTool],
       model: HAIKU_MODEL,
-      systemPrompt: { type: 'text', text: 'You are a financial assistant.' },
+      systemPrompt: 'You are a financial assistant.',
     });
 
     const events = await collectEvents(engine.submitMessage('What is my balance?'));
@@ -147,7 +149,7 @@ describe('Haiku model routing validation (Phase F.1)', () => {
       provider,
       tools: [balanceTool, saveTool],
       model: HAIKU_MODEL,
-      systemPrompt: { type: 'text', text: 'You are a financial assistant.' },
+      systemPrompt: 'You are a financial assistant.',
       priceCache: new Map([['SUI', 3.5], ['USDC', 1]]),
       permissionConfig: {
         globalAutoBelow: 10,
@@ -171,7 +173,7 @@ describe('Haiku model routing validation (Phase F.1)', () => {
     const engine = new QueryEngine({
       provider,
       tools: [balanceTool],
-      systemPrompt: { type: 'text', text: 'You are a financial assistant.' },
+      systemPrompt: 'You are a financial assistant.',
     });
 
     await collectEvents(engine.submitMessage('Hi'));
@@ -193,7 +195,7 @@ describe('Haiku model routing validation (Phase F.1)', () => {
       provider,
       tools: [balanceTool, saveTool],
       model: HAIKU_MODEL,
-      systemPrompt: { type: 'text', text: 'You are a financial assistant.' },
+      systemPrompt: 'You are a financial assistant.',
     });
 
     const events = await collectEvents(engine.submitMessage('Check my balance'));
