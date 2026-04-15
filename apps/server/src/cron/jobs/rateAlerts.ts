@@ -2,9 +2,11 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { getFinancialSummary } from '@t2000/sdk';
 import { sendEmail } from '../../services/email.js';
 import type { NotificationUser, JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
 const FEATURE_KEY = 'rate_alert';
-const CONCURRENCY = 10;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 500;
 const RATE_CHANGE_THRESHOLD = 0.01; // 1% absolute change (e.g. 5% → 6% triggers)
 const DEDUP_HOURS = 24;
 
@@ -151,9 +153,9 @@ async function processUser(
 
     if (delta < RATE_CHANGE_THRESHOLD) return 'skipped';
 
-    const summary = await getFinancialSummary(client, user.walletAddress, {
+    const summary = await withRetry(() => getFinancialSummary(client, user.walletAddress, {
       allowanceId: user.allowanceId ?? undefined,
-    });
+    }));
 
     const direction = normalizedCurrent > normalizedLast ? 'up' : 'down';
     const { subject, html } = buildRateAlertEmail({
@@ -202,9 +204,9 @@ export async function runRateAlerts(
 
   let currentRate: number | null = null;
   try {
-    const anySummary = await getFinancialSummary(client, eligible[0].walletAddress, {
+    const anySummary = await withRetry(() => getFinancialSummary(client, eligible[0].walletAddress, {
       allowanceId: eligible[0].allowanceId ?? undefined,
-    });
+    }));
     currentRate = anySummary.saveApy;
   } catch (err) {
     console.error('[rate_alerts] Failed to fetch current rate:', err instanceof Error ? err.message : err);
@@ -215,6 +217,8 @@ export async function runRateAlerts(
   let errors = 0;
 
   for (let i = 0; i < eligible.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = eligible.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((user) => processUser(client, user, currentRate)),

@@ -4,8 +4,10 @@ import { executeAdminTx } from '../../services/sui-executor.js';
 import { runAutonomySafetyChecks, type SafetyContext } from './autonomy-safety.js';
 import { checkCircuitBreaker, pauseAction } from './circuit-breaker.js';
 import type { JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 5;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 500;
 const DCA_CHARGE = 10_000n; // $0.01 USDC (6 decimals) per execution
 
 interface DueAction {
@@ -318,7 +320,7 @@ async function executeWithChargeAndNotify(
 ): Promise<ProcessResult> {
   try {
     const tx = buildDeductAllowanceTx(action.allowanceId!, DCA_CHARGE, ALLOWANCE_FEATURES.DCA);
-    const result = await executeAdminTx(tx);
+    const result = await withRetry(() => executeAdminTx(tx));
     if (result.status !== 'success') {
       console.warn(`[scheduled-actions] Charge failed for ${action.walletAddress}: ${result.digest}`);
       return 'skipped';
@@ -354,6 +356,8 @@ export async function runScheduledActions(
   let errors = 0;
 
   for (let i = 0; i < actions.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = actions.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((action) => processAction(client, action)),

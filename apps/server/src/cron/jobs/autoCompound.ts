@@ -2,32 +2,13 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { getPendingRewards, buildDeductAllowanceTx, ALLOWANCE_FEATURES } from '@t2000/sdk';
 import { executeAdminTx } from '../../services/sui-executor.js';
 import type { NotificationUser, JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
 const CONCURRENCY = 3;
 const BATCH_DELAY_MS = 500;
 const FEATURE_KEY = 'auto_compound';
 const MIN_REWARD_VALUE_USD = 0.10;
 const COMPOUND_CHARGE = 5000n; // $0.005 USDC (6 decimals)
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastError = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('429') && !msg.includes('Too Many Requests')) throw err;
-      if (attempt === maxRetries) break;
-      await sleep(2000 * 2 ** attempt + Math.random() * 500);
-    }
-  }
-  throw lastError;
-}
 
 function getInternalUrl(): string {
   return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';

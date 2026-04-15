@@ -2,8 +2,10 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { getFinancialSummary, HF_WARN_THRESHOLD } from '@t2000/sdk';
 import { sendEmail } from '../../services/email.js';
 import type { NotificationUser, JobResult } from '../types.js';
+import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 10;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 500;
 const DEDUP_WARN_MS = 4 * 60 * 60 * 1000;
 const FEATURE_KEY = 'hf_alert';
 
@@ -43,9 +45,9 @@ async function processUser(
   user: NotificationUser,
 ): Promise<'sent' | 'skipped' | 'error'> {
   try {
-    const summary = await getFinancialSummary(client, user.walletAddress, {
+    const summary = await withRetry(() => getFinancialSummary(client, user.walletAddress, {
       allowanceId: user.allowanceId ?? undefined,
-    });
+    }));
 
     // Critical alerts are handled real-time by the indexer HF hook.
     // This batch job only handles warn-level as a safety net.
@@ -91,6 +93,8 @@ export async function runHFAlerts(
   let errors = 0;
 
   for (let i = 0; i < eligible.length; i += CONCURRENCY) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
     const batch = eligible.slice(i, i + CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((user) => processUser(client, user)),
