@@ -1,6 +1,6 @@
 {
   "name": "@t2000/engine",
-  "version": "0.36.1",
+  "version": "0.36.2",
   "description": "Agent engine for conversational finance — QueryEngine, financial tools, LLM orchestration",
   "type": "module",
   "main": "./dist/index.js",
