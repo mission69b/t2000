@@ -404,7 +404,7 @@ async function processUser(
 
     const [summary, goals] = await Promise.all([
       withRetry(() => getFinancialSummary(client, user.walletAddress, {
-        allowanceId: user.allowanceId,
+        allowanceId: user.allowanceId ?? undefined,
       })),
       fetchGoals(user.walletAddress),
     ]);
