@@ -20,7 +20,7 @@ const PACKAGES = [
     icon: "{ }",
     title: "SDK",
     pkg: "@t2000/sdk",
-    desc: "Wallet management, balance queries, transaction building.",
+    desc: "Wallet management, balance queries, transaction building, token registry.",
     install: "npm i @t2000/sdk",
     href: "https://www.npmjs.com/package/@t2000/sdk",
   },
@@ -28,7 +28,7 @@ const PACKAGES = [
     icon: "⟡",
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "29 tools, 16 prompts. Works with Claude, Cursor, any MCP client.",
+    desc: "50 tools, 16 prompts. Works with Claude, Cursor, any MCP client.",
     install: "npx @t2000/mcp",
     href: "https://www.npmjs.com/package/@t2000/mcp",
   },
@@ -36,7 +36,7 @@ const PACKAGES = [
     icon: "◈",
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Conversational finance runtime. Streaming, tools, sessions.",
+    desc: "Reasoning engine. Adaptive thinking, guards, recipes, memory, streaming, canvas.",
     install: "npm i @t2000/engine",
     href: "https://www.npmjs.com/package/@t2000/engine",
   },
@@ -44,7 +44,7 @@ const PACKAGES = [
     icon: "⇌",
     title: "Gateway",
     pkg: "mpp.t2000.ai",
-    desc: "Pay-per-use APIs for agents. No keys, just USDC.",
+    desc: "Pay-per-use APIs for agents. 41 services, 90+ endpoints. No keys.",
     install: "POST mpp.t2000.ai/{service}",
     href: "https://mpp.t2000.ai",
   },
@@ -88,31 +88,31 @@ const THREE_PRODUCTS = [
   {
     tag: "Consumer",
     name: "Audric",
-    desc: "The consumer app. Banking by conversation. Sign in with Google. Chat with your money.",
+    desc: "The consumer app. Banking by conversation. Sign in with Google. Reasoning engine. Canvas visualizations.",
     cta: { label: "Try Audric", href: AUDRIC_URL, primary: true },
   },
   {
     tag: "Gateway",
     name: "Gateway",
-    desc: "Pay-per-use API gateway for AI agents. 40+ services, 90+ endpoints. One USDC wallet. No API keys.",
+    desc: "Pay-per-use API gateway for AI agents. 41 services, 90+ endpoints. One USDC wallet. No API keys.",
     cta: { label: "mpp.t2000.ai", href: "https://mpp.t2000.ai", primary: false },
     accent: true,
   },
   {
     tag: "Developer",
     name: "Build",
-    desc: "SDK, MCP, Engine, CLI. The full stack that powers Audric — open for builders.",
+    desc: "SDK, MCP, Engine, CLI. The full stack that powers Audric \u2014 open for builders.",
     cta: { label: "See what\u2019s included", href: "#stack", primary: false },
   },
 ];
 
 const PRIMITIVES = [
+  { title: "Reasoning engine", desc: "Adaptive thinking, 9 step guards, 7 skill recipes. Complexity-based model routing.", isNew: true },
+  { title: "Intelligence layer", desc: "Financial profiles, proactive awareness, episodic memory, conversation state machine, self-evaluation.", isNew: true },
+  { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, DCA planner. Powers Audric Canvas.", isNew: true },
   { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
-  { title: "DeFi access", desc: "Savings at 3\u20138% APY, credit/borrow \u2014 NAVI Protocol on Sui mainnet." },
-  { title: "Allowance model", desc: "On-chain scoped permissions. User-funded micropayment budget. Deduct $0.005/day \u2014 never more than the cap." },
-  { title: "Intent signing", desc: "Short-lived signed intents. Every autonomous action is cryptographically scoped and time-bounded." },
-  { title: "Financial data", desc: "getFinancialSummary(), health factor, rates, yield \u2014 free with the SDK." },
-  { title: "Payment rail", desc: "40+ APIs via MPP gateway. No API keys. Pay per request in USDC." },
+  { title: "DeFi access", desc: "Savings at 3\u20138% APY, credit/borrow \u2014 NAVI Protocol. 20+ DEX swap routing via Cetus." },
+  { title: "Allowance model", desc: "On-chain scoped permissions. User-funded micropayment budget. USD-aware auto-approve thresholds." },
 ];
 
 const ARCH_LAYERS = [
@@ -121,14 +121,22 @@ const ARCH_LAYERS = [
     label: "Layer 2 \u2014 Protocols",
     split: [
       { title: "t2000 (owned)", items: "allowance.move \u00B7 treasury.move", sub: "Scoped \u00B7 time-bounded \u00B7 daily-limited" },
-      { title: "Third-party (via MCP)", items: "NAVI lending + yield \u00B7 Cetus swaps" },
+      { title: "Third-party (via MCP)", items: "NAVI lending + yield \u00B7 Cetus 20+ DEXs" },
     ],
   },
   {
     label: "Layer 3 \u2014 t2000 Stack",
     split: [
       { title: "Packages (npm)", items: "@t2000/sdk \u00B7 @t2000/engine \u00B7 @t2000/mcp \u00B7 @t2000/cli \u00B7 @suimpp/mpp" },
-      { title: "Services", items: "api.t2000.ai (gas station + indexer) \u00B7 mpp.t2000.ai (gateway, 40+ services)", sub: "Identity: zkLogin via Enoki (web) \u00B7 Ed25519 AES-256-GCM (CLI)" },
+      { title: "Services", items: "mpp.t2000.ai (41 services) \u00B7 api.t2000.ai (gas + indexer)" },
+    ],
+  },
+  {
+    label: "Layer 4 \u2014 Intelligence",
+    accent: true,
+    split: [
+      { title: "Reasoning Engine", items: "Adaptive thinking \u00B7 9 step guards \u00B7 7 skill recipes \u00B7 Model routing" },
+      { title: "Intelligence Features", items: "Financial profiles \u00B7 Proactive awareness \u00B7 Episodic memory \u00B7 Self-evaluation" },
     ],
   },
 ];
@@ -186,10 +194,18 @@ export default function Home() {
               <em className="italic text-accent">Audric.</em>
             </h1>
 
-            <p className="text-sm sm:text-base text-muted leading-[1.7] mb-8 sm:mb-10 max-w-[460px] mt-4 sm:mt-5">
-              CLI, SDK, MCP server, conversational engine, and pay-per-use API gateway.
+            <p className="text-sm sm:text-base text-muted leading-[1.7] max-w-[460px] mt-4 sm:mt-5 mb-4">
+              CLI, SDK, MCP server, reasoning engine, and pay-per-use API gateway.
               Open source. Non-custodial. Built on Sui.
             </p>
+
+            <div className="flex gap-2 flex-wrap mb-8 sm:mb-10">
+              {["Non-custodial", "Open source", "MIT licensed"].map((tag) => (
+                <span key={tag} className="font-mono text-[9px] tracking-wide px-2.5 py-1 border border-accent/30 rounded-sm text-accent">
+                  {tag}
+                </span>
+              ))}
+            </div>
 
             <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
               <a
@@ -260,7 +276,7 @@ export default function Home() {
                 <em className="italic text-accent">a financial brain.</em>
               </h2>
               <p className="text-sm text-muted leading-[1.7] max-w-[540px] mt-3">
-                Wallet, DeFi access, allowance model, intent signing, payment rail — open source, non-custodial, Sui-native.
+                Wallet, DeFi access, reasoning, intelligence, canvas — open source, non-custodial, Sui-native.
               </p>
             </div>
 
@@ -273,7 +289,12 @@ export default function Home() {
                       i < PRIMITIVES.length - 1 ? 'border-b border-border' : ''
                     } ${i % 2 === 0 ? 'sm:border-r sm:border-border' : ''}`}
                   >
-                    <div className="text-[11px] font-semibold text-foreground mb-1">{item.title}</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-[11px] font-semibold text-foreground">{item.title}</div>
+                      {item.isNew && (
+                        <span className="text-[8px] font-semibold tracking-wide bg-accent-dim text-accent px-1.5 py-0.5 rounded-sm">NEW</span>
+                      )}
+                    </div>
                     <p className="font-mono text-[10px] text-muted leading-[1.7]">{item.desc}</p>
                   </div>
                 ))}
@@ -335,7 +356,7 @@ export default function Home() {
                 Architecture
               </div>
               <h2 className="text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
-                Four layers. One stack.
+                Five layers. One stack.
               </h2>
             </div>
 
@@ -345,8 +366,8 @@ export default function Home() {
                   {i > 0 && (
                     <div className="text-center text-accent text-lg py-1">↓</div>
                   )}
-                  <div className="border border-border bg-background p-4 sm:p-5 text-center">
-                    <div className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted mb-2">
+                  <div className={`border bg-background p-4 sm:p-5 text-center ${(layer as { accent?: boolean }).accent ? 'border-accent' : 'border-border'}`}>
+                    <div className="font-mono text-[10px] tracking-[0.1em] uppercase mb-2 text-muted">
                       {layer.label}
                     </div>
                     {layer.content && (
@@ -358,7 +379,7 @@ export default function Home() {
                           <div key={col.title}>
                             <div className="text-[10px] font-semibold text-accent mb-1">{col.title}</div>
                             <div className="text-[12px] text-foreground">{col.items}</div>
-                            {col.sub && <div className="font-mono text-[9px] text-muted mt-1">{col.sub}</div>}
+                            {'sub' in col && col.sub && <div className="font-mono text-[9px] text-muted mt-1">{col.sub}</div>}
                           </div>
                         ))}
                       </div>
@@ -394,7 +415,7 @@ export default function Home() {
                   MPP Gateway
                 </div>
                 <h2 className="text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
-                  40+ services.<br />
+                  41 services.<br />
                   <em className="italic text-accent">No API keys.</em>
                 </h2>
               </div>
@@ -404,11 +425,12 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-px bg-border border border-border mb-10 sm:mb-14 max-w-[500px]">
+            <div className="grid grid-cols-4 gap-px bg-border border border-border mb-10 sm:mb-14 max-w-[600px]">
               {[
                 { value: "41", label: "Services" },
                 { value: "90+", label: "Endpoints" },
                 { value: "$0.001", label: "From" },
+                { value: "USDC", label: "Payment" },
               ].map((stat) => (
                 <div key={stat.label} className="bg-surface px-5 py-5 sm:py-6 text-center">
                   <div className="text-[20px] sm:text-[24px] font-semibold text-foreground leading-none mb-1.5 tracking-tight">

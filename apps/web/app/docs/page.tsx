@@ -42,41 +42,41 @@ const PACKAGES = [
   {
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "25 tools, 16 prompts. Connect Claude Desktop, Cursor, or any MCP-compatible client to t2000 infrastructure.",
+    desc: "50 tools, 16 prompts. Connect Claude Desktop, Cursor, or any MCP-compatible client. Full financial toolkit.",
     install: "npx @t2000/mcp",
     npm: "https://www.npmjs.com/package/@t2000/mcp",
     github: `${GITHUB_URL}/tree/main/packages/mcp`,
     commands: [
-      "t2000_balance",
-      "t2000_save",
-      "t2000_send",
-      "t2000_borrow",
-      "t2000_rates",
-      "t2000_health",
+      "t2000_balance · t2000_save · t2000_send",
+      "t2000_borrow · t2000_swap · t2000_rates",
+      "t2000_health · t2000_canvas · t2000_schedule",
+      "t2000_portfolio · t2000_analytics · +39 more",
     ],
   },
   {
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Conversational finance runtime. QueryEngine with streaming, tool system, confirmation flow, and session management.",
+    desc: "Reasoning engine for financial agents. Adaptive thinking, 9 step guards, 7 skill recipes, intelligence layer (F1\u2013F5), canvas system, streaming.",
     install: "npm i @t2000/engine",
     npm: "https://www.npmjs.com/package/@t2000/engine",
     github: `${GITHUB_URL}/tree/main/packages/engine`,
     commands: [
-      "import { QueryEngine } from '@t2000/engine'",
-      "const engine = new QueryEngine({ ... })",
-      "engine.submitMessage('Save my idle cash')",
+      "1. classify effort (quick/moderate/deep)",
+      "2. match recipe (7 skill recipes)",
+      "3. run guards (9 pre/post gates)",
+      "4. execute tools (50 financial tools)",
+      "5. self-evaluate (F5 checklist)",
     ],
   },
   {
     title: "Gateway",
     pkg: "mpp.t2000.ai",
-    desc: "Pay-per-use API gateway for agents. 40+ services, 90+ endpoints. No API keys — your agent pays per request with USDC on Sui.",
+    desc: "Pay-per-use API gateway for agents. 41 services, 90+ endpoints. No API keys \u2014 pay per request with USDC. Reputation tiers.",
     install: "POST mpp.t2000.ai/{service}/{endpoint}",
     npm: null,
     github: `${GITHUB_URL}/tree/main/apps/gateway`,
     commands: [
-      "HTTP 402 → pay $0.01 → 200 OK",
+      "HTTP 402 \u2192 pay $0.01 \u2192 200 OK",
       "GET  /api/services",
       "POST /openai/chat/completions",
       "POST /anthropic/messages",
@@ -93,7 +93,7 @@ const RESOURCES = [
   {
     label: "Gateway Explorer",
     href: "https://mpp.t2000.ai/services",
-    desc: "Browse all 40+ API services",
+    desc: "Browse all 41 API services",
   },
   {
     label: "suimpp Protocol",
@@ -194,6 +194,27 @@ export default function DocsPage() {
           </div>
         </section>
 
+        {/* Capabilities */}
+        <section className="max-w-[900px] mb-14 sm:mb-20">
+          <div className="font-mono text-[10px] tracking-[0.15em] uppercase text-accent mb-6">
+            Capabilities
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
+            {[
+              { value: "50", label: "Financial tools", sub: "37 read + 12 write + canvas" },
+              { value: "9", label: "Step guards", sub: "balance, HF, slippage, cost, ..." },
+              { value: "7", label: "Skill recipes", sub: "safe_borrow, swap_and_save, ..." },
+              { value: "8", label: "Canvas templates", sub: "yield, health, DCA, portfolio, ..." },
+            ].map((cap) => (
+              <div key={cap.label} className="bg-surface p-5 text-center">
+                <div className="text-[22px] font-semibold text-accent leading-none mb-1.5">{cap.value}</div>
+                <div className="font-mono text-[10px] tracking-wider uppercase text-muted mb-1">{cap.label}</div>
+                <div className="font-mono text-[9px] text-dim">{cap.sub}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Packages */}
         <section className="mb-14 sm:mb-20">
           <div className="font-mono text-[10px] tracking-[0.15em] uppercase text-accent mb-6">
@@ -253,7 +274,7 @@ export default function DocsPage() {
 
                   <div className="bg-background border border-border p-4">
                     <div className="font-mono text-[10px] tracking-wider uppercase text-dim mb-3">
-                      {pkg.title === "Gateway" ? "Endpoints" : pkg.title === "MCP" ? "Tools" : "Usage"}
+                      {pkg.title === "Gateway" ? "Endpoints" : pkg.title === "MCP" ? "Tools (50)" : pkg.title === "Engine" ? "Reasoning pipeline" : "Usage"}
                     </div>
                     <div className="space-y-1">
                       {pkg.commands.map((cmd) => (

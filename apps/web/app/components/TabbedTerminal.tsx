@@ -105,6 +105,33 @@ const TABS: TerminalTab[] = [
     ],
   },
   {
+    label: "Engine",
+    lines: [
+      { text: "$ node engine-demo.mjs", color: "white", delay: 0 },
+      { text: "", delay: 300 },
+      { text: "  import { QueryEngine } from '@t2000/engine'", color: "dim", delay: 200 },
+      { text: "  const engine = new QueryEngine({ tools: 50 })", color: "dim", delay: 200 },
+      { text: "", delay: 300 },
+      { text: "  → Classifying effort...", color: "dim", delay: 400 },
+      { text: "  ✓ Effort: moderate — matched recipe: swap_and_save", color: "green", delay: 350 },
+      { text: "", delay: 200 },
+      { text: "  → Running guards...", color: "dim", delay: 300 },
+      { text: "  ✓ balance_required    passed", color: "green", delay: 200 },
+      { text: "  ✓ slippage_warning    passed (0.3%)", color: "green", delay: 150 },
+      { text: "  ✓ health_factor       passed (HF: 2.4)", color: "green", delay: 150 },
+      { text: "", delay: 200 },
+      { text: "  → Executing tools...", color: "dim", delay: 300 },
+      { text: "  ✓ balance_check       $244.18 USDC", color: "green", delay: 250 },
+      { text: "  ✓ swap_quote          SUI→USDC best route via Cetus", color: "green", delay: 250 },
+      { text: "  ✓ swap_execute        10 SUI → $12.40 USDC", color: "green", delay: 300 },
+      { text: "  ✓ save_deposit        $12.40 → NAVI @ 5.2% APY", color: "green", delay: 300 },
+      { text: "", delay: 200 },
+      { text: "  → Self-evaluation (F5)...", color: "dim", delay: 300 },
+      { text: "  ✓ Action matched intent   ✓ Amounts verified", color: "green", delay: 200 },
+      { text: "  ✓ No side effects         ✓ User informed", color: "green", delay: 200 },
+    ],
+  },
+  {
     label: "Receive",
     lines: [
       { text: "$ t2000 receive --amount 50 --label \"Consulting fee\"", color: "white", delay: 0 },
@@ -237,7 +264,8 @@ export function TabbedTerminal() {
         {activeTab === 1 && "Save, send, borrow — all from the terminal"}
         {activeTab === 2 && "Full portfolio view with DeFi positions and limits"}
         {activeTab === 3 && "Pay for any API with USDC — no keys, no signup"}
-        {activeTab === 4 && "Accept USDC from anyone — fixed amount or open"}
+        {activeTab === 4 && "Reasoning engine: classify → recipe → guards → execute → self-evaluate"}
+        {activeTab === 5 && "Accept USDC from anyone — fixed amount or open"}
       </div>
     </div>
   );
