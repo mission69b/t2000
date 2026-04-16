@@ -4,8 +4,8 @@ import { executeAdminTx } from '../../services/sui-executor.js';
 import type { NotificationUser, JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 10;
-const BATCH_DELAY_MS = 100;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 2000;
 const FEATURE_KEY = 'auto_compound';
 const MIN_REWARD_VALUE_USD = 0.10;
 const COMPOUND_CHARGE = 5000n; // $0.005 USDC (6 decimals)

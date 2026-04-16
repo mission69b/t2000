@@ -6,7 +6,7 @@ import type { NotificationUser, JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
 const CONCURRENCY = 3;
-const BATCH_DELAY_MS = 500;
+const BATCH_DELAY_MS = 2000;
 const FEATURE_KEY = 'briefing';
 const BRIEFING_CHARGE = 5000n; // $0.005 USDC (6 decimals)
 const MIN_IDLE_USDC = 1; // only send if user has >= $1 idle or savings

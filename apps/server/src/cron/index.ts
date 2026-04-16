@@ -19,7 +19,7 @@ import { runPatternDetector } from './jobs/patternDetector.js';
 import { sleep } from './utils.js';
 import type { JobResult } from './types.js';
 
-const INTER_JOB_DELAY_MS = 2000;
+const INTER_JOB_DELAY_MS = 5000;
 
 function getClient(): SuiJsonRpcClient {
   const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');

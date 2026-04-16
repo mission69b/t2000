@@ -3,8 +3,8 @@ import { getFinancialSummary } from '@t2000/sdk';
 import type { NotificationUser, JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 10;
-const BATCH_DELAY_MS = 100;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 2000;
 
 function getInternalUrl(): string {
   return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';

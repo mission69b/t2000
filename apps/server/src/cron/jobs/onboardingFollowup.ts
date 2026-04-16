@@ -4,8 +4,8 @@ import { sendEmail } from '../../services/email.js';
 import type { JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 10;
-const BATCH_DELAY_MS = 100;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 2000;
 const JOB_NAME = 'onboarding_followup';
 
 interface FollowupUser {

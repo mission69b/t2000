@@ -5,8 +5,8 @@ import { sendEmail } from '../../services/email.js';
 import type { NotificationUser, JobResult } from '../types.js';
 import { sleep, withRetry } from '../utils.js';
 
-const CONCURRENCY = 10;
-const BATCH_DELAY_MS = 100;
+const CONCURRENCY = 3;
+const BATCH_DELAY_MS = 2000;
 const REMIND_CHARGE = 1000n; // $0.001 USDC (6 decimals)
 
 interface DueAction {

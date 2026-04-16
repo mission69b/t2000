@@ -6,7 +6,7 @@ import { sleep, withRetry } from '../utils.js';
 
 const FEATURE_KEY = 'rate_alert';
 const CONCURRENCY = 3;
-const BATCH_DELAY_MS = 500;
+const BATCH_DELAY_MS = 2000;
 const RATE_CHANGE_THRESHOLD = 0.01; // 1% absolute change (e.g. 5% → 6% triggers)
 const DEDUP_HOURS = 24;
 
