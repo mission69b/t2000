@@ -187,7 +187,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_receive',
-    'Generate a payment request — returns wallet address, QR-ready URI, and optional amount/memo. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds.',
+    'Generate a payment request — returns wallet address, Payment Kit URI (sui:pay?…), nonce, and optional amount/memo. The URI is scannable by any Sui wallet. Use when the user wants to receive a payment, create a payment request, or share their address for receiving funds.',
     {
       amount: z.number().optional().describe('Amount to request (omit for open amount)'),
       currency: z.string().optional().describe('Currency symbol (default: USDC)'),

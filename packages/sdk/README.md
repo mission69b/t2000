@@ -89,7 +89,7 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.address()` | Wallet Sui address | `string` |
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
-| `agent.receive({ amount?, currency?, memo?, label? })` | Generate payment request with QR URI | `PaymentRequest` |
+| `agent.receive({ amount?, currency?, memo?, label? })` | Generate payment request with Payment Kit URI (`sui:pay?...`), nonce for duplicate prevention | `PaymentRequest` |
 | `agent.save({ amount, protocol? })` | Deposit **USDC** to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
 | `agent.withdraw({ amount, asset? })` | Withdraw from savings. `amount` can be `'all'`. Optional `asset` for multi-asset withdrawals (default: USDC). | `WithdrawResult` |
 | `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |

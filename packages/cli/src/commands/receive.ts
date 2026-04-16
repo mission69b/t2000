@@ -52,16 +52,17 @@ export function registerReceive(program: Command) {
         printDivider();
         printKeyValue('Address', request.address);
         printKeyValue('Network', 'Sui Mainnet');
+        printKeyValue('Nonce', request.nonce);
         if (request.memo) {
           printKeyValue('Memo', request.memo);
         }
         printDivider();
 
         printBlank();
-        printKeyValue('QR Data', request.qrUri);
+        printKeyValue('Payment URI', request.qrUri);
         printBlank();
 
-        printLine(pc.dim('Share this address or QR data to receive payment.'));
+        printLine(pc.dim('Share this URI or scan the QR to pay via any Sui wallet.'));
         printBlank();
       } catch (error) {
         handleError(error);

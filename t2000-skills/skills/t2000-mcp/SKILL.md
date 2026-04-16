@@ -3,7 +3,7 @@ name: t2000-mcp
 description: >-
   Start and configure the t2000 MCP server for AI platform integration.
   Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server. Provides 25 tools
+  client, set up MCP config, or start the MCP server.   Provides 29 tools
   and 16 prompts for AI-driven banking and MPP service operations.
 license: MIT
 metadata:
@@ -16,7 +16,7 @@ metadata:
 
 ## Purpose
 Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 25 tools, 16 prompts, stdio transport, safeguard enforced.
+account. 29 tools, 16 prompts, stdio transport, safeguard enforced.
 
 ## Setup
 ```bash
@@ -40,9 +40,9 @@ Paste into your AI platform's MCP settings:
 { "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
 ```
 
-## Available Tools (25)
+## Available Tools (29)
 
-### Read-only (14)
+### Read-only (15)
 | Tool | Description |
 |------|-------------|
 | `t2000_overview` | Complete account snapshot in one call |
@@ -57,10 +57,11 @@ Paste into your AI platform's MCP settings:
 | `t2000_fund_status` | Savings fund status |
 | `t2000_pending_rewards` | Pending protocol rewards |
 | `t2000_deposit_info` | Deposit instructions |
+| `t2000_receive` | Generate payment request with address, nonce, and Payment Kit URI (`sui:pay?…`) |
 | `t2000_services` | List all MPP services and endpoints |
 | `t2000_contacts` | List saved contacts |
 
-### State-changing (9)
+### State-changing (12)
 All support `dryRun: true` for previews without signing.
 
 | Tool | Description |
@@ -72,6 +73,9 @@ All support `dryRun: true` for previews without signing.
 | `t2000_repay` | Repay debt |
 | `t2000_claim_rewards` | Claim pending protocol rewards |
 | `t2000_pay` | Pay for and call any MPP API service with USDC |
+| `t2000_swap` | Execute a token swap via Cetus Aggregator |
+| `t2000_stake` | Stake SUI for vSUI via VOLO liquid staking |
+| `t2000_unstake` | Unstake vSUI and redeem SUI |
 | `t2000_contact_add` | Save a contact name → address |
 | `t2000_contact_remove` | Remove a saved contact |
 

@@ -117,7 +117,7 @@ Audric has two distinct user types that need different experiences but share the
 
 - Warning: "Only send USDC on the Sui network. Other tokens or networks may result in lost funds."
 
-- Phase 2 expansion: ✅ payment links + invoices shipped (Phase 2.1, 2.2). AlchemyPay skipped (deferred)
+- Phase 2 expansion: ✅ payment links + invoices shipped (Phase 2.1, 2.2). AlchemyPay skipped (deferred). Pay v2 security hardening + Sui Payment Kit integration shipped (Phase 2.3).
 
 - NFC: out of scope — requires native app + payment processor certification
 
@@ -207,7 +207,7 @@ The chip bar at the bottom of the dashboard provides guided flows for users who 
           → Warning: "Only send USDC on the Sui network"
 ```
 
-- Phase 2 expansion adds: payment links, invoices, AlchemyPay on/off-ramp
+- Phase 2 expansion adds: payment links, invoices, Sui Payment Kit registry verification, AlchemyPay on/off-ramp (deferred)
 - Currently read-only — no transaction executed
 
 ### Contextual chips + smart cards
@@ -1345,8 +1345,8 @@ State: Not found (invalid slug)
 
 **Implementation notes:**
 
-- Route: `app/pay/[slug]/page.tsx` — server component, fetches payment link status on load
-- Polling: for "active" state, poll `GET /api/pay/[slug]/status` every 5 seconds to auto-detect payment arrival and transition to "paid" state in real-time
+- Route: `app/pay/[slug]/page.tsx` — server component, fetches payment details on load
+- Verification: polls `POST /api/payments/[slug]/verify` every 6 seconds. Uses Sui Payment Kit registry (`getPaymentRecord`) for instant detection of registry-based payments. Falls back to on-chain balance change verification for manual transfers.
 - Meta tags: `generateMetadata()` returns amount + label for link previews in WhatsApp/iMessage/Slack — "Pay $50.00 USDC · Logo design work"
 - Open Graph image: dynamically generated OG image showing amount and Audric brand
 - Acquisition CTA: "Try Audric" link at the bottom is the primary acquisition path from payment links. Links to `audric.ai/?ref=paylink` with attribution tracking
@@ -2062,7 +2062,7 @@ These are valid features that should not be built yet. Revisit when the core hab
 | **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
 | **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
 | **Phase 1**  | Weeks 1–2    | ✅ COMPLETE. allowance.move, Spec 2, digest replay, notifications (1.1), HF alerts (1.2), onboarding wizard (SDK 0.23.0), activity feed (1.6), CostTracker + Stats API, morning briefing (1.3) + deep links (1.3.1), savings goals (1.4), feedback data layer (1.4.1), onboarding + ToS (1.5), session charge. Landing pages shipped (audric.ai, t2000.ai, suimpp.dev) | Daily habit          |
-| **Phase 2**  | Weeks 3–5    | ✅ COMPLETE. Receive: payment links, QR, invoices, send memo. **+ Rich UX P0:** card primitives, HealthCard, TransactionHistoryCard, SwapQuoteCard, enhanced receipts, AllowanceCard. AlchemyPay skipped. | New acquisition + UX |
+| **Phase 2**  | Weeks 3–5    | ✅ COMPLETE. Receive: payment links, QR, invoices, send memo. Pay v2 security hardening + Sui Payment Kit integration (registry verification, `processRegistryPayment`, `sui:pay?` URIs). **+ Rich UX P0:** card primitives, HealthCard, TransactionHistoryCard, SwapQuoteCard, enhanced receipts, AllowanceCard. AlchemyPay skipped. | New acquisition + UX |
 | **Phase 2.5** | Parallel     | ✅ COMPLETE. Engine foundation + **Rich UX P1:** ServiceCatalogCard, SearchResultsCard, allowance control tools (pause/limit/permissions). See `audric-build-tracker.md` | RE prerequisite + UX |
 | **Phase 3**  | Weeks 6–8    | ✅ COMPLETE. Auto-compound, yield alerts, DCA/scheduled, MPP discovery, credit UX. **+ Analytics:** portfolio snapshots, spending/yield/activity summaries, insight cards (idle USDC, HF warning), weekly briefing. ~~Gifting~~ deferred | Copilot moat + analytics |
 | **Phase 3.5** | ~3 weeks     | ✅ COMPLETE. Intelligence Layer: Reasoning Engine (adaptive thinking, guards, recipes) + F1–F5 (profile, proactive awareness, memory, state machine, self-eval). **+ Rich UX P2:** StakingCard, ProtocolCard, PriceCard. Post-deploy: Unified Financial Data Layer, DCA scheduling, burn address guard. Published `@t2000/engine@0.33.2`. | Agent intelligence   |

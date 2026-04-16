@@ -149,7 +149,9 @@ export interface PaymentRequest {
   currency: string;
   memo: string | null;
   label: string | null;
-  /** URI suitable for QR code encoding (e.g. sui:0x...?amount=50&currency=USDC&memo=Coffee) */
+  /** Unique payment identifier (UUID) for Payment Kit registry */
+  nonce: string;
+  /** Payment Kit URI (sui:pay?...) for QR codes and wallet deep links */
   qrUri: string;
   /** Human-readable summary */
   displayText: string;

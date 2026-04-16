@@ -2,6 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import { createPaymentTransactionUri } from '@mysten/payment-kit';
 import { getSuiClient } from './utils/sui.js';
 import {
   generateKeypair,
@@ -609,14 +610,31 @@ export class T2000 extends EventEmitter<T2000Events> {
     const currency = params?.currency ?? 'USDC';
     const memo = params?.memo ?? null;
     const label = params?.label ?? null;
+    const nonce = crypto.randomUUID();
 
-    const qrParts = [`sui:${this._address}`];
-    const queryParams: string[] = [];
-    if (amount != null) queryParams.push(`amount=${amount}`);
-    if (currency !== 'SUI') queryParams.push(`currency=${currency}`);
-    if (memo) queryParams.push(`memo=${encodeURIComponent(memo)}`);
-    if (label) queryParams.push(`label=${encodeURIComponent(label)}`);
-    const qrUri = queryParams.length > 0 ? `${qrParts[0]}?${queryParams.join('&')}` : qrParts[0];
+    let qrUri: string;
+    if (amount != null && amount > 0) {
+      const decimals = currency === 'SUI' ? 9 : 6;
+      const coinType = currency === 'SUI'
+        ? '0x2::sui::SUI'
+        : SUPPORTED_ASSETS.USDC.type;
+      const rawAmount = BigInt(Math.floor(amount * 10 ** decimals));
+      qrUri = createPaymentTransactionUri({
+        receiverAddress: this._address,
+        amount: rawAmount,
+        coinType,
+        nonce,
+        ...(label ? { label } : {}),
+        ...(memo ? { message: memo } : {}),
+      });
+    } else {
+      const qrParts = [`sui:${this._address}`];
+      const queryParams: string[] = [];
+      if (currency !== 'SUI') queryParams.push(`currency=${currency}`);
+      if (memo) queryParams.push(`memo=${encodeURIComponent(memo)}`);
+      if (label) queryParams.push(`label=${encodeURIComponent(label)}`);
+      qrUri = queryParams.length > 0 ? `${qrParts[0]}?${queryParams.join('&')}` : qrParts[0];
+    }
 
     const amountStr = amount != null ? `$${amount.toFixed(2)} ` : '';
     const displayParts = [`Send ${amountStr}${currency} to ${truncateAddress(this._address)}`];
@@ -629,6 +647,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       currency,
       memo,
       label,
+      nonce,
       qrUri,
       displayText: displayParts.join('\n'),
     };

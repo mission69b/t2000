@@ -96,16 +96,20 @@ Supported assets: USDC (default), USDT, SUI, USDe, USDsui.
 ```
   ✓ Payment Request
 
-  Address:   0x8b3e...d412
-  Amount:    $25.00 USDC
-  Memo:      Office supplies
-  QR URI:    sui:0x8b3e...d412?amount=25&currency=USDC&memo=Office%20supplies
+  $25.00 USDC
 
-  Share this address or scan the QR code to receive funds.
+  Address:     0x8b3e...d412
+  Network:     Sui Mainnet
+  Nonce:       a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+  Memo:        Office supplies
+
+  Payment URI: sui:pay?receiver=0x8b3e...&amount=25000000&coinType=0xdba3...::usdc::USDC&nonce=a1b2...
+
+  Share this URI or scan the QR to pay via any Sui wallet.
 ```
 
 Options: `--amount <n>`, `--currency <sym>`, `--memo <text>`, `--label <text>`, `--key <path>`.
-All optional. Without `--amount`, shows address only. QR data URI encodes the Sui payment URI for wallet scanning.
+All optional. Without `--amount`, shows address only. When amount is specified, generates a Sui Payment Kit URI (`sui:pay?...`) with a unique nonce for duplicate prevention.
 
 ### `t2000 borrow <amount>`
 

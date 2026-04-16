@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "@cetusprotocol/aggregator-sdk": "^1.4.8",
+    "@mysten/payment-kit": "^0.1.6",
     "@mysten/sui": "^2.11.0",
     "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",

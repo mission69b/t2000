@@ -45,7 +45,7 @@
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
-| Receive | — | Free | Payment request generation is local; no on-chain cost |
+| Receive | — | Free | Payment request generation is local; uses Sui Payment Kit (`sui:pay?` URIs) for QR codes |
 | Swap | 10 | 0.1% | t2000 overlay fee on swap (`overlayFeeRate` / `overlayFeeReceiver` in `cetus-swap.ts`); Cetus Aggregator network fees still apply |
 | Stake (vSUI) | — | Free | VOLO protocol fees only |
 | Unstake (vSUI) | — | Free | |
@@ -267,12 +267,16 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 ```
   ✓ Payment Request
 
-  Address:   0x8b3e...d412
-  Amount:    $25.00 USDC
-  Memo:      Office supplies
-  QR URI:    sui:0x8b3e...d412?amount=25&currency=USDC&memo=Office%20supplies
+  $25.00 USDC
 
-  Share this address or scan the QR code to receive funds.
+  Address:   0x8b3e...d412
+  Network:   Sui Mainnet
+  Nonce:     a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+  Memo:      Office supplies
+
+  Payment URI: sui:pay?receiver=0x8b3e...&amount=25000000&coinType=0xdba3...::usdc::USDC&nonce=a1b2...
+
+  Share this URI or scan the QR to pay via any Sui wallet.
 ```
 
 **pay:**
@@ -304,7 +308,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | `history()` | `{ limit? }` | `TransactionRecord[]` |
 | `address()` | — (sync) | `string` |
 | `deposit()` | — | `DepositInfo` |
-| `receive()` | `{ amount?, currency?, memo?, label? }` | `PaymentRequest` — address, QR URI, display text |
+| `receive()` | `{ amount?, currency?, memo?, label? }` | `PaymentRequest` — address, nonce, Payment Kit URI (`sui:pay?...`), display text |
 
 ### Savings
 
