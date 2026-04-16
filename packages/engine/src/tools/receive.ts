@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { buildTool } from '../tool.js';
 
 const PaymentLinkSchema = z.object({
-  amount: z.number().positive().optional().describe('Amount in USDC. Omit for open-amount links.'),
+  amount: z.number().positive().describe('Amount in USDC (required). Ask the user if not specified.'),
   label: z.string().optional().describe('Human-readable label e.g. "Consulting fee March"'),
   memo: z.string().optional().describe('Optional note shown to the payer'),
   expiresInHours: z.number().positive().optional().describe('Hours until the link expires. Omit for permanent links.'),
@@ -33,17 +33,17 @@ function internalHeaders(context: { walletAddress?: string; env?: Record<string,
 export const createPaymentLinkTool = buildTool({
   name: 'create_payment_link',
   description:
-    'Create a shareable payment link so someone can send USDC to the user. Returns a URL the user can share. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", or similar.',
+    'Create a shareable payment link so someone can send USDC to the user. Amount is required — ask the user for the amount if not specified. Returns a URL the user can share. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", or similar.',
   inputSchema: PaymentLinkSchema,
   jsonSchema: {
     type: 'object',
     properties: {
-      amount: { type: 'number', description: 'Amount in USDC. Omit for open-amount links.' },
+      amount: { type: 'number', description: 'Amount in USDC (required). Ask the user if not specified.' },
       label: { type: 'string', description: 'Human-readable label e.g. "Consulting fee March"' },
       memo: { type: 'string', description: 'Optional note shown to the payer' },
       expiresInHours: { type: 'number', description: 'Hours until the link expires. Omit for permanent links.' },
     },
-    required: [],
+    required: ['amount'],
   },
   isReadOnly: true,
 
@@ -70,14 +70,14 @@ export const createPaymentLinkTool = buildTool({
         slug: string;
         nonce: string;
         url: string;
-        amount: number | null;
+        amount: number;
         currency: string;
         label: string | null;
         memo: string | null;
         expiresAt: string | null;
       };
 
-      const amountStr = link.amount != null ? `$${link.amount.toFixed(2)} ${link.currency}` : `any amount ${link.currency}`;
+      const amountStr = `$${link.amount.toFixed(2)} ${link.currency}`;
       return {
         data: link,
         displayText: `Payment link created for ${amountStr}${link.label ? ` — ${link.label}` : ''}. Payers can connect their wallet, scan the QR code, or send manually. Share: ${link.url}`,
