@@ -10,6 +10,7 @@ import { runAutoCompound } from './jobs/autoCompound.js';
 import { runScheduledActions } from './jobs/scheduledActions.js';
 import { runCopilotExpiry } from './jobs/copilotExpiry.js';
 import { runCopilotDetectors } from './jobs/copilotDetectors.js';
+import { runCopilotDigest } from './jobs/copilotDigest.js';
 import { runScheduledReminders } from './jobs/scheduledReminders.js';
 import { runOutcomeChecks } from './jobs/outcomeChecker.js';
 import { detectAnomaliesJob } from './jobs/anomalyDetector.js';
@@ -69,6 +70,8 @@ async function runCron(): Promise<void> {
     results.push(await runCopilotExpiry());
     await sleep(INTER_JOB_DELAY_MS);
     results.push(await runCopilotDetectors());
+    await sleep(INTER_JOB_DELAY_MS);
+    results.push(await runCopilotDigest());
   }
 
   // --- Group: daily-chain (RPC-heavy, runs at specific hours) ---
