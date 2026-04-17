@@ -224,6 +224,35 @@ async function processAction(
       return 'skipped';
     }
 
+    // Audric Copilot mode short-circuits everything below. In Copilot, every
+    // due scheduled action — regardless of source (behavior_detected vs.
+    // user_created) and regardless of isAutonomous/trust-building stage —
+    // becomes a one-tap suggestion on the dashboard. No Allowance fee,
+    // no on-chain side effects, no schedule_confirm AppEvent. The user
+    // confirms by signing with their zkLogin session.
+    //
+    // Critically, this MUST run before the legacy isAutonomousPath gate
+    // below, because the migration script demotes formerly-autonomous
+    // user_created actions to confirmationsRequired=999_999. Without this
+    // ordering they would fall into the trust-building schedule_confirm
+    // path instead of surfacing as Copilot suggestions.
+    //
+    // Flipping COPILOT_ENABLED off restores the prior autonomous behaviour
+    // atomically — the trust-building + autonomous code paths below are
+    // intentionally left intact for rollback safety.
+    if (isCopilotEnabled()) {
+      const surface = await surfaceScheduledActionAsSuggestion(action.id);
+      if (!surface.ok) {
+        console.warn(`[scheduled-actions] Copilot surface failed for ${action.id}: ${surface.reason}`);
+        return 'error';
+      }
+      if (surface.throttled) {
+        return 'skipped';
+      }
+      return 'confirmation_sent';
+    }
+
+    // ─── Legacy (non-Copilot) path below ─────────────────────────────────────
     // An action runs through the autonomous pipeline (idempotency + circuit
     // breaker + safety checks + charge + notify) when EITHER:
     //  - the source is `behavior_detected` (Audric noticed a recurring pattern), OR
@@ -247,28 +276,6 @@ async function processAction(
         confirmationsRequired: action.confirmationsRequired,
       });
       await updateAction(action.id, action.walletAddress, { action: 'skip' });
-      return 'confirmation_sent';
-    }
-
-    // Audric Copilot mode: surface the action as a one-tap suggestion on the
-    // dashboard instead of executing autonomously. No Allowance fee, no
-    // on-chain side effects. The user confirms via the dashboard or chat,
-    // signing the actual tx with their zkLogin session.
-    //
-    // This branch covers BOTH source=behavior_detected AND user opted-in
-    // isAutonomous=true schedules — Copilot's mental model is "always ask"
-    // for V1 (see plan §2 + §11). The legacy executeWithChargeAndNotify path
-    // remains in place for rollback safety; flipping COPILOT_ENABLED off
-    // restores the prior autonomous behaviour atomically.
-    if (isCopilotEnabled()) {
-      const surface = await surfaceScheduledActionAsSuggestion(action.id);
-      if (!surface.ok) {
-        console.warn(`[scheduled-actions] Copilot surface failed for ${action.id}: ${surface.reason}`);
-        return 'error';
-      }
-      if (surface.throttled) {
-        return 'skipped';
-      }
       return 'confirmation_sent';
     }
 
