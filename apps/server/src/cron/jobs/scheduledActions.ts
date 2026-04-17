@@ -178,17 +178,20 @@ async function processAction(
       return 'skipped';
     }
 
-    // Behavior-detected actions go through the autonomous pipeline (requires allowance)
-    if (action.source === 'behavior_detected') {
-      if (!action.allowanceId) {
-        console.warn(`[scheduled-actions] No allowance for ${action.walletAddress}, skipping autonomous action`);
-        return 'skipped';
-      }
-      return processAutonomousAction(_client, action);
-    }
+    // An action runs through the autonomous pipeline (idempotency + circuit
+    // breaker + safety checks + charge + notify) when EITHER:
+    //  - the source is `behavior_detected` (Audric noticed a recurring pattern), OR
+    //  - the user explicitly opted in via `isAutonomous: true` on a user-created schedule
+    //
+    // Previously only `behavior_detected` actions went through that pipeline
+    // and user-created `isAutonomous` actions were charged + notified directly,
+    // which silently bypassed all of those guards. That is the bug fixed here:
+    // both paths now share the same safety wrapper.
+    const isAutonomousPath = action.source === 'behavior_detected' || action.isAutonomous;
 
-    // User-created actions still building trust: send confirmation to next chat session (no charge)
-    if (!action.isAutonomous) {
+    if (!isAutonomousPath) {
+      // User-created action still building trust — surface a confirmation
+      // for the user to approve in chat. No charge, no on-chain side effects.
       await storeAppEvent(action.walletAddress, 'schedule_confirm', 'Confirm scheduled action', {
         actionId: action.id,
         actionType: action.actionType,
@@ -201,12 +204,12 @@ async function processAction(
       return 'confirmation_sent';
     }
 
-    // Autonomous user-created action — charge and notify (requires allowance)
     if (!action.allowanceId) {
       console.warn(`[scheduled-actions] No allowance for ${action.walletAddress}, skipping autonomous action`);
       return 'skipped';
     }
-    return executeWithChargeAndNotify(_client, action);
+
+    return processAutonomousAction(_client, action);
   } catch (err) {
     console.error(`[scheduled-actions] Error for action ${action.id}:`, err instanceof Error ? err.message : err);
     return 'error';
