@@ -17,7 +17,7 @@
 | `@t2000/sdk` | `0.36.0` |
 | `@t2000/engine` | `0.36.0` |
 | `@t2000/cli` | `0.36.0` |
-| `@suimpp/mpp` | `0.1.0` |
+| `@suimpp/mpp` | `0.3.1` |
 | `@t2000/mcp` | `0.36.0` |
 | Agent Skills | `3.0` |
 
@@ -566,12 +566,12 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 
 | Object | ID |
 |--------|----|
-| Package | `0xab92e9f1fe549ad3d6a52924a73181b45791e76120b975138fac9ec9b75db9f3` |
-| Config | `0x408add9aa9322f93cfd87523d8f603006eb8713894f4c460283c58a6888dae8a` |
-| Treasury (USDC) | `0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91` |
+| Package | `0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad` |
+| Config | `0x08ba26f0d260b5edf6a19c71492b3eb914906a7419baf2df1426765157e5862a` |
+| Treasury (USDC) | `0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8` |
 
-> **Note:** AdminCap and UpgradeCap IDs are intentionally omitted — stored in `.env.local` only.
-> **Contract Version:** 2 (set in `packages/contracts/sources/constants.move`). After publishing a new package, call `migrate_config` and `migrate_treasury` with AdminCap to activate version 2 and disable v1 calls.
+> **Note:** AdminCap and UpgradeCap IDs are intentionally omitted — stored in `.env.local` only. The IDs above are the canonical mainnet IDs in use today; they are mirrored in `packages/sdk/src/constants.ts` (`T2000_PACKAGE_ID`, `T2000_CONFIG_ID`, `T2000_TREASURY_ID`) and `infra/server-task-definition.json`. An earlier abandoned package (`0xab92e9f1...`) and its associated Config / Treasury are no longer referenced by any code path.
+> **Contract Version:** 1 (set in `packages/contracts/sources/constants.move`). Source and the active on-chain Config + Treasury are all at v1. The next package upgrade — when there's a real reason to ship one — should bump `VERSION` and call `migrate_config` + `migrate_treasury` with AdminCap so the new package's `assert_version` rejects calls into the previous binary.
 
 ### Treasury Functions (v2)
 
@@ -728,7 +728,6 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | `create_schedule` | |
 | `list_schedules` | |
 | `cancel_schedule` | |
-| `render_canvas` | |
 | `pattern_status` | |
 | `record_advice` | `pause_pattern` |
 
@@ -751,7 +750,7 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.33.2` |
+| Version | `0.36.0` |
 | Tool count | 50 (38 read, 12 write) — mirrors engine tool set |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
