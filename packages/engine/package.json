@@ -42,8 +42,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39",
-    "@modelcontextprotocol/sdk": "^1.28.0",
+    "@anthropic-ai/sdk": "^0.90",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@t2000/sdk": "workspace:*",
     "js-yaml": "^4.1.1",
     "zod": "^3.25.0"
@@ -54,7 +54,7 @@
     "eslint": "^9",
     "tsup": "^8",
     "typescript": "^5",
-    "typescript-eslint": "^8.58.0",
+    "typescript-eslint": "^8.58.2",
     "vitest": "^3"
   },
   "license": "MIT"

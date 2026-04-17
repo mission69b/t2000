@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@zodios/core": "^10.9.6",
-    "axios": "^1.13.6",
+    "axios": "^1.15.0",
     "prettier": "^3",
     "tsx": "^4",
     "turbo": "^2",

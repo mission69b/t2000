@@ -17,16 +17,16 @@
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^1.6.1",
     "geist": "^1.7.0",
-    "mppx": "^0.4.9",
-    "next": "16.2.1",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "sugar-high": "^1.0.0"
+    "mppx": "^0.5.13",
+    "next": "16.2.4",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "sugar-high": "^1.1.0"
   },
   "devDependencies": {
     "@mysten/sui": "^2",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^22",
+    "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "prisma": "^6",

@@ -59,15 +59,15 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@cetusprotocol/aggregator-sdk": "^1.4.8",
+    "@cetusprotocol/aggregator-sdk": "^1.5.0",
     "@mysten/payment-kit": "^0.1.6",
-    "@mysten/sui": "^2.11.0",
+    "@mysten/sui": "^2.15.0",
     "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.4.0",
-    "@suimpp/mpp": "^0.3.1",
+    "@suimpp/mpp": "^0.6.0",
     "eventemitter3": "^5",
-    "mppx": "^0.4.9"
+    "mppx": "^0.5.13"
   },
   "devDependencies": {
     "@types/node": "^20",
