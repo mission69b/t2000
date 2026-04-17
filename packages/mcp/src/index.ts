@@ -6,6 +6,13 @@ import { registerWriteTools } from './tools/write.js';
 import { registerSafetyTools } from './tools/safety.js';
 import { registerPrompts } from './prompts.js';
 
+// Replaced at build time by tsup's `define` with the package.json version
+// string. Falls back to a sentinel during dev/typecheck runs that don't
+// go through the bundler.
+declare const __MCP_PKG_VERSION__: string;
+const PKG_VERSION =
+  typeof __MCP_PKG_VERSION__ === 'string' ? __MCP_PKG_VERSION__ : '0.0.0-dev';
+
 // Redirect console.log/warn to stderr so dependency debug output
 // (e.g. NAVI SDK's "[getWorkingPythEndpoint]") doesn't pollute the
 // stdio JSON-RPC channel that MCP uses for communication.
@@ -24,7 +31,7 @@ export async function startMcpServer(opts?: { keyPath?: string }): Promise<void>
     process.exit(1);
   }
 
-  const server = new McpServer({ name: 't2000', version: '0.22.4' });
+  const server = new McpServer({ name: 't2000', version: PKG_VERSION });
 
   registerReadTools(server, agent);
   registerWriteTools(server, agent);

@@ -1,4 +1,12 @@
 import { defineConfig } from 'tsup';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(
+  readFileSync(resolve(__dirname, 'package.json'), 'utf8'),
+) as { version: string };
 
 export default defineConfig({
   entry: ['src/index.ts', 'src/bin.ts'],
@@ -8,6 +16,11 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   treeshake: true,
+  // Inject the published package version so the MCP `serverInfo.version`
+  // handshake reports the real npm version instead of a hardcoded string.
+  define: {
+    __MCP_PKG_VERSION__: JSON.stringify(pkg.version),
+  },
   // Bundle ALL deps so the MCP server is a self-contained binary. Mirrors the
   // CLI pattern. Critical because @t2000/sdk pulls in @naviprotocol/lending,
   // whose published ESM dist imports SuiClient/getFullnodeUrl from
