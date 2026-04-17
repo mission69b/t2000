@@ -46,17 +46,16 @@
     "lint": "eslint src/",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
     "@t2000/sdk": "workspace:*",
-    "zod": "^3.25.0"
-  },
-  "devDependencies": {
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",
     "typescript": "^5",
-    "vitest": "^3"
+    "vitest": "^3",
+    "zod": "^3.25.0"
   },
   "license": "MIT"
 }
