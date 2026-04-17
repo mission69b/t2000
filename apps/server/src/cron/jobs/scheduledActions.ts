@@ -8,7 +8,16 @@ import { sleep, withRetry } from '../utils.js';
 
 const CONCURRENCY = 2;
 const BATCH_DELAY_MS = 3000;
-const DCA_CHARGE = 10_000n; // $0.01 USDC (6 decimals) per execution
+const DCA_CHARGE = 10_000n; // $0.01 USDC (6 decimals) per execution (legacy autonomous path only)
+const SUGGESTION_TTL_MS = 24 * 60 * 60 * 1000; // Copilot: 24h from surface to act
+
+// When true, all autonomous-eligible actions are surfaced as Copilot suggestions
+// instead of being executed. No on-chain side effects, no Allowance fee. The
+// audric web app then renders the suggestion on the dashboard and the user
+// confirms with one tap. See audric-copilot-smart-confirmations.plan.md.
+function isCopilotEnabled(): boolean {
+  return process.env.COPILOT_ENABLED === 'true' || process.env.COPILOT_ENABLED === '1';
+}
 
 interface DueAction {
   id: string;
@@ -123,6 +132,43 @@ async function sendEmail(
   } catch { /* best effort */ }
 }
 
+interface SurfaceResponse {
+  ok: boolean;
+  throttled?: boolean;
+  reason?: string;
+  id?: string;
+}
+
+async function surfaceScheduledActionAsSuggestion(
+  scheduledActionId: string,
+): Promise<SurfaceResponse> {
+  const expiresAt = new Date(Date.now() + SUGGESTION_TTL_MS);
+  try {
+    const res = await fetch(`${getInternalUrl()}/api/internal/copilot/surface-suggestion`, {
+      method: 'POST',
+      headers: {
+        'x-internal-key': getInternalKey(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        kind: 'scheduled_action',
+        scheduledActionId,
+        expiresAt: expiresAt.toISOString(),
+      }),
+    });
+
+    if (!res.ok) {
+      // 404 with `Copilot disabled` body is a normal short-circuit when the flag is off
+      // on the audric side but the cron-side env var was flipped on accidentally.
+      return { ok: false, reason: `http_${res.status}` };
+    }
+
+    return (await res.json()) as SurfaceResponse;
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : 'unknown' };
+  }
+}
+
 function buildIdempotencyKey(actionId: string, cronExpr: string): string {
   const now = new Date();
   const year = now.getUTCFullYear();
@@ -201,6 +247,28 @@ async function processAction(
         confirmationsRequired: action.confirmationsRequired,
       });
       await updateAction(action.id, action.walletAddress, { action: 'skip' });
+      return 'confirmation_sent';
+    }
+
+    // Audric Copilot mode: surface the action as a one-tap suggestion on the
+    // dashboard instead of executing autonomously. No Allowance fee, no
+    // on-chain side effects. The user confirms via the dashboard or chat,
+    // signing the actual tx with their zkLogin session.
+    //
+    // This branch covers BOTH source=behavior_detected AND user opted-in
+    // isAutonomous=true schedules — Copilot's mental model is "always ask"
+    // for V1 (see plan §2 + §11). The legacy executeWithChargeAndNotify path
+    // remains in place for rollback safety; flipping COPILOT_ENABLED off
+    // restores the prior autonomous behaviour atomically.
+    if (isCopilotEnabled()) {
+      const surface = await surfaceScheduledActionAsSuggestion(action.id);
+      if (!surface.ok) {
+        console.warn(`[scheduled-actions] Copilot surface failed for ${action.id}: ${surface.reason}`);
+        return 'error';
+      }
+      if (surface.throttled) {
+        return 'skipped';
+      }
       return 'confirmation_sent';
     }
 
