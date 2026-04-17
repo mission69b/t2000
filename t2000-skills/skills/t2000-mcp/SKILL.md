@@ -1,44 +1,110 @@
 ---
 name: t2000-mcp
 description: >-
-  Start and configure the t2000 MCP server for AI platform integration.
-  Use when asked to connect t2000 to Claude Desktop, Cursor, or any MCP
-  client, set up MCP config, or start the MCP server.   Provides 29 tools
-  and 16 prompts for AI-driven banking and MPP service operations.
+  Connect a t2000 agent bank account to Claude Desktop, Cursor, Cline,
+  Continue, or any MCP-compatible client. Use when asked to set up MCP,
+  paste an MCP server config, install @t2000/mcp, or troubleshoot why
+  the MCP server "doesn't do anything" when run from a terminal.
+  Provides 29 tools and 16 prompts over stdio.
 license: MIT
 metadata:
   author: t2000
-  version: "1.0"
-  requires: t2000 CLI (npm i -g @t2000/cli)
+  version: "1.1"
+  requires: a Sui keypair (created via `npx @t2000/cli init` or any wallet)
 ---
 
 # t2000: MCP Server
 
 ## Purpose
-Connect Claude Desktop, Cursor, or any MCP client to a t2000 agent bank
-account. 29 tools, 16 prompts, stdio transport, safeguard enforced.
+Expose a t2000 agent bank account (Sui wallet + DeFi positions) to any
+MCP-compatible AI client over stdio. **29 tools, 16 prompts**, safeguard
+enforced. No global install required — the recommended path uses `npx`
+so the AI client always pulls the latest published version.
+
+## ⚠️ The most common confusion
+
+**`npx @t2000/mcp` is NOT a command you run from a terminal to "use" the
+MCP server.** It is a JSON-RPC server that listens silently on `stdin`.
+If you run it manually it will appear to hang — that's correct behavior.
+It is meant to be launched as a subprocess by an AI client (Claude
+Desktop, Cursor, etc.) which speaks JSON-RPC to it over `stdin`/`stdout`.
+
+The JSON snippets below go into your **AI client's MCP settings file**,
+not into a shell.
 
 ## Setup
+
+### 1. Create a wallet + safeguards (one-time, in a terminal)
+
 ```bash
-# 1. Install + create wallet
-npm i -g @t2000/cli && t2000 init
+# Install CLI long enough to bootstrap a wallet and set safety limits
+npx @t2000/cli init
+npx @t2000/cli config set maxPerTx 100
+npx @t2000/cli config set maxDailySend 500
 
-# 2. Configure safeguards (required before MCP starts)
-t2000 config set maxPerTx 100
-t2000 config set maxDailySend 500
-
-# 3. Create session (saves PIN for MCP reuse)
-t2000 balance
-
-# 4. Start MCP server
-t2000 mcp
+# Create a session so MCP can reuse the saved PIN
+npx @t2000/cli balance
 ```
 
-## Platform Config
-Paste into your AI platform's MCP settings:
+The MCP server **refuses to start** until `maxPerTx` and `maxDailySend`
+are configured. This is intentional.
+
+### 2. Add the MCP server to your AI client
+
+Recommended config (auto-updates on every launch, no global install):
+
 ```json
-{ "mcpServers": { "t2000": { "command": "t2000", "args": ["mcp"] } } }
+{
+  "mcpServers": {
+    "t2000": {
+      "command": "npx",
+      "args": ["-y", "@t2000/mcp@latest"]
+    }
+  }
+}
 ```
+
+Alternative (if `@t2000/cli` is already installed globally):
+
+```json
+{
+  "mcpServers": {
+    "t2000": {
+      "command": "t2000",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### 3. Restart the client
+
+The client spawns the MCP server as a subprocess on startup. You should
+see `t2000_*` tools appear in the tool list.
+
+## Per-client config file paths
+
+| Client | Config file |
+|--------|-------------|
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Windows) | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Cursor | Settings → MCP → Add new MCP server (or `~/.cursor/mcp.json`) |
+| Cline | VSCode settings → `cline.mcpServers` |
+| Continue | `~/.continue/config.json` under `mcpServers` |
+
+## Verification (optional, before wiring into a client)
+
+Confirm the server responds to a real MCP `initialize` request:
+
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' \
+  | npx -y @t2000/mcp@latest
+```
+
+You should see a JSON response containing `"serverInfo":{"name":"t2000"...}`
+and exit. If you see that, the server is healthy and ready to be launched
+by a client.
 
 ## Available Tools (29)
 
@@ -104,6 +170,15 @@ All support `dryRun: true` for previews without signing.
 | `emergency` | Lock account, assess damage, recovery guidance |
 | `optimize-all` | One-shot full optimization — sweep, compare APYs, claim rewards |
 | `savings-goal` | Set a savings target and calculate weekly/monthly amounts needed |
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `npx @t2000/mcp` "hangs" with no output | Working as designed — server is waiting for JSON-RPC on stdin | Don't run it manually; let the AI client launch it |
+| Server exits with `Safeguards not configured` | `maxPerTx` / `maxDailySend` not set | Run `npx @t2000/cli config set maxPerTx 100 && ... maxDailySend 500` |
+| Client shows no `t2000_*` tools after restart | Wrong config path, or stale npx cache | Verify with the `printf | npx ...` test above; clear cache with `rm -rf ~/.npm/_npx` |
+| `SuiClient export not found` error from old install | Cached pre-fix bundle in `~/.npm/_npx` | `rm -rf ~/.npm/_npx` then restart the client |
 
 ## Engine MCP Adapter (Audric)
 

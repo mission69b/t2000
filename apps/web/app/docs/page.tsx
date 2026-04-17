@@ -42,15 +42,15 @@ const PACKAGES = [
   {
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "50 tools, 16 prompts. Connect Claude Desktop, Cursor, or any MCP-compatible client. Full financial toolkit.",
-    install: "npx @t2000/mcp",
+    desc: "29 tools, 16 prompts. Connect Claude Desktop, Cursor, or any MCP-compatible client. Stdio transport, safeguard enforced.",
+    install: "npx -y @t2000/mcp@latest",
     npm: "https://www.npmjs.com/package/@t2000/mcp",
     github: `${GITHUB_URL}/tree/main/packages/mcp`,
     commands: [
-      "t2000_balance · t2000_save · t2000_send",
-      "t2000_borrow · t2000_swap · t2000_rates",
-      "t2000_health · t2000_canvas · t2000_schedule",
-      "t2000_portfolio · t2000_analytics · +39 more",
+      "t2000_overview · t2000_balance · t2000_send",
+      "t2000_save · t2000_withdraw · t2000_borrow",
+      "t2000_swap · t2000_rates · t2000_health",
+      "t2000_pay · t2000_claim_rewards · +17 more",
     ],
   },
   {
@@ -177,18 +177,38 @@ export default function DocsPage() {
               </div>
               <div>
                 <div className="font-mono text-[10px] tracking-wider uppercase text-dim mb-1.5">
-                  3 &mdash; Connect to your AI
+                  3 &mdash; Add to your AI client&rsquo;s MCP config
                 </div>
-                <code className="block font-mono text-sm text-muted bg-background px-4 py-2.5 border border-border">
-                  <span className="text-dim">{'{'}</span>
-                  {' '}<span className="text-accent">&quot;mcpServers&quot;</span>
-                  : <span className="text-dim">{'{'}</span>
-                  {' '}<span className="text-accent">&quot;t2000&quot;</span>
-                  : <span className="text-dim">{'{'}</span>
-                  {' '}<span className="text-accent">&quot;command&quot;</span>
-                  : <span className="text-foreground">&quot;npx @t2000/mcp&quot;</span>
-                  {' '}<span className="text-dim">{'}'} {'}'} {'}'}</span>
+                <code className="block font-mono text-sm text-muted bg-background px-4 py-2.5 border border-border whitespace-pre overflow-x-auto">
+{`{
+  "mcpServers": {
+    "t2000": {
+      "command": "npx",
+      "args": ["-y", "@t2000/mcp@latest"]
+    }
+  }
+}`}
                 </code>
+                <div className="font-mono text-[10px] text-dim mt-2 leading-relaxed">
+                  Paste into Claude Desktop, Cursor, Cline, or any MCP client.
+                  This is a <span className="text-muted">config snippet</span>,
+                  not a terminal command &mdash; the AI client launches the
+                  server automatically over stdio.
+                </div>
+              </div>
+              <div>
+                <div className="font-mono text-[10px] tracking-wider uppercase text-dim mb-1.5">
+                  4 &mdash; Verify (optional)
+                </div>
+                <code className="block font-mono text-[11px] text-muted bg-background px-4 py-2.5 border border-border whitespace-pre overflow-x-auto">
+{`printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}\\n' \\
+  | npx -y @t2000/mcp@latest`}
+                </code>
+                <div className="font-mono text-[10px] text-dim mt-2 leading-relaxed">
+                  A healthy server replies with{' '}
+                  <span className="text-muted">&quot;serverInfo&quot;:&#123;&quot;name&quot;:&quot;t2000&quot;...&#125;</span>{' '}
+                  and exits.
+                </div>
               </div>
             </div>
           </div>
@@ -274,7 +294,7 @@ export default function DocsPage() {
 
                   <div className="bg-background border border-border p-4">
                     <div className="font-mono text-[10px] tracking-wider uppercase text-dim mb-3">
-                      {pkg.title === "Gateway" ? "Endpoints" : pkg.title === "MCP" ? "Tools (50)" : pkg.title === "Engine" ? "Reasoning pipeline" : "Usage"}
+                      {pkg.title === "Gateway" ? "Endpoints" : pkg.title === "MCP" ? "Tools (29)" : pkg.title === "Engine" ? "Reasoning pipeline" : "Usage"}
                     </div>
                     <div className="space-y-1">
                       {pkg.commands.map((cmd) => (
