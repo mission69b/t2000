@@ -21,7 +21,8 @@
       },
       "environment": [
         { "name": "NODE_ENV", "value": "production" },
-        { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" }
+        { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" },
+        { "name": "COPILOT_ENABLED", "value": "true" }
       ],
       "secrets": [
         {
