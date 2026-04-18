@@ -23,9 +23,11 @@ import type { JobResult } from './types.js';
 // /api/internal/notification-users + /api/internal/hf-alert WERE preserved
 // (silent-infra plumbing, not user-facing notifications).
 
-// CRON_GROUP controls which jobs this task instance runs.
-// "all" (default) = legacy single-task mode; split into groups for scale.
-const CRON_GROUP = process.env.CRON_GROUP ?? 'all';
+// [SIMPLIFICATION DAY 12.5] Collapsed CRON_GROUP control surface — the
+// hourly + daily-chain EventBridge schedules + their ECS task definitions
+// were deleted from AWS once their bodies became no-ops. Only daily-intel
+// runs in production now; we keep the env override for local re-runs.
+const CRON_GROUP = process.env.CRON_GROUP ?? 'daily-intel';
 
 const HOUR_DATA = 7; // midnight US East
 const HOUR_INTELLIGENCE = 19; // 2pm US East
@@ -47,18 +49,7 @@ async function runCron(): Promise<void> {
   console.log(`[cron] Processing ${users.length} users`);
   const results: JobResult[] = [];
 
-  const run = (group: string) => CRON_GROUP === 'all' || CRON_GROUP === group;
-
-  if (run('hourly')) {
-    console.log('[cron] hourly group: nothing to do (simplification)');
-  }
-
-  if (run('daily-chain')) {
-    console.log('[cron] daily-chain group: nothing to do (simplification)');
-  }
-
-  // --- Group: daily-intel (silent infra the agent reads in-chat) ---
-  if (run('daily-intel')) {
+  if (CRON_GROUP === 'daily-intel') {
     if (utcHour === HOUR_DATA) {
       results.push(await runPortfolioSnapshots());
       results.push(await runChainMemory());
@@ -68,6 +59,8 @@ async function runCron(): Promise<void> {
       results.push(await runProfileInference());
       results.push(await runMemoryExtraction());
     }
+  } else {
+    console.log(`[cron] Unknown group "${CRON_GROUP}" — exiting`);
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
