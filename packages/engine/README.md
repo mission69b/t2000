@@ -87,7 +87,7 @@ QueryEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (38 — parallel, auto-approved)
+### Read Tools (29 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
@@ -96,7 +96,6 @@ QueryEngine.submitMessage()
 | `health_check` | Health factor with risk assessment |
 | `rates_info` | Current supply/borrow APYs |
 | `transaction_history` | Recent transaction log |
-| `allowance_status` | Agent budget allowance and permissions |
 | `explain_tx` | Human-readable transaction explanation from digest |
 | `web_search` | Web search via Brave Search API |
 | `swap_quote` | Preview swap route, output amount, and price impact (no execution) |
@@ -117,20 +116,12 @@ QueryEngine.submitMessage()
 | `create_invoice` | Create a formal invoice with due date and line items |
 | `list_invoices` | List invoices with statuses |
 | `cancel_invoice` | Cancel an unpaid invoice |
-| `toggle_allowance` | Pause or resume agent autonomous spending |
-| `update_daily_limit` | Change the daily USDC spending cap |
-| `update_permissions` | Update which service categories the agent can act on |
 | `spending_analytics` | Spending breakdown by service/category over time period |
 | `yield_summary` | Yield earned + projections with sparkline data |
 | `activity_summary` | Activity breakdown by action type |
-| `create_schedule` | Create a recurring scheduled action (DCA) |
-| `list_schedules` | List scheduled actions with trust stage |
-| `cancel_schedule` | Cancel a scheduled action |
 | `render_canvas` | Generate interactive HTML canvas visualizations |
-| `pattern_status` | View behavioral pattern proposals and trust stage |
-| `record_advice` | Record financial advice given for outcome tracking |
 
-### Write Tools (12 — serial, confirmation required)
+### Write Tools (11 — serial, confirmation required)
 
 | Tool | Description |
 |------|-------------|
@@ -145,7 +136,15 @@ QueryEngine.submitMessage()
 | `volo_stake` | Stake SUI for vSUI (VOLO liquid staking) |
 | `volo_unstake` | Unstake vSUI back to SUI |
 | `save_contact` | Save a contact name + address for quick sends |
-| `pause_pattern` | Pause an autonomous behavioral pattern |
+
+> Note: `record_advice` is an Audric-local tool registered in
+> `audric/apps/web/lib/engine/advice-tool.ts`, not part of the engine package.
+
+> **Simplification Day 7:** Removed 9 tools — `allowance_status`, `toggle_allowance`,
+> `update_daily_limit`, `update_permissions` (allowance contract dormant under zkLogin),
+> `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't execute without user
+> online to sign), `pattern_status`, `pause_pattern` (pattern proposals removed; classifiers
+> kept as pure functions).
 
 ## Audric 2.0 Engine Features
 

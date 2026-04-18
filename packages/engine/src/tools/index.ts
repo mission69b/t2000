@@ -23,7 +23,6 @@ import { webSearchTool } from './web-search.js';
 import { explainTxTool } from './explain-tx.js';
 import { portfolioAnalysisTool } from './portfolio-analysis.js';
 import { protocolDeepDiveTool } from './protocol-deep-dive.js';
-import { allowanceStatusTool, toggleAllowanceTool, updateDailyLimitTool, updatePermissionsTool } from './allowance.js';
 import {
   createPaymentLinkTool,
   listPaymentLinksTool,
@@ -36,8 +35,6 @@ import { renderCanvasTool } from './canvas.js';
 import { spendingAnalyticsTool } from './spending.js';
 import { yieldSummaryTool } from './yield-summary.js';
 import { activitySummaryTool } from './activity-summary.js';
-import { createScheduleTool, listSchedulesTool, cancelScheduleTool } from './schedule.js';
-import { patternStatusTool, pausePatternTool } from './autonomy.js';
 import {
   defillamaYieldPoolsTool,
   defillamaProtocolInfoTool,
@@ -47,6 +44,15 @@ import {
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
 } from './defillama.js';
+
+// [SIMPLIFICATION DAY 7] Removed 9 tools to align engine with chat-first thesis:
+//   - allowance_status, toggle_allowance, update_daily_limit, update_permissions
+//     (allowance contract dormant; agent autonomy under zkLogin was theatre)
+//   - create_schedule, list_schedules, cancel_schedule
+//     (DCA/scheduled actions can't execute without user online to sign)
+//   - pause_pattern, pattern_status
+//     (pattern detection as proposals removed; classifiers stay as pure fns)
+// Final tool count: 29 reads + 11 writes = 40 tools.
 
 export const READ_TOOLS: Tool[] = [
   renderCanvasTool,
@@ -69,10 +75,6 @@ export const READ_TOOLS: Tool[] = [
   defillamaChainTvlTool,
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
-  allowanceStatusTool,
-  toggleAllowanceTool,
-  updateDailyLimitTool,
-  updatePermissionsTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
   listInvoicesTool,
@@ -82,10 +84,6 @@ export const READ_TOOLS: Tool[] = [
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
-  listSchedulesTool,
-  createScheduleTool,
-  cancelScheduleTool,
-  patternStatusTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -100,7 +98,6 @@ export const WRITE_TOOLS: Tool[] = [
   voloStakeTool,
   voloUnstakeTool,
   saveContactTool,
-  pausePatternTool,
 ];
 
 export function getDefaultTools(): Tool[] {
@@ -139,10 +136,6 @@ export {
   defillamaProtocolFeesTool,
   defillamaSuiProtocolsTool,
   saveContactTool,
-  allowanceStatusTool,
-  toggleAllowanceTool,
-  updateDailyLimitTool,
-  updatePermissionsTool,
   createPaymentLinkTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
@@ -152,9 +145,4 @@ export {
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
-  createScheduleTool,
-  listSchedulesTool,
-  cancelScheduleTool,
-  patternStatusTool,
-  pausePatternTool,
 };

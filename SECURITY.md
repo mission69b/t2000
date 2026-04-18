@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.7.x   | ✅        |
-| < 0.7   | ❌        |
+| 0.36.x  | ✅        |
+| < 0.36  | ❌        |
 
 ## Reporting a Vulnerability
 
@@ -36,6 +36,7 @@ The following are in scope:
 - `@t2000/sdk` — Key management, transaction building, adapter routing
 - `@t2000/engine` — LLM orchestration, tool permissions, cost limits, abort handling
 - `@t2000/cli` — Input validation, PIN handling
+- `@t2000/mcp` — MCP server tool permissions, input validation
 - `@suimpp/mpp` — MPP payment method (Sui USDC)
 - Server API — Gas sponsorship, fee ledger, sponsor endpoint
 - Move contracts — On-chain fee collection, admin controls
@@ -55,7 +56,7 @@ The following are in scope:
 - On-chain timelocked governance (7-day fee change delay)
 - Circuit breaker for price volatility
 - Automated security scanning via GitHub Actions (CodeQL, dependency audit)
-- Adapter compliance test suite (317 tests)
+- Adapter compliance test suite (500+ tests across SDK, engine, and CLI)
 
 ### Engine Security Model (`@t2000/engine`)
 

@@ -1,42 +1,33 @@
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
-import { fetchNotificationUsers, reportNotifications } from './scheduler.js';
-import { runHFAlerts } from './jobs/hfAlerts.js';
-import { runBriefings } from './jobs/briefings.js';
-import { runRateAlerts } from './jobs/rateAlerts.js';
-import { runOnboardingFollowup } from './jobs/onboardingFollowup.js';
 import { runPortfolioSnapshots } from './jobs/portfolioSnapshots.js';
-import { runWeeklyBriefing } from './jobs/weeklyBriefing.js';
-import { runAutoCompound } from './jobs/autoCompound.js';
-import { runScheduledActions } from './jobs/scheduledActions.js';
-import { runCopilotExpiry } from './jobs/copilotExpiry.js';
-import { runCopilotDetectors } from './jobs/copilotDetectors.js';
-import { runCopilotDigest } from './jobs/copilotDigest.js';
-import { runScheduledReminders } from './jobs/scheduledReminders.js';
-import { runOutcomeChecks } from './jobs/outcomeChecker.js';
-import { detectAnomaliesJob } from './jobs/anomalyDetector.js';
-import { deliverFollowUps } from './jobs/followUpDelivery.js';
 import { runProfileInference } from './jobs/profileInference.js';
 import { runMemoryExtraction } from './jobs/memoryExtraction.js';
 import { runChainMemory } from './jobs/chainMemory.js';
-import { runPatternDetector } from './jobs/patternDetector.js';
-import { sleep } from './utils.js';
+import { fetchNotificationUsers } from './scheduler.js';
 import type { JobResult } from './types.js';
 
-const INTER_JOB_DELAY_MS = 5000;
-
-function getClient(): SuiJsonRpcClient {
-  const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
-  return new SuiJsonRpcClient({ url, network: 'mainnet' });
-}
+// [SIMPLIFICATION DAY 5] Folded S.6: deleted all user-facing cron jobs
+// (hfAlerts, briefings, rateAlerts, onboardingFollowup, weeklyBriefing,
+// autoCompound, scheduledActions, copilotExpiry, copilotDetectors,
+// copilotDigest, scheduledReminders, outcomeChecker, anomalyDetector,
+// followUpDelivery, patternDetector, autonomy-safety, circuit-breaker).
+// Their backing tables (DailyBriefing, CopilotSuggestion, ScheduledAction,
+// OutcomeCheck, FollowUpQueue, NotificationPrefs, NotificationLog) are gone
+// too. The Audric chat surface is the product now — agent context comes from
+// the four silent-infra jobs below.
+//
+// Critical HF protection still runs on the indexer hook
+// (apps/server/src/indexer/hfHook.ts), not here.
+//
+// [Audit catch-up] reportNotifications() removed — its backing
+// /api/internal/notification-log endpoint and NotificationLog table are gone.
+// /api/internal/notification-users + /api/internal/hf-alert WERE preserved
+// (silent-infra plumbing, not user-facing notifications).
 
 // CRON_GROUP controls which jobs this task instance runs.
 // "all" (default) = legacy single-task mode; split into groups for scale.
 const CRON_GROUP = process.env.CRON_GROUP ?? 'all';
 
-// Daily hour gates (only relevant for daily-chain and daily-intel groups)
-const HOUR_DATA        = 7;  // midnight US East
-const HOUR_COMPOUND    = 10; // 5am US East
-const HOUR_BRIEFING    = 13; // 8am US East
+const HOUR_DATA = 7; // midnight US East
 const HOUR_INTELLIGENCE = 19; // 2pm US East
 
 async function runCron(): Promise<void> {
@@ -54,53 +45,23 @@ async function runCron(): Promise<void> {
   }
 
   console.log(`[cron] Processing ${users.length} users`);
-  const client = getClient();
   const results: JobResult[] = [];
 
   const run = (group: string) => CRON_GROUP === 'all' || CRON_GROUP === group;
 
-  // --- Group: hourly (RPC-heavy, runs every hour) ---
   if (run('hourly')) {
-    results.push(await runHFAlerts(client, users));
-    await sleep(INTER_JOB_DELAY_MS);
-    results.push(await runRateAlerts(client, users));
-    await sleep(INTER_JOB_DELAY_MS);
-    results.push(await runScheduledActions(client));
-    await sleep(INTER_JOB_DELAY_MS);
-    results.push(await runCopilotExpiry());
-    await sleep(INTER_JOB_DELAY_MS);
-    results.push(await runCopilotDetectors());
-    await sleep(INTER_JOB_DELAY_MS);
-    results.push(await runCopilotDigest());
+    console.log('[cron] hourly group: nothing to do (simplification)');
   }
 
-  // --- Group: daily-chain (RPC-heavy, runs at specific hours) ---
   if (run('daily-chain')) {
-    if (utcHour === HOUR_COMPOUND) {
-      results.push(await runAutoCompound(client, users));
-      results.push(await runOutcomeChecks(client));
-      results.push(await detectAnomaliesJob(client, users));
-      results.push(await deliverFollowUps(client));
-    }
-
-    if (utcHour === HOUR_BRIEFING) {
-      results.push(await runBriefings(client, users));
-      results.push(await runOnboardingFollowup(client));
-      results.push(await runScheduledReminders(client, users));
-
-      const dayOfWeek = new Date().getUTCDay();
-      if (dayOfWeek === 0) {
-        results.push(await runWeeklyBriefing(client, users));
-      }
-    }
+    console.log('[cron] daily-chain group: nothing to do (simplification)');
   }
 
-  // --- Group: daily-intel (API/LLM only, no Sui RPC) ---
+  // --- Group: daily-intel (silent infra the agent reads in-chat) ---
   if (run('daily-intel')) {
     if (utcHour === HOUR_DATA) {
       results.push(await runPortfolioSnapshots());
       results.push(await runChainMemory());
-      results.push(await runPatternDetector());
     }
 
     if (utcHour === HOUR_INTELLIGENCE) {
@@ -108,8 +69,6 @@ async function runCron(): Promise<void> {
       results.push(await runMemoryExtraction());
     }
   }
-
-  await reportNotifications(results);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   const totalSent = results.reduce((sum, r) => sum + r.sent, 0);
@@ -123,7 +82,6 @@ async function runCron(): Promise<void> {
   }
 }
 
-// Entry point — run once and exit (ECS scheduled task)
 runCron()
   .then(() => {
     console.log('[cron] Done');

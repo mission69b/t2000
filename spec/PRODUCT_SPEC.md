@@ -17,7 +17,7 @@
 | **Credit**  | Borrow against your balance    | NAVI MCP + thin tx builders | Live    |
 | **Receive** | Accept payments anywhere       | Direct Sui transactions     | Live    |
 
-**Removed:** Invest (multi-protocol optimization is a power-user DeFi feature), Swap (utility within deposit flows, not a standalone product). Suilend SDK removed. Cetus Aggregator SDK retained for swap routing only. When protocols release MCPs, expansion is a config change.
+**Removed:** Invest (multi-protocol optimization is a power-user DeFi feature). Suilend SDK removed. Cetus Aggregator SDK retained for swap routing only. When protocols release MCPs, expansion is a config change.
 
 ---
 
@@ -138,7 +138,7 @@ Fees collected on-chain via `t2000::treasury::collect_fee()` within the same PTB
 3. NO  → gas station (sponsored, server pays)
 ```
 
-Auto-topup (USDC→SUI conversion) is disabled — no DEX integration. Gas station is the fallback.
+Auto-topup (USDC→SUI conversion) is active — swaps $1 USDC → SUI via Cetus when SUI < 0.05 and USDC ≥ $2. Gas station is the final fallback.
 
 ---
 
@@ -156,7 +156,7 @@ Commands: `save`, `send`, `withdraw`, `borrow`, `repay`, `claim-rewards`, `balan
 
 ### MCP (`@t2000/mcp`)
 
-47 tools (36 read, 11 write) — mirrors the engine tool set. Exposes full t2000 functionality to Claude Desktop, Cursor, and any MCP-compatible client.
+50 tools (38 read, 12 write) — mirrors the engine tool set. Exposes full t2000 functionality to Claude Desktop, Cursor, and any MCP-compatible client.
 
 ### Engine (`@t2000/engine`)
 
@@ -173,7 +173,7 @@ Conversational finance engine powering Audric:
 - Scheduled actions — `create_schedule`, `list_schedules`, `cancel_schedule` (DCA)
 - MCP client (`McpClientManager`) — multi-server MCP client with caching, NAVI MCP integration
 - MCP server adapter — `buildMcpTools` / `registerEngineTools` (engine tools → MCP tools)
-- 47 tools (36 read, 11 write) — see `PRODUCT_FACTS.md` for full list
+- 50 tools (38 read, 12 write) — see `PRODUCT_FACTS.md` for full list
 - Feature-flagged behind `ENABLE_THINKING=true`
 
 ---

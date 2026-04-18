@@ -204,7 +204,6 @@ export {
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
-  patternStatusTool,
 } from './tools/index.js';
 
 // Built-in tools — writes
@@ -221,7 +220,6 @@ export {
   voloStakeTool,
   voloUnstakeTool,
   saveContactTool,
-  pausePatternTool,
 } from './tools/index.js';
 
 // All default tools

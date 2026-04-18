@@ -1,4 +1,4 @@
-import type { NotificationUser, JobResult } from './types.js';
+import type { NotificationUser } from './types.js';
 
 function getInternalUrl(): string {
   return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';
@@ -9,9 +9,17 @@ function getInternalKey(): string {
 }
 
 /**
- * Fetch all eligible notification users from the audric internal API.
- * No timezone filtering — all users are returned and the cron decides
- * which jobs to run based on the current UTC hour.
+ * Fetch eligible users from the audric internal API. Pure plumbing — the only
+ * way the t2000 server (separate DB) can reach the audric DB to learn which
+ * users to iterate.
+ *
+ * No timezone filtering — silent-infra crons run on fixed UTC hours and the
+ * jobs themselves are idempotent.
+ *
+ * [SIMPLIFICATION DAY 5 — audit catch-up] Companion `reportNotifications`
+ * was removed when the NotificationLog table + /api/internal/notification-log
+ * endpoint were dropped. There is no notification audit log anymore — sent
+ * counts are logged to stdout from `cron/index.ts` instead.
  */
 export async function fetchNotificationUsers(): Promise<NotificationUser[]> {
   const url = `${getInternalUrl()}/api/internal/notification-users`;
@@ -34,25 +42,5 @@ export async function fetchNotificationUsers(): Promise<NotificationUser[]> {
   } catch (err) {
     console.error('[cron] Error fetching notification users:', err instanceof Error ? err.message : err);
     return [];
-  }
-}
-
-/**
- * Report sent notifications back to audric for dedup + audit.
- */
-export async function reportNotifications(results: JobResult[]): Promise<void> {
-  const url = `${getInternalUrl()}/api/internal/notification-log`;
-
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: {
-        'x-internal-key': getInternalKey(),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ results, reportedAt: new Date().toISOString() }),
-    });
-  } catch (err) {
-    console.error('[cron] Error reporting notifications:', err instanceof Error ? err.message : err);
   }
 }

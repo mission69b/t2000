@@ -32,13 +32,10 @@ export const TOOL_FLAGS: Record<string, ToolFlags> = {
 
   // Write tools — lightweight (no financial guards)
   save_contact:    {},
-  create_schedule: { mutating: true },
-  cancel_schedule: { mutating: true },
 
-  // Allowance tools — API mutations disguised as reads
-  toggle_allowance:   { mutating: true },
-  update_daily_limit: { mutating: true },
-  update_permissions: { mutating: true },
+  // [SIMPLIFICATION DAY 7] Removed flag entries for deleted tools:
+  //   create_schedule, cancel_schedule (DCA schedules retired)
+  //   toggle_allowance, update_daily_limit, update_permissions (allowance dormant)
 
   // Receive tools — create/cancel mutate server state
   create_payment_link: { mutating: true },

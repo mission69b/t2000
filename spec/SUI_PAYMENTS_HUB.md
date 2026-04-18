@@ -44,7 +44,7 @@ The engine behind Audric. CLI, SDK, MCP, engine, gateway — five packages for a
 |-----------|------|-------|
 | SDK | `@t2000/sdk` — TypeScript, wallet management, transactions, NAVI adapter | 1 package |
 | CLI | `@t2000/cli` — terminal-first agent banking | 1 package |
-| MCP | `@t2000/mcp` — 25 tools, 16 prompts | 1 package |
+| MCP | `@t2000/mcp` — 50 tools (38 read, 12 write), mirrors engine tool set | 1 package |
 | Engine | `@t2000/engine` — QueryEngine, financial tools, MCP client/server | 1 package |
 | Adapters | NAVI (MCP reads + thin tx builders for writes) | 1 protocol |
 | Contracts | Fee collection, treasury, governance (timelocked) | Sui mainnet |
@@ -494,7 +494,7 @@ Renders on the right side of the hero (desktop) or below the headline (mobile).
 | Database | NeonDB (separate instance from gateway) |
 | Data | Own DB — cron ingests from registered servers |
 | Build | ISR for stats, static for spec/docs |
-| Repo | Same monorepo (`/Users/funkii/dev/t2000`) |
+| Repo | Separate repo (`mission69b/suimpp`) |
 
 **Why separate app** (not expanding `apps/gateway`):
 - Different audience (ecosystem builders vs API consumers)
