@@ -12,12 +12,12 @@ public(package) macro fun timelock_active(): u64 { 8 }
 public(package) macro fun no_pending_change(): u64 { 9 }
 public(package) macro fun already_migrated(): u64 { 10 }
 public(package) macro fun not_owner(): u64 { 11 }
-public(package) macro fun insufficient_allowance(): u64 { 12 }
-public(package) macro fun invalid_feature(): u64 { 13 }
-public(package) macro fun feature_not_permitted(): u64 { 14 }
-public(package) macro fun allowance_expired(): u64 { 15 }
-public(package) macro fun daily_limit_exceeded(): u64 { 16 }
-public(package) macro fun invalid_expires_at(): u64 { 17 }
+
+// NOTE: error codes 12–17 (insufficient_allowance, invalid_feature,
+// feature_not_permitted, allowance_expired, daily_limit_exceeded,
+// invalid_expires_at) were used by the deleted allowance module. The
+// `Allowance` Move type still exists on-chain at the published package,
+// so these codes remain reserved — do not reuse them for new errors.
 
 const EPaused: u64 = 1;
 const EZeroAmount: u64 = 2;
@@ -30,9 +30,3 @@ const ETimelockActive: u64 = 8;
 const ENoPendingChange: u64 = 9;
 const EAlreadyMigrated: u64 = 10;
 const ENotOwner: u64 = 11;
-const EInsufficientAllowance: u64 = 12;
-const EInvalidFeature: u64 = 13;
-const EFeatureNotPermitted: u64 = 14;
-const EAllowanceExpired: u64 = 15;
-const EDailyLimitExceeded: u64 = 16;
-const EInvalidExpiresAt: u64 = 17;
