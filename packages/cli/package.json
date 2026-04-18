@@ -1,7 +1,7 @@
 {
   "name": "@t2000/cli",
   "version": "0.39.0",
-  "description": "A bank account for AI agents on Sui — guided setup, MCP, send, save, borrow, rebalance",
+  "description": "A bank account for AI agents on Sui — guided setup, MCP integration, send, save, borrow, swap. Same 40 tools as the engine, scriptable from any shell.",
   "type": "module",
   "bin": {
     "t2000": "./dist/index.js"
