@@ -36,11 +36,6 @@ export type {
   SwapQuoteResult,
   StakeVSuiResult,
   UnstakeVSuiResult,
-  AllowanceInfo,
-  AllowanceCreateResult,
-  AllowanceDepositResult,
-  AllowanceWithdrawResult,
-  AllowanceDeductResult,
   FinancialSummary,
   HFAlertLevel,
 } from './types.js';
@@ -60,11 +55,10 @@ export {
   GAS_RESERVE_MIN,
   CETUS_USDC_SUI_POOL,
   OPERATION_ASSETS,
-  ALLOWANCE_FEATURES,
   isAllowedAsset,
   assertAllowedAsset,
 } from './constants.js';
-export type { Operation, AllowanceFeature } from './constants.js';
+export type { Operation } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {
   mistToSui,
@@ -90,17 +84,6 @@ export {
 export { solveHashcash } from './utils/hashcash.js';
 export { calculateFee, addCollectFeeToTx } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
-export {
-  buildCreateAllowanceTx,
-  addDepositAllowanceTx,
-  buildDepositAllowanceTx,
-  buildAdminDepositAllowanceTx,
-  buildDeductAllowanceTx,
-  buildWithdrawAllowanceTx,
-  buildWithdrawAmountAllowanceTx,
-  getAllowance,
-  getAllowanceBalance,
-} from './protocols/allowance.js';
 export {
   getFinancialSummary,
   HF_WARN_THRESHOLD,
@@ -154,9 +137,6 @@ export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
 export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';
-export type { ScopedIntent, ScopedIntentPayload } from './types/scoped-intent.js';
-export { buildScopedIntent, verifyScopedIntent } from './auth/intent-builder.js';
-export type { BuildIntentParams } from './auth/intent-builder.js';
 export {
   executeWithGas,
   shouldAutoTopUp,

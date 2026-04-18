@@ -134,23 +134,3 @@ model YieldSnapshot {
   @@map("yield_snapshots")
 }
 
-model IntentLog {
-  id            String   @id @default(cuid())
-  intentNonce   String   @unique @map("intent_nonce")
-  userId        String   @map("user_id")
-  walletAddress String   @map("wallet_address")
-  featureCode   Int      @map("feature_code")
-  maxAmount     Int      @map("max_amount")
-  expiresAt     DateTime @map("expires_at")
-  status        String   @default("issued")
-  txDigest      String?  @map("tx_digest")
-  actualAmount  Int?     @map("actual_amount")
-  error         String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("intent_log")
-}

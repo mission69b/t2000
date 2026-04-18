@@ -136,18 +136,3 @@ export const API_BASE_URL = process.env.T2000_API_URL ?? 'https://api.t2000.ai';
 export const CETUS_USDC_SUI_POOL = '0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab';
 
 export const GAS_RESERVE_MIN = 0.05; // minimum SUI to keep for gas
-
-// Allowance feature tags — must match constants.move
-export const ALLOWANCE_FEATURES = {
-  BRIEFING: 0,
-  YIELD_ALERT: 1,
-  PAYMENT_ALERT: 2,
-  ACTION_REMIND: 3,
-  SESSION: 4,
-  AUTO_COMPOUND: 5,
-  DCA: 6,
-  HF_ALERT: 7,
-} as const;
-export type AllowanceFeature = typeof ALLOWANCE_FEATURES[keyof typeof ALLOWANCE_FEATURES];
-
-export const FEATURES_ALL = 0xFF;

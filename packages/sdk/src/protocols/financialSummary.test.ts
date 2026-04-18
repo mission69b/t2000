@@ -6,12 +6,7 @@ vi.mock('./navi.js', () => ({
   getRates: vi.fn(),
 }));
 
-vi.mock('./allowance.js', () => ({
-  getAllowanceBalance: vi.fn(),
-}));
-
 import { getHealthFactor, getRates } from './navi.js';
-import { getAllowanceBalance } from './allowance.js';
 
 function mockClient(usdcBalance = '5000000', suiBalance = '500000000') {
   return {
@@ -30,7 +25,6 @@ function setupMocks(overrides: {
   hf?: number;
   saveApy?: number;
   borrowApy?: number;
-  allowance?: bigint | null;
 } = {}) {
   vi.mocked(getHealthFactor).mockResolvedValue({
     healthFactor: overrides.hf ?? Infinity,
@@ -46,10 +40,6 @@ function setupMocks(overrides: {
       borrowApy: overrides.borrowApy ?? 0.08,
     },
   });
-
-  if (overrides.allowance !== undefined) {
-    vi.mocked(getAllowanceBalance).mockResolvedValue(overrides.allowance!);
-  }
 }
 
 describe('getFinancialSummary', () => {
@@ -70,7 +60,6 @@ describe('getFinancialSummary', () => {
     expect(summary.dailyYield).toBeCloseTo(500 * 0.05 / 365, 4);
     expect(summary.gasReserveSui).toBe(1);
     expect(summary.hfAlertLevel).toBe('none');
-    expect(summary.allowanceBalance).toBeNull();
     expect(summary.fetchedAt).toBeGreaterThan(0);
   });
 
@@ -93,28 +82,6 @@ describe('getFinancialSummary', () => {
 
     const summary = await getFinancialSummary(mockClient(), '0xuser');
     expect(summary.hfAlertLevel).toBe('none');
-  });
-
-  it('includes allowance balance when allowanceId provided', async () => {
-    setupMocks({ allowance: 5_000_000n });
-
-    const summary = await getFinancialSummary(mockClient(), '0xuser', {
-      allowanceId: '0xallowance',
-    });
-
-    expect(summary.allowanceBalance).toBe(5_000_000n);
-    expect(getAllowanceBalance).toHaveBeenCalledWith(expect.anything(), '0xallowance');
-  });
-
-  it('returns null allowance when fetch fails', async () => {
-    vi.mocked(getAllowanceBalance).mockRejectedValue(new Error('not found'));
-    setupMocks();
-
-    const summary = await getFinancialSummary(mockClient(), '0xuser', {
-      allowanceId: '0xbad',
-    });
-
-    expect(summary.allowanceBalance).toBeNull();
   });
 
   it('handles RPC failures gracefully', async () => {

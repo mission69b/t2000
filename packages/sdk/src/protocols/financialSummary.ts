@@ -2,7 +2,6 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { SUPPORTED_ASSETS, MIST_PER_SUI, CETUS_USDC_SUI_POOL } from '../constants.js';
 import type { FinancialSummary, HFAlertLevel, HealthFactorResult } from '../types.js';
 import { getHealthFactor, getRates } from './navi.js';
-import { getAllowanceBalance } from './allowance.js';
 
 const HF_WARN_THRESHOLD = 1.8;
 const HF_CRITICAL_THRESHOLD = 1.3;
@@ -43,13 +42,13 @@ async function fetchSuiPriceUsd(client: SuiJsonRpcClient): Promise<number> {
 }
 
 export interface FinancialSummaryOptions {
-  allowanceId?: string;
+  // Reserved for future per-call options. Keeping the parameter shape stable
+  // avoids a breaking-change for callers that pass `{}` defensively.
 }
 
 /**
  * Fetch a complete financial snapshot for one wallet in parallel.
- * Designed for the notification cron — one call returns everything
- * a briefing, HF alert, or rate alert needs.
+ * Designed for the indexer HF hook + chain-memory cron.
  *
  * Every sub-call has a fallback so a single RPC failure doesn't
  * crash the entire batch. Callers can check individual zero values
@@ -58,9 +57,9 @@ export interface FinancialSummaryOptions {
 export async function getFinancialSummary(
   client: SuiJsonRpcClient,
   walletAddress: string,
-  options: FinancialSummaryOptions = {},
+  _options: FinancialSummaryOptions = {},
 ): Promise<FinancialSummary> {
-  const [usdcBal, suiBal, hf, rates, suiPrice, allowance] = await Promise.all([
+  const [usdcBal, suiBal, hf, rates, suiPrice] = await Promise.all([
     client.getBalance({ owner: walletAddress, coinType: SUPPORTED_ASSETS.USDC.type })
       .catch(() => ({ totalBalance: '0' })),
     client.getBalance({ owner: walletAddress, coinType: SUPPORTED_ASSETS.SUI.type })
@@ -69,9 +68,6 @@ export async function getFinancialSummary(
       .catch(() => HF_FALLBACK),
     getRates(client),
     fetchSuiPriceUsd(client),
-    options.allowanceId
-      ? getAllowanceBalance(client, options.allowanceId).catch(() => null)
-      : Promise.resolve(null),
   ]);
 
   const usdcAvailable = Number(usdcBal.totalBalance) / 10 ** SUPPORTED_ASSETS.USDC.decimals;
@@ -93,7 +89,6 @@ export async function getFinancialSummary(
     dailyYield,
     gasReserveSui,
     gasReserveUsd: gasReserveSui * suiPrice,
-    allowanceBalance: allowance,
     fetchedAt: Date.now(),
   };
 }
