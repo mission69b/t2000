@@ -1,17 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Setup EventBridge Scheduler for split t2000-cron ECS tasks ---
-# Creates 3 schedules (hourly, daily-chain, daily-intel) with separate task defs.
+# --- Setup EventBridge Scheduler for t2000-cron-daily-intel ECS task ---
+#
+# History (April 2026 simplification — see spec/SIMPLIFICATION_RATIONALE.md):
+# This script used to provision THREE schedules:
+#   - t2000-cron-hourly       → HF alerts, rate alerts, scheduled actions
+#   - t2000-cron-daily-chain  → auto-compound, morning briefings, follow-up reminders
+#   - t2000-cron-daily-intel  → portfolio rollups, episodic memory, behavioural patterns, profile inference
+#
+# The first two were retired with the chat-first / autonomy-cleanup work:
+#   - HF alerts moved to a synchronous email hook (see apps/server hf-alert route).
+#   - Rate alerts, scheduled actions (DCA), morning briefings, auto-compound,
+#     follow-up reminders, and behavioural-pattern proposals were all DELETED.
+#     zkLogin can't sign without user presence, so "autonomous" actions were
+#     theatre. Daily summaries were noise. Both schedules + their task
+#     definitions (`t2000-cron-hourly`, `t2000-cron-daily-chain`, and the
+#     legacy umbrella `t2000-cron`) were deleted from EventBridge + ECS in S.12.5.
+#
+# Only `t2000-cron-daily-intel` survives. It still runs at 07:00 + 19:00 UTC
+# to refresh:
+#   - Portfolio snapshots (silent context for the engine)
+#   - Episodic memory + financial profile inference
+#   - Behavioural-pattern *classifiers* (kept as pure functions feeding ChainFacts)
+# All output is silent context fed to the LLM at chat time. Nothing is surfaced
+# to the user without them asking.
+#
 # Run once to create. Subsequent deploys update via deploy-indexer.yml.
-# Prerequisites: task definitions registered, secrets created in Secrets Manager.
+# Prerequisites: cron-daily-intel-task-definition.json registered, secrets
+# created in Secrets Manager.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/.env.infra"
 
 SCHEDULE_GROUP="default"
 
-echo "=== t2000-cron EventBridge Scheduler Setup (split architecture) ==="
+echo "=== t2000-cron-daily-intel EventBridge Scheduler Setup ==="
 echo "Cluster:  $ECS_CLUSTER"
 echo "Region:   $AWS_REGION"
 echo ""
@@ -30,36 +54,33 @@ TRUST_POLICY='{
 
 SCHEDULER_ROLE_ARN=$(aws iam get-role --role-name "$SCHEDULER_ROLE_NAME" --query "Role.Arn" --output text 2>/dev/null || true)
 
+POLICY='{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["ecs:RunTask"],
+      "Resource": [
+        "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron-daily-intel:*"
+      ],
+      "Condition": {
+        "ArnLike": {"ecs:cluster": "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':cluster/'"$ECS_CLUSTER"'"}
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["iam:PassRole"],
+      "Resource": ["'"$EXEC_ROLE_ARN"'"]
+    }
+  ]
+}'
+
 if [ -z "$SCHEDULER_ROLE_ARN" ] || [ "$SCHEDULER_ROLE_ARN" = "None" ]; then
   echo "Creating scheduler IAM role..."
   SCHEDULER_ROLE_ARN=$(aws iam create-role \
     --role-name "$SCHEDULER_ROLE_NAME" \
     --assume-role-policy-document "$TRUST_POLICY" \
     --query "Role.Arn" --output text)
-
-  POLICY='{
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Action": ["ecs:RunTask"],
-        "Resource": [
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron-hourly:*",
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron-daily-chain:*",
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron-daily-intel:*",
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron:*"
-        ],
-        "Condition": {
-          "ArnLike": {"ecs:cluster": "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':cluster/'"$ECS_CLUSTER"'"}
-        }
-      },
-      {
-        "Effect": "Allow",
-        "Action": ["iam:PassRole"],
-        "Resource": ["'"$EXEC_ROLE_ARN"'"]
-      }
-    ]
-  }'
 
   aws iam put-role-policy \
     --role-name "$SCHEDULER_ROLE_NAME" \
@@ -70,30 +91,7 @@ if [ -z "$SCHEDULER_ROLE_ARN" ] || [ "$SCHEDULER_ROLE_ARN" = "None" ]; then
   sleep 10
 else
   echo "Scheduler role exists: $SCHEDULER_ROLE_ARN"
-  echo "Updating IAM policy for new task definitions..."
-  POLICY='{
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Action": ["ecs:RunTask"],
-        "Resource": [
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron-hourly:*",
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron-daily-chain:*",
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron-daily-intel:*",
-          "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':task-definition/t2000-cron:*"
-        ],
-        "Condition": {
-          "ArnLike": {"ecs:cluster": "arn:aws:ecs:'"$AWS_REGION"':'"$AWS_ACCOUNT_ID"':cluster/'"$ECS_CLUSTER"'"}
-        }
-      },
-      {
-        "Effect": "Allow",
-        "Action": ["iam:PassRole"],
-        "Resource": ["'"$EXEC_ROLE_ARN"'"]
-      }
-    ]
-  }'
+  echo "Refreshing IAM policy..."
   aws iam put-role-policy \
     --role-name "$SCHEDULER_ROLE_NAME" \
     --policy-name "t2000-cron-ecs-run" \
@@ -166,19 +164,11 @@ create_or_update_schedule() {
   fi
 }
 
-# Step 3: Create/update all 3 schedules
+# Step 3: Create/update the daily-intel schedule (only surviving cron)
 echo ""
-echo "--- Schedule 1: Hourly (HF alerts, rate alerts, scheduled actions) ---"
-create_or_update_schedule "t2000-cron-hourly" "rate(1 hour)" "t2000-cron-hourly"
-
-echo ""
-echo "--- Schedule 2: Daily Chain (compound, briefings, reminders — hours 7,10,13 UTC) ---"
-create_or_update_schedule "t2000-cron-daily-chain" "cron(0 7,10,13 * * ? *)" "t2000-cron-daily-chain"
-
-echo ""
-echo "--- Schedule 3: Daily Intel (portfolio, memory, patterns, profiles — hours 7,19 UTC) ---"
+echo "--- Schedule: Daily Intel (silent context refresh — hours 7,19 UTC) ---"
 create_or_update_schedule "t2000-cron-daily-intel" "cron(0 7,19 * * ? *)" "t2000-cron-daily-intel"
 
 echo ""
 echo "=== Done ==="
-echo "3 schedules configured. Logs: CloudWatch → /ecs/mission69b-mainnet → t2000-cron-*"
+echo "1 schedule configured. Logs: CloudWatch → /ecs/mission69b-mainnet → t2000-cron-daily-intel"

@@ -100,7 +100,7 @@ export const portfolioAnalysisTool = buildTool({
     }
 
     let weekChange: WeekChange | undefined;
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (apiUrl && address) {
       try {
         const histRes = await fetch(

@@ -37,7 +37,7 @@ export const activitySummaryTool = buildTool({
 
   async call(input, context): Promise<ToolResult<ActivitySummary>> {
     const period = input.period ?? 'month';
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     const address = context.walletAddress;
 
     const empty: ActivitySummary = {

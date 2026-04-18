@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-14
+> Last verified: 2026-04-18 (S.13 — post-simplification baseline)
 
 ---
 
@@ -14,11 +14,11 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.36.0` |
-| `@t2000/engine` | `0.36.0` |
-| `@t2000/cli` | `0.36.0` |
+| `@t2000/sdk` | `0.39.0` |
+| `@t2000/engine` | `0.39.0` |
+| `@t2000/cli` | `0.39.0` |
 | `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `0.36.0` |
+| `@t2000/mcp` | `0.39.0` |
 | Agent Skills | `3.0` |
 
 ---
@@ -634,12 +634,13 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.36.0` |
+| Version | `0.39.0` |
 | Description | Agent engine for conversational finance — powers Audric |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
 | Test count | 250 |
+| Total tools | **40** (29 reads + 11 writes) — see breakdown below |
 
 ### Engine Public Exports
 
@@ -664,7 +665,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `compactMessages` | function | Context window compaction (ContextBudget) |
 | `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
 | `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 50 built-in tools (38 read, 12 write) |
+| `getDefaultTools` | function | All 40 built-in tools (29 read, 11 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 | `classifyEffort` | function | Adaptive thinking effort classifier |
 | `ContextBudget` | class | Context window budget tracking + compaction trigger |
@@ -690,7 +691,7 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 
 ### Engine Tool Names
 
-| Read Tools (38) | Write Tools (12) |
+| Read Tools (29) | Write Tools (11) |
 |-----------|------------|
 | `render_canvas` | `save_deposit` |
 | `balance_check` | `withdraw` |
@@ -712,10 +713,6 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | `defillama_chain_tvl` | |
 | `defillama_protocol_fees` | |
 | `defillama_sui_protocols` | |
-| `allowance_status` | |
-| `toggle_allowance` | |
-| `update_daily_limit` | |
-| `update_permissions` | |
 | `create_payment_link` | |
 | `list_payment_links` | |
 | `cancel_payment_link` | |
@@ -725,11 +722,10 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | `spending_analytics` | |
 | `yield_summary` | |
 | `activity_summary` | |
-| `create_schedule` | |
-| `list_schedules` | |
-| `cancel_schedule` | |
-| `pattern_status` | |
-| `record_advice` | `pause_pattern` |
+
+> **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_schedule`, `list_schedules`, `cancel_schedule`, `pattern_status`, `pause_pattern` — 9 tools deleted. Allowance contract is dormant; scheduled actions can't sign without user presence under zkLogin; pattern detectors stay as silent classifiers (not user-facing proposals). See `spec/SIMPLIFICATION_RATIONALE.md`.
+>
+> `record_advice` lives in `audric/apps/web/lib/engine/advice-tool.ts` (audric-side tool that writes `AdviceLog` rows; not exported from `@t2000/engine`).
 
 ### Engine Event Types
 
@@ -750,8 +746,8 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.36.0` |
-| Tool count | 50 (38 read, 12 write) — mirrors engine tool set |
+| Version | `0.39.0` |
+| Tool count | 40 (29 read, 11 write) — mirrors engine tool set |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |

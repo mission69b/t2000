@@ -30,7 +30,7 @@ export const spendingAnalyticsTool = buildTool({
 
   async call(input, context): Promise<ToolResult<SpendingResponse>> {
     const period = input.period ?? 'month';
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     const address = context.walletAddress;
     const empty: SpendingResponse = { period, totalSpent: 0, requestCount: 0, serviceCount: 0, byService: [] };
 

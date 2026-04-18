@@ -858,10 +858,6 @@ Tools are built with `buildTool()` which enforces:
 | `defillama_chain_tvl` | |
 | `defillama_protocol_fees` | |
 | `defillama_sui_protocols` | |
-| `allowance_status` | |
-| `toggle_allowance` | |
-| `update_daily_limit` | |
-| `update_permissions` | |
 | `create_payment_link` | |
 | `list_payment_links` | |
 | `cancel_payment_link` | |
@@ -871,11 +867,10 @@ Tools are built with `buildTool()` which enforces:
 | `spending_analytics` | |
 | `yield_summary` | |
 | `activity_summary` | |
-| `create_schedule` | |
-| `list_schedules` | |
-| `cancel_schedule` | |
 
-38 read tools, 12 write tools, **50 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+29 read tools, 11 write tools, **40 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+
+> **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions` (allowance contract dormant), `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't sign without user presence under zkLogin), `pause_pattern`, `pattern_status` (proposal pipeline removed; classifiers stay as silent context). See `spec/SIMPLIFICATION_RATIONALE.md`.
 
 ### Reasoning Engine (Shipped — always on)
 
@@ -901,13 +896,6 @@ The engine supports rich interactive visualizations via HTML canvases:
 - `render_canvas` tool generates HTML content for charts, timelines, heatmaps
 - `canvas` SSE event type delivers rendered content to the client
 - Used for portfolio timeline, spending breakdown, activity heatmap, financial reports
-
-### Scheduled Actions (DCA)
-
-Server-side scheduled actions with a trust ladder:
-- `create_schedule` / `list_schedules` / `cancel_schedule` tools (read-only, execute server-side)
-- First 5 executions require user confirmation (trust ladder), then autonomous
-- Supports: save, swap, repay on cron schedules
 
 ### Token Registry
 
@@ -973,40 +961,15 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 
 ---
 
-## Audric 2.0 — Autonomous Financial Agent
+## Audric — Silent Intelligence Layer
 
-### Autonomous Action Loop
-
-```
-Nightly cron (t2000 server)
-  │
-  ├── Pattern Detection
-  │   → 5 detectors: recurring_save, yield_reinvestment, debt_discipline,
-  │     idle_usdc_tolerance, swap_pattern
-  │   → Analyze 90-day AppEvent + PortfolioSnapshot history
-  │   → Create Stage 0 proposals (ScheduledAction with source='pattern')
-  │
-  ├── Trust Ladder
-  │   → Stage 0: Proposal created → user reviews in Settings > Automations
-  │   → Stage 1: (reserved)
-  │   → Stage 2: User accepts → runs with notification
-  │   → Stage 3: Auto-promoted after N successful runs → fully autonomous
-  │
-  ├── Execution (runScheduledActions cron)
-  │   → Idempotency key (daily/weekly/monthly)
-  │   → Safety checks: balance, health factor, daily limit, borrow ban
-  │   → Circuit breaker: 3 consecutive failures → auto-pause + email
-  │   → Execute via t2000 server internal API
-  │   → Log to ScheduledExecution for audit
-  │
-  └── Notifications (Resend email)
-      → 3 templates: stage2_execution, stage3_unexpected, circuit_breaker
-      → Deep link CTAs back to Audric
-```
+> The "autonomous agent" framing of the prior Audric 2.0 spec was retired in the April 2026 simplification. Pattern proposals, the trust ladder, the scheduled-actions executor, and the notification templates were deleted because zkLogin requires user presence to sign — "autonomous" was reminders dressed up as agency. See `spec/SIMPLIFICATION_RATIONALE.md`.
+>
+> **What stayed** is everything that makes the chat smarter without ever showing itself: chain-memory classifiers, episodic memory extraction, financial-profile inference, portfolio snapshots, and the silent `AdviceLog` loop. These run on a single `daily-intel` cron group and feed the LLM context invisibly.
 
 ### Chain Memory
 
-7 classifiers extract financial patterns from on-chain data:
+7 classifiers extract financial patterns from on-chain data and feed them to the agent silently — no proposals, no surface, no notifications:
 
 | Classifier | Source | Detects |
 |-----------|--------|---------|
@@ -1018,7 +981,11 @@ Nightly cron (t2000 server)
 | `large_transaction` | AppEvent | Amounts > $500 |
 | `compounding_streak` | AppEvent | Consecutive compound actions |
 
-Chain facts stored as `UserMemory` with `source: 'chain'` and injected into engine context via `buildMemoryContext()`.
+Chain facts stored as `ChainFact` rows and injected into the engine system prompt via `buildMemoryContext()`. The proposal pipeline (formerly `BehavioralPattern` + Copilot suggestions) was deleted in S.5.
+
+### Critical Health Factor Email (the only proactive surface)
+
+The single notification path that survived the simplification: when the indexer observes a position with HF < 1.2 (liquidation imminent), it fires `/api/internal/hf-alert` → Resend. Always-on, no opt-out, safety-critical. Warn-level alerts (HF < 1.5) and all other notification crons were deleted.
 
 ### Public Wallet Intelligence Report
 
@@ -1032,15 +999,16 @@ Public acquisition funnel at `audric.ai/report/[address]` — no sign-up require
 - **OG image**: dynamic 1200×630 edge-rendered image with net worth, yield efficiency, suggestions count
 - **Multi-wallet**: link up to 10 wallets, aggregated portfolio view, tab switcher in FullPortfolioCanvas
 
-### Intelligence Layer (F1–F5)
+### Intelligence Layer (silent context that survives the simplification)
 
 | Feature | What it does |
 |---------|-------------|
-| F1 — Financial Profile | `UserFinancialProfile` model: risk tolerance, goals, investment horizon. Claude inference cron |
-| F2 — Proactive Awareness | `buildProactivenessInstructions()` injected each turn. Idle USDC, HF warnings, follow-ups |
-| F3 — Episodic Memory | `UserMemory` model: key facts, preferences, past decisions. Claude extraction cron + Jaccard dedup |
-| F4 — Conversation State | 6 states (idle, exploring, confirming, executing, post_error, awaiting_confirmation). Redis-backed |
-| F5 — Self-Evaluation | 4-point checklist injected post-action for outcome tracking |
+| Financial Profile | `UserFinancialProfile` model: risk tolerance, goals, investment horizon. Claude inference cron (daily-intel group) |
+| Episodic Memory | `UserMemory` model: key facts, preferences, past decisions. Claude extraction cron + Jaccard dedup |
+| Advice Memory | `AdviceLog` rows written by `record_advice` (audric tool). `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
+| Conversation Log | `ConversationLog` rows written by chat route. Fine-tuning dataset for the future self-hosted model migration |
+
+> The "Proactive Awareness" / `buildProactivenessInstructions()` layer was deleted in S.5 along with the proposal pipeline. There are no proactive surfaces; everything proactive was either a notification (deleted) or a dashboard card (deleted). The chat answers when asked.
 
 ---
 

@@ -17,8 +17,7 @@ on:
       - "apps/server/src/db/**"
       - "apps/server/prisma/**"
       - "infra/indexer*"
-      - "infra/cron-*-task-definition.json"
-      - "infra/cron-task-definition.json"
+      - "infra/cron-daily-intel-task-definition.json"
 
 concurrency:
   group: deploy-indexer
@@ -197,13 +196,11 @@ jobs:
             fi
           }
 
-          echo "--- Hourly ---"
-          register_and_schedule "cron-hourly-task-definition.json" "t2000-cron-hourly" "rate(1 hour)"
-
-          echo "--- Daily Chain (hours 7,10,13 UTC) ---"
-          register_and_schedule "cron-daily-chain-task-definition.json" "t2000-cron-daily-chain" "cron(0 7,10,13 * * ? *)"
-
+          # Note: t2000-cron-hourly and t2000-cron-daily-chain were retired
+          # in the April 2026 simplification (see spec/SIMPLIFICATION_RATIONALE.md).
+          # Only the daily-intel cron — silent context refresh for the engine —
+          # survives. HF email alerts moved to a synchronous webhook.
           echo "--- Daily Intel (hours 7,19 UTC) ---"
           register_and_schedule "cron-daily-intel-task-definition.json" "t2000-cron-daily-intel" "cron(0 7,19 * * ? *)"
 
-          echo "All 3 cron task definitions registered and schedules updated."
+          echo "Cron task definition registered and schedule updated."

@@ -1,9 +1,19 @@
+> **⚠️ HISTORICAL DOCUMENT — ARCHIVED APRIL 2026**
+>
+> Companion to the archived [`AUDRIC_2_SPEC.md`](./AUDRIC_2_SPEC.md). Both are superseded by [`AUDRIC_FINANCE_SIMPLIFICATION_SPEC_v1.4.md`](../../AUDRIC_FINANCE_SIMPLIFICATION_SPEC_v1.4.md).
+>
+> The four-rail dashboard, the Copilot row, the scheduled-action cards, the morning briefing surfaces, the autonomy panels — all of these were deleted in the April 2026 simplification. The shipped UI is chat-first: balance + greeting + chat input + chip bar above the fold, with everything else opt-in via slash-commands or chat-driven canvases. See [`spec/SIMPLIFICATION_RATIONALE.md`](../SIMPLIFICATION_RATIONALE.md) for the why.
+>
+> **Read this only as historical context.** Do not implement anything from this doc without re-validating against the current spec.
+
+---
+
 # Audric 2.0 — UI/UX Redesign Spec
 
 > Companion to `AUDRIC_2_SPEC.md`. This document covers only the visual shell and interaction patterns.
 > Hand each section to Claude Code as a standalone task. All implementation is in the `audric` repo.
 >
-> Last updated: April 13, 2026
+> Last updated: April 13, 2026 (**archived — see banner above**)
 
 ---
 

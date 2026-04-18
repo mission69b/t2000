@@ -22,7 +22,7 @@ export const yieldSummaryTool = buildTool({
   isReadOnly: true,
 
   async call(_input, context): Promise<ToolResult<YieldSummary>> {
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     const address = context.walletAddress;
 
     const empty: YieldSummary = {

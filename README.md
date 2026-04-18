@@ -157,7 +157,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-50 built-in tools (38 read, 12 write) with permission tiers, cost tracking, session management, and context window compaction. Includes a reasoning engine (adaptive thinking, guard runner, skill recipes), canvas system for interactive visualizations, scheduled actions (DCA), and autonomous behavioral patterns with trust ladder. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
+40 built-in tools (29 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Includes a reasoning engine (adaptive thinking, guard runner, skill recipes) and a canvas system for interactive in-chat visualizations. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 
@@ -211,7 +211,7 @@ Connect Claude Desktop, Cursor, Windsurf, or any MCP client:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 50 tools mirroring the engine tool set. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
+Auto-configures Claude Desktop + Cursor. 40 tools mirroring the engine tool set. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
 
 ## MPP Payments
 

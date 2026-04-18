@@ -1,6 +1,16 @@
+> **⚠️ HISTORICAL DOCUMENT — ARCHIVED APRIL 2026**
+>
+> This spec is superseded by [`AUDRIC_FINANCE_SIMPLIFICATION_SPEC_v1.4.md`](../../AUDRIC_FINANCE_SIMPLIFICATION_SPEC_v1.4.md).
+>
+> The "Autonomous Agent" thesis described below was retired in the April 2026 simplification: Copilot, scheduled actions, morning briefings, rate alerts, auto-compound, allowance / features budget, and the proactive-suggestions surface were all deleted. zkLogin cannot sign without user presence, so the "autonomous" framing was honest only as reminders dressed up as agency. See [`spec/SIMPLIFICATION_RATIONALE.md`](../SIMPLIFICATION_RATIONALE.md) for the full reasoning.
+>
+> **Read this only as historical context.** Do not implement anything from this doc without re-validating against the current spec. The chat-first, daily-free product shipped in S.1–S.15 is the canonical Audric.
+
+---
+
 # Audric 2.0 — Full Specification
 > Making Audric 100x more powerful: Claude-like for DeFi + Autonomous Agent
-> Last updated: April 13, 2026 | Status: Draft for review
+> Last updated: April 13, 2026 | Status: Draft for review (**archived — see banner above**)
 
 ---
 

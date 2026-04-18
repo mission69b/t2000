@@ -170,7 +170,6 @@ Conversational finance engine powering Audric:
 - `CostTracker` — token usage + USD cost estimation with budget limits
 - SSE streaming — `serializeSSE` / `parseSSE` / `engineToSSE`
 - Canvas system — `render_canvas` tool, `canvas` SSE event type
-- Scheduled actions — `create_schedule`, `list_schedules`, `cancel_schedule` (DCA)
 - MCP client (`McpClientManager`) — multi-server MCP client with caching, NAVI MCP integration
 - MCP server adapter — `buildMcpTools` / `registerEngineTools` (engine tools → MCP tools)
 - 50 tools (38 read, 12 write) — see `PRODUCT_FACTS.md` for full list

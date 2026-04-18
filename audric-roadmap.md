@@ -4,26 +4,40 @@
 
 *Version 1.0 · April 2026 · Confidential*
 
+> **⚠️ Status: Phases 1 → 3.5 SHIPPED then DELETED. Phases 4-H ARCHIVED. April 2026 simplification is the current state.**
+>
+> The "proactive copilot + scheduled actions + features budget" thesis below was shipped in Phases 1-3.5, ran in production, and was retired in the April 2026 simplification (`AUDRIC_FINANCE_SIMPLIFICATION_SPEC_v1.4.md`). The morning briefings, rate alerts, auto-compound, scheduled actions / DCA, copilot dashboard, allowance / features budget, async job queue, and creator marketplace were all either deleted or never started.
+>
+> **Why the pivot:** zkLogin can't sign without user presence. Every "autonomous" feature collapsed into "reminder dressed up as agency" the moment we shipped it. The chat — the actual differentiator — was being drowned by surfaces that competitors do better.
+>
+> **What's current:** chat-first dashboard, daily-free billing (5 unverified / 20 verified sessions per rolling 24h), 40-tool engine, 4 cron jobs (memory extraction, profile inference, chain memory, portfolio snapshot), critical HF email at < 1.2 as the only proactive surface. See `spec/SIMPLIFICATION_RATIONALE.md` for the locked decisions on what we will NOT bring back.
+>
+> **Read the rest of this doc as a historical record** of what was tried and why it didn't survive the two-question filter. Anything below this banner that contradicts the simplification spec is wrong by definition.
+
+---
+
 ## Executive summary
 
 Audric is a conversational banking app built on Sui. Users sign in with Google, get a non-custodial USDC wallet in 3 seconds, and manage their money by chatting. The infrastructure (t2000) is open source and powers the MCP server, SDK, CLI, and MPP pay-per-API gateway.
 
-This roadmap covers the path from 100 beta users to a product people open every day without being asked. The central thesis: Audric must shift from reactive (you ask, it does) to proactive (it watches your money and acts on your behalf). The killer loop is a financial copilot that runs on USDC micropayments from the user's own wallet — costing less per day than a fraction of a cent, funded many times over by the yield it helps generate.
+> *Original thesis (April 2026, pre-simplification):* This roadmap covers the path from 100 beta users to a product people open every day without being asked. The central thesis: Audric must shift from reactive (you ask, it does) to proactive (it watches your money and acts on your behalf). The killer loop is a financial copilot that runs on USDC micropayments from the user's own wallet — costing less per day than a fraction of a cent, funded many times over by the yield it helps generate.
+>
+> *Retired April 2026:* the proactive thesis failed the two-question filter (does the user see it OR does it make the chat smarter? AND can it actually do what the marketing implies under zkLogin?). See `spec/SIMPLIFICATION_RATIONALE.md`.
 
 - 100 beta users
 - Save, Send, Credit, Swap live (Swap replaced Pay chip in pre-work)
 - Receive: payment links, invoices, QR — live (Phase 2)
-- Proactive: notifications, briefings, HF alerts, intelligence layer — live (Phase 1-3.5)
-- Reasoning engine: adaptive thinking, guards, recipes, memory — live (Phase 3.5)
+- ~~Proactive: notifications, briefings, HF alerts, intelligence layer~~ — **deleted in simplification (April 2026)**; only critical HF email at HF < 1.2 survives
+- Reasoning engine: adaptive thinking, guards, recipes, memory — live (Phase 3.5, retained as silent context)
 - MPP gateway: 40 services, 88 endpoints
 - Chip bar: Save | Send | Swap | Credit | Receive (guided multi-step flows)
 
-- Daily habit via morning briefing + goals
-- Proactive agent: HF alerts, yield optimisation, DCA
+- ~~Daily habit via morning briefing + goals~~ — briefings deleted, goals kept as silent trackers
+- ~~Proactive agent: HF alerts, yield optimisation, DCA~~ — deleted (chat-first only)
 - Receive: payment links, QR, invoices
-- Allowance model: user-funded micropayment features
-- Async job queue: video, music, long-form gen
-- MPP discovery: consumers know what Pay can do
+- ~~Allowance model: user-funded micropayment features~~ — replaced with daily-free billing (5/20 sessions per rolling 24h)
+- ~~Async job queue: video, music, long-form gen~~ — never started
+- ~~MPP discovery: consumers know what Pay can do~~ — gateway stays, consumer-facing discovery deferred
 
 ## Strategic context
 
@@ -798,7 +812,8 @@ Effort: ~1 hour
 
 ---
 
-## Phase 1 — Daily habit loop
+## Phase 1 — Daily habit loop  ⚠️ ARCHIVED (April 2026 simplification)
+> Morning briefings, daily summaries, push reminders — all deleted. The chat does the daily-habit job by being the one place users open to ask anything money-related.
 
 > ~2 weeks | Retention foundation
 
@@ -1210,7 +1225,8 @@ Each empty state has a contextual CTA that sends the relevant action to the chat
 
 Effort: 3 days
 
-## Phase 2 — Receive + fiat on-ramp
+## Phase 2 — Receive + fiat on-ramp  ✅ SHIPPED (kept post-simplification)
+> Receive product line (payment links, invoices, QR via Sui Payment Kit) survives. Fiat on-ramp pending (onramp.money).
 
 |                                              |
 |----------------------------------------------|
@@ -1411,7 +1427,8 @@ The Phase 2 Receive infrastructure (payment links, public pages, indexer detecti
 
 Effort: 2 days (Listing table + public page + payment link wiring, reuses Receive infrastructure)
 
-## Phase 2.5 — Engine foundation (parallel with Phase 2)
+## Phase 2.5 — Engine foundation (parallel with Phase 2)  ✅ SHIPPED (kept post-simplification)
+> @t2000/engine + reasoning engine + tool dispatch + MCP integration all retained. Tool count narrowed from 50 → 40 in S.7.
 
 > ~3 days | Zero feature risk — internal structural changes that prepare the engine for the Reasoning Engine + Intelligence Layer. Can run in parallel with Phase 2. **Must complete before Phase 3.5.**
 
@@ -1426,7 +1443,8 @@ These are refactoring tasks with no user-facing changes:
 
 Full task tracking in `audric-build-tracker.md` Phase 2.5.
 
-## Phase 3 — Proactive agent + MPP discovery
+## Phase 3 — Proactive agent + MPP discovery  ⚠️ ARCHIVED (April 2026 simplification)
+> Proactive agent (HF alerts, yield optimisation, DCA, rate alerts, copilot suggestions, allowance / features budget) ALL deleted. Only critical HF email at HF < 1.2 survives. MPP discovery deferred indefinitely.
 
 |                          |
 |--------------------------|
@@ -1628,7 +1646,8 @@ Effort: 3 days (flower API + reminder cron + chat parsing for personal dates)
 
 Effort: 1 day
 
-## Phase 3.5 — Intelligence Layer (~3 weeks)
+## Phase 3.5 — Intelligence Layer (~3 weeks)  ⚠️ PARTIALLY ARCHIVED (April 2026 simplification)
+> Silent infrastructure KEPT: chain-memory classifiers, episodic memory, financial profile inference, AdviceLog, ConversationLog, portfolio snapshots. User-facing surfaces (proactive nudges, dashboard insight cards, follow-up emails, OutcomeCheck UI) DELETED.
 
 > Depends on Phase 2.5 (engine foundation) being complete and Phase 3 features (DCA, auto-compound, feedback processing) being stable. The full tool set must be built before wrapping intelligence around it.
 >
@@ -1663,7 +1682,8 @@ This is the phase that makes Audric genuinely intelligent rather than just relia
 
 Full task tracking and dependencies in `audric-build-tracker.md` Phase 3.5.
 
-## Phase 4 — Async job queue
+## Phase 4 — Async job queue  ⚠️ NEVER STARTED — ARCHIVED
+> Async generation queue (video / music / long-form) was speculative. Not implemented; not on the roadmap.
 
 |                               |
 |-------------------------------|
@@ -1776,7 +1796,8 @@ If implementing yield spread (0.1–0.2%), transparent disclosure is mandatory. 
 - Consider framing as "platform fee" rather than "spread" — clearer for non-crypto users
 - Start at 0.1% (conservative). Only increase if user retention data shows no sensitivity
 
-## Phase 5 — Creator marketplace
+## Phase 5 — Creator marketplace  ⚠️ NEVER STARTED — ARCHIVED
+> Creator-funded features marketplace was speculative. Not implemented; not on the roadmap.
 
 |                                                                                                                    |
 |--------------------------------------------------------------------------------------------------------------------|

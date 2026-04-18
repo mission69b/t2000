@@ -33,6 +33,7 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 |-------|---------|
 | `t2000-check-balance` | "check balance", "how much USDC do I have" |
 | `t2000-send` | "send 10 USDC to...", "pay X" |
+| `t2000-receive` | "share my address", "create payment link", "QR code" |
 | `t2000-save` | "deposit to savings", "earn yield" |
 | `t2000-withdraw` | "withdraw from savings", "access my deposits" |
 | `t2000-borrow` | "borrow 40 USDC", "take out a loan" |
@@ -41,6 +42,7 @@ Or copy any `skills/*/SKILL.md` file directly into your agent's context.
 | `t2000-contacts` | "add contact", "send to alice", "list contacts" |
 | `t2000-safeguards` | "set spending limit", "lock agent", "show config" |
 | `t2000-mcp` | "install MCP server", "connect to Claude" |
+| `t2000-engine` | "use the engine programmatically", "build an agent" |
 
 ## Prerequisites
 

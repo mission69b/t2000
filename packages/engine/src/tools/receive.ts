@@ -48,7 +48,7 @@ export const createPaymentLinkTool = buildTool({
   isReadOnly: true,
 
   async call(input, context) {
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Payment link creation is not available.' };
     }
@@ -97,7 +97,7 @@ export const listPaymentLinksTool = buildTool({
   isReadOnly: true,
 
   async call(_input, context) {
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: { links: [] }, displayText: 'No payment links found.' };
     }
@@ -155,7 +155,7 @@ export const createInvoiceTool = buildTool({
   isReadOnly: true,
 
   async call(input, context) {
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Invoice creation is not available.' };
     }
@@ -212,7 +212,7 @@ export const cancelPaymentLinkTool = buildTool({
   isReadOnly: true,
 
   async call(input, context) {
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Payment link cancellation is not available.' };
     }
@@ -258,7 +258,7 @@ export const cancelInvoiceTool = buildTool({
   isReadOnly: true,
 
   async call(input, context) {
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: null, displayText: 'Invoice cancellation is not available.' };
     }
@@ -296,7 +296,7 @@ export const listInvoicesTool = buildTool({
   isReadOnly: true,
 
   async call(_input, context) {
-    const apiUrl = context.env?.ALLOWANCE_API_URL;
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
     if (!apiUrl || !context.walletAddress) {
       return { data: { invoices: [] }, displayText: 'No invoices found.' };
     }
