@@ -22,13 +22,12 @@ describe('prompts', () => {
   });
 
   it('should register 16 prompts', () => {
-    expect(prompts.size).toBe(16);
+    expect(prompts.size).toBe(15);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
     expect(prompts.has('budget-check')).toBe(true);
     expect(prompts.has('savings-strategy')).toBe(true);
-    expect(prompts.has('morning-briefing')).toBe(true);
     expect(prompts.has('what-if')).toBe(true);
     expect(prompts.has('sweep')).toBe(true);
     expect(prompts.has('risk-check')).toBe(true);
@@ -114,12 +113,8 @@ describe('prompts', () => {
     expect(result.messages[0].content.text).toContain('t2000_lock');
   });
 
-  it('morning-briefing should use t2000_overview and mention action items', async () => {
-    const handler = prompts.get('morning-briefing')!;
-    const result = await handler({});
-    expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].content.text).toContain('t2000_overview');
-    expect(result.messages[0].content.text).toContain('Action Items');
+  it('morning-briefing prompt was retired in April 2026 simplification', () => {
+    expect(prompts.has('morning-briefing')).toBe(false);
   });
 
   it('financial-report should use t2000_overview', async () => {

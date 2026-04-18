@@ -180,47 +180,11 @@ export function registerPrompts(server: McpServer): void {
   // Wow-factor prompts — AI-as-financial-advisor
   // ---------------------------------------------------------------------------
 
-  server.prompt(
-    'morning-briefing',
-    'Daily financial snapshot — balance changes, yield earned, savings performance, health warnings.',
-    async () => ({
-      messages: [{
-        role: 'user',
-        content: {
-          type: 'text',
-          text: [
-            'You are a personal financial briefing assistant for a t2000 AI agent bank account on Sui.',
-            '',
-            'IMPORTANT: Call t2000_overview FIRST — it returns balance, positions, health, earnings, fund status, and pending rewards in one call.',
-            'Optionally call t2000_all_rates to compare USDC APYs across protocols.',
-            '',
-            'Present everything as a single structured briefing. NEVER ask follow-up questions before presenting the briefing.',
-            '',
-            '☀️ MORNING BRIEFING',
-            '───────────────────',
-            '',
-            'Show a compact account summary table:',
-            '  Checking    $XX.XX',
-            '  Savings     $XX.XX · X.XX% APY',
-            '  Credit      -$XX.XX (only if borrowed)',
-            '  Net Worth   $XX.XX',
-            '',
-            'If there are savings positions, show daily yield earned.',
-            'If pending rewards exist, mention them.',
-            '',
-            '📋 Action Items (max 4, only if applicable):',
-            '  - Idle funds in checking → suggest saving',
-            '  - Outstanding debt → suggest repaying to stop interest',
-            '  - Better USDC yield elsewhere → note APY gap; suggest reviewing savings placement',
-            '  - Claimable rewards → suggest claiming',
-            '  - Low health factor → warn about liquidation risk',
-            '',
-            'If everything is optimized, say so. Keep it scannable — numbers first, narrative second.',
-          ].join('\n'),
-        },
-      }],
-    }),
-  );
+  // NOTE: The `morning-briefing` prompt was retired in April 2026. The
+  // companion Audric product no longer ships a morning-briefing surface
+  // (zkLogin can't sign while the user sleeps; daily summaries were noise
+  // that competed with the chat). Use `financial-report` for an on-demand
+  // snapshot or `optimize-all` for the action-oriented version.
 
   server.prompt(
     'what-if',
@@ -509,7 +473,7 @@ export function registerPrompts(server: McpServer): void {
             '',
             'IF they already have savings:',
             '  "Looks like you\'re already set up! Here\'s your quick status:"',
-            '  Show a mini briefing, then offer to optimize',
+            '  Show a mini summary (balance + savings + APY), then offer to optimize',
             '',
             'End with: "What would you like to do first?"',
             '',
@@ -660,7 +624,7 @@ export function registerPrompts(server: McpServer): void {
             '  → Offer to save it all now: t2000_save',
             '',
             'If they need regular deposits:',
-            '  → Suggest a recurring schedule',
+            '  → Suggest a manual rhythm (weekly / monthly) the user can run themselves',
             '  → Show how yield accelerates the goal',
             '',
             'End with a clear YES/NO on whether the goal is achievable in the timeline.',

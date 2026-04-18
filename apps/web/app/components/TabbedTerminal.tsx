@@ -110,7 +110,7 @@ const TABS: TerminalTab[] = [
       { text: "$ node engine-demo.mjs", color: "white", delay: 0 },
       { text: "", delay: 300 },
       { text: "  import { QueryEngine } from '@t2000/engine'", color: "dim", delay: 200 },
-      { text: "  const engine = new QueryEngine({ tools: 50 })", color: "dim", delay: 200 },
+      { text: "  const engine = new QueryEngine({ tools: 40 })", color: "dim", delay: 200 },
       { text: "", delay: 300 },
       { text: "  → Classifying effort...", color: "dim", delay: 400 },
       { text: "  ✓ Effort: moderate — matched recipe: swap_and_save", color: "green", delay: 350 },

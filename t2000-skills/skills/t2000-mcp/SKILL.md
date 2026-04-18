@@ -5,11 +5,11 @@ description: >-
   Continue, or any MCP-compatible client. Use when asked to set up MCP,
   paste an MCP server config, install @t2000/mcp, or troubleshoot why
   the MCP server "doesn't do anything" when run from a terminal.
-  Provides 29 tools and 16 prompts over stdio.
+  Provides 29 tools and 15 prompts over stdio.
 license: MIT
 metadata:
   author: t2000
-  version: "1.1"
+  version: "1.2"
   requires: a Sui keypair (created via `npx @t2000/cli init` or any wallet)
 ---
 
@@ -17,7 +17,7 @@ metadata:
 
 ## Purpose
 Expose a t2000 agent bank account (Sui wallet + DeFi positions) to any
-MCP-compatible AI client over stdio. **29 tools, 16 prompts**, safeguard
+MCP-compatible AI client over stdio. **29 tools, 15 prompts**, safeguard
 enforced. No global install required — the recommended path uses `npx`
 so the AI client always pulls the latest published version.
 
@@ -151,7 +151,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (16)
+## Prompts (15)
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |
@@ -159,7 +159,6 @@ All support `dryRun: true` for previews without signing.
 | `send-money` | Guided send with preview |
 | `budget-check` | Can I afford $X? |
 | `savings-strategy` | Recommend how much to save and where |
-| `morning-briefing` | Daily snapshot — balances, yield, rewards, alerts |
 | `what-if` | Scenario planning — model impact before acting |
 | `sweep` | Route idle funds to optimal earning positions |
 | `risk-check` | Health factor, concentration, liquidation risk |

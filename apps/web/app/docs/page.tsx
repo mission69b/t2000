@@ -42,7 +42,7 @@ const PACKAGES = [
   {
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "29 tools, 16 prompts. Connect Claude Desktop, Cursor, or any MCP-compatible client. Stdio transport, safeguard enforced.",
+    desc: "29 tools, 15 prompts. Connect Claude Desktop, Cursor, or any MCP-compatible client. Stdio transport, safeguard enforced.",
     install: "npx -y @t2000/mcp@latest",
     npm: "https://www.npmjs.com/package/@t2000/mcp",
     github: `${GITHUB_URL}/tree/main/packages/mcp`,
@@ -50,13 +50,13 @@ const PACKAGES = [
       "t2000_overview · t2000_balance · t2000_send",
       "t2000_save · t2000_withdraw · t2000_borrow",
       "t2000_swap · t2000_rates · t2000_health",
-      "t2000_pay · t2000_claim_rewards · +17 more",
+      "t2000_pay · t2000_claim_rewards · +18 more",
     ],
   },
   {
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine for financial agents. Adaptive thinking, 9 step guards, 7 skill recipes, intelligence layer (F1\u2013F5), canvas system, streaming.",
+    desc: "Reasoning engine for financial agents. 40 tools, adaptive thinking, 9 step guards, 7 skill recipes, silent intelligence layer, canvas, streaming.",
     install: "npm i @t2000/engine",
     npm: "https://www.npmjs.com/package/@t2000/engine",
     github: `${GITHUB_URL}/tree/main/packages/engine`,
@@ -64,8 +64,8 @@ const PACKAGES = [
       "1. classify effort (quick/moderate/deep)",
       "2. match recipe (7 skill recipes)",
       "3. run guards (9 pre/post gates)",
-      "4. execute tools (50 financial tools)",
-      "5. self-evaluate (F5 checklist)",
+      "4. execute tools (40 financial tools)",
+      "5. self-evaluate (post-flight checklist)",
     ],
   },
   {
@@ -221,10 +221,10 @@ export default function DocsPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
             {[
-              { value: "50", label: "Financial tools", sub: "37 read + 12 write + canvas" },
+              { value: "40", label: "Financial tools", sub: "29 read + 11 write" },
               { value: "9", label: "Step guards", sub: "balance, HF, slippage, cost, ..." },
               { value: "7", label: "Skill recipes", sub: "safe_borrow, swap_and_save, ..." },
-              { value: "8", label: "Canvas templates", sub: "yield, health, DCA, portfolio, ..." },
+              { value: "8", label: "Canvas templates", sub: "yield, health, portfolio, ..." },
             ].map((cap) => (
               <div key={cap.label} className="bg-surface p-5 text-center">
                 <div className="text-[22px] font-semibold text-accent leading-none mb-1.5">{cap.value}</div>

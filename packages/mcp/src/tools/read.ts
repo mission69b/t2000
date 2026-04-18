@@ -11,7 +11,7 @@ export function registerReadTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_overview',
-    'Complete account snapshot in ONE call — balance, savings positions, health factor, yield earnings, fund status, and pending rewards. Use this for morning briefings, general account questions, or any time you need the full picture. Prefer this over calling individual tools.',
+    'Complete account snapshot in ONE call — balance, savings positions, health factor, yield earnings, fund status, and pending rewards. Use this for general account questions or any time you need the full picture. Prefer this over calling individual tools.',
     {},
     async () => {
       try {

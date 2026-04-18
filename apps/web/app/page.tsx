@@ -28,7 +28,7 @@ const PACKAGES = [
     icon: "⟡",
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "50 tools, 16 prompts. Works with Claude, Cursor, any MCP client.",
+    desc: "29 tools, 15 prompts. Works with Claude, Cursor, any MCP client.",
     install: "npx @t2000/mcp",
     href: "https://www.npmjs.com/package/@t2000/mcp",
   },
@@ -36,7 +36,7 @@ const PACKAGES = [
     icon: "◈",
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine. Adaptive thinking, guards, recipes, memory, streaming, canvas.",
+    desc: "Reasoning engine. 40 tools, adaptive thinking, guards, recipes, silent memory, canvas.",
     install: "npm i @t2000/engine",
     href: "https://www.npmjs.com/package/@t2000/engine",
   },
@@ -108,11 +108,11 @@ const THREE_PRODUCTS = [
 
 const PRIMITIVES = [
   { title: "Reasoning engine", desc: "Adaptive thinking, 9 step guards, 7 skill recipes. Complexity-based model routing.", isNew: true },
-  { title: "Intelligence layer", desc: "Financial profiles, proactive awareness, episodic memory, conversation state machine, self-evaluation.", isNew: true },
-  { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, DCA planner. Powers Audric Canvas.", isNew: true },
+  { title: "Silent intelligence", desc: "Financial profile inference, episodic memory, chain memory, AdviceLog \u2014 all silent context that makes the chat smarter without ever surfacing.", isNew: true },
+  { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, savings planner. Powers Audric Canvas.", isNew: true },
   { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
   { title: "DeFi access", desc: "Savings at 3\u20138% APY, credit/borrow \u2014 NAVI Protocol. 20+ DEX swap routing via Cetus." },
-  { title: "Allowance model", desc: "On-chain scoped permissions. User-funded micropayment budget. USD-aware auto-approve thresholds." },
+  { title: "Pay-per-use APIs", desc: "MPP gateway \u2014 41 services, 90+ endpoints. Pay per request with USDC. No keys, no signup." },
 ];
 
 const ARCH_LAYERS = [
@@ -120,7 +120,7 @@ const ARCH_LAYERS = [
   {
     label: "Layer 2 \u2014 Protocols",
     split: [
-      { title: "t2000 (owned)", items: "allowance.move \u00B7 treasury.move", sub: "Scoped \u00B7 time-bounded \u00B7 daily-limited" },
+      { title: "t2000 (owned)", items: "treasury.move \u00B7 payment-kit", sub: "Sponsored gas \u00B7 receive flow" },
       { title: "Third-party (via MCP)", items: "NAVI lending + yield \u00B7 Cetus 20+ DEXs" },
     ],
   },
@@ -136,7 +136,7 @@ const ARCH_LAYERS = [
     accent: true,
     split: [
       { title: "Reasoning Engine", items: "Adaptive thinking \u00B7 9 step guards \u00B7 7 skill recipes \u00B7 Model routing" },
-      { title: "Intelligence Features", items: "Financial profiles \u00B7 Proactive awareness \u00B7 Episodic memory \u00B7 Self-evaluation" },
+      { title: "Silent Intelligence", items: "Financial profile \u00B7 Episodic memory \u00B7 Chain memory \u00B7 AdviceLog \u2014 silent context only" },
     ],
   },
 ];
