@@ -18,6 +18,19 @@ What's left is the chat. That's the product.
 
 ---
 
+## Product structure today
+
+After the simplification, Audric is exactly four consumer products:
+
+- **Audric Finance** — save, send, swap, borrow, repay, withdraw. Every write tap-to-confirm. NAVI for lending, Cetus aggregator for swaps, sponsored gas everywhere.
+- **Audric Pay** — call any of 41 MPP-registered AI services with USDC micropayments. Cost shown first. Same chat surface as everything else.
+- **Audric Intelligence** — the silent layer. Financial profile, conversation memory, chain memory, AdviceLog, the 9-guard runner, the reasoning engine. Never surfaces as a notification — only ever shapes the next reply.
+- **Audric Store** — creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. Coming in Phase 5.
+
+There is no fifth product. Anything not on that list is either an operation inside one of those four (lowercase verb), or it's the underlying t2000 infrastructure (engine, SDK, MCP, MPP gateway, contracts).
+
+---
+
 ## What we kept
 
 The framing changed. A surprising amount of the architecture didn't.

@@ -30,18 +30,30 @@ t2000/
 └── audric-roadmap.md ← Product roadmap + build tracker
 ```
 
-### Product catalog (6 products)
+### Two brand layers
 
-| Product | Integration | Status |
-|---------|-------------|--------|
-| **Savings** | NAVI MCP + thin tx builders | Live |
-| **Pay** | MPP / t2000 gateway | Live |
-| **Send** | Direct Sui transactions | Live |
-| **Swap** | Cetus Aggregator V3 (20+ DEXs) | Live |
-| **Credit** | NAVI MCP + thin tx builders | Live |
-| **Receive** | Direct Sui transactions | Live |
+**t2000** = infra. Names the underlying capabilities (engine, SDK, MCP, MPP gateway, contracts). Used in technical docs, package names, READMEs, dev-facing surfaces.
 
-**Invest is REMOVED.** Do not add it back. Savings covers yield. When protocols release MCPs, expansion is a config change.
+**Audric** = consumer. Names the surfaces a user touches. Always one of exactly four products (post-S.16 simplification):
+
+| Audric product | What it groups | t2000 layer |
+|---|---|---|
+| **Audric Finance** | Save, Send, Swap, Credit (borrow/repay/withdraw), Charts | `@t2000/sdk` Sui tx builders + Cetus Aggregator + NAVI MCP |
+| **Audric Pay** | Spend USDC on MPP-registered AI services (Suno, DALL-E, Lob, etc.) + receive USDC (payment links, invoices, QR) | MPP gateway + `@t2000/sdk` Sui tx builders |
+| **Audric Intelligence** | Silent profile, conversation memory, chain memory, AdviceLog, 9-guard runner, reasoning engine | `@t2000/engine` (intelligence + state + guards) |
+| **Audric Store** | Creator marketplace at audric.ai/username (music, art, ebooks). **Coming soon (Phase 5)** | `@t2000/sdk` + Walrus storage + payment links |
+
+**Naming rules (binding):**
+
+1. **Never invent a 5th consumer product.** If something doesn't fit Finance / Pay / Intelligence / Store, it's either an operation inside one of them (lowercase verb) or it's infra (use a t2000 name).
+2. **Audric Receive is not a product** — it's the receive-half of *Audric Pay*.
+3. **Audric Passport is not a product** — it's the identity layer (zkLogin Google sign-in + non-custodial wallet).
+4. **Operations** stay lowercase verbs (save, send, swap, borrow, repay, withdraw). The capitalised noun forms (Save, Send, Swap, Credit) are UI chip labels.
+5. **Engine system prompts** may reference the four product names but should not invent additional ones.
+6. **Marketing copy** leads with the operation ("save USDC"), invokes the product name only when grouping multiple operations or contrasting with another product.
+7. **Invest is REMOVED.** Do not add it back. Savings (under Audric Finance) covers yield.
+
+The canonical reference for these four products is the top of `audric-roadmap.md`.
 
 ### MCP-first DeFi integration
 

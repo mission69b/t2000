@@ -2,7 +2,31 @@
 
 *Your money, handled.*
 
-*Version 1.0 · April 2026 · Confidential*
+*Version 1.1 · April 2026 · Confidential*
+
+---
+
+## Canonical product taxonomy (post-simplification, S.16)
+
+> Every Audric surface — homepage, in-app, system prompts, comms emails, briefings, READMEs — names capabilities under exactly **four products**. No other consumer-facing brands. No "copilot," "intelligence layer" (as a separate product), "notifications", "morning briefings". Those were retired in the April 2026 simplification.
+
+| Product | What it is | What's inside | Status |
+|---|---|---|---|
+| **Audric Finance** | Chat-driven on-chain money operations. Every write requires user tap-to-confirm. | Save (USDC into NAVI), Send (USDC transfers), Swap (Cetus aggregator across 20+ DEXs), Credit (borrow against savings), Charts (interactive visualizations) | **Live** |
+| **Audric Pay** | Pay any of 41 MPP-registered AI services with USDC micropayments. Audric calls the service on the user's behalf, shows the price first, charges from their USDC. | Music, image, research, data, fulfilment APIs (Suno, DALL-E, OpenAI, Lob, etc.) | **Live** |
+| **Audric Intelligence** | The silent layer that makes the chat smarter. Never surfaces as nudges or notifications — only ever shapes the next reply. | Silent financial profile, conversation memory, chain memory (wallet-history-as-facts), AdviceLog, 9-guard runner, reasoning engine | **Live (silent)** |
+| **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI content (music, art, ebooks, templates), list it, sell in USDC. 92% to creator. | Walrus storage, on-chain pay-to-unlock, payment-link checkout (built on Audric Pay primitives) | **Coming soon (Phase 5)** |
+
+**Naming rules:**
+
+- **Audric Receive** is not a separate product — it's the receive-side of *Audric Pay* (payment links, invoices, QR codes — the surfaces a user uses to *get paid* in USDC).
+- **Audric Passport** is the identity layer (zkLogin Google sign-in + non-custodial wallet), not a product. It's how every product authenticates.
+- **Operations** within Audric Finance use lowercase verb names (save, send, swap, borrow, repay, withdraw). The capitalized noun forms (Save, Send, Swap, Credit) are UI chip labels.
+- When in doubt about which product an operation belongs to: if it moves the user's own USDC on-chain → Finance. If it spends USDC on an external API → Pay. If it's silent and shapes a reply → Intelligence. If it's a creator selling content → Store.
+- Engine system prompts may say "I am Audric" but should not invent additional product names. Capability descriptions reference the four above.
+- Marketing copy should lead with the operation ("save USDC", "swap to SUI") and only invoke the product name when grouping multiple operations or when contrasting with a different product.
+
+---
 
 > **⚠️ Status: Phases 1 → 3.5 SHIPPED then DELETED. Phases 4-H ARCHIVED. April 2026 simplification is the current state.**
 >

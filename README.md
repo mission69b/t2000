@@ -20,7 +20,7 @@
 
 ---
 
-t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. Five packages give AI agents (and developers) everything they need to save, pay, send, borrow, and receive USDC.
+t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. The Audric consumer brand groups capabilities into four products: **Audric Finance** (save / send / swap / borrow / repay), **Audric Pay** (USDC micropayments to 41 MPP services), **Audric Intelligence** (silent profile + memory + reasoning), and **Audric Store** (creator marketplace, coming soon). Five t2000 packages give AI agents and developers everything they need to build the same thing.
 
 ```typescript
 const agent = await T2000.create({ pin: process.env.T2000_PIN });

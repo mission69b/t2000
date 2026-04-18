@@ -88,7 +88,7 @@ const THREE_PRODUCTS = [
   {
     tag: "Consumer",
     name: "Audric",
-    desc: "The consumer app. Banking by conversation. Sign in with Google. Reasoning engine. Canvas visualizations.",
+    desc: "The consumer app. Banking by conversation. Audric Finance + Audric Pay live. Audric Intelligence runs silently. Audric Store coming soon.",
     cta: { label: "Try Audric", href: AUDRIC_URL, primary: true },
   },
   {
@@ -111,8 +111,8 @@ const PRIMITIVES = [
   { title: "Silent intelligence", desc: "Financial profile inference, episodic memory, chain memory, AdviceLog \u2014 all silent context that makes the chat smarter without ever surfacing.", isNew: true },
   { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, savings planner. Powers Audric Canvas.", isNew: true },
   { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
-  { title: "DeFi access", desc: "Savings at 3\u20138% APY, credit/borrow \u2014 NAVI Protocol. 20+ DEX swap routing via Cetus." },
-  { title: "Pay-per-use APIs", desc: "MPP gateway \u2014 41 services, 90+ endpoints. Pay per request with USDC. No keys, no signup." },
+  { title: "DeFi access (Audric Finance)", desc: "Savings at 3\u20138% APY, credit/borrow \u2014 NAVI Protocol. 20+ DEX swap routing via Cetus." },
+  { title: "Pay-per-use APIs (Audric Pay)", desc: "MPP gateway \u2014 41 services, 90+ endpoints. Pay per request with USDC. No keys, no signup." },
 ];
 
 const ARCH_LAYERS = [
