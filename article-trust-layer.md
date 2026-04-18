@@ -22,12 +22,14 @@ What's left is the chat. That's the product.
 
 After the simplification, Audric is exactly four consumer products:
 
-- **Audric Finance** — save, send, swap, borrow, repay, withdraw. Every write tap-to-confirm. NAVI for lending, Cetus aggregator for swaps, sponsored gas everywhere.
-- **Audric Pay** — call any of 41 MPP-registered AI services with USDC micropayments. Cost shown first. Same chat surface as everything else.
+- **Audric Finance** — save, swap, borrow, repay, withdraw. Every write tap-to-confirm. NAVI for lending, Cetus aggregator for swaps, sponsored gas everywhere.
+- **Audric Pay** — send USDC. Peer transfers, payment links, invoices, QR codes. The money-transfer primitive. "Send $50 to alice" resolves in ~0.4s.
 - **Audric Intelligence** — the silent layer. Financial profile, conversation memory, chain memory, AdviceLog, the 9-guard runner, the reasoning engine. Never surfaces as a notification — only ever shapes the next reply.
 - **Audric Store** — creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. Coming in Phase 5.
 
 There is no fifth product. Anything not on that list is either an operation inside one of those four (lowercase verb), or it's the underlying t2000 infrastructure (engine, SDK, MCP, MPP gateway, contracts).
+
+MPP (the on-chain micropayment gateway that lets Audric call 41 paid APIs on a user's behalf — Suno, DALL-E, OpenAI, Lob, etc.) is **not** a promoted product. It's an internal capability exposed via the `pay_api` tool, the same way NAVI and Cetus are internal capabilities. Users can ask Audric to do things that touch it ("send a postcard to my mum", "translate this email"), but it doesn't get a landing-page section of its own.
 
 ---
 

@@ -12,17 +12,18 @@
 
 | Product | What it is | What's inside | Status |
 |---|---|---|---|
-| **Audric Finance** | Chat-driven on-chain money operations. Every write requires user tap-to-confirm. | Save (USDC into NAVI), Send (USDC transfers), Swap (Cetus aggregator across 20+ DEXs), Credit (borrow against savings), Charts (interactive visualizations) | **Live** |
-| **Audric Pay** | Pay any of 41 MPP-registered AI services with USDC micropayments. Audric calls the service on the user's behalf, shows the price first, charges from their USDC. | Music, image, research, data, fulfilment APIs (Suno, DALL-E, OpenAI, Lob, etc.) | **Live** |
+| **Audric Finance** | Chat-driven on-chain money operations. Every write requires user tap-to-confirm. | Save (USDC into NAVI), Swap (Cetus aggregator across 20+ DEXs), Credit (borrow / repay / withdraw against savings), Charts (interactive visualizations) | **Live** |
+| **Audric Pay** | Move USDC. Peer transfers, payment links, invoices, QR codes. The money-transfer primitive. | Send USDC to wallets or saved contacts, create payment links, create and collect invoices, receive via QR | **Live** |
 | **Audric Intelligence** | The silent layer that makes the chat smarter. Never surfaces as nudges or notifications — only ever shapes the next reply. | Silent financial profile, conversation memory, chain memory (wallet-history-as-facts), AdviceLog, 9-guard runner, reasoning engine | **Live (silent)** |
 | **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI content (music, art, ebooks, templates), list it, sell in USDC. 92% to creator. | Walrus storage, on-chain pay-to-unlock, payment-link checkout (built on Audric Pay primitives) | **Coming soon (Phase 5)** |
 
 **Naming rules:**
 
+- **MPP micropayments** (calling 41 AI services — Suno, DALL-E, OpenAI, Lob, etc. — via `pay_api`) is an **internal capability**, not a promoted product. Audric uses it the way it uses NAVI or Cetus — under the hood, mentioned only when the user asks "can you do X?" Do not list it as its own product line on marketing surfaces.
 - **Audric Receive** is not a separate product — it's the receive-side of *Audric Pay* (payment links, invoices, QR codes — the surfaces a user uses to *get paid* in USDC).
 - **Audric Passport** is the identity layer (zkLogin Google sign-in + non-custodial wallet), not a product. It's how every product authenticates.
-- **Operations** within Audric Finance use lowercase verb names (save, send, swap, borrow, repay, withdraw). The capitalized noun forms (Save, Send, Swap, Credit) are UI chip labels.
-- When in doubt about which product an operation belongs to: if it moves the user's own USDC on-chain → Finance. If it spends USDC on an external API → Pay. If it's silent and shapes a reply → Intelligence. If it's a creator selling content → Store.
+- **Operations** within Audric Finance use lowercase verb names (save, swap, borrow, repay, withdraw). Within Audric Pay: send, request, invoice. The capitalized noun forms (Save, Swap, Credit, Send) are UI chip labels.
+- When in doubt about which product an operation belongs to: if it earns, swaps, borrows, or repays → Finance. If it transfers USDC between users → Pay. If it's silent and shapes a reply → Intelligence. If it's a creator selling content → Store. If it calls an external paid API on the user's behalf → that's MPP (internal), surfaced via `pay_api`, not a product.
 - Engine system prompts may say "I am Audric" but should not invent additional product names. Capability descriptions reference the four above.
 - Marketing copy should lead with the operation ("save USDC", "swap to SUI") and only invoke the product name when grouping multiple operations or when contrasting with a different product.
 

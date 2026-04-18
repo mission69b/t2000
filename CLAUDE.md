@@ -38,20 +38,21 @@ t2000/
 
 | Audric product | What it groups | t2000 layer |
 |---|---|---|
-| **Audric Finance** | Save, Send, Swap, Credit (borrow/repay/withdraw), Charts | `@t2000/sdk` Sui tx builders + Cetus Aggregator + NAVI MCP |
-| **Audric Pay** | Spend USDC on MPP-registered AI services (Suno, DALL-E, Lob, etc.) + receive USDC (payment links, invoices, QR) | MPP gateway + `@t2000/sdk` Sui tx builders |
+| **Audric Finance** | Save, Swap, Credit (borrow/repay/withdraw), Charts | `@t2000/sdk` Sui tx builders + Cetus Aggregator + NAVI MCP |
+| **Audric Pay** | Send USDC, payment links, invoices, QR codes — the money-transfer primitive | `@t2000/sdk` Sui tx builders (direct transfers, payment-link contract) |
 | **Audric Intelligence** | Silent profile, conversation memory, chain memory, AdviceLog, 9-guard runner, reasoning engine | `@t2000/engine` (intelligence + state + guards) |
 | **Audric Store** | Creator marketplace at audric.ai/username (music, art, ebooks). **Coming soon (Phase 5)** | `@t2000/sdk` + Walrus storage + payment links |
 
 **Naming rules (binding):**
 
 1. **Never invent a 5th consumer product.** If something doesn't fit Finance / Pay / Intelligence / Store, it's either an operation inside one of them (lowercase verb) or it's infra (use a t2000 name).
-2. **Audric Receive is not a product** — it's the receive-half of *Audric Pay*.
-3. **Audric Passport is not a product** — it's the identity layer (zkLogin Google sign-in + non-custodial wallet).
-4. **Operations** stay lowercase verbs (save, send, swap, borrow, repay, withdraw). The capitalised noun forms (Save, Send, Swap, Credit) are UI chip labels.
-5. **Engine system prompts** may reference the four product names but should not invent additional ones.
-6. **Marketing copy** leads with the operation ("save USDC"), invokes the product name only when grouping multiple operations or contrasting with another product.
-7. **Invest is REMOVED.** Do not add it back. Savings (under Audric Finance) covers yield.
+2. **MPP / 41 AI services is NOT a product.** It's an internal capability (the MPP gateway) exposed via `pay_api` — Audric uses it under the hood, same way it uses NAVI or Cetus. Do not brand it as Audric Pay. Audric Pay = money transfer between users.
+3. **Audric Receive is not a product** — it's the receive-half of *Audric Pay*.
+4. **Audric Passport is not a product** — it's the identity layer (zkLogin Google sign-in + non-custodial wallet).
+5. **Operations** stay lowercase verbs. Finance: save, swap, borrow, repay, withdraw. Pay: send, request, invoice. The capitalised noun forms (Save, Send, Swap, Credit) are UI chip labels.
+6. **Engine system prompts** may reference the four product names but should not invent additional ones.
+7. **Marketing copy** leads with the operation ("save USDC", "send USDC"), invokes the product name only when grouping multiple operations or contrasting with another product.
+8. **Invest is REMOVED.** Do not add it back. Savings (under Audric Finance) covers yield.
 
 The canonical reference for these four products is the top of `audric-roadmap.md`.
 
