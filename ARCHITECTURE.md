@@ -72,7 +72,7 @@
 
 | App | Hosting | Domain | What it does |
 |-----|---------|--------|-------------|
-| Audric | Vercel | audric.ai | Consumer product — Passport (zkLogin), Intelligence (engine chat), Pay (USDC transfers), Store (coming soon) (separate repo) |
+| Audric | Vercel | audric.ai | Consumer product — Passport (zkLogin), Intelligence (engine chat), Finance (NAVI save/borrow + Cetus swap + charts), Pay (USDC transfers + receive), Store (coming soon) (separate repo) |
 | `apps/web` | Vercel | t2000.ai | Infrastructure landing page + docs |
 | `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs |
 | `apps/server` | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger |
@@ -961,15 +961,16 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 
 ---
 
-## Audric — the four products
+## Audric — the five products
 
-The Audric consumer brand groups everything into exactly **four products**. "Audric Finance" is retired; its operations (save, swap, borrow, repay, withdraw) are surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm.
+The Audric consumer brand groups everything into exactly **five products**. (S.18 reverted S.17's Finance retirement: Intelligence was overloaded as both "the moat" and "the home for every financial verb," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive.)
 
 | Product | What it is | Implementation |
 |---------|-----------|----------------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas | `@t2000/sdk` + Enoki + `@mysten/sui` |
 | 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision (see breakdown below) | `@t2000/engine` |
-| 💸 **Audric Pay** | Money primitive — send USDC, payment links, invoices, QR. Free, global, instant on Sui | `@t2000/sdk` Sui tx builders + payment-kit |
+| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend), Credit (NAVI borrow), Swap (Cetus aggregator), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
+| 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui | `@t2000/sdk` Sui tx builders + payment-kit |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5) | `@t2000/sdk` + Walrus + payment links |
 
 See `audric-roadmap.md` for the canonical taxonomy + naming rules.
@@ -984,7 +985,7 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 | System | What it does | Implementation |
 |--------|--------------|----------------|
-| 🎛️ **Agent Harness** | 40 tools, one agent. Balances, DeFi, analytics, payments orchestrated by a single conversation. Save, swap, borrow, repay, withdraw, send all live here. Parallel reads, serial writes under `TxMutex`. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (29 read + 11 write) |
+| 🎛️ **Agent Harness** | 40 tools, one agent. Orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi, analytics) inside a single conversation. Parallel reads, serial writes under `TxMutex`. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (29 read + 11 write) |
 | ⚡ **Reasoning Engine** | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching, extended thinking always-on for Sonnet/Opus. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
 | 🧠 **Silent Profile** | Private financial profile inferred from chat history (risk tolerance, goals, horizon). Used silently to shape replies — never surfaced. | `UserFinancialProfile` Prisma model + Claude inference cron (daily-intel group) + `buildProfileContext()` |
 | 🔗 **Chain Memory** | 7 classifiers extract structured facts from on-chain history (recurring sends, idle balances, position changes, near-liquidation events). | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |

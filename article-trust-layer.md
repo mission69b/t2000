@@ -20,14 +20,15 @@ What's left is the chat. That's the product.
 
 ## Product structure today
 
-After the simplification, Audric is exactly four consumer products:
+After the simplification, Audric is exactly five consumer products:
 
-- **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in three seconds, every write taps to confirm, sponsored gas. Wraps every other product. (We retired "Audric Finance" as a product name on April 19, 2026 — the operations didn't go anywhere, the framing did.)
-- **Audric Intelligence** — the brain. Five systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw all run through the harness — they're outputs of the agent, not their own product. Never surfaces as a notification — only ever shapes the next reply or executes the next action.
-- **Audric Pay** — the money primitive. Send USDC to anyone, payment links, invoices, QR codes. "Send $50 to alice" resolves in ~0.4s. Free, global, instant on Sui.
+- **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in three seconds, every write taps to confirm, sponsored gas. Wraps every other product.
+- **Audric Intelligence** — the brain. Five systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. The moat. Picks the right tool, clears the guards, never surfaces as a notification — only ever shapes the next reply or executes the next action.
+- **Audric Finance** — manage your money on Sui. Save (NAVI lend, 3–8% APY on USDC), Credit (NAVI borrow against savings, health factor visible at all times), Swap (Cetus aggregator, best-route across 20+ DEXs), Charts (interactive yield / health / portfolio visualizations from chat). Every write taps to confirm via Passport. (We tried retiring this name on the morning of April 19, 2026 because "finance" implied autonomy. By the evening we'd brought it back: "Intelligence" was carrying both "the brain" and "the home for every financial verb" and that was overloaded. Save / Credit / Swap / Charts genuinely needed a noun, and Finance is that noun.)
+- **Audric Pay** — the money primitive. Send USDC to anyone, receive via payment links / invoices / QR codes. "Send $50 to alice" resolves in ~0.4s. Free, global, instant on Sui.
 - **Audric Store** — creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. Coming in Phase 5.
 
-There is no fifth product. Anything not on that list is either an operation inside one of those four (lowercase verb), or it's the underlying t2000 infrastructure (engine, SDK, MCP, MPP gateway, contracts).
+There is no sixth product. Anything not on that list is either an operation inside one of those five (lowercase verb), or it's the underlying t2000 infrastructure (engine, SDK, MCP, MPP gateway, contracts).
 
 MPP (the on-chain micropayment gateway that lets Audric call 41 paid APIs on a user's behalf — Suno, DALL-E, OpenAI, Lob, etc.) is **not** a promoted product. It's an internal capability exposed via the `pay_api` tool, the same way NAVI and Cetus are internal capabilities. Users can ask Audric to do things that touch it ("send a postcard to my mum", "translate this email"), but it doesn't get a landing-page section of its own.
 

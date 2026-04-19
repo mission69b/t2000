@@ -6,19 +6,20 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-19 (post-S.16 — 4-product taxonomy locked, Audric Finance retired)
+> Last verified: 2026-04-19 (post-S.18 — 5-product taxonomy locked, Audric Finance back as save/credit/swap/charts home)
 
 ---
 
-## Audric — the four products
+## Audric — the five products
 
-> **Canonical reference.** Every consumer surface must use exactly these four product names. "Audric Finance" is retired; its operations are surfaced through Audric Intelligence's Agent Harness.
+> **Canonical reference.** Every consumer surface must use exactly these five product names. S.18 reverted S.17's Finance retirement: Intelligence was carrying both "the moat" and "the verb-bucket," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive.
 
 | Product | What it is |
 |---------|-----------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw all run through the harness. |
-| 💸 **Audric Pay** | Money primitive — send USDC, payment links, invoices, QR. Free, global, instant on Sui. |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
+| 💸 **Audric Pay** | Move money — Send USDC, Receive (payment links, invoices, QR). Free, global, instant on Sui. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5). |
 
 See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for the binding rules.
@@ -29,11 +30,11 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.40.2` |
-| `@t2000/engine` | `0.40.2` |
-| `@t2000/cli` | `0.40.2` |
+| `@t2000/sdk` | `0.40.3` |
+| `@t2000/engine` | `0.40.3` |
+| `@t2000/cli` | `0.40.3` |
 | `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `0.40.2` |
+| `@t2000/mcp` | `0.40.3` |
 | Agent Skills | `3.0` |
 
 ---

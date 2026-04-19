@@ -34,15 +34,16 @@ t2000/
 
 **t2000** = infra. Names the underlying capabilities (engine, SDK, MCP, MPP gateway, contracts). Used in technical docs, package names, READMEs, dev-facing surfaces.
 
-**Audric** = consumer. Names the surfaces a user touches. Always one of exactly **four products** (post-S.16 simplification): **Audric Passport, Audric Intelligence, Audric Pay, Audric Store**. **"Audric Finance" is retired** — its operations (save, swap, borrow, repay, withdraw) are now framed as outputs of Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm.
+**Audric** = consumer. Names the surfaces a user touches. Always one of exactly **five products** (post-S.18 reframe): **Audric Passport, Audric Intelligence, Audric Finance, Audric Pay, Audric Store**. (S.17's 4-product cut overloaded Intelligence as both "moat" and "home for every financial verb." S.18 splits Finance back out — it's the home for save / borrow / swap / charts. Send + Receive collapse into Pay.)
 
-#### The four products
+#### The five products
 
 | Audric product | What it is | t2000 layer |
 |---|---|---|
 | 🪪 **Audric Passport** | The trust layer. Identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` |
-| 🧠 **Audric Intelligence** | The brain. Five systems orchestrate every money decision — Agent Harness (40 tools), Reasoning Engine (9 guards), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw all run through the harness. The moat. | `@t2000/engine` (QueryEngine + tools + reasoning + guards + skill recipes) |
-| 💸 **Audric Pay** | The money primitive. Move money: free, global, instant (on Sui for now). Send USDC to anyone, payment links for businesses, invoices that settle in seconds. No bank, no borders, no fees. | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) |
+| 🧠 **Audric Intelligence** | The brain (the moat). Five systems orchestrate every money decision — Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (QueryEngine + tools + reasoning + guards + skill recipes) |
+| 💰 **Audric Finance** | Manage your money on Sui. Save (NAVI lend, 3–8% APY on USDC), Credit (NAVI borrow against savings, health factor visible at all times), Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee), Charts (interactive yield / health / portfolio visualizations rendered from chat). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
+| 💸 **Audric Pay** | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / invoices / QR. No bank, no borders, no fees. | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. 92% to creator. **Coming soon (Phase 5).** | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) |
 
 #### Audric Passport — the trust layer (4 pillars)
@@ -54,7 +55,7 @@ Every Audric action runs through Passport. It's the wallet itself.
 | Pillar | Meaning |
 |---|---|
 | 🪪 **Identity** | Sign in with Google. Your Passport is a cryptographic wallet, created in 3 seconds. No seed phrase. Yours forever. (zkLogin + Enoki) |
-| ✋ **You decide** | Audric never moves money on its own. Every save, send, swap, and borrow waits on your tap-to-confirm. |
+| ✋ **You decide** | Audric never moves money on its own. Every Finance and Pay action — save, send, swap, borrow — waits on your tap-to-confirm. |
 | 🔐 **Sponsored gas** | We pay the network fees so you don't need SUI to transact. Your USDC stays your USDC. (Enoki sponsorship) |
 | ⛓️ **Yours** | Non-custodial. We cannot move your money. Every transaction is on Sui mainnet, verifiable by anyone, forever. |
 
@@ -64,7 +65,7 @@ Every Audric action runs through Passport. It's the wallet itself.
 
 | System | What it does | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 40 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — all orchestrated by a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `QueryEngine` + 40 tools (29 read / 11 write) |
+| 🎛️ **Agent Harness** | 40 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `QueryEngine` + 40 tools (29 read / 11 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, extended thinking always-on |
 | 🧠 **Silent Profile** | Knows your finances. Builds a private financial profile from chat history. Used silently to make answers more relevant — never surfaced as nudges. | `UserFinancialProfile` Prisma model + Claude inference cron + `buildProfileContext()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. Reads wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes. | 7 chain classifiers + `ChainFact` rows + `buildMemoryContext()` |
@@ -72,18 +73,23 @@ Every Audric action runs through Passport. It's the wallet itself.
 
 **Naming rules (binding):**
 
-1. **Audric Finance is retired.** Do not use it as a product name on any new surface. Its former operations (save, swap, borrow, repay, withdraw) are surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm. References to "Audric Finance" in old code/comments will be removed as touched.
-2. **Never invent a 5th consumer product.** If something doesn't fit Passport / Intelligence / Pay / Store, it's either an operation inside one of them (lowercase verb) or it's infra (use a t2000 name).
+1. **Five products, no more, no less.** Passport, Intelligence, Finance, Pay, Store. If something doesn't fit one of them, it's either an operation inside one (lowercase verb) or it's infra (use a t2000 name).
+2. **Operation → product mapping (binding):**
+   - **save, swap, borrow, repay, withdraw, charts (yield/health/portfolio viz)** → Audric Finance
+   - **send, receive, payment-link, invoice, QR** → Audric Pay
+   - **profile inference, memory extraction, chain-fact classification, advice logging, guard runs, recipe matching, complexity classification** → Audric Intelligence (silent — never user-facing as a verb)
+   - **sign-in, wallet creation, tap-to-confirm, sponsored gas** → Audric Passport
+   - **listing, pay-to-unlock, Walrus upload, creator payout** → Audric Store
 3. **MPP / 41 AI services is NOT a product.** It's an internal capability (the MPP gateway) exposed via the `pay_api` engine tool — Audric uses it under the hood, same way it uses NAVI or Cetus. Do not brand it as Audric Pay. Audric Pay = money transfer between users.
 4. **Audric Receive is not a product** — it's the receive-half of *Audric Pay*.
-5. **Audric Passport is one of the four products** (the trust layer that wraps the other three). Document it as a peer to Intelligence/Pay/Store, not as a hidden foundation.
-6. **Audric Intelligence has 5 named systems** — Agent Harness, Reasoning Engine, Silent Profile, Chain Memory, AdviceLog. Always reference by these names. They are the moat.
-7. **Operations** stay lowercase verbs. Money ops (Intelligence-orchestrated): save, swap, borrow, repay, withdraw. Pay ops: send, request, invoice. The capitalised noun forms (Save, Send, Swap, Credit) are UI chip labels.
-8. **Engine system prompts** may reference the four product names but should not invent additional ones.
-9. **Marketing copy** leads with the operation ("save USDC", "send USDC"), invokes the product name only when grouping multiple operations or contrasting with another product.
-10. **Invest is REMOVED.** Do not add it back. Savings (an Intelligence operation on USDC into NAVI) covers yield.
+5. **Audric Intelligence has 5 named systems** — Agent Harness, Reasoning Engine, Silent Profile, Chain Memory, AdviceLog. Always reference by these names. They are the moat.
+6. **Operations** stay lowercase verbs. The capitalised noun forms (Save, Send, Swap, Credit, Receive, Charts) are UI chip labels — they live inside Finance or Pay.
+7. **Engine system prompts** reference the five product names but should not invent additional ones.
+8. **Marketing copy** leads with the operation ("save USDC", "send USDC"), invokes the product name only when grouping multiple operations or contrasting with another product.
+9. **Invest is REMOVED.** Do not add it back. Savings (an Audric Finance operation on USDC into NAVI) covers yield.
+10. **Audric Finance is back (S.18).** S.17 retired it; S.18 brought it back as the home for save/swap/borrow/repay/charts because "Intelligence" was overloaded. Don't try to re-retire it without re-reading the S.18 entry in `audric-build-tracker.md`.
 
-The canonical reference for these four products is the top of `audric-roadmap.md`.
+The canonical reference for these five products is the top of `audric-roadmap.md`.
 
 ### MCP-first DeFi integration
 
@@ -97,7 +103,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 
 ## Critical Rules
 
-1. **Never add Invest as a product.** Savings covers yield.
+1. **Never add Invest as a product.** Savings (under Audric Finance) covers yield.
 2. **Never import protocol SDKs for new features** (except `@cetusprotocol/aggregator-sdk` for swap routing). Use MCP for reads, thin tx builders for writes.
 3. **Never rename @t2000/* packages.** t2000 is the infra brand. Audric is the consumer brand.
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.

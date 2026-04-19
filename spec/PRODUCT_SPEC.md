@@ -3,34 +3,37 @@
 > Consolidated product spec for t2000 infrastructure. Covers the consumer product taxonomy (Audric), the t2000 stack that implements it, integration, and technical reference.
 > For CLI formatting details: see `CLI_UX_SPEC.md`. For detailed SDK/CLI reference: see `PRODUCT_FACTS.md`. For the canonical Audric taxonomy + naming rules: see `../audric-roadmap.md`.
 >
-> Last updated: 2026-04-19 (post-S.16 — 4-product taxonomy locked, Audric Finance retired)
+> Last updated: 2026-04-19 (post-S.18 — 5-product taxonomy locked, Audric Finance back as save/credit/swap/charts home)
 
 ---
 
-## Audric — the four products
+## Audric — the five products
 
-The Audric consumer brand is exactly four products. All operations the user can take resolve to one of them. "Audric Finance" is retired; its operations (save, swap, borrow, repay, withdraw) are surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm.
+The Audric consumer brand is exactly five products. All operations the user can take resolve to one of them. (S.18 reverted S.17's Finance retirement — Intelligence was overloaded as both "the moat" and "the home for every financial verb," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive.)
 
 | Product | What it is | t2000 implementation | Status |
 |---------|-----------|----------------------|--------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` | Live |
 | 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog | `@t2000/engine` (QueryEngine + tools + reasoning + guards + recipes) | Live |
-| 💸 **Audric Pay** | Money primitive — send USDC, payment links, invoices, QR. Free, global, instant on Sui | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) | Live |
+| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates | Live |
+| 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) | Live |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username` — sell AI-generated music, art, ebooks in USDC. 92% to creator | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) | Coming soon (Phase 5) |
 
 ### Operations inside the products
 
 | Operation | Lives under | t2000 surface |
 |-----------|-------------|----------------|
-| save | Intelligence (Agent Harness `save_deposit` tool) | NAVI MCP + thin tx builders |
-| withdraw | Intelligence (`withdraw` tool) | NAVI MCP + thin tx builders |
-| swap | Intelligence (`swap_quote` + `swap_execute` tools) | Cetus Aggregator V3 (20+ DEXs) |
-| borrow / repay | Intelligence (`borrow` + `repay_debt` tools) | NAVI MCP + thin tx builders |
-| stake / unstake | Intelligence (`volo_stake` + `volo_unstake` tools) | VOLO liquid staking |
-| send USDC | Pay (`send_transfer` tool) | Direct Sui transactions |
-| payment links / invoices | Pay (`create_payment_link`, `create_invoice` tools) | t2000 payment-kit + Sui Payment Kit URIs |
+| save | **Finance** (Agent Harness `save_deposit` tool) | NAVI MCP + thin tx builders |
+| withdraw | **Finance** (`withdraw` tool) | NAVI MCP + thin tx builders |
+| swap | **Finance** (`swap_quote` + `swap_execute` tools) | Cetus Aggregator V3 (20+ DEXs) |
+| borrow / repay | **Finance** (`borrow` + `repay_debt` tools) | NAVI MCP + thin tx builders |
+| stake / unstake | **Finance** (`volo_stake` + `volo_unstake` tools) | VOLO liquid staking |
+| charts (yield / health / portfolio viz) | **Finance** (canvas templates rendered from chat) | `@t2000/engine` canvas + read tools |
+| send USDC | **Pay** (`send_transfer` tool) | Direct Sui transactions |
+| receive (payment links / invoices / QR) | **Pay** (`create_payment_link`, `create_invoice` tools) | t2000 payment-kit + Sui Payment Kit URIs |
 | pay an MPP API | Internal capability (`pay_api` tool) | MPP gateway (`mpp.t2000.ai`, 41 services) — not a promoted product |
-| sign / consent | Passport (every write) | zkLogin ephemeral key + Enoki sponsorship |
+| sign / consent | **Passport** (every write) | zkLogin ephemeral key + Enoki sponsorship |
+| profile / memory / chain-fact / advice / guards / recipes | **Intelligence** (silent — never user-facing as a verb) | `@t2000/engine` reasoning + guards + crons + audric-side context builders |
 
 **Removed:** Invest (multi-protocol optimization is a power-user DeFi feature). Suilend SDK removed. Cetus Aggregator SDK retained for swap routing only. When protocols release MCPs, expansion is a config change.
 
