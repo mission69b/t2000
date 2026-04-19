@@ -410,14 +410,14 @@ All docs updated during Phase 24a implementation.
 - [x] Rewrote "Deliver-First Pattern" section — uses Printful as example
 - [x] Replaced `/reloadly/v1/order` in wireframe examples
 
-**`spec/SERVICES_ROADMAP.md`** — ✅
+**`spec/archive/SERVICES_ROADMAP.md`** — ✅
 - [x] Removed "Reloadly Gift Cards" from service table
 - [x] Removed "Reloadly storytelling" marketing reference
 - [x] Changed Commerce category to "Lob, Printful"
 - [x] Updated Tempo comparison count
 - [x] Removed Reloadly from dynamic pricing examples
 
-**`spec/MPP_GATEWAY_V2.md`** — ✅
+**`spec/archive/MPP_GATEWAY_V2.md`** — ✅
 - [x] Replaced Reloadly storytelling section with removal note + updated marketing focus
 
 ---

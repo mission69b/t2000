@@ -40,6 +40,8 @@ spec/*
 !spec/archive/
 !spec/PRODUCT_SPEC.md
 !spec/COMMERCE_V2.md
+!spec/SELF_HOSTED_LLM_STRATEGY.md
+!spec/UPSTREAM_WORKAROUNDS.md
 
 # marketing — wiped in S.20; ignore by default in case someone recreates locally
 marketing/
