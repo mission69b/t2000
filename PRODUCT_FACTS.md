@@ -6,7 +6,22 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-18 (S.13 — post-simplification baseline)
+> Last verified: 2026-04-19 (post-S.16 — 4-product taxonomy locked, Audric Finance retired)
+
+---
+
+## Audric — the four products
+
+> **Canonical reference.** Every consumer surface must use exactly these four product names. "Audric Finance" is retired; its operations are surfaced through Audric Intelligence's Agent Harness.
+
+| Product | What it is |
+|---------|-----------|
+| 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas. Wraps every other product. |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw all run through the harness. |
+| 💸 **Audric Pay** | Money primitive — send USDC, payment links, invoices, QR. Free, global, instant on Sui. |
+| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5). |
+
+See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for the binding rules.
 
 ---
 
@@ -14,11 +29,11 @@
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.39.0` |
-| `@t2000/engine` | `0.39.0` |
-| `@t2000/cli` | `0.39.0` |
+| `@t2000/sdk` | `0.40.2` |
+| `@t2000/engine` | `0.40.2` |
+| `@t2000/cli` | `0.40.2` |
 | `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `0.39.0` |
+| `@t2000/mcp` | `0.40.2` |
 | Agent Skills | `3.0` |
 
 ---
@@ -634,8 +649,8 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.39.0` |
-| Description | Agent engine for conversational finance — powers Audric |
+| Version | `0.40.2` |
+| Description | Agent engine for conversational finance — implements Audric Intelligence (the moat) |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
@@ -746,7 +761,7 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.39.0` |
+| Version | `0.40.2` |
 | Tool count | 40 (29 read, 11 write) — mirrors engine tool set |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |

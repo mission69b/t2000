@@ -22,9 +22,9 @@ What's left is the chat. That's the product.
 
 After the simplification, Audric is exactly four consumer products:
 
-- **Audric Finance** — save, swap, borrow, repay, withdraw. Every write tap-to-confirm. NAVI for lending, Cetus aggregator for swaps, sponsored gas everywhere.
-- **Audric Pay** — send USDC. Peer transfers, payment links, invoices, QR codes. The money-transfer primitive. "Send $50 to alice" resolves in ~0.4s.
-- **Audric Intelligence** — the silent layer. Financial profile, conversation memory, chain memory, AdviceLog, the 9-guard runner, the reasoning engine. Never surfaces as a notification — only ever shapes the next reply.
+- **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in three seconds, every write taps to confirm, sponsored gas. Wraps every other product. (We retired "Audric Finance" as a product name on April 19, 2026 — the operations didn't go anywhere, the framing did.)
+- **Audric Intelligence** — the brain. Five systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw all run through the harness — they're outputs of the agent, not their own product. Never surfaces as a notification — only ever shapes the next reply or executes the next action.
+- **Audric Pay** — the money primitive. Send USDC to anyone, payment links, invoices, QR codes. "Send $50 to alice" resolves in ~0.4s. Free, global, instant on Sui.
 - **Audric Store** — creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. Coming in Phase 5.
 
 There is no fifth product. Anything not on that list is either an operation inside one of those four (lowercase verb), or it's the underlying t2000 infrastructure (engine, SDK, MCP, MPP gateway, contracts).

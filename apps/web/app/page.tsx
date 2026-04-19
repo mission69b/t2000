@@ -88,7 +88,7 @@ const THREE_PRODUCTS = [
   {
     tag: "Consumer",
     name: "Audric",
-    desc: "The consumer app. Banking by conversation. Audric Finance (save, swap, borrow) + Audric Pay (send USDC, links, invoices) live. Audric Intelligence runs silently. Audric Store coming soon.",
+    desc: "The consumer app. Banking by conversation. Four products: Audric Passport (sign in with Google, non-custodial wallet), Audric Intelligence (40-tool agent harness — save, swap, borrow), Audric Pay (send USDC, links, invoices). Audric Store coming soon.",
     cta: { label: "Try Audric", href: AUDRIC_URL, primary: true },
   },
   {
@@ -111,7 +111,7 @@ const PRIMITIVES = [
   { title: "Silent intelligence", desc: "Financial profile inference, episodic memory, chain memory, AdviceLog \u2014 all silent context that makes the chat smarter without ever surfacing.", isNew: true },
   { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, savings planner. Powers Audric Canvas.", isNew: true },
   { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
-  { title: "DeFi access (Audric Finance)", desc: "Savings at 3\u20138% APY, credit/borrow \u2014 NAVI Protocol. 20+ DEX swap routing via Cetus." },
+  { title: "DeFi access (Audric Intelligence ops)", desc: "Save, swap, borrow, repay, withdraw \u2014 surfaced through the Agent Harness, gated by Passport tap-to-confirm. Savings at 3\u20138% APY via NAVI; 20+ DEX swap routing via Cetus." },
   { title: "USDC transfers (Audric Pay)", desc: "Send USDC to any Sui wallet, create payment links, issue invoices, receive via QR. Sponsored gas, sub-second finality." },
   { title: "Pay-per-use APIs (MPP gateway)", desc: "41 services, 90+ endpoints. Pay per request with USDC. No keys, no signup. Internal capability \u2014 Audric uses this under the hood." },
 ];

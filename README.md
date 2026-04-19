@@ -20,7 +20,14 @@
 
 ---
 
-t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. The Audric consumer brand groups capabilities into four products: **Audric Finance** (save / swap / borrow / repay / withdraw), **Audric Pay** (send USDC, payment links, invoices, QR — the money-transfer primitive), **Audric Intelligence** (silent profile + memory + reasoning), and **Audric Store** (creator marketplace, coming soon). Five t2000 packages give AI agents and developers everything they need to build the same thing.
+t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. The Audric consumer brand is exactly **four products**:
+
+- 🪪 **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product.
+- 🧠 **Audric Intelligence** — the brain (the moat). Five systems orchestrate every money decision: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw all run through the harness.
+- 💸 **Audric Pay** — the money primitive. Move money: free, global, instant (on Sui for now). Send USDC to anyone, payment links, invoices, QR. No bank, no borders, no fees.
+- 🛒 **Audric Store** — creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon.**
+
+Five t2000 packages give AI agents and developers everything they need to build the same thing.
 
 ```typescript
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
@@ -139,9 +146,19 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 
 Full API reference: [`@t2000/sdk` README](packages/sdk)
 
-## Engine
+## Engine — Audric Intelligence (the moat)
 
-`@t2000/engine` powers [Audric](https://audric.ai) — the conversational finance agent. It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
+`@t2000/engine` powers [Audric](https://audric.ai) — the conversational finance agent. It implements **Audric Intelligence**, the 5-system moat that makes Audric a financial agent rather than a chatbot. Every action it triggers still waits on Audric Passport's tap-to-confirm.
+
+| System | What it does |
+|---|---|
+| 🎛️ **Agent Harness** | 40 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Save, swap, borrow, repay, withdraw, send all live here. |
+| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort`), 9 safety guards across 3 priority tiers (`runGuards`), 7 YAML skill recipes (`RecipeRegistry`), preflight input validation, prompt caching, extended thinking always-on. |
+| 🧠 **Silent Profile** | Builds a private financial profile from chat history (`buildProfileContext`). Used silently to make answers more relevant — never surfaced as nudges. |
+| 🔗 **Chain Memory** | Reads wallet history into structured facts (`buildMemoryContext`) — recurring sends, idle balances, position changes. |
+| 📓 **AdviceLog** | Every recommendation is logged via `record_advice` so the agent doesn't contradict itself across sessions (last 30 days hydrated each turn). |
+
+It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
 
 ```typescript
 import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';

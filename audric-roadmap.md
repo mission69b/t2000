@@ -6,25 +6,59 @@
 
 ---
 
-## Canonical product taxonomy (post-simplification, S.16)
+## Canonical product taxonomy (post-simplification, S.16 + Apr 19 reframe)
 
-> Every Audric surface — homepage, in-app, system prompts, comms emails, briefings, READMEs — names capabilities under exactly **four products**. No other consumer-facing brands. No "copilot," "intelligence layer" (as a separate product), "notifications", "morning briefings". Those were retired in the April 2026 simplification.
+> Every Audric surface — homepage, in-app, system prompts, comms emails, briefings, READMEs — names capabilities under exactly **four products**: **Audric Passport, Audric Intelligence, Audric Pay, Audric Store**. **"Audric Finance" is retired** — its operations (save, swap, borrow, repay, withdraw) are now framed as outputs of Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm. No other consumer-facing brands. No "copilot," "intelligence layer" (as a separate product on top of Intelligence), "notifications", "morning briefings".
+
+### The four products
 
 | Product | What it is | What's inside | Status |
 |---|---|---|---|
-| **Audric Finance** | Chat-driven on-chain money operations. Every write requires user tap-to-confirm. | Save (USDC into NAVI), Swap (Cetus aggregator across 20+ DEXs), Credit (borrow / repay / withdraw against savings), Charts (interactive visualizations) | **Live** |
-| **Audric Pay** | Move USDC. Peer transfers, payment links, invoices, QR codes. The money-transfer primitive. | Send USDC to wallets or saved contacts, create payment links, create and collect invoices, receive via QR | **Live** |
-| **Audric Intelligence** | The silent layer that makes the chat smarter. Never surfaces as nudges or notifications — only ever shapes the next reply. | Silent financial profile, conversation memory, chain memory (wallet-history-as-facts), AdviceLog, 9-guard runner, reasoning engine | **Live (silent)** |
-| **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI content (music, art, ebooks, templates), list it, sell in USDC. 92% to creator. | Walrus storage, on-chain pay-to-unlock, payment-link checkout (built on Audric Pay primitives) | **Coming soon (Phase 5)** |
+| 🪪 **Audric Passport** | The trust layer. Your passport to a new kind of finance. Identity (zkLogin), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | Sign in with Google → wallet in 3 seconds, every write taps to confirm, Enoki gas sponsorship, on-chain verifiable forever | **Live** |
+| 🧠 **Audric Intelligence** | Not a chatbot. A financial agent. Five systems orchestrate every money decision — Agent Harness (40 tools), Reasoning Engine (9 guards), Silent Profile, Chain Memory, AdviceLog. Save, swap, borrow, repay, withdraw all run through the harness. The moat. | 40-tool agent harness (29 read + 11 write), adaptive reasoning + skill recipes + guard runner, silent context layer (profile + memory + chain facts + advice log) — see 5-system breakdown below | **Live** |
+| 💸 **Audric Pay** | The money primitive. Move money: free, global, instant (on Sui for now). Send USDC to anyone, payment links for your business, invoices that settle in seconds. No bank, no borders, no fees. | Send USDC to wallets or saved contacts, payment links, invoices, receive via QR | **Live** |
+| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI content (music, art, ebooks, templates), list it, sell in USDC. 92% to creator. | Walrus storage, on-chain pay-to-unlock, payment-link checkout (built on Audric Pay primitives) | **Coming soon (Phase 5)** |
+
+### Audric Passport — the trust layer (4 pillars)
+
+> **Your passport to a new kind of finance.**
+
+| Pillar | What it means |
+|---|---|
+| 🪪 **Identity** | Sign in with Google. Your Passport is a cryptographic wallet, created in 3 seconds. No seed phrase. Yours forever. (zkLogin via Enoki) |
+| ✋ **You decide** | Audric never moves money on its own. Every save, send, swap, and borrow waits on your tap-to-confirm. |
+| 🔐 **Sponsored gas** | We pay the network fees so you don't need SUI to transact. Your USDC stays your USDC. (Enoki gas sponsorship) |
+| ⛓️ **Yours** | Non-custodial. We cannot move your money. Every transaction is on Sui mainnet, verifiable by anyone, forever. |
+
+### Audric Intelligence — the 5-system moat
+
+> Five systems work together to make Audric a financial agent, not a chatbot. Every action still waits on your Passport tap-to-confirm.
+
+| System | Tagline | What it does |
+|---|---|---|
+| 🎛️ **Agent Harness** | 40 tools. One agent. | The runtime that manages your money: balances, DeFi, analytics, payments — all orchestrated by a single conversation. Save, swap, borrow, repay, withdraw, send all live here. |
+| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. |
+| 🧠 **Silent Profile** | Knows your finances. | Builds a private financial profile from your chat history. Used silently to make answers more relevant — never surfaced as nudges. |
+| 🔗 **Chain Memory** | Remembers what you do on-chain. | Reads your wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes. |
+| 📓 **AdviceLog** | Remembers what it told you. | Every recommendation Audric makes is logged so it doesn't contradict itself across sessions. No two answers about the same topic. |
+
+**Implementation map:**
+- **Agent Harness** → `@t2000/engine` `QueryEngine` + `getDefaultTools()` (29 read + 11 write = 40)
+- **Reasoning Engine** → `classify-effort.ts` (adaptive thinking), `guards.ts` (9 guards × 3 priority tiers: Safety > Financial > UX), `recipes/registry.ts` (YAML skill recipes), extended thinking always-on for Sonnet/Opus
+- **Silent Profile** → `UserFinancialProfile` Prisma model, Claude inference cron (daily-intel group), injected via `buildProfileContext()`
+- **Chain Memory** → 7 chain classifiers (`deposit_pattern`, `risk_profile`, `yield_behavior`, `borrow_behavior`, `near_liquidation`, `large_transaction`, `compounding_streak`) → `ChainFact` rows → `buildMemoryContext()`
+- **AdviceLog** → `AdviceLog` Prisma model, `record_advice` audric-side engine tool, `buildAdviceContext()` rehydrates last 30 days into every turn
 
 **Naming rules:**
 
+- **Audric Finance is retired.** Do not use it as a product name on any new surface. Its former operations (save, swap, borrow, repay, withdraw) are surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm.
 - **MPP micropayments** (calling 41 AI services — Suno, DALL-E, OpenAI, Lob, etc. — via `pay_api`) is an **internal capability**, not a promoted product. Audric uses it the way it uses NAVI or Cetus — under the hood, mentioned only when the user asks "can you do X?" Do not list it as its own product line on marketing surfaces.
 - **Audric Receive** is not a separate product — it's the receive-side of *Audric Pay* (payment links, invoices, QR codes — the surfaces a user uses to *get paid* in USDC).
-- **Audric Passport** is the identity layer (zkLogin Google sign-in + non-custodial wallet), not a product. It's how every product authenticates.
-- **Operations** within Audric Finance use lowercase verb names (save, swap, borrow, repay, withdraw). Within Audric Pay: send, request, invoice. The capitalized noun forms (Save, Swap, Credit, Send) are UI chip labels.
-- When in doubt about which product an operation belongs to: if it earns, swaps, borrows, or repays → Finance. If it transfers USDC between users → Pay. If it's silent and shapes a reply → Intelligence. If it's a creator selling content → Store. If it calls an external paid API on the user's behalf → that's MPP (internal), surfaced via `pay_api`, not a product.
-- Engine system prompts may say "I am Audric" but should not invent additional product names. Capability descriptions reference the four above.
+- **Audric Passport is one of the four products** — the trust layer that wraps the other three. Document it as a peer to Intelligence/Pay/Store, not as a hidden foundation.
+- **Audric Intelligence has 5 named systems** (Agent Harness, Reasoning Engine, Silent Profile, Chain Memory, AdviceLog). Always reference by these names — they are the moat. Avoid generic "intelligence layer" / "silent layer" references; use the specific system name.
+- **Operations** stay lowercase verb names. Money ops (Intelligence-orchestrated): save, swap, borrow, repay, withdraw. Pay ops: send, request, invoice. The capitalized noun forms (Save, Swap, Credit, Send) are UI chip labels.
+- When in doubt about which product an operation belongs to: if it earns, swaps, borrows, or repays → Intelligence (Agent Harness tool). If it transfers USDC between users → Pay. If it's any of the 5 silent systems shaping a reply → Intelligence. If it's a creator selling content → Store. If it's identity/custody/consent/gas → Passport. If it calls an external paid API on the user's behalf → that's MPP (internal), surfaced via `pay_api`, not a product.
+- Engine system prompts may say "I am Audric" but should not invent additional product names. Capability descriptions reference the four products.
 - Marketing copy should lead with the operation ("save USDC", "swap to SUI") and only invoke the product name when grouping multiple operations or when contrasting with a different product.
 
 ---

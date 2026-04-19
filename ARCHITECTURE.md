@@ -72,7 +72,7 @@
 
 | App | Hosting | Domain | What it does |
 |-----|---------|--------|-------------|
-| Audric | Vercel | audric.ai | Consumer product — zkLogin, engine chat, conversational banking (separate repo) |
+| Audric | Vercel | audric.ai | Consumer product — Passport (zkLogin), Intelligence (engine chat), Pay (USDC transfers), Store (coming soon) (separate repo) |
 | `apps/web` | Vercel | t2000.ai | Infrastructure landing page + docs |
 | `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs |
 | `apps/server` | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger |
@@ -961,11 +961,36 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 
 ---
 
-## Audric — Silent Intelligence Layer
+## Audric — the four products
 
-> The "autonomous agent" framing of the prior Audric 2.0 spec was retired in the April 2026 simplification. Pattern proposals, the trust ladder, the scheduled-actions executor, and the notification templates were deleted because zkLogin requires user presence to sign — "autonomous" was reminders dressed up as agency. See `spec/SIMPLIFICATION_RATIONALE.md`.
+The Audric consumer brand groups everything into exactly **four products**. "Audric Finance" is retired; its operations (save, swap, borrow, repay, withdraw) are surfaced through Audric Intelligence's Agent Harness, gated by Audric Passport's tap-to-confirm.
+
+| Product | What it is | Implementation |
+|---------|-----------|----------------|
+| 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas | `@t2000/sdk` + Enoki + `@mysten/sui` |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision (see breakdown below) | `@t2000/engine` |
+| 💸 **Audric Pay** | Money primitive — send USDC, payment links, invoices, QR. Free, global, instant on Sui | `@t2000/sdk` Sui tx builders + payment-kit |
+| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5) | `@t2000/sdk` + Walrus + payment links |
+
+See `audric-roadmap.md` for the canonical taxonomy + naming rules.
+
+---
+
+## Audric Intelligence — the 5-system moat
+
+> **Not a chatbot. A financial agent.** Five systems work together to understand the user's money, reason about decisions, and get smarter over time. Every action still waits on Passport's tap-to-confirm.
 >
-> **What stayed** is everything that makes the chat smarter without ever showing itself: chain-memory classifiers, episodic memory extraction, financial-profile inference, portfolio snapshots, and the silent `AdviceLog` loop. These run on a single `daily-intel` cron group and feed the LLM context invisibly.
+> The "autonomous agent" framing of the prior Audric 2.0 spec was retired in the April 2026 simplification. Pattern proposals, the trust ladder, the scheduled-actions executor, and the notification templates were deleted because zkLogin requires user presence to sign — "autonomous" was reminders dressed up as agency. See `spec/SIMPLIFICATION_RATIONALE.md`.
+
+| System | What it does | Implementation |
+|--------|--------------|----------------|
+| 🎛️ **Agent Harness** | 40 tools, one agent. Balances, DeFi, analytics, payments orchestrated by a single conversation. Save, swap, borrow, repay, withdraw, send all live here. Parallel reads, serial writes under `TxMutex`. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (29 read + 11 write) |
+| ⚡ **Reasoning Engine** | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching, extended thinking always-on for Sonnet/Opus. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
+| 🧠 **Silent Profile** | Private financial profile inferred from chat history (risk tolerance, goals, horizon). Used silently to shape replies — never surfaced. | `UserFinancialProfile` Prisma model + Claude inference cron (daily-intel group) + `buildProfileContext()` |
+| 🔗 **Chain Memory** | 7 classifiers extract structured facts from on-chain history (recurring sends, idle balances, position changes, near-liquidation events). | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |
+| 📓 **AdviceLog** | Every recommendation Audric makes is logged. Last 30 days hydrate every turn so the chat doesn't contradict itself across sessions. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |
+
+**What stayed (silent context):** chain-memory classifiers, episodic memory extraction, financial-profile inference, portfolio snapshots, and the `AdviceLog` loop. These run on a single `daily-intel` cron group and feed the LLM context invisibly.
 
 ### Chain Memory
 

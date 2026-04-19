@@ -2,6 +2,8 @@
 
 The complete TypeScript SDK for AI agent bank accounts on Sui. Send USDC, earn yield via NAVI, and borrow against collateral — all from a single class. USDC in, USDC out.
 
+In Audric, this SDK powers **Audric Passport** (wallet, signing) and **Audric Pay** (USDC transfers, payment links, invoices), and is wrapped by `@t2000/engine` to implement **Audric Intelligence**'s Agent Harness.
+
 [![npm](https://img.shields.io/npm/v/@t2000/sdk)](https://www.npmjs.com/package/@t2000/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 

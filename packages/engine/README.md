@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — powers the **Audric** consumer product.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (40 tools), Reasoning Engine (9 guards across 3 priority tiers + 7 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 QueryEngine orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop.
 
