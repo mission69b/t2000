@@ -1013,17 +1013,11 @@ Chain facts stored as `ChainFact` rows and injected into the engine system promp
 
 The single notification path that survived the simplification: when the indexer observes a position with HF < 1.2 (liquidation imminent), it fires `/api/internal/hf-alert` → Resend. Always-on, no opt-out, safety-critical. Warn-level alerts (HF < 1.5) and all other notification crons were deleted.
 
-### Public Wallet Intelligence Report
+### Multi-wallet Linking
 
-Public acquisition funnel at `audric.ai/report/[address]` — no sign-up required.
+Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet); `FullPortfolioCanvas` aggregates them via `GET /api/analytics/portfolio-multi`. Backed by the `LinkedWallet` Prisma model.
 
-- **Generator** (`lib/report/generator.ts`): parallel fetch of wallet balances, NAVI positions, and activity via unified data layer
-- **Analyzers** (`lib/report/analyzers.ts`): 5 pattern detectors, 3 risk signals, 4 "Audric would do" suggestions — all heuristic, no LLM
-- **API** (`GET /api/report/[address]`): rate limited (5/hr/IP via Upstash), 24h Prisma cache, internal secret bypass for OG images
-- **UI**: 8 sections (portfolio, yield efficiency gauge, activity, patterns, risk signals, suggestions, share, footer)
-- **Sharing**: copy link, Twitter, Telegram, image download (html2canvas), QR code
-- **OG image**: dynamic 1200×630 edge-rendered image with net worth, yield efficiency, suggestions count
-- **Multi-wallet**: link up to 10 wallets, aggregated portfolio view, tab switcher in FullPortfolioCanvas
+> **Removed in S.22 (April 2026):** the public `/report/[address]` wallet report (and its `PublicReport` cache). The "Audric would do" suggestions there were promoting features deleted in S.0–S.12 (24/7 alerts, recurring transactions, savings-goal automation), and a second standalone product surface contradicted the chat-first thesis. Heuristic portfolio analysis lives inside chat now via `portfolio_overview` + `health_check`.
 
 ### Intelligence Layer (silent context that survives the simplification)
 
