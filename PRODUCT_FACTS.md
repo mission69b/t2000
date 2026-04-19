@@ -30,11 +30,11 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.40.3` |
-| `@t2000/engine` | `0.40.3` |
-| `@t2000/cli` | `0.40.3` |
+| `@t2000/sdk` | `0.40.4` |
+| `@t2000/engine` | `0.40.4` |
+| `@t2000/cli` | `0.40.4` |
 | `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `0.40.3` |
+| `@t2000/mcp` | `0.40.4` |
 | Agent Skills | `3.0` |
 
 ---
