@@ -10,8 +10,7 @@
 > reclassified (`record_advice` moved to audric-side) don't materially change the
 > open-weight comparison: tier mix is roughly the same, tool-selection accuracy
 > requirement is the same, no nested-schema tool was removed. Treat the model
-> rankings as still current; subtract from the absolute counts. See
-> `spec/SIMPLIFICATION_RATIONALE.md`.
+> rankings as still current; subtract from the absolute counts.
 
 ## Executive Summary
 

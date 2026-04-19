@@ -1,6 +1,6 @@
 # What we removed, and why
 
-> **Note for readers who saw the previous version of this article:** the original framing — a 4-stage "trust ladder" leading to fully autonomous execution — was retired on April 18, 2026. The full prior thesis is preserved in git history (`git log article-trust-layer.md`) for anyone who wants the record. What follows is the honest version. See [`spec/SIMPLIFICATION_RATIONALE.md`](./spec/SIMPLIFICATION_RATIONALE.md) for the long-form decision doc.
+> **Note for readers who saw the previous version of this article:** the original framing — a 4-stage "trust ladder" leading to fully autonomous execution — was retired on April 18, 2026. The full prior thesis is preserved in git history (`git log article-trust-layer.md`) for anyone who wants the record. What follows is the honest version.
 
 ![Hero image — three translucent security layers](assets/article-hero-trust-layer-5x2.png)
 

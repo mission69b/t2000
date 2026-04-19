@@ -249,7 +249,6 @@ describe('transformPositions', () => {
 // REMOVAL TRIGGER: When NAVI MCP fixes pool-aware decimal handling, these
 // tests should FAIL (amounts will be 1000x too large). At that point,
 // remove NAVI_NEWER_POOL_SYMBOLS + naviDecimalFactor from navi-transforms.ts.
-// See: spec/UPSTREAM_WORKAROUNDS.md §1
 describe('transformPositions — newer pool correction (USDSUI/USDe/suiUSDT)', () => {
   it('applies 1000x correction for USDSUI positions', () => {
     const raw: NaviRawPositionsResponse = {

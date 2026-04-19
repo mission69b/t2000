@@ -491,7 +491,7 @@ Final documentation pass and pre-launch verification.
 | `CLI_UX_SPEC.md` | CLI output formatting, command signatures |
 | `ARCHITECTURE.md` | Deep architecture: PTB flow, gas, adapters, security |
 | `SECURITY.md` / `SECURITY_AUDIT.md` | Security model and audit |
-| `spec/COMMERCE_V2.md` | Commerce/marketplace spec |
-| `spec/MPP_GATEWAY_V2.md` | MPP gateway spec |
-| `spec/SUI_PAYMENTS_HUB.md` | Payments hub spec |
-| `spec/SERVICES_ROADMAP.md` | Services roadmap |
+| `audric-roadmap.md` | Phase plan and shipping order |
+| `audric-build-tracker.md` | S.0–S.N receipts of what was actually built |
+| `spec/COMMERCE_V2.md` | Audric Store / commerce v2 (Phase 5) |
+| `spec/archive/` | Frozen historical specs — do not extend |

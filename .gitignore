@@ -35,12 +35,14 @@ packages/contracts/build/
 # infra generated
 infra/.env.infra
 
-# specs (private reference docs)
-spec/
+# specs — private working notes by default; explicit allowlist for canonical + archive
+spec/*
+!spec/archive/
+!spec/PRODUCT_SPEC.md
+!spec/COMMERCE_V2.md
 
-# marketing (private)
+# marketing — wiped in S.20; ignore by default in case someone recreates locally
 marketing/
-GROWTH_PLAN.md
 
 
 # MCP registry tokens

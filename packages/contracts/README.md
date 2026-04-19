@@ -33,7 +33,7 @@ Contract version is set in `constants.move` and enforced by `assert_version` in 
 
 ## Allowance module — dormant
 
-The `Allowance` Move type was published as part of an earlier package (separate from the modules above) to fund the deleted "features budget" / proactive-action billing flow. It was retired in the April 2026 simplification (see `spec/SIMPLIFICATION_RATIONALE.md`):
+The `Allowance` Move type was published as part of an earlier package (separate from the modules above) to fund the deleted "features budget" / proactive-action billing flow. It was retired in the April 2026 simplification (see the S.0–S.12 entries in the root `audric-build-tracker.md`):
 
 - The Move type still exists on-chain at the published package address — owner-recoverable balances stay accessible via direct `Allowance::withdraw` calls
 - No new Audric flow creates or charges allowances

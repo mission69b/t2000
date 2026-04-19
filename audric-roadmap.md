@@ -75,11 +75,11 @@
 
 > **⚠️ Status: Phases 1 → 3.5 SHIPPED then DELETED. Phases 4-H ARCHIVED. April 2026 simplification is the current state.**
 >
-> The "proactive copilot + scheduled actions + features budget" thesis below was shipped in Phases 1-3.5, ran in production, and was retired in the April 2026 simplification (`AUDRIC_FINANCE_SIMPLIFICATION_SPEC_v1.4.md`). The morning briefings, rate alerts, auto-compound, scheduled actions / DCA, copilot dashboard, allowance / features budget, async job queue, and creator marketplace were all either deleted or never started.
+> The "proactive copilot + scheduled actions + features budget" thesis below was shipped in Phases 1-3.5, ran in production, and was retired in the April 2026 simplification (see `audric-build-tracker.md` S.0–S.19 for the receipts). The morning briefings, rate alerts, auto-compound, scheduled actions / DCA, copilot dashboard, allowance / features budget, async job queue, and creator marketplace were all either deleted or never started.
 >
 > **Why the pivot:** zkLogin can't sign without user presence. Every "autonomous" feature collapsed into "reminder dressed up as agency" the moment we shipped it. The chat — the actual differentiator — was being drowned by surfaces that competitors do better.
 >
-> **What's current:** chat-first dashboard, daily-free billing (5 unverified / 20 verified sessions per rolling 24h), 40-tool engine, 4 cron jobs (memory extraction, profile inference, chain memory, portfolio snapshot), critical HF email at < 1.2 as the only proactive surface. See `spec/SIMPLIFICATION_RATIONALE.md` for the locked decisions on what we will NOT bring back.
+> **What's current:** chat-first dashboard, daily-free billing (5 unverified / 20 verified sessions per rolling 24h), 40-tool engine, 4 cron jobs (memory extraction, profile inference, chain memory, portfolio snapshot), critical HF email at < 1.2 as the only proactive surface. See the S.0–S.19 entries in `audric-build-tracker.md` for the locked decisions on what we will NOT bring back.
 >
 > **Read the rest of this doc as a historical record** of what was tried and why it didn't survive the two-question filter. Anything below this banner that contradicts the simplification spec is wrong by definition.
 
@@ -91,7 +91,7 @@ Audric is a conversational banking app built on Sui. Users sign in with Google, 
 
 > *Original thesis (April 2026, pre-simplification):* This roadmap covers the path from 100 beta users to a product people open every day without being asked. The central thesis: Audric must shift from reactive (you ask, it does) to proactive (it watches your money and acts on your behalf). The killer loop is a financial copilot that runs on USDC micropayments from the user's own wallet — costing less per day than a fraction of a cent, funded many times over by the yield it helps generate.
 >
-> *Retired April 2026:* the proactive thesis failed the two-question filter (does the user see it OR does it make the chat smarter? AND can it actually do what the marketing implies under zkLogin?). See `spec/SIMPLIFICATION_RATIONALE.md`.
+> *Retired April 2026:* the proactive thesis failed the two-question filter (does the user see it OR does it make the chat smarter? AND can it actually do what the marketing implies under zkLogin?). See the S.0–S.12 entries in `audric-build-tracker.md`.
 
 - 100 beta users
 - Save, Send, Credit, Swap live (Swap replaced Pay chip in pre-work)
@@ -1504,7 +1504,7 @@ Effort: 2 days (Listing table + public page + payment link wiring, reuses Receiv
 These are refactoring tasks with no user-facing changes:
 
 - **2.5.1** Extract `engine-context.ts` — move `buildAdviceContext` from `engine-factory.ts`, export it (0.5d)
-- **2.5.2** Restructure `buildSystemPrompt` — split static (cacheable) vs dynamic (per-session) blocks. Matches `spec/REASONING_ENGINE.md` prompt caching strategy (1d)
+- **2.5.2** Restructure `buildSystemPrompt` — split static (cacheable) vs dynamic (per-session) blocks for prompt caching (1d)
 - **2.5.3** `maxTokens: 2048 → 8192` (configurable) — current 2048 silently truncates when thinking is enabled (0.5h)
 - **2.5.4** `toolChoice: 'any' → 'auto'` with thinking guard — `'any'` forces tool use every turn, conflicts with thinking (0.5h)
 - **2.5.5** Settings > Memory page scaffold + nav entry — empty page populated when F3 ships (0.5d)
@@ -1720,7 +1720,7 @@ Effort: 1 day
 
 > Depends on Phase 2.5 (engine foundation) being complete and Phase 3 features (DCA, auto-compound, feedback processing) being stable. The full tool set must be built before wrapping intelligence around it.
 >
-> **Specs:** `spec/REASONING_ENGINE.md`, `spec/archive/audric-intelligence-spec.md` (archived)
+> **Specs:** `spec/archive/audric-intelligence-spec.md` (archived)
 
 This is the phase that makes Audric genuinely intelligent rather than just reliable. Three sub-phases:
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # --- Setup EventBridge Scheduler for t2000-cron-daily-intel ECS task ---
 #
-# History (April 2026 simplification — see spec/SIMPLIFICATION_RATIONALE.md):
+# History (April 2026 simplification — see audric-build-tracker.md S.0–S.12):
 # This script used to provision THREE schedules:
 #   - t2000-cron-hourly       → HF alerts, rate alerts, scheduled actions
 #   - t2000-cron-daily-chain  → auto-compound, morning briefings, follow-up reminders
