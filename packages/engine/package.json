@@ -1,6 +1,6 @@
 {
   "name": "@t2000/engine",
-  "version": "0.40.3",
+  "version": "0.40.4",
   "description": "Agent engine for conversational finance — QueryEngine with 40 tools (29 read, 11 write), 9-guard runner, 7 skill recipes, silent intelligence layer, streaming, canvas. Chat-first by design — every write requires user confirmation.",
   "type": "module",
   "main": "./dist/index.js",
