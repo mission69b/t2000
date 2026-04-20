@@ -47,6 +47,11 @@ spec/*
 marketing/
 
 
+# raise / investor docs — local reference only
+audric-raise-strategy.canvas.tsx
+audric-litepaper.html
+AUDRIC_LITEPAPER.md
+
 # MCP registry tokens
 .mcpregistry_*
 
