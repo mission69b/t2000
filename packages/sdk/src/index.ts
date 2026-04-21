@@ -121,6 +121,8 @@ export {
   IKA_TYPE,
   LOFI_TYPE,
   MANIFEST_TYPE,
+  isStakingReceipt,
+  stakingReceiptProtocol,
 } from './token-registry.js';
 export type { CoinMeta } from './token-registry.js';
 export {

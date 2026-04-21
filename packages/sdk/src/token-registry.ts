@@ -141,6 +141,45 @@ export function resolveTokenType(nameOrType: string): string | null {
   return TOKEN_MAP[nameOrType] ?? TOKEN_MAP[nameOrType.toUpperCase()] ?? null;
 }
 
+// ── Staking receipt denylist ─────────────────────────────────────────────
+//
+// Liquid staking receipt tokens appear in wallet balances (suix_getAllBalances
+// returns them) but are locked in their respective staking protocols. Cetus
+// and other DEX aggregators cannot route them — the trade appears to succeed
+// at the SDK layer but returns 0 output on-chain.
+//
+// These tokens must be unstaked via the protocol's own UI before any swap.
+// Checked by the uppercase symbol suffix so both short names ("haSUI") and
+// full coin types ("0x...::hasui::HASUI") match reliably.
+
+const STAKING_RECEIPT_SYMBOLS = new Map<string, string>([
+  ['HASUI', 'Haedal (haedal.xyz)'],
+  ['AFSUI', 'Aftermath Finance (aftermath.finance)'],
+  ['STSUI', 'Ika staking (ika.exchange)'],
+]);
+
+/**
+ * Returns true if the token is a known liquid staking receipt that cannot be
+ * routed through a DEX aggregator. Must be unstaked via the protocol UI first.
+ */
+export function isStakingReceipt(nameOrType: string): boolean {
+  const symbol = nameOrType.includes('::')
+    ? (nameOrType.split('::').pop() ?? '').toUpperCase()
+    : nameOrType.toUpperCase();
+  return STAKING_RECEIPT_SYMBOLS.has(symbol);
+}
+
+/**
+ * Returns the protocol name for a staking receipt token, for use in error
+ * messages. Falls back to 'its staking protocol' for unknown receipts.
+ */
+export function stakingReceiptProtocol(nameOrType: string): string {
+  const symbol = nameOrType.includes('::')
+    ? (nameOrType.split('::').pop() ?? '').toUpperCase()
+    : nameOrType.toUpperCase();
+  return STAKING_RECEIPT_SYMBOLS.get(symbol) ?? 'its staking protocol';
+}
+
 /** Common type constants for direct import. */
 export const SUI_TYPE = COIN_REGISTRY.SUI.type;
 export const USDC_TYPE = COIN_REGISTRY.USDC.type;

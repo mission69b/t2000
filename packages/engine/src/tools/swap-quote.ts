@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getSwapQuote } from '@t2000/sdk';
+import { getSwapQuote, isStakingReceipt, stakingReceiptProtocol } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { getWalletAddress } from './utils.js';
 
@@ -24,6 +24,16 @@ export const swapQuoteTool = buildTool({
     required: ['from', 'to', 'amount'],
   },
   isReadOnly: true,
+  preflight: (input) => {
+    if (isStakingReceipt(input.from)) {
+      const protocol = stakingReceiptProtocol(input.from);
+      return {
+        valid: false,
+        error: `${input.from} is a liquid staking receipt — no DEX quote available. Unstake via ${protocol} first to receive SUI, then Audric can quote a swap.`,
+      };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     const walletAddress = context.agent
