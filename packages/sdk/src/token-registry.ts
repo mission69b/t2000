@@ -4,7 +4,7 @@
  * ZERO heavy dependencies. Safe to import from any context (server, browser, Edge).
  *
  * Tier 1: USDC — the financial layer (save, borrow, receive, yield, allowances, marketplace, MPP).
- * Tier 2: 13 curated swap assets — hold, trade, and send only.
+ * Tier 2: 15 curated swap assets — hold, trade, and send only.
  * No tier: Legacy tokens kept for display accuracy (existing NAVI positions). No new operations.
  *
  * To add a new token: add ONE entry to COIN_REGISTRY below. Everything else derives from it.
@@ -26,7 +26,7 @@ export const COIN_REGISTRY: Record<string, CoinMeta> = {
   // ── Tier 1 — Financial layer ──────────────────────────────────────────
   USDC:     { type: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC', decimals: 6, symbol: 'USDC', tier: 1 },
 
-  // ── Tier 2 — Swap assets (13 tokens) ──────────────────────────────────
+  // ── Tier 2 — Swap assets (15 tokens) ──────────────────────────────────
   SUI:      { type: '0x2::sui::SUI', decimals: 9, symbol: 'SUI', tier: 2 },
   wBTC:     { type: '0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC', decimals: 8, symbol: 'wBTC', tier: 2 },
   ETH:      { type: '0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH', decimals: 8, symbol: 'ETH', tier: 2 },
@@ -38,6 +38,8 @@ export const COIN_REGISTRY: Record<string, CoinMeta> = {
   CETUS:    { type: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS', decimals: 9, symbol: 'CETUS', tier: 2 },
   NAVX:     { type: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX', decimals: 9, symbol: 'NAVX', tier: 2 },
   vSUI:     { type: '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT', decimals: 9, symbol: 'vSUI', tier: 2 },
+  haSUI:    { type: '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI', decimals: 9, symbol: 'haSUI', tier: 2 },
+  afSUI:    { type: '0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI', decimals: 9, symbol: 'afSUI', tier: 2 },
   LOFI:     { type: '0xf22da9a24ad027cccb5f2d496cbe91de953d363513db08a3a734d361c7c17503::LOFI::LOFI', decimals: 9, symbol: 'LOFI', tier: 2 },
   MANIFEST: { type: '0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST', decimals: 9, symbol: 'MANIFEST', tier: 2 },
 
@@ -139,45 +141,6 @@ export const TOKEN_MAP: Record<string, string> = (() => {
 export function resolveTokenType(nameOrType: string): string | null {
   if (nameOrType.includes('::')) return nameOrType;
   return TOKEN_MAP[nameOrType] ?? TOKEN_MAP[nameOrType.toUpperCase()] ?? null;
-}
-
-// ── Staking receipt denylist ─────────────────────────────────────────────
-//
-// Liquid staking receipt tokens appear in wallet balances (suix_getAllBalances
-// returns them) but are locked in their respective staking protocols. Cetus
-// and other DEX aggregators cannot route them — the trade appears to succeed
-// at the SDK layer but returns 0 output on-chain.
-//
-// These tokens must be unstaked via the protocol's own UI before any swap.
-// Checked by the uppercase symbol suffix so both short names ("haSUI") and
-// full coin types ("0x...::hasui::HASUI") match reliably.
-
-const STAKING_RECEIPT_SYMBOLS = new Map<string, string>([
-  ['HASUI', 'Haedal (haedal.xyz)'],
-  ['AFSUI', 'Aftermath Finance (aftermath.finance)'],
-  ['STSUI', 'Ika staking (ika.exchange)'],
-]);
-
-/**
- * Returns true if the token is a known liquid staking receipt that cannot be
- * routed through a DEX aggregator. Must be unstaked via the protocol UI first.
- */
-export function isStakingReceipt(nameOrType: string): boolean {
-  const symbol = nameOrType.includes('::')
-    ? (nameOrType.split('::').pop() ?? '').toUpperCase()
-    : nameOrType.toUpperCase();
-  return STAKING_RECEIPT_SYMBOLS.has(symbol);
-}
-
-/**
- * Returns the protocol name for a staking receipt token, for use in error
- * messages. Falls back to 'its staking protocol' for unknown receipts.
- */
-export function stakingReceiptProtocol(nameOrType: string): string {
-  const symbol = nameOrType.includes('::')
-    ? (nameOrType.split('::').pop() ?? '').toUpperCase()
-    : nameOrType.toUpperCase();
-  return STAKING_RECEIPT_SYMBOLS.get(symbol) ?? 'its staking protocol';
 }
 
 /** Common type constants for direct import. */

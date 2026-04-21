@@ -26,13 +26,13 @@ describe('COIN_REGISTRY', () => {
     expect(COIN_REGISTRY.USDC.tier).toBe(1);
   });
 
-  it('contains all 13 Tier 2 tokens', () => {
-    const tier2Keys = ['SUI', 'wBTC', 'ETH', 'GOLD', 'DEEP', 'WAL', 'NS', 'IKA', 'CETUS', 'NAVX', 'vSUI', 'LOFI', 'MANIFEST'];
+  it('contains all 15 Tier 2 tokens', () => {
+    const tier2Keys = ['SUI', 'wBTC', 'ETH', 'GOLD', 'DEEP', 'WAL', 'NS', 'IKA', 'CETUS', 'NAVX', 'vSUI', 'haSUI', 'afSUI', 'LOFI', 'MANIFEST'];
     for (const key of tier2Keys) {
       expect(COIN_REGISTRY[key], `missing ${key}`).toBeDefined();
       expect(COIN_REGISTRY[key].tier, `${key} should be tier 2`).toBe(2);
     }
-    expect(tier2Keys.length).toBe(13);
+    expect(tier2Keys.length).toBe(15);
   });
 
   it('contains legacy tokens without tier', () => {
@@ -45,8 +45,6 @@ describe('COIN_REGISTRY', () => {
   });
 
   it('does not contain removed tokens', () => {
-    expect(COIN_REGISTRY.haSUI).toBeUndefined();
-    expect(COIN_REGISTRY.afSUI).toBeUndefined();
     expect(COIN_REGISTRY.FDUSD).toBeUndefined();
     expect(COIN_REGISTRY.AUSD).toBeUndefined();
     expect(COIN_REGISTRY.BUCK).toBeUndefined();
@@ -73,6 +71,8 @@ describe('COIN_REGISTRY', () => {
     expect(COIN_REGISTRY.CETUS.decimals).toBe(9);
     expect(COIN_REGISTRY.NAVX.decimals).toBe(9);
     expect(COIN_REGISTRY.vSUI.decimals).toBe(9);
+    expect(COIN_REGISTRY.haSUI.decimals).toBe(9);
+    expect(COIN_REGISTRY.afSUI.decimals).toBe(9);
     expect(COIN_REGISTRY.WAL.decimals).toBe(9);
   });
 
@@ -86,8 +86,8 @@ describe('COIN_REGISTRY', () => {
     expect(COIN_REGISTRY.GOLD.type).toContain('xaum::XAUM');
   });
 
-  it('has exactly 17 entries (1 tier1 + 13 tier2 + 3 legacy)', () => {
-    expect(Object.keys(COIN_REGISTRY).length).toBe(17);
+  it('has exactly 19 entries (1 tier1 + 15 tier2 + 3 legacy)', () => {
+    expect(Object.keys(COIN_REGISTRY).length).toBe(19);
   });
 });
 

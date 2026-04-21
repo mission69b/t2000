@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { isStakingReceipt, stakingReceiptProtocol } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 
@@ -31,13 +30,6 @@ export const swapExecuteTool = buildTool({
   preflight: (input) => {
     if (input.from.toLowerCase() === input.to.toLowerCase()) {
       return { valid: false, error: `Cannot swap ${input.from} to itself.` };
-    }
-    if (isStakingReceipt(input.from)) {
-      const protocol = stakingReceiptProtocol(input.from);
-      return {
-        valid: false,
-        error: `${input.from} is a liquid staking receipt — it can't be swapped through a DEX. You need to unstake it directly via ${protocol} first. Once unstaked, Audric can swap the resulting SUI for you.`,
-      };
     }
     return { valid: true };
   },

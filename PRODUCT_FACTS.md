@@ -134,15 +134,15 @@ All token metadata (type, decimals, symbol, optional tier) lives in a **single c
 **Tier model**
 
 - **Tier 1 (1 token):** USDC — financial layer (save, borrow, send, swap, MPP, etc.).
-- **Tier 2 (13 swap assets):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST — send and swap; not used for new save/borrow deposits.
+- **Tier 2 (15 swap assets):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST — send and swap; not used for new save/borrow deposits. (haSUI and afSUI are liquid staking tokens with deep Cetus liquidity; users may receive them as routing intermediaries or hold them as yield-bearing SUI.)
 - **Legacy (no tier, 3 tokens):** USDT, USDe, USDSUI — kept for accurate display and **withdraw** of existing positions; not tier-gated for new Tier 1/2 flows.
 
-**17 tokens** in `COIN_REGISTRY`. Removed from the registry: haSUI, afSUI, FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS.
+**19 tokens** in `COIN_REGISTRY`. Removed from the registry: FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS.
 
 | Tier | Symbols | Send | Save | Borrow | Swap |
 |------|---------|------|------|--------|------|
 | 1 | USDC | ✅ | ✅ (USDC only) | ✅ (USDC only) | ✅ |
-| 2 | SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST | ✅ | — | — | ✅ |
+| 2 | SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST | ✅ | — | — | ✅ |
 | Legacy | USDT, USDe, USDSUI | ✅ | — | — | ✅ |
 
 New **save** and **borrow** flows accept **USDC only** (SDK throws `INVALID_ASSET` if another asset is requested). **Withdraw** still supports legacy positions. Swap routing uses Cetus Aggregator V3 (with t2000 overlay fee — see Fees).

@@ -901,7 +901,7 @@ The engine supports rich interactive visualizations via HTML canvases:
 
 All token metadata is centralized in `packages/sdk/src/token-registry.ts`:
 
-- `COIN_REGISTRY` — 17 tokens with type, decimals, symbol (Tier 1: USDC, Tier 2: 13 swap assets, Legacy: 3)
+- `COIN_REGISTRY` — 19 tokens with type, decimals, symbol (Tier 1: USDC, Tier 2: 15 swap assets, Legacy: 3)
 - `getDecimalsForCoinType(coinType)` — decimals lookup with suffix matching
 - `resolveSymbol(coinType)` — human-friendly name from full coin type
 - `resolveTokenType(name)` — case-insensitive name → full coin type

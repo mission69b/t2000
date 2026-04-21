@@ -264,10 +264,10 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 Token metadata and **tiers** live in `token-registry.ts` (`COIN_REGISTRY`). **17 tokens** total:
 
 - **Tier 1:** USDC — save, borrow, send, swap.
-- **Tier 2 (13):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST — send and swap only (not for new save/borrow deposits).
+- **Tier 2 (15):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST — send and swap only (not for new save/borrow deposits).
 - **Legacy (no tier):** USDT, USDe, USDSUI — display and withdraw of existing positions; still send/swap where applicable.
 
-Eight tokens were removed from the registry (haSUI, afSUI, FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS). **`STABLE_ASSETS`** is `['USDC']` only.
+Six tokens were removed from the registry (FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS). **`STABLE_ASSETS`** is `['USDC']` only.
 
 ```typescript
 import {
