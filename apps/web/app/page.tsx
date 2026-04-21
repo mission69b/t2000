@@ -88,7 +88,7 @@ const THREE_PRODUCTS = [
   {
     tag: "Consumer",
     name: "Audric",
-    desc: "The consumer app. Banking by conversation. Five products: Audric Passport (sign in with Google, non-custodial wallet), Audric Intelligence (40-tool agent harness, the moat), Audric Finance (save, credit, swap, charts via NAVI + Cetus), Audric Pay (send USDC, payment links, invoices, QR). Audric Store coming soon.",
+    desc: "The consumer app. Conversational finance. Passport, Intelligence, Finance, and Pay on Sui. Store coming soon.",
     cta: { label: "Try Audric", href: AUDRIC_URL, primary: true },
   },
   {
