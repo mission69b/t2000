@@ -19,7 +19,7 @@
 - Entry: `src/index.ts`
 - Exports: QueryEngine, AnthropicProvider, buildTool, runTools, getDefaultTools, MCP client/server, streaming, sessions, cost tracking
 - Build: `tsup` → ESM bundle
-- Test: `vitest run` (166 tests, 13 suites)
+- Test: `vitest run`
 - All public functions need explicit return types
 - Scope: `engine` in commit messages
 - Key files:
