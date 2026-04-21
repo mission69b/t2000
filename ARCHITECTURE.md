@@ -63,7 +63,7 @@
 | `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
 | `@t2000/engine` | Published | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
-| `@t2000/mcp` | Published | MCP server — 50 tools (mirrors engine), stdio transport |
+| `@t2000/mcp` | Published | MCP server — 29 tools + 15 prompts (subset of engine's 40 tools), stdio transport |
 | `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
 | `@suimpp/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
 | `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
