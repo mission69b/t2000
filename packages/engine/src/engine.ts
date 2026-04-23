@@ -76,6 +76,9 @@ export class QueryEngine {
   private readonly sessionSpendUsd: number | undefined;
   private readonly onAutoExecuted: EngineConfig['onAutoExecuted'];
   private readonly onGuardFired: EngineConfig['onGuardFired'];
+  // [v1.5] See `EngineConfig.postWriteRefresh` — drives the post-write
+  // synthetic read injection in `resumeWithToolResult`.
+  private readonly postWriteRefresh: EngineConfig['postWriteRefresh'];
   private matchedRecipe: Recipe | null = null;
 
   private messages: Message[] = [];
@@ -110,6 +113,7 @@ export class QueryEngine {
     this.sessionSpendUsd = config.sessionSpendUsd;
     this.onAutoExecuted = config.onAutoExecuted;
     this.onGuardFired = config.onGuardFired;
+    this.postWriteRefresh = config.postWriteRefresh;
 
     this.tools = config.tools ?? (config.agent ? getDefaultTools() : []);
   }
@@ -203,7 +207,138 @@ export class QueryEngine {
       return;
     }
 
+    // [v1.5] Post-write refresh — eliminate the "LLM invents a wallet
+    // total in the post-write narration" hallucination class by
+    // physically injecting authoritative ground truth into the
+    // conversation BEFORE the LLM gets to narrate. Tools are configured
+    // per write via `EngineConfig.postWriteRefresh`. Errors are
+    // non-fatal: we still advance to agentLoop so the user gets *some*
+    // narration even if RPC blips.
+    yield* this.runPostWriteRefresh(action, response, signal);
+
     yield* this.agentLoop(null, signal, false);
+  }
+
+  /**
+   * [v1.5] Auto-run configured read tools after a successful write,
+   * push their results into the conversation, and yield `tool_result`
+   * events so hosts/UI render them in the timeline. See
+   * `EngineConfig.postWriteRefresh`.
+   *
+   * Pure injection — no LLM call here. The next `agentLoop` turn sees
+   * the fresh tool results and narrates from them.
+   */
+  private async *runPostWriteRefresh(
+    action: PendingAction,
+    response: PermissionResponse,
+    signal: AbortSignal,
+  ): AsyncGenerator<EngineEvent> {
+    const refreshList = this.postWriteRefresh?.[action.toolName];
+    if (!refreshList || refreshList.length === 0) return;
+
+    // Refresh only on confirmed success. Failed writes leave on-chain
+    // state untouched; refreshing would just surface the pre-write
+    // snapshot a second time — wasted RPC + zero new info.
+    const exec = response.executionResult;
+    const writeFailed =
+      exec != null &&
+      typeof exec === 'object' &&
+      'success' in exec &&
+      (exec as { success?: unknown }).success === false;
+    if (writeFailed) return;
+
+    // Resolve & filter — silently drop unknown / non-readonly entries
+    // so config drift between host & engine never breaks resume.
+    const refreshTools = refreshList
+      .map((name) => findTool(this.tools, name))
+      .filter((t): t is Tool =>
+        t !== undefined && t.isReadOnly && t.isConcurrencySafe,
+      );
+    if (refreshTools.length === 0) return;
+
+    const context: ToolContext = {
+      agent: this.agent,
+      mcpManager: this.mcpManager,
+      walletAddress: this.walletAddress,
+      suiRpcUrl: this.suiRpcUrl,
+      serverPositions: this.serverPositions,
+      positionFetcher: this.positionFetcher,
+      env: this.env,
+      signal,
+      priceCache: this.priceCache,
+      permissionConfig: this.permissionConfig,
+      sessionSpendUsd: this.sessionSpendUsd,
+    };
+
+    // Run all refreshes in parallel — they're read-only and target
+    // different RPC endpoints (wallet, NAVI positions, health). The
+    // common case (1-3 tools) finishes well under 1s.
+    const idStem = `pwr_${action.toolUseId.slice(-6)}`;
+    const refreshes = await Promise.all(
+      refreshTools.map(async (tool, idx) => {
+        const id = `${idStem}_${idx}_${tool.name}`;
+        try {
+          const parsed = tool.inputSchema.safeParse({});
+          if (!parsed.success) {
+            return {
+              tool,
+              id,
+              isError: true as const,
+              data: {
+                error: `Post-write refresh: invalid input for ${tool.name}`,
+              },
+            };
+          }
+          const result = await tool.call(parsed.data, context);
+          return { tool, id, isError: false as const, data: result.data };
+        } catch (err) {
+          return {
+            tool,
+            id,
+            isError: true as const,
+            data: {
+              error:
+                err instanceof Error
+                  ? err.message
+                  : 'Post-write refresh failed',
+            },
+          };
+        }
+      }),
+    );
+
+    // Push synthetic conversation pair so the LLM sees:
+    //   assistant(refresh tool_uses) → user(refresh tool_results)
+    // Anthropic accepts back-to-back assistant/user blocks; this is the
+    // same shape `buildSyntheticPrefetch` uses at session start.
+    const refreshUses: ContentBlock[] = refreshes.map((r) => ({
+      type: 'tool_use',
+      id: r.id,
+      name: r.tool.name,
+      input: {},
+    }));
+    this.messages.push({ role: 'assistant', content: refreshUses });
+
+    const refreshResults: ContentBlock[] = refreshes.map((r) => ({
+      type: 'tool_result',
+      toolUseId: r.id,
+      content: typeof r.data === 'string' ? r.data : JSON.stringify(r.data),
+      isError: r.isError,
+    }));
+    this.messages.push({ role: 'user', content: refreshResults });
+
+    // Yield events so hosts log them in `TurnMetrics.toolsCalled[]` and
+    // the UI renders the refreshed cards in-line.
+    for (const r of refreshes) {
+      yield {
+        type: 'tool_result',
+        toolName: r.tool.name,
+        toolUseId: r.id,
+        result: r.data,
+        isError: r.isError,
+        wasPostWriteRefresh: true,
+      };
+    }
   }
 
   interrupt(): void {

@@ -30,8 +30,8 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.40.5` |
-| `@t2000/engine` | `0.41.0` |
+| `@t2000/sdk` | `0.42.0` |
+| `@t2000/engine` | `0.42.0` |
 | `@t2000/cli` | `0.40.4` |
 | `@suimpp/mpp` | `0.3.1` |
 | `@t2000/mcp` | `0.40.4` |

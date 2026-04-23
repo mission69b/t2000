@@ -9,7 +9,19 @@ export type SSEEvent =
   | { type: 'thinking_done'; signature?: string }
   | { type: 'text_delta'; text: string }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
-  | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
+  | {
+      type: 'tool_result';
+      toolName: string;
+      toolUseId: string;
+      result: unknown;
+      isError: boolean;
+      // [v1.4] flags carried through unchanged from EngineEvent.tool_result
+      wasEarlyDispatched?: boolean;
+      resultDeduped?: boolean;
+      // [v1.5] true when injected by the engine's post-write refresh
+      // (see EngineConfig.postWriteRefresh)
+      wasPostWriteRefresh?: boolean;
+    }
   | { type: 'pending_action'; action: PendingAction }
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
