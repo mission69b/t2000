@@ -70,8 +70,22 @@ export {
   fallbackLabel,
   refineLendingLabel,
   classifyTransaction,
+  extractTransferDetails,
 } from './wallet/classify.js';
-export type { ClassifyBalanceChange, ClassifyResult } from './wallet/classify.js';
+export type {
+  ClassifyBalanceChange,
+  ClassifyResult,
+  ExtractedTransfer,
+  TxDirection,
+} from './wallet/classify.js';
+export {
+  parseSuiRpcTx,
+  extractTxSender,
+  extractTxCommands,
+  queryHistory,
+  queryTransaction,
+} from './wallet/history.js';
+export type { SuiRpcTxBlock } from './wallet/history.js';
 export {
   mistToSui,
   suiToMist,

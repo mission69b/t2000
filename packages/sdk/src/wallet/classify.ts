@@ -9,19 +9,38 @@
  * already producing fine-grained labels.
  */
 
-import { SUI_TYPE } from '../token-registry.js';
+import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '../token-registry.js';
 
 /**
  * Coarse action bucket — one of `'send' | 'lending' | 'swap' |
  * 'transaction'`. Used by the ACI `action` filter on the
  * `transaction_history` tool. STABLE: downstream queries depend on
  * exactly these values.
+ *
+ * Order matters: more specific buckets first. Lending patterns precede
+ * swap patterns so a NAVI `::swap` helper (if one ever existed) would
+ * still bucket as lending.
  */
 export const KNOWN_TARGETS: readonly [RegExp, string][] = [
   [/::suilend|::obligation/, 'lending'],
   [/::navi|::lending_core|::incentive_v\d+|::oracle_pro/, 'lending'],
-  [/::cetus|::pool/, 'swap'],
-  [/::deepbook/, 'swap'],
+  /**
+   * DEX modules — both direct calls and aggregator legs. The Cetus
+   * aggregator dispatches through a per-DEX module (e.g.
+   * `cetus::swap`, `flowx_amm::swap`, `aftermath::swap`, …) plus
+   * router glue functions. We list every DEX module the aggregator
+   * supports today so a single-DEX call still classifies cleanly.
+   */
+  [/::cetus(?:_dlmm)?::|::pool::|::deepbook|::flowx_(?:amm|clmm)::|::kriya_(?:amm|clmm)::|::turbos::|::aftermath::|::afsui::|::bluefin::|::bluemove::|::ferra_(?:clmm|dlmm)::|::haedal_hmm::|::hasui::|::hawal::|::magma::|::momentum::|::obric::|::springsui::|::steamm_cpmm::|::fullsail::|::alphafi::|::volo_swap::/, 'swap'],
+  /**
+   * Cetus aggregator router glue. These are the swap-context and
+   * balance-handling helpers the aggregator emits around per-DEX
+   * legs. Without this entry a tx that ONLY had router calls
+   * (theoretically possible for setup/cleanup) would slip through;
+   * in practice these always coexist with a DEX leg, but the entry
+   * is cheap insurance.
+   */
+  [/::router::(?:new_swap_context(?:_v)?|confirm_swap|transfer_balance|take_balance|transfer_or_destroy_coin)/, 'swap'],
   [/::transfer::public_transfer/, 'send'],
 ];
 
@@ -71,12 +90,15 @@ export function classifyAction(targets: string[], commandTypes: string[]): strin
 }
 
 /**
- * Fallback label when no `LABEL_PATTERNS` match.
+ * Last-resort fallback when neither `LABEL_PATTERNS` nor the action
+ * bucket produces something useful.
  *
- * Returns the first MoveCall's *module* name (e.g. "navi", "cetus",
- * "spam") so the card shows something more useful than the literal
- * word "transaction". When no MoveCall exists, returns 'on-chain'
- * instead — strictly more informative than "transaction".
+ * Returns the first MoveCall's *module* name (e.g. "navi", "spam") so
+ * the card shows something better than the literal word "transaction".
+ * When no MoveCall exists, returns 'on-chain'.
+ *
+ * Note: callers should prefer `classifyLabel` which now layers
+ * pattern-match → coarse action → module name (see commentary there).
  */
 export function fallbackLabel(targets: string[]): string {
   if (!targets.length) return 'on-chain';
@@ -86,6 +108,20 @@ export function fallbackLabel(targets: string[]): string {
   return 'on-chain';
 }
 
+/**
+ * Three-tier label resolution for the transaction history card:
+ *   1. Specific keyword match in `LABEL_PATTERNS` ("deposit",
+ *      "payment_link", …).
+ *   2. Coarse action bucket from `classifyAction` ("swap", "send",
+ *      "lending") — prevents leaking opaque internal module names like
+ *      "router" (Cetus aggregator) or "cross_swap" (third-party DEX
+ *      aggregators) for txs that we already classified as a swap.
+ *   3. Module name from the first MoveCall (`fallbackLabel`) — only
+ *      used when the action bucket itself is the generic "transaction".
+ *
+ * Pre-v0.46.2 we skipped tier 2, so swaps showed labels like "router",
+ * "cross_swap", "scallop_router", etc. instead of the clean "swap".
+ */
 export function classifyLabel(targets: string[], commandTypes: string[]): string {
   for (const target of targets) {
     for (const [pattern, label] of LABEL_PATTERNS) {
@@ -93,6 +129,8 @@ export function classifyLabel(targets: string[], commandTypes: string[]): string
     }
   }
   if (commandTypes.includes('TransferObjects') && !commandTypes.includes('MoveCall')) return 'send';
+  const action = classifyAction(targets, commandTypes);
+  if (action !== 'transaction') return action;
   return fallbackLabel(targets);
 }
 
@@ -154,4 +192,93 @@ export function classifyTransaction(
   const baseLabel = classifyLabel(moveCallTargets, commandTypes);
   const label = refineLendingLabel(action, baseLabel, moveCallTargets, balanceChanges, address);
   return { action, label };
+}
+
+/**
+ * Direction of the user's net non-gas movement for this transaction.
+ *
+ *   - `'out'` — the user spent the asset (sends, deposits, repays,
+ *     swap-in, payment-link payouts).
+ *   - `'in'`  — the user received the asset (withdraws, borrows,
+ *     swap-out, claims, deposits credited from another wallet).
+ *
+ * Used by the `TransactionHistoryCard` to choose the `+`/`−` sign and
+ * color. Direction is computed from the actual on-chain balance change
+ * — never from the textual label — so opaque action types (`'router'`,
+ * `'cross_swap'`, …) still render the correct sign.
+ */
+export type TxDirection = 'in' | 'out';
+
+export interface ExtractedTransfer {
+  amount?: number;
+  asset?: string;
+  recipient?: string;
+  direction?: TxDirection;
+}
+
+/**
+ * Extracts the principal amount/asset/direction for a transaction
+ * from its `balanceChanges`.
+ *
+ * Algorithm:
+ *   1. Restrict to the user's *own* balance changes.
+ *   2. Prefer non-SUI changes (gas-only SUI deltas are noise).
+ *   3. Pick the change with the largest absolute value — the "principal".
+ *   4. If no non-SUI change exists, fall back to the largest SUI change
+ *      so pure-SUI transfers (stake/unstake/native send) still render.
+ *   5. Direction follows the sign of the principal.
+ *   6. Recipient is set only on outflows, by finding a matching inflow
+ *      on a *non-user* address with the same coinType.
+ *
+ * Pre-v0.46.2 this function only inspected outflows, so withdraws,
+ * borrows, claims, swap-receives and payment-link receives all
+ * rendered with no amount on the rich card (and with a wrong sign,
+ * because the card guessed direction from the label string).
+ */
+export function extractTransferDetails(
+  changes: ClassifyBalanceChange[] | undefined,
+  sender: string,
+): ExtractedTransfer {
+  if (!changes || changes.length === 0) return {};
+
+  const userChanges = changes.filter((c) => resolveOwner(c.owner) === sender);
+  if (userChanges.length === 0) return {};
+
+  const userNonSui = userChanges.filter((c) => c.coinType !== SUI_TYPE);
+  const pool = userNonSui.length > 0 ? userNonSui : userChanges;
+
+  let primary = pool[0];
+  let primaryAbs = bigintAbs(BigInt(primary.amount));
+  for (let i = 1; i < pool.length; i++) {
+    const abs = bigintAbs(BigInt(pool[i].amount));
+    if (abs > primaryAbs) {
+      primary = pool[i];
+      primaryAbs = abs;
+    }
+  }
+
+  const raw = BigInt(primary.amount);
+  if (raw === 0n) return {};
+
+  const decimals = getDecimalsForCoinType(primary.coinType);
+  const amount = Number(primaryAbs) / 10 ** decimals;
+  const asset = resolveSymbol(primary.coinType);
+  const direction: TxDirection = raw < 0n ? 'out' : 'in';
+
+  let recipient: string | undefined;
+  if (direction === 'out') {
+    const recipientChange = changes.find(
+      (c) =>
+        resolveOwner(c.owner) !== sender &&
+        c.coinType === primary.coinType &&
+        BigInt(c.amount) > 0n,
+    );
+    recipient = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;
+  }
+
+  return { amount, asset, recipient, direction };
+}
+
+function bigintAbs(n: bigint): bigint {
+  return n < 0n ? -n : n;
 }

@@ -233,6 +233,106 @@ describe('[v1.5.3] transaction_history label classifier', () => {
     expect(data.transactions[0].label).toBe('deposit');
   });
 
+  it('Cetus aggregator router calls label as "swap" (not "router")', async () => {
+    /**
+     * Pre-v0.46.2 regression: every swap rendered with the literal
+     * label "router". The real on-chain shape from the Cetus
+     * aggregator is multiple MoveCalls — router glue (setup,
+     * transfer, confirm) wrapping a per-DEX leg (`cetus::swap`,
+     * `flowx_amm::swap`, etc.). classifyAction matched the DEX leg
+     * → 'swap', but classifyLabel saw no LABEL_PATTERNS entry and
+     * fell through to the FIRST module name = "router".
+     */
+    mockFetchOnce([
+      makeRpcTx({
+        digest: '0xswap',
+        moveCalls: [
+          { package: '0xrouter', module: 'router', function: 'new_swap_context_v' },
+          { package: '0xpath', module: 'cetus', function: 'swap' },
+          { package: '0xrouter', module: 'router', function: 'transfer_balance' },
+          { package: '0xrouter', module: 'router', function: 'confirm_swap' },
+        ],
+        balanceChanges: [
+          { owner: ADDR, coinType: USDC, amount: '-1000000' },
+          { owner: '0xpool', coinType: USDC, amount: '1000000' },
+        ],
+      }),
+    ]);
+    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const data = res.data as { transactions: { action: string; label?: string }[] };
+    expect(data.transactions[0].action).toBe('swap');
+    expect(data.transactions[0].label).toBe('swap');
+  });
+
+  it('emits direction=in for sponsored-gas withdraws (no SUI outflow)', async () => {
+    /**
+     * Pre-v0.46.2 regression: with sponsored gas, withdraws and
+     * borrows produced no user SUI outflow, and the old extractor
+     * only looked at outflows — so the card showed no amount and
+     * inferred a wrong sign from the label string.
+     *
+     * Now extractTransferDetails picks the user's largest non-SUI
+     * change regardless of sign and emits an explicit direction.
+     */
+    mockFetchOnce([
+      makeRpcTx({
+        digest: '0xwd-spons',
+        moveCalls: [{ package: '0xpkg', module: 'navi', function: 'withdraw' }],
+        balanceChanges: [
+          { owner: ADDR, coinType: USDC, amount: '10140000' }, // user receives 10.14 USDC
+        ],
+      }),
+    ]);
+    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const data = res.data as {
+      transactions: { amount?: number; asset?: string; direction?: string; label?: string }[];
+    };
+    const tx = data.transactions[0];
+    expect(tx.label).toBe('withdraw');
+    expect(tx.direction).toBe('in');
+    expect(tx.amount).toBeCloseTo(10.14, 4);
+    expect(tx.asset).toBe('USDC');
+  });
+
+  it('emits direction=in for sponsored-gas borrows', async () => {
+    mockFetchOnce([
+      makeRpcTx({
+        digest: '0xborrow',
+        moveCalls: [{ package: '0xpkg', module: 'navi', function: 'borrow' }],
+        balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '5000000' }],
+      }),
+    ]);
+    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const data = res.data as {
+      transactions: { amount?: number; asset?: string; direction?: string; label?: string }[];
+    };
+    const tx = data.transactions[0];
+    expect(tx.label).toBe('borrow');
+    expect(tx.direction).toBe('in');
+    expect(tx.amount).toBeCloseTo(5, 4);
+  });
+
+  it('emits direction=out for sends, with recipient', async () => {
+    mockFetchOnce([
+      makeRpcTx({
+        digest: '0xsendrec',
+        transferObjects: true,
+        balanceChanges: [
+          { owner: ADDR, coinType: USDC, amount: '-1000000' },
+          { owner: '0xfriend', coinType: USDC, amount: '1000000' },
+        ],
+      }),
+    ]);
+    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const data = res.data as {
+      transactions: { amount?: number; asset?: string; direction?: string; recipient?: string }[];
+    };
+    const tx = data.transactions[0];
+    expect(tx.direction).toBe('out');
+    expect(tx.amount).toBeCloseTo(1, 4);
+    expect(tx.recipient).toBe('0xfriend');
+  });
+
   it('SUI-only balance changes do not trigger lending tiebreaker', async () => {
     /**
      * Gas-only SUI deltas appear on every tx. The tiebreaker explicitly

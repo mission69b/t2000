@@ -60,8 +60,27 @@ export {
   fallbackLabel,
   refineLendingLabel,
   classifyTransaction,
+  extractTransferDetails,
 } from './wallet/classify.js';
-export type { ClassifyBalanceChange, ClassifyResult } from './wallet/classify.js';
+export type {
+  ClassifyBalanceChange,
+  ClassifyResult,
+  ExtractedTransfer,
+  TxDirection,
+} from './wallet/classify.js';
+/**
+ * RPC tx parsing helpers. Safe in the browser — they only do shape
+ * inspection / classification and do not import any Node-only modules.
+ * `queryHistory` and `queryTransaction` are not re-exported here
+ * because they take a Node `SuiJsonRpcClient`; consumers can build
+ * the same flow with `parseSuiRpcTx` + their own RPC fetch.
+ */
+export {
+  parseSuiRpcTx,
+  extractTxSender,
+  extractTxCommands,
+} from './wallet/history.js';
+export type { SuiRpcTxBlock } from './wallet/history.js';
 export {
   mistToSui,
   suiToMist,

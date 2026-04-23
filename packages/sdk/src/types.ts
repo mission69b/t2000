@@ -171,6 +171,15 @@ export interface TransactionRecord {
   amount?: number;
   asset?: string;
   recipient?: string;
+  /**
+   * Direction of the user's principal (non-gas) balance movement on
+   * this tx — `'out'` if they spent, `'in'` if they received.
+   * Computed from on-chain balance changes (NOT from `label`), so the
+   * card can render the correct sign even for opaque actions like
+   * `swap`/`router`. Undefined when no user balance change is
+   * detectable (e.g. pure read-only or admin txs).
+   */
+  direction?: 'in' | 'out';
   timestamp: number;
   gasCost?: number;
   gasMethod?: GasMethod;
