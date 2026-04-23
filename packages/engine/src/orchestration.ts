@@ -198,6 +198,18 @@ export function budgetToolResult(
 
   const preview = serialized.slice(0, tool.maxResultSizeChars);
   const linesOmitted = serialized.split('\n').length - preview.split('\n').length;
-  const truncated = `${preview}\n\n[Truncated — ${linesOmitted} lines omitted. Call ${tool.name} with narrower parameters (e.g. smaller date range or limit) to see more.]`;
-  try { return JSON.parse(truncated); } catch { return truncated; }
+  const note = `[Truncated — ${linesOmitted} lines omitted. Call ${tool.name} with narrower parameters (e.g. smaller date range or limit) to see more.]`;
+  /**
+   * [v1.5.2] If the original payload was a JSON object, *don't* return a
+   * raw sliced string — the slice is invalid JSON, JSON.parse fails, and
+   * downstream consumers (frontend card renderers, history-replay logic,
+   * etc.) get a string they cannot destructure. Instead, wrap the
+   * preview in a structured `_truncated` envelope so the result stays
+   * object-shaped. Tools that genuinely return a string (rare) fall
+   * through to the legacy concat behavior.
+   */
+  if (typeof data === 'object' && data !== null) {
+    return { _truncated: true, _preview: preview, _note: note };
+  }
+  return `${preview}\n\n${note}`;
 }

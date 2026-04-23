@@ -236,6 +236,47 @@ export const transactionHistoryTool = buildTool({
   // `date` filter the dedupe is wrong post-write because the just-
   // executed write may now be in history. Never dedupe.
   cacheable: false,
+  /**
+   * [v1.5.2] Custom truncation that preserves the structured shape.
+   *
+   * The default `budgetToolResult` slices the JSON string at the byte
+   * limit, appends a "[Truncated…]" note, and tries `JSON.parse` — which
+   * always fails for sliced JSON, so the engine falls back to returning
+   * the raw string. The frontend's `transaction_history` card renderer
+   * then sees `typeof data !== 'object'` and bails, so the rich card
+   * never renders even though the LLM has the full text.
+   *
+   * Strategy: progressively halve the `transactions` array until the
+   * serialized payload fits, then stamp `_truncated: true` and the
+   * original length so the LLM knows to recall with `limit` if it needs
+   * older entries. Result is always valid JSON, always object-shaped.
+   */
+  summarizeOnTruncate(serialized, maxChars) {
+    type ParsedHistory = {
+      transactions: unknown[];
+      count: number;
+      [k: string]: unknown;
+    };
+    let parsed: ParsedHistory;
+    try {
+      parsed = JSON.parse(serialized) as ParsedHistory;
+    } catch {
+      return JSON.stringify({
+        transactions: [],
+        count: 0,
+        _truncated: true,
+        _note: 'Result exceeded size budget and could not be summarized.',
+      });
+    }
+    const original = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+    let trimmed = original.slice();
+    let payload = JSON.stringify({ ...parsed, transactions: trimmed, _truncated: true, _originalCount: original.length });
+    while (payload.length > maxChars && trimmed.length > 1) {
+      trimmed = trimmed.slice(0, Math.max(1, Math.floor(trimmed.length / 2)));
+      payload = JSON.stringify({ ...parsed, transactions: trimmed, _truncated: true, _originalCount: original.length });
+    }
+    return payload;
+  },
 
   async call(
     input,
