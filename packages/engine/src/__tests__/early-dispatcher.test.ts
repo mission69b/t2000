@@ -116,8 +116,13 @@ describe('EarlyToolDispatcher', () => {
     const events = await collectAll(dispatcher.collectResults());
     expect(events).toHaveLength(1);
     if (events[0].type === 'tool_result') {
-      const r = String(events[0].result);
-      expect(r).toContain('Truncated');
+      // [v1.5.2] Object payloads are wrapped in a `_truncated` envelope so
+      // downstream consumers (frontend cards, replay logic) can still
+      // destructure the result. See `budgetToolResult` in orchestration.ts.
+      const r = events[0].result as { _truncated: boolean; _note: string };
+      expect(typeof r).toBe('object');
+      expect(r._truncated).toBe(true);
+      expect(r._note).toContain('Truncated');
     }
   });
 
