@@ -37,6 +37,10 @@ export const balanceCheckTool = buildTool({
   inputSchema: z.object({}),
   jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
+  // [v1.5.1] Wallet contents change after every send/swap/save/etc.
+  // Microcompact must NEVER dedupe these calls — each one reflects a
+  // different on-chain state.
+  cacheable: false,
 
   async call(_input, context) {
     if (hasNaviMcp(context)) {

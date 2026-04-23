@@ -1,4 +1,4 @@
-import type { Message, ContentBlock } from '../types.js';
+import type { Message, ContentBlock, Tool } from '../types.js';
 
 /**
  * [v1.4 Item 4] Side-channel return from `microcompact` so callers can
@@ -22,21 +22,50 @@ export interface MicrocompactResult extends Array<Message> {
  * the full prior result with a compact back-reference. Runs before any
  * LLM-based compaction and costs nothing.
  *
+ * [v1.5.1] Tools may opt out of dedupe by setting `cacheable: false` on
+ * their `Tool` definition. Non-cacheable tools (e.g. `balance_check`,
+ * `savings_info`, `health_check`, `transaction_history`) are excluded
+ * from the `seen` map entirely, so neither the current call nor any
+ * later call with identical inputs gets replaced — necessary because
+ * their results depend on mutable on-chain state that writes invalidate.
+ *
  * Returns a new array — does not mutate the input. The returned array
  * carries a `dedupedToolUseIds` property listing every tool-use ID whose
  * tool_result block was replaced with a back-reference this pass.
+ *
+ * @param messages — conversation ledger to compact.
+ * @param tools    — optional tool registry consulted to resolve the
+ *                   per-tool `cacheable` flag. Omit to dedupe every
+ *                   tool (legacy behavior — back-compat).
  */
-export function microcompact(messages: readonly Message[]): MicrocompactResult {
+export function microcompact(
+  messages: readonly Message[],
+  tools?: readonly Tool[],
+): MicrocompactResult {
   const seen = new Map<string, { turnIndex: number }>();
   let toolUseIndex = 0;
 
   const toolUseInputs = new Map<string, string>();
+  // Map tool name → cacheable flag. Default behavior (no entry, or
+  // `cacheable === undefined`) is `true` — back-compat with hosts that
+  // don't pass a tools array.
+  const cacheableByName = new Map<string, boolean>();
+  if (tools) {
+    for (const t of tools) {
+      cacheableByName.set(t.name, t.cacheable ?? true);
+    }
+  }
   const dedupedToolUseIds = new Set<string>();
+
+  // Resolve tool name from a tool_use_id — cached lookup so each result
+  // pass stays linear.
+  const toolNameById = new Map<string, string>();
 
   for (const msg of messages) {
     for (const block of msg.content) {
       if (block.type === 'tool_use') {
         toolUseInputs.set(block.id, `${block.name}:${stableStringify(block.input)}`);
+        toolNameById.set(block.id, block.name);
       }
     }
   }
@@ -52,6 +81,16 @@ export function microcompact(messages: readonly Message[]): MicrocompactResult {
 
       const key = toolUseInputs.get(block.toolUseId);
       if (!key) return block;
+
+      // [v1.5.1] Skip dedupe entirely for tools whose results depend on
+      // mutable state. Don't write to `seen` either — otherwise a later
+      // *cacheable* call with the same key would erroneously dedupe
+      // against this fresh result.
+      const toolName = toolNameById.get(block.toolUseId);
+      if (toolName && cacheableByName.get(toolName) === false) {
+        toolUseIndex++;
+        return block;
+      }
 
       toolUseIndex++;
       const prior = seen.get(key);

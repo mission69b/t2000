@@ -25,6 +25,11 @@ export interface BuildToolOptions<TInput, TOutput> {
   preflight?: (input: TInput) => PreflightResult;
   maxResultSizeChars?: number;
   summarizeOnTruncate?: (result: string, maxChars: number) => string;
+  /**
+   * [v1.5.1] See `Tool.cacheable`. Default `true`. Set `false` for
+   * tools whose results depend on mutable on-chain state.
+   */
+  cacheable?: boolean;
 }
 
 type AnyPreflight = (input: unknown) => PreflightResult;
@@ -46,6 +51,7 @@ export function buildTool<TInput, TOutput>(
     preflight: opts.preflight as AnyPreflight | undefined,
     maxResultSizeChars: opts.maxResultSizeChars,
     summarizeOnTruncate: opts.summarizeOnTruncate,
+    cacheable: opts.cacheable,
   };
 }
 

@@ -437,7 +437,12 @@ export class QueryEngine {
         // deduped prior call so hosts can flip `resultDeduped` on the
         // matching `TurnMetrics.toolsCalled[]` row. Marker shape is
         // explicit so collectors don't double-count emissions.
-        const microcompacted = microcompact(this.messages);
+        // [v1.5.1] Pass the tool registry so microcompact honors per-tool
+        // `cacheable` flags. Mutable-state reads (balance_check etc.)
+        // never dedupe, so post-write refreshes always surface fresh
+        // data instead of a "[Same result as call #N]" marker that the
+        // LLM previously misread as "stale snapshot, fall back to math".
+        const microcompacted = microcompact(this.messages, this.tools);
         this.messages = microcompacted;
         for (const dedupedId of microcompacted.dedupedToolUseIds) {
           yield {

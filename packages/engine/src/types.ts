@@ -231,6 +231,18 @@ export interface Tool<TInput = unknown, TOutput = unknown> {
   maxResultSizeChars?: number;
   /** Custom truncation strategy. Falls back to generic slice + hint when omitted. */
   summarizeOnTruncate?: (result: string, maxChars: number) => string;
+  /**
+   * [v1.5.1] Whether `microcompact` may dedupe this tool's results across
+   * multiple calls with identical input. Default `true` — most tools are
+   * effectively pure within a session (price lookups, protocol info,
+   * yield pools). Set to `false` for tools whose result depends on
+   * mutable on-chain state and therefore changes after writes
+   * (`balance_check`, `savings_info`, `health_check`,
+   * `transaction_history`). Non-cacheable tools are excluded from the
+   * `seen` map entirely, so neither this call nor any later call with
+   * the same input gets replaced with a "[Same result …]" back-reference.
+   */
+  cacheable?: boolean;
 }
 
 // ---------------------------------------------------------------------------

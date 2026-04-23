@@ -85,6 +85,9 @@ export const savingsInfoTool = buildTool({
   inputSchema: z.object({}),
   jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
+  // [v1.5.1] NAVI deposits change on save_deposit / withdraw / claim.
+  // Each call reflects a fresh on-chain snapshot — never dedupe.
+  cacheable: false,
 
   async call(_input, context) {
     if (context.positionFetcher && context.walletAddress) {
