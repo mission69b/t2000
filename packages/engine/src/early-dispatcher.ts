@@ -75,6 +75,7 @@ export class EarlyToolDispatcher {
           toolUseId: entry.call.id,
           result: budgeted,
           isError: result.isError,
+          wasEarlyDispatched: true,
         };
       } catch (err) {
         yield {
@@ -83,6 +84,7 @@ export class EarlyToolDispatcher {
           toolUseId: entry.call.id,
           result: { error: err instanceof Error ? err.message : 'Tool execution failed' },
           isError: true,
+          wasEarlyDispatched: true,
         };
       }
     }

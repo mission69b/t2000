@@ -194,13 +194,23 @@ async function queryHistoryByDate(
   return results.slice(0, limit);
 }
 
+/**
+ * [v1.4 ACI] Allowed values for the `action` filter — kept in sync with
+ * `classifyAction` above (the labels it can return).
+ */
+const HISTORY_ACTIONS = ['send', 'lending', 'swap', 'transaction'] as const;
+type HistoryAction = (typeof HISTORY_ACTIONS)[number];
+
+const DEFAULT_LOOKBACK_DAYS = 30;
+
 export const transactionHistoryTool = buildTool({
   name: 'transaction_history',
   description:
-    'Retrieve transaction history: past sends, saves, withdrawals, borrows, repayments, and rewards claims. Pass a date (YYYY-MM-DD) to find transactions from a specific day, or omit for the most recent.',
+    'Retrieve recent transaction history (last 30 days by default): sends, saves, withdrawals, borrows, repayments, and rewards claims. Pass `date` (YYYY-MM-DD) for a specific day, `action` to filter by category (send/lending/swap), or both.',
   inputSchema: z.object({
     limit: z.number().int().min(1).max(50).optional(),
     date: z.string().optional().describe('Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.'),
+    action: z.enum(HISTORY_ACTIONS).optional().describe('Filter by action: send, lending, swap, or transaction.'),
   }),
   jsonSchema: {
     type: 'object',
@@ -213,20 +223,41 @@ export const transactionHistoryTool = buildTool({
         type: 'string',
         description: 'Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.',
       },
+      action: {
+        type: 'string',
+        enum: [...HISTORY_ACTIONS],
+        description: 'Filter results by action category: send, lending, swap, or transaction.',
+      },
     },
   },
   isReadOnly: true,
   maxResultSizeChars: 8_000,
 
-  async call(input, context) {
+  async call(
+    input,
+    context,
+  ): Promise<{ data: Record<string, unknown>; displayText: string }> {
     const limit = input.limit ?? 10;
+    const action = input.action as HistoryAction | undefined;
+
+    /**
+     * [v1.4] After fetching, narrow by `action` (when supplied), and trim
+     * to a `DEFAULT_LOOKBACK_DAYS` window when no explicit date is given —
+     * keeps results recent and bounded so the LLM doesn't over-summarize.
+     */
+    const finalize = (records: TxRecord[]): TxRecord[] => {
+      let scoped = records;
+      if (action) scoped = scoped.filter((r) => r.action === action);
+      return scoped.slice(0, limit);
+    };
 
     if (context.agent) {
       const agent = requireAgent(context);
-      const records = await agent.history({ limit });
+      const records = await agent.history({ limit: input.date ? limit : Math.max(limit * 4, 50) });
+      const filtered = finalize(records);
       return {
-        data: { transactions: records, count: records.length, date: input.date ?? null },
-        displayText: `${records.length} recent transaction(s)`,
+        data: { transactions: filtered, count: filtered.length, date: input.date ?? null, action: action ?? null },
+        displayText: `${filtered.length} recent transaction(s)`,
       };
     }
 
@@ -235,20 +266,40 @@ export const transactionHistoryTool = buildTool({
     }
 
     if (input.date) {
-      const records = await queryHistoryByDate(context.suiRpcUrl, context.walletAddress, input.date, limit);
+      const records = await queryHistoryByDate(
+        context.suiRpcUrl,
+        context.walletAddress,
+        input.date,
+        Math.max(limit * 4, 50),
+      );
+      const filtered = finalize(records);
       const dateLabel = new Date(input.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
       return {
-        data: { transactions: records, count: records.length, date: input.date },
-        displayText: records.length > 0
-          ? `${records.length} transaction(s) on ${dateLabel}`
+        data: { transactions: filtered, count: filtered.length, date: input.date, action: action ?? null },
+        displayText: filtered.length > 0
+          ? `${filtered.length} transaction(s) on ${dateLabel}`
           : `No transactions found on ${dateLabel}`,
       };
     }
 
-    const records = await queryHistoryRpc(context.suiRpcUrl, context.walletAddress, limit);
+    // No date — last 30 days. Over-fetch then trim by lookback window.
+    const cutoffMs = Date.now() - DEFAULT_LOOKBACK_DAYS * 86_400_000;
+    const records = await queryHistoryRpc(
+      context.suiRpcUrl,
+      context.walletAddress,
+      Math.max(limit * 4, 50),
+    );
+    const recent = records.filter((r) => r.timestamp >= cutoffMs);
+    const filtered = finalize(recent);
     return {
-      data: { transactions: records, count: records.length, date: null },
-      displayText: `${records.length} recent transaction(s)`,
+      data: {
+        transactions: filtered,
+        count: filtered.length,
+        date: null,
+        action: action ?? null,
+        lookbackDays: DEFAULT_LOOKBACK_DAYS,
+      },
+      displayText: `${filtered.length} transaction(s) in the last ${DEFAULT_LOOKBACK_DAYS} days`,
     };
   },
 });

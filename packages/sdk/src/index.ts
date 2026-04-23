@@ -44,6 +44,8 @@ export {
   SUI_DECIMALS,
   USDC_DECIMALS,
   BPS_DENOMINATOR,
+  SAVE_FEE_BPS,
+  BORROW_FEE_BPS,
   SUPPORTED_ASSETS,
   CLOCK_ID,
   DEFAULT_NETWORK,
@@ -97,6 +99,7 @@ export { getSwapQuote } from './swap-quote.js';
 export {
   findSwapRoute,
   buildSwapTx,
+  OVERLAY_FEE_RATE,
 } from './protocols/cetus-swap.js';
 export type { SwapRouteResult } from './protocols/cetus-swap.js';
 export {

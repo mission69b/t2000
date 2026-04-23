@@ -922,14 +922,21 @@ Three-layer validation prevents impossible transactions:
 Write tools with `permissionLevel: 'confirm'` yield a `pending_action` event:
 
 ```
-Engine yields pending_action(toolName, toolUseId, input, description, assistantContent)
-    → Client displays confirmation UI
+Engine yields pending_action(toolName, toolUseId, input, description,
+                             assistantContent, turnIndex, modifiableFields?)
+    → Client displays confirmation UI (PermissionCard)
+    → User may edit any field declared in `modifiableFields`
     → Client executes the transaction on-chain
-    → Client calls POST /api/engine/resume with the execution result
-    → Engine reconstructs the full turn and continues the conversation
+    → Client calls POST /api/engine/resume with the execution result and any
+      `modifications` overlay
+    → Engine reconstructs the full turn from the post-modification input
+    → Server updates `TurnMetrics(sessionId, turnIndex)` with the resolved
+      `pendingActionOutcome` ('approved' | 'declined' | 'modified')
 ```
 
 This stateless flow is serverless-friendly — no long-lived SSE connections needed for write operations.
+
+`turnIndex` (engine 0.41.0) is derived from the assistant message count when the action is yielded, giving hosts a stable join key from `pending_action` events back to the originating `TurnMetrics` row written at turn close. `modifiableFields` is the engine-side declaration of which `input` keys the user is allowed to edit before approval — sourced from the `TOOL_MODIFIABLE_FIELDS` registry — and the resume route applies the resulting `modifications` to `action.input` so the conversation history reflects what was actually approved on-chain.
 
 ### MCP Integration
 

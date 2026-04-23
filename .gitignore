@@ -51,6 +51,7 @@ marketing/
 audric-raise-strategy.canvas.tsx
 audric-litepaper.html
 AUDRIC_LITEPAPER.md
+AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md
 
 # MCP registry tokens
 .mcpregistry_*

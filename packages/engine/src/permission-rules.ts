@@ -75,18 +75,39 @@ export const PERMISSION_PRESETS = {
   },
 } satisfies Record<string, UserPermissionConfig>;
 
+/**
+ * Resolve the permission tier for a given operation + USD value.
+ *
+ * [v1.4] When `sessionSpendUsd` is supplied and adding the incoming
+ * `amountUsd` would push cumulative session spend over
+ * `config.autonomousDailyLimit`, an otherwise-`auto` tier is downgraded to
+ * `confirm`. This is the runtime guard for the daily autonomous spend cap.
+ * Tiers above `auto` are returned unchanged.
+ */
 export function resolvePermissionTier(
   operation: string,
   amountUsd: number,
   config: UserPermissionConfig,
+  sessionSpendUsd?: number,
 ): 'auto' | 'confirm' | 'explicit' {
   const rule = config.rules.find((r) => r.operation === operation);
   const autoBelow = rule?.autoBelow ?? config.globalAutoBelow;
   const confirmBetween = rule?.confirmBetween ?? 1000;
 
-  if (amountUsd < autoBelow) return 'auto';
-  if (amountUsd < confirmBetween) return 'confirm';
-  return 'explicit';
+  let tier: 'auto' | 'confirm' | 'explicit';
+  if (amountUsd < autoBelow) tier = 'auto';
+  else if (amountUsd < confirmBetween) tier = 'confirm';
+  else tier = 'explicit';
+
+  if (
+    tier === 'auto' &&
+    typeof sessionSpendUsd === 'number' &&
+    sessionSpendUsd + amountUsd > config.autonomousDailyLimit
+  ) {
+    return 'confirm';
+  }
+
+  return tier;
 }
 
 const TOOL_TO_OPERATION: Record<string, PermissionOperation> = {

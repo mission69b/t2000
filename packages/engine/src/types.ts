@@ -36,6 +36,18 @@ export type EngineEvent =
       toolUseId: string;
       result: unknown;
       isError: boolean;
+      /**
+       * [v1.4 Item 4] True when the tool was executed by `EarlyToolDispatcher`
+       * (read tools dispatched concurrently before the LLM yields). Hosts
+       * record this in `TurnMetrics.toolsCalled[].wasEarlyDispatched`.
+       */
+      wasEarlyDispatched?: boolean;
+      /**
+       * [v1.4 Item 4] True when this result was synthesized from a previous
+       * identical tool call by `microcompact` deduplication, instead of
+       * actually re-running the tool.
+       */
+      resultDeduped?: boolean;
     }
   | {
       type: 'pending_action';
@@ -57,9 +69,36 @@ export type EngineEvent =
       data: unknown;
       title: string;
       toolUseId: string;
-    };
+    }
+  /**
+   * [v1.4 Item 4] Emitted exactly once per agent turn when context-window
+   * compaction fires. Hosts (e.g. audric `TurnMetricsCollector`) flip a
+   * boolean for the `TurnMetrics.compactionTriggered` column. Carries no
+   * payload — `compactMessages` stays a pure function.
+   */
+  | { type: 'compaction' };
 
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
+
+/**
+ * [v1.4 Item 6] Describes a single input field on a `PendingAction` that
+ * the host UI may let the user modify before approving. Carried on the
+ * `pending_action` event so clients can render editable controls without
+ * hard-coding per-tool field metadata. See
+ * `packages/engine/src/tools/tool-modifiable-fields.ts` for the registry.
+ */
+export interface PendingActionModifiableField {
+  /** Input key on the `PendingAction.input` object (e.g. "amount", "to"). */
+  name: string;
+  /**
+   * UI hint for which control to render.
+   *  - `amount` — numeric input; UI shows a "~Max" hint when balance is known.
+   *  - `address` — Sui address input with paste/scan affordance.
+   */
+  kind: 'amount' | 'address';
+  /** Optional asset symbol (e.g. "USDC", "SUI", "vSUI") for amount fields. */
+  asset?: string;
+}
 
 /**
  * Serializable description of a write tool that needs user approval.
@@ -76,6 +115,19 @@ export interface PendingAction {
   completedResults?: Array<{ toolUseId: string; content: string; isError: boolean }>;
   /** Guard injections (hints/warnings) from pre-execution checks. */
   guardInjections?: Array<{ _gate: string; _hint?: string; _warning?: string }>;
+  /**
+   * [v1.4 Item 6] Fields the host UI may let the user modify before
+   * approving. Sourced from `tool-modifiable-fields.ts`. Absent (or
+   * empty) means the action is approve-or-deny only.
+   */
+  modifiableFields?: PendingActionModifiableField[];
+  /**
+   * [v1.4 Item 6] Monotonic turn index (assistant message count) at the
+   * point this pending action was emitted. Hosts use it to update the
+   * matching `TurnMetrics` row when the action resolves — see
+   * `apps/web/app/api/engine/resume/route.ts` `updateMany` clause.
+   */
+  turnIndex: number;
 }
 
 /**
@@ -114,6 +166,13 @@ export interface ToolContext {
   priceCache?: Map<string, number>;
   /** Per-user permission config for USD-threshold write tool gating (B.4). */
   permissionConfig?: import('./permission-rules.js').UserPermissionConfig;
+  /**
+   * [v1.4] Cumulative USD already auto-executed in the current session.
+   * Used by `resolvePermissionTier` to enforce `autonomousDailyLimit` —
+   * downgrades `auto` to `confirm` when adding the incoming tool's USD
+   * value would exceed the limit. Optional; omitted = unbounded.
+   */
+  sessionSpendUsd?: number;
 }
 
 export interface ServerPositionData {
@@ -229,6 +288,26 @@ export interface EngineConfig {
   priceCache?: Map<string, number>;
   /** Per-user permission config for USD-threshold write tool gating (B.4). */
   permissionConfig?: import('./permission-rules.js').UserPermissionConfig;
+  /**
+   * [v1.4] Cumulative USD already auto-executed in the current session.
+   * Forwarded to `ToolContext` and consulted by `resolvePermissionTier` to
+   * enforce `autonomousDailyLimit`.
+   */
+  sessionSpendUsd?: number;
+  /**
+   * [v1.4] Fired after a write tool successfully auto-executes (no
+   * confirmation required). Hosts use this to persist cumulative spend in
+   * Redis. Errors are caught — the tool result is never blocked by a failure
+   * here.
+   */
+  onAutoExecuted?: (info: { toolName: string; usdValue: number }) => void | Promise<void>;
+  /**
+   * [v1.4 Item 4] Per-guard observation hook. Forwarded to `runGuards`
+   * and fired once per non-`pass` verdict so hosts can record guard
+   * behaviour in `TurnMetrics.guardsFired` without re-implementing the
+   * verdict→action mapping. Errors thrown by the host are caught.
+   */
+  onGuardFired?: (guard: import('./guards.js').GuardMetric) => void;
 }
 
 // ---------------------------------------------------------------------------

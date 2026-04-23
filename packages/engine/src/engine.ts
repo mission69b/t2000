@@ -14,6 +14,7 @@ import type {
 import { toolsToDefinitions, findTool } from './tool.js';
 import { TxMutex, runTools, type PendingToolCall } from './orchestration.js';
 import { getDefaultTools } from './tools/index.js';
+import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { estimatePayApiCost } from './tools/pay.js';
@@ -71,6 +72,10 @@ export class QueryEngine {
   private readonly contextSummarizer: EngineConfig['contextSummarizer'];
   private readonly priceCache: Map<string, number> | undefined;
   private readonly permissionConfig: import('./permission-rules.js').UserPermissionConfig | undefined;
+  // [v1.4] Session-scoped autonomous spend tracking.
+  private readonly sessionSpendUsd: number | undefined;
+  private readonly onAutoExecuted: EngineConfig['onAutoExecuted'];
+  private readonly onGuardFired: EngineConfig['onGuardFired'];
   private matchedRecipe: Recipe | null = null;
 
   private messages: Message[] = [];
@@ -102,6 +107,9 @@ export class QueryEngine {
     this.contextSummarizer = config.contextSummarizer;
     this.priceCache = config.priceCache;
     this.permissionConfig = config.permissionConfig;
+    this.sessionSpendUsd = config.sessionSpendUsd;
+    this.onAutoExecuted = config.onAutoExecuted;
+    this.onGuardFired = config.onGuardFired;
 
     this.tools = config.tools ?? (config.agent ? getDefaultTools() : []);
   }
@@ -264,6 +272,7 @@ export class QueryEngine {
       signal,
       priceCache: this.priceCache,
       permissionConfig: this.permissionConfig,
+      sessionSpendUsd: this.sessionSpendUsd,
     };
 
     let turns = 0;
@@ -288,8 +297,23 @@ export class QueryEngine {
       const dispatcher = new EarlyToolDispatcher(this.tools, context);
 
       try {
-        // B.3: Zero-cost dedup of identical tool calls every turn
-        this.messages = microcompact(this.messages);
+        // B.3: Zero-cost dedup of identical tool calls every turn.
+        // [v1.4 Item 4] Emit a synthetic tool_result event for each
+        // deduped prior call so hosts can flip `resultDeduped` on the
+        // matching `TurnMetrics.toolsCalled[]` row. Marker shape is
+        // explicit so collectors don't double-count emissions.
+        const microcompacted = microcompact(this.messages);
+        this.messages = microcompacted;
+        for (const dedupedId of microcompacted.dedupedToolUseIds) {
+          yield {
+            type: 'tool_result',
+            toolName: '__deduped__',
+            toolUseId: dedupedId,
+            result: null,
+            isError: false,
+            resultDeduped: true,
+          };
+        }
 
         // RE-3.3: Compact context if budget is exceeded
         if (this.contextBudget.shouldCompact()) {
@@ -298,6 +322,10 @@ export class QueryEngine {
             keepRecentCount: 8,
             summarizer: this.contextSummarizer,
           });
+          // [v1.4 Item 4] Notify hosts that compaction fired this turn.
+          // `compactMessages` stays a pure function; the event keeps the
+          // signal observable without coupling.
+          yield { type: 'compaction' };
         }
 
         this.messages = validateHistory(this.messages);
@@ -484,7 +512,13 @@ export class QueryEngine {
             const operation = toolNameToOperation(call.name);
             if (operation) {
               const usdValue = resolveUsdValue(call.name, call.input as Record<string, unknown>, context.priceCache);
-              const tier = resolvePermissionTier(operation, usdValue, context.permissionConfig);
+              // [v1.4] sessionSpendUsd consulted to enforce daily cap
+              const tier = resolvePermissionTier(
+                operation,
+                usdValue,
+                context.permissionConfig,
+                context.sessionSpendUsd,
+              );
               return tier !== 'auto';
             }
           }
@@ -511,7 +545,14 @@ export class QueryEngine {
           const tool = findTool(this.tools, call.name);
           if (!tool) { guardedApproved.push(call); continue; }
 
-          const check = runGuards(tool, call, this.guardState, this.guardConfig, convCtx);
+          const check = runGuards(
+            tool,
+            call,
+            this.guardState,
+            this.guardConfig,
+            convCtx,
+            this.onGuardFired,
+          );
           this.guardEvents.push(...check.events);
 
           if (check.blocked) {
@@ -614,6 +655,32 @@ export class QueryEngine {
                 toolUseId: finalEvent.toolUseId,
               };
             }
+
+            // [v1.4] Fire onAutoExecuted for write tools that auto-executed
+            // (non-readonly tools that reach this loop have already passed the
+            // auto-tier check). Wrapped in try/catch so any host error never
+            // propagates back into the engine — the tool result already shipped.
+            if (
+              tool && !tool.isReadOnly && this.onAutoExecuted &&
+              this.permissionConfig && this.priceCache
+            ) {
+              const operation = toolNameToOperation(toolEvent.toolName);
+              if (operation && originalCall) {
+                const usdValue = resolveUsdValue(
+                  toolEvent.toolName,
+                  originalCall.input as Record<string, unknown>,
+                  this.priceCache,
+                );
+                Promise.resolve()
+                  .then(() => this.onAutoExecuted!({
+                    toolName: toolEvent.toolName,
+                    usdValue,
+                  }))
+                  .catch((err) => {
+                    console.warn('[engine] onAutoExecuted callback failed:', err);
+                  });
+              }
+            }
           }
 
           toolResultBlocks.push({
@@ -632,7 +699,12 @@ export class QueryEngine {
       if (pendingWrite && this.guardConfig) {
         const convCtx = extractConversationText(this.messages);
         const check = runGuards(
-          pendingWrite.tool, pendingWrite.call, this.guardState, this.guardConfig, convCtx,
+          pendingWrite.tool,
+          pendingWrite.call,
+          this.guardState,
+          this.guardConfig,
+          convCtx,
+          this.onGuardFired,
         );
         this.guardEvents.push(...check.events);
 
@@ -668,6 +740,13 @@ export class QueryEngine {
         const writeGuardInjections =
           (pendingWrite.call as PendingToolCall & { _guardInjections?: Array<{ _gate: string; _hint?: string; _warning?: string }> })._guardInjections;
 
+        // [v1.4 Item 6] Stamp the action with the registry's modifiable
+        // fields (UI uses this to render editable controls) and a turnIndex
+        // derived from the assistant message count so hosts can update the
+        // matching `TurnMetrics` row when the action resolves.
+        const modifiableFields = getModifiableFields(pendingWrite.call.name);
+        const turnIndex = this.messages.filter((m) => m.role === 'assistant').length;
+
         yield {
           type: 'pending_action',
           action: {
@@ -682,6 +761,8 @@ export class QueryEngine {
               isError: (b as { isError?: boolean }).isError ?? false,
             })),
             ...(writeGuardInjections?.length ? { guardInjections: writeGuardInjections } : {}),
+            ...(modifiableFields?.length ? { modifiableFields } : {}),
+            turnIndex,
           },
         };
         return;
