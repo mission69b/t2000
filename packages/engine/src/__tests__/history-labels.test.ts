@@ -31,15 +31,24 @@ function makeRpcTx(opts: {
   transferObjects?: boolean;
   /** balance changes — positive amount is owner credit, negative is debit */
   balanceChanges?: { owner: string; coinType: string; amount: string }[];
+  /**
+   * Field name for the programmable-tx command list. Prod Sui RPC
+   * uses the legacy `transactions` key; the SDK-builder side uses
+   * `commands`. Default `commands` mirrors the existing tests; flip
+   * to `transactions` to exercise the legacy-shape regression guard.
+   */
+  cmdField?: 'commands' | 'transactions';
 }) {
-  const commands: unknown[] = [];
-  if (opts.moveCalls) for (const mc of opts.moveCalls) commands.push({ MoveCall: mc });
-  if (opts.transferObjects) commands.push({ TransferObjects: {} });
+  const cmds: unknown[] = [];
+  if (opts.moveCalls) for (const mc of opts.moveCalls) cmds.push({ MoveCall: mc });
+  if (opts.transferObjects) cmds.push({ TransferObjects: {} });
+  const inner =
+    opts.cmdField === 'transactions' ? { transactions: cmds } : { commands: cmds };
   return {
     digest: opts.digest,
     timestampMs: String(Date.now()),
     effects: { gasUsed: { computationCost: '1000', storageCost: '1000', storageRebate: '0' } },
-    transaction: { data: { transaction: { commands } } },
+    transaction: { data: { transaction: inner } },
     balanceChanges: (opts.balanceChanges ?? []).map((c) => ({
       owner: { AddressOwner: c.owner },
       coinType: c.coinType,
@@ -197,6 +206,29 @@ describe('[v1.5.3] transaction_history label classifier', () => {
     const res = await transactionHistoryTool.call({ limit: 10, action: 'lending' }, baseCtx);
     const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions.length).toBe(1);
+    expect(data.transactions[0].action).toBe('lending');
+    expect(data.transactions[0].label).toBe('deposit');
+  });
+
+  it('parses commands when RPC uses legacy `transactions` field name', async () => {
+    /**
+     * Regression guard for the v0.46.0 deploy where every row in the
+     * card rendered as "On-chain". Root cause: prod `suix_queryTransactionBlocks`
+     * serializes the programmable-tx body with the legacy field name
+     * `transactions` (plural), but `parseRpcTx` was only checking
+     * `commands`. With no MoveCall targets extracted, every tx fell
+     * through to `fallbackLabel([])` → 'on-chain'.
+     */
+    mockFetchOnce([
+      makeRpcTx({
+        digest: '0xlegacy',
+        moveCalls: [{ package: '0xpkg', module: 'navi', function: 'deposit' }],
+        balanceChanges: [{ owner: ADDR, coinType: USDC, amount: '-10000000' }],
+        cmdField: 'transactions',
+      }),
+    ]);
+    const res = await transactionHistoryTool.call({ limit: 10 }, baseCtx);
+    const data = res.data as { transactions: { action: string; label?: string }[] };
     expect(data.transactions[0].action).toBe('lending');
     expect(data.transactions[0].label).toBe('deposit');
   });
