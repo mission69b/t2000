@@ -13,6 +13,56 @@ const KNOWN_TARGETS: [RegExp, string][] = [
   [/::transfer::public_transfer/, 'send'],
 ];
 
+/**
+ * [v1.5.3] Finer-grained display labels — derived from MoveCall
+ * function names. The card renders `label ?? action`, so when this
+ * map matches we get "Deposit" / "Withdraw" / "Borrow" / "Repay" /
+ * "Payment link" instead of the generic "Lending" or "Transaction".
+ *
+ * Order matters: more specific patterns first. Each entry is
+ * (regex, label) where the regex is matched against the
+ * fully-qualified MoveCall target `pkg::module::function`.
+ */
+const LABEL_PATTERNS: [RegExp, string][] = [
+  [/::pay(?:ment_kit|_kit)?::|::create_payment_link|::pay_link/, 'payment_link'],
+  [/::create_invoice|::invoice::/, 'invoice'],
+  [/::deposit|::supply|::mint_ctokens/, 'deposit'],
+  [/::withdraw|::redeem|::redeem_ctokens/, 'withdraw'],
+  [/::borrow/, 'borrow'],
+  [/::repay/, 'repay'],
+  [/::claim_reward|::claim::|::claim_incentive/, 'claim'],
+  [/::stake/, 'stake'],
+  [/::unstake|::burn::/, 'unstake'],
+  [/::liquidate/, 'liquidate'],
+];
+
+/**
+ * [v1.5.3] Fallback label when no `LABEL_PATTERNS` match.
+ *
+ * Returns the first MoveCall's *module* name (e.g. "navi", "cetus",
+ * "spam") so the card shows something more useful than the literal
+ * word "transaction". When no MoveCall exists, returns 'on-chain'
+ * instead — that's strictly more informative than "transaction" and
+ * matches the language users intuit for "did something on-chain".
+ */
+function fallbackLabel(targets: string[]): string {
+  if (!targets.length) return 'on-chain';
+  const first = targets[0];
+  const parts = first.split('::');
+  if (parts.length >= 2 && parts[1]) return parts[1].toLowerCase();
+  return 'on-chain';
+}
+
+function classifyLabel(targets: string[], commandTypes: string[]): string {
+  for (const target of targets) {
+    for (const [pattern, label] of LABEL_PATTERNS) {
+      if (pattern.test(target)) return label;
+    }
+  }
+  if (commandTypes.includes('TransferObjects') && !commandTypes.includes('MoveCall')) return 'send';
+  return fallbackLabel(targets);
+}
+
 interface RpcBalanceChange {
   owner: { AddressOwner?: string } | string;
   coinType: string;
@@ -29,7 +79,19 @@ interface RpcTxBlock {
 
 interface TxRecord {
   digest: string;
+  /**
+   * [v1.4] Coarse bucket — one of `'send' | 'lending' | 'swap' |
+   * 'transaction'`. Used by the ACI `action` filter and persisted
+   * downstream queries depend on these values, so they are STABLE.
+   */
   action: string;
+  /**
+   * [v1.5.3] Finer-grained display label derived from the
+   * Move-call function name (e.g. `'deposit'`, `'withdraw'`,
+   * `'payment_link'`, `'on-chain'`). Optional — frontends should
+   * fall back to `action` when missing. Never used by filters.
+   */
+  label?: string;
   amount?: number;
   asset?: string;
   recipient?: string;
@@ -98,9 +160,43 @@ function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
   }
 
   const timestampMs = Number(tx.timestampMs ?? 0);
+  const action = classifyAction(moveCallTargets, commandTypes);
+  let label = classifyLabel(moveCallTargets, commandTypes);
+
+  /**
+   * [v1.5.3] Balance-direction tiebreaker for ambiguous lending
+   * calls. Many lending modules expose generic entry points
+   * (`navi::lending::entry_*`, NAVI's bundled flash actions, etc.)
+   * that don't carry a `deposit`/`withdraw`/`borrow`/`repay` keyword
+   * in the function name. When `classifyLabel` falls back to a bare
+   * module name like `"lending"` for a known lending tx, we infer
+   * direction from the user's non-SUI balance change:
+   *   - net outflow of the supplied asset → deposit OR repay
+   *     (both reduce wallet balance into the protocol). We pick
+   *     deposit because it's the dominant case at this stage of
+   *     Audric usage; repay-without-keyword is essentially never
+   *     emitted by NAVI.
+   *   - net inflow of the supplied asset → withdraw OR borrow.
+   *     Same reasoning — withdraw dominates.
+   * If `LABEL_PATTERNS` matched a specific keyword, we keep that
+   * label and skip the inference entirely.
+   */
+  const labelMatchedSpecific = LABEL_PATTERNS.some(([p]) => moveCallTargets.some((t) => p.test(t)));
+  if (action === 'lending' && !labelMatchedSpecific) {
+    const userNonSuiOutflow = changes.find((c) =>
+      resolveOwner(c.owner) === address && c.coinType !== SUI_TYPE && BigInt(c.amount) < 0n,
+    );
+    const userNonSuiInflow = changes.find((c) =>
+      resolveOwner(c.owner) === address && c.coinType !== SUI_TYPE && BigInt(c.amount) > 0n,
+    );
+    if (userNonSuiOutflow) label = 'deposit';
+    else if (userNonSuiInflow) label = 'withdraw';
+  }
+
   return {
     digest: tx.digest,
-    action: classifyAction(moveCallTargets, commandTypes),
+    action,
+    label,
     amount,
     asset,
     recipient,
