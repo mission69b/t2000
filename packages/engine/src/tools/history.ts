@@ -59,10 +59,19 @@ function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
   const moveCallTargets: string[] = [];
   const commandTypes: string[] = [];
   try {
+    /**
+     * Sui JSON-RPC `suix_queryTransactionBlocks` returns the
+     * ProgrammableTransaction body with the legacy field name
+     * `transactions` (plural). Newer SDK-side types refer to the same
+     * data as `commands`. Cover both — the v1.5.3 engine path was
+     * only checking `commands`, which always returned empty for prod
+     * RPC responses, so every row in the transaction history card
+     * fell back to `label: 'on-chain'`.
+     */
     const data = (tx.transaction as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
     const inner = data?.transaction as Record<string, unknown> | undefined;
-    const commands = inner?.commands as Record<string, unknown>[] | undefined;
-    if (commands) {
+    const commands = (inner?.commands ?? inner?.transactions) as Record<string, unknown>[] | undefined;
+    if (Array.isArray(commands)) {
       for (const cmd of commands) {
         if (cmd.MoveCall) {
           const mc = cmd.MoveCall as { package: string; module: string; function: string };
