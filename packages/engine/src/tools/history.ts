@@ -232,6 +232,10 @@ export const transactionHistoryTool = buildTool({
   },
   isReadOnly: true,
   maxResultSizeChars: 8_000,
+  // [v1.5.1] New transactions land continuously. Even with an explicit
+  // `date` filter the dedupe is wrong post-write because the just-
+  // executed write may now be in history. Never dedupe.
+  cacheable: false,
 
   async call(
     input,

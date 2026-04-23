@@ -17,6 +17,9 @@ export const healthCheckTool = buildTool({
   inputSchema: z.object({}),
   jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
+  // [v1.5.1] Health factor changes on every borrow / repay / collateral
+  // movement and even passively as oracle prices update. Never dedupe.
+  cacheable: false,
 
   async call(_input, context) {
     if (context.positionFetcher && context.walletAddress) {
