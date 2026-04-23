@@ -1,14 +1,7 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { TransactionRecord } from '../types.js';
 import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '../token-registry.js';
-
-const KNOWN_TARGETS: [RegExp, string][] = [
-  [/::suilend|::obligation/, 'lending'],
-  [/::navi|::incentive_v\d+|::oracle_pro/, 'lending'],
-  [/::cetus|::pool/, 'swap'],
-  [/::deepbook/, 'swap'],
-  [/::transfer::public_transfer/, 'send'],
-];
+import { classifyTransaction, type ClassifyBalanceChange } from './classify.js';
 
 export async function queryHistory(
   client: SuiJsonRpcClient,
@@ -46,7 +39,7 @@ interface TxBlock {
   timestampMs?: string;
   transaction?: unknown;
   effects?: { gasUsed?: { computationCost: string; storageCost: string; storageRebate: string } };
-  balanceChanges?: BalanceChange[];
+  balanceChanges?: ClassifyBalanceChange[];
 }
 
 function parseTxRecord(tx: TxBlock, address: string): TransactionRecord {
@@ -59,12 +52,19 @@ function parseTxRecord(tx: TxBlock, address: string): TransactionRecord {
     : undefined;
 
   const { moveCallTargets, commandTypes } = extractCommands(tx.transaction);
-  const { amount, asset, recipient } = extractTransferDetails(tx.balanceChanges, address);
-  const action = classifyAction(moveCallTargets, commandTypes);
+  const balanceChanges = tx.balanceChanges ?? [];
+  const { amount, asset, recipient } = extractTransferDetails(balanceChanges, address);
+  const { action, label } = classifyTransaction(
+    moveCallTargets,
+    commandTypes,
+    balanceChanges,
+    address,
+  );
 
   return {
     digest: tx.digest,
     action,
+    label,
     amount,
     asset,
     recipient,
@@ -73,20 +73,14 @@ function parseTxRecord(tx: TxBlock, address: string): TransactionRecord {
   };
 }
 
-interface BalanceChange {
-  owner: { AddressOwner?: string } | string;
-  coinType: string;
-  amount: string;
-}
-
-function resolveOwner(owner: BalanceChange['owner']): string | null {
+function resolveOwner(owner: ClassifyBalanceChange['owner']): string | null {
   if (typeof owner === 'object' && owner.AddressOwner) return owner.AddressOwner;
   if (typeof owner === 'string') return owner;
   return null;
 }
 
 function extractTransferDetails(
-  changes: BalanceChange[] | undefined,
+  changes: ClassifyBalanceChange[] | undefined,
   sender: string,
 ): { amount?: number; asset?: string; recipient?: string } {
   if (!changes || changes.length === 0) return {};
@@ -145,20 +139,4 @@ function extractCommands(txBlock: unknown): CommandInfo {
     }
   } catch { /* best effort */ }
   return result;
-}
-
-function classifyAction(targets: string[], commandTypes: string[]): string {
-  for (const target of targets) {
-    for (const [pattern, label] of KNOWN_TARGETS) {
-      if (pattern.test(target)) return label;
-    }
-  }
-
-  const hasTransfer = commandTypes.includes('TransferObjects');
-  const hasMoveCall = commandTypes.includes('MoveCall');
-
-  if (hasTransfer && !hasMoveCall) return 'send';
-  if (hasMoveCall) return 'transaction';
-
-  return 'transaction';
 }

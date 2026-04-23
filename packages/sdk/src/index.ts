@@ -63,6 +63,16 @@ export {
 export type { Operation } from './constants.js';
 export { validateAddress, truncateAddress } from './utils/sui.js';
 export {
+  KNOWN_TARGETS,
+  LABEL_PATTERNS,
+  classifyAction,
+  classifyLabel,
+  fallbackLabel,
+  refineLendingLabel,
+  classifyTransaction,
+} from './wallet/classify.js';
+export type { ClassifyBalanceChange, ClassifyResult } from './wallet/classify.js';
+export {
   mistToSui,
   suiToMist,
   usdcToRaw,
