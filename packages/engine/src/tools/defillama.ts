@@ -20,6 +20,16 @@ async function cachedFetch<T>(url: string): Promise<T> {
   return data as T;
 }
 
+/**
+ * [v1.4] Named, exported helper for fetching the raw DefiLlama yield pool
+ * dataset. Extracted from the inline `cachedFetch` call below so tests
+ * (and other tools) can stub it.
+ */
+export async function fetchDefillamaYieldPools(): Promise<YieldPool[]> {
+  const data = await cachedFetch<{ data: YieldPool[] }>(`${YIELDS_API}/pools`);
+  return data.data ?? [];
+}
+
 // ---------------------------------------------------------------------------
 // 1. defillama_yield_pools
 // ---------------------------------------------------------------------------
@@ -65,9 +75,36 @@ export const defillamaYieldPoolsTool = buildTool({
   isReadOnly: true,
   maxResultSizeChars: 6_000,
 
-  async call(input) {
-    const data = await cachedFetch<{ data: YieldPool[] }>(`${YIELDS_API}/pools`);
-    let pools = data.data ?? [];
+  async call(input): Promise<{ data: Record<string, unknown> | unknown[]; displayText: string }> {
+    // [v1.4 ACI] Refuse cross-chain queries — DefiLlama's pool list is
+    // unbounded across networks, and unfiltered results are wide enough to
+    // bias the LLM. Force the caller to commit to a chain (or pick one of
+    // the suggested popular chains) before pouring data in.
+    if (!input.chain && !input.project) {
+      const all = await fetchDefillamaYieldPools();
+      const chainCounts = new Map<string, number>();
+      for (const p of all) {
+        chainCounts.set(p.chain, (chainCounts.get(p.chain) ?? 0) + 1);
+      }
+      const topChains = [...chainCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([chain, count]) => ({ chain, pools: count }));
+      return {
+        data: {
+          _refine: {
+            reason: 'Cross-chain yield search is too broad; pick a chain.',
+            suggestedParams: { chain: 'Sui' },
+            availableChains: topChains,
+          },
+        },
+        displayText:
+          'Yield query needs a chain filter. Common chains: ' +
+          topChains.map((c) => c.chain).join(', '),
+      };
+    }
+
+    let pools = await fetchDefillamaYieldPools();
 
     if (input.chain) {
       const chain = input.chain.toLowerCase();

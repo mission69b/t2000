@@ -9,6 +9,7 @@ export type {
   EngineConfig,
   StopReason,
   PendingAction,
+  PendingActionModifiableField,
   Tool,
   ToolFlags,
   PreflightResult,
@@ -224,6 +225,7 @@ export {
 
 // All default tools
 export { getDefaultTools } from './tools/index.js';
+export { getModifiableFields, TOOL_MODIFIABLE_FIELDS } from './tools/tool-modifiable-fields.js';
 
 // Tool utilities
 export { requireAgent, hasNaviMcp, getMcpManager, getWalletAddress } from './tools/utils.js';

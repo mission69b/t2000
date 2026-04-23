@@ -41,6 +41,31 @@ export interface GuardEvent {
   message?: string;
 }
 
+/**
+ * [v1.4 Item 4] Per-guard metric emitted via `EngineConfig.onGuardFired`.
+ * Hosts (e.g. audric `TurnMetricsCollector`) accumulate these for the
+ * `TurnMetrics.guardsFired` JSON column. Mirrors `GuardEvent` but with
+ * a coarser tri-state action (allow/warn/block) so the host doesn't
+ * need to know the engine's verdict vocabulary.
+ */
+export interface GuardMetric {
+  name: string;
+  tier: GuardTier;
+  action: 'allow' | 'warn' | 'block';
+  injectionAdded: boolean;
+}
+
+/**
+ * Engine-internal mapping from `GuardVerdict` to `GuardMetric.action`.
+ * `pass` and `hint` collapse to `allow` because hint is non-blocking —
+ * the model just sees a soft note.
+ */
+export function guardVerdictToAction(verdict: GuardVerdict): GuardMetric['action'] {
+  if (verdict === 'pass' || verdict === 'hint') return 'allow';
+  if (verdict === 'warn') return 'warn';
+  return 'block';
+}
+
 // ---------------------------------------------------------------------------
 // Guard configuration
 // ---------------------------------------------------------------------------
@@ -386,9 +411,29 @@ export function runGuards(
   state: GuardRunnerState,
   config: GuardConfig,
   conversationContext: { fullText: string; lastAssistantText: string },
+  /**
+   * [v1.4 Item 4] Optional per-guard observation hook. Fired exactly
+   * once per non-`pass` guard verdict (i.e. for every event that ends
+   * up in `events`/`injections`/`block`). Errors thrown by the host
+   * are caught so a misbehaving collector can't break tool execution.
+   */
+  onGuardFired?: (guard: GuardMetric) => void,
 ): GuardCheckResult {
   const results: GuardResult[] = [];
   const now = Date.now();
+  const fire = (verdict: GuardVerdict, tier: GuardTier, gate: string, hadInjection: boolean) => {
+    if (!onGuardFired) return;
+    try {
+      onGuardFired({
+        name: gate,
+        tier,
+        action: guardVerdictToAction(verdict),
+        injectionAdded: hadInjection,
+      });
+    } catch (err) {
+      console.warn('[guards] onGuardFired threw (ignored):', err);
+    }
+  };
 
   // Tier 0: Input validation (preflight) — runs first, invalid input = immediate block
   if (config.inputValidation !== false && tool.preflight) {
@@ -403,6 +448,7 @@ export function runGuards(
         tier: 'safety',
         message: check.error,
       };
+      fire('block', 'safety', 'input_validation', false);
       return {
         blocked: true,
         blockReason: check.error,
@@ -455,6 +501,13 @@ export function runGuards(
 
   const block = results.find((r) => r.verdict === 'block');
   if (block) {
+    // Fire once for the block winner; non-blocking warnings/hints from
+    // earlier in the chain are surfaced too so the host sees the full
+    // picture per turn.
+    for (const r of results) {
+      if (r.verdict === 'pass') continue;
+      fire(r.verdict, r.tier, r.gate, false);
+    }
     return {
       blocked: true,
       blockReason: block.message ?? `Blocked by ${block.gate}`,
@@ -470,6 +523,11 @@ export function runGuards(
       _gate: r.gate,
       ...(r.verdict === 'hint' ? { _hint: r.message } : { _warning: r.message }),
     }));
+
+  for (const r of results) {
+    if (r.verdict === 'pass') continue;
+    fire(r.verdict, r.tier, r.gate, r.verdict === 'hint' || r.verdict === 'warn');
+  }
 
   return { blocked: false, injections, events };
 }

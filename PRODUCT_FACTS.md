@@ -30,8 +30,8 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.40.4` |
-| `@t2000/engine` | `0.40.4` |
+| `@t2000/sdk` | `0.40.5` |
+| `@t2000/engine` | `0.41.0` |
 | `@t2000/cli` | `0.40.4` |
 | `@suimpp/mpp` | `0.3.1` |
 | `@t2000/mcp` | `0.40.4` |
@@ -650,7 +650,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.40.2` |
+| Version | `0.41.0` |
 | Description | Agent engine for conversational finance — implements Audric Intelligence (the moat) |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
@@ -745,7 +745,9 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 
 ### Engine Event Types
 
-`text_delta`, `thinking_delta`, `thinking_done`, `tool_start`, `tool_result`, `pending_action`, `canvas`, `turn_complete`, `usage`, `error`
+`text_delta`, `thinking_delta`, `thinking_done`, `tool_start`, `tool_result`, `pending_action`, `canvas`, `compaction`, `turn_complete`, `usage`, `error`
+
+> v0.41.0 additions: `compaction` event (emitted after the context budget triggers a compaction so hosts can record `TurnMetrics.compactionFired`), plus per-event flags `tool_result.wasEarlyDispatched` and `tool_result.resultDeduped` so hosts can attribute zero-cost tool results back to the early dispatcher / microcompact.
 
 ### Engine Permission Levels
 
@@ -754,6 +756,15 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | `auto` | Executes without user approval |
 | `confirm` | Yields `pending_action`, client executes and resumes via `resumeWithToolResult` |
 | `explicit` | Manual-only — not dispatched by LLM |
+
+### Pending Action (engine 0.41.0)
+
+`pending_action` events now stamp two extra fields on the action payload so hosts can wire the modification protocol and per-turn analytics:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `turnIndex` | `number` | Index of the originating assistant turn (derived from `messages.filter(m => m.role === 'assistant').length`). Hosts use this to update the matching `TurnMetrics` row when the user resolves the action. |
+| `modifiableFields` | `PendingActionModifiableField[]` | Editable input fields registered for the tool (e.g. `{ name: 'amount', kind: 'amount', asset: 'USDC' }`). Sourced from `TOOL_MODIFIABLE_FIELDS` in `packages/engine/src/tools/tool-modifiable-fields.ts`. Empty / absent for non-write tools. |
 
 ---
 

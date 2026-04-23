@@ -14,7 +14,14 @@ export interface SwapRouteResult {
   insufficientLiquidity: boolean;
 }
 
-const OVERLAY_FEE_RATE = 0.001; // 0.1% swap fee
+/**
+ * [v1.4 Item 5] T2000 swap overlay fee — 0.1% taken on top of Cetus's
+ * own fee. Exported so consumers (web app, spec-consistency assertions)
+ * can compare against a single source of truth instead of hard-coding
+ * the value. Changing this rate requires a coordinated SDK + audric
+ * release.
+ */
+export const OVERLAY_FEE_RATE = 0.001;
 const OVERLAY_FEE_RECEIVER = process.env.T2000_TREASURY_ADDRESS
   ?? '0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91';
 
