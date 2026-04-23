@@ -48,6 +48,16 @@ export type EngineEvent =
        * actually re-running the tool.
        */
       resultDeduped?: boolean;
+      /**
+       * [v1.5] True when this result was produced by the engine's
+       * post-write refresh mechanism (see `EngineConfig.postWriteRefresh`).
+       * The engine auto-runs configured read tools immediately after a
+       * successful write so the LLM narrates from fresh on-chain state
+       * instead of inferring from a stale snapshot. Hosts should render
+       * these like any other tool result; the flag is for analytics and
+       * UI affordances (e.g. a subtle "auto-refreshed" badge).
+       */
+      wasPostWriteRefresh?: boolean;
     }
   | {
       type: 'pending_action';
@@ -308,6 +318,43 @@ export interface EngineConfig {
    * verdict→action mapping. Errors thrown by the host are caught.
    */
   onGuardFired?: (guard: import('./guards.js').GuardMetric) => void;
+  /**
+   * [v1.5] Map of write tool name → list of read tool names whose state
+   * the write invalidates. After a successful write resumes via
+   * `resumeWithToolResult`, the engine auto-runs each configured read
+   * tool with empty input, pushes synthetic `tool_use` + `tool_result`
+   * messages into the conversation, and yields `tool_result` events
+   * with `wasPostWriteRefresh: true` BEFORE handing control back to the
+   * LLM for narration.
+   *
+   * Why: writes change on-chain state. Without a fresh read, the LLM
+   * narrates from the pre-write snapshot and frequently invents balance
+   * totals. Auto-injecting fresh reads makes the hallucination class
+   * physically impossible — the model has authoritative ground truth in
+   * its context before generating the post-write sentence.
+   *
+   * Constraints:
+   *  - Refresh tools MUST be `isReadOnly` and `isConcurrencySafe`.
+   *  - Refresh runs only when the write succeeded (executionResult is
+   *    not `{ success: false }`); failed writes leave state unchanged
+   *    and refreshing would be misleading.
+   *  - Tools are invoked with empty input; refresh tools should accept
+   *    an empty object schema (e.g. `balance_check`, `savings_info`).
+   *  - Errors during refresh are non-fatal — a tool_result with
+   *    `isError: true` is still pushed so the LLM knows refresh failed.
+   *
+   * Example:
+   * ```
+   * {
+   *   save_deposit: ['balance_check', 'savings_info'],
+   *   send_transfer: ['balance_check'],
+   *   borrow: ['balance_check', 'savings_info', 'health_check'],
+   * }
+   * ```
+   *
+   * Omit (undefined / empty map) to disable post-write refresh entirely.
+   */
+  postWriteRefresh?: Record<string, string[]>;
 }
 
 // ---------------------------------------------------------------------------
