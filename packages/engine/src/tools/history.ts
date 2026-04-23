@@ -1,10 +1,9 @@
 import { z } from 'zod';
 import {
-  getDecimalsForCoinType,
-  resolveSymbol,
-  SUI_TYPE,
   classifyTransaction,
+  extractTransferDetails,
   type ClassifyBalanceChange,
+  type TxDirection,
 } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
@@ -39,15 +38,15 @@ interface TxRecord {
   amount?: number;
   asset?: string;
   recipient?: string;
+  /**
+   * [v0.46.2] Direction of the user's principal balance change on
+   * this tx (`'in'` → user received, `'out'` → user spent). Lets the
+   * card render the correct sign without parsing the textual label.
+   */
+  direction?: TxDirection;
   timestamp: number;
   date?: string;
   gasCost?: number;
-}
-
-function resolveOwner(owner: RpcBalanceChange['owner']): string | null {
-  if (typeof owner === 'object' && owner.AddressOwner) return owner.AddressOwner;
-  if (typeof owner === 'string') return owner;
-  return null;
 }
 
 function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
@@ -85,22 +84,7 @@ function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
   } catch { /* best effort */ }
 
   const changes = tx.balanceChanges ?? [];
-  const outflows = changes.filter((c) => resolveOwner(c.owner) === address && BigInt(c.amount) < 0n);
-  const inflows = changes.filter((c) => resolveOwner(c.owner) !== address && BigInt(c.amount) > 0n);
-  const primaryOutflow = outflows.filter((c) => c.coinType !== SUI_TYPE).sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0] ?? outflows[0];
-
-  let amount: number | undefined;
-  let asset: string | undefined;
-  let recipient: string | undefined;
-
-  if (primaryOutflow) {
-    const coinType = primaryOutflow.coinType;
-    const decimals = getDecimalsForCoinType(coinType);
-    amount = Math.abs(Number(BigInt(primaryOutflow.amount))) / 10 ** decimals;
-    asset = resolveSymbol(coinType);
-    const recipientChange = inflows.find((c) => c.coinType === coinType);
-    recipient = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;
-  }
+  const { amount, asset, recipient, direction } = extractTransferDetails(changes, address);
 
   const timestampMs = Number(tx.timestampMs ?? 0);
   const { action, label } = classifyTransaction(moveCallTargets, commandTypes, changes, address);
@@ -112,6 +96,7 @@ function parseRpcTx(tx: RpcTxBlock, address: string): TxRecord {
     amount,
     asset,
     recipient,
+    direction,
     timestamp: timestampMs,
     date: timestampMs > 0 ? new Date(timestampMs).toISOString() : undefined,
     gasCost,

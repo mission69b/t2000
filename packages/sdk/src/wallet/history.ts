@@ -1,7 +1,10 @@
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { TransactionRecord } from '../types.js';
-import { getDecimalsForCoinType, resolveSymbol, SUI_TYPE } from '../token-registry.js';
-import { classifyTransaction, type ClassifyBalanceChange } from './classify.js';
+import {
+  classifyTransaction,
+  extractTransferDetails,
+  type ClassifyBalanceChange,
+} from './classify.js';
 
 export async function queryHistory(
   client: SuiJsonRpcClient,
@@ -15,7 +18,7 @@ export async function queryHistory(
     order: 'descending',
   });
 
-  return txns.data.map((tx) => parseTxRecord(tx as unknown as TxBlock, address));
+  return txns.data.map((tx) => parseTxRecord(tx as unknown as SuiRpcTxBlock, address));
 }
 
 export async function queryTransaction(
@@ -28,13 +31,19 @@ export async function queryTransaction(
       digest,
       options: { showEffects: true, showInput: true, showBalanceChanges: true },
     });
-    return parseTxRecord(tx as unknown as TxBlock, senderAddress);
+    return parseTxRecord(tx as unknown as SuiRpcTxBlock, senderAddress);
   } catch {
     return null;
   }
 }
 
-interface TxBlock {
+/**
+ * Shape of a transaction block as returned by `suix_queryTransactionBlocks`
+ * with `showEffects | showInput | showBalanceChanges` enabled. Exported so
+ * downstream consumers (audric dashboard `/api/history`, `/api/activity`,
+ * etc.) can type their RPC calls without redeclaring the structure.
+ */
+export interface SuiRpcTxBlock {
   digest: string;
   timestampMs?: string;
   transaction?: unknown;
@@ -42,7 +51,51 @@ interface TxBlock {
   balanceChanges?: ClassifyBalanceChange[];
 }
 
-function parseTxRecord(tx: TxBlock, address: string): TransactionRecord {
+/**
+ * Convert a single Sui RPC transaction block to a {@link TransactionRecord}
+ * using the canonical (shared) classifier and balance-change extractor.
+ *
+ * This is the single source of truth for transaction parsing across the
+ * agent-tool path AND the dashboard-API path. Use it instead of writing
+ * a bespoke parser per surface.
+ *
+ * @param tx      Raw RPC tx block (must include `effects`, `input`, `balanceChanges`).
+ * @param address Wallet address whose perspective we're parsing from.
+ */
+export function parseSuiRpcTx(tx: SuiRpcTxBlock, address: string): TransactionRecord {
+  return parseTxRecord(tx, address);
+}
+
+/**
+ * Extract the sender (signer) address from a raw RPC tx block.
+ * Returns `null` if the block shape is unexpected.
+ */
+export function extractTxSender(txBlock: unknown): string | null {
+  try {
+    if (!txBlock || typeof txBlock !== 'object') return null;
+    const data = 'data' in txBlock ? (txBlock as Record<string, unknown>).data : undefined;
+    if (!data || typeof data !== 'object') return null;
+    return ((data as Record<string, unknown>).sender as string) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract MoveCall targets (`<pkg>::<module>::<function>`) and the
+ * sequence of programmable-transaction command types (e.g. `MoveCall`,
+ * `TransferObjects`) from a raw RPC tx block. Tolerates both the
+ * legacy `inner.transactions` field and the newer `inner.commands`
+ * field.
+ */
+export function extractTxCommands(txBlock: unknown): {
+  moveCallTargets: string[];
+  commandTypes: string[];
+} {
+  return extractCommands(txBlock);
+}
+
+function parseTxRecord(tx: SuiRpcTxBlock, address: string): TransactionRecord {
   const gasUsed = tx.effects?.gasUsed;
   const gasCost = gasUsed
     ? (Number(gasUsed.computationCost) +
@@ -53,7 +106,7 @@ function parseTxRecord(tx: TxBlock, address: string): TransactionRecord {
 
   const { moveCallTargets, commandTypes } = extractCommands(tx.transaction);
   const balanceChanges = tx.balanceChanges ?? [];
-  const { amount, asset, recipient } = extractTransferDetails(balanceChanges, address);
+  const { amount, asset, recipient, direction } = extractTransferDetails(balanceChanges, address);
   const { action, label } = classifyTransaction(
     moveCallTargets,
     commandTypes,
@@ -68,42 +121,10 @@ function parseTxRecord(tx: TxBlock, address: string): TransactionRecord {
     amount,
     asset,
     recipient,
+    direction,
     timestamp: Number(tx.timestampMs ?? 0),
     gasCost,
   };
-}
-
-function resolveOwner(owner: ClassifyBalanceChange['owner']): string | null {
-  if (typeof owner === 'object' && owner.AddressOwner) return owner.AddressOwner;
-  if (typeof owner === 'string') return owner;
-  return null;
-}
-
-function extractTransferDetails(
-  changes: ClassifyBalanceChange[] | undefined,
-  sender: string,
-): { amount?: number; asset?: string; recipient?: string } {
-  if (!changes || changes.length === 0) return {};
-
-  const outflows = changes.filter((c) => resolveOwner(c.owner) === sender && BigInt(c.amount) < 0n);
-  const inflows = changes.filter((c) => resolveOwner(c.owner) !== sender && BigInt(c.amount) > 0n);
-
-  const primaryOutflow = outflows
-    .filter((c) => c.coinType !== SUI_TYPE)
-    .sort((a, b) => Number(BigInt(a.amount) - BigInt(b.amount)))[0]
-    ?? outflows[0];
-
-  if (!primaryOutflow) return {};
-
-  const coinType = primaryOutflow.coinType;
-  const decimals = getDecimalsForCoinType(coinType);
-  const amount = Math.abs(Number(BigInt(primaryOutflow.amount))) / 10 ** decimals;
-  const asset = resolveSymbol(coinType);
-
-  const recipientChange = inflows.find((c) => c.coinType === coinType);
-  const recipient = recipientChange ? resolveOwner(recipientChange.owner) ?? undefined : undefined;
-
-  return { amount, asset, recipient };
 }
 
 interface CommandInfo {
