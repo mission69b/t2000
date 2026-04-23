@@ -159,7 +159,15 @@ export interface PaymentRequest {
 
 export interface TransactionRecord {
   digest: string;
+  /** Coarse bucket — `'send' | 'lending' | 'swap' | 'transaction'`. STABLE. */
   action: string;
+  /**
+   * Finer-grained display label derived from the Move-call function
+   * name (e.g. `'deposit'`, `'withdraw'`, `'payment_link'`,
+   * `'on-chain'`). Optional — frontends should fall back to `action`
+   * when missing. Never used by ACI filters.
+   */
+  label?: string;
   amount?: number;
   asset?: string;
   recipient?: string;
