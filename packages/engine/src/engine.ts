@@ -34,6 +34,7 @@ import { ContextBudget, compactMessages } from './context.js';
 import { microcompact } from './compact/microcompact.js';
 import { resolvePermissionTier, resolveUsdValue, toolNameToOperation } from './permission-rules.js';
 import { EarlyToolDispatcher } from './early-dispatcher.js';
+import { TurnReadCache } from './turn-read-cache.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -84,6 +85,18 @@ export class QueryEngine {
   private messages: Message[] = [];
   private abortController: AbortController | null = null;
   private guardEvents: GuardEvent[] = [];
+  // [v0.46.8] Intra-turn dedup cache for read-only tool calls. See
+  // `turn-read-cache.ts` for the full lifecycle. Key takeaway: the cache
+  // lives across the host's pre-dispatch (`invokeReadTool`) and the
+  // agent loop's LLM-driven tool execution within ONE user turn, then
+  // clears on `turn_complete` or after any successful write.
+  private readonly turnReadCache = new TurnReadCache();
+  // [v0.46.8] Set to `true` when the agent loop yields `pending_action`
+  // and returns (turn is paused awaiting user confirmation). The
+  // submitMessage / resumeWithToolResult wrappers consult this flag in
+  // their `finally` block so they DON'T clear the cache mid-turn — the
+  // pending write may resume, and the cache should survive the pause.
+  private turnPaused = false;
 
   constructor(config: EngineConfig) {
     this.provider = config.provider;
@@ -143,7 +156,22 @@ export class QueryEngine {
       content: [{ type: 'text', text: prompt }],
     });
 
-    yield* this.agentLoop(prompt, signal);
+    // [v0.46.8] Reset the pause flag at turn start. Any cache entries
+    // populated by the host's pre-dispatch (`invokeReadTool`) BEFORE
+    // this call MUST survive into the agent loop so LLM-driven calls
+    // for the same tools dedup. We do NOT clear the cache here.
+    this.turnPaused = false;
+    try {
+      yield* this.agentLoop(prompt, signal);
+    } finally {
+      // Turn boundary cleanup: drop the cache so the next user turn
+      // starts with a clean slate. Skip when the turn was paused via
+      // `pending_action` — the cache must survive the pause so the
+      // resumed turn (which is the SAME turn) keeps deduping.
+      if (!this.turnPaused) {
+        this.turnReadCache.clear();
+      }
+    }
   }
 
   /**
@@ -204,8 +232,16 @@ export class QueryEngine {
 
     if (!response.approved) {
       yield { type: 'turn_complete', stopReason: 'end_turn' };
+      // Turn ended (user declined) — drop the cache.
+      this.turnReadCache.clear();
       return;
     }
+
+    // [v0.46.8] A successful approved write MUTATES on-chain state, so
+    // any read-tool result cached during the pre-pause portion of this
+    // turn is now stale. Drop it before the post-write refresh fires —
+    // refresh tools will re-execute and re-populate with fresh data.
+    this.turnReadCache.clear();
 
     // [v1.5] Post-write refresh — eliminate the "LLM invents a wallet
     // total in the post-write narration" hallucination class by
@@ -216,7 +252,19 @@ export class QueryEngine {
     // narration even if RPC blips.
     yield* this.runPostWriteRefresh(action, response, signal);
 
-    yield* this.agentLoop(null, signal, false);
+    // [v0.46.8] Reset the pause flag and wrap the resumed agentLoop in
+    // try/finally for cache cleanup, mirroring submitMessage. The
+    // post-write refresh above re-populated the cache with fresh
+    // post-write reads; agentLoop may add more during follow-up tool
+    // calls; finally clears it at turn end (skipping when paused).
+    this.turnPaused = false;
+    try {
+      yield* this.agentLoop(null, signal, false);
+    } finally {
+      if (!this.turnPaused) {
+        this.turnReadCache.clear();
+      }
+    }
   }
 
   /**
@@ -328,8 +376,17 @@ export class QueryEngine {
     this.messages.push({ role: 'user', content: refreshResults });
 
     // Yield events so hosts log them in `TurnMetrics.toolsCalled[]` and
-    // the UI renders the refreshed cards in-line.
+    // the UI renders the refreshed cards in-line. Also populate the
+    // intra-turn cache so any LLM-driven `tool_use` for the same
+    // (name, input) during the resumed agent loop dedups instead of
+    // double-rendering on top of the refresh card.
     for (const r of refreshes) {
+      if (!r.isError) {
+        this.turnReadCache.set(
+          TurnReadCache.keyFor(r.tool.name, {}),
+          { result: r.data, sourceToolUseId: r.id },
+        );
+      }
       yield {
         type: 'tool_result',
         toolName: r.tool.name,
@@ -411,6 +468,17 @@ export class QueryEngine {
       );
     }
 
+    // [v0.46.8] Intra-turn cache: if the same tool was already invoked
+    // (either via a prior `invokeReadTool` call or by the LLM mid-turn),
+    // return the cached result without re-fetching. Makes pre-dispatch
+    // idempotent — calling `invokeReadTool('balance_check', {})` twice
+    // back-to-back hits RPC once, not twice.
+    const cacheKey = TurnReadCache.keyFor(toolName, parsed.data);
+    const cached = this.turnReadCache.get(cacheKey);
+    if (cached) {
+      return { data: cached.result, isError: false };
+    }
+
     const signal = options.signal ?? new AbortController().signal;
     const context: ToolContext = {
       agent: this.agent,
@@ -428,8 +496,17 @@ export class QueryEngine {
 
     try {
       const result = await tool.call(parsed.data, context);
+      // Cache the successful result so a subsequent LLM-driven
+      // `tool_use` for the same (name, input) hits the dedup path in
+      // the agent loop and the host doesn't render a duplicate card.
+      this.turnReadCache.set(cacheKey, {
+        result: result.data,
+        sourceToolUseId: 'invokeReadTool',
+      });
       return { data: result.data, isError: false };
     } catch (err) {
+      // Errors are NOT cached — the next call should retry, not see a
+      // stale failure.
       return {
         data: { error: err instanceof Error ? err.message : 'Tool execution failed' },
         isError: true,
@@ -493,7 +570,7 @@ export class QueryEngine {
         pendingToolCalls: [],
       };
 
-      const dispatcher = new EarlyToolDispatcher(this.tools, context);
+      const dispatcher = new EarlyToolDispatcher(this.tools, context, this.turnReadCache);
 
       try {
         // B.3: Zero-cost dedup of identical tool calls every turn.
@@ -706,6 +783,36 @@ export class QueryEngine {
       for (const call of acc.pendingToolCalls) {
         const tool = findTool(this.tools, call.name);
 
+        // [v0.46.8] Intra-turn dedup for read-only tools. If the host
+        // pre-dispatched this tool (via `invokeReadTool`) or the LLM
+        // already called it earlier in the same turn, skip execution
+        // and emit a deduped `tool_result` so the host can suppress
+        // a duplicate card render. The LLM still gets a valid
+        // `tool_result` block keyed to ITS `tool_use_id`, satisfying
+        // the Anthropic protocol requirement that every `tool_use`
+        // be answered by a matching `tool_result`.
+        if (tool && tool.isReadOnly) {
+          const cacheKey = TurnReadCache.keyFor(call.name, call.input);
+          const cached = this.turnReadCache.get(cacheKey);
+          if (cached) {
+            yield {
+              type: 'tool_result',
+              toolName: call.name,
+              toolUseId: call.id,
+              result: cached.result,
+              isError: false,
+              resultDeduped: true,
+            };
+            toolResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: call.id,
+              content: JSON.stringify(cached.result),
+              isError: false,
+            });
+            continue;
+          }
+        }
+
         const needsConfirmation = (() => {
           if (!tool || tool.isReadOnly) return false;
           if (tool.permissionLevel === 'explicit') return true;
@@ -846,6 +953,26 @@ export class QueryEngine {
             ? { ...toolEvent, result: enrichedResult }
             : toolEvent;
 
+          // [v0.46.8] Maintain the intra-turn read cache:
+          //  - Successful read → populate so subsequent identical
+          //    calls within the same turn dedup.
+          //  - Successful write → invalidate the entire cache; on-chain
+          //    state has changed, any prior read snapshot is stale.
+          //  - Errored result → leave cache untouched; retry should
+          //    re-execute.
+          if (!finalEvent.isError && tool) {
+            if (tool.isReadOnly) {
+              const inputForKey = originalCall?.input ?? {};
+              const cacheKey = TurnReadCache.keyFor(finalEvent.toolName, inputForKey);
+              this.turnReadCache.set(cacheKey, {
+                result: finalEvent.result,
+                sourceToolUseId: finalEvent.toolUseId,
+              });
+            } else {
+              this.turnReadCache.clear();
+            }
+          }
+
           yield finalEvent;
 
           if (finalEvent.type === 'tool_result' && !finalEvent.isError) {
@@ -951,6 +1078,11 @@ export class QueryEngine {
         const modifiableFields = getModifiableFields(pendingWrite.call.name);
         const turnIndex = this.messages.filter((m) => m.role === 'assistant').length;
 
+        // [v0.46.8] Mark the turn as paused so the submitMessage /
+        // resumeWithToolResult `finally` blocks DON'T clear the cache.
+        // The pending write may resume; cache must survive the pause
+        // so post-resume execution still benefits from intra-turn dedup.
+        this.turnPaused = true;
         yield {
           type: 'pending_action',
           action: {

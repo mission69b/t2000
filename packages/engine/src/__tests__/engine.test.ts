@@ -410,6 +410,231 @@ describe('QueryEngine', () => {
     });
   });
 
+  // ---------------------------------------------------------------------------
+  // [v0.46.8] Intra-turn read tool cache (TurnReadCache)
+  //
+  // The agent loop must not double-render cards when the same read-only
+  // tool is called twice in one turn. This block exercises every entry
+  // point that touches the cache:
+  //   - host pre-dispatch via `invokeReadTool`
+  //   - LLM-driven `tool_use` mid-turn
+  //   - cache invalidation on a successful write
+  //   - cache reset at turn boundaries
+  // ---------------------------------------------------------------------------
+  describe('TurnReadCache (v0.46.8)', () => {
+    function buildCountingReadTool(name: string): { tool: Tool; getCallCount: () => number } {
+      let calls = 0;
+      const tool: Tool = buildTool({
+        name,
+        description: `Counting read tool ${name}`,
+        inputSchema: z.object({ q: z.string().optional() }),
+        jsonSchema: {
+          type: 'object',
+          properties: { q: { type: 'string' } },
+        },
+        isReadOnly: true,
+        async call(input) {
+          calls++;
+          return { data: { name, q: input.q ?? null, callNumber: calls } };
+        },
+      });
+      return { tool, getCallCount: () => calls };
+    }
+
+    function buildCountingWriteTool(name: string): { tool: Tool; getCallCount: () => number } {
+      let calls = 0;
+      const tool: Tool = buildTool({
+        name,
+        description: `Counting write tool ${name}`,
+        inputSchema: z.object({ amount: z.number() }),
+        jsonSchema: {
+          type: 'object',
+          properties: { amount: { type: 'number' } },
+          required: ['amount'],
+        },
+        isReadOnly: false,
+        permissionLevel: 'auto',
+        async call(input) {
+          calls++;
+          return { data: { ok: true, amount: input.amount, callNumber: calls } };
+        },
+      });
+      return { tool, getCallCount: () => calls };
+    }
+
+    it('LLM calling the same read tool twice in one turn dedups the second call', async () => {
+      const { tool, getCallCount } = buildCountingReadTool('balance_check');
+
+      // Provider scripts THREE turns:
+      //   1. LLM calls balance_check
+      //   2. LLM calls balance_check AGAIN (TurnReadCache should dedup)
+      //   3. LLM responds with text (microcompact may emit a retroactive
+      //      cross-turn dedup marker for the second call here — that's
+      //      a separate, complementary mechanism and is fine)
+      const provider = createMockProvider([
+        [{ type: 'tool_call', id: 'tc-1', name: 'balance_check', input: { q: 'first' } }],
+        [{ type: 'tool_call', id: 'tc-2', name: 'balance_check', input: { q: 'first' } }],
+        [{ type: 'text', text: 'done' }],
+      ]);
+
+      const engine = new QueryEngine({
+        provider,
+        tools: [tool],
+        systemPrompt: 'Test',
+      });
+
+      const events = await collectEvents(engine.submitMessage('What is my balance?'));
+
+      // The actual tool implementation should run exactly ONCE — this
+      // is the contract that prevents duplicate cards in the UI.
+      expect(getCallCount()).toBe(1);
+
+      // Filter to dispatcher-emitted tool_results (preserve the real
+      // toolName). Microcompact emits its own cross-turn dedup events
+      // with `toolName: '__deduped__'` which we exclude here.
+      const dispatcherResults = events.filter(
+        (e): e is Extract<EngineEvent, { type: 'tool_result' }> =>
+          e.type === 'tool_result' && e.toolName !== '__deduped__',
+      );
+      expect(dispatcherResults).toHaveLength(2);
+      expect(dispatcherResults[0].resultDeduped).toBeFalsy();
+      // The second dispatch hits the TurnReadCache and is flagged.
+      expect(dispatcherResults[1].resultDeduped).toBe(true);
+      // The deduped event still carries the cached result so the LLM
+      // can satisfy its tool_use_id obligation.
+      expect(dispatcherResults[1].result).toEqual(dispatcherResults[0].result);
+      expect(dispatcherResults[1].toolName).toBe('balance_check');
+    });
+
+    it('different inputs to the same read tool do NOT dedup', async () => {
+      const { tool, getCallCount } = buildCountingReadTool('rates_info');
+
+      const provider = createMockProvider([
+        [{ type: 'tool_call', id: 'tc-1', name: 'rates_info', input: { q: 'usdc' } }],
+        [{ type: 'tool_call', id: 'tc-2', name: 'rates_info', input: { q: 'sui' } }],
+        [{ type: 'text', text: 'done' }],
+      ]);
+
+      const engine = new QueryEngine({
+        provider,
+        tools: [tool],
+        systemPrompt: 'Test',
+      });
+
+      await collectEvents(engine.submitMessage('Show me rates'));
+
+      // Two distinct inputs → two real executions.
+      expect(getCallCount()).toBe(2);
+    });
+
+    it('host pre-dispatch via invokeReadTool causes a subsequent LLM call to dedup', async () => {
+      const { tool, getCallCount } = buildCountingReadTool('balance_check');
+
+      const provider = createMockProvider([
+        // LLM (somehow) decides to call balance_check too — must dedup
+        // against the host pre-dispatch.
+        [{ type: 'tool_call', id: 'tc-llm', name: 'balance_check', input: {} }],
+        [{ type: 'text', text: 'done' }],
+      ]);
+
+      const engine = new QueryEngine({
+        provider,
+        tools: [tool],
+        systemPrompt: 'Test',
+      });
+
+      // Simulate the host's pre-dispatch flow.
+      const preResult = await engine.invokeReadTool('balance_check', {});
+      expect(preResult.isError).toBe(false);
+      expect(getCallCount()).toBe(1);
+
+      // The host would also inject the synthetic tool_use+tool_result
+      // pair into the message ledger here. For this test we don't need
+      // to — we're just verifying the cache-based dedup of the LLM call.
+      const events = await collectEvents(engine.submitMessage('What is my balance?'));
+
+      // The LLM's call should NOT have re-executed the tool — cache hit.
+      expect(getCallCount()).toBe(1);
+
+      const toolResults = events.filter(
+        (e): e is Extract<EngineEvent, { type: 'tool_result' }> => e.type === 'tool_result',
+      );
+      // Exactly ONE tool_result event in the agent loop, flagged deduped.
+      expect(toolResults).toHaveLength(1);
+      expect(toolResults[0].resultDeduped).toBe(true);
+    });
+
+    it('invokeReadTool is itself idempotent within a turn (second call hits cache)', async () => {
+      const { tool, getCallCount } = buildCountingReadTool('balance_check');
+
+      const engine = new QueryEngine({
+        provider: createMockProvider([]),
+        tools: [tool],
+        systemPrompt: 'Test',
+      });
+
+      const r1 = await engine.invokeReadTool('balance_check', {});
+      const r2 = await engine.invokeReadTool('balance_check', {});
+
+      expect(getCallCount()).toBe(1);
+      expect(r2.data).toEqual(r1.data);
+    });
+
+    it('a successful write tool invalidates the read cache mid-turn', async () => {
+      const { tool: readTool, getCallCount: getReadCount } = buildCountingReadTool('balance_check');
+      const { tool: writeTool } = buildCountingWriteTool('save_deposit');
+
+      // Provider scripts:
+      //   1. LLM calls read
+      //   2. LLM calls write (auto-approved → executes inline, invalidates cache)
+      //   3. LLM calls read AGAIN (must NOT dedup — cache cleared by write)
+      //   4. LLM responds
+      const provider = createMockProvider([
+        [{ type: 'tool_call', id: 'r-1', name: 'balance_check', input: {} }],
+        [{ type: 'tool_call', id: 'w-1', name: 'save_deposit', input: { amount: 5 } }],
+        [{ type: 'tool_call', id: 'r-2', name: 'balance_check', input: {} }],
+        [{ type: 'text', text: 'done' }],
+      ]);
+
+      const engine = new QueryEngine({
+        provider,
+        // `agent` defined so the auto-approved write can execute server-side.
+        agent: {},
+        tools: [readTool, writeTool],
+        systemPrompt: 'Test',
+      });
+
+      await collectEvents(engine.submitMessage('Read, write, read'));
+
+      // Both reads should have actually executed — write invalidated the cache.
+      expect(getReadCount()).toBe(2);
+    });
+
+    it('cache resets between turns (turn N entries do NOT dedup turn N+1 calls)', async () => {
+      const { tool, getCallCount } = buildCountingReadTool('balance_check');
+
+      // Two separate user turns. Each calls balance_check once.
+      const provider = createMockProvider([
+        [{ type: 'tool_call', id: 'r-1', name: 'balance_check', input: {} }],
+        [{ type: 'text', text: 'done' }],
+        [{ type: 'tool_call', id: 'r-2', name: 'balance_check', input: {} }],
+        [{ type: 'text', text: 'done' }],
+      ]);
+
+      const engine = new QueryEngine({
+        provider,
+        tools: [tool],
+        systemPrompt: 'Test',
+      });
+
+      await collectEvents(engine.submitMessage('First'));
+      await collectEvents(engine.submitMessage('Second'));
+
+      // Both turns executed the tool — cache cleared at turn boundary.
+      expect(getCallCount()).toBe(2);
+    });
+  });
+
   it('yields pending_action for write tools when no agent is configured', async () => {
     const writeTool: Tool = buildTool({
       name: 'save_deposit',

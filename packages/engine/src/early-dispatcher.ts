@@ -13,37 +13,82 @@
 import type { EngineEvent, Tool, ToolContext } from './types.js';
 import { findTool } from './tool.js';
 import { budgetToolResult, type PendingToolCall } from './orchestration.js';
+import { TurnReadCache } from './turn-read-cache.js';
 
 interface DispatchEntry {
   call: PendingToolCall;
   tool: Tool;
   promise: Promise<{ data: unknown; isError: boolean }>;
+  /**
+   * [v0.46.8] True when this entry was satisfied from the
+   * `TurnReadCache` rather than a fresh tool execution. The
+   * `collectResults` stream surfaces these as `resultDeduped: true` so
+   * hosts can skip rendering a duplicate card while the LLM still gets
+   * the data it needs to answer its `tool_use_id`.
+   */
+  deduped: boolean;
 }
 
 export class EarlyToolDispatcher {
   private entries: DispatchEntry[] = [];
   private readonly tools: Tool[];
   private readonly context: ToolContext;
+  private readonly turnReadCache: TurnReadCache | undefined;
   private abortController: AbortController;
 
-  constructor(tools: Tool[], context: ToolContext) {
+  constructor(tools: Tool[], context: ToolContext, turnReadCache?: TurnReadCache) {
     this.tools = tools;
     this.context = context;
+    this.turnReadCache = turnReadCache;
     this.abortController = new AbortController();
   }
 
   /**
    * Attempt to dispatch a tool call. Returns true if the tool was dispatched
    * (read-only + concurrency-safe), false if it should be queued for later.
+   *
+   * [v0.46.8] Cache-aware: if a `TurnReadCache` was supplied at
+   * construction and a prior call this turn already produced a result
+   * for the same `(toolName, input)`, the dispatcher returns true (the
+   * call IS handled here, not queued for the post-stream loop) but
+   * skips the tool execution entirely — `collectResults` will surface
+   * the cached value with `resultDeduped: true`. On a cache miss for
+   * a successful real execution, the result is written back to the
+   * cache so any later call within the same turn dedups too.
    */
   tryDispatch(call: PendingToolCall): boolean {
     const tool = findTool(this.tools, call.name);
     if (!tool || !tool.isReadOnly || !tool.isConcurrencySafe) return false;
 
-    const childContext = { ...this.context, signal: this.abortController.signal };
-    const promise = executeTool(tool, call, childContext);
+    if (this.turnReadCache) {
+      const cacheKey = TurnReadCache.keyFor(call.name, call.input);
+      const cached = this.turnReadCache.get(cacheKey);
+      if (cached) {
+        this.entries.push({
+          call,
+          tool,
+          promise: Promise.resolve({ data: cached.result, isError: false }),
+          deduped: true,
+        });
+        return true;
+      }
+    }
 
-    this.entries.push({ call, tool, promise });
+    const childContext = { ...this.context, signal: this.abortController.signal };
+    const promise = executeTool(tool, call, childContext).then((result) => {
+      // Populate the cache on a successful, non-cached execution so a
+      // later identical call this turn dedups instead of re-running.
+      if (!result.isError && this.turnReadCache) {
+        const cacheKey = TurnReadCache.keyFor(call.name, call.input);
+        this.turnReadCache.set(cacheKey, {
+          result: result.data,
+          sourceToolUseId: call.id,
+        });
+      }
+      return result;
+    });
+
+    this.entries.push({ call, tool, promise, deduped: false });
     return true;
   }
 
@@ -76,6 +121,7 @@ export class EarlyToolDispatcher {
           result: budgeted,
           isError: result.isError,
           wasEarlyDispatched: true,
+          ...(entry.deduped ? { resultDeduped: true } : {}),
         };
       } catch (err) {
         yield {
