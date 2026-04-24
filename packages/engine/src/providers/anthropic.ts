@@ -13,24 +13,69 @@ import type {
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
 
+// Anthropic occasionally returns 529 overloaded_error or 429 rate_limit_error
+// when their infrastructure is over capacity. The SDK does NOT auto-retry
+// streaming requests once the connection opens, so we wrap the stream call
+// ourselves: if the stream errors before yielding any events, we retry with
+// exponential backoff. Once tokens have started flowing we propagate, because
+// retrying mid-stream would corrupt engine state (double-counted tokens, etc.).
+const DEFAULT_MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 1000;
+const RETRY_MAX_DELAY_MS = 8000;
+
 export interface AnthropicProviderConfig {
   apiKey: string;
   defaultModel?: string;
   defaultMaxTokens?: number;
+  /** Max retry attempts for retriable errors (overloaded, rate-limited, network). Default 3. */
+  maxRetries?: number;
 }
 
 export class AnthropicProvider implements LLMProvider {
   private client: Anthropic;
   private defaultModel: string;
   private defaultMaxTokens: number;
+  private maxRetries: number;
 
   constructor(config: AnthropicProviderConfig) {
     this.client = new Anthropic({ apiKey: config.apiKey });
     this.defaultModel = config.defaultModel ?? DEFAULT_MODEL;
     this.defaultMaxTokens = config.defaultMaxTokens ?? DEFAULT_MAX_TOKENS;
+    this.maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
   }
 
   async *chat(params: ChatParams): AsyncGenerator<ProviderEvent> {
+    let attempt = 0;
+    while (true) {
+      let yieldedAnything = false;
+      const inner = this.streamOnce(params);
+      try {
+        for (;;) {
+          const next = await inner.next();
+          if (next.done) return;
+          yieldedAnything = true;
+          yield next.value;
+        }
+      } catch (err) {
+        // Best-effort: tell the inner generator to release the underlying stream.
+        try { await inner.return?.(undefined); } catch { /* noop */ }
+
+        if (!yieldedAnything && isRetriableError(err) && attempt < this.maxRetries) {
+          attempt++;
+          const delayMs = computeBackoffMs(attempt);
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[anthropic] retriable error (attempt ${attempt}/${this.maxRetries}, retrying in ${delayMs}ms): ${rawErrorMessage(err)}`,
+          );
+          await sleep(delayMs);
+          continue;
+        }
+        throw new Error(friendlyErrorMessage(err));
+      }
+    }
+  }
+
+  private async *streamOnce(params: ChatParams): AsyncGenerator<ProviderEvent> {
     const messages = sanitizeAnthropicMessages(
       params.messages.map(toAnthropicMessage),
     );
@@ -202,6 +247,113 @@ export class AnthropicProvider implements LLMProvider {
       stream.abort();
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Error classification + retry helpers
+// ---------------------------------------------------------------------------
+
+// Exported for testing. Not part of the public provider API.
+export const _internal = {
+  isRetriableError: (err: unknown) => isRetriableError(err),
+  friendlyErrorMessage: (err: unknown) => friendlyErrorMessage(err),
+  computeBackoffMs: (attempt: number) => computeBackoffMs(attempt),
+};
+
+function isRetriableError(err: unknown): boolean {
+  if (!err) return false;
+
+  // Anthropic SDK error classes (status-based)
+  if (err instanceof Anthropic.APIError) {
+    // 529 overloaded, 408 timeout, 502/503/504 transient
+    if (err.status === 529 || err.status === 408) return true;
+    if (err.status === 502 || err.status === 503 || err.status === 504) return true;
+    // 429 rate-limited — retry but the user may need to slow down regardless
+    if (err.status === 429) return true;
+    return false;
+  }
+
+  // Sometimes streaming errors arrive as plain Error with the JSON message
+  // baked into err.message (e.g. {"type":"error","error":{"type":"overloaded_error",...}})
+  const msg = rawErrorMessage(err).toLowerCase();
+  if (
+    msg.includes('overloaded_error') ||
+    msg.includes('"overloaded"') ||
+    msg.includes('rate_limit_error') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('socket hang up') ||
+    msg.includes('fetch failed') ||
+    msg.includes('network error')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function rawErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
+/**
+ * Map a raw provider error to a clean, user-facing message.
+ *
+ * Most users see this as the chat error bubble — never leak raw JSON or
+ * stack traces. Any string returned here is safe to render verbatim in UI.
+ */
+function friendlyErrorMessage(err: unknown): string {
+  const msg = rawErrorMessage(err).toLowerCase();
+
+  if (
+    msg.includes('overloaded_error') ||
+    msg.includes('"overloaded"') ||
+    (err instanceof Anthropic.APIError && err.status === 529)
+  ) {
+    return "Anthropic's servers are over capacity right now. Please try again in 30 seconds.";
+  }
+  if (
+    msg.includes('rate_limit_error') ||
+    (err instanceof Anthropic.APIError && err.status === 429)
+  ) {
+    return 'Too many requests in a short window. Please wait a moment and try again.';
+  }
+  if (
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('socket hang up') ||
+    msg.includes('fetch failed') ||
+    msg.includes('network error')
+  ) {
+    return "Couldn't reach Anthropic. Check your connection and try again.";
+  }
+  if (err instanceof Anthropic.APIError && err.status === 401) {
+    return 'Authentication failed. Please check the Anthropic API key configuration.';
+  }
+  if (err instanceof Anthropic.APIError && err.status === 400) {
+    return 'The request was rejected by Anthropic. This is likely a bug — please retry, and if it persists, contact support.';
+  }
+  if (err instanceof Anthropic.APIError && err.status >= 500) {
+    return 'Anthropic returned a server error. Please try again in a moment.';
+  }
+
+  return 'Something went wrong. Please try again.';
+}
+
+function computeBackoffMs(attempt: number): number {
+  const base = Math.min(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RETRY_MAX_DELAY_MS);
+  const jitter = Math.floor(Math.random() * 250);
+  return base + jitter;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ---------------------------------------------------------------------------
