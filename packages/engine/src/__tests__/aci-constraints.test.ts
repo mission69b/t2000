@@ -121,8 +121,27 @@ describe('[v1.4 ACI] mpp_services — category summary + filter', () => {
     ) as typeof fetch;
   });
 
-  it('returns category summary when no filters supplied', async () => {
+  // [v0.46.7] Default behavior changed: no-args now returns the FULL catalog
+  // as a renderable card, not a `_refine` payload. This kills the "DISCOVER
+  // SERVICES called 15 times in a turn" loop and the "Available Services /
+  // 0 total" empty-card regression where the model called with a category
+  // guess that matched nothing.
+  it('returns the full catalog as a card when no filters supplied (v0.46.7 default)', async () => {
     const res = await mppServicesTool.call({}, baseCtx);
+    const data = res.data as {
+      services: { id: string }[];
+      total: number;
+      mode: string;
+      _refine?: unknown;
+    };
+    expect(data._refine).toBeUndefined();
+    expect(data.mode).toBe('full');
+    expect(data.total).toBe(3);
+    expect(data.services.map((s) => s.id).sort()).toEqual(['tr', 'wx', 'wx2']);
+  });
+
+  it('returns the category summary only when mode:"summary" is explicitly requested', async () => {
+    const res = await mppServicesTool.call({ mode: 'summary' }, baseCtx);
     const data = res.data as {
       _refine: { reason: string };
       categories: { category: string; services: number }[];

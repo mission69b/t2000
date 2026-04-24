@@ -34,6 +34,21 @@ async function fetchCatalog(): Promise<GatewayService[]> {
   return data;
 }
 
+function renderServices(catalog: GatewayService[]) {
+  return catalog.map((s) => ({
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    categories: s.categories,
+    endpoints: s.endpoints.map((e) => ({
+      url: `${MPP_GATEWAY}/${s.id}${e.path}`,
+      method: e.method,
+      description: e.description,
+      price: `$${e.price}`,
+    })),
+  }));
+}
+
 function matchesQuery(service: GatewayService, q: string): boolean {
   const lower = q.toLowerCase();
   return (
@@ -48,20 +63,20 @@ function matchesQuery(service: GatewayService, q: string): boolean {
 export const mppServicesTool = buildTool({
   name: 'mpp_services',
   description:
-    'Discover available MPP gateway services. Returns service names, descriptions, endpoints with required parameters, and pricing. Use BEFORE calling pay_api. Modes: pass `query` for keyword search, `category` to filter by category, or `mode: "full"` to fetch the ENTIRE catalog in one card (for "show me all MPP services" / "full catalog" requests — never enumerate per category in a loop). Calling with no args returns a category summary so you can narrow.',
+    'Discover available MPP gateway services. Returns service names, descriptions, endpoints with required parameters, and pricing. Use BEFORE calling pay_api. With no args, returns the FULL catalog as a single card (default behavior — covers "show me available MPP services", "what services exist", "show me all MPP services"). Use `query` to keyword-search a specific need ("translate", "weather", "postcard"). Use `category` to filter to one category. Use `mode: "summary"` only if you explicitly want a category-counts overview without the full list.',
   inputSchema: z.object({
     query: z
       .string()
       .optional()
-      .describe('Filter by keyword (e.g. "postcard", "translate", "weather").'),
+      .describe('Filter by keyword (e.g. "postcard", "translate", "weather"). Returns matching services in one card.'),
     category: z
       .string()
       .optional()
-      .describe('Filter by category exactly (e.g. "weather", "image"). See category summary returned when called without filters.'),
+      .describe('Filter by category exactly (e.g. "weather", "image"). Use mode:"summary" first if you need to see the category list.'),
     mode: z
       .enum(['summary', 'full'])
       .optional()
-      .describe('"full" returns the entire catalog in a single card — use this for "show me all MPP services" / "full catalog" requests instead of looping per category. Default is "summary" (category counts only when no filter is supplied).'),
+      .describe('"full" (default) returns the entire catalog in one card. "summary" returns category counts only — use this only when the user explicitly asks for a category overview.'),
   }),
   jsonSchema: {
     type: 'object',
@@ -77,7 +92,7 @@ export const mppServicesTool = buildTool({
       mode: {
         type: 'string',
         enum: ['summary', 'full'],
-        description: '"full" returns the entire catalog in one card. Use for "show me all" requests.',
+        description: '"full" (default) returns the entire catalog in one card. "summary" returns category counts only.',
       },
     },
     required: [],
@@ -91,36 +106,25 @@ export const mppServicesTool = buildTool({
   async call(input): Promise<{ data: Record<string, unknown>; displayText: string }> {
     const catalog = await fetchCatalog();
 
-    // [v0.46.6] Explicit "show me everything" path. The previous
-    // "no-args returns category summary + _refine hint" behavior caused
-    // the model to interpret "show all MPP services" as an instruction
-    // to enumerate every category one by one — discover_services was
-    // observed firing 15 times in a single turn. mode:'full' breaks
-    // that loop by returning the whole catalog up front.
-    if (input.mode === 'full') {
-      const services = catalog.map((s) => ({
-        id: s.id,
-        name: s.name,
-        description: s.description,
-        categories: s.categories,
-        endpoints: s.endpoints.map((e) => ({
-          url: `${MPP_GATEWAY}/${s.id}${e.path}`,
-          method: e.method,
-          description: e.description,
-          price: `$${e.price}`,
-        })),
-      }));
+    // [v0.46.7] Default behavior is now "return the full catalog as a card."
+    // Previously no-args returned a `_refine` payload that nudged the model to
+    // re-call with a category — but in practice the model often re-called with
+    // a category that returned 0 services, leaving an empty card. The full
+    // catalog is small (~40 services, ~10KB) and fits comfortably in the
+    // result budget, so there's no real cost to making it the default.
+    //
+    // The "summary" path (category counts only) is still available via the
+    // explicit `mode:'summary'` opt-in for the rare case the user really wants
+    // a category overview rather than the full list.
+    if (input.mode !== 'summary' && !input.query && !input.category) {
+      const services = renderServices(catalog);
       return {
         data: { services, total: services.length, mode: 'full' },
         displayText: `Full MPP catalog: ${services.length} services.`,
       };
     }
 
-    // [v1.4 ACI] If neither query nor category is supplied, return a
-    // category summary rather than the unbounded full catalog. The model
-    // then re-calls with a filter, which keeps the context window tight
-    // and makes the MPP discovery flow two-step (categorize → drill down).
-    if (!input.query && !input.category) {
+    if (input.mode === 'summary' && !input.query && !input.category) {
       const counts = new Map<string, number>();
       for (const svc of catalog) {
         for (const cat of svc.categories) {
@@ -133,14 +137,14 @@ export const mppServicesTool = buildTool({
       return {
         data: {
           _refine: {
-            reason: 'MPP catalog has many services — pick a category, supply a query, or pass mode:"full" to fetch everything.',
+            reason: 'Category summary (mode:"summary"). Re-call with a category or omit mode for the full catalog.',
             suggestedParams: { category: categories[0]?.category ?? 'weather' },
             allModes: ['summary', 'full'],
           },
           categories,
           totalServices: catalog.length,
         },
-        displayText: `${catalog.length} services across ${categories.length} categories. Re-call with a category, query, or mode:"full".`,
+        displayText: `${catalog.length} services across ${categories.length} categories.`,
       };
     }
 
@@ -153,18 +157,7 @@ export const mppServicesTool = buildTool({
       filtered = filtered.filter((s) => matchesQuery(s, input.query!));
     }
 
-    const services = filtered.map((s) => ({
-      id: s.id,
-      name: s.name,
-      description: s.description,
-      categories: s.categories,
-      endpoints: s.endpoints.map((e) => ({
-        url: `${MPP_GATEWAY}/${s.id}${e.path}`,
-        method: e.method,
-        description: e.description,
-        price: `$${e.price}`,
-      })),
-    }));
+    const services = renderServices(filtered);
 
     const filterDesc = [
       input.query ? `query "${input.query}"` : null,

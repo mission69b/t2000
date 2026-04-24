@@ -373,6 +373,70 @@ export class QueryEngine {
     this.messages = [...messages];
   }
 
+  /**
+   * [v0.46.7] Run a read-only tool out-of-band, using the engine's tool
+   * registry and ToolContext. Used by hosts to deterministically pre-dispatch
+   * tools based on user-message intent (e.g. always call `balance_check` when
+   * the user says "what's my net worth?", regardless of whether the LLM would
+   * have otherwise re-called it).
+   *
+   * The host is responsible for:
+   *  - Streaming the synthetic `tool_start` + `tool_result` events to the UI
+   *    (so cards render as if the LLM had called the tool).
+   *  - Appending matching `tool_use` + `tool_result` ContentBlocks to the
+   *    engine's message history via `loadMessages([...getMessages(), ...synth])`
+   *    BEFORE calling `submitMessage`, so the LLM sees the fresh data and
+   *    doesn't re-call.
+   *
+   * Throws if the tool isn't registered, isn't read-only, or fails input
+   * validation. Tool execution errors are returned as `{ data, isError: true }`
+   * for the caller to handle (typically: skip the injection so the LLM falls
+   * back to its normal flow).
+   */
+  async invokeReadTool(
+    toolName: string,
+    input: unknown,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<{ data: unknown; isError: boolean }> {
+    const tool = findTool(this.tools, toolName);
+    if (!tool) throw new Error(`invokeReadTool: tool not found: ${toolName}`);
+    if (!tool.isReadOnly) {
+      throw new Error(`invokeReadTool: tool is not read-only: ${toolName} (write tools must go through the permission gate)`);
+    }
+
+    const parsed = tool.inputSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new Error(
+        `invokeReadTool: invalid input for ${toolName}: ${parsed.error.issues.map((i) => i.message).join(', ')}`,
+      );
+    }
+
+    const signal = options.signal ?? new AbortController().signal;
+    const context: ToolContext = {
+      agent: this.agent,
+      mcpManager: this.mcpManager,
+      walletAddress: this.walletAddress,
+      suiRpcUrl: this.suiRpcUrl,
+      serverPositions: this.serverPositions,
+      positionFetcher: this.positionFetcher,
+      env: this.env,
+      signal,
+      priceCache: this.priceCache,
+      permissionConfig: this.permissionConfig,
+      sessionSpendUsd: this.sessionSpendUsd,
+    };
+
+    try {
+      const result = await tool.call(parsed.data, context);
+      return { data: result.data, isError: false };
+    } catch (err) {
+      return {
+        data: { error: err instanceof Error ? err.message : 'Tool execution failed' },
+        isError: true,
+      };
+    }
+  }
+
   setServerPositions(data: EngineConfig['serverPositions']): void {
     this.serverPositions = data;
   }
