@@ -374,9 +374,13 @@ describe('health_check', () => {
 
     const ctx: ToolContext = { mcpManager: noDebtMgr, walletAddress: '0xuser123' };
     const result = await healthCheckTool.call({}, ctx);
-    const data = result.data as { healthFactor: number; status: string };
+    const data = result.data as { healthFactor: number | null; status: string };
 
-    expect(data.healthFactor).toBe(Infinity);
+    // Health tool now sends `null` (not `Infinity`) for no-debt accounts —
+    // JSON.stringify drops Infinity to "null" anyway, so we transport
+    // `null` deliberately and let the UI / LLM branch on borrowed===0.
+    // Prevents the "Critical 0.00" client-side regression.
+    expect(data.healthFactor).toBeNull();
     expect(data.status).toBe('healthy');
     expect(result.displayText).toContain('∞');
 
