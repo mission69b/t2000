@@ -317,7 +317,6 @@ describe('QueryEngine', () => {
         required: ['q'],
       },
       isReadOnly: true,
-      isConcurrencySafe: true,
       async call(input) {
         return { data: { echoed: input.q, ts: 'fixed' } };
       },
