@@ -1,0 +1,59 @@
+name: account_report
+description: Render a complete account snapshot — six rich cards covering wallet, savings, debt, activity, yield, and portfolio
+triggers:
+  - "full report"
+  - "full account report"
+  - "account report"
+  - "account summary"
+  - "give me everything"
+  - "complete overview"
+  - "show me everything"
+  - "everything about my account"
+  - "full overview"
+
+steps:
+  - name: render_balance_card
+    tool: balance_check
+    purpose: Render the BALANCE CHECK card (wallet, savings, debt, total)
+    gate: none
+    notes: "REQUIRED — even if portfolio_analysis returns the same data, this tool call is what renders the BALANCE CHECK card. Skipping it = missing card."
+
+  - name: render_savings_card
+    tool: savings_info
+    purpose: Render the SAVINGS INFO card (positions, supply/borrow APY, daily earnings)
+    gate: none
+    notes: "REQUIRED — renders the SAVINGS INFO card with per-position breakdown."
+
+  - name: render_health_card
+    tool: health_check
+    purpose: Render the HEALTH CHECK card (HF, supplied, borrowed, max borrow, liq threshold)
+    gate: none
+    notes: "REQUIRED — renders the HEALTH CHECK card."
+
+  - name: render_activity_card
+    tool: activity_summary
+    purpose: Render the ACTIVITY SUMMARY card (monthly tx breakdown by category)
+    gate: none
+    notes: "REQUIRED — renders the ACTIVITY SUMMARY card."
+
+  - name: render_yield_card
+    tool: yield_summary
+    purpose: Render the YIELD SUMMARY card (today/week/month/all-time earnings, APY, projected yearly)
+    gate: none
+    notes: "REQUIRED — renders the YIELD SUMMARY card."
+
+  - name: render_portfolio_card
+    tool: portfolio_analysis
+    purpose: Render the PORTFOLIO ANALYSIS card (allocation %, week change, insights)
+    gate: none
+    notes: "REQUIRED — renders the PORTFOLIO ANALYSIS card."
+
+  - name: write_headline
+    purpose: After all six cards render, write a 2-3 sentence headline summarizing net worth, health factor, and the single biggest opportunity
+    gate: none
+    rules:
+      - "Lead with net worth and weekly change."
+      - "Mention health factor in one phrase."
+      - "End with the single most actionable insight (idle USDC, debt, etc)."
+      - "Do NOT narrate the cards' contents — they render themselves. Do NOT list asset percentages, APYs, or savings positions in prose."
+      - "Maximum 3 sentences total."
