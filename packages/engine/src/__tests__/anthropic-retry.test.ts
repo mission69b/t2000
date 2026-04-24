@@ -4,37 +4,44 @@ import { _internal } from '../providers/anthropic.js';
 
 const { isRetriableError, friendlyErrorMessage, computeBackoffMs } = _internal;
 
+// The SDK's `Headers` type is its own class (not the global Fetch Headers).
+// In tests we don't care about the headers value — only the status — so we
+// pass an empty headers-like through `any` to keep the test ergonomics clean.
+function apiError(status: number, body: { type: string; message: string }) {
+  return new Anthropic.APIError(
+    status,
+    body,
+    body.message,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    {} as any,
+  );
+}
+
 describe('AnthropicProvider retry classification', () => {
   describe('isRetriableError', () => {
     it('retries Anthropic 529 overloaded errors', () => {
-      const err = new Anthropic.APIError(
-        529,
-        { type: 'overloaded_error', message: 'Overloaded' },
-        'Overloaded',
-        new Headers(),
-      );
-      expect(isRetriableError(err)).toBe(true);
+      expect(
+        isRetriableError(
+          apiError(529, { type: 'overloaded_error', message: 'Overloaded' }),
+        ),
+      ).toBe(true);
     });
 
     it('retries Anthropic 429 rate-limit errors', () => {
-      const err = new Anthropic.APIError(
-        429,
-        { type: 'rate_limit_error', message: 'Rate limited' },
-        'Rate limited',
-        new Headers(),
-      );
-      expect(isRetriableError(err)).toBe(true);
+      expect(
+        isRetriableError(
+          apiError(429, { type: 'rate_limit_error', message: 'Rate limited' }),
+        ),
+      ).toBe(true);
     });
 
     it('retries 5xx server errors', () => {
       for (const status of [502, 503, 504]) {
-        const err = new Anthropic.APIError(
-          status,
-          { type: 'api_error', message: 'transient' },
-          'transient',
-          new Headers(),
-        );
-        expect(isRetriableError(err)).toBe(true);
+        expect(
+          isRetriableError(
+            apiError(status, { type: 'api_error', message: 'transient' }),
+          ),
+        ).toBe(true);
       }
     });
 
@@ -56,13 +63,14 @@ describe('AnthropicProvider retry classification', () => {
 
     it('does NOT retry 4xx client errors (except 408/429)', () => {
       for (const status of [400, 401, 403, 404]) {
-        const err = new Anthropic.APIError(
-          status,
-          { type: 'invalid_request_error', message: 'bad request' },
-          'bad request',
-          new Headers(),
-        );
-        expect(isRetriableError(err)).toBe(false);
+        expect(
+          isRetriableError(
+            apiError(status, {
+              type: 'invalid_request_error',
+              message: 'bad request',
+            }),
+          ),
+        ).toBe(false);
       }
     });
 
@@ -85,13 +93,13 @@ describe('AnthropicProvider retry classification', () => {
     });
 
     it('produces a clean string for rate-limit errors', () => {
-      const err = new Anthropic.APIError(
-        429,
-        { type: 'rate_limit_error', message: 'Rate limited' },
-        'Rate limited',
-        new Headers(),
+      const err = apiError(429, {
+        type: 'rate_limit_error',
+        message: 'Rate limited',
+      });
+      expect(friendlyErrorMessage(err).toLowerCase()).toContain(
+        'too many requests',
       );
-      expect(friendlyErrorMessage(err).toLowerCase()).toContain('too many requests');
     });
 
     it('produces a clean string for network errors', () => {
@@ -100,13 +108,13 @@ describe('AnthropicProvider retry classification', () => {
     });
 
     it('produces a clean string for auth errors', () => {
-      const err = new Anthropic.APIError(
-        401,
-        { type: 'authentication_error', message: 'bad key' },
-        'bad key',
-        new Headers(),
+      const err = apiError(401, {
+        type: 'authentication_error',
+        message: 'bad key',
+      });
+      expect(friendlyErrorMessage(err).toLowerCase()).toContain(
+        'authentication failed',
       );
-      expect(friendlyErrorMessage(err).toLowerCase()).toContain('authentication failed');
     });
 
     it('falls back to a generic message for unknown errors', () => {
