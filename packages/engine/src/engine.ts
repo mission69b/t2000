@@ -73,6 +73,9 @@ export class QueryEngine {
   private readonly contextSummarizer: EngineConfig['contextSummarizer'];
   private readonly priceCache: Map<string, number> | undefined;
   private readonly permissionConfig: import('./permission-rules.js').UserPermissionConfig | undefined;
+  // Saved contacts — consulted by `guardAddressSource` and the permission
+  // tier resolver (sends to non-contact addresses always require confirm).
+  private readonly contacts: ReadonlyArray<{ name: string; address: string }>;
   // [v1.4] Session-scoped autonomous spend tracking.
   private readonly sessionSpendUsd: number | undefined;
   private readonly onAutoExecuted: EngineConfig['onAutoExecuted'];
@@ -123,6 +126,7 @@ export class QueryEngine {
     this.contextSummarizer = config.contextSummarizer;
     this.priceCache = config.priceCache;
     this.permissionConfig = config.permissionConfig;
+    this.contacts = config.contacts ?? [];
     this.sessionSpendUsd = config.sessionSpendUsd;
     this.onAutoExecuted = config.onAutoExecuted;
     this.onGuardFired = config.onGuardFired;
@@ -823,12 +827,18 @@ export class QueryEngine {
             const operation = toolNameToOperation(call.name);
             if (operation) {
               const usdValue = resolveUsdValue(call.name, call.input as Record<string, unknown>, context.priceCache);
-              // [v1.4] sessionSpendUsd consulted to enforce daily cap
+              const callInput = call.input as Record<string, unknown>;
+              // [v1.4] sessionSpendUsd enforces daily cap.
+              // Send-safety: a raw 0x recipient with no contact match
+              // forces `confirm` regardless of amount (see permission-rules).
               const tier = resolvePermissionTier(
                 operation,
                 usdValue,
                 context.permissionConfig,
                 context.sessionSpendUsd,
+                operation === 'send'
+                  ? { to: typeof callInput.to === 'string' ? callInput.to : undefined, contacts: this.contacts }
+                  : undefined,
               );
               return tier !== 'auto';
             }
@@ -863,6 +873,7 @@ export class QueryEngine {
             this.guardConfig,
             convCtx,
             this.onGuardFired,
+            { contacts: this.contacts, walletAddress: this.walletAddress },
           );
           this.guardEvents.push(...check.events);
 
@@ -1036,6 +1047,7 @@ export class QueryEngine {
           this.guardConfig,
           convCtx,
           this.onGuardFired,
+          { contacts: this.contacts, walletAddress: this.walletAddress },
         );
         this.guardEvents.push(...check.events);
 
