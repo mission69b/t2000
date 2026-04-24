@@ -194,7 +194,11 @@ function guardIrreversibility(
     return { verdict: 'pass', gate: 'irreversibility', tier: 'safety' };
   }
 
-  const hasPreview = /preview|here.s what|confirm.*send|looks? good/i.test(conversationText);
+  // [security] `confirm.*send` was rewritten to bound the wildcard
+  // span (`.{0,200}`) so the regex is linear-time on degenerate inputs
+  // like a 100KB string starting with "confirm" but never containing
+  // "send". CodeQL flagged the unbounded `.*` as polynomial-redos.
+  const hasPreview = /preview|here.{0,2}s what|confirm.{0,200}send|looks? good/i.test(conversationText);
   if (hasPreview) {
     return { verdict: 'pass', gate: 'irreversibility', tier: 'safety' };
   }
@@ -327,7 +331,12 @@ function guardSlippage(
     return { verdict: 'pass', gate: 'slippage_warning', tier: 'financial' };
   }
 
-  const hasEstimate = /~?\$?[\d,]+\.?\d*\s*(SUI|USDC|USDT|WETH)/i.test(lastAssistantText)
+  // [security] Rewritten to non-overlapping form (`\d[\d,]{0,30}`
+   // followed by an optional `\.\d{1,10}`) so the digit/decimal section
+  // matches in linear time. Previously `[\d,]+\.?\d*` could ambiguously
+  // distribute digits across the two pieces, triggering CodeQL's
+  // polynomial-redos rule on a long input like "1234,1234,...".
+  const hasEstimate = /~?\$?\d[\d,]{0,30}(?:\.\d{1,10})?\s*(SUI|USDC|USDT|WETH)/i.test(lastAssistantText)
     || /approximately|≈|about|expect|receive/i.test(lastAssistantText);
 
   if (hasEstimate) {
@@ -700,9 +709,21 @@ export function extractConversationText(
   const RECENT_USER_TURN_WINDOW = 10;
   const recentUserParts = userParts.slice(-RECENT_USER_TURN_WINDOW);
 
+  // [security] Cap each returned string at ~16KB before guards run any
+  // regex over them. A few of the heuristic regexes downstream (e.g.
+  // `/preview|...|confirm.*send|.../`, `/[\d,]+\.?\d*\s*(SUI|USDC|...)/`)
+  // backtrack super-linearly on degenerate inputs — bounding the input
+  // here keeps CodeQL's polynomial-regex alert at bay AND removes the
+  // theoretical ReDoS surface from a maliciously crafted long message.
+  // 16KB is comfortably larger than any realistic conversation slice we
+  // need for the heuristic checks (which only look for keywords/numbers).
+  const MAX_REGEX_INPUT = 16 * 1024;
+  const cap = (s: string): string =>
+    s.length <= MAX_REGEX_INPUT ? s : s.slice(-MAX_REGEX_INPUT);
+
   return {
-    fullText: textParts.join('\n'),
-    lastAssistantText,
-    recentUserText: recentUserParts.join('\n'),
+    fullText: cap(textParts.join('\n')),
+    lastAssistantText: cap(lastAssistantText),
+    recentUserText: cap(recentUserParts.join('\n')),
   };
 }
