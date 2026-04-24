@@ -607,20 +607,69 @@ export async function addClaimRewardsToTx(
     );
     if (claimable.length === 0) return [];
 
-    const claimed = await claimLendingRewardsPTB(tx, claimable, {
+    // Capture per-reward metadata from the source `claimable` list before
+    // it gets handed to the NAVI PTB builder. We previously stubbed every
+    // returned reward as `{ symbol: 'REWARD', amount: 0 }`, which made
+    // the engine narrate "no pending rewards" / "Claimed $0.00" even when
+    // the on-chain tx successfully credited e.g. vSUI to the wallet. The
+    // PTB builder's return value is just an internal opaque list of move
+    // calls — the truth about which assets / amounts were claimed lives
+    // in the `claimable` rows we filtered above.
+    await claimLendingRewardsPTB(tx, claimable, {
       env: 'prod',
       customCoinReceive: { type: 'transfer', transfer: address },
     });
 
-    return claimed.map((c) => ({
-      protocol: 'navi',
-      asset: '',
-      coinType: '',
-      symbol: 'REWARD',
-      amount: 0,
-      estimatedValueUsd: 0,
-    }));
+    return aggregateClaimableRewards(claimable);
   } catch {
     return [];
   }
+}
+
+/**
+ * Minimal shape we read off the NAVI SDK's `LendingReward` rows. Kept
+ * structural rather than imported so the tests don't have to reproduce
+ * the full upstream type and the function works for any future caller
+ * that has the same fields.
+ */
+export interface ClaimableRewardLike {
+  userClaimableReward: number | string;
+  rewardCoinType: string;
+  assetId?: number | string;
+}
+
+/**
+ * Aggregate raw NAVI `claimable` rows into the `PendingReward[]` shape
+ * the engine surfaces to the LLM and the UI. Aggregates by reward coin
+ * type so a user with rewards from multiple pools (e.g. USDC pool + SUI
+ * pool both rewarding vSUI) sees a single "0.0165 vSUI" line rather
+ * than three separate dust entries. Filters out non-finite / non-positive
+ * amounts so dust noise can't sneak in as "$0.00 REWARD" rows.
+ */
+export function aggregateClaimableRewards(
+  claimable: ClaimableRewardLike[],
+): PendingReward[] {
+  const aggregated = new Map<string, PendingReward>();
+  for (const c of claimable) {
+    const coinType = c.rewardCoinType;
+    if (!coinType) continue;
+    const symbol = coinType.split('::').pop() ?? 'REWARD';
+    const amount = Number(c.userClaimableReward);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+
+    const existing = aggregated.get(coinType);
+    if (existing) {
+      existing.amount += amount;
+    } else {
+      aggregated.set(coinType, {
+        protocol: 'navi',
+        asset: String(c.assetId ?? ''),
+        coinType,
+        symbol,
+        amount,
+        estimatedValueUsd: 0,
+      });
+    }
+  }
+  return Array.from(aggregated.values());
 }

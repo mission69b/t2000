@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { aggregateClaimableRewards } from './navi.js';
 
 const RATE_DECIMALS = 27;
 const MIN_HEALTH_FACTOR = 1.5;
@@ -384,6 +385,87 @@ describe('navi', () => {
         coinType: '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
         token: { symbol: 'suiUSDT' },
       })).toBe('USDT');
+    });
+  });
+
+  // Regression coverage for the bug where claimRewards() reported
+  // "Claimed $0.00" / "no pending rewards" even when the on-chain tx
+  // successfully credited a reward token to the wallet. Root cause was
+  // the adapter stubbing every PendingReward as { symbol: 'REWARD',
+  // amount: 0, estimatedValueUsd: 0 } and discarding the rewardCoinType
+  // / userClaimableReward fields it had on hand.
+  describe('aggregateClaimableRewards', () => {
+    const VSUI = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
+    const NS = '0xbc3a676894871284b3ccfb2eec66f428612000e2a6e6d23f592ce8833c27c973::coin::COIN';
+
+    it('returns one entry per reward coin type with real symbol + amount', () => {
+      const result = aggregateClaimableRewards([
+        { userClaimableReward: 0.01649, rewardCoinType: VSUI, assetId: 5 },
+      ]);
+
+      expect(result).toEqual([
+        {
+          protocol: 'navi',
+          asset: '5',
+          coinType: VSUI,
+          symbol: 'CERT',
+          amount: 0.01649,
+          estimatedValueUsd: 0,
+        },
+      ]);
+    });
+
+    it('aggregates same coin type across multiple pools into a single entry', () => {
+      const result = aggregateClaimableRewards([
+        { userClaimableReward: 0.01, rewardCoinType: VSUI, assetId: 0 },
+        { userClaimableReward: 0.0065, rewardCoinType: VSUI, assetId: 5 },
+      ]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.coinType).toBe(VSUI);
+      expect(result[0]?.amount).toBeCloseTo(0.0165, 6);
+    });
+
+    it('keeps separate entries for different reward coin types', () => {
+      const result = aggregateClaimableRewards([
+        { userClaimableReward: 0.01, rewardCoinType: VSUI, assetId: 0 },
+        { userClaimableReward: 12.3, rewardCoinType: NS, assetId: 11 },
+      ]);
+
+      expect(result).toHaveLength(2);
+      expect(result.map((r) => r.coinType).sort()).toEqual([VSUI, NS].sort());
+    });
+
+    it('skips zero / negative / NaN amounts so dust does not pollute the list', () => {
+      const result = aggregateClaimableRewards([
+        { userClaimableReward: 0, rewardCoinType: VSUI },
+        { userClaimableReward: -1, rewardCoinType: VSUI },
+        { userClaimableReward: Number.NaN as unknown as number, rewardCoinType: VSUI },
+      ]);
+      expect(result).toEqual([]);
+    });
+
+    it('ignores rows missing rewardCoinType', () => {
+      const result = aggregateClaimableRewards([
+        { userClaimableReward: 1, rewardCoinType: '' },
+      ]);
+      expect(result).toEqual([]);
+    });
+
+    it('parses string-encoded amounts from the SDK', () => {
+      const result = aggregateClaimableRewards([
+        { userClaimableReward: '0.025' as unknown as number, rewardCoinType: VSUI },
+      ]);
+      expect(result[0]?.amount).toBeCloseTo(0.025, 6);
+    });
+
+    it('never returns the legacy stub fields (asset:"", symbol:"REWARD", amount:0)', () => {
+      const result = aggregateClaimableRewards([
+        { userClaimableReward: 0.5, rewardCoinType: VSUI, assetId: 5 },
+      ]);
+      expect(result[0]?.symbol).not.toBe('REWARD');
+      expect(result[0]?.coinType).not.toBe('');
+      expect(result[0]?.amount).not.toBe(0);
     });
   });
 });
