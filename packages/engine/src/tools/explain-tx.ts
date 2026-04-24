@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getDecimalsForCoinType } from '@t2000/sdk';
+import { getDecimalsForCoinType, resolveSymbol } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 
 const inputSchema = z.object({
@@ -86,8 +86,10 @@ export const explainTxTool = buildTool({
     if (balanceChanges?.length) {
       for (const bc of balanceChanges) {
         const ownerAddr = bc.owner?.AddressOwner ?? bc.owner?.ObjectOwner ?? 'unknown';
-        const coinParts = bc.coinType.split('::');
-        const symbol = coinParts[coinParts.length - 1] ?? bc.coinType;
+        // Use the canonical token registry so user-facing symbols are
+        // friendly (e.g. `0x...::cert::CERT` → `vSUI`). Falls back to the
+        // last `::` segment when the coin isn't in the registry.
+        const symbol = resolveSymbol(bc.coinType);
         const amount = Number(bc.amount);
         const isNegative = amount < 0;
         const decimals = getDecimalsForCoinType(bc.coinType);
