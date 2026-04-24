@@ -306,6 +306,111 @@ describe('QueryEngine', () => {
     expect(messages[0].content[0]).toEqual({ type: 'text', text: 'Previous message' });
   });
 
+  describe('invokeReadTool (v0.46.7)', () => {
+    const readTool: Tool = buildTool({
+      name: 'fake_read',
+      description: 'A read-only tool',
+      inputSchema: z.object({ q: z.string() }),
+      jsonSchema: {
+        type: 'object',
+        properties: { q: { type: 'string' } },
+        required: ['q'],
+      },
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      async call(input) {
+        return { data: { echoed: input.q, ts: 'fixed' } };
+      },
+    });
+
+    const writeTool: Tool = buildTool({
+      name: 'fake_write',
+      description: 'A write tool',
+      inputSchema: z.object({ amount: z.number() }),
+      jsonSchema: {
+        type: 'object',
+        properties: { amount: { type: 'number' } },
+        required: ['amount'],
+      },
+      isReadOnly: false,
+      permissionLevel: 'confirm',
+      async call(input) {
+        return { data: { ok: true, amount: input.amount } };
+      },
+    });
+
+    it('runs a read-only tool out-of-band and returns its data', async () => {
+      const engine = new QueryEngine({
+        provider: createMockProvider([]),
+        tools: [readTool],
+        systemPrompt: 'Test',
+      });
+
+      const result = await engine.invokeReadTool('fake_read', { q: 'hello' });
+      expect(result.isError).toBe(false);
+      expect(result.data).toEqual({ echoed: 'hello', ts: 'fixed' });
+    });
+
+    it('throws when the tool is not registered', async () => {
+      const engine = new QueryEngine({
+        provider: createMockProvider([]),
+        tools: [readTool],
+        systemPrompt: 'Test',
+      });
+
+      await expect(engine.invokeReadTool('does_not_exist', {})).rejects.toThrow(
+        /tool not found/i,
+      );
+    });
+
+    it('throws when the tool is not read-only', async () => {
+      const engine = new QueryEngine({
+        provider: createMockProvider([]),
+        tools: [writeTool],
+        systemPrompt: 'Test',
+      });
+
+      await expect(engine.invokeReadTool('fake_write', { amount: 1 })).rejects.toThrow(
+        /not read-only/i,
+      );
+    });
+
+    it('throws on input schema validation failure', async () => {
+      const engine = new QueryEngine({
+        provider: createMockProvider([]),
+        tools: [readTool],
+        systemPrompt: 'Test',
+      });
+
+      await expect(engine.invokeReadTool('fake_read', { q: 42 })).rejects.toThrow(
+        /invalid input/i,
+      );
+    });
+
+    it('returns isError=true when the tool throws at runtime', async () => {
+      const throwingTool: Tool = buildTool({
+        name: 'fake_throw',
+        description: 'Throws',
+        inputSchema: z.object({}),
+        jsonSchema: { type: 'object', properties: {}, required: [] },
+        isReadOnly: true,
+        async call() {
+          throw new Error('boom');
+        },
+      });
+
+      const engine = new QueryEngine({
+        provider: createMockProvider([]),
+        tools: [throwingTool],
+        systemPrompt: 'Test',
+      });
+
+      const result = await engine.invokeReadTool('fake_throw', {});
+      expect(result.isError).toBe(true);
+      expect(result.data).toEqual({ error: 'boom' });
+    });
+  });
+
   it('yields pending_action for write tools when no agent is configured', async () => {
     const writeTool: Tool = buildTool({
       name: 'save_deposit',
