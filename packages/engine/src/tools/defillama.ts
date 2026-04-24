@@ -52,23 +52,53 @@ function fmtToolTvl(tvl: number): string {
   return `$${tvl}`;
 }
 
+/**
+ * [v0.46.6] Pool-side stablecoin allow-list (uppercase) used by the
+ * `stableOnly` filter on `defillama_yield_pools`. DefiLlama returns
+ * pool symbols as `LEG1-LEG2` (uppercase by convention) — we want
+ * BOTH legs to be USD-pegged before counting a pool as "all stable".
+ * Excludes XAUm (gold-pegged), all LSTs/LRTs, and any volatile pair.
+ */
+const POOL_STABLE_LEGS = new Set<string>([
+  'USDC',
+  'WUSDC',
+  'USDT',
+  'WUSDT',
+  'SUIUSDT',
+  'USDY',
+  'USDSUI',
+  'USDE',
+  'AUSD',
+  'FDUSD',
+  'BUCK',
+  'DAI',
+  'LUSD',
+  'FRAX',
+  'GUSD',
+  'PYUSD',
+  'USDS',
+  'CRVUSD',
+]);
+
 export const defillamaYieldPoolsTool = buildTool({
   name: 'defillama_yield_pools',
   description:
-    'Get top DeFi yield pools across protocols. Filter by chain (e.g. "Sui"), project (e.g. "navi-lending"), and minimum TVL. For NAVI lending rates, use project "navi-lending".',
+    'Cross-protocol LP / vault yields with IMPERMANENT-LOSS RISK (Cetus, Bluefin, Full Sail, etc.). ONLY call when the user explicitly asks about LP pools, DeFi farming, or "higher yield with more risk". For safe single-sided lending yields (USDC save, NAVI, etc.) use rates_info instead — NEVER both in the same turn. Filter by chain (e.g. "Sui"), project, and minimum TVL.',
   inputSchema: z.object({
     chain: z.string().optional().describe('Filter by chain name (e.g. "Sui", "Ethereum")'),
-    project: z.string().optional().describe('Filter by protocol project name (e.g. "navi-lending", "cetus-clmm")'),
+    project: z.string().optional().describe('Filter by protocol project name (e.g. "cetus-clmm", "bluefin-spot")'),
     limit: z.number().min(1).max(20).optional().describe('Max results (default 5)'),
     minTvl: z.number().optional().describe('Minimum TVL in USD to filter out small/risky pools (default 100000)'),
+    stableOnly: z.boolean().optional().describe('When true, only return pools where every leg is a stablecoin (USDC, USDT, USDSUI, etc.). Use this for "show stablecoin yield options" — keeps volatile-pair LPs (WAL-SUI, DEEP-SUI) out.'),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       chain: { type: 'string', description: 'Filter by chain name' },
-      project: { type: 'string', description: 'Filter by protocol project name (e.g. "navi-lending")' },
+      project: { type: 'string', description: 'Filter by protocol project name (e.g. "cetus-clmm")' },
       limit: { type: 'number', description: 'Max results (default 5)' },
       minTvl: { type: 'number', description: 'Minimum TVL in USD (default 100000)' },
+      stableOnly: { type: 'boolean', description: 'When true, only return all-stablecoin pools.' },
     },
     required: [],
   },
@@ -118,6 +148,17 @@ export const defillamaYieldPoolsTool = buildTool({
 
     const minTvl = input.minTvl ?? 100_000;
     pools = pools.filter((p) => p.tvlUsd >= minTvl);
+
+    // [v0.46.6] `stableOnly` keeps only pools where EVERY leg of the
+    // pair is a known stablecoin. The pool symbol is always rendered as
+    // `LEG1-LEG2` (or just `LEG1` for single-asset vaults), so split on
+    // `-` and check each side. Single-asset stable vaults pass too.
+    if (input.stableOnly) {
+      pools = pools.filter((p) => {
+        const legs = p.symbol.split('-');
+        return legs.every((leg) => POOL_STABLE_LEGS.has(leg.trim().toUpperCase()));
+      });
+    }
 
     pools.sort((a, b) => b.apy - a.apy);
     const limit = input.limit ?? 5;

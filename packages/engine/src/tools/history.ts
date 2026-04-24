@@ -199,11 +199,14 @@ const DEFAULT_LOOKBACK_DAYS = 30;
 export const transactionHistoryTool = buildTool({
   name: 'transaction_history',
   description:
-    'Retrieve recent transaction history (last 30 days by default): sends, saves, withdrawals, borrows, repayments, and rewards claims. Pass `date` (YYYY-MM-DD) for a specific day, `action` to filter by category (send/lending/swap), or both.',
+    'Retrieve recent transaction history (last 30 days by default): sends, saves, withdrawals, borrows, repayments, swaps, and rewards claims. Renders a rich transaction card. Filter args: `date` (YYYY-MM-DD), `action` (send/lending/swap), `minUsd` (minimum amount in USD — use this for "transactions over $X" instead of post-filtering), `assetSymbol` (e.g. "USDC", "SUI"), `direction` ("in" or "out"). The card itself respects all filters — never re-list the rows in narration.',
   inputSchema: z.object({
     limit: z.number().int().min(1).max(50).optional(),
     date: z.string().optional().describe('Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.'),
     action: z.enum(HISTORY_ACTIONS).optional().describe('Filter by action: send, lending, swap, or transaction.'),
+    minUsd: z.number().min(0).optional().describe('Minimum transaction amount in USD. Use this for "transactions over $X" — the amount is converted to USD using the asset price snapshot.'),
+    assetSymbol: z.string().optional().describe('Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI", "LOFI"). Matches `tx.asset` exactly.'),
+    direction: z.enum(['in', 'out']).optional().describe('Filter by user-side balance flow: "in" = received, "out" = spent.'),
   }),
   jsonSchema: {
     type: 'object',
@@ -220,6 +223,19 @@ export const transactionHistoryTool = buildTool({
         type: 'string',
         enum: [...HISTORY_ACTIONS],
         description: 'Filter results by action category: send, lending, swap, or transaction.',
+      },
+      minUsd: {
+        type: 'number',
+        description: 'Minimum transaction amount in USD. Use this for "transactions over $X" queries.',
+      },
+      assetSymbol: {
+        type: 'string',
+        description: 'Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI").',
+      },
+      direction: {
+        type: 'string',
+        enum: ['in', 'out'],
+        description: 'Filter by direction of user balance change: "in" = received, "out" = spent.',
       },
     },
   },
@@ -277,16 +293,72 @@ export const transactionHistoryTool = buildTool({
   ): Promise<{ data: Record<string, unknown>; displayText: string }> {
     const limit = input.limit ?? 10;
     const action = input.action as HistoryAction | undefined;
+    const assetSymbol = input.assetSymbol?.toLowerCase();
+    const direction = input.direction;
+    const minUsd = input.minUsd;
+
+    /**
+     * [v0.46.6] Price snapshot for `minUsd` filtering. Sourced from the
+     * session-injected token-price map (populated by the prefetch step
+     * in audric's engine-factory). Falls back to "no USD value known"
+     * when the asset isn't in the snapshot — those rows skip the
+     * `minUsd` filter rather than being silently dropped, since we
+     * don't have ground truth.
+     */
+    const prices: Record<string, number> | undefined = (
+      context as unknown as { tokenPrices?: Record<string, number> }
+    ).tokenPrices;
+    const priceFor = (sym: string | undefined): number | undefined => {
+      if (!sym || !prices) return undefined;
+      return prices[sym.toUpperCase()] ?? prices[sym.toLowerCase()] ?? prices[sym];
+    };
 
     /**
      * [v1.4] After fetching, narrow by `action` (when supplied), and trim
      * to a `DEFAULT_LOOKBACK_DAYS` window when no explicit date is given —
      * keeps results recent and bounded so the LLM doesn't over-summarize.
+     *
+     * [v0.46.6] Now also honors `assetSymbol`, `direction`, and `minUsd`
+     * so single questions like "show transactions over $5" or "show my
+     * USDC sends" produce a card whose rows already match the question —
+     * the LLM never needs to filter in narration.
      */
     const finalize = (records: TxRecord[]): TxRecord[] => {
       let scoped = records;
       if (action) scoped = scoped.filter((r) => r.action === action);
+      if (assetSymbol) {
+        scoped = scoped.filter((r) => r.asset?.toLowerCase() === assetSymbol);
+      }
+      if (direction) {
+        scoped = scoped.filter((r) => r.direction === direction);
+      }
+      if (minUsd != null && minUsd > 0) {
+        scoped = scoped.filter((r) => {
+          if (r.amount == null) return false;
+          // For USD-pegged assets we treat the unit amount as USD value.
+          // For others, multiply by the snapshot price when known.
+          const sym = r.asset?.toUpperCase() ?? '';
+          const isStableLike =
+            sym === 'USDC' || sym === 'USDT' || sym === 'WUSDC' || sym === 'WUSDT' ||
+            sym === 'SUIUSDT' || sym === 'USDY' || sym === 'USDSUI' || sym === 'USDE' ||
+            sym === 'AUSD' || sym === 'FDUSD' || sym === 'BUCK';
+          const usd = isStableLike ? r.amount : (priceFor(sym) ?? 0) * r.amount;
+          // When we genuinely don't know the price, KEEP the row rather
+          // than silently dropping it — better to over-include than to
+          // hide transactions the user expects to see.
+          if (!isStableLike && priceFor(sym) == null) return true;
+          return usd >= minUsd;
+        });
+      }
       return scoped.slice(0, limit);
+    };
+
+    const filterMeta = {
+      date: input.date ?? null,
+      action: action ?? null,
+      minUsd: minUsd ?? null,
+      assetSymbol: input.assetSymbol ?? null,
+      direction: direction ?? null,
     };
 
     if (context.agent) {
@@ -294,7 +366,7 @@ export const transactionHistoryTool = buildTool({
       const records = await agent.history({ limit: input.date ? limit : Math.max(limit * 4, 50) });
       const filtered = finalize(records);
       return {
-        data: { transactions: filtered, count: filtered.length, date: input.date ?? null, action: action ?? null },
+        data: { transactions: filtered, count: filtered.length, ...filterMeta },
         displayText: `${filtered.length} recent transaction(s)`,
       };
     }
@@ -313,7 +385,7 @@ export const transactionHistoryTool = buildTool({
       const filtered = finalize(records);
       const dateLabel = new Date(input.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
       return {
-        data: { transactions: filtered, count: filtered.length, date: input.date, action: action ?? null },
+        data: { transactions: filtered, count: filtered.length, ...filterMeta },
         displayText: filtered.length > 0
           ? `${filtered.length} transaction(s) on ${dateLabel}`
           : `No transactions found on ${dateLabel}`,
@@ -333,8 +405,7 @@ export const transactionHistoryTool = buildTool({
       data: {
         transactions: filtered,
         count: filtered.length,
-        date: null,
-        action: action ?? null,
+        ...filterMeta,
         lookbackDays: DEFAULT_LOOKBACK_DAYS,
       },
       displayText: `${filtered.length} transaction(s) in the last ${DEFAULT_LOOKBACK_DAYS} days`,
