@@ -47,17 +47,28 @@ export const balanceCheckTool = buildTool({
       const address = getWalletAddress(context);
       const mgr = getMcpManager(context);
 
+      // [v0.47] When a host-side `positionFetcher` is configured (Audric
+      // production), savings/debt/rewards come from the host instead of
+      // NAVI MCP. Skip those MCP calls entirely — they were previously
+      // fetched in parallel and then discarded, wasting 1–4s on the
+      // critical path.
+      const hasPositionFetcher = !!(context.positionFetcher && context.walletAddress);
+
       const [walletCoins, positions, rewards] = await Promise.all([
         fetchWalletCoins(address, context.suiRpcUrl).catch((err) => {
           console.warn('[balance_check] Sui RPC coin fetch failed, falling back to MCP:', err);
           return null;
         }),
-        callNavi(mgr, NaviTools.GET_POSITIONS, {
-          address,
-          protocols: 'navi',
-          format: 'json',
-        }),
-        callNavi(mgr, NaviTools.GET_AVAILABLE_REWARDS, { address }),
+        hasPositionFetcher
+          ? Promise.resolve(null)
+          : callNavi(mgr, NaviTools.GET_POSITIONS, {
+              address,
+              protocols: 'navi',
+              format: 'json',
+            }),
+        hasPositionFetcher
+          ? Promise.resolve(null)
+          : callNavi(mgr, NaviTools.GET_AVAILABLE_REWARDS, { address }),
       ]);
 
       let coins = walletCoins;
@@ -75,10 +86,22 @@ export const balanceCheckTool = buildTool({
 
       const VSUI_COIN_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
       const coinTypes = coins.map((c) => c.coinType).filter(Boolean);
-      const prices = await fetchTokenPrices(coinTypes).catch((err) => {
-        console.warn('[balance_check] DefiLlama price fetch failed:', err);
-        return {} as Record<string, number>;
-      });
+
+      // [v0.47] Run prices and host positionFetcher in parallel. Both depend
+      // only on the now-resolved coin list / address — no need to chain them.
+      // Was previously serial: prices → positionFetcher, costing ~2s extra.
+      const [prices, serverPositions] = await Promise.all([
+        fetchTokenPrices(coinTypes).catch((err) => {
+          console.warn('[balance_check] DefiLlama price fetch failed:', err);
+          return {} as Record<string, number>;
+        }),
+        hasPositionFetcher
+          ? context.positionFetcher!(context.walletAddress!).catch((err) => {
+              console.warn('[balance_check] positionFetcher failed:', err);
+              return null;
+            })
+          : Promise.resolve(null),
+      ]);
 
       if (coins.some((c) => c.coinType === VSUI_COIN_TYPE) && !prices[VSUI_COIN_TYPE]) {
         try {
@@ -134,11 +157,12 @@ export const balanceCheckTool = buildTool({
       let debt: number;
       let pendingRewardsUsd: number;
 
-      if (context.positionFetcher && context.walletAddress) {
-        const sp = await context.positionFetcher(context.walletAddress);
-        savings = sp.savings;
-        debt = sp.borrows;
-        pendingRewardsUsd = sp.pendingRewards;
+      if (serverPositions) {
+        // [v0.47] `serverPositions` was already fetched in the parallel
+        // batch above when `positionFetcher` is configured.
+        savings = serverPositions.savings;
+        debt = serverPositions.borrows;
+        pendingRewardsUsd = serverPositions.pendingRewards;
       } else {
         const posEntries = transformPositions(positions);
         const rewardEntries = transformRewards(rewards);

@@ -63,7 +63,30 @@ export const portfolioAnalysisTool = buildTool({
 
     const DUST_USD = 0.01;
 
-    const coins = await fetchWalletCoins(address, rpcUrl);
+    // [v0.47] Fan out three independent fetches in parallel: wallet coins
+    // (Sui RPC), positions (host fetcher), and 7-day portfolio history
+    // (Audric internal API). Was previously a serial chain costing the sum
+    // of all three; now bound by the slowest. Prices still chain after
+    // coins because they need the resolved coin types.
+    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
+    const [coins, positions, weekHistResult] = await Promise.all([
+      fetchWalletCoins(address, rpcUrl),
+      context.positionFetcher
+        ? context.positionFetcher(address).catch((err) => {
+            console.warn('[portfolio_analysis] positionFetcher failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      apiUrl
+        ? fetch(
+            `${apiUrl}/api/analytics/portfolio-history?days=7`,
+            { headers: { 'x-sui-address': address }, signal: context.signal },
+          )
+            .then((res) => (res.ok ? res.json() as Promise<{ change?: WeekChange }> : null))
+            .catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
     const nonZero = coins.filter((c) => Number(c.totalBalance) > 0);
     const prices = await fetchTokenPrices(nonZero.map((c) => c.coinType)).catch(() => ({} as Record<string, number>));
 
@@ -86,34 +109,19 @@ export const portfolioAnalysisTool = buildTool({
     let savingsApy: number | undefined;
     let dailyEarning: number | undefined;
 
-    if (context.positionFetcher) {
-      try {
-        const positions = await context.positionFetcher(address);
-        savingsValue = positions.savings ?? 0;
-        debtValue = positions.borrows ?? 0;
-        healthFactor = positions.healthFactor ?? null;
-        if (typeof positions.savingsRate === 'number' && positions.savingsRate > 0) {
-          savingsApy = positions.savingsRate;
-          dailyEarning = savingsValue * savingsApy / 365;
-        }
-      } catch { /* fallback to wallet only */ }
+    if (positions) {
+      savingsValue = positions.savings ?? 0;
+      debtValue = positions.borrows ?? 0;
+      healthFactor = positions.healthFactor ?? null;
+      if (typeof positions.savingsRate === 'number' && positions.savingsRate > 0) {
+        savingsApy = positions.savingsRate;
+        dailyEarning = savingsValue * savingsApy / 365;
+      }
     }
 
     let weekChange: WeekChange | undefined;
-    const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
-    if (apiUrl && address) {
-      try {
-        const histRes = await fetch(
-          `${apiUrl}/api/analytics/portfolio-history?days=7`,
-          { headers: { 'x-sui-address': address }, signal: context.signal },
-        );
-        if (histRes.ok) {
-          const hist = (await histRes.json()) as { change?: WeekChange };
-          if (hist.change && hist.change.absoluteUsd !== 0) {
-            weekChange = hist.change;
-          }
-        }
-      } catch { /* supplementary data */ }
+    if (weekHistResult?.change && weekHistResult.change.absoluteUsd !== 0) {
+      weekChange = weekHistResult.change;
     }
 
     const totalValue = walletValue + savingsValue;
