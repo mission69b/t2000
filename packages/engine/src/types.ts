@@ -311,6 +311,15 @@ export interface EngineConfig {
   /** Per-user permission config for USD-threshold write tool gating (B.4). */
   permissionConfig?: import('./permission-rules.js').UserPermissionConfig;
   /**
+   * Saved contacts for the current user. Used by `guardAddressSource`
+   * (a saved contact's address is considered a trusted source for
+   * `send_transfer.to`) and by `permission-rules.resolvePermissionTier`
+   * (sends to non-contact addresses always require confirmation,
+   * regardless of amount). Hosts SHOULD also surface these in the
+   * dynamic system prompt block so the LLM can resolve "send to <name>".
+   */
+  contacts?: ReadonlyArray<{ name: string; address: string }>;
+  /**
    * [v1.4] Cumulative USD already auto-executed in the current session.
    * Forwarded to `ToolContext` and consulted by `resolvePermissionTier` to
    * enforce `autonomousDailyLimit`.

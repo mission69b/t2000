@@ -76,6 +76,21 @@ export const PERMISSION_PRESETS = {
 } satisfies Record<string, UserPermissionConfig>;
 
 /**
+ * True when `to` matches a saved contact's address (case-insensitive,
+ * normalized). Used by `resolvePermissionTier` to enforce the
+ * "first-send to a new raw address always confirms" rule and to keep
+ * the engine + client in sync.
+ */
+export function isKnownContactAddress(
+  to: string,
+  contacts: ReadonlyArray<{ address: string }>,
+): boolean {
+  if (!to) return false;
+  const normalized = to.trim().toLowerCase();
+  return contacts.some((c) => c.address.trim().toLowerCase() === normalized);
+}
+
+/**
  * Resolve the permission tier for a given operation + USD value.
  *
  * [v1.4] When `sessionSpendUsd` is supplied and adding the incoming
@@ -83,12 +98,23 @@ export const PERMISSION_PRESETS = {
  * `config.autonomousDailyLimit`, an otherwise-`auto` tier is downgraded to
  * `confirm`. This is the runtime guard for the daily autonomous spend cap.
  * Tiers above `auto` are returned unchanged.
+ *
+ * Send-safety rule: when `operation === 'send'` and the destination
+ * address is a raw `0x...` (i.e. NOT one of the user's saved contacts),
+ * an otherwise-`auto` tier is downgraded to `confirm` regardless of
+ * amount. This bounds the "LLM/user typo silently ships funds" failure
+ * mode to a single confirmation per recipient — once saved as a contact,
+ * subsequent sends to the same address auto-approve under tier as normal.
  */
 export function resolvePermissionTier(
   operation: string,
   amountUsd: number,
   config: UserPermissionConfig,
   sessionSpendUsd?: number,
+  sendContext?: {
+    to?: string;
+    contacts?: ReadonlyArray<{ address: string }>;
+  },
 ): 'auto' | 'confirm' | 'explicit' {
   const rule = config.rules.find((r) => r.operation === operation);
   const autoBelow = rule?.autoBelow ?? config.globalAutoBelow;
@@ -104,7 +130,16 @@ export function resolvePermissionTier(
     typeof sessionSpendUsd === 'number' &&
     sessionSpendUsd + amountUsd > config.autonomousDailyLimit
   ) {
-    return 'confirm';
+    tier = 'confirm';
+  }
+
+  if (
+    tier === 'auto' &&
+    operation === 'send' &&
+    sendContext?.to &&
+    !isKnownContactAddress(sendContext.to, sendContext.contacts ?? [])
+  ) {
+    tier = 'confirm';
   }
 
   return tier;

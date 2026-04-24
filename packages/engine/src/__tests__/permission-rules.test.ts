@@ -3,6 +3,7 @@ import {
   resolvePermissionTier,
   resolveUsdValue,
   toolNameToOperation,
+  isKnownContactAddress,
   DEFAULT_PERMISSION_CONFIG,
   PERMISSION_PRESETS,
 } from '../permission-rules.js';
@@ -100,6 +101,101 @@ describe('toolNameToOperation', () => {
   it('returns undefined for unknown tool names', () => {
     expect(toolNameToOperation('balance_check')).toBeUndefined();
     expect(toolNameToOperation('health_check')).toBeUndefined();
+  });
+});
+
+describe('isKnownContactAddress', () => {
+  const contacts = [
+    { address: '0x231455f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb896cd' },
+  ];
+
+  it('returns true for an exact match', () => {
+    expect(
+      isKnownContactAddress(
+        '0x231455f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb896cd',
+        contacts,
+      ),
+    ).toBe(true);
+  });
+
+  it('is case-insensitive', () => {
+    expect(
+      isKnownContactAddress(
+        '0x231455F0E9805BDD0945981463DAF0346310A7B3B04A733B011CC791FEB896CD',
+        contacts,
+      ),
+    ).toBe(true);
+  });
+
+  it('returns false when a single character differs (the lost-funds case)', () => {
+    // Note the `9` → `3` typo at position 20 — exactly the user's incident.
+    expect(
+      isKnownContactAddress(
+        '0x231455f0e9805bdd0345981463daf0346310a7b3b04a733b011cc791feb896cd',
+        contacts,
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when contacts list is empty', () => {
+    expect(
+      isKnownContactAddress(
+        '0x231455f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb896cd',
+        [],
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false for an empty `to`', () => {
+    expect(isKnownContactAddress('', contacts)).toBe(false);
+  });
+});
+
+describe('resolvePermissionTier — send-safety contact rule', () => {
+  const knownAddress =
+    '0x231455f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb896cd';
+  const unknownAddress =
+    '0xaaaa55f0e9805bdd0945981463daf0346310a7b3b04a733b011cc791feb89bbb';
+  const contacts = [{ address: knownAddress }];
+
+  it('downgrades auto → confirm when sending to a non-contact raw address', () => {
+    expect(
+      resolvePermissionTier('send', 5, DEFAULT_PERMISSION_CONFIG, undefined, {
+        to: unknownAddress,
+        contacts,
+      }),
+    ).toBe('confirm');
+  });
+
+  it('preserves auto when sending to a saved contact address', () => {
+    expect(
+      resolvePermissionTier('send', 5, DEFAULT_PERMISSION_CONFIG, undefined, {
+        to: knownAddress,
+        contacts,
+      }),
+    ).toBe('auto');
+  });
+
+  it('preserves explicit when sending to non-contact at high amount', () => {
+    expect(
+      resolvePermissionTier('send', 250, DEFAULT_PERMISSION_CONFIG, undefined, {
+        to: unknownAddress,
+        contacts,
+      }),
+    ).toBe('explicit');
+  });
+
+  it('does not affect non-send operations (no contact check)', () => {
+    expect(
+      resolvePermissionTier('save', 5, DEFAULT_PERMISSION_CONFIG, undefined, {
+        to: unknownAddress,
+        contacts,
+      }),
+    ).toBe('auto');
+  });
+
+  it('falls back to auto when no sendContext is provided (back-compat)', () => {
+    expect(resolvePermissionTier('send', 5, DEFAULT_PERMISSION_CONFIG)).toBe('auto');
   });
 });
 

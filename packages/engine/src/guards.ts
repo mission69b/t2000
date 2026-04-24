@@ -81,6 +81,15 @@ export interface GuardConfig {
   costWarning?: boolean;
   retryProtection?: boolean;
   inputValidation?: boolean;
+  /**
+   * Root-cause guard for "LLM types a recipient address from memory and
+   * loses funds to a wrong-but-valid address". When enabled (default),
+   * `send_transfer.to` is rejected unless the address can be sourced
+   * from a saved contact, the user's own wallet, or the user's recent
+   * messages. Set to `false` only if the host has its own equivalent
+   * upstream guard (e.g. an off-process verifier).
+   */
+  addressSource?: boolean;
 }
 
 export const DEFAULT_GUARD_CONFIG: GuardConfig = {
@@ -94,6 +103,7 @@ export const DEFAULT_GUARD_CONFIG: GuardConfig = {
   costWarning: true,
   retryProtection: true,
   inputValidation: true,
+  addressSource: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -184,7 +194,11 @@ function guardIrreversibility(
     return { verdict: 'pass', gate: 'irreversibility', tier: 'safety' };
   }
 
-  const hasPreview = /preview|here.s what|confirm.*send|looks? good/i.test(conversationText);
+  // [security] `confirm.*send` was rewritten to bound the wildcard
+  // span (`.{0,200}`) so the regex is linear-time on degenerate inputs
+  // like a 100KB string starting with "confirm" but never containing
+  // "send". CodeQL flagged the unbounded `.*` as polynomial-redos.
+  const hasPreview = /preview|here.{0,2}s what|confirm.{0,200}send|looks? good/i.test(conversationText);
   if (hasPreview) {
     return { verdict: 'pass', gate: 'irreversibility', tier: 'safety' };
   }
@@ -317,7 +331,12 @@ function guardSlippage(
     return { verdict: 'pass', gate: 'slippage_warning', tier: 'financial' };
   }
 
-  const hasEstimate = /~?\$?[\d,]+\.?\d*\s*(SUI|USDC|USDT|WETH)/i.test(lastAssistantText)
+  // [security] Rewritten to non-overlapping form (`\d[\d,]{0,30}`
+   // followed by an optional `\.\d{1,10}`) so the digit/decimal section
+  // matches in linear time. Previously `[\d,]+\.?\d*` could ambiguously
+  // distribute digits across the two pieces, triggering CodeQL's
+  // polynomial-redos rule on a long input like "1234,1234,...".
+  const hasEstimate = /~?\$?\d[\d,]{0,30}(?:\.\d{1,10})?\s*(SUI|USDC|USDT|WETH)/i.test(lastAssistantText)
     || /approximately|≈|about|expect|receive/i.test(lastAssistantText);
 
   if (hasEstimate) {
@@ -351,6 +370,77 @@ function guardCostWarning(
     gate: 'cost_warning',
     tier: 'ux',
     message: 'This action has a monetary cost. Confirm the user is aware before proceeding.',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// guardAddressSource — root-cause fix for the "LLM mistypes a recipient
+// address from memory and ships funds to a wrong-but-valid address"
+// failure mode. We trust the user, never the model, with addresses.
+//
+// Accepts the `to` field on `send_transfer` only when it can be sourced
+// from one of three trusted origins:
+//   1. A saved contact's address (case-insensitive, normalized)
+//   2. The user's own wallet (sending to self)
+//   3. Verbatim presence in the user's recent messages
+//      (case-insensitive substring match on the raw 0x...64-hex string)
+//
+// Anything else → block with a structured error so the LLM is forced to
+// ask the user to paste the address again rather than re-typing it.
+// ---------------------------------------------------------------------------
+
+const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{64}$/;
+
+function normalizeAddress(addr: string): string {
+  return addr.trim().toLowerCase();
+}
+
+function guardAddressSource(
+  tool: Tool,
+  call: PendingToolCall,
+  userText: string,
+  contacts: ReadonlyArray<{ name: string; address: string }>,
+  walletAddress: string | undefined,
+): GuardResult {
+  if (tool.name !== 'send_transfer') {
+    return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
+  }
+
+  const input = call.input as Record<string, unknown>;
+  const rawTo = String(input.to ?? '');
+  if (!rawTo) {
+    return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
+  }
+
+  // Contact-name passthrough: send_transfer accepts either a 0x address
+  // or a contact name. If it's not in 0x...64-hex form, leave it alone —
+  // the SDK's contact resolver handles names and will throw if unknown.
+  if (!SUI_ADDRESS_REGEX.test(rawTo)) {
+    return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
+  }
+
+  const normalizedTo = normalizeAddress(rawTo);
+
+  if (walletAddress && normalizeAddress(walletAddress) === normalizedTo) {
+    return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
+  }
+
+  for (const c of contacts) {
+    if (normalizeAddress(c.address) === normalizedTo) {
+      return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
+    }
+  }
+
+  if (userText.toLowerCase().includes(normalizedTo)) {
+    return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
+  }
+
+  return {
+    verdict: 'block',
+    gate: 'address_source',
+    tier: 'safety',
+    message:
+      `Safety check failed: the recipient address "${rawTo}" was not provided by the user (no saved contact matches, address is not the user's own wallet, and it does not appear verbatim in the user's recent messages). For safety, addresses must be supplied directly by the user — never reconstructed from memory or partial recall. Ask the user to paste the destination address again exactly.`,
   };
 }
 
@@ -410,7 +500,7 @@ export function runGuards(
   call: PendingToolCall,
   state: GuardRunnerState,
   config: GuardConfig,
-  conversationContext: { fullText: string; lastAssistantText: string },
+  conversationContext: { fullText: string; lastAssistantText: string; recentUserText: string },
   /**
    * [v1.4 Item 4] Optional per-guard observation hook. Fired exactly
    * once per non-`pass` guard verdict (i.e. for every event that ends
@@ -418,6 +508,17 @@ export function runGuards(
    * are caught so a misbehaving collector can't break tool execution.
    */
   onGuardFired?: (guard: GuardMetric) => void,
+  /**
+   * Identity context for the address-source safety guard. The guard
+   * accepts `send_transfer.to` only when sourced from a saved contact,
+   * the user's own wallet, or the user's recent messages — preventing
+   * the LLM from typing addresses from memory and shipping funds to a
+   * wrong-but-syntactically-valid recipient.
+   */
+  identity?: {
+    contacts?: ReadonlyArray<{ name: string; address: string }>;
+    walletAddress?: string;
+  },
 ): GuardCheckResult {
   const results: GuardResult[] = [];
   const now = Date.now();
@@ -462,6 +563,17 @@ export function runGuards(
   // Tier 1: Safety guards
   if (config.retryProtection !== false) {
     results.push(guardRetryProtection(tool, call, state.retryTracker));
+  }
+  if (config.addressSource !== false) {
+    results.push(
+      guardAddressSource(
+        tool,
+        call,
+        conversationContext.recentUserText,
+        identity?.contacts ?? [],
+        identity?.walletAddress,
+      ),
+    );
   }
   if (config.irreversibility !== false) {
     results.push(guardIrreversibility(tool, call, conversationContext.fullText));
@@ -571,8 +683,9 @@ export function updateGuardStateAfterToolResult(
 
 export function extractConversationText(
   messages: Array<{ role: string; content: unknown }>,
-): { fullText: string; lastAssistantText: string } {
+): { fullText: string; lastAssistantText: string; recentUserText: string } {
   const textParts: string[] = [];
+  const userParts: string[] = [];
   let lastAssistantText = '';
 
   for (const msg of messages) {
@@ -582,13 +695,35 @@ export function extractConversationText(
         textParts.push(block.text);
         if (msg.role === 'assistant') {
           lastAssistantText = block.text;
+        } else if (msg.role === 'user') {
+          userParts.push(block.text);
         }
       }
     }
   }
 
+  // Only the most recent ~10 user turns are considered an authoritative
+  // source for `guardAddressSource`. Older addresses fall out of the
+  // window so a user can't accidentally re-use a stale address from
+  // 50 messages ago without re-pasting it.
+  const RECENT_USER_TURN_WINDOW = 10;
+  const recentUserParts = userParts.slice(-RECENT_USER_TURN_WINDOW);
+
+  // [security] Cap each returned string at ~16KB before guards run any
+  // regex over them. A few of the heuristic regexes downstream (e.g.
+  // `/preview|...|confirm.*send|.../`, `/[\d,]+\.?\d*\s*(SUI|USDC|...)/`)
+  // backtrack super-linearly on degenerate inputs — bounding the input
+  // here keeps CodeQL's polynomial-regex alert at bay AND removes the
+  // theoretical ReDoS surface from a maliciously crafted long message.
+  // 16KB is comfortably larger than any realistic conversation slice we
+  // need for the heuristic checks (which only look for keywords/numbers).
+  const MAX_REGEX_INPUT = 16 * 1024;
+  const cap = (s: string): string =>
+    s.length <= MAX_REGEX_INPUT ? s : s.slice(-MAX_REGEX_INPUT);
+
   return {
-    fullText: textParts.join('\n'),
-    lastAssistantText,
+    fullText: cap(textParts.join('\n')),
+    lastAssistantText: cap(lastAssistantText),
+    recentUserText: cap(recentUserParts.join('\n')),
   };
 }
