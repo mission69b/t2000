@@ -90,6 +90,14 @@ export interface GuardConfig {
    * upstream guard (e.g. an off-process verifier).
    */
   addressSource?: boolean;
+  /**
+   * Companion to `addressSource`: blocks send_transfer that defaults to
+   * USDC when the user's recent messages clearly named a non-USDC token
+   * (SUI, USDT, WAL, etc.). Without this, the LLM would call
+   * `send_transfer({ amount, to })` for a "send my SUI" request and the
+   * tool would silently ship USDC. Default on.
+   */
+  assetIntent?: boolean;
 }
 
 export const DEFAULT_GUARD_CONFIG: GuardConfig = {
@@ -104,6 +112,7 @@ export const DEFAULT_GUARD_CONFIG: GuardConfig = {
   retryProtection: true,
   inputValidation: true,
   addressSource: true,
+  assetIntent: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -395,6 +404,73 @@ function normalizeAddress(addr: string): string {
   return addr.trim().toLowerCase();
 }
 
+/**
+ * [send-safety v2] Bound the failure mode where the LLM was asked to
+ * send a non-USDC token (e.g. just-swapped SUI) but called send_transfer
+ * with no `asset` field. The tool defaults `asset` to USDC, so the user
+ * lost real money: "Done! Sent your SUI" while only USDC moved.
+ *
+ * Heuristic: if any of the supported NON-USDC tokens appears as a word
+ * in the user's recent messages AND the call has no `asset` (or asset
+ * is USDC while a different token is mentioned), block the call and
+ * force the LLM to re-issue with an explicit `asset`.
+ *
+ * Tokens are matched as standalone words (`\bSUI\b`, `\bWAL\b`, etc.)
+ * to avoid false positives on things like "USDC" or addresses that
+ * happen to contain the substring "sui".
+ */
+const NON_USDC_TOKEN_WORDS: ReadonlyArray<{ symbol: string; pattern: RegExp }> = [
+  // Patterns are anchored with \b on both sides. Case-insensitive.
+  { symbol: 'SUI', pattern: /\bSUI\b/i },
+  { symbol: 'USDT', pattern: /\bUSDT\b/i },
+  { symbol: 'USDe', pattern: /\bUSDe\b/i },
+  { symbol: 'USDsui', pattern: /\bUSDsui\b/i },
+  { symbol: 'WAL', pattern: /\bWAL\b/i },
+  { symbol: 'ETH', pattern: /\bETH\b/i },
+  { symbol: 'NAVX', pattern: /\bNAVX\b/i },
+  { symbol: 'GOLD', pattern: /\bGOLD\b/i },
+];
+
+function guardAssetIntent(
+  tool: Tool,
+  call: PendingToolCall,
+  userText: string,
+): GuardResult {
+  if (tool.name !== 'send_transfer') {
+    return { verdict: 'pass', gate: 'asset_intent', tier: 'safety' };
+  }
+
+  const input = call.input as Record<string, unknown>;
+  const assetWasSet = !(input.asset === undefined || input.asset === null || input.asset === '');
+
+  // If the LLM made any explicit asset choice, trust it — even if it's
+  // USDC. The danger we're guarding against is the *silent default* to
+  // USDC when the schema didn't expose `asset` at all (the original
+  // failure mode). Once the LLM has explicitly committed to a token,
+  // the user can verify and cancel at the permission card.
+  if (assetWasSet) {
+    return { verdict: 'pass', gate: 'asset_intent', tier: 'safety' };
+  }
+
+  // Asset was omitted. Block iff the user named a non-USDC token in
+  // their recent messages, since the omitted-asset path defaults to
+  // USDC and would silently ship the wrong token.
+  const mentioned = NON_USDC_TOKEN_WORDS.find((t) => t.pattern.test(userText));
+  if (!mentioned) {
+    return { verdict: 'pass', gate: 'asset_intent', tier: 'safety' };
+  }
+
+  return {
+    verdict: 'block',
+    gate: 'asset_intent',
+    tier: 'safety',
+    message:
+      `Asset mismatch: the user's recent messages mention "${mentioned.symbol}" but send_transfer was called without an \`asset\` field (defaults to USDC). ` +
+      `If the user asked you to send ${mentioned.symbol}, re-issue send_transfer with \`asset: "${mentioned.symbol}"\`. ` +
+      `If the user really meant USDC, set \`asset: "USDC"\` explicitly to confirm intent. Never default to USDC when the user named a different token.`,
+  };
+}
+
 function guardAddressSource(
   tool: Tool,
   call: PendingToolCall,
@@ -574,6 +650,9 @@ export function runGuards(
         identity?.walletAddress,
       ),
     );
+  }
+  if (config.assetIntent !== false) {
+    results.push(guardAssetIntent(tool, call, conversationContext.recentUserText));
   }
   if (config.irreversibility !== false) {
     results.push(guardIrreversibility(tool, call, conversationContext.fullText));
