@@ -291,6 +291,34 @@ describe('guardSwapPreview (swap_execute requires recent swap_quote)', () => {
     ).toBe(false);
   });
 
+  it('regression: null input from early-dispatch path does NOT record a quote (must be passed through)', () => {
+    // Repros the v0.46.13 bug where EarlyToolDispatcher executed swap_quote
+    // but the engine called updateGuardStateAfterToolResult with `input: null`,
+    // so SwapQuoteTracker never saw the (from,to,amount) and every subsequent
+    // swap_execute was blocked. The fix is to forward the input from the
+    // dispatcher entry — this test guards against silently regressing again.
+    const state = createGuardRunnerState();
+    updateGuardStateAfterToolResult(
+      'swap_quote',
+      swapQuote,
+      null,
+      { fromAmount: 1, toAmount: 1.05, route: 'cetus', priceImpact: 0.001 },
+      false,
+      state,
+    );
+
+    const result = runGuards(
+      swapExecute,
+      makeCall({ from: 'USDC', to: 'SUI', amount: 1 }),
+      state,
+      DEFAULT_GUARD_CONFIG,
+      EMPTY_CONV,
+    );
+
+    expect(result.blocked).toBe(true);
+    expect(result.blockGate).toBe('swap_preview');
+  });
+
   it('preflight (from===to) still wins over swap_preview', () => {
     const result = runGuards(
       swapExecute,

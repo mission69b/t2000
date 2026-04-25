@@ -55,6 +55,15 @@ describe('EarlyToolDispatcher', () => {
     expect(dispatched).toBe(false);
   });
 
+  it('exposes original tool input by tool_use_id (needed for guard state recording)', () => {
+    const tool = makeTool();
+    const dispatcher = new EarlyToolDispatcher([tool], ctx);
+    dispatcher.tryDispatch(makeCall('t1', 'read_tool', { from: 'USDC', to: 'SUI', amount: 1 }));
+
+    expect(dispatcher.getInputById('t1')).toEqual({ from: 'USDC', to: 'SUI', amount: 1 });
+    expect(dispatcher.getInputById('missing')).toBeUndefined();
+  });
+
   it('collects results in dispatch order regardless of completion order', async () => {
     let resolveFirst!: (v: { data: unknown }) => void;
     let resolveSecond!: (v: { data: unknown }) => void;
