@@ -133,10 +133,18 @@ export function resolvePermissionTier(
     tier = 'confirm';
   }
 
+  // Send-safety: a *raw* 0x recipient that doesn't match a saved
+  // contact forces confirm. Contact names (e.g. `to: "wallet1"`) are
+  // already trusted — the user explicitly saved that contact — and get
+  // resolved to addresses downstream by `effects.resolveContact`. Without
+  // the `0x` guard, a contact-name send was incorrectly demoted to
+  // confirm because `isKnownContactAddress("wallet1", contacts)` compares
+  // the name against contact *addresses* and returns false.
   if (
     tier === 'auto' &&
     operation === 'send' &&
     sendContext?.to &&
+    sendContext.to.startsWith('0x') &&
     !isKnownContactAddress(sendContext.to, sendContext.contacts ?? [])
   ) {
     tier = 'confirm';

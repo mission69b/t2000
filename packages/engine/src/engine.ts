@@ -322,6 +322,21 @@ export class QueryEngine {
       sessionSpendUsd: this.sessionSpendUsd,
     };
 
+    // [v0.46.16] Sui RPC indexer lag — `executeTransactionBlock` returns
+    // as soon as the tx is included in a checkpoint, but the public RPC's
+    // owned-coin index trails by ~500-1500ms. Without this delay the
+    // injected `balance_check` returns the *pre-write* snapshot and the
+    // LLM either trusts it (wrong) or has to reason around it (noisy).
+    // 1500ms catches ~99% of cases on Sui mainnet; the refresh is async
+    // anyway so this doesn't block the UI's pending_action resolution.
+    if (!signal.aborted) {
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(resolve, 1500);
+        signal.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
+      });
+    }
+    if (signal.aborted) return;
+
     // Run all refreshes in parallel — they're read-only and target
     // different RPC endpoints (wallet, NAVI positions, health). The
     // common case (1-3 tools) finishes well under 1s.
