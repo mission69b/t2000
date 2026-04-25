@@ -103,6 +103,16 @@ export class EarlyToolDispatcher {
   }
 
   /**
+   * Look up the original tool input by `tool_use_id`. Used by the engine to
+   * feed `updateGuardStateAfterToolResult` (which needs the call input to
+   * record swap_quote → swap_execute pairing, etc.) for tools that were
+   * dispatched here instead of going through the normal post-stream loop.
+   */
+  getInputById(toolUseId: string): unknown | undefined {
+    return this.entries.find((e) => e.call.id === toolUseId)?.call.input;
+  }
+
+  /**
    * Collect all results in original dispatch order.
    * Yields `tool_result` events as each promise resolves.
    */

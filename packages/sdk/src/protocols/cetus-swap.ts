@@ -66,7 +66,7 @@ export async function findSwapRoute(params: {
       amountIn: routerData.amountIn.toString(),
       amountOut: routerData.amountOut.toString(),
       byAmountIn: params.byAmountIn,
-      priceImpact: routerData.deviationRatio,
+      priceImpact: normalizePriceImpact(routerData.deviationRatio),
       insufficientLiquidity: true,
     };
   }
@@ -81,9 +81,22 @@ export async function findSwapRoute(params: {
     amountIn: routerData.amountIn.toString(),
     amountOut: routerData.amountOut.toString(),
     byAmountIn: params.byAmountIn,
-    priceImpact: routerData.deviationRatio,
+    priceImpact: normalizePriceImpact(routerData.deviationRatio),
     insufficientLiquidity: false,
   };
+}
+
+/**
+ * Cetus' aggregator types `deviationRatio` as `number`, but in some routes
+ * the router actually returns a string ("0.001234"). The SDK type lies, so we
+ * always coerce to a finite number here (NaN/null/undefined → 0). Without
+ * this every downstream consumer that calls `priceImpact.toFixed(...)` will
+ * crash at runtime — including the Audric SwapQuoteCard, which takes the
+ * whole chat UI down through its error boundary.
+ */
+function normalizePriceImpact(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /**

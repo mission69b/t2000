@@ -710,8 +710,14 @@ export class QueryEngine {
               }
             }
             const tool = findTool(this.tools, earlyEvent.toolName);
+            // Pull the original input back off the dispatcher so guard state
+            // (e.g. SwapQuoteTracker) can key off it. Passing `null` here was
+            // a silent regression that made guardSwapPreview block every
+            // swap_execute even after a successful early-dispatched
+            // swap_quote.
+            const earlyInput = dispatcher.getInputById(earlyEvent.toolUseId) ?? null;
             updateGuardStateAfterToolResult(
-              earlyEvent.toolName, tool, null, earlyEvent.result, earlyEvent.isError, this.guardState,
+              earlyEvent.toolName, tool, earlyInput, earlyEvent.result, earlyEvent.isError, this.guardState,
             );
 
             let enrichedResult = earlyEvent.result;
