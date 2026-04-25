@@ -197,6 +197,31 @@ describe('resolvePermissionTier — send-safety contact rule', () => {
   it('falls back to auto when no sendContext is provided (back-compat)', () => {
     expect(resolvePermissionTier('send', 5, DEFAULT_PERMISSION_CONFIG)).toBe('auto');
   });
+
+  it('regression: contact-name recipient (e.g. "wallet1") stays auto', () => {
+    // Repros the v0.46.15 bug where a send to a saved contact via its
+    // *name* ("send 1 SUI to wallet1") was demoted to confirm because
+    // `isKnownContactAddress("wallet1", contacts)` compared the name
+    // string against contact *addresses* and returned false. Contact-
+    // name sends are inherently trusted (the user explicitly saved the
+    // contact) and get resolved to addresses downstream — only *raw* 0x
+    // recipients with no contact match should be force-confirmed.
+    expect(
+      resolvePermissionTier('send', 5, DEFAULT_PERMISSION_CONFIG, undefined, {
+        to: 'wallet1',
+        contacts,
+      }),
+    ).toBe('auto');
+  });
+
+  it('regression: empty/non-0x recipient stays auto regardless of contacts', () => {
+    expect(
+      resolvePermissionTier('send', 5, DEFAULT_PERMISSION_CONFIG, undefined, {
+        to: 'alex@example.com',
+        contacts: [],
+      }),
+    ).toBe('auto');
+  });
 });
 
 describe('PERMISSION_PRESETS', () => {
