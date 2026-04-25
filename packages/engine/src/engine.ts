@@ -826,6 +826,17 @@ export class QueryEngine {
         const needsConfirmation = (() => {
           if (!tool || tool.isReadOnly) return false;
           if (tool.permissionLevel === 'explicit') return true;
+          // [v0.46.15] Honor `permissionLevel: 'auto'` on write tools even
+          // when no agent is present. These are custom tools (e.g. audric's
+          // server-owned save_contact / savings_goal_*) that persist via
+          // their own data layer (Prisma) and never need on-chain signing.
+          // They explicitly opted into auto by setting the permission
+          // level — gating them on `context.agent` here silently broke
+          // every audric Prisma-backed write tool. Tools that DO need
+          // an agent must NOT set permissionLevel: 'auto'.
+          if (tool.permissionLevel === 'auto' && !toolNameToOperation(call.name)) {
+            return false;
+          }
           // Without an agent, write tools can't execute server-side —
           // always require confirmation so the client handles execution.
           if (!context.agent && !tool.isReadOnly) return true;
