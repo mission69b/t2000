@@ -98,6 +98,17 @@ export interface GuardConfig {
    * tool would silently ship USDC. Default on.
    */
   assetIntent?: boolean;
+  /**
+   * Root-cause fix for "LLM hallucinates a stale training-data price
+   * (e.g. '$3.50/SUI') and shows the user a wildly wrong estimate before
+   * the swap card renders". When enabled (default), `swap_execute` is
+   * blocked unless a matching `swap_quote(from, to, amount)` ran in the
+   * recent past (60s window, ±1% amount tolerance). The block forces the
+   * LLM to fetch a real on-chain quote and cite its actual numbers, not
+   * a guess. Set to `false` only if the host has its own pre-execution
+   * quote requirement.
+   */
+  swapPreview?: boolean;
 }
 
 export const DEFAULT_GUARD_CONFIG: GuardConfig = {
@@ -113,6 +124,7 @@ export const DEFAULT_GUARD_CONFIG: GuardConfig = {
   inputValidation: true,
   addressSource: true,
   assetIntent: true,
+  swapPreview: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -169,6 +181,70 @@ export class RetryTracker {
     const prev = this.executed.get(this.key(toolName, input));
     if (!prev) return { blocked: false };
     return { blocked: true, previousResult: prev.result };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SwapQuoteTracker — records swap_quote calls so swapPreview can verify a
+// swap_execute was preceded by a real on-chain quote. Without this, the
+// LLM falls back to training-memory prices and gives the user wildly wrong
+// estimates (the "$3.50/SUI when SUI is $0.95" class of bugs).
+// ---------------------------------------------------------------------------
+
+interface RecordedSwapQuote {
+  from: string;
+  to: string;
+  amount: number;
+  ts: number;
+}
+
+export class SwapQuoteTracker {
+  /** Quotes recorded in the recent window. Trimmed lazily on every check. */
+  private quotes: RecordedSwapQuote[] = [];
+
+  /** Match window: 60s is generous enough for slow LLM turns but tight enough
+   * to invalidate stale quotes from earlier in the session. */
+  private readonly windowMs = 60_000;
+
+  /** Amount tolerance: ±1% (covers gas-padding, integer-rounding, and the
+   * rare case where the LLM rounds the input differently between quote and
+   * execute). Prices barely move in 60s so 1% is forgiving but meaningful. */
+  private readonly amountTolerance = 0.01;
+
+  /**
+   * Normalize a token identifier so symbol vs. coinType vs. case don't
+   * cause spurious mismatches. Lowercase + trim is sufficient because the
+   * SDK's resolver itself is case-insensitive on symbols.
+   */
+  private normalize(token: string): string {
+    return token.trim().toLowerCase();
+  }
+
+  record(input: { from: string; to: string; amount: number }): void {
+    const now = Date.now();
+    this.quotes.push({
+      from: this.normalize(input.from),
+      to: this.normalize(input.to),
+      amount: input.amount,
+      ts: now,
+    });
+    const cutoff = now - this.windowMs;
+    this.quotes = this.quotes.filter((q) => q.ts > cutoff);
+  }
+
+  hasMatchingQuote(input: { from: string; to: string; amount: number }): boolean {
+    const cutoff = Date.now() - this.windowMs;
+    const fromN = this.normalize(input.from);
+    const toN = this.normalize(input.to);
+    const target = input.amount;
+    return this.quotes.some(
+      (q) =>
+        q.ts > cutoff &&
+        q.from === fromN &&
+        q.to === toN &&
+        target > 0 &&
+        Math.abs(q.amount - target) / target <= this.amountTolerance,
+    );
   }
 }
 
@@ -471,6 +547,57 @@ function guardAssetIntent(
   };
 }
 
+// ---------------------------------------------------------------------------
+// guardSwapPreview — root-cause fix for "LLM hallucinates a stale price
+// (e.g. '$3.50/SUI' when SUI is $0.95) and shows the user a wildly wrong
+// estimate before the swap card renders". We require swap_execute to be
+// preceded by a real on-chain swap_quote so the LLM has authoritative
+// numbers (price impact, route, exact output) to cite.
+//
+// Match rule:
+//   - Same `from` and `to` token identifiers (case-insensitive).
+//   - `amount` within ±1% of the quoted amount.
+//   - swap_quote ran within the last 60s (current turn is well within).
+//
+// Anything else → block with a structured error so the LLM is forced to
+// call swap_quote first and re-issue swap_execute with the same params.
+// ---------------------------------------------------------------------------
+
+function guardSwapPreview(
+  tool: Tool,
+  call: PendingToolCall,
+  swapQuoteTracker: SwapQuoteTracker,
+): GuardResult {
+  if (tool.name !== 'swap_execute') {
+    return { verdict: 'pass', gate: 'swap_preview', tier: 'safety' };
+  }
+
+  const input = call.input as { from?: unknown; to?: unknown; amount?: unknown };
+  const from = typeof input.from === 'string' ? input.from : '';
+  const to = typeof input.to === 'string' ? input.to : '';
+  const amount = Number(input.amount ?? 0);
+
+  // If inputs are malformed, let `inputValidation`/`preflight` handle it —
+  // this guard is specifically about quote freshness, not input shape.
+  if (!from || !to || !(amount > 0)) {
+    return { verdict: 'pass', gate: 'swap_preview', tier: 'safety' };
+  }
+
+  if (swapQuoteTracker.hasMatchingQuote({ from, to, amount })) {
+    return { verdict: 'pass', gate: 'swap_preview', tier: 'safety' };
+  }
+
+  return {
+    verdict: 'block',
+    gate: 'swap_preview',
+    tier: 'safety',
+    message:
+      `swap_execute requires a recent matching swap_quote so the user sees an accurate preview. ` +
+      `Call swap_quote({ from: "${from}", to: "${to}", amount: ${amount} }) first, then re-issue swap_execute with the same params. ` +
+      `swap_quote is read-only and returns the real on-chain output, route, and price impact — never estimate from memory.`,
+  };
+}
+
 function guardAddressSource(
   tool: Tool,
   call: PendingToolCall,
@@ -560,6 +687,7 @@ export function guardStaleData(toolFlags: ToolFlags): GuardInjection | null {
 export interface GuardRunnerState {
   balanceTracker: BalanceTracker;
   retryTracker: RetryTracker;
+  swapQuoteTracker: SwapQuoteTracker;
   lastHealthFactor: number | null;
 }
 
@@ -567,6 +695,7 @@ export function createGuardRunnerState(): GuardRunnerState {
   return {
     balanceTracker: new BalanceTracker(),
     retryTracker: new RetryTracker(),
+    swapQuoteTracker: new SwapQuoteTracker(),
     lastHealthFactor: null,
   };
 }
@@ -653,6 +782,9 @@ export function runGuards(
   }
   if (config.assetIntent !== false) {
     results.push(guardAssetIntent(tool, call, conversationContext.recentUserText));
+  }
+  if (config.swapPreview !== false) {
+    results.push(guardSwapPreview(tool, call, state.swapQuoteTracker));
   }
   if (config.irreversibility !== false) {
     results.push(guardIrreversibility(tool, call, conversationContext.fullText));
@@ -750,6 +882,20 @@ export function updateGuardStateAfterToolResult(
     const hf = Number(r.healthFactor ?? r.health_factor ?? r.hf);
     if (!isNaN(hf) && hf > 0) {
       state.lastHealthFactor = hf;
+    }
+  }
+
+  // Record successful swap_quote calls so guardSwapPreview can verify a
+  // matching quote ran before swap_execute. We key off the *input* (not
+  // the result) so the LLM can use the same params for both calls and
+  // the match is unambiguous.
+  if (toolName === 'swap_quote' && input && typeof input === 'object') {
+    const i = input as { from?: unknown; to?: unknown; amount?: unknown };
+    const from = typeof i.from === 'string' ? i.from : '';
+    const to = typeof i.to === 'string' ? i.to : '';
+    const amount = Number(i.amount ?? 0);
+    if (from && to && amount > 0) {
+      state.swapQuoteTracker.record({ from, to, amount });
     }
   }
 
