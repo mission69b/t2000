@@ -17,14 +17,16 @@
 // `process.env.BLOCKVISION_API_KEY` in the audric web app and is threaded
 // into `ToolContext.blockvisionApiKey` via the engine factory.
 //
-// Failure mode: degraded fallback. If BlockVision returns 5xx or the
-// `apiKey` is missing/blank we drop to a Sui-RPC + hardcoded-stable
-// allow-list path. The portfolio still resolves with raw balances; coins
-// in `STABLE_USD_PRICES` get a $1.00 mark, everything else gets `null`
-// price. Acceptable for Audric's stablecoin-heavy users — the wallet/
-// holdings list still renders, only USD value rolls up incompletely.
-// The `source` field on the returned portfolio surfaces the path so
-// callers can decide whether to badge "approximate" totals.
+// Failure mode: layered fallback. If BlockVision `/account/coins` returns
+// 5xx, 429, or the `apiKey` is missing/blank we drop to a Sui-RPC path
+// for the coin list, then [v0.50.3] still attempt the BlockVision
+// `/coin/price/list` endpoint to USD-price non-stable holdings. Only when
+// BOTH BV endpoints fail do we degrade to the hardcoded stable allow-list
+// (USDC/USDT/USDe/USDsui get $1.00, everything else `null`). The two
+// endpoints have separate rate limits and price-list responses are cached
+// in-process for `CACHE_TTL_MS`, so the second call is frequently a hot
+// hit. The `source` field on the returned portfolio surfaces the final
+// path so callers can decide whether to badge "approximate" totals.
 // ---------------------------------------------------------------------------
 
 import { getDecimalsForCoinType, resolveSymbol, normalizeCoinType } from '@t2000/sdk';
@@ -155,7 +157,12 @@ export async function fetchAddressPortfolio(
           return blockvision;
         }
       }
-      const degraded = await fetchPortfolioFromSuiRpc(address, fallbackRpcUrl);
+      // [v0.50.3] Pass apiKey through so the RPC fallback can still use the
+      // BlockVision price-list endpoint to USD-price non-stables. Without
+      // this, a transient `/account/coins` failure (429, 5xx, network) would
+      // silently zero out every non-stable holding in the wallet view —
+      // exactly the regression that surfaced under the v0.50.1 burst.
+      const degraded = await fetchPortfolioFromSuiRpc(address, apiKey, fallbackRpcUrl);
       portfolioCache.set(address, { data: degraded, ts: Date.now() });
       return degraded;
     } finally {
@@ -238,6 +245,7 @@ async function fetchPortfolioFromBlockVision(
 
 async function fetchPortfolioFromSuiRpc(
   address: string,
+  apiKey: string | undefined,
   fallbackRpcUrl?: string,
 ): Promise<AddressPortfolio> {
   const walletCoins = await fetchWalletCoins(address, fallbackRpcUrl).catch((err) => {
@@ -245,17 +253,37 @@ async function fetchPortfolioFromSuiRpc(
     return [];
   });
 
+  // [v0.50.3] When the BV `/account/coins` endpoint is unavailable
+  // (typically a 429 burst, sometimes a 5xx) we still hit the BV
+  // `/coin/price/list` endpoint to USD-price non-stable holdings. The two
+  // endpoints have separate rate limits and price-list responses are
+  // cached for `CACHE_TTL_MS`, so this is cheap and frequently a hot hit.
+  // If price-list ALSO fails (e.g. true BV outage) we degrade further to
+  // stables-only, which matches the v0.50.2 behaviour. Net effect: one
+  // more chance to recover from a BV blip before the wallet shows $0.
+  const nonStableCoinTypes = walletCoins
+    .map((c) => c.coinType)
+    .filter((coinType) => !(coinType in STABLE_USD_PRICES));
+  const livePrices =
+    apiKey && apiKey.trim().length > 0 && nonStableCoinTypes.length > 0
+      ? await fetchTokenPrices(nonStableCoinTypes, apiKey).catch((err) => {
+          console.warn('[blockvision-prices] price-list fallback failed:', err);
+          return {} as Record<string, { price: number; change24h?: number }>;
+        })
+      : {};
+
   const coins: PortfolioCoin[] = walletCoins.map((c) => {
     const stablePrice = STABLE_USD_PRICES[c.coinType] ?? null;
+    const livePrice = livePrices[c.coinType]?.price ?? null;
+    const price = stablePrice ?? livePrice;
     const amount = Number(c.totalBalance) / 10 ** c.decimals;
-    const usdValue =
-      stablePrice != null && Number.isFinite(amount) ? amount * stablePrice : null;
+    const usdValue = price != null && Number.isFinite(amount) ? amount * price : null;
     return {
       coinType: c.coinType,
       symbol: c.symbol,
       decimals: c.decimals,
       balance: c.totalBalance,
-      price: stablePrice,
+      price,
       usdValue,
     };
   });

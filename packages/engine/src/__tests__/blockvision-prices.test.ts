@@ -109,7 +109,7 @@ describe('blockvision-prices — fetchAddressPortfolio', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('2) 5xx → falls back to Sui-RPC + hardcoded stables (source = sui-rpc-degraded)', async () => {
+  it('2) 5xx on BOTH BV endpoints → falls back to Sui-RPC + hardcoded stables (source = sui-rpc-degraded)', async () => {
     const fetchMock = vi.fn(async (input: FetchInput) => {
       if (isBlockVisionHost(input)) {
         return new Response('upstream', { status: 503 }) as unknown as Response;
@@ -134,6 +134,78 @@ describe('blockvision-prices — fetchAddressPortfolio', () => {
     const sui = portfolio.coins.find((c) => c.coinType === SUI_TYPE);
     expect(sui?.price).toBeNull();
     expect(sui?.usdValue).toBeNull();
+  });
+
+  it('2b) [v0.50.3] 5xx on /account/coins ONLY → price-list endpoint still USD-prices non-stables', async () => {
+    // Regression guard: pre-v0.50.3 the RPC fallback was stables-only, so a
+    // transient `/account/coins` failure (typical 429 burst behavior) would
+    // silently zero out every non-stable holding. The fix wires the BV
+    // `/coin/price/list` endpoint through the fallback path — it has a
+    // separate rate limit and is cached — so SUI/MANIFEST/etc still resolve.
+    const fetchMock = vi.fn(async (input: FetchInput) => {
+      const url = urlOf(input);
+      if (url.includes('/sui/account/coins')) {
+        return new Response('rate limited', { status: 429 }) as unknown as Response;
+      }
+      if (url.includes('/sui/coin/price/list')) {
+        return mockJsonResponse({
+          code: 200,
+          message: 'OK',
+          result: { prices: { [SUI_TYPE_LONG]: '3.5' } },
+        });
+      }
+      // Sui RPC — coin list
+      return mockJsonResponse({
+        jsonrpc: '2.0',
+        id: 1,
+        result: [
+          { coinType: USDC_TYPE, totalBalance: '7000000', coinObjectCount: 1 },
+          { coinType: SUI_TYPE, totalBalance: '2000000000', coinObjectCount: 1 },
+        ],
+      });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const portfolio = await fetchAddressPortfolio(ADDRESS, 'test-key', 'https://rpc.local');
+    expect(portfolio.source).toBe('sui-rpc-degraded');
+    const usdc = portfolio.coins.find((c) => c.coinType === USDC_TYPE);
+    expect(usdc?.price).toBe(1);
+    expect(usdc?.usdValue).toBeCloseTo(7);
+    // SUI now resolves via /coin/price/list fallback (was null pre-v0.50.3).
+    const sui = portfolio.coins.find((c) => c.coinType === SUI_TYPE);
+    expect(sui?.price).toBeCloseTo(3.5);
+    expect(sui?.usdValue).toBeCloseTo(7);
+    expect(portfolio.totalUsd).toBeCloseTo(14);
+  });
+
+  it('2c) [v0.50.3] /account/coins 429 + /coin/price/list also fails → graceful degrade to stables-only', async () => {
+    // Worst case: a true BlockVision outage. Both endpoints fail. The
+    // wallet still resolves with stables priced at $1.00 — same as
+    // pre-v0.50.3 — non-stables drop to `null` USD. Net effect: the
+    // hardening can only IMPROVE outcomes, never regress them.
+    const fetchMock = vi.fn(async (input: FetchInput) => {
+      if (isBlockVisionHost(input)) {
+        return new Response('upstream', { status: 503 }) as unknown as Response;
+      }
+      return mockJsonResponse({
+        jsonrpc: '2.0',
+        id: 1,
+        result: [
+          { coinType: USDC_TYPE, totalBalance: '5000000', coinObjectCount: 1 },
+          { coinType: NAVX_TYPE, totalBalance: '5000000000', coinObjectCount: 1 },
+        ],
+      });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const portfolio = await fetchAddressPortfolio(ADDRESS, 'test-key', 'https://rpc.local');
+    expect(portfolio.source).toBe('sui-rpc-degraded');
+    const usdc = portfolio.coins.find((c) => c.coinType === USDC_TYPE);
+    expect(usdc?.price).toBe(1);
+    expect(usdc?.usdValue).toBeCloseTo(5);
+    const navx = portfolio.coins.find((c) => c.coinType === NAVX_TYPE);
+    expect(navx?.price).toBeNull();
+    expect(navx?.usdValue).toBeNull();
   });
 
   it('3) missing apiKey → degraded mode without ever calling BlockVision', async () => {
