@@ -10,7 +10,9 @@ import {
 } from '../navi-transforms.js';
 import {
   fetchAddressPortfolio,
+  fetchAddressDefiPortfolio,
   type AddressPortfolio,
+  type DefiSummary,
 } from '../blockvision-prices.js';
 
 const GAS_RESERVE_SUI = 0.05;
@@ -173,7 +175,15 @@ export const balanceCheckTool = buildTool({
       // (Sui RPC fetchWalletCoins + DefiLlama fetchTokenPrices) pair.
       // Run alongside positions / rewards / positionFetcher so total
       // wall time is bound by the slowest of the four.
-      const [portfolio, positions, rewards, serverPositions] = await Promise.all([
+      //
+      // [v0.50] DeFi portfolio fetch added as a 5th parallel leg —
+      // hits BlockVision /account/defiPortfolio for the top 6 Sui DeFi
+      // protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath, Haedal).
+      // Excludes NAVI to avoid double-counting against
+      // positionFetcher/MCP savings. Cached 60s, parallel-fanout, 5xx
+      // on one protocol drops just that protocol. See
+      // blockvision-prices.ts header for the design rationale.
+      const [portfolio, positions, rewards, serverPositions, defiPortfolio] = await Promise.all([
         loadPortfolio(
           address,
           context.blockvisionApiKey,
@@ -211,6 +221,21 @@ export const balanceCheckTool = buildTool({
               return null;
             })
           : Promise.resolve(null),
+        // [v0.50] DeFi leg — independent of NAVI (excluded) and the wallet
+        // portfolio (which only has coin holdings). Failure here surfaces
+        // as defi.totalUsd === 0 and `source: 'degraded'`, leaving the
+        // rest of balance_check unaffected. The fetcher fills its own
+        // prices via fetchTokenPrices for any coin types it discovers.
+        fetchAddressDefiPortfolio(address, context.blockvisionApiKey).catch((err) => {
+          console.warn('[balance_check] defi fetch failed:', err);
+          const fallback: DefiSummary = {
+            totalUsd: 0,
+            perProtocol: {},
+            pricedAt: Date.now(),
+            source: 'degraded',
+          };
+          return fallback;
+        }),
       ]);
 
       // [v1.4.1 — M1'] vSUI workaround mutates the portfolio in place
@@ -288,13 +313,23 @@ export const balanceCheckTool = buildTool({
       const usdcHolding = holdings.find((h) => h.symbol === 'USDC');
       const saveableUsdc = usdcHolding ? usdcHolding.balance : 0;
 
+      // [v0.50] DeFi summary already resolved in the parallel fan-out
+      // above. The fetcher fills its own prices via fetchTokenPrices for
+      // any coin types found in DeFi positions that aren't stables.
+      // Long-tail LP partner tokens that BlockVision's price list
+      // doesn't cover may under-count — acceptable Phase 1 trade-off.
+      const defi: DefiSummary = defiPortfolio;
+
       const bal = {
         available: availableUsd,
         savings,
         debt,
         pendingRewards: pendingRewardsUsd,
         gasReserve: gasReserveUsd,
-        total: availableUsd + savings + gasReserveUsd + pendingRewardsUsd - debt,
+        defi: defi.totalUsd,
+        defiByProtocol: defi.perProtocol,
+        defiSource: defi.source,
+        total: availableUsd + savings + gasReserveUsd + pendingRewardsUsd + defi.totalUsd - debt,
         stables: stablesUsd,
         holdings: visibleHoldings,
         saveableUsdc,
@@ -307,9 +342,12 @@ export const balanceCheckTool = buildTool({
       const subjectPrefix = isSelfQuery
         ? 'Balance'
         : `Balance for ${address.slice(0, 6)}…${address.slice(-4)}`;
+      const defiSummaryText = defi.totalUsd > 0
+        ? ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}.`
+        : '';
       return {
         data: bal,
-        displayText: `${subjectPrefix}: $${bal.total.toFixed(2)} total. Wallet holdings (NOT savings): ${holdingsList || 'none'}. NAVI savings deposits: $${bal.savings.toFixed(2)}. Saveable USDC (only USDC can be saved): ${saveableUsdc.toFixed(2)} USDC.`,
+        displayText: `${subjectPrefix}: $${bal.total.toFixed(2)} total. Wallet holdings (NOT savings): ${holdingsList || 'none'}. NAVI savings deposits: $${bal.savings.toFixed(2)}.${defiSummaryText} Saveable USDC (only USDC can be saved): ${saveableUsdc.toFixed(2)} USDC.`,
       };
     }
 
@@ -327,7 +365,24 @@ export const balanceCheckTool = buildTool({
       );
     }
     const agent = requireAgent(context);
-    const balance = await agent.balance();
+    // [v0.50] In the SDK fallback path (CLI-only, self-query) we also
+    // fan out to BlockVision /account/defiPortfolio so the CLI matches
+    // engine + audric numbers. No-op when blockvisionApiKey is unset
+    // (returns DefiSummary with source: 'degraded' and totalUsd: 0).
+    const fetchAddress = (targetAddress ?? context.walletAddress) as string;
+    const [balance, defi] = await Promise.all([
+      agent.balance(),
+      fetchAddressDefiPortfolio(fetchAddress, context.blockvisionApiKey).catch((err) => {
+        console.warn('[balance_check] sdk-path defi fetch failed:', err);
+        const fallback: DefiSummary = {
+          totalUsd: 0,
+          perProtocol: {},
+          pricedAt: Date.now(),
+          source: 'degraded',
+        };
+        return fallback;
+      }),
+    ]);
 
     const gasReserveUsd = typeof balance.gasReserve === 'number'
       ? balance.gasReserve
@@ -342,6 +397,11 @@ export const balanceCheckTool = buildTool({
     const usdcHolding = holdingsArr.find((h: { symbol?: string }) => h.symbol === 'USDC');
     const sdkSaveableUsdc = usdcHolding ? ((usdcHolding as { balance?: number }).balance ?? 0) : 0;
 
+    const sdkDefiSummaryText = defi.totalUsd > 0
+      ? ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}.`
+      : '';
+    const sdkTotal = balance.total + defi.totalUsd;
+
     return {
       data: {
         available: balance.available,
@@ -349,14 +409,17 @@ export const balanceCheckTool = buildTool({
         debt: balance.debt,
         pendingRewards: balance.pendingRewards,
         gasReserve: gasReserveUsd,
-        total: balance.total,
+        defi: defi.totalUsd,
+        defiByProtocol: defi.perProtocol,
+        defiSource: defi.source,
+        total: sdkTotal,
         stables: stablesTotal,
         holdings: holdingsArr,
         saveableUsdc: sdkSaveableUsdc,
         address: targetAddress ?? '',
         isSelfQuery: true,
       },
-      displayText: `Balance: $${balance.total.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}. Saveable USDC (only USDC can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`,
+      displayText: `Balance: $${sdkTotal.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}.${sdkDefiSummaryText} Saveable USDC (only USDC can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`,
     };
   },
 });

@@ -397,6 +397,476 @@ function parseNumberOrNull(input: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// ---------------------------------------------------------------------------
+// [v0.50] DeFi portfolio aggregation
+//
+// `balance_check` historically returned only wallet coins + NAVI savings,
+// missing DeFi positions on Cetus / Suilend / Scallop / Bluefin / Aftermath /
+// Haedal — for active users this can be the majority of net worth, so the
+// reported total under-represented reality (e.g. funkii: SuiVision $39.7k
+// vs balance_check $30.4k, gap = $8.5k DeFi).
+//
+// Fix: parallel fan-out across the top 6 Sui DeFi protocols using
+// BlockVision's `/account/defiPortfolio` endpoint. NAVI is INTENTIONALLY
+// excluded — savings come from `positionFetcher` (audric host hook) or
+// NAVI MCP, both of which already cover it. Adding NAVI here would
+// double-count.
+//
+// Long-tail protocols (typus, bucket2, alphafi, kai, kriya, momentum, turbos,
+// flowx, suins-staking, deepbook, walrus, bluemove, ember, magma, ferra,
+// r25, alphalend, suistake, steamm, unihouse) are left out — adding them
+// costs +20 parallel calls per balance_check for ~5% additional coverage.
+// Expand iff users report missing positions for a long-tail protocol.
+//
+// Pricing: callers pass a `priceHints` map (typically derived from the
+// wallet portfolio's coin prices). Coin types that appear in DeFi
+// positions but not in the wallet (e.g. one half of an LP that the user
+// doesn't otherwise hold) are looked up via a single batched
+// `fetchTokenPrices` call. STABLE_USD_PRICES short-circuits stables.
+//
+// Failure isolation: a 5xx for one protocol drops just that protocol. The
+// `source` field on the result surfaces 'partial' when any protocol failed.
+// ---------------------------------------------------------------------------
+
+const DEFI_PORTFOLIO_TIMEOUT_MS = 4_000;
+const DEFI_CACHE_TTL_MS = 60_000;
+
+const DEFI_PROTOCOLS = [
+  'cetus',
+  'suilend',
+  'scallop',
+  'bluefin',
+  'aftermath',
+  'haedal',
+] as const;
+type DefiProtocol = (typeof DEFI_PROTOCOLS)[number];
+
+export interface DefiSummary {
+  /** Net USD value of all aggregated DeFi positions (supply + collateral - debt). */
+  totalUsd: number;
+  /** Per-protocol breakdown for cards / debugging. Only protocols with non-zero value are present. */
+  perProtocol: Partial<Record<DefiProtocol, number>>;
+  pricedAt: number;
+  /**
+   * `blockvision` — all 6 protocols responded successfully.
+   * `partial` — at least one protocol failed; total may under-count.
+   * `degraded` — no API key or every protocol failed; total = 0.
+   */
+  source: 'blockvision' | 'partial' | 'degraded';
+}
+
+interface DefiCacheEntry {
+  data: DefiSummary;
+  ts: number;
+}
+const defiCache = new Map<string, DefiCacheEntry>();
+const defiInflight = new Map<string, Promise<DefiSummary>>();
+
+interface BlockVisionDefiResponse {
+  code: number;
+  message: string;
+  result?: Record<string, unknown>;
+}
+
+export async function fetchAddressDefiPortfolio(
+  address: string,
+  apiKey: string | undefined,
+  priceHints: Record<string, number> = {},
+): Promise<DefiSummary> {
+  if (!apiKey || apiKey.trim().length === 0) {
+    return { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };
+  }
+
+  const now = Date.now();
+  const cached = defiCache.get(address);
+  if (cached && now - cached.ts < DEFI_CACHE_TTL_MS) return cached.data;
+
+  let inflight = defiInflight.get(address);
+  if (inflight) return inflight;
+
+  inflight = (async () => {
+    try {
+      const settled = await Promise.allSettled(
+        DEFI_PROTOCOLS.map((p) => fetchOneDefiProtocol(address, p, apiKey)),
+      );
+
+      // Pass 1 — discover every coin type referenced across all protocol
+      // responses, then fill any missing prices in a single batched call.
+      const seen = new Set<string>();
+      for (const s of settled) {
+        if (s.status === 'fulfilled' && s.value) collectCoinTypes(s.value, seen);
+      }
+      const normalizedHints: Record<string, number> = {};
+      for (const [k, v] of Object.entries(priceHints)) {
+        normalizedHints[normalizeCoinType(k)] = v;
+      }
+      const missing = Array.from(seen).filter((ct) => {
+        const norm = normalizeCoinType(ct);
+        return !normalizedHints[norm] && !STABLE_USD_PRICES[norm];
+      });
+      let fetchedPrices: Record<string, { price: number }> = {};
+      if (missing.length > 0) {
+        try {
+          fetchedPrices = await fetchTokenPrices(missing, apiKey);
+        } catch (err) {
+          console.warn('[defi] fill-missing-prices failed:', err);
+        }
+      }
+
+      const prices: Record<string, number> = { ...normalizedHints };
+      for (const [ct, v] of Object.entries(fetchedPrices)) {
+        prices[normalizeCoinType(ct)] ??= v.price;
+      }
+      for (const [ct, p] of Object.entries(STABLE_USD_PRICES)) {
+        prices[normalizeCoinType(ct)] ??= p;
+      }
+
+      // Pass 2 — run the per-protocol normaliser. Each is a small pure
+      // function that knows how to walk that protocol's bespoke shape.
+      let totalUsd = 0;
+      let failures = 0;
+      const perProtocol: Partial<Record<DefiProtocol, number>> = {};
+
+      for (let i = 0; i < DEFI_PROTOCOLS.length; i++) {
+        const proto = DEFI_PROTOCOLS[i];
+        const s = settled[i];
+        if (s.status !== 'fulfilled' || !s.value) {
+          failures++;
+          continue;
+        }
+        try {
+          const usd = NORMALIZERS[proto](s.value, prices);
+          if (Number.isFinite(usd) && usd !== 0) {
+            perProtocol[proto] = usd;
+            totalUsd += usd;
+          }
+        } catch (err) {
+          console.warn(`[defi] ${proto} normaliser threw:`, err);
+          failures++;
+        }
+      }
+
+      // Floor under-zero rollups to 0 — net negative would mean borrows >
+      // supplies on a *DeFi-only* basis, which is implausible without
+      // collateral counted; safer to surface 0 than a misleading negative.
+      if (totalUsd < 0) totalUsd = 0;
+
+      const summary: DefiSummary = {
+        totalUsd,
+        perProtocol,
+        pricedAt: Date.now(),
+        source: failures === DEFI_PROTOCOLS.length ? 'degraded' : failures > 0 ? 'partial' : 'blockvision',
+      };
+      defiCache.set(address, { data: summary, ts: Date.now() });
+      return summary;
+    } finally {
+      defiInflight.delete(address);
+    }
+  })();
+
+  defiInflight.set(address, inflight);
+  return inflight;
+}
+
+async function fetchOneDefiProtocol(
+  address: string,
+  protocol: DefiProtocol,
+  apiKey: string,
+): Promise<Record<string, unknown> | null> {
+  const url = `${BLOCKVISION_BASE}/account/defiPortfolio?address=${encodeURIComponent(address)}&protocol=${protocol}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { 'x-api-key': apiKey, accept: 'application/json' },
+      signal: AbortSignal.timeout(DEFI_PORTFOLIO_TIMEOUT_MS),
+    });
+  } catch (err) {
+    console.warn(`[defi] ${protocol} fetch threw:`, err);
+    return null;
+  }
+  if (!res.ok) {
+    console.warn(`[defi] ${protocol} HTTP ${res.status}`);
+    return null;
+  }
+  let json: BlockVisionDefiResponse;
+  try {
+    json = (await res.json()) as BlockVisionDefiResponse;
+  } catch (err) {
+    console.warn(`[defi] ${protocol} JSON parse failed:`, err);
+    return null;
+  }
+  if (json.code !== 200 || !json.result) return null;
+  return json.result;
+}
+
+/**
+ * Walks the response object recursively and collects every string value at
+ * any key that looks like a Sui coin-type field (`coinType`, `coinTypeA`,
+ * `coinTypeB`, `tokenXType`, `tokenYType`, `coinAddress`, `phantomType`,
+ * `typeName`). Used to discover which token prices we still need to fetch
+ * before normalisers run.
+ */
+function collectCoinTypes(obj: unknown, out: Set<string>): void {
+  if (!obj || typeof obj !== 'object') return;
+  if (Array.isArray(obj)) {
+    for (const x of obj) collectCoinTypes(x, out);
+    return;
+  }
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (typeof v === 'string' && v.startsWith('0x') && v.includes('::')) {
+      const lk = k.toLowerCase();
+      if (
+        lk.includes('cointype') ||
+        lk === 'cointypea' ||
+        lk === 'cointypeb' ||
+        lk === 'tokenxtype' ||
+        lk === 'tokenytype' ||
+        lk === 'coinaddress' ||
+        lk === 'phantomtype' ||
+        lk === 'typename'
+      ) {
+        out.add(v);
+      }
+    } else if (typeof v === 'object' && v !== null) {
+      collectCoinTypes(v, out);
+    }
+  }
+}
+
+function priceFor(coinType: string, prices: Record<string, number>): number {
+  const norm = normalizeCoinType(coinType);
+  return prices[norm] ?? prices[coinType] ?? STABLE_USD_PRICES[norm] ?? 0;
+}
+
+function rawToUsd(
+  coinType: string,
+  raw: unknown,
+  decimalsHint: number | undefined,
+  prices: Record<string, number>,
+): number {
+  if (raw == null) return 0;
+  const decimals =
+    typeof decimalsHint === 'number' ? decimalsHint : getDecimalsForCoinType(coinType);
+  const amount = Number(raw) / 10 ** decimals;
+  if (!Number.isFinite(amount)) return 0;
+  return amount * priceFor(coinType, prices);
+}
+
+const NORMALIZERS: Record<
+  DefiProtocol,
+  (result: Record<string, unknown>, prices: Record<string, number>) => number
+> = {
+  cetus: normalizeCetus,
+  suilend: normalizeSuilend,
+  scallop: normalizeScallop,
+  bluefin: normalizeBluefin,
+  aftermath: normalizeAftermath,
+  haedal: normalizeHaedal,
+};
+
+interface CetusPair {
+  coinTypeA?: string;
+  coinTypeB?: string;
+  balanceA?: number | string;
+  balanceB?: number | string;
+  coinAAmount?: number | string;
+  coinBAmount?: number | string;
+  coinTypeADecimals?: number;
+  coinTypeBDecimals?: number;
+  coinA?: { decimals?: number };
+  coinB?: { decimals?: number };
+}
+
+function normalizeCetus(
+  result: Record<string, unknown>,
+  prices: Record<string, number>,
+): number {
+  const data =
+    (result.cetus as { lps?: CetusPair[]; farms?: CetusPair[]; vaults?: CetusPair[] }) ?? {};
+  let total = 0;
+  const sumPair = (item: CetusPair, aField: 'balanceA' | 'coinAAmount', bField: 'balanceB' | 'coinBAmount') => {
+    if (item.coinTypeA && item[aField] != null) {
+      const dec = item.coinTypeADecimals ?? item.coinA?.decimals;
+      total += rawToUsd(item.coinTypeA, item[aField], dec, prices);
+    }
+    if (item.coinTypeB && item[bField] != null) {
+      const dec = item.coinTypeBDecimals ?? item.coinB?.decimals;
+      total += rawToUsd(item.coinTypeB, item[bField], dec, prices);
+    }
+  };
+  for (const lp of data.lps ?? []) sumPair(lp, 'balanceA', 'balanceB');
+  for (const farm of data.farms ?? []) sumPair(farm, 'balanceA', 'balanceB');
+  for (const vault of data.vaults ?? []) sumPair(vault, 'coinAAmount', 'coinBAmount');
+  return total;
+}
+
+interface SuilendItem {
+  coinType?: string;
+  decimals?: number;
+  amount?: number | string;
+}
+
+function normalizeSuilend(
+  result: Record<string, unknown>,
+  prices: Record<string, number>,
+): number {
+  const data =
+    (result.suilend as {
+      deposits?: SuilendItem[];
+      borrows?: SuilendItem[];
+      strategies?: SuilendItem[];
+    }) ?? {};
+  let total = 0;
+  for (const d of data.deposits ?? []) {
+    if (d.coinType && d.amount != null) total += rawToUsd(d.coinType, d.amount, d.decimals, prices);
+  }
+  for (const b of data.borrows ?? []) {
+    if (b.coinType && b.amount != null) total -= rawToUsd(b.coinType, b.amount, b.decimals, prices);
+  }
+  for (const s of data.strategies ?? []) {
+    if (s.coinType && s.amount != null) total += rawToUsd(s.coinType, s.amount, s.decimals, prices);
+  }
+  return total;
+}
+
+function normalizeScallop(
+  result: Record<string, unknown>,
+  _prices: Record<string, number>,
+): number {
+  const s = result.scallop as
+    | {
+        totalSupplyValue?: number | string;
+        totalDebtValue?: number | string;
+        totalCollateralValue?: number | string;
+        totalLockedScaValue?: number | string;
+      }
+    | undefined;
+  if (!s) return 0;
+  const supply = Number(s.totalSupplyValue ?? 0);
+  const collateral = Number(s.totalCollateralValue ?? 0);
+  const locked = Number(s.totalLockedScaValue ?? 0);
+  const debt = Number(s.totalDebtValue ?? 0);
+  const net = (Number.isFinite(supply) ? supply : 0) +
+    (Number.isFinite(collateral) ? collateral : 0) +
+    (Number.isFinite(locked) ? locked : 0) -
+    (Number.isFinite(debt) ? debt : 0);
+  return net;
+}
+
+interface BluefinLp {
+  coinTypeA?: string;
+  coinTypeB?: string;
+  coinAmountA?: number | string;
+  coinAmountB?: number | string;
+}
+
+function normalizeBluefin(
+  result: Record<string, unknown>,
+  prices: Record<string, number>,
+): number {
+  const data =
+    (result.bluefin as {
+      lps?: BluefinLp[];
+      usdcVault?: { amount?: number | string };
+      blueVault?: { amount?: number | string };
+    }) ?? {};
+  let total = 0;
+  for (const lp of data.lps ?? []) {
+    if (lp.coinTypeA && lp.coinAmountA != null) {
+      total += rawToUsd(lp.coinTypeA, lp.coinAmountA, undefined, prices);
+    }
+    if (lp.coinTypeB && lp.coinAmountB != null) {
+      total += rawToUsd(lp.coinTypeB, lp.coinAmountB, undefined, prices);
+    }
+  }
+  // Bluefin's vaults expose a raw `amount` without a coinType — assume USDC
+  // (6dp) for usdcVault and BLUE (9dp) for blueVault per the BlockVision
+  // schema. If BlockVision adds new vaults we'll under-count until updated.
+  if (data.usdcVault?.amount != null) {
+    total += rawToUsd(
+      '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      data.usdcVault.amount,
+      6,
+      prices,
+    );
+  }
+  if (data.blueVault?.amount != null) {
+    total += rawToUsd(
+      '0xe1b45a0e641b9955a20aa0ad1c1f4ad86aad8afb07296d4085e349a50e90bdca::blue::BLUE',
+      data.blueVault.amount,
+      9,
+      prices,
+    );
+  }
+  return total;
+}
+
+interface AftermathPosition {
+  coins?: Array<{ coinType?: string; amount?: number | string }>;
+}
+
+function normalizeAftermath(
+  result: Record<string, unknown>,
+  prices: Record<string, number>,
+): number {
+  const data =
+    (result.aftermath as {
+      lpPositions?: AftermathPosition[];
+      farmPositions?: AftermathPosition[];
+    }) ?? {};
+  let total = 0;
+  const positions = [...(data.lpPositions ?? []), ...(data.farmPositions ?? [])];
+  for (const pos of positions) {
+    for (const c of pos.coins ?? []) {
+      if (c.coinType && c.amount != null) {
+        total += rawToUsd(c.coinType, c.amount, undefined, prices);
+      }
+    }
+  }
+  return total;
+}
+
+function normalizeHaedal(
+  result: Record<string, unknown>,
+  prices: Record<string, number>,
+): number {
+  const SUI_TYPE_FULL =
+    '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+  const data =
+    (result.haedal as {
+      lps?: BluefinLp[];
+      stakings?: Array<{ sui_amount?: number | string }>;
+    }) ?? {};
+  let total = 0;
+  for (const lp of data.lps ?? []) {
+    // Haedal LP shape mirrors Bluefin — but uses balanceA/balanceB instead of
+    // coinAmountA/B (the BlockVision doc shows `balanceA`/`balanceB`).
+    const item = lp as BluefinLp & { balanceA?: number | string; balanceB?: number | string };
+    if (item.coinTypeA && item.balanceA != null) {
+      total += rawToUsd(item.coinTypeA, item.balanceA, undefined, prices);
+    }
+    if (item.coinTypeB && item.balanceB != null) {
+      total += rawToUsd(item.coinTypeB, item.balanceB, undefined, prices);
+    }
+  }
+  for (const stake of data.stakings ?? []) {
+    if (stake.sui_amount != null) {
+      total += rawToUsd(SUI_TYPE_FULL, stake.sui_amount, 9, prices);
+    }
+  }
+  return total;
+}
+
+export function clearDefiCache(): void {
+  defiCache.clear();
+  defiInflight.clear();
+}
+
+export function clearDefiCacheFor(address: string): void {
+  defiCache.delete(address);
+  defiInflight.delete(address);
+}
+
 export function clearPortfolioCache(): void {
   portfolioCache.clear();
   portfolioInflight.clear();

@@ -37,6 +37,14 @@ vi.mock('../blockvision-prices.js', () => ({
     source: 'blockvision',
     __seenAddress: address,
   })),
+  // [v0.50] DeFi fan-out — default to no DeFi positions so existing
+  // balance assertions stay stable. Individual tests can override.
+  fetchAddressDefiPortfolio: vi.fn(async () => ({
+    totalUsd: 0,
+    perProtocol: {},
+    pricedAt: Date.now(),
+    source: 'blockvision' as const,
+  })),
 }));
 
 const baseMcp = {
@@ -66,7 +74,16 @@ function ctx(opts: { wallet?: string; positionFetcher?: typeof positionFetcher }
 }
 
 interface BalanceResult {
-  data: { address: string; isSelfQuery: boolean; total: number };
+  data: {
+    address: string;
+    isSelfQuery: boolean;
+    total: number;
+    available: number;
+    savings: number;
+    defi?: number;
+    defiByProtocol?: Record<string, number>;
+    defiSource?: string;
+  };
   displayText: string;
 }
 
@@ -148,5 +165,61 @@ describe('[v0.49] balance_check address scope', () => {
     await expect(
       balanceCheckTool.call({ address: FUNKII_ADDR }, sdkOnlyCtx),
     ).rejects.toThrow(/cannot inspect/i);
+  });
+});
+
+/**
+ * [v0.50] balance_check rolls DeFi positions (Cetus/Suilend/Scallop/etc.)
+ * into `total` so the LLM and UI see the actual net worth, not just
+ * wallet + savings. NAVI is intentionally excluded from the DeFi figure
+ * (savings already cover it).
+ */
+describe('[v0.50] balance_check DeFi rollup', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('adds defi.totalUsd to bal.total and exposes defiByProtocol/defiSource', async () => {
+    const { fetchAddressDefiPortfolio } = await import('../blockvision-prices.js');
+    (fetchAddressDefiPortfolio as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      totalUsd: 8559.5,
+      perProtocol: { cetus: 5000, suilend: 3000, scallop: 559.5 },
+      pricedAt: Date.now(),
+      source: 'blockvision',
+    });
+
+    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    // Wallet portfolio (12.345678 USDC) + savings (1000) + defi (8559.5) = 9571.84...
+    expect(res.data.defi).toBeCloseTo(8559.5, 2);
+    expect(res.data.defiByProtocol).toEqual({ cetus: 5000, suilend: 3000, scallop: 559.5 });
+    expect(res.data.defiSource).toBe('blockvision');
+    expect(res.data.total).toBeCloseTo(12.345678 + 1000 + 8559.5, 2);
+  });
+
+  it('keeps total = wallet+savings when DeFi reports zero', async () => {
+    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    expect(res.data.defi).toBe(0);
+    expect(res.data.total).toBeCloseTo(12.345678 + 1000, 2);
+  });
+
+  it('passes the target address (not user address) to the DeFi fetcher', async () => {
+    const { fetchAddressDefiPortfolio } = await import('../blockvision-prices.js');
+    await balanceCheckTool.call({ address: FUNKII_ADDR }, ctx());
+    expect(fetchAddressDefiPortfolio).toHaveBeenCalledWith(FUNKII_ADDR, 'test');
+    expect(fetchAddressDefiPortfolio).not.toHaveBeenCalledWith(USER_ADDR, 'test');
+  });
+
+  it('mentions DeFi in displayText when totalUsd > 0', async () => {
+    const { fetchAddressDefiPortfolio } = await import('../blockvision-prices.js');
+    (fetchAddressDefiPortfolio as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      totalUsd: 250,
+      perProtocol: { suilend: 250 },
+      pricedAt: Date.now(),
+      source: 'blockvision',
+    });
+    const res = (await balanceCheckTool.call({}, ctx())) as BalanceResult;
+    expect(res.displayText).toMatch(/DeFi positions/);
+    expect(res.displayText).toContain('suilend');
+    expect(res.displayText).toContain('250.00');
   });
 });
