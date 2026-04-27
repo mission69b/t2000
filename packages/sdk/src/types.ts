@@ -63,6 +63,8 @@ export interface BorrowResult {
   success: boolean;
   tx: string;
   amount: number;
+  /** [v0.51.0] Asset borrowed — 'USDC' or 'USDsui'. Optional for backward compat. */
+  asset?: string;
   fee: number;
   healthFactor: number;
   gasCost: number;

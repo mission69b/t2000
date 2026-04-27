@@ -679,23 +679,32 @@ export class T2000 extends EventEmitter<T2000Events> {
   async save(params: { amount: number | 'all'; asset?: SupportedAsset; protocol?: string }): Promise<SaveResult> {
     this.enforcer.assertNotLocked();
     assertAllowedAsset('save', params.asset);
-    const asset: SupportedAsset = 'USDC';
+    // [v0.51.0] Default USDC, but honor params.asset for the strategic-exception
+    // set (currently USDC, USDsui — see OPERATION_ASSETS.save). Hardcoding 'USDC'
+    // here previously silently rewrote the user's intent.
+    const asset: SupportedAsset = (params.asset as SupportedAsset | undefined) ?? 'USDC';
     const assetInfo = SUPPORTED_ASSETS[asset];
 
     let amount: number;
     if (params.amount === 'all') {
-      const bal = await queryBalance(this.client, this._address);
-      amount = (bal.available ?? 0) - 1.0;
+      // [v0.51.0] Per-asset balance query — `queryBalance.available` is the sum
+      // of STABLE_ASSETS (USDC), not the requested asset. For USDsui we need the
+      // raw on-chain balance for that specific coin type.
+      const assetBalance = await this._queryAssetBalance(assetInfo.type, assetInfo.decimals);
+      amount = assetBalance - 1.0;
       if (amount <= 0) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', `No USDC available to save`, {
+        throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} available to save`, {
           reason: 'insufficient_balance', asset,
         });
       }
     } else {
       amount = params.amount;
-      const bal = await queryBalance(this.client, this._address);
-      if (amount > (bal.available ?? 0)) {
-        throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance. Available: $${(bal.available ?? 0).toFixed(2)}, requested: $${amount.toFixed(2)}`);
+      const assetBalance = await this._queryAssetBalance(assetInfo.type, assetInfo.decimals);
+      if (amount > assetBalance) {
+        throw new T2000Error(
+          'INSUFFICIENT_BALANCE',
+          `Insufficient ${assetInfo.displayName} balance. Available: ${assetBalance.toFixed(assetInfo.decimals === 6 ? 2 : 4)}, requested: ${amount.toFixed(assetInfo.decimals === 6 ? 2 : 4)}`,
+        );
       }
     }
 
@@ -710,7 +719,7 @@ export class T2000 extends EventEmitter<T2000Events> {
         tx.setSender(this._address);
 
         const coins = await this._fetchCoins(assetInfo.type);
-        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins found');
+        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${assetInfo.displayName} coins found`);
         const merged = this._mergeCoinsInTx(tx, coins);
         const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
         const [inputCoin] = tx.splitCoins(merged, [rawAmount]);
@@ -921,6 +930,25 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
+  /**
+   * [v0.51.0] Per-asset wallet balance lookup.
+   *
+   * `queryBalance.available` rolls up only `STABLE_ASSETS` (USDC), so it cannot
+   * answer "do they have enough USDsui to save 10?". This helper hits
+   * `getBalance` for the specific coin type — same mechanism `queryBalance`
+   * uses internally — and converts to a human-readable amount using the asset's
+   * decimals. Returns 0 (not a throw) when the address holds none of the asset,
+   * matching the caller's existing "insufficient balance" error path.
+   */
+  private async _queryAssetBalance(coinType: string, decimals: number): Promise<number> {
+    try {
+      const bal = await this.client.getBalance({ owner: this._address, coinType });
+      return Number(bal.totalBalance) / 10 ** decimals;
+    } catch {
+      return 0;
+    }
+  }
+
   private async _fetchCoins(coinType: string): Promise<Array<{ coinObjectId: string; balance: string }>> {
     const all: Array<{ coinObjectId: string; balance: string }> = [];
     let cursor: string | null | undefined;
@@ -1031,9 +1059,12 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   // -- Borrowing --
 
-  async borrow(params: { amount: number; protocol?: string }): Promise<BorrowResult> {
+  async borrow(params: { amount: number; asset?: SupportedAsset; protocol?: string }): Promise<BorrowResult> {
     this.enforcer.assertNotLocked();
-    const asset = 'USDC';
+    assertAllowedAsset('borrow', params.asset);
+    // [v0.51.0] Default USDC, honor params.asset for the strategic-exception
+    // set (USDC, USDsui — see OPERATION_ASSETS.borrow).
+    const asset: SupportedAsset = (params.asset as SupportedAsset | undefined) ?? 'USDC';
     const adapter = await this.resolveLending(params.protocol, asset, 'borrow');
 
     const maxResult = await adapter.maxBorrow(this._address, asset);
@@ -1062,6 +1093,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       success: true,
       tx: gasResult.digest,
       amount: borrowAmount,
+      asset,
       fee: fee.amount,
       healthFactor: hf.healthFactor,
       gasCost: gasResult.gasCostSui,

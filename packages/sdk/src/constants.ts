@@ -87,9 +87,14 @@ export const ALL_NAVI_ASSETS: readonly SupportedAsset[] = Object.keys(SUPPORTED_
 // Operation → allowed asset rules (single source of truth)
 // ---------------------------------------------------------------------------
 
+// [v0.51.0] Saveable/borrowable set: USDC + USDsui.
+// USDC is the canonical default; USDsui is a strategic exception backed by an
+// existing NAVI pool. See `.cursor/rules/savings-usdc-only.mdc` for the
+// rationale and the rule that gates additional stables (don't add more here
+// without updating that file).
 export const OPERATION_ASSETS = {
-  save:     ['USDC'],
-  borrow:   ['USDC'],
+  save:     ['USDC', 'USDsui'],
+  borrow:   ['USDC', 'USDsui'],
   withdraw: '*',
   repay:    '*',
   send:     '*',
@@ -101,7 +106,12 @@ export type Operation = keyof typeof OPERATION_ASSETS;
 export function isAllowedAsset(op: Operation, asset: string): boolean {
   const allowed = OPERATION_ASSETS[op];
   if (allowed === '*') return true;
-  return (allowed as readonly string[]).includes(asset.toUpperCase());
+  // [v0.51.0] Mixed-case canonical keys (USDsui, suiUSDT) need case-insensitive
+  // membership. Pre-v0.51 we only had USDC ↔ USDC (uppercase identity), so
+  // a one-sided uppercase compare looked correct. Now that USDsui is in the
+  // set, normalize both sides.
+  const target = asset.toLowerCase();
+  return (allowed as readonly string[]).some((a) => a.toLowerCase() === target);
 }
 
 /**
@@ -115,7 +125,7 @@ export function assertAllowedAsset(op: Operation, asset: string | undefined): vo
     const list = Array.isArray(allowed) ? allowed.join(', ') : 'any';
     throw new T2000Error(
       'INVALID_ASSET',
-      `${op} only supports ${list}. Cannot use ${asset}.${op === 'save' ? ' Swap to USDC first.' : ''}`,
+      `${op} only supports ${list}. Cannot use ${asset}.${op === 'save' ? ' Swap to USDC or USDsui first.' : ''}`,
     );
   }
 }

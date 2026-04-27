@@ -1,37 +1,50 @@
 ---
-description: Savings is USDC-only — engine tools and prompts must enforce this clearly
+description: Savings is USDC-or-USDsui only — engine tools and prompts must enforce this. USDsui is a strategic exception; USDC remains the canonical default.
 alwaysApply: true
 ---
 
-# Savings = USDC Only (Engine)
+# Savings = USDC or USDsui (Engine)
+
+> **Strategic exception (v0.51.0+):** USDsui is permitted alongside USDC for `save_deposit` and `borrow`. The USDC-canonical thesis still applies to **every other asset** (GOLD, SUI, USDT, USDe, ETH, NAVX, WAL): they are holdable/swappable but **never** saveable.
+>
+> Why USDsui is the exception: it's the only other Sui-native stable with a productive NAVI pool (USDC pool ~4.6% APY, USDsui pool variable, often higher). Adding it as a saveable asset captures yield optimization without inviting "save anything stable" creep (which would pull in USDe/USDT and break the simplicity invariant).
 
 ## balance_check tool
 
-Must return `saveableUsdc` field (only USDC wallet balance). `displayText` must distinguish:
-- **Wallet holdings** (GOLD, SUI, USDT) — tokens in the wallet, NOT savings
-- **NAVI savings deposits** — USDC deposited into NAVI earning yield
-- **Saveable USDC** — the amount that CAN be saved
+Must return `saveableUsdc` field (USDC wallet balance — the canonical saveable). The `displayText` must distinguish:
+- **Wallet holdings** (GOLD, SUI, USDT, USDe, ETH, etc.) — tokens in the wallet, NOT savings, NOT saveable
+- **NAVI savings deposits** — USDC and/or USDsui deposited into NAVI earning yield
+- **Saveable USDC** — the USDC amount that CAN be saved
+- **USDsui balance** (if present) — also saveable, surface it in the holdings list with a "(saveable)" tag
 
 ```typescript
-// ❌ BAD — LLM confuses holdings with savings
+// ❌ BAD — LLM confuses holdings with savings, treats USDsui as a regular holding
 displayText: `Balance: $${total} (Available: $${available}, Savings: $${savings})`
 
-// ✅ GOOD — explicit separation
-displayText: `Wallet holdings (NOT savings): ${list}. NAVI savings: $${savings}. Saveable USDC: ${usdc} USDC.`
+// ✅ GOOD — explicit separation, USDsui flagged as saveable
+displayText: `Wallet holdings (NOT savings): GOLD ${gold}, SUI ${sui}, USDsui ${usdsui} (saveable). NAVI savings: $${savings}. Saveable USDC: ${usdc} USDC.`
 ```
 
 ## System prompt
 
-Must include "Savings = USDC only (critical)" section that tells LLM:
-- Only USDC can be saved via `save_deposit`
-- Wallet holdings ≠ savings positions
-- Never say non-USDC tokens are "earning APY in savings"
-- When asked "how much can I save?", report only `saveableUsdc`
+Must include a "Savings = USDC or USDsui" section that tells the LLM:
+- Only **USDC or USDsui** can be saved via `save_deposit` and used as collateral via `borrow`
+- Wallet holdings ≠ savings positions (the same NAVI pool may contain both deposits and the user's own holdings — but only the deposit row earns APY)
+- Never say non-saveable tokens (GOLD, SUI, USDT, etc.) are "earning APY in savings"
+- When asked "how much can I save?", report `saveableUsdc` plus the user's USDsui wallet balance, separately
+- USDsui pool APY can differ from USDC; if user asks "best stable to save", call `rates_info` to compare
 
-## save_deposit tool
+## save_deposit + borrow tools
 
-Description must explicitly forbid auto-chaining swap + deposit. The user decides.
+Description must:
+- Accept `asset: 'USDC' | 'USDsui'` (default `'USDC'` when omitted)
+- Reject every other asset with a clear error
+- Explicitly forbid auto-chaining swap + deposit (the user decides which stable to save)
+- For "save 10 USDC" — execute as USDC. For "save 10 USDsui" — execute as USDsui. Never silently substitute.
+- For "save 10" (no asset specified) — call `balance_check` first, then ask the user which stable they want (or default to whichever they hold more of, with a one-line explanation).
 
 ## Adding new assets
 
-When adding assets to the token registry, they are holdable/swappable but NOT saveable. Only USDC goes through `save_deposit`. This is enforced by `assertAllowedAsset('save', asset)` in the SDK.
+When adding assets to the token registry, they are holdable/swappable but **NOT saveable** — even other stables (USDe, USDT). Only USDC and USDsui go through `save_deposit` / `borrow`. This is enforced by `assertAllowedAsset('save', asset)` and `assertAllowedAsset('borrow', asset)` in `packages/sdk/src/constants.ts`.
+
+To extend the saveable set in the future (e.g., a hypothetical USDe-on-NAVI pool), update `OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` in `packages/sdk/src/constants.ts` AND revisit this rule — don't bypass the allow-list.

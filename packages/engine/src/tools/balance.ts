@@ -109,7 +109,7 @@ async function loadPortfolio(
 export const balanceCheckTool = buildTool({
   name: 'balance_check',
   description:
-    'Get the full balance breakdown for the signed-in user OR any public Sui address. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, and saveableUsdc (only USDC can be deposited into savings). IMPORTANT: wallet holdings like GOLD, SUI, USDT are NOT savings positions — they are just tokens sitting in the wallet. Pass `address` to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
+    'Get the full balance breakdown for the signed-in user OR any public Sui address. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC and/or USDsui deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, saveableUsdc (USDC wallet balance available to save), and saveableUsdsui (USDsui wallet balance available to save — surfaces only when > 0). IMPORTANT: wallet holdings like GOLD, SUI, USDT, USDe are NOT savings positions and are NOT saveable — only USDC and USDsui can be saved/borrowed. Pass `address` to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
   inputSchema: z.object({
     address: z
       .string()
@@ -318,6 +318,14 @@ export const balanceCheckTool = buildTool({
 
       const usdcHolding = holdings.find((h) => h.symbol === 'USDC');
       const saveableUsdc = usdcHolding ? usdcHolding.balance : 0;
+      // [v0.51.0] USDsui is the second permitted saveable asset. Surface its
+      // balance separately so the LLM can answer "how much can I save?" with
+      // both stables, and so the displayText flags it (saveable) instead of
+      // letting the LLM treat it as a generic holding. Not rolled into
+      // `saveableUsdc` — the field name is canonical for USDC and downstream
+      // permission/Tier resolvers depend on it.
+      const usdsuiHolding = holdings.find((h) => h.symbol === 'USDsui');
+      const saveableUsdsui = usdsuiHolding ? usdsuiHolding.balance : 0;
 
       // [v0.50] DeFi summary already resolved in the parallel fan-out
       // above. The fetcher fills its own prices via fetchTokenPrices for
@@ -339,6 +347,7 @@ export const balanceCheckTool = buildTool({
         stables: stablesUsd,
         holdings: visibleHoldings,
         saveableUsdc,
+        saveableUsdsui,
         priceSource: portfolio.source,
         address,
         isSelfQuery,
@@ -351,9 +360,12 @@ export const balanceCheckTool = buildTool({
       const defiSummaryText = defi.totalUsd > 0
         ? ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}.`
         : '';
+      const saveableSummary = saveableUsdsui > 0
+        ? `Saveable: ${saveableUsdc.toFixed(2)} USDC + ${saveableUsdsui.toFixed(saveableUsdsui < 1 ? 4 : 2)} USDsui (only USDC and USDsui can be saved/borrowed).`
+        : `Saveable USDC (only USDC and USDsui can be saved): ${saveableUsdc.toFixed(2)} USDC.`;
       return {
         data: bal,
-        displayText: `${subjectPrefix}: $${bal.total.toFixed(2)} total. Wallet holdings (NOT savings): ${holdingsList || 'none'}. NAVI savings deposits: $${bal.savings.toFixed(2)}.${defiSummaryText} Saveable USDC (only USDC can be saved): ${saveableUsdc.toFixed(2)} USDC.`,
+        displayText: `${subjectPrefix}: $${bal.total.toFixed(2)} total. Wallet holdings (NOT savings): ${holdingsList || 'none'}. NAVI savings deposits: $${bal.savings.toFixed(2)}.${defiSummaryText} ${saveableSummary}`,
       };
     }
 
@@ -402,6 +414,8 @@ export const balanceCheckTool = buildTool({
 
     const usdcHolding = holdingsArr.find((h: { symbol?: string }) => h.symbol === 'USDC');
     const sdkSaveableUsdc = usdcHolding ? ((usdcHolding as { balance?: number }).balance ?? 0) : 0;
+    const usdsuiHolding = holdingsArr.find((h: { symbol?: string }) => h.symbol === 'USDsui');
+    const sdkSaveableUsdsui = usdsuiHolding ? ((usdsuiHolding as { balance?: number }).balance ?? 0) : 0;
 
     const sdkDefiSummaryText = defi.totalUsd > 0
       ? ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}.`
@@ -422,10 +436,11 @@ export const balanceCheckTool = buildTool({
         stables: stablesTotal,
         holdings: holdingsArr,
         saveableUsdc: sdkSaveableUsdc,
+        saveableUsdsui: sdkSaveableUsdsui,
         address: targetAddress ?? '',
         isSelfQuery: true,
       },
-      displayText: `Balance: $${sdkTotal.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}.${sdkDefiSummaryText} Saveable USDC (only USDC can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`,
+      displayText: `Balance: $${sdkTotal.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}.${sdkDefiSummaryText} ${sdkSaveableUsdsui > 0 ? `Saveable: ${sdkSaveableUsdc.toFixed(2)} USDC + ${sdkSaveableUsdsui.toFixed(sdkSaveableUsdsui < 1 ? 4 : 2)} USDsui (only USDC and USDsui can be saved/borrowed).` : `Saveable USDC (only USDC and USDsui can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`}`,
     };
   },
 });
