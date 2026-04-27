@@ -45,6 +45,15 @@ function urlOf(input: FetchInput): string {
   return typeof input === 'string' ? input : input.toString();
 }
 
+function isBlockVisionHost(input: FetchInput): boolean {
+  try {
+    const u = new URL(urlOf(input));
+    return u.hostname === 'api.blockvision.org';
+  } catch {
+    return false;
+  }
+}
+
 describe('blockvision-prices — fetchAddressPortfolio', () => {
   it('1) happy path — parses BlockVision /account/coins payload into PortfolioCoin shape', async () => {
     const fetchMock = vi.fn(async (input: FetchInput) => {
@@ -98,8 +107,7 @@ describe('blockvision-prices — fetchAddressPortfolio', () => {
 
   it('2) 5xx → falls back to Sui-RPC + hardcoded stables (source = sui-rpc-degraded)', async () => {
     const fetchMock = vi.fn(async (input: FetchInput) => {
-      const url = urlOf(input);
-      if (url.includes('blockvision.org')) {
+      if (isBlockVisionHost(input)) {
         return new Response('upstream', { status: 503 }) as unknown as Response;
       }
       // Sui RPC fallback — return a USDC + SUI wallet
