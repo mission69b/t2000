@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (40 tools), Reasoning Engine (9 guards across 3 priority tiers + 7 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (34 tools — 23 read, 11 write), Reasoning Engine (9 guards across 3 priority tiers + 7 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 QueryEngine orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop.
 
@@ -75,8 +75,9 @@ QueryEngine.submitMessage()
 | `navi-config.ts` | `NAVI_MCP_CONFIG`, `NaviTools` | NAVI MCP server configuration |
 | `navi-transforms.ts` | `transformRates`, `transformBalance`, ... | Raw MCP response → engine types |
 | `navi-reads.ts` | `fetchRates`, `fetchBalance`, ... | Composite MCP read functions |
-| `defillama-prices.ts` | `fetchTokenPrices`, `clearPriceCache` | Batch USD prices from DefiLlama (single price source) |
-| `tools/defillama.ts` | 7 DefiLlama tools | Yield pools, protocol info, token prices, price changes, chain TVL, fees, Sui protocols |
+| `blockvision-prices.ts` | `fetchAddressPortfolio`, `fetchTokenPrices`, `clearPortfolioCache`, `clearPortfolioCacheFor`, `clearPriceMapCache` | BlockVision Indexer REST: full wallet portfolio + multi-token USD prices (Sui RPC + hardcoded-stable degraded fallback) |
+| `tools/protocol-deep-dive.ts` | `protocolDeepDiveTool` | DefiLlama protocol metadata (TVL, fees, audits, safety score) — lone production dependency on `api.llama.fi` post-Day-3 |
+| `tools/token-prices.ts` | `tokenPricesTool` | BlockVision-backed multi-token spot price + 24h change (replaces deleted `defillama_token_prices` / `defillama_price_change`) |
 | `tools/swap-quote.ts` | `swapQuoteTool` | Preview swap route + price impact (read-only) |
 | `tools/swap.ts` | `swapExecuteTool` | Cetus Aggregator multi-DEX swap |
 | `tools/volo-stats.ts` | `voloStatsTool` | VOLO liquid staking stats (vSUI/SUI rate, APY, TVL) |
@@ -87,11 +88,11 @@ QueryEngine.submitMessage()
 
 ## Built-in Tools
 
-### Read Tools (29 — parallel, auto-approved)
+### Read Tools (23 — parallel, auto-approved)
 
 | Tool | Description |
 |------|-------------|
-| `balance_check` | Available, savings, debt, rewards, gas reserve (DefiLlama pricing) |
+| `balance_check` | Available, savings, debt, rewards, gas reserve (BlockVision pricing, Sui RPC fallback) |
 | `savings_info` | Positions, earnings, fund status |
 | `health_check` | Health factor with risk assessment |
 | `rates_info` | Current supply/borrow APYs |
@@ -101,15 +102,9 @@ QueryEngine.submitMessage()
 | `swap_quote` | Preview swap route, output amount, and price impact (no execution) |
 | `volo_stats` | VOLO liquid staking stats — vSUI/SUI rate, APY, TVL |
 | `portfolio_analysis` | Portfolio breakdown with diversification insights |
-| `protocol_deep_dive` | Deep protocol analysis — TVL, yields, risks, alternatives |
+| `protocol_deep_dive` | Deep protocol analysis — TVL, yields, risks, alternatives (lone surviving DefiLlama dependency) |
 | `mpp_services` | Browse available MPP gateway services and endpoints |
-| `defillama_yield_pools` | Top yield pools by APY, filterable by chain |
-| `defillama_protocol_info` | Protocol TVL, category, chains |
-| `defillama_token_prices` | Current USD prices for Sui tokens |
-| `defillama_price_change` | Token price % change over period |
-| `defillama_chain_tvl` | Chain TVL rankings |
-| `defillama_protocol_fees` | Protocol fees/revenue rankings |
-| `defillama_sui_protocols` | Sui ecosystem protocols — TVL, category, changes |
+| `token_prices` | Current USD prices for Sui tokens (BlockVision; optional 24h change). Replaces deleted `defillama_token_prices` and `defillama_price_change`. |
 | `create_payment_link` | Create a shareable USDC payment link |
 | `list_payment_links` | List payment links with statuses |
 | `cancel_payment_link` | Cancel an active payment link |
@@ -145,6 +140,14 @@ QueryEngine.submitMessage()
 > `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't execute without user
 > online to sign), `pattern_status`, `pause_pattern` (pattern proposals removed; classifiers
 > kept as pure functions).
+>
+> **v1.4 BlockVision swap (April 2026):** Removed 7 `defillama_*` read tools —
+> `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`,
+> `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`,
+> `defillama_sui_protocols`. Added 1 — `token_prices` (BlockVision-backed). `balance_check`
+> and `portfolio_analysis` rewired to BlockVision Indexer REST API for sub-500ms portfolio
+> fetches. `protocol_deep_dive` retains its DefiLlama dependency (narrow scope, no
+> equivalent on BlockVision). Net: 23 reads + 11 writes = 34 tools.
 
 ## Audric 2.0 Engine Features
 
@@ -177,22 +180,54 @@ Write tool permission resolved dynamically via `resolvePermissionTier(operation,
 
 ```typescript
 interface EngineConfig {
-  provider: LLMProvider;          // Required — LLM provider instance
-  agent?: unknown;                // T2000 SDK instance (for tool execution)
-  mcpManager?: unknown;           // McpClientManager (MCP-first reads)
-  walletAddress?: string;         // User's Sui address (for MCP reads)
-  tools?: Tool[];                 // Custom tool set (defaults to getDefaultTools())
-  systemPrompt?: string;          // Override default Audric prompt
-  model?: string;                 // LLM model override
-  maxTurns?: number;              // Max conversation turns (default: 10)
-  maxTokens?: number;             // Max tokens per response (default: 4096)
+  // Core
+  provider: LLMProvider;                    // Required — LLM provider instance
+  agent?: unknown;                          // T2000 SDK instance (for tool execution)
+  mcpManager?: unknown;                     // McpClientManager (MCP-first reads)
+  walletAddress?: string;                   // User's Sui address — populated into onAutoExecuted
+  suiRpcUrl?: string;                       // Sui JSON-RPC URL for direct chain queries
+  tools?: Tool[];                           // Custom tool set (defaults to getDefaultTools())
+  systemPrompt?: string | SystemBlock[];    // Override default Audric prompt
+  model?: string;                           // LLM model override
+  maxTurns?: number;                        // Max conversation turns (default: 10)
+  maxTokens?: number;                       // Max tokens per response (default: 4096)
+
+  // [v1.4 BlockVision] Pricing + portfolio
+  blockvisionApiKey?: string;               // BlockVision Indexer key — degrades to Sui RPC if absent
+  portfolioCache?: Map<string, AddressPortfolio>; // Per-request portfolio memoisation across read tools
+
+  // Reasoning engine
+  guards?: GuardConfig;                     // Guard runner (RE-2.2)
+  recipes?: RecipeRegistry;                 // YAML skill recipes (RE-3.1)
+  contextBudget?: ContextBudgetConfig;      // 200k limit, compaction trigger (RE-3.3)
+  contextSummarizer?: (msgs) => Promise<string>; // LLM summarizer fallback for compaction
+  thinking?: ThinkingConfig;                // Adaptive / extended thinking
+  outputConfig?: OutputConfig;              // Effort hint
+
+  // Permissions + state
+  permissionConfig?: UserPermissionConfig;  // USD-threshold write gating (B.4)
+  priceCache?: Map<string, number>;         // Symbol → USD for permission resolution
+  contacts?: ReadonlyArray<{ name: string; address: string }>; // Trusted send-transfer recipients
+  sessionSpendUsd?: number;                 // Cumulative session auto-execute total
+
+  // Hooks
+  onAutoExecuted?: (info: {                 // [v1.4] Fired after auto-tier write succeeds
+    toolName: string;
+    usdValue: number;
+    walletAddress?: string;                 // Populated from config.walletAddress for cache invalidation
+  }) => void | Promise<void>;
+  onGuardFired?: (guard: GuardMetric) => void; // [v1.4 Item 4] Per-guard observation hook
+  postWriteRefresh?: Record<string, string[]>; // [v1.5] Auto-rerun reads after a successful write
+
   costTracker?: {
-    budgetLimitUsd?: number;      // Kill switch at USD threshold
+    budgetLimitUsd?: number;                // Kill switch at USD threshold
     inputCostPerToken?: number;
     outputCostPerToken?: number;
   };
 }
 ```
+
+> See `packages/engine/src/types.ts` for the canonical interface — additional internal fields and full JSDoc.
 
 ## Event Types
 
@@ -205,7 +240,7 @@ The `submitMessage()` async generator yields `EngineEvent`:
 | `thinking_done` | — | Extended thinking complete |
 | `tool_start` | `toolName`, `toolUseId`, `input` | Tool execution begins |
 | `tool_result` | `toolName`, `toolUseId`, `result`, `isError` | Tool execution completes |
-| `pending_action` | `action` (PendingAction) | Write tool awaiting client-side execution |
+| `pending_action` | `action` (PendingAction with `attemptId`, `toolUseId`, `turnIndex`, `name`, `input`) | Write tool awaiting client-side execution. `attemptId` is a per-yield UUID — hosts persist it on TurnMetrics and key the resume `updateMany` on it (avoids ambiguous `(sessionId, turnIndex)` updates) |
 | `canvas` | `html` | Interactive HTML visualization from `render_canvas` |
 | `turn_complete` | `stopReason` | Conversation turn finished |
 | `usage` | `inputTokens`, `outputTokens`, `cacheReadTokens?`, `cacheWriteTokens?` | Token usage report |

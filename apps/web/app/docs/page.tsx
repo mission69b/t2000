@@ -56,7 +56,7 @@ const PACKAGES = [
   {
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine for financial agents. 40 tools, adaptive thinking, 9 step guards, 7 skill recipes, silent intelligence layer, canvas, streaming.",
+    desc: "Reasoning engine for financial agents. 34 tools, adaptive thinking, 9 step guards, 7 skill recipes, silent intelligence layer, canvas, streaming.",
     install: "npm i @t2000/engine",
     npm: "https://www.npmjs.com/package/@t2000/engine",
     github: `${GITHUB_URL}/tree/main/packages/engine`,
@@ -221,7 +221,7 @@ export default function DocsPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
             {[
-              { value: "40", label: "Financial tools", sub: "29 read + 11 write" },
+              { value: "34", label: "Financial tools", sub: "23 read + 11 write" },
               { value: "9", label: "Step guards", sub: "balance, HF, slippage, cost, ..." },
               { value: "7", label: "Skill recipes", sub: "safe_borrow, swap_and_save, ..." },
               { value: "8", label: "Canvas templates", sub: "yield, health, portfolio, ..." },

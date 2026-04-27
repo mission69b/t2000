@@ -234,19 +234,32 @@ export { requireAgent, hasNaviMcp, getMcpManager, getWalletAddress } from './too
 export { fetchWalletCoins } from './sui-rpc.js';
 export type { WalletCoin, SuiCoinBalance } from './sui-rpc.js';
 
-// DefiLlama price resolver
-export { fetchTokenPrices, clearPriceCache } from './defillama-prices.js';
-
-// DefiLlama tools
+// [v1.4 — Day 2] BlockVision Indexer REST API price resolver. Replaced the
+// legacy DefiLlama `fetchTokenPrices` export wholesale: the
+// `defillama-prices.ts` module is deleted and BlockVision's
+// `fetchTokenPrices` takes over the canonical export name. Returns a
+// richer `{ price, change24h? }` shape than the old DefiLlama version
+// (which returned `Record<string, number>`); audric `engine-factory.ts`
+// extracts the `.price` field for its prompt-time price block.
 export {
-  defillamaYieldPoolsTool,
-  defillamaProtocolInfoTool,
-  defillamaTokenPricesTool,
-  defillamaPriceChangeTool,
-  defillamaChainTvlTool,
-  defillamaProtocolFeesTool,
-  defillamaSuiProtocolsTool,
-} from './tools/defillama.js';
+  fetchAddressPortfolio,
+  fetchTokenPrices,
+  clearPortfolioCache,
+  clearPortfolioCacheFor,
+  clearPriceMapCache,
+} from './blockvision-prices.js';
+export type {
+  AddressPortfolio,
+  PortfolioCoin,
+} from './blockvision-prices.js';
+
+// [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed from the engine.
+// Spot prices live on `tokenPricesTool` (BlockVision); protocol metadata
+// stays on `protocolDeepDiveTool` (already re-exported above via
+// `tools/index.js`), which still talks to `api.llama.fi` directly
+// inside its handler — that's the lone surviving production dependency
+// on DefiLlama.
+export { tokenPricesTool } from './tools/token-prices.js';
 
 // System prompt
 export { DEFAULT_SYSTEM_PROMPT } from './prompt.js';

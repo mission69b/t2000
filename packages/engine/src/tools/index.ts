@@ -35,15 +35,13 @@ import { renderCanvasTool } from './canvas.js';
 import { spendingAnalyticsTool } from './spending.js';
 import { yieldSummaryTool } from './yield-summary.js';
 import { activitySummaryTool } from './activity-summary.js';
-import {
-  defillamaYieldPoolsTool,
-  defillamaProtocolInfoTool,
-  defillamaTokenPricesTool,
-  defillamaPriceChangeTool,
-  defillamaChainTvlTool,
-  defillamaProtocolFeesTool,
-  defillamaSuiProtocolsTool,
-} from './defillama.js';
+// [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed. The
+// BlockVision-backed `token_prices` tool covers spot prices; the
+// surviving DefiLlama dependency is `protocol_deep_dive`, which holds
+// onto its own `api.llama.fi` calls (TVL/fees/audit metadata) and is
+// the lone production consumer of the upstream API. See
+// AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md §"Day 3" for context.
+import { tokenPricesTool } from './token-prices.js';
 
 // [SIMPLIFICATION DAY 7] Removed 9 tools to align engine with chat-first thesis:
 //   - allowance_status, toggle_allowance, update_daily_limit, update_permissions
@@ -52,7 +50,11 @@ import {
 //     (DCA/scheduled actions can't execute without user online to sign)
 //   - pause_pattern, pattern_status
 //     (pattern detection as proposals removed; classifiers stay as pure fns)
-// Final tool count: 29 reads + 11 writes = 40 tools.
+//
+// [v1.4 — Day 3] All 7 defillama_* LLM tools deleted (Day 2: prices/
+// change → BlockVision; Day 3: yield-pools/protocol-info/chain-tvl/
+// protocol-fees/sui-protocols deleted, no replacement). Current tool
+// count: 23 reads + 11 writes = 34 tools.
 
 export const READ_TOOLS: Tool[] = [
   renderCanvasTool,
@@ -68,13 +70,7 @@ export const READ_TOOLS: Tool[] = [
   explainTxTool,
   portfolioAnalysisTool,
   protocolDeepDiveTool,
-  defillamaYieldPoolsTool,
-  defillamaProtocolInfoTool,
-  defillamaTokenPricesTool,
-  defillamaPriceChangeTool,
-  defillamaChainTvlTool,
-  defillamaProtocolFeesTool,
-  defillamaSuiProtocolsTool,
+  tokenPricesTool,
   listPaymentLinksTool,
   cancelPaymentLinkTool,
   listInvoicesTool,
@@ -128,13 +124,7 @@ export {
   explainTxTool,
   portfolioAnalysisTool,
   protocolDeepDiveTool,
-  defillamaYieldPoolsTool,
-  defillamaProtocolInfoTool,
-  defillamaTokenPricesTool,
-  defillamaPriceChangeTool,
-  defillamaChainTvlTool,
-  defillamaProtocolFeesTool,
-  defillamaSuiProtocolsTool,
+  tokenPricesTool,
   saveContactTool,
   createPaymentLinkTool,
   listPaymentLinksTool,

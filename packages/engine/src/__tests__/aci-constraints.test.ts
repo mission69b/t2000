@@ -1,48 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { defillamaYieldPoolsTool } from '../tools/defillama.js';
 import { transactionHistoryTool } from '../tools/history.js';
 import { mppServicesTool } from '../tools/mpp-services.js';
+
+// [v1.4 — Day 3] The `defillama_yield_pools` ACI tests that lived here
+// were deleted alongside the tool. The remaining ACI behaviour the spec
+// cares about is the `_refine` shape on `mpp_services` and the
+// 30-day default + action filtering on `transaction_history` — both
+// covered below.
 
 const baseCtx = {
   walletAddress: '0xtest',
   suiRpcUrl: 'https://stub',
-} as Parameters<typeof defillamaYieldPoolsTool.call>[1];
-
-describe('[v1.4 ACI] defillama_yield_pools — refinement when no chain/project', () => {
-  beforeEach(() => {
-    global.fetch = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          data: [
-            { pool: 'a', chain: 'Sui', project: 'navi', symbol: 'USDC', tvlUsd: 5e6, apy: 8 },
-            { pool: 'b', chain: 'Sui', project: 'cetus', symbol: 'SUI/USDC', tvlUsd: 2e6, apy: 12 },
-            { pool: 'c', chain: 'Ethereum', project: 'aave', symbol: 'USDC', tvlUsd: 1e8, apy: 5 },
-          ],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      ),
-    ) as typeof fetch;
-  });
-
-  it('returns _refine + chain summary when called with no filters', async () => {
-    const res = await defillamaYieldPoolsTool.call({}, baseCtx);
-    const data = res.data as {
-      _refine: { reason: string; availableChains: { chain: string }[] };
-    };
-    expect(data._refine).toBeDefined();
-    expect(data._refine.reason).toMatch(/chain/i);
-    expect(data._refine.availableChains.map((c) => c.chain)).toContain('Sui');
-  });
-
-  it('returns actual pools when chain is supplied', async () => {
-    const res = await defillamaYieldPoolsTool.call({ chain: 'Sui', minTvl: 0 }, baseCtx);
-    expect(Array.isArray(res.data)).toBe(true);
-    const arr = res.data as Array<{ chain: string }>;
-    expect(arr.length).toBeGreaterThan(0);
-    for (const p of arr) expect(p.chain).toBe('Sui');
-  });
-});
+} as Parameters<typeof transactionHistoryTool.call>[1];
 
 describe('[v1.4 ACI] transaction_history — action filter + 30-day default', () => {
   beforeEach(() => {

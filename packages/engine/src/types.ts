@@ -138,6 +138,18 @@ export interface PendingAction {
    * `apps/web/app/api/engine/resume/route.ts` `updateMany` clause.
    */
   turnIndex: number;
+  /**
+   * [v1.4.2 — Day 3 / Spec Item 3] Per-yield random identifier (UUID v4)
+   * stamped at the moment the engine emits this `pending_action`. Hosts
+   * persist it on the `TurnMetrics` row at chat-time and key the resume
+   * route's `updateMany` on it instead of `(sessionId, turnIndex)` — that
+   * pair is ambiguous when the same turn yields a second pending action
+   * (e.g. user edits → re-yield) or when a backfill leaves multiple rows
+   * matching the pair, which is exactly the false-resolution bug Item 3
+   * exists to kill. Also survives session persistence so the resume call
+   * can read it back from the rehydrated `PendingAction`.
+   */
+  attemptId: string;
 }
 
 /**
@@ -183,6 +195,25 @@ export interface ToolContext {
    * value would exceed the limit. Optional; omitted = unbounded.
    */
   sessionSpendUsd?: number;
+  /**
+   * [v1.4 BlockVision] Server-only BlockVision Indexer API key. Threaded
+   * through from the host (`audric/apps/web` reads
+   * `process.env.BLOCKVISION_API_KEY`). Forwarded to
+   * `fetchAddressPortfolio` / `fetchTokenPrices` in `blockvision-prices.ts`.
+   * When undefined / empty the price feed degrades to Sui RPC + the
+   * hardcoded stable allow-list — wallets still render but non-stable
+   * USD values are reported as `null`.
+   */
+  blockvisionApiKey?: string;
+  /**
+   * [v1.4 BlockVision] Per-request memoization of the BlockVision portfolio
+   * response. Keyed by Sui address. Multiple read tools (`balance_check`,
+   * `portfolio_analysis`) inside the same chat turn re-hit the same address;
+   * sharing this Map across them avoids a second 200–500ms BlockVision RTT.
+   * The `blockvision-prices` module also has its own TTL cache, so this is
+   * primarily a fast-path optimisation rather than a correctness primitive.
+   */
+  portfolioCache?: Map<string, import('./blockvision-prices.js').AddressPortfolio>;
 }
 
 export interface ServerPositionData {
@@ -326,12 +357,34 @@ export interface EngineConfig {
    */
   sessionSpendUsd?: number;
   /**
+   * [v1.4 BlockVision] Server-only BlockVision Indexer API key. Forwarded
+   * verbatim into `ToolContext.blockvisionApiKey` for read tools that hit
+   * `api.blockvision.org` (`balance_check`, `portfolio_analysis`,
+   * `token_prices`). When omitted, those tools degrade gracefully to a
+   * Sui-RPC + hardcoded-stable fallback — see `blockvision-prices.ts`.
+   */
+  blockvisionApiKey?: string;
+  /**
+   * [v1.4 BlockVision] Per-request portfolio cache shared across read
+   * tools in the same chat turn. Forwarded into `ToolContext.portfolioCache`.
+   */
+  portfolioCache?: Map<string, import('./blockvision-prices.js').AddressPortfolio>;
+  /**
    * [v1.4] Fired after a write tool successfully auto-executes (no
    * confirmation required). Hosts use this to persist cumulative spend in
-   * Redis. Errors are caught — the tool result is never blocked by a failure
-   * here.
+   * Redis and (post-v1.4 BlockVision swap) invalidate cross-session caches
+   * keyed by the user's wallet address. Errors are caught — the tool
+   * result is never blocked by a failure here.
+   *
+   * The `walletAddress` field is populated from the engine's
+   * `config.walletAddress`; it's absent only on unauthenticated engines
+   * (which never auto-execute a real write).
    */
-  onAutoExecuted?: (info: { toolName: string; usdValue: number }) => void | Promise<void>;
+  onAutoExecuted?: (info: {
+    toolName: string;
+    usdValue: number;
+    walletAddress?: string;
+  }) => void | Promise<void>;
   /**
    * [v1.4 Item 4] Per-guard observation hook. Forwarded to `runGuards`
    * and fired once per non-`pass` verdict so hosts can record guard

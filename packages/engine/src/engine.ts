@@ -16,6 +16,8 @@ import { TxMutex, runTools, type PendingToolCall } from './orchestration.js';
 import { getDefaultTools } from './tools/index.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
+import { clearPortfolioCacheFor } from './blockvision-prices.js';
+import { randomUUID } from 'node:crypto';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { estimatePayApiCost } from './tools/pay.js';
 import {
@@ -80,6 +82,12 @@ export class QueryEngine {
   private readonly sessionSpendUsd: number | undefined;
   private readonly onAutoExecuted: EngineConfig['onAutoExecuted'];
   private readonly onGuardFired: EngineConfig['onGuardFired'];
+  // [v1.4 BlockVision] BlockVision Indexer API key + per-request portfolio
+  // cache. Forwarded into every `ToolContext` build site so read tools
+  // (`balance_check`, `portfolio_analysis`, future `token_prices`) hit the
+  // shared host-paid endpoint and dedupe across each other within a turn.
+  private readonly blockvisionApiKey: string | undefined;
+  private readonly portfolioCache: EngineConfig['portfolioCache'];
   // [v1.5] See `EngineConfig.postWriteRefresh` — drives the post-write
   // synthetic read injection in `resumeWithToolResult`.
   private readonly postWriteRefresh: EngineConfig['postWriteRefresh'];
@@ -131,6 +139,8 @@ export class QueryEngine {
     this.onAutoExecuted = config.onAutoExecuted;
     this.onGuardFired = config.onGuardFired;
     this.postWriteRefresh = config.postWriteRefresh;
+    this.blockvisionApiKey = config.blockvisionApiKey;
+    this.portfolioCache = config.portfolioCache;
 
     this.tools = config.tools ?? (config.agent ? getDefaultTools() : []);
   }
@@ -320,7 +330,27 @@ export class QueryEngine {
       priceCache: this.priceCache,
       permissionConfig: this.permissionConfig,
       sessionSpendUsd: this.sessionSpendUsd,
+      blockvisionApiKey: this.blockvisionApiKey,
+      portfolioCache: this.portfolioCache,
     };
+
+    // [v1.4 — Day 2.5] Bust both portfolio caches for this address before
+    // the 1.5s Sui-RPC-indexer-lag delay. The v1.4 BlockVision swap
+    // introduced two caching layers — `ToolContext.portfolioCache`
+    // (per-request Map, no TTL) and the module-level cache in
+    // `blockvision-prices.ts` (60s TTL). Without explicit invalidation,
+    // `runPostWriteRefresh` re-runs `balance_check`, which calls
+    // `fetchAddressPortfolio()`, which returns the *cached pre-write
+    // snapshot* — defeating the entire point of post-write refresh and
+    // resurrecting the v0.46.16-era class of "I deposited 20 USDC but
+    // the agent says my balance didn't change" bug. Pre-v1.4 the same
+    // path called `fetchWalletCoins` (Sui RPC, no cache) so the 1.5s
+    // delay alone was sufficient; post-v1.4 we MUST invalidate or no
+    // amount of waiting will help.
+    if (this.walletAddress) {
+      this.portfolioCache?.delete(this.walletAddress);
+      clearPortfolioCacheFor(this.walletAddress);
+    }
 
     // [v0.46.16] Sui RPC indexer lag — `executeTransactionBlock` returns
     // as soon as the tx is included in a checkpoint, but the public RPC's
@@ -511,6 +541,8 @@ export class QueryEngine {
       priceCache: this.priceCache,
       permissionConfig: this.permissionConfig,
       sessionSpendUsd: this.sessionSpendUsd,
+      blockvisionApiKey: this.blockvisionApiKey,
+      portfolioCache: this.portfolioCache,
     };
 
     try {
@@ -568,6 +600,8 @@ export class QueryEngine {
       priceCache: this.priceCache,
       permissionConfig: this.permissionConfig,
       sessionSpendUsd: this.sessionSpendUsd,
+      blockvisionApiKey: this.blockvisionApiKey,
+      portfolioCache: this.portfolioCache,
     };
 
     let turns = 0;
@@ -1049,6 +1083,7 @@ export class QueryEngine {
                   .then(() => this.onAutoExecuted!({
                     toolName: toolEvent.toolName,
                     usdValue,
+                    walletAddress: this.walletAddress,
                   }))
                   .catch((err) => {
                     console.warn('[engine] onAutoExecuted callback failed:', err);
@@ -1121,6 +1156,14 @@ export class QueryEngine {
         // matching `TurnMetrics` row when the action resolves.
         const modifiableFields = getModifiableFields(pendingWrite.call.name);
         const turnIndex = this.messages.filter((m) => m.role === 'assistant').length;
+        // [v1.4.2 — Day 3] Per-yield UUID. Hosts write this onto the
+        // `TurnMetrics` row at chat-time and key the resume route's update
+        // on it (instead of `(sessionId, turnIndex)`), eliminating the
+        // false-resolution path documented in spec §Item 3. Generated at
+        // yield rather than at construction so each emission of a write
+        // (e.g. user-edited resume that re-runs the agent loop) gets a
+        // fresh id and its own `TurnMetrics` row.
+        const attemptId = randomUUID();
 
         // [v0.46.8] Mark the turn as paused so the submitMessage /
         // resumeWithToolResult `finally` blocks DON'T clear the cache.
@@ -1143,6 +1186,7 @@ export class QueryEngine {
             ...(writeGuardInjections?.length ? { guardInjections: writeGuardInjections } : {}),
             ...(modifiableFields?.length ? { modifiableFields } : {}),
             turnIndex,
+            attemptId,
           },
         };
         return;

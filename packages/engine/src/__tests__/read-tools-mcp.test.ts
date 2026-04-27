@@ -13,12 +13,46 @@ import { savingsInfoTool } from '../tools/savings.js';
 import { healthCheckTool } from '../tools/health.js';
 import { ratesInfoTool } from '../tools/rates.js';
 
-vi.mock('../defillama-prices.js', () => ({
-  fetchTokenPrices: vi.fn(async () => ({
-    '0x2::sui::SUI': 3.50,
-    '0xdba::usdc::USDC': 1.00,
-  })),
-}));
+// [v1.4 BlockVision] balance.ts and portfolio-analysis.ts now read coins +
+// USD prices from BlockVision via `fetchAddressPortfolio` instead of from
+// the old DefiLlama `fetchTokenPrices`. We mock the BlockVision module to
+// keep the test hermetic and to mirror the prices the legacy mock used
+// (SUI=$3.50, USDC=$1.00) so all downstream assertions still hold.
+vi.mock('../blockvision-prices.js', async () => {
+  const actual = await vi.importActual<typeof import('../blockvision-prices.js')>(
+    '../blockvision-prices.js',
+  );
+  return {
+    ...actual,
+    fetchAddressPortfolio: vi.fn(async () => ({
+      coins: [
+        {
+          coinType: '0x2::sui::SUI',
+          symbol: 'SUI',
+          decimals: 9,
+          balance: '5000000000',
+          price: 3.5,
+          usdValue: 17.5,
+        },
+        {
+          coinType: '0xdba::usdc::USDC',
+          symbol: 'USDC',
+          decimals: 6,
+          balance: '250000000',
+          price: 1.0,
+          usdValue: 250.0,
+        },
+      ],
+      totalUsd: 267.5,
+      pricedAt: Date.now(),
+      source: 'blockvision' as const,
+    })),
+    fetchTokenPrices: vi.fn(async () => ({
+      '0x2::sui::SUI': { price: 3.5 },
+      '0xdba::usdc::USDC': { price: 1.0 },
+    })),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Mock NAVI MCP server fixtures

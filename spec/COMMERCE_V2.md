@@ -85,6 +85,7 @@ No fake value. No affiliate link wrapping. Just recipes + cooking coaching (whic
 ## User Flows (EU only for grocery, global for recipes)
 
 ### Flow 1: "What should I make for dinner?"
+
 ```
 User: "Something healthy, 30 minutes"
   → AI calls search_recipes (Pepesto /suggest)
@@ -97,15 +98,18 @@ User: "Something healthy, 30 minutes"
 ```
 
 ### Flow 2: "Make this recipe" (URL or image)
+
 ```
 User: pastes TikTok/Instagram/blog URL
   → AI calls parse_recipe (Pepesto /parse)
   → Shows parsed recipe card
   → [ Order Ingredients ] → grocery cart → checkout
 ```
+
 **Note:** Image parsing requires Phase 21 (image upload). URL + text works immediately.
 
 ### Flow 3: "Buy milk, eggs, bread"
+
 ```
 User: types grocery list
   → AI calls order_groceries (Pepesto /oneshot)
@@ -114,6 +118,7 @@ User: types grocery list
 ```
 
 ### Flow 4: "What can I make with chicken and rice?"
+
 ```
 User: lists what they have
   → AI calls search_recipes with ingredients_on_hand
@@ -122,6 +127,7 @@ User: lists what they have
 ```
 
 ### Flow 5: "Walk me through cooking it"
+
 ```
 User: "My groceries arrived, help me cook"
   → AI shows step-by-step instructions
@@ -131,13 +137,15 @@ User: "My groceries arrived, help me cook"
 
 ### What makes this different from ChatGPT
 
-| ChatGPT | t2000 |
-|---------|-------|
-| "Here's a recipe" (text) | Recipe card with nutrition, time, servings |
+
+| ChatGPT                    | t2000                                         |
+| -------------------------- | --------------------------------------------- |
+| "Here's a recipe" (text)   | Recipe card with nutrition, time, servings    |
 | "Go buy these ingredients" | Real products at your local Tesco with prices |
-| No ordering | One tap → supermarket checkout |
-| Forgets your preferences | Remembers dietary needs, preferred store |
-| No cooking help after | Step-by-step coaching with Q&A |
+| No ordering                | One tap → supermarket checkout                |
+| Forgets your preferences   | Remembers dietary needs, preferred store      |
+| No cooking help after      | Step-by-step coaching with Q&A                |
+
 
 The gap is narrow for recipe-only. The gap is massive when ordering works.
 
@@ -166,6 +174,7 @@ The real endgame isn't Tier 2 (pay-on-behalf with corporate cards). It's **USDC 
 **Key constraint:** Stripe machine payments support Base, Solana, Tempo — not Sui. Bridging or SPTs needed until Sui is added.
 
 When Stripe USDC settlement is GA, the flow becomes:
+
 ```
 User: "Order ingredients"
   → AI builds cart
@@ -182,13 +191,15 @@ We don't need to build pay-on-behalf infrastructure. The payment rails are being
 
 ### Gateway Routes (5 endpoints)
 
-| Route | Pepesto Endpoint | Price | Scope |
-|-------|-----------------|-------|-------|
-| `/pepesto/v1/suggest` | `POST /api/suggest` | $0.005 | Global — recipe search |
-| `/pepesto/v1/parse` | `POST /api/parse` | $0.005 | Global — parse URL/text/image |
-| `/pepesto/v1/oneshot` | `POST /api/oneshot` | $0.005 | EU — parse + match + session |
-| `/pepesto/v1/products` | `POST /api/products` | $0.005 | EU — match ingredients to products |
-| `/pepesto/v1/session` | `POST /api/session` | dynamic | EU — create checkout session |
+
+| Route                  | Pepesto Endpoint     | Price   | Scope                              |
+| ---------------------- | -------------------- | ------- | ---------------------------------- |
+| `/pepesto/v1/suggest`  | `POST /api/suggest`  | $0.005  | Global — recipe search             |
+| `/pepesto/v1/parse`    | `POST /api/parse`    | $0.005  | Global — parse URL/text/image      |
+| `/pepesto/v1/oneshot`  | `POST /api/oneshot`  | $0.005  | EU — parse + match + session       |
+| `/pepesto/v1/products` | `POST /api/products` | $0.005  | EU — match ingredients to products |
+| `/pepesto/v1/session`  | `POST /api/session`  | dynamic | EU — create checkout session       |
+
 
 ### Agent Tools (4 tools)
 
@@ -222,19 +233,23 @@ get_recipe_steps
 
 ### Render Cards (3 new types)
 
-| Card | What it shows |
-|------|--------------|
-| `<<recipe>>` | Title, time, calories, diet tags, ingredients, [ View Recipe ] + [ Order Ingredients ] |
-| `<<grocery>>` | Store name, items, prices, total, [ Complete Order ↗ ] |
-| `<<recipe-step>>` | Step number, instruction, timing, tips, [ Next Step → ] |
+
+| Card              | What it shows                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `<<recipe>>`      | Title, time, calories, diet tags, ingredients, [ View Recipe ] + [ Order Ingredients ] |
+| `<<grocery>>`     | Store name, items, prices, total, [ Complete Order ↗ ]                                 |
+| `<<recipe-step>>` | Step number, instruction, timing, tips, [ Next Step → ]                                |
+
 
 ### User Preferences
 
-| Setting | Source | Stored in |
-|---------|--------|-----------|
-| Country | Existing timezone/locale detection | Already exists |
-| Preferred supermarket (EU) | Ask on first grocery order or suggest default by country | User profile |
-| Dietary preferences | Ask on first recipe request or set in settings | User profile |
+
+| Setting                    | Source                                                   | Stored in      |
+| -------------------------- | -------------------------------------------------------- | -------------- |
+| Country                    | Existing timezone/locale detection                       | Already exists |
+| Preferred supermarket (EU) | Ask on first grocery order or suggest default by country | User profile   |
+| Dietary preferences        | Ask on first recipe request or set in settings           | User profile   |
+
 
 ---
 
@@ -244,68 +259,78 @@ get_recipe_steps
 
 ### Gateway (`apps/gateway/`) — DELETE or EDIT
 
-| File | Action | What |
-|------|--------|------|
-| `app/reloadly/v1/products/route.ts` | **Delete** | Browse products endpoint |
-| `app/reloadly/v1/order/route.ts` | **Delete** | Legacy MPP 402 order endpoint |
-| `app/reloadly/v1/order-internal/route.ts` | **Delete** | Deliver-first order endpoint |
-| `lib/reloadly.ts` | **Delete** | Token management, headers, URL builder |
-| `lib/services.ts` | **Edit** | Remove Reloadly service registration |
-| `public/logos/reloadly.svg` | **Delete** | Logo asset |
-| `app/components/TerminalDemo.tsx` | **Edit** | Remove Reloadly example |
-| `app/llms.txt/route.ts` | **Edit** | Remove gift card reference |
-| `app/services/page.tsx` | **Edit** | Remove gift card example |
+
+| File                                      | Action     | What                                   |
+| ----------------------------------------- | ---------- | -------------------------------------- |
+| `app/reloadly/v1/products/route.ts`       | **Delete** | Browse products endpoint               |
+| `app/reloadly/v1/order/route.ts`          | **Delete** | Legacy MPP 402 order endpoint          |
+| `app/reloadly/v1/order-internal/route.ts` | **Delete** | Deliver-first order endpoint           |
+| `lib/reloadly.ts`                         | **Delete** | Token management, headers, URL builder |
+| `lib/services.ts`                         | **Edit**   | Remove Reloadly service registration   |
+| `public/logos/reloadly.svg`               | **Delete** | Logo asset                             |
+| `app/components/TerminalDemo.tsx`         | **Edit**   | Remove Reloadly example                |
+| `app/llms.txt/route.ts`                   | **Edit**   | Remove gift card reference             |
+| `app/services/page.tsx`                   | **Edit**   | Remove gift card example               |
+
 
 ### Web-app (`apps/web-app/`) — EDIT
 
-| File | Action | What |
-|------|--------|------|
-| `lib/agent-tools.ts` | **Edit** | Remove `browse_gift_cards` + `buy_gift_card` tools, system prompt instructions |
-| `lib/service-gateway.ts` | **Edit** | Remove `reloadly-giftcard`, `reloadly-browse` mappings |
-| `lib/service-pricing.ts` | **Edit** | Remove `GIFT_CARD_FEE_RATE`, `giftCardPrice` |
-| `lib/service-catalog.ts` | **Edit** | Remove `gift-cards` category |
-| `components/dashboard/AgentMarkdown.tsx` | **Edit** | Remove `GiftCardVisual`, `<<giftcard>>` parser |
-| `components/dashboard/FeedRenderer.tsx` | **Edit** | Remove gift card step labels |
-| `lib/contextual-chips.ts` | **Edit** | Remove gift card chips |
-| `app/api/services/prepare/route.ts` | **Edit** | Remove Reloadly-specific logic (keep generic deliver-first) |
-| `app/api/services/complete/route.ts` | **Edit** | Remove `reloadly-giftcard` mapping |
-| `app/dashboard/page.tsx` | **Edit** | Remove "buy gift cards" onboarding copy |
-| `app/api/llm/route.ts` | **Edit** | Remove gift cards from services line |
-| `hooks/useAgentLoop.test.ts` | **Edit** | Remove gift card tool tests |
-| `lib/agent-tools.test.ts` | **Edit** | Remove gift card tests |
-| `lib/intent-parser.test.ts` | **Edit** | Remove gift card intent test |
+
+| File                                     | Action   | What                                                                           |
+| ---------------------------------------- | -------- | ------------------------------------------------------------------------------ |
+| `lib/agent-tools.ts`                     | **Edit** | Remove `browse_gift_cards` + `buy_gift_card` tools, system prompt instructions |
+| `lib/service-gateway.ts`                 | **Edit** | Remove `reloadly-giftcard`, `reloadly-browse` mappings                         |
+| `lib/service-pricing.ts`                 | **Edit** | Remove `GIFT_CARD_FEE_RATE`, `giftCardPrice`                                   |
+| `lib/service-catalog.ts`                 | **Edit** | Remove `gift-cards` category                                                   |
+| `components/dashboard/AgentMarkdown.tsx` | **Edit** | Remove `GiftCardVisual`, `<<giftcard>>` parser                                 |
+| `components/dashboard/FeedRenderer.tsx`  | **Edit** | Remove gift card step labels                                                   |
+| `lib/contextual-chips.ts`                | **Edit** | Remove gift card chips                                                         |
+| `app/api/services/prepare/route.ts`      | **Edit** | Remove Reloadly-specific logic (keep generic deliver-first)                    |
+| `app/api/services/complete/route.ts`     | **Edit** | Remove `reloadly-giftcard` mapping                                             |
+| `app/dashboard/page.tsx`                 | **Edit** | Remove "buy gift cards" onboarding copy                                        |
+| `app/api/llm/route.ts`                   | **Edit** | Remove gift cards from services line                                           |
+| `hooks/useAgentLoop.test.ts`             | **Edit** | Remove gift card tool tests                                                    |
+| `lib/agent-tools.test.ts`                | **Edit** | Remove gift card tests                                                         |
+| `lib/intent-parser.test.ts`              | **Edit** | Remove gift card intent test                                                   |
+
 
 ### Marketing site (`apps/web/`) — EDIT
 
-| File | Action | What |
-|------|--------|------|
-| `app/docs/page.tsx` | **Edit** | Remove Reloadly docs, gift card sections |
-| `app/page.tsx` | **Edit** | Remove "Reloadly" partner row, "800+ gift cards" |
-| `app/terms/page.tsx` | **Edit** | Remove gift card clause |
-| `app/privacy/page.tsx` | **Edit** | Remove Reloadly mention |
-| `app/disclaimer/page.tsx` | **Edit** | Remove gift card disclaimer |
-| `app/app/page.tsx` | **Edit** | Remove gift card copy |
+
+| File                      | Action   | What                                             |
+| ------------------------- | -------- | ------------------------------------------------ |
+| `app/docs/page.tsx`       | **Edit** | Remove Reloadly docs, gift card sections         |
+| `app/page.tsx`            | **Edit** | Remove "Reloadly" partner row, "800+ gift cards" |
+| `app/terms/page.tsx`      | **Edit** | Remove gift card clause                          |
+| `app/privacy/page.tsx`    | **Edit** | Remove Reloadly mention                          |
+| `app/disclaimer/page.tsx` | **Edit** | Remove gift card disclaimer                      |
+| `app/app/page.tsx`        | **Edit** | Remove gift card copy                            |
+
 
 ### MCP + Skills + Scripts
 
-| File | Action | What |
-|------|--------|------|
-| `packages/mcp/src/tools/write.ts` | **Edit** | Remove Reloadly gift card block |
-| `packages/mcp/src/tools/read.ts` | **Edit** | Remove gift card references |
-| `t2000-skills/skills/t2000-pay/SKILL.md` | **Edit** | Remove Reloadly table |
-| `scripts/audit-gift-cards.ts` | **Delete** | Entire audit script |
+
+| File                                     | Action     | What                            |
+| ---------------------------------------- | ---------- | ------------------------------- |
+| `packages/mcp/src/tools/write.ts`        | **Edit**   | Remove Reloadly gift card block |
+| `packages/mcp/src/tools/read.ts`         | **Edit**   | Remove gift card references     |
+| `t2000-skills/skills/t2000-pay/SKILL.md` | **Edit**   | Remove Reloadly table           |
+| `scripts/audit-gift-cards.ts`            | **Delete** | Entire audit script             |
+
 
 ### Root + Marketing docs
 
-| File | Action | What |
-|------|--------|------|
-| `README.md` | **Edit** | Remove Reloadly from service list |
-| `ARCHITECTURE.md` | **Edit** | Remove Reloadly row |
-| `marketing/x-article.md` | **Edit** | Remove gift card references |
-| `marketing/rollout-plan.md` | **Edit** | Remove gift card day |
-| `marketing/demo-script.md` | **Edit** | Remove gift card demo |
-| `marketing/mysten-strategy.md` | **Edit** | Remove Reloadly reference |
-| `marketing/marketing-plan.md` | **Edit** | Remove Reloadly from list |
+
+| File                           | Action   | What                              |
+| ------------------------------ | -------- | --------------------------------- |
+| `README.md`                    | **Edit** | Remove Reloadly from service list |
+| `ARCHITECTURE.md`              | **Edit** | Remove Reloadly row               |
+| `marketing/x-article.md`       | **Edit** | Remove gift card references       |
+| `marketing/rollout-plan.md`    | **Edit** | Remove gift card day              |
+| `marketing/demo-script.md`     | **Edit** | Remove gift card demo             |
+| `marketing/mysten-strategy.md` | **Edit** | Remove Reloadly reference         |
+| `marketing/marketing-plan.md`  | **Edit** | Remove Reloadly from list         |
+
 
 ### Environment variables — Remove from Vercel
 
@@ -326,70 +351,80 @@ get_recipe_steps
 
 ### Phase 1: Gift Card Removal — 2-3 days
 
-| Step | What | Files |
-|------|------|-------|
-| 1 | Delete Reloadly gateway routes + lib + logo | 5 files deleted |
-| 2 | Remove service registration | `gateway/lib/services.ts` |
-| 3 | Edit gateway UI references | 3 files |
-| 4 | Remove web-app tools, mappings, pricing, catalog, chips | 7 files |
-| 5 | Remove web-app UI (AgentMarkdown, FeedRenderer, dashboard copy) | 4 files |
-| 6 | Remove Reloadly from prepare/complete (keep generic deliver-first) | 2 files |
-| 7 | Update tests | 3 files |
-| 8 | Update marketing site | 6 files |
-| 9 | Update MCP + skills, delete audit script | 4 files |
-| 10 | Update root + marketing docs | 7 files |
-| 11 | Remove Vercel env vars | 3 vars |
-| 12 | `npm run lint && npm run typecheck` | Both apps |
-| 13 | Deploy | Vercel |
+
+| Step | What                                                               | Files                     |
+| ---- | ------------------------------------------------------------------ | ------------------------- |
+| 1    | Delete Reloadly gateway routes + lib + logo                        | 5 files deleted           |
+| 2    | Remove service registration                                        | `gateway/lib/services.ts` |
+| 3    | Edit gateway UI references                                         | 3 files                   |
+| 4    | Remove web-app tools, mappings, pricing, catalog, chips            | 7 files                   |
+| 5    | Remove web-app UI (AgentMarkdown, FeedRenderer, dashboard copy)    | 4 files                   |
+| 6    | Remove Reloadly from prepare/complete (keep generic deliver-first) | 2 files                   |
+| 7    | Update tests                                                       | 3 files                   |
+| 8    | Update marketing site                                              | 6 files                   |
+| 9    | Update MCP + skills, delete audit script                           | 4 files                   |
+| 10   | Update root + marketing docs                                       | 7 files                   |
+| 11   | Remove Vercel env vars                                             | 3 vars                    |
+| 12   | `npm run lint && npm run typecheck`                                | Both apps                 |
+| 13   | Deploy                                                             | Vercel                    |
+
 
 ### Phase 2: Pepesto Integration — 1-1.5 weeks
 
-| Step | What | Effort |
-|------|------|--------|
-| 1 | Sign up for Pepesto, email for 70% discount | External |
-| 2 | Add `PEPESTO_API_KEY` to Vercel | Config |
-| 3 | Build 5 gateway routes | 2-3 days |
-| 4 | Build 4 agent tools with regional routing | 2-3 days |
-| 5 | Build 3 render cards (`<<recipe>>`, `<<grocery>>`, `<<recipe-step>>`) | 2-3 days |
-| 6 | Add supermarket preference + dietary preferences to profile | 1 day |
-| 7 | Update system prompt, contextual chips, feed labels | 1 day |
-| 8 | Update MCP + skills with new tools | 0.5 day |
-| 9 | Update marketing site + docs with grocery features | 0.5 day |
+
+| Step | What                                                                  | Effort   |
+| ---- | --------------------------------------------------------------------- | -------- |
+| 1    | Sign up for Pepesto, email for 70% discount                           | External |
+| 2    | Add `PEPESTO_API_KEY` to Vercel                                       | Config   |
+| 3    | Build 5 gateway routes                                                | 2-3 days |
+| 4    | Build 4 agent tools with regional routing                             | 2-3 days |
+| 5    | Build 3 render cards (`<<recipe>>`, `<<grocery>>`, `<<recipe-step>>`) | 2-3 days |
+| 6    | Add supermarket preference + dietary preferences to profile           | 1 day    |
+| 7    | Update system prompt, contextual chips, feed labels                   | 1 day    |
+| 8    | Update MCP + skills with new tools                                    | 0.5 day  |
+| 9    | Update marketing site + docs with grocery features                    | 0.5 day  |
+
 
 ### Future (not scheduled)
 
-| What | When |
-|------|------|
-| Virtual card via Stripe Issuing for Agents (Phase 20b) | After Pepesto ships — Stripe Issuing application + entity onboarding needed |
-| USDC → fiat settlement via Stripe/Bridge | When Stripe stablecoin settlement is GA |
-| Stripe machine payments on Sui | Monitor — Stripe Crypto Onramp already supports Sui; machine payments TBD |
-| Restaurant delivery (browser automation) | When Browserbase/Stagehand + virtual card flow is stable enough for production |
-| More grocery regions | When demand in EU is proven |
+
+| What                                                   | When                                                                           |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Virtual card via Stripe Issuing for Agents (Phase 20b) | After Pepesto ships — Stripe Issuing application + entity onboarding needed    |
+| USDC → fiat settlement via Stripe/Bridge               | When Stripe stablecoin settlement is GA                                        |
+| Stripe machine payments on Sui                         | Monitor — Stripe Crypto Onramp already supports Sui; machine payments TBD      |
+| Restaurant delivery (browser automation)               | When Browserbase/Stagehand + virtual card flow is stable enough for production |
+| More grocery regions                                   | When demand in EU is proven                                                    |
+
 
 ---
 
 ## Edge Cases
 
-| Edge case | Mitigation |
-|-----------|------------|
-| Users asking for gift cards | System prompt: "You do NOT have gift card capabilities." AI suggests alternatives |
-| Historical `SponsorLog` records with `service: 'reloadly'` | Leave as-is — historical records, don't migrate |
-| MCP/CLI users with cached tool descriptions | Bump MCP version, publish to npm |
-| Deliver-first pattern shared with Printful/Lob | Only remove Reloadly branches, grep for `reloadly` not `deliverFirst` |
-| Pepesto downtime | Graceful fallback: "Recipe service temporarily unavailable" |
-| User in EU but Pepesto doesn't cover their country | AI: "Grocery ordering covers [list of countries]. Yours isn't supported yet." |
-| Phase 21 not shipped (image parse unavailable) | `parse_recipe` works with URLs and text. Image support noted as "coming soon" |
+
+| Edge case                                                  | Mitigation                                                                        |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Users asking for gift cards                                | System prompt: "You do NOT have gift card capabilities." AI suggests alternatives |
+| Historical `SponsorLog` records with `service: 'reloadly'` | Leave as-is — historical records, don't migrate                                   |
+| MCP/CLI users with cached tool descriptions                | Bump MCP version, publish to npm                                                  |
+| Deliver-first pattern shared with Printful/Lob             | Only remove Reloadly branches, grep for `reloadly` not `deliverFirst`             |
+| Pepesto downtime                                           | Graceful fallback: "Recipe service temporarily unavailable"                       |
+| User in EU but Pepesto doesn't cover their country         | AI: "Grocery ordering covers [list of countries]. Yours isn't supported yet."     |
+| Phase 21 not shipped (image parse unavailable)             | `parse_recipe` works with URLs and text. Image support noted as "coming soon"     |
+
 
 ---
 
 ## Open Questions
 
-| Question | Leaning |
-|----------|---------|
-| Pepesto pricing? | $0.005 per MPP call (pass through Pepesto cost + small margin) |
-| Remove Reloadly Airtime from SERVICES_ROADMAP? | Yes — dropping entire Reloadly relationship |
-| Phase 21 before or parallel with Pepesto? | Parallel if possible — image→recipe is a strong demo but URL→recipe ships first |
-| When to pursue Stripe/Bridge USDC spending? | Monitor — don't build until their APIs are GA. Stripe Crypto Onramp (fiat → USDC on Sui) confirmed and specced in Phase 20a |
+
+| Question                                       | Leaning                                                                                                                     |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Pepesto pricing?                               | $0.005 per MPP call (pass through Pepesto cost + small margin)                                                              |
+| Remove Reloadly Airtime from SERVICES_ROADMAP? | Yes — dropping entire Reloadly relationship                                                                                 |
+| Phase 21 before or parallel with Pepesto?      | Parallel if possible — image→recipe is a strong demo but URL→recipe ships first                                             |
+| When to pursue Stripe/Bridge USDC spending?    | Monitor — don't build until their APIs are GA. Stripe Crypto Onramp (fiat → USDC on Sui) confirmed and specced in Phase 20a |
+
 
 ---
 
@@ -397,28 +432,32 @@ get_recipe_steps
 
 All docs updated during Phase 24a implementation.
 
-**`spec/t2000-roadmap-v2.md`** — ✅
-- [x] Removed "gift cards (800+ brands)" from shipped features
-- [x] Changed deliver-first example from gift cards to high-value services
-- [x] Removed "Phone top-up via Reloadly Airtime" from Phase 23a
-- [x] Removed gift card gifting flows and cross-sell chips
-- [x] Updated service counts (41→40, 90→88)
-- [x] Marked Phase 24a as ✅ Shipped
+`**spec/t2000-roadmap-v2.md`** — ✅
 
-**`spec/roadmap-mpp.md`** — ✅
-- [x] Updated service counts (41→40, 90→88) throughout
-- [x] Rewrote "Deliver-First Pattern" section — uses Printful as example
-- [x] Replaced `/reloadly/v1/order` in wireframe examples
+- Removed "gift cards (800+ brands)" from shipped features
+- Changed deliver-first example from gift cards to high-value services
+- Removed "Phone top-up via Reloadly Airtime" from Phase 23a
+- Removed gift card gifting flows and cross-sell chips
+- Updated service counts (41→40, 90→88)
+- Marked Phase 24a as ✅ Shipped
 
-**`spec/archive/SERVICES_ROADMAP.md`** — ✅
-- [x] Removed "Reloadly Gift Cards" from service table
-- [x] Removed "Reloadly storytelling" marketing reference
-- [x] Changed Commerce category to "Lob, Printful"
-- [x] Updated Tempo comparison count
-- [x] Removed Reloadly from dynamic pricing examples
+`**spec/roadmap-mpp.md**` — ✅
 
-**`spec/archive/MPP_GATEWAY_V2.md`** — ✅
-- [x] Replaced Reloadly storytelling section with removal note + updated marketing focus
+- Updated service counts (41→40, 90→88) throughout
+- Rewrote "Deliver-First Pattern" section — uses Printful as example
+- Replaced `/reloadly/v1/order` in wireframe examples
+
+`**spec/archive/SERVICES_ROADMAP.md**` — ✅
+
+- Removed "Reloadly Gift Cards" from service table
+- Removed "Reloadly storytelling" marketing reference
+- Changed Commerce category to "Lob, Printful"
+- Updated Tempo comparison count
+- Removed Reloadly from dynamic pricing examples
+
+`**spec/archive/MPP_GATEWAY_V2.md**` — ✅
+
+- Replaced Reloadly storytelling section with removal note + updated marketing focus
 
 ---
 

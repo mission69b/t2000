@@ -2,6 +2,7 @@ import { runPortfolioSnapshots } from './jobs/portfolioSnapshots.js';
 import { runProfileInference } from './jobs/profileInference.js';
 import { runMemoryExtraction } from './jobs/memoryExtraction.js';
 import { runChainMemory } from './jobs/chainMemory.js';
+import { runFinancialContextSnapshot } from './jobs/financialContextSnapshot.js';
 import { fetchNotificationUsers } from './scheduler.js';
 import type { JobResult } from './types.js';
 
@@ -31,6 +32,12 @@ const CRON_GROUP = process.env.CRON_GROUP ?? 'daily-intel';
 
 const HOUR_DATA = 7; // midnight US East
 const HOUR_INTELLIGENCE = 19; // 2pm US East
+// [v1.4.2 — Day 5 / Spec Item 6] Daily orientation snapshot. Spec-mandated
+// 02:00 UTC. That's 19h *after* the prior calendar day's `HOUR_DATA` (07
+// UTC) portfolio-snapshot, so the freshest PortfolioSnapshot row for every
+// active user is in place when fin_ctx derives savings/debt/wallet deltas
+// from it. Single hour, single fan-out via the audric internal API.
+const HOUR_FIN_CTX = 2;
 
 async function runCron(): Promise<void> {
   const startTime = Date.now();
@@ -58,6 +65,10 @@ async function runCron(): Promise<void> {
     if (utcHour === HOUR_INTELLIGENCE) {
       results.push(await runProfileInference());
       results.push(await runMemoryExtraction());
+    }
+
+    if (utcHour === HOUR_FIN_CTX) {
+      results.push(await runFinancialContextSnapshot());
     }
   } else {
     console.log(`[cron] Unknown group "${CRON_GROUP}" — exiting`);

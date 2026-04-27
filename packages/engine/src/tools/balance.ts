@@ -1,6 +1,4 @@
 import { z } from 'zod';
-import { getDecimalsForCoinType } from '@t2000/sdk';
-import { fetchWalletCoins } from '../sui-rpc.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcp, getMcpManager, getWalletAddress, requireAgent } from './utils.js';
 import type { McpClientManager } from '../mcp-client.js';
@@ -10,9 +8,21 @@ import {
   transformPositions,
   transformRewards,
 } from '../navi-transforms.js';
-import { fetchTokenPrices } from '../defillama-prices.js';
+import {
+  fetchAddressPortfolio,
+  type AddressPortfolio,
+} from '../blockvision-prices.js';
 
 const GAS_RESERVE_SUI = 0.05;
+
+// vSUI (Volo's liquid-staked SUI). BlockVision sometimes lacks a price for
+// this token — when missing we read the official Volo exchange rate and
+// derive vSUI = rate × SUI price. See [v1.4.1 — M1'] for the rewrite that
+// mutates the portfolio in place.
+const VSUI_COIN_TYPE =
+  '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
+const SUI_COIN_TYPE = '0x2::sui::SUI';
+const VSUI_FALLBACK_RATE = 1.05;
 
 async function callNavi<T = unknown>(
   manager: McpClientManager,
@@ -30,6 +40,68 @@ async function callNavi<T = unknown>(
   return parseMcpJson<T>(result.content);
 }
 
+/**
+ * [v1.4.1 — M1'] Mutates `portfolio` in place to fill in the vSUI USD
+ * price/value when BlockVision returned no price for it. Reads the
+ * canonical exchange rate from Volo's public stats endpoint and falls
+ * back to a hardcoded 1.05× SUI multiplier if the call fails.
+ *
+ * No-op when the wallet doesn't hold vSUI or BlockVision already returned
+ * a price.
+ */
+async function applyVsuiPriceFallback(portfolio: AddressPortfolio): Promise<void> {
+  const vsuiIdx = portfolio.coins.findIndex((c) => c.coinType === VSUI_COIN_TYPE);
+  if (vsuiIdx === -1) return;
+  const vsui = portfolio.coins[vsuiIdx];
+  if (vsui.price != null) return;
+
+  const suiCoin = portfolio.coins.find((c) => c.coinType === SUI_COIN_TYPE);
+  const suiPrice = suiCoin?.price ?? null;
+  if (suiPrice == null) return;
+
+  let rate = VSUI_FALLBACK_RATE;
+  try {
+    const statsRes = await fetch('https://open-api.naviprotocol.io/api/volo/stats', {
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (statsRes.ok) {
+      const json = (await statsRes.json()) as {
+        data?: { exchange_rate?: number; exchangeRate?: number };
+        exchange_rate?: number;
+        exchangeRate?: number;
+      };
+      const data = json.data ?? json;
+      rate = data.exchange_rate ?? data.exchangeRate ?? VSUI_FALLBACK_RATE;
+    }
+  } catch {
+    // Network error — keep the hardcoded fallback rate.
+  }
+
+  const price = rate * suiPrice;
+  const amount = Number(vsui.balance) / 10 ** vsui.decimals;
+  const usdValue = Number.isFinite(amount) ? amount * price : null;
+  const previousUsd = vsui.usdValue ?? 0;
+  portfolio.coins[vsuiIdx] = { ...vsui, price, usdValue };
+  if (usdValue != null) {
+    portfolio.totalUsd = portfolio.totalUsd - previousUsd + usdValue;
+  }
+}
+
+async function loadPortfolio(
+  address: string,
+  blockvisionApiKey: string | undefined,
+  fallbackRpcUrl: string | undefined,
+  cache: Map<string, AddressPortfolio> | undefined,
+): Promise<AddressPortfolio> {
+  if (cache) {
+    const hit = cache.get(address);
+    if (hit) return hit;
+  }
+  const portfolio = await fetchAddressPortfolio(address, blockvisionApiKey, fallbackRpcUrl);
+  if (cache) cache.set(address, portfolio);
+  return portfolio;
+}
+
 export const balanceCheckTool = buildTool({
   name: 'balance_check',
   description:
@@ -37,9 +109,10 @@ export const balanceCheckTool = buildTool({
   inputSchema: z.object({}),
   jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
-  // [v1.5.1] Wallet contents change after every send/swap/save/etc.
-  // Microcompact must NEVER dedupe these calls — each one reflects a
-  // different on-chain state.
+  // [v1.4 BlockVision] Wallet contents change after every send / swap /
+  // save / etc. and the price half of this result is sourced from
+  // BlockVision's Indexer REST API. Microcompact must NEVER dedupe these
+  // calls — each one reflects a different on-chain + market snapshot.
   cacheable: false,
 
   async call(_input, context) {
@@ -50,14 +123,29 @@ export const balanceCheckTool = buildTool({
       // [v0.47] When a host-side `positionFetcher` is configured (Audric
       // production), savings/debt/rewards come from the host instead of
       // NAVI MCP. Skip those MCP calls entirely — they were previously
-      // fetched in parallel and then discarded, wasting 1–4s on the
-      // critical path.
+      // fetched in parallel and then discarded.
       const hasPositionFetcher = !!(context.positionFetcher && context.walletAddress);
 
-      const [walletCoins, positions, rewards] = await Promise.all([
-        fetchWalletCoins(address, context.suiRpcUrl).catch((err) => {
-          console.warn('[balance_check] Sui RPC coin fetch failed, falling back to MCP:', err);
-          return null;
+      // [v1.4 BlockVision] Single BlockVision call returns coins +
+      // balances + prices in one shot, replacing the parallel
+      // (Sui RPC fetchWalletCoins + DefiLlama fetchTokenPrices) pair.
+      // Run alongside positions / rewards / positionFetcher so total
+      // wall time is bound by the slowest of the four.
+      const [portfolio, positions, rewards, serverPositions] = await Promise.all([
+        loadPortfolio(
+          address,
+          context.blockvisionApiKey,
+          context.suiRpcUrl,
+          context.portfolioCache,
+        ).catch((err) => {
+          console.warn('[balance_check] portfolio fetch failed, returning empty:', err);
+          const fallback: AddressPortfolio = {
+            coins: [],
+            totalUsd: 0,
+            pricedAt: Date.now(),
+            source: 'sui-rpc-degraded',
+          };
+          return fallback;
         }),
         hasPositionFetcher
           ? Promise.resolve(null)
@@ -65,36 +153,16 @@ export const balanceCheckTool = buildTool({
               address,
               protocols: 'navi',
               format: 'json',
+            }).catch((err) => {
+              console.warn('[balance_check] NAVI GET_POSITIONS failed:', err);
+              return null;
             }),
         hasPositionFetcher
           ? Promise.resolve(null)
-          : callNavi(mgr, NaviTools.GET_AVAILABLE_REWARDS, { address }),
-      ]);
-
-      let coins = walletCoins;
-      if (!coins || coins.length === 0) {
-        const mcpCoins = await callNavi(mgr, NaviTools.GET_COINS, { address }).catch(() => []);
-        const coinArr = Array.isArray(mcpCoins) ? mcpCoins as Array<{ coinType?: string; totalBalance?: string; symbol?: string; decimals?: number }> : [];
-        coins = coinArr.map((c) => ({
-          coinType: c.coinType ?? '',
-          symbol: c.symbol ?? '',
-          decimals: c.decimals ?? getDecimalsForCoinType(c.coinType ?? ''),
-          totalBalance: c.totalBalance ?? '0',
-          coinObjectCount: 0,
-        }));
-      }
-
-      const VSUI_COIN_TYPE = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
-      const coinTypes = coins.map((c) => c.coinType).filter(Boolean);
-
-      // [v0.47] Run prices and host positionFetcher in parallel. Both depend
-      // only on the now-resolved coin list / address — no need to chain them.
-      // Was previously serial: prices → positionFetcher, costing ~2s extra.
-      const [prices, serverPositions] = await Promise.all([
-        fetchTokenPrices(coinTypes).catch((err) => {
-          console.warn('[balance_check] DefiLlama price fetch failed:', err);
-          return {} as Record<string, number>;
-        }),
+          : callNavi(mgr, NaviTools.GET_AVAILABLE_REWARDS, { address }).catch((err) => {
+              console.warn('[balance_check] NAVI GET_AVAILABLE_REWARDS failed:', err);
+              return null;
+            }),
         hasPositionFetcher
           ? context.positionFetcher!(context.walletAddress!).catch((err) => {
               console.warn('[balance_check] positionFetcher failed:', err);
@@ -103,23 +171,21 @@ export const balanceCheckTool = buildTool({
           : Promise.resolve(null),
       ]);
 
-      if (coins.some((c) => c.coinType === VSUI_COIN_TYPE) && !prices[VSUI_COIN_TYPE]) {
-        try {
-          const statsRes = await fetch('https://open-api.naviprotocol.io/api/volo/stats', {
-            signal: AbortSignal.timeout(5_000),
-          });
-          if (statsRes.ok) {
-            const statsJson = await statsRes.json() as { data?: { exchange_rate?: number; exchangeRate?: number } };
-            const d = statsJson.data ?? statsJson as { exchange_rate?: number; exchangeRate?: number };
-            const rate = d.exchange_rate ?? d.exchangeRate ?? 1.05;
-            const suiPrice = prices['0x2::sui::SUI'] ?? 0;
-            prices[VSUI_COIN_TYPE] = rate * suiPrice;
-          }
-        } catch {
-          const suiPrice = prices['0x2::sui::SUI'] ?? 0;
-          prices[VSUI_COIN_TYPE] = suiPrice * 1.05;
-        }
-      }
+      // [v1.4.1 — M1'] vSUI workaround mutates the portfolio in place
+      // (BlockVision occasionally lacks a price for vSUI; we derive it
+      // from the SUI price + Volo exchange rate). No-op when the wallet
+      // doesn't hold vSUI.
+      await applyVsuiPriceFallback(portfolio);
+
+      // [v1.4.1 — M2'] NAVI MCP `GET_COINS` fallback removed. Previously
+      // when Sui RPC returned an empty coin list we'd hit NAVI as a
+      // tertiary source; with BlockVision as the primary and Sui RPC
+      // already serving as the degraded fallback inside
+      // `fetchAddressPortfolio`, the third tier added complexity without
+      // real coverage (NAVI's coin endpoint shares infrastructure with
+      // its already-failing positions endpoint). An empty wallet now
+      // surfaces honestly to the user rather than silently swapping
+      // sources mid-render.
 
       let availableUsd = 0;
       let stablesUsd = 0;
@@ -128,11 +194,11 @@ export const balanceCheckTool = buildTool({
       const STABLE_SYMBOLS = new Set(['USDC', 'USDT', 'USDe', 'USDsui', 'wUSDC', 'wUSDT']);
       const holdings: Array<{ symbol: string; coinType: string; balance: number; usdValue: number }> = [];
 
-      for (const coin of coins) {
-        const balance = Number(coin.totalBalance) / 10 ** coin.decimals;
-        const price = prices[coin.coinType] ?? 0;
+      for (const coin of portfolio.coins) {
+        const balance = Number(coin.balance) / 10 ** coin.decimals;
+        const price = coin.price ?? 0;
 
-        if (coin.symbol === 'SUI' || coin.coinType === '0x2::sui::SUI') {
+        if (coin.symbol === 'SUI' || coin.coinType === SUI_COIN_TYPE) {
           const reserveAmount = Math.min(balance, GAS_RESERVE_SUI);
           gasReserveUsd = reserveAmount * price;
           availableUsd += (balance - reserveAmount) * price;
@@ -158,8 +224,6 @@ export const balanceCheckTool = buildTool({
       let pendingRewardsUsd: number;
 
       if (serverPositions) {
-        // [v0.47] `serverPositions` was already fetched in the parallel
-        // batch above when `positionFetcher` is configured.
         savings = serverPositions.savings;
         debt = serverPositions.borrows;
         pendingRewardsUsd = serverPositions.pendingRewards;
@@ -192,6 +256,7 @@ export const balanceCheckTool = buildTool({
         stables: stablesUsd,
         holdings: visibleHoldings,
         saveableUsdc,
+        priceSource: portfolio.source,
       };
 
       const holdingsList = visibleHoldings.map((h) => `${h.symbol}: ${h.balance < 1 ? h.balance.toFixed(6) : h.balance.toFixed(2)} ($${h.usdValue.toFixed(2)})`).join(', ');
