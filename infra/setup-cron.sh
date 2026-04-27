@@ -18,11 +18,16 @@ set -euo pipefail
 #     definitions (`t2000-cron-hourly`, `t2000-cron-daily-chain`, and the
 #     legacy umbrella `t2000-cron`) were deleted from EventBridge + ECS in S.12.5.
 #
-# Only `t2000-cron-daily-intel` survives. It still runs at 07:00 + 19:00 UTC
-# to refresh:
-#   - Portfolio snapshots (silent context for the engine)
-#   - Episodic memory + financial profile inference
-#   - Behavioural-pattern *classifiers* (kept as pure functions feeding ChainFacts)
+# Only `t2000-cron-daily-intel` survives. It runs at 02:00, 07:00, and 19:00
+# UTC to refresh silent context for the engine:
+#   - 07:00 → portfolio snapshots + episodic chain memory
+#   - 19:00 → financial profile inference + memory extraction
+#   - 02:00 → financial-context snapshot (UserFinancialContext rows powering
+#             the `<financial_context>` engine prompt block — added in
+#             v1.4.2 / Spec Item 6, fans out via the audric internal API)
+# 02:00 deliberately runs 19h *after* the previous calendar day's 07:00
+# portfolio-snapshot so fin_ctx derives savings/debt/wallet deltas from the
+# freshest PortfolioSnapshot row for every active user.
 # All output is silent context fed to the LLM at chat time. Nothing is surfaced
 # to the user without them asking.
 #
@@ -166,8 +171,8 @@ create_or_update_schedule() {
 
 # Step 3: Create/update the daily-intel schedule (only surviving cron)
 echo ""
-echo "--- Schedule: Daily Intel (silent context refresh — hours 7,19 UTC) ---"
-create_or_update_schedule "t2000-cron-daily-intel" "cron(0 7,19 * * ? *)" "t2000-cron-daily-intel"
+echo "--- Schedule: Daily Intel (silent context refresh — hours 2,7,19 UTC) ---"
+create_or_update_schedule "t2000-cron-daily-intel" "cron(0 2,7,19 * * ? *)" "t2000-cron-daily-intel"
 
 echo ""
 echo "=== Done ==="
