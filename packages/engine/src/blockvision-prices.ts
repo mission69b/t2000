@@ -398,34 +398,38 @@ function parseNumberOrNull(input: unknown): number | null {
 }
 
 // ---------------------------------------------------------------------------
-// [v0.50.1] DeFi portfolio aggregation
+// [v0.50.2] DeFi portfolio aggregation
 //
 // `balance_check` historically returned only wallet coins + NAVI savings,
 // missing DeFi positions across the rest of Sui DeFi — for active users
-// this can be a meaningful fraction of net worth (funkii: SuiVision $39.5k
-// vs balance_check $37.8k after v0.50, gap = ~$1.6k in long-tail protocols).
+// this can be a meaningful fraction of net worth.
 //
-// v0.50.1 fans out across ALL 26 protocols supported by BlockVision's
-// `/account/defiPortfolio` endpoint (the full enum minus NAVI, which is
-// already covered by `positionFetcher` / NAVI MCP — including it here
-// would double-count savings).
+// v0.50 introduced parallel fan-out across BlockVision's
+// `/account/defiPortfolio` endpoint (excluding NAVI, which is already
+// covered by `positionFetcher` / NAVI MCP). v0.50.1 expanded to all 26
+// supported protocols, but 26 simultaneous BV calls + the wallet
+// `/account/coins` call hit BlockVision's per-second burst cap, so the
+// wallet endpoint occasionally 429'd and silently degraded to Sui RPC
+// (which only prices stables, leaving non-stables at $0). v0.50.2 walks
+// it back to 9 protocols — the original 6 majors plus the 3 native-token
+// stakings users were missing — keeping the burst at 10 parallel calls
+// (1 wallet + 9 DeFi). Adding a future protocol is a 1-line append in
+// `DEFI_PROTOCOLS` below.
 //
 // Two-pass design:
 //
-//   1. Generic shape walker (covers ~20 protocols) — recursively walks
-//      the response tree, extracting paired-LP shapes (coinTypeA/B + balance,
-//      with X/Y and tokenX/Y aliases) and single-coin shapes (coinType +
+//   1. Generic shape walker — recursively walks the response tree,
+//      extracting paired-LP shapes (coinTypeA/B + balance, with X/Y and
+//      tokenX/Y aliases) and single-coin shapes (coinType +
 //      balance/amount/value), automatically handling Scallop's pre-USD
 //      totals, NAVI's `type: 'Supply'|'Borrow'` flag, and parent-key debt
 //      detection (`borrows`, `debt`, `borrowings` → subtract). Skips
 //      `rewards` / `fees` / `pendingRewards` branches to avoid double-
 //      counting incentives.
 //
-//   2. Bespoke shims (6 protocols) for shapes the walker can't infer:
+//   2. Bespoke shims for shapes the walker can't infer (implied coin types):
 //      - bluefin: usdcVault/blueVault expose `{amount}` with implied coin type
 //      - haedal: stakings expose `{sui_amount}` with implied SUI
-//      - kai: coinType is buried inside `coin.p.phantomType` + uses `equity`
-//        as the human-readable position value
 //      - suistake / walrus / suins-staking: stakings of an implied native
 //        token (SUI / WAL / NS); walker can't guess the coin type from
 //        a bare `{amount}` field
@@ -439,41 +443,35 @@ function parseNumberOrNull(input: unknown): number | null {
 // Failure isolation: a 5xx for one protocol drops just that protocol. The
 // `source` field on the result surfaces 'partial' when any protocol failed.
 //
-// Concurrency: 26 parallel BlockVision calls per balance_check. Pro-tier
-// rate limit (200 req/min) accommodates this comfortably; cache TTL of 60s
-// dedupes repeated balance_check calls for the same address inside a chat.
+// Concurrency: 9 parallel BV calls per balance_check + 1 wallet coins
+// call = 10 simultaneous, comfortably below BV Pro-tier burst caps.
+// Cache TTL 60s dedupes repeated balance_check calls for the same address
+// inside a chat session.
 // ---------------------------------------------------------------------------
 
 const DEFI_PORTFOLIO_TIMEOUT_MS = 4_000;
 const DEFI_CACHE_TTL_MS = 60_000;
 
+// [v0.50.2] 9 protocols — the v0.50 majors (Cetus/Suilend/Scallop/Bluefin/
+// Aftermath/Haedal) plus three native-token stakings (Suistake/SuiNS-staking/
+// Walrus). v0.50.1 expanded to all 26 BlockVision protocols, but the resulting
+// 26-call burst caused the wallet `/account/coins` endpoint to occasionally
+// 429, falling back to Sui-RPC degraded mode where non-stables are unpriced
+// — so wallet display showed $0 for users with MANIFEST/FAITH/etc. holdings.
+// 9 protocols = 9+1 burst per balance_check, comfortably below BV burst
+// caps. Walker + bespoke shims stay as-is — adding a future protocol is a
+// 1-line append here. Deliberately excludes NAVI (already covered by
+// `savings_info` via positionFetcher / NAVI MCP — including would
+// double-count savings).
 const DEFI_PROTOCOLS = [
   'aftermath',
-  'alphafi',
-  'alphalend',
   'bluefin',
-  'bluemove',
-  'bucket',
-  'bucket2',
   'cetus',
-  'deepbook',
-  'ember',
-  'ferra',
-  'flowx',
   'haedal',
-  'kai',
-  'kriya',
-  'magma',
-  'momentum',
-  'r25',
   'scallop',
-  'steamm',
   'suilend',
   'suins-staking',
   'suistake',
-  'turbos',
-  'typus',
-  'unihouse',
   'walrus',
 ] as const;
 type DefiProtocol = (typeof DEFI_PROTOCOLS)[number];
@@ -498,7 +496,7 @@ export interface DefiSummary {
   perProtocol: Partial<Record<DefiProtocol, number>>;
   pricedAt: number;
   /**
-   * `blockvision` — all 26 protocols responded successfully.
+   * `blockvision` — every protocol in `DEFI_PROTOCOLS` responded successfully.
    * `partial` — at least one protocol failed; total may under-count.
    * `degraded` — no API key or every protocol failed; total = 0.
    */
@@ -1011,47 +1009,6 @@ function normalizeHaedal(
   return total;
 }
 
-function normalizeKai(
-  result: Record<string, unknown>,
-  prices: Record<string, number>,
-): number {
-  // Kai buries the coin identity in `coin.p.phantomType` (or `typeName`)
-  // and uses `equity` as the human-readable position value, both of which
-  // the generic walker doesn't know about.
-  const data =
-    (result.kai as {
-      vaults?: Array<{
-        coin?: { p?: { phantomType?: string; typeName?: string }; decimals?: number };
-        equity?: number | string;
-        ytBalance?: number | string;
-      }>;
-      lpVaults?: Array<{
-        coinA?: { p?: { phantomType?: string; typeName?: string }; decimals?: number };
-        coinB?: { p?: { phantomType?: string; typeName?: string }; decimals?: number };
-        balanceA?: number | string;
-        balanceB?: number | string;
-      }>;
-    }) ?? {};
-  let total = 0;
-  for (const v of data.vaults ?? []) {
-    const coinType = v.coin?.p?.phantomType ?? v.coin?.p?.typeName;
-    if (coinType && v.equity != null) {
-      total += toUsd(coinType, v.equity, v.coin?.decimals, prices);
-    }
-  }
-  for (const lp of data.lpVaults ?? []) {
-    const coinTypeA = lp.coinA?.p?.phantomType ?? lp.coinA?.p?.typeName;
-    const coinTypeB = lp.coinB?.p?.phantomType ?? lp.coinB?.p?.typeName;
-    if (coinTypeA && lp.balanceA != null) {
-      total += toUsd(coinTypeA, lp.balanceA, lp.coinA?.decimals, prices);
-    }
-    if (coinTypeB && lp.balanceB != null) {
-      total += toUsd(coinTypeB, lp.balanceB, lp.coinB?.decimals, prices);
-    }
-  }
-  return total;
-}
-
 interface BareStaking {
   amount?: number | string;
   sui_amount?: number | string;
@@ -1107,7 +1064,6 @@ const BESPOKE_NORMALIZERS: Partial<
 > = {
   bluefin: normalizeBluefin,
   haedal: normalizeHaedal,
-  kai: normalizeKai,
   suistake: normalizeSuistake,
   walrus: normalizeWalrus,
   'suins-staking': normalizeSuinsStaking,

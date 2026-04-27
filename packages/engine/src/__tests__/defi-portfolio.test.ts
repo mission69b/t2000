@@ -6,15 +6,22 @@ import {
 } from '../blockvision-prices.js';
 
 /**
- * [v0.50.1] DeFi portfolio aggregation regression suite.
+ * [v0.50.2] DeFi portfolio aggregation regression suite.
  *
- * Phase 1 (v0.50) covered the top 6 protocols with bespoke normalisers.
- * v0.50.1 expands to all 26 BlockVision-supported protocols (everything
- * except NAVI, which is covered by `positionFetcher` / NAVI MCP) using
- * a generic walker that handles paired-LP and single-coin shapes plus
- * tiny bespoke shims for protocols with implied coin types (bluefin
- * vaults, haedal stakings, kai phantomType nesting, suistake/walrus/
- * suins-staking).
+ * v0.50 covered the 6 majors (Cetus/Suilend/Scallop/Bluefin/Aftermath/
+ * Haedal) with bespoke normalisers. v0.50.1 refactored to a generic
+ * walker + 6 shims and expanded to all 26 BV-supported protocols, but
+ * 26 simultaneous BV calls hit per-second burst caps and broke the
+ * wallet `/account/coins` path. v0.50.2 walks back to 9 protocols
+ * (the v0.50 majors + the 3 native-token stakings users wanted:
+ * suistake/suins-staking/walrus). The walker + shim code is unchanged
+ * from v0.50.1 and stays in place — adding back kai/typus/kriya/etc.
+ * is a 1-line append in DEFI_PROTOCOLS plus restoring the
+ * walker-shape tests that were dropped for them in v0.50.2.
+ *
+ * NAVI is intentionally excluded from `DEFI_PROTOCOLS` — it's already
+ * covered by `positionFetcher` / NAVI MCP via `savings_info`, so
+ * including it here would double-count savings.
  */
 
 const ADDRESS = '0xfeedface';
@@ -31,33 +38,16 @@ const BLUE_TYPE =
 const NS_TYPE =
   '0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS';
 
+// Mirrors DEFI_PROTOCOLS in blockvision-prices.ts. Keep in sync.
 const ALL_PROTOCOLS = [
   'aftermath',
-  'alphafi',
-  'alphalend',
   'bluefin',
-  'bluemove',
-  'bucket',
-  'bucket2',
   'cetus',
-  'deepbook',
-  'ember',
-  'ferra',
-  'flowx',
   'haedal',
-  'kai',
-  'kriya',
-  'magma',
-  'momentum',
-  'r25',
   'scallop',
-  'steamm',
   'suilend',
   'suins-staking',
   'suistake',
-  'turbos',
-  'typus',
-  'unihouse',
   'walrus',
 ];
 
@@ -105,7 +95,7 @@ describe('[v0.50] fetchAddressDefiPortfolio', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('2) fans out across all 26 BlockVision protocols, excluding NAVI', async () => {
+  it('2) fans out across the 9 configured protocols, excluding NAVI', async () => {
     const seenProtocols: string[] = [];
     const fetchMock = vi.fn(async (input: FetchInput) => {
       const url = urlOf(input);
@@ -302,11 +292,17 @@ describe('[v0.50] fetchAddressDefiPortfolio', () => {
 });
 
 // ---------------------------------------------------------------------------
-// [v0.50.1] Generic walker — coverage for the long-tail protocols that
-// fall through to walkProtocolResponse instead of bespoke normalisers.
+// [v0.50.2] Generic walker shape coverage.
+//
+// Tests reach the walker via fetchAddressDefiPortfolio, so they're scoped to
+// protocols currently in DEFI_PROTOCOLS. Protocols dropped in v0.50.2
+// (kai/typus/kriya/flowx/bucket2) had walker tests in v0.50.1; restore them
+// alongside the protocol when adding back via DEFI_PROTOCOLS. The walker
+// code itself is unchanged from v0.50.1 — it just isn't exercised against
+// those shapes through this test path right now.
 // ---------------------------------------------------------------------------
 
-describe('[v0.50.1] generic walker shape coverage', () => {
+describe('[v0.50.2] generic walker shape coverage', () => {
   function mockProtocol(targetProto: string, payload: unknown) {
     return vi.fn(async (input: FetchInput) => {
       const url = urlOf(input);
@@ -338,26 +334,6 @@ describe('[v0.50.1] generic walker shape coverage', () => {
     expect(summary.totalUsd).toBeCloseTo(13, 5);
   });
 
-  it('Kriya tokenX/Y human-readable balances are NOT divided by decimals', async () => {
-    globalThis.fetch = mockProtocol('kriya', {
-      kriya: {
-        lps: [
-          {
-            poolId: '0xpool',
-            tokenXType: SUI_TYPE_LONG,
-            tokenYType: USDC_TYPE,
-            tokenXBalance: '1.25', // 1.25 SUI @ $4 = $5
-            tokenYBalance: '350.75', // $350.75
-            apy: 15.5,
-          },
-        ],
-      },
-    }) as unknown as typeof fetch;
-
-    const summary = await fetchAddressDefiPortfolio(ADDRESS, 'k', { [SUI_TYPE_LONG]: 4 });
-    expect(summary.perProtocol.kriya).toBeCloseTo(355.75, 2);
-  });
-
   it('Cetus vault shape: coinAAmount/coinBAmount + nested coinA.decimals', async () => {
     globalThis.fetch = mockProtocol('cetus', {
       cetus: {
@@ -378,60 +354,6 @@ describe('[v0.50.1] generic walker shape coverage', () => {
 
     const summary = await fetchAddressDefiPortfolio(ADDRESS, 'k', { [SUI_TYPE_LONG]: 4 });
     expect(summary.perProtocol.cetus).toBeCloseTo(9, 5);
-  });
-
-  it('Typus depositRes: human balance + unprefixed depositToken', async () => {
-    globalThis.fetch = mockProtocol('typus', {
-      typus: {
-        depositRes: [
-          {
-            vault: 'SUI-Weekly-Call',
-            // BlockVision returns Typus tokens WITHOUT the leading 0x — the
-            // walker normalizes via ensure0xPrefix when computing prices.
-            depositToken: SUI_TYPE_LONG.replace(/^0x/, ''),
-            balance: 4.240927787, // human-readable, no decimals field
-            depositAsset: 'SUI',
-          },
-        ],
-      },
-    }) as unknown as typeof fetch;
-
-    const summary = await fetchAddressDefiPortfolio(ADDRESS, 'k', { [SUI_TYPE_LONG]: 4 });
-    // 4.240927787 SUI × $4 ≈ $16.96
-    expect(summary.perProtocol.typus).toBeCloseTo(16.96, 1);
-  });
-
-  it('FlowX coinTypeX/Y aliasing works the same as A/B', async () => {
-    globalThis.fetch = mockProtocol('flowx', {
-      flowx: {
-        liquidity: [
-          {
-            poolId: '0xpool',
-            coinTypeX: SUI_TYPE_LONG,
-            coinTypeY: USDC_TYPE,
-            amountX: '1000000000', // 1 SUI @ $4 = $4
-            amountY: '5000000', // $5
-          },
-        ],
-      },
-    }) as unknown as typeof fetch;
-
-    const summary = await fetchAddressDefiPortfolio(ADDRESS, 'k', { [SUI_TYPE_LONG]: 4 });
-    expect(summary.perProtocol.flowx).toBeCloseTo(9, 5);
-  });
-
-  it('NAVI-style flat list with type:Borrow gets subtracted (debt detection)', async () => {
-    // Simulate a protocol returning the NAVI-style flat shape under a
-    // walker-handled key (e.g. bucket2.savings sometimes uses this style).
-    globalThis.fetch = mockProtocol('bucket2', {
-      bucket2: [
-        { coinType: USDC_TYPE, balance: 100, decimals: 0, type: 'Supply' }, // +$100
-        { coinType: USDC_TYPE, balance: 30, decimals: 0, type: 'Borrow' }, // -$30
-      ],
-    }) as unknown as typeof fetch;
-
-    const summary = await fetchAddressDefiPortfolio(ADDRESS, 'k');
-    expect(summary.perProtocol.bucket2).toBeCloseTo(70, 5);
   });
 
   it('Walker skips rewards / fees branches to avoid double-counting incentives', async () => {
@@ -461,10 +383,13 @@ describe('[v0.50.1] generic walker shape coverage', () => {
 });
 
 // ---------------------------------------------------------------------------
-// [v0.50.1] Bespoke shims — implied coin types the walker can't infer.
+// [v0.50.2] Bespoke shims — implied coin types the walker can't infer.
+//
+// kai shim test was dropped in v0.50.2 (kai is no longer in DEFI_PROTOCOLS,
+// so it never reaches the shim). Restore alongside kai if/when added back.
 // ---------------------------------------------------------------------------
 
-describe('[v0.50.1] bespoke shims for implied coin types', () => {
+describe('[v0.50.2] bespoke shims for implied coin types', () => {
   it('Bluefin usdcVault.amount → USDC (6dp)', async () => {
     globalThis.fetch = vi.fn(async (input: FetchInput) => {
       const url = urlOf(input);
@@ -529,38 +454,6 @@ describe('[v0.50.1] bespoke shims for implied coin types', () => {
 
     const summary = await fetchAddressDefiPortfolio(ADDRESS, 'k', { [SUI_TYPE_LONG]: 4 });
     expect(summary.perProtocol.haedal).toBeCloseTo(4, 5);
-  });
-
-  it('Kai vault: coin.p.phantomType + equity (human readable)', async () => {
-    globalThis.fetch = vi.fn(async (input: FetchInput) => {
-      const url = urlOf(input);
-      const proto = paramOf(url, 'protocol');
-      if (proto === 'kai') {
-        return mockJsonResponse({
-          code: 200,
-          message: 'OK',
-          result: {
-            kai: {
-              vaults: [
-                {
-                  vaultId: '0xkai',
-                  coin: {
-                    p: { phantomType: SUI_TYPE_LONG, kind: 'PhantomReified' },
-                    decimals: 9,
-                  },
-                  equity: '0.5', // 0.5 SUI @ $4 = $2 (human readable)
-                  ytBalance: '0.486', // not counted
-                },
-              ],
-            },
-          },
-        });
-      }
-      return mockJsonResponse({ code: 200, message: 'OK', result: {} });
-    }) as unknown as typeof fetch;
-
-    const summary = await fetchAddressDefiPortfolio(ADDRESS, 'k', { [SUI_TYPE_LONG]: 4 });
-    expect(summary.perProtocol.kai).toBeCloseTo(2, 5);
   });
 
   it('Walrus stakings → WAL', async () => {

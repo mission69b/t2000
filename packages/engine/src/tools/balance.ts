@@ -176,16 +176,19 @@ export const balanceCheckTool = buildTool({
       // Run alongside positions / rewards / positionFetcher so total
       // wall time is bound by the slowest of the four.
       //
-      // [v0.50.1] DeFi portfolio fetch added as a 5th parallel leg —
-      // hits BlockVision /account/defiPortfolio for all 26 supported Sui
-      // DeFi protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath, Haedal,
-      // Typus, Bucket2, Kriya, AlphaFi, Turbos, FlowX, Kai, Momentum,
-      // Magma, Ferra, BlueMove, Steamm, Deepbook, AlphaLend, Suistake,
-      // Walrus, SuiNS-staking, Bucket, Ember, R25, Unihouse). Excludes
-      // NAVI to avoid double-counting against positionFetcher/MCP
-      // savings. Cached 60s, parallel-fanout, 5xx on one protocol drops
-      // just that protocol. See blockvision-prices.ts header for the
-      // generic-walker + bespoke-shim design rationale.
+      // [v0.50.2] DeFi portfolio fetch added as a 5th parallel leg —
+      // hits BlockVision /account/defiPortfolio for the 9 most-used Sui
+      // DeFi protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath,
+      // Haedal, Suistake, SuiNS-staking, Walrus). Excludes NAVI to avoid
+      // double-counting against positionFetcher/MCP savings. v0.50.1
+      // briefly fanned out to all 26 BV protocols but the resulting
+      // burst caused the wallet `/account/coins` call to occasionally
+      // 429 and silently degrade to RPC (where non-stables are unpriced)
+      // — so wallet display showed $0 for users with non-stable
+      // holdings. v0.50.2 walks back to 9 (1 wallet + 9 DeFi = 10 burst,
+      // safely below BV burst caps). Cached 60s, parallel-fanout, 5xx
+      // on one protocol drops just that protocol. See
+      // blockvision-prices.ts header for the generic-walker design.
       const [portfolio, positions, rewards, serverPositions, defiPortfolio] = await Promise.all([
         loadPortfolio(
           address,
