@@ -109,6 +109,19 @@ export interface GuardConfig {
    * quote requirement.
    */
   swapPreview?: boolean;
+  /**
+   * Root-cause fix for "user asks about a watched address (`0x40cd…`)
+   * and the LLM calls `balance_check` / `portfolio_analysis` /
+   * `transaction_history` without passing `address`, returning the
+   * signed-in user's own data instead". The default-to-self behavior is
+   * correct when no address is mentioned, but silently wrong when the
+   * user names a third-party wallet. When enabled (default), the guard
+   * inspects recent user messages for full Sui addresses and blocks
+   * any read tool that targets the user's own wallet (or omits
+   * `address`) when a different address was named. Disable only if the
+   * host has its own equivalent address-resolution layer.
+   */
+  addressScope?: boolean;
 }
 
 export const DEFAULT_GUARD_CONFIG: GuardConfig = {
@@ -125,6 +138,7 @@ export const DEFAULT_GUARD_CONFIG: GuardConfig = {
   addressSource: true,
   assetIntent: true,
   swapPreview: true,
+  addressScope: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -648,6 +662,100 @@ function guardAddressSource(
 }
 
 // ---------------------------------------------------------------------------
+// guardAddressScope — symmetric companion to `guardAddressSource`, but for
+// READ tools. Bounds the failure mode where the LLM is asked about a
+// third-party wallet (`"what's the balance of 0x40cd..."`) and silently
+// drops the address parameter, returning the signed-in user's own data
+// instead. The default-to-self behavior of these tools is correct when
+// no address is mentioned, but wrong when the user named a third party.
+//
+// Read tools whose schema accepts an optional `address` field. Mirrors
+// the SDK's "default to context.walletAddress" pattern in `balance.ts`,
+// `portfolio-analysis.ts`, and `history.ts`. Tools not in this set
+// always pass through (they either don't take an address or use a
+// different param name).
+// ---------------------------------------------------------------------------
+const READ_TOOLS_WITH_ADDRESS_PARAM = new Set([
+  'balance_check',
+  'portfolio_analysis',
+  'transaction_history',
+  'savings_info',
+  'health_check',
+  'spending_analytics',
+  'yield_summary',
+  'activity_summary',
+  'explain_tx',
+]);
+
+// Loose match for Sui addresses inside conversational text. The strict
+// `SUI_ADDRESS_REGEX` is anchored (`^…$`) and matches a single, full
+// 0x...64-hex string only. For substring scanning we accept 60-64 hex
+// characters since some clients normalize away leading zeros.
+const SUI_ADDRESS_IN_TEXT_REGEX = /0x[a-fA-F0-9]{60,64}/g;
+
+function guardAddressScope(
+  tool: Tool,
+  call: PendingToolCall,
+  userText: string,
+  walletAddress: string | undefined,
+): GuardResult {
+  if (!READ_TOOLS_WITH_ADDRESS_PARAM.has(tool.name)) {
+    return { verdict: 'pass', gate: 'address_scope', tier: 'safety' };
+  }
+
+  const matches = userText.match(SUI_ADDRESS_IN_TEXT_REGEX);
+  if (!matches || matches.length === 0) {
+    return { verdict: 'pass', gate: 'address_scope', tier: 'safety' };
+  }
+
+  // Filter out references to the user's own wallet — those are not bugs.
+  // Dedupe so a user message like "compare 0xabc to 0xabc" only carries
+  // one address through the rest of the check.
+  const ownWallet = walletAddress ? normalizeAddress(walletAddress) : null;
+  const thirdPartyAddresses = Array.from(
+    new Set(matches.map(normalizeAddress).filter((a) => a !== ownWallet)),
+  );
+
+  if (thirdPartyAddresses.length === 0) {
+    return { verdict: 'pass', gate: 'address_scope', tier: 'safety' };
+  }
+
+  const input = call.input as Record<string, unknown>;
+  const callAddress =
+    typeof input.address === 'string' && input.address.length > 0
+      ? normalizeAddress(input.address)
+      : null;
+
+  // Pass if the call already targets one of the user-mentioned third
+  // parties. The LLM might pick any of multiple mentioned addresses on
+  // any given turn — that's a UX choice, not a safety issue.
+  if (callAddress && thirdPartyAddresses.includes(callAddress)) {
+    return { verdict: 'pass', gate: 'address_scope', tier: 'safety' };
+  }
+
+  // Block: user named at least one third-party address but the call
+  // either omitted `address` (defaults to signed-in user) or targeted
+  // a different wallet (likely the signed-in user's, also wrong).
+  const target = thirdPartyAddresses[0];
+  const omittedHint = callAddress
+    ? `with address: "${callAddress}"`
+    : 'without an `address` field (which defaults to the signed-in user)';
+  const mentionedHint =
+    thirdPartyAddresses.length === 1
+      ? `address ${target}`
+      : `${thirdPartyAddresses.length} third-party addresses (first: ${target})`;
+  return {
+    verdict: 'block',
+    gate: 'address_scope',
+    tier: 'safety',
+    message:
+      `Address-scope mismatch: the user's recent messages mention ${mentionedHint} but ${tool.name} was called ${omittedHint}. ` +
+      `Re-issue ${tool.name} with \`address: "${target}"\` to inspect the wallet the user actually asked about. ` +
+      `Never default to the signed-in user when the user named a different wallet.`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Post-execution guards — run after tool result is available
 // ---------------------------------------------------------------------------
 
@@ -782,6 +890,16 @@ export function runGuards(
   }
   if (config.assetIntent !== false) {
     results.push(guardAssetIntent(tool, call, conversationContext.recentUserText));
+  }
+  if (config.addressScope !== false) {
+    results.push(
+      guardAddressScope(
+        tool,
+        call,
+        conversationContext.recentUserText,
+        identity?.walletAddress,
+      ),
+    );
   }
   if (config.swapPreview !== false) {
     results.push(guardSwapPreview(tool, call, state.swapQuoteTracker));

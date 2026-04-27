@@ -1412,9 +1412,33 @@ export function validateHistory(messages: Message[]): Message[] {
     }
   }
 
-  // First message must be user
-  while (merged.length > 0 && merged[0].role !== 'user') {
-    merged.shift();
+  // First message must be user, AND it must not consist solely of
+  // orphan `tool_result` blocks whose matching `tool_use` lived in an
+  // assistant turn we're about to shift off. Anthropic rejects any
+  // user message containing a tool_result that doesn't reference a
+  // preceding assistant tool_use.
+  //
+  // The most common trigger is host code that seeds the conversation
+  // with prefetched tool calls (see audric's `buildSyntheticPrefetch`):
+  // `[assistant tool_uses, user tool_results, assistant text]`. After
+  // shifting off the leading assistant, the user message's tool_results
+  // are now orphaned. Strip them; if that empties the user message,
+  // shift it off too — the next message may be assistant, in which
+  // case we loop again.
+  while (merged.length > 0) {
+    if (merged[0].role !== 'user') {
+      merged.shift();
+      continue;
+    }
+    const cleaned = merged[0].content.filter((b) => b.type !== 'tool_result');
+    if (cleaned.length === 0) {
+      merged.shift();
+      continue;
+    }
+    if (cleaned.length !== merged[0].content.length) {
+      merged[0] = { role: 'user', content: cleaned };
+    }
+    break;
   }
 
   return merged;

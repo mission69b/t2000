@@ -690,4 +690,84 @@ describe('validateHistory', () => {
     const result = validateHistory(messages);
     expect(result).toHaveLength(0);
   });
+
+  // Reproduces the production bug where audric's `buildSyntheticPrefetch`
+  // seeded the conversation with `[assistant tool_uses, user tool_results,
+  // assistant "Session data loaded"]`. After "first message must be user"
+  // shifted off the leading assistant turn, the new leading user message
+  // still carried `tool_result` blocks pointing to the now-removed tool_uses,
+  // and Anthropic rejected the entire request. The fix re-strips orphan
+  // tool_results after the leading-assistant shift.
+  it('strips orphan tool_results that surface after the leading-assistant shift', () => {
+    const messages: Message[] = [
+      {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'prefetch_bal', name: 'balance_check', input: {} },
+          { type: 'tool_use', id: 'prefetch_sav', name: 'savings_info', input: {} },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            toolUseId: 'prefetch_bal',
+            content: '{"holdings":[]}',
+            isError: false,
+          },
+          {
+            type: 'tool_result',
+            toolUseId: 'prefetch_sav',
+            content: '{"savings":100}',
+            isError: false,
+          },
+        ],
+      },
+      { role: 'assistant', content: [{ type: 'text', text: "what's my balance" }] },
+    ];
+
+    const result = validateHistory(messages);
+
+    // After the leading-shift + orphan strip, the user message that
+    // contained ONLY orphan tool_results disappears entirely. Whatever
+    // remains MUST start with a user message (Anthropic invariant).
+    if (result.length > 0) {
+      expect(result[0].role).toBe('user');
+      // No orphan tool_result anywhere in the surviving history.
+      const orphanResults = result.flatMap((m) =>
+        m.content.filter(
+          (b): b is { type: 'tool_result'; toolUseId: string; content: string } =>
+            b.type === 'tool_result' && (b.toolUseId === 'prefetch_bal' || b.toolUseId === 'prefetch_sav'),
+        ),
+      );
+      expect(orphanResults).toHaveLength(0);
+    }
+  });
+
+  it('preserves a partial leading user message when it has BOTH orphan tool_results and other content', () => {
+    const messages: Message[] = [
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'orphan', name: 'x', input: {} }],
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', toolUseId: 'orphan', content: '{}', isError: false },
+          { type: 'text', text: 'real user message' },
+        ],
+      },
+      { role: 'assistant', content: [{ type: 'text', text: 'reply' }] },
+    ];
+
+    const result = validateHistory(messages);
+    expect(result[0].role).toBe('user');
+    // The text content survives the orphan strip.
+    const firstText = result[0].content.find((b) => b.type === 'text');
+    expect(firstText).toBeDefined();
+    // The orphan tool_result is gone.
+    const firstToolResults = result[0].content.filter((b) => b.type === 'tool_result');
+    expect(firstToolResults).toHaveLength(0);
+  });
 });
