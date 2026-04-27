@@ -61,7 +61,7 @@ export {
   assertAllowedAsset,
 } from './constants.js';
 export type { Operation } from './constants.js';
-export { validateAddress, truncateAddress } from './utils/sui.js';
+export { validateAddress, truncateAddress, normalizeCoinType } from './utils/sui.js';
 export {
   KNOWN_TARGETS,
   LABEL_PATTERNS,
