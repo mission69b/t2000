@@ -41,7 +41,7 @@
   "devDependencies": {
     "@hono/node-server": "^1",
     "@inquirer/prompts": "^7",
-    "@mysten/sui": "^2.11.0",
+    "@mysten/sui": "^2.16.0",
     "@t2000/mcp": "workspace:*",
     "@t2000/sdk": "workspace:*",
     "@types/node": "^20",
