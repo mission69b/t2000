@@ -48,14 +48,16 @@ export const renderCanvasTool = buildTool({
 
 Use when the user asks for a visual chart, simulator, or financial overview. Pick the most relevant template:
 
-- activity_heatmap — on-chain transaction history as a GitHub-style heatmap (WORKS NOW — loads from wallet)
-- portfolio_timeline — net worth over time, wallet/savings/debt breakdown (WORKS NOW — daily snapshots)
+- activity_heatmap — on-chain transaction history as a GitHub-style heatmap (WORKS NOW — accepts \`params.address\` to inspect any public Sui wallet; defaults to the signed-in user)
+- portfolio_timeline — net worth over time, wallet/savings/debt breakdown (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user)
 - yield_projector — compound yield simulator with amount/APY/period sliders (WORKS NOW — client-side)
 - health_simulator — borrow health factor simulator with collateral/debt sliders (WORKS NOW — uses current position)
 - dca_planner — savings plan curve for regular monthly deposits (WORKS NOW — client-side)
-- spending_breakdown — spending by service category (WORKS NOW — from AppEvent + ServicePurchase)
-- watch_address — portfolio overview for any public Sui address (WORKS NOW — pass address in params)
+- spending_breakdown — spending by service category (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user)
+- watch_address — portfolio overview for any public Sui address (WORKS NOW — pass \`params.address\`)
 - full_portfolio — 4-panel overview: savings, health, activity, spending (WORKS NOW — aggregates all data)
+
+When the user asks to inspect a saved contact or watched address — e.g. "show funkii's activity heatmap", "what's funkii's portfolio look like", "spending breakdown for 0x40cd…" — pass that wallet's address as \`params.address\`. The four address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address) will scope their data fetch to that address; the rest target the signed-in user regardless of params.
 
 Always prefer the canvas for visualisation requests. After rendering, offer to explain what the user sees.`,
   inputSchema: z.object({
@@ -63,7 +65,12 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
     params: z
       .object({
         period: z.enum(['1m', '3m', '6m', '1y']).optional().describe('Time period for time-based templates'),
-        address: z.string().optional().describe('Sui address for watch_address template'),
+        address: z
+          .string()
+          .optional()
+          .describe(
+            'Sui address for the four address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address). Defaults to the signed-in user; pass an explicit address to inspect a contact, watched wallet, or any other public address.',
+          ),
       })
       .optional(),
   }),
@@ -90,6 +97,33 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
   async call(input, context): Promise<ToolResult<unknown>> {
     const { template, params } = input;
     const title = CANVAS_TITLES[template];
+
+    /**
+     * [v0.48] Address resolution for the four address-aware templates
+     * (activity_heatmap, portfolio_timeline, spending_breakdown,
+     * watch_address). Pre-v0.48 only `watch_address` consulted
+     * `params.address`; the other three hardcoded `context.walletAddress`
+     * which silently masked the watched-address case (the LLM passed
+     * the right param, the canvas rendered the user's own data).
+     *
+     * Falls back to `context.walletAddress` when `params.address` is
+     * absent. Returns `null` when neither is present so callers can
+     * surface a "needs an address" error state.
+     *
+     * `isSelfRender` lets the result advertise whether the canvas
+     * targets the signed-in user — the frontend ActivityHeatmapCanvas
+     * uses it so cell clicks produce contextually correct chat prompts
+     * ("Show transactions for 0x40cd…" vs "Show my transactions
+     * from…"). Without this flag, a heatmap cell click on a watched
+     * address routes back into the user's own transaction history.
+     */
+    const resolveAddressTarget = (): { address: string | null; isSelfRender: boolean } => {
+      const fromParams = params?.address;
+      const fromContext = context.walletAddress;
+      const target = fromParams ?? fromContext ?? null;
+      const isSelfRender = !!target && !!fromContext && target.toLowerCase() === fromContext.toLowerCase();
+      return { address: target, isSelfRender };
+    };
 
     // Full portfolio — 4-panel capstone with live position data
     if (template === 'full_portfolio') {
@@ -142,49 +176,103 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
 
     // Portfolio timeline — fetches from /api/analytics/portfolio-history
     if (template === 'portfolio_timeline') {
+      const { address, isSelfRender } = resolveAddressTarget();
+      if (!address) {
+        return {
+          data: {
+            __canvas: true,
+            template,
+            title,
+            templateData: { available: false, message: 'Portfolio Timeline needs an address.' },
+          },
+          displayText: 'Portfolio Timeline requires an address.',
+        };
+      }
+      const titleSuffix = isSelfRender
+        ? ''
+        : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
       return {
         data: {
           __canvas: true,
           template,
-          title,
+          title: `${title}${titleSuffix}`,
           templateData: {
             available: true,
-            address: context.walletAddress ?? '',
+            address,
+            isSelfRender,
           },
         },
-        displayText: `Opened Portfolio Timeline. Shows your net worth, savings, and debt over time.`,
+        displayText: isSelfRender
+          ? `Opened Portfolio Timeline. Shows your net worth, savings, and debt over time.`
+          : `Opened Portfolio Timeline for ${address.slice(0, 6)}…${address.slice(-4)}.`,
       };
     }
 
     // Spending breakdown — fetches from /api/analytics/spending
     if (template === 'spending_breakdown') {
+      const { address, isSelfRender } = resolveAddressTarget();
+      if (!address) {
+        return {
+          data: {
+            __canvas: true,
+            template,
+            title,
+            templateData: { available: false, message: 'Spending Breakdown needs an address.' },
+          },
+          displayText: 'Spending Breakdown requires an address.',
+        };
+      }
+      const titleSuffix = isSelfRender
+        ? ''
+        : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
       return {
         data: {
           __canvas: true,
           template,
-          title,
+          title: `${title}${titleSuffix}`,
           templateData: {
             available: true,
-            address: context.walletAddress ?? '',
+            address,
+            isSelfRender,
           },
         },
-        displayText: `Opened Spending Breakdown. Shows your service spending by category.`,
+        displayText: isSelfRender
+          ? `Opened Spending Breakdown. Shows your service spending by category.`
+          : `Opened Spending Breakdown for ${address.slice(0, 6)}…${address.slice(-4)}.`,
       };
     }
 
     // Activity heatmap — client-side fetches from /api/analytics/activity-heatmap
     if (template === 'activity_heatmap') {
+      const { address, isSelfRender } = resolveAddressTarget();
+      if (!address) {
+        return {
+          data: {
+            __canvas: true,
+            template,
+            title,
+            templateData: { available: false, message: 'Activity Heatmap needs an address.' },
+          },
+          displayText: 'Activity Heatmap requires an address.',
+        };
+      }
+      const titleSuffix = isSelfRender
+        ? ''
+        : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
       return {
         data: {
           __canvas: true,
           template,
-          title,
+          title: `${title}${titleSuffix}`,
           templateData: {
             available: true,
-            address: context.walletAddress ?? '',
+            address,
+            isSelfRender,
           },
         },
-        displayText: `Opened Activity Heatmap for your wallet. Click any day to explore transactions.`,
+        displayText: isSelfRender
+          ? `Opened Activity Heatmap for your wallet. Click any day to explore transactions.`
+          : `Opened Activity Heatmap for ${address.slice(0, 6)}…${address.slice(-4)}. Click any day to explore that address's transactions.`,
       };
     }
 
