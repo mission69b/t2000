@@ -176,13 +176,16 @@ export const balanceCheckTool = buildTool({
       // Run alongside positions / rewards / positionFetcher so total
       // wall time is bound by the slowest of the four.
       //
-      // [v0.50] DeFi portfolio fetch added as a 5th parallel leg —
-      // hits BlockVision /account/defiPortfolio for the top 6 Sui DeFi
-      // protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath, Haedal).
-      // Excludes NAVI to avoid double-counting against
-      // positionFetcher/MCP savings. Cached 60s, parallel-fanout, 5xx
-      // on one protocol drops just that protocol. See
-      // blockvision-prices.ts header for the design rationale.
+      // [v0.50.1] DeFi portfolio fetch added as a 5th parallel leg —
+      // hits BlockVision /account/defiPortfolio for all 26 supported Sui
+      // DeFi protocols (Cetus, Suilend, Scallop, Bluefin, Aftermath, Haedal,
+      // Typus, Bucket2, Kriya, AlphaFi, Turbos, FlowX, Kai, Momentum,
+      // Magma, Ferra, BlueMove, Steamm, Deepbook, AlphaLend, Suistake,
+      // Walrus, SuiNS-staking, Bucket, Ember, R25, Unihouse). Excludes
+      // NAVI to avoid double-counting against positionFetcher/MCP
+      // savings. Cached 60s, parallel-fanout, 5xx on one protocol drops
+      // just that protocol. See blockvision-prices.ts header for the
+      // generic-walker + bespoke-shim design rationale.
       const [portfolio, positions, rewards, serverPositions, defiPortfolio] = await Promise.all([
         loadPortfolio(
           address,
