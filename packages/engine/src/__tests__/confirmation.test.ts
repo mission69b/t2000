@@ -143,11 +143,50 @@ describe('Confirmation flow (pending_action + resumeWithToolResult)', () => {
       expect(pa.action.toolName).toBe('transfer');
       expect(pa.action.description).toContain('transfer');
       expect(pa.action.toolUseId).toBe('tc-1');
+      // [v1.4.2 — Day 3 / Spec Item 3] Each pending_action must carry a
+      // UUID stamped at yield. Hosts persist this onto `TurnMetrics` so the
+      // resume route can do a single-row `updateMany` keyed on attemptId
+      // instead of `(sessionId, turnIndex)`. Shape matches RFC 4122 v4.
+      expect(pa.action.attemptId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
     }
 
     // Stream should NOT contain turn_complete — it stopped at pending_action
     const turnCompletes = events.filter((e) => e.type === 'turn_complete');
     expect(turnCompletes).toHaveLength(0);
+  });
+
+  it('stamps a fresh attemptId on every pending_action yield', async () => {
+    // Regression: two independent agent runs (e.g. two separate user
+    // prompts that each end in a write) must produce *different*
+    // attemptIds — otherwise the resume `updateMany where { attemptId }`
+    // would collapse two distinct TurnMetrics rows into one and we'd
+    // lose the per-attempt outcome telemetry that motivates this field
+    // existing in the first place. UUIDs are random so a collision is
+    // ~impossible; the actual risk is accidentally hoisting the id to a
+    // module/instance constant.
+    const mkProvider = () =>
+      createMockProvider([
+        [{ type: 'tool_call', id: 'tc-1', name: 'transfer', input: { to: '0xabc', amount: 1 } }],
+        [{ type: 'text', text: 'ok' }],
+      ]);
+
+    const captureId = async (): Promise<string> => {
+      const engine = new QueryEngine({
+        provider: mkProvider(),
+        tools: [readTool, writeTool],
+        systemPrompt: 'Test',
+      });
+      for await (const event of engine.submitMessage('Send')) {
+        if (event.type === 'pending_action') return event.action.attemptId;
+      }
+      throw new Error('expected a pending_action yield');
+    };
+
+    const a = await captureId();
+    const b = await captureId();
+    expect(a).not.toBe(b);
   });
 
   it('resumes with tool result after approval', async () => {

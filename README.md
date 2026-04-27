@@ -23,7 +23,7 @@
 t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. The Audric consumer brand is exactly **five products**:
 
 - 🪪 **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product.
-- 🧠 **Audric Intelligence** — the brain (the moat). Five systems orchestrate every money decision: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you.
+- 🧠 **Audric Intelligence** — the brain (the moat). Five systems orchestrate every money decision: Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you.
 - 💰 **Audric Finance** — manage your money on Sui. Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs), Charts (yield/health/portfolio viz). Every action taps to confirm via Passport.
 - 💸 **Audric Pay** — the money primitive. Move money: free, global, instant (on Sui for now). Send USDC, receive via payment links/invoices/QR. No bank, no borders, no fees.
 - 🛒 **Audric Store** — creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon.**
@@ -91,7 +91,9 @@ t2000 wraps financial primitives into a single interface:
 | **Swap** | Trade any token pair on Sui | [Cetus Aggregator V3](https://www.cetus.zone) (20+ DEXs) |
 | **Liquid Staking** | Stake SUI for vSUI (~3-5% APY) | [VOLO](https://www.volosui.com) (thin tx builders) |
 | **Payments (MPP)** | Pay for API resources with USDC | [@suimpp/mpp](https://github.com/mission69b/suimpp) + [MPP Gateway](https://mpp.t2000.ai) |
-| **Market Data** | Token prices, yields, TVL, protocol info | [DefiLlama](https://defillama.com) (free REST API) |
+| **Market Data** | Wallet portfolio, USD prices | [BlockVision](https://blockvision.org) Indexer REST (`balance_check`, `portfolio_analysis`, `token_prices`); Sui RPC + hardcoded-stable degraded fallback |
+| **Protocol metadata** | TVL trends, fees, audits, safety | [DefiLlama](https://defillama.com) via the lone `protocol_deep_dive` tool |
+| **DeFi rates** | NAVI lending APYs (supply / borrow) | NAVI MCP via `rates_info` |
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set`, `t2000 lock/unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
@@ -153,7 +155,7 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 
 | System | What it does |
 |---|---|
-| 🎛️ **Agent Harness** | 40 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Save, swap, borrow, repay, withdraw, send all live here. |
+| 🎛️ **Agent Harness** | 34 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Save, swap, borrow, repay, withdraw, send all live here. |
 | ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort`), 9 safety guards across 3 priority tiers (`runGuards`), 7 YAML skill recipes (`RecipeRegistry`), preflight input validation, prompt caching, extended thinking always-on. |
 | 🧠 **Silent Profile** | Builds a private financial profile from chat history (`buildProfileContext`). Used silently to make answers more relevant — never surfaced as nudges. |
 | 🔗 **Chain Memory** | Reads wallet history into structured facts (`buildMemoryContext`) — recurring sends, idle balances, position changes. |
@@ -175,7 +177,7 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-40 built-in tools (29 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Includes a reasoning engine (adaptive thinking, guard runner, skill recipes) and a canvas system for interactive in-chat visualizations. Read tools use NAVI MCP and DefiLlama for market data, falling back to the SDK.
+34 built-in tools (23 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Includes a reasoning engine (adaptive thinking, guard runner, skill recipes) and a canvas system for interactive in-chat visualizations. Read tools use NAVI MCP for lending data and BlockVision Indexer REST for wallet portfolio + USD prices, falling back to the SDK / Sui RPC. `protocol_deep_dive` is the lone DefiLlama-backed tool.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 
@@ -229,7 +231,7 @@ Connect Claude Desktop, Cursor, Windsurf, or any MCP client:
 t2000 mcp install
 ```
 
-Auto-configures Claude Desktop + Cursor. 40 tools mirroring the engine tool set. Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
+Auto-configures Claude Desktop + Cursor. 29 tools (read-only subset of the engine, namespaced as `t2000_*`). Safeguard enforced. See the [MCP setup guide](docs/mcp-setup.md) for details.
 
 ## MPP Payments
 
@@ -315,7 +317,7 @@ pnpm --filter @t2000/server test
 | SDK | TypeScript, `@mysten/sui` |
 | Engine | TypeScript, Anthropic Claude, MCP client/server |
 | CLI | Commander.js, Hono (HTTP API) |
-| DeFi | NAVI (lending), Cetus (swap), VOLO (liquid staking), DefiLlama (market data) |
+| DeFi | NAVI (lending), Cetus (swap), VOLO (liquid staking), BlockVision (portfolio + prices), DefiLlama (`protocol_deep_dive` only) |
 | Web | Next.js 15, Tailwind CSS v4, React 19 |
 | Consumer | Audric — zkLogin, Enoki gas, Geist + Instrument Serif |
 | Infra | AWS ECS Fargate, Vercel, Upstash Redis |

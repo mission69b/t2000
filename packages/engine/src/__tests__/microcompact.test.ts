@@ -221,15 +221,18 @@ describe('microcompact', () => {
     });
 
     it('still dedupes other tools when only some are non-cacheable', () => {
-      // balance_check non-cacheable, defillama_token_prices cacheable.
+      // [v1.4 — Day 2] `balance_check` non-cacheable, `token_prices`
+      // cacheable. The latter replaces the deleted `defillama_token_prices`
+      // fixture used pre-v1.4 — same semantics (multi-token spot prices,
+      // safe to dedupe inside a turn) just BlockVision-backed now.
       const tools = [
         fakeTool('balance_check', false),
-        fakeTool('defillama_token_prices'),
+        fakeTool('token_prices'),
       ];
       const messages: Message[] = [
         msg('assistant', [
           { type: 'tool_use', id: 'b1', name: 'balance_check', input: {} },
-          { type: 'tool_use', id: 'p1', name: 'defillama_token_prices', input: { tokens: ['SUI'] } },
+          { type: 'tool_use', id: 'p1', name: 'token_prices', input: { tokens: ['SUI'] } },
         ]),
         msg('user', [
           { type: 'tool_result', toolUseId: 'b1', content: '{"wallet":100}' },
@@ -237,7 +240,7 @@ describe('microcompact', () => {
         ]),
         msg('assistant', [
           { type: 'tool_use', id: 'b2', name: 'balance_check', input: {} },
-          { type: 'tool_use', id: 'p2', name: 'defillama_token_prices', input: { tokens: ['SUI'] } },
+          { type: 'tool_use', id: 'p2', name: 'token_prices', input: { tokens: ['SUI'] } },
         ]),
         msg('user', [
           { type: 'tool_result', toolUseId: 'b2', content: '{"wallet":50}' },
@@ -318,19 +321,23 @@ describe('microcompact', () => {
     });
 
     it('cacheable: true (explicit) behaves like default — dedupes', () => {
-      const tools = [fakeTool('defillama_yield_pools', true)];
+      // [v1.4 — Day 3] Was `defillama_yield_pools` pre-Day-3; that tool
+      // is gone. `protocol_deep_dive` is the closest surviving stand-in
+      // — same idempotent shape (slug → metadata snapshot), still
+      // cacheable: true, kept across the deletion pass.
+      const tools = [fakeTool('protocol_deep_dive', true)];
       const messages: Message[] = [
         msg('assistant', [
-          { type: 'tool_use', id: 'tu1', name: 'defillama_yield_pools', input: { chain: 'sui' } },
+          { type: 'tool_use', id: 'tu1', name: 'protocol_deep_dive', input: { protocol: 'navi-lending' } },
         ]),
         msg('user', [
-          { type: 'tool_result', toolUseId: 'tu1', content: '{"pools":[]}' },
+          { type: 'tool_result', toolUseId: 'tu1', content: '{"name":"NAVI"}' },
         ]),
         msg('assistant', [
-          { type: 'tool_use', id: 'tu2', name: 'defillama_yield_pools', input: { chain: 'sui' } },
+          { type: 'tool_use', id: 'tu2', name: 'protocol_deep_dive', input: { protocol: 'navi-lending' } },
         ]),
         msg('user', [
-          { type: 'tool_result', toolUseId: 'tu2', content: '{"pools":[]}' },
+          { type: 'tool_result', toolUseId: 'tu2', content: '{"name":"NAVI"}' },
         ]),
       ];
 

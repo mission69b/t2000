@@ -11,29 +11,33 @@
 
 The Audric consumer brand is exactly five products. All operations the user can take resolve to one of them. (S.18 reverted S.17's Finance retirement — Intelligence was overloaded as both "the moat" and "the home for every financial verb," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive.)
 
-| Product | What it is | t2000 implementation | Status |
-|---------|-----------|----------------------|--------|
-| 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` | Live |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog | `@t2000/engine` (QueryEngine + tools + reasoning + guards + recipes) | Live |
-| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates | Live |
-| 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) | Live |
-| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username` — sell AI-generated music, art, ebooks in USDC. 92% to creator | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) | Coming soon (Phase 5) |
+
+| Product                    | What it is                                                                                                                                                                                                             | t2000 implementation                                                                                    | Status                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------- |
+| 🪪 **Audric Passport**     | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas                                                                                         | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui`                       | Live                  |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision: Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog                                         | `@t2000/engine` (QueryEngine + tools + reasoning + guards + recipes)                                    | Live                  |
+| 💰 **Audric Finance**      | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates | Live                  |
+| 💸 **Audric Pay**          | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui                                                                                                                   | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows)              | Live                  |
+| 🛒 **Audric Store**        | Creator marketplace at `audric.ai/username` — sell AI-generated music, art, ebooks in USDC. 92% to creator                                                                                                             | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives)                          | Coming soon (Phase 5) |
+
 
 ### Operations inside the products
 
-| Operation | Lives under | t2000 surface |
-|-----------|-------------|----------------|
-| save | **Finance** (Agent Harness `save_deposit` tool) | NAVI MCP + thin tx builders |
-| withdraw | **Finance** (`withdraw` tool) | NAVI MCP + thin tx builders |
-| swap | **Finance** (`swap_quote` + `swap_execute` tools) | Cetus Aggregator V3 (20+ DEXs) |
-| borrow / repay | **Finance** (`borrow` + `repay_debt` tools) | NAVI MCP + thin tx builders |
-| stake / unstake | **Finance** (`volo_stake` + `volo_unstake` tools) | VOLO liquid staking |
-| charts (yield / health / portfolio viz) | **Finance** (canvas templates rendered from chat) | `@t2000/engine` canvas + read tools |
-| send USDC | **Pay** (`send_transfer` tool) | Direct Sui transactions |
-| receive (payment links / invoices / QR) | **Pay** (`create_payment_link`, `create_invoice` tools) | t2000 payment-kit + Sui Payment Kit URIs |
-| pay an MPP API | Internal capability (`pay_api` tool) | MPP gateway (`mpp.t2000.ai`, 41 services) — not a promoted product |
-| sign / consent | **Passport** (every write) | zkLogin ephemeral key + Enoki sponsorship |
+
+| Operation                                                 | Lives under                                             | t2000 surface                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| save                                                      | **Finance** (Agent Harness `save_deposit` tool)         | NAVI MCP + thin tx builders                                               |
+| withdraw                                                  | **Finance** (`withdraw` tool)                           | NAVI MCP + thin tx builders                                               |
+| swap                                                      | **Finance** (`swap_quote` + `swap_execute` tools)       | Cetus Aggregator V3 (20+ DEXs)                                            |
+| borrow / repay                                            | **Finance** (`borrow` + `repay_debt` tools)             | NAVI MCP + thin tx builders                                               |
+| stake / unstake                                           | **Finance** (`volo_stake` + `volo_unstake` tools)       | VOLO liquid staking                                                       |
+| charts (yield / health / portfolio viz)                   | **Finance** (canvas templates rendered from chat)       | `@t2000/engine` canvas + read tools                                       |
+| send USDC                                                 | **Pay** (`send_transfer` tool)                          | Direct Sui transactions                                                   |
+| receive (payment links / invoices / QR)                   | **Pay** (`create_payment_link`, `create_invoice` tools) | t2000 payment-kit + Sui Payment Kit URIs                                  |
+| pay an MPP API                                            | Internal capability (`pay_api` tool)                    | MPP gateway (`mpp.t2000.ai`, 41 services) — not a promoted product        |
+| sign / consent                                            | **Passport** (every write)                              | zkLogin ephemeral key + Enoki sponsorship                                 |
 | profile / memory / chain-fact / advice / guards / recipes | **Intelligence** (silent — never user-facing as a verb) | `@t2000/engine` reasoning + guards + crons + audric-side context builders |
+
 
 **Removed:** Invest (multi-protocol optimization is a power-user DeFi feature). Suilend SDK removed. Cetus Aggregator SDK retained for swap routing only. When protocols release MCPs, expansion is a config change.
 
@@ -79,26 +83,31 @@ audric/                   Consumer product (separate repo)
 ### MCP-first DeFi
 
 NAVI Protocol's free MCP server handles all read operations:
+
 - Rates, positions, health factor, rewards, quotes
 - Endpoint: `https://open-api.naviprotocol.io/api/mcp`
 
 Writes use thin transaction builders via `@mysten/sui`:
+
 - `Transaction` class for PTB construction
 - No protocol SDK dependencies in production
 
 ### Dependencies
 
-| Dependency | Status | Purpose |
-|------------|--------|---------|
-| `@mysten/sui` | Active | Transaction building, RPC, utilities |
-| `@mysten/dapp-kit` | Active | Wallet connection (web app) |
-| `@naviprotocol/lending` (patched) | Legacy | TX builders for save/withdraw/borrow/repay (reads migrated to NAVI MCP) |
-| `@cetusprotocol/aggregator-sdk` | Active | Swap routing via Cetus Aggregator V3 |
-| `@suilend/sdk` | Removed | — |
+
+| Dependency                        | Status  | Purpose                                                                 |
+| --------------------------------- | ------- | ----------------------------------------------------------------------- |
+| `@mysten/sui`                     | Active  | Transaction building, RPC, utilities                                    |
+| `@mysten/dapp-kit`                | Active  | Wallet connection (web app)                                             |
+| `@naviprotocol/lending` (patched) | Legacy  | TX builders for save/withdraw/borrow/repay (reads migrated to NAVI MCP) |
+| `@cetusprotocol/aggregator-sdk`   | Active  | Swap routing via Cetus Aggregator V3                                    |
+| `@suilend/sdk`                    | Removed | —                                                                       |
+
 
 ### SUI Price Oracle
 
 SUI/USD price is read from the Cetus USDC/SUI pool on-chain object (read-only, no SDK):
+
 - Pool ID: `CETUS_USDC_SUI_POOL` constant
 - Extracts `current_sqrt_price` from pool state
 - No Cetus SDK dependency — just `suiClient.getObject()`
@@ -109,11 +118,13 @@ SUI/USD price is read from the Cetus USDC/SUI pool on-chain object (read-only, n
 
 Multi-asset support via canonical token registry (`packages/sdk/src/token-registry.ts`). **17 tokens** registered across 3 tiers. Save and borrow are **USDC only**.
 
-| Tier | Symbols | Send | Save | Borrow | Swap |
-|------|---------|------|------|--------|------|
-| 1 | USDC | ✅ | ✅ (USDC only) | ✅ (USDC only) | ✅ |
-| 2 | SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST | ✅ | — | — | ✅ |
-| Legacy | USDT, USDe, USDSUI | ✅ | — | — | ✅ |
+
+| Tier   | Symbols                                                                     | Send | Save          | Borrow        | Swap |
+| ------ | --------------------------------------------------------------------------- | ---- | ------------- | ------------- | ---- |
+| 1      | USDC                                                                        | ✅    | ✅ (USDC only) | ✅ (USDC only) | ✅    |
+| 2      | SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST | ✅    | —             | —             | ✅    |
+| Legacy | USDT, USDe, USDSUI                                                          | ✅    | —             | —             | ✅    |
+
 
 Swap supports any token pair via Cetus Aggregator V3. See `PRODUCT_FACTS.md` for the full token list.
 
@@ -121,14 +132,16 @@ Swap supports any token pair via Cetus Aggregator V3. See `PRODUCT_FACTS.md` for
 
 ## Fees
 
-| Operation | BPS | Rate | Notes |
-|-----------|-----|------|-------|
-| Save      | 10  | 0.1% | Protocol fee on deposit |
-| Borrow    | 5   | 0.05% | Protocol fee on loan |
-| Withdraw  | —   | Free | |
-| Repay     | —   | Free | |
-| Send      | —   | Free | |
-| Pay (MPP) | —   | Free | Agent pays the API price, no surcharge |
+
+| Operation | BPS | Rate  | Notes                                  |
+| --------- | --- | ----- | -------------------------------------- |
+| Save      | 10  | 0.1%  | Protocol fee on deposit                |
+| Borrow    | 5   | 0.05% | Protocol fee on loan                   |
+| Withdraw  | —   | Free  |                                        |
+| Repay     | —   | Free  |                                        |
+| Send      | —   | Free  |                                        |
+| Pay (MPP) | —   | Free  | Agent pays the API price, no surcharge |
+
 
 Fees collected on-chain via `t2000::treasury::collect_fee()` within the same PTB.
 
@@ -136,15 +149,17 @@ Fees collected on-chain via `t2000::treasury::collect_fee()` within the same PTB
 
 ## Key Constants
 
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| `MIST_PER_SUI` | `1_000_000_000n` | SUI atomic units |
-| `MIN_DEPOSIT` | `1_000_000n` | 1 USDC minimum deposit (6 decimals) |
-| `BPS_DENOMINATOR` | `10_000n` | Basis point math |
-| `PRECISION` | `10^18` | Reward math (matches contract) |
-| `CLOCK_ID` | `'0x6'` | Sui shared clock object |
-| `SAVE_FEE_BPS` | `10n` | 0.1% save fee |
-| `BORROW_FEE_BPS` | `5n` | 0.05% borrow fee |
+
+| Constant          | Value            | Purpose                             |
+| ----------------- | ---------------- | ----------------------------------- |
+| `MIST_PER_SUI`    | `1_000_000_000n` | SUI atomic units                    |
+| `MIN_DEPOSIT`     | `1_000_000n`     | 1 USDC minimum deposit (6 decimals) |
+| `BPS_DENOMINATOR` | `10_000n`        | Basis point math                    |
+| `PRECISION`       | `10^18`          | Reward math (matches contract)      |
+| `CLOCK_ID`        | `'0x6'`          | Sui shared clock object             |
+| `SAVE_FEE_BPS`    | `10n`            | 0.1% save fee                       |
+| `BORROW_FEE_BPS`  | `5n`             | 0.05% borrow fee                    |
+
 
 ---
 
@@ -179,6 +194,7 @@ Commands: `save`, `send`, `withdraw`, `borrow`, `repay`, `claim-rewards`, `balan
 ### Engine (`@t2000/engine`)
 
 Conversational finance engine powering Audric:
+
 - `QueryEngine` — stateful conversation manager with adaptive thinking, guard runner, recipe injection
 - `buildTool()` — typed tool factory with Zod validation, permission tiers, `ToolFlags`, preflight validation
 - `runTools()` — parallel reads (`Promise.allSettled`) / serial writes (`TxMutex`)
@@ -198,17 +214,20 @@ Conversational finance engine powering Audric:
 ## Phased Execution
 
 ### Phase 0: Foundation ✅
+
 - CLAUDE.md, .claude/rules
 - Product simplification (5 products)
 - Claude Code architecture analysis
 - Consumer brand: Audric
 
 ### Phase 0.5: Codebase Cleanup ✅
+
 - Removed Invest/Swap/Suilend/Cetus dead code
 - Cleaned SDK, CLI, MCP, skills, web, web-app, specs
 - Archived superseded specs
 
 ### Phase 1a: audric.ai Website ✅
+
 - Design tokens from Agentic UI kit → Tailwind config
 - Homepage: hero, product grid, trust, CTA
 - Product pages: /savings, /pay, /send, /credit
@@ -216,6 +235,7 @@ Conversational finance engine powering Audric:
 ### Phase 1b: `@t2000/engine` — Agent Engine ✅
 
 #### 1b-alpha: Core Engine ✅
+
 - `QueryEngine` — stateful conversation manager, async generator `submitMessage()` loop
 - `LLMProvider` abstraction + `AnthropicProvider` implementation (streaming, tool parsing)
 - `buildTool()` factory — typed tools with Zod validation, permission tiers, concurrency flags
@@ -225,16 +245,18 @@ Conversational finance engine powering Audric:
 - Tests across all phases, typecheck clean
 
 #### 1b-beta: Write Tools + Confirmation + Cost Tracking ✅
+
 - Write tools: `save_deposit`, `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`
 - Async confirmation flow: `permission_request` event with `resolve` callback, `Promise.race` + `AbortSignal` for deadlock prevention
 - `CostTracker` — cumulative token tracking (input, output, cache read/write), USD cost estimation, budget limits
 - 12 confirmation integration tests, cost tests with cache token coverage
 
 #### 1b-gamma: Streaming, Sessions, Context, MCP Adapter ✅
+
 - SSE streaming: `serializeSSE` / `parseSSE`, `engineToSSE` generator adapter
 - `SessionStore` interface + `MemorySessionStore` (TTL, `structuredClone` isolation, Vercel KV–ready)
 - Context window management: `estimateTokens`, `compactMessages` (3-phase: summarise → drop old → truncate recent), `sanitizeMessages` (orphan tool_use/tool_result cleanup)
-- MCP server adapter: `buildMcpTools` (engine tools → MCP descriptors with `audric_` prefix), `registerEngineTools`
+- MCP server adapter: `buildMcpTools` (engine tools → MCP descriptors with `audric`_ prefix), `registerEngineTools`
 - 175+ tests across 13 suites
 
 ### Phase 1d: MCP Client + NAVI MCP Reads ✅
@@ -244,6 +266,7 @@ The engine needs an MCP client to consume external protocol data (starting with 
 **Key architectural constraint:** Write tx builders in `protocols/navi.ts` depend on SDK-internal reads (`refreshOracle` needs `naviGetPools()` for raw `Pool[]` objects, `buildWithdrawTx` calls `getPositions()` for balance checks, `buildRepayTx` calls `fetchCoins()`). These internal reads use NAVI SDK types the PTB builders expect — MCP returns different formats. Therefore `protocols/navi.ts` stays intact. MCP only replaces user-facing read tools in the engine layer.
 
 #### 1d-alpha: Engine MCP Client
+
 - Add `@modelcontextprotocol/sdk` to `@t2000/engine` dependencies (verify zod peer alignment)
 - `McpClientManager` — multi-server connection registry, keyed by server name
   - Wraps SDK `Client` + `StreamableHTTPClientTransport` (for HTTP MCP servers like NAVI)
@@ -258,12 +281,14 @@ The engine needs an MCP client to consume external protocol data (starting with 
 - Tests with mock MCP server (in-process `McpServer` + memory transport)
 
 #### 1d-beta: NAVI MCP Integration
+
 - **Step 1: Discovery** — connect to `https://open-api.naviprotocol.io/api/mcp`, enumerate actual tools + schemas. Capture the real tool names, input schemas, and response formats (documented names like `navi_get_pools` may differ from actual).
 - **Step 2: Response transforms** — isolated `navi-transforms.ts` mapping NAVI MCP responses to engine types (`RatesResult`, `PositionsResult`, `HealthFactorResult`, `PendingReward[]`). Each transform is a pure function, well-tested, resilient to missing fields.
 - **Step 3: Composite reads** — engine `getHealthFactor` needs `supplied`/`borrowed`/`maxBorrow` which may require combining `navi_get_health_factor` + `navi_get_positions`. Handle multi-call reads gracefully.
 - No SDK fallback at launch (adds two code paths + doubles test surface; add later if NAVI MCP proves unreliable)
 
 #### 1d-gamma: Engine Read Tool Update
+
 - Update engine read tools (`balance_check`, `savings_info`, `health_check`, `rates_info`) to use MCP when an `McpClientManager` with a NAVI connection is available in the `ToolContext`
 - Fall through to `agent.*` (SDK) when no MCP connection is configured (e.g., CLI usage, tests)
 - `protocols/navi.ts` stays unchanged — write tx builders continue using `@naviprotocol/lending` SDK + patch
@@ -275,35 +300,42 @@ The engine needs an MCP client to consume external protocol data (starting with 
 Engine is built but nothing outside the package knows about it. This phase updates all docs, rules, skills, and references to reflect the new `@t2000/engine` package and the Audric product architecture.
 
 #### Docs — update existing files
+
 - `README.md` — add `@t2000/engine` to the package table, add engine usage example, mention Audric consumer product
 - `ARCHITECTURE.md` — add engine section (QueryEngine, tool system, MCP client/server, streaming, sessions), update system overview diagram to show engine layer
 - `PRODUCT_FACTS.md` — add `@t2000/engine` version, engine API reference (public exports, tool names, event types), update "Last verified" date
 - `SECURITY.md` / `SECURITY_AUDIT.md` — document engine security model (permission tiers, confirmation flow, budget limits, abort handling)
 
 #### Docs — create new files
+
 - `packages/engine/README.md` — package README with quick start, API overview, tool list, configuration, examples
 - `packages/engine/CHANGELOG.md` — initial changelog for 1b + 1d work
 
 #### Rules — update `.claude/rules/`
+
 - `architecture.md` — update engine section from "planned" to actual (list modules, exports, patterns). Add MCP client architecture.
 - `packages.md` — add `@t2000/engine` section (entry point, key exports, test command, commit scope `engine`)
 
 #### CLAUDE.md — workspace rules
+
 - Add `@t2000/engine` import patterns (QueryEngine, buildTool, streaming, session, MCP client)
 - Add engine event types to the conventions section
 - Add engine test/build commands
 
 #### Skills — `t2000-skills/`
+
 - New skill: `t2000-engine` — how to use QueryEngine, build custom tools, configure providers
 - Update `t2000-mcp` skill — document Audric MCP adapter (`buildMcpTools`, `registerEngineTools`)
 - Consider: `audric-chat` skill — how to wire engine into a web app (SSE streaming, permission bridge, sessions)
 
 #### MCP — `@t2000/mcp`
+
 - Update prompts to reference engine capabilities (Audric as conversational interface)
 - Verify tool count/descriptions in `PRODUCT_FACTS.md` match actual code
 - Update `t2000_overview` tool description if engine changes the read path
 
 #### Housekeeping
+
 - `package.json` version bumps (`@t2000/engine` 0.1.0 initial publish prep)
 - Verify monorepo `pnpm build` builds all packages including engine
 - Verify `pnpm test` runs all test suites including engine
@@ -319,6 +351,7 @@ Retrofit `@t2000/engine` into the Audric consumer app (separate `audric/` repo),
 **Infrastructure:** Upstash KV (Vercel KV-compatible Redis) provisioned for session storage. This replaces `MemorySessionStore` for production persistence.
 
 #### 2a: Engine API Route (server wiring) ✅
+
 - New SSE endpoint: `POST /api/engine/chat`
   - Accept `{ sessionId?, message, address }`, validate zkLogin JWT + Sui address
   - Create or resume `QueryEngine` with `AnthropicProvider` + `READ_TOOLS` (server-side read-only; writes deferred to client via permission flow)
@@ -336,6 +369,7 @@ Retrofit `@t2000/engine` into the Audric consumer app (separate `audric/` repo),
 - **Files**: `lib/engine/upstash-session-store.ts`, `lib/engine/bridge-registry.ts`, `lib/engine/engine-factory.ts`, `app/api/engine/chat/route.ts`, `app/api/engine/permission/route.ts`
 
 #### 2b: Chat UI Components (streaming frontend)
+
 - New hook: `useEngine(address)` — connects to `/api/engine/chat` SSE
   - Parses `SSEEvent` stream via `parseSSE` from `@t2000/engine`
   - Manages message state: accumulates `text_delta` into assistant messages
@@ -362,6 +396,7 @@ Retrofit `@t2000/engine` into the Audric consumer app (separate `audric/` repo),
   - Dark warm-toned palette matching Audric brand (N100-N900 neutral scale)
 
 #### 2c: Agentic UI Reskin (design system) ✅
+
 - **Fonts**: Geist Sans (body), Geist Mono (code/labels), Instrument Serif (display headings) via `geist` npm + `next/font/google`
 - **Color tokens**: Neutrals N100–N900 (white-to-black palette) in globals.css `:root`
   - Removed dark theme (#040406 bg → #FFFFFF), removed noise/scanline `body` overlays
@@ -384,6 +419,7 @@ Retrofit `@t2000/engine` into the Audric consumer app (separate `audric/` repo),
 - Typecheck: 0 errors | Lints: 0 errors
 
 #### 2d: Polish + Integration ✅
+
 - Removed old agent stack: `/api/agent/*`, `useAgentLoop`, `agent-tools` + tests (8 files)
 - Removed unused LLM path: `useLlm`, `useLlmUsage`, `/api/llm` (3 files)
 - Created `audric-chat` skill (`t2000-skills/skills/audric-chat/SKILL.md`): documents chat architecture, useEngine API, SSE events, error handling, server config, dashboard integration, accessibility
@@ -397,12 +433,14 @@ Retrofit `@t2000/engine` into the Audric consumer app (separate `audric/` repo),
 - Files: `InputBar.tsx` (textarea), `EngineChat.tsx` (skeleton), `ChatMessage.tsx` (a11y), `ToolCard.tsx` (a11y), `PermissionCard.tsx` (timeout), `QuickActions.tsx` (a11y), `useEngine.ts` (retry+loadSession), `SettingsPanel.tsx` (chat history), `api/engine/sessions/route.ts` (new)
 
 ### Phase 3: Chrome Extension — Deferred
+
 > Deprioritized. Build after launch once core product is validated with real users.
 > Re-evaluate when users request browser-level integration.
 
 ### Phase 4: Infrastructure + Launch
 
 #### 4a: t2000.ai Simplification ✅
+
 Redesigned `apps/web` from an 11-page consumer-marketing site into a focused developer/infra landing page.
 
 - **Homepage rewritten**: hero repositioned to "The infrastructure behind Audric", product grid shows 5 packages (CLI, SDK, MCP, Engine, Gateway) with install commands, kept MPP services marquee, MCP integrations diagram, install CTA
@@ -417,6 +455,7 @@ Redesigned `apps/web` from an 11-page consumer-marketing site into a focused dev
 - Typecheck: 0 new errors (pre-existing Prisma issues in stats API untouched) | Lints: 0 errors
 
 #### 4a-v2: Agentic Design System Reskin ✅
+
 Full reskin of both `apps/web` and `apps/gateway` with Agentic Design System dark theme.
 
 - **Typography**: Replaced IBM Plex Mono with Geist Sans (body), Geist Mono (labels/code), Instrument Serif (headings) via `geist` npm + `next/font/google`
@@ -429,13 +468,14 @@ Full reskin of both `apps/web` and `apps/gateway` with Agentic Design System dar
 - **All docs links**: Fixed — point to `/docs` developer hub (not non-existent audric.ai/docs)
 
 #### 4b: Documentation + Launch Prep ✅
+
 Final documentation pass and pre-launch verification.
 
 - **Root `README.md` overhaul**: Rewrote tagline to "The infrastructure behind Audric", added Brand Architecture section, updated repo structure (includes `web-app/` as Audric, `web/` as infra), added audric.ai link, refreshed tech stack table
-- **`ARCHITECTURE.md`**: Updated domain mapping (`app.t2000.ai` → `audric.ai`), infrastructure table references Engine instead of Anthropic
-- **`PRODUCT_FACTS.md`**: Updated MCP server description from "bank account" to infra-focused
-- **`apps/web-app/README.md`**: Rewrote as "Audric" readme with engine stack, .env.example reference, audric.ai live link
-- **`t2000-skills/README.md`**: Updated "bank account" description to infra positioning
+- `**ARCHITECTURE.md`**: Updated domain mapping (`app.t2000.ai` → `audric.ai`), infrastructure table references Engine instead of Anthropic
+- `**PRODUCT_FACTS.md`**: Updated MCP server description from "bank account" to infra-focused
+- `**apps/web-app/README.md`**: Rewrote as "Audric" readme with engine stack, .env.example reference, audric.ai live link
+- `**t2000-skills/README.md**`: Updated "bank account" description to infra positioning
 - **Verification**: Engine build ✓ | 175 tests ✓ | typecheck ✓ | SDK 283 tests ✓ | web-app typecheck ✓ | Pre-existing lint warnings only
 
 **Out of scope (handled externally):** Vercel dashboard domain/DNS configuration, social media posting, app distribution.
@@ -449,18 +489,21 @@ Final documentation pass and pre-launch verification.
 > Also migrate `@mysten/dapp-kit` (v1.x) to `@mysten/dapp-kit-react` (v2.x) which natively supports gRPC.
 
 **Audit Summary:**
+
 - t2000 monorepo: 28 files across `packages/sdk` (11), `apps/server` (10), `apps/web-app` (11), `apps/web` (1), `packages/engine` (1)
 - Audric repo: 9 files across API routes (5), providers (1), protocol-registry (1), hooks (2)
 - Third-party: `@naviprotocol/lending@1.4.0` patch targets JSON-RPC paths
 - Only existing gRPC usage: `apps/gateway/test/e2e/gateway.e2e.test.ts`
 
 #### 5a: SDK Core Migration
+
 - Replace `SuiJsonRpcClient` → `SuiGrpcClient` in `packages/sdk/src/utils/sui.ts`
 - Update all 11 SDK source files that import the client
 - Update `@naviprotocol/lending` patch for gRPC (or upgrade if newer version available)
 - Run full test suite (283 tests), bump SDK version
 
 #### 5b: Engine + Server Migration
+
 - `packages/engine/src/sui-rpc.ts`: Replace raw JSON-RPC fetch → `SuiGrpcClient.getAllBalances()`
 - `apps/server`: Update `lib/wallets.ts` + all 10 downstream files
 - `apps/web/app/api/stats/route.ts`: swap client
@@ -468,12 +511,14 @@ Final documentation pass and pre-launch verification.
 - Run all tests, bump engine version
 
 #### 5c: Audric Frontend Migration
+
 - Replace `@mysten/dapp-kit` (v1.x) → `@mysten/dapp-kit-react` (v2.x)
 - Update `AppProviders.tsx` to `createDAppKit` with `SuiGrpcClient`
 - Update `protocol-registry.ts`, all 5 API routes, `useZkLogin`, `useBalance`
 - Full build + typecheck verification
 
 #### 5d: Audric + Cleanup
+
 - Update Audric frontend (separate repo) — same pattern as 5c
 - Update gateway docs page example snippets
 - Remove all `@mysten/sui/jsonRpc` imports
@@ -485,13 +530,16 @@ Final documentation pass and pre-launch verification.
 
 ## Related Documents
 
-| Document | What it covers |
-|----------|---------------|
-| `PRODUCT_FACTS.md` | Detailed SDK/CLI/MCP/engine technical reference (SSOT) |
-| `CLI_UX_SPEC.md` | CLI output formatting, command signatures |
-| `ARCHITECTURE.md` | Deep architecture: PTB flow, gas, adapters, security |
-| `SECURITY.md` / `SECURITY_AUDIT.md` | Security model and audit |
-| `audric-roadmap.md` | Phase plan and shipping order |
-| `audric-build-tracker.md` | S.0–S.N receipts of what was actually built |
-| `spec/COMMERCE_V2.md` | Audric Store / commerce v2 (Phase 5) |
-| `spec/archive/` | Frozen historical specs — do not extend |
+
+| Document                            | What it covers                                         |
+| ----------------------------------- | ------------------------------------------------------ |
+| `PRODUCT_FACTS.md`                  | Detailed SDK/CLI/MCP/engine technical reference (SSOT) |
+| `CLI_UX_SPEC.md`                    | CLI output formatting, command signatures              |
+| `ARCHITECTURE.md`                   | Deep architecture: PTB flow, gas, adapters, security   |
+| `SECURITY.md` / `SECURITY_AUDIT.md` | Security model and audit                               |
+| `audric-roadmap.md`                 | Phase plan and shipping order                          |
+| `audric-build-tracker.md`           | S.0–S.N receipts of what was actually built            |
+| `spec/COMMERCE_V2.md`               | Audric Store / commerce v2 (Phase 5)                   |
+| `spec/archive/`                     | Frozen historical specs — do not extend                |
+
+

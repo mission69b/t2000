@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { buildTool } from '../tool.js';
-import { fetchWalletCoins } from '../sui-rpc.js';
-import { fetchTokenPrices } from '../defillama-prices.js';
+import {
+  fetchAddressPortfolio,
+  type AddressPortfolio,
+} from '../blockvision-prices.js';
 
 const inputSchema = z.object({
   address: z.string().optional().describe('Sui address to analyze (defaults to connected wallet)'),
@@ -36,6 +38,7 @@ interface PortfolioResult {
   savingsApy?: number;
   dailyEarning?: number;
   weekChange?: WeekChange;
+  priceSource: AddressPortfolio['source'];
 }
 
 const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
@@ -59,18 +62,38 @@ export const portfolioAnalysisTool = buildTool({
       throw new Error('No wallet address provided. Sign in first.');
     }
 
-    const rpcUrl = context.suiRpcUrl ?? 'https://fullnode.mainnet.sui.io:443';
-
     const DUST_USD = 0.01;
 
-    // [v0.47] Fan out three independent fetches in parallel: wallet coins
-    // (Sui RPC), positions (host fetcher), and 7-day portfolio history
-    // (Audric internal API). Was previously a serial chain costing the sum
-    // of all three; now bound by the slowest. Prices still chain after
-    // coins because they need the resolved coin types.
+    // [v1.4 BlockVision] Fan out three independent fetches in parallel:
+    // BlockVision portfolio (coins + balances + USD prices in one shot),
+    // positions (host fetcher), and 7-day portfolio history. Total wall
+    // time is bound by the slowest. Re-uses the per-request portfolio
+    // cache so a sibling `balance_check` in the same turn shares the
+    // response.
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
-    const [coins, positions, weekHistResult] = await Promise.all([
-      fetchWalletCoins(address, rpcUrl),
+    const [portfolio, positions, weekHistResult] = await Promise.all([
+      (async () => {
+        if (context.portfolioCache) {
+          const hit = context.portfolioCache.get(address);
+          if (hit) return hit;
+        }
+        const fresh = await fetchAddressPortfolio(
+          address,
+          context.blockvisionApiKey,
+          context.suiRpcUrl,
+        );
+        context.portfolioCache?.set(address, fresh);
+        return fresh;
+      })().catch((err) => {
+        console.warn('[portfolio_analysis] portfolio fetch failed:', err);
+        const empty: AddressPortfolio = {
+          coins: [],
+          totalUsd: 0,
+          pricedAt: Date.now(),
+          source: 'sui-rpc-degraded',
+        };
+        return empty;
+      }),
       context.positionFetcher
         ? context.positionFetcher(address).catch((err) => {
             console.warn('[portfolio_analysis] positionFetcher failed:', err);
@@ -87,16 +110,13 @@ export const portfolioAnalysisTool = buildTool({
         : Promise.resolve(null),
     ]);
 
-    const nonZero = coins.filter((c) => Number(c.totalBalance) > 0);
-    const prices = await fetchTokenPrices(nonZero.map((c) => c.coinType)).catch(() => ({} as Record<string, number>));
-
     let walletValue = 0;
     const allAllocations: AssetAllocation[] = [];
 
-    for (const coin of nonZero) {
-      const amount = Number(coin.totalBalance) / 10 ** coin.decimals;
-      const price = prices[coin.coinType] ?? 0;
-      const usdValue = amount * price;
+    for (const coin of portfolio.coins) {
+      const amount = Number(coin.balance) / 10 ** coin.decimals;
+      if (!Number.isFinite(amount) || amount <= 0) continue;
+      const usdValue = coin.usdValue ?? (coin.price != null ? amount * coin.price : 0);
       walletValue += usdValue;
       allAllocations.push({ symbol: coin.symbol, amount, usdValue, percentage: 0 });
     }
@@ -184,6 +204,7 @@ export const portfolioAnalysisTool = buildTool({
       savingsApy,
       dailyEarning,
       weekChange,
+      priceSource: portfolio.source,
     };
 
     const topLine = `Total: $${totalValue.toFixed(2)} | Wallet: $${walletValue.toFixed(2)} | Savings: $${savingsValue.toFixed(2)}`;

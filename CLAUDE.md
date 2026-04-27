@@ -41,7 +41,7 @@ t2000/
 | Audric product | What it is | t2000 layer |
 |---|---|---|
 | 🪪 **Audric Passport** | The trust layer. Identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` |
-| 🧠 **Audric Intelligence** | The brain (the moat). Five systems orchestrate every money decision — Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (QueryEngine + tools + reasoning + guards + skill recipes) |
+| 🧠 **Audric Intelligence** | The brain (the moat). Five systems orchestrate every money decision — Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (QueryEngine + tools + reasoning + guards + skill recipes) |
 | 💰 **Audric Finance** | Manage your money on Sui. Save (NAVI lend, 3–8% APY on USDC), Credit (NAVI borrow against savings, health factor visible at all times), Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee), Charts (interactive yield / health / portfolio visualizations rendered from chat). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
 | 💸 **Audric Pay** | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / invoices / QR. No bank, no borders, no fees. | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. 92% to creator. **Coming soon (Phase 5).** | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) |
@@ -65,9 +65,9 @@ Every Audric action runs through Passport. It's the wallet itself.
 
 | System | What it does | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 40 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `QueryEngine` + 40 tools (29 read / 11 write) |
+| 🎛️ **Agent Harness** | 34 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `QueryEngine` + 34 tools (23 read / 11 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, extended thinking always-on |
-| 🧠 **Silent Profile** | Knows your finances. Builds a private financial profile from chat history. Used silently to make answers more relevant — never surfaced as nudges. | `UserFinancialProfile` Prisma model + Claude inference cron + `buildProfileContext()` |
+| 🧠 **Silent Profile** | Knows your finances. Builds a private financial profile from chat history + a daily on-chain orientation snapshot (`<financial_context>` system-prompt block — savings/wallet/debt/HF/APY/recent activity). Used silently to make answers more relevant — never surfaced as nudges. | `UserFinancialProfile` + `UserFinancialContext` Prisma models + Claude inference cron + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. Reads wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes. | 7 chain classifiers + `ChainFact` rows + `buildMemoryContext()` |
 | 📓 **AdviceLog** | Remembers what it told you. Every recommendation is logged so the agent doesn't contradict itself across sessions. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` (last 30 days hydrated each turn) |
 
@@ -288,7 +288,7 @@ type EngineEvent =
   | { type: 'thinking_done' }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | { type: 'tool_result'; toolName: string; toolUseId: string; result: unknown; isError: boolean }
-  | { type: 'pending_action'; action: PendingAction }
+  | { type: 'pending_action'; action: PendingAction } // PendingAction.attemptId is a UUID v4 stamped per-yield — host persists it on TurnMetrics + keys resume updateMany on it
   | { type: 'canvas'; html: string }
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
@@ -317,10 +317,14 @@ Tools can set `maxResultSizeChars` to cap output size. Results exceeding the lim
 
 ### Built-in tools
 
-Read (29): `render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`, `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_token_prices`, `defillama_price_change`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`, `create_payment_link`, `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`, `yield_summary`, `activity_summary`
+Read (23): `render_canvas`, `balance_check`, `savings_info`, `health_check`, `rates_info`, `transaction_history`, `swap_quote`, `volo_stats`, `mpp_services`, `web_search`, `explain_tx`, `portfolio_analysis`, `protocol_deep_dive`, `token_prices`, `create_payment_link`, `list_payment_links`, `cancel_payment_link`, `create_invoice`, `list_invoices`, `cancel_invoice`, `spending_analytics`, `yield_summary`, `activity_summary`
 Write (11): `save_deposit` (USDC only), `withdraw`, `send_transfer`, `borrow`, `repay_debt`, `claim_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact`
 
-> **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_schedule`, `list_schedules`, `cancel_schedule`, `pattern_status`, `pause_pattern` — 9 tools deleted. Allowance contract is dormant; scheduled actions can't sign without user presence under zkLogin; pattern detectors stay as silent classifiers (not user-facing proposals). See the S.0–S.12 entries in `audric-build-tracker.md` for the locked decisions on what we won't bring back. `record_advice` is an audric-side tool (not exported from `@t2000/engine`).
+> **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_schedule`, `list_schedules`, `cancel_schedule`, `pattern_status`, `pause_pattern` — 9 tools deleted. Allowance contract is dormant; scheduled actions can't sign without user presence under zkLogin; pattern detectors stay as silent classifiers (not user-facing proposals).
+>
+> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST API. `protocol_deep_dive` retains its DefiLlama dependency (lone production consumer of `api.llama.fi`). See `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
+>
+> See the S.0–S.12 entries in `audric-build-tracker.md` for the locked decisions on what we won't bring back. `record_advice` is an audric-side tool (not exported from `@t2000/engine`).
 
 ---
 

@@ -3,7 +3,15 @@ import { fetchRates } from '../navi-reads.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcpGlobal, getMcpManager, hasAgent, requireAgent } from './utils.js';
 
-const YIELDS_API = 'https://yields.llama.fi';
+// [v1.4 — Day 3] DefiLlama fallback removed. The two upstream tiers
+// (NAVI MCP + SDK agent) cover every authenticated and read-only-system
+// path the harness exercises in production. The Tier 3 DefiLlama lookup
+// was a leftover from when SDK agent rates weren't reliable; the SDK
+// path has been stable for ~v0.45+ and the DefiLlama supply-only payload
+// (no borrow APYs) was already a degraded experience. Honest "rates
+// unavailable" is better than a half-correct mark from a deprecated
+// vendor. Audited and accepted as a regression in the Day-3 deletion
+// pass — see AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md.
 
 /**
  * [v0.46.6] Stablecoin allow-list used by the `stableOnly` filter.
@@ -59,37 +67,10 @@ function formatRatesSummary(rates: RateMap): string {
     .join(', ');
 }
 
-interface DefiLlamaPool {
-  chain: string;
-  project: string;
-  symbol: string;
-  apy: number;
-  apyBorrow?: number;
-  tvlUsd: number;
-}
-
-async function fetchRatesFromDefiLlama(): Promise<Record<string, { saveApy: number; borrowApy: number }>> {
-  const res = await fetch(`${YIELDS_API}/pools`, { signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) throw new Error(`DefiLlama API error: HTTP ${res.status}`);
-  const data = await res.json() as { data: DefiLlamaPool[] };
-
-  const naviPools = (data.data ?? []).filter(
-    (p) => p.chain === 'Sui' && p.project === 'navi-lending' && p.tvlUsd > 10_000,
-  );
-
-  const result: Record<string, { saveApy: number; borrowApy: number }> = {};
-  for (const pool of naviPools) {
-    const saveApy = (pool.apy ?? 0) / 100;
-    const borrowApy = pool.apyBorrow != null ? Math.abs(pool.apyBorrow) / 100 : 0;
-    result[pool.symbol] = { saveApy, borrowApy };
-  }
-  return result;
-}
-
 export const ratesInfoTool = buildTool({
   name: 'rates_info',
   description:
-    'NAVI Protocol lending markets ONLY (single-sided save/borrow, no impermanent-loss risk). Use this for stablecoin and bluechip lending yields. Renders a rich rates card. Filter args: `assets` (specific symbols like ["USDC"]), `stableOnly` (true to show only USD-pegged assets), `topN` (max rows in card, default 8, max 50). Do NOT call defillama_yield_pools in the same turn — that tool is for LP/farming pools with IL risk, not lending.',
+    'NAVI Protocol lending markets ONLY (single-sided save/borrow, no impermanent-loss risk). Use this for stablecoin and bluechip lending yields. Renders a rich rates card. Filter args: `assets` (specific symbols like ["USDC"]), `stableOnly` (true to show only USD-pegged assets), `topN` (max rows in card, default 8, max 50).',
   inputSchema: z.object({
     assets: z
       .array(z.string())
@@ -135,14 +116,12 @@ export const ratesInfoTool = buildTool({
       topN: input.topN ?? 8,
     };
 
-    // MCP first (real-time, includes borrow rates) — no wallet needed for global rates
     if (hasNaviMcpGlobal(context)) {
       const all = await fetchRates(getMcpManager(context));
       const filtered = applyFilters(all, opts);
       return { data: filtered, displayText: formatRatesSummary(filtered) };
     }
 
-    // SDK agent second
     if (hasAgent(context)) {
       const agent = requireAgent(context);
       const all = await agent.rates();
@@ -150,10 +129,13 @@ export const ratesInfoTool = buildTool({
       return { data: filtered, displayText: formatRatesSummary(filtered) };
     }
 
-    // DefiLlama fallback (supply-only, no borrow rates)
-    const all = await fetchRatesFromDefiLlama();
-    const filtered = applyFilters(all, opts);
-    return { data: filtered, displayText: formatRatesSummary(filtered) };
+    // [v1.4 — Day 3] No third tier. Both upstream paths are unavailable
+    // — surface that honestly so the LLM can route the user (e.g. "try
+    // again in a moment") instead of fabricating a number from a
+    // deprecated vendor.
+    throw new Error(
+      'rates_info: NAVI lending data is currently unavailable. Try again shortly.',
+    );
   },
 });
 

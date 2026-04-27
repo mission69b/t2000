@@ -4,17 +4,21 @@
 >
 > **⚠️ Stale tool count, model evaluation still current.** Report was written
 > against the pre-simplification 50-tool engine. Post-April-2026 simplification
-> the engine ships **40 tools** (29 read, 11 write); the deleted 9 (`allowance_status`,
-> `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_schedule`,
-> `list_schedules`, `cancel_schedule`, `pause_pattern`, `pattern_status`) and 1
-> reclassified (`record_advice` moved to audric-side) don't materially change the
-> open-weight comparison: tier mix is roughly the same, tool-selection accuracy
-> requirement is the same, no nested-schema tool was removed. Treat the model
-> rankings as still current; subtract from the absolute counts.
+> the engine first dropped to 40 (29 read, 11 write) — deleting 9 tools
+> (`allowance_status`, `toggle_allowance`, `update_daily_limit`,
+> `update_permissions`, `create_schedule`, `list_schedules`, `cancel_schedule`,
+> `pause_pattern`, `pattern_status`) and reclassifying 1 (`record_advice` moved
+> to audric-side). The April-2026 v1.4 BlockVision swap then removed 7
+> `defillama_*` tools and added 1 (`token_prices`), bringing the engine to its
+> current shape: **34 tools (23 read, 11 write)**. None of these changes
+> materially affect the open-weight comparison: tier mix is roughly the same,
+> tool-selection accuracy requirement is the same, no nested-schema tool was
+> removed. Treat the model rankings as still current; subtract from the absolute
+> counts.
 
 ## Executive Summary
 
-Audric's tool set consists of 40 tools spanning balance checks, DeFi operations, payment processing, and analytics. This report evaluates open-weight models against these requirements to determine feasibility for cost reduction or self-hosting.
+Audric's tool set consists of 34 tools (23 read, 11 write — post-v1.4 BlockVision swap) spanning balance checks, DeFi operations, payment processing, and analytics. This report evaluates open-weight models against these requirements to determine feasibility for cost reduction or self-hosting.
 
 **Verdict:** No open model today can replace Sonnet for write flows (multi-step DeFi transactions). However, **Qwen 3.5 32B** or **Llama 4 Scout** could replace Haiku for read-only queries within 1–2 months of integration work via LiteLLM.
 

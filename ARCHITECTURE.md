@@ -58,25 +58,29 @@
 
 ## Packages
 
-| Package | npm | What it does |
-|---------|-----|-------------|
-| `@t2000/sdk` | Published | TypeScript SDK — agent core, adapters, gas manager, safeguards |
-| `@t2000/engine` | Published | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
-| `@t2000/cli` | Published | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc. |
-| `@t2000/mcp` | Published | MCP server — 29 tools + 15 prompts (subset of engine's 40 tools), stdio transport |
-| `@suimpp/mpp` | Published | Sui USDC payment method for MPP (client + server verification) |
-| `@suimpp/discovery` | Published | Sui-specific discovery validation — OpenAPI checks + 402 probe |
-| `mppx` | External (wevm) | MPP protocol middleware — 402 challenge/credential flow |
+
+| Package             | npm             | What it does                                                                      |
+| ------------------- | --------------- | --------------------------------------------------------------------------------- |
+| `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, gas manager, safeguards                    |
+| `@t2000/engine`     | Published       | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
+| `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
+| `@t2000/mcp`        | Published       | MCP server — 29 tools + 15 prompts (subset of engine's 34 tools), stdio transport |
+| `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
+| `@suimpp/discovery` | Published       | Sui-specific discovery validation — OpenAPI checks + 402 probe                    |
+| `mppx`              | External (wevm) | MPP protocol middleware — 402 challenge/credential flow                           |
+
 
 ## Apps
 
-| App | Hosting | Domain | What it does |
-|-----|---------|--------|-------------|
-| Audric | Vercel | audric.ai | Consumer product — Passport (zkLogin), Intelligence (engine chat), Finance (NAVI save/borrow + Cetus swap + charts), Pay (USDC transfers + receive), Store (coming soon) (separate repo) |
-| `apps/web` | Vercel | t2000.ai | Infrastructure landing page + docs |
-| `apps/gateway` | Vercel | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs |
-| `apps/server` | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger |
-| Indexer | AWS ECS Fargate | — | Checkpoint indexer, yield snapshotter |
+
+| App            | Hosting         | Domain       | What it does                                                                                                                                                                             |
+| -------------- | --------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audric         | Vercel          | audric.ai    | Consumer product — Passport (zkLogin), Intelligence (engine chat), Finance (NAVI save/borrow + Cetus swap + charts), Pay (USDC transfers + receive), Store (coming soon) (separate repo) |
+| `apps/web`     | Vercel          | t2000.ai     | Infrastructure landing page + docs                                                                                                                                                       |
+| `apps/gateway` | Vercel          | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs                                                                                                                            |
+| `apps/server`  | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger                                                                                                                                                         |
+| Indexer        | AWS ECS Fargate | —            | Checkpoint indexer, yield snapshotter                                                                                                                                                    |
+
 
 ---
 
@@ -133,16 +137,18 @@ Simple actions (Save, Send) use client-side chip flows with zero LLM cost.
 
 ### Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Framework | Next.js (App Router) |
-| Auth | zkLogin via `@mysten/enoki` |
-| Gas | Enoki sponsored transactions |
-| LLM | Anthropic Claude (for agent queries) |
-| Database | NeonDB (Prisma) — users, preferences, contacts |
-| Styling | Tailwind CSS + shadcn/ui patterns |
-| Analytics | Vercel Analytics |
-| State | TanStack Query + custom hooks |
+
+| Component | Technology                                     |
+| --------- | ---------------------------------------------- |
+| Framework | Next.js (App Router)                           |
+| Auth      | zkLogin via `@mysten/enoki`                    |
+| Gas       | Enoki sponsored transactions                   |
+| LLM       | Anthropic Claude (for agent queries)           |
+| Database  | NeonDB (Prisma) — users, preferences, contacts |
+| Styling   | Tailwind CSS + shadcn/ui patterns              |
+| Analytics | Vercel Analytics                               |
+| State     | TanStack Query + custom hooks                  |
+
 
 ---
 
@@ -152,50 +158,58 @@ Payment infrastructure for machine-to-machine commerce. 40 services, 88 endpoint
 
 ### Pages
 
-| Page | URL | What it shows |
-|------|-----|-------------|
-| Homepage | `/` | Pitch, live payment feed, stats bar |
-| Services | `/services` | Full catalog with search, categories, code examples |
-| Explorer | `/explorer` | Payment history, volume chart, service breakdown |
-| Spec | `/spec` | MPP protocol specification for Sui |
-| Docs | `/docs` | Developer guides — "Pay for APIs" + "Accept payments" |
+
+| Page     | URL         | What it shows                                         |
+| -------- | ----------- | ----------------------------------------------------- |
+| Homepage | `/`         | Pitch, live payment feed, stats bar                   |
+| Services | `/services` | Full catalog with search, categories, code examples   |
+| Explorer | `/explorer` | Payment history, volume chart, service breakdown      |
+| Spec     | `/spec`     | MPP protocol specification for Sui                    |
+| Docs     | `/docs`     | Developer guides — "Pay for APIs" + "Accept payments" |
+
 
 ### Payment logging
 
 Every MPP payment is logged to a dedicated NeonDB (separate from banking DB):
 
-| Field | Type | Description |
-|-------|------|------------|
-| `service` | String | Service name (e.g. "openai") |
-| `endpoint` | String | Endpoint path (e.g. "/v1/chat/completions") |
-| `amount` | String | USDC amount charged |
-| `digest` | String | Sui transaction digest |
-| `sender` | String | Sender Sui address |
-| `createdAt` | DateTime | Timestamp |
+
+| Field       | Type     | Description                                 |
+| ----------- | -------- | ------------------------------------------- |
+| `service`   | String   | Service name (e.g. "openai")                |
+| `endpoint`  | String   | Endpoint path (e.g. "/v1/chat/completions") |
+| `amount`    | String   | USDC amount charged                         |
+| `digest`    | String   | Sui transaction digest                      |
+| `sender`    | String   | Sender Sui address                          |
+| `createdAt` | DateTime | Timestamp                                   |
+
 
 ### API routes
 
-| Route | What it returns |
-|-------|----------------|
-| `GET /api/mpp/payments?limit=N` | Recent payments (live feed) |
-| `GET /api/mpp/stats` | Aggregates: total payments, volume, unique services |
-| `GET /api/mpp/volume` | 7-day payment volume by day |
-| `GET /api/services` | JSON service catalog |
-| `GET /llms.txt` | Agent-readable service catalog |
+
+| Route                           | What it returns                                     |
+| ------------------------------- | --------------------------------------------------- |
+| `GET /api/mpp/payments?limit=N` | Recent payments (live feed)                         |
+| `GET /api/mpp/stats`            | Aggregates: total payments, volume, unique services |
+| `GET /api/mpp/volume`           | 7-day payment volume by day                         |
+| `GET /api/services`             | JSON service catalog                                |
+| `GET /llms.txt`                 | Agent-readable service catalog                      |
+
 
 ### Service categories
 
-| Category | Count | Examples |
-|----------|-------|---------|
-| AI & ML | 12 | OpenAI, Anthropic, Gemini, DeepSeek, Groq, Together, Perplexity, Replicate, Stability AI, Mistral, Cohere |
-| Media | 3 | fal.ai, ElevenLabs, AssemblyAI |
-| Search & Web | 7 | Brave, Firecrawl, Exa, Jina Reader, Serper, SerpAPI, ScreenshotOne |
-| Data & Intelligence | 8 | OpenWeather, Google Maps, CoinGecko, Alpha Vantage, NewsAPI, IPinfo, Hunter.io, ExchangeRate |
-| Communication | 2 | Resend, Pushover |
-| Translation & Docs | 4 | Google Translate, PDFShift, QR Code, Short.io |
-| Compute | 1 | Judge0 |
-| Commerce | 2 | Lob, Printful |
-| Security | 1 | VirusTotal |
+
+| Category            | Count | Examples                                                                                                  |
+| ------------------- | ----- | --------------------------------------------------------------------------------------------------------- |
+| AI & ML             | 12    | OpenAI, Anthropic, Gemini, DeepSeek, Groq, Together, Perplexity, Replicate, Stability AI, Mistral, Cohere |
+| Media               | 3     | fal.ai, ElevenLabs, AssemblyAI                                                                            |
+| Search & Web        | 7     | Brave, Firecrawl, Exa, Jina Reader, Serper, SerpAPI, ScreenshotOne                                        |
+| Data & Intelligence | 8     | OpenWeather, Google Maps, CoinGecko, Alpha Vantage, NewsAPI, IPinfo, Hunter.io, ExchangeRate              |
+| Communication       | 2     | Resend, Pushover                                                                                          |
+| Translation & Docs  | 4     | Google Translate, PDFShift, QR Code, Short.io                                                             |
+| Compute             | 1     | Judge0                                                                                                    |
+| Commerce            | 2     | Lob, Printful                                                                                             |
+| Security            | 1     | VirusTotal                                                                                                |
+
 
 ---
 
@@ -203,9 +217,11 @@ Every MPP payment is logged to a dedicated NeonDB (separate from banking DB):
 
 Protocol-level registry and explorer for all MPP servers on Sui. Separate from the gateway — this is the open standard site.
 
-| App | Domain | Database | Purpose |
-|-----|--------|----------|---------|
+
+| App                             | Domain     | Database          | Purpose                                       |
+| ------------------------------- | ---------- | ----------------- | --------------------------------------------- |
 | `apps/suimpp` (suimpp monorepo) | suimpp.dev | NeonDB (separate) | Server registry, payment explorer, spec, docs |
+
 
 ### Server Registration Flow
 
@@ -291,17 +307,19 @@ Payments are reported by the gateway, not by the protocol library directly. This
 
 The `verify()` callback inside `@suimpp/mpp` has access to on-chain data (sender address from balance changes) but NOT the HTTP request (endpoint path, service name). The gateway's `chargeProxy`/`chargeCustom` wrappers have request context but NOT on-chain data. The `onPayment` callback bridges the two: the library emits verified payment data, the gateway collects it by digest, enriches with endpoint context, and sends one complete report.
 
-| Data field | Source | Available in |
-|-----------|--------|-------------|
-| `digest` | On-chain TX | verify() |
-| `sender` | Balance changes | verify() |
-| `recipient` | Config | verify() |
-| `amount` | Challenge request | verify() |
-| `currency` | Config | verify() |
-| `network` | Config | verify() |
-| `service` | HTTP request URL | chargeProxy() |
-| `endpoint` | HTTP request URL | chargeProxy() |
-| `serverUrl` | Config | chargeProxy() |
+
+| Data field  | Source            | Available in  |
+| ----------- | ----------------- | ------------- |
+| `digest`    | On-chain TX       | verify()      |
+| `sender`    | Balance changes   | verify()      |
+| `recipient` | Config            | verify()      |
+| `amount`    | Challenge request | verify()      |
+| `currency`  | Config            | verify()      |
+| `network`   | Config            | verify()      |
+| `service`   | HTTP request URL  | chargeProxy() |
+| `endpoint`  | HTTP request URL  | chargeProxy() |
+| `serverUrl` | Config            | chargeProxy() |
+
 
 **Gateway integration (reference implementation):**
 
@@ -346,12 +364,14 @@ if (report) {
 The `check()` function runs two phases:
 
 **Phase 1: OpenAPI Discovery**
+
 - Fetches `{origin}/openapi.json`
 - Validates OpenAPI 3.x structure
 - Extracts endpoints with `x-payment-info` extensions
 - Reports issues: missing schemas, invalid pricing, missing 402 responses
 
 **Phase 2: Endpoint Probe**
+
 - Sends an empty POST to the first payable endpoint
 - Expects HTTP 402 with `WWW-Authenticate` header
 - Parses MPP challenge parameters: method, amount, currency, recipient, network
@@ -404,14 +424,16 @@ model Payment {
 
 ### Pages
 
-| Page | Route | What it shows |
-|------|-------|-------------|
-| Spec | `/spec` | Sui MPP charge method specification |
-| Docs | `/docs` | Developer guide — "Pay for APIs" + "Accept Payments" |
-| Explorer | `/explorer` | All payments across all servers — charts, table, filters |
-| Servers | `/servers` | Registered servers with stats, sparklines, sort/filter |
-| Server Detail | `/servers/{slug}` | Stats, volume chart, endpoints table, recent payments |
-| Register | `/register` | URL input → live validation → preview → register |
+
+| Page          | Route             | What it shows                                            |
+| ------------- | ----------------- | -------------------------------------------------------- |
+| Spec          | `/spec`           | Sui MPP charge method specification                      |
+| Docs          | `/docs`           | Developer guide — "Pay for APIs" + "Accept Payments"     |
+| Explorer      | `/explorer`       | All payments across all servers — charts, table, filters |
+| Servers       | `/servers`        | Registered servers with stats, sparklines, sort/filter   |
+| Server Detail | `/servers/{slug}` | Stats, volume chart, endpoints table, recent payments    |
+| Register      | `/register`       | URL input → live validation → preview → register         |
+
 
 ### FAQ
 
@@ -460,16 +482,18 @@ t2000 init
 
 ### Key encryption
 
-| Parameter | Value |
-|-----------|-------|
-| Algorithm | AES-256-GCM |
-| Key derivation | scrypt (N=2¹⁴, r=8, p=1) |
-| Salt | 32 bytes random |
-| IV | 16 bytes random |
-| Auth tag | 16 bytes |
-| File format | JSON: `{ version, algorithm, salt, iv, tag, ciphertext }` |
-| File path | `~/.t2000/wallet.key` (mode `0600`) |
-| Key format | Sui bech32 (`suiprivkey...`) |
+
+| Parameter      | Value                                                     |
+| -------------- | --------------------------------------------------------- |
+| Algorithm      | AES-256-GCM                                               |
+| Key derivation | scrypt (N=2¹⁴, r=8, p=1)                                  |
+| Salt           | 32 bytes random                                           |
+| IV             | 16 bytes random                                           |
+| Auth tag       | 16 bytes                                                  |
+| File format    | JSON: `{ version, algorithm, salt, iv, tag, ciphertext }` |
+| File path      | `~/.t2000/wallet.key` (mode `0600`)                       |
+| Key format     | Sui bech32 (`suiprivkey...`)                              |
+
 
 ### PIN resolution chain
 
@@ -483,12 +507,14 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 
 ### MCP config paths
 
-| Platform | Config file |
-|----------|------------|
-| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Claude Desktop (Windows) | `~/AppData/Roaming/Claude/claude_desktop_config.json` |
-| Cursor | `~/.cursor/mcp.json` |
-| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+
+| Platform                 | Config file                                                       |
+| ------------------------ | ----------------------------------------------------------------- |
+| Claude Desktop (macOS)   | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Windows) | `~/AppData/Roaming/Claude/claude_desktop_config.json`             |
+| Cursor                   | `~/.cursor/mcp.json`                                              |
+| Windsurf                 | `~/.codeium/windsurf/mcp_config.json`                             |
+
 
 ### Bootstrap sponsorship (SUI gas — CLI only)
 
@@ -512,23 +538,28 @@ One-time $0.25 USDC to new web sign-ups. Removes the #1 friction point — users
 
 **Who gets what:**
 
-| Client | SUI bootstrap | USDC onboarding | Gas method |
-|--------|--------------|-----------------|------------|
-| Web app (zkLogin) | No — Enoki sponsors gas | $0.25 USDC | Enoki sponsored |
-| CLI (`t2000 init`) | 0.05 SUI | None — fund manually | Self-funded → auto-topup → gas station |
+
+| Client             | SUI bootstrap           | USDC onboarding      | Gas method                             |
+| ------------------ | ----------------------- | -------------------- | -------------------------------------- |
+| Web app (zkLogin)  | No — Enoki sponsors gas | $0.25 USDC           | Enoki sponsored                        |
+| CLI (`t2000 init`) | 0.05 SUI                | None — fund manually | Self-funded → auto-topup → gas station |
+
 
 **Protections:**
 
-| Layer | Rule |
-|-------|------|
+
+| Layer          | Rule                                                                         |
+| -------------- | ---------------------------------------------------------------------------- |
 | Authentication | `x-internal-key` header required on ALL requests — no unauthenticated access |
-| Kill switch | `USDC_SPONSOR_PAUSED` env var → instant 503 |
-| Per-address | One-time only (DB unique constraint) |
-| Per-IP | 3 sponsorships per IP per hour (rightmost x-forwarded-for, not spoofable) |
-| Daily global | 20/day hard cap ($5 max daily exposure) |
-| Race condition | In-memory lock prevents concurrent double-spend for same address |
+| Kill switch    | `USDC_SPONSOR_PAUSED` env var → instant 503                                  |
+| Per-address    | One-time only (DB unique constraint)                                         |
+| Per-IP         | 3 sponsorships per IP per hour (rightmost x-forwarded-for, not spoofable)    |
+| Daily global   | 20/day hard cap ($5 max daily exposure)                                      |
+| Race condition | In-memory lock prevents concurrent double-spend for same address             |
+
 
 **Flow (web app):**
+
 ```
 User signs in with Google → zkLogin → wallet derived
   → useUsdcSponsor hook fires (localStorage check)
@@ -551,6 +582,7 @@ User signs in with Google → zkLogin → wallet derived
 ```
 
 The agent now has:
+
 - A Sui address with 0.05 SUI for gas (sponsored)
 - Safeguard limits configured
 - MCP server registered in AI clients
@@ -558,7 +590,7 @@ The agent now has:
 
 ---
 
-## MPP Payment 
+## MPP Payment
 
 When a user runs `t2000 pay <url>` or an AI agent calls `t2000_pay`:
 
@@ -643,13 +675,15 @@ SDK: executeWithGas(buildTx)
 
 ### Gas constants
 
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| `AUTO_TOPUP_THRESHOLD` | 0.05 SUI | Minimum to attempt self-funded TX |
-| `GAS_RESERVE_TARGET` | 0.15 SUI | Proactive top-up target |
-| `AUTO_TOPUP_AMOUNT` | $1 USDC | Reserved for future USDC→SUI top-up (unused while auto-topup disabled) |
-| `AUTO_TOPUP_MIN_USDC` | $2 USDC | Threshold checked for maintenance hooks (auto-topup still disabled) |
-| `GAS_RESERVE_MIN` | 0.05 SUI | Minimum SUI left after balance-changing ops |
+
+| Constant               | Value    | Purpose                                                                |
+| ---------------------- | -------- | ---------------------------------------------------------------------- |
+| `AUTO_TOPUP_THRESHOLD` | 0.05 SUI | Minimum to attempt self-funded TX                                      |
+| `GAS_RESERVE_TARGET`   | 0.15 SUI | Proactive top-up target                                                |
+| `AUTO_TOPUP_AMOUNT`    | $1 USDC  | Reserved for future USDC→SUI top-up (unused while auto-topup disabled) |
+| `AUTO_TOPUP_MIN_USDC`  | $2 USDC  | Threshold checked for maintenance hooks (auto-topup still disabled)    |
+| `GAS_RESERVE_MIN`      | 0.05 SUI | Minimum SUI left after balance-changing ops                            |
+
 
 ### New agent bootstrap
 
@@ -657,14 +691,16 @@ On `t2000 init`, the sponsor endpoint sends 0.05 SUI to the new agent address. A
 
 ### Gas station protections
 
-| Protection | Rule |
-|-----------|------|
-| Circuit breaker | Pauses if SUI price moves >20% in 1 hour |
-| Fee ceiling | Rejects sponsored tx if estimated gas > $0.05 |
-| Pool minimum | Gas wallet must keep ≥ 100 SUI |
-| Rate limit | 20 sponsored txs per address per hour |
-| Hashcash | Proof-of-work challenge when rate limited |
+
+| Protection         | Rule                                                       |
+| ------------------ | ---------------------------------------------------------- |
+| Circuit breaker    | Pauses if SUI price moves >20% in 1 hour                   |
+| Fee ceiling        | Rejects sponsored tx if estimated gas > $0.05              |
+| Pool minimum       | Gas wallet must keep ≥ 100 SUI                             |
+| Rate limit         | 20 sponsored txs per address per hour                      |
+| Hashcash           | Proof-of-work challenge when rate limited                  |
 | Serialized signing | `enqueueSign()` prevents concurrent signing on gas keypair |
+
 
 ### Proactive maintenance
 
@@ -687,16 +723,19 @@ Sui Checkpoints → Indexer → NeonDB
 
 ### What it tracks
 
-| Data | Model | Fields |
-|------|-------|--------|
-| On-chain actions | `Transaction` | agent, action (save/withdraw/borrow/pay), protocol, asset, amount, gas method |
-| Protocol fees | `ProtocolFeeLedger` | agent, operation, fee amount, tx digest |
-| Yield snapshots | `YieldSnapshot` | agent, supplied USD, yield earned, APY |
-| Agent metadata | `Agent` | address, name, last seen |
+
+| Data             | Model               | Fields                                                                        |
+| ---------------- | ------------------- | ----------------------------------------------------------------------------- |
+| On-chain actions | `Transaction`       | agent, action (save/withdraw/borrow/pay), protocol, asset, amount, gas method |
+| Protocol fees    | `ProtocolFeeLedger` | agent, operation, fee amount, tx digest                                       |
+| Yield snapshots  | `YieldSnapshot`     | agent, supplied USD, yield earned, APY                                        |
+| Agent metadata   | `Agent`             | address, name, last seen                                                      |
+
 
 ### Known-agents filter
 
 The indexer only tracks addresses that went through `t2000 init` (bootstrap sponsorship). Random Sui addresses are ignored. This means:
+
 - Only opted-in agents are tracked
 - No scanning of arbitrary wallets
 - Privacy by design
@@ -704,6 +743,7 @@ The indexer only tracks addresses that went through `t2000 init` (bootstrap spon
 ### Action classification
 
 The indexer uses SDK adapter descriptors to classify transactions:
+
 - Move call targets → map to protocol (NAVI)
 - Balance changes → infer action type (save, withdraw, etc.)
 - Events → fee collection
@@ -733,19 +773,23 @@ User TX (save, borrow, etc.)
 
 ## Move Contracts (Sui mainnet)
 
-| Contract | Purpose |
-|----------|---------|
-| `t2000.move` | Config (fee BPS, paused flag), AdminCap |
+
+| Contract        | Purpose                                  |
+| --------------- | ---------------------------------------- |
+| `t2000.move`    | Config (fee BPS, paused flag), AdminCap  |
 | `treasury.move` | `collect_fee()`, withdraw collected fees |
-| `admin.move` | Admin operations (update config, pause) |
+| `admin.move`    | Admin operations (update config, pause)  |
+
 
 ### Key on-chain objects
 
-| Object | ID | Purpose |
-|--------|-----|---------|
-| Package | `0xab92e9f1...` | t2000 Move package |
-| Config | `0x408add9a...` | Fee rates, pause flag |
+
+| Object   | ID              | Purpose                 |
+| -------- | --------------- | ----------------------- |
+| Package  | `0xab92e9f1...` | t2000 Move package      |
+| Config   | `0x408add9a...` | Fee rates, pause flag   |
 | Treasury | `0x3bb501b8...` | Collected protocol fees |
+
 
 ---
 
@@ -774,11 +818,13 @@ agent.save('USDC', 100)
 
 Local-only enforcement on the agent's machine:
 
-| Guard | What it does |
-|-------|-------------|
-| Emergency lock | `agent.lock()` — blocks all outbound operations instantly |
-| Per-TX limit | Max dollar amount per transaction (0 = unlimited) |
-| Daily send limit | Max daily outbound (send + pay) |
+
+| Guard            | What it does                                              |
+| ---------------- | --------------------------------------------------------- |
+| Emergency lock   | `agent.lock()` — blocks all outbound operations instantly |
+| Per-TX limit     | Max dollar amount per transaction (0 = unlimited)         |
+| Daily send limit | Max daily outbound (send + pay)                           |
+
 
 - Config stored locally in `config.json` alongside the private key
 - MCP server refuses to start until safeguard limits are configured
@@ -791,11 +837,13 @@ Local-only enforcement on the agent's machine:
 
 Tools across three categories:
 
-| Category | Examples |
-|----------|---------|
-| Read | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services` |
-| Write | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_borrow`, `t2000_repay` |
-| Safety | `t2000_config`, `t2000_lock` |
+
+| Category | Examples                                                               |
+| -------- | ---------------------------------------------------------------------- |
+| Read     | `t2000_balance`, `t2000_positions`, `t2000_rates`, `t2000_services`    |
+| Write    | `t2000_save`, `t2000_send`, `t2000_pay`, `t2000_borrow`, `t2000_repay` |
+| Safety   | `t2000_config`, `t2000_lock`                                           |
+
 
 Prompts for guided workflows: `financial-report`, `optimize-yield`, `morning-briefing`, `weekly-recap`, `emergency`, etc.
 
@@ -826,51 +874,51 @@ User prompt
 ### Tool System
 
 Tools are built with `buildTool()` which enforces:
+
 - **Zod input validation** with auto-generated JSON schema for the LLM
 - **Permission tiers**: `auto` (no approval), `confirm` (user must approve), `explicit` (manual only)
 - **Concurrency flags**: `isReadOnly` and `isConcurrencySafe`
 
 `runTools()` dispatches tool calls:
+
 - Read-only tools → `Promise.allSettled` (parallel)
 - Write tools → sequential under `TxMutex` (prevents Sui object version conflicts)
 
 ### Built-in Financial Tools
 
-| Read (parallel, auto) | Write (serial, confirm) |
-|-----------------------|------------------------|
-| `render_canvas` | `save_deposit` |
-| `balance_check` | `withdraw` |
-| `savings_info` | `send_transfer` |
-| `health_check` | `borrow` |
-| `rates_info` | `repay_debt` |
-| `transaction_history` | `claim_rewards` |
-| `swap_quote` | `pay_api` |
-| `volo_stats` | `swap_execute` |
-| `mpp_services` | `volo_stake` |
-| `web_search` | `volo_unstake` |
-| `explain_tx` | `save_contact` |
-| `portfolio_analysis` | |
-| `protocol_deep_dive` | |
-| `defillama_yield_pools` | |
-| `defillama_protocol_info` | |
-| `defillama_token_prices` | |
-| `defillama_price_change` | |
-| `defillama_chain_tvl` | |
-| `defillama_protocol_fees` | |
-| `defillama_sui_protocols` | |
-| `create_payment_link` | |
-| `list_payment_links` | |
-| `cancel_payment_link` | |
-| `create_invoice` | |
-| `list_invoices` | |
-| `cancel_invoice` | |
-| `spending_analytics` | |
-| `yield_summary` | |
-| `activity_summary` | |
 
-29 read tools, 11 write tools, **40 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback.
+| Read (parallel, auto)     | Write (serial, confirm) |
+| ------------------------- | ----------------------- |
+| `render_canvas`           | `save_deposit`          |
+| `balance_check`           | `withdraw`              |
+| `savings_info`            | `send_transfer`         |
+| `health_check`            | `borrow`                |
+| `rates_info`              | `repay_debt`            |
+| `transaction_history`     | `claim_rewards`         |
+| `swap_quote`              | `pay_api`               |
+| `volo_stats`              | `swap_execute`          |
+| `mpp_services`            | `volo_stake`            |
+| `web_search`              | `volo_unstake`          |
+| `explain_tx`              | `save_contact`          |
+| `portfolio_analysis`      |                         |
+| `protocol_deep_dive`      |                         |
+| `token_prices`            |                         |
+| `create_payment_link`     |                         |
+| `list_payment_links`      |                         |
+| `cancel_payment_link`     |                         |
+| `create_invoice`          |                         |
+| `list_invoices`           |                         |
+| `cancel_invoice`          |                         |
+| `spending_analytics`      |                         |
+| `yield_summary`           |                         |
+| `activity_summary`        |                         |
+
+
+23 read tools, 11 write tools, **34 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions` (allowance contract dormant), `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't sign without user presence under zkLogin), `pause_pattern`, `pattern_status` (proposal pipeline removed; classifiers stay as silent context). See the S.0–S.12 entries in `audric-build-tracker.md`.
+>
+> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `protocol_deep_dive` retains its DefiLlama dependency as the lone production consumer of `api.llama.fi`. See `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
 
 ### Reasoning Engine (Shipped — always on)
 
@@ -881,6 +929,7 @@ The engine includes a three-layer reasoning system (extended thinking always on 
 3. **Skill recipes** (`recipes/registry.ts`) — YAML recipe files loaded by `RecipeRegistry` with longest-trigger-match-wins, injected as prompt context
 
 Additional features:
+
 - **Prompt caching** — system prompt + tool definitions cached across turns (Anthropic `cache_control`)
 - **Context compaction** — `ContextBudget` (200k limit, 85% compact trigger) with LLM summarizer + truncation fallback
 - **Tool flags** — `ToolFlags` interface on all tools (mutating, requiresBalance, affectsHealth, irreversible, etc.)
@@ -893,6 +942,7 @@ Additional features:
 ### Canvas System
 
 The engine supports rich interactive visualizations via HTML canvases:
+
 - `render_canvas` tool generates HTML content for charts, timelines, heatmaps
 - `canvas` SSE event type delivers rendered content to the client
 - Used for portfolio timeline, spending breakdown, activity heatmap, financial reports
@@ -948,15 +998,17 @@ This stateless flow is serverless-friendly — no long-lived SSE connections nee
 
 ### Supporting Modules
 
-| Module | Purpose |
-|--------|---------|
-| `AnthropicProvider` | Streaming LLM provider with tool use and usage reporting |
-| `CostTracker` | Cumulative token usage, USD cost estimation, budget kill switch |
-| `MemorySessionStore` | In-memory session store with TTL and data isolation |
-| `compactMessages` | Three-phase context window compaction (summarize → drop → truncate) |
-| `serializeSSE` / `parseSSE` | Wire-safe SSE event format for web transport |
-| `validateHistory` | Pre-flight message history validation before every LLM call |
-| `engineToSSE` | Adapts QueryEngine generator to SSE stream |
+
+| Module                      | Purpose                                                             |
+| --------------------------- | ------------------------------------------------------------------- |
+| `AnthropicProvider`         | Streaming LLM provider with tool use and usage reporting            |
+| `CostTracker`               | Cumulative token usage, USD cost estimation, budget kill switch     |
+| `MemorySessionStore`        | In-memory session store with TTL and data isolation                 |
+| `compactMessages`           | Three-phase context window compaction (summarize → drop → truncate) |
+| `serializeSSE` / `parseSSE` | Wire-safe SSE event format for web transport                        |
+| `validateHistory`           | Pre-flight message history validation before every LLM call         |
+| `engineToSSE`               | Adapts QueryEngine generator to SSE stream                          |
+
 
 ### NAVI MCP Integration
 
@@ -972,13 +1024,15 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 
 The Audric consumer brand groups everything into exactly **five products**. (S.18 reverted S.17's Finance retirement: Intelligence was overloaded as both "the moat" and "the home for every financial verb," and Send/Receive overlapped Pay. Finance now owns save/credit/swap/charts; Pay owns send/receive.)
 
-| Product | What it is | Implementation |
-|---------|-----------|----------------|
-| 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas | `@t2000/sdk` + Enoki + `@mysten/sui` |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision (see breakdown below) | `@t2000/engine` |
-| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend), Credit (NAVI borrow), Swap (Cetus aggregator), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
-| 💸 **Audric Pay** | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui | `@t2000/sdk` Sui tx builders + payment-kit |
-| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5) | `@t2000/sdk` + Walrus + payment links |
+
+| Product                    | What it is                                                                                                                                                                | Implementation                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 🪪 **Audric Passport**     | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas                                                           | `@t2000/sdk` + Enoki + `@mysten/sui`                                                  |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision (see breakdown below)                                                                                       | `@t2000/engine`                                                                       |
+| 💰 **Audric Finance**      | Manage your money on Sui — Save (NAVI lend), Credit (NAVI borrow), Swap (Cetus aggregator), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
+| 💸 **Audric Pay**          | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui                                                                      | `@t2000/sdk` Sui tx builders + payment-kit                                            |
+| 🛒 **Audric Store**        | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5)                                                                                                        | `@t2000/sdk` + Walrus + payment links                                                 |
+
 
 See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
@@ -990,13 +1044,15 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 >
 > The "autonomous agent" framing of the prior Audric 2.0 spec was retired in the April 2026 simplification. Pattern proposals, the trust ladder, the scheduled-actions executor, and the notification templates were deleted because zkLogin requires user presence to sign — "autonomous" was reminders dressed up as agency. See the S.0–S.12 entries in `audric-build-tracker.md`.
 
-| System | What it does | Implementation |
-|--------|--------------|----------------|
-| 🎛️ **Agent Harness** | 40 tools, one agent. Orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi, analytics) inside a single conversation. Parallel reads, serial writes under `TxMutex`. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (29 read + 11 write) |
-| ⚡ **Reasoning Engine** | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching, extended thinking always-on for Sonnet/Opus. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
-| 🧠 **Silent Profile** | Private financial profile inferred from chat history (risk tolerance, goals, horizon). Used silently to shape replies — never surfaced. | `UserFinancialProfile` Prisma model + Claude inference cron (daily-intel group) + `buildProfileContext()` |
-| 🔗 **Chain Memory** | 7 classifiers extract structured facts from on-chain history (recurring sends, idle balances, position changes, near-liquidation events). | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |
-| 📓 **AdviceLog** | Every recommendation Audric makes is logged. Last 30 days hydrate every turn so the chat doesn't contradict itself across sessions. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |
+
+| System                 | What it does                                                                                                                                                                                                                                | Implementation                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 🎛️ **Agent Harness**  | 34 tools, one agent. Orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi, analytics) inside a single conversation. Parallel reads, serial writes under `TxMutex`.         | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (23 read + 11 write)                                  |
+| ⚡ **Reasoning Engine** | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching, extended thinking always-on for Sonnet/Opus. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control                       |
+| 🧠 **Silent Profile**  | Private financial profile inferred from chat history (risk tolerance, goals, horizon). Used silently to shape replies — never surfaced.                                                                                                     | `UserFinancialProfile` Prisma model + Claude inference cron (daily-intel group) + `buildProfileContext()` |
+| 🔗 **Chain Memory**    | 7 classifiers extract structured facts from on-chain history (recurring sends, idle balances, position changes, near-liquidation events).                                                                                                   | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()`                                           |
+| 📓 **AdviceLog**       | Every recommendation Audric makes is logged. Last 30 days hydrate every turn so the chat doesn't contradict itself across sessions.                                                                                                         | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()`                      |
+
 
 **What stayed (silent context):** chain-memory classifiers, episodic memory extraction, financial-profile inference, portfolio snapshots, and the `AdviceLog` loop. These run on a single `daily-intel` cron group and feed the LLM context invisibly.
 
@@ -1004,15 +1060,17 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 7 classifiers extract financial patterns from on-chain data and feed them to the agent silently — no proposals, no surface, no notifications:
 
-| Classifier | Source | Detects |
-|-----------|--------|---------|
-| `deposit_pattern` | AppEvent | Regular savings deposits |
-| `risk_profile` | PortfolioSnapshot | Leverage behavior, HF patterns |
-| `yield_behavior` | PortfolioSnapshot | APY optimization, farming |
-| `borrow_behavior` | AppEvent | Borrow/repay patterns |
-| `near_liquidation` | PortfolioSnapshot | HF < 1.5 events |
-| `large_transaction` | AppEvent | Amounts > $500 |
-| `compounding_streak` | AppEvent | Consecutive compound actions |
+
+| Classifier           | Source            | Detects                        |
+| -------------------- | ----------------- | ------------------------------ |
+| `deposit_pattern`    | AppEvent          | Regular savings deposits       |
+| `risk_profile`       | PortfolioSnapshot | Leverage behavior, HF patterns |
+| `yield_behavior`     | PortfolioSnapshot | APY optimization, farming      |
+| `borrow_behavior`    | AppEvent          | Borrow/repay patterns          |
+| `near_liquidation`   | PortfolioSnapshot | HF < 1.5 events                |
+| `large_transaction`  | AppEvent          | Amounts > $500                 |
+| `compounding_streak` | AppEvent          | Consecutive compound actions   |
+
 
 Chain facts stored as `ChainFact` rows and injected into the engine system prompt via `buildMemoryContext()`. The proposal pipeline (formerly `BehavioralPattern` + Copilot suggestions) was deleted in S.5.
 
@@ -1028,12 +1086,14 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 
 ### Intelligence Layer (silent context that survives the simplification)
 
-| Feature | What it does |
-|---------|-------------|
-| Financial Profile | `UserFinancialProfile` model: risk tolerance, goals, investment horizon. Claude inference cron (daily-intel group) |
-| Episodic Memory | `UserMemory` model: key facts, preferences, past decisions. Claude extraction cron + Jaccard dedup |
-| Advice Memory | `AdviceLog` rows written by `record_advice` (audric tool). `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
-| Conversation Log | `ConversationLog` rows written by chat route. Fine-tuning dataset for the future self-hosted model migration |
+
+| Feature           | What it does                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Financial Profile | `UserFinancialProfile` model: risk tolerance, goals, investment horizon. Claude inference cron (daily-intel group)                                                       |
+| Episodic Memory   | `UserMemory` model: key facts, preferences, past decisions. Claude extraction cron + Jaccard dedup                                                                       |
+| Advice Memory     | `AdviceLog` rows written by `record_advice` (audric tool). `buildAdviceContext()` hydrates last 30 days into every turn so the chat remembers what it told you yesterday |
+| Conversation Log  | `ConversationLog` rows written by chat route. Fine-tuning dataset for the future self-hosted model migration                                                             |
+
 
 > The "Proactive Awareness" / `buildProactivenessInstructions()` layer was deleted in S.5 along with the proposal pipeline. There are no proactive surfaces; everything proactive was either a notification (deleted) or a dashboard card (deleted). The chat answers when asked.
 
@@ -1043,13 +1103,15 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 
 ### What IS tracked
 
-| What | Where | Purpose |
-|------|-------|---------|
-| Page views | Vercel Analytics (t2000.ai + mpp.t2000.ai) | Standard web analytics, no wallet data |
-| Agent addresses | Server DB (agents table) | Only agents that used `t2000 init` |
-| On-chain actions | Indexer → Transaction table | Dashboard stats (save/withdraw/borrow counts) |
-| Gas usage | GasLedger | Accounting for sponsorship costs |
-| Protocol fees | ProtocolFeeLedger | Revenue tracking |
+
+| What             | Where                                      | Purpose                                       |
+| ---------------- | ------------------------------------------ | --------------------------------------------- |
+| Page views       | Vercel Analytics (t2000.ai + mpp.t2000.ai) | Standard web analytics, no wallet data        |
+| Agent addresses  | Server DB (agents table)                   | Only agents that used `t2000 init`            |
+| On-chain actions | Indexer → Transaction table                | Dashboard stats (save/withdraw/borrow counts) |
+| Gas usage        | GasLedger                                  | Accounting for sponsorship costs              |
+| Protocol fees    | ProtocolFeeLedger                          | Revenue tracking                              |
+
 
 ### What is NOT tracked
 
@@ -1062,6 +1124,7 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 ### Public stats API (`/api/stats`)
 
 Returns only aggregated numbers:
+
 - Total agents, 24h/7d counts (no addresses)
 - Transaction counts by action/protocol (no addresses)
 - Gas station spend totals
@@ -1071,20 +1134,22 @@ Returns only aggregated numbers:
 
 ## Infrastructure
 
-| Component | Hosting | Notes |
-|-----------|---------|-------|
-| Web App (audric.ai) | Vercel | Next.js, zkLogin + Enoki, @t2000/engine |
-| Web (t2000.ai) | Vercel | Next.js |
-| Gateway (mpp.t2000.ai) | Vercel | Next.js, payment logging, explorer |
-| Ecosystem (suimpp.dev) | Vercel | Next.js, server registry, payment explorer |
-| Server (api.t2000.ai) | AWS ECS Fargate | Hono, long-running |
-| Indexer | AWS ECS Fargate | Checkpoint poller, always-on |
-| Database (web app) | NeonDB (Postgres) | Users, preferences, contacts |
-| Database (server) | NeonDB (Postgres) | Agents, transactions, gas ledger |
-| Database (gateway) | NeonDB (Postgres) | MPP payment logs |
-| Database (suimpp.dev) | NeonDB (Postgres) | Servers, payments, endpoints |
-| DNS | Cloudflare | — |
-| CI/CD | GitHub Actions | Lint, typecheck, test, publish, deploy |
+
+| Component              | Hosting           | Notes                                      |
+| ---------------------- | ----------------- | ------------------------------------------ |
+| Web App (audric.ai)    | Vercel            | Next.js, zkLogin + Enoki, @t2000/engine    |
+| Web (t2000.ai)         | Vercel            | Next.js                                    |
+| Gateway (mpp.t2000.ai) | Vercel            | Next.js, payment logging, explorer         |
+| Ecosystem (suimpp.dev) | Vercel            | Next.js, server registry, payment explorer |
+| Server (api.t2000.ai)  | AWS ECS Fargate   | Hono, long-running                         |
+| Indexer                | AWS ECS Fargate   | Checkpoint poller, always-on               |
+| Database (web app)     | NeonDB (Postgres) | Users, preferences, contacts               |
+| Database (server)      | NeonDB (Postgres) | Agents, transactions, gas ledger           |
+| Database (gateway)     | NeonDB (Postgres) | MPP payment logs                           |
+| Database (suimpp.dev)  | NeonDB (Postgres) | Servers, payments, endpoints               |
+| DNS                    | Cloudflare        | —                                          |
+| CI/CD                  | GitHub Actions    | Lint, typecheck, test, publish, deploy     |
+
 
 ### Deployment pipeline
 
@@ -1124,15 +1189,17 @@ Tag v0.1.0 (mission69b/suimpp repo)
 
 ### Overview
 
-| Layer | Mechanism |
-|-------|----------|
-| **Keys** | Ed25519 keypair, AES-256-GCM encrypted at rest with scrypt-derived key |
-| **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it |
-| **Gas station** | Rate limits, circuit breaker, hashcash, fee ceiling, tx simulation |
-| **Safeguards** | Local spending limits, emergency lock, daily budgets |
-| **On-chain** | Move-level fee collection, AdminCap-gated config, pause flag |
-| **MPP** | HMAC-bound challenges (stateless), on-chain USDC verification |
-| **API keys** | Upstream keys stored as Vercel env vars, never exposed to agents |
+
+| Layer             | Mechanism                                                              |
+| ----------------- | ---------------------------------------------------------------------- |
+| **Keys**          | Ed25519 keypair, AES-256-GCM encrypted at rest with scrypt-derived key |
+| **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it  |
+| **Gas station**   | Rate limits, circuit breaker, hashcash, fee ceiling, tx simulation     |
+| **Safeguards**    | Local spending limits, emergency lock, daily budgets                   |
+| **On-chain**      | Move-level fee collection, AdminCap-gated config, pause flag           |
+| **MPP**           | HMAC-bound challenges (stateless), on-chain USDC verification          |
+| **API keys**      | Upstream keys stored as Vercel env vars, never exposed to agents       |
+
 
 ### Key management
 
@@ -1190,17 +1257,19 @@ The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can free
 
 ### Gas station security
 
-| Protection | How it works |
-|-----------|-------------|
-| **Rate limiting** | 20 gas requests per address per hour |
-| **Hashcash proof-of-work** | When rate limited, client must solve 20-bit PoW (~1–2s) |
-| **TX simulation** | `dryRunTransactionBlock` before signing — rejects if gas estimate > $0.05 |
-| **Circuit breaker** | Polls an on-chain USDC/SUI reference price every 30s, trips if >20% price swing in 1 hour |
-| **Pool minimum** | Rejects sponsorship when gas wallet < 100 SUI |
-| **Serialized signing** | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts |
-| **SUI bootstrap limit** | One-time per address, 10/IP/hr, 100/day global, hashcash above limit |
-| **USDC onboarding** | Web only, `x-internal-key` required, $0.25/address (ever), 3/IP/hr, 20/day cap |
-| **Sponsor kill switch** | `USDC_SPONSOR_PAUSED` env var stops all USDC sponsorship instantly |
+
+| Protection                 | How it works                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
+| **Rate limiting**          | 20 gas requests per address per hour                                                      |
+| **Hashcash proof-of-work** | When rate limited, client must solve 20-bit PoW (~1–2s)                                   |
+| **TX simulation**          | `dryRunTransactionBlock` before signing — rejects if gas estimate > $0.05                 |
+| **Circuit breaker**        | Polls an on-chain USDC/SUI reference price every 30s, trips if >20% price swing in 1 hour |
+| **Pool minimum**           | Rejects sponsorship when gas wallet < 100 SUI                                             |
+| **Serialized signing**     | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts                      |
+| **SUI bootstrap limit**    | One-time per address, 10/IP/hr, 100/day global, hashcash above limit                      |
+| **USDC onboarding**        | Web only, `x-internal-key` required, $0.25/address (ever), 3/IP/hr, 20/day cap            |
+| **Sponsor kill switch**    | `USDC_SPONSOR_PAUSED` env var stops all USDC sponsorship instantly                        |
+
 
 ### Hashcash flow
 
@@ -1229,9 +1298,9 @@ The gateway verifies payments without a database:
 1. **Challenge**: HMAC-sign a challenge ID with `MPP_SECRET_KEY`
 2. **Verify origin**: Recompute HMAC to confirm challenge was issued by this server
 3. **Verify payment**: `getTransactionBlock(digest)` on Sui RPC
-   - TX status: success
-   - USDC transfer amount ≥ requested amount
-   - Recipient = treasury address
+  - TX status: success
+  - USDC transfer amount ≥ requested amount
+  - Recipient = treasury address
 4. No replay protection needed — each challenge is single-use via HMAC binding
 
 ### Upstream API key isolation
@@ -1257,11 +1326,14 @@ All write operations go through a `TxMutex` that ensures only one transaction ex
 
 ### What the server knows vs doesn't
 
-| Server knows | Server does NOT know |
-|-------------|---------------------|
-| Agent Sui address (public) | Private key |
-| Gas usage amounts | Wallet balance |
-| Sponsored TX digests | What the TX does (opaque bytes) |
-| Bootstrap requests (IP, address) | CLI usage, local commands |
-| USDC onboarding log (address, amount, digest) | — |
-| Protocol fee events (from chain) | Which AI client is used |
+
+| Server knows                                  | Server does NOT know            |
+| --------------------------------------------- | ------------------------------- |
+| Agent Sui address (public)                    | Private key                     |
+| Gas usage amounts                             | Wallet balance                  |
+| Sponsored TX digests                          | What the TX does (opaque bytes) |
+| Bootstrap requests (IP, address)              | CLI usage, local commands       |
+| USDC onboarding log (address, amount, digest) | —                               |
+| Protocol fee events (from chain)              | Which AI client is used         |
+
+

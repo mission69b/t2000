@@ -17,7 +17,7 @@
 | Product | What it is |
 |---------|-----------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Move money — Send USDC, Receive (payment links, invoices, QR). Free, global, instant on Sui. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5). |
@@ -30,11 +30,11 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.42.0` |
-| `@t2000/engine` | `0.42.0` |
-| `@t2000/cli` | `0.40.4` |
+| `@t2000/sdk` | `0.47.0` |
+| `@t2000/engine` | `0.47.0` |
+| `@t2000/cli` | `0.47.0` |
 | `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `0.40.4` |
+| `@t2000/mcp` | `0.47.0` |
 | Agent Skills | `3.0` |
 
 ---
@@ -656,7 +656,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
 | Test count | 250 |
-| Total tools | **40** (29 reads + 11 writes) — see breakdown below |
+| Total tools | **34** (23 reads + 11 writes) — see breakdown below |
 
 ### Engine Public Exports
 
@@ -679,9 +679,10 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `engineToSSE` | function | Adapt QueryEngine → SSE stream |
 | `estimateTokens` | function | Rough token estimation |
 | `compactMessages` | function | Context window compaction (ContextBudget) |
-| `fetchTokenPrices` | function | Batch USD prices from DefiLlama (single price source) |
-| `clearPriceCache` | function | Clear the DefiLlama price cache |
-| `getDefaultTools` | function | All 40 built-in tools (29 read, 11 write) |
+| `fetchTokenPrices` | function | Batch USD prices from BlockVision Indexer REST (Sui-RPC + hardcoded-stable degraded fallback) |
+| `fetchAddressPortfolio` | function | Wallet coins + balances + USD prices + totals from BlockVision (single round-trip) |
+| `clearPortfolioCache` / `clearPortfolioCacheFor` / `clearPriceMapCache` | function | Reset BlockVision portfolio + price caches |
+| `getDefaultTools` | function | All 34 built-in tools (23 read, 11 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 | `classifyEffort` | function | Adaptive thinking effort classifier |
 | `ContextBudget` | class | Context window budget tracking + compaction trigger |
@@ -707,7 +708,7 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 
 ### Engine Tool Names
 
-| Read Tools (29) | Write Tools (11) |
+| Read Tools (23) | Write Tools (11) |
 |-----------|------------|
 | `render_canvas` | `save_deposit` |
 | `balance_check` | `withdraw` |
@@ -722,13 +723,7 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | `explain_tx` | `save_contact` |
 | `portfolio_analysis` | |
 | `protocol_deep_dive` | |
-| `defillama_yield_pools` | |
-| `defillama_protocol_info` | |
-| `defillama_token_prices` | |
-| `defillama_price_change` | |
-| `defillama_chain_tvl` | |
-| `defillama_protocol_fees` | |
-| `defillama_sui_protocols` | |
+| `token_prices` | |
 | `create_payment_link` | |
 | `list_payment_links` | |
 | `cancel_payment_link` | |
@@ -740,6 +735,8 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | `activity_summary` | |
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_schedule`, `list_schedules`, `cancel_schedule`, `pattern_status`, `pause_pattern` — 9 tools deleted. Allowance contract is dormant; scheduled actions can't sign without user presence under zkLogin; pattern detectors stay as silent classifiers (not user-facing proposals). See the S.0–S.12 entries in `audric-build-tracker.md`.
+>
+> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST. `protocol_deep_dive` is the lone surviving DefiLlama consumer. Net: 29 → 23 reads, 40 → 34 total. See `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
 >
 > `record_advice` lives in `audric/apps/web/lib/engine/advice-tool.ts` (audric-side tool that writes `AdviceLog` rows; not exported from `@t2000/engine`).
 
@@ -774,7 +771,7 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 |------|-------|
 | Package | `@t2000/mcp` |
 | Version | `0.40.2` |
-| Tool count | 40 (29 read, 11 write) — mirrors engine tool set |
+| Tool count | 29 — read-only `t2000_*` namespaced subset of the engine (verified by `packages/mcp/src/integration.test.ts` `toHaveLength(29)`) |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |
 | Safeguard enforced | Yes — all tool calls pass through `SafeguardEnforcer` before execution |

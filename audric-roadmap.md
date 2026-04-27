@@ -16,39 +16,46 @@
 
 ### The five products
 
-| Product | What it is | What's inside | Status |
-|---|---|---|---|
-| 🪪 **Audric Passport** | The trust layer. Your passport to a new kind of finance. Identity (zkLogin), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | Sign in with Google → wallet in 3 seconds, every write taps to confirm, Enoki gas sponsorship, on-chain verifiable forever | **Live** |
-| 🧠 **Audric Intelligence** | Not a chatbot. A financial agent. Five systems orchestrate every money decision — Agent Harness (40 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. The moat. Engineering-facing brand; users experience it as "Audric just understood me." | 40-tool agent harness (29 read + 11 write), adaptive reasoning + skill recipes + guard runner, silent context layer (profile + memory + chain facts + advice log) — see 5-system breakdown below | **Live** |
-| 💰 **Audric Finance** | Manage your money on Sui. Save, borrow, swap, see your positions — every DeFi op a user can do, all by asking in chat. The *what*; Intelligence is the *how*. Every write taps to confirm via Passport. | Save (NAVI lend, 3–8% APY on USDC, withdraw anytime) · Credit (NAVI borrow against savings, health factor visible at all times) · Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee) · Charts (interactive yield / health / portfolio visualizations from chat) | **Live** |
-| 💸 **Audric Pay** | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / invoices / QR. No bank, no borders, no fees. | Send USDC to wallets or saved contacts (sub-second, $0 fee) · Receive (payment links, QR codes, invoices that settle on-chain instantly) | **Live** |
-| 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI content (music, art, ebooks, templates), list it, sell in USDC. 92% to creator. | Walrus storage, on-chain pay-to-unlock, payment-link checkout (built on Audric Pay primitives) | **Coming soon (Phase 5)** |
+
+| Product                    | What it is                                                                                                                                                                                                                                                                                 | What's inside                                                                                                                                                                                                                                                              | Status                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| 🪪 **Audric Passport**     | The trust layer. Your passport to a new kind of finance. Identity (zkLogin), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product.                                                                                                 | Sign in with Google → wallet in 3 seconds, every write taps to confirm, Enoki gas sponsorship, on-chain verifiable forever                                                                                                                                                 | **Live**                  |
+| 🧠 **Audric Intelligence** | Not a chatbot. A financial agent. Five systems orchestrate every money decision — Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. The moat. Engineering-facing brand; users experience it as "Audric just understood me." | 34-tool agent harness (23 read + 11 write), adaptive reasoning + skill recipes + guard runner, silent context layer (profile + memory + chain facts + advice log + daily `<financial_context>` snapshot) — see 5-system breakdown below                                                                           | **Live**                  |
+| 💰 **Audric Finance**      | Manage your money on Sui. Save, borrow, swap, see your positions — every DeFi op a user can do, all by asking in chat. The *what*; Intelligence is the *how*. Every write taps to confirm via Passport.                                                                                    | Save (NAVI lend, 3–8% APY on USDC, withdraw anytime) · Credit (NAVI borrow against savings, health factor visible at all times) · Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee) · Charts (interactive yield / health / portfolio visualizations from chat) | **Live**                  |
+| 💸 **Audric Pay**          | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / invoices / QR. No bank, no borders, no fees.                                                                                                                                                    | Send USDC to wallets or saved contacts (sub-second, $0 fee) · Receive (payment links, QR codes, invoices that settle on-chain instantly)                                                                                                                                   | **Live**                  |
+| 🛒 **Audric Store**        | Creator marketplace at `audric.ai/username`. Generate AI content (music, art, ebooks, templates), list it, sell in USDC. 92% to creator.                                                                                                                                                   | Walrus storage, on-chain pay-to-unlock, payment-link checkout (built on Audric Pay primitives)                                                                                                                                                                             | **Coming soon (Phase 5)** |
+
 
 ### Audric Passport — the trust layer (4 pillars)
 
 > **Your passport to a new kind of finance.**
 
-| Pillar | What it means |
-|---|---|
-| 🪪 **Identity** | Sign in with Google. Your Passport is a cryptographic wallet, created in 3 seconds. No seed phrase. Yours forever. (zkLogin via Enoki) |
-| ✋ **You decide** | Audric never moves money on its own. Every Finance and Pay action — save, send, swap, borrow — waits on your tap-to-confirm. |
-| 🔐 **Sponsored gas** | We pay the network fees so you don't need SUI to transact. Your USDC stays your USDC. (Enoki gas sponsorship) |
-| ⛓️ **Yours** | Non-custodial. We cannot move your money. Every transaction is on Sui mainnet, verifiable by anyone, forever. |
+
+| Pillar               | What it means                                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 🪪 **Identity**      | Sign in with Google. Your Passport is a cryptographic wallet, created in 3 seconds. No seed phrase. Yours forever. (zkLogin via Enoki) |
+| ✋ **You decide**     | Audric never moves money on its own. Every Finance and Pay action — save, send, swap, borrow — waits on your tap-to-confirm.           |
+| 🔐 **Sponsored gas** | We pay the network fees so you don't need SUI to transact. Your USDC stays your USDC. (Enoki gas sponsorship)                          |
+| ⛓️ **Yours**         | Non-custodial. We cannot move your money. Every transaction is on Sui mainnet, verifiable by anyone, forever.                          |
+
 
 ### Audric Intelligence — the 5-system moat
 
 > Five systems work together to make Audric a financial agent, not a chatbot. Every action still waits on your Passport tap-to-confirm.
 
-| System | Tagline | What it does |
-|---|---|---|
-| 🎛️ **Agent Harness** | 40 tools. One agent. | The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. |
-| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. |
-| 🧠 **Silent Profile** | Knows your finances. | Builds a private financial profile from your chat history. Used silently to make answers more relevant — never surfaced as nudges. |
-| 🔗 **Chain Memory** | Remembers what you do on-chain. | Reads your wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes. |
-| 📓 **AdviceLog** | Remembers what it told you. | Every recommendation Audric makes is logged so it doesn't contradict itself across sessions. No two answers about the same topic. |
+
+| System                 | Tagline                         | What it does                                                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🎛️ **Agent Harness**  | 34 tools. One agent.            | The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. |
+| ⚡ **Reasoning Engine** | Thinks before it acts.          | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching.                                                      |
+| 🧠 **Silent Profile**  | Knows your finances.            | Builds a private financial profile from your chat history. Used silently to make answers more relevant — never surfaced as nudges.                                                                                                                  |
+| 🔗 **Chain Memory**    | Remembers what you do on-chain. | Reads your wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes.                                                                                                                       |
+| 📓 **AdviceLog**       | Remembers what it told you.     | Every recommendation Audric makes is logged so it doesn't contradict itself across sessions. No two answers about the same topic.                                                                                                                   |
+
 
 **Implementation map:**
-- **Agent Harness** → `@t2000/engine` `QueryEngine` + `getDefaultTools()` (29 read + 11 write = 40)
+
+- **Agent Harness** → `@t2000/engine` `QueryEngine` + `getDefaultTools()` (23 read + 11 write = 34)
 - **Reasoning Engine** → `classify-effort.ts` (adaptive thinking), `guards.ts` (9 guards × 3 priority tiers: Safety > Financial > UX), `recipes/registry.ts` (YAML skill recipes), extended thinking always-on for Sonnet/Opus
 - **Silent Profile** → `UserFinancialProfile` Prisma model, Claude inference cron (daily-intel group), injected via `buildProfileContext()`
 - **Chain Memory** → 7 chain classifiers (`deposit_pattern`, `risk_profile`, `yield_behavior`, `borrow_behavior`, `near_liquidation`, `large_transaction`, `compounding_streak`) → `ChainFact` rows → `buildMemoryContext()`
@@ -79,7 +86,7 @@
 >
 > **Why the pivot:** zkLogin can't sign without user presence. Every "autonomous" feature collapsed into "reminder dressed up as agency" the moment we shipped it. The chat — the actual differentiator — was being drowned by surfaces that competitors do better.
 >
-> **What's current:** chat-first dashboard, daily-free billing (5 unverified / 20 verified sessions per rolling 24h), 40-tool engine, 4 cron jobs (memory extraction, profile inference, chain memory, portfolio snapshot), critical HF email at < 1.2 as the only proactive surface. See the S.0–S.19 entries in `audric-build-tracker.md` for the locked decisions on what we will NOT bring back.
+> **What's current:** chat-first dashboard, daily-free billing (5 unverified / 20 verified sessions per rolling 24h), 34-tool engine (BlockVision-backed pricing), 5 daily-intel cron jobs (memory extraction, profile inference, chain memory, portfolio snapshot, financial-context snapshot), critical HF email at < 1.2 as the only proactive surface. See the S.0–S.19 entries in `audric-build-tracker.md` and `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` for the locked decisions on what we will NOT bring back.
 >
 > **Read the rest of this doc as a historical record** of what was tried and why it didn't survive the two-question filter. Anything below this banner that contradicts the simplification spec is wrong by definition.
 
@@ -100,7 +107,6 @@ Audric is a conversational banking app built on Sui. Users sign in with Google, 
 - Reasoning engine: adaptive thinking, guards, recipes, memory — live (Phase 3.5, retained as silent context)
 - MPP gateway: 40 services, 88 endpoints
 - Chip bar: Save | Send | Swap | Credit | Receive (guided multi-step flows)
-
 - ~~Daily habit via morning briefing + goals~~ — briefings deleted, goals kept as silent trackers
 - ~~Proactive agent: HF alerts, yield optimisation, DCA~~ — deleted (chat-first only)
 - Receive: payment links, QR, invoices
@@ -119,13 +125,9 @@ The goal is to make Audric feel like a consumer app while keeping the blockchain
 ### Why Sui?
 
 - 400ms finality — fast enough to feel instant to users
-
 - zkLogin: Google OAuth maps to a deterministic Sui address, no seed phrase
-
 - Enoki gas sponsorship: users never pay gas, Audric absorbs it
-
 - Circle USDC native on Sui, not bridged
-
 - NAVI Protocol: battle-tested lending with real yield (3–8%+ APY)
 
 ### The two products inside Audric
@@ -153,65 +155,45 @@ Audric has two distinct user types that need different experiences but share the
 ### Save
 
 - NAVI lending integration: working
-
 - APY display: ✅ Fixed — showing live NAVI rate (~3–8%) via `rates_info` tool
-
 - Save asset: USDC only. ✅ Enforced at SDK level (`assertAllowedAsset`), engine tool descriptions, LLM system prompt, and all UI flows (chips, smart cards, contextual suggestions). `balance.usdc` used everywhere instead of `balance.cash` for save-related amounts.
-
 - Protocol: NAVI only. ProtocolRegistry retained for future multi-protocol support, but single-asset path kept clean
-
 - Pending rewards (NAVX + vSUI/CERT): `claim_rewards` tool already built in engine + SDK. Manual claim working. Auto-compound shipped (Phase 3.1) ✅
 
 ### Send
 
 - Contacts system in SDK: working
-
 - Cross-border, sub-second, gas-only fees: working
-
 - Send supports USDC and all Tier 2 assets (SUI, ETH, etc.) — users can transfer any featured token they hold
-
 - ~~Gap: payment memo field~~ — ✅ Shipped (Phase 2.4): memo on `send_transfer` tool + receipt
-
 - Gap: non-Audric recipients see no explanation of what arrived
 
 ### Credit
 
 - NAVI collateralised lending: USDC only. Collateral, borrow, and repay all denominated in USDC — no cross-asset collateral positions
-
 - Borrow APR display: verify — 0.06% may be a per-period rate shown as APR
-
 - ~~Gap: liquidation education~~ — ✅ Shipped (Phase 3.6): prompt-based HF education + HealthCard
-
 - ~~Gap: health factor not surfaced prominently enough~~ — ✅ Shipped: HealthCard with color-coded HF bands (<1.2 critical, <1.5 danger, <2.0 warning)
 
 ### Pay (MPP)
 
 - 40 services, 88 endpoints: working
-
 - ~~Gap: consumer discovery~~ — ✅ Shipped (Phase 3.4): conversational discovery in chat
-
 - ~~Gap: spend tracker~~ — ✅ Shipped (Phase 3.4): spend tracker in Settings > Safety
-
 - Gap: async services (Suno, Runway, Heygen) blocked by sync-only architecture
 
 ### Receive
 
 - Deposit address + QR code: ✅ Live — tapping the Receive chip shows the user's Sui address with a QR code, network label (Sui mainnet), token label (USDC), and step-by-step instructions for depositing from Binance, Coinbase, or any Sui wallet
-
 - Warning: "Only send USDC on the Sui network. Other tokens or networks may result in lost funds."
-
 - Phase 2 expansion: ✅ payment links + invoices shipped (Phase 2.1, 2.2). AlchemyPay skipped (deferred). Pay v2 security hardening + Sui Payment Kit integration shipped (Phase 2.3).
-
 - NFC: out of scope — requires native app + payment processor certification
 
 ### Swap
 
 - Cetus Aggregator integration: ✅ Live — supports all 13 Tier 2 assets + USDC
-
 - 0.1% overlay fee on output: ✅ Live — sent to treasury address
-
 - Available via LLM chat ("swap 1 USDC to USDT") or guided chip flow (see below)
-
 - Dust filtering: amounts floored (never rounded up) to prevent "insufficient balance" errors
 
 ## Chip flows — guided multi-step interactions
@@ -490,21 +472,24 @@ The allowance onboarding is the single most trust-sensitive UX in the product. I
 
 ### Feature pricing
 
-|                            |                 |               |                             |
-|----------------------------|-----------------|---------------|-----------------------------|
-| **Feature**                | **Cost**        | **Delivery**  | **Notes**                   |
-| Morning briefing           | \$0.005 / day   | MPP → Resend  | 8am user timezone, ECS cron |
-| USDC rate alerts           | \$0.002 / alert | MPP → Resend  | NAVI USDC rate monitoring   |
-| Payment received alert     | \$0.001 / alert | Direct Resend | Indexer detection, urgent   |
-| Scheduled action reminders | \$0.001 / run   | MPP → Resend  | Night-before confirmation   |
-| Health factor alerts       | Free            | Direct Resend | Always on, non-custodial    |
+
+|                            |               |               |                             |
+| -------------------------- | ------------- | ------------- | --------------------------- |
+| **Feature**                | **Cost**      | **Delivery**  | **Notes**                   |
+| Morning briefing           | 0.005 / day   | MPP → Resend  | 8am user timezone, ECS cron |
+| USDC rate alerts           | 0.002 / alert | MPP → Resend  | NAVI USDC rate monitoring   |
+| Payment received alert     | 0.001 / alert | Direct Resend | Indexer detection, urgent   |
+| Scheduled action reminders | 0.001 / run   | MPP → Resend  | Night-before confirmation   |
+| Health factor alerts       | Free          | Direct Resend | Always on, non-custodial    |
+
 
 Health factor alerts are always free and always on. Liquidation protection is a safety feature, not a premium one — charging for it would be the wrong signal entirely.
 
 ### Notification routing
 
+
 |                                              |                               |              |
-|----------------------------------------------|-------------------------------|--------------|
+| -------------------------------------------- | ----------------------------- | ------------ |
 | **Trigger**                                  | **Method**                    | **Priority** |
 | Health factor critical / liquidation risk    | Direct Resend from ECS        | **URGENT**   |
 | Morning briefing, yield alerts, job complete | Via MPP gateway (Resend)      | **ASYNC OK** |
@@ -512,15 +497,18 @@ Health factor alerts are always free and always on. Liquidation protection is a 
 | Scheduled action reminder                    | Via MPP gateway (Resend)      | **ASYNC OK** |
 | Allowance running low                        | Direct Resend from ECS        | **ASYNC OK** |
 
+
 Urgent notifications (health factor, inbound payments) bypass MPP and call Resend directly from ECS — zero latency. Non-urgent notifications route via MPP gateway, dogfooding the product's own micropayment infrastructure.
 
 ## Pre-work — ✅ COMPLETE (10/10)
 
-|                                                    |
-|----------------------------------------------------|
-| > ~4 days | foundation for everything that follows |
-| > **Status:** All 10 items complete. Allowance top-up (0.8) deferred to Phase 1 but all other pre-work shipped. |
+
+|                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| > ~4 days                                                                                                                                                                              |
+| > **Status:** All 10 items complete. Allowance top-up (0.8) deferred to Phase 1 but all other pre-work shipped.                                                                        |
 | > **Releases:** t2000 v0.26.2 (SDK 0.23.0, Engine 0.7.6). Audric deployed with USDC-only enforcement, Swap chip, dust filtering, financial amount safety (flooring), and Cursor rules. |
+
 
 ### 0.1 Conversation logging
 
@@ -529,11 +517,8 @@ Add one DB write per engine turn to the SSE handler. Every day without this is f
 **Schema — ConversationLog table (NeonDB, audric web app DB)**
 
 - userId, sessionId, role (user | assistant)
-
 - content (text), toolCalls (JSON)
-
 - tokensUsed, costUsd
-
 - createdAt
 
 Effort: ~2 hours
@@ -679,7 +664,7 @@ The savings and credit pages show incorrect APY (e.g. 0.05% instead of 5%).
 1. Verify the exact format from `registry.allRatesAcrossAssets()` — confirm whether NAVI returns 0.05 or 5.0 for 5%
 2. Fix `formatRate()` accordingly — likely `(rate * 100).toFixed(2)%`
 3. Fix `ToolResultCard.tsx` yield pool display with the same conversion
-4. For static marketing pages (`/savings`, `/credit`): use ISR with 5-minute revalidation to pull live rates. Fallback to hardcoded sensible defaults (“~5% APY”, “~6% APR”) if the API call fails — better to show approximate truth than broken decimals
+4. For static marketing pages (`/savings`, `/credit`): use ISR with 5-minute revalidation to pull live rates. Fallback to hardcoded sensible defaults (“~~5% APY”, “~~6% APR”) if the API call fails — better to show approximate truth than broken decimals
 
 Effort: ~1 hour
 
@@ -716,20 +701,14 @@ Effort: ~30 minutes (✅ DONE — live in SDK + Audric)
 
 ### 0.8 Allowance top-up flow
 
-When the user’s allowance balance drops below \$0.05 (roughly 10 days of daily briefings), Audric sends a single top-up prompt. This is the most churn-sensitive moment in the allowance model — if the top-up experience is confusing or slow, users disable features rather than refill. The flow must be one tap.
+When the user’s allowance balance drops below 0.05 (roughly 10 days of daily briefings), Audric sends a single top-up prompt. This is the most churn-sensitive moment in the allowance model — if the top-up experience is confusing or slow, users disable features rather than refill. The flow must be one tap.
 
-- Trigger: ECS cron checks allowance balance after each deduction. If remaining < \$0.05, fire once-only top-up notification
-
+- Trigger: ECS cron checks allowance balance after each deduction. If remaining < 0.05, fire once-only top-up notification
 - Flag: set `AllowanceTopUpSent: true` on User record when notification fires. Do not send again until user either tops up or 48 hours pass (reset flag after 48hr to allow one re-send)
-
 - Grace period: features continue working for 48 hours after the low-balance notification. Do not cut off mid-morning-briefing — abrupt loss of features causes churn faster than a gentle nudge
-
-- Email template: “Your Audric features budget is running low (\$0.03 remaining). Top up \$0.50 to keep your morning briefing, alerts, and savings running — takes 2 seconds.”
-
+- Email template: “Your Audric features budget is running low (0.03 remaining). Top up 0.50 to keep your morning briefing, alerts, and savings running — takes 2 seconds.”
 - Deep link: email CTA links directly to `audric.ai/settings/allowance?topup=0.50` which pre-fills the deposit flow. One tap confirm
-
 - If user ignores both notifications (48hr apart), features pause silently. No third notification. When user next opens the app, show an inline banner: “Your features are paused — top up to resume”
-
 - Never frame as “you ran out of money” — frame as “your features budget needs a top-up”
 
 Effort: ~2 hours
@@ -820,10 +799,12 @@ The current settings is a right-hand slide-over panel (`SettingsPanel.tsx`). By 
 
 **Two budget concepts — important distinction:**
 
-| Budget | Purpose | Where it lives | Scope |
-|--------|---------|-----------------|-------|
-| **Features budget** (allowance) | Pays for proactive features: briefings, alerts, DCA, AI sessions | On-chain `Allowance` contract (USDC escrow) | $0.25–$1.00, lasts weeks–months |
+
+| Budget                          | Purpose                                                                          | Where it lives                              | Scope                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------- |
+| **Features budget** (allowance) | Pays for proactive features: briefings, alerts, DCA, AI sessions                 | On-chain `Allowance` contract (USDC escrow) | $0.25–$1.00, lasts weeks–months                           |
 | **Agent budget** (auto-approve) | Max USDC value Audric can auto-approve per transaction without user confirmation | Client-side preference in `UserPreferences` | e.g., $5 — transactions above this require manual confirm |
+
 
 These are deliberately separate. The features budget is a pre-funded pool for micro-charges. The agent budget is a safety threshold for how much the LLM can spend in a single action without asking. Both appear in Settings but under different sections (Features vs Safety) to avoid confusion.
 
@@ -882,6 +863,7 @@ Effort: ~1 hour
 ---
 
 ## Phase 1 — Daily habit loop  ⚠️ ARCHIVED (April 2026 simplification)
+
 > Morning briefings, daily summaries, push reminders — all deleted. The chat does the daily-habit job by being the one place users open to ask anything money-related.
 
 > ~2 weeks | Retention foundation
@@ -893,19 +875,12 @@ Everything proactive depends on the notification infrastructure built in this ph
 ### 1.1 Notification infrastructure — ✅ DONE
 
 - ECS cron scheduler (EventBridge rules on existing Fargate cluster) ✅
-
 - Single hourly EventBridge cron (not per-user). Handler queries NeonDB for users whose `timezoneOffset` maps to 8am local time at the current UTC hour. Batches notifications in a single execution. Scales to 100K+ users without additional cron rules ✅
-
 - Resend direct client in ECS server for urgent notifications ✅
-
 - MPP gateway Resend routing for async notifications
-
 - NotificationPrefs + NotificationLog tables in NeonDB ✅
-
 - Settings UI toggles (hf_alert, briefing, rate_alert) ✅
-
 - Internal API auth (`AUDRIC_INTERNAL_KEY`) between t2000 ECS and audric Vercel ✅
-
 - `CRON_OVERRIDE_HOUR` env var for manual testing ✅
 
 Effort: 3 days
@@ -913,15 +888,10 @@ Effort: 3 days
 ### 1.2 Health factor alerts — ✅ DONE (shipped with 1.1)
 
 - Indexer HF hook: real-time critical alerts via `POST /api/internal/hf-alert` on audric ✅
-
 - Cron batch: hourly warn-level alerts via `getFinancialSummary()` + direct Resend from ECS ✅
-
 - Alert deduplication: 30min for critical, 4h for warn ✅
-
 - Email templates: plain English explanation of what HF means and what to do (both warn + critical) ✅
-
 - Deep link to `/action?type=repay` in both email templates ✅
-
 - Settings UI toggle for `hf_alert` ✅
 
 Effort: 2 days (shipped as part of 1.1)
@@ -932,14 +902,10 @@ Effort: 2 days (shipped as part of 1.1)
 
 Single hourly ECS cron fires for all users whose timezone maps to 8am at the current UTC hour. Queries: yesterday's USDC yield earned, current NAVI USDC APY, health factor if the user has debt, idle USDC balance, one suggested action. 40 words maximum. Sent via MPP Resend (user's allowance pays).
 
-- Template: 'Good morning. Your savings earned \$X yesterday. Current APY: Y%. \[One action if applicable.\]'
-
+- Template: 'Good morning. Your savings earned X yesterday. Current APY: Y%. One action if applicable.'
 - Only sends if user has a balance — no empty briefings
-
 - Respect opt-out: if user turns off in settings, cron skips them
-
 - Source data: balance_check + rates_info + savings_info tools (already in engine)
-
 - **No-savings variant:** If user has idle USDC but no savings, the briefing shifts from "earned $X overnight" to "You have $44 idle USDC. Save it to start earning 5.0% APY." — the briefing is always useful, never an empty report
 
 **In-app briefing card:**
@@ -1009,15 +975,17 @@ Every email CTA and notification needs to open the app in the right state and tr
 
 **URL scheme:** `audric.ai/action?type=<action>&<params>`
 
-| Deep link | Action | Opens as |
-|-----------|--------|----------|
-| `/action?type=save&amount=50` | Quick save | Pre-fills chat with "Save $50 USDC" |
-| `/action?type=topup&amount=0.50` | Allowance top-up | Opens Settings > Features with top-up pre-filled |
-| `/action?type=goal&id=xxx&deposit=50` | Goal deposit | Pre-fills chat with "Save $50 toward [goal name]" |
-| `/action?type=briefing` | View today's briefing | Opens dashboard, scrolls to briefing card |
-| `/action?type=repay&amount=100` | Repay debt | Pre-fills chat with "Repay $100" |
-| `/action?type=cancel-dca&id=xxx` | Cancel scheduled action | Opens Settings > Schedules with cancel confirmation |
-| `/settings?section=features` | Feature settings | Opens Settings on Features tab |
+
+| Deep link                             | Action                  | Opens as                                            |
+| ------------------------------------- | ----------------------- | --------------------------------------------------- |
+| `/action?type=save&amount=50`         | Quick save              | Pre-fills chat with "Save $50 USDC"                 |
+| `/action?type=topup&amount=0.50`      | Allowance top-up        | Opens Settings > Features with top-up pre-filled    |
+| `/action?type=goal&id=xxx&deposit=50` | Goal deposit            | Pre-fills chat with "Save $50 toward [goal name]"   |
+| `/action?type=briefing`               | View today's briefing   | Opens dashboard, scrolls to briefing card           |
+| `/action?type=repay&amount=100`       | Repay debt              | Pre-fills chat with "Repay $100"                    |
+| `/action?type=cancel-dca&id=xxx`      | Cancel scheduled action | Opens Settings > Schedules with cancel confirmation |
+| `/settings?section=features`          | Feature settings        | Opens Settings on Features tab                      |
+
 
 **Implementation:**
 
@@ -1035,12 +1003,9 @@ Effort: 1 day (simple routing page, shares infra with auth callback pattern)
 Users set a USDC savings target and optional deadline via chat or a goals screen. Audric tracks progress against USDC savings balance and includes it in the morning briefing. Milestones (25%, 50%, 75%, 100%) trigger a celebratory email. Makes passive USDC savings emotionally engaging.
 
 - SavingsGoal table: userId, name, targetAmount, deadline, createdAt
-
 - Progress computed at briefing time from current savings balance
-
-- Chat: 'Save \$500 for a trip by August' creates a goal automatically
-
-- Morning briefing addition: 'Tokyo fund: \$312 of \$500 — 3 days ahead of schedule'
+- Chat: 'Save 500 for a trip by August' creates a goal automatically
+- Morning briefing addition: 'Tokyo fund: 312 of 500 — 3 days ahead of schedule'
 
 **Goals management — accessible from Settings > Savings Goals or via "My goals" action chip:**
 
@@ -1115,12 +1080,14 @@ Goals need a persistent visual presence beyond chat. When the user sets a goal v
 
 **Milestone notifications:**
 
-| Milestone | Email subject | In-app |
-|-----------|-------------|--------|
-| 25% | "Tokyo trip: quarter of the way there" | Feed card with progress ring |
-| 50% | "Tokyo trip: halfway!" | Feed card + confetti burst |
-| 75% | "Tokyo trip: almost there" | Feed card with progress ring |
-| 100% | "Tokyo trip: goal reached!" | Full celebration card |
+
+| Milestone | Email subject                          | In-app                       |
+| --------- | -------------------------------------- | ---------------------------- |
+| 25%       | "Tokyo trip: quarter of the way there" | Feed card with progress ring |
+| 50%       | "Tokyo trip: halfway!"                 | Feed card + confetti burst   |
+| 75%       | "Tokyo trip: almost there"             | Feed card with progress ring |
+| 100%      | "Tokyo trip: goal reached!"            | Full celebration card        |
+
 
 Effort: 3 days
 
@@ -1130,13 +1097,15 @@ The v1 savings goals track USDC savings balance only. This is deliberately narro
 
 **Goal types to support:**
 
-| Type | Tracks against | Example | Unlocked by |
-|------|---------------|---------|-------------|
-| `savings` | USDC savings balance | "Save $500 for Thailand" | Live (v1) |
-| `wealth` | Total portfolio value (savings + wallet + investments) | "Grow portfolio to $100k by 2027" | Swap + portfolio tracking |
-| `investment` | Specific asset holdings | "Accumulate $10k in Gold and BTC" | Swap + DCA (3.3) |
-| `earning` | Store revenue / yield earned | "Earn $1,000 from my first product" | Store (Phase 5) |
-| `compound` | Cumulative yield over time | "Earn $500 in passive yield this year" | Yield tracking API |
+
+| Type         | Tracks against                                         | Example                                | Unlocked by               |
+| ------------ | ------------------------------------------------------ | -------------------------------------- | ------------------------- |
+| `savings`    | USDC savings balance                                   | "Save $500 for Thailand"               | Live (v1)                 |
+| `wealth`     | Total portfolio value (savings + wallet + investments) | "Grow portfolio to $100k by 2027"      | Swap + portfolio tracking |
+| `investment` | Specific asset holdings                                | "Accumulate $10k in Gold and BTC"      | Swap + DCA (3.3)          |
+| `earning`    | Store revenue / yield earned                           | "Earn $1,000 from my first product"    | Store (Phase 5)           |
+| `compound`   | Cumulative yield over time                             | "Earn $500 in passive yield this year" | Yield tracking API        |
+
 
 **Check-in cadence:** Weekly + monthly summaries for aspirational goals instead of daily briefing progress. Daily 0.001% changes on a $100k goal are noise. "You're up $47 this week, on track for year-end" is motivating.
 
@@ -1146,13 +1115,13 @@ The v1 savings goals track USDC savings balance only. This is deliberately narro
 
 ### 1.5 New user onboarding — meet your copilot
 
-Users who sign up receive \$0.25 USDC sponsored from the Sponsor address managed by the ECS server (already implemented — Enoki sponsors gas, the \$0.25 USDC comes from the sponsor wallet). Without guidance, many will see a small balance and leave. The onboarding converts that sponsored amount into an activated user who understands what Audric *is*, not just one feature.
+Users who sign up receive 0.25 USDC sponsored from the Sponsor address managed by the ECS server (already implemented — Enoki sponsors gas, the 0.25 USDC comes from the sponsor wallet). Without guidance, many will see a small balance and leave. The onboarding converts that sponsored amount into an activated user who understands what Audric *is*, not just one feature.
 
 #### Terms of Service gate (ships with 1.5)
 
 Already charging via allowance without ToS — fix this first.
 
-- **Update existing `/terms` page:** Add "Fees and Charges" section disclosing: swap overlay fee (0.1%), allowance model (on-chain USDC escrow deducted for paid features), session charge (\$0.01/AI session), morning briefing (\$0.005/day), yield spread. Add "Allowance System" section explaining non-custodial spending cap, deposit/withdraw anytime.
+- **Update existing `/terms` page:** Add "Fees and Charges" section disclosing: swap overlay fee (0.1%), allowance model (on-chain USDC escrow deducted for paid features), session charge (0.01/AI session), morning briefing (0.005/day), yield spread. Add "Allowance System" section explaining non-custodial spending cap, deposit/withdraw anytime.
 - **Add `tosAcceptedAt DateTime?` to User model** — Prisma migration.
 - **Consent gate in `/setup` wizard:** Checkbox "I agree to the Terms of Service" (linked) required before allowance creation. Stamps `tosAcceptedAt` on proceed.
 - **Existing user catch-up:** On `/new`, if `tosAcceptedAt` is null, show a non-dismissible bottom banner: "We've updated our Terms of Service." Tap to review → accept → stamps `tosAcceptedAt` via API. Cannot dismiss without accepting.
@@ -1162,7 +1131,6 @@ Effort: 0.5 days
 #### Welcome card — product surface, not just savings
 
 - **Trigger:** `onboardedAt === null` on User record when loading `/new` dashboard.
-
 - **WelcomeCard component** (pinned at top of chat tab, similar style to `BriefingCard`):
 
 ```
@@ -1183,7 +1151,7 @@ You have $0.25 USDC to explore:
                [Save $0.25]  [Ask Audric]
 ```
 
-- **Two CTAs:** "Save \$0.25" pre-fills the save chip flow. "Ask Audric" pre-fills a message: "What can you do?" — lets the copilot showcase itself.
+- **Two CTAs:** "Save 0.25" pre-fills the save chip flow. "Ask Audric" pre-fills a message: "What can you do?" — lets the copilot showcase itself.
 - **Content adapts** to balance state: if USDC > 0 show save amount, if already saved show "You're earning" variant, if zero balance show wallet address + copy + "Fund your wallet" CTA.
 - **Stamps `onboardedAt`** when user interacts with any CTA or dismisses the card.
 
@@ -1193,14 +1161,14 @@ Uses existing ECS cron + Resend infra (same pattern as morning briefing). One-ti
 
 - **Query:** Users where `onboardedAt` is 24–48h ago AND no `DailyBriefing` record (i.e., haven't been active long enough for briefings) AND no savings position (checked via `getFinancialSummary()`).
 - **Content adapts to behavior:**
-  - Saved → "Your \$0.25 is earning. Try asking Audric to translate something or check the weather."
+  - Saved → "Your 0.25 is earning. Try asking Audric to translate something or check the weather."
   - Used Pay → "You tried Audric Pay. Did you know you can earn yield on your USDC?"
-  - Did nothing → "Your \$0.25 is waiting. Here are 3 things to try." + deep links to `/action?type=save`, `/new?prefill=what+can+you+do`
+  - Did nothing → "Your 0.25 is waiting. Here are 3 things to try." + deep links to `/action?type=save`, `/new?prefill=what+can+you+do`
 - **Idempotency:** Store as `AppEvent` type `onboarding_followup` — skip if already exists for this user.
 
 #### Future expansion (Phase 5)
 
-"Create and sell" — once the marketplace launches, the welcome card adds a 5th row: "🎨 Create — Generate AI content and sell it." This turns the \$0.25 from a financial demo into a creative tool.
+"Create and sell" — once the marketplace launches, the welcome card adds a 5th row: "🎨 Create — Generate AI content and sell it." This turns the 0.25 from a financial demo into a creative tool.
 
 **Already implemented:** Sponsor address funding, chip flows (Save, Swap, Receive), `/setup` wizard, `BriefingCard` pattern, `?prefill` deep links, existing `/terms` page (13 sections). **Still needed:** fee disclosure sections in ToS, `tosAcceptedAt` field + consent gate, first-run detection (`onboardedAt`), WelcomeCard component, follow-up cron job, catch-up banner for existing users.
 
@@ -1213,11 +1181,8 @@ A single chronological view across all activity: save, send, receive, swap, yiel
 **Shipped:** DashboardTabs (Chat/Activity with red dot unread indicator), FilterChips (All/Savings/Send/Receive/Swap/Pay), ActivityCard (individual transaction cards with icons, natural language titles, amounts, Suiscan links), ActivityFeed (date-grouped sections, skeleton loading, per-filter empty states with contextual CTAs, "Load more" pagination). AppEvent NeonDB table for future-proof event sourcing. GET /api/activity merges Sui RPC on-chain history + AppEvent rows with timestamp-based cursor pagination, type filtering, digest deduplication (AppEvent preferred over chain when digest matches), and allowance transaction filtering (internal budget ops excluded). useActivityFeed hook with useInfiniteQuery, date grouping by local timezone, red dot tracking via localStorage. Event writers wired: ServicePurchase + HF alerts both create AppEvent rows.
 
 - Pull from Sui RPC on-chain history + NeonDB AppEvent table (merged, deduplicated)
-
 - Natural language titles generated server-side: "Saved $50 USDC into NAVI", "Received $10 USDC from 0x1bf...", "Paid $0.003 for web search"
-
 - Filter by type: All, Savings, Send, Receive, Swap, Pay
-
 - Accessible from dashboard and as /history chat command
 
 **Activity feed navigation:**
@@ -1295,29 +1260,28 @@ Each empty state has a contextual CTA that sends the relevant action to the chat
 Effort: 3 days
 
 ## Phase 2 — Receive + fiat on-ramp  ✅ SHIPPED (kept post-simplification)
+
 > Receive product line (payment links, invoices, QR via Sui Payment Kit) survives. Fiat on-ramp pending (onramp.money).
 
-|                                              |
-|----------------------------------------------|
+
+|     |
+| --- |
+
+
 > ~3 weeks | Open Audric to inbound money
 
 Receive breaks Audric out of its closed loop. Every payment link shared is a marketing impression. Freelancers invoicing clients, bill-splitting, creator tips — this is a new acquisition channel that does not require a marketing budget.
 
 ### 2.1 Payment links + QR codes
 
-audric.ai/pay/\[slug\] — a public page showing amount, label, and recipient. QR generated client-side. No app required for USDC senders. The indexer detects arrival and triggers an immediate push notification to the recipient.
+audric.ai/pay/slug — a public page showing amount, label, and recipient. QR generated client-side. No app required for USDC senders. The indexer detects arrival and triggers an immediate push notification to the recipient.
 
 - PaymentLink table: id (slug), userId, amount, label, createdAt, expiresAt (optional), paidAt (nullable), paidTxHash (nullable), status (active/paid/expired/cancelled)
-
 - Public page: clean, no Audric account required to view
-
 - QR: generated via qrcode.js, downloadable as PNG
-
 - Shareable URL: copy button, WhatsApp/Telegram/email share intents
-
 - Arrival detection: indexer watches for transfers to recipient address, matches by amount + label
-
-- Notification: 'You received \$50 USDC from \[sender\] — saved to your balance'
+- Notification: 'You received 50 USDC from sender — saved to your balance'
 
 **Payment link page — all states:**
 
@@ -1440,16 +1404,14 @@ State: Not found (invalid slug)
 
 Effort: 4 days
 AUDRIC_2_SPEC.md
+
 ### 2.2 Invoices
 
 Named invoices with line items, due date, and total. Generates a payment link automatically. Marks as paid when the USDC transfer is detected. Designed for freelancers, consultants, and small businesses.
 
 - Invoice table: id, userId, recipientName, lineItems (JSON), dueDate, status (draft/sent/paid)
-
-- Chat: 'Create an invoice for \$500 for design work due May 1' generates automatically
-
+- Chat: 'Create an invoice for 500 for design work due May 1' generates automatically
 - PDF export via existing PDFShift MPP endpoint (eats its own dog food)
-
 - Overdue detection: cron checks unpaid invoices past due date, sends reminder
 
 Effort: 3 days
@@ -1461,13 +1423,9 @@ Effort: 3 days
 A 'Don't have USDC?' link on the payment page opens an AlchemyPay embed. The sender buys USDC via card, bank transfer, Apple Pay, or regional mobile wallet — destination is the recipient's Sui address. Audric touches zero fiat — AlchemyPay handles KYC (via Sumsub), compliance, and FX. Fee is ~1–2% on AlchemyPay's end, still beating the 3% card processing story.
 
 - AlchemyPay page integration: iframe/redirect embed with custom parameters. Native API available for programmatic flows (CLI `t2000 onramp` in future). Well-documented SDK, 40+ countries, bank transfer + mobile wallets + cards.
-
 - Off-ramp also available: users can sell USDC back to fiat via bank account. AlchemyPay handles the conversion and withdrawal. This closes the full loop — on-chain yield → fiat cashout.
-
 - Position as secondary option — USDC-first is the primary pitch
-
 - Copy: 'Save 3% vs card processing. Your clients pay USDC, you receive instantly.'
-
 - v1 scope: AlchemyPay only. Do not build custom fiat rails. KYC is handled by AlchemyPay (Sumsub) — Audric does not own KYC.
 
 Effort: 2 days
@@ -1475,7 +1433,6 @@ Effort: 2 days
 ### 2.4 Send UX improvements
 
 - Payment memo field: optional note stored in NeonDB, shown in activity feed
-
 - Recipient landing: when a non-Audric user receives USDC, show a page explaining what they received and how to access it
 
 Effort: 1 day
@@ -1486,17 +1443,15 @@ Effort: 1 day
 
 The Phase 2 Receive infrastructure (payment links, public pages, indexer detection) is everything needed to run a basic storefront. Rather than waiting until Phase 5, ship a minimal storefront in Phase 2 with sync-only products — no async queue required. This provides real validation data before investing weeks into the async music and video features in Phase 5.
 
-- Storefront UI: audric.ai/\[username\] public page, Listing table in NeonDB, grid of listed items
-
+- Storefront UI: audric.ai/username public page, Listing table in NeonDB, grid of listed items
 - Sync-only products at launch: art print packs (Stability AI), t-shirts (Printful), prompt packs (Claude), short guides (Claude + PDFShift), personalised greeting cards (Stability AI + Lob)
-
 - Validation gate: if no sales within 4 weeks of launch, pause Phase 5 music investment and diagnose why. If sales are happening, proceed to Phase 5 with confidence.
-
 - 8% platform fee applies from day one. Powered by Audric badge on every storefront page.
 
 Effort: 2 days (Listing table + public page + payment link wiring, reuses Receive infrastructure)
 
 ## Phase 2.5 — Engine foundation (parallel with Phase 2)  ✅ SHIPPED (kept post-simplification)
+
 > @t2000/engine + reasoning engine + tool dispatch + MCP integration all retained. Tool count narrowed from 50 → 40 in S.7.
 
 > ~3 days | Zero feature risk — internal structural changes that prepare the engine for the Reasoning Engine + Intelligence Layer. Can run in parallel with Phase 2. **Must complete before Phase 3.5.**
@@ -1513,10 +1468,14 @@ These are refactoring tasks with no user-facing changes:
 Full task tracking in `audric-build-tracker.md` Phase 2.5.
 
 ## Phase 3 — Proactive agent + MPP discovery  ⚠️ ARCHIVED (April 2026 simplification)
+
 > Proactive agent (HF alerts, yield optimisation, DCA, rate alerts, copilot suggestions, allowance / features budget) ALL deleted. Only critical HF email at HF < 1.2 survives. MPP discovery deferred indefinitely.
 
-|                          |
-|--------------------------|
+
+|     |
+| --- |
+
+
 > ~3 weeks | The moat
 
 This phase shifts Audric from a tool to a financial copilot. It requires the notification infrastructure from Phase 1. The DCA/scheduled actions feature is the highest retention unlock and the most trust-sensitive — build the confirmation mechanic carefully.
@@ -1526,15 +1485,10 @@ This phase shifts Audric from a tool to a financial copilot. It requires the not
 NAVI distributes both NAVX and vSUI (CERT) as lending rewards in addition to base yield. The `claim_rewards` tool is already built in the SDK and engine. Auto-compound extends this by automatically claiming all reward types and re-depositing as USDC via Cetus swaps — all in a single atomic PTB.
 
 - Daily ECS cron: check pending NAVX rewards for each user with savings
-
-- Threshold: only compound if pending rewards exceed \$0.10 (gas not worth it below this)
-
+- Threshold: only compound if pending rewards exceed 0.10 (gas not worth it below this)
 - PTB: claim_rewards (already built) → Cetus reward→USDC swaps (NAVX→USDC + CERT→USDC) → NAVI deposit — single atomic transaction
-
-- Morning briefing addition: 'Auto-compounded \$0.43 of NAVX rewards yesterday'
-
+- Morning briefing addition: 'Auto-compounded 0.43 of NAVX rewards yesterday'
 - Technical note: verify NAVX→USDC→NAVI deposit PTB end to end before shipping
-
 - Settings: toggle on/off, shown as 'Auto-compound rewards' in savings settings
 
 Effort: 3 days
@@ -1544,37 +1498,25 @@ Effort: 3 days
 Since savings are USDC-only on NAVI, yield optimization is simpler — monitor NAVI's USDC supply rate and alert on significant changes. No cross-asset rebalancing needed.
 
 - Hourly cron: fetch NAVI USDC supply rate via MCP, compare to last notified rate
-
 - Alert threshold: notify if rate change exceeds ±1% (e.g., 5% → 6.5% or 5% → 3.5%)
-
 - Rate increase message: 'USDC savings rate jumped to 6.5% — your $500 now earns $0.09/day'
-
 - Rate decrease message: 'USDC savings rate dropped to 3.0%. Your $500 earns $0.04/day. Consider withdrawing.'
-
 - Idle USDC nudge: 'You have $44 idle USDC earning 0%. Save it to earn 5.0% APY → one tap'
-
 - One-tap action in email: deep link to `/action?type=save&amount=44`
-
 - Max one rate alert per 24 hours per user
 
 Effort: 2 days (simpler than multi-asset — single rate to track)
 
 ### 3.3 Scheduled actions — DCA and recurring saves
 
-Users set standing instructions via chat: 'Save \$50 every Friday', 'Buy \$20 SUI every Monday'. Stored in DB. ECS cron executes. This is the feature that makes Audric an agent, not just a tool.
+Users set standing instructions via chat: 'Save 50 every Friday', 'Buy 20 SUI every Monday'. Stored in DB. ECS cron executes. This is the feature that makes Audric an agent, not just a tool.
 
 - ScheduledAction table: userId, actionType, amount, asset, cronExpr, nextRunAt, enabled, confirmationsRequired, confirmationsCompleted
-
 - Confirmation mechanic: required for first 5 executions, then fully autonomous
-
-- Night-before reminder: 'Audric will save \$50 tomorrow at 9am — tap to cancel'
-
+- Night-before reminder: 'Audric will save 50 tomorrow at 9am — tap to cancel'
 - Failure handling: if insufficient balance, skip and notify — never overdraft
-
 - Chat creation: natural language parsed by engine into structured ScheduledAction
-
 - Trust-critical: one failed autonomous transaction causes churn. Test extensively.
-
 - Fee disclosure: recurring swap actions (e.g., "Buy $20 SUI every Monday") incur the 0.1% swap fee on each execution. The scheduled action confirmation should state: "Each execution incurs a 0.1% swap fee."
 
 **Trust ladder UI — the "5 confirmations then autonomous" mechanic:**
@@ -1694,28 +1636,23 @@ Effort: 3 days (including refactor from page-based to conversational approach)
 Audric is already aware of the user’s financial life — it should also be aware of the moments that matter. Gifting reminders use the proactive notification infrastructure from Phase 1, the MPP gateway for fulfilment, and the contacts system already in the SDK. Three days before a key date, Audric surfaces a nudge; the user replies and Audric places the order entirely by chat.
 
 - MPP services: Lob (postcards, letters — already live), flower API to add (Bloom & Wild or Teleflora API). No inventory, no fulfilment — pure API orchestration.
-
 - Global calendar triggers: Mother’s Day, Valentine’s Day, Christmas, Father’s Day — hardcoded, fire 3 days before each.
-
 - Personal triggers: user sets in chat — “remind me to send mum flowers on her birthday April 3”. Stored in OccasionReminder table (userId, label, date, recurring, lastSentAt).
-
 - User controls level of proactivity in settings: global calendar events only / personal reminders / learn from chat history (all three toggleable).
-
-- Revenue: Audric earns MPP gateway margin on each order. Flowers (~\$40 order) at 15% margin = \$6 per send — highest per-transaction value of any current MPP service.
+- Revenue: Audric earns MPP gateway margin on each order. Flowers (~40 order) at 15% margin = 6 per send — highest per-transaction value of any current MPP service.
 
 Effort: 3 days (flower API + reminder cron + chat parsing for personal dates)
 
 ### 3.6 Credit UX improvements
 
 - Health factor explainer: one-tap plain English explanation — 'Your health factor is 2.4. This means you could lose 58% of your collateral value before liquidation risk.'
-
 - Liquidation education: shown once on first borrow, dismissible
-
 - Borrow APR: verify display is annualised, not per-period
 
 Effort: 1 day
 
 ## Phase 3.5 — Intelligence Layer (~3 weeks)  ⚠️ PARTIALLY ARCHIVED (April 2026 simplification)
+
 > Silent infrastructure KEPT: chain-memory classifiers, episodic memory, financial profile inference, AdviceLog, ConversationLog, portfolio snapshots. User-facing surfaces (proactive nudges, dashboard insight cards, follow-up emails, OutcomeCheck UI) DELETED.
 
 > Depends on Phase 2.5 (engine foundation) being complete and Phase 3 features (DCA, auto-compound, feedback processing) being stable. The full tool set must be built before wrapping intelligence around it.
@@ -1752,10 +1689,14 @@ This is the phase that makes Audric genuinely intelligent rather than just relia
 Full task tracking and dependencies in `audric-build-tracker.md` Phase 3.5.
 
 ## Phase 4 — Async job queue  ⚠️ NEVER STARTED — ARCHIVED
+
 > Async generation queue (video / music / long-form) was speculative. Not implemented; not on the roadmap.
 
-|                               |
-|-------------------------------|
+
+|     |
+| --- |
+
+
 > ~2 weeks | MPP expansion
 
 The current MPP architecture is synchronous — request, pay, response. Services like Suno, Runway, and Heygen take 30 seconds to 5 minutes to return. Adding async support unlocks a new category of higher-value services and higher USDC per transaction.
@@ -1765,21 +1706,18 @@ The current MPP architecture is synchronous — request, pay, response. Services
 One SQS standard queue. New ECS Fargate task polls every 20 seconds. Runs alongside the existing indexer and server on the same cluster — no new infrastructure category.
 
 - SQS standard queue (not FIFO — retries are safe for idempotent jobs)
-
 - New ECS task: job-worker, Docker image alongside indexer
-
 - AsyncJob table (NeonDB server DB): id, userId, service, endpoint, status (pending/processing/complete/failed), inputParams, resultUrl, usdcAmountLocked, usdcAmountSettled, createdAt, completedAt
-
 - Payment locking: USDC locked at job submit, settled on success only — failed jobs refund automatically
-
 - Dead letter queue: jobs that fail 3 times go to DLQ for inspection
 
 Effort: 4 days
 
 ### 4.2 Async services — priority order
 
+
 |                         |                                                       |            |             |
-|-------------------------|-------------------------------------------------------|------------|-------------|
+| ----------------------- | ----------------------------------------------------- | ---------- | ----------- |
 | **Feature**             | **What it does**                                      | **Effort** | **Tag**     |
 | ElevenLabs async TTS    | Long-form audio narration, podcasts, voice content    | 2 days     | Add first   |
 | Suno music generation   | AI music from text prompt — high viral demo potential | 2 days     | High impact |
@@ -1787,12 +1725,11 @@ Effort: 4 days
 | Heygen avatar video     | Talking head video generation, business use case      | 2 days     | B2B angle   |
 | Replicate custom models | Long-running inference jobs, image upscaling          | 3 days     | Later       |
 
+
 **Result delivery pattern**
 
 - Job submitted: 'Generating your music — usually takes 2 minutes. I will notify you when it is ready.'
-
 - On complete: push notification + chat message with download link
-
 - USDC only settles on confirmed success — users never pay for failed generations
 
 ## Revenue model
@@ -1801,57 +1738,54 @@ Audric has six distinct revenue streams, all passive once built. Every stream sc
 
 ### Revenue streams
 
-|                        |                   |                  |                                                                                                                                                            |                 |
-|------------------------|-------------------|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
-| **Stream**             | **Rate**          | **Status**       | **Notes**                                                                                                                                                  | **Scales with** |
-| Protocol fees (save)   | 10 bps (0.1%)     | **Live**         | On-chain via treasury::collect_fee in same PTB                                                                                                             | Deposit volume  |
-| Protocol fees (borrow) | 5 bps (0.05%)     | **Live**         | On-chain via treasury::collect_fee in same PTB                                                                                                             | Borrow volume   |
-| Swap fees (Overlay)    | 10 bps (0.1%)     | **Live**         | Cetus Overlay Fee on AggregatorClient init. Charge on output amount. Compounds with auto-compound swaps.                                                          | Swap volume     |
-| MPP gateway margin     | 10–20%            | **Confirm now**  | Verify gateway runs with margin not at cost. Auth, billing, routing, reliability justify markup.                                                           | API call volume |
-| Feature allowances     | \$0.001–0.005/use | **Phase 1**      | Pre-approved USDC allowance. Briefings, alerts, scheduled actions. Scales linearly with active users.                                                      | Active users    |
-| Yield spread           | 0.1–0.2%          | **Consider now** | Display net APY to users. Requires clear disclosure in terms. \$1M TVL = \$1,000–\$2,000/yr passively.                                                     | TVL             |
-| Async job margin       | 15–20%            | **Phase 4**      | \$0.10–\$2.00 per job upstream. Higher ticket = more margin room. Video/music gen unlocked by async queue.                                                 | Job volume      |
-| Developer B2B tier     | \$29 / mo         | **Phase 3+**     | Hosted API server, gas station, MCP infra for teams building on t2000. Higher rate limits, priority support, private MPP endpoints. 50 teams = \$1,450/mo. | Developer teams |
-| AI session charge      | \$0.01 / session  | **Phase 1**      | \$0.01 USDC per AI conversation. Covers LLM API cost (2x margin). Deducted via allowance model. Invisible to users — part of the Audric features budget.   | Active users    |
+
+|                        |                 |                  |                                                                                                                                                          |                 |
+| ---------------------- | --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| **Stream**             | **Rate**        | **Status**       | **Notes**                                                                                                                                                | **Scales with** |
+| Protocol fees (save)   | 10 bps (0.1%)   | **Live**         | On-chain via treasury::collect_fee in same PTB                                                                                                           | Deposit volume  |
+| Protocol fees (borrow) | 5 bps (0.05%)   | **Live**         | On-chain via treasury::collect_fee in same PTB                                                                                                           | Borrow volume   |
+| Swap fees (Overlay)    | 10 bps (0.1%)   | **Live**         | Cetus Overlay Fee on AggregatorClient init. Charge on output amount. Compounds with auto-compound swaps.                                                 | Swap volume     |
+| MPP gateway margin     | 10–20%          | **Confirm now**  | Verify gateway runs with margin not at cost. Auth, billing, routing, reliability justify markup.                                                         | API call volume |
+| Feature allowances     | 0.001–0.005/use | **Phase 1**      | Pre-approved USDC allowance. Briefings, alerts, scheduled actions. Scales linearly with active users.                                                    | Active users    |
+| Yield spread           | 0.1–0.2%        | **Consider now** | Display net APY to users. Requires clear disclosure in terms. 1M TVL = 1,000–2,000/yr passively.                                                         | TVL             |
+| Async job margin       | 15–20%          | **Phase 4**      | 0.10–2.00 per job upstream. Higher ticket = more margin room. Video/music gen unlocked by async queue.                                                   | Job volume      |
+| Developer B2B tier     | 29 / mo         | **Phase 3+**     | Hosted API server, gas station, MCP infra for teams building on t2000. Higher rate limits, priority support, private MPP endpoints. 50 teams = 1,450/mo. | Developer teams |
+| AI session charge      | 0.01 / session  | **Phase 1**      | 0.01 USDC per AI conversation. Covers LLM API cost (2x margin). Deducted via allowance model. Invisible to users — part of the Audric features budget.   | Active users    |
+
 
 ### Swap fee implementation
 
 Swap fees are **live**. The implementation uses the **Cetus Aggregator Overlay Fee** — a built-in SDK feature that deducts a configurable percentage from swap output and sends it directly to a receiver address. No PTB modification needed, no Move contract changes. The rate is 10 bps (0.1%), displayed in the swap confirmation screen for transparency.
 
 - ✅ `overlayFeeRate: 0.001` and `overlayFeeReceiver: TREASURY_ADDRESS` set on `AggregatorClient` initialization in both `cetus-swap.ts` (SDK) and `audric/prepare/route.ts`
-
 - Charge on output amount (not input) — user sees slightly less output than raw quote, fee shown in confirmation screen
-
 - Apply to all swap paths automatically: manual swaps (LLM + chip flow), DCA executions, and auto-compound NAVX→USDC swaps (all use the same client instance)
-
 - Fee sent directly to receiver address. Periodically sweep into treasury contract via `receive_coins()` for on-chain tracking
-
 - Disclose in terms of service: "Audric charges a 0.1% platform fee on swaps"
-
 - Future: explore positive slippage capture (surplus when execution beats quote goes to treasury)
 
 ### Scale projections
 
+
 |                      |                     |                 |                  |                   |
-|----------------------|---------------------|-----------------|------------------|-------------------|
+| -------------------- | ------------------- | --------------- | ---------------- | ----------------- |
 | **Stream**           | **100 users (now)** | **1,000 users** | **10,000 users** | **100,000 users** |
-| Protocol fees        | ~\$20/mo            | ~\$200/mo       | ~\$2,000/mo      | ~\$20,000/mo      |
-| Swap fees            | ~\$15/mo            | ~\$150/mo       | ~\$3,000/mo      | ~\$25,000/mo      |
-| MPP margin           | ~\$5/mo             | ~\$200/mo       | ~\$500/mo        | ~\$5,000/mo       |
-| Feature allowances   | not yet             | ~\$150/mo       | ~\$1,500/mo      | ~\$15,000/mo      |
-| Yield spread + async | not yet             | ~\$200/mo       | ~\$3,000/mo      | ~\$25,000/mo      |
-| B2B tier             | not yet             | ~\$290/mo       | ~\$1,450/mo      | ~\$14,500/mo      |
-| AI session charge    | ~\$3/mo             | ~\$90/mo        | ~\$900/mo        | ~\$9,000/mo       |
-| **Total (est.)**     | **~\$43/mo**        | **~\$1,280/mo** | **~\$12,350/mo** | **~\$113,500/mo** |
+| Protocol fees        | ~20/mo              | ~200/mo         | ~2,000/mo        | ~20,000/mo        |
+| Swap fees            | ~15/mo              | ~150/mo         | ~3,000/mo        | ~25,000/mo        |
+| MPP margin           | ~5/mo               | ~200/mo         | ~500/mo          | ~5,000/mo         |
+| Feature allowances   | not yet             | ~150/mo         | ~1,500/mo        | ~15,000/mo        |
+| Yield spread + async | not yet             | ~200/mo         | ~3,000/mo        | ~25,000/mo        |
+| B2B tier             | not yet             | ~290/mo         | ~1,450/mo        | ~14,500/mo        |
+| AI session charge    | ~3/mo               | ~90/mo          | ~900/mo          | ~9,000/mo         |
+| **Total (est.)**     | **~43/mo**          | **~1,280/mo**   | **~12,350/mo**   | **~113,500/mo**   |
+
 
 ### Unit economics narrative
 
 The compounding flywheel: more TVL generates more yield, which funds more auto-compound swaps, which generate swap fees, which fund the treasury, which sponsors new user onboarding, which grows TVL. Every revenue stream improves the others.
 
 - Revenue scales with usage, not headcount. Engineering team stays constant while revenue compounds.
-
-- Feature allowances (~\$0.005/day) are paid by yield earned (~\$0.50/day at 4% on \$5,000 saved). The product literally pays for itself from the user’s perspective.
-
+- Feature allowances (~~0.005/day) are paid by yield earned (~~0.50/day at 4% on 5,000 saved). The product literally pays for itself from the user’s perspective.
 - No advertising, no data selling, no hidden fees. Revenue is earned by providing genuine value on every transaction.
 
 ### Yield spread disclosure
@@ -1866,42 +1800,37 @@ If implementing yield spread (0.1–0.2%), transparent disclosure is mandatory. 
 - Start at 0.1% (conservative). Only increase if user retention data shows no sensitivity
 
 ## Phase 5 — Creator marketplace  ⚠️ NEVER STARTED — ARCHIVED
+
 > Creator-funded features marketplace was speculative. Not implemented; not on the roadmap.
 
-|                                                                                                                    |
-|--------------------------------------------------------------------------------------------------------------------|
+
+|     |
+| --- |
+
+
 > ~3 weeks | After Phase 4 | Depends on: async queue, Receive payment links, Suno commercial licence ($12/mo subscription)
 
 Every Audric user gets a public storefront at audric.ai/username. They list AI-generated songs, visual art, or merch. Buyers pay USDC via the Receive payment link mechanic built in Phase 2. The creator earns instantly with no intermediary. Every storefront is a distribution channel — buyers who land on audric.ai/username see “powered by Audric” and can sign up. Organic acquisition that compounds with every sale.
 
 ### 5.1 User storefront (audric.ai/username)
 
-- Public page at audric.ai/\[username\] — user sets handle on first listing. Grid of listed items: songs, art, merch bundles.
-
+- Public page at audric.ai/username — user sets handle on first listing. Grid of listed items: songs, art, merch bundles.
 - Each listing has: title, description, price (USDC), preview (30s audio clip or thumbnail), payment link. No app required for buyers.
-
 - Multiple items per user — audric.ai/janedoe shows all her songs, prints, and bundles on one page.
-
 - Powered by Audric badge + sign up CTA on every storefront. Organic acquisition flywheel.
 
 ### 5.2 Song generation + listing flow
 
 - Generate: “Make me a lo-fi hip hop track called Midnight Rain.” Async Suno job (~2 min). AI cover art via Stability AI (already in MPP). Both generated in the same job batch.
-
-- List: “Sell this for \$3 USDC.” Audric creates a Listing record, stores the file, generates a payment link. File locked behind payment verification.
-
-- Share: Audric generates a tweet draft with payment link. One tap to post. “Just made this track with AI — pay \$3 USDC to download. audric.ai/janedoe/midnight-rain”
-
+- List: “Sell this for 3 USDC.” Audric creates a Listing record, stores the file, generates a payment link. File locked behind payment verification.
+- Share: Audric generates a tweet draft with payment link. One tap to post. “Just made this track with AI — pay 3 USDC to download. audric.ai/janedoe/midnight-rain”
 - Sale: buyer pays USDC via Receive. Indexer detects payment. Audric splits on-chain: 92% to creator wallet, 8% to treasury. Download link unlocked instantly.
-
-- Notification: “You just earned \$2.76 USDC — someone bought Midnight Rain.” Total earned shown in morning briefing.
+- Notification: “You just earned 2.76 USDC — someone bought Midnight Rain.” Total earned shown in morning briefing.
 
 ### 5.3 Merch bundles (song + t-shirt)
 
 - Printful (print-on-demand) already in MPP. AI cover art generated alongside the song becomes the t-shirt design automatically.
-
-- Bundle listing: “Digital download + t-shirt — \$28 USDC.” On purchase Audric splits: Printful order placed, creator receives remainder minus Audric 8% fee.
-
+- Bundle listing: “Digital download + t-shirt — 28 USDC.” On purchase Audric splits: Printful order placed, creator receives remainder minus Audric 8% fee.
 - Ship music-only listings first. Add merch bundles once music sales are validated.
 
 ### 5.4 File storage — Walrus + Seal
@@ -1932,42 +1861,40 @@ Effort: 3 days (Walrus upload + Seal encrypt/decrypt + payment-gated download fl
 ### 5.5 Data model additions
 
 - UserProfile: userId, username (unique slug), bio, createdAt — add username field to existing users table
-
 - Listing: id, userId, title, description, type (song/art/merch/bundle), priceUsdc, fileUrl, previewUrl, paymentLinkSlug, salesCount, totalEarnedUsdc, status (active/sold out/draft)
-
 - Sale: id, listingId, buyerAddress, amountUsdc, platformFeeUsdc, creatorReceivedUsdc, txDigest, createdAt
 
 ### 5.6 Revenue and spin-out path
 
 - Platform fee: 8% of each sale settled on-chain at payment time. Creator receives 92% instantly. No monthly fees, no signup costs.
-
 - Swap fee also applies on any NAVX → USDC conversion when creator earnings are auto-saved. Double revenue touch per sale.
-
 - Spin-out trigger: if creator marketplace reaches 500+ active storefronts, evaluate separating to its own domain (e.g. audric.market) powered by the same t2000 infrastructure. Decision point at 6 months post-launch.
 
 ### 5.7 Storefront content catalogue
 
 Every product type below is generated entirely via MPP services Audric already has or is building. The creator’s value-add is curation, taste, and the prompt — not technical skill. Products are grouped by what infrastructure they require so the launch sequence is clear.
 
+
 |                                     |                         |                                                                                                                                                                       |                 |          |
-|-------------------------------------|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|----------|
+| ----------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | -------- |
 | **Product**                         | **MPP services**        | **Description**                                                                                                                                                       | **Price range** | **When** |
 | **Available now (Phase 2+)**        |                         | Sync generation only — no async queue needed. Can launch alongside storefront UI.                                                                                     |                 |          |
-| Art print packs                     | Stability AI, fal.ai    | 5–10 high-res AI art pieces on a theme. Digital download for home printing. “Japandi interior art”, “Abstract crypto art”.                                            | \$5–\$20 USDC   | Phase 2  |
-| T-shirts + physical merch           | Stability AI + Printful | AI art → Printful print-on-demand. Buyer pays, Audric places Printful order, ships direct. Creator never touches inventory.                                           | \$25–\$45 USDC  | Phase 2  |
-| Personalised greeting cards         | Stability AI + Lob      | Buyer describes occasion, creator generates AI art card, Lob prints and mails. Ties into gifting reminders feature.                                                   | \$8–\$15 USDC   | Phase 2  |
-| Prompt packs                        | Claude (generation)     | Curated sets of prompts for image gen, music, or writing. “50 Midjourney prompts for product photography.” Pure digital, instant delivery, near-zero generation cost. | \$3–\$10 USDC   | Phase 2  |
-| Short guides + ebooks               | Claude + PDFShift       | 10–20 page PDFs on niche topics. “Starting a food truck business in Sydney.” Generated via Claude, formatted via PDFShift. Both already in MPP.                       | \$5–\$15 USDC   | Phase 2  |
+| Art print packs                     | Stability AI, fal.ai    | 5–10 high-res AI art pieces on a theme. Digital download for home printing. “Japandi interior art”, “Abstract crypto art”.                                            | 5–20 USDC       | Phase 2  |
+| T-shirts + physical merch           | Stability AI + Printful | AI art → Printful print-on-demand. Buyer pays, Audric places Printful order, ships direct. Creator never touches inventory.                                           | 25–45 USDC      | Phase 2  |
+| Personalised greeting cards         | Stability AI + Lob      | Buyer describes occasion, creator generates AI art card, Lob prints and mails. Ties into gifting reminders feature.                                                   | 8–15 USDC       | Phase 2  |
+| Prompt packs                        | Claude (generation)     | Curated sets of prompts for image gen, music, or writing. “50 Midjourney prompts for product photography.” Pure digital, instant delivery, near-zero generation cost. | 3–10 USDC       | Phase 2  |
+| Short guides + ebooks               | Claude + PDFShift       | 10–20 page PDFs on niche topics. “Starting a food truck business in Sydney.” Generated via Claude, formatted via PDFShift. Both already in MPP.                       | 5–15 USDC       | Phase 2  |
 | **Requires async queue (Phase 4+)** |                         | Jobs take 30 seconds to 5 minutes. SQS worker required. Higher ticket price per item.                                                                                 |                 |          |
-| Song packs                          | Suno                    | 3–5 tracks on a theme. “Chill study beats vol.1” or “Trap beats for creators.” Bundle pricing makes it feel like an album. Highest viral potential.                   | \$5–\$15 USDC   | Phase 5  |
-| Custom jingles                      | Suno                    | 30-second jingle for a business or brand. Buyer describes brief, creator generates. Commissioned content model. High repeat purchase from SMBs.                       | \$10–\$30 USDC  | Phase 5  |
-| Podcast intros + outros             | Suno + ElevenLabs       | 30–60 second branded audio with music bed + TTS voiceover. High demand from solo podcasters who can’t afford production.                                              | \$8–\$20 USDC   | Phase 5  |
-| AI music videos                     | Suno + Runway           | Song + matching video loop sold as bundle. YouTube creators and streamers buy for background content. Highest-share format — strong viral loop.                       | \$15–\$40 USDC  | Phase 5  |
-| Short video ads                     | Runway + ElevenLabs     | 15–30 second promotional clips for small businesses. Huge demand from SMBs who can’t afford agencies. High repeat purchase potential.                                 | \$20–\$60 USDC  | Phase 5  |
-| Avatar explainer videos             | Heygen                  | Talking head video from script. Creator inputs text, Heygen generates. LinkedIn content creators and product demo videos. B2B angle.                                  | \$15–\$50 USDC  | Phase 5  |
+| Song packs                          | Suno                    | 3–5 tracks on a theme. “Chill study beats vol.1” or “Trap beats for creators.” Bundle pricing makes it feel like an album. Highest viral potential.                   | 5–15 USDC       | Phase 5  |
+| Custom jingles                      | Suno                    | 30-second jingle for a business or brand. Buyer describes brief, creator generates. Commissioned content model. High repeat purchase from SMBs.                       | 10–30 USDC      | Phase 5  |
+| Podcast intros + outros             | Suno + ElevenLabs       | 30–60 second branded audio with music bed + TTS voiceover. High demand from solo podcasters who can’t afford production.                                              | 8–20 USDC       | Phase 5  |
+| AI music videos                     | Suno + Runway           | Song + matching video loop sold as bundle. YouTube creators and streamers buy for background content. Highest-share format — strong viral loop.                       | 15–40 USDC      | Phase 5  |
+| Short video ads                     | Runway + ElevenLabs     | 15–30 second promotional clips for small businesses. Huge demand from SMBs who can’t afford agencies. High repeat purchase potential.                                 | 20–60 USDC      | Phase 5  |
+| Avatar explainer videos             | Heygen                  | Talking head video from script. Creator inputs text, Heygen generates. LinkedIn content creators and product demo videos. B2B angle.                                  | 15–50 USDC      | Phase 5  |
 | **Future (Phase 6)**                |                         | Requires escrow mechanic (USDC locked until buyer approves delivery).                                                                                                 |                 |          |
 | Commission requests                 | Any MPP service         | Buyer pays upfront, describes brief, creator generates and delivers. “Custom song for my wedding.” USDC held in escrow until buyer approves.                          | Creator sets    | Phase 6  |
-| Creator subscriptions               | Any MPP service         | \$5 USDC/month for a new AI track every week. Allowance mechanic already handles recurring deductions. Predictable income for creators.                               | \$3–\$10/mo     | Phase 6  |
+| Creator subscriptions               | Any MPP service         | 5 USDC/month for a new AI track every week. Allowance mechanic already handles recurring deductions. Predictable income for creators.                                 | 3–10/mo         | Phase 6  |
+
 
 Note on launch sequence: the Phase 2 products (art prints, t-shirts, prompt packs, ebooks) can launch with the basic storefront UI without waiting for the async queue. This means real storefronts with real sales are possible weeks before Phase 5 ships. Use the early catalogue to validate the storefront mechanic — if nobody buys art prints, reconsider the music investment before it is built.
 
@@ -1978,17 +1905,13 @@ The recommendation engine does not need to be built as a separate system. Claude
 **Two recommendation modes**
 
 - Proactive — context-aware: Audric already knows the user’s savings goals, occasion reminders, chat history, and wallet behaviour. When a milestone is hit, an occasion fires, or a recurring context pattern is detected, Audric surfaces relevant marketplace listings without being asked. Examples: savings goal labelled “holiday” → travel art prints; Mother’s Day reminder → personalised greeting cards; “my podcast” mentioned in chat → podcast intros from storefront creators.
-
 - Reactive — keyword triggered: user types a message that matches a marketplace intent. Claude detects the intent, calls search_listings, and includes up to 2 listing cards inline with the normal response. Examples: “I need music for my video” → song packs; “looking for a gift for my mum” → personalised cards; “a jingle for my business” → custom jingle listings.
 
 **Implementation**
 
 - New engine read tool: search_listings(query, category?, limit=2). Queries the Listing table in NeonDB. Returns title, creator username, price, preview URL, payment link slug. Classified as auto-permission — no user approval needed to search.
-
 - System prompt addition: “When the user’s message clearly matches a marketplace intent (music, art, gifts, video content, business promotion, printed goods), call search_listings and include up to 2 results as inline cards. Only trigger on direct, obvious matches. Never on financial queries. Max one marketplace recommendation per conversation session.”
-
 - Ranking v1: category tag match + recency. Ranking v2: sales count as quality signal + personalisation by past purchases. Do not build a recommendation algorithm on day one — validate the mechanic with simple matching first.
-
 - Conversation log (built in Phase 1) becomes the training dataset for improving intent detection over time. Tag each Sale record with source:recommendation for conversion tracking.
 
 **The critical rule — helpful not spammy**
@@ -1996,11 +1919,8 @@ The recommendation engine does not need to be built as a separate system. Claude
 Recommendations must feel like Audric helping, not Audric selling. The correct tone: surface options and immediately offer to generate something custom if nothing fits. The wrong tone: surfacing marketplace cards on any message with a vaguely related word. The moment recommendations feel like ads, users stop speaking naturally in the chat — which destroys the core product experience.
 
 - Trigger threshold: only when match confidence is high and intent is explicit, not inferred
-
 - Rate limit: max one marketplace recommendation per conversation session
-
 - Hard exclusion: never trigger on financial queries — balance, yield, health factor, borrow, repay, send, save
-
 - User opt-out: single toggle in settings to disable all marketplace suggestions entirely
 
 **Revenue impact**
@@ -2025,27 +1945,30 @@ Displayed in portfolio. Swappable to/from USDC via Cetus Aggregator. Not saveabl
 
 **Canonical coin type reference:**
 
-| Token | Tier | Coin type |
-|-------|------|-----------|
-| USDC | 1 | `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC` |
-| SUI | 2 | `0x2::sui::SUI` |
-| wBTC | 2 | `0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC` |
-| ETH | 2 | `0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH` |
-| GOLD (XAUM) | 2 | `0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM` |
-| DEEP | 2 | `0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP` |
-| WAL | 2 | `0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL` |
-| NS | 2 | `0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS` |
-| CETUS | 2 | `0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS` |
-| NAVX | 2 | `0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX` |
-| vSUI | 2 | `0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT` |
-| IKA | 2 | `0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA` |
-| MANIFEST | 2 | `0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST` |
-| LOFI | 2 | `0xf22da9a24ad027cccb5f2d496cbe91de953d363513db08a3a734d361c7c17503::LOFI::LOFI` |
+
+| Token       | Tier | Coin type                                                                                |
+| ----------- | ---- | ---------------------------------------------------------------------------------------- |
+| USDC        | 1    | `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`         |
+| SUI         | 2    | `0x2::sui::SUI`                                                                          |
+| wBTC        | 2    | `0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC`         |
+| ETH         | 2    | `0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH`           |
+| GOLD (XAUM) | 2    | `0x9d297676e7a4b771ab023291377b2adfaa4938fb9080b8d12430e4b108b836a9::xaum::XAUM`         |
+| DEEP        | 2    | `0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP`         |
+| WAL         | 2    | `0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL`           |
+| NS          | 2    | `0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS`             |
+| CETUS       | 2    | `0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS`       |
+| NAVX        | 2    | `0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX`         |
+| vSUI        | 2    | `0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT`         |
+| IKA         | 2    | `0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA`           |
+| MANIFEST    | 2    | `0xc466c28d87b3d5cd34f3d5c088751532d71a38d93a8aae4551dd56272cfb4355::manifest::MANIFEST` |
+| LOFI        | 2    | `0xf22da9a24ad027cccb5f2d496cbe91de953d363513db08a3a734d361c7c17503::LOFI::LOFI`         |
+
 
 ### Operation matrix
 
+
 |                            |          |                    |
-|----------------------------|----------|--------------------| 
+| -------------------------- | -------- | ------------------ |
 | **Operation**              | **USDC** | **13 swap assets** |
 | Display in portfolio       | **Yes**  | **Yes**            |
 | Swap via Cetus             | **Yes**  | **Yes**            |
@@ -2055,65 +1978,61 @@ Displayed in portfolio. Swappable to/from USDC via Cetus Aggregator. Not saveabl
 | Receive                    | **Yes**  | No                 |
 | Marketplace / MPP payments | **Yes**  | No                 |
 
+
 ### Implementation notes
 
 - Only Tier 1 (USDC) and Tier 2 (13 swap assets) tokens exist in the registry. Swap, send, and all operations reject unknown coin types. Audric is a financial copilot, not a generic DEX.
-
 - SDK save() and borrow() reject non-USDC assets with INVALID_ASSET error. Single-line guard checks at the top of each function. send() supports Tier 1 (USDC) and Tier 2 assets (SUI, ETH, etc.) — users should be able to send any featured token they hold. No architectural change needed.
-
 - Existing NAVI positions (USDe, SUI, USDsui) stay untouched — users can still withdraw them via the LLM ("withdraw my USDe"). New save/borrow operations are USDC-only, enforced at SDK level. Tokens not in the registry are invisible in Audric. Users who hold unsupported tokens can manage them via SuiVision or any Sui wallet.
-
 - Gate for adding new tokens to Tier 2: confirmed deep Cetus liquidity + clear user need (store of value, ecosystem participation, or reward token). If both conditions met, add to registry. Otherwise do not add — Audric does not support it.
-
 - NAVX and vSUI (CERT) are both required in Tier 2: NAVI distributes both as lending reward tokens. The auto-compound path (claim rewards → Cetus reward→USDC swap → NAVI deposit) depends on both being in the featured swap registry.
 
 The product narrative this creates: “Audric is a USDC financial copilot. Save, borrow, send, and earn — all in USDC. Swap between 13 curated tokens. That’s it.” Audric is not a wallet. It’s not a DEX. The limited scope is the feature.
 
 ## LLM cost strategy and self-hosted path
 
-Every user conversation in Audric hits the Claude API. At 100 beta users this is negligible. At 10,000 active users running 3 sessions per day it is \$180/day — \$65,700 per year — before a single cent of margin. This section covers how to keep that cost under control as Audric scales, how to charge users appropriately, and the path to a self-hosted model that reduces costs by ~67% and becomes a product differentiator in its own right.
+Every user conversation in Audric hits the Claude API. At 100 beta users this is negligible. At 10,000 active users running 3 sessions per day it is 180/day — 65,700 per year — before a single cent of margin. This section covers how to keep that cost under control as Audric scales, how to charge users appropriately, and the path to a self-hosted model that reduces costs by ~67% and becomes a product differentiator in its own right.
 
 ### Cost reality
 
-|                                             |                                                      |
-|---------------------------------------------|------------------------------------------------------|
-| **Scenario**                                | **Claude API cost (all-in)**                         |
-| 100 users × 3 sessions/day (now)            | ~\$1.80/day — absorb entirely                        |
-| 1,000 users × 3 sessions/day                | ~\$18/day — add \$0.01/session allowance charge      |
-| 3,000–5,000 users × 3 sessions/day          | ~\$54–\$90/day — spin up Qwen3 instance, route reads |
-| 10,000 users × 3 sessions/day (full hybrid) | ~\$60/day (vs \$180 all-Claude) — 67% saving         |
+
+|                                             |                                                  |
+| ------------------------------------------- | ------------------------------------------------ |
+| **Scenario**                                | **Claude API cost (all-in)**                     |
+| 100 users × 3 sessions/day (now)            | ~1.80/day — absorb entirely                      |
+| 1,000 users × 3 sessions/day                | ~18/day — add 0.01/session allowance charge      |
+| 3,000–5,000 users × 3 sessions/day          | ~54–90/day — spin up Qwen3 instance, route reads |
+| 10,000 users × 3 sessions/day (full hybrid) | ~60/day (vs 180 all-Claude) — 67% saving         |
+
 
 ### AI session charge — how users pay for token costs
 
-\$0.01 USDC per AI conversation, deducted via the pre-approved feature allowance. At 2x the actual Claude cost this provides margin and funds the path to self-hosted. The user does not see this as “paying for AI” — it is part of the Audric features budget that already covers morning briefings and alerts. A heavy user doing 3 conversations per day pays \$0.90/month in AI usage — less than a single coffee.
+0.01 USDC per AI conversation, deducted via the pre-approved feature allowance. At 2x the actual Claude cost this provides margin and funds the path to self-hosted. The user does not see this as “paying for AI” — it is part of the Audric features budget that already covers morning briefings and alerts. A heavy user doing 3 conversations per day pays 0.90/month in AI usage — less than a single coffee.
 
 - Phase 1 action: instrument token usage now. ✅ DONE — SessionUsage table tracks per-invocation tokens (input, output, cache read, cache write), costUsd (with proper cache pricing), toolNames array, and model. Dropped unused LlmUsage table. logSessionUsage fires on both chat + resume routes (demo sessions as 'anonymous'). GET /api/stats exposes aggregates.
-
-- Phase 1 action: add \$0.01/session deduction to the allowance model alongside morning briefing and yield alert fees. Deducted via the same ECS cron that handles other feature charges.
-
+- Phase 1 action: add 0.01/session deduction to the allowance model alongside morning briefing and yield alert fees. Deducted via the same ECS cron that handles other feature charges.
 - At 3,000–5,000 users, session charge revenue covers most of the Claude API cost. Margin from the 2x pricing funds the GPU instance for self-hosted migration.
 
 ### Self-hosted model — hybrid routing strategy
 
 The recommended model is Qwen3-30B (thinking mode disabled). It has strong function calling — critical because the Audric engine relies heavily on tool use for every financial read and write. Gemma 4 is a strong alternative but function calling is less battle-tested at this point. The strategy is hybrid routing, not a full switch: route cheap high-volume calls to self-hosted, keep Claude for high-stakes and complex reasoning.
 
+
 |                      |                                                                                |                        |                                               |
-|----------------------|--------------------------------------------------------------------------------|------------------------|-----------------------------------------------|
+| -------------------- | ------------------------------------------------------------------------------ | ---------------------- | --------------------------------------------- |
 | **Tool type**        | **Examples**                                                                   | **Route to**           | **Rationale**                                 |
 | Read tools           | balance_check, rates_info, savings_info, health_check, transaction_history     | **Qwen3 self-hosted**  | Deterministic, structured output, high volume |
 | Morning briefing gen | Template-based, structured data in, short text out                             | **Qwen3 self-hosted**  | Low reasoning requirement, runs at scale      |
 | Simple write tools   | save_deposit, send_transfer — clear intent, well-defined params                | **Qwen3 + validation** | Low ambiguity, strict output validation layer |
-| Complex write tools  | borrow, repay, swap — real money, edge cases, high accuracy needed             | **Claude (keep)**      | Cost of hallucination \>\> cost of API call   |
+| Complex write tools  | borrow, repay, swap — real money, edge cases, high accuracy needed             | **Claude (keep)**      | Cost of hallucination cost of API call        |
 | Free-form reasoning  | explain_tx, financial advice, multi-turn complex queries, web_search synthesis | **Claude (keep)**      | Quality difference most visible here          |
+
 
 ### Self-hosted infrastructure
 
 - Model: Qwen3-30B, thinking mode disabled. Strong function calling — critical for the Audric tool system. Runs on a single A100 80GB.
-
-- Hosting: Lambda Labs or RunPod at ~\$2/hr = \$1,440/month. At 3,000–5,000 users this is cheaper than routing all calls to Claude. Not worth it below ~3,000 active users.
-
+- Hosting: Lambda Labs or RunPod at ~2/hr = 1,440/month. At 3,000–5,000 users this is cheaper than routing all calls to Claude. Not worth it below ~3,000 active users.
 - The AnthropicProvider in @t2000/engine is already abstracted behind a provider interface. Swapping to a self-hosted endpoint for specific tool types is a routing config change, not a rewrite.
-
 - Conversation logs (Phase 1) become the fine-tuning dataset. A model fine-tuned on real Audric financial conversations will outperform a generic Qwen3 base on financial intent classification and tool calling accuracy.
 
 ### Self-hosted as a product feature
@@ -2122,20 +2041,18 @@ Once self-hosted is running, it becomes a trust and privacy differentiator: “P
 
 ### Sequencing
 
-- Now (100 users): absorb costs entirely, ✅ CostTracker instrumented to NeonDB (SessionUsage), add \$0.01/session allowance charge
-
+- Now (100 users): absorb costs entirely, ✅ CostTracker instrumented to NeonDB (SessionUsage), add 0.01/session allowance charge
 - 1,000 users: session charge covers most API cost, conversation logs start accumulating fine-tuning data
-
 - 3,000–5,000 users: spin up Qwen3-30B on A100, route read tools and morning briefing generation to self-hosted, keep Claude for write tools and complex reasoning
-
 - 10,000+ users: full hybrid routing, ~67% cost reduction, launch privacy mode as product feature, begin fine-tuning on accumulated conversation data
 
 ## Deprioritised items
 
 These are valid features that should not be built yet. Revisit when the core habit loop is validated with real retention data.
 
+
 |                  |                                                                                                                 |            |               |
-|------------------|-----------------------------------------------------------------------------------------------------------------|------------|---------------|
+| ---------------- | --------------------------------------------------------------------------------------------------------------- | ---------- | ------------- |
 | **Feature**      | **What it does**                                                                                                | **Effort** | **Tag**       |
 | Chrome extension | Pay for any API from any browser tab. Strong distribution, high support burden.                                 | —          | After Phase 3 |
 | Voice input      | Web Speech API. Distribution feature not retention feature.                                                     | —          | After Phase 3 |
@@ -2145,44 +2062,36 @@ These are valid features that should not be built yet. Revisit when the core hab
 | BYOK services    | Nice-to-have but adds complexity. Users who need it have other tools.                                           | —          | Deprioritised |
 | Pepesto          | EU-only, niche. Not core to the AI money manager story.                                                         | —          | Deprioritised |
 
+
 ## Timeline summary
 
-|              |              |                                                                                                             |                      |
-|--------------|--------------|-------------------------------------------------------------------------------------------------------------|----------------------|
-| **Phase**    | **Timeline** | **Key deliverables**                                                                                        | **Retention impact** |
-| **Pre-work** | Days 1–3    | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                         | Data foundation ✅   |
-| **Phase 1**  | Weeks 1–2    | ✅ COMPLETE. allowance.move, Spec 2, digest replay, notifications (1.1), HF alerts (1.2), onboarding wizard (SDK 0.23.0), activity feed (1.6), CostTracker + Stats API, morning briefing (1.3) + deep links (1.3.1), savings goals (1.4), feedback data layer (1.4.1), onboarding + ToS (1.5), session charge. Landing pages shipped (audric.ai, t2000.ai, suimpp.dev) | Daily habit          |
-| **Phase 2**  | Weeks 3–5    | ✅ COMPLETE. Receive: payment links, QR, invoices, send memo. Pay v2 security hardening + Sui Payment Kit integration (registry verification, `processRegistryPayment`, `sui:pay?` URIs). **+ Rich UX P0:** card primitives, HealthCard, TransactionHistoryCard, SwapQuoteCard, enhanced receipts, AllowanceCard. AlchemyPay skipped. | New acquisition + UX |
-| **Phase 2.5** | Parallel     | ✅ COMPLETE. Engine foundation + **Rich UX P1:** ServiceCatalogCard, SearchResultsCard, allowance control tools (pause/limit/permissions). See `audric-build-tracker.md` | RE prerequisite + UX |
-| **Phase 3**  | Weeks 6–8    | ✅ COMPLETE. Auto-compound, yield alerts, DCA/scheduled, MPP discovery, credit UX. **+ Analytics:** portfolio snapshots, spending/yield/activity summaries, insight cards (idle USDC, HF warning), weekly briefing. ~~Gifting~~ deferred | Copilot moat + analytics |
-| **Phase 3.5** | ~3 weeks     | ✅ COMPLETE. Intelligence Layer: Reasoning Engine (adaptive thinking, guards, recipes) + F1–F5 (profile, proactive awareness, memory, state machine, self-eval). **+ Rich UX P2:** StakingCard, ProtocolCard, PriceCard. Post-deploy: Unified Financial Data Layer, DCA scheduling, burn address guard. Published `@t2000/engine@0.33.2`. | Agent intelligence   |
-| **Phase 4**  | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                          | MPP expansion        |
-| **Phase 5**  | Weeks 11–13  | audric.ai/username storefronts, song + art listing, tweet-to-pay, merch bundles (Printful), 8% platform fee | Creator acquisition  |
+
+|               |              |                                                                                                                                                                                                                                                                                                                                                                       |                          |
+| ------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| **Phase**     | **Timeline** | **Key deliverables**                                                                                                                                                                                                                                                                                                                                                  | **Retention impact**     |
+| **Pre-work**  | Days 1–3     | Conversation logging, strip multi-asset, User table, email capture, asset tiers, fix APY, swap fee (Overlay)                                                                                                                                                                                                                                                          | Data foundation ✅        |
+| **Phase 1**   | Weeks 1–2    | ✅ COMPLETE. allowance.move, Spec 2, digest replay, notifications (1.1), HF alerts (1.2), onboarding wizard (SDK 0.23.0), activity feed (1.6), CostTracker + Stats API, morning briefing (1.3) + deep links (1.3.1), savings goals (1.4), feedback data layer (1.4.1), onboarding + ToS (1.5), session charge. Landing pages shipped (audric.ai, t2000.ai, suimpp.dev) | Daily habit              |
+| **Phase 2**   | Weeks 3–5    | ✅ COMPLETE. Receive: payment links, QR, invoices, send memo. Pay v2 security hardening + Sui Payment Kit integration (registry verification, `processRegistryPayment`, `sui:pay?` URIs). **+ Rich UX P0:** card primitives, HealthCard, TransactionHistoryCard, SwapQuoteCard, enhanced receipts, AllowanceCard. AlchemyPay skipped.                                  | New acquisition + UX     |
+| **Phase 2.5** | Parallel     | ✅ COMPLETE. Engine foundation + **Rich UX P1:** ServiceCatalogCard, SearchResultsCard, allowance control tools (pause/limit/permissions). See `audric-build-tracker.md`                                                                                                                                                                                               | RE prerequisite + UX     |
+| **Phase 3**   | Weeks 6–8    | ✅ COMPLETE. Auto-compound, yield alerts, DCA/scheduled, MPP discovery, credit UX. **+ Analytics:** portfolio snapshots, spending/yield/activity summaries, insight cards (idle USDC, HF warning), weekly briefing. ~~Gifting~~ deferred                                                                                                                               | Copilot moat + analytics |
+| **Phase 3.5** | ~3 weeks     | ✅ COMPLETE. Intelligence Layer: Reasoning Engine (adaptive thinking, guards, recipes) + F1–F5 (profile, proactive awareness, memory, state machine, self-eval). **+ Rich UX P2:** StakingCard, ProtocolCard, PriceCard. Post-deploy: Unified Financial Data Layer, DCA scheduling, burn address guard. Published `@t2000/engine@0.33.2`.                              | Agent intelligence       |
+| **Phase 4**   | Weeks 9–10   | SQS async worker, ElevenLabs, Suno, Runway, Heygen                                                                                                                                                                                                                                                                                                                    | MPP expansion            |
+| **Phase 5**   | Weeks 11–13  | audric.ai/username storefronts, song + art listing, tweet-to-pay, merch bundles (Printful), 8% platform fee                                                                                                                                                                                                                                                           | Creator acquisition      |
+
 
 ## Key decisions and principles
 
 - Health factor alerts are always free — safety features are not premium features
-
-- The allowance model must feel like 'approve \$0.50' not 'sign a contract' — language is everything
-
+- The allowance model must feel like 'approve 0.50' not 'sign a contract' — language is everything
 - DCA scheduled actions require 5 manual confirmations before going autonomous — earn trust incrementally
-
 - USDC locked on async job submit, settled on success only — users never pay for failed generations
-
 - Suno commercial licence costs $12/mo — confirmed available, budget line item from Phase 4 onwards
-
 - Receive is USDC on Sui only for v1 — AlchemyPay is optional secondary, not the primary pitch
-
 - Log conversations from day one — every day without data is fine-tuning capacity permanently lost
-
 - USDC is the only asset in the financial layer (save, borrow, receive, yield, allowances, marketplace, MPP) — but Send supports all Tier 2 tokens so users can transfer any featured asset they hold
-
 - 13 curated swap assets (SUI, BTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, LOFI, MANIFEST) — hold and trade only, not saveable or borrowable. Add new tokens only when there is specific user demand and confirmed Cetus liquidity
-
 - The morning briefing is the forcing function for Phase 1 — it makes you build the notification backbone everything else reuses
-
 - Marketplace recommendations never trigger on financial queries — Audric’s role as a financial copilot always takes precedence over storefront discovery
-
 - t2000 remains MIT. Audric repo moves to BSL 1.1 (Change Date: April 2030) — code is auditable, not commercially forkable. One-time action before scaling
 
 ---

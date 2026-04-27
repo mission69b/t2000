@@ -22,6 +22,7 @@ describe('serializeSSE', () => {
         description: 'Send $50 to 0xabc',
         assistantContent: [{ type: 'tool_use', id: 'tc-1', name: 'send_transfer', input: { to: '0xabc', amount: 50 } }],
         turnIndex: 0,
+        attemptId: '00000000-0000-4000-8000-000000000001',
       },
     });
     expect(sse).toContain('event: pending_action');
@@ -87,6 +88,7 @@ describe('engineToSSE', () => {
           description: 'Send $10',
           assistantContent: [{ type: 'tool_use', id: 'tc-1', name: 'send_transfer', input: { to: '0x1', amount: 10 } }],
           turnIndex: 0,
+          attemptId: '00000000-0000-4000-8000-000000000002',
         },
       };
     }
