@@ -50,14 +50,14 @@ Use when the user asks for a visual chart, simulator, or financial overview. Pic
 
 - activity_heatmap — on-chain transaction history as a GitHub-style heatmap (WORKS NOW — accepts \`params.address\` to inspect any public Sui wallet; defaults to the signed-in user)
 - portfolio_timeline — net worth over time, wallet/savings/debt breakdown (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user)
-- yield_projector — compound yield simulator with amount/APY/period sliders (WORKS NOW — client-side)
-- health_simulator — borrow health factor simulator with collateral/debt sliders (WORKS NOW — uses current position)
-- dca_planner — savings plan curve for regular monthly deposits (WORKS NOW — client-side)
+- yield_projector — compound yield simulator with amount/APY/period sliders (WORKS NOW — client-side, no address needed)
+- health_simulator — borrow health factor simulator with collateral/debt sliders (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user's current position)
+- dca_planner — savings plan curve for regular monthly deposits (WORKS NOW — client-side, no address needed)
 - spending_breakdown — spending by service category (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user)
 - watch_address — portfolio overview for any public Sui address (WORKS NOW — pass \`params.address\`)
-- full_portfolio — 4-panel overview: savings, health, activity, spending (WORKS NOW — aggregates all data)
+- full_portfolio — 4-panel overview: savings, health, activity, spending (WORKS NOW — accepts \`params.address\` for any public wallet; defaults to the signed-in user)
 
-When the user asks to inspect a saved contact or watched address — e.g. "show funkii's activity heatmap", "what's funkii's portfolio look like", "spending breakdown for 0x40cd…" — pass that wallet's address as \`params.address\`. The four address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address) will scope their data fetch to that address; the rest target the signed-in user regardless of params.
+When the user asks to inspect a saved contact or watched address — e.g. "show funkii's activity heatmap", "what's funkii's portfolio look like", "spending breakdown for 0x40cd…", "give me a full portfolio overview of 0x40cd…" — pass that wallet's address as \`params.address\`. Six of the eight templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio) will scope their data fetch to that address; only the pure client-side simulators (yield_projector, dca_planner) ignore params.address.
 
 Always prefer the canvas for visualisation requests. After rendering, offer to explain what the user sees.`,
   inputSchema: z.object({
@@ -69,7 +69,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
           .string()
           .optional()
           .describe(
-            'Sui address for the four address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address). Defaults to the signed-in user; pass an explicit address to inspect a contact, watched wallet, or any other public address.',
+            'Sui address for the six address-aware templates (activity_heatmap, portfolio_timeline, spending_breakdown, watch_address, health_simulator, full_portfolio). Defaults to the signed-in user; pass an explicit address to inspect a contact, watched wallet, or any other public address.',
           ),
       })
       .optional(),
@@ -127,7 +127,29 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
 
     // Full portfolio — 4-panel capstone with live position data
     if (template === 'full_portfolio') {
-      const pos = context.serverPositions;
+      /**
+       * [v0.49] When `params.address` is present and points to a wallet
+       * other than the signed-in user, do NOT seed templateData with
+       * `context.serverPositions` (those are the user's own positions
+       * and would be misleading for a watched-address overview). The
+       * frontend re-fetches per-panel data via the address-aware API
+       * routes (`/api/balances`, `/api/savings`, etc.), so we just hand
+       * it the address + isSelfRender flag.
+       */
+      const { address, isSelfRender } = resolveAddressTarget();
+      if (!address) {
+        return {
+          data: {
+            __canvas: true,
+            template,
+            title,
+            templateData: { available: false, message: 'Full Portfolio needs an address.' },
+          },
+          displayText: 'Full Portfolio requires an address.',
+        };
+      }
+      const titleSuffix = isSelfRender ? '' : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
+      const pos = isSelfRender ? context.serverPositions : null;
       const rate = normalizeSavingsRate(pos?.savingsRate);
       const savings = pos?.savings ?? 0;
       const borrows = pos?.borrows ?? 0;
@@ -135,17 +157,20 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
         data: {
           __canvas: true,
           template,
-          title,
+          title: `${title}${titleSuffix}`,
           templateData: {
             available: true,
-            address: context.walletAddress ?? '',
+            address,
+            isSelfRender,
             currentSavings: savings,
             currentDebt: borrows,
             healthFactor: pos?.healthFactor ?? null,
             savingsRate: rate,
           },
         },
-        displayText: `Opened Full Portfolio Overview.`,
+        displayText: isSelfRender
+          ? `Opened Full Portfolio Overview.`
+          : `Opened Full Portfolio Overview for ${address.slice(0, 6)}…${address.slice(-4)}.`,
       };
     }
 
@@ -300,20 +325,41 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
     }
 
     if (template === 'health_simulator') {
-      const roundedDebt = totalBorrows >= 1 ? Math.round(totalBorrows) : (totalBorrows > 0 ? parseFloat(totalBorrows.toFixed(4)) : 0);
+      /**
+       * [v0.49] When the user passes `params.address` for a watched
+       * wallet, seed the simulator with neutral defaults instead of the
+       * signed-in user's own position. The frontend re-fetches per
+       * `address` via `/api/health` to populate the live HF readout,
+       * so seeding here is just for the slider initial state.
+       */
+      const { address: targetAddress, isSelfRender } = resolveAddressTarget();
+      const seedFromPos = isSelfRender;
+      const seedSavings = seedFromPos ? totalSavings : 0;
+      const seedBorrows = seedFromPos ? totalBorrows : 0;
+      const seedHf = seedFromPos ? healthFactor : null;
+      const roundedDebt = seedBorrows >= 1
+        ? Math.round(seedBorrows)
+        : (seedBorrows > 0 ? parseFloat(seedBorrows.toFixed(4)) : 0);
+      const titleSuffix = !targetAddress || isSelfRender
+        ? ''
+        : ` — ${targetAddress.slice(0, 6)}…${targetAddress.slice(-4)}`;
       return {
         data: {
           __canvas: true,
           template,
-          title,
+          title: `${title}${titleSuffix}`,
           templateData: {
             available: true,
-            initialCollateral: totalSavings > 0 ? Math.round(totalSavings) : 1500,
-            initialDebt: roundedDebt > 0 ? roundedDebt : (totalSavings > 0 ? 0 : 500),
-            currentHf: healthFactor,
+            address: targetAddress ?? '',
+            isSelfRender,
+            initialCollateral: seedSavings > 0 ? Math.round(seedSavings) : 1500,
+            initialDebt: roundedDebt > 0 ? roundedDebt : (seedSavings > 0 ? 0 : 500),
+            currentHf: seedHf,
           },
         },
-        displayText: `Opened Health Factor Simulator. Current HF: ${healthFactor !== null ? healthFactor.toFixed(2) : 'no active position'}.`,
+        displayText: isSelfRender
+          ? `Opened Health Factor Simulator. Current HF: ${healthFactor !== null ? healthFactor.toFixed(2) : 'no active position'}.`
+          : `Opened Health Factor Simulator${titleSuffix}. The simulator will fetch the current health factor for that wallet.`,
       };
     }
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { buildTool } from '../tool.js';
-import { hasNaviMcp, getMcpManager, getWalletAddress, requireAgent } from './utils.js';
+import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
 import type { McpClientManager } from '../mcp-client.js';
 import { NAVI_SERVER_NAME, NaviTools } from '../navi-config.js';
 import {
@@ -14,6 +14,8 @@ import {
 } from '../blockvision-prices.js';
 
 const GAS_RESERVE_SUI = 0.05;
+
+const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{1,64}$/;
 
 // vSUI (Volo's liquid-staked SUI). BlockVision sometimes lacks a price for
 // this token — when missing we read the official Volo exchange rate and
@@ -105,9 +107,25 @@ async function loadPortfolio(
 export const balanceCheckTool = buildTool({
   name: 'balance_check',
   description:
-    'Get the user\'s full balance breakdown. Returns wallet holdings (tokens the user owns — NOT savings), NAVI savings deposits (USDC deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, and saveableUsdc (only USDC can be deposited into savings). IMPORTANT: wallet holdings like GOLD, SUI, USDT are NOT savings positions — they are just tokens sitting in the wallet.',
-  inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {}, required: [] },
+    'Get the full balance breakdown for the signed-in user OR any public Sui address. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, and saveableUsdc (only USDC can be deposited into savings). IMPORTANT: wallet holdings like GOLD, SUI, USDT are NOT savings positions — they are just tokens sitting in the wallet. Pass `address` to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
+  inputSchema: z.object({
+    address: z
+      .string()
+      .regex(SUI_ADDRESS_REGEX)
+      .optional()
+      .describe('Sui address to inspect (defaults to the signed-in wallet)'),
+  }),
+  jsonSchema: {
+    type: 'object',
+    properties: {
+      address: {
+        type: 'string',
+        pattern: '^0x[a-fA-F0-9]{1,64}$',
+        description: 'Sui address to inspect (defaults to the signed-in wallet)',
+      },
+    },
+    required: [],
+  },
   isReadOnly: true,
   // [v1.4 BlockVision] Wallet contents change after every send / swap /
   // save / etc. and the price half of this result is sourced from
@@ -115,16 +133,40 @@ export const balanceCheckTool = buildTool({
   // calls — each one reflects a different on-chain + market snapshot.
   cacheable: false,
 
-  async call(_input, context) {
-    if (hasNaviMcp(context)) {
-      const address = getWalletAddress(context);
+  async call(input, context) {
+    /**
+     * [v0.49] Address-scope: tool now accepts an optional `address` param
+     * so the LLM can inspect any public Sui wallet (contacts, watched
+     * addresses, etc.). Pre-v0.49 the tool only ever queried
+     * `context.walletAddress`, which masked any contact-balance question
+     * by silently returning the signed-in user's data instead. Falls back
+     * to `context.walletAddress` when the param is absent. Stamps
+     * `address` + `isSelfQuery` on the result so the UI can title cards
+     * appropriately when rendering a non-self balance.
+     *
+     * The host-provided `positionFetcher(address)` takes an address
+     * argument and works for any wallet, so savings / debt / rewards
+     * automatically scope correctly. Empty wallets and unknown addresses
+     * surface honestly (zero balance) rather than failing.
+     */
+    const targetAddress = input.address ?? context.walletAddress;
+    const isSelfQuery =
+      !!context.walletAddress &&
+      !!targetAddress &&
+      targetAddress.toLowerCase() === context.walletAddress.toLowerCase();
+
+    if (hasNaviMcpGlobal(context)) {
+      if (!targetAddress) {
+        throw new Error('No wallet address provided. Sign in or pass `address` to inspect a public wallet.');
+      }
+      const address = targetAddress;
       const mgr = getMcpManager(context);
 
       // [v0.47] When a host-side `positionFetcher` is configured (Audric
       // production), savings/debt/rewards come from the host instead of
       // NAVI MCP. Skip those MCP calls entirely — they were previously
       // fetched in parallel and then discarded.
-      const hasPositionFetcher = !!(context.positionFetcher && context.walletAddress);
+      const hasPositionFetcher = !!context.positionFetcher;
 
       // [v1.4 BlockVision] Single BlockVision call returns coins +
       // balances + prices in one shot, replacing the parallel
@@ -164,7 +206,7 @@ export const balanceCheckTool = buildTool({
               return null;
             }),
         hasPositionFetcher
-          ? context.positionFetcher!(context.walletAddress!).catch((err) => {
+          ? context.positionFetcher!(address).catch((err) => {
               console.warn('[balance_check] positionFetcher failed:', err);
               return null;
             })
@@ -257,15 +299,33 @@ export const balanceCheckTool = buildTool({
         holdings: visibleHoldings,
         saveableUsdc,
         priceSource: portfolio.source,
+        address,
+        isSelfQuery,
       };
 
       const holdingsList = visibleHoldings.map((h) => `${h.symbol}: ${h.balance < 1 ? h.balance.toFixed(6) : h.balance.toFixed(2)} ($${h.usdValue.toFixed(2)})`).join(', ');
+      const subjectPrefix = isSelfQuery
+        ? 'Balance'
+        : `Balance for ${address.slice(0, 6)}…${address.slice(-4)}`;
       return {
         data: bal,
-        displayText: `Balance: $${bal.total.toFixed(2)} total. Wallet holdings (NOT savings): ${holdingsList || 'none'}. NAVI savings deposits: $${bal.savings.toFixed(2)}. Saveable USDC (only USDC can be saved): ${saveableUsdc.toFixed(2)} USDC.`,
+        displayText: `${subjectPrefix}: $${bal.total.toFixed(2)} total. Wallet holdings (NOT savings): ${holdingsList || 'none'}. NAVI savings deposits: $${bal.savings.toFixed(2)}. Saveable USDC (only USDC can be saved): ${saveableUsdc.toFixed(2)} USDC.`,
       };
     }
 
+    // SDK agent fallback — only meaningful for the signed-in user (the
+    // SDK's `balance()` method is bound to the agent's own wallet). If
+    // the LLM passed a different address, refuse rather than silently
+    // returning the agent's own balance.
+    if (
+      input.address &&
+      context.walletAddress &&
+      input.address.toLowerCase() !== context.walletAddress.toLowerCase()
+    ) {
+      throw new Error(
+        `Cannot inspect ${input.address.slice(0, 8)}… without NAVI MCP enabled. Configure NAVI MCP to enable third-party address reads.`,
+      );
+    }
     const agent = requireAgent(context);
     const balance = await agent.balance();
 
@@ -293,6 +353,8 @@ export const balanceCheckTool = buildTool({
         stables: stablesTotal,
         holdings: holdingsArr,
         saveableUsdc: sdkSaveableUsdc,
+        address: targetAddress ?? '',
+        isSelfQuery: true,
       },
       displayText: `Balance: $${balance.total.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}. Saveable USDC (only USDC can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`,
     };

@@ -35,7 +35,12 @@ interface CanvasResult {
 }
 
 describe('[v0.48 — bug 2] render_canvas address scope', () => {
-  describe.each(['activity_heatmap', 'portfolio_timeline', 'spending_breakdown'] as const)(
+  describe.each([
+    'activity_heatmap',
+    'portfolio_timeline',
+    'spending_breakdown',
+    'full_portfolio', // [v0.49] extended to multi-panel capstone
+  ] as const)(
     'template=%s',
     (template) => {
       it('falls back to context.walletAddress when params.address is omitted', async () => {
@@ -87,4 +92,136 @@ describe('[v0.48 — bug 2] render_canvas address scope', () => {
       });
     },
   );
+});
+
+/**
+ * [v0.49] Extended address scope: full_portfolio (above) and
+ * health_simulator (below).
+ *
+ * full_portfolio additionally must NOT seed templateData with the
+ * signed-in user's `serverPositions` when rendering for a watched
+ * address (those positions belong to the user, not the queried
+ * wallet, and would mislead the four sub-panels).
+ *
+ * health_simulator additionally must seed neutral defaults when
+ * targeting a watched address — the simulator is a "what-if" tool, so
+ * starting from the user's own collateral/debt would render an
+ * irrelevant baseline for an external wallet.
+ */
+
+interface FullPortfolioResult {
+  data: {
+    templateData: {
+      available: boolean;
+      address?: string;
+      isSelfRender?: boolean;
+      currentSavings?: number;
+      currentDebt?: number;
+      healthFactor?: number | null;
+      savingsRate?: number;
+    };
+    title: string;
+  };
+}
+
+interface HealthSimulatorResult {
+  data: {
+    templateData: {
+      address?: string;
+      isSelfRender?: boolean;
+      initialCollateral: number;
+      initialDebt: number;
+      currentHf: number | null;
+    };
+    title: string;
+  };
+}
+
+describe('[v0.49] full_portfolio does not bleed user positions into watched-address renders', () => {
+  const userPositions = {
+    savings: 9999,
+    borrows: 1234,
+    pendingRewards: 0,
+    healthFactor: 1.8,
+    maxBorrow: 100,
+    supplies: [],
+    borrows_detail: [],
+    savingsRate: 0.045,
+  };
+  const ctxWithPos = {
+    walletAddress: USER_ADDR,
+    serverPositions: userPositions,
+  } as Parameters<typeof renderCanvasTool.call>[1];
+
+  it('seeds user positions when rendering for the signed-in user', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'full_portfolio' },
+      ctxWithPos,
+    )) as FullPortfolioResult;
+    expect(res.data.templateData.currentSavings).toBe(9999);
+    expect(res.data.templateData.currentDebt).toBe(1234);
+    expect(res.data.templateData.healthFactor).toBe(1.8);
+    expect(res.data.templateData.isSelfRender).toBe(true);
+  });
+
+  it('zeroes out positions when rendering for a watched address (the v0.49 fix)', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'full_portfolio', params: { address: FUNKII_ADDR } },
+      ctxWithPos,
+    )) as FullPortfolioResult;
+    expect(res.data.templateData.currentSavings).toBe(0);
+    expect(res.data.templateData.currentDebt).toBe(0);
+    expect(res.data.templateData.healthFactor).toBe(null);
+    expect(res.data.templateData.isSelfRender).toBe(false);
+  });
+});
+
+describe('[v0.49] health_simulator seeds neutral defaults for watched addresses', () => {
+  const userPositions = {
+    savings: 5000,
+    borrows: 1000,
+    pendingRewards: 0,
+    healthFactor: 1.6,
+    maxBorrow: 0,
+    supplies: [],
+    borrows_detail: [],
+    savingsRate: 0.045,
+  };
+  const ctxWithPos = {
+    walletAddress: USER_ADDR,
+    serverPositions: userPositions,
+  } as Parameters<typeof renderCanvasTool.call>[1];
+
+  it('seeds the simulator with the signed-in user\'s position for self renders', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'health_simulator' },
+      ctxWithPos,
+    )) as HealthSimulatorResult;
+    expect(res.data.templateData.initialCollateral).toBe(5000);
+    expect(res.data.templateData.initialDebt).toBe(1000);
+    expect(res.data.templateData.currentHf).toBe(1.6);
+    expect(res.data.templateData.isSelfRender).toBe(true);
+  });
+
+  it('seeds neutral defaults when a watched-address override is passed', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'health_simulator', params: { address: FUNKII_ADDR } },
+      ctxWithPos,
+    )) as HealthSimulatorResult;
+    expect(res.data.templateData.address).toBe(FUNKII_ADDR);
+    expect(res.data.templateData.isSelfRender).toBe(false);
+    // Neutral defaults — NOT the user's $5000/$1000/1.6
+    expect(res.data.templateData.initialCollateral).toBe(1500);
+    expect(res.data.templateData.initialDebt).toBe(500);
+    expect(res.data.templateData.currentHf).toBe(null);
+  });
+
+  it('appends a truncated-address suffix to the simulator title for non-self renders', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'health_simulator', params: { address: FUNKII_ADDR } },
+      ctxWithPos,
+    )) as HealthSimulatorResult;
+    expect(res.data.title).toContain(FUNKII_ADDR.slice(0, 6));
+    expect(res.data.title).toContain(FUNKII_ADDR.slice(-4));
+  });
 });
