@@ -253,6 +253,21 @@ export type {
   PortfolioCoin,
 } from './blockvision-prices.js';
 
+// [single-source-of-truth — Apr 2026] Audric canonical-API client.
+// Read tools call these helpers first when T2000_AUDRIC_API (or
+// AUDRIC_INTERNAL_API_URL) is configured, otherwise fall back to their
+// in-engine path. Exported so external callers can reuse the same
+// client (e.g. CLI/MCP code that wants to opt in to audric data).
+export {
+  getAudricApiBase,
+  fetchAudricPortfolio,
+  fetchAudricHistory,
+} from './audric-api.js';
+export type {
+  AudricPortfolioResult,
+  AudricHistoryRecord,
+} from './audric-api.js';
+
 // [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed from the engine.
 // Spot prices live on `tokenPricesTool` (BlockVision); protocol metadata
 // stays on `protocolDeepDiveTool` (already re-exported above via

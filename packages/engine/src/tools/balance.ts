@@ -14,6 +14,7 @@ import {
   type AddressPortfolio,
   type DefiSummary,
 } from '../blockvision-prices.js';
+import { fetchAudricPortfolio, type AudricPortfolioResult } from '../audric-api.js';
 
 const GAS_RESERVE_SUI = 0.05;
 
@@ -170,6 +171,18 @@ export const balanceCheckTool = buildTool({
       // fetched in parallel and then discarded.
       const hasPositionFetcher = !!context.positionFetcher;
 
+      // [single-source-of-truth — Apr 2026] When the engine runs inside
+      // audric (T2000_AUDRIC_API / AUDRIC_INTERNAL_API_URL set), prefer
+      // audric's canonical `/api/portfolio` so the LLM, dashboard, and
+      // daily cron all read identical numbers. Returns null in
+      // CLI / MCP / standalone mode → falls back to the BlockVision +
+      // NAVI MCP path below.
+      const audricPortfolio = await fetchAudricPortfolio(
+        address,
+        context.env,
+        context.signal,
+      );
+
       // [v1.4 BlockVision] Single BlockVision call returns coins +
       // balances + prices in one shot, replacing the parallel
       // (Sui RPC fetchWalletCoins + DefiLlama fetchTokenPrices) pair.
@@ -189,23 +202,32 @@ export const balanceCheckTool = buildTool({
       // safely below BV burst caps). Cached 60s, parallel-fanout, 5xx
       // on one protocol drops just that protocol. See
       // blockvision-prices.ts header for the generic-walker design.
+      // When audric returned a canonical snapshot we already have
+      // wallet + positions in one shot — short-circuit the parallel
+      // BlockVision + NAVI fan-out so we don't double-pay the latency
+      // and so the numbers in the result match audric's API exactly.
+      const usingAudricSnapshot = audricPortfolio !== null;
+      const audric: AudricPortfolioResult | null = audricPortfolio;
+
       const [portfolio, positions, rewards, serverPositions, defiPortfolio] = await Promise.all([
-        loadPortfolio(
-          address,
-          context.blockvisionApiKey,
-          context.suiRpcUrl,
-          context.portfolioCache,
-        ).catch((err) => {
-          console.warn('[balance_check] portfolio fetch failed, returning empty:', err);
-          const fallback: AddressPortfolio = {
-            coins: [],
-            totalUsd: 0,
-            pricedAt: Date.now(),
-            source: 'sui-rpc-degraded',
-          };
-          return fallback;
-        }),
-        hasPositionFetcher
+        usingAudricSnapshot
+          ? Promise.resolve(audric!.portfolio)
+          : loadPortfolio(
+              address,
+              context.blockvisionApiKey,
+              context.suiRpcUrl,
+              context.portfolioCache,
+            ).catch((err) => {
+              console.warn('[balance_check] portfolio fetch failed, returning empty:', err);
+              const fallback: AddressPortfolio = {
+                coins: [],
+                totalUsd: 0,
+                pricedAt: Date.now(),
+                source: 'sui-rpc-degraded',
+              };
+              return fallback;
+            }),
+        usingAudricSnapshot || hasPositionFetcher
           ? Promise.resolve(null)
           : callNavi(mgr, NaviTools.GET_POSITIONS, {
               address,
@@ -215,18 +237,20 @@ export const balanceCheckTool = buildTool({
               console.warn('[balance_check] NAVI GET_POSITIONS failed:', err);
               return null;
             }),
-        hasPositionFetcher
+        usingAudricSnapshot || hasPositionFetcher
           ? Promise.resolve(null)
           : callNavi(mgr, NaviTools.GET_AVAILABLE_REWARDS, { address }).catch((err) => {
               console.warn('[balance_check] NAVI GET_AVAILABLE_REWARDS failed:', err);
               return null;
             }),
-        hasPositionFetcher
-          ? context.positionFetcher!(address).catch((err) => {
-              console.warn('[balance_check] positionFetcher failed:', err);
-              return null;
-            })
-          : Promise.resolve(null),
+        usingAudricSnapshot
+          ? Promise.resolve(audric!.positions)
+          : hasPositionFetcher
+            ? context.positionFetcher!(address).catch((err) => {
+                console.warn('[balance_check] positionFetcher failed:', err);
+                return null;
+              })
+            : Promise.resolve(null),
         // [v0.50] DeFi leg — independent of NAVI (excluded) and the wallet
         // portfolio (which only has coin holdings). Failure here surfaces
         // as defi.totalUsd === 0 and `source: 'degraded'`, leaving the

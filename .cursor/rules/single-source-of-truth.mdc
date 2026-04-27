@@ -1,0 +1,67 @@
+---
+description: Single source of truth for portfolio data — one canonical fetcher per domain, all consumers are thin adapters
+alwaysApply: true
+---
+
+# Single Source of Truth: Portfolio Data
+
+## The standard
+
+Every domain concept (wallet balances, lending positions, token prices, transaction history, savings rates) has **exactly one** canonical fetcher. API routes, React hooks, engine tools, and cron jobs are **thin adapters** — they parse inputs, call the canonical fetcher, format the response.
+
+Adapters MUST NOT do their own pricing, summing, RPC calls, or token-list management. If you find yourself reaching for `client.getBalance`, hardcoding a stable price, or maintaining a token allow-list outside the canonical, stop and use the canonical instead.
+
+## Canonical files
+
+| Domain | Canonical fetcher | File |
+|---|---|---|
+| Wallet + positions + net worth | `getPortfolio(address)` | `apps/web/lib/portfolio.ts` |
+| Token prices (USD) | `getTokenPrices(coinTypes)` | `apps/web/lib/portfolio.ts` |
+| Transaction history | `getTransactionHistory(address, opts)` | `apps/web/lib/transaction-history.ts` |
+| Lending rates (NAVI) | `getRates()` | `apps/web/lib/rates.ts` |
+
+## Forbidden patterns outside canonical files
+
+These are lint errors (see `.eslintrc` rule `audric/canonical-portfolio`):
+
+```typescript
+// All of these are FORBIDDEN outside the canonical files above.
+client.getBalance({ owner, coinType })           // wallet read — use getPortfolio
+client.getAllBalances({ owner })                 // wallet read — use getPortfolio
+client.getCoinMetadata({ coinType })             // metadata — use getPortfolio (it returns priced coins)
+fetch('https://api.blockvision.org/...')         // direct vendor call — use getPortfolio / getTokenPrices
+fetch('https://coins.llama.fi/...')              // direct vendor call — use getTokenPrices
+const STABLES = { USDC: 1, USDT: 1, USDsui: 1 } // hardcoded $1 assumption — let getTokenPrices do it
+const TRADEABLE = ['USDC', 'SUI', 'BTC', ...]   // hardcoded token list — getPortfolio returns every held coin
+totalUsd = USDC + USDsui                          // partial-stable sum — use Portfolio.walletValueUsd
+totalUsd = USDC + SUI                             // unit-mixed sum (SUI is tokens, not USD) — use Portfolio.walletValueUsd
+```
+
+## Why this rule exists
+
+In April 2026 we shipped a fix for `FullPortfolioCanvas` showing $0 savings for watched addresses. The root cause was five different code paths computing wallet USD: `useBalance` hook, `fetchPortfolio` server function, `/api/balances` raw endpoint, engine `balance_check` tool, and the daily cron — each with different pricing logic, different token coverage, and different bugs. The user surfaces showed five different numbers for the same wallet.
+
+That class of bug is structural, not a one-off. Every new feature that adds another portfolio read is another opportunity to drift. Routing every consumer through one fetcher with one set of behaviors makes drift impossible by construction.
+
+## Adapter checklist
+
+Before adding or modifying an API route, hook, canvas, or engine tool that reads portfolio data:
+
+1. **Does the canonical fetcher already cover this read?** If yes, use it. Done.
+2. **Does it cover it but the shape isn't quite right?** Extend the canonical's return type. Don't fork.
+3. **Does it not cover this read at all?** Extend the canonical to cover it. Don't add a parallel path.
+4. **Does the canonical do too much for your one-off read?** It still might be the right call — the 60s in-process cache makes redundant calls cheap.
+
+If you genuinely need to bypass the canonical (e.g. for a write-side balance check that's part of a transaction builder), leave a code comment with `// CANONICAL-BYPASS:` and explain why, plus link to a follow-up issue to consolidate.
+
+## How this is enforced
+
+- **ESLint rule** `audric/canonical-portfolio`: scans imports and call expressions, fails CI on forbidden patterns outside canonical files.
+- **Spec consistency runner** (`apps/web/lib/engine/spec-consistency.ts`): runs at server startup in dev (hard fail) and prod (log only); checks that no consumer re-implements canonical behavior.
+- **Contract test** (`apps/web/lib/__tests__/portfolio-contract.test.ts`): asserts identical output across every adapter for a fixed mocked-RPC test address. Any new adapter added to the test must produce the same numbers.
+
+## Related rules
+
+- [`engineering-principles.mdc`](engineering-principles.mdc) — Principle 2 ("If data exists in one place, import it") is what this rule operationalizes.
+- [`token-data-architecture.mdc`](token-data-architecture.mdc) — canonical token metadata sources (`TOKEN_MAP`, `COIN_REGISTRY`).
+- [`audric-transaction-flow.mdc`](audric-transaction-flow.mdc) — sponsored vs SDK direct, which path runs when.

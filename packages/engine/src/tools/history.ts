@@ -7,6 +7,7 @@ import {
 } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
+import { fetchAudricHistory } from '../audric-api.js';
 
 const SUI_MAINNET_URL = 'https://fullnode.mainnet.sui.io:443';
 
@@ -491,8 +492,45 @@ export const transactionHistoryTool = buildTool({
       };
     }
 
-    if (!targetAddress || !context.suiRpcUrl) {
+    if (!targetAddress) {
       throw new Error('Transaction history requires a wallet address');
+    }
+
+    // [single-source-of-truth — Apr 2026] Try audric's canonical
+    // `/api/history` first. The route already merges FromAddress +
+    // ToAddress, dedupes by digest, and runs the same `parseSuiRpcTx`
+    // parser the engine uses, so the wire shape is a 1:1 match. Returns
+    // null in CLI / MCP / standalone mode → falls through to the
+    // existing Sui-RPC path below.
+    //
+    // Note: the date-paginated path (`input.date`) keeps using direct
+    // RPC because audric's `/api/history` doesn't currently expose a
+    // date filter. Same goes for the standalone-engine fallback.
+    if (!input.date) {
+      const audricRecords = await fetchAudricHistory(
+        targetAddress,
+        { limit: Math.max(limit * 4, 50) },
+        context.env,
+        context.signal,
+      );
+      if (audricRecords) {
+        const cutoffMs = Date.now() - DEFAULT_LOOKBACK_DAYS * 86_400_000;
+        const recent = audricRecords.filter((r) => r.timestamp >= cutoffMs);
+        const filtered = finalize(recent);
+        return {
+          data: {
+            transactions: filtered,
+            count: filtered.length,
+            ...filterMeta,
+            lookbackDays: DEFAULT_LOOKBACK_DAYS,
+          },
+          displayText: `${filtered.length} transaction(s) in the last ${DEFAULT_LOOKBACK_DAYS} days`,
+        };
+      }
+    }
+
+    if (!context.suiRpcUrl) {
+      throw new Error('Transaction history requires a Sui RPC URL when audric API is unavailable');
     }
 
     if (input.date) {

@@ -4,6 +4,8 @@ import {
   fetchAddressPortfolio,
   type AddressPortfolio,
 } from '../blockvision-prices.js';
+import { fetchAudricPortfolio } from '../audric-api.js';
+import type { ServerPositionData } from '../types.js';
 
 const inputSchema = z.object({
   address: z.string().optional().describe('Sui address to analyze (defaults to connected wallet)'),
@@ -64,6 +66,16 @@ export const portfolioAnalysisTool = buildTool({
 
     const DUST_USD = 0.01;
 
+    // [single-source-of-truth — Apr 2026] Try audric's canonical
+    // `/api/portfolio` first. When it returns a snapshot we already have
+    // wallet + positions in one call so we skip the parallel BV +
+    // positionFetcher fan-out below.
+    const audricSnapshot = await fetchAudricPortfolio(
+      address,
+      context.env,
+      context.signal,
+    );
+
     // [v1.4 BlockVision] Fan out three independent fetches in parallel:
     // BlockVision portfolio (coins + balances + USD prices in one shot),
     // positions (host fetcher), and 7-day portfolio history. Total wall
@@ -71,35 +83,42 @@ export const portfolioAnalysisTool = buildTool({
     // cache so a sibling `balance_check` in the same turn shares the
     // response.
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
-    const [portfolio, positions, weekHistResult] = await Promise.all([
-      (async () => {
-        if (context.portfolioCache) {
-          const hit = context.portfolioCache.get(address);
-          if (hit) return hit;
-        }
-        const fresh = await fetchAddressPortfolio(
-          address,
-          context.blockvisionApiKey,
-          context.suiRpcUrl,
-        );
-        context.portfolioCache?.set(address, fresh);
-        return fresh;
-      })().catch((err) => {
-        console.warn('[portfolio_analysis] portfolio fetch failed:', err);
-        const empty: AddressPortfolio = {
-          coins: [],
-          totalUsd: 0,
-          pricedAt: Date.now(),
-          source: 'sui-rpc-degraded',
-        };
-        return empty;
-      }),
-      context.positionFetcher
-        ? context.positionFetcher(address).catch((err) => {
-            console.warn('[portfolio_analysis] positionFetcher failed:', err);
-            return null;
-          })
-        : Promise.resolve(null),
+    const [portfolio, positions, weekHistResult]: [
+      AddressPortfolio,
+      ServerPositionData | null,
+      { change?: WeekChange } | null,
+    ] = await Promise.all([
+      audricSnapshot
+        ? Promise.resolve(audricSnapshot.portfolio)
+        : (async () => {
+            if (context.portfolioCache) {
+              const hit = context.portfolioCache.get(address);
+              if (hit) return hit;
+            }
+            const fresh = await fetchAddressPortfolio(
+              address,
+              context.blockvisionApiKey,
+              context.suiRpcUrl,
+            );
+            context.portfolioCache?.set(address, fresh);
+            return fresh;
+          })().catch((err): AddressPortfolio => {
+            console.warn('[portfolio_analysis] portfolio fetch failed:', err);
+            return {
+              coins: [],
+              totalUsd: 0,
+              pricedAt: Date.now(),
+              source: 'sui-rpc-degraded',
+            };
+          }),
+      audricSnapshot
+        ? Promise.resolve(audricSnapshot.positions)
+        : context.positionFetcher
+          ? context.positionFetcher(address).catch((err) => {
+              console.warn('[portfolio_analysis] positionFetcher failed:', err);
+              return null;
+            })
+          : Promise.resolve(null),
       apiUrl
         ? fetch(
             `${apiUrl}/api/analytics/portfolio-history?days=7`,
