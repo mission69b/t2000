@@ -18,6 +18,10 @@ import {
 const ADDRESS = '0xdeadbeefcafe';
 const USDC_TYPE = '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 const SUI_TYPE = '0x2::sui::SUI';
+// [v0.47.1] BlockVision's `/coin/price/list` only returns SUI under its
+// fully-normalized 64-hex coin type. Tests must mock the long form to
+// faithfully exercise the normalization path.
+const SUI_TYPE_LONG = '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
 const NAVX_TYPE = '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX';
 
 const realFetch = globalThis.fetch;
@@ -286,13 +290,17 @@ describe('blockvision-prices — fetchAddressPortfolio', () => {
 
 describe('blockvision-prices — fetchTokenPrices', () => {
   it('6) hardcoded-stable shortcut — USDC/USDT resolve to $1.00 without hitting BlockVision', async () => {
+    // BlockVision echoes the LONG form of whatever coinType we sent. The
+    // engine normalizes inputs before the request and remaps the response
+    // back to the caller's input shape — so the test mock returns the long
+    // form, but the result must still be keyed by the caller's input.
     const fetchMock = vi.fn(async () =>
       mockJsonResponse({
         code: 200,
         message: 'OK',
         result: {
-          prices: { [SUI_TYPE]: '3.5' },
-          coin24HChange: { [SUI_TYPE]: '1.2345' },
+          prices: { [SUI_TYPE_LONG]: '3.5' },
+          coin24HChange: { [SUI_TYPE_LONG]: '1.2345' },
         },
       }),
     );
@@ -300,13 +308,82 @@ describe('blockvision-prices — fetchTokenPrices', () => {
 
     const prices = await fetchTokenPrices([USDC_TYPE, SUI_TYPE], 'test-key');
     expect(prices[USDC_TYPE]).toEqual({ price: 1 });
+    // Caller passed SUI_TYPE (short form) so the result is keyed by it,
+    // even though BlockVision returned the long form internally.
     expect(prices[SUI_TYPE]).toEqual({ price: 3.5, change24h: 1.2345 });
-    // Network call only happened for SUI (not for USDC, the stable).
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const calls = fetchMock.mock.calls as unknown as Array<[FetchInput]>;
     expect(calls.length).toBe(1);
     const url = urlOf(calls[0][0]);
-    expect(url).toContain(encodeURIComponent(SUI_TYPE));
+    // The URL contains the LONG form (what BlockVision actually accepts),
+    // not the short form the caller passed.
+    expect(url).toContain(encodeURIComponent(SUI_TYPE_LONG));
     expect(url).not.toContain(encodeURIComponent(USDC_TYPE));
+  });
+
+  // [v0.47.1] Three regression guards for the SUI short-form normalization
+  // fix. Pre-fix, BlockVision's `/coin/price/list` silently returned an
+  // empty `prices` map for `0x2::sui::SUI`, leaving the `token_prices`
+  // tool, `wallet-balance` route, and engine-factory price seeding all
+  // returning $0 for SUI even on Pro tier.
+
+  it('9) SUI short form ⇄ BlockVision long form: caller-keyed response, long-form URL', async () => {
+    const fetchMock = vi.fn(async (input: FetchInput) => {
+      const url = urlOf(input);
+      // Engine must send the LONG form — short form returns empty prices.
+      expect(url).toContain(encodeURIComponent(SUI_TYPE_LONG));
+      expect(url).not.toMatch(/tokenIds=0x2::sui::SUI(?:[^0-9a-zA-Z]|$)/);
+      return mockJsonResponse({
+        code: 200,
+        message: 'OK',
+        result: {
+          prices: { [SUI_TYPE_LONG]: '0.95256' },
+          coin24HChange: { [SUI_TYPE_LONG]: '-2.34' },
+        },
+      });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const prices = await fetchTokenPrices([SUI_TYPE], 'test-key');
+    // Result must be keyed by the SHORT form the caller passed.
+    expect(prices[SUI_TYPE]).toEqual({ price: 0.95256, change24h: -2.34 });
+    expect(prices[SUI_TYPE_LONG]).toBeUndefined();
+  });
+
+  it('10) SUI long form passed by caller — identity mapping, no double-fetch', async () => {
+    const fetchMock = vi.fn(async () =>
+      mockJsonResponse({
+        code: 200,
+        message: 'OK',
+        result: { prices: { [SUI_TYPE_LONG]: '0.95' } },
+      }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const prices = await fetchTokenPrices([SUI_TYPE_LONG], 'test-key');
+    expect(prices[SUI_TYPE_LONG]).toEqual({ price: 0.95 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('11) cache shared across short + long form on subsequent calls', async () => {
+    const fetchMock = vi.fn(async () =>
+      mockJsonResponse({
+        code: 200,
+        message: 'OK',
+        result: { prices: { [SUI_TYPE_LONG]: '0.95' } },
+      }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const a = await fetchTokenPrices([SUI_TYPE], 'test-key');
+    expect(a[SUI_TYPE]?.price).toBe(0.95);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Second call passes the LONG form. Cache stores by long form so this
+    // hits the cache rather than the network — proves the two forms are
+    // interchangeable from the cache's perspective.
+    const b = await fetchTokenPrices([SUI_TYPE_LONG], 'test-key');
+    expect(b[SUI_TYPE_LONG]?.price).toBe(0.95);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

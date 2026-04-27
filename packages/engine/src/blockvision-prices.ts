@@ -27,7 +27,7 @@
 // callers can decide whether to badge "approximate" totals.
 // ---------------------------------------------------------------------------
 
-import { getDecimalsForCoinType, resolveSymbol } from '@t2000/sdk';
+import { getDecimalsForCoinType, resolveSymbol, normalizeCoinType } from '@t2000/sdk';
 import { fetchWalletCoins } from './sui-rpc.js';
 
 const BLOCKVISION_BASE = 'https://api.blockvision.org/v2/sui';
@@ -289,19 +289,24 @@ export async function fetchTokenPrices(
   const cacheValid = priceMapCache !== null && now - priceMapCache.ts < CACHE_TTL_MS;
   const cached = cacheValid ? priceMapCache!.prices : {};
 
+  // [v0.47.1] Cache + STABLE_USD_PRICES are keyed by long-form coin types
+  // (64-hex address). Caller inputs may be short-form (`0x2::sui::SUI`).
+  // Normalize for lookup, but preserve the caller's original string in
+  // the result map so consumers indexing by their input keys still work.
   const result: Record<string, { price: number; change24h?: number }> = {};
   const stillMissing: string[] = [];
-  for (const coinType of coinTypes) {
-    if (cached[coinType]) {
-      result[coinType] = cached[coinType];
+  for (const original of coinTypes) {
+    const norm = normalizeCoinType(original);
+    if (cached[norm]) {
+      result[original] = cached[norm];
       continue;
     }
-    const stable = STABLE_USD_PRICES[coinType];
+    const stable = STABLE_USD_PRICES[norm];
     if (typeof stable === 'number') {
-      result[coinType] = { price: stable };
+      result[original] = { price: stable };
       continue;
     }
-    stillMissing.push(coinType);
+    stillMissing.push(original);
   }
 
   if (stillMissing.length === 0) return result;
@@ -312,7 +317,12 @@ export async function fetchTokenPrices(
   const fetched = await fetchPricesFromBlockVision(stillMissing, apiKey);
   Object.assign(result, fetched);
 
-  const merged = { ...cached, ...fetched };
+  // Cache by long form so subsequent calls with either form hit the cache.
+  const cacheUpdates: Record<string, { price: number; change24h?: number }> = {};
+  for (const [original, value] of Object.entries(fetched)) {
+    cacheUpdates[normalizeCoinType(original)] = value;
+  }
+  const merged = { ...cached, ...cacheUpdates };
   priceMapCache = { prices: merged, ts: cacheValid ? priceMapCache!.ts : now };
 
   return result;
@@ -323,8 +333,21 @@ async function fetchPricesFromBlockVision(
   apiKey: string,
 ): Promise<Record<string, { price: number; change24h?: number }>> {
   const out: Record<string, { price: number; change24h?: number }> = {};
-  for (let i = 0; i < coinTypes.length; i += PRICE_LIST_CHUNK) {
-    const chunk = coinTypes.slice(i, i + PRICE_LIST_CHUNK);
+
+  // [v0.47.1] BlockVision's `/coin/price/list` requires fully-normalized
+  // 64-hex coin types — short forms like `0x2::sui::SUI` come back with
+  // `result.prices = {}` even on Pro. Normalize before sending; build a
+  // long→original map so callers who passed `0x2::sui::SUI` see exactly
+  // that key in the response (not the long form BlockVision echoes back).
+  const longToOriginal = new Map<string, string>();
+  for (const original of coinTypes) {
+    const long = normalizeCoinType(original);
+    if (!longToOriginal.has(long)) longToOriginal.set(long, original);
+  }
+  const longForms = Array.from(longToOriginal.keys());
+
+  for (let i = 0; i < longForms.length; i += PRICE_LIST_CHUNK) {
+    const chunk = longForms.slice(i, i + PRICE_LIST_CHUNK);
     const tokenIds = encodeURIComponent(chunk.join(','));
     const url = `${BLOCKVISION_BASE}/coin/price/list?tokenIds=${tokenIds}&show24hChange=true`;
     let res: Response;
@@ -353,11 +376,15 @@ async function fetchPricesFromBlockVision(
     if (json.code !== 200 || !json.result) continue;
     const prices = json.result.prices ?? {};
     const changes = json.result.coin24HChange ?? {};
-    for (const [coinType, priceStr] of Object.entries(prices)) {
+    for (const [returnedType, priceStr] of Object.entries(prices)) {
       const price = parseNumberOrNull(priceStr);
       if (price == null) continue;
-      const change24h = parseNumberOrNull(changes[coinType]);
-      out[coinType] = change24h == null ? { price } : { price, change24h };
+      // BlockVision echoes whatever long form we sent. Map back to the
+      // caller's input string, falling through to the returned key for
+      // safety if BlockVision ever normalizes differently than we do.
+      const original = longToOriginal.get(returnedType) ?? returnedType;
+      const change24h = parseNumberOrNull(changes[returnedType]);
+      out[original] = change24h == null ? { price } : { price, change24h };
     }
   }
   return out;
