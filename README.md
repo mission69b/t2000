@@ -34,10 +34,12 @@ Five t2000 packages give AI agents and developers everything they need to build 
 const agent = await T2000.create({ pin: process.env.T2000_PIN });
 
 await agent.send({ to: '0x...', amount: 50 });
-await agent.save({ amount: 100 });    // earn ~2–8% APY (auto-selects best rate)
-await agent.borrow({ amount: 20 });   // borrow against savings
-await agent.repay({ amount: 20 });    // repay debt
-await agent.withdraw({ amount: 50 }); // always returns USDC
+await agent.save({ amount: 100 });                       // USDC (default), best NAVI rate
+await agent.save({ amount: 100, asset: 'USDsui' });      // USDsui (v0.51.0+ strategic exception)
+await agent.borrow({ amount: 20 });                      // USDC against collateral
+await agent.borrow({ amount: 20, asset: 'USDsui' });     // USDsui debt
+await agent.repay({ amount: 20, asset: 'USDsui' });      // symmetry: USDsui debt → USDsui repay
+await agent.withdraw({ amount: 50 });                    // USDC (or pass asset for USDsui/legacy)
 await agent.swap({ from: 'SUI', to: 'USDC', amount: 10 });  // 20+ DEX routing
 await agent.stakeVSui({ amount: 5 }); // liquid staking → vSUI (~3-5% APY)
 ```
@@ -127,14 +129,14 @@ const agent = await T2000.create({ pin: process.env.T2000_PIN });
 | | `agent.send({ to, amount })` | Send USDC |
 | | `agent.receive({ amount?, memo? })` | Generate payment request with QR URI |
 | | `agent.history()` | Transaction log |
-| **Savings** | `agent.save({ amount })` | Deposit USDC to savings, earn APY |
-| | `agent.withdraw({ amount })` | Withdraw from savings (always USDC) |
+| **Savings** | `agent.save({ amount, asset? })` | Deposit USDC or USDsui to NAVI (v0.51.0+); `asset` defaults to USDC |
+| | `agent.withdraw({ amount, asset? })` | Withdraw from savings; `asset` defaults to USDC, also supports USDsui + legacy positions |
 | | `agent.earnings()` | Yield earned, daily rate |
 | **Swap** | `agent.swap({ from, to, amount })` | Swap any token pair (Cetus, 20+ DEXs) |
 | **Staking** | `agent.stakeVSui({ amount })` | Stake SUI → vSUI (VOLO, ~3-5% APY) |
 | | `agent.unstakeVSui({ amount })` | Unstake vSUI → SUI |
-| **Credit** | `agent.borrow({ amount })` | Borrow USDC against collateral |
-| | `agent.repay({ amount })` | Repay debt |
+| **Credit** | `agent.borrow({ amount, asset? })` | Borrow USDC or USDsui against collateral (v0.51.0+) |
+| | `agent.repay({ amount, asset? })` | Repay debt; pass `asset` to target a specific debt. **Symmetry enforced:** USDsui debt → USDsui repay (v0.51.1+) |
 | | `agent.healthFactor()` | Liquidation safety |
 | **Info** | `agent.rates()` | Current APYs |
 | | `agent.positions()` | Open DeFi positions |
@@ -192,10 +194,10 @@ t2000 receive --amount 25          Generate payment request with QR
 t2000 history                      Transaction history
 
 # Savings & DeFi
-t2000 save 50                      Earn yield (best rate)
-t2000 withdraw 25                  Withdraw savings (always USDC)
-t2000 borrow 10                    Borrow USDC against collateral
-t2000 repay 10                     Repay debt
+t2000 save 50 [--asset USDC|USDsui]    Earn yield (best rate; default USDC)
+t2000 withdraw 25 [--asset <symbol>]   Withdraw savings (default USDC)
+t2000 borrow 10 [--asset USDC|USDsui]  Borrow against collateral (default USDC)
+t2000 repay 10 [--asset USDC|USDsui]   Repay debt (must match borrow asset)
 t2000 swap 10 SUI for USDC        Swap any token (20+ DEXs)
 t2000 stake 5                      Stake SUI for vSUI (~3-5% APY)
 t2000 unstake all                  Unstake vSUI back to SUI

@@ -46,10 +46,10 @@ For other platforms, paste manually:
 | `t2000_services` | read | Discover MPP services, endpoints, and prices |
 | `t2000_pay` | write | Make a paid API request via MPP |
 | `t2000_send` | write | Send USDC |
-| `t2000_save` | write | Deposit to savings |
+| `t2000_save` | write | Deposit to NAVI savings — accepts `asset: 'USDC' \| 'USDsui'` (default USDC) |
 | `t2000_withdraw` | write | Withdraw from savings |
-| `t2000_borrow` | write | Borrow against collateral |
-| `t2000_repay` | write | Repay debt |
+| `t2000_borrow` | write | Borrow USDC or USDsui against collateral — accepts `asset: 'USDC' \| 'USDsui'` (default USDC) |
+| `t2000_repay` | write | Repay debt — accepts `asset: 'USDC' \| 'USDsui'` to target a specific debt. **Symmetry enforced:** USDsui debt → USDsui repay |
 | `t2000_claim_rewards` | write | Claim pending protocol rewards |
 | `t2000_contact_add` | write | Save a contact name → address |
 | `t2000_contact_remove` | write | Remove a saved contact |

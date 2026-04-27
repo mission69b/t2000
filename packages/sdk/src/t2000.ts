@@ -1101,7 +1101,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     };
   }
 
-  async repay(params: { amount: number | 'all'; protocol?: string }): Promise<RepayResult> {
+  async repay(params: { amount: number | 'all'; asset?: SupportedAsset; protocol?: string }): Promise<RepayResult> {
     this.enforcer.assertNotLocked();
     const allPositions = await this.registry.allPositions(this._address);
     const borrows: Array<{ protocolId: string; asset: string; amount: number; apy: number }> = [];
@@ -1120,21 +1120,37 @@ export class T2000 extends EventEmitter<T2000Events> {
       return this._repayAllBorrows(borrows);
     }
 
-    borrows.sort((a, b) => b.apy - a.apy);
-    const target = borrows[0]!;
+    // [v0.51.1] Filter by params.asset when supplied. Pre-v0.51.1 we always
+    // sorted by APY and picked the highest-APY borrow regardless of asset —
+    // which broke USDsui repayment because `target` could be any asset and
+    // we'd then fetch USDC coins for it (type mismatch). When the caller
+    // names an asset, only that asset's borrows are eligible.
+    const eligible = params.asset
+      ? borrows.filter((b) => b.asset === params.asset)
+      : borrows;
+    if (eligible.length === 0) {
+      throw new T2000Error('NO_COLLATERAL', `No outstanding ${params.asset} borrow to repay`);
+    }
+    eligible.sort((a, b) => b.apy - a.apy);
+    const target = eligible[0]!;
     const adapter = this.registry.getLending(target.protocolId);
     if (!adapter) throw new T2000Error('PROTOCOL_UNAVAILABLE', `Protocol ${target.protocolId} not found`);
 
     const repayAmount = Math.min(params.amount, target.amount);
+    // [v0.51.1] Resolve the borrowed asset's coin type instead of
+    // hardcoding USDC. Repaying a USDsui debt with a USDC coin would fail
+    // at NAVI (type mismatch) or worse, succeed against the wrong pool.
+    const targetAssetInfo = SUPPORTED_ASSETS[target.asset as SupportedAsset]
+      ?? SUPPORTED_ASSETS.USDC;
 
     const gasResult = await executeWithGas(this.client, this._signer, async () => {
       if (adapter.addRepayToTx) {
         const tx = new Transaction();
         tx.setSender(this._address);
-        const usdcCoins = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
-        if (usdcCoins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins');
-        const merged = this._mergeCoinsInTx(tx, usdcCoins);
-        const raw = BigInt(Math.floor(repayAmount * 10 ** SUPPORTED_ASSETS.USDC.decimals));
+        const coins = await this._fetchCoins(targetAssetInfo.type);
+        if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${targetAssetInfo.displayName} coins`);
+        const merged = this._mergeCoinsInTx(tx, coins);
+        const raw = BigInt(Math.floor(repayAmount * 10 ** targetAssetInfo.decimals));
         const [repayCoin] = tx.splitCoins(merged, [raw]);
         await adapter.addRepayToTx!(tx, this._address, repayCoin, target.asset);
         return tx;
@@ -1145,12 +1161,15 @@ export class T2000 extends EventEmitter<T2000Events> {
     });
 
     const hf = await adapter.getHealth(this._address);
-    this.emitBalanceChange('USDC', repayAmount, 'repay', gasResult.digest);
+    // [v0.51.1] Emit the actual asset, not always 'USDC'. Subscribers
+    // rely on this event to refresh balance UIs.
+    this.emitBalanceChange(target.asset, repayAmount, 'repay', gasResult.digest);
 
     return {
       success: true,
       tx: gasResult.digest,
       amount: repayAmount,
+      asset: target.asset,
       remainingDebt: hf.borrowed,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,
@@ -1174,16 +1193,26 @@ export class T2000 extends EventEmitter<T2000Events> {
         const tx = new Transaction();
         tx.setSender(this._address);
 
-        const usdcCoins = await this._fetchCoins(SUPPORTED_ASSETS.USDC.type);
-        let usdcMerged: TransactionObjectArgument | undefined;
-        if (usdcCoins.length > 0) {
-          usdcMerged = this._mergeCoinsInTx(tx, usdcCoins);
+        // [v0.51.1] Group borrows by asset; fetch + merge coins per asset.
+        // Pre-v0.51.1 we fetched USDC coins once and tried to repay every
+        // borrow (including USDsui) from the same merged USDC. That works
+        // when every borrow happens to be USDC; it silently breaks the
+        // moment USDsui (or any other allowed borrow asset) appears.
+        const assetMerged = new Map<string, TransactionObjectArgument>();
+        const uniqueAssets = Array.from(new Set(entries.map((e) => e.borrow.asset)));
+        for (const asset of uniqueAssets) {
+          const info = SUPPORTED_ASSETS[asset as SupportedAsset];
+          if (!info) throw new T2000Error('ASSET_NOT_SUPPORTED', `Cannot repay unknown asset: ${asset}`);
+          const coins = await this._fetchCoins(info.type);
+          if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', `No ${info.displayName} coins for repayment`);
+          assetMerged.set(asset, this._mergeCoinsInTx(tx, coins));
         }
 
         for (const { borrow, adapter } of entries) {
-          const raw = BigInt(Math.floor(borrow.amount * 10 ** SUPPORTED_ASSETS.USDC.decimals));
-          if (!usdcMerged) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC for repayment');
-          const [repayCoin] = tx.splitCoins(usdcMerged, [raw]);
+          const info = SUPPORTED_ASSETS[borrow.asset as SupportedAsset]!;
+          const merged = assetMerged.get(borrow.asset)!;
+          const raw = BigInt(Math.floor(borrow.amount * 10 ** info.decimals));
+          const [repayCoin] = tx.splitCoins(merged, [raw]);
           await adapter.addRepayToTx!(tx, this._address, repayCoin, borrow.asset);
           totalRepaid += borrow.amount;
         }
@@ -1202,12 +1231,18 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const firstAdapter = entries[0]?.adapter;
     const hf = firstAdapter ? await firstAdapter.getHealth(this._address) : { borrowed: 0 };
-    this.emitBalanceChange('USDC', totalRepaid, 'repay', gasResult.digest);
+    // [v0.51.1] Mixed-asset repay-all emits a 'repay' event per dominant
+    // asset (largest by amount). Single-asset case still fires correctly.
+    const dominantAsset = entries
+      .reduce((acc, e) => acc.amount >= e.borrow.amount ? acc : e.borrow, entries[0]?.borrow ?? { asset: 'USDC', amount: 0 })
+      .asset;
+    this.emitBalanceChange(dominantAsset, totalRepaid, 'repay', gasResult.digest);
 
     return {
       success: true,
       tx: gasResult.digest,
       amount: totalRepaid,
+      asset: dominantAsset,
       remainingDebt: hf.borrowed,
       gasCost: gasResult.gasCostSui,
       gasMethod: gasResult.gasMethod,

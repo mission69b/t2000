@@ -5,10 +5,10 @@ import { requireAgent } from './utils.js';
 export const withdrawTool = buildTool({
   name: 'withdraw',
   description:
-    'Withdraw from NAVI lending back to wallet. Defaults to USDC. Also supports withdrawing legacy positions (USDe, USDsui, SUI) if the user has them.',
+    'Withdraw from NAVI lending back to wallet. Defaults to USDC; also withdraws USDsui (the second active saveable stable). Legacy positions in other assets (USDe, SUI) can still be withdrawn if the user has them — but only USDC and USDsui are eligible to be re-deposited via save_deposit.',
   inputSchema: z.object({
     amount: z.number().positive(),
-    asset: z.string().optional().describe('Asset to withdraw (default: USDC). Legacy positions: USDe, USDsui, SUI'),
+    asset: z.string().optional().describe('Asset to withdraw (default: USDC). Active: USDsui. Legacy positions: USDe, SUI.'),
   }),
   jsonSchema: {
     type: 'object',
@@ -18,7 +18,7 @@ export const withdrawTool = buildTool({
       },
       asset: {
         type: 'string',
-        description: 'Asset to withdraw (default: USDC). Legacy positions: USDe, USDsui, SUI',
+        description: 'Asset to withdraw (default: USDC). Active: USDsui. Legacy positions: USDe, SUI.',
       },
     },
     required: ['amount'],

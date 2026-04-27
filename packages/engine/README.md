@@ -120,11 +120,11 @@ QueryEngine.submitMessage()
 
 | Tool | Description |
 |------|-------------|
-| `save_deposit` | Deposit **USDC** to savings (NAVI); non-USDC collateral must be swapped first |
-| `withdraw` | Withdraw from savings (optional `asset` for multi-asset withdrawals) |
+| `save_deposit` | Deposit **USDC or USDsui** to NAVI savings (v0.51.0+ strategic exception). Pass `asset: 'USDC' \| 'USDsui'`. Other tokens must be swapped first — never auto-chained. |
+| `withdraw` | Withdraw from savings (optional `asset` for multi-asset withdrawals; supports USDC, USDsui, plus legacy USDe / SUI positions) |
 | `send_transfer` | Send USDC to an address |
-| `borrow` | Borrow USDC against collateral |
-| `repay_debt` | Repay outstanding debt |
+| `borrow` | Borrow **USDC or USDsui** against collateral (v0.51.0+). Pass `asset: 'USDC' \| 'USDsui'`. |
+| `repay_debt` | Repay outstanding **USDC or USDsui** debt (v0.51.1+). Pass `asset` to target a specific debt; omit for highest-APY repay. **Repay symmetry is enforced:** USDsui debt MUST be repaid with USDsui. |
 | `claim_rewards` | Claim pending yield rewards |
 | `pay_api` | Pay for an API service via MPP |
 | `swap_execute` | Swap any token pair via Cetus Aggregator (20+ DEXs) |

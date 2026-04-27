@@ -141,11 +141,12 @@ All token metadata (type, decimals, symbol, optional tier) lives in a **single c
 
 | Tier | Symbols | Send | Save | Borrow | Swap |
 |------|---------|------|------|--------|------|
-| 1 | USDC | ✅ | ✅ (USDC only) | ✅ (USDC only) | ✅ |
+| 1 | USDC | ✅ | ✅ (USDC + USDsui) | ✅ (USDC + USDsui) | ✅ |
+| 1 | USDsui | ✅ | ✅ (strategic exception, v0.51.0+) | ✅ (strategic exception, v0.51.0+) | ✅ |
 | 2 | SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST | ✅ | — | — | ✅ |
 | Legacy | USDT, USDe, USDSUI | ✅ | — | — | ✅ |
 
-New **save** and **borrow** flows accept **USDC only** (SDK throws `INVALID_ASSET` if another asset is requested). **Withdraw** still supports legacy positions. Swap routing uses Cetus Aggregator V3 (with t2000 overlay fee — see Fees).
+**Save**, **borrow**, and **repay** flows accept **USDC + USDsui** (strategic exception added in v0.51.0; SDK throws `INVALID_ASSET` for any other asset). USDsui is the only other Sui-native stable with a productive NAVI pool; the canonical default remains USDC. **Withdraw** still supports legacy positions in any asset. **Repay symmetry (v0.51.1+):** a USDsui debt MUST be repaid with USDsui (and USDC debt with USDC) — the SDK fetches the matching coin type per borrow asset; the agent never auto-swaps to bridge between stables. Swap routing uses Cetus Aggregator V3 (with t2000 overlay fee — see Fees).
 
 Key SDK exports from `token-registry.ts`:
 - `COIN_REGISTRY` — full registry (`Record<string, CoinMeta>`)
@@ -156,7 +157,9 @@ Key SDK exports from `token-registry.ts`:
 - `TOKEN_MAP` — case-insensitive name → type mapping
 - Type constants: `SUI_TYPE`, `USDC_TYPE`, `USDT_TYPE`, `USDSUI_TYPE`, `ETH_TYPE`, `WAL_TYPE`, `IKA_TYPE`, `LOFI_TYPE`, `MANIFEST_TYPE`, etc.
 
-`STABLE_ASSETS` in `constants.ts` is **`['USDC']` only** (stable display and balance breakdowns).
+`STABLE_ASSETS` in `constants.ts` is **`['USDC']` only** — used for the "available cash" rollup in `queryBalance.available`. USDsui is exposed separately as `saveableUsdsui` on `balance_check` so the agent can keep the per-asset distinction when answering "how much can I save?".
+
+`OPERATION_ASSETS` in `constants.ts` is the **canonical allow-list** for save/borrow/repay/withdraw — `['USDC', 'USDsui']` for save + borrow; `'*'` (any asset) for withdraw + repay (the SDK enforces "repay with same coin type as the borrow" inside `T2000.repay()`). `assertAllowedAsset(op, asset)` is the runtime gate.
 
 Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 
@@ -171,10 +174,10 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
-| save | `t2000 save <amount>` | Deposits **USDC** to NAVI lending. Alias: `supply`. `amount` accepts `all`. |
+| save | `t2000 save <amount> [--asset USDC\|USDsui]` | Deposits **USDC or USDsui** to NAVI lending (default USDC, v0.51.1+ accepts `--asset USDsui`). Alias: `supply`. `amount` accepts `all`. |
 | withdraw | `t2000 withdraw <amount> [--asset TOKEN]` | Withdraws from NAVI lending. `amount` accepts `all`. `--asset` for specific token. |
-| borrow | `t2000 borrow <amount>` | USDC only |
-| repay | `t2000 repay <amount>` | Repays with USDC. `amount` accepts `all` |
+| borrow | `t2000 borrow <amount> [--asset USDC\|USDsui]` | Borrow USDC or USDsui (v0.51.1+ accepts `--asset USDsui`). |
+| repay | `t2000 repay <amount> [--asset USDC\|USDsui]` | Repay USDC or USDsui debt. Repay must use the same asset as the original borrow. `amount` accepts `all` (repays across all assets). |
 | pay | `t2000 pay <url>` | Options: `--method`, `--data`, `--header`, `--max-price`, `--timeout`, `--dry-run` |
 | history | `t2000 history` | Options: `--limit <n>` (default: 20) |
 | earnings | `t2000 earnings` | |

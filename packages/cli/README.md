@@ -150,11 +150,11 @@ t2000 init
 
 | Command | Description |
 |---------|-------------|
-| `t2000 save <amount> [--protocol <name>]` | Deposit USDC to savings (earn ~2–8% APY) |
-| `t2000 save all` | Deposit all available USDC (minus gas reserve) |
-| `t2000 withdraw <amount>` | Withdraw USDC from savings |
-| `t2000 borrow <amount>` | Borrow USDC against savings collateral |
-| `t2000 repay <amount>` | Repay outstanding debt in USDC. Use `repay all` for full repayment. |
+| `t2000 save <amount> [--asset USDC\|USDsui] [--protocol <name>]` | Deposit USDC or USDsui to NAVI savings (earn ~2–8% APY). `--asset` defaults to USDC. |
+| `t2000 save all [--asset USDC\|USDsui]` | Deposit full available balance of the chosen asset (minus 1.0 reserve) |
+| `t2000 withdraw <amount> [--asset <symbol>]` | Withdraw from NAVI savings (default USDC; pass `--asset USDsui` for USDsui positions) |
+| `t2000 borrow <amount> [--asset USDC\|USDsui]` | Borrow USDC or USDsui against savings collateral (v0.51.1+) |
+| `t2000 repay <amount> [--asset USDC\|USDsui]` | Repay debt. Must use the same asset as the original borrow (USDsui debt → USDsui repay). Use `repay all` to clear all outstanding debts across both stables. |
 | `t2000 health` | Check savings health factor |
 | `t2000 rates` | Best save/borrow APYs across protocols (USDC) |
 | `t2000 positions` | Open savings & borrow positions across all assets |

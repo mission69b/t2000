@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { T2000Error } from '@t2000/sdk';
 import { saveDepositTool } from '../tools/save.js';
 import { borrowTool } from '../tools/borrow.js';
+import { repayDebtTool } from '../tools/repay.js';
 
 // [v0.51.0] save_deposit and borrow now accept USDC OR USDsui (strategic
 // exception — see .cursor/rules/savings-usdc-only.mdc). Every other asset must
@@ -118,6 +119,44 @@ describe('borrow tool', () => {
     expect(props.asset).toBeDefined();
     expect(props.asset.enum).toEqual(['USDC', 'USDsui']);
     const required = (borrowTool.jsonSchema.required ?? []) as string[];
+    expect(required).not.toContain('asset');
+  });
+});
+
+// [v0.51.1] repay_debt now accepts asset='USDC'|'USDsui'. The SDK fetches the
+// correct coin type for the targeted asset — pre-v0.51.1 it hardcoded USDC,
+// which silently broke USDsui repayment. Same allow-list semantics as save +
+// borrow.
+describe('repay_debt tool', () => {
+  it('description names both repayable assets and the symmetry rule', () => {
+    expect(repayDebtTool.description).toContain('USDC or USDsui');
+    expect(repayDebtTool.description).toContain('USDsui debt MUST be repaid with USDsui');
+    expect(repayDebtTool.description).toContain('do NOT auto-swap');
+  });
+
+  it('runtime preflight rejects USDT', async () => {
+    const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
+    const result = repayDebtTool.preflight?.(badInput);
+    expect(result?.valid).toBe(false);
+    if (result && !result.valid) expect(result.error).toContain('USDC or USDsui');
+  });
+
+  it('preflight accepts USDC, USDsui, and omitted asset', () => {
+    expect(repayDebtTool.preflight?.({ amount: 10, asset: 'USDC' })).toEqual({ valid: true });
+    expect(repayDebtTool.preflight?.({ amount: 10, asset: 'USDsui' })).toEqual({ valid: true });
+    expect(repayDebtTool.preflight?.({ amount: 10 })).toEqual({ valid: true });
+  });
+
+  it('is a write tool with confirm permission', () => {
+    expect(repayDebtTool.isReadOnly).toBe(false);
+    expect(repayDebtTool.permissionLevel).toBe('confirm');
+  });
+
+  it('asset parameter is optional in schema and enum-constrained', () => {
+    const props = repayDebtTool.jsonSchema.properties as Record<string, { type?: string; description?: string; enum?: string[] }>;
+    expect(props.asset).toBeDefined();
+    expect(props.asset.enum).toEqual(['USDC', 'USDsui']);
+    const required = (repayDebtTool.jsonSchema.required ?? []) as string[];
     expect(required).not.toContain('asset');
   });
 });

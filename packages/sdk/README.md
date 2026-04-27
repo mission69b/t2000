@@ -92,10 +92,10 @@ const agent = T2000.fromPrivateKey('suiprivkey1q...');
 | `agent.balance()` | Available USDC + savings + gas reserve | `BalanceResponse` |
 | `agent.send({ to, amount, asset? })` | Transfer USDC to any Sui address | `SendResult` |
 | `agent.receive({ amount?, currency?, memo?, label? })` | Generate payment request with Payment Kit URI (`sui:pay?...`), nonce for duplicate prevention | `PaymentRequest` |
-| `agent.save({ amount, protocol? })` | Deposit **USDC** to savings (earn APY). Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
-| `agent.withdraw({ amount, asset? })` | Withdraw from savings. `amount` can be `'all'`. Optional `asset` for multi-asset withdrawals (default: USDC). | `WithdrawResult` |
-| `agent.borrow({ amount })` | Borrow USDC against collateral | `BorrowResult` |
-| `agent.repay({ amount })` | Repay outstanding debt in USDC. `amount` can be `'all'`. | `RepayResult` |
+| `agent.save({ amount, asset?, protocol? })` | Deposit **USDC or USDsui** to NAVI savings (v0.51.0+). `asset` defaults to `'USDC'`. Auto-selects best rate or specify `protocol`. `amount` can be `'all'`. | `SaveResult` |
+| `agent.withdraw({ amount, asset? })` | Withdraw from savings. `amount` can be `'all'`. Optional `asset` (default: USDC; also supports USDsui plus legacy USDe / SUI). | `WithdrawResult` |
+| `agent.borrow({ amount, asset? })` | Borrow **USDC or USDsui** against collateral (v0.51.0+). `asset` defaults to `'USDC'`. | `BorrowResult` |
+| `agent.repay({ amount, asset? })` | Repay outstanding **USDC or USDsui** debt (v0.51.1+). Pass `asset` to target a specific debt; omit for highest-APY repay. **Symmetry enforced:** USDsui debt is repaid with USDsui coins (and USDC with USDC). `amount` can be `'all'`. | `RepayResult` |
 | `agent.swap({ from, to, amount, slippage? })` | Swap tokens via Cetus Aggregator (20+ DEXs). User-friendly names or full coin types. | `SwapResult` |
 | `agent.stakeVSui({ amount })` | Stake SUI for vSUI via VOLO liquid staking (min 1 SUI) | `StakeVSuiResult` |
 | `agent.unstakeVSui({ amount })` | Unstake vSUI back to SUI. `amount` can be `'all'`. | `UnstakeVSuiResult` |
@@ -263,11 +263,11 @@ Options like `pin`, `keyPath`, and `rpcUrl` are passed directly to `T2000.create
 
 Token metadata and **tiers** live in `token-registry.ts` (`COIN_REGISTRY`). **17 tokens** total:
 
-- **Tier 1:** USDC — save, borrow, send, swap.
+- **Tier 1 (saveable / borrowable):** USDC, USDsui — save, borrow, send, swap. USDsui is a strategic exception (v0.51.0+) because NAVI runs a separate USDsui pool that often quotes a different APY than USDC. Repay symmetry is enforced (USDsui debt → USDsui repay).
 - **Tier 2 (15):** SUI, wBTC, ETH, GOLD, DEEP, WAL, NS, IKA, CETUS, NAVX, vSUI, haSUI, afSUI, LOFI, MANIFEST — send and swap only (not for new save/borrow deposits).
 - **Legacy (no tier):** USDT, USDe, USDSUI — display and withdraw of existing positions; still send/swap where applicable.
 
-Six tokens were removed from the registry (FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS). **`STABLE_ASSETS`** is `['USDC']` only.
+Six tokens were removed from the registry (FDUSD, AUSD, BUCK, BLUB, SCA, TURBOS). `STABLE_ASSETS = ['USDC']` (the canonical USD unit for balance aggregation), but **`OPERATION_ASSETS.save` and `OPERATION_ASSETS.borrow` accept both `'USDC'` and `'USDsui'`** (v0.51.0+). Use `isAllowedAsset(op, asset)` / `assertAllowedAsset(op, asset)` to validate.
 
 ```typescript
 import {

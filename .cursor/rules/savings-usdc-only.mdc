@@ -34,14 +34,15 @@ Must include a "Savings = USDC or USDsui" section that tells the LLM:
 - When asked "how much can I save?", report `saveableUsdc` plus the user's USDsui wallet balance, separately
 - USDsui pool APY can differ from USDC; if user asks "best stable to save", call `rates_info` to compare
 
-## save_deposit + borrow tools
+## save_deposit + borrow + repay_debt tools
 
 Description must:
-- Accept `asset: 'USDC' | 'USDsui'` (default `'USDC'` when omitted)
+- Accept `asset: 'USDC' | 'USDsui'` (default `'USDC'` when omitted, except `repay_debt` where omitting means "highest-APY borrow")
 - Reject every other asset with a clear error
-- Explicitly forbid auto-chaining swap + deposit (the user decides which stable to save)
+- Explicitly forbid auto-chaining swap + deposit / swap + repay (the user decides which stable to save or repay)
 - For "save 10 USDC" — execute as USDC. For "save 10 USDsui" — execute as USDsui. Never silently substitute.
 - For "save 10" (no asset specified) — call `balance_check` first, then ask the user which stable they want (or default to whichever they hold more of, with a one-line explanation).
+- **Repay symmetry (v0.51.1+):** A USDsui debt MUST be repaid with USDsui (and USDC debt with USDC). The SDK fetches the correct coin type for the targeted asset, but the user must hold enough of that stable. If they hold only the wrong stable, tell them to swap manually first — never auto-chain.
 
 ## Adding new assets
 

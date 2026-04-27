@@ -14,20 +14,25 @@ metadata:
 # t2000: Save (Deposit to Savings)
 
 ## Purpose
-Deposit USDC into savings to earn yield on NAVI Protocol. Funds remain non-custodial and
-withdrawable at any time.
+Deposit **USDC or USDsui** into savings to earn yield on NAVI Protocol. Funds remain non-custodial and
+withdrawable at any time. USDsui is permitted as a strategic exception (v0.51.0+) because it has
+its own NAVI pool, often at a different APY than USDC. Every other token (GOLD, SUI, USDT, USDe,
+ETH, NAVX, WAL) is **not saveable** — swap to USDC or USDsui first.
 
 ## Command
 ```bash
-t2000 save <amount>
-t2000 save all
+t2000 save <amount> [--asset USDC|USDsui]
+t2000 save all [--asset USDC|USDsui]
 
 # Examples:
-t2000 save 80
-t2000 save all
+t2000 save 80                    # 80 USDC (default)
+t2000 save 80 --asset USDsui     # 80 USDsui
+t2000 save all                   # full USDC balance (minus $1 gas reserve)
+t2000 save all --asset USDsui    # full USDsui balance (minus 1.0 reserve)
 ```
 
-- `save all`: deposits full available USDC minus $1 reserve for gas
+- `save all`: deposits full available balance of the chosen asset minus 1.0 of that asset for safety
+- `--asset` defaults to USDC when omitted
 
 ## Fees
 - Protocol fee: 0.1% on deposit (collected atomically on-chain)
@@ -35,13 +40,14 @@ t2000 save all
 ## Output
 ```
 ✓ Gas manager: $1.00 USDC → SUI          [only shown if auto-topup triggered]
-✓ Saved $XX.XX USDC to best rate
+✓ Saved $XX.XX <asset> to best rate
 ✓ Current APY: X.XX%
-✓ Savings balance: $XX.XX USDC
+✓ Savings balance: $XX.XX <asset>
   Tx: https://suiscan.xyz/mainnet/tx/0x...
 ```
 
 ## Notes
-- APY is variable based on protocol utilization
-- If available balance is $0 after gas conversion, returns INSUFFICIENT_BALANCE
+- APY is variable based on protocol utilization (USDC and USDsui pools quote independently)
+- If available balance of the chosen asset is too low, returns INSUFFICIENT_BALANCE
 - `t2000 supply` is an alias for `t2000 save`
+- **Repay symmetry (v0.51.1+):** if you borrow USDsui, you must repay with USDsui (and USDC borrows must repay with USDC) — the SDK fetches the matching coin type per borrow asset.

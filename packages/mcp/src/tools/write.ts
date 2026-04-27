@@ -74,18 +74,24 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_save',
-    'Deposit USDC into NAVI lending to earn yield. Amount is in USDC. Use "all" to save entire available balance. Set dryRun: true to preview.',
+    'Deposit USDC or USDsui into NAVI lending to earn yield. Pass asset="USDC" (default) or asset="USDsui". Use "all" to save entire wallet balance of the chosen asset. Set dryRun: true to preview.',
     {
-      amount: z.union([z.number(), z.literal('all')]).describe('Amount of USDC to save, or "all"'),
+      amount: z.union([z.number(), z.literal('all')]).describe('Amount of the chosen asset to save, or "all"'),
+      asset: z.enum(['USDC', 'USDsui']).optional().describe('"USDC" or "USDsui". Defaults to USDC.'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
-    async ({ amount, dryRun }) => {
+    async ({ amount, asset, dryRun }) => {
       try {
+        const saveAsset = (asset ?? 'USDC') as 'USDC' | 'USDsui';
         if (dryRun) {
           agent.enforcer.assertNotLocked();
           const balance = await agent.balance();
           const rates = await agent.rates();
-          const saveAmount = amount === 'all' ? balance.available - 1.0 : amount;
+          // [v0.51.1] dryRun preview: balance.available is the USDC-only
+          // rollup, so for USDsui we estimate from the full balance object's
+          // savings + 0 cash floor. The actual save() call uses the
+          // per-asset balance query path inside the SDK.
+          const saveAmount = amount === 'all' ? Math.max(0, balance.available - 1.0) : amount;
 
           return {
             content: [{
@@ -93,15 +99,15 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
               text: JSON.stringify({
                 preview: true,
                 amount: saveAmount,
-                asset: 'USDC',
-                currentApy: rates.USDC?.saveApy ?? 0,
+                asset: saveAsset,
+                currentApy: rates[saveAsset]?.saveApy ?? 0,
                 savingsBalanceAfter: balance.savings + saveAmount,
               }),
             }],
           };
         }
 
-        const result = await mutex.run(() => agent.save({ amount }));
+        const result = await mutex.run(() => agent.save({ amount, asset: saveAsset }));
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
@@ -151,13 +157,15 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_borrow',
-    'Borrow USDC against savings collateral. Check health factor first — below 1.0 risks liquidation. Amount is in dollars. Set dryRun: true to preview.',
+    'Borrow USDC or USDsui against savings collateral. Pass asset="USDC" (default) or asset="USDsui". Check health factor first — below 1.0 risks liquidation. Set dryRun: true to preview.',
     {
-      amount: z.number().describe('Dollar amount to borrow'),
+      amount: z.number().describe('Amount to borrow (in units of the chosen asset)'),
+      asset: z.enum(['USDC', 'USDsui']).optional().describe('"USDC" or "USDsui". Defaults to USDC.'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
-    async ({ amount, dryRun }) => {
+    async ({ amount, asset, dryRun }) => {
       try {
+        const borrowAsset = (asset ?? 'USDC') as 'USDC' | 'USDsui';
         if (dryRun) {
           agent.enforcer.assertNotLocked();
           const health = await agent.healthFactor();
@@ -169,6 +177,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
               text: JSON.stringify({
                 preview: true,
                 amount,
+                asset: borrowAsset,
                 maxBorrow: maxBorrow.maxAmount,
                 currentHealthFactor: health.healthFactor,
                 estimatedHealthFactorAfter: maxBorrow.healthFactorAfter,
@@ -177,7 +186,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
           };
         }
 
-        const result = await mutex.run(() => agent.borrow({ amount }));
+        const result = await mutex.run(() => agent.borrow({ amount, asset: borrowAsset }));
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);
@@ -187,19 +196,21 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
 
   server.tool(
     't2000_repay',
-    'Repay borrowed USDC. Amount is in dollars. Use "all" to repay entire debt. Set dryRun: true to preview.',
+    'Repay borrowed USDC or USDsui. Pass asset="USDC" or asset="USDsui" to target a specific debt; omit to repay the highest-APY borrow. Use "all" to repay entire debt across all assets. Set dryRun: true to preview.',
     {
-      amount: z.union([z.number(), z.literal('all')]).describe('Dollar amount to repay, or "all"'),
+      amount: z.union([z.number(), z.literal('all')]).describe('Amount to repay (in units of the chosen asset), or "all"'),
+      asset: z.enum(['USDC', 'USDsui']).optional().describe('"USDC" or "USDsui". When omitted, repays the highest-APY borrow first.'),
       dryRun: z.boolean().optional().describe('Preview without signing (default: false)'),
     },
-    async ({ amount, dryRun }) => {
+    async ({ amount, asset, dryRun }) => {
       try {
+        const repayAsset = asset as 'USDC' | 'USDsui' | undefined;
         if (dryRun) {
           agent.enforcer.assertNotLocked();
           const health = await agent.healthFactor();
           const positions = await agent.positions();
           const totalDebt = positions.positions
-            .filter(p => p.type === 'borrow')
+            .filter(p => p.type === 'borrow' && (!repayAsset || p.asset === repayAsset))
             .reduce((sum, p) => sum + p.amount, 0);
 
           return {
@@ -208,6 +219,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
               text: JSON.stringify({
                 preview: true,
                 amount: amount === 'all' ? totalDebt : amount,
+                asset: repayAsset ?? 'auto',
                 currentDebt: totalDebt,
                 currentHealthFactor: health.healthFactor,
               }),
@@ -215,7 +227,7 @@ export function registerWriteTools(server: McpServer, agent: T2000): void {
           };
         }
 
-        const result = await mutex.run(() => agent.repay({ amount }));
+        const result = await mutex.run(() => agent.repay({ amount, asset: repayAsset }));
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       } catch (err) {
         return errorResult(err);

@@ -75,6 +75,8 @@ export interface RepayResult {
   success: boolean;
   tx: string;
   amount: number;
+  /** [v0.51.1] Asset repaid — 'USDC' or 'USDsui'. Optional for backward compat. */
+  asset?: string;
   remainingDebt: number;
   gasCost: number;
   gasMethod: GasMethod;

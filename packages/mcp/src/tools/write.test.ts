@@ -194,7 +194,14 @@ describe('write tools', () => {
       const result = await handler({ amount: 50 });
       const data = JSON.parse(result.content[0].text);
       expect(data.success).toBe(true);
-      expect(agent.save).toHaveBeenCalledWith({ amount: 50 });
+      // [v0.51.1] save now defaults asset='USDC' (vs prior implicit hardcode)
+      expect(agent.save).toHaveBeenCalledWith({ amount: 50, asset: 'USDC' });
+    });
+
+    it('should pass asset=USDsui when supplied', async () => {
+      const handler = tools.get('t2000_save')!;
+      await handler({ amount: 50, asset: 'USDsui' });
+      expect(agent.save).toHaveBeenCalledWith({ amount: 50, asset: 'USDsui' });
     });
   });
 
@@ -226,7 +233,14 @@ describe('write tools', () => {
     it('should execute borrow', async () => {
       const handler = tools.get('t2000_borrow')!;
       await handler({ amount: 2 });
-      expect(agent.borrow).toHaveBeenCalledWith({ amount: 2 });
+      // [v0.51.1] borrow now defaults asset='USDC'
+      expect(agent.borrow).toHaveBeenCalledWith({ amount: 2, asset: 'USDC' });
+    });
+
+    it('should pass asset=USDsui when supplied', async () => {
+      const handler = tools.get('t2000_borrow')!;
+      await handler({ amount: 2, asset: 'USDsui' });
+      expect(agent.borrow).toHaveBeenCalledWith({ amount: 2, asset: 'USDsui' });
     });
   });
 
@@ -236,6 +250,18 @@ describe('write tools', () => {
       const result = await handler({ amount: 2, dryRun: true });
       const data = JSON.parse(result.content[0].text);
       expect(data.preview).toBe(true);
+    });
+
+    it('should pass asset=USDsui when supplied', async () => {
+      const handler = tools.get('t2000_repay')!;
+      await handler({ amount: 2, asset: 'USDsui' });
+      expect(agent.repay).toHaveBeenCalledWith({ amount: 2, asset: 'USDsui' });
+    });
+
+    it('should default asset to undefined (auto highest-APY) when omitted', async () => {
+      const handler = tools.get('t2000_repay')!;
+      await handler({ amount: 2 });
+      expect(agent.repay).toHaveBeenCalledWith({ amount: 2, asset: undefined });
     });
   });
 
