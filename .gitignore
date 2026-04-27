@@ -35,13 +35,10 @@ packages/contracts/build/
 # infra generated
 infra/.env.infra
 
-# specs — private working notes by default; explicit allowlist for canonical + archive
-spec/*
-!spec/archive/
-!spec/PRODUCT_SPEC.md
-!spec/COMMERCE_V2.md
-!spec/SELF_HOSTED_LLM_STRATEGY.md
-!spec/UPSTREAM_WORKAROUNDS.md
+# specs — fully private as of S.23 (2026-04-27). Working notes + canonical specs
+# both live locally only. Public canonical surface is README + CLAUDE +
+# PRODUCT_FACTS + ARCHITECTURE; spec/ holds the deeper unreleased detail.
+spec/
 
 # marketing — wiped in S.20; ignore by default in case someone recreates locally
 marketing/
@@ -52,6 +49,16 @@ audric-raise-strategy.canvas.tsx
 audric-litepaper.html
 AUDRIC_LITEPAPER.md
 AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md
+
+# private working docs (S.23 2026-04-27 repo privacy sweep) — kept locally,
+# untracked from the public mirror. See audric-build-tracker.md S.23 entry
+# (itself private now) for rationale.
+audric-build-tracker.md
+audric-roadmap.md
+AUDIT_FINDINGS.md
+AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md
+CLI_UX_SPEC.md
+article-trust-layer.md
 
 # MCP registry tokens
 .mcpregistry_*
