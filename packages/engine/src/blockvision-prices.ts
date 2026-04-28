@@ -502,7 +502,7 @@ const DEFI_PROTOCOLS = [
   'suistake',
   'walrus',
 ] as const;
-type DefiProtocol = (typeof DEFI_PROTOCOLS)[number];
+export type DefiProtocol = (typeof DEFI_PROTOCOLS)[number];
 
 // Implied coin types for protocols whose response shape buries the coin
 // identity in the protocol's own conventions (no `coinType` field).

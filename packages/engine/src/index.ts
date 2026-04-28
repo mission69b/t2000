@@ -243,6 +243,7 @@ export type { WalletCoin, SuiCoinBalance } from './sui-rpc.js';
 // extracts the `.price` field for its prompt-time price block.
 export {
   fetchAddressPortfolio,
+  fetchAddressDefiPortfolio,
   fetchTokenPrices,
   clearPortfolioCache,
   clearPortfolioCacheFor,
@@ -251,6 +252,8 @@ export {
 export type {
   AddressPortfolio,
   PortfolioCoin,
+  DefiSummary,
+  DefiProtocol,
 } from './blockvision-prices.js';
 
 // [single-source-of-truth — Apr 2026] Audric canonical-API client.
