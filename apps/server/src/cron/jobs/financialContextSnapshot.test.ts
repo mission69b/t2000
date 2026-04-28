@@ -39,7 +39,7 @@ describe('runFinancialContextSnapshot — sharding', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(4);
 
-    const urls = mockFetch.mock.calls.map(([url]: [string]) => url as string);
+    const urls = mockFetch.mock.calls.map((call) => call[0] as string);
     expect(urls).toContain('https://test.audric.ai/api/internal/financial-context-snapshot?shard=0&total=4');
     expect(urls).toContain('https://test.audric.ai/api/internal/financial-context-snapshot?shard=1&total=4');
     expect(urls).toContain('https://test.audric.ai/api/internal/financial-context-snapshot?shard=2&total=4');
@@ -135,7 +135,7 @@ describe('runFinancialContextSnapshot — sharding', () => {
 
     await runFinancialContextSnapshot();
 
-    const urls = mockFetch.mock.calls.map(([url]: [string]) => url as string);
+    const urls = mockFetch.mock.calls.map((call) => call[0] as string);
     expect(urls[0]).toContain('https://audric.ai/api/internal/financial-context-snapshot');
   });
 });
