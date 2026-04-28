@@ -538,6 +538,13 @@ interface DefiCacheEntry {
 const defiCache = new Map<string, DefiCacheEntry>();
 const defiInflight = new Map<string, Promise<DefiSummary>>();
 
+// Warn-once gate so we don't spam logs every time `balance_check` runs in a
+// misconfigured environment. The first request that hits the missing-key
+// guard logs a loud, scannable warning; subsequent requests stay quiet.
+// Reset on process restart, which is fine — the next deploy logs again
+// until the operator sets the key.
+let warnedMissingApiKey = false;
+
 interface BlockVisionDefiResponse {
   code: number;
   message: string;
@@ -550,6 +557,17 @@ export async function fetchAddressDefiPortfolio(
   priceHints: Record<string, number> = {},
 ): Promise<DefiSummary> {
   if (!apiKey || apiKey.trim().length === 0) {
+    if (!warnedMissingApiKey) {
+      warnedMissingApiKey = true;
+      // Loud, single-line warning so it's grep-able in log explorers.
+      // BLOCKVISION_API_KEY missing OR empty string ("") — both produce
+      // identical silent-zero behavior, which the v0.50 fix-it pass after
+      // the audric-roadmap S.18 work surfaced as a class of bug
+      // (env var present in Vercel but blank → degraded forever).
+      console.warn(
+        '[defi] BLOCKVISION_API_KEY missing or empty — DeFi positions will report $0 across all protocols. Set the key in your runtime env to enable Bluefin/Suilend/Cetus/etc. aggregation.',
+      );
+    }
     return { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };
   }
 

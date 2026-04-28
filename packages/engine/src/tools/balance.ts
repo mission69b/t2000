@@ -381,9 +381,27 @@ export const balanceCheckTool = buildTool({
       const subjectPrefix = isSelfQuery
         ? 'Balance'
         : `Balance for ${address.slice(0, 6)}…${address.slice(-4)}`;
-      const defiSummaryText = defi.totalUsd > 0
-        ? ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}.`
-        : '';
+      // Surface the DeFi fetch state so the LLM can answer accurately:
+      //   - `blockvision` + total > 0  → list protocols and dollar value
+      //   - `blockvision` + total === 0 → genuinely no positions in the 9 covered protocols
+      //   - `partial`                  → at least one protocol failed; total may under-count
+      //   - `degraded`                 → no API key OR every protocol failed; total UNKNOWN, not zero
+      // Pre-v0.50.3 we silently emitted `''` for zero/degraded, which let
+      // the LLM confidently assert "no DeFi positions" when in reality the
+      // fetcher had been short-circuited by a missing BLOCKVISION_API_KEY.
+      const defiSummaryText = (() => {
+        if (defi.source === 'degraded') {
+          return ' DeFi positions (Bluefin / Suilend / Cetus / etc.): UNAVAILABLE — DeFi data source is currently unreachable. Do NOT assert "no DeFi positions"; tell the user this slice is temporarily unknown.';
+        }
+        if (defi.totalUsd > 0) {
+          const partialNote = defi.source === 'partial' ? ' (partial — one or more protocols failed; value may under-count)' : '';
+          return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}${partialNote}.`;
+        }
+        if (defi.source === 'partial') {
+          return ' DeFi positions: $0 across the protocols that responded, but at least one protocol failed — caveat that the picture may be incomplete.';
+        }
+        return '';
+      })();
       const saveableSummary = saveableUsdsui > 0
         ? `Saveable: ${saveableUsdc.toFixed(2)} USDC + ${saveableUsdsui.toFixed(saveableUsdsui < 1 ? 4 : 2)} USDsui (only USDC and USDsui can be saved/borrowed).`
         : `Saveable USDC (only USDC and USDsui can be saved): ${saveableUsdc.toFixed(2)} USDC.`;
@@ -441,9 +459,19 @@ export const balanceCheckTool = buildTool({
     const usdsuiHolding = holdingsArr.find((h: { symbol?: string }) => h.symbol === 'USDsui');
     const sdkSaveableUsdsui = usdsuiHolding ? ((usdsuiHolding as { balance?: number }).balance ?? 0) : 0;
 
-    const sdkDefiSummaryText = defi.totalUsd > 0
-      ? ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}.`
-      : '';
+    const sdkDefiSummaryText = (() => {
+      if (defi.source === 'degraded') {
+        return ' DeFi positions: UNAVAILABLE — data source unreachable. Do NOT claim "no DeFi positions"; report this slice as temporarily unknown.';
+      }
+      if (defi.totalUsd > 0) {
+        const partialNote = defi.source === 'partial' ? ' (partial — one or more protocols failed; value may under-count)' : '';
+        return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}${partialNote}.`;
+      }
+      if (defi.source === 'partial') {
+        return ' DeFi positions: $0 across the protocols that responded, but at least one protocol failed — caveat that the picture may be incomplete.';
+      }
+      return '';
+    })();
     const sdkTotal = balance.total + defi.totalUsd;
 
     return {

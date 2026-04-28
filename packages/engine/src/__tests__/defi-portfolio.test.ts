@@ -95,6 +95,31 @@ describe('[v0.50] fetchAddressDefiPortfolio', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  // [v0.50.3] Regression: production Vercel env had `BLOCKVISION_API_KEY=""`
+  // (literal empty string, not unset). The original guard `if (!apiKey)` did
+  // catch empty strings, but only because empty string is falsy in JS — the
+  // intent was easy to break. This test pins the behavior so a future
+  // refactor (e.g. tightening the type to `string`) can't regress it.
+  it('1a) returns degraded summary with totalUsd=0 when apiKey is empty string', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const summary = await fetchAddressDefiPortfolio(ADDRESS, '');
+    expect(summary.totalUsd).toBe(0);
+    expect(summary.source).toBe('degraded');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('1b) returns degraded summary with totalUsd=0 when apiKey is whitespace only', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const summary = await fetchAddressDefiPortfolio(ADDRESS, '   ');
+    expect(summary.totalUsd).toBe(0);
+    expect(summary.source).toBe('degraded');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('2) fans out across the 9 configured protocols, excluding NAVI', async () => {
     const seenProtocols: string[] = [];
     const fetchMock = vi.fn(async (input: FetchInput) => {
