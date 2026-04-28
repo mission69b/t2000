@@ -30,6 +30,7 @@ import {
   fetchAddressDefiPortfolio,
   clearDefiCache,
   clearPriceMapCache,
+  _resetBlockVisionCircuitBreaker,
   type DefiSummary,
 } from '../blockvision-prices.js';
 import {
@@ -50,6 +51,7 @@ beforeEach(async () => {
   resetDefiCacheStore();
   await clearDefiCache();
   clearPriceMapCache();
+  _resetBlockVisionCircuitBreaker();
 });
 
 afterEach(() => {

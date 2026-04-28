@@ -3,6 +3,7 @@ import {
   fetchAddressDefiPortfolio,
   clearDefiCache,
   clearPriceMapCache,
+  _resetBlockVisionCircuitBreaker,
 } from '../blockvision-prices.js';
 
 /**
@@ -56,6 +57,11 @@ const realFetch = globalThis.fetch;
 beforeEach(async () => {
   await clearDefiCache();
   clearPriceMapCache();
+  // [v0.54.2] Reset BlockVision circuit-breaker state so 429 floods
+  // from a sibling test file don't leave the breaker open and
+  // suppress retries for tests in this file (which assert exact
+  // BV call counts that depend on retry being active).
+  _resetBlockVisionCircuitBreaker();
 });
 
 afterEach(() => {
@@ -563,11 +569,23 @@ describe('[v0.53.3] fetchAddressDefiPortfolio — cache poisoning regression', (
     expect(first.source).toBe('degraded');
     expect(first.totalUsd).toBe(0);
     const callsAfterFirst = callCount;
-    expect(callsAfterFirst).toBe(ALL_PROTOCOLS.length); // 9 protocols hit
+    // [v0.54.2] BV retry wrapper retries 429s up to 3 times PER
+    // protocol, but the process-local circuit breaker opens after
+    // 10 cumulative 429s in a 5s window to prevent amplifying load
+    // on a real upstream outage. Promise.allSettled fires all 9
+    // protocols concurrently — round 1 produces 9 429s (CB still
+    // closed), round 2 produces 9 more (CB opens at the 10th).
+    // Each protocol then bails on round 3 because CB is open.
+    // Net: 9 × 2 = 18 BV calls, not 9 × 3 = 27.
+    expect(callsAfterFirst).toBe(ALL_PROTOCOLS.length * 2);
 
     // Second call within the TTL window. Pre-fix this returned the
     // cached degraded summary without hitting the network. Post-fix
     // it must re-attempt upstream because degraded was not cached.
+    // CB is still open from the first call, so the second call gets
+    // exactly 1 attempt per protocol (no retry). Net additional
+    // calls: 9. This is the SCALING WIN of the breaker — under a
+    // sustained outage, retry traffic is suppressed entirely.
     const second = await fetchAddressDefiPortfolio(ADDRESS, 'k');
     expect(second.source).toBe('degraded');
     expect(callCount).toBe(callsAfterFirst + ALL_PROTOCOLS.length);
@@ -709,8 +727,17 @@ describe('[v0.53.3] fetchAddressPortfolio — cache poisoning regression', () =>
     expect(first.source).toBe('sui-rpc-degraded');
 
     const second = await f(ADDRESS, 'k', 'https://rpc.local');
-    // Within the 15s effective window — cache hit, no second BV call.
+    // Within the 15s effective window — cache hit, no further BV calls.
     expect(second).toBe(first);
-    expect(coinsCalls).toBe(1);
+    // [v0.54.2] BV retry wrapper retries up to 3 times on 429 before
+    // surfacing degraded. The wallet portfolio path is a single endpoint
+    // (not a 9-protocol fan-out), so all 3 attempts fire serially with
+    // no concurrent contribution to the circuit breaker — well below
+    // the 10-cumulative threshold. First user call → 3 BV attempts.
+    // Second call → 0 BV attempts (served from the degraded cache).
+    // Pre-retry this was `1`; the new behavior trades ~1s of additional
+    // latency on the bursting call for absorbing transient 429s before
+    // they cascade into wallet degradation across the whole tool stack.
+    expect(coinsCalls).toBe(3);
   });
 });

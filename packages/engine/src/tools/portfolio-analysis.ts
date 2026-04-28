@@ -151,12 +151,33 @@ export const portfolioAnalysisTool = buildTool({
             .then((res) => (res.ok ? res.json() as Promise<{ change?: WeekChange }> : null))
             .catch(() => null)
         : Promise.resolve(null),
-      // DeFi fetch — prefer the audric snapshot's already-computed value
-      // (when present and not 'degraded'), otherwise call the engine's
-      // direct aggregator. The 'degraded' check prevents the audric
-      // path from masking a useful direct read when the audric route's
-      // own DeFi field came back empty.
-      audricSnapshot && audricSnapshot.defiSource !== 'degraded'
+      // DeFi fetch — prefer the audric snapshot's already-computed
+      // value, but only when we can trust it. Two trust signals:
+      //   1. `source === 'blockvision'`  — fully successful fresh read
+      //      (even if value is 0, that's a confirmed empty position).
+      //   2. `defiValueUsd > 0`           — any positive value, regardless
+      //      of source. `partial-stale` with a positive total is fine,
+      //      `partial` with a positive total is the live equivalent.
+      //
+      // [Bug — 2026-04-28 round 2] Pre-fix the trust gate was
+      // `defiSource !== 'degraded'`, which let `partial + 0` through
+      // as authoritative. During a BlockVision 429 burst the audric
+      // host's `/api/portfolio` returns `partial + 0` (some protocols
+      // failed, the rest reported $0, no sticky-positive available
+      // *in that process*) — but the engine's direct fetcher in the
+      // chat route may have a sticky-positive in *this* Vercel
+      // instance's cache. Trusting audric's $0 silently dropped the
+      // DeFi line that `balance_check` (which always calls direct)
+      // showed correctly on the same turn — same SSOT-divergence bug
+      // class, manifested in a different layer.
+      //
+      // The new condition routes around audric's $0 in exactly that
+      // case. When the direct fetch ALSO returns $0 the answer is
+      // consistent across tools (both report degraded), which is the
+      // honest UX during a real outage.
+      (audricSnapshot &&
+        (audricSnapshot.defiSource === 'blockvision' ||
+          audricSnapshot.defiValueUsd > 0))
         ? Promise.resolve<DefiSummary>({
             totalUsd: audricSnapshot.defiValueUsd,
             perProtocol: {},
