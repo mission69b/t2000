@@ -1,6 +1,6 @@
 {
   "name": "@t2000/sdk",
-  "version": "0.53.4",
+  "version": "0.54.0",
   "description": "TypeScript SDK for AI agent bank accounts on Sui — send, save, borrow, swap. NAVI lending + Cetus aggregator routing, sponsored gas, zkLogin compatible.",
   "type": "module",
   "main": "./dist/index.cjs",
