@@ -391,14 +391,23 @@ export const balanceCheckTool = buildTool({
       // fetcher had been short-circuited by a missing BLOCKVISION_API_KEY.
       const defiSummaryText = (() => {
         if (defi.source === 'degraded') {
-          return ' DeFi positions (Bluefin / Suilend / Cetus / etc.): UNAVAILABLE — DeFi data source is currently unreachable. Do NOT assert "no DeFi positions"; tell the user this slice is temporarily unknown.';
+          return ' DeFi positions (Bluefin / Suilend / Cetus / etc.): UNAVAILABLE — DeFi data source is currently unreachable. Do NOT assert "no DeFi positions"; tell the user this slice is temporarily unknown and the total above EXCLUDES DeFi.';
         }
         if (defi.totalUsd > 0) {
           const partialNote = defi.source === 'partial' ? ' (partial — one or more protocols failed; value may under-count)' : '';
           return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}${partialNote}.`;
         }
         if (defi.source === 'partial') {
-          return ' DeFi positions: $0 across the protocols that responded, but at least one protocol failed — caveat that the picture may be incomplete.';
+          // [v0.53.4] Stronger wording. Pre-fix this returned a soft
+          // "caveat that the picture may be incomplete", which the
+          // LLM consistently dropped from its narration when at least
+          // one major protocol (Bluefin/Suilend/Cetus) 429'd during a
+          // burst. The narration would then claim "$X total" with NO
+          // mention of the missing slice, even when the same address
+          // 30s later (cache miss → fresh fetch) showed thousands of
+          // dollars in DeFi via the timeline canvas. Reworded to be
+          // an explicit instruction matching the `degraded` branch.
+          return ' DeFi positions: UNKNOWN — at least one protocol failed to respond. The total above EXCLUDES any DeFi the failing protocols may hold. Do NOT assert "no DeFi positions" or "DeFi: $0"; tell the user DeFi is temporarily unreachable for this address.';
         }
         return '';
       })();
@@ -461,14 +470,16 @@ export const balanceCheckTool = buildTool({
 
     const sdkDefiSummaryText = (() => {
       if (defi.source === 'degraded') {
-        return ' DeFi positions: UNAVAILABLE — data source unreachable. Do NOT claim "no DeFi positions"; report this slice as temporarily unknown.';
+        return ' DeFi positions: UNAVAILABLE — data source unreachable. Do NOT claim "no DeFi positions"; report this slice as temporarily unknown and the total above EXCLUDES DeFi.';
       }
       if (defi.totalUsd > 0) {
         const partialNote = defi.source === 'partial' ? ' (partial — one or more protocols failed; value may under-count)' : '';
         return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}${partialNote}.`;
       }
       if (defi.source === 'partial') {
-        return ' DeFi positions: $0 across the protocols that responded, but at least one protocol failed — caveat that the picture may be incomplete.';
+        // [v0.53.4] Mirror of the MCP-path strengthening — see the
+        // companion comment ~70 lines up for full rationale.
+        return ' DeFi positions: UNKNOWN — at least one protocol failed to respond. The total above EXCLUDES any DeFi the failing protocols may hold. Do NOT assert "no DeFi positions" or "DeFi: $0"; tell the user DeFi is temporarily unreachable for this wallet.';
       }
       return '';
     })();

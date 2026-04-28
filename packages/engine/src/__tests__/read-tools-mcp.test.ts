@@ -18,6 +18,17 @@ import { ratesInfoTool } from '../tools/rates.js';
 // the old DefiLlama `fetchTokenPrices`. We mock the BlockVision module to
 // keep the test hermetic and to mirror the prices the legacy mock used
 // (SUI=$3.50, USDC=$1.00) so all downstream assertions still hold.
+// Module-level state for fetchAddressDefiPortfolio mock — tests can
+// override per-it via `setDefiSummary(...)` to exercise the
+// {blockvision, partial, degraded} × {totalUsd > 0, totalUsd === 0}
+// matrix that drives displayText branching in balance_check.
+let mockDefiSummary: import('../blockvision-prices.js').DefiSummary = {
+  totalUsd: 0,
+  perProtocol: {},
+  pricedAt: Date.now(),
+  source: 'blockvision' as const,
+};
+
 vi.mock('../blockvision-prices.js', async () => {
   const actual = await vi.importActual<typeof import('../blockvision-prices.js')>(
     '../blockvision-prices.js',
@@ -47,6 +58,7 @@ vi.mock('../blockvision-prices.js', async () => {
       pricedAt: Date.now(),
       source: 'blockvision' as const,
     })),
+    fetchAddressDefiPortfolio: vi.fn(async () => mockDefiSummary),
     fetchTokenPrices: vi.fn(async () => ({
       '0x2::sui::SUI': { price: 3.5 },
       '0xdba::usdc::USDC': { price: 1.0 },
@@ -308,6 +320,87 @@ describe('balance_check', () => {
 
   it('throws when neither MCP nor SDK is available', async () => {
     await expect(balanceCheckTool.call({}, {})).rejects.toThrow(/agent/i);
+  });
+
+  // [v0.53.4] DeFi caveat regression suite — pinpoints the four-state
+  // matrix balance_check.displayText must navigate so the LLM never
+  // mis-narrates an unreachable DeFi slice as "$0".
+  describe('displayText DeFi caveat (v0.53.4)', () => {
+    afterAll(() => {
+      // Reset to the default so other tests don't see a leaked state.
+      mockDefiSummary = { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'blockvision' };
+    });
+
+    it('blockvision + total > 0 → narrates the DeFi value with no caveat', async () => {
+      mockDefiSummary = {
+        totalUsd: 1234.56,
+        perProtocol: { bluefin: 1234.56 },
+        pricedAt: Date.now(),
+        source: 'blockvision',
+      };
+      const result = await balanceCheckTool.call({}, mcpContext());
+      expect(result.displayText).toContain('Other DeFi positions');
+      expect(result.displayText).toContain('$1234.56');
+      expect(result.displayText).not.toContain('UNAVAILABLE');
+      expect(result.displayText).not.toContain('UNKNOWN');
+    });
+
+    it('blockvision + total === 0 → silent (genuine no-DeFi state)', async () => {
+      mockDefiSummary = {
+        totalUsd: 0,
+        perProtocol: {},
+        pricedAt: Date.now(),
+        source: 'blockvision',
+      };
+      const result = await balanceCheckTool.call({}, mcpContext());
+      expect(result.displayText).not.toContain('UNAVAILABLE');
+      expect(result.displayText).not.toContain('UNKNOWN');
+      expect(result.displayText).not.toContain('DeFi positions:');
+    });
+
+    it('partial + total > 0 → narrates the DeFi value with under-count caveat', async () => {
+      mockDefiSummary = {
+        totalUsd: 500,
+        perProtocol: { bluefin: 500 },
+        pricedAt: Date.now(),
+        source: 'partial',
+      };
+      const result = await balanceCheckTool.call({}, mcpContext());
+      expect(result.displayText).toContain('Other DeFi positions');
+      expect(result.displayText).toContain('$500.00');
+      expect(result.displayText).toContain('partial');
+    });
+
+    it('partial + total === 0 → narrates UNKNOWN with explicit do-not-claim instruction', async () => {
+      // The bug this test pins: pre-v0.53.4 this branch returned a soft
+      // "caveat that the picture may be incomplete" which the LLM
+      // routinely dropped from its narration. The new wording matches
+      // the `degraded` branch's explicit don't-claim instruction.
+      mockDefiSummary = {
+        totalUsd: 0,
+        perProtocol: { suilend: 0 },
+        pricedAt: Date.now(),
+        source: 'partial',
+      };
+      const result = await balanceCheckTool.call({}, mcpContext());
+      expect(result.displayText).toContain('UNKNOWN');
+      expect(result.displayText).toContain('Do NOT');
+      expect(result.displayText).toMatch(/\$0|no DeFi positions/);
+      expect(result.displayText).toContain('temporarily unreachable');
+    });
+
+    it('degraded → narrates UNAVAILABLE with explicit do-not-claim instruction', async () => {
+      mockDefiSummary = {
+        totalUsd: 0,
+        perProtocol: {},
+        pricedAt: Date.now(),
+        source: 'degraded',
+      };
+      const result = await balanceCheckTool.call({}, mcpContext());
+      expect(result.displayText).toContain('UNAVAILABLE');
+      expect(result.displayText).toContain('Do NOT');
+      expect(result.displayText).toContain('temporarily unknown');
+    });
   });
 });
 
