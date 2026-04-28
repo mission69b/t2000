@@ -83,6 +83,18 @@ async function runCron(): Promise<void> {
     if (r.sent > 0 || r.errors > 0) {
       console.log(`[cron]   ${r.job}: ${r.processed} processed, ${r.sent} sent, ${r.errors} errors`);
     }
+    // Structured JSON line for CloudWatch metric filters. Filter pattern:
+    //   { $.kind = "metric" && $.name = "cron.*" }
+    console.log(
+      JSON.stringify({
+        kind: 'metric',
+        name: `cron.${r.job.replace(/-/g, '_')}`,
+        processed: r.processed,
+        sent: r.sent,
+        errors: r.errors,
+        elapsed_ms: Date.now() - startTime,
+      }),
+    );
   }
 }
 

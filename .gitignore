@@ -65,3 +65,5 @@ article-trust-layer.md
 
 # pnpm store
 .pnpm-store/
+loadtest/.env.loadtest
+loadtest/reports/*.json

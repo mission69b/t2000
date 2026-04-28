@@ -326,3 +326,30 @@ export { tokenPricesTool } from './tools/token-prices.js';
 
 // System prompt
 export { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
+
+// [PR 4 — v0.56] Pluggable NAVI MCP read cache. 30s TTL for address-scoped
+// reads (savings, health), 5-min TTL for rates. Default in-memory store for
+// CLI/MCP/tests; Audric injects UpstashNaviCacheStore at engine init.
+export {
+  InMemoryNaviCacheStore,
+  setNaviCacheStore,
+  getNaviCacheStore,
+  resetNaviCacheStore,
+  NAVI_ADDR_TTL_SEC,
+  NAVI_RATES_TTL_SEC,
+  naviKey,
+} from './navi-cache.js';
+export type { NaviCacheStore, NaviCacheEntry } from './navi-cache.js';
+
+// Also export the NAVI CB test seam
+export { _resetNaviCircuitBreaker } from './navi-reads.js';
+
+// [PR 5 — v0.56] Pluggable telemetry sink. Default NoopSink (CLI/MCP/tests);
+// Audric injects VercelTelemetrySink at engine init to emit structured
+// Vercel Observability log lines and @vercel/analytics track() calls.
+export {
+  setTelemetrySink,
+  getTelemetrySink,
+  resetTelemetrySink,
+} from './telemetry.js';
+export type { TelemetrySink, TelemetryTags } from './telemetry.js';

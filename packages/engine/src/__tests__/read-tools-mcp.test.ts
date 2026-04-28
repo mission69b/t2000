@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -12,6 +12,13 @@ import { balanceCheckTool } from '../tools/balance.js';
 import { savingsInfoTool } from '../tools/savings.js';
 import { healthCheckTool } from '../tools/health.js';
 import { ratesInfoTool } from '../tools/rates.js';
+import { resetNaviCacheStore } from '../navi-cache.js';
+
+// Reset the NAVI read cache between every test — prevents cached results
+// from a successful test feeding into a test that uses a different mock server
+// (e.g. the "Infinity HF" test uses its own noDebtMgr but would get stale
+// healthFactor from the preceding health_check test without this reset).
+beforeEach(() => resetNaviCacheStore());
 
 // [v1.4 BlockVision] balance.ts and portfolio-analysis.ts now read coins +
 // USD prices from BlockVision via `fetchAddressPortfolio` instead of from

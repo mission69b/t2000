@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -13,7 +13,25 @@ import {
   fetchPositions,
   fetchAvailableRewards,
   fetchProtocolStats,
+  _resetNaviCircuitBreaker,
 } from '../navi-reads.js';
+import {
+  InMemoryNaviCacheStore,
+  setNaviCacheStore,
+  resetNaviCacheStore,
+  naviKey,
+} from '../navi-cache.js';
+
+// Reset cache and CB state between every test case so successful tests
+// don't contaminate error-handling tests with cached results.
+beforeEach(() => {
+  resetNaviCacheStore();
+  _resetNaviCircuitBreaker();
+});
+afterEach(() => {
+  resetNaviCacheStore();
+  _resetNaviCircuitBreaker();
+});
 
 // ---------------------------------------------------------------------------
 // Mock NAVI MCP server with realistic fixtures
@@ -354,5 +372,133 @@ describe('error handling', () => {
     await expect(fetchRates(errManager)).rejects.toThrow(/NAVI MCP error.*rate limit/);
 
     await errManager.disconnectAll();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: cache (PR 4)
+// ---------------------------------------------------------------------------
+
+describe('cache behaviour (PR 4)', () => {
+  let store: InMemoryNaviCacheStore;
+
+  beforeEach(() => {
+    store = new InMemoryNaviCacheStore();
+    setNaviCacheStore(store);
+    _resetNaviCircuitBreaker();
+  });
+
+  afterEach(() => {
+    resetNaviCacheStore();
+    _resetNaviCircuitBreaker();
+  });
+
+  it('fetchRates: cache hit → no MCP call on second fetch', async () => {
+    const callSpy = vi.spyOn(manager, 'callTool');
+
+    // First call — populates cache
+    await fetchRates(manager);
+    const firstCallCount = callSpy.mock.calls.length;
+
+    // Second call — should be served from cache
+    await fetchRates(manager);
+    expect(callSpy.mock.calls.length).toBe(firstCallCount); // no new calls
+
+    callSpy.mockRestore();
+  });
+
+  it('fetchRates: skipCache=true bypasses the cache', async () => {
+    // Populate cache
+    await fetchRates(manager);
+
+    const callSpy = vi.spyOn(manager, 'callTool');
+    await fetchRates(manager, { skipCache: true });
+    expect(callSpy.mock.calls.length).toBeGreaterThan(0); // made a real call
+
+    callSpy.mockRestore();
+  });
+
+  it('fetchHealthFactor: cache hit → no MCP call on second fetch', async () => {
+    const callSpy = vi.spyOn(manager, 'callTool');
+
+    await fetchHealthFactor(manager, '0xuser');
+    const firstCallCount = callSpy.mock.calls.length;
+
+    await fetchHealthFactor(manager, '0xuser');
+    expect(callSpy.mock.calls.length).toBe(firstCallCount);
+
+    callSpy.mockRestore();
+  });
+
+  it('fetchSavings: different addresses have independent cache entries', async () => {
+    await fetchSavings(manager, '0xaaa');
+    await fetchSavings(manager, '0xbbb');
+
+    const cachedAaa = await store.get(naviKey.savings('0xaaa'));
+    const cachedBbb = await store.get(naviKey.savings('0xbbb'));
+    expect(cachedAaa).not.toBeNull();
+    expect(cachedBbb).not.toBeNull();
+  });
+
+  it('fetchRates: expired cache entry triggers re-fetch', async () => {
+    // Manually insert a stale entry (already expired)
+    await store.set(naviKey.rates(), { data: { STALE: {} }, cachedAt: Date.now() - 99999 }, -1);
+
+    const callSpy = vi.spyOn(manager, 'callTool');
+    // TTL=-1 means already expired; store.get should return null → re-fetch
+    await fetchRates(manager);
+    expect(callSpy.mock.calls.length).toBeGreaterThan(0);
+
+    callSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: circuit breaker (PR 4)
+// ---------------------------------------------------------------------------
+
+describe('circuit breaker (PR 4)', () => {
+  beforeEach(() => {
+    _resetNaviCircuitBreaker();
+    resetNaviCacheStore();
+  });
+
+  afterEach(() => {
+    _resetNaviCircuitBreaker();
+    resetNaviCacheStore();
+  });
+
+  it('circuit breaker opens after 10 consecutive errors and blocks further calls', async () => {
+    // Build an error server
+    const cbServer = new McpServer({ name: 'cb-navi', version: '1.0.0' }, { capabilities: { tools: {} } });
+    let callCount = 0;
+    cbServer.tool(NaviTools.GET_POOLS, 'Always fail', {}, async () => {
+      callCount++;
+      return { content: [{ type: 'text' as const, text: 'rate limit' }], isError: true };
+    });
+
+    const cbManager = new McpClientManager({ cacheTtlMs: 0 });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    const cbClient = new Client({ name: 'cb-client', version: '1.0.0' }, { capabilities: {} });
+    await Promise.all([cbClient.connect(ct), cbServer.connect(st)]);
+    const { tools } = await cbClient.listTools();
+
+    // @ts-expect-error — injecting connection
+    cbManager.connections.set(NAVI_SERVER_NAME, {
+      config: { name: NAVI_SERVER_NAME, url: 'memory://cb', readOnly: true, cacheTtlMs: 0 },
+      client: cbClient, transport: ct, tools, status: 'connected',
+    });
+
+    // Fire enough calls to open the CB (NAVI_CB_THRESHOLD=10 within 5s)
+    for (let i = 0; i < 10; i++) {
+      await fetchRates(cbManager, { skipCache: true }).catch(() => {});
+    }
+
+    // CB should now be open — next call should throw without hitting the server
+    const preCbCallCount = callCount;
+    await expect(fetchRates(cbManager, { skipCache: true })).rejects.toThrow(/circuit breaker open/);
+    expect(callCount).toBe(preCbCallCount); // no new server call
+
+    await cbManager.disconnectAll();
   });
 });

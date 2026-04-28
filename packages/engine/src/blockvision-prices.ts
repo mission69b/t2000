@@ -34,6 +34,7 @@ import { fetchWalletCoins } from './sui-rpc.js';
 import { getDefiCacheStore, type DefiCacheEntry, type DefiCacheStore } from './defi-cache.js';
 import { getWalletCacheStore, type WalletCacheEntry, type WalletCacheStore } from './wallet-cache.js';
 import { awaitOrFetch } from './cross-instance-lock.js';
+import { getTelemetrySink } from './telemetry.js';
 
 const BLOCKVISION_BASE = 'https://api.blockvision.org/v2/sui';
 const PORTFOLIO_TIMEOUT_MS = 4_000;
@@ -136,6 +137,7 @@ function cbRecord429(now: number): void {
   cb429Timestamps = cb429Timestamps.filter((t) => now - t < CB_WINDOW_MS);
   if (cb429Timestamps.length >= CB_THRESHOLD && !cbIsOpen(now)) {
     cbOpenUntil = now + CB_COOLDOWN_MS;
+    getTelemetrySink().gauge('bv.cb_open', 1);
     console.warn(
       `[blockvision] circuit breaker OPEN — ${CB_THRESHOLD} 429s in ${CB_WINDOW_MS}ms, retries disabled for ${CB_COOLDOWN_MS / 1000}s`,
     );
@@ -237,12 +239,17 @@ export async function fetchBlockVisionWithRetry(
       lastError = err;
       // Don't retry if the caller cancelled — that's intentional.
       if ((err as { name?: string })?.name === 'AbortError') throw err;
+      getTelemetrySink().counter('bv.requests', { status: 'network_err', attempt: String(attempt) });
       continue;
     }
 
-    if (lastResponse.ok) return lastResponse;
+    if (lastResponse.ok) {
+      getTelemetrySink().counter('bv.requests', { status: '2xx', attempt: String(attempt) });
+      return lastResponse;
+    }
     // 4xx other than 429 are permanent client errors — no point retrying.
     if (lastResponse.status !== 429 && lastResponse.status < 500) {
+      getTelemetrySink().counter('bv.requests', { status: String(lastResponse.status), attempt: String(attempt) });
       return lastResponse;
     }
     // Track 429s for the circuit breaker — if too many fire in a
@@ -250,11 +257,14 @@ export async function fetchBlockVisionWithRetry(
     // gracefully rather than amplifying load on an already-overloaded
     // upstream.
     if (lastResponse.status === 429) {
+      getTelemetrySink().counter('bv.requests', { status: '429', attempt: String(attempt) });
       const now = (opts.now ?? Date.now)();
       cbRecord429(now);
       if (cbIsOpen(now)) {
         return lastResponse;
       }
+    } else {
+      getTelemetrySink().counter('bv.requests', { status: '5xx', attempt: String(attempt) });
     }
   }
 
@@ -448,9 +458,13 @@ export async function fetchAddressPortfolio(
   if (cachedEntry) {
     const ageMs = Date.now() - cachedEntry.pricedAt;
     if (ageMs < walletFreshTtlMs(cachedEntry.data.source)) {
+      getTelemetrySink().counter('bv.cache_hit', { kind: 'wallet', freshness: 'fresh' });
       return cachedEntry.data;
     }
     // Stale hit — kept in scope for the sticky-positive fallback below.
+    getTelemetrySink().counter('bv.cache_hit', { kind: 'wallet', freshness: 'stale-served' });
+  } else {
+    getTelemetrySink().counter('bv.cache_hit', { kind: 'wallet', freshness: 'miss' });
   }
 
   // In-process inflight dedup. Even with a cross-instance lock, we
@@ -1084,9 +1098,13 @@ export async function fetchAddressDefiPortfolio(
     const freshTtlMs = freshTtlForSource(cachedEntry.data.source);
     if (ageMs < freshTtlMs) {
       // Fresh hit — serve directly without re-fetching.
+      getTelemetrySink().counter('bv.cache_hit', { kind: 'defi', freshness: 'fresh' });
       return cachedEntry.data;
     }
     // Stale hit kept in scope for the sticky-positive fallback below.
+    getTelemetrySink().counter('bv.cache_hit', { kind: 'defi', freshness: 'stale-served' });
+  } else {
+    getTelemetrySink().counter('bv.cache_hit', { kind: 'defi', freshness: 'miss' });
   }
 
   let inflight = defiInflight.get(address);

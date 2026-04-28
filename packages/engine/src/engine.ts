@@ -17,6 +17,7 @@ import { getDefaultTools } from './tools/index.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
 import { clearPortfolioCacheFor } from './blockvision-prices.js';
+import { getTelemetrySink } from './telemetry.js';
 import { randomUUID } from 'node:crypto';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { estimatePayApiCost } from './tools/pay.js';
@@ -613,6 +614,7 @@ export class QueryEngine {
 
     let turns = 0;
     let hasRetriedWithCleanHistory = false;
+    let turnStartMs = Date.now();
 
     while (turns < this.maxTurns) {
       if (signal.aborted) {
@@ -621,6 +623,7 @@ export class QueryEngine {
       }
 
       turns++;
+      turnStartMs = Date.now();
       const toolDefs = toolsToDefinitions(this.tools);
 
       const acc: TurnAccumulator = {
@@ -827,6 +830,7 @@ export class QueryEngine {
 
       if (!hasEarlyResults && !hasRemainingCalls) {
         this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+        getTelemetrySink().histogram('anthropic.latency_ms', Date.now() - turnStartMs);
         yield { type: 'turn_complete', stopReason: acc.stopReason };
         return;
       }
@@ -1294,6 +1298,11 @@ export class QueryEngine {
           event.cacheWriteTokens,
         );
         this.contextBudget.update(event.inputTokens);
+        const sink = getTelemetrySink();
+        if (event.inputTokens) sink.counter('anthropic.tokens', { kind: 'input' }, event.inputTokens);
+        if (event.outputTokens) sink.counter('anthropic.tokens', { kind: 'output' }, event.outputTokens);
+        if (event.cacheReadTokens) sink.counter('anthropic.tokens', { kind: 'cache_read' }, event.cacheReadTokens);
+        if (event.cacheWriteTokens) sink.counter('anthropic.tokens', { kind: 'cache_write' }, event.cacheWriteTokens);
         yield {
           type: 'usage',
           inputTokens: event.inputTokens,

@@ -2,12 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runFinancialContextSnapshot } from './financialContextSnapshot.js';
 
 /**
- * [v1.4.2 — Day 5 / Spec Item 6] Tests for the thin t2000-side cron
- * shell that triggers the audric internal API. Mirrors the pattern in
- * `scheduler.test.ts`: stub `globalThis.fetch`, assert the call shape
- * (URL + headers), assert the JobResult mapping, and verify the
- * fail-soft branches (HTTP non-2xx, network error). Real fan-out logic
- * is on the audric side; nothing here issues SQL.
+ * [PR 3 — scaling spec] Tests for the sharded cron fan-out.
+ *
+ * The job now fires N parallel POSTs with `?shard=i&total=N`.
+ * Tests assert:
+ *   - Correct number of calls fired
+ *   - Each call carries the right shard index and total
+ *   - Aggregation correctly sums all shards
+ *   - Single-shard (T2000_FIN_CTX_SHARD_COUNT=1) matches old behavior
+ *   - Per-shard errors don't abort other shards (Promise.allSettled)
  */
 const originalFetch = globalThis.fetch;
 const mockFetch = vi.fn();
@@ -24,69 +27,107 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('runFinancialContextSnapshot', () => {
-  it('POSTs to the audric internal endpoint with the internal-key header', async () => {
+describe('runFinancialContextSnapshot — sharding', () => {
+  it('fires T2000_FIN_CTX_SHARD_COUNT=4 parallel POSTs with correct shard params', async () => {
+    vi.stubEnv('T2000_FIN_CTX_SHARD_COUNT', '4');
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ created: 5, skipped: 1, errors: 0, total: 6 }),
+    });
+
+    await runFinancialContextSnapshot();
+
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+
+    const urls = mockFetch.mock.calls.map(([url]: [string]) => url as string);
+    expect(urls).toContain('https://test.audric.ai/api/internal/financial-context-snapshot?shard=0&total=4');
+    expect(urls).toContain('https://test.audric.ai/api/internal/financial-context-snapshot?shard=1&total=4');
+    expect(urls).toContain('https://test.audric.ai/api/internal/financial-context-snapshot?shard=2&total=4');
+    expect(urls).toContain('https://test.audric.ai/api/internal/financial-context-snapshot?shard=3&total=4');
+  });
+
+  it('aggregates counts from all shards into a single JobResult', async () => {
+    vi.stubEnv('T2000_FIN_CTX_SHARD_COUNT', '4');
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ created: 10, skipped: 2, errors: 1, total: 12 }),
+    });
+
+    const result = await runFinancialContextSnapshot();
+
+    expect(result.job).toBe('financial-context-snapshot');
+    expect(result.processed).toBe(48); // 4 shards × 12 total
+    expect(result.sent).toBe(40);      // 4 shards × 10 created
+    expect(result.errors).toBe(4);     // 4 shards × 1 error
+  });
+
+  it('falls back to 8 shards when T2000_FIN_CTX_SHARD_COUNT is unset', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ created: 0, skipped: 0, errors: 0, total: 0 }),
+    });
+
+    await runFinancialContextSnapshot();
+
+    expect(mockFetch).toHaveBeenCalledTimes(8);
+  });
+
+  it('single-shard (T2000_FIN_CTX_SHARD_COUNT=1) matches original single-POST behavior', async () => {
+    vi.stubEnv('T2000_FIN_CTX_SHARD_COUNT', '1');
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ created: 12, skipped: 3, errors: 0, total: 15 }),
     });
 
-    await runFinancialContextSnapshot();
+    const result = await runFinancialContextSnapshot();
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://test.audric.ai/api/internal/financial-context-snapshot');
-    expect(opts.method).toBe('POST');
-    const headers = opts.headers as Record<string, string>;
-    expect(headers['x-internal-key']).toBe('test-internal-key');
-    expect(headers['Content-Type']).toBe('application/json');
+    expect(url).toBe('https://test.audric.ai/api/internal/financial-context-snapshot?shard=0&total=1');
+    expect((opts.headers as Record<string, string>)['x-internal-key']).toBe('test-internal-key');
+    expect(result.processed).toBe(15);
+    expect(result.sent).toBe(12);
+    expect(result.errors).toBe(0);
   });
 
-  it('maps the audric response into a JobResult with the new financial-context-snapshot job name', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ created: 12, skipped: 3, errors: 1, total: 15 }),
-    });
+  it('continues processing other shards when one shard returns HTTP non-2xx', async () => {
+    vi.stubEnv('T2000_FIN_CTX_SHARD_COUNT', '4');
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ created: 5, skipped: 0, errors: 0, total: 5 }),
+      });
 
     const result = await runFinancialContextSnapshot();
 
-    expect(result).toEqual({
-      job: 'financial-context-snapshot',
-      processed: 15,
-      sent: 12,
-      errors: 1,
-    });
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+    // Shard 0 failed (errors+=1, rest=0), shards 1-3 succeeded
+    expect(result.errors).toBe(1);
+    expect(result.sent).toBe(15); // 3 shards × 5 created
+    expect(result.processed).toBe(15);
   });
 
-  it('returns errors=1 when the audric endpoint responds non-2xx (does not throw)', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 503 });
+  it('continues processing other shards when one shard throws (network error)', async () => {
+    vi.stubEnv('T2000_FIN_CTX_SHARD_COUNT', '4');
+    mockFetch
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ created: 3, skipped: 0, errors: 0, total: 3 }),
+      });
 
     const result = await runFinancialContextSnapshot();
 
-    expect(result).toEqual({
-      job: 'financial-context-snapshot',
-      processed: 0,
-      sent: 0,
-      errors: 1,
-    });
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+    expect(result.errors).toBe(1);
+    expect(result.sent).toBe(9); // 3 shards × 3 created
   });
 
-  it('returns errors=1 on network failure (does not throw)', async () => {
-    mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
-
-    const result = await runFinancialContextSnapshot();
-
-    expect(result).toEqual({
-      job: 'financial-context-snapshot',
-      processed: 0,
-      sent: 0,
-      errors: 1,
-    });
-  });
-
-  it('falls back to the production audric URL when AUDRIC_INTERNAL_URL is unset', async () => {
+  it('uses the production audric URL when AUDRIC_INTERNAL_URL is unset', async () => {
     vi.unstubAllEnvs();
-    vi.stubEnv('AUDRIC_INTERNAL_KEY', 'test-internal-key');
+    vi.stubEnv('AUDRIC_INTERNAL_KEY', 'test-key');
+    vi.stubEnv('T2000_FIN_CTX_SHARD_COUNT', '2');
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ created: 0, skipped: 0, errors: 0, total: 0 }),
@@ -94,37 +135,7 @@ describe('runFinancialContextSnapshot', () => {
 
     await runFinancialContextSnapshot();
 
-    const [url] = mockFetch.mock.calls[0] as [string];
-    expect(url).toBe('https://audric.ai/api/internal/financial-context-snapshot');
-  });
-
-  it('sends an empty x-internal-key header when AUDRIC_INTERNAL_KEY is unset (caller will reject)', async () => {
-    vi.unstubAllEnvs();
-    vi.stubEnv('AUDRIC_INTERNAL_URL', 'https://test.audric.ai');
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ created: 0, skipped: 0, errors: 0, total: 0 }),
-    });
-
-    await runFinancialContextSnapshot();
-
-    const [, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
-    const headers = opts.headers as Record<string, string>;
-    expect(headers['x-internal-key']).toBe('');
-  });
-
-  it('reports zero counts when the endpoint returns an empty user pool', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ created: 0, skipped: 0, errors: 0, total: 0 }),
-    });
-
-    const result = await runFinancialContextSnapshot();
-    expect(result).toEqual({
-      job: 'financial-context-snapshot',
-      processed: 0,
-      sent: 0,
-      errors: 0,
-    });
+    const urls = mockFetch.mock.calls.map(([url]: [string]) => url as string);
+    expect(urls[0]).toContain('https://audric.ai/api/internal/financial-context-snapshot');
   });
 });

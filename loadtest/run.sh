@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Audric load test runner — PR 6 (audric-scaling-spec.md)
+#
+# Usage:
+#   ./loadtest/run.sh                # run all scenarios at local VU scale (0.1×)
+#   ./loadtest/run.sh s1             # run only S1
+#   ./loadtest/run.sh all full       # full VU count (use k6 Cloud for S1/S2/S3)
+#
+# Required env vars (set in .env.loadtest or export before running):
+#   BASE_URL      — e.g. https://audric.ai  (or your staging URL)
+#   TEST_JWT      — session JWT for a test user
+#   TEST_ADDRESS  — Sui wallet address of the test user
+#   INTERNAL_KEY  — T2000_INTERNAL_KEY (only needed for S5)
+#
+# Output:
+#   loadtest/reports/*.json  — per-scenario raw k6 data
+#   loadtest/reports/combined-report.md  — shareable summary for the team
+# ---------------------------------------------------------------------------
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCENARIOS_DIR="$SCRIPT_DIR/k6/scenarios"
+REPORTS_DIR="$SCRIPT_DIR/reports"
+
+# Load .env.loadtest if it exists
+if [ -f "$SCRIPT_DIR/.env.loadtest" ]; then
+  # shellcheck disable=SC2046
+  export $(grep -v '^#' "$SCRIPT_DIR/.env.loadtest" | xargs)
+fi
+
+# Validate required vars
+if [ -z "$BASE_URL" ] || [ -z "$TEST_JWT" ] || [ -z "$TEST_ADDRESS" ]; then
+  echo "❌ Missing required env vars. Copy loadtest/.env.loadtest.example → .env.loadtest and fill in."
+  exit 1
+fi
+
+SCENARIO="${1:-all}"
+VU_SCALE="${2:-0.1}"    # 0.1 = 10% of spec VUs (local friendly)
+
+mkdir -p "$REPORTS_DIR"
+
+K6_OPTS="--env BASE_URL=$BASE_URL --env TEST_JWT=$TEST_JWT --env TEST_ADDRESS=$TEST_ADDRESS --env INTERNAL_KEY=${INTERNAL_KEY:-} --env VU_SCALE=$VU_SCALE"
+
+run_scenario() {
+  local name="$1"
+  local file="$SCENARIOS_DIR/$name.js"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  Running $name (VU_SCALE=$VU_SCALE)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  # shellcheck disable=SC2086
+  k6 run $K6_OPTS "$file" || true   # continue even on threshold failures
+}
+
+case "$SCENARIO" in
+  s1) run_scenario "s1-steady-read" ;;
+  s2) run_scenario "s2-viral-address" ;;
+  s3) run_scenario "s3-mixed" ;;
+  s4) run_scenario "s4-bv-degraded" ;;
+  s5) run_scenario "s5-cron-overlap" ;;
+  all)
+    run_scenario "s1-steady-read"
+    run_scenario "s2-viral-address"
+    run_scenario "s3-mixed"
+    run_scenario "s4-bv-degraded"
+    run_scenario "s5-cron-overlap"
+    ;;
+  *)
+    echo "Unknown scenario: $SCENARIO. Use: s1 s2 s3 s4 s5 all"
+    exit 1
+    ;;
+esac
+
+# Generate combined markdown report from JSON summaries
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Generating combined report…"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+REPORT="$REPORTS_DIR/combined-report.md"
+DATE=$(date '+%Y-%m-%d %H:%M')
+cat > "$REPORT" <<MDEOF
+# Audric Load Test Results — ${DATE}
+
+**Target:** ${BASE_URL}  
+**VU scale:** ${VU_SCALE}× (${VU_SCALE} × spec VU counts)  
+**Pass criteria:** p95 chat-turn < 4s, BV CB closed, cron shards < 60s
+
+---
+
+## Scenarios run
+
+| Scenario | Status | Key metric |
+|---|---|---|
+MDEOF
+
+append_scenario_row() {
+  local name="$1"
+  local label="$2"
+  local json="$REPORTS_DIR/${name}-summary.json"
+
+  if [ ! -f "$json" ]; then
+    echo "| $label | ⏭️ skipped | — |" >> "$REPORT"
+    return
+  fi
+
+  # Use node to extract key metric from the JSON
+  node -e "
+const d = require('$json');
+const scenarios = { s1: 'chat_latency_ms', s2: 'portfolio_latency_ms', s3: 'mixed_read_latency_ms', s4: 's4_portfolio_latency_ms', s5: 's5_shard_duration_ms' };
+const metric = Object.keys(d.metrics || {}).find(k => Object.values(scenarios).includes(k)) || Object.keys(d.metrics||{})[0];
+const p95 = d?.metrics?.[metric]?.values?.['p(95)'];
+const failed = d?.metrics?.http_req_failed?.values?.rate;
+const pass = p95 ? p95 < 4000 : null;
+const icon = pass === true ? '✅' : pass === false ? '❌' : '⚠️';
+console.log('| $label | ' + icon + ' | p95=' + (p95 ? Math.round(p95)+'ms' : 'N/A') + ', err=' + (failed ? (failed*100).toFixed(1)+'%' : 'N/A') + ' |');
+" 2>/dev/null >> "$REPORT" || echo "| $label | ⚠️ parse error | check JSON | " >> "$REPORT"
+}
+
+append_scenario_row "s1" "S1 — Steady read (500 VU ramp)"
+append_scenario_row "s2" "S2 — Viral address burst (200 VU)"
+append_scenario_row "s3" "S3 — Mixed read+write (200 VU)"
+append_scenario_row "s4" "S4 — BV degradation (200 VU)"
+append_scenario_row "s5" "S5 — Cron overlap"
+
+cat >> "$REPORT" <<MDEOF
+
+---
+
+## Raw data
+
+Per-scenario JSON files: \`loadtest/reports/s1-summary.json\` through \`s5-summary.json\`
+
+## Acceptance criteria
+
+- [ ] S1 p95 < 4s at full 500 VU
+- [ ] S2 BV calls < 50/min for viral address (cache + lock working)
+- [ ] S3 writes yield \`pending_action\` (never auto-execute)
+- [ ] S4 sticky-positive cache serves > 80% positive values under degradation
+- [ ] S5 cron shards finish < 60s + post-cron chat p95 unaffected
+
+*Generated by \`loadtest/run.sh\` — [Audric scaling spec PR 6](../audric-scaling-spec.md)*
+MDEOF
+
+echo ""
+echo "✅ Report saved to: $REPORT"
+echo "   Share with team: cat $REPORT"
+echo ""
+cat "$REPORT"
