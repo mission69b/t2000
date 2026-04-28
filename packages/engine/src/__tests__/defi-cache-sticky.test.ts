@@ -456,7 +456,13 @@ describe('[v0.54] sticky-positive cache — store error tolerance', () => {
     const result = await fetchAddressDefiPortfolio(ADDRESS, 'k');
     expect(result.source).toBe('partial');
     expect(result.totalUsd).toBeCloseTo(42, 1);
-    expect(flakyStore.get).toHaveBeenCalledTimes(1);
+    // [PR 2 — v0.55] Two `get` calls expected: the pre-lock check
+    // (sets up `cachedEntry`) AND the post-lock recheck inside the
+    // `awaitOrFetch` leader (catches the case where another instance
+    // wrote between our miss and our lock acquisition). Both throw
+    // and the fetcher tolerates each as a cache miss, then proceeds
+    // to the BV fan-out.
+    expect(flakyStore.get).toHaveBeenCalledTimes(2);
     // Set was attempted (positive partial → write)
     expect(flakyStore.set).toHaveBeenCalledTimes(1);
   });

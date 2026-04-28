@@ -26,8 +26,13 @@ const NAVX_TYPE = '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5
 
 const realFetch = globalThis.fetch;
 
-beforeEach(() => {
-  clearPortfolioCache();
+// [PR 1 — v0.55] `clearPortfolioCache()` is async — it awaits the
+// underlying store (Redis-backed in production). Tests use the
+// in-memory default store which clears synchronously underneath, but
+// the async signature means we must await to avoid `portfolioInflight`
+// state leaking across cases via the unflushed microtask continuation.
+beforeEach(async () => {
+  await clearPortfolioCache();
   clearPriceMapCache();
 });
 
@@ -312,7 +317,7 @@ describe('blockvision-prices — fetchAddressPortfolio', () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await fetchAddressPortfolio(ADDRESS, 'test-key');
-    clearPortfolioCacheFor(ADDRESS);
+    await clearPortfolioCacheFor(ADDRESS);
     await fetchAddressPortfolio(ADDRESS, 'test-key');
 
     // Two real network calls — the cache was busted between them.
@@ -348,7 +353,7 @@ describe('blockvision-prices — fetchAddressPortfolio', () => {
     const other = await fetchAddressPortfolio(OTHER, 'test-key');
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    clearPortfolioCacheFor(ADDRESS);
+    await clearPortfolioCacheFor(ADDRESS);
 
     const aAgain = await fetchAddressPortfolio(ADDRESS, 'test-key');
     expect(fetchMock).toHaveBeenCalledTimes(3);

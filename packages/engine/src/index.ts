@@ -268,6 +268,39 @@ export {
 } from './defi-cache.js';
 export type { DefiCacheStore, DefiCacheEntry } from './defi-cache.js';
 
+// [PR 1 — v0.55] Pluggable wallet-portfolio cache store. Same shape
+// and rationale as the DeFi cache, but for the BlockVision
+// `/account/coins` half. Closes the second SSOT-drift loop:
+// `/api/portfolio` and `balance_check` would observe different
+// wallet states for the same address during a BV 429 burst because
+// each Vercel function had its own in-process Map. CLI/MCP keep the
+// in-memory default; Audric injects `UpstashWalletCacheStore`.
+export {
+  InMemoryWalletCacheStore,
+  setWalletCacheStore,
+  getWalletCacheStore,
+  resetWalletCacheStore,
+} from './wallet-cache.js';
+export type { WalletCacheStore, WalletCacheEntry } from './wallet-cache.js';
+
+// [PR 2 — v0.55] Pluggable cross-instance request coalescer. Wraps
+// BlockVision fan-outs (wallet portfolio + 9-protocol DeFi) so at
+// most one Vercel instance per address is hitting BV at any moment;
+// followers wait on the leader's cache write or fall through to a
+// direct fetch on timeout (defensive degraded path). CLI/MCP keep
+// the in-memory default; Audric injects `UpstashFetchLock`.
+export {
+  InMemoryFetchLock,
+  setFetchLock,
+  getFetchLock,
+  resetFetchLock,
+  awaitOrFetch,
+  DEFAULT_LEASE_SEC,
+  DEFAULT_POLL_BUDGET_MS,
+  DEFAULT_POLL_INTERVAL_MS,
+} from './cross-instance-lock.js';
+export type { FetchLock, AwaitOrFetchOpts } from './cross-instance-lock.js';
+
 // [single-source-of-truth — Apr 2026] Audric canonical-API client.
 // Read tools call these helpers first when T2000_AUDRIC_API (or
 // AUDRIC_INTERNAL_API_URL) is configured, otherwise fall back to their

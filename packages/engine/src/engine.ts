@@ -347,9 +347,16 @@ export class QueryEngine {
     // path called `fetchWalletCoins` (Sui RPC, no cache) so the 1.5s
     // delay alone was sufficient; post-v1.4 we MUST invalidate or no
     // amount of waiting will help.
+    //
+    // [PR 1 — v0.55] `clearPortfolioCacheFor` is now async (Upstash-backed
+    // when Audric injects the store) — MUST be awaited or the next
+    // `balance_check` races the Redis delete and refetches the stale
+    // pre-write balance. Pre-PR-1 it was a sync Map.delete and
+    // fire-and-forget worked; under Redis the network round-trip is
+    // load-bearing.
     if (this.walletAddress) {
       this.portfolioCache?.delete(this.walletAddress);
-      clearPortfolioCacheFor(this.walletAddress);
+      await clearPortfolioCacheFor(this.walletAddress);
     }
 
     // [v0.46.16] Sui RPC indexer lag — `executeTransactionBlock` returns

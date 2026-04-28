@@ -32,11 +32,45 @@
 import { getDecimalsForCoinType, resolveSymbol, normalizeCoinType } from '@t2000/sdk';
 import { fetchWalletCoins } from './sui-rpc.js';
 import { getDefiCacheStore, type DefiCacheEntry, type DefiCacheStore } from './defi-cache.js';
+import { getWalletCacheStore, type WalletCacheEntry, type WalletCacheStore } from './wallet-cache.js';
+import { awaitOrFetch } from './cross-instance-lock.js';
 
 const BLOCKVISION_BASE = 'https://api.blockvision.org/v2/sui';
 const PORTFOLIO_TIMEOUT_MS = 4_000;
 const PRICES_TIMEOUT_MS = 3_000;
 const CACHE_TTL_MS = 60_000;
+
+// ---------------------------------------------------------------------------
+// Wallet portfolio cache TTLs (PR 1+2 — v0.55)
+//
+// Per-source freshness for `fetchAddressPortfolio`. Mirrors the DeFi
+// cache pattern (`DEFI_FRESH_TTL_MS_*`). The store TTL we pass to
+// `set(address, entry, ttlSec)` is the **sticky window** (30 min) —
+// we want the entry to STAY in Redis long enough that a sustained
+// BV outage can keep serving the last known-good positive value
+// stamped as such. Freshness is computed by the FETCHER from the
+// entry's own `pricedAt`, not by the store.
+//
+// Why split:
+//   - 60s `blockvision` — fully successful BV reply; trust it.
+//   - 15s `sui-rpc-degraded` — BV unavailable, retry sooner so the
+//     next caller gets a chance to recover.
+//
+// Pre-PR-1 the degraded TTL was emulated with the
+// `ts: Date.now() - (CACHE_TTL_MS - DEGRADED_CACHE_TTL_MS)` aging
+// trick at the write site. That worked under the in-process Map (TTL
+// was client-checked at read time using `ts`) but silently broke
+// under Redis (`EX` is server-enforced and ignores client `ts`).
+// Now we pass per-source TTLs explicitly to `store.set`.
+// ---------------------------------------------------------------------------
+const WALLET_FRESH_TTL_MS_BLOCKVISION = 60_000;
+const WALLET_FRESH_TTL_MS_DEGRADED = 15_000;
+/** Sticky window — entries persist this long after their fresh window so
+ *  brief BV bursts can fall back to last known-good positive. */
+const WALLET_STICKY_TTL_SEC = 30 * 60;
+/** Lock keyspace prefix for cross-instance fan-out coalescing. */
+const WALLET_LOCK_KEY = (address: string) => `bv-lock:wallet:${address.toLowerCase()}`;
+const DEFI_LOCK_KEY = (address: string) => `bv-lock:defi:${address.toLowerCase()}`;
 
 // ---------------------------------------------------------------------------
 // BlockVision retry policy
@@ -227,14 +261,14 @@ export async function fetchBlockVisionWithRetry(
   if (lastResponse) return lastResponse;
   throw lastError ?? new Error('fetch failed after retries');
 }
-/**
- * [v0.53.3] Effective TTL when the wallet portfolio came from the
- * Sui-RPC fallback path (i.e. BlockVision `/account/coins` was
- * unavailable — typically a 429 burst). Same shape as
- * `DEFI_PARTIAL_CACHE_TTL_MS`: short enough to retry BlockVision
- * after the burst, long enough to dedupe overlapping callers.
- */
-const DEGRADED_CACHE_TTL_MS = 15_000;
+// [PR 1 — v0.55] `DEGRADED_CACHE_TTL_MS` (the v0.53.3 constant for the
+// Sui-RPC fallback path's effective TTL) was removed alongside the
+// `portfolioCache` Map and its `ts: Date.now() - (CACHE_TTL_MS -
+// DEGRADED_CACHE_TTL_MS)` aging trick. The same effect — short retry
+// window for degraded reads — now lives in `WALLET_FRESH_TTL_MS_DEGRADED`
+// at the top of the file, applied as a per-source `EX` value at write
+// time so Redis enforces it server-side.
+//
 // BlockVision caps `tokenIds` at 10. Internal callers (engine-factory, the
 // future `token_prices` LLM tool) may request more — we chunk transparently.
 const PRICE_LIST_CHUNK = 10;
@@ -283,11 +317,13 @@ export interface AddressPortfolio {
   source: 'blockvision' | 'sui-rpc-degraded';
 }
 
-interface PortfolioCacheEntry {
-  data: AddressPortfolio;
-  ts: number;
-}
-const portfolioCache = new Map<string, PortfolioCacheEntry>();
+// [PR 1 — v0.55] The module-level `portfolioCache` Map is gone.
+// Replaced by the pluggable `WalletCacheStore` (default `InMemoryWalletCacheStore`,
+// Audric injects `UpstashWalletCacheStore`). See `wallet-cache.ts` for
+// the why — same SSOT bug class as the v0.54 DeFi work, just on the
+// wallet half. `portfolioInflight` is kept as an in-process coalescer
+// so N concurrent in-process callers share one promise; cross-process
+// coalescing is handled by `awaitOrFetch` in PR 2.
 const portfolioInflight = new Map<string, Promise<AddressPortfolio>>();
 
 interface PriceMapCacheEntry {
@@ -326,66 +362,213 @@ interface BlockVisionPriceListResponse {
   };
 }
 
+/** Source-aware fresh-TTL lookup for wallet portfolio entries. */
+function walletFreshTtlMs(source: AddressPortfolio['source']): number {
+  switch (source) {
+    case 'blockvision':
+      return WALLET_FRESH_TTL_MS_BLOCKVISION;
+    case 'sui-rpc-degraded':
+      return WALLET_FRESH_TTL_MS_DEGRADED;
+  }
+}
+
+/**
+ * Store-write helper that swallows backend errors. A Redis hiccup
+ * during write should never break a successful read — the next caller
+ * will simply re-fetch on cache miss. Errors are logged so an outage
+ * is still observable in Vercel logs. Mirrors `safeStoreSet` in the
+ * DeFi half.
+ */
+async function safeWalletStoreSet(
+  store: WalletCacheStore,
+  address: string,
+  entry: WalletCacheEntry,
+  ttlSec: number,
+): Promise<void> {
+  try {
+    await store.set(address, entry, ttlSec);
+  } catch (err) {
+    console.warn('[wallet] cache set failed (non-fatal):', err);
+  }
+}
+
+/**
+ * Read the wallet store, swallowing transport errors as cache misses.
+ * Used by both the leader (pre-fanout check) and the follower (poll
+ * loop while another instance fetches).
+ */
+async function safeWalletStoreGet(
+  store: WalletCacheStore,
+  address: string,
+): Promise<WalletCacheEntry | null> {
+  try {
+    return await store.get(address);
+  } catch (err) {
+    console.warn('[wallet] cache get failed (continuing as cache miss):', err);
+    return null;
+  }
+}
+
 /**
  * One-shot wallet portfolio fetcher. BlockVision returns balances + USD
- * prices in a single call; on failure we degrade to a Sui-RPC coin fetch
- * with hardcoded stablecoin pricing. Memoised in-process for `CACHE_TTL_MS`
- * keyed by `address` so back-to-back tool calls inside the same chat
- * session (balance_check + portfolio_analysis) share the same response.
+ * prices in a single call; on failure we degrade to a Sui-RPC coin
+ * fetch with hardcoded stablecoin pricing.
+ *
+ * Caching shape (PR 1+2 — v0.55):
+ *   1. Store-level cache (Redis in prod, in-memory in CLI/tests). Read
+ *      first; if entry is fresh-for-source serve directly.
+ *   2. In-process inflight Map dedupes concurrent in-process callers
+ *      onto one promise.
+ *   3. The leader path runs under a cross-instance lock
+ *      (`bv-lock:wallet:<addr>`) so at most one Vercel instance per
+ *      address is hitting BlockVision at any moment. Followers poll
+ *      the store for the leader's write; if the leader dies they fall
+ *      through to a direct fetch as a defensive degraded path.
+ *
+ * Sticky-positive write rules mirror the DeFi half:
+ *   - `blockvision` (any total) → write unconditionally; latest BV
+ *     truth always wins.
+ *   - `sui-rpc-degraded` → write only when no fresher positive
+ *     `blockvision` entry exists in the sticky window (30 min). When
+ *     a positive sticky entry exists, return it as-is and DO NOT
+ *     overwrite — preserves the original `pricedAt` so a UI can
+ *     render "last refresh Nm ago".
  */
 export async function fetchAddressPortfolio(
   address: string,
   apiKey: string | undefined,
   fallbackRpcUrl?: string,
 ): Promise<AddressPortfolio> {
-  const now = Date.now();
-  const cached = portfolioCache.get(address);
-  if (cached && now - cached.ts < CACHE_TTL_MS) {
-    return cached.data;
+  const store = getWalletCacheStore();
+
+  // ---------------------------------------------------------------
+  // Read path — source-aware freshness
+  // ---------------------------------------------------------------
+  const cachedEntry = await safeWalletStoreGet(store, address);
+  if (cachedEntry) {
+    const ageMs = Date.now() - cachedEntry.pricedAt;
+    if (ageMs < walletFreshTtlMs(cachedEntry.data.source)) {
+      return cachedEntry.data;
+    }
+    // Stale hit — kept in scope for the sticky-positive fallback below.
   }
 
-  let inflight = portfolioInflight.get(address);
-  if (inflight) return inflight;
+  // In-process inflight dedup. Even with a cross-instance lock, we
+  // still want concurrent in-process callers to share one promise.
+  const existing = portfolioInflight.get(address);
+  if (existing) return existing;
 
-  inflight = (async () => {
+  const promise = (async (): Promise<AddressPortfolio> => {
     try {
-      if (apiKey && apiKey.trim().length > 0) {
-        const blockvision = await fetchPortfolioFromBlockVision(address, apiKey);
-        if (blockvision) {
-          portfolioCache.set(address, { data: blockvision, ts: Date.now() });
-          return blockvision;
-        }
-      }
-      // [v0.50.3] Pass apiKey through so the RPC fallback can still use the
-      // BlockVision price-list endpoint to USD-price non-stables. Without
-      // this, a transient `/account/coins` failure (429, 5xx, network) would
-      // silently zero out every non-stable holding in the wallet view —
-      // exactly the regression that surfaced under the v0.50.1 burst.
-      const degraded = await fetchPortfolioFromSuiRpc(address, apiKey, fallbackRpcUrl);
-      // [v0.53.3] Cache poisoning fix — degraded results carry only
-      // stables and (best-effort) RPC-priced non-stables. Pre-fix, a
-      // single BlockVision 429 burst on `/account/coins` would lock
-      // every non-stable in the wallet to its degraded value for 60s,
-      // even after BlockVision recovered. Same SSOT-drift class of
-      // bug as the DeFi cache fix in the sibling fetcher: balance_check
-      // (cache hit on a healthy entry) and the timeline canvas (fresh
-      // call after the bad cache landed) reported different totals
-      // for the same wallet. Stamping the cache entry as if it were
-      // (TTL - SHORT_TTL) old means the next caller within the next
-      // SHORT_TTL still gets the degraded value (deduplicates the
-      // burst), but anyone arriving after that retries upstream.
-      portfolioCache.set(address, {
-        data: degraded,
-        ts: Date.now() - (CACHE_TTL_MS - DEGRADED_CACHE_TTL_MS),
-      });
-      return degraded;
+      return await awaitOrFetch<AddressPortfolio>(
+        WALLET_LOCK_KEY(address),
+        // ----------------------------------------------------------
+        // Leader path — runs after we've won the cross-instance lock.
+        // Re-checks the cache (small window where another leader on a
+        // different process just wrote) before paying for the BV call.
+        // ----------------------------------------------------------
+        async () => {
+          const recheck = await safeWalletStoreGet(store, address);
+          if (recheck) {
+            const ageMs = Date.now() - recheck.pricedAt;
+            if (ageMs < walletFreshTtlMs(recheck.data.source)) {
+              return recheck.data;
+            }
+          }
+
+          // Try BlockVision first (fast path).
+          if (apiKey && apiKey.trim().length > 0) {
+            const blockvision = await fetchPortfolioFromBlockVision(address, apiKey);
+            if (blockvision) {
+              // `blockvision` always wins — latest BV truth.
+              await safeWalletStoreSet(
+                store,
+                address,
+                { data: blockvision, pricedAt: Date.now() },
+                WALLET_STICKY_TTL_SEC,
+              );
+              return blockvision;
+            }
+          }
+
+          // [v0.50.3] Pass apiKey through so the RPC fallback can
+          // still use the BlockVision price-list endpoint to USD-price
+          // non-stables. Without this, a transient `/account/coins`
+          // failure (429, 5xx, network) would silently zero out every
+          // non-stable holding in the wallet view.
+          const degraded = await fetchPortfolioFromSuiRpc(address, apiKey, fallbackRpcUrl);
+
+          // -----------------------------------------------------
+          // Sticky-positive write rules (PR 1 — v0.55)
+          //
+          // If a positive `blockvision` entry exists within the sticky
+          // window, prefer it over a fresh degraded read. This stops a
+          // BV burst from poisoning the cache with a $0/missing-token
+          // wallet across every Vercel instance simultaneously — the
+          // exact divergence that fired three different totals on the
+          // same chat turn pre-v0.54 (DeFi half) and pre-v0.55 (wallet
+          // half).
+          //
+          // We use `recheck` (which we read inside the lock) as the
+          // basis for the comparison. If `recheck` is null but the
+          // pre-lock `cachedEntry` was positive within the sticky
+          // window, prefer that — covers the case where the pre-lock
+          // read raced a deleting writer.
+          // -----------------------------------------------------
+          const stickyCandidate =
+            recheck && recheck.data.source === 'blockvision' && recheck.data.totalUsd > 0
+              ? recheck
+              : cachedEntry &&
+                  cachedEntry.data.source === 'blockvision' &&
+                  cachedEntry.data.totalUsd > 0
+                ? cachedEntry
+                : null;
+
+          const stickyFresh =
+            stickyCandidate && Date.now() - stickyCandidate.pricedAt < WALLET_STICKY_TTL_SEC * 1000;
+
+          if (stickyFresh) {
+            // Return the cached positive as-is — preserve `pricedAt` so
+            // a UI consumer can decide whether to caveat staleness.
+            // Do NOT overwrite the cache; the existing entry is still
+            // the most truthful thing we have for this address.
+            return stickyCandidate!.data;
+          }
+
+          // No sticky fallback — write the degraded result with a
+          // short TTL so the next caller retries BV soon. Pre-PR-1
+          // this used the `ts: Date.now() - (CACHE_TTL_MS -
+          // DEGRADED_CACHE_TTL_MS)` aging trick to emulate a short
+          // TTL on top of the long base TTL; under Redis's
+          // server-enforced `EX` that no longer works, so we pass
+          // an explicit per-source TTL instead.
+          await safeWalletStoreSet(
+            store,
+            address,
+            { data: degraded, pricedAt: Date.now() },
+            Math.ceil(WALLET_FRESH_TTL_MS_DEGRADED / 1000),
+          );
+          return degraded;
+        },
+        {
+          // Followers poll the wallet cache while the leader fetches.
+          // Returns non-null only when the leader has written a
+          // fresh-for-source entry — stale entries keep the poll going.
+          pollCache: async () => {
+            const e = await safeWalletStoreGet(store, address);
+            if (!e) return null;
+            const ageMs = Date.now() - e.pricedAt;
+            return ageMs < walletFreshTtlMs(e.data.source) ? e.data : null;
+          },
+        },
+      );
     } finally {
       portfolioInflight.delete(address);
     }
   })();
 
-  portfolioInflight.set(address, inflight);
-  return inflight;
+  portfolioInflight.set(address, promise);
+  return promise;
 }
 
 async function fetchPortfolioFromBlockVision(
@@ -826,6 +1009,23 @@ async function safeStoreSet(
   }
 }
 
+/**
+ * Read the DeFi store, swallowing transport errors as cache misses.
+ * Used by both the leader (pre-fanout + post-lock recheck) and the
+ * follower (poll loop). Mirrors `safeWalletStoreGet`.
+ */
+async function safeDefiStoreGet(
+  store: DefiCacheStore,
+  address: string,
+): Promise<DefiCacheEntry | null> {
+  try {
+    return await store.get(address);
+  } catch (err) {
+    console.warn('[defi] cache get failed (continuing as cache miss):', err);
+    return null;
+  }
+}
+
 // Warn-once gate so we don't spam logs every time `balance_check` runs in a
 // misconfigured environment. The first request that hits the missing-key
 // guard logs a loud, scannable warning; subsequent requests stay quiet.
@@ -867,7 +1067,6 @@ export async function fetchAddressDefiPortfolio(
   }
 
   const store = getDefiCacheStore();
-  const now = Date.now();
 
   // ---------------------------------------------------------------
   // Read path — source-aware freshness
@@ -879,15 +1078,9 @@ export async function fetchAddressDefiPortfolio(
   // log and continue as if the cache were empty so a Redis hiccup
   // never breaks `balance_check`.
   // ---------------------------------------------------------------
-  let cachedEntry: DefiCacheEntry | null = null;
-  try {
-    cachedEntry = await store.get(address);
-  } catch (err) {
-    console.warn('[defi] cache get failed (continuing as cache miss):', err);
-  }
-
+  const cachedEntry = await safeDefiStoreGet(store, address);
   if (cachedEntry) {
-    const ageMs = now - cachedEntry.pricedAt;
+    const ageMs = Date.now() - cachedEntry.pricedAt;
     const freshTtlMs = freshTtlForSource(cachedEntry.data.source);
     if (ageMs < freshTtlMs) {
       // Fresh hit — serve directly without re-fetching.
@@ -899,158 +1092,174 @@ export async function fetchAddressDefiPortfolio(
   let inflight = defiInflight.get(address);
   if (inflight) return inflight;
 
+  // ---------------------------------------------------------------
+  // [PR 2 — v0.55] Cross-instance coalescer wraps the WHOLE 9-protocol
+  // fan-out as a single unit. Lock key is `bv-lock:defi:<addr>` —
+  // distinct from the wallet lock so they don't block each other.
+  //
+  // IMPORTANT: the lock sits at the fan-out level, NOT around each
+  // individual `fetchOneDefiProtocol` call. Per-protocol locking would
+  // cause the 9 sibling protocols to compete for the same lock — one
+  // would win and 8 would poll-then-refetch, completely defeating
+  // coalescing.
+  // ---------------------------------------------------------------
   inflight = (async () => {
     try {
-      const settled = await Promise.allSettled(
-        DEFI_PROTOCOLS.map((p) => fetchOneDefiProtocol(address, p, apiKey)),
-      );
-
-      // Pass 1 — discover every coin type referenced across all protocol
-      // responses, then fill any missing prices in a single batched call.
-      const seen = new Set<string>();
-      for (const s of settled) {
-        if (s.status === 'fulfilled' && s.value) collectCoinTypes(s.value, seen);
-      }
-      const normalizedHints: Record<string, number> = {};
-      for (const [k, v] of Object.entries(priceHints)) {
-        normalizedHints[normalizeCoinType(k)] = v;
-      }
-      const missing = Array.from(seen).filter((ct) => {
-        const norm = normalizeCoinType(ct);
-        return !normalizedHints[norm] && !STABLE_USD_PRICES[norm];
-      });
-      let fetchedPrices: Record<string, { price: number }> = {};
-      if (missing.length > 0) {
-        try {
-          fetchedPrices = await fetchTokenPrices(missing, apiKey);
-        } catch (err) {
-          console.warn('[defi] fill-missing-prices failed:', err);
-        }
-      }
-
-      const prices: Record<string, number> = { ...normalizedHints };
-      for (const [ct, v] of Object.entries(fetchedPrices)) {
-        prices[normalizeCoinType(ct)] ??= v.price;
-      }
-      for (const [ct, p] of Object.entries(STABLE_USD_PRICES)) {
-        prices[normalizeCoinType(ct)] ??= p;
-      }
-
-      // Pass 2 — run the per-protocol normaliser. Bespoke handlers cover
-      // the protocols the walker can't infer (implied coin types, nested
-      // phantomType); everything else falls through to the generic walker.
-      let totalUsd = 0;
-      let failures = 0;
-      const perProtocol: Partial<Record<DefiProtocol, number>> = {};
-
-      for (let i = 0; i < DEFI_PROTOCOLS.length; i++) {
-        const proto = DEFI_PROTOCOLS[i];
-        const s = settled[i];
-        if (s.status !== 'fulfilled' || !s.value) {
-          failures++;
-          continue;
-        }
-        try {
-          const usd = normalizeProtocol(proto, s.value, prices);
-          if (Number.isFinite(usd) && usd !== 0) {
-            perProtocol[proto] = usd;
-            totalUsd += usd;
+      return await awaitOrFetch<DefiSummary>(
+        DEFI_LOCK_KEY(address),
+        // Leader path — runs after acquiring the lock.
+        async () => {
+          // Re-check the cache after acquiring the lock — a leader on
+          // another process may have written between our pre-lock
+          // miss and our lock acquisition.
+          const recheck = await safeDefiStoreGet(store, address);
+          if (recheck) {
+            const ageMs = Date.now() - recheck.pricedAt;
+            if (ageMs < freshTtlForSource(recheck.data.source)) {
+              return recheck.data;
+            }
           }
-        } catch (err) {
-          console.warn(`[defi] ${proto} normaliser threw:`, err);
-          failures++;
-        }
-      }
+          // Use the freshest sticky basis we have for the write rules
+          // below. Prefer `recheck` over the pre-lock `cachedEntry`
+          // (covers the case where a previous leader's write expired
+          // since our pre-lock read).
+          const stickyBasis: DefiCacheEntry | null = recheck ?? cachedEntry;
+          const fanoutAt = Date.now();
 
-      // Floor under-zero rollups to 0 — net negative would mean borrows >
-      // supplies on a *DeFi-only* basis, which is implausible without
-      // collateral counted; safer to surface 0 than a misleading negative.
-      if (totalUsd < 0) totalUsd = 0;
+          const settled = await Promise.allSettled(
+            DEFI_PROTOCOLS.map((p) => fetchOneDefiProtocol(address, p, apiKey)),
+          );
 
-      const fetchedAt = Date.now();
-      const summary: DefiSummary = {
-        totalUsd,
-        perProtocol,
-        pricedAt: fetchedAt,
-        source: failures === DEFI_PROTOCOLS.length ? 'degraded' : failures > 0 ? 'partial' : 'blockvision',
-      };
+          // Pass 1 — discover every coin type referenced across all protocol
+          // responses, then fill any missing prices in a single batched call.
+          const seen = new Set<string>();
+          for (const s of settled) {
+            if (s.status === 'fulfilled' && s.value) collectCoinTypes(s.value, seen);
+          }
+          const normalizedHints: Record<string, number> = {};
+          for (const [k, v] of Object.entries(priceHints)) {
+            normalizedHints[normalizeCoinType(k)] = v;
+          }
+          const missing = Array.from(seen).filter((ct) => {
+            const norm = normalizeCoinType(ct);
+            return !normalizedHints[norm] && !STABLE_USD_PRICES[norm];
+          });
+          let fetchedPrices: Record<string, { price: number }> = {};
+          if (missing.length > 0) {
+            try {
+              fetchedPrices = await fetchTokenPrices(missing, apiKey);
+            } catch (err) {
+              console.warn('[defi] fill-missing-prices failed:', err);
+            }
+          }
 
-      // -------------------------------------------------------------
-      // Sticky-positive write rules (v0.54)
-      //
-      // The four states this function can produce, and what we do:
-      //
-      //   blockvision (any total)
-      //     → trust it fully. Write to cache (overwrite anything older).
-      //     This includes blockvision+0, which is a confirmed empty
-      //     position across all 9 protocols.
-      //
-      //   partial + total > 0
-      //     → at least one protocol failed but we observed real value
-      //     elsewhere. Write to cache; the next reader will re-fetch
-      //     within 15s (DEFI_FRESH_TTL_MS_PARTIAL) to try the failing
-      //     protocols again. Do NOT skip the write — we'd rather show
-      //     the partial total than fall back to a stale entry that
-      //     might also be partial.
-      //
-      //   partial + total === 0
-      //     → some protocols failed, the rest reported $0. We don't
-      //     know whether the missing protocols had value. If we have
-      //     a recent positive cached value, serve THAT marked stale;
-      //     otherwise serve degraded. Either way, do NOT overwrite a
-      //     known-good positive entry with this $0 — that's the cache-
-      //     poisoning bug v0.53.3 caught half of. With a shared
-      //     Redis store, an unconditional write would now poison
-      //     EVERY instance, not just one.
-      //
-      //   degraded (every protocol failed)
-      //     → same fallback logic as partial+0. Sticky cache wins;
-      //     never overwrite.
-      //
-      // Pre-v0.54 each Vercel function instance had its own in-memory
-      // Map, so a poisoned cache only affected that instance and the
-      // user saw three different totals across three canvases on the
-      // same chat turn ($36,991 / $36,992 / $29,514 was the closing
-      // bug). With a shared store + these rules, every reader sees
-      // the same number for the same address regardless of which
-      // route or instance fielded the request.
-      // -------------------------------------------------------------
+          const prices: Record<string, number> = { ...normalizedHints };
+          for (const [ct, v] of Object.entries(fetchedPrices)) {
+            prices[normalizeCoinType(ct)] ??= v.price;
+          }
+          for (const [ct, p] of Object.entries(STABLE_USD_PRICES)) {
+            prices[normalizeCoinType(ct)] ??= p;
+          }
 
-      const cachedPositive =
-        cachedEntry &&
-        cachedEntry.data.totalUsd > 0 &&
-        now - cachedEntry.pricedAt < DEFI_STICKY_TTL_SEC * 1000;
+          // Pass 2 — run the per-protocol normaliser. Bespoke handlers cover
+          // the protocols the walker can't infer (implied coin types, nested
+          // phantomType); everything else falls through to the generic walker.
+          let totalUsd = 0;
+          let failures = 0;
+          const perProtocol: Partial<Record<DefiProtocol, number>> = {};
 
-      if (summary.source === 'blockvision') {
-        // Fully successful — overwrites unconditionally.
-        await safeStoreSet(store, address, { data: summary, pricedAt: fetchedAt });
-        return summary;
-      }
+          for (let i = 0; i < DEFI_PROTOCOLS.length; i++) {
+            const proto = DEFI_PROTOCOLS[i];
+            const s = settled[i];
+            if (s.status !== 'fulfilled' || !s.value) {
+              failures++;
+              continue;
+            }
+            try {
+              const usd = normalizeProtocol(proto, s.value, prices);
+              if (Number.isFinite(usd) && usd !== 0) {
+                perProtocol[proto] = usd;
+                totalUsd += usd;
+              }
+            } catch (err) {
+              console.warn(`[defi] ${proto} normaliser threw:`, err);
+              failures++;
+            }
+          }
 
-      if (summary.source === 'partial' && summary.totalUsd > 0) {
-        // Observed real value despite a failure — write but with a
-        // short fresh-TTL so the next reader retries the failing
-        // protocols within 15s.
-        await safeStoreSet(store, address, { data: summary, pricedAt: fetchedAt });
-        return summary;
-      }
+          // Floor under-zero rollups to 0 — net negative would mean borrows >
+          // supplies on a *DeFi-only* basis, which is implausible without
+          // collateral counted; safer to surface 0 than a misleading negative.
+          if (totalUsd < 0) totalUsd = 0;
 
-      // partial+0 OR degraded — fall back to the sticky cache if
-      // we have a positive entry that's fresher than 30 minutes.
-      if (cachedPositive) {
-        const stale: DefiSummary = {
-          ...cachedEntry!.data,
-          source: 'partial-stale',
-        };
-        // Don't write — preserve the original `pricedAt` so the UI can
-        // render an honest "last refresh Nm ago" caveat. Re-writing
-        // would reset the age and hide the staleness from consumers.
-        return stale;
-      }
+          const fetchedAt = Date.now();
+          const summary: DefiSummary = {
+            totalUsd,
+            perProtocol,
+            pricedAt: fetchedAt,
+            source:
+              failures === DEFI_PROTOCOLS.length
+                ? 'degraded'
+                : failures > 0
+                  ? 'partial'
+                  : 'blockvision',
+          };
 
-      // No fallback available — return as-is, don't cache so the
-      // next caller retries BlockVision.
-      return summary;
+          // -------------------------------------------------------------
+          // Sticky-positive write rules (v0.54 — see header for the
+          // four-state truth table). `stickyBasis` was captured inside
+          // the lock above so it reflects the freshest known state at
+          // leader-entry time (not the pre-lock observation, which may
+          // have raced a deleting writer).
+          // -------------------------------------------------------------
+          const cachedPositive =
+            stickyBasis &&
+            stickyBasis.data.totalUsd > 0 &&
+            fanoutAt - stickyBasis.pricedAt < DEFI_STICKY_TTL_SEC * 1000;
+
+          if (summary.source === 'blockvision') {
+            // Fully successful — overwrites unconditionally.
+            await safeStoreSet(store, address, { data: summary, pricedAt: fetchedAt });
+            return summary;
+          }
+
+          if (summary.source === 'partial' && summary.totalUsd > 0) {
+            // Observed real value despite a failure — write but with a
+            // short fresh-TTL so the next reader retries the failing
+            // protocols within 15s.
+            await safeStoreSet(store, address, { data: summary, pricedAt: fetchedAt });
+            return summary;
+          }
+
+          // partial+0 OR degraded — fall back to the sticky cache if we
+          // have a positive entry that's fresher than 30 minutes.
+          if (cachedPositive) {
+            const stale: DefiSummary = {
+              ...stickyBasis!.data,
+              source: 'partial-stale',
+            };
+            // Don't write — preserve the original `pricedAt` so the UI
+            // can render an honest "last refresh Nm ago" caveat.
+            // Re-writing would reset the age and hide the staleness.
+            return stale;
+          }
+
+          // No fallback available — return as-is, don't cache so the
+          // next caller retries BlockVision.
+          return summary;
+        },
+        {
+          // Followers poll the DeFi cache while the leader fans out.
+          // Returns non-null only when the leader has written a
+          // fresh-for-source entry — stale entries keep the poll going.
+          pollCache: async () => {
+            const e = await safeDefiStoreGet(store, address);
+            if (!e) return null;
+            const ageMs = Date.now() - e.pricedAt;
+            return ageMs < freshTtlForSource(e.data.source) ? e.data : null;
+          },
+        },
+      );
     } finally {
       defiInflight.delete(address);
     }
@@ -1542,26 +1751,40 @@ export async function clearDefiCacheFor(address: string): Promise<void> {
   defiInflight.delete(address);
 }
 
-export function clearPortfolioCache(): void {
-  portfolioCache.clear();
+/**
+ * Wipe the wallet portfolio cache plus any in-flight promises.
+ *
+ * Async because the underlying store may be Redis-backed. Existing
+ * fire-and-forget callers (tests, `clearDefiCache`-shape utilities)
+ * still work since they just don't `await` — they get the same
+ * effective "schedule the clear" behavior.
+ */
+export async function clearPortfolioCache(): Promise<void> {
+  await getWalletCacheStore().clear();
   portfolioInflight.clear();
 }
 
 /**
- * [v1.4 — Day 2.5] Per-address invalidator. The module-level
- * `portfolioCache` carries a 60s TTL — long enough to outlive a
- * `save_deposit` / `swap_execute` / etc. plus the engine's 1.5s
- * Sui-RPC-indexer-lag delay, so without explicit invalidation
- * `runPostWriteRefresh` would re-fetch the *cached pre-write
- * snapshot*. Engine calls this from `runPostWriteRefresh` right
- * before the lag-delay so the next `fetchAddressPortfolio` for the
- * affected address is forced to hit BlockVision again.
+ * [v1.4 — Day 2.5] Per-address invalidator.
+ *
+ * Engine `runPostWriteRefresh` calls this right before the 1.5s
+ * Sui-RPC-indexer-lag delay so the next `fetchAddressPortfolio` for
+ * the affected address is forced to hit BlockVision again instead of
+ * returning the cached pre-write snapshot.
+ *
+ * **MUST be awaited** — pre-PR-1 the cache was a synchronous Map and
+ * the `engine.ts` caller fired-and-forgot. Now the underlying store
+ * is async (Upstash in production), so without `await` the next
+ * `balance_check` races the Redis delete and can fetch the stale
+ * pre-write balance — exactly the symptom v0.54 sticky cache shipped
+ * to fix. `engine.ts` `runPostWriteRefresh` was updated to await this
+ * in the same PR.
  *
  * No-op when `address` doesn't match a cached entry — cheap to call
  * unconditionally on every write.
  */
-export function clearPortfolioCacheFor(address: string): void {
-  portfolioCache.delete(address);
+export async function clearPortfolioCacheFor(address: string): Promise<void> {
+  await getWalletCacheStore().delete(address);
   portfolioInflight.delete(address);
 }
 

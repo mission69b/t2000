@@ -703,7 +703,7 @@ describe('[v0.53.3] fetchAddressPortfolio — cache poisoning regression', () =>
     const { fetchAddressPortfolio: f, clearPortfolioCache } = await import(
       '../blockvision-prices.js'
     );
-    clearPortfolioCache();
+    await clearPortfolioCache();
 
     let coinsCalls = 0;
     globalThis.fetch = vi.fn(async (input: FetchInput) => {
