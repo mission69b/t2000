@@ -543,6 +543,13 @@ const defiInflight = new Map<string, Promise<DefiSummary>>();
 // guard logs a loud, scannable warning; subsequent requests stay quiet.
 // Reset on process restart, which is fine — the next deploy logs again
 // until the operator sets the key.
+//
+// Defense-in-depth note: the audric web app gates the empty-key class of
+// bug at server boot via `apps/web/lib/env.ts`. This warn-and-degrade
+// path remains because the engine package is also consumed by the CLI,
+// MCP server, and other hosts that may not have the same gate, AND the
+// SDK form of `balance_check` accepts the apiKey as a runtime parameter
+// — degrading visibly is the right behavior when a caller passes blank.
 let warnedMissingApiKey = false;
 
 interface BlockVisionDefiResponse {

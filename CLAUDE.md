@@ -109,8 +109,9 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 4. **Never fork claude-code.** Study patterns, reimplement in @t2000/engine.
 5. **Always check PRODUCT_FACTS.md** before writing documentation or marketing copy.
 6. **Always check CLI_UX_SPEC.md** before modifying CLI command output.
-8. **Always use `token-registry.ts`** for token metadata (tiers, `COIN_REGISTRY`, `isTier1` / `isTier2` / `isSupported` / `getTier`). Never hardcode decimals or coin types.
-7. **Push back** if a task violates simplicity or adds unnecessary complexity.
+7. **Always use `token-registry.ts`** for token metadata (tiers, `COIN_REGISTRY`, `isTier1` / `isTier2` / `isSupported` / `getTier`). Never hardcode decimals or coin types.
+8. **Never read `process.env.X` directly in any app or package.** Every app MUST validate its env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web/lib/env.ts` (v0.53.x) — schema + `instrumentation.ts` boot-time validation + ESLint `no-restricted-syntax` rule that fails CI on raw `process.env` reads. The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).
+9. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
 ---
 
@@ -126,6 +127,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
 | `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources (TOKEN_MAP, SUPPORTED_ASSETS, etc.) | Adding tokens, fixing decimal/display bugs |
 | `.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which code path runs when | Any Audric transaction/receipt bug |
+| `audric/apps/web/lib/env.ts` | Canonical Zod env-validation template (boot-time fail-fast, server/client split, proxy guard) | Adding env vars, copying the pattern to a new app |
 
 ---
 
