@@ -36,6 +36,14 @@ const BLOCKVISION_BASE = 'https://api.blockvision.org/v2/sui';
 const PORTFOLIO_TIMEOUT_MS = 4_000;
 const PRICES_TIMEOUT_MS = 3_000;
 const CACHE_TTL_MS = 60_000;
+/**
+ * [v0.53.3] Effective TTL when the wallet portfolio came from the
+ * Sui-RPC fallback path (i.e. BlockVision `/account/coins` was
+ * unavailable — typically a 429 burst). Same shape as
+ * `DEFI_PARTIAL_CACHE_TTL_MS`: short enough to retry BlockVision
+ * after the burst, long enough to dedupe overlapping callers.
+ */
+const DEGRADED_CACHE_TTL_MS = 15_000;
 // BlockVision caps `tokenIds` at 10. Internal callers (engine-factory, the
 // future `token_prices` LLM tool) may request more — we chunk transparently.
 const PRICE_LIST_CHUNK = 10;
@@ -163,7 +171,22 @@ export async function fetchAddressPortfolio(
       // silently zero out every non-stable holding in the wallet view —
       // exactly the regression that surfaced under the v0.50.1 burst.
       const degraded = await fetchPortfolioFromSuiRpc(address, apiKey, fallbackRpcUrl);
-      portfolioCache.set(address, { data: degraded, ts: Date.now() });
+      // [v0.53.3] Cache poisoning fix — degraded results carry only
+      // stables and (best-effort) RPC-priced non-stables. Pre-fix, a
+      // single BlockVision 429 burst on `/account/coins` would lock
+      // every non-stable in the wallet to its degraded value for 60s,
+      // even after BlockVision recovered. Same SSOT-drift class of
+      // bug as the DeFi cache fix in the sibling fetcher: balance_check
+      // (cache hit on a healthy entry) and the timeline canvas (fresh
+      // call after the bad cache landed) reported different totals
+      // for the same wallet. Stamping the cache entry as if it were
+      // (TTL - SHORT_TTL) old means the next caller within the next
+      // SHORT_TTL still gets the degraded value (deduplicates the
+      // burst), but anyone arriving after that retries upstream.
+      portfolioCache.set(address, {
+        data: degraded,
+        ts: Date.now() - (CACHE_TTL_MS - DEGRADED_CACHE_TTL_MS),
+      });
       return degraded;
     } finally {
       portfolioInflight.delete(address);
@@ -479,6 +502,15 @@ function parseNumberOrNull(input: unknown): number | null {
 
 const DEFI_PORTFOLIO_TIMEOUT_MS = 4_000;
 const DEFI_CACHE_TTL_MS = 60_000;
+/**
+ * [v0.53.3] Effective TTL for `partial` DeFi results — short enough
+ * that a degraded protocol (429, transient 5xx) gets re-attempted
+ * within the same chat session, long enough to absorb a back-to-back
+ * canvas + balance_check burst. See the comment in
+ * `fetchAddressDefiPortfolio` where this is consumed for the full
+ * rationale on why partial != fully-successful for caching.
+ */
+const DEFI_PARTIAL_CACHE_TTL_MS = 15_000;
 
 // [v0.50.2] 9 protocols — the v0.50 majors (Cetus/Suilend/Scallop/Bluefin/
 // Aftermath/Haedal) plus three native-token stakings (Suistake/SuiNS-staking/
@@ -659,7 +691,32 @@ export async function fetchAddressDefiPortfolio(
         pricedAt: Date.now(),
         source: failures === DEFI_PROTOCOLS.length ? 'degraded' : failures > 0 ? 'partial' : 'blockvision',
       };
-      defiCache.set(address, { data: summary, ts: Date.now() });
+      // [v0.53.3] Cache poisoning fix — only cache fully-successful
+      // results for the full TTL. Degraded results (every protocol
+      // 429'd) get NO cache: the next caller retries upstream, which
+      // is what we want when BlockVision starts replying again.
+      // Partial results (some protocols 429'd, others succeeded) get
+      // a SHORTENED TTL so we re-attempt the failing protocols sooner
+      // — a 60s lock-in on a partial DeFi total is worse than a brief
+      // burst because it produces under-counted net worth in canvases
+      // that take the result at face value (e.g. PortfolioTimelineCanvas,
+      // FullPortfolioCanvas). Pre-fix: a single 429 storm zeroed out
+      // DeFi for 60s across every consumer in the same Vercel
+      // instance, while `balance_check` (which had a healthy cache hit
+      // moments earlier) reported the real number — producing the
+      // exact "balance_check says $37K, canvas says $29K" SSOT drift
+      // we shipped the SSOT to eliminate.
+      if (summary.source === 'blockvision') {
+        defiCache.set(address, { data: summary, ts: Date.now() });
+      } else if (summary.source === 'partial') {
+        defiCache.set(address, {
+          data: summary,
+          // Subtract from `now` so cache TTL elapses to (TTL - PARTIAL_AGE_MS)
+          // from a fresh-cache caller's perspective. Effective TTL = 15s.
+          ts: Date.now() - (DEFI_CACHE_TTL_MS - DEFI_PARTIAL_CACHE_TTL_MS),
+        });
+      }
+      // source === 'degraded' → no cache write; next caller retries.
       return summary;
     } finally {
       defiInflight.delete(address);
