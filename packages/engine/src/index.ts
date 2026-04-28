@@ -256,6 +256,18 @@ export type {
   DefiProtocol,
 } from './blockvision-prices.js';
 
+// [v0.54] Pluggable DeFi cache store. Default is in-memory; Audric
+// injects an Upstash-backed store at engine init so all routes/
+// instances share one cache (eliminates cross-instance SSOT
+// divergence during BlockVision bursts). See defi-cache.ts.
+export {
+  InMemoryDefiCacheStore,
+  setDefiCacheStore,
+  getDefiCacheStore,
+  resetDefiCacheStore,
+} from './defi-cache.js';
+export type { DefiCacheStore, DefiCacheEntry } from './defi-cache.js';
+
 // [single-source-of-truth — Apr 2026] Audric canonical-API client.
 // Read tools call these helpers first when T2000_AUDRIC_API (or
 // AUDRIC_INTERNAL_API_URL) is configured, otherwise fall back to their

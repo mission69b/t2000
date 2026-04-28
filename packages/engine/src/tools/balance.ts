@@ -367,6 +367,10 @@ export const balanceCheckTool = buildTool({
         defi: defi.totalUsd,
         defiByProtocol: defi.perProtocol,
         defiSource: defi.source,
+        // [v0.54] Forward the DeFi entry's pricedAt so the BalanceCard
+        // can render "cached Nm ago" when source === 'partial-stale'.
+        // Always populated; consumers ignore unless source is stale.
+        defiPricedAt: defi.pricedAt,
         total: availableUsd + savings + gasReserveUsd + pendingRewardsUsd + defi.totalUsd - debt,
         stables: stablesUsd,
         holdings: visibleHoldings,
@@ -393,6 +397,14 @@ export const balanceCheckTool = buildTool({
         if (defi.source === 'degraded') {
           return ' DeFi positions (Bluefin / Suilend / Cetus / etc.): UNAVAILABLE — DeFi data source is currently unreachable. Do NOT assert "no DeFi positions"; tell the user this slice is temporarily unknown and the total above EXCLUDES DeFi.';
         }
+        if (defi.source === 'partial-stale' && defi.totalUsd > 0) {
+          // [v0.54] Sticky-positive cache fallback — fresh BlockVision
+          // call failed but we have a recent positive value. The total
+          // INCLUDES this stale value (it's the most accurate number
+          // we have right now), but mention provenance honestly.
+          const ageMin = Math.round((Date.now() - defi.pricedAt) / 60_000);
+          return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)} (last refresh ${ageMin}m ago — live BlockVision call failed, using cached value).`;
+        }
         if (defi.totalUsd > 0) {
           const partialNote = defi.source === 'partial' ? ' (partial — one or more protocols failed; value may under-count)' : '';
           return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}${partialNote}.`;
@@ -407,6 +419,9 @@ export const balanceCheckTool = buildTool({
           // 30s later (cache miss → fresh fetch) showed thousands of
           // dollars in DeFi via the timeline canvas. Reworded to be
           // an explicit instruction matching the `degraded` branch.
+          // (v0.54 reduces how often this branch fires by adding the
+          // sticky-positive fallback above — partial+0 with a recent
+          // positive cache now resolves to `partial-stale` instead.)
           return ' DeFi positions: UNKNOWN — at least one protocol failed to respond. The total above EXCLUDES any DeFi the failing protocols may hold. Do NOT assert "no DeFi positions" or "DeFi: $0"; tell the user DeFi is temporarily unreachable for this address.';
         }
         return '';
@@ -472,6 +487,11 @@ export const balanceCheckTool = buildTool({
       if (defi.source === 'degraded') {
         return ' DeFi positions: UNAVAILABLE — data source unreachable. Do NOT claim "no DeFi positions"; report this slice as temporarily unknown and the total above EXCLUDES DeFi.';
       }
+      if (defi.source === 'partial-stale' && defi.totalUsd > 0) {
+        // [v0.54] Mirror of MCP-path sticky-positive narration.
+        const ageMin = Math.round((Date.now() - defi.pricedAt) / 60_000);
+        return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)} (last refresh ${ageMin}m ago — live BlockVision call failed, using cached value).`;
+      }
       if (defi.totalUsd > 0) {
         const partialNote = defi.source === 'partial' ? ' (partial — one or more protocols failed; value may under-count)' : '';
         return ` Other DeFi positions (LPs/staking/lending across ${Object.keys(defi.perProtocol).join('/')}): $${defi.totalUsd.toFixed(2)}${partialNote}.`;
@@ -495,6 +515,8 @@ export const balanceCheckTool = buildTool({
         defi: defi.totalUsd,
         defiByProtocol: defi.perProtocol,
         defiSource: defi.source,
+        // [v0.54] Same staleness provenance as the MCP path above.
+        defiPricedAt: defi.pricedAt,
         total: sdkTotal,
         stables: stablesTotal,
         holdings: holdingsArr,

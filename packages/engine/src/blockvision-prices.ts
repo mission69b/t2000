@@ -31,6 +31,7 @@
 
 import { getDecimalsForCoinType, resolveSymbol, normalizeCoinType } from '@t2000/sdk';
 import { fetchWalletCoins } from './sui-rpc.js';
+import { getDefiCacheStore, type DefiCacheEntry, type DefiCacheStore } from './defi-cache.js';
 
 const BLOCKVISION_BASE = 'https://api.blockvision.org/v2/sui';
 const PORTFOLIO_TIMEOUT_MS = 4_000;
@@ -501,16 +502,29 @@ function parseNumberOrNull(input: unknown): number | null {
 // ---------------------------------------------------------------------------
 
 const DEFI_PORTFOLIO_TIMEOUT_MS = 4_000;
-const DEFI_CACHE_TTL_MS = 60_000;
+
 /**
- * [v0.53.3] Effective TTL for `partial` DeFi results — short enough
- * that a degraded protocol (429, transient 5xx) gets re-attempted
- * within the same chat session, long enough to absorb a back-to-back
- * canvas + balance_check burst. See the comment in
- * `fetchAddressDefiPortfolio` where this is consumed for the full
- * rationale on why partial != fully-successful for caching.
+ * Source-aware freshness thresholds. When a cache hit has age <
+ * threshold, the fetcher serves it directly without re-attempting
+ * BlockVision. When age >= threshold but < `STICKY_TTL_SEC`, the entry
+ * is kept around as a sticky-positive fallback (see fetcher logic).
  */
-const DEFI_PARTIAL_CACHE_TTL_MS = 15_000;
+const DEFI_FRESH_TTL_MS_BLOCKVISION = 60_000; // 60s — fully successful
+const DEFI_FRESH_TTL_MS_PARTIAL = 15_000; // 15s — at least one protocol failed; retry sooner
+const DEFI_FRESH_TTL_MS_PARTIAL_STALE = 0; // 0s — always re-fetch in background
+
+/**
+ * [v0.54] Sticky-positive window: entries persist in the cache store
+ * for this long even after their fresh-TTL has elapsed, so a brief
+ * BlockVision burst that would otherwise return `partial+0` or
+ * `degraded` can fall back to the last-known-good positive value
+ * (marked `partial-stale` so consumers can render an honest "last
+ * refresh Nm ago" caveat). 30 minutes is long enough to absorb a
+ * sustained BV outage without serving wildly stale data; users hold
+ * positions on the order of hours/days, so a 30-minute lag rarely
+ * misleads. Tunable per-deployment via the cache store TTL.
+ */
+const DEFI_STICKY_TTL_SEC = 30 * 60;
 
 // [v0.50.2] 9 protocols — the v0.50 majors (Cetus/Suilend/Scallop/Bluefin/
 // Aftermath/Haedal) plus three native-token stakings (Suistake/SuiNS-staking/
@@ -556,19 +570,61 @@ export interface DefiSummary {
   perProtocol: Partial<Record<DefiProtocol, number>>;
   pricedAt: number;
   /**
-   * `blockvision` — every protocol in `DEFI_PROTOCOLS` responded successfully.
-   * `partial` — at least one protocol failed; total may under-count.
-   * `degraded` — no API key or every protocol failed; total = 0.
+   * `blockvision`    — every protocol in `DEFI_PROTOCOLS` responded successfully.
+   * `partial`        — at least one protocol failed; total may under-count.
+   * `partial-stale`  — fresh fetch returned degraded/partial-zero, but we have a
+   *                    positive value cached within the sticky window
+   *                    (`DEFI_STICKY_TTL_SEC`, default 30min). The numbers are
+   *                    real, just not freshly verified — UI should caveat with
+   *                    "last refresh Nm ago" so the user knows the provenance.
+   *                    Introduced in v0.54 to fix cross-instance SSOT divergence
+   *                    when BlockVision is bursting.
+   * `degraded`       — no API key, or every protocol failed AND no sticky
+   *                    fallback exists; total = 0.
    */
-  source: 'blockvision' | 'partial' | 'degraded';
+  source: 'blockvision' | 'partial' | 'partial-stale' | 'degraded';
 }
 
-interface DefiCacheEntry {
-  data: DefiSummary;
-  ts: number;
-}
-const defiCache = new Map<string, DefiCacheEntry>();
+// Process-local inflight dedup. Even with a shared cache store (Redis),
+// we still want to coalesce 9 BlockVision calls when N concurrent
+// callers in the same process miss the cache simultaneously — one
+// fetch fans out, all callers await the same promise. The store
+// handles cross-process dedup via TTL (last writer wins, but the
+// sticky-positive write rules below ensure the wrong winner can't
+// poison cached known-good data).
 const defiInflight = new Map<string, Promise<DefiSummary>>();
+
+/** Source-aware fresh-TTL lookup. See constants block above for rationale. */
+function freshTtlForSource(source: DefiSummary['source']): number {
+  switch (source) {
+    case 'blockvision':
+      return DEFI_FRESH_TTL_MS_BLOCKVISION;
+    case 'partial':
+      return DEFI_FRESH_TTL_MS_PARTIAL;
+    case 'partial-stale':
+      return DEFI_FRESH_TTL_MS_PARTIAL_STALE;
+    case 'degraded':
+      return 0;
+  }
+}
+
+/**
+ * Store-write helper that swallows backend errors. A Redis hiccup
+ * during write should never break a successful read — the next caller
+ * will simply re-fetch on cache miss. Errors are logged so an outage
+ * is still observable in Vercel logs.
+ */
+async function safeStoreSet(
+  store: DefiCacheStore,
+  address: string,
+  entry: DefiCacheEntry,
+): Promise<void> {
+  try {
+    await store.set(address, entry, DEFI_STICKY_TTL_SEC);
+  } catch (err) {
+    console.warn('[defi] cache set failed (non-fatal):', err);
+  }
+}
 
 // Warn-once gate so we don't spam logs every time `balance_check` runs in a
 // misconfigured environment. The first request that hits the missing-key
@@ -610,9 +666,35 @@ export async function fetchAddressDefiPortfolio(
     return { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };
   }
 
+  const store = getDefiCacheStore();
   const now = Date.now();
-  const cached = defiCache.get(address);
-  if (cached && now - cached.ts < DEFI_CACHE_TTL_MS) return cached.data;
+
+  // ---------------------------------------------------------------
+  // Read path — source-aware freshness
+  //
+  // `cachedEntry` may be present but past its source-specific
+  // freshness threshold. In that case we fall through to a fresh
+  // fetch but keep the entry in scope as a sticky-positive fallback
+  // (see write rules below). Store-level errors are swallowed; we
+  // log and continue as if the cache were empty so a Redis hiccup
+  // never breaks `balance_check`.
+  // ---------------------------------------------------------------
+  let cachedEntry: DefiCacheEntry | null = null;
+  try {
+    cachedEntry = await store.get(address);
+  } catch (err) {
+    console.warn('[defi] cache get failed (continuing as cache miss):', err);
+  }
+
+  if (cachedEntry) {
+    const ageMs = now - cachedEntry.pricedAt;
+    const freshTtlMs = freshTtlForSource(cachedEntry.data.source);
+    if (ageMs < freshTtlMs) {
+      // Fresh hit — serve directly without re-fetching.
+      return cachedEntry.data;
+    }
+    // Stale hit kept in scope for the sticky-positive fallback below.
+  }
 
   let inflight = defiInflight.get(address);
   if (inflight) return inflight;
@@ -685,38 +767,89 @@ export async function fetchAddressDefiPortfolio(
       // collateral counted; safer to surface 0 than a misleading negative.
       if (totalUsd < 0) totalUsd = 0;
 
+      const fetchedAt = Date.now();
       const summary: DefiSummary = {
         totalUsd,
         perProtocol,
-        pricedAt: Date.now(),
+        pricedAt: fetchedAt,
         source: failures === DEFI_PROTOCOLS.length ? 'degraded' : failures > 0 ? 'partial' : 'blockvision',
       };
-      // [v0.53.3] Cache poisoning fix — only cache fully-successful
-      // results for the full TTL. Degraded results (every protocol
-      // 429'd) get NO cache: the next caller retries upstream, which
-      // is what we want when BlockVision starts replying again.
-      // Partial results (some protocols 429'd, others succeeded) get
-      // a SHORTENED TTL so we re-attempt the failing protocols sooner
-      // — a 60s lock-in on a partial DeFi total is worse than a brief
-      // burst because it produces under-counted net worth in canvases
-      // that take the result at face value (e.g. PortfolioTimelineCanvas,
-      // FullPortfolioCanvas). Pre-fix: a single 429 storm zeroed out
-      // DeFi for 60s across every consumer in the same Vercel
-      // instance, while `balance_check` (which had a healthy cache hit
-      // moments earlier) reported the real number — producing the
-      // exact "balance_check says $37K, canvas says $29K" SSOT drift
-      // we shipped the SSOT to eliminate.
+
+      // -------------------------------------------------------------
+      // Sticky-positive write rules (v0.54)
+      //
+      // The four states this function can produce, and what we do:
+      //
+      //   blockvision (any total)
+      //     → trust it fully. Write to cache (overwrite anything older).
+      //     This includes blockvision+0, which is a confirmed empty
+      //     position across all 9 protocols.
+      //
+      //   partial + total > 0
+      //     → at least one protocol failed but we observed real value
+      //     elsewhere. Write to cache; the next reader will re-fetch
+      //     within 15s (DEFI_FRESH_TTL_MS_PARTIAL) to try the failing
+      //     protocols again. Do NOT skip the write — we'd rather show
+      //     the partial total than fall back to a stale entry that
+      //     might also be partial.
+      //
+      //   partial + total === 0
+      //     → some protocols failed, the rest reported $0. We don't
+      //     know whether the missing protocols had value. If we have
+      //     a recent positive cached value, serve THAT marked stale;
+      //     otherwise serve degraded. Either way, do NOT overwrite a
+      //     known-good positive entry with this $0 — that's the cache-
+      //     poisoning bug v0.53.3 caught half of. With a shared
+      //     Redis store, an unconditional write would now poison
+      //     EVERY instance, not just one.
+      //
+      //   degraded (every protocol failed)
+      //     → same fallback logic as partial+0. Sticky cache wins;
+      //     never overwrite.
+      //
+      // Pre-v0.54 each Vercel function instance had its own in-memory
+      // Map, so a poisoned cache only affected that instance and the
+      // user saw three different totals across three canvases on the
+      // same chat turn ($36,991 / $36,992 / $29,514 was the closing
+      // bug). With a shared store + these rules, every reader sees
+      // the same number for the same address regardless of which
+      // route or instance fielded the request.
+      // -------------------------------------------------------------
+
+      const cachedPositive =
+        cachedEntry &&
+        cachedEntry.data.totalUsd > 0 &&
+        now - cachedEntry.pricedAt < DEFI_STICKY_TTL_SEC * 1000;
+
       if (summary.source === 'blockvision') {
-        defiCache.set(address, { data: summary, ts: Date.now() });
-      } else if (summary.source === 'partial') {
-        defiCache.set(address, {
-          data: summary,
-          // Subtract from `now` so cache TTL elapses to (TTL - PARTIAL_AGE_MS)
-          // from a fresh-cache caller's perspective. Effective TTL = 15s.
-          ts: Date.now() - (DEFI_CACHE_TTL_MS - DEFI_PARTIAL_CACHE_TTL_MS),
-        });
+        // Fully successful — overwrites unconditionally.
+        await safeStoreSet(store, address, { data: summary, pricedAt: fetchedAt });
+        return summary;
       }
-      // source === 'degraded' → no cache write; next caller retries.
+
+      if (summary.source === 'partial' && summary.totalUsd > 0) {
+        // Observed real value despite a failure — write but with a
+        // short fresh-TTL so the next reader retries the failing
+        // protocols within 15s.
+        await safeStoreSet(store, address, { data: summary, pricedAt: fetchedAt });
+        return summary;
+      }
+
+      // partial+0 OR degraded — fall back to the sticky cache if
+      // we have a positive entry that's fresher than 30 minutes.
+      if (cachedPositive) {
+        const stale: DefiSummary = {
+          ...cachedEntry!.data,
+          source: 'partial-stale',
+        };
+        // Don't write — preserve the original `pricedAt` so the UI can
+        // render an honest "last refresh Nm ago" caveat. Re-writing
+        // would reset the age and hide the staleness from consumers.
+        return stale;
+      }
+
+      // No fallback available — return as-is, don't cache so the
+      // next caller retries BlockVision.
       return summary;
     } finally {
       defiInflight.delete(address);
@@ -1189,13 +1322,18 @@ function normalizeProtocol(
   return walkProtocolResponse(result, prices);
 }
 
-export function clearDefiCache(): void {
-  defiCache.clear();
+export async function clearDefiCache(): Promise<void> {
+  // Clears both the active store (Redis or in-memory) and any
+  // in-flight promises. Async because store.clear() may need to
+  // round-trip to Redis. Existing callers (tests, post-write refresh)
+  // were sync and didn't await — we keep the promise return so new
+  // callers can await but legacy fire-and-forget still works.
+  await getDefiCacheStore().clear();
   defiInflight.clear();
 }
 
-export function clearDefiCacheFor(address: string): void {
-  defiCache.delete(address);
+export async function clearDefiCacheFor(address: string): Promise<void> {
+  await getDefiCacheStore().delete(address);
   defiInflight.delete(address);
 }
 

@@ -53,8 +53,8 @@ const ALL_PROTOCOLS = [
 
 const realFetch = globalThis.fetch;
 
-beforeEach(() => {
-  clearDefiCache();
+beforeEach(async () => {
+  await clearDefiCache();
   clearPriceMapCache();
 });
 
