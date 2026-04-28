@@ -75,4 +75,63 @@ describe('rates_info — applyFilters (v0.46.6)', () => {
     expect(ratesInternal.isStable('SUI')).toBe(false);
     expect(ratesInternal.isStable('XAUm')).toBe(false);
   });
+
+  // --------------------------------------------------------------------
+  // [Bug — 2026-04-28] USDT alias expansion regression suite.
+  //
+  // Pre-fix: querying `assets: ['USDT']` against NAVI's real pool list
+  // — which uses `suiUSDT`, `wUSDT`, etc. — returned an empty payload
+  // because the filter did exact-string lowercase match. The LLM then
+  // narrated "USDT: not actively listed on NAVI", which is factually
+  // wrong (NAVI lists two USDT variants). Post-fix the filter treats
+  // user-supplied `USDT` as the family request and returns every
+  // matching pool, so the LLM has the data it needs to render correctly.
+  // --------------------------------------------------------------------
+  describe('TOKEN_ALIASES (USDT/USDC/USDe family expansion)', () => {
+    const NAVI_RATES = {
+      USDC:    { saveApy: 0.0448, borrowApy: 0.0394 },
+      suiUSDT: { saveApy: 0.0512, borrowApy: 0.0671 },
+      wUSDT:   { saveApy: 0.0322, borrowApy: 0.0455 },
+      SUI:     { saveApy: 0.0296, borrowApy: 0.0216 },
+      USDe:    { saveApy: 0.0421, borrowApy: 0.0589 },
+      suiUSDe: { saveApy: 0.0498, borrowApy: 0.0612 },
+    };
+
+    it('assets: ["USDT"] returns BOTH suiUSDT and wUSDT (alias-expanded)', () => {
+      const out = ratesInternal.applyFilters(NAVI_RATES, { assets: ['USDT'] });
+      const symbols = new Set(Object.keys(out));
+      expect(symbols.has('suiUSDT')).toBe(true);
+      expect(symbols.has('wUSDT')).toBe(true);
+      expect(symbols.has('USDC')).toBe(false);
+      expect(symbols.has('SUI')).toBe(false);
+      expect(symbols.size).toBe(2);
+    });
+
+    it('assets: ["usdt"] (lowercase) also expands the family', () => {
+      const out = ratesInternal.applyFilters(NAVI_RATES, { assets: ['usdt'] });
+      expect(new Set(Object.keys(out))).toEqual(new Set(['suiUSDT', 'wUSDT']));
+    });
+
+    it('assets: ["USDC", "USDT", "SUI"] reproduces the bug-report query and returns all 4 pools', () => {
+      const out = ratesInternal.applyFilters(NAVI_RATES, { assets: ['USDC', 'USDT', 'SUI'] });
+      expect(new Set(Object.keys(out))).toEqual(new Set(['USDC', 'suiUSDT', 'wUSDT', 'SUI']));
+    });
+
+    it('assets: ["USDe"] returns USDe + suiUSDe', () => {
+      const out = ratesInternal.applyFilters(NAVI_RATES, { assets: ['USDe'] });
+      expect(new Set(Object.keys(out))).toEqual(new Set(['USDe', 'suiUSDe']));
+    });
+
+    it('non-aliased symbols still match by exact lowercase (no regression)', () => {
+      const out = ratesInternal.applyFilters(NAVI_RATES, { assets: ['SUI'] });
+      expect(Object.keys(out)).toEqual(['SUI']);
+    });
+
+    it('expandAliases is idempotent — passing the expanded form returns the same set', () => {
+      const direct = ratesInternal.expandAliases(['USDT']);
+      const expanded = ratesInternal.expandAliases(['suiUSDT', 'wUSDT', 'USDT']);
+      // Direct request should produce a SUPERSET (or equal set) of the expanded form.
+      for (const s of expanded) expect(direct.has(s)).toBe(true);
+    });
+  });
 });

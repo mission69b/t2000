@@ -18,7 +18,7 @@
 // so engine-level cancellation propagates to in-flight HTTP fetches.
 // ---------------------------------------------------------------------------
 
-import type { AddressPortfolio, PortfolioCoin } from './blockvision-prices.js';
+import type { AddressPortfolio, DefiSummary, PortfolioCoin } from './blockvision-prices.js';
 import type { ServerPositionData } from './types.js';
 
 const FETCH_TIMEOUT_MS = 6_000;
@@ -71,6 +71,16 @@ interface AudricPortfolioWire {
   estimatedDailyYield: number;
   source: AddressPortfolio['source'];
   pricedAt: number;
+  // [Bug — 2026-04-28] Surface DeFi from audric's canonical /api/portfolio.
+  // Pre-fix the engine wire shape stripped these fields, so any tool that
+  // resolved through the audric snapshot path (portfolio_analysis,
+  // future timeline tools) silently dropped DeFi value from totals — even
+  // though balance_check (which calls fetchAddressDefiPortfolio directly)
+  // reported them correctly. Same SSOT-divergence class as the v0.54
+  // FullPortfolioCanvas bug, manifesting in a different tool.
+  // Optional on the wire so older audric deploys (pre-defi) don't error.
+  defiValueUsd?: number;
+  defiSource?: DefiSummary['source'];
 }
 
 export interface AudricPortfolioResult {
@@ -78,12 +88,21 @@ export interface AudricPortfolioResult {
   portfolio: AddressPortfolio;
   /** NAVI lending positions, normalized to the engine's `ServerPositionData`. */
   positions: ServerPositionData;
-  /** Net worth derived audric-side (`wallet + savings - borrows`). */
+  /** Net worth derived audric-side (`wallet + savings + defi - borrows`). */
   netWorthUsd: number;
   /** `savings * savingsRate / 365`, capped at 0. */
   estimatedDailyYield: number;
   /** Per-symbol balance map — convenient for adapters that already used `WalletBalances`. */
   walletAllocations: Record<string, number>;
+  /**
+   * [Bug — 2026-04-28] Aggregated DeFi value (Cetus LPs, Bluefin, Suilend,
+   * etc.) when available. `defiSource === 'degraded'` when audric's wire
+   * didn't include the field — callers should treat that as "fall back to
+   * a direct fetchAddressDefiPortfolio call" (same convention used
+   * inside the audric web app's UI components).
+   */
+  defiValueUsd: number;
+  defiSource: DefiSummary['source'];
 }
 
 /**
@@ -138,6 +157,13 @@ export async function fetchAudricPortfolio(
       netWorthUsd: json.netWorthUsd ?? portfolio.totalUsd + positions.savings - positions.borrows,
       estimatedDailyYield: json.estimatedDailyYield ?? 0,
       walletAllocations: json.walletAllocations ?? {},
+      // Default to 'degraded' (not 'partial') when the wire shape lacks
+      // DeFi: 'partial' implies "we tried and got partial data" which is
+      // misleading for a route that simply doesn't return the field.
+      // Callers that need DeFi must fall back to a direct fetch on
+      // 'degraded' — exactly the convention BalanceCard already uses.
+      defiValueUsd: typeof json.defiValueUsd === 'number' ? json.defiValueUsd : 0,
+      defiSource: json.defiSource ?? 'degraded',
     };
   } catch (err) {
     console.warn(`[audric-api] portfolio ${address.slice(0, 10)} fetch failed:`, err);

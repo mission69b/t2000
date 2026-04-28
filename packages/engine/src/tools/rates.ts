@@ -41,13 +41,51 @@ function isStable(symbol: string): boolean {
   return STABLECOIN_SYMBOLS.has(symbol.toLowerCase());
 }
 
+/**
+ * [Bug — 2026-04-28] Token alias expansion for the `assets` filter.
+ *
+ * NAVI mainnet lists multiple variants for the same underlying asset:
+ *   - USDT family: `wUSDT` (Wormhole), `suiUSDT` (Sui-native), and the
+ *     legacy `USDT` Portal symbol.
+ *   - USDC family: `USDC` (canonical), `wUSDC` (Wormhole legacy).
+ *   - USDe family: `USDe`, `suiUSDe` (Sui-native).
+ *
+ * Pre-fix the filter did exact-string lowercase match: a user asking for
+ * `usdt` got back nothing because NAVI's pool list returns `suiUSDT`
+ * (lowercased: `suiusdt`), not `usdt`. The LLM then hallucinated a
+ * factually wrong narration ("USDT: not actively listed on NAVI") to
+ * explain the empty payload — the worst possible UX.
+ *
+ * The map is intentionally narrow: only the well-known stablecoin
+ * synonyms that the user's mental model treats as "the same asset". We
+ * do NOT alias e.g. SUI → vSUI / haSUI because those are distinct yield
+ * positions with their own APY profiles — collapsing them would HIDE
+ * meaningful rate differences.
+ */
+const TOKEN_ALIASES: Record<string, string[]> = {
+  usdt: ['usdt', 'wusdt', 'suiusdt'],
+  usdc: ['usdc', 'wusdc'],
+  usde: ['usde', 'suiusde', 'sui_usde'],
+  usdsui: ['usdsui'],
+};
+
+function expandAliases(symbols: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const s of symbols) {
+    const norm = s.toLowerCase();
+    const aliases = TOKEN_ALIASES[norm] ?? [norm];
+    for (const a of aliases) out.add(a);
+  }
+  return out;
+}
+
 function applyFilters(
   rates: RateMap,
   opts: { assets?: string[]; stableOnly?: boolean; topN?: number },
 ): RateMap {
   let entries = Object.entries(rates);
   if (opts.assets && opts.assets.length) {
-    const wanted = new Set(opts.assets.map((a) => a.toLowerCase()));
+    const wanted = expandAliases(opts.assets);
     entries = entries.filter(([sym]) => wanted.has(sym.toLowerCase()));
   } else if (opts.stableOnly) {
     entries = entries.filter(([sym]) => isStable(sym));
@@ -140,4 +178,4 @@ export const ratesInfoTool = buildTool({
 });
 
 // Exported for testing.
-export const _internal = { applyFilters, isStable, STABLECOIN_SYMBOLS };
+export const _internal = { applyFilters, isStable, STABLECOIN_SYMBOLS, expandAliases, TOKEN_ALIASES };

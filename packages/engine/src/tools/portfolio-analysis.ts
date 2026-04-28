@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { buildTool } from '../tool.js';
 import {
   fetchAddressPortfolio,
+  fetchAddressDefiPortfolio,
   type AddressPortfolio,
+  type DefiSummary,
 } from '../blockvision-prices.js';
 import { fetchAudricPortfolio } from '../audric-api.js';
 import type { ServerPositionData } from '../types.js';
@@ -32,6 +34,20 @@ interface PortfolioResult {
   totalValue: number;
   walletValue: number;
   savingsValue: number;
+  /**
+   * [Bug — 2026-04-28] Aggregated DeFi value across non-NAVI protocols
+   * (Cetus LPs, Bluefin, Suilend, etc.) — same field that's been on
+   * `balance_check` since v0.50. Pre-fix this tool ignored DeFi entirely:
+   * a wallet with $1,569 in Cetus LPs reported a $228 totalValue
+   * (wallet only), under-counting net worth by 87% and prompting the LLM
+   * to misclassify the wallet as "concentrated in FAITH" when actually
+   * the bulk was in liquidity pools. Same SSOT-divergence class the v0.54
+   * cache work fixed for FullPortfolioCanvas, manifesting in a different
+   * tool that was written before DeFi support was bolted on.
+   */
+  defiValue: number;
+  /** Provenance of the DeFi read — used by the UI card to caveat partial/degraded. */
+  defiSource: DefiSummary['source'];
   debtValue: number;
   healthFactor: number | null;
   allocations: AssetAllocation[];
@@ -76,17 +92,25 @@ export const portfolioAnalysisTool = buildTool({
       context.signal,
     );
 
-    // [v1.4 BlockVision] Fan out three independent fetches in parallel:
-    // BlockVision portfolio (coins + balances + USD prices in one shot),
-    // positions (host fetcher), and 7-day portfolio history. Total wall
-    // time is bound by the slowest. Re-uses the per-request portfolio
-    // cache so a sibling `balance_check` in the same turn shares the
-    // response.
+    // [v1.4 BlockVision] Fan out parallel fetches: BlockVision portfolio
+    // (coins + balances + USD prices in one shot), positions (host
+    // fetcher), 7-day portfolio history, AND non-NAVI DeFi positions
+    // (Cetus/Bluefin/Suilend/etc.). Total wall time is bound by the
+    // slowest. Re-uses the per-request portfolio cache so a sibling
+    // `balance_check` in the same turn shares the response.
+    //
+    // [Bug — 2026-04-28] DeFi is now a first-class fetch: the audric
+    // snapshot path uses the value the audric host already computed
+    // (single source of truth), the standalone path falls back to a
+    // direct fetchAddressDefiPortfolio call. This closes the gap where
+    // portfolio_analysis ignored the $1,569 in Cetus LPs that
+    // balance_check reported correctly.
     const apiUrl = context.env?.AUDRIC_INTERNAL_API_URL;
-    const [portfolio, positions, weekHistResult]: [
+    const [portfolio, positions, weekHistResult, defiSummary]: [
       AddressPortfolio,
       ServerPositionData | null,
       { change?: WeekChange } | null,
+      DefiSummary,
     ] = await Promise.all([
       audricSnapshot
         ? Promise.resolve(audricSnapshot.portfolio)
@@ -127,6 +151,24 @@ export const portfolioAnalysisTool = buildTool({
             .then((res) => (res.ok ? res.json() as Promise<{ change?: WeekChange }> : null))
             .catch(() => null)
         : Promise.resolve(null),
+      // DeFi fetch — prefer the audric snapshot's already-computed value
+      // (when present and not 'degraded'), otherwise call the engine's
+      // direct aggregator. The 'degraded' check prevents the audric
+      // path from masking a useful direct read when the audric route's
+      // own DeFi field came back empty.
+      audricSnapshot && audricSnapshot.defiSource !== 'degraded'
+        ? Promise.resolve<DefiSummary>({
+            totalUsd: audricSnapshot.defiValueUsd,
+            perProtocol: {},
+            pricedAt: Date.now(),
+            source: audricSnapshot.defiSource,
+          })
+        : fetchAddressDefiPortfolio(address, context.blockvisionApiKey).catch(
+            (err): DefiSummary => {
+              console.warn('[portfolio_analysis] defi fetch failed:', err);
+              return { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };
+            },
+          ),
     ]);
 
     let walletValue = 0;
@@ -163,7 +205,35 @@ export const portfolioAnalysisTool = buildTool({
       weekChange = weekHistResult.change;
     }
 
-    const totalValue = walletValue + savingsValue;
+    // [Bug — 2026-04-28] DeFi must be in totalValue. Pre-fix:
+    //   totalValue = walletValue + savingsValue
+    // → a wallet with $228 wallet + $1,569 in Cetus LPs reported $228
+    // total, dropping 87% of the user's actual net worth.
+    const defiValue = defiSummary.totalUsd;
+
+    // [Bug — 2026-04-28] Synthesize per-protocol DeFi entries as
+    // allocations so the pie/MiniBar reflects the true breakdown. Each
+    // protocol becomes one row labelled with a `<protocol> DeFi` symbol
+    // (e.g. `Cetus DeFi`, `Bluefin DeFi`). `amount: 0` because there's
+    // no single underlying token — these positions are LP-pair / staked
+    // composites whose unit isn't meaningful at the analysis level.
+    // Skipped when defiSource is 'degraded' (per-protocol map is empty).
+    if (defiSummary.source !== 'degraded') {
+      for (const [protocol, usdValue] of Object.entries(defiSummary.perProtocol)) {
+        if (typeof usdValue === 'number' && usdValue >= DUST_USD) {
+          // Title-case the protocol name for display: 'cetus' → 'Cetus DeFi'.
+          const label = protocol.charAt(0).toUpperCase() + protocol.slice(1) + ' DeFi';
+          allocations.push({ symbol: label, amount: 0, usdValue, percentage: 0 });
+        }
+      }
+    } else if (defiValue > 0) {
+      // Sticky-positive cache may give us a totalUsd without a protocol
+      // breakdown — surface a single aggregate row so the pie still
+      // includes DeFi mass even if we can't break it down.
+      allocations.push({ symbol: 'DeFi (aggregate)', amount: 0, usdValue: defiValue, percentage: 0 });
+    }
+
+    const totalValue = walletValue + savingsValue + defiValue;
 
     for (const a of allocations) {
       a.percentage = totalValue > 0 ? (a.usdValue / totalValue) * 100 : 0;
@@ -211,10 +281,26 @@ export const portfolioAnalysisTool = buildTool({
       });
     }
 
+    // [Bug — 2026-04-28] Caveat insight when DeFi was unreachable so the
+    // LLM doesn't narrate the partial total as if it were complete.
+    if (defiSummary.source === 'degraded') {
+      insights.push({
+        type: 'warning',
+        message: 'DeFi positions could not be loaded — total may under-count any Cetus/Bluefin/Suilend value.',
+      });
+    } else if (defiSummary.source === 'partial') {
+      insights.push({
+        type: 'warning',
+        message: 'DeFi data is partial — at least one protocol failed; total may under-count.',
+      });
+    }
+
     const result: PortfolioResult = {
       totalValue,
       walletValue,
       savingsValue,
+      defiValue,
+      defiSource: defiSummary.source,
       debtValue,
       healthFactor,
       allocations: allocations.slice(0, 10),
@@ -226,7 +312,10 @@ export const portfolioAnalysisTool = buildTool({
       priceSource: portfolio.source,
     };
 
-    const topLine = `Total: $${totalValue.toFixed(2)} | Wallet: $${walletValue.toFixed(2)} | Savings: $${savingsValue.toFixed(2)}`;
+    const defiSegment = defiValue > 0
+      ? ` | DeFi: $${defiValue.toFixed(2)}${defiSummary.source === 'partial' ? ' (partial)' : ''}`
+      : '';
+    const topLine = `Total: $${totalValue.toFixed(2)} | Wallet: $${walletValue.toFixed(2)} | Savings: $${savingsValue.toFixed(2)}${defiSegment}`;
     const insightLines = insights.map((i) => `${i.type === 'warning' ? '⚠' : '→'} ${i.message}`).join('\n');
 
     return {
