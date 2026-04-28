@@ -1,0 +1,99 @@
+---
+description: BlockVision integration — retry, circuit breaker, sticky-positive cache, layered fallback
+globs: "packages/engine/src/**/*.ts,packages/engine/src/**/*.tsx"
+alwaysApply: false
+---
+
+# BlockVision Resilience
+
+BlockVision Pro is the data source for the entire wallet portfolio + multi-token price feed. It periodically returns 429 under burst load (per-second key limit AND a global edge throttle that fires even under quota). All BlockVision calls MUST go through `fetchBlockVisionWithRetry` in `packages/engine/src/blockvision-prices.ts`.
+
+## The contract — three layers of resilience
+
+### Layer 1 — Retry with jittered exponential backoff
+
+```
+attempt 1: fire immediately
+attempt 2: wait 250ms ± 25% jitter
+attempt 3: wait 750ms ± 25% jitter (and final attempt)
+```
+
+- Honors `Retry-After` header up to 5s cap.
+- Each `fetch()` carries its own `AbortSignal.timeout()` independent of retry sleep.
+- Retries on 429 + 5xx only. Other errors propagate immediately.
+
+### Layer 2 — Circuit breaker
+
+After **10 429s within a 5s rolling window**, the circuit opens for **30s**. While open:
+- New 429s are returned as final (no retry).
+- Subsequent calls don't fire BlockVision at all — they fall through to the fallback path.
+- Per-process state (intentional) — global Redis coordination would add hot-path latency.
+
+Why: naive retry amplifies BV load 3x during sustained outages. At 1k+ users that's a self-inflicted DoS.
+
+### Layer 3 — Layered fallback
+
+If BlockVision `/account/coins` returns 429/5xx OR the `apiKey` is missing/blank:
+
+1. Drop to Sui-RPC for the coin list.
+2. Still attempt BV `/coin/price/list` to USD-price non-stable holdings (separate rate limit, frequent cache hit).
+3. Only when BOTH BV endpoints fail, degrade to hardcoded stable allow-list (USDC/USDT/USDe/USDsui = $1.00, everything else `null`).
+
+The returned portfolio carries a `source` field: `'blockvision' | 'sui-rpc-degraded' | 'partial'` so callers can decide whether to badge "approximate" totals.
+
+## Sticky-positive cache rule (DeFi)
+
+`DefiCacheStore` stores the last known-good positive value for 30 minutes (`DEFI_STICKY_TTL_SEC`).
+
+| Source        | TTL    | Write rule |
+|---------------|--------|------------|
+| `blockvision` | 60s    | Always wins. Positive values flow through immediately. |
+| `partial-stale` | 60s | Used when BV returns success but with missing protocol data. |
+| `sui-rpc-degraded` | 15s | **Never overwrites a known-good positive within the sticky window.** Prevents BV throttle blips from poisoning the cache with $0. |
+
+The wallet portfolio cache uses the same pattern — see PR 1+2 in `audric-scaling-spec.md`.
+
+## When `fetch_*` tools see degraded data
+
+```typescript
+// In a tool's call handler:
+const portfolio = await fetchAddressPortfolio(address, ctx.blockvisionApiKey);
+
+if (portfolio.source !== 'blockvision') {
+  // Surface degradation to the user — don't silently lie about the total.
+  return {
+    data: { ... },
+    displayText: `Wallet (~approximate, ${portfolio.source}): ...`,
+  };
+}
+```
+
+`portfolio_analysis` MUST treat `partial + 0` DeFi as untrusted and re-fetch via `fetchAddressDefiPortfolio`. See `packages/engine/src/tools/portfolio-analysis.ts` trust gate.
+
+## When `BLOCKVISION_API_KEY` is empty
+
+- `apps/web/lib/env.ts` (audric) makes it `requiredString` — boot fails before any request runs. **Do not relax to optional** unless you also accept the entire DeFi/wallet pricing stack degrading to RPC.
+- This is the S.25 incident class — see `env-validation-gate.mdc`.
+
+## What's banned
+
+```typescript
+// ❌ Direct fetch — bypasses retry + circuit breaker + sticky cache
+const res = await fetch(`${BLOCKVISION_BASE}/account/coins?...`, { headers });
+
+// ✅ Always through the helper
+const res = await fetchBlockVisionWithRetry(url, { headers, signal: AbortSignal.timeout(4_000) });
+```
+
+## Tests live here
+
+- `packages/engine/src/__tests__/blockvision-retry.test.ts` — retry, jitter, `Retry-After`, circuit breaker
+- `packages/engine/src/__tests__/defi-portfolio.test.ts` — aggregation + cache poisoning regression
+- `packages/engine/src/__tests__/defi-cache-sticky.test.ts` — sticky-positive write rules
+- All three call `_resetBlockVisionCircuitBreaker()` in `beforeEach` to isolate state.
+
+## Cross-references
+
+- Implementation → `packages/engine/src/blockvision-prices.ts` + `packages/engine/src/defi-cache.ts`
+- Engine spec context → `agent-harness-spec.mdc` (Spec 2)
+- Wallet portfolio Redis migration (next PR) → `audric-scaling-spec.md` PR 1+2

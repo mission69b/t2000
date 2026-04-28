@@ -23,7 +23,7 @@
 t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. The Audric consumer brand is exactly **five products**:
 
 - 🪪 **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product.
-- 🧠 **Audric Intelligence** — the brain (the moat). Five systems orchestrate every money decision: Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you.
+- 🧠 **Audric Intelligence** — the brain (the moat). Five systems orchestrate every money decision: Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you.
 - 💰 **Audric Finance** — manage your money on Sui. Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs), Charts (yield/health/portfolio viz). Every action taps to confirm via Passport.
 - 💸 **Audric Pay** — the money primitive. Move money: free, global, instant (on Sui for now). Send USDC, receive via payment links/invoices/QR. No bank, no borders, no fees.
 - 🛒 **Audric Store** — creator marketplace at `audric.ai/username`. Sell AI-generated music, art, ebooks in USDC. **Coming soon.**
@@ -155,13 +155,15 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 
 `@t2000/engine` powers [Audric](https://audric.ai) — the conversational finance agent. It implements **Audric Intelligence**, the 5-system moat that makes Audric a financial agent rather than a chatbot. Every action it triggers still waits on Audric Passport's tap-to-confirm.
 
-| System | What it does |
-|---|---|
-| 🎛️ **Agent Harness** | 34 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Save, swap, borrow, repay, withdraw, send all live here. |
-| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort`), 9 safety guards across 3 priority tiers (`runGuards`), 7 YAML skill recipes (`RecipeRegistry`), preflight input validation, prompt caching, extended thinking always-on. |
-| 🧠 **Silent Profile** | Builds a private financial profile from chat history (`buildProfileContext`). Used silently to make answers more relevant — never surfaced as nudges. |
-| 🔗 **Chain Memory** | Reads wallet history into structured facts (`buildMemoryContext`) — recurring sends, idle balances, position changes. |
-| 📓 **AdviceLog** | Every recommendation is logged via `record_advice` so the agent doesn't contradict itself across sessions (last 30 days hydrated each turn). |
+> _Not a chatbot. A financial agent._ Five systems work together to **understand** your money (Silent Profile), **reason** about decisions (Reasoning Engine), **act** through 34 financial tools in one conversation (Agent Harness), **remember** what you do on-chain (Chain Memory), and **remember what it told you** (AdviceLog). Picks the tool, clears the guards, never contradicts itself.
+
+| System | What it does | Implementation |
+|---|---|---|
+| 🎛️ **Agent Harness** | 34 tools, one agent. The runtime that manages money — balances, DeFi, analytics, payments — orchestrated by a single conversation. Read tools fan out in parallel (`Promise.allSettled`); write tools serialise under `TxMutex`. Streaming dispatch fires read-only tools mid-stream before `message_stop`. | `QueryEngine` + `runTools` + `EarlyToolDispatcher` + 23 read / 11 write tools (`getDefaultTools()`) |
+| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking (`classifyEffort` routes `low`/`medium`/`high`/`max`), 14 safety guards across 3 priority tiers (12 pre-exec + 2 post-exec hints) — `input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`, `cost_warning`, `artifact_preview`, `stale_data`. 6 YAML skill recipes (`swap_and_save`, `safe_borrow`, `send_to_contact`, `portfolio_rebalance`, `account_report`, `emergency_withdraw`). Prompt caching on system prompt + tool definitions. Extended thinking always-on for Sonnet/Opus. | `classifyEffort`, `runGuards`, `RecipeRegistry`, `engine.ts` `cache_control` |
+| 🧠 **Silent Profile** | Knows your finances. Daily on-chain orientation snapshot (savings/wallet/debt USD, health factor, weighted APY, recent activity) refreshed at 02:00 UTC and injected as a `<financial_context>` system-prompt block at every engine boot — every chat starts oriented, no warm-up tool calls. Plus a Claude-inferred profile (risk tolerance, goals, horizon) from chat history. Never surfaced as nudges. | audric-side: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + `buildProfileContext()` |
+| 🔗 **Chain Memory** | Remembers what you do on-chain. 7 classifiers extract structured facts (recurring sends, idle balances, position changes, near-liquidation events, large transactions, compounding streaks, borrow patterns) into `ChainFact` rows. Silent context — no proposals, no notifications. | audric-side: 7 chain classifiers + `ChainFact` Prisma model + `buildMemoryContext()` |
+| 📓 **AdviceLog** | Remembers what it told you. Every recommendation is written via `record_advice` (audric-side tool); last 30 days hydrate every turn so the chat doesn't contradict itself across sessions. `actedOn` flips when the corresponding write executes (via `EngineConfig.onAutoExecuted`). | audric-side: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
 
 It wraps the SDK in an LLM-driven loop with streaming, tool orchestration, and MCP integration.
 
@@ -179,7 +181,16 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 }
 ```
 
-34 built-in tools (23 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Includes a reasoning engine (adaptive thinking, guard runner, skill recipes) and a canvas system for interactive in-chat visualizations. Read tools use NAVI MCP for lending data and BlockVision Indexer REST for wallet portfolio + USD prices, falling back to the SDK / Sui RPC. `protocol_deep_dive` is the lone DefiLlama-backed tool.
+### What shipped recently — Spec 1 + Spec 2
+
+The harness has had two correctness-and-intelligence upgrades on top of the 5-system base:
+
+| Spec | Versions | What it added |
+|---|---|---|
+| **Spec 1 — Correctness** | engine v0.41.0 → v0.50.3 | `attemptId` UUID stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning. `EngineConfig.onAutoExecuted` hook so `auto`-permission writes land in the same telemetry as confirm-gated ones. |
+| **Spec 2 — Intelligence** | engine v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices` tool; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`) for graceful 429 handling. `<financial_context>` boot-time orientation block (Silent Profile). `attemptId`-keyed resume so two pending actions in the same turn never clobber each other's outcome. `protocol_deep_dive` retained on DefiLlama as the lone exception. |
+
+34 built-in tools (23 read, 11 write) with permission tiers, cost tracking, session management, and context window compaction. Read tools use NAVI MCP for lending data and BlockVision Indexer REST for wallet portfolio + USD prices, falling back to Sui RPC. `protocol_deep_dive` is the lone DefiLlama-backed tool. Includes a canvas system for interactive in-chat visualizations.
 
 Full reference: [`@t2000/engine` README](packages/engine)
 

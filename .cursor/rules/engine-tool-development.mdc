@@ -1,0 +1,139 @@
+---
+description: Engine tool development — buildTool factory, permission levels, flags, preflight, result budgeting
+globs: "packages/engine/src/tools/**/*.ts,packages/engine/src/tool.ts"
+alwaysApply: false
+---
+
+# Engine Tool Development
+
+The contract for every tool that lives in `packages/engine/src/tools/`. Use `buildTool()` from `tool.ts`. Don't construct the `Tool` interface by hand — the factory keeps defaults consistent.
+
+## Tool anatomy
+
+```typescript
+import { buildTool } from '../tool.js';
+import { z } from 'zod';
+
+export const myTool = buildTool({
+  name: 'tool_name',
+  description: '...',  // What the LLM sees. Keep short and crisp.
+  inputSchema: z.object({ ... }),
+  jsonSchema: { type: 'object', properties: { ... }, required: [...] },
+  call: async (input, ctx) => {
+    return { data: ..., displayText: '...' };
+  },
+  isReadOnly: true,                 // default true
+  permissionLevel: 'auto',          // 'auto' | 'confirm' | 'explicit'
+  flags: { mutating: false, requiresBalance: false, ... },
+  preflight: (input) => ({ valid: true }),
+  maxResultSizeChars: 8_000,
+  cacheable: true,                  // default true
+});
+```
+
+## Permission level — pick the right one
+
+| Level | Used for | Behavior |
+|---|---|---|
+| `auto` | All read tools, render_canvas | Engine executes server-side, no user prompt |
+| `confirm` | All write tools | Engine yields `pending_action`, host renders confirm card, user taps Confirm, host calls resume |
+| `explicit` | Power-user tools never dispatched by LLM | Reserved for future manual triggers |
+
+**Rule.** A write tool MUST be `confirm` under zkLogin. There is no `auto` write today. If you reach for `auto` on a write, you're breaking the user-consent contract — see `agent-harness-spec.mdc`.
+
+## Read tool patterns
+
+1. Keep them **fast** (target < 500ms p50). They're called per-turn.
+2. Set `isReadOnly: true`, `isConcurrencySafe: true` (default). The early-dispatcher fires them mid-stream.
+3. Cache common reads via `cacheable: true` (default) — the per-turn `turn-read-cache.ts` dedupes identical calls.
+4. Use `ctx.portfolioCache` (per-request `Map<address, AddressPortfolio>`) for shared portfolio reads — avoids 200–500ms BlockVision RTT amplification across tools in the same turn.
+5. Set `maxResultSizeChars` to keep the LLM context lean. Tools that can return large responses MUST cap.
+
+## Write tool patterns
+
+1. `permissionLevel: 'confirm'`, `isReadOnly: false`.
+2. Set `flags.mutating: true` and the relevant flags (`requiresBalance`, `affectsHealth`, `irreversible`, `costAware`).
+3. The `call()` for a `confirm` tool is **never invoked** under audric/web (the host executes via sponsored-tx flow). It's there for CLI / non-sponsored runtimes.
+4. Implement `preflight(input)` for cheap input validation that fails closed BEFORE the user is asked to confirm.
+5. Modifiable fields are sourced from `tool-modifiable-fields.ts` — add an entry there if the user should be able to edit `amount` / `to` / etc. before confirming.
+
+## Result budgeting (B.2)
+
+```typescript
+buildTool({
+  // ...
+  maxResultSizeChars: 8_000,
+  summarizeOnTruncate: (full, max) => {
+    return `${full.slice(0, max - 100)}\n\n[Truncated — call with narrower params]`;
+  },
+});
+```
+
+Without `maxResultSizeChars`, large results (e.g. portfolio with 100+ tokens) blow context budget and degrade subsequent turns.
+
+## Flags reference
+
+| Flag | Used for |
+|---|---|
+| `mutating` | Any write — drives confirm gating + `onAutoExecuted` |
+| `requiresBalance` | Engine fetches balance before calling |
+| `affectsHealth` | Borrow/repay — engine fetches HF before/after |
+| `irreversible` | Drives stronger confirm UX (e.g. send_transfer) |
+| `producesArtifact` | Tool emits a canvas/card — drives result extraction |
+| `costAware` | Engine factors USD value into permission resolver (B.4) |
+| `maxRetries` | Override default retry count |
+
+## Preflight validation
+
+```typescript
+preflight: (input) => {
+  if (input.amount <= 0) return { valid: false, error: 'amount must be positive' };
+  if (input.amount > 1_000_000) return { valid: false, error: 'amount unreasonable' };
+  return { valid: true };
+}
+```
+
+Runs **before** the LLM round-trip when the engine pre-screens a tool call. Fast, synchronous. Don't reach into context here.
+
+## Tool naming
+
+- `<verb>_<object>` for writes — `swap_execute`, `save_deposit`, `send_transfer`.
+- `<object>_<state>` or `<verb>_<object>` for reads — `balance_check`, `health_check`, `transaction_history`.
+- New tool? Update CLAUDE.md tool counts AND `getDefaultTools()` exports.
+
+## Required tests
+
+Every new tool needs:
+1. **Unit test** — `packages/engine/src/__tests__/<tool>.test.ts` covering happy path + every preflight failure mode.
+2. **Permission test** — verify `permissionLevel` and `flags` (these are load-bearing for the harness contract).
+3. **Result budget test** — verify `maxResultSizeChars` caps output.
+4. **Integration test** — if the tool calls BlockVision/NAVI, mock + verify retry + circuit breaker behavior.
+
+## Forbidden in tool code
+
+```typescript
+// ❌ Direct env reads — engine doesn't own env, host does
+const key = process.env.BLOCKVISION_API_KEY;
+
+// ✅ From context (host threads it through)
+const key = ctx.blockvisionApiKey;
+
+// ❌ Mutating shared state
+SOME_GLOBAL_CACHE[address] = result;
+
+// ✅ Use the per-request caches (portfolioCache, turn-read-cache)
+ctx.portfolioCache?.set(address, result);
+
+// ❌ Calling other tools directly
+const balance = await balanceCheck.call(input, ctx);
+
+// ✅ Tools are LLM-orchestrated; if you need shared logic, extract a helper
+import { getPortfolioForTools } from './shared/portfolio.js';
+```
+
+## Cross-references
+
+- Factory + types → `packages/engine/src/tool.ts`, `packages/engine/src/types.ts`
+- Permission resolver → `packages/engine/src/permission-rules.ts`
+- Harness contract → `agent-harness-spec.mdc`
+- BlockVision usage → `blockvision-resilience.mdc`

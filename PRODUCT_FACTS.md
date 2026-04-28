@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-19 (post-S.18 — 5-product taxonomy locked, Audric Finance back as save/credit/swap/charts home)
+> Last verified: 2026-04-28 (post-S.26 — engine 0.54.1, Spec 1 (Correctness) + Spec 2 (Intelligence) shipped)
 
 ---
 
@@ -17,7 +17,7 @@
 | Product | What it is |
 |---------|-----------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas. Wraps every other product. |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Move money — Send USDC, Receive (payment links, invoices, QR). Free, global, instant on Sui. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5). |
@@ -26,15 +26,37 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 ---
 
+## Audric Intelligence — the 5 systems (canonical)
+
+> **Not a chatbot. A financial agent.** Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 34 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
+>
+> _This block is the canonical definition. README, docs, marketing copy, and the engine system prompt must match it. Implementation details live in `ARCHITECTURE.md` (`## Engine (@t2000/engine) — Audric Intelligence implementation`)._
+
+| # | System | One-line | Owns | Implementation |
+|---|---|---|---|---|
+| 1 | 🎛️ **Agent Harness** | 34 tools, one agent. | Tool registry, parallel reads, serial writes (`TxMutex`), permission gates, streaming dispatch (`EarlyToolDispatcher`) | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (23 read + 11 write) |
+| 2 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards across 3 priority tiers (12 pre-exec + 2 post-exec hints), 6 YAML skill recipes, prompt caching, preflight validation | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` `cache_control` |
+| 3 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot (`UserFinancialContext`) + Claude-inferred profile (`UserFinancialProfile`), injected as `<financial_context>` block at every engine boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` |
+| 4 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows; injected silently as `<chain_memory>` | _Audric-side_: 7 chain classifiers in `daily-intel` cron group + `ChainFact` Prisma model + `buildMemoryContext()` |
+| 5 | 📓 **AdviceLog** | Remembers what it told you. | Every recommendation written via `record_advice` (audric-side tool); last 30 days hydrated each turn so the chat doesn't contradict itself across sessions | _Audric-side_: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` + `EngineConfig.onAutoExecuted` flips `actedOn` |
+
+**Naming rules (binding):**
+- The phrase **"5 systems"** is canonical — never list 4, never list 6.
+- Always use the system names exactly as written: `Agent Harness`, `Reasoning Engine`, `Silent Profile`, `Chain Memory`, `AdviceLog`.
+- The Reasoning Engine has **14 guards** (12 pre-exec gates + 2 post-exec hints) across **3 priority tiers** (Safety > Financial > UX) and **6 YAML skill recipes**.
+- The Agent Harness has **34 tools** (23 read + 11 write).
+
+---
+
 ## Version
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.47.0` |
-| `@t2000/engine` | `0.47.0` |
-| `@t2000/cli` | `0.47.0` |
+| `@t2000/sdk` | `0.54.1` |
+| `@t2000/engine` | `0.54.1` |
+| `@t2000/cli` | `0.54.1` |
 | `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `0.47.0` |
+| `@t2000/mcp` | `0.54.1` |
 | Agent Skills | `3.0` |
 
 ---
@@ -653,7 +675,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.41.0` |
+| Version | `0.54.1` |
 | Description | Agent engine for conversational finance — implements Audric Intelligence (the moat) |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
@@ -690,7 +712,7 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 | `classifyEffort` | function | Adaptive thinking effort classifier |
 | `ContextBudget` | class | Context window budget tracking + compaction trigger |
 | `RecipeRegistry` | class | YAML skill recipe loader + longest-trigger matching |
-| `runGuards` | function | Pre/post-execution guard runner (9 guards, 3 tiers) |
+| `runGuards` | function | Pre/post-execution guard runner (14 guards across 3 tiers) |
 | `applyToolFlags` | function | Apply `ToolFlags` to tool definitions |
 | `buildProfileContext` | function | User financial profile → prompt context |
 | `buildMemoryContext` | function | Episodic user memory → prompt context |
@@ -701,13 +723,24 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 |---------|--------|-------------|
 | Adaptive thinking | `classify-effort.ts` | Routes queries to `low`/`medium`/`high` thinking effort based on financial complexity |
 | Prompt caching | `engine.ts` | System prompt + tool definitions cached across turns (Anthropic cache_control) |
-| Guard runner | `guards.ts` | 9 guards across 3 priority tiers (Safety > Financial > UX): retry, irreversibility, balance, health factor, large transfer, slippage, cost, artifact preview, stale data |
+| Guard runner | `guards.ts` | 14 guards across 3 priority tiers (Safety > Financial > UX): 12 pre-execution (`input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`, `cost_warning`) + 2 post-execution hints (`artifact_preview`, `stale_data`) |
 | Tool flags | `tool-flags.ts` | `ToolFlags` interface (mutating, requiresBalance, affectsHealth, irreversible, producesArtifact, costAware, maxRetries) on all tools |
 | Preflight validation | `preflight` on Tool | Input validation gate on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit` |
 | Skill recipes | `recipes/registry.ts` | YAML recipe loader, `RecipeRegistry` with longest-trigger-match-wins, `toPromptContext()` |
 | Context compaction | `context.ts` | `ContextBudget` (200k limit, 85% compact, 70% warn), LLM summarizer + truncation fallback |
 
 Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THINKING` env flag removed in Audric 2.0 Phase A.
+
+### Recent Harness Upgrades — Spec 1 + Spec 2
+
+Two correctness/intelligence upgrades shipped on top of the 5-system base. Both are "structural" — they change the contract between the engine and the host (audric/web).
+
+| Spec | Versions | What it added | Cross-repo contract |
+|------|----------|---------------|---------------------|
+| **Spec 1 — Correctness** | engine `0.41.0` → `0.50.3` | Per-yield `attemptId` UUID v4 stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics(sessionId, turnIndex)` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning (resume route applies `modifications` so conversation history reflects what was approved on-chain). `EngineConfig.onAutoExecuted({ toolName, input, result, walletAddress, sessionId, turnIndex })` hook so `auto`-permission writes participate in the same telemetry as confirm-gated ones (currently no `auto` writes in Audric, but the hook is wired). | `t2000/.cursor/rules/agent-harness-spec.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc` |
+| **Spec 2 — Intelligence** | engine `0.47.0` → `0.54.1` | BlockVision swap — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one BlockVision-backed `token_prices` tool. `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST (single round-trip wallet portfolio + USD prices). Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) for graceful 429 handling. `<financial_context>` boot-time orientation block injected at every engine boot from the daily 02:00 UTC `UserFinancialContext` snapshot — every chat starts oriented, no warm-up tool calls (Silent Profile system). `attemptId`-keyed resume — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` so two pending actions in the same turn never clobber each other's `pendingActionOutcome`. `protocol_deep_dive` retained on DefiLlama as the lone exception. Net tool count: 29 → 23 reads, 40 → 34 total. | `t2000/.cursor/rules/blockvision-resilience.mdc` + `audric/.cursor/rules/audric-canonical-portfolio.mdc` + `audric/.cursor/rules/engine-context-assembly.mdc` |
+
+> Local-only specs (private working documents): `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Both are gitignored — the cross-repo `.cursor/rules/*.mdc` files are the public contract.
 
 ### Engine Tool Names
 
@@ -773,7 +806,7 @@ Extended thinking is **always on** for Sonnet/Opus (adaptive mode). `ENABLE_THIN
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.40.2` |
+| Version | `0.54.1` |
 | Tool count | 29 — read-only `t2000_*` namespaced subset of the engine (verified by `packages/mcp/src/integration.test.ts` `toHaveLength(29)`) |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |

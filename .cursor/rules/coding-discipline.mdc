@@ -1,0 +1,73 @@
+---
+description: Coding discipline — Think before coding, simplicity first, surgical changes
+alwaysApply: true
+---
+
+# Coding Discipline
+
+Three habits that shrink diffs, reduce rewrites, and surface the right questions before code is written. Adapted from Karpathy's coding-skills repo.
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+This pairs with the **trace-the-full-path** principle in `engineering-principles.mdc` — before any fix, trace the actual execution path. Most "wrong fix" iterations come from skipping this.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+This pairs with **single source of truth** (`single-source-of-truth.mdc`). Most over-complication comes from forking a canonical instead of extending it.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+**The test:** Every changed line should trace directly to the user's request.
+
+## Why this matters in this codebase
+
+We've shipped fixes that took 4+ iterations because:
+- The first fix went in the wrong layer (didn't trace the full path → see `engineering-principles.mdc` Principle 5).
+- The fix included "while I'm here" refactors that introduced a new bug (failed surgical changes).
+- The fix added a "flexibility" config that wasn't needed (failed simplicity).
+
+Time spent thinking before coding is faster than time spent unwinding the wrong fix.
+
+## Working signals
+
+These guidelines are working if:
+- Fewer unnecessary changes in diffs.
+- Fewer rewrites due to overcomplication.
+- Clarifying questions come **before** implementation rather than after mistakes.
+- Each PR can be summarized in 1-2 sentences without weasel words.
+
+## Cross-references
+
+- Engineering principles (trace the full path, single source of truth, fix at root) → `engineering-principles.mdc`
+- Verifiable goals → `goal-driven-execution.mdc`
+- Karpathy's original → `https://github.com/forrestchang/andrej-karpathy-skills`

@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (34 tools — 23 read, 11 write), Reasoning Engine (9 guards across 3 priority tiers + 7 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (34 tools — 23 read, 11 write), Reasoning Engine (14 guards across 3 priority tiers + 6 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 QueryEngine orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop.
 
@@ -32,6 +32,20 @@ for await (const event of engine.submitMessage('What is my balance?')) {
   }
 }
 ```
+
+## Audric Intelligence — the 5 systems
+
+> _Not a chatbot. A financial agent._ Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 34 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
+
+| System | One-line | Owns | Lives in |
+|---|---|---|---|
+| 🎛️ **Agent Harness** | 34 tools, one agent. | Tool registry, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), 6 YAML skill recipes, prompt caching, preflight validation | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` `cache_control` |
+| 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
+| 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
+| 📓 **AdviceLog** | Remembers what it told you. | Every recommendation logged (`record_advice` audric tool); last 30 days hydrated each turn so the chat never contradicts itself | _Audric-side_: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
+
+The engine package owns **Agent Harness** and **Reasoning Engine** in code. The other three systems are powered by audric-side data and injected via the system prompt — see `audric/.cursor/rules/engine-context-assembly.mdc` for the host contract.
 
 ## Architecture
 
@@ -149,7 +163,18 @@ QueryEngine.submitMessage()
 > fetches. `protocol_deep_dive` retains its DefiLlama dependency (narrow scope, no
 > equivalent on BlockVision). Net: 23 reads + 11 writes = 34 tools.
 
-## Audric 2.0 Engine Features
+## Recent Upgrades — Spec 1 (Correctness) + Spec 2 (Intelligence)
+
+Two upgrades shipped on top of the 5-system base:
+
+| Spec | Versions | What it added |
+|---|---|---|
+| **Spec 1 — Correctness** | v0.41.0 → v0.50.3 | Per-yield `attemptId` (UUID v4) on every `pending_action` — stable join key from action → on-chain receipt → `TurnMetrics` row. `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning (resume route applies `modifications`). `EngineConfig.onAutoExecuted` hook so `auto`-permission writes participate in the same telemetry as confirm-gated ones. |
+| **Spec 2 — Intelligence** | v0.47.0 → v0.54.1 | BlockVision swap — replaced 7 `defillama_*` tools with one `token_prices`; `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST. Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`) for graceful 429 handling. `<financial_context>` boot-time orientation injected from the daily `UserFinancialContext` snapshot (Silent Profile). `attemptId`-keyed resume (no clobbering between two pending actions in the same turn). `protocol_deep_dive` retained on DefiLlama as the lone exception. |
+
+> Local-only specs: `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Cross-repo contracts: `t2000/.cursor/rules/agent-harness-spec.mdc` + `t2000/.cursor/rules/blockvision-resilience.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc`.
+
+## Engine Features
 
 ### Streaming Tool Execution (Early Dispatch)
 
@@ -170,8 +195,8 @@ Write tool permission resolved dynamically via `resolvePermissionTier(operation,
 ### Reasoning Engine
 
 - **Adaptive thinking** — routes queries to `low`/`medium`/`high` effort based on financial complexity
-- **Guard runner** — 9 guards across 3 priority tiers (Safety > Financial > UX)
-- **Skill recipes** — YAML recipe files with longest-trigger-match-wins
+- **Guard runner** — 14 guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX). See `guards.ts` for the full list.
+- **Skill recipes** — 6 YAML recipes (`swap_and_save`, `safe_borrow`, `send_to_contact`, `portfolio_rebalance`, `account_report`, `emergency_withdraw`) with longest-trigger-match-wins
 - **Context compaction** — 200k limit, 85% compact trigger, LLM summarizer fallback
 - **Tool flags** — `mutating`, `requiresBalance`, `affectsHealth`, `irreversible` etc.
 - **Preflight validation** — input validation on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`

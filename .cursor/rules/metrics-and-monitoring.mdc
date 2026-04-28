@@ -1,0 +1,85 @@
+---
+description: Metrics + monitoring — what we measure, where it's stored, how to read it
+alwaysApply: false
+---
+
+# Metrics + Monitoring
+
+The signal that tells us the agent is working. Everything we measure is for one of three purposes:
+1. **Cost control** — Anthropic + BlockVision + Upstash spend.
+2. **Correctness** — Was the agent helpful? Did the user confirm? Did the tx succeed?
+3. **Reliability** — Are we degrading? Are we throwing? Are we timing out?
+
+## What we store (Prisma — durable)
+
+| Model | What it captures | Used for |
+|---|---|---|
+| `TurnMetrics` | Per-turn: latency, attemptId, modifiableFieldsTouched, pendingActionOutcome, writeToolDurationMs, tokens, cost | Q5/Q6 analytics dashboards, harness regressions |
+| `SessionUsage` | Per-session: tokens, cost, tool names, model | Billing gate (5/20 daily-free), per-session cost |
+| `ConversationLog` | Full transcripts | Future self-hosted model migration training data |
+| `AppEvent` | App-side events (chip taps, sponsor failures, key flows) | Chain memory classifiers, UX analytics |
+| `AdviceLog` | Recommendations the agent gave | Cross-session consistency checks |
+
+`TurnMetrics` is THE harness telemetry table. Every chat turn writes one row at chat-time. Every confirmed/declined/modified pending action updates the row via `attemptId`-keyed `updateMany`. Resume turns get their own row.
+
+## What we send to Vercel/CloudWatch (transient)
+
+- **Vercel Observability** — request rates, p50/p95/p99 latency, error rates, cold start counts
+- **Vercel Speed Insights** — client-side LCP/FCP/TTI for the chat UI
+- **`@vercel/analytics`** — page views, custom events
+- **CloudWatch** — t2000 ECS task health, cron job duration, cron error rates
+
+We do NOT use Axiom, Datadog, or Honeycomb. Decision: stick to the platforms we already pay for. See `audric-scaling-spec.md` for the rationale.
+
+## Key dashboards (Q5/Q6)
+
+| Dashboard | Source | Question it answers |
+|---|---|---|
+| Daily spend | `SessionUsage.costUsd` aggregated | Are we over budget? |
+| Pending action outcome | `TurnMetrics.pendingActionOutcome` | What % of writes get confirmed vs declined vs modified? |
+| Modifiable field usage | `TurnMetrics.modifiableFieldsTouched` | Are users editing amounts? Which fields? |
+| Tool latency | `TurnMetrics.toolDurationMs` per `toolName` | Which tools are slow? |
+| Resume failure rate | `TurnMetrics.pendingActionOutcome === 'resume_failed'` | Is the resume contract holding? |
+| Engine version vs error rate | `TurnMetrics.engineVersion` cross errors | Did v0.50.4 regress? |
+
+## Tracing a regression — the runbook
+
+1. **Identify the symptom.** "Users report Audric forgets transactions."
+2. **Find the metric.** `TurnMetrics.pendingActionOutcome === 'unresolved'` rate.
+3. **Bisect by engine version.** Filter rows by `engineVersion`. Find the version where the rate climbed.
+4. **Check the diff.** What changed in that engine release?
+5. **Reproduce locally.** Use `pnpm --filter @t2000/engine test` + the engine event types to simulate the failed flow.
+6. **Fix + add regression test.**
+
+Without `TurnMetrics` rows, this runbook is "stare at logs and guess." With them, it's a 30-minute investigation.
+
+## What MUST NOT happen
+
+```typescript
+// ❌ Skip writing TurnMetrics because "this turn doesn't have anything interesting"
+// — every turn writes a row. Always.
+
+// ❌ Forget attemptId on the TurnMetrics row
+// — see write-tool-pending-action.mdc
+
+// ❌ Write metrics to a third-party vendor we haven't approved
+// — Vercel + CloudWatch + Prisma. Adding Axiom etc. needs explicit roadmap approval.
+
+// ❌ Log secrets / addresses / amounts in a way that's hard to audit
+console.log(`User ${address} sent ${amount} USDC to ${recipient}`);
+// — addresses/amounts ok for debugging, but use a structured format that's grep-able and respects PII.
+```
+
+## Adding a new metric
+
+1. Decide: durable (Prisma) or transient (Vercel/CloudWatch)?
+2. If durable, extend `TurnMetrics` or add a new model. Add an `@@index` on what you'll filter by.
+3. Document what dashboard will read it.
+4. Backfill if the metric is meaningful for past sessions.
+
+## Cross-references
+
+- Spec 1 telemetry → `agent-harness-spec.mdc` (TurnMetrics + attemptId)
+- Audric-side metrics emission → `audric/.cursor/rules/metrics-and-monitoring.mdc`
+- Cost rates table → `apps/web/lib/engine/cost-rates.ts`
+- Scaling decisions → `audric-scaling-spec.md`

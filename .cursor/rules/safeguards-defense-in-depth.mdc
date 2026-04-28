@@ -1,0 +1,101 @@
+---
+description: Engine-side safeguards — preflight, guards, USD-aware permission resolver, fail-closed
+alwaysApply: true
+---
+
+# Safeguards — Engine-Side (Defense in Depth)
+
+The engine sits in the middle of a 6-layer defense stack. Layer 1 (UI), Layer 4 (user confirm), Layer 5 (server validation), and Layer 6 (on-chain) are host concerns. Engine owns Layer 2 (preflight) and Layer 3 (guards). Get those wrong and the whole stack degrades.
+
+## Layer 2 — Preflight (`tool.preflight()`)
+
+Cheap synchronous validation that runs BEFORE the LLM round-trip. No I/O, no context lookup, no network.
+
+```typescript
+preflight: (input) => {
+  if (input.amount <= 0) return { valid: false, error: 'amount must be positive' };
+  if (input.amount > 1_000_000) return { valid: false, error: 'amount unreasonable (max 1M)' };
+  if (!isValidSuiAddress(input.to)) return { valid: false, error: 'invalid recipient' };
+  return { valid: true };
+}
+```
+
+Failed preflight → LLM is told "tool input invalid" and re-asks. The user is never shown a confirm card for a malformed intent.
+
+**Every write tool MUST implement preflight.** No exceptions.
+
+## Layer 3 — Guards (`runGuards()`)
+
+14 guards across 3 priority tiers run around every write — 12 pre-execution gates + 2 post-execution hints. Defined in `packages/engine/src/guards.ts`.
+
+| Tier | Guards |
+|---|---|
+| Safety | Health Factor, Insufficient Balance, Recipient Validation |
+| Financial | USD Threshold, Slippage Cap, Daily Spend Limit |
+| UX | Allowance Reminder, Network Health, Stale Quote |
+
+Each guard returns one of:
+- `{ pass: true }` — silent, allowed
+- `{ pass: true, hint: '...' }` — allowed, hint injected for LLM context
+- `{ pass: true, warning: '...' }` — allowed, warning surfaced in confirm card
+- `{ pass: false, reason: '...' }` — BLOCKED, agent narrates and re-asks
+
+Adding a new guard:
+1. Add to `guards.ts` with the right tier.
+2. Test with all 4 outcomes (`pass`, `hint`, `warning`, `block`).
+3. Add a regression test that asserts the bypass attempt fails closed.
+4. Document in this rule.
+
+## USD-aware permission resolver (B.4)
+
+`resolvePermissionTier(operation, amountUsd, config)` dynamically downgrades a write's permission level based on USD value:
+
+```typescript
+DEFAULT_PERMISSION_CONFIG = { /* conservative — confirm everything */ };
+
+PERMISSION_PRESETS = {
+  conservative: { /* always confirm */ },
+  balanced: { autoUpToUsd: 5, autonomousDailyLimit: 50, ... },
+  aggressive: { autoUpToUsd: 50, autonomousDailyLimit: 500, ... },
+};
+```
+
+**Important.** Even with `aggressive` preset enabled, audric/web does NOT pass these into `ToolContext` today. Every write is `confirm` under zkLogin because the ephemeral key needs user presence. The resolver is wired for future non-zkLogin runtimes (Audric CLI, server-signed automations).
+
+Don't enable USD-aware auto-execute for audric/web without explicit roadmap approval. It IS a security regression in the current trust model.
+
+## Tool result budgeting (B.2)
+
+```typescript
+maxResultSizeChars: 8_000,
+summarizeOnTruncate: (full, max) => `${full.slice(0, max - 100)}\n\n[Truncated]`,
+```
+
+Without this, a tool returning a 50k-token portfolio response blows context budget and degrades EVERY subsequent turn. Set the cap explicitly per tool.
+
+## What's banned
+
+```typescript
+// ❌ A write tool with no preflight
+buildTool({ name: 'send_transfer', /* no preflight */ });
+
+// ❌ Disabling guards
+runEngine({ guards: [] });
+
+// ❌ Catching guard failures and continuing
+try { await runGuards(...); } catch { /* ignore */ }
+
+// ❌ Soft warnings disguised as guards
+return { pass: true, warning: '⚠️ This is dangerous, but I'll do it anyway.' };
+// — if it's dangerous enough to warn, it's dangerous enough to block.
+
+// ❌ Tools that read env directly
+const key = process.env.X;
+// — engine doesn't own env. Threading through ToolContext is the only path.
+```
+
+## Cross-references
+
+- Implementation → `packages/engine/src/guards.ts`, `packages/engine/src/permission-rules.ts`
+- Tool factory → `engine-tool-development.mdc`
+- Audric-side defense layers → `audric/.cursor/rules/safeguards-defense-in-depth.mdc`

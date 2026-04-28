@@ -1,0 +1,98 @@
+---
+description: Agent harness contract — Spec 1 (Correctness) + Spec 2 (Intelligence). attemptId, TurnMetrics, EngineConfig.onAutoExecuted, modifiableFields
+alwaysApply: true
+---
+
+# Agent Harness Spec — Correctness + Intelligence
+
+The contract between `@t2000/engine` and any host (audric/web today, audric/cli tomorrow). Two specs landed together, both shipped engine v0.41.0–v0.50.3.
+
+## Spec 1 — Correctness (`AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, local-only)
+
+### Item 3 — `attemptId` (the resume identifier)
+
+Every `pending_action` event carries a UUID v4 `attemptId` stamped at emit time.
+
+**Why it exists.** Pre-v1.4.2 the resume route keyed `updateMany` on `(sessionId, turnIndex)`. That pair was ambiguous when:
+- Same turn yielded a second pending action (user edits modifiable fields → engine re-yields).
+- A backfill left multiple rows matching the pair.
+
+The ambiguity overwrote the wrong row's outcome.
+
+**The contract.**
+1. Engine stamps `attemptId` on every `pending_action`.
+2. Host persists it on the `TurnMetrics` row at chat-time (within `/api/engine/chat`).
+3. Host calls back into `/api/engine/resume` with `{ attemptId, txDigest, balanceChanges }`.
+4. Resume route runs `prisma.turnMetrics.updateMany({ where: { attemptId }, data: { pendingActionOutcome, writeToolDurationMs } })`.
+5. Host writes a NEW TurnMetrics row for the resume turn itself (post-confirmation narration / chained tools).
+
+**Defensive fallback.** Pre-v1.4.2 sessions can rehydrate `PendingAction` without an `attemptId`. The legacy pair-keyed update stays as a dead-code fallback for one session-TTL rotation, then gets removed.
+
+### Item 6 — `modifiableFields` (user can edit before approving)
+
+Optional `modifiableFields: PendingActionModifiableField[]` on every `PendingAction`:
+
+```typescript
+interface PendingActionModifiableField {
+  name: string;          // input key (e.g. "amount", "to")
+  kind: 'amount' | 'address';
+  asset?: string;        // for amount fields, e.g. "USDC"
+}
+```
+
+Sourced from `tool-modifiable-fields.ts` in the engine. Absent (or empty) means approve-or-deny only — no edits.
+
+### `EngineConfig.onAutoExecuted` (the post-execute hook)
+
+```typescript
+onAutoExecuted?: (info: { toolName: string; usdValue: number; walletAddress?: string }) => void | Promise<void>;
+```
+
+Fires after a write tool successfully executes (whether server-side or client-confirmed). Hosts use it to:
+- Update `sessionSpendUsd` (drives B.4 USD-aware permission gating).
+- Emit telemetry / record `AdviceLog`.
+
+## Spec 2 — Intelligence (`AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`, local-only)
+
+### `<financial_context>` block (silent context)
+
+Every turn's system prompt embeds a `<financial_context>` block built from the daily `UserFinancialContext` snapshot (savings, wallet, debt, HF, APY, recent activity). Built by `buildFinancialContextBlock()`. Refreshed by the 02:00 UTC `financial-context-snapshot` cron.
+
+### BlockVision swap (v1.4 BlockVision migration)
+
+7 `defillama_*` tools were removed and replaced with 1 `token_prices` tool backed by BlockVision. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST API.
+
+`ToolContext.blockvisionApiKey` (server-only) is threaded through from the host. When undefined / empty, the price feed degrades to Sui RPC + the hardcoded stable allow-list — wallets still render but non-stable USD values report as `null`.
+
+`ToolContext.portfolioCache` is a per-request `Map<address, AddressPortfolio>` that lets multiple read tools in the same turn share a BlockVision response (avoids 200–500ms RTT amplification).
+
+### `protocol_deep_dive` exception
+
+This tool is the lone production consumer of `api.llama.fi` (DefiLlama) and stays that way. No other tool may call DefiLlama.
+
+## Spec 3 (upcoming)
+
+Reserved for the next harness milestone. Do not pre-emptively implement spec-3 changes against this rule until the spec lands.
+
+## What hosts MUST do
+
+1. **Stamp `attemptId` on `TurnMetrics` at chat-time.** The pending-action event carries it; persist it before yielding to the client.
+2. **Pass `attemptId` through resume.** Client UI persists it across the user-confirm round-trip and POSTs it back.
+3. **Resume route: `updateMany({ where: { attemptId } })`.** Never re-key on `(sessionId, turnIndex)` for new code.
+4. **Wire `EngineConfig.onAutoExecuted`** to update `sessionSpendUsd` and any post-write side effects.
+5. **Provide `blockvisionApiKey`** in `ToolContext` (server-only, via the typed env proxy — see `env-validation-gate.mdc`).
+6. **Provide `portfolioCache`** as a per-request `Map`. One per turn. Don't share across requests.
+
+## What hosts MUST NOT do
+
+- Don't call `sdk.swap()` / `sdk.save()` / etc. directly when the tool's permission level is `confirm`. Always go through the sponsored-transaction flow (see `audric/.cursor/rules/audric-transaction-flow.mdc`).
+- Don't re-implement balance / position / pricing fetches. Always go through `getCanonicalPortfolio` / `lib/portfolio.ts` (see `audric/.cursor/rules/audric-canonical-portfolio.mdc`).
+- Don't drop `attemptId` "to keep the type simple." It's load-bearing.
+- Don't silently downgrade BlockVision degradation. Surface it to the user via the read tool's `displayText`.
+
+## Cross-references
+
+- Pending action types → `packages/engine/src/types.ts` (`PendingAction`, `PermissionResponse`, `EngineConfig`)
+- Resume route reference impl → `audric/apps/web/app/api/engine/resume/route.ts`
+- BlockVision retry/circuit-breaker → `blockvision-resilience.mdc`
+- Sponsored tx client flow → `audric/.cursor/rules/audric-transaction-flow.mdc`

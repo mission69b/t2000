@@ -2,13 +2,29 @@
 
 Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, `globs`, `alwaysApply` front-matter). Each `.mdc` file describes cross-cutting engineering constraints that should apply regardless of which file you're editing.
 
-| File | Applies |
+## Always-applied (every task)
+
+| File | What it covers |
 |------|---------|
-| `engineering-principles.mdc` | Every task — scalability, single source of truth, trace-before-fix. |
-| `token-data-architecture.mdc` | Adding tokens, fixing decimal/display bugs. Canonical token data sources (`TOKEN_MAP`, `SUPPORTED_ASSETS`). |
-| `savings-usdc-only.mdc` | Savings / lending flows — USDC is the only supported asset into NAVI lend. |
-| `financial-amounts.mdc` | Any code touching user-facing amount formatting. |
-| `audric-transaction-flow.mdc` | Sponsored tx vs SDK-direct paths — which runs when. |
+| `engineering-principles.mdc` | Trace the path, single source of truth, fix at the root, layer awareness |
+| `goal-driven-execution.mdc` | Verifiable goals, multi-step plans, ask vs proceed |
+| `coding-discipline.mdc` | Think before coding, simplicity first, surgical changes (Karpathy) |
+| `single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement |
+| `env-validation-gate.mdc` | Every env var goes through Zod schema, never raw `process.env` |
+| `safeguards-defense-in-depth.mdc` | Engine preflight + guards + USD permission resolver |
+| `agent-harness-spec.mdc` | Spec 1 + Spec 2 contracts (attemptId, TurnMetrics, modifiableFields) |
+| `financial-amounts.mdc` | Always floor display amounts, never round up |
+| `savings-usdc-only.mdc` | Saves/borrows are USDC-only |
+| `token-data-architecture.mdc` | Canonical token data sources (TOKEN_MAP, COIN_REGISTRY) |
+
+## Glob-scoped (apply when editing matching files)
+
+| File | Scope |
+|------|---------|
+| `engine-tool-development.mdc` | `packages/engine/src/tools/**/*.ts` — tool factory, permission levels, flags, preflight |
+| `blockvision-resilience.mdc` | `packages/engine/src/**/*.ts` — retry, circuit breaker, sticky cache |
+| `cron-job-architecture.mdc` | `apps/server/src/cron/**/*.ts` — t2000 cron → audric internal API contract |
+| `metrics-and-monitoring.mdc` | Reference — TurnMetrics, SessionUsage, dashboards |
 
 ## Relationship to `CLAUDE.md` and `.claude/rules/`
 
@@ -16,4 +32,4 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 - `.claude/rules/*.md` holds per-subsystem notes (packages, gateway) — not auto-loaded; reference material.
 - Files here are the IDE-layer rules auto-applied by Cursor.
 
-If a rule needs to apply in both Cursor and Claude Code, prefer putting it in `CLAUDE.md` and linking to the `.mdc` from there (as the root `CLAUDE.md § Key Documents` section does today for `engineering-principles.mdc`, `token-data-architecture.mdc`, and `audric-transaction-flow.mdc`).
+If a rule needs to apply in both Cursor and Claude Code, prefer putting it in `CLAUDE.md` and linking to the `.mdc` from there (the root `CLAUDE.md § Key Documents` section does this).

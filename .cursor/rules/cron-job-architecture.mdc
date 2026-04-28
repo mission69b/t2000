@@ -1,0 +1,131 @@
+---
+description: Cron job architecture — t2000 server cron triggers audric internal API endpoints. Sharding, auth, idempotency.
+globs: "apps/server/src/cron/**/*.ts"
+alwaysApply: false
+---
+
+# Cron Job Architecture
+
+The pattern: **t2000 server** runs the actual cron schedule (ECS task with `node-cron`). **Audric web** owns the data and exposes internal API endpoints. The cron is a thin shell that POSTs into audric.
+
+## Why this split
+
+- Audric owns the Prisma schema and the user data. Putting cron logic inside audric/web would scatter user-iteration logic across Vercel cron + Node cron, with two clocks.
+- t2000 server is a long-running Node process suited to long batch jobs.
+- The split keeps the contract tiny: t2000 does HTTP fan-out, audric does the work.
+
+## The cron jobs
+
+| Job | t2000 file | Audric endpoint | Purpose |
+|---|---|---|---|
+| Financial context snapshot | `cron/jobs/financialContextSnapshot.ts` | `POST /api/internal/financial-context-snapshot` | Daily `<financial_context>` block for every active user |
+| Portfolio snapshot | `cron/jobs/portfolioSnapshots.ts` | `POST /api/internal/portfolio-snapshot` | `PortfolioSnapshot` rows for timeline canvas |
+| Memory extraction | `cron/jobs/memoryExtraction.ts` | `POST /api/internal/memory-extraction` | Extract `UserMemory` from chat transcripts |
+| Profile inference | `cron/jobs/profileInference.ts` | `POST /api/internal/profile-inference` | Update `UserFinancialProfile` from chat history |
+| Chain memory | `cron/jobs/chainMemory.ts` | `POST /api/internal/chain-memory` | Run 7 chain classifiers → `ChainFact` rows |
+
+## The contract
+
+**Auth.** Every internal endpoint requires `x-internal-key: $T2000_INTERNAL_KEY` (also called `AUDRIC_INTERNAL_KEY` on the t2000 side — same value). Reject without it, return 401.
+
+**Request shape.** POST with empty body (cron passes no params) OR with sharding params (see below).
+
+**Response shape.** Every endpoint returns:
+```json
+{
+  "created": 100,
+  "skipped": 50,
+  "errors": 2,
+  "total": 152
+}
+```
+
+**Idempotency.** Endpoints MUST be safe to re-call within the same UTC day (e.g. on cron retry). Use upsert, not insert.
+
+## Sharding (target ≥ 1k DAU)
+
+Single-endpoint fan-out works at low DAU. At 1k+ users, the audric route hits Vercel function timeout (10s pro / 60s pro+). Solution: t2000 fires N parallel POSTs with shard params:
+
+```typescript
+// t2000 cron job
+const SHARDS = 8;
+await Promise.all(
+  Array.from({ length: SHARDS }, (_, i) =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'x-internal-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shard: i, total: SHARDS }),
+    }),
+  ),
+);
+```
+
+```typescript
+// audric/apps/web/app/api/internal/financial-context-snapshot/route.ts
+const { shard, total } = await req.json();
+const users = await prisma.user.findMany({
+  where: shard != null ? { id: { /* hash-based shard filter */ } } : undefined,
+});
+```
+
+Shard count guidance:
+- < 1k DAU: 1 shard (no sharding)
+- 1k–10k DAU: 8 shards (default — see `audric-scaling-spec.md` PR 4)
+- 10k+ DAU: 16+ shards, consider migrating to a queue (SQS / Inngest)
+
+## Schedule (UTC)
+
+| Time | Job | Why |
+|---|---|---|
+| 02:00 | Portfolio snapshot | After EU/US close — most stable wallet states |
+| 02:30 | Financial context snapshot | After portfolio snapshot — uses freshest numbers |
+| 03:00 | Profile inference | Uses prior day's transcripts |
+| 03:15 | Memory extraction | After profile inference (memory feeds profile) |
+| 04:00 | Chain memory classifiers | Daily classifier run |
+
+Order matters — financial-context depends on portfolio, profile/memory depend on yesterday's logs being complete.
+
+## What MUST NOT happen
+
+```typescript
+// ❌ Cron job that hits Sui RPC for every user
+for (const user of users) {
+  await suiClient.getAllBalances({ owner: user.suiAddress });
+}
+// — at 10k users that's 10k RPC calls in 60s, instant rate limit.
+// — batch via BlockVision OR use the canonical getPortfolio (it caches).
+
+// ❌ Cron job that ALSO writes to a different domain
+// — financial-context-snapshot writing to UserMemory? No. One job, one domain.
+
+// ❌ Endpoint that's NOT idempotent
+prisma.userFinancialContext.create({ data: { userId, snapshot } });
+// — use upsert. Cron retries WILL happen.
+
+// ❌ Auth via "if it's running on ECS" assumption
+// — always check x-internal-key. ECS networking is not security.
+
+// ❌ Hardcoded URL/key
+fetch('https://audric.ai/api/internal/...');
+const key = 'hardcoded-key';
+// — env via the typed proxy (env-validation-gate.mdc)
+```
+
+## Adding a new cron job
+
+1. Create the audric endpoint at `audric/apps/web/app/api/internal/<job>/route.ts` first.
+2. Make it idempotent and accept optional `{ shard, total }`.
+3. Add t2000 cron file at `apps/server/src/cron/jobs/<job>.ts` mirroring the existing pattern.
+4. Register in `apps/server/src/cron/index.ts` with the right UTC schedule.
+5. Test:
+   - Curl the endpoint manually with the right `x-internal-key`.
+   - Trigger from t2000 cron in dev and verify the response.
+6. Update this catalog.
+
+## Cross-references
+
+- t2000 cron entry → `apps/server/src/cron/index.ts`
+- Audric internal endpoints → `audric/apps/web/app/api/internal/*`
+- Sharding spec → `audric-scaling-spec.md` PR 4
+- Internal auth → `audric/apps/web/lib/internal-auth.ts`
+- Env (T2000_INTERNAL_KEY / AUDRIC_INTERNAL_KEY) → `env-validation-gate.mdc`

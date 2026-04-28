@@ -41,7 +41,7 @@ t2000/
 | Audric product | What it is | t2000 layer |
 |---|---|---|
 | 🪪 **Audric Passport** | The trust layer. Identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent on every write, sponsored gas. Wraps every other product. | `@t2000/sdk` (wallet, signing) + Enoki (zkLogin, gas sponsorship) + `@mysten/sui` |
-| 🧠 **Audric Intelligence** | The brain (the moat). Five systems orchestrate every money decision — Agent Harness (34 tools), Reasoning Engine (9 guards, 7 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (QueryEngine + tools + reasoning + guards + skill recipes) |
+| 🧠 **Audric Intelligence** | The brain (the moat). Five systems orchestrate every money decision — Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you. Engineering-facing brand; users experience it as "Audric just understood me." | `@t2000/engine` (QueryEngine + tools + reasoning + guards + skill recipes) |
 | 💰 **Audric Finance** | Manage your money on Sui. Save (NAVI lend, 3–8% APY on USDC or USDsui — strategic exception added in v0.51.0), Credit (NAVI borrow USDC or USDsui against savings, health factor visible at all times — repay must use the same asset as the borrow), Swap (Cetus aggregator, best-route across 20+ DEXs, 0.1% fee), Charts (interactive yield / health / portfolio visualizations rendered from chat). Every write taps to confirm via Passport. | `@t2000/sdk` NAVI lending/borrowing builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
 | 💸 **Audric Pay** | Move money. Free, global, instant on Sui. Send USDC to anyone, receive via payment links / invoices / QR. No bank, no borders, no fees. | `@t2000/sdk` Sui tx builders (direct USDC transfers, payment-link contract, invoice flows) |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Generate AI music, art, ebooks, list them, sell in USDC. 92% to creator. **Coming soon (Phase 5).** | `@t2000/sdk` + Walrus storage + payment links (built on Audric Pay primitives) |
@@ -66,7 +66,7 @@ Every Audric action runs through Passport. It's the wallet itself.
 | System | What it does | Implementation |
 |---|---|---|
 | 🎛️ **Agent Harness** | 34 tools, one agent. The runtime that orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi positions, analytics) inside a single conversation. Parallel reads, serial writes under a transaction mutex. | `@t2000/engine` `QueryEngine` + 34 tools (23 read / 11 write) |
-| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, extended thinking always-on |
+| ⚡ **Reasoning Engine** | Thinks before it acts. Adaptive thinking effort per turn, complexity classifier, 6 YAML skill recipes, 14 safety guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, extended thinking always-on |
 | 🧠 **Silent Profile** | Knows your finances. Builds a private financial profile from chat history + a daily on-chain orientation snapshot (`<financial_context>` system-prompt block — savings/wallet/debt/HF/APY/recent activity). Used silently to make answers more relevant — never surfaced as nudges. | `UserFinancialProfile` + `UserFinancialContext` Prisma models + Claude inference cron + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. Reads wallet history into structured facts the agent uses as context — recurring sends, idle balances, position changes. | 7 chain classifiers + `ChainFact` rows + `buildMemoryContext()` |
 | 📓 **AdviceLog** | Remembers what it told you. Every recommendation is logged so the agent doesn't contradict itself across sessions. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` (last 30 days hydrated each turn) |
@@ -122,12 +122,18 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 | `PRODUCT_FACTS.md` | Versions, fees, CLI syntax, SDK signatures | Documentation or marketing |
 | `CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
-| `audric-roadmap.md` | Product roadmap, feature specs, revenue model | Feature planning |
-| `audric-build-tracker.md` | Execution status per phase and task | Status checks |
+| `audric-roadmap.md` | Product roadmap, feature specs, revenue model (**local-only as of S.23 — gitignored**) | Feature planning |
+| `audric-build-tracker.md` | Execution status per phase and task (**local-only as of S.23 — gitignored**) | Status checks |
+| `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` | Spec 1 — engine harness correctness (TurnMetrics, attemptId, modifiableFields). Shipped engine v0.41.0–v0.50.3. **Local-only — gitignored.** | Engine/harness changes |
+| `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` | Spec 2 — harness intelligence (BlockVision swap, `<financial_context>`, attemptId resume keying). Shipped engine v0.47.0–v0.50.3. **Local-only — gitignored.** | Engine/intelligence changes |
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
+| `.cursor/rules/single-source-of-truth.mdc` | Canonical fetchers + ESLint enforcement | Portfolio/wallet/positions reads |
+| `.cursor/rules/agent-harness-spec.mdc` | Spec 1 + Spec 2 contracts (attemptId, TurnMetrics, resume updateMany, EngineConfig.onAutoExecuted) | Engine/resume route changes |
+| `.cursor/rules/blockvision-resilience.mdc` | Retry + circuit breaker + sticky-positive cache rules | BlockVision integration changes |
 | `.cursor/rules/token-data-architecture.mdc` | Canonical token data sources (TOKEN_MAP, SUPPORTED_ASSETS, etc.) | Adding tokens, fixing decimal/display bugs |
-| `.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which code path runs when | Any Audric transaction/receipt bug |
+| `.cursor/rules/env-validation-gate.mdc` | The S.25 lesson — every env var goes through Zod schema | Adding env vars / wiring a new app |
 | `audric/apps/web/lib/env.ts` | Canonical Zod env-validation template (boot-time fail-fast, server/client split, proxy guard) | Adding env vars, copying the pattern to a new app |
+| `audric/.cursor/rules/audric-transaction-flow.mdc` | Sponsored tx vs SDK direct — which code path runs when (**lives in audric repo**) | Any Audric transaction/receipt bug |
 
 ---
 

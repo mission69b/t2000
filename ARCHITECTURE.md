@@ -851,9 +851,33 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 
 ---
 
-## Engine (`@t2000/engine`)
+## Engine (`@t2000/engine`) — Audric Intelligence implementation
 
-The engine package powers **Audric**, the conversational finance agent. It sits between the LLM and the SDK, orchestrating multi-turn conversations with financial tool execution.
+`@t2000/engine` is the moat. It implements **Audric Intelligence** — the 5-system financial agent that sits between the LLM and the SDK and turns "what does the user want?" into a safe, recorded, on-chain action. Audric Intelligence is _not a chatbot_: it understands the user's money (Silent Profile), reasons before acting (Reasoning Engine), orchestrates 34 financial tools in one conversation (Agent Harness), remembers what the user did on-chain (Chain Memory), and remembers what it told the user (AdviceLog).
+
+```
+                ┌────────────────────────────────────────────────┐
+                │  Audric Intelligence (5 systems, one agent)     │
+                │                                                 │
+   user prompt ─┼──► Reasoning ──► Harness ──► Profile + Memory + Advice
+                │     (think)       (act)         (silent context, every turn)
+                │                                                 │
+                │                                                 │
+                └─► pending_action ──► user taps Confirm ──► sponsored Sui tx
+                                                              + TurnMetrics + AdviceLog
+```
+
+| System | Owns | Implementation files |
+|---|---|---|
+| 🎛️ **Agent Harness** | 34 tools, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| ⚡ **Reasoning Engine** | Adaptive thinking, 14 guards, 6 skill recipes, prompt caching, preflight | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
+| 🧠 **Silent Profile** | Daily on-chain snapshot + Claude-inferred profile, injected as `<financial_context>` block | audric-side: `UserFinancialProfile`, `UserFinancialContext`, `buildFinancialContextBlock()`, `buildProfileContext()` |
+| 🔗 **Chain Memory** | 7 classifiers extract `ChainFact` rows from on-chain history; injected silently | audric-side: classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
+| 📓 **AdviceLog** | Every recommendation logged (`record_advice` audric-side tool); last 30 days hydrated each turn | audric-side: `AdviceLog` Prisma model + `buildAdviceContext()` |
+
+> _The "five systems" framing is the canonical product narrative. See `CLAUDE.md` (binding rules) and the per-system rules in `.cursor/rules/` (`agent-harness-spec.mdc`, `engine-context-assembly.mdc`, `engine-tool-development.mdc`, `safeguards-defense-in-depth.mdc`)._
+
+The rest of this section is the technical deep-dive: how each system is wired in code, then the two recent harness upgrades — **Spec 1 (Correctness)** and **Spec 2 (Intelligence)**.
 
 ### QueryEngine
 
@@ -925,8 +949,8 @@ Tools are built with `buildTool()` which enforces:
 The engine includes a three-layer reasoning system (extended thinking always on for Sonnet/Opus):
 
 1. **Adaptive thinking** (`classify-effort.ts`) — routes queries to `low`/`medium`/`high`/`max` thinking effort. `low` routes to Haiku; `max` reserved for Opus
-2. **Guard runner** (`guards.ts`) — 9 guards across 3 priority tiers (Safety > Financial > UX) enforce balance checks, health factor limits, slippage, irreversibility warnings, etc.
-3. **Skill recipes** (`recipes/registry.ts`) — YAML recipe files loaded by `RecipeRegistry` with longest-trigger-match-wins, injected as prompt context
+2. **Guard runner** (`guards.ts`) — 14 guards across 3 priority tiers (Safety > Financial > UX): 12 pre-execution gates (`input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`, `cost_warning`) + 2 post-execution hints (`artifact_preview`, `stale_data`). First block wins; warnings/hints are injected back into the LLM context.
+3. **Skill recipes** (`recipes/registry.ts`) — 6 YAML recipes loaded by `RecipeRegistry` with longest-trigger-match-wins (`swap_and_save`, `safe_borrow`, `send_to_contact`, `portfolio_rebalance`, `account_report`, `emergency_withdraw`), injected as prompt context
 
 Additional features:
 
@@ -1018,6 +1042,77 @@ Dedicated integration layer for NAVI Protocol's MCP server:
 - `navi-transforms.ts` — Pure functions converting raw MCP responses to typed engine structures (rates, positions, health factor, balance, savings, rewards) with USD price conversion
 - `navi-reads.ts` — Composite read functions orchestrating parallel MCP calls with transforms
 
+### Silent Profile (system 3 of 5)
+
+> _Knows your finances. Builds a private financial profile from chat history and a daily on-chain snapshot — refreshed at 02:00 UTC, injected silently at every engine boot._
+
+Silent Profile is two cooperating layers, both lived in `audric/apps/web` (the engine consumes them via the system prompt):
+
+| Layer | Storage | Refresh | Used as |
+|---|---|---|---|
+| `UserFinancialProfile` (Prisma) | risk tolerance, goals, investment horizon | Claude inference cron in the `daily-intel` group | `buildProfileContext()` → `<user_profile>` block |
+| `UserFinancialContext` (Prisma) | savings/wallet/debt USD, health factor, weighted savings APY, open goals, recent activity, last-session days | `/api/internal/financial-context-snapshot` cron @ 02:00 UTC; refreshed on-demand after large writes | `buildFinancialContextBlock()` → `<financial_context>` block |
+
+The `<financial_context>` block lets every chat start oriented — no warm-up tool calls, no "let me check your balance" before the agent says anything useful. The block is silent context, never surfaced as a nudge or notification.
+
+> Implementation contract: `audric/.cursor/rules/engine-context-assembly.mdc`. Schema: `audric/apps/web/prisma/schema.prisma` → `UserFinancialProfile` + `UserFinancialContext`.
+
+### Chain Memory (system 4 of 5)
+
+> _Remembers what you do on-chain. 7 classifiers extract structured facts; injected silently as `<chain_memory>`._
+
+Seven on-chain classifiers run on the `daily-intel` cron group and write `ChainFact` rows that `buildMemoryContext()` hydrates into every engine boot:
+
+| Classifier | Source | Fact |
+|---|---|---|
+| `deposit_pattern` | `AppEvent` | Recurring savings deposits (cadence + median amount) |
+| `risk_profile` | `PortfolioSnapshot` | Leverage behaviour, HF distribution |
+| `yield_behavior` | `PortfolioSnapshot` | APY optimisation, farming patterns |
+| `borrow_behavior` | `AppEvent` | Borrow / repay pairing |
+| `near_liquidation` | `PortfolioSnapshot` | HF < 1.5 events |
+| `large_transaction` | `AppEvent` | Outbound transfers > $500 |
+| `compounding_streak` | `AppEvent` | Consecutive compound actions |
+
+Chain Memory is **silent context only** — no proposals, no "Audric noticed X" cards, no notifications. The proposal pipeline (`BehavioralPattern` + Copilot suggestions) was deleted in S.5; classifiers stayed.
+
+### AdviceLog (system 5 of 5)
+
+> _Remembers what it told you. Every recommendation is logged; last 30 days hydrated each turn._
+
+`record_advice` is an audric-side tool (not exported from `@t2000/engine`) that writes `AdviceLog` rows whenever Audric makes a recommendation (e.g. "save $50 into NAVI", "wait on the swap, slippage is high"). On the next turn, `buildAdviceContext()` rehydrates the last 30 days of advice into the `<advice_log>` system-prompt block so the chat doesn't contradict itself across sessions.
+
+`AdviceLog.actedOn` is updated when the corresponding write tool succeeds via `EngineConfig.onAutoExecuted` — letting the agent see "I told you to save and you did" vs "I told you to save and you didn't" on the next turn.
+
+> Implementation contract: `audric/apps/web/lib/engine/advice-tool.ts` + `audric/.cursor/rules/engine-context-assembly.mdc`.
+
+### Spec 1 — Correctness (engine v0.41.0–v0.50.3)
+
+Spec 1 closed three correctness holes that made Audric inconsistent under load:
+
+| Bug class | Fix |
+|---|---|
+| `pending_action` events couldn't be safely correlated to a turn (multiple actions per turn ambiguous) | Stamped a per-yield UUID v4 `attemptId` on every `pending_action`. Hosts persist it on `TurnMetrics(sessionId, turnIndex)` and key the `/api/engine/resume updateMany` on it. |
+| Users couldn't edit fields on a confirm card (e.g. amount) without losing the LLM's reasoning | Added `modifiableFields: PendingActionModifiableField[]` to `pending_action`, sourced from the `TOOL_MODIFIABLE_FIELDS` registry. Resume route applies `modifications` so conversation history reflects what was approved on-chain. |
+| `auto`-permission tools (write tools that don't require confirm) had no completion hook for AdviceLog / TurnMetrics | Added `EngineConfig.onAutoExecuted({ toolName, input, result, walletAddress, sessionId, turnIndex })` — fires after the engine executes any `auto` tool. |
+
+Together these give hosts a stable join key from `pending_action` → on-chain receipt → `TurnMetrics.pendingActionOutcome` ('approved' / 'declined' / 'modified') and let auto-executed writes participate in the same telemetry as confirm-gated ones.
+
+> Local-only spec: `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`. Cross-repo contract: `t2000/.cursor/rules/agent-harness-spec.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc`.
+
+### Spec 2 — Intelligence (engine v0.47.0–v0.54.1)
+
+Spec 2 swapped the data layer + added boot-time orientation:
+
+| Change | Why |
+|---|---|
+| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net: 29 → 23 read tools, 40 → 34 total. |
+| **Sticky-positive cache + retry/circuit breaker** for BlockVision (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) | BlockVision started returning 429s under load; the cache no longer overwrites known-good positive values with degraded zeros. |
+| **`<financial_context>` block** injected at every engine boot from the daily `UserFinancialContext` snapshot | Every chat starts oriented — no warm-up tool calls before useful answers. Silent Profile system. |
+| **`attemptId` keyed resume** — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
+| **`protocol_deep_dive` exception** — kept on DefiLlama as the lone production consumer of `api.llama.fi` | Protocol metadata (TVL trends, fees, audits) isn't available on BlockVision; not worth building a custom replacement for one tool. |
+
+> Local-only spec: `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Resilience contract: `t2000/.cursor/rules/blockvision-resilience.mdc`.
+
 ---
 
 ## Audric — the five products
@@ -1038,41 +1133,23 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 ---
 
-## Audric Intelligence — the 5-system moat
+## Audric Intelligence — the 5-system moat (product narrative)
 
 > **Not a chatbot. A financial agent.** Five systems work together to understand the user's money, reason about decisions, and get smarter over time. Every action still waits on Passport's tap-to-confirm.
 >
+> _The technical deep-dive (per-system implementation, Spec 1, Spec 2) lives under [`## Engine (\`@t2000/engine\`)`](#engine-t2000engine--audric-intelligence-implementation) above. This section is the consumer-product / brand framing._
+>
 > The "autonomous agent" framing of the prior Audric 2.0 spec was retired in the April 2026 simplification. Pattern proposals, the trust ladder, the scheduled-actions executor, and the notification templates were deleted because zkLogin requires user presence to sign — "autonomous" was reminders dressed up as agency. See the S.0–S.12 entries in `audric-build-tracker.md`.
 
-
-| System                 | What it does                                                                                                                                                                                                                                | Implementation                                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 🎛️ **Agent Harness**  | 34 tools, one agent. Orchestrates Finance ops (save, swap, borrow, repay, charts), Pay ops (send, receive), and read tools (balances, DeFi, analytics) inside a single conversation. Parallel reads, serial writes under `TxMutex`.         | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (23 read + 11 write)                                  |
-| ⚡ **Reasoning Engine** | Adaptive thinking effort per turn, complexity classifier, 7 YAML skill recipes, 9 safety guards across 3 priority tiers (Safety > Financial > UX), preflight input validation, prompt caching, extended thinking always-on for Sonnet/Opus. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control                       |
-| 🧠 **Silent Profile**  | Private financial profile inferred from chat history (risk tolerance, goals, horizon). Used silently to shape replies — never surfaced.                                                                                                     | `UserFinancialProfile` Prisma model + Claude inference cron (daily-intel group) + `buildProfileContext()` |
-| 🔗 **Chain Memory**    | 7 classifiers extract structured facts from on-chain history (recurring sends, idle balances, position changes, near-liquidation events).                                                                                                   | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()`                                           |
-| 📓 **AdviceLog**       | Every recommendation Audric makes is logged. Last 30 days hydrate every turn so the chat doesn't contradict itself across sessions.                                                                                                         | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()`                      |
-
+| System | One-line pitch | Implementation |
+|---|---|---|
+| 🎛️ **Agent Harness** | 34 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (23 read + 11 write) |
+| ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 14 guards, 6 skill recipes, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
+| 🧠 **Silent Profile** | Knows your finances — daily on-chain snapshot + chat-inferred profile, injected silently. | `UserFinancialProfile` + `UserFinancialContext` + `buildFinancialContextBlock()` + 02:00 UTC cron |
+| 🔗 **Chain Memory** | Remembers what you do on-chain — 7 classifiers, no proposals, silent context. | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |
+| 📓 **AdviceLog** | Remembers what it told you — last 30 days hydrated each turn, no two contradictory answers. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |
 
 **What stayed (silent context):** chain-memory classifiers, episodic memory extraction, financial-profile inference, portfolio snapshots, and the `AdviceLog` loop. These run on a single `daily-intel` cron group and feed the LLM context invisibly.
-
-### Chain Memory
-
-7 classifiers extract financial patterns from on-chain data and feed them to the agent silently — no proposals, no surface, no notifications:
-
-
-| Classifier           | Source            | Detects                        |
-| -------------------- | ----------------- | ------------------------------ |
-| `deposit_pattern`    | AppEvent          | Regular savings deposits       |
-| `risk_profile`       | PortfolioSnapshot | Leverage behavior, HF patterns |
-| `yield_behavior`     | PortfolioSnapshot | APY optimization, farming      |
-| `borrow_behavior`    | AppEvent          | Borrow/repay patterns          |
-| `near_liquidation`   | PortfolioSnapshot | HF < 1.5 events                |
-| `large_transaction`  | AppEvent          | Amounts > $500                 |
-| `compounding_streak` | AppEvent          | Consecutive compound actions   |
-
-
-Chain facts stored as `ChainFact` rows and injected into the engine system prompt via `buildMemoryContext()`. The proposal pipeline (formerly `BehavioralPattern` + Copilot suggestions) was deleted in S.5.
 
 ### Critical Health Factor Email (the only proactive surface)
 
