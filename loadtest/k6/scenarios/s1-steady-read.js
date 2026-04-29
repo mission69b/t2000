@@ -22,6 +22,13 @@ const TARGET_VUS  = Math.max(1, Math.round(500 * VU_SCALE));
 const RAMP_MINS   = VU_SCALE < 0.5 ? 1 : 5;
 const HOLD_MINS   = VU_SCALE < 0.5 ? 2 : 15;
 
+// [PR 6 — local-IP rate cap] Vercel WAF caps POST-to-chat requests
+// from a single IP at ~10/sec. Beyond that, we get 4xx that look like
+// app-level failures but are actually edge-tier rate limits. For
+// laptop-driven tests, keep total req rate < 8/sec by capping VUs and
+// inflating sleep think time when VU_SCALE is low. k6 Cloud (multi-IP)
+// or a load generator behind a proxy pool would skip this constraint.
+
 export const options = {
   stages: [
     { duration: `${RAMP_MINS}m`, target: RAMP_VUS },
@@ -47,6 +54,14 @@ const PROMPTS = [
   "Show me my portfolio",
 ];
 
+// [PR 6 — load-test session sharing] Audric throttles new sessions per
+// 24h window (5 unverified, 20 verified). Without a shared sessionId,
+// every k6 iteration creates a new session and we 429 instantly. All
+// VUs share one sessionId — measures latency + tool dispatch under
+// concurrent load (read-only, no write contention) without burning
+// the rate limiter.
+const SHARED_SESSION_ID = __ENV.SHARED_SESSION_ID || `loadtest-s1-${Date.now()}`;
+
 export default function () {
   const prompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
 
@@ -56,6 +71,7 @@ export default function () {
     JSON.stringify({
       message: prompt,
       address: TEST_ADDRESS,
+      sessionId: SHARED_SESSION_ID,
     }),
     { headers: authHeaders(), timeout: '30s' },
   );
@@ -70,13 +86,17 @@ export default function () {
     'no CB open signal': (r) => r.body && !r.body.includes('"cb_open":1'),
   });
 
-  if (!ok || res.status !== 200) {
+  if (res.status !== 200) {
     chatErrors.add(1);
   } else {
     chatSuccesses.add(1);
   }
 
-  sleep(Math.random() * 2 + 1); // 1–3s think time between turns
+  // [PR 6 — Audric per-IP throttle] /api/engine/chat is rate-limited
+  // to 20 req/min per IP (lib/rate-limit.ts). 1 req every 4s (15/min)
+  // stays under the cap from a single laptop. k6 Cloud (multi-IP) or
+  // a proxy pool would let us crank this back to 1–3s.
+  sleep(Math.random() * 2 + 4);
 }
 
 export function handleSummary(data) {

@@ -57,6 +57,12 @@ const WRITE_PROMPTS = [
   "Can you save 1 USDC?",
 ];
 
+// [PR 6 — load-test session sharing] Same reasoning as S1. All VUs
+// share one sessionId so we don't burn the 5/20 per-day session limit.
+// Reads + write-intent turns both use the shared session — engine still
+// yields pending_action correctly under concurrent load (we assert it).
+const SHARED_SESSION_ID = __ENV.SHARED_SESSION_ID || `loadtest-s3-${Date.now()}`;
+
 export default function () {
   // 10% of VUs do write-intent turns
   const isWrite = Math.random() < 0.10;
@@ -66,7 +72,7 @@ export default function () {
   const start = Date.now();
   const res = http.post(
     `${BASE_URL}/api/engine/chat`,
-    JSON.stringify({ message: prompt, address: TEST_ADDRESS }),
+    JSON.stringify({ message: prompt, address: TEST_ADDRESS, sessionId: SHARED_SESSION_ID }),
     { headers: authHeaders(), timeout: '30s' },
   );
   const elapsed = Date.now() - start;
@@ -90,7 +96,8 @@ export default function () {
     });
   }
 
-  sleep(Math.random() * 2 + 1);
+  // [PR 6 — Audric per-IP throttle] Same as S1 — 20/min per IP cap.
+  sleep(Math.random() * 2 + 4);
 }
 
 export function handleSummary(data) {
