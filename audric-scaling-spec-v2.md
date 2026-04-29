@@ -39,7 +39,7 @@ What still constrains us at 3,000+ DAU:
 - **Cron completes in < 4 min at 5,000 users** with current per-user processing time.
 - **Per-IP rate limiter is accurate to within 5%** across all Vercel instances.
 - **No single external dependency** (BV key, Sui RPC endpoint) is a single point of failure for the user-visible read path.
-- **Operator gets a Slack/email page** within 5 min of any P5 metric breach.
+- **Operator gets a Discord/email page** within 5 min of any P5 metric breach.
 
 ## Non-goals (deferred to the 10k+ tier)
 
@@ -73,7 +73,7 @@ PR 8 is a config-only ship — minutes of work, no risk. PRs 9–12 are independ
 | 8  | Cron shard count bump (8 → 24) | **P0** | 30 min | One env var. No code. Bumps cron capacity from ~1,900 user budget to ~5,700 user budget. |
 | 9  | Redis-backed rate limiter + session counting | **P0** | 1 day | Closes the in-memory drift bug and removes the per-turn `groupBy` from the hot path. Two birds, one Upstash sorted-set. |
 | 10 | BlockVision API key sharding (multi-key round-robin + per-key CB) | **P1** | 0.5 day | Eliminates BV-key as single point of failure. Requires a second BV Pro key (~$99/mo). |
-| 11 | Telemetry alerting (Vercel + email/Slack on P5 thresholds) | **P1** | 0.5 day | Without this, PRs 8–10 ship and we still wouldn't know if they regressed. |
+| 11 | Telemetry alerting (Vercel + email/Discord on P5 thresholds) | **P1** | 0.5 day | Without this, PRs 8–10 ship and we still wouldn't know if they regressed. |
 | 12 | Sui RPC pool (round-robin + per-endpoint health) | **P2** | 0.5 day | Defensive — current single RPC is not a measured failure, but cron + interactive overlap at 5k DAU pushes it close. |
 | 13 | Load test re-run + S6/S7 (5k synthetic cron, BV key ban) | **P2** | 0.5 day | Validates the stack. |
 
@@ -195,17 +195,19 @@ Replace with a Redis sorted-set per address (`session-count:<address>`), score =
 
 ### What changes
 
-**Vercel Observability alerts** on the metrics shipped in PR 5. Email + Slack webhook destinations.
+**Self-built relay** — a Vercel cron route (`app/api/cron/scaling-alerts/route.ts`, runs every 5 min) reads counters from `lib/telemetry.ts`, evaluates 7 thresholds, and POSTs Discord-formatted `{ embeds }` to `DISCORD_ALERTS_WEBHOOK`. Idempotent dedup via Upstash (per-alert last-fired timestamp, severity-dependent TTL).
 
-| Alert | Threshold | Severity |
-|---|---|---|
-| `bv.cb_open` gauge stays at 1 for > 5 min | 5min | P5 — page on-call |
-| `navi.cb_open` gauge stays at 1 for > 5 min | 5min | P5 — page on-call |
-| `bv.cache_hit / bv.requests` ratio drops below 0.85 over 15 min window | 15min | P3 — Slack only |
-| `cron.fin_ctx_shard_duration_ms` p99 > 240,000ms (4 min — warning at 80% of budget) | per-run | P3 — Slack only |
-| `anthropic.tokens` daily counter exceeds budget | daily 09:00 UTC | P3 — email |
-| `upstash.requests` rate exceeds plan (e.g. 80% of monthly cap) | daily | P3 — email |
-| `sui_rpc.requests` 429-tagged rate > 5% over 10 min | 10min | P3 — Slack only |
+**Why not Vercel's built-in alerts?** Verified 2026-04-29: Vercel Alerts only supports Error Anomaly + Usage Anomaly on built-in metrics (function duration, error rate, etc.). Custom log-field counters like `bv.cb_open` and `cron.fin_ctx_shard_duration_ms` aren't reachable from the UI. The Slack destination is also OAuth-based (real Slack workspace + `/vercel subscribe` slash command), not a paste-your-webhook-URL field — so the Discord-via-`/slack` trick doesn't apply. ~50 lines of own-code is cleaner than fighting the product surface.
+
+| Alert | Threshold | Severity | Destination |
+|---|---|---|---|
+| `bv.cb_open` gauge stays at 1 for > 5 min | 5 min | P1 — Discord ping + email | Discord `#audric-alerts` + email |
+| `navi.cb_open` gauge stays at 1 for > 5 min | 5 min | P1 — Discord ping + email | Discord `#audric-alerts` + email |
+| `bv.cache_hit / bv.requests` ratio drops below 0.85 over 15 min window | 15 min | P3 — Discord only | Discord `#audric-alerts` |
+| `cron.fin_ctx_shard_duration_ms` p99 > 240,000ms (4 min — warning at 80% of budget) | per-run | P3 — Discord only | Discord `#audric-alerts` |
+| `anthropic.tokens` daily counter exceeds budget | daily 09:00 UTC | P3 — email | Email |
+| `upstash.requests` rate exceeds plan (e.g. 80% of monthly cap) | daily | P3 — email | Email |
+| `sui_rpc.requests` 429-tagged rate > 5% over 10 min | 10 min | P3 — Discord only | Discord `#audric-alerts` |
 
 ### Why this works
 
@@ -213,11 +215,12 @@ PR 5 shipped the metrics; PR 11 closes the loop by making them actionable. Witho
 
 ### Effort + risk
 
-0.5 day. Risk: zero — Vercel Observability alerts are configured via dashboard, not code. The only "code" change is pinning a runbook (`audric/RUNBOOK_scaling_alerts.md`) describing what each alert means and the first-line response.
+~3 hours (cron route + Discord webhook + 7 threshold evaluators + Upstash dedup + 2-3 unit tests). Risk: low — the relay is read-only against telemetry counters and can't break the rest of the app even if the alert logic is wrong (worst case: false positives or missed alerts, both surface in `/admin/scaling`).
 
 ### Validation
 
-- Trigger each alert manually via test condition (e.g. revoke BV key for 5 min in staging) → confirm Slack message arrives
+- Trigger each alert manually via test condition (see `audric/apps/web/RUNBOOK_scaling_alerts.md` "Validation" table)
+- Each test should produce a Discord message within one cron tick (5 min)
 - Runbook handoff to founder + on-call rotation
 
 ---
