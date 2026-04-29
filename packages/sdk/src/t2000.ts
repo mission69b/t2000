@@ -25,8 +25,6 @@ import * as yieldTracker from './protocols/yieldTracker.js';
 import { ProtocolRegistry } from './adapters/registry.js';
 import { NaviAdapter } from './adapters/navi.js';
 import type { LendingAdapter } from './adapters/types.js';
-import { solveHashcash } from './utils/hashcash.js';
-import { executeWithGas } from './gas/manager.js';
 import type {
   T2000Options,
   BalanceResponse,
@@ -56,11 +54,10 @@ import type {
   UnstakeVSuiResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, DEFAULT_NETWORK, API_BASE_URL, MIST_PER_SUI, assertAllowedAsset, type SupportedAsset } from './constants.js';
+import { SUPPORTED_ASSETS, DEFAULT_NETWORK, MIST_PER_SUI, assertAllowedAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
-import type { TxMetadata } from './safeguards/types.js';
 import { ContactManager } from './contacts.js';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -72,9 +69,35 @@ interface T2000Events {
   healthWarning: (event: { healthFactor: number; threshold: number; severity: 'warning' }) => void;
   healthCritical: (event: { healthFactor: number; threshold: number; severity: 'critical' }) => void;
   yield: (event: { earned: number; total: number; apy: number; timestamp: number }) => void;
-  gasAutoTopUp: (result: { usdcSpent: number; suiReceived: number }) => void;
-  gasStationFallback: (event: { reason: string; method: string; suiUsed: number }) => void;
   error: (error: T2000Error) => void;
+}
+
+// Sign + execute a transaction with the agent's signer. Replaces the pre-v2 gas
+// manager — every transaction is now self-funded by the agent's wallet.
+type SuiTransactionEffects = NonNullable<Awaited<ReturnType<SuiJsonRpcClient['executeTransactionBlock']>>['effects']>;
+
+async function executeTx(
+  client: SuiJsonRpcClient,
+  signer: TransactionSigner,
+  buildTx: () => Promise<Transaction> | Transaction,
+): Promise<{ digest: string; gasCostSui: number; effects: SuiTransactionEffects | undefined }> {
+  const tx = await buildTx();
+  tx.setSender(signer.getAddress());
+  const txBytes = await tx.build({ client });
+  const { signature } = await signer.signTransaction(txBytes);
+  const result = await client.executeTransactionBlock({
+    transactionBlock: txBytes,
+    signature,
+    options: { showEffects: true },
+  });
+  await client.waitForTransaction({ digest: result.digest });
+  const gasUsed = result.effects?.gasUsed;
+  let gasCostSui = 0;
+  if (gasUsed) {
+    const total = BigInt(gasUsed.computationCost) + BigInt(gasUsed.storageCost) - BigInt(gasUsed.storageRebate);
+    gasCostSui = Number(total) / 1e9;
+  }
+  return { digest: result.digest, gasCostSui, effects: result.effects ?? undefined };
 }
 
 export class T2000 extends EventEmitter<T2000Events> {
@@ -122,18 +145,10 @@ export class T2000 extends EventEmitter<T2000Events> {
   }
 
   static async create(options: T2000Options = {}): Promise<T2000> {
-    const { keyPath, pin, passphrase, network = DEFAULT_NETWORK, rpcUrl, sponsored, name } = options;
+    const { keyPath, pin, passphrase, rpcUrl } = options;
     const secret = pin ?? passphrase;
 
     const client = getSuiClient(rpcUrl);
-
-    if (sponsored) {
-      const keypair = generateKeypair();
-      if (secret) {
-        await saveKey(keypair, secret, keyPath);
-      }
-      return new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);
-    }
 
     const exists = await walletExists(keyPath);
     if (!exists) {
@@ -157,7 +172,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     return new T2000(keypair, client);
   }
 
-  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean }> {
+  static async init(options: { pin: string; passphrase?: string; keyPath?: string; name?: string }): Promise<{ agent: T2000; address: string }> {
     const secret = options.pin ?? options.passphrase ?? '';
     const keypair = generateKeypair();
     await saveKey(keypair, secret, options.keyPath);
@@ -166,17 +181,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const agent = new T2000(keypair, client, undefined, DEFAULT_CONFIG_DIR);
     const address = agent.address();
 
-    let sponsored = false;
-    if (options.sponsored !== false) {
-      try {
-        await callSponsorApi(address, options.name);
-        sponsored = true;
-      } catch {
-        // SUI gas sponsor unavailable — agent can still be funded manually
-      }
-    }
-
-    return { agent, address, sponsored };
+    return { agent, address };
   }
 
   // -- Gas --
@@ -218,7 +223,7 @@ export class T2000 extends EventEmitter<T2000Events> {
         client,
         signer: { toSuiAddress: () => signerAddress } as Parameters<typeof sui>[0]['signer'],
         execute: async (tx) => {
-          const result = await executeWithGas(client, signer, () => tx);
+          const result = await executeTx(client, signer, () => tx);
           return { digest: result.digest, effects: result.effects };
         },
       })],
@@ -270,7 +275,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const amountMist = BigInt(Math.floor(params.amount * Number(MIST_PER_SUI)));
     const stats = await getVoloStats();
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       return buildStakeVSuiTx(this.client, this._address, amountMist);
     });
 
@@ -283,7 +288,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       vSuiReceived,
       apy: stats.apy,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -305,7 +309,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const stats = await getVoloStats();
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       return buildUnstakeVSuiTx(this.client, this._address, amountMist);
     });
 
@@ -317,7 +321,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       vSuiAmount,
       suiReceived,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -368,7 +371,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       preBalRaw = BigInt(preBal.totalBalance);
     } catch { /* first time holding this token — balance is 0 */ }
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       const tx = new Transaction();
       tx.setSender(this._address);
 
@@ -457,7 +460,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       priceImpact: route.priceImpact,
       route: routeDesc,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -528,9 +530,8 @@ export class T2000 extends EventEmitter<T2000Events> {
     const sendAmount = params.amount;
     const sendTo = resolved.address;
 
-    const gasResult = await executeWithGas(this.client, this._signer, () =>
+    const gasResult = await executeTx(this.client, this._signer, () =>
       buildSendTx({ client: this.client, address: this._address, to: sendTo, amount: sendAmount, asset }),
-      { metadata: { operation: 'send', amount: sendAmount }, enforcer: this.enforcer },
     );
 
     this.enforcer.recordUsage(sendAmount);
@@ -546,7 +547,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       contactName: resolved.contactName,
       gasCost: gasResult.gasCostSui,
       gasCostUnit: 'SUI',
-      gasMethod: gasResult.gasMethod,
       balance,
     };
   }
@@ -713,7 +713,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const adapter = await this.resolveLending(params.protocol, asset, 'save');
     const canPTB = !!adapter.addSaveToTx;
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       if (canPTB) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -758,7 +758,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       apy: rates.saveApy,
       fee: fee.amount,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
       savingsBalance,
     };
   }
@@ -825,7 +824,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const withdrawAmount = amount;
     let finalAmount = withdrawAmount;
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       if (adapter.addWithdrawToTx) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -849,7 +848,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       amount: finalAmount,
       asset: target.asset,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -893,7 +891,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     let totalReceived = 0;
     const canPTB = entries.every(e => e.adapter.addWithdrawToTx);
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       if (canPTB) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -926,7 +924,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       tx: gasResult.digest,
       amount: totalReceived,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -1080,7 +1077,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const fee = calculateFee('borrow', params.amount);
     const borrowAmount = params.amount;
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: true });
       return tx;
     });
@@ -1097,7 +1094,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       fee: fee.amount,
       healthFactor: hf.healthFactor,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -1143,7 +1139,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const targetAssetInfo = SUPPORTED_ASSETS[target.asset as SupportedAsset]
       ?? SUPPORTED_ASSETS.USDC;
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       if (adapter.addRepayToTx) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -1172,7 +1168,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       asset: target.asset,
       remainingDebt: hf.borrowed,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -1188,7 +1183,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     const canPTB = entries.every(e => e.adapter.addRepayToTx);
     let totalRepaid = 0;
 
-    const gasResult = await executeWithGas(this.client, this._signer, async () => {
+    const gasResult = await executeTx(this.client, this._signer, async () => {
       if (canPTB) {
         const tx = new Transaction();
         tx.setSender(this._address);
@@ -1245,7 +1240,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       asset: dominantAsset,
       remainingDebt: hf.borrowed,
       gasCost: gasResult.gasCostSui,
-      gasMethod: gasResult.gasMethod,
     };
   }
 
@@ -1288,7 +1282,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
     const adapters = this.registry.listLending().filter((a) => a.addClaimRewardsToTx);
     if (adapters.length === 0) {
-      return { success: true, tx: '', rewards: [], totalValueUsd: 0, gasCost: 0, gasMethod: 'none' };
+      return { success: true, tx: '', rewards: [], totalValueUsd: 0, gasCost: 0 };
     }
 
     const tx = new Transaction();
@@ -1303,10 +1297,10 @@ export class T2000 extends EventEmitter<T2000Events> {
     }
 
     if (allRewards.length === 0) {
-      return { success: true, tx: '', rewards: [], totalValueUsd: 0, gasCost: 0, gasMethod: 'none' };
+      return { success: true, tx: '', rewards: [], totalValueUsd: 0, gasCost: 0 };
     }
 
-    const claimResult = await executeWithGas(this.client, this._signer, async () => tx);
+    const claimResult = await executeTx(this.client, this._signer, async () => tx);
     await this.client.waitForTransaction({ digest: claimResult.digest });
 
     const totalValueUsd = allRewards.reduce((s, r) => s + r.estimatedValueUsd, 0);
@@ -1317,7 +1311,6 @@ export class T2000 extends EventEmitter<T2000Events> {
       rewards: allRewards,
       totalValueUsd,
       gasCost: claimResult.gasCostSui,
-      gasMethod: claimResult.gasMethod,
     };
   }
 
@@ -1389,7 +1382,7 @@ export class T2000 extends EventEmitter<T2000Events> {
 
         if (!route || route.insufficientLiquidity) continue;
 
-        const swapResult = await executeWithGas(this.client, this._signer, async () => {
+        const swapResult = await executeTx(this.client, this._signer, async () => {
           const tx = new Transaction();
           tx.setSender(this._address);
 
@@ -1428,7 +1421,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     if (gainedRaw > 0n) {
       try {
         const adapter = await this.resolveLending(undefined, 'USDC', 'save');
-        const depositResult = await executeWithGas(this.client, this._signer, async () => {
+        const depositResult = await executeTx(this.client, this._signer, async () => {
           const tx = new Transaction();
           tx.setSender(this._address);
           const coins = await this._fetchCoins(USDC_TYPE);
@@ -1580,32 +1573,6 @@ export class T2000 extends EventEmitter<T2000Events> {
 
   private emitBalanceChange(asset: string, amount: number, cause: string, tx?: string): void {
     this.emit('balanceChange', { asset, previous: 0, current: 0, cause, tx });
-  }
-}
-
-async function callSponsorApi(address: string, name?: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/sponsor`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address, name }),
-  });
-
-  if (res.status === 429) {
-    const data = await res.json() as { challenge?: string };
-    if (data.challenge) {
-      const proof = solveHashcash(data.challenge);
-      const retry = await fetch(`${API_BASE_URL}/api/sponsor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, name, proof }),
-      });
-      if (!retry.ok) throw new T2000Error('SPONSOR_RATE_LIMITED', 'Sponsor rate limited');
-      return;
-    }
-  }
-
-  if (!res.ok) {
-    throw new T2000Error('SPONSOR_FAILED', 'Sponsor API unavailable');
   }
 }
 

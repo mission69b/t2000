@@ -102,7 +102,6 @@ async function processCheckpoints(
               protocol: transfer.protocol,
               asset: transfer.asset,
               amount: transfer.amount,
-              gasMethod: transfer.gasMethod,
               executedAt: new Date(transfer.timestamp),
             },
           });

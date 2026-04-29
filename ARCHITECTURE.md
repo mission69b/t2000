@@ -27,7 +27,7 @@
    │  ┌──────────────────────────────────────────────────────────────────┐
    │  │                        @t2000/sdk                                │
    │  │                                                                  │
-   │  │  Agent core · Safeguards · Gas manager · Protocol registry       │
+   │  │  Agent core · Safeguards · Protocol registry                     │
    │  │  Adapters: NAVI                                                   │
    │  └────────┬──────────────┬──────────────┬───────────────────────────┘
    │           │              │              │
@@ -36,10 +36,10 @@
 │ Web App     │  │ t2000 Server│  │ MPP Gateway │  │   Sui Blockchain     │
 │ (Vercel)    │  │ (ECS)       │  │ (Vercel)    │  │                      │
 │             │  │             │  │             │  │  USDC · NAVI ·       │
-│ zkLogin     │  │ Sponsor API │  │ 40 services │  │  t2000 Treasury      │
-│ Enoki gas   │  │ Gas station │  │ 88 endpoints│  │  @suimpp/mpp         │
-│ Agent loop  │  │ Fee ledger  │  │ Explorer    │  │  @suimpp/mpp      │
-│ Anthropic   │  │ Indexer     │  │ Spec + Docs │  │  (payment method)    │
+│ zkLogin     │  │ Fee ledger  │  │ 40 services │  │  t2000 Treasury      │
+│ Enoki gas   │  │ Indexer     │  │ 88 endpoints│  │  @suimpp/mpp         │
+│ Agent loop  │  │ Daily-intel │  │ Explorer    │  │  @suimpp/mpp      │
+│ Anthropic   │  │   cron      │  │ Spec + Docs │  │  (payment method)    │
 └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────────────────┘
        │                │                │
        ▼                ▼                ▼
@@ -49,8 +49,8 @@
 │             │  │             │  │             │
 │ Users       │  │ Agents      │  │ OpenAI      │
 │ Preferences │  │ Transactions│  │ Anthropic   │
-│ Sessions    │  │ Gas ledger  │  │ Brave       │
-│             │  │ USDC onboard│  │ + 37 more   │
+│ Sessions    │  │ Fee events  │  │ Brave       │
+│             │  │             │  │ + 37 more   │
 └─────────────┘  └─────────────┘  └─────────────┘
 ```
 
@@ -61,7 +61,7 @@
 
 | Package             | npm             | What it does                                                                      |
 | ------------------- | --------------- | --------------------------------------------------------------------------------- |
-| `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, gas manager, safeguards                    |
+| `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
 | `@t2000/engine`     | Published       | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
 | `@t2000/mcp`        | Published       | MCP server — 29 tools + 15 prompts (subset of engine's 34 tools), stdio transport |
@@ -78,7 +78,7 @@
 | Audric         | Vercel          | audric.ai    | Consumer product — Passport (zkLogin), Intelligence (engine chat), Finance (NAVI save/borrow + Cetus swap + charts), Pay (USDC transfers + receive), Store (coming soon) (separate repo) |
 | `apps/web`     | Vercel          | t2000.ai     | Infrastructure landing page + docs                                                                                                                                                       |
 | `apps/gateway` | Vercel          | mpp.t2000.ai | MPP gateway — 40 services, 88 endpoints, explorer, spec, docs                                                                                                                            |
-| `apps/server`  | AWS ECS Fargate | api.t2000.ai | Sponsor, gas station, fee ledger                                                                                                                                                         |
+| `apps/server`  | AWS ECS Fargate | api.t2000.ai | Fee ledger + indexer + Audric daily-intel cron orchestration                                                                                                                             |
 | Indexer        | AWS ECS Fargate | —            | Checkpoint indexer, yield snapshotter                                                                                                                                                    |
 
 
@@ -467,7 +467,7 @@ t2000 init
   │   ├─ Encrypt with AES-256-GCM (scrypt-derived key)
   │   ├─ Write to ~/.t2000/wallet.key (mode 0600)
   │   ├─ Cache PIN in ~/.t2000/.session (mode 0600)
-  │   └─ POST /api/sponsor → receive 0.05 SUI for gas (CLI only)
+  │   └─ Show funding instructions (buy SUI on Mercuryo + send USDC to wallet)
   │
   ├─ Step 2: MCP platforms
   │   ├─ Detect installed: Claude Desktop / Cursor / Windsurf
@@ -516,61 +516,19 @@ When the SDK needs to decrypt the wallet, it resolves the PIN in this order:
 | Windsurf                 | `~/.codeium/windsurf/mcp_config.json`                             |
 
 
-### Bootstrap sponsorship (SUI gas — CLI only)
+### Funding the agent
 
-CLI agents need SUI for gas (they self-fund transactions). Web app users do NOT receive SUI — Enoki sponsors all gas on the web.
-
-- `POST https://api.t2000.ai/api/sponsor` with `{ address, name? }`
-- Server splits 0.05 SUI from sponsor wallet → transfers to new agent
-- Records in `SponsorRequest` + `GasLedger` (txType: `bootstrap`)
-- Upserts agent in DB (makes address "known" to the indexer)
-- One-time per address, 10 per IP per hour, 100/day global cap, hashcash above limit
-
-### USDC onboarding (web only)
-
-One-time $0.25 USDC to new web sign-ups. Removes the #1 friction point — users sign up with $0 balance and can immediately try save or pay. CLI users fund their own wallets.
-
-- `POST https://api.t2000.ai/api/sponsor/usdc` with `{ address }` + `x-internal-key` header (required)
-- Server fetches USDC coins from sponsor wallet, splits $0.25, transfers to user
-- Records in `UsdcSponsorLog` (address is `@unique` — one-time per address)
-- Tracks IP address for forensics and per-IP rate limiting
-- Upserts agent in DB
-
-**Who gets what:**
-
-
-| Client             | SUI bootstrap           | USDC onboarding      | Gas method                             |
-| ------------------ | ----------------------- | -------------------- | -------------------------------------- |
-| Web app (zkLogin)  | No — Enoki sponsors gas | $0.25 USDC           | Enoki sponsored                        |
-| CLI (`t2000 init`) | 0.05 SUI                | None — fund manually | Self-funded → auto-topup → gas station |
-
-
-**Protections:**
-
-
-| Layer          | Rule                                                                         |
-| -------------- | ---------------------------------------------------------------------------- |
-| Authentication | `x-internal-key` header required on ALL requests — no unauthenticated access |
-| Kill switch    | `USDC_SPONSOR_PAUSED` env var → instant 503                                  |
-| Per-address    | One-time only (DB unique constraint)                                         |
-| Per-IP         | 3 sponsorships per IP per hour (rightmost x-forwarded-for, not spoofable)    |
-| Daily global   | 20/day hard cap ($5 max daily exposure)                                      |
-| Race condition | In-memory lock prevents concurrent double-spend for same address             |
-
-
-**Flow (web app):**
+CLI agents are **self-funded**. There is no SUI bootstrap, no USDC onboarding, and no sponsor endpoint — the user funds their own wallet after `t2000 init`.
 
 ```
-User signs in with Google → zkLogin → wallet derived
-  → useUsdcSponsor hook fires (localStorage check)
-  → POST /api/sponsor/usdc (Next.js server route)
-    → adds x-internal-key + forwards caller IP, proxies to api.t2000.ai
-  → Server validates internal key, sends $0.25 USDC from sponsor wallet
-  → Hook marks address in localStorage
-  → Dashboard shows $0.25 USDC balance
+After t2000 init:
+  → Buy SUI for gas: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2
+  → Mercuryo sells SUI direct-to-wallet (Sui USDC is not supported on the iframe)
+  → Optional: swap SUI → USDC via `t2000 swap` once funded
+  → Or send USDC from any Sui exchange / wallet to the agent address
 ```
 
-**Wallet separation:** The sponsor wallet (sends USDC/SUI to new users) and the MPP gateway treasury (receives payment revenue) are separate addresses. A drain on sponsorship cannot touch revenue.
+> **Audric web app exception:** Audric web users (not CLI users) sign in with Google → Enoki zkLogin, and Enoki sponsors all gas. They never need to acquire SUI. New web sign-ups are routed through Mercuryo for the SUI top-up, then prompted to swap to USDC via Cetus (the same path the CLI uses). USDC sponsorship and SUI bootstrap have been removed (S.32 — `audric-simplification-spec.md`).
 
 ### What exists after init
 
@@ -583,10 +541,10 @@ User signs in with Google → zkLogin → wallet derived
 
 The agent now has:
 
-- A Sui address with 0.05 SUI for gas (sponsored)
+- A Sui address (empty — fund it via Mercuryo or a transfer)
 - Safeguard limits configured
 - MCP server registered in AI clients
-- Ready for `t2000 save`, `t2000 pay`, or any MCP tool call
+- Ready for `t2000 save`, `t2000 pay`, or any MCP tool call once funded
 
 ---
 
@@ -640,71 +598,50 @@ The gateway uses `mppx` which does HMAC-bound challenge IDs. No database lookup 
 
 - Simple USDC coin transfer: `splitCoins` → `transferObjects` to treasury
 - Currency: `0xdba3...::usdc::USDC` (Circle USDC on Sui)
-- Gas: handled by SDK's gas manager (self-funded or sponsored)
+- Gas: self-funded by the agent (CLI) or Enoki-sponsored (Audric web)
 - Finality: ~400ms
 
 ---
 
 ## Gas System
 
-Every Sui transaction needs SUI for gas. The SDK handles this automatically with a three-tier resolution chain:
+Every Sui transaction needs SUI for gas. The SDK is **sponsorship-agnostic**: it builds the transaction, signs it with the agent's ephemeral key, and submits it. Whoever pays gas is decided by the host:
+
+| Host | Who pays gas |
+|---|---|
+| `@t2000/cli` | The agent itself (self-funded — keep ≥ 0.05 SUI on hand) |
+| Audric web app | Enoki sponsors gas via zkLogin (user never holds SUI for gas) |
+| Audric CLI (future) | TBD — out of scope for `audric-simplification-spec.md` PR-B1 |
+
+If the agent is self-funded and runs out of SUI, the SDK throws `INSUFFICIENT_GAS`. There is no auto-topup, no USDC→SUI swap, no gas station. The user tops up via Mercuryo (https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) or any Sui exchange.
+
+### SDK execution helper
+
+The SDK executes via a single internal helper, `executeTx(client, signer, buildTx)`:
 
 ```
-SDK: executeWithGas(buildTx)
-  │
-  ├─ 1. Self-funded (agent has ≥ 0.05 SUI)
-  │     → sign and execute with agent's keypair
-  │
-  ├─ 2. Auto-topup (USDC→SUI)
-  │     → disabled — no DEX swap path in product; tier is skipped
-  │
-  └─ 3. Gas station (fallback)
-        → POST /api/gas with serialized TX
-        → server sets gasOwner = gas wallet, signs
-        → agent signs TX bytes
-        → execute with dual signatures
-        → report gas usage
+1. buildTx() returns an unsigned Transaction
+2. tx.setSender(signer.address)
+3. tx.build({ client })  → bytes
+4. signer.signTransaction(bytes)  → signature
+5. client.executeTransactionBlock({ transactionBlock, signature, options: { showEffects: true } })
+6. waitForTransaction(digest)
+7. return { digest, gasCostSui, effects }
 ```
 
-1. SDK builds a Transaction (gasless) and serializes it
-2. Sends to your gas station server (POST /api/gas)
-3. Server adds gas objects, dry-runs, signs as sponsor
-4. Returns txBytes + sponsorSignature to SDK
-5. SDK signs with user's ephemeral key (dual-signed)
-6. Submits to fullnode
+`gasCostSui` is computed from `effects.gasUsed.computationCost + storageCost − storageRebate`, divided by `1e9`. Every write method (`send`, `save`, `withdraw`, `borrow`, `repay`, `swap`, `claimRewards`, `stakeVSui`, `unstakeVSui`) returns `gasCost` (in SUI) — there is **no `gasMethod` field** anymore.
 
-### Gas constants
+### Audric web app (Enoki) sponsorship — not in the SDK
 
+Enoki gas sponsorship lives in the Audric web app, **not** in `@t2000/sdk`. The web app:
 
-| Constant               | Value    | Purpose                                                                |
-| ---------------------- | -------- | ---------------------------------------------------------------------- |
-| `AUTO_TOPUP_THRESHOLD` | 0.05 SUI | Minimum to attempt self-funded TX                                      |
-| `GAS_RESERVE_TARGET`   | 0.15 SUI | Proactive top-up target                                                |
-| `AUTO_TOPUP_AMOUNT`    | $1 USDC  | Reserved for future USDC→SUI top-up (unused while auto-topup disabled) |
-| `AUTO_TOPUP_MIN_USDC`  | $2 USDC  | Threshold checked for maintenance hooks (auto-topup still disabled)    |
-| `GAS_RESERVE_MIN`      | 0.05 SUI | Minimum SUI left after balance-changing ops                            |
+1. Builds a Transaction via `@t2000/sdk` builder helpers (`buildSaveTx`, etc.)
+2. Serializes the TX and sends it to Enoki's sponsorship endpoint
+3. Enoki sets `gasOwner = Enoki gas wallet`, signs as sponsor
+4. The web app signs with the user's ephemeral zkLogin key (dual-signed)
+5. Submits to fullnode
 
-
-### New agent bootstrap
-
-On `t2000 init`, the sponsor endpoint sends 0.05 SUI to the new agent address. After that, the agent self-funds gas or auto-tops up.
-
-### Gas station protections
-
-
-| Protection         | Rule                                                       |
-| ------------------ | ---------------------------------------------------------- |
-| Circuit breaker    | Pauses if SUI price moves >20% in 1 hour                   |
-| Fee ceiling        | Rejects sponsored tx if estimated gas > $0.05              |
-| Pool minimum       | Gas wallet must keep ≥ 100 SUI                             |
-| Rate limit         | 20 sponsored txs per address per hour                      |
-| Hashcash           | Proof-of-work challenge when rate limited                  |
-| Serialized signing | `enqueueSign()` prevents concurrent signing on gas keypair |
-
-
-### Proactive maintenance
-
-After every successful TX, the SDK checks if SUI dropped below the reserve target and USDC is sufficient. Auto-topup execution is currently a no-op (no swap path), so agents rely on self-funded SUI or the gas station; constants remain for a future USDC→SUI top-up if reintroduced.
+This flow does NOT go through `executeTx`. It's a host-layer concern, documented in `audric/.cursor/rules/audric-transaction-flow.mdc`.
 
 ---
 
@@ -734,7 +671,7 @@ Sui Checkpoints → Indexer → NeonDB
 
 ### Known-agents filter
 
-The indexer only tracks addresses that went through `t2000 init` (bootstrap sponsorship). Random Sui addresses are ignored. This means:
+The indexer only tracks addresses that have shown up in monitored on-chain activity (a NAVI deposit, a payment-link claim, etc.) — it is no longer fed by a sponsor endpoint. Random Sui addresses are ignored. This means:
 
 - Only opted-in agents are tracked
 - No scanning of arbitrary wallets
@@ -1122,7 +1059,7 @@ The Audric consumer brand groups everything into exactly **five products**. (S.1
 
 | Product                    | What it is                                                                                                                                                                | Implementation                                                                        |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 🪪 **Audric Passport**     | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas                                                           | `@t2000/sdk` + Enoki + `@mysten/sui`                                                  |
+| 🪪 **Audric Passport**     | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, Enoki-sponsored gas (web only)                                          | `@t2000/sdk` + Enoki + `@mysten/sui`                                                  |
 | 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems orchestrate every money decision (see breakdown below)                                                                                       | `@t2000/engine`                                                                       |
 | 💰 **Audric Finance**      | Manage your money on Sui — Save (NAVI lend), Credit (NAVI borrow), Swap (Cetus aggregator), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport | `@t2000/sdk` NAVI builders + `cetus-swap.ts` + `@t2000/engine` chart canvas templates |
 | 💸 **Audric Pay**          | Money primitive — send USDC, receive via payment links / invoices / QR. Free, global, instant on Sui                                                                      | `@t2000/sdk` Sui tx builders + payment-kit                                            |
@@ -1180,9 +1117,8 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 | What             | Where                                      | Purpose                                       |
 | ---------------- | ------------------------------------------ | --------------------------------------------- |
 | Page views       | Vercel Analytics (t2000.ai + mpp.t2000.ai) | Standard web analytics, no wallet data        |
-| Agent addresses  | Server DB (agents table)                   | Only agents that used `t2000 init`            |
+| Agent addresses  | Server DB (agents table)                   | Indexer-discovered agents only                |
 | On-chain actions | Indexer → Transaction table                | Dashboard stats (save/withdraw/borrow counts) |
-| Gas usage        | GasLedger                                  | Accounting for sponsorship costs              |
 | Protocol fees    | ProtocolFeeLedger                          | Revenue tracking                              |
 
 
@@ -1200,7 +1136,6 @@ Returns only aggregated numbers:
 
 - Total agents, 24h/7d counts (no addresses)
 - Transaction counts by action/protocol (no addresses)
-- Gas station spend totals
 - Treasury and gateway balances
 
 ---
@@ -1217,7 +1152,7 @@ Returns only aggregated numbers:
 | Server (api.t2000.ai)  | AWS ECS Fargate   | Hono, long-running                         |
 | Indexer                | AWS ECS Fargate   | Checkpoint poller, always-on               |
 | Database (web app)     | NeonDB (Postgres) | Users, preferences, contacts               |
-| Database (server)      | NeonDB (Postgres) | Agents, transactions, gas ledger           |
+| Database (server)      | NeonDB (Postgres) | Agents, transactions, fee ledger           |
 | Database (gateway)     | NeonDB (Postgres) | MPP payment logs                           |
 | Database (suimpp.dev)  | NeonDB (Postgres) | Servers, payments, endpoints               |
 | DNS                    | Cloudflare        | —                                          |
@@ -1267,7 +1202,6 @@ Tag v0.1.0 (mission69b/suimpp repo)
 | ----------------- | ---------------------------------------------------------------------- |
 | **Keys**          | Ed25519 keypair, AES-256-GCM encrypted at rest with scrypt-derived key |
 | **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it  |
-| **Gas station**   | Rate limits, circuit breaker, hashcash, fee ceiling, tx simulation     |
 | **Safeguards**    | Local spending limits, emergency lock, daily budgets                   |
 | **On-chain**      | Move-level fee collection, AdminCap-gated config, pause flag           |
 | **MPP**           | HMAC-bound challenges (stateless), on-chain USDC verification          |
@@ -1328,41 +1262,9 @@ MCP: t2000_lock tool
 
 The MCP server exposes `t2000_lock` but not `t2000_unlock`. An AI agent can freeze the wallet in an emergency but cannot unfreeze it — only a human with the PIN can.
 
-### Gas station security
+### Gas
 
-
-| Protection                 | How it works                                                                              |
-| -------------------------- | ----------------------------------------------------------------------------------------- |
-| **Rate limiting**          | 20 gas requests per address per hour                                                      |
-| **Hashcash proof-of-work** | When rate limited, client must solve 20-bit PoW (~1–2s)                                   |
-| **TX simulation**          | `dryRunTransactionBlock` before signing — rejects if gas estimate > $0.05                 |
-| **Circuit breaker**        | Polls an on-chain USDC/SUI reference price every 30s, trips if >20% price swing in 1 hour |
-| **Pool minimum**           | Rejects sponsorship when gas wallet < 100 SUI                                             |
-| **Serialized signing**     | `enqueueSign()` queues gas wallet signing to prevent nonce conflicts                      |
-| **SUI bootstrap limit**    | One-time per address, 10/IP/hr, 100/day global, hashcash above limit                      |
-| **USDC onboarding**        | Web only, `x-internal-key` required, $0.25/address (ever), 3/IP/hr, 20/day cap            |
-| **Sponsor kill switch**    | `USDC_SPONSOR_PAUSED` env var stops all USDC sponsorship instantly                        |
-
-
-### Hashcash flow
-
-```
-Client                                  Server
-  │                                       │
-  │── POST /api/gas ─────────────────────>│
-  │                                       │── Rate check: over limit
-  │<── 200 { error: 'RATE_LIMITED',  ─────│
-  │         challenge: 'abc...' }         │
-  │                                       │
-  │── Compute SHA-256 until 20 leading ─  │
-  │   zero bits found (~1M hashes)        │
-  │                                       │
-  │── POST /api/gas { proof: '...' } ────>│
-  │                                       │── Verify PoW, check stamp reuse
-  │<── 200 { signedTx: '...' } ──────────│
-```
-
-Stamps are tracked in memory with 24h TTL to prevent reuse.
+There is no t2000 gas station, no hashcash, no bootstrap, and no USDC onboarding endpoint. CLI agents self-fund SUI; Audric web users get gas sponsored by Enoki at the host layer (see `audric/.cursor/rules/audric-transaction-flow.mdc`). The previous gas-station / sponsor / bootstrap surface was removed in S.32 (`audric-simplification-spec.md` PR-B1).
 
 ### MPP verification (stateless)
 
@@ -1402,11 +1304,10 @@ All write operations go through a `TxMutex` that ensures only one transaction ex
 
 | Server knows                                  | Server does NOT know            |
 | --------------------------------------------- | ------------------------------- |
-| Agent Sui address (public)                    | Private key                     |
-| Gas usage amounts                             | Wallet balance                  |
-| Sponsored TX digests                          | What the TX does (opaque bytes) |
-| Bootstrap requests (IP, address)              | CLI usage, local commands       |
-| USDC onboarding log (address, amount, digest) | —                               |
-| Protocol fee events (from chain)              | Which AI client is used         |
+| Agent Sui address (public, via indexer)       | Private key                     |
+| On-chain transaction digests (public)         | What the TX does (opaque bytes) |
+| Protocol fee events (from chain)              | CLI usage, local commands       |
+| —                                             | Wallet balance (read on demand) |
+| —                                             | Which AI client is used         |
 
 

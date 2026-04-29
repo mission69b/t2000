@@ -6,10 +6,6 @@ export type T2000ErrorCode =
   | 'WALLET_NOT_FOUND'
   | 'WALLET_LOCKED'
   | 'WALLET_EXISTS'
-  | 'SPONSOR_FAILED'
-  | 'SPONSOR_RATE_LIMITED'
-  | 'GAS_STATION_UNAVAILABLE'
-  | 'GAS_FEE_EXCEEDED'
   | 'SIMULATION_FAILED'
   | 'TRANSACTION_FAILED'
   | 'ASSET_NOT_SUPPORTED'
@@ -22,8 +18,6 @@ export type T2000ErrorCode =
   | 'PROTOCOL_UNAVAILABLE'
   | 'RPC_ERROR'
   | 'RPC_UNREACHABLE'
-  | 'SPONSOR_UNAVAILABLE'
-  | 'AUTO_TOPUP_FAILED'
   | 'PRICE_EXCEEDS_LIMIT'
   | 'UNSUPPORTED_NETWORK'
   | 'PAYMENT_EXPIRED'
@@ -103,7 +97,7 @@ export function mapMoveAbortCode(code: number): string {
 
 /**
  * Check if an error message contains a MoveAbort — these are on-chain
- * failures that will fail regardless of gas method, so retrying is pointless.
+ * failures that will fail no matter how many times you retry.
  */
 export function isMoveAbort(msg: string): boolean {
   return msg.includes('MoveAbort') || msg.includes('MovePrimitiveRuntimeError');

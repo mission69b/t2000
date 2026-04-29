@@ -29,7 +29,7 @@ export function registerUnstake(program: Command) {
         printBlank();
         printSuccess(`Unstaked ${pc.yellow(result.vSuiAmount.toFixed(4))} vSUI`);
         printSuccess(`Received ${pc.green(result.suiReceived.toFixed(4))} SUI`);
-        printKeyValue('Gas', `${result.gasCost.toFixed(4)} SUI (${result.gasMethod})`);
+        printKeyValue('Gas', `${result.gasCost.toFixed(4)} SUI`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {

@@ -251,7 +251,7 @@ describe('extractTransferDetails (bidirectional)', () => {
     expect(out.recipient).toBe('0xfriend');
   });
 
-  it('returns inflow for a withdraw: user USDC +10 (no SUI outflow, sponsored gas)', () => {
+  it('returns inflow for a withdraw: user USDC +10 (no SUI outflow visible — gas under threshold)', () => {
     // Pre-v0.46.2 regression: withdraws / borrows / claims showed
     // no amount on the card because the old extractor only looked
     // at the user's outflows.

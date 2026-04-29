@@ -53,14 +53,12 @@ await agent.withdraw({ amount: 25 });
 
 ### `T2000.init(options)` — Create a new wallet
 
-Creates a new bank account (generates keypair, encrypts, and saves to disk).
+Creates a new bank account (generates keypair, encrypts, and saves to disk). Fund the returned address with a small amount of SUI for gas (Mercuryo: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) plus USDC to transact.
 
 ```typescript
-const { agent, address, sponsored } = await T2000.init({
-  pin: 'my-secret',       // Required — encrypts the key
+const { agent, address } = await T2000.init({
+  pin: 'my-secret',                // Required — encrypts the key
   keyPath: '~/.t2000/wallet.key',  // Optional — custom key file path
-  name: 'my-agent',       // Optional — agent name for sponsor registration
-  sponsored: true,         // Optional — register with gas station (default: true)
 });
 ```
 
@@ -193,14 +191,6 @@ agent.on('yield', (e) => {
   console.log(`Earned: $${e.earned}, total: $${e.total}`);
 });
 
-agent.on('gasAutoTopUp', (e) => {
-  console.log(`Auto-topped up gas: $${e.usdcSpent} USDC → ${e.suiReceived} SUI`);
-});
-
-agent.on('gasStationFallback', (e) => {
-  console.log(`Gas station fallback: ${e.reason}`);
-});
-
 agent.on('error', (e) => {
   console.error(`Error: ${e.code} — ${e.message}`);
 });
@@ -236,20 +226,13 @@ agent.suiClient;   // SuiJsonRpcClient instance
 agent.signer;      // Ed25519Keypair
 ```
 
-## Gas Abstraction
+## Gas
 
-Every operation (send, save, borrow, repay, withdraw) routes through a 3-step gas resolution chain via `executeWithGas()`. The agent never fails due to low gas if it has USDC or the Gas Station is reachable:
+Every transaction is self-funded by the agent's wallet. Keep at least ~0.05 SUI on hand. If gas runs out the SDK throws `INSUFFICIENT_GAS` — top up via Mercuryo (https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) or any Sui exchange.
 
-| Step | Strategy | Condition | How it works |
-|------|----------|-----------|--------------|
-| 1 | **Self-funded** | SUI ≥ 0.05 | Uses the agent's own SUI for gas |
-| 2 | **Auto-topup** | SUI < 0.05, USDC ≥ $2 | Converts $1 USDC → SUI (currently disabled, falls back to step 3) |
-| 3 | **Sponsored** | Steps 1 & 2 fail | Gas Station sponsors the full transaction |
-| 4 | **Error** | All fail | Throws `INSUFFICIENT_GAS` |
+> **Audric web app exception:** Audric web users transact under Enoki gas sponsorship (zkLogin), so `INSUFFICIENT_GAS` is not a user-facing concern there. The SDK itself is sponsorship-agnostic — sponsorship is wired in at the host layer (Audric web), not inside `@t2000/sdk`.
 
-Every transaction result includes a `gasMethod` field (`'self-funded'` | `'auto-topup'` | `'sponsored'`) indicating which strategy was used.
-
-**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step flows compose multiple protocol calls into a single atomic PTB. `executeWithGas()` handles execution with the gas fallback chain. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
+**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step flows compose multiple protocol calls into a single atomic PTB. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
 
 ## Configuration
 
@@ -311,7 +294,7 @@ try {
 }
 ```
 
-Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `AUTO_TOPUP_FAILED` · `GAS_STATION_UNAVAILABLE` · `SWAP_NO_ROUTE` · `SWAP_FAILED`
+Common error codes: `INSUFFICIENT_BALANCE` · `INVALID_ADDRESS` · `INVALID_AMOUNT` · `INVALID_ASSET` · `HEALTH_FACTOR_TOO_LOW` · `NO_COLLATERAL` · `WALLET_NOT_FOUND` · `WALLET_LOCKED` · `WALLET_EXISTS` · `SIMULATION_FAILED` · `TRANSACTION_FAILED` · `PROTOCOL_PAUSED` · `INSUFFICIENT_GAS` · `WITHDRAW_WOULD_LIQUIDATE` · `SWAP_NO_ROUTE` · `SWAP_FAILED`
 
 ## Protocol Integration
 

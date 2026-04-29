@@ -8,13 +8,6 @@ export const BPS_DENOMINATOR = 10_000n;
 export const PRECISION = 1_000_000_000_000_000_000n;
 
 export const MIN_DEPOSIT = 1_000_000n; // 1 USDC (6 decimals)
-export const GAS_RESERVE_USDC = 1_000_000n; // $1 USDC reserved for gas
-export const AUTO_TOPUP_THRESHOLD = 50_000_000n; // 0.05 SUI — minimum to attempt self-funded TX
-export const GAS_RESERVE_TARGET = 150_000_000n; // 0.15 SUI — proactive top-up target (covers complex TXs)
-export const AUTO_TOPUP_AMOUNT = 1_000_000n; // $1 USDC worth of SUI
-export const AUTO_TOPUP_MIN_USDC = 2_000_000n; // $2 USDC minimum to trigger auto-topup
-export const BOOTSTRAP_LIMIT = 10;
-export const GAS_FEE_CEILING_USD = 0.05;
 
 export const SAVE_FEE_BPS = 10n; // 0.1%
 export const BORROW_FEE_BPS = 5n; // 0.05%

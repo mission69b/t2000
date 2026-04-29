@@ -2,14 +2,11 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
-import { sponsor } from './routes/sponsor.js';
 import { health } from './routes/health.js';
-import { gas } from './routes/gas.js';
 import { fees } from './routes/fees.js';
-import { startPriceCache } from './lib/priceCache.js';
 import { testDatabaseConnection } from './db/prisma.js';
 
-const REQUIRED_ENV = ['DATABASE_URL', 'SPONSOR_PRIVATE_KEY', 'GAS_STATION_PRIVATE_KEY'];
+const REQUIRED_ENV = ['DATABASE_URL'];
 const missing = REQUIRED_ENV.filter((v) => !process.env[v]);
 if (missing.length > 0) {
   console.error(`[server] Missing required env vars: ${missing.join(', ')}`);
@@ -44,9 +41,7 @@ app.use('*', async (c, next) => {
   }
 });
 
-app.route('/', sponsor);
 app.route('/', health);
-app.route('/', gas);
 app.route('/', fees);
 
 app.get('/', (c) => c.json({ service: 't2000-server', version: '0.1.0' }));
@@ -55,7 +50,6 @@ const port = parseInt(process.env.PORT ?? '3000', 10);
 
 (async () => {
   await testDatabaseConnection();
-  startPriceCache();
   console.log(`t2000 server starting on port ${port}`);
   serve({ fetch: app.fetch, port });
 })();

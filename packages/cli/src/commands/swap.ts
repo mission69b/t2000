@@ -43,7 +43,7 @@ export function registerSwap(program: Command) {
           printKeyValue('Price Impact', pc.yellow(`${(result.priceImpact * 100).toFixed(2)}%`));
         }
         printKeyValue('Route', `${result.fromToken} → ${result.toToken} (${result.route})`);
-        printKeyValue('Gas', `${result.gasCost.toFixed(4)} SUI (${result.gasMethod})`);
+        printKeyValue('Gas', `${result.gasCost.toFixed(4)} SUI`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {

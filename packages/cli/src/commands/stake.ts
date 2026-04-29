@@ -29,7 +29,7 @@ export function registerStake(program: Command) {
         printBlank();
         printSuccess(`Staked ${pc.yellow(String(result.amountSui))} SUI for ${pc.green(result.vSuiReceived.toFixed(4))} vSUI`);
         printSuccess(`APY: ${pc.green(`${(result.apy * 100).toFixed(2)}%`)}`);
-        printKeyValue('Gas', `${result.gasCost.toFixed(4)} SUI (${result.gasMethod})`);
+        printKeyValue('Gas', `${result.gasCost.toFixed(4)} SUI`);
         printKeyValue('Tx', explorerUrl(result.tx));
         printBlank();
       } catch (error) {

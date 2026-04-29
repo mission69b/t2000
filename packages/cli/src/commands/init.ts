@@ -76,8 +76,7 @@ export function registerInit(program: Command) {
     .command('init')
     .description('Create a new agent bank account — guided setup with MCP + safeguards')
     .option('--key <path>', 'Key file path')
-    .option('--no-sponsor', 'Skip gas sponsorship')
-    .action(async (opts: { key?: string; sponsor?: boolean }) => {
+    .action(async (opts: { key?: string }) => {
       try {
         const { checkbox, input, password } = await import('@inquirer/prompts');
 
@@ -117,13 +116,12 @@ export function registerInit(program: Command) {
           printBlank();
           printInfo('Creating agent wallet...');
 
-          const { address: addr, sponsored } = await T2000.init({ pin, keyPath: opts.key, sponsored: opts.sponsor });
+          const { address: addr } = await T2000.init({ pin, keyPath: opts.key });
           address = addr;
           await saveSession(pin);
 
           printSuccess('Keypair generated');
           printSuccess(`Network ${pc.dim('Sui mainnet')}`);
-          printSuccess(`Gas sponsorship ${pc.dim(sponsored ? 'enabled' : 'disabled')}`);
 
           printBlank();
           printInfo('Setting up accounts...');
@@ -136,6 +134,11 @@ export function registerInit(program: Command) {
           printBlank();
           printLine(`  🎉 ${pc.green('Bank account created')}`);
           printLine(`  Address: ${pc.yellow(address.slice(0, 6) + '...' + address.slice(-4))}`);
+          printBlank();
+          printInfo('Fund your wallet to start:');
+          printLine(`  ${pc.dim('•')} Send SUI for gas (a few cents covers many transactions)`);
+          printLine(`  ${pc.dim('•')} Send USDC to save, swap, or borrow`);
+          printLine(`  ${pc.dim('•')} Buy SUI: ${pc.cyan('https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2')}`);
           printBlank();
           step++;
         }

@@ -9,9 +9,7 @@ interface RetryOptions {
 
 const RETRYABLE_PATTERNS = [
   'PROTOCOL_UNAVAILABLE',
-  'GAS_STATION_UNAVAILABLE',
   'RPC_UNREACHABLE',
-  'SPONSOR_UNAVAILABLE',
   'fetch failed',
   'network error',
   'ECONNREFUSED',

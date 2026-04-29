@@ -6,8 +6,6 @@ export interface T2000Options {
   passphrase?: string;
   network?: 'mainnet' | 'testnet';
   rpcUrl?: string;
-  sponsored?: boolean;
-  name?: string;
 }
 
 export interface GasReserve {
@@ -25,8 +23,6 @@ export interface BalanceResponse {
   stables: Record<string, number>;
 }
 
-export type GasMethod = 'self-funded' | 'sponsored' | 'auto-topup' | 'none';
-
 export interface SendResult {
   success: boolean;
   tx: string;
@@ -35,7 +31,6 @@ export interface SendResult {
   contactName?: string;
   gasCost: number;
   gasCostUnit: string;
-  gasMethod: GasMethod;
   balance: BalanceResponse;
 }
 
@@ -46,7 +41,6 @@ export interface SaveResult {
   apy: number;
   fee: number;
   gasCost: number;
-  gasMethod: GasMethod;
   savingsBalance: number;
 }
 
@@ -56,7 +50,6 @@ export interface WithdrawResult {
   amount: number;
   asset?: string;
   gasCost: number;
-  gasMethod: GasMethod;
 }
 
 export interface BorrowResult {
@@ -68,7 +61,6 @@ export interface BorrowResult {
   fee: number;
   healthFactor: number;
   gasCost: number;
-  gasMethod: GasMethod;
 }
 
 export interface RepayResult {
@@ -79,7 +71,6 @@ export interface RepayResult {
   asset?: string;
   remainingDebt: number;
   gasCost: number;
-  gasMethod: GasMethod;
 }
 
 export interface HealthFactorResult {
@@ -186,7 +177,6 @@ export interface TransactionRecord {
   direction?: 'in' | 'out';
   timestamp: number;
   gasCost?: number;
-  gasMethod?: GasMethod;
 }
 
 // --- Claim rewards types ---
@@ -206,7 +196,6 @@ export interface ClaimRewardsResult {
   rewards: PendingReward[];
   totalValueUsd: number;
   gasCost: number;
-  gasMethod: GasMethod;
 }
 
 export interface CompoundRewardsResult {
@@ -226,7 +215,6 @@ export interface StakeVSuiResult {
   vSuiReceived: number;
   apy: number;
   gasCost: number;
-  gasMethod: GasMethod;
 }
 
 export interface UnstakeVSuiResult {
@@ -235,7 +223,6 @@ export interface UnstakeVSuiResult {
   vSuiAmount: number;
   suiReceived: number;
   gasCost: number;
-  gasMethod: GasMethod;
 }
 
 export interface SwapResult {
@@ -248,7 +235,6 @@ export interface SwapResult {
   priceImpact: number;
   route: string;
   gasCost: number;
-  gasMethod: GasMethod;
 }
 
 export interface SwapQuoteResult {

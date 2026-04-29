@@ -18,21 +18,6 @@ export { ZkLoginSigner, type ZkLoginProof } from './wallet/zkLoginSigner.js';
 export { T2000Error, mapWalletError, mapMoveAbortCode } from './errors.js';
 export type { T2000ErrorCode, T2000ErrorData } from './errors.js';
 
-// Gas
-export {
-  executeWithGas,
-  shouldAutoTopUp,
-  executeAutoTopUp,
-  getGasStatus,
-} from './gas/index.js';
-export type {
-  GasExecutionResult,
-  AutoTopUpResult,
-  GasSponsorResponse,
-  GasStatusResponse,
-  GasRequestType,
-} from './gas/index.js';
-
 // Constants
 export {
   MIST_PER_SUI,
@@ -113,7 +98,6 @@ export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/types.js';
 export type {
   BalanceResponse,
   GasReserve,
-  GasMethod,
   SendResult,
   SaveResult,
   WithdrawResult,

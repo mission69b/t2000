@@ -14,10 +14,9 @@ export async function GET() {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [wallets, agents, gas, fees, mpp, transactions] = await Promise.all([
+  const [wallets, agents, fees, mpp, transactions] = await Promise.all([
     getWalletBalances(),
     getAgentStats(oneDayAgo, sevenDaysAgo, thirtyDaysAgo),
-    getGasStats(oneDayAgo, sevenDaysAgo),
     getFeeStats(oneDayAgo, sevenDaysAgo),
     getMppStats(oneDayAgo, sevenDaysAgo),
     getTransactionStats(oneDayAgo, sevenDaysAgo),
@@ -27,7 +26,6 @@ export async function GET() {
     timestamp: now.toISOString(),
     wallets,
     agents,
-    gas,
     fees,
     mpp,
     transactions,
@@ -35,23 +33,9 @@ export async function GET() {
 }
 
 async function getWalletBalances() {
-  const sponsorAddr = process.env.SPONSOR_ADDRESS;
-  const gasAddr = process.env.GAS_STATION_ADDRESS;
-
-  if (!sponsorAddr && !gasAddr) return null;
-
   try {
     const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
     const results: Record<string, { address?: string; balanceSui: number; balanceUsdc?: number }> = {};
-
-    if (sponsorAddr) {
-      const bal = await client.getBalance({ owner: sponsorAddr });
-      results.sponsor = { address: sponsorAddr, balanceSui: Number(bal.totalBalance) / 1e9 };
-    }
-    if (gasAddr) {
-      const bal = await client.getBalance({ owner: gasAddr });
-      results.gasStation = { address: gasAddr, balanceSui: Number(bal.totalBalance) / 1e9 };
-    }
 
     const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
@@ -101,8 +85,7 @@ async function getWalletBalances() {
       balanceUsdc: Number(rebateUsdc.totalBalance) / 1e6,
     };
 
-    const totalSui = (results.sponsor?.balanceSui ?? 0) + (results.gasStation?.balanceSui ?? 0);
-    return { ...results, totalSui };
+    return results;
   } catch {
     return null;
   }
@@ -117,38 +100,6 @@ async function getAgentStats(oneDayAgo: Date, sevenDaysAgo: Date, thirtyDaysAgo:
   ]);
 
   return { total, last24h, last7d, last30d };
-}
-
-async function getGasStats(oneDayAgo: Date, sevenDaysAgo: Date) {
-  const [totalRecords, bootstrapCount, fallbackCount, autoTopupCount] = await Promise.all([
-    prisma.gasLedger.count(),
-    prisma.gasLedger.count({ where: { txType: "bootstrap" } }),
-    prisma.gasLedger.count({ where: { txType: "fallback" } }),
-    prisma.gasLedger.count({ where: { txType: "auto-topup" } }),
-  ]);
-
-  const allRecords = await prisma.gasLedger.findMany({
-    select: { suiSpent: true, usdcCharged: true, txType: true, createdAt: true },
-  });
-
-  const totalSuiSpent = allRecords.reduce((s, r) => s + Number(r.suiSpent), 0);
-  const totalUsdcCharged = allRecords.reduce((s, r) => s + Number(r.usdcCharged), 0);
-  const bootstrapSuiSpent = allRecords
-    .filter((r) => r.txType === "bootstrap")
-    .reduce((s, r) => s + Number(r.suiSpent), 0);
-
-  const last24h = allRecords.filter((r) => r.createdAt >= oneDayAgo);
-  const last7d = allRecords.filter((r) => r.createdAt >= sevenDaysAgo);
-
-  return {
-    totalRecords,
-    byType: { bootstrap: bootstrapCount, fallback: fallbackCount, autoTopup: autoTopupCount },
-    totalSuiSpent: +totalSuiSpent.toFixed(4),
-    totalUsdcCharged: +totalUsdcCharged.toFixed(4),
-    bootstrapSuiSpent: +bootstrapSuiSpent.toFixed(4),
-    last24h: { count: last24h.length, suiSpent: +last24h.reduce((s, r) => s + Number(r.suiSpent), 0).toFixed(4) },
-    last7d: { count: last7d.length, suiSpent: +last7d.reduce((s, r) => s + Number(r.suiSpent), 0).toFixed(4) },
-  };
 }
 
 async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {

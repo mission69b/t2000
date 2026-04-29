@@ -73,10 +73,10 @@ export interface LendingAdapter {
   getPositions(address: string): Promise<AdapterPositions>;
   getHealth(address: string): Promise<HealthInfo>;
 
-  buildSaveTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean; sponsored?: boolean }): Promise<AdapterTxResult>;
-  buildWithdrawTx(address: string, amount: number, asset: string, options?: { sponsored?: boolean }): Promise<AdapterTxResult & { effectiveAmount: number }>;
-  buildBorrowTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean; sponsored?: boolean }): Promise<AdapterTxResult>;
-  buildRepayTx(address: string, amount: number, asset: string, options?: { sponsored?: boolean; skipOracle?: boolean }): Promise<AdapterTxResult>;
+  buildSaveTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean }): Promise<AdapterTxResult>;
+  buildWithdrawTx(address: string, amount: number, asset: string): Promise<AdapterTxResult & { effectiveAmount: number }>;
+  buildBorrowTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean }): Promise<AdapterTxResult>;
+  buildRepayTx(address: string, amount: number, asset: string, options?: { skipOracle?: boolean }): Promise<AdapterTxResult>;
 
   maxWithdraw(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;
   maxBorrow(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;

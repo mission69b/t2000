@@ -38,7 +38,7 @@ The following are in scope:
 - `@t2000/cli` — Input validation, PIN handling
 - `@t2000/mcp` — MCP server tool permissions, input validation
 - `@suimpp/mpp` — MPP payment method (Sui USDC)
-- Server API — Gas sponsorship, fee ledger, sponsor endpoint
+- Server API — Fee ledger, indexer, daily-intel cron orchestration
 - Move contracts — On-chain fee collection, admin controls
 - Website — XSS, injection, authentication bypass
 
@@ -54,7 +54,6 @@ The following are in scope:
 - AES-256-GCM encrypted key storage with scrypt KDF
 - Transaction simulation before execution
 - On-chain timelocked governance (7-day fee change delay)
-- Circuit breaker for price volatility
 - Automated security scanning via GitHub Actions (CodeQL, dependency audit)
 - Adapter compliance test suite (500+ tests across SDK, engine, and CLI)
 

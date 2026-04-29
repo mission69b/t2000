@@ -62,7 +62,7 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { collectFee?: boolean; sponsored?: boolean },
+    options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
     const tx = await naviProtocol.buildSaveTx(this.client, address, amount, { ...options, asset: normalized });
@@ -73,10 +73,9 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { sponsored?: boolean },
   ): Promise<AdapterTxResult & { effectiveAmount: number }> {
     const normalized = normalizeAsset(asset);
-    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, { asset: normalized, sponsored: options?.sponsored });
+    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, { asset: normalized });
     return { tx: result.tx, effectiveAmount: result.effectiveAmount };
   }
 
@@ -84,7 +83,7 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { collectFee?: boolean; sponsored?: boolean },
+    options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
     const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, { ...options, asset: normalized });
@@ -95,12 +94,11 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { sponsored?: boolean; skipOracle?: boolean },
+    options?: { skipOracle?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
     const tx = await naviProtocol.buildRepayTx(this.client, address, amount, {
       asset: normalized,
-      sponsored: options?.sponsored,
       skipOracle: options?.skipOracle,
     });
     return { tx };

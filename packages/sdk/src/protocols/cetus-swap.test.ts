@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SwapResult, SwapQuoteResult, GasMethod } from '../types.js';
+import type { SwapResult, SwapQuoteResult } from '../types.js';
 
 const SWAP_RESULT_KEYS: (keyof SwapResult)[] = [
   'success', 'tx', 'fromToken', 'toToken',
   'fromAmount', 'toAmount', 'priceImpact', 'route',
-  'gasCost', 'gasMethod',
+  'gasCost',
 ];
 
 const SWAP_QUOTE_KEYS: (keyof SwapQuoteResult)[] = [
@@ -23,7 +23,6 @@ describe('SwapResult shape contract', () => {
       priceImpact: 0.001,
       route: 'Cetus Aggregator',
       gasCost: 0.002,
-      gasMethod: 'self-funded' as GasMethod,
     };
 
     for (const key of SWAP_RESULT_KEYS) {
@@ -40,7 +39,6 @@ describe('SwapResult shape contract', () => {
     expect(typeof mock.priceImpact).toBe('number');
     expect(typeof mock.route).toBe('string');
     expect(typeof mock.gasCost).toBe('number');
-    expect(typeof mock.gasMethod).toBe('string');
   });
 
   it('SwapQuoteResult has the subset of fields needed for quoting', () => {

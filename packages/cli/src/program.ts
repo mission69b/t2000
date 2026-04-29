@@ -29,7 +29,6 @@ import { registerEarn } from './commands/earn.js';
 import { registerMcp } from './commands/mcp.js';
 import { registerContacts } from './commands/contacts.js';
 import { registerClaimRewards } from './commands/claimRewards.js';
-import { registerGas } from './commands/gas.js';
 import { registerSwap } from './commands/swap.js';
 import { registerSwapQuote } from './commands/swapQuote.js';
 import { registerStake } from './commands/stake.js';
@@ -82,7 +81,6 @@ Examples:
   registerMcp(program);
   registerContacts(program);
   registerClaimRewards(program);
-  registerGas(program);
   registerSwap(program);
   registerSwapQuote(program);
   registerStake(program);

@@ -5,11 +5,8 @@ import { useEffect, useState, useCallback } from "react";
 interface Stats {
   timestamp: string;
   wallets: {
-    sponsor: { address?: string; balanceSui: number };
-    gasStation: { address?: string; balanceSui: number };
     treasury: { address?: string; balanceSui: number; balanceUsdc?: number };
     rebate: { address?: string; balanceSui: number; balanceUsdc?: number };
-    totalSui: number;
   } | null;
   agents: {
     total: number;
@@ -17,14 +14,6 @@ interface Stats {
     last7d: number;
     last30d: number;
     recent?: { address: string; createdAt: string; lastSeen: string | null }[];
-  };
-  gas: {
-    totalRecords: number;
-    byType: { bootstrap: number; fallback: number; autoTopup: number };
-    totalSuiSpent: number;
-    bootstrapSuiSpent: number;
-    last24h: { count: number; suiSpent: number };
-    last7d: { count: number; suiSpent: number };
   };
   fees: {
     totalRecords: number;
@@ -201,12 +190,6 @@ export function StatsView() {
   }
 
   const txMax = Math.max(...Object.values(stats.transactions.byAction), 1);
-  const gasMax = Math.max(
-    stats.gas.byType.bootstrap,
-    stats.gas.byType.fallback,
-    stats.gas.byType.autoTopup,
-    1
-  );
 
   return (
     <div className="space-y-10">
@@ -224,13 +207,9 @@ export function StatsView() {
           sub={`${stats.transactions.last24h} today · ${stats.transactions.uniqueAgents} active agents`}
         />
         <KpiCard
-          label="SUI Reserves"
-          value={`${stats.wallets?.totalSui.toFixed(1) ?? "—"}`}
-          sub={
-            stats.wallets
-              ? `Sponsor: ${stats.wallets.sponsor.balanceSui.toFixed(1)} · Gas: ${stats.wallets.gasStation.balanceSui.toFixed(1)}`
-              : undefined
-          }
+          label="Treasury"
+          value={`$${(stats.wallets?.treasury?.balanceUsdc ?? 0).toFixed(2)}`}
+          sub={`On-chain USDC across ${stats.fees.totalRecords} operations`}
         />
         <KpiCard
           label="Fees Collected"
@@ -239,8 +218,8 @@ export function StatsView() {
         />
       </section>
 
-      {/* Transaction Breakdown + Gas Breakdown */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Transaction Breakdown */}
+      <section>
         <div className="bg-panel border border-border rounded-md p-5">
           <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4">
             Transactions by Action
@@ -256,49 +235,6 @@ export function StatsView() {
                   max={txMax}
                 />
               ))}
-          </div>
-        </div>
-
-        <div className="bg-panel border border-border rounded-md p-5">
-          <div className="text-[10px] tracking-[0.15em] uppercase text-accent mb-4">
-            Gas Sponsorship
-          </div>
-          <div className="space-y-2 mb-5">
-            <BarRow
-              label="bootstrap"
-              count={stats.gas.byType.bootstrap}
-              max={gasMax}
-            />
-            <BarRow
-              label="auto-topup"
-              count={stats.gas.byType.autoTopup}
-              max={gasMax}
-              color="bg-blue"
-            />
-            <BarRow
-              label="fallback"
-              count={stats.gas.byType.fallback}
-              max={gasMax}
-              color="bg-warning"
-            />
-          </div>
-          <div className="border-t border-border pt-3 grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-[10px] text-muted uppercase tracking-wider">
-                Total SUI Spent
-              </div>
-              <div className="text-sm font-mono text-foreground">
-                {stats.gas.totalSuiSpent.toFixed(4)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] text-muted uppercase tracking-wider">
-                Bootstrap Cost
-              </div>
-              <div className="text-sm font-mono text-foreground">
-                {stats.gas.bootstrapSuiSpent.toFixed(4)}
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -451,16 +387,6 @@ export function StatsView() {
             Infrastructure Wallets
           </div>
           <div className="space-y-3">
-            <WalletRow
-              label="Sponsor"
-              address={stats.wallets.sponsor.address}
-              balance={`${stats.wallets.sponsor.balanceSui.toFixed(2)} SUI`}
-            />
-            <WalletRow
-              label="Gas Station"
-              address={stats.wallets.gasStation.address}
-              balance={`${stats.wallets.gasStation.balanceSui.toFixed(2)} SUI`}
-            />
             <WalletRow
               label="Treasury"
               address={stats.wallets.treasury?.address}

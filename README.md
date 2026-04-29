@@ -22,7 +22,7 @@
 
 t2000 is the infrastructure that powers [Audric](https://audric.ai) — conversational finance on Sui. The Audric consumer brand is exactly **five products**:
 
-- 🪪 **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in 3 seconds, every write taps to confirm, sponsored gas. Wraps every other product.
+- 🪪 **Audric Passport** — the trust layer. Sign in with Google, non-custodial wallet on Sui in 3 seconds, every write taps to confirm, Enoki-sponsored gas (web only). Wraps every other product.
 - 🧠 **Audric Intelligence** — the brain (the moat). Five systems orchestrate every money decision: Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Picks the tool, clears the guards, remembers what it told you.
 - 💰 **Audric Finance** — manage your money on Sui. Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs), Charts (yield/health/portfolio viz). Every action taps to confirm via Passport.
 - 💸 **Audric Pay** — the money primitive. Move money: free, global, instant (on Sui for now). Send USDC, receive via payment links/invoices/QR. No bank, no borders, no fees.
@@ -99,7 +99,7 @@ t2000 wraps financial primitives into a single interface:
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set`, `t2000 lock/unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
-Gas is invisible — self-funded SUI with sponsored fallback for bootstrap. Multi-step operations execute as single atomic PTBs.
+Every transaction is self-funded by the agent's wallet. Multi-step operations execute as single atomic PTBs.
 
 ### Fees
 
@@ -278,7 +278,6 @@ Full reference: [Agent Skills README](t2000-skills)
 - **Rate limiting** — 10 req/s default prevents runaway drain
 - **Risk guards** — health factor checks block risky operations
 - **Transaction simulation** — dry-run before signing with Move abort code parsing
-- **Circuit breaker** — gas station pauses if SUI price moves >20% in 1 hour
 
 ## Repository structure
 
@@ -294,7 +293,7 @@ t2000/
 ├── apps/
 │   ├── web/              t2000.ai — developer/infra landing page + docs
 │   ├── gateway/          MPP Gateway — proxied AI APIs (mpp.t2000.ai)
-│   └── server/           Gas station + checkpoint indexer (api.t2000.ai)
+│   └── server/           Fee ledger + checkpoint indexer + daily-intel cron (api.t2000.ai)
 │
 ├── t2000-skills/         Agent Skills for AI coding assistants
 ├── spec/                 Product specs, design system

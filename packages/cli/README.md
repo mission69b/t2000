@@ -31,11 +31,13 @@ t2000 init
   Creating agent wallet...
   ✓ Keypair generated
   ✓ Network  Sui mainnet
-  ✓ Gas sponsorship  enabled
   ✓ Checking  ✓ Savings  ✓ Credit
 
   🎉 Bank account created
   Address: 0x8b3e...d412
+
+  ℹ Fund your wallet with SUI for gas + USDC to transact.
+  ℹ Buy SUI: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2
 
   Step 2 of 3 — Connect AI platforms
   Which AI platforms do you use? (space to select)
@@ -59,7 +61,7 @@ t2000 init
 
 ❯ t2000 send 10 USDC to 0x8b3e...d412
   ✓ Sent $10.00 USDC → 0x8b3e...d412
-  Gas:  0.0042 SUI (self-funded)
+  Gas:  0.0042 SUI
   Balance:  $90.00 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0xa1b2...
 
@@ -249,7 +251,6 @@ curl -X POST -H "Authorization: Bearer t2k_..." \
 | Command | Option | Description | Default |
 |---------|--------|-------------|---------|
 | `init` | `--name <name>` | Agent name | — |
-| `init` | `--no-sponsor` | Skip gas sponsorship | — |
 | `history` | `--limit <n>` | Number of transactions | `20` |
 | Most commands | `--key <path>` | Custom key file path | `~/.t2000/wallet.key` |
 
@@ -269,15 +270,9 @@ Config is stored at `~/.t2000/config.json`.
 | `T2000_PIN` | Bank account PIN (skip interactive prompt) |
 | `T2000_PRIVATE_KEY` | Private key for `t2000 import` (skip interactive prompt) |
 
-## Gas Handling
+## Gas
 
-Gas is fully automated:
-
-1. **Self-funded** — uses SUI balance when reserve ≥ 0.05 SUI
-2. **Auto-topup** — swaps $1 USDC → SUI when gas reserve is low
-3. **Sponsored** — Gas Station sponsors the transaction as a fallback
-
-You never need to manually acquire SUI for gas.
+Every transaction is self-funded by the agent's wallet — keep at least ~0.05 SUI on hand for gas. Buy SUI on Mercuryo: https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2
 
 Multi-step operations (for example save or withdraw flows that compose several on-chain steps) execute as single atomic Programmable Transaction Blocks (PTBs). If any step fails, the entire transaction reverts.
 

@@ -20,14 +20,13 @@ async function main() {
   await runSection(`Send $${SEND_AMOUNT} USDC → own address`, async () => {
     const result = await agent.send({ to: address, amount: SEND_AMOUNT });
     console.log(`   Tx:  ${result.tx}`);
-    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI (${result.gasMethod})`);
+    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI`);
 
     assert(result.success === true, 'send succeeded');
     assert(result.tx.length > 10, 'tx hash is non-empty');
     assert(result.amount === SEND_AMOUNT, 'amount matches');
     assert(result.to === address, 'recipient matches');
     assert(result.gasCost > 0, 'gas was consumed');
-    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
     assert(typeof result.balance.available === 'number', 'balance returned with send');
   });
 

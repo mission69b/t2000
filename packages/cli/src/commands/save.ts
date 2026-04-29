@@ -29,11 +29,6 @@ export function registerSave(program: Command) {
         const pin = await resolvePin();
         const agent = await T2000.create({ pin, keyPath: opts.key });
 
-        let gasManagerUsdc = 0;
-        agent.on('gasAutoTopUp', (data) => {
-          gasManagerUsdc = data.usdcSpent;
-        });
-
         const result = await agent.save({ amount, asset, protocol: opts.protocol });
 
         if (isJsonMode()) {
@@ -42,10 +37,6 @@ export function registerSave(program: Command) {
         }
 
         printBlank();
-
-        if (gasManagerUsdc > 0) {
-          printSuccess(`Gas manager: ${pc.yellow(formatUsd(gasManagerUsdc))} USDC → SUI`);
-        }
 
         const protocolName = opts.protocol ?? 'best rate';
         printSuccess(`Saved ${pc.yellow(formatUsd(result.amount))} ${asset} to ${protocolName}`);

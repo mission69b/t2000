@@ -9,7 +9,6 @@ export type {
   T2000Options,
   BalanceResponse,
   GasReserve,
-  GasMethod,
   SendResult,
   SaveResult,
   WithdrawResult,
@@ -107,7 +106,6 @@ export {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
-export { solveHashcash } from './utils/hashcash.js';
 export { calculateFee, addCollectFeeToTx } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export {
@@ -164,16 +162,3 @@ export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
 export { OUTBOUND_OPS, DEFAULT_SAFEGUARD_CONFIG } from './safeguards/index.js';
-export {
-  executeWithGas,
-  shouldAutoTopUp,
-  executeAutoTopUp,
-  getGasStatus,
-} from './gas/index.js';
-export type {
-  GasExecutionResult,
-  AutoTopUpResult,
-  GasSponsorResponse,
-  GasStatusResponse,
-  GasRequestType,
-} from './gas/index.js';

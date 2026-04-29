@@ -8,31 +8,6 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
-model SponsorRequest {
-  id           Int      @id @default(autoincrement())
-  ipAddress    String   @map("ip_address")
-  agentAddress String   @map("agent_address")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  @@index([ipAddress, createdAt(sort: Desc)])
-  @@map("sponsor_requests")
-}
-
-model GasLedger {
-  id           Int      @id @default(autoincrement())
-  agentAddress String   @map("agent_address")
-  suiSpent     Decimal  @map("sui_spent")
-  usdcCharged  Decimal  @map("usdc_charged")
-  txDigest     String   @map("tx_digest")
-  txType       String   @default("bootstrap") @map("tx_type")
-  status       String   @default("settled")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  @@index([status])
-  @@index([agentAddress, txType])
-  @@map("gas_ledger")
-}
-
 model ProtocolFeeLedger {
   id           Int      @id @default(autoincrement())
   agentAddress String   @map("agent_address")
@@ -46,20 +21,6 @@ model ProtocolFeeLedger {
   @@index([agentAddress, createdAt(sort: Desc)])
   @@index([operation])
   @@map("protocol_fee_ledger")
-}
-
-model UsdcSponsorLog {
-  id           Int      @id @default(autoincrement())
-  agentAddress String   @unique @map("agent_address")
-  amount       String
-  txDigest     String   @map("tx_digest")
-  source       String   @default("web")
-  ipAddress    String?  @map("ip_address")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  @@index([ipAddress, createdAt])
-  @@index([createdAt])
-  @@map("usdc_sponsor_log")
 }
 
 model IndexerCursor {
@@ -110,8 +71,6 @@ model Transaction {
   protocol     String?
   asset        String?
   amount       Decimal?
-  gasCostUsd   Decimal? @map("gas_cost_usd")
-  gasMethod    String?  @map("gas_method")
   executedAt   DateTime @default(now()) @map("executed_at")
 
   agent Agent @relation(fields: [agentAddress], references: [address])

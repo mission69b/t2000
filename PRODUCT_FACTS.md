@@ -16,7 +16,7 @@
 
 | Product | What it is |
 |---------|-----------|
-| 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, sponsored gas. Wraps every other product. |
+| 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, Enoki-sponsored gas (web only). Wraps every other product. |
 | 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Move money — Send USDC, Receive (payment links, invoices, QR). Free, global, instant on Sui. |
@@ -193,7 +193,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 
 | Command | Syntax | Notes |
 |---------|--------|-------|
-| init | `t2000 init` | Options: `--name <name>`, `--no-sponsor` |
+| init | `t2000 init` | Options: `--name <name>` |
 | balance | `t2000 balance` | Options: `--show-limits` |
 | send | `t2000 send <amount> <asset> [to] <address>` | `to` keyword is optional |
 | save | `t2000 save <amount> [--asset USDC\|USDsui]` | Deposits **USDC or USDsui** to NAVI lending (default USDC, v0.51.1+ accepts `--asset USDsui`). Alias: `supply`. `amount` accepts `all`. |
@@ -275,7 +275,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 **send:**
 ```
   ✓ Sent $10.00 USDC → 0x8b3e...d412
-  Gas:  0.0042 SUI (self-funded)
+  Gas:  0.0042 SUI
   Balance:  $90.00 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
@@ -284,7 +284,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 ```
   ✓ Swapped 10 SUI for 38.4200 USDC
   Route:  SUI → USDC (Cetus)
-  Gas:    0.0031 SUI (self-funded)
+  Gas:    0.0031 SUI
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
 
@@ -292,7 +292,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 ```
   ✓ Staked 5 SUI for 4.7619 vSUI
   ✓ APY: 3.85%
-  Gas:    0.0028 SUI (self-funded)
+  Gas:    0.0028 SUI
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
 
@@ -300,7 +300,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 ```
   ✓ Unstaked 4.7619 vSUI
   ✓ Received 5.0500 SUI
-  Gas:    0.0028 SUI (self-funded)
+  Gas:    0.0028 SUI
   Tx:  https://suiscan.xyz/mainnet/tx/<digest>
 ```
 
@@ -337,7 +337,7 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `T2000.create()` | `(options?: T2000Options): Promise<T2000>` | Load existing wallet. Key options: `pin`, `keyPath`, `rpcUrl` |
-| `T2000.init()` | `(options: { pin: string; keyPath?: string; name?: string; sponsored?: boolean }): Promise<{ agent: T2000; address: string; sponsored: boolean }>` | Create new wallet |
+| `T2000.init()` | `(options: { pin: string; keyPath?: string }): Promise<{ agent: T2000; address: string }>` | Create new wallet |
 | `T2000.fromPrivateKey()` | `(privateKey: string, options?: { rpcUrl?: string }): T2000` | From raw key |
 
 ### Wallet
@@ -419,8 +419,6 @@ Source: `packages/sdk/src/token-registry.ts`, `packages/sdk/src/constants.ts`
 | `balanceChange` | Balance changed |
 | `healthWarning` | HF dropping, attention recommended |
 | `healthCritical` | HF dangerous, action required |
-| `gasAutoTopUp` | Auto-topped up gas via USDC→SUI conversion |
-| `gasStationFallback` | Gas resolution fell back to sponsor |
 | `error` | SDK error |
 
 ---
@@ -434,8 +432,6 @@ interface T2000Options {
   rpcUrl?: string;        // Custom Sui RPC URL
   passphrase?: string;    // @deprecated — use pin
   network?: 'mainnet' | 'testnet';
-  sponsored?: boolean;
-  name?: string;
 }
 
 interface BalanceResponse {
@@ -453,30 +449,29 @@ interface SendResult {
   to: string;
   gasCost: number;
   gasCostUnit: string;
-  gasMethod: 'self-funded' | 'sponsored' | 'auto-topup';
   balance: BalanceResponse;
 }
 
 interface SaveResult {
   success: boolean; tx: string; amount: number;
   apy: number; fee: number; gasCost: number;
-  gasMethod: GasMethod; savingsBalance: number;
+  savingsBalance: number;
 }
 
 interface WithdrawResult {
   success: boolean; tx: string; amount: number;
-  gasCost: number; gasMethod: GasMethod;
+  gasCost: number;
 }
 
 interface BorrowResult {
   success: boolean; tx: string; amount: number;
   fee: number; healthFactor: number;
-  gasCost: number; gasMethod: GasMethod;
+  gasCost: number;
 }
 
 interface RepayResult {
   success: boolean; tx: string; amount: number;
-  remainingDebt: number; gasCost: number; gasMethod: GasMethod;
+  remainingDebt: number; gasCost: number;
 }
 
 interface SwapResult {
@@ -484,19 +479,19 @@ interface SwapResult {
   fromToken: string; toToken: string;
   fromAmount: number; toAmount: number;
   priceImpact: number; route: string;
-  gasCost: number; gasMethod: GasMethod;
+  gasCost: number;
 }
 
 interface StakeVSuiResult {
   success: boolean; tx: string;
   amountSui: number; vSuiReceived: number;
-  apy: number; gasCost: number; gasMethod: GasMethod;
+  apy: number; gasCost: number;
 }
 
 interface UnstakeVSuiResult {
   success: boolean; tx: string;
   vSuiAmount: number; suiReceived: number;
-  gasCost: number; gasMethod: GasMethod;
+  gasCost: number;
 }
 
 interface PaymentRequest {
@@ -527,12 +522,6 @@ Source: `packages/sdk/src/types.ts`
 | `WALLET_NOT_FOUND` | No key file at path | No |
 | `WALLET_LOCKED` | Wrong PIN | No |
 | `WALLET_EXISTS` | Key already exists at path | No |
-| `SPONSOR_FAILED` | Sponsorship request failed | Yes |
-| `SPONSOR_RATE_LIMITED` | Too many sponsor requests | Yes |
-| `SPONSOR_UNAVAILABLE` | Sponsor service down | Yes |
-| `GAS_STATION_UNAVAILABLE` | Gas station unreachable | Yes |
-| `GAS_FEE_EXCEEDED` | Gas cost > $0.05 ceiling | No |
-| `AUTO_TOPUP_FAILED` | USDC→SUI gas conversion failed | Yes |
 | `SIMULATION_FAILED` | Dry-run failed | No |
 | `TRANSACTION_FAILED` | On-chain execution failed | No |
 | `HEALTH_FACTOR_TOO_LOW` | Borrow would risk liquidation | No |
@@ -587,12 +576,6 @@ Source: `packages/sdk/src/errors.ts` → `mapMoveAbortCode()`, `packages/contrac
 | `BPS_DENOMINATOR` | `10_000n` | Basis points denominator |
 | `PRECISION` | `1_000_000_000_000_000_000n` (10^18) | Reward math precision (matches contract) |
 | `MIN_DEPOSIT` | `1_000_000n` (1 USDC) | Minimum deposit |
-| `GAS_RESERVE_USDC` | `1_000_000n` ($1) | USDC reserved for gas on `save all` |
-| `AUTO_TOPUP_THRESHOLD` | `50_000_000n` (0.05 SUI) | SUI balance below this triggers topup |
-| `AUTO_TOPUP_AMOUNT` | `1_000_000n` ($1 USDC) | USDC amount converted per top-up |
-| `AUTO_TOPUP_MIN_USDC` | `2_000_000n` ($2) | Min USDC required to trigger topup |
-| `BOOTSTRAP_LIMIT` | `10` | Max sponsored bootstrap transactions |
-| `GAS_FEE_CEILING_USD` | `$0.05` | Max gas fee before rejection |
 | `CLOCK_ID` | `'0x6'` | Sui Clock shared object |
 | `STABLE_ASSETS` | `['USDC']` | Stablecoins used for balance breakdown / stable-specific logic |
 | `DEFAULT_RATE_LIMIT` | `10 req/s` | Default HTTP API rate limit (CLI `--rate-limit` default) |
@@ -649,11 +632,11 @@ MPP uses peer-to-peer verification via mppx; no facilitator URL or verify/settle
 
 ---
 
-## Gas Resolution Chain
+## Gas
 
-1. **Self-funded** — agent has enough SUI
-2. **Auto-topup** — SUI < 0.05 and USDC >= $2 → convert $1 USDC to SUI (conversion is sponsored)
-3. **Sponsored** — fallback for bootstrap (up to 10 txs)
+Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS` if SUI balance is too low — top up via Mercuryo (https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2) or any Sui exchange.
+
+> **Audric web app exception:** Audric web users transact under Enoki gas sponsorship (zkLogin), so `INSUFFICIENT_GAS` does not surface there. The SDK itself is sponsorship-agnostic — sponsorship is wired in at the host layer (Audric web), not inside `@t2000/sdk`.
 
 ---
 

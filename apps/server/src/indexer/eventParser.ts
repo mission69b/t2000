@@ -56,7 +56,6 @@ export interface ParsedTransfer {
   amount: number;
   txDigest: string;
   timestamp: number;
-  gasMethod: string;
 }
 
 export function isT2000Event(event: SuiEvent): boolean {
@@ -233,7 +232,6 @@ export function parseTransfers(
       amount,
       txDigest: tx.digest,
       timestamp: tx.timestamp,
-      gasMethod: 'self-funded',
     });
   }
 

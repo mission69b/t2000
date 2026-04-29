@@ -5,7 +5,7 @@
  *
  * Requires a funded test wallet with:
  *   - At least 0.1 USDC
- *   - Some SUI for gas (if not sponsored)
+ *   - Some SUI for gas (every transaction is now self-funded)
  *
  * Cost: ~$0.02-0.05 per run (gas only, amounts are minimal).
  */
@@ -127,7 +127,6 @@ describe.skipIf(!SMOKE || !PRIVATE_KEY)('Smoke: swap USDC -> USDT (real tx)', ()
     expect(Number(result.priceImpact)).toBeGreaterThanOrEqual(0);
     expect(result.route).toBeTruthy();
     expect(result.gasCost).toBeGreaterThanOrEqual(0);
-    expect(result.gasMethod).toBeTruthy();
   });
 });
 

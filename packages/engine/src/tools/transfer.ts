@@ -95,7 +95,6 @@ export const sendTransferTool = buildTool({
         to: result.to,
         contactName: result.contactName,
         gasCost: result.gasCost,
-        gasMethod: result.gasMethod,
         balance: result.balance,
         memo: input.memo ?? null,
       },

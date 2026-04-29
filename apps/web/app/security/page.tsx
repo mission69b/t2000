@@ -28,10 +28,6 @@ const SECURITY_MEASURES = [
     desc: "Fee changes require a 7-day on-chain timelock. Fees are hard-capped at 5% in the smart contract. Two-step admin transfer.",
   },
   {
-    title: "Price Circuit Breaker",
-    desc: "Gas sponsorship is automatically paused when SUI price moves >20% in one hour, preventing oracle manipulation.",
-  },
-  {
     title: "Automated Scanning",
     desc: "GitHub Actions pipeline runs CodeQL static analysis, dependency audits, and license compliance checks on every push and weekly.",
   },

@@ -54,14 +54,13 @@ async function main() {
     console.log(`   Tx:  ${result.tx}`);
     console.log(`   APY: ${result.apy.toFixed(2)}%`);
     console.log(`   Fee: $${result.fee.toFixed(4)} USDC`);
-    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI (${result.gasMethod})`);
+    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI`);
 
     assert(result.success === true, 'save succeeded');
     assert(result.amount === SAVE_AMOUNT, 'save amount matches');
     assert(result.apy > 0, 'APY returned');
     assert(result.fee > 0, 'fee was charged');
     assert(result.gasCost > 0, 'gas was consumed');
-    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     const balAfter = await agent.balance();
     assert(balAfter.available < balBefore.available, 'available decreased after save');
@@ -104,14 +103,13 @@ async function main() {
     console.log(`   Tx:  ${result.tx}`);
     console.log(`   HF:  ${result.healthFactor.toFixed(2)}`);
     console.log(`   Fee: $${result.fee.toFixed(4)}`);
-    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI (${result.gasMethod})`);
+    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI`);
 
     assert(result.success === true, 'borrow succeeded');
     assert(result.amount === BORROW_AMOUNT, 'borrow amount matches');
     assert(result.healthFactor > 1.0, 'health factor > 1 after borrow');
     assert(result.fee >= 0, 'fee is non-negative');
     assert(result.gasCost > 0, 'gas was consumed');
-    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     didBorrow = true;
   });
@@ -153,13 +151,12 @@ async function main() {
     console.log(`   Tx:     ${result.tx}`);
     console.log(`   Amount: $${result.amount.toFixed(2)}`);
     console.log(`   Remaining debt: $${result.remainingDebt.toFixed(4)}`);
-    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI (${result.gasMethod})`);
+    console.log(`   Gas: ${result.gasCost.toFixed(6)} SUI`);
 
     assert(result.success === true, 'repay succeeded');
     assert(result.amount === BORROW_AMOUNT, 'repay amount matches');
     assert(result.remainingDebt >= 0, 'remaining debt >= 0');
     assert(result.gasCost > 0, 'gas was consumed');
-    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
   });
 
   // Clear any residual debt (accrued interest) before full withdrawal
@@ -173,11 +170,10 @@ async function main() {
     const result = await agent.withdraw({ amount: 'all' });
     console.log(`   Tx:     ${result.tx}`);
     console.log(`   Amount: $${result.amount.toFixed(2)} USDC`);
-    console.log(`   Gas:    ${result.gasCost.toFixed(6)} SUI (${result.gasMethod})`);
+    console.log(`   Gas:    ${result.gasCost.toFixed(6)} SUI`);
 
     assert(result.success === true, 'withdraw succeeded');
     assert(result.amount > 0, 'withdrew amount > 0');
-    assert(['self-funded', 'sponsored', 'auto-topup'].includes(result.gasMethod), 'valid gasMethod');
 
     const balAfter = await agent.balance();
     assert(balAfter.savings < 0.05, 'savings ≈ 0 after withdraw all (dust tolerance)');

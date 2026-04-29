@@ -57,7 +57,6 @@ async function main() {
     console.log(`   Success: ${result.success}`);
     console.log(`   Rewards claimed: ${result.rewards.length}`);
     console.log(`   Total value: $${result.totalValueUsd.toFixed(4)}`);
-    console.log(`   Gas method: ${result.gasMethod}`);
 
     assert(result.success === true, 'claim succeeded');
     assert(typeof result.tx === 'string', 'has transaction digest');

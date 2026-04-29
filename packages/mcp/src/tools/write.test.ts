@@ -16,24 +16,24 @@ function createMockAgent() {
     }),
     send: vi.fn().mockResolvedValue({
       success: true, tx: '0xdigest', amount: 10, to: '0xrecipient',
-      gasCost: 0.001, gasCostUnit: 'SUI', gasMethod: 'self-funded',
+      gasCost: 0.001, gasCostUnit: 'SUI',
       balance: { available: 86.81 },
     }),
     save: vi.fn().mockResolvedValue({
       success: true, tx: '0xdigest', amount: 50, apy: 4.92,
-      fee: 0.05, gasCost: 0.001, gasMethod: 'self-funded', savingsBalance: 55.10,
+      fee: 0.05, gasCost: 0.001, savingsBalance: 55.10,
     }),
     withdraw: vi.fn().mockResolvedValue({
       success: true, tx: '0xdigest', amount: 5.10,
-      gasCost: 0.001, gasMethod: 'self-funded',
+      gasCost: 0.001,
     }),
     borrow: vi.fn().mockResolvedValue({
       success: true, tx: '0xdigest', amount: 2, fee: 0.001,
-      healthFactor: 2.10, gasCost: 0.001, gasMethod: 'self-funded',
+      healthFactor: 2.10, gasCost: 0.001,
     }),
     repay: vi.fn().mockResolvedValue({
       success: true, tx: '0xdigest', amount: 2,
-      remainingDebt: 0, gasCost: 0.001, gasMethod: 'self-funded',
+      remainingDebt: 0, gasCost: 0.001,
     }),
     rates: vi.fn().mockResolvedValue({ USDC: { saveApy: 4.92, borrowApy: 8.5 } }),
     positions: vi.fn().mockResolvedValue({
