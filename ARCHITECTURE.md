@@ -1151,10 +1151,6 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 **What stayed (silent context):** chain-memory classifiers, episodic memory extraction, financial-profile inference, portfolio snapshots, and the `AdviceLog` loop. These run on a single `daily-intel` cron group and feed the LLM context invisibly.
 
-### Critical Health Factor Email (the only proactive surface)
-
-The single notification path that survived the simplification: when the indexer observes a position with HF < 1.2 (liquidation imminent), it fires `/api/internal/hf-alert` → Resend. Always-on, no opt-out, safety-critical. Warn-level alerts (HF < 1.5) and all other notification crons were deleted.
-
 ### Multi-wallet Linking
 
 Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet); `FullPortfolioCanvas` aggregates them via `GET /api/analytics/portfolio-multi`. Backed by the `LinkedWallet` Prisma model.
@@ -1172,7 +1168,7 @@ Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongsid
 | Conversation Log  | `ConversationLog` rows written by chat route. Fine-tuning dataset for the future self-hosted model migration                                                             |
 
 
-> The "Proactive Awareness" / `buildProactivenessInstructions()` layer was deleted in S.5 along with the proposal pipeline. There are no proactive surfaces; everything proactive was either a notification (deleted) or a dashboard card (deleted). The chat answers when asked.
+> The "Proactive Awareness" / `buildProactivenessInstructions()` layer was deleted in S.5 along with the proposal pipeline. **As of S.31 (2026-04-29) the critical-HF email was also removed** — stablecoin-only collateral (USDC + USDsui) + no leverage trading + zkLogin tap-to-confirm makes the proactive HF email net-negative UX vs surfacing HF prominently in chat. There are now zero proactive surfaces; everything proactive was either a notification (deleted) or a dashboard card (deleted). The chat answers when asked.
 
 ---
 

@@ -37,14 +37,6 @@
         {
           "name": "DATABASE_URL",
           "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/database-url"
-        },
-        {
-          "name": "AUDRIC_INTERNAL_URL",
-          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/audric-internal-url"
-        },
-        {
-          "name": "AUDRIC_INTERNAL_KEY",
-          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/audric-internal-key"
         }
       ]
     }

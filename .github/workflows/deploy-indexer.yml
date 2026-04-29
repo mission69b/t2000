@@ -199,7 +199,8 @@ jobs:
           # Note: t2000-cron-hourly and t2000-cron-daily-chain were retired
           # in the April 2026 simplification (see audric-build-tracker.md S.0–S.12).
           # Only the daily-intel cron — silent context refresh for the engine —
-          # survives. HF email alerts moved to a synchronous webhook.
+          # survives. HF email alerts moved to a synchronous webhook, then
+          # removed entirely in S.31 (2026-04-29).
           echo "--- Daily Intel (hours 7,19 UTC) ---"
           register_and_schedule "cron-daily-intel-task-definition.json" "t2000-cron-daily-intel" "cron(0 7,19 * * ? *)"
 

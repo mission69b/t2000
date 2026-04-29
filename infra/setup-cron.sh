@@ -10,7 +10,9 @@ set -euo pipefail
 #   - t2000-cron-daily-intel  → portfolio rollups, episodic memory, behavioural patterns, profile inference
 #
 # The first two were retired with the chat-first / autonomy-cleanup work:
-#   - HF alerts moved to a synchronous email hook (see apps/server hf-alert route).
+#   - HF alerts moved to a synchronous email hook (see apps/server hf-alert route),
+#     then removed entirely in S.31 (2026-04-29) — stablecoin-only collateral
+#     + zkLogin tap-to-confirm makes proactive HF email net-negative UX.
 #   - Rate alerts, scheduled actions (DCA), morning briefings, auto-compound,
 #     follow-up reminders, and behavioural-pattern proposals were all DELETED.
 #     zkLogin can't sign without user presence, so "autonomous" actions were

@@ -16,13 +16,16 @@ import type { JobResult } from './types.js';
 // too. The Audric chat surface is the product now — agent context comes from
 // the four silent-infra jobs below.
 //
-// Critical HF protection still runs on the indexer hook
-// (apps/server/src/indexer/hfHook.ts), not here.
+// [S.31 — 2026-04-29] Critical HF email pipeline removed (hfHook.ts +
+// /api/internal/hf-alert + AUDRIC_INTERNAL_* secrets on indexer task def).
+// Stablecoin-only collateral (USDC + USDsui) + no leverage trading +
+// zkLogin tap-to-confirm makes proactive HF email net-negative UX vs
+// surfacing HF prominently in chat. /api/internal/health-factor (read API)
+// was preserved.
 //
 // [Audit catch-up] reportNotifications() removed — its backing
 // /api/internal/notification-log endpoint and NotificationLog table are gone.
-// /api/internal/notification-users + /api/internal/hf-alert WERE preserved
-// (silent-infra plumbing, not user-facing notifications).
+// /api/internal/notification-users WAS preserved (silent-infra plumbing).
 
 // [SIMPLIFICATION DAY 12.5] Collapsed CRON_GROUP control surface — the
 // hourly + daily-chain EventBridge schedules + their ECS task definitions
