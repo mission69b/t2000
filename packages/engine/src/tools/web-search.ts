@@ -35,7 +35,11 @@ export const webSearchTool = buildTool({
   isReadOnly: true,
   maxResultSizeChars: 8_000,
   async call(input, context): Promise<{ data: WebSearchData; displayText: string }> {
-    const apiKey = context.env?.BRAVE_API_KEY ?? process.env.BRAVE_API_KEY;
+    // [PR-B2] Hosts MUST pass `BRAVE_API_KEY` through `ToolContext.env`.
+    // Direct `process.env` reads are banned in apps consuming the engine
+    // (env-validation-gate.mdc) — the engine respects that contract by
+    // routing every external secret through the typed context only.
+    const apiKey = context.env?.BRAVE_API_KEY;
     if (!apiKey) {
       return {
         data: { results: [], error: 'Web search not configured' },
