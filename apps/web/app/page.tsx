@@ -44,7 +44,7 @@ const PACKAGES = [
     icon: "⇌",
     title: "Gateway",
     pkg: "mpp.t2000.ai",
-    desc: "Pay-per-use APIs for agents. 41 services, 90+ endpoints. No keys.",
+    desc: "Pay-per-use APIs for agents. 40 services, 88 endpoints. No keys.",
     install: "POST mpp.t2000.ai/{service}",
     href: "https://mpp.t2000.ai",
   },
@@ -94,7 +94,7 @@ const THREE_PRODUCTS = [
   {
     tag: "Gateway",
     name: "Gateway",
-    desc: "Pay-per-use API gateway for AI agents. 41 services, 90+ endpoints. One USDC wallet. No API keys.",
+    desc: "Pay-per-use API gateway for AI agents. 40 services, 88 endpoints. One USDC wallet. No API keys.",
     cta: { label: "mpp.t2000.ai", href: "https://mpp.t2000.ai", primary: false },
     accent: true,
   },
@@ -113,7 +113,7 @@ const PRIMITIVES = [
   { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
   { title: "DeFi access (Audric Finance)", desc: "Save, credit, swap, charts \u2014 every on-chain money op a user can do, all by asking in chat. NAVI lend at 3\u20138% APY USDC, NAVI borrow with health factor, Cetus aggregator across 20+ DEXs at 0.1% fee. Every write taps to confirm via Passport." },
   { title: "USDC transfers (Audric Pay)", desc: "Send USDC to any Sui wallet, receive via payment links / invoices / QR. Sponsored gas, sub-second finality." },
-  { title: "Pay-per-use APIs (MPP gateway)", desc: "41 services, 90+ endpoints. Pay per request with USDC. No keys, no signup. Internal capability \u2014 Audric uses this under the hood." },
+  { title: "Pay-per-use APIs (MPP gateway)", desc: "40 services, 88 endpoints. Pay per request with USDC. No keys, no signup. Internal capability \u2014 Audric uses this under the hood." },
 ];
 
 const ARCH_LAYERS = [
@@ -129,7 +129,7 @@ const ARCH_LAYERS = [
     label: "Layer 3 \u2014 t2000 Stack",
     split: [
       { title: "Packages (npm)", items: "@t2000/sdk \u00B7 @t2000/engine \u00B7 @t2000/mcp \u00B7 @t2000/cli \u00B7 @suimpp/mpp" },
-      { title: "Services", items: "mpp.t2000.ai (41 services) \u00B7 api.t2000.ai (gas + indexer)" },
+      { title: "Services", items: "mpp.t2000.ai (40 services) \u00B7 api.t2000.ai (fee ledger + indexer)" },
     ],
   },
   {
@@ -416,7 +416,7 @@ export default function Home() {
                   MPP Gateway
                 </div>
                 <h2 className="text-[28px] sm:text-[36px] font-normal leading-[1.1] tracking-[-0.5px] text-foreground">
-                  41 services.<br />
+                  40 services.<br />
                   <em className="italic text-accent">No API keys.</em>
                 </h2>
               </div>

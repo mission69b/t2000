@@ -6,8 +6,6 @@
       "outputs": ["dist/**", ".next/**"],
       "env": [
         "DATABASE_URL",
-        "SPONSOR_ADDRESS",
-        "GAS_STATION_ADDRESS",
         "SUI_RPC_URL"
       ]
     },

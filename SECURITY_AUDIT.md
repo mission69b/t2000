@@ -7,6 +7,29 @@
 
 ---
 
+> ## ⚠️ READ FIRST — Surface Removed (S.32 / 2026-04-29)
+>
+> Many findings in this report (C-1, H-3, H-5, M-2, M-5, L-1, plus parts of H-2/H-4) are
+> against the gas-sponsorship + USDC-bootstrap surface that was **removed entirely** in
+> PR-B1 (commit `3b69572` — "remove bootstrap + gas station entirely").
+>
+> The deleted surface includes: `/api/sponsor`, `/api/sponsor/usdc`, `/api/gas`,
+> `/api/gas/report`, the hashcash PoW system, the price-cache circuit breaker, the
+> sponsor + gas-station wallets (drained 2026-04-29 — see PR-B3 in `audric-build-tracker.md`),
+> the `SponsorRequest` / `GasLedger` / `UsdcSponsorLog` Prisma models, and the SDK
+> `gas/` subdirectory. CLI agents are now self-funded; Audric web users get gas sponsored
+> by Enoki at the host layer (separate code path, NOT covered by these findings).
+>
+> Findings still applicable post-S.32:
+> - **H-1** (open CORS) — partially valid; the allowlist is now narrower (`apps/server/src/index.ts:28`).
+> - **H-2** (unauthenticated stats endpoint) — still open. `/api/stats` is public by design.
+> - **H-4** (timing attack on rate limit) — N/A (sponsor endpoint deleted).
+> - **M-3** (scrypt KDF parameters) — still open. Tracked.
+> - **M-4** (no body size limit) — REMEDIATED (`bodyLimit({ maxSize: 256 * 1024 })` in `index.ts`).
+> - **L-5** (CI/CD long-lived AWS credentials) — still open. Tracked.
+>
+> The remaining sections describe the removed surface for historical context.
+
 ## Executive Summary
 
 The t2000 monorepo is a Sui blockchain DeFi platform comprising a CLI wallet, SDK, Move smart contracts, an API server (Hono), a Next.js marketing/stats site, and an on-chain indexer. The audit reviewed ~142 TypeScript source files, 6 Move contract modules, 4 CI/CD workflows, and 2 Dockerized ECS deployments.

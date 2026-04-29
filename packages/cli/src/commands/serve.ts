@@ -363,5 +363,5 @@ function getStatusCode(err: unknown): number {
 
 function isRetryable(code?: string): boolean {
   if (!code) return false;
-  return ['RPC_ERROR', 'RPC_UNREACHABLE', 'SPONSOR_UNAVAILABLE', 'AUTO_TOPUP_FAILED'].includes(code);
+  return ['RPC_ERROR', 'RPC_UNREACHABLE'].includes(code);
 }

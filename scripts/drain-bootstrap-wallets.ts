@@ -43,8 +43,12 @@ function loadKeypair(envName: string): Ed25519Keypair {
   const sk = process.env[envName];
   if (!sk) throw new Error(`Missing ${envName} in env`);
   if (sk.startsWith('suiprivkey')) {
-    const { schema, secretKey } = decodeSuiPrivateKey(sk);
-    if (schema !== 'ED25519') throw new Error(`${envName} is not ED25519 (got ${schema})`);
+    // decodeSuiPrivateKey schema field is unreliable across SDK versions,
+    // but a 32-byte secretKey is the canonical ED25519 size.
+    const { secretKey } = decodeSuiPrivateKey(sk);
+    if (secretKey.length !== 32) {
+      throw new Error(`${envName}: expected 32-byte secret key, got ${secretKey.length}`);
+    }
     return Ed25519Keypair.fromSecretKey(secretKey);
   }
   const bytes = Buffer.from(sk.replace(/^0x/, ''), 'hex');

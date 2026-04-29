@@ -71,7 +71,7 @@ const PACKAGES = [
   {
     title: "Gateway",
     pkg: "mpp.t2000.ai",
-    desc: "Pay-per-use API gateway for agents. 41 services, 90+ endpoints. No API keys \u2014 pay per request with USDC. Reputation tiers.",
+    desc: "Pay-per-use API gateway for agents. 40 services, 88 endpoints. No API keys \u2014 pay per request with USDC. Reputation tiers.",
     install: "POST mpp.t2000.ai/{service}/{endpoint}",
     npm: null,
     github: `${GITHUB_URL}/tree/main/apps/gateway`,
