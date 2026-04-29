@@ -73,9 +73,13 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
+    options?: { skipPythUpdate?: boolean },
   ): Promise<AdapterTxResult & { effectiveAmount: number }> {
     const normalized = normalizeAsset(asset);
-    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, { asset: normalized });
+    const result = await naviProtocol.buildWithdrawTx(this.client, address, amount, {
+      asset: normalized,
+      skipPythUpdate: options?.skipPythUpdate,
+    });
     return { tx: result.tx, effectiveAmount: result.effectiveAmount };
   }
 
@@ -83,7 +87,7 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { collectFee?: boolean },
+    options?: { collectFee?: boolean; skipPythUpdate?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
     const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, { ...options, asset: normalized });
@@ -94,12 +98,13 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { skipOracle?: boolean },
+    options?: { skipOracle?: boolean; skipPythUpdate?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
     const tx = await naviProtocol.buildRepayTx(this.client, address, amount, {
       asset: normalized,
       skipOracle: options?.skipOracle,
+      skipPythUpdate: options?.skipPythUpdate,
     });
     return { tx };
   }
@@ -117,9 +122,13 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
+    options?: { skipPythUpdate?: boolean },
   ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
     const normalized = normalizeAsset(asset);
-    return naviProtocol.addWithdrawToTx(tx, this.client, address, amount, { asset: normalized });
+    return naviProtocol.addWithdrawToTx(tx, this.client, address, amount, {
+      asset: normalized,
+      skipPythUpdate: options?.skipPythUpdate,
+    });
   }
 
   async addSaveToTx(
@@ -138,9 +147,13 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     coin: TransactionObjectArgument,
     asset: string,
+    options?: { skipPythUpdate?: boolean },
   ): Promise<void> {
     const normalized = normalizeAsset(asset);
-    return naviProtocol.addRepayToTx(tx, this.client, address, coin, { asset: normalized });
+    return naviProtocol.addRepayToTx(tx, this.client, address, coin, {
+      asset: normalized,
+      skipPythUpdate: options?.skipPythUpdate,
+    });
   }
 
   async getPendingRewards(address: string): Promise<PendingReward[]> {

@@ -312,7 +312,16 @@ export async function buildWithdrawTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: string } = {},
+  // skipPythUpdate=true is required for sponsored builds (Enoki):
+  // Pyth's SuiPythClient.updatePriceFeeds uses tx.splitCoins(tx.gas, ...)
+  // for the oracle fee. Sponsored txes can't reference tx.gas as an
+  // argument — Sui rejects with "Cannot use GasCoin as a transaction
+  // argument". Skipping the client-side Pyth update still adds NAVI's
+  // on-chain `update_single_price_v2` moveCalls, which read Pyth's
+  // on-chain state (kept fresh by Pyth keepers ~every 5s for major
+  // assets). Self-funded callers (CLI) leave it false to also pay the
+  // Pyth fee from tx.gas, maximizing freshness.
+  options: { asset?: string; skipPythUpdate?: boolean } = {},
 ): Promise<{ tx: Transaction; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
@@ -335,7 +344,7 @@ export async function buildWithdrawTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.skipPythUpdate });
 
   try {
     const coin = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
@@ -353,7 +362,8 @@ export async function addWithdrawToTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: string } = {},
+  // See note on buildWithdrawTx for skipPythUpdate semantics.
+  options: { asset?: string; skipPythUpdate?: boolean } = {},
 ): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
@@ -377,7 +387,7 @@ export async function addWithdrawToTx(
     return { coin, effectiveAmount: 0 };
   }
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.skipPythUpdate });
 
   try {
     const coin = await withdrawCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
@@ -415,12 +425,13 @@ export async function addRepayToTx(
   client: SuiJsonRpcClient,
   address: string,
   coin: TransactionObjectArgument,
-  options: { asset?: string } = {},
+  // See note on buildWithdrawTx for skipPythUpdate semantics.
+  options: { asset?: string; skipPythUpdate?: boolean } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.skipPythUpdate });
 
   try {
     await repayCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });
@@ -434,7 +445,8 @@ export async function buildBorrowTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { collectFee?: boolean; asset?: string } = {},
+  // See note on buildWithdrawTx for skipPythUpdate semantics.
+  options: { collectFee?: boolean; asset?: string; skipPythUpdate?: boolean } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be a positive number');
@@ -446,7 +458,7 @@ export async function buildBorrowTx(
   const tx = new Transaction();
   tx.setSender(address);
 
-  await refreshOracle(tx, client, address);
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.skipPythUpdate });
 
   try {
     const borrowedCoin = await borrowCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
@@ -468,7 +480,11 @@ export async function buildRepayTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { asset?: string; skipOracle?: boolean } = {},
+  // skipOracle bypasses oracle entirely (safe for repay — no HF risk).
+  // skipPythUpdate is the narrower flag — preserves on-chain
+  // `update_single_price_v2` calls but skips the tx.gas-using Pyth fee
+  // payment. See note on buildWithdrawTx for sponsored-build details.
+  options: { asset?: string; skipOracle?: boolean; skipPythUpdate?: boolean } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Repay amount must be a positive number');
@@ -494,7 +510,10 @@ export async function buildRepayTx(
   const rawAmount = Math.min(rawRequested, Number(totalBalance));
   const [repayCoin] = tx.splitCoins(coinObj, [rawAmount]);
 
-  await refreshOracle(tx, client, address, { skipOracle: options.skipOracle });
+  await refreshOracle(tx, client, address, {
+    skipOracle: options.skipOracle,
+    skipPythUpdate: options.skipPythUpdate,
+  });
 
   try {
     await repayCoinPTB(tx, assetInfo.type, repayCoin as never, {

@@ -74,16 +74,18 @@ export interface LendingAdapter {
   getHealth(address: string): Promise<HealthInfo>;
 
   buildSaveTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean }): Promise<AdapterTxResult>;
-  buildWithdrawTx(address: string, amount: number, asset: string): Promise<AdapterTxResult & { effectiveAmount: number }>;
-  buildBorrowTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean }): Promise<AdapterTxResult>;
-  buildRepayTx(address: string, amount: number, asset: string, options?: { skipOracle?: boolean }): Promise<AdapterTxResult>;
+  // skipPythUpdate=true is REQUIRED for sponsored builds (e.g. Enoki).
+  // See packages/sdk/src/protocols/navi.ts -> buildWithdrawTx jsdoc.
+  buildWithdrawTx(address: string, amount: number, asset: string, options?: { skipPythUpdate?: boolean }): Promise<AdapterTxResult & { effectiveAmount: number }>;
+  buildBorrowTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean; skipPythUpdate?: boolean }): Promise<AdapterTxResult>;
+  buildRepayTx(address: string, amount: number, asset: string, options?: { skipOracle?: boolean; skipPythUpdate?: boolean }): Promise<AdapterTxResult>;
 
   maxWithdraw(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;
   maxBorrow(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;
 
-  addWithdrawToTx?(tx: Transaction, address: string, amount: number, asset: string): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }>;
+  addWithdrawToTx?(tx: Transaction, address: string, amount: number, asset: string, options?: { skipPythUpdate?: boolean }): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }>;
   addSaveToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string, options?: { collectFee?: boolean }): Promise<void>;
-  addRepayToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string): Promise<void>;
+  addRepayToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string, options?: { skipPythUpdate?: boolean }): Promise<void>;
 
   getPendingRewards?(address: string): Promise<PendingReward[]>;
   addClaimRewardsToTx?(tx: Transaction, address: string): Promise<PendingReward[]>;

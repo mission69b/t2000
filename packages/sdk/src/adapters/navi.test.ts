@@ -171,8 +171,64 @@ describe('NaviAdapter', () => {
 
     await adapter.buildRepayTx('0xaddr', 20, 'usdsui');
     expect(naviProtocol.buildRepayTx).toHaveBeenCalledWith(
-      mockClient, '0xaddr', 20, { asset: 'USDsui' },
+      mockClient, '0xaddr', 20, { asset: 'USDsui', skipOracle: undefined, skipPythUpdate: undefined },
     );
+  });
+
+  // Sponsored-tx safety regression: Pyth's SuiPythClient.updatePriceFeeds
+  // uses tx.splitCoins(tx.gas, ...) which Sui rejects when the tx is
+  // wrapped by an external sponsor (Enoki). Hosts MUST be able to opt
+  // in to skipPythUpdate so the SDK never adds the tx.gas-using path.
+  it('buildBorrowTx forwards skipPythUpdate to navi protocol', async () => {
+    const tx = new Transaction();
+    vi.mocked(naviProtocol.buildBorrowTx).mockResolvedValue(tx);
+
+    await adapter.buildBorrowTx('0xaddr', 0.1, 'USDC', { skipPythUpdate: true });
+
+    expect(naviProtocol.buildBorrowTx).toHaveBeenCalledWith(
+      mockClient,
+      '0xaddr',
+      0.1,
+      expect.objectContaining({ asset: 'USDC', skipPythUpdate: true }),
+    );
+  });
+
+  it('buildWithdrawTx forwards skipPythUpdate to navi protocol', async () => {
+    const tx = new Transaction();
+    vi.mocked(naviProtocol.buildWithdrawTx).mockResolvedValue({ tx, effectiveAmount: 0.5 });
+
+    await adapter.buildWithdrawTx('0xaddr', 0.5, 'USDC', { skipPythUpdate: true });
+
+    expect(naviProtocol.buildWithdrawTx).toHaveBeenCalledWith(
+      mockClient,
+      '0xaddr',
+      0.5,
+      expect.objectContaining({ asset: 'USDC', skipPythUpdate: true }),
+    );
+  });
+
+  it('buildRepayTx forwards skipPythUpdate to navi protocol', async () => {
+    const tx = new Transaction();
+    vi.mocked(naviProtocol.buildRepayTx).mockResolvedValue(tx);
+
+    await adapter.buildRepayTx('0xaddr', 0.5, 'USDC', { skipPythUpdate: true });
+
+    expect(naviProtocol.buildRepayTx).toHaveBeenCalledWith(
+      mockClient,
+      '0xaddr',
+      0.5,
+      expect.objectContaining({ asset: 'USDC', skipPythUpdate: true }),
+    );
+  });
+
+  it('buildBorrowTx defaults skipPythUpdate to undefined for self-funded callers', async () => {
+    const tx = new Transaction();
+    vi.mocked(naviProtocol.buildBorrowTx).mockResolvedValue(tx);
+
+    await adapter.buildBorrowTx('0xaddr', 1, 'USDC');
+
+    const call = vi.mocked(naviProtocol.buildBorrowTx).mock.calls[0][3];
+    expect(call?.skipPythUpdate).toBeUndefined();
   });
 
   it('maxWithdraw delegates', async () => {
