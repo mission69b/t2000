@@ -13,11 +13,11 @@ on:
     paths:
       - "apps/server/src/indexer/**"
       - "apps/server/src/cron/**"
-      - "apps/server/src/services/email.ts"
       - "apps/server/src/db/**"
       - "apps/server/prisma/**"
       - "infra/indexer*"
       - "infra/cron-daily-intel-task-definition.json"
+      - ".github/workflows/deploy-indexer.yml"
 
 concurrency:
   group: deploy-indexer
