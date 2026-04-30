@@ -67,9 +67,8 @@ t2000 init
 
 ❯ t2000 save 80
   ✓ Saved $80.00 USDC to best rate
-  ✓ Protocol fee: $0.08 USDC (0.1%)
   ✓ Current APY: 4.21%
-  ✓ Savings balance: $79.92 USDC
+  ✓ Savings balance: $80.00 USDC
   Tx:  https://suiscan.xyz/mainnet/tx/0x9f2c...
 
 ❯ t2000 borrow 20
@@ -278,14 +277,9 @@ Multi-step operations (for example save or withdraw flows that compose several o
 
 ## Protocol Fees
 
-| Operation | Fee |
-|-----------|-----|
-| Save | 0.1% |
-| Borrow | 0.05% |
-| Withdraw | Free |
-| Repay | Free |
-| Send | Free |
-| Pay (MPP) | Free |
+The CLI is **fee-free** by design — no protocol fees are charged on any operation. Network gas costs (SUI) and third-party protocol fees (e.g. NAVI lending APY spread, Cetus aggregator routing) still apply at on-chain rates.
+
+Audric (the consumer product on top of the SDK) charges a small overlay fee on save / borrow / swap. Building your own consumer app? See [`@t2000/sdk` README](../sdk/README.md) for the optional `addFeeTransfer` and `overlayFee` helpers.
 
 ## File Locations
 

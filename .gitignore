@@ -26,9 +26,6 @@ pnpm-debug.log*
 # vercel
 .vercel
 
-# move build
-packages/contracts/build/
-
 # wallet keys (never commit)
 *.key
 

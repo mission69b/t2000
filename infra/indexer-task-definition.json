@@ -30,8 +30,7 @@
         { "name": "SUI_RPC_URL", "value": "https://fullnode.mainnet.sui.io:443" },
         { "name": "INDEXER_POLL_INTERVAL_MS", "value": "2000" },
         { "name": "INDEXER_BATCH_SIZE", "value": "10" },
-        { "name": "MPP_GATEWAY_TREASURIES", "value": "0x703284465d889aa19cbd6806f5e60445d40f558ba1470e96240abf6b65509d2f" },
-        { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" }
+        { "name": "MPP_GATEWAY_TREASURIES", "value": "0x703284465d889aa19cbd6806f5e60445d40f558ba1470e96240abf6b65509d2f" }
       ],
       "secrets": [
         {

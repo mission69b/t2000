@@ -4,9 +4,8 @@ import { prisma } from '../db/prisma.js';
 import { fetchCheckpoints, getLatestCheckpoint } from './checkpoint.js';
 import { parseTreasuryFees, parseTransfers } from './eventParser.js';
 
-// [B5 v2 / 2026-04-30] Treasury wallet — fees flow here as a regular USDC transfer
-// inside Audric's PTBs (replaces the deprecated `t2000::treasury::collect_fee`
-// Move call). Indexer detects USDC inflows to this wallet and writes them to
+// Treasury wallet — fees flow here as a regular USDC transfer inside Audric's
+// PTBs. Indexer detects USDC inflows to this wallet and writes them to
 // `ProtocolFeeLedger`. MUST match `T2000_OVERLAY_FEE_WALLET` in the SDK.
 const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
   ?? '0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a';
@@ -73,11 +72,10 @@ async function processCheckpoints(
 
   for (const cp of batch.checkpoints) {
     for (const tx of cp.transactions) {
-      // [B5 v2] Detect token transfers to the treasury wallet (replaces the deprecated
-      // `FeeCollected` Move event parser). Operation classified from moveCall targets.
-      // Multi-asset capable: a single tx can transfer different assets (e.g. a swap
-      // can pay its fee in SUI), so we dedup on (txDigest, feeAsset) — no schema
-      // unique constraint required (kept the schema unchanged for v2).
+      // Detect token transfers to the treasury wallet, classified by moveCall
+      // targets. Multi-asset capable: a single tx can transfer different assets
+      // (e.g. a swap can pay its fee in SUI), so we dedup on (txDigest, feeAsset)
+      // — no schema unique constraint required.
       const fees = parseTreasuryFees(tx, T2000_OVERLAY_FEE_WALLET);
       for (const fee of fees) {
         try {

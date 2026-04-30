@@ -22,7 +22,6 @@
       "environment": [
         { "name": "NODE_ENV", "value": "production" },
         { "name": "CRON_GROUP", "value": "daily-intel" },
-        { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" },
         { "name": "T2000_FIN_CTX_SHARD_COUNT", "value": "24" }
       ],
       "secrets": [

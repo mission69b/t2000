@@ -119,9 +119,9 @@ t2000 save 100
 
 ## Fee Collection
 
-> **Adapters do not collect fees.** The SDK is fee-free by design (`@t2000/sdk@1.1.0`+, B5 v2 / 2026-04-30). Adapters expose pure tx-building primitives only — fee policy is owned by the consumer app, never by the adapter.
+> **Adapters do not collect fees.** The SDK is fee-free by design. Adapters expose pure tx-building primitives only — fee policy is owned by the consumer app, never by the adapter.
 
-The deprecated `addCollectFeeToTx` (Move call to `t2000::treasury::collect_fee`) was removed. The replacement helper, `addFeeTransfer`, is exported for **consumer apps** to use — adapters should not reach for it.
+The `addFeeTransfer` helper is exported for **consumer apps** to use — adapters should not reach for it.
 
 If your adapter needs to expose a low-level handle so a consumer can interpose a fee transfer between the adapter's coin acquisition and final transfer (the way `addBorrowToTx` works for NAVI), follow this pattern:
 

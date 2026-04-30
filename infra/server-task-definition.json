@@ -33,8 +33,6 @@
         { "name": "SUI_RPC_URL", "value": "https://fullnode.mainnet.sui.io:443" },
         { "name": "PAYMENT_KIT_PACKAGE", "value": "0xbc126f1535fba7d641cb9150ad9eae93b104972586ba20f3c60bfe0e53b69bc6" },
         { "name": "T2000_PAYMENT_REGISTRY_ID", "value": "0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291" },
-        { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" },
-        { "name": "T2000_CONFIG_ID", "value": "0x08ba26f0d260b5edf6a19c71492b3eb914906a7419baf2df1426765157e5862a" },
         { "name": "T2000_OVERLAY_FEE_WALLET", "value": "0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a" }
       ],
       "secrets": [

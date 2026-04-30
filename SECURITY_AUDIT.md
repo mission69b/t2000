@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-09
 **Auditor:** Automated Full-Stack Security Audit
-**Scope:** All packages (`sdk`, `cli`, `contracts`, `mpp-sui`, `server`, `web`), CI/CD, infrastructure
+**Scope:** All packages (`sdk`, `cli`, `mpp-sui`, `server`, `web`) plus the deprecated `contracts` package (Move source removed from repo in B5 v2 — original audit covered the source pre-removal), CI/CD, infrastructure
 **Severity Levels:** CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL
 
 ---
@@ -304,22 +304,13 @@ app.use('*', bodyLimit({ maxSize: 256 * 1024 })); // 256KB
 
 ---
 
-### M-7: AdminCap ID and UpgradeCap ID Hardcoded in Public SDK — ✅ REMEDIATED
+### M-7: AdminCap ID and UpgradeCap ID Hardcoded in Public SDK — ✅ CLOSED BY DELETION (B5 v2, 2026-04-30)
 
-**Location:** `packages/sdk/src/constants.ts:39-40`
+**Location:** ~~`packages/sdk/src/constants.ts:39-40`~~ — constants removed.
 
-**Status:** Fixed. `T2000_UPGRADE_CAP_ID` removed from SDK constants. AdminCap ID retained as it is needed for on-chain config resolution.
+**Status:** Closed. `T2000_PACKAGE_ID`, `T2000_CONFIG_ID`, and `T2000_ADMIN_CAP_ID` were all removed from `packages/sdk/src/constants.ts` when the Move treasury contract was deprecated for new fee traffic. The Move package on-chain is dormant; admin ops (`withdraw_fees`, etc.) work via `sui client call` against the on-chain ABI without needing source or hardcoded IDs.
 
-```ts
-export const T2000_ADMIN_CAP_ID = '0x863d...';
-export const T2000_UPGRADE_CAP_ID = '0xef28...';
-```
-
-**Description:** While these IDs are discoverable on-chain, hardcoding them in the public SDK makes them more visible to attackers. The AdminCap controls protocol pause/unpause and fee changes. The UpgradeCap controls package upgrades.
-
-**Impact:** Low direct impact (these are access-controlled on-chain), but increases attack surface visibility.
-
-**Recommendation:** Remove the UpgradeCap ID from the SDK — it's not needed at runtime. Consider whether the AdminCap ID needs to be in the SDK constants.
+**Description (historical):** The hardcoded AdminCap and UpgradeCap IDs in the public SDK made them more visible to attackers. While the IDs are discoverable on-chain regardless, removing them from the SDK reduces attack surface visibility.
 
 ---
 
@@ -488,16 +479,12 @@ The price cache (`apps/server/src/lib/priceCache.ts`) implements a circuit break
 - `gas/autoTopUp.ts` — USDC→SUI auto top-up
 - `gas/manager.ts` — Gas resolution chain
 - `protocols/navi.ts` — NAVI lending integration
-- `protocols/protocolFee.ts` — On-chain fee collection
+- `protocols/protocolFee.ts` — Fee transfer helper (Audric only — split + transferObjects)
 - `utils/simulate.ts` — Transaction simulation
 - `utils/sui.ts` — Address validation
 
-### Contracts (`packages/contracts/sources/`)
-- `t2000.move` — Core config + AdminCap
-- `treasury.move` — Fee treasury
-- `admin.move` — Admin operations + timelock
-- `constants.move` — Protocol constants
-- `errors.move` — Error codes
+### Contracts (~~`packages/contracts/sources/`~~ — removed from repo in B5 v2, 2026-04-30)
+The `t2000` Move package (`t2000.move`, `treasury.move`, `admin.move`, `constants.move`, `errors.move`) was reviewed pre-B5 v2 and remains deployed on-chain in dormant state. Source was removed when the wallet-direct fee architecture replaced `t2000::treasury::collect_fee`. See git history pre-tag `v1.1.0` for the audited source.
 
 ### CLI (`packages/cli/src/commands/`)
 - `exportKey.ts` — Private key export

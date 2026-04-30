@@ -1,21 +1,14 @@
 /**
  * Protocol fee primitives — wallet-direct transfer model.
  *
- * [B5 v2 / @t2000/sdk@1.1.0 / 2026-04-30]
- * Replaces the deprecated `t2000::treasury::collect_fee` Move call. Fees are now
- * collected by splitting from the payment coin and transferring directly to the
- * treasury wallet inside the same PTB. Atomic with the operation (PTB semantics);
- * the wallet IS the ledger; the server-side indexer reads `balanceChanges` and
- * writes a `ProtocolFeeLedger` row tagged with the operation classified from the
- * tx's moveCall targets.
+ * Fees are collected by splitting from the payment coin and transferring directly
+ * to the treasury wallet inside the same PTB. Atomic with the operation (PTB
+ * semantics); the wallet IS the ledger; the server-side indexer reads
+ * `balanceChanges` and writes a `ProtocolFeeLedger` row tagged with the operation
+ * classified from the tx's moveCall targets.
  *
  * The SDK / CLI never call this helper — they're fee-free by design (t2000 = infra
  * brand, no opinion on fees). Audric's `prepare/route.ts` is the canonical caller.
- *
- * Pre-1.1.0 callers: `addCollectFeeToTx` and `reportFee` were removed in this
- * release. Migration: replace `addCollectFeeToTx(tx, coin, op)` with
- * `addFeeTransfer(tx, coin, FEE_BPS_FOR_OP, T2000_OVERLAY_FEE_WALLET)` BEFORE the
- * NAVI deposit step (order matters — the deposit consumes the coin).
  */
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import {
@@ -69,8 +62,7 @@ export function calculateFee(operation: FeeOperation, amount: number): ProtocolF
  * the deposit will have consumed the coin and the split will fail.
  *
  * Atomicity: `splitCoins` + `transferObjects` are PTB ops; if anything later in
- * the PTB reverts, the fee transfer reverts too. Same atomicity guarantee as the
- * deprecated `t2000::treasury::collect_fee` Move call.
+ * the PTB reverts, the fee transfer reverts too.
  *
  * @param tx          Active PTB
  * @param paymentCoin Coin to split the fee from (mutated in place)

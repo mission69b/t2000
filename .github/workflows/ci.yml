@@ -70,23 +70,3 @@ jobs:
         run: pnpm --filter @t2000/sdk exec vitest run src/adapters/ --reporter=verbose
       - name: Run adapter contract tests
         run: pnpm --filter @t2000/sdk exec vitest run src/adapters/compliance.test.ts --reporter=verbose
-
-  # Move Contract Tests temporarily disabled — suiup install path is not picked up
-  # in subsequent steps on the runner (sui: command not found). Run locally with
-  # `cd packages/contracts && sui move test` until the install step is fixed.
-  # move-tests:
-  #   name: Move Contract Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #     - name: Install suiup
-  #       run: |
-  #         curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
-  #         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-  #     - name: Install Sui CLI (testnet build matches our deploy target)
-  #       run: suiup install sui@testnet
-  #     - name: sui --version
-  #       run: sui --version
-  #     - name: Move tests
-  #       working-directory: packages/contracts
-  #       run: sui move test

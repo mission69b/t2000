@@ -25,7 +25,6 @@ t2000/
 ├── packages/sdk     ← @t2000/sdk (npm)
 ├── packages/engine  ← @t2000/engine (agent engine — QueryEngine, tools, MCP)
 ├── packages/mcp     ← @t2000/mcp (npm)
-├── packages/contracts ← Sui Move smart contracts
 ├── t2000-skills/    ← Agent skill definitions
 └── audric-roadmap.md ← Product roadmap + build tracker
 ```

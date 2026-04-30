@@ -4,10 +4,9 @@ import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 
 const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
 
-// [B5 v2 / 2026-04-30] Treasury is now a regular wallet address (not a Move object).
-// The Move `t2000::treasury` contract is deprecated for new traffic — fees flow as
-// `splitCoins + transferObjects(treasuryWallet)` from Audric's prepare/route.ts.
-// MUST match `T2000_OVERLAY_FEE_WALLET` in @t2000/sdk and the indexer.
+// Treasury is a regular wallet address. Fees flow as `splitCoins + transferObjects`
+// from Audric's prepare/route.ts. MUST match `T2000_OVERLAY_FEE_WALLET` in
+// @t2000/sdk and the indexer.
 const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
   ?? "0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a";
 
@@ -43,10 +42,6 @@ export async function GET() {
  * Live treasury wallet balance via RPC. Single source of truth for "what's in
  * the treasury right now." Historical totals come from `getFeeStats` (Prisma
  * `ProtocolFeeLedger`, indexer-fed).
- *
- * [B5 v2] Replaces the legacy on-chain `Treasury<USDC>` Move object reads —
- * those required reading two separate object IDs that disagreed and never
- * accounted for admin withdrawals correctly.
  */
 async function getWalletBalances() {
   try {
@@ -86,9 +81,6 @@ async function getAgentStats(oneDayAgo: Date, sevenDaysAgo: Date, thirtyDaysAgo:
  * wallet, and writes a `ProtocolFeeLedger` row. So this query is the canonical
  * "total fees ever collected" — even if the admin has withdrawn the wallet
  * since (which would zero out the live RPC balance above).
- *
- * [B5 v2] Replaces the dual-source pattern (on-chain Move `Treasury.total_collected`
- * + DB fallback) with a single source: the indexer-derived ledger.
  */
 async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
   const allFees = await prisma.protocolFeeLedger.findMany({
@@ -114,9 +106,9 @@ async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
     byOperation[f.operation].totalUsdc += toUsdc(f.feeAmount);
   }
 
-  // Number arithmetic (not BigInt) — legacy /api/fees POST rows may have
-  // decimal fee_amount values that BigInt() would throw on. Number is precise
-  // for fee totals up to 2^53 raw units (>> any realistic treasury size).
+  // Number arithmetic (not BigInt) — some legacy ledger rows have decimal
+  // fee_amount values that BigInt() would throw on. Number is precise for fee
+  // totals up to 2^53 raw units (>> any realistic treasury size).
   const byAsset: Record<string, { count: number; rawAmount: string }> = {};
   for (const f of allFees) {
     const k = f.feeAsset;

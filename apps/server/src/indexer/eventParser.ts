@@ -2,8 +2,6 @@ import type { SuiEvent } from '@mysten/sui/jsonRpc';
 import type { ParsedTransaction } from './checkpoint.js';
 import { allDescriptors, type ProtocolDescriptor } from '@t2000/sdk/descriptors';
 
-const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
-
 const MPP_GATEWAY_TREASURIES = new Set(
   (process.env.MPP_GATEWAY_TREASURIES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
 );
@@ -60,10 +58,6 @@ export interface ParsedTransfer {
   timestamp: number;
 }
 
-export function isT2000Event(event: SuiEvent): boolean {
-  return event.type.startsWith(T2000_PACKAGE_ID);
-}
-
 // Operation → fee rate (matches packages/sdk/src/constants.ts SAVE/BORROW_FEE_BPS
 // and the swap overlay rate). Indexer only sees on-chain amounts; the rate is
 // derived from the operation type at index time.
@@ -94,8 +88,7 @@ function extractAssetSymbol(coinType: string): string {
 /**
  * Detect token transfers to the T2000 overlay-fee wallet inside a transaction
  * and classify each as a save / borrow / swap fee from the tx's moveCall
- * targets. Replaces `parseFeeEvents` (which parsed the deprecated
- * `t2000::treasury::FeeCollected` Move event).
+ * targets.
  *
  * Audric's prepare/route.ts adds fees in two ways:
  *   - save / borrow: `addFeeTransfer` splits a USDC fee from the operation's

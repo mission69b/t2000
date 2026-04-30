@@ -103,17 +103,16 @@ Every transaction is self-funded by the agent's wallet. Multi-step operations ex
 
 ### Fees
 
-| Operation | Fee | Notes |
+The t2000 SDK + CLI are **fee-free** by design. Fees are an Audric concern — when [Audric](https://audric.ai) is the consumer, it adds protocol fees inline within the same PTB:
+
+| Operation | Audric fee | Notes |
 |-----------|-----|-------|
-| Save | 0.1% | Protocol fee on deposit |
-| Borrow | 0.05% | Protocol fee on loan |
-| Withdraw | Free | |
-| Repay | Free | |
-| Send | Free | |
-| Receive | Free | Local payment request generation |
-| Swap | 0.1% | t2000 overlay fee; Cetus Aggregator network fees still apply |
-| Stake/Unstake | Free | VOLO protocol fees only |
-| Pay (MPP) | Free | Agent pays the API price, no surcharge |
+| Save | 0.1% | Inline transfer to Audric treasury wallet |
+| Borrow | 0.05% | Inline transfer to Audric treasury wallet |
+| Swap | 0.1% | Cetus aggregator overlay; routes to Audric treasury wallet |
+| Withdraw / Repay / Send / Receive / Stake / Unstake / Pay (MPP) | Free | — |
+
+Building your own consumer app on top of `@t2000/sdk`? Use the `addFeeTransfer` helper for save/borrow and `overlayFee` config for swaps to mirror Audric's pattern, or skip fees entirely.
 
 ## SDK
 
@@ -287,8 +286,7 @@ t2000/
 │   ├── sdk/              @t2000/sdk — TypeScript SDK (core)
 │   ├── engine/           @t2000/engine — Agent engine (QueryEngine, tools, MCP)
 │   ├── cli/              @t2000/cli — Terminal bank account
-│   ├── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
-│   └── contracts/        Move smart contracts (mpp-sui)
+│   └── mcp/              @t2000/mcp — MCP server (Claude Desktop, Cursor, Windsurf)
 │
 ├── apps/
 │   ├── web/              t2000.ai — developer/infra landing page + docs
@@ -325,7 +323,6 @@ pnpm --filter @t2000/server test
 | Layer | Technology |
 |-------|------------|
 | Chain | Sui (mainnet) |
-| Contracts | Move (treasury, admin, fee collection) |
 | SDK | TypeScript, `@mysten/sui` |
 | Engine | TypeScript, Anthropic Claude, MCP client/server |
 | CLI | Commander.js, Hono (HTTP API) |

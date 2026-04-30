@@ -652,7 +652,7 @@ Checkpoint-based indexer running on ECS Fargate, polling Sui every 2 seconds.
 ```
 Sui Checkpoints → Indexer → NeonDB
                      │
-                     ├── parseTreasuryFees → ProtocolFeeLedger    [B5 v2 — was: Parse FeeCollected events]
+                     ├── parseTreasuryFees → ProtocolFeeLedger
                      │   (detect USDC inflows to T2000_OVERLAY_FEE_WALLET,
                      │    classify operation from moveCall targets)
                      ├── Parse transfers for known agents → Transaction
@@ -684,14 +684,14 @@ The indexer only tracks addresses that have shown up in monitored on-chain activ
 The indexer uses SDK adapter descriptors to classify transactions:
 
 - Move call targets → map to protocol (NAVI)
-- Balance changes → infer action type (save, withdraw, etc.) AND detect USDC inflows to the treasury wallet (B5 v2 fee detection)
-- Events → secondary signal (no longer used for fee collection)
+- Balance changes → infer action type (save, withdraw, etc.) AND detect USDC inflows to the treasury wallet
+- Events → secondary signal
 
 ---
 
-## Protocol Fees (B5 v2 — wallet-direct architecture)
+## Protocol Fees (wallet-direct architecture)
 
-**Fees are an Audric (consumer) concern, not a t2000 (infra) concern.** The Move treasury contract (`t2000::treasury::collect_fee`) is deprecated for new traffic as of `@t2000/sdk@1.1.0` (2026-04-30). New architecture:
+**Fees are an Audric (consumer) concern, not a t2000 (infra) concern.** As of `@t2000/sdk@1.1.0` (2026-04-30), no Move treasury contract is involved — fees flow inline within the consumer's PTB:
 
 ```
 Audric prepare/route.ts                                       Indexer (every checkpoint)
@@ -714,7 +714,7 @@ Audric prepare/route.ts                                       Indexer (every che
 - **No SDK fee logic.** `@t2000/sdk` (and therefore the CLI) is fee-free by design. Audric is the only fee owner; Audric's `prepare/route.ts` ALWAYS adds `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and ALWAYS passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. Structural inclusion (can't be forgotten because it IS the code).
 - **Wallet IS the live ledger.** `client.getBalance({ owner: treasuryWallet })` is "what's in the treasury right now." Stats API (`apps/web/app/api/stats/route.ts`) uses RPC for live balance.
 - **DB is the historical log.** Indexer-fed `ProtocolFeeLedger` is the canonical "total fees ever collected" — survives admin withdrawals from the wallet. Stats API uses Prisma for historical totals + by-operation breakdowns.
-- **Single bridge, no HTTP coupling.** Pre-B5 v2, Audric POSTed to `/api/fees` after every successful tx; that route is deleted, the indexer is the only writer to `ProtocolFeeLedger`. No Audric → server fee call.
+- **Single bridge, no HTTP coupling.** The indexer is the only writer to `ProtocolFeeLedger`. No Audric → server fee call.
 
 **Fee rates** (derived from operation type at index time):
 
@@ -726,25 +726,15 @@ Audric prepare/route.ts                                       Indexer (every che
 
 ---
 
-## Move Contracts (Sui mainnet)
-
-
-| Contract        | Purpose                                                           | Status (B5 v2)                                                  |
-| --------------- | ----------------------------------------------------------------- | --------------------------------------------------------------- |
-| `t2000.move`    | Config (fee BPS, paused flag), AdminCap                           | Active                                                          |
-| `treasury.move` | `collect_fee()` (deprecated), `withdraw_fees`, `receive_coins`    | **Deprecated for new fee collection.** Admin-only ops remain.   |
-| `admin.move`    | Admin operations (update config, pause)                           | Active                                                          |
-
-
-### Key on-chain objects
+## On-chain references (Sui mainnet)
 
 
 | Object               | ID              | Purpose                                                              |
 | -------------------- | --------------- | -------------------------------------------------------------------- |
-| Package              | `0xd775fc...`   | t2000 Move package                                                   |
-| Config               | `0x08ba26...`   | Fee rates (read-only after B5 v2), pause flag                        |
 | **Treasury Wallet**  | `0x5366ef...`   | **Audric overlay-fee receiver** (`T2000_OVERLAY_FEE_WALLET`)         |
-| ~~Treasury Move Object~~ | `0x3bb501...` | ~~Collected protocol fees via `collect_fee`~~ — *deprecated*         |
+
+
+> The legacy `t2000::treasury` Move package is dormant on-chain (no new traffic routes through it as of B5 v2). Source was removed from the repo on 2026-04-30 — see git history pre-tag `v1.1.0` if needed for future admin ops. AdminCap remains with the treasury admin keypair; admin calls work via the on-chain ABI without needing local source.
 
 
 ---
@@ -1222,7 +1212,7 @@ Tag v0.1.0 (mission69b/suimpp repo)
 | **Keys**          | Ed25519 keypair, AES-256-GCM encrypted at rest with scrypt-derived key |
 | **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it  |
 | **Safeguards**    | Local spending limits, emergency lock, daily budgets                   |
-| **On-chain**      | Move-level fee collection, AdminCap-gated config, pause flag           |
+| **On-chain**      | Inline fee transfer (Audric only), atomic PTBs, indexed ledger         |
 | **MPP**           | HMAC-bound challenges (stateless), on-chain USDC verification          |
 | **API keys**      | Upstream keys stored as Vercel env vars, never exposed to agents       |
 
@@ -1325,7 +1315,7 @@ All write operations go through a `TxMutex` that ensures only one transaction ex
 | --------------------------------------------- | ------------------------------- |
 | Agent Sui address (public, via indexer)       | Private key                     |
 | On-chain transaction digests (public)         | What the TX does (opaque bytes) |
-| Protocol fee events (from chain)              | CLI usage, local commands       |
+| Protocol fee transfers (from chain)           | CLI usage, local commands       |
 | —                                             | Wallet balance (read on demand) |
 | —                                             | Which AI client is used         |
 
