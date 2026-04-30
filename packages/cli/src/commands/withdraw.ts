@@ -6,7 +6,7 @@ import { printSuccess, printKeyValue, printBlank, printJson, isJsonMode, handleE
 export function registerWithdraw(program: Command) {
   program
     .command('withdraw')
-    .description('Withdraw from NAVI lending (USDC, USDT, SUI, USDe, USDsui)')
+    .description('Withdraw USDC or USDsui from NAVI lending')
     .argument('<amount>', 'Amount to withdraw (or "all")')
     .option('--key <path>', 'Key file path')
     .option('--protocol <name>', 'Protocol to use (e.g. navi)')

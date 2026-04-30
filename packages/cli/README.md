@@ -295,7 +295,7 @@ Audric (the consumer product on top of the SDK) charges a small overlay fee on s
 t2000 save all               # Deposit all available USDC
 t2000 borrow 40              # Borrow against it
 t2000 repay 40               # Pay it back
-t2000 withdraw all            # Get everything out (always USDC)
+t2000 withdraw all            # Get everything out (USDC by default; pass --asset USDsui for USDsui)
 
 # Automation-friendly (no prompts, JSON output)
 t2000 balance --json
