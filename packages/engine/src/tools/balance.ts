@@ -15,10 +15,9 @@ import {
   type DefiSummary,
 } from '../blockvision-prices.js';
 import { fetchAudricPortfolio, type AudricPortfolioResult } from '../audric-api.js';
+import { normalizeAddressInput } from '../sui-address.js';
 
 const GAS_RESERVE_SUI = 0.05;
-
-const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{1,64}$/;
 
 // vSUI (Volo's liquid-staked SUI). BlockVision sometimes lacks a price for
 // this token — when missing we read the official Volo exchange rate and
@@ -110,21 +109,19 @@ async function loadPortfolio(
 export const balanceCheckTool = buildTool({
   name: 'balance_check',
   description:
-    'Get the full balance breakdown for the signed-in user OR any public Sui address. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC and/or USDsui deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, saveableUsdc (USDC wallet balance available to save), and saveableUsdsui (USDsui wallet balance available to save — surfaces only when > 0). IMPORTANT: wallet holdings like GOLD, SUI, USDT, USDe are NOT savings positions and are NOT saveable — only USDC and USDsui can be saved/borrowed. Pass `address` to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
+    'Get the full balance breakdown for the signed-in user OR any public Sui address or SuiNS name. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC and/or USDsui deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, saveableUsdc (USDC wallet balance available to save), and saveableUsdsui (USDsui wallet balance available to save — surfaces only when > 0). IMPORTANT: wallet holdings like GOLD, SUI, USDT, USDe are NOT savings positions and are NOT saveable — only USDC and USDsui can be saved/borrowed. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
   inputSchema: z.object({
     address: z
       .string()
-      .regex(SUI_ADDRESS_REGEX)
       .optional()
-      .describe('Sui address to inspect (defaults to the signed-in wallet)'),
+      .describe('Sui address (0x…) or SuiNS name (alex.sui). Defaults to the signed-in wallet when omitted.'),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       address: {
         type: 'string',
-        pattern: '^0x[a-fA-F0-9]{1,64}$',
-        description: 'Sui address to inspect (defaults to the signed-in wallet)',
+        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
       },
     },
     required: [],
@@ -152,7 +149,23 @@ export const balanceCheckTool = buildTool({
      * automatically scope correctly. Empty wallets and unknown addresses
      * surface honestly (zero balance) rather than failing.
      */
-    const targetAddress = input.address ?? context.walletAddress;
+    // [v1.2 SuiNS] Normalize the user-supplied address. Accepts both 0x
+    // hex and *.sui names; throws structured errors when the input is
+    // malformed or the SuiNS name doesn't resolve. Stamps `suinsName` on
+    // the result so the host card can render "Balance · alex.sui · 0x12…ab"
+    // instead of just the truncated hex.
+    let suinsName: string | null = null;
+    let targetAddress: string | undefined;
+    if (input.address) {
+      const normalized = await normalizeAddressInput(input.address, {
+        suiRpcUrl: context.suiRpcUrl,
+        signal: context.signal,
+      });
+      targetAddress = normalized.address;
+      suinsName = normalized.suinsName;
+    } else {
+      targetAddress = context.walletAddress;
+    }
     const isSelfQuery =
       !!context.walletAddress &&
       !!targetAddress &&
@@ -379,12 +392,12 @@ export const balanceCheckTool = buildTool({
         priceSource: portfolio.source,
         address,
         isSelfQuery,
+        suinsName,
       };
 
       const holdingsList = visibleHoldings.map((h) => `${h.symbol}: ${h.balance < 1 ? h.balance.toFixed(6) : h.balance.toFixed(2)} ($${h.usdValue.toFixed(2)})`).join(', ');
-      const subjectPrefix = isSelfQuery
-        ? 'Balance'
-        : `Balance for ${address.slice(0, 6)}…${address.slice(-4)}`;
+      const subjectLabel = suinsName ?? `${address.slice(0, 6)}…${address.slice(-4)}`;
+      const subjectPrefix = isSelfQuery ? 'Balance' : `Balance for ${subjectLabel}`;
       // Surface the DeFi fetch state so the LLM can answer accurately:
       //   - `blockvision` + total > 0  → list protocols and dollar value
       //   - `blockvision` + total === 0 → genuinely no positions in the 9 covered protocols
@@ -437,15 +450,15 @@ export const balanceCheckTool = buildTool({
 
     // SDK agent fallback — only meaningful for the signed-in user (the
     // SDK's `balance()` method is bound to the agent's own wallet). If
-    // the LLM passed a different address, refuse rather than silently
-    // returning the agent's own balance.
+    // the LLM passed a different address (post-normalization), refuse
+    // rather than silently returning the agent's own balance.
     if (
-      input.address &&
+      targetAddress &&
       context.walletAddress &&
-      input.address.toLowerCase() !== context.walletAddress.toLowerCase()
+      targetAddress.toLowerCase() !== context.walletAddress.toLowerCase()
     ) {
       throw new Error(
-        `Cannot inspect ${input.address.slice(0, 8)}… without NAVI MCP enabled. Configure NAVI MCP to enable third-party address reads.`,
+        `Cannot inspect ${targetAddress.slice(0, 8)}… without NAVI MCP enabled. Configure NAVI MCP to enable third-party address reads.`,
       );
     }
     const agent = requireAgent(context);
@@ -524,6 +537,7 @@ export const balanceCheckTool = buildTool({
         saveableUsdsui: sdkSaveableUsdsui,
         address: targetAddress ?? '',
         isSelfQuery: true,
+        suinsName,
       },
       displayText: `Balance: $${sdkTotal.toFixed(2)} total. Wallet: $${balance.available.toFixed(2)} available. NAVI savings deposits: $${balance.savings.toFixed(2)}.${sdkDefiSummaryText} ${sdkSaveableUsdsui > 0 ? `Saveable: ${sdkSaveableUsdc.toFixed(2)} USDC + ${sdkSaveableUsdsui.toFixed(sdkSaveableUsdsui < 1 ? 4 : 2)} USDsui (only USDC and USDsui can be saved/borrowed).` : `Saveable USDC (only USDC and USDsui can be saved): ${sdkSaveableUsdc.toFixed(2)} USDC.`}`,
     };

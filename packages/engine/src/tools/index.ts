@@ -35,6 +35,7 @@ import { renderCanvasTool } from './canvas.js';
 import { spendingAnalyticsTool } from './spending.js';
 import { yieldSummaryTool } from './yield-summary.js';
 import { activitySummaryTool } from './activity-summary.js';
+import { resolveSuinsTool } from './resolve-suins.js';
 // [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed. The
 // BlockVision-backed `token_prices` tool covers spot prices; the
 // surviving DefiLlama dependency is `protocol_deep_dive`, which holds
@@ -80,6 +81,7 @@ export const READ_TOOLS: Tool[] = [
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
+  resolveSuinsTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -135,4 +137,5 @@ export {
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
+  resolveSuinsTool,
 };

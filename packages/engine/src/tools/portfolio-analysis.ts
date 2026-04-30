@@ -7,10 +7,14 @@ import {
   type DefiSummary,
 } from '../blockvision-prices.js';
 import { fetchAudricPortfolio } from '../audric-api.js';
+import { normalizeAddressInput } from '../sui-address.js';
 import type { ServerPositionData } from '../types.js';
 
 const inputSchema = z.object({
-  address: z.string().optional().describe('Sui address to analyze (defaults to connected wallet)'),
+  address: z
+    .string()
+    .optional()
+    .describe('Sui address (0x…) or SuiNS name (alex.sui) to analyze. Defaults to the signed-in wallet when omitted.'),
 });
 
 interface AssetAllocation {
@@ -57,6 +61,16 @@ interface PortfolioResult {
   dailyEarning?: number;
   weekChange?: WeekChange;
   priceSource: AddressPortfolio['source'];
+  /** Resolved on-chain address (post SuiNS normalization). */
+  address?: string;
+  /** True when the resolved address matches the signed-in wallet. */
+  isSelfQuery?: boolean;
+  /**
+   * Original SuiNS name when the user passed `address: "alex.sui"`,
+   * otherwise null. Host cards use this to title the result with the
+   * human-readable name instead of the truncated 0x address.
+   */
+  suinsName?: string | null;
 }
 
 const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
@@ -64,18 +78,33 @@ const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
 export const portfolioAnalysisTool = buildTool({
   name: 'portfolio_analysis',
   description:
-    'Analyze portfolio allocation, risk exposure, and yield optimization. Shows asset breakdown, diversification score, health factor assessment, and actionable suggestions.',
+    'Analyze portfolio allocation, risk exposure, and yield optimization for the signed-in user OR any public Sui address or SuiNS name. Shows asset breakdown, diversification score, health factor assessment, and actionable suggestions. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to analyze a contact / watched / public wallet.',
   inputSchema,
   jsonSchema: {
     type: 'object',
     properties: {
-      address: { type: 'string', description: 'Sui address to analyze (defaults to connected wallet)' },
+      address: {
+        type: 'string',
+        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
+      },
     },
     required: [],
   },
   isReadOnly: true,
   async call(input, context) {
-    const address = input.address ?? context.walletAddress;
+    // [v1.2 SuiNS] Normalize the user-supplied address (0x or *.sui).
+    let suinsName: string | null = null;
+    let address: string | undefined;
+    if (input.address) {
+      const normalized = await normalizeAddressInput(input.address, {
+        suiRpcUrl: context.suiRpcUrl,
+        signal: context.signal,
+      });
+      address = normalized.address;
+      suinsName = normalized.suinsName;
+    } else {
+      address = context.walletAddress;
+    }
     if (!address) {
       throw new Error('No wallet address provided. Sign in first.');
     }
@@ -331,6 +360,11 @@ export const portfolioAnalysisTool = buildTool({
       dailyEarning,
       weekChange,
       priceSource: portfolio.source,
+      address,
+      isSelfQuery:
+        !!context.walletAddress &&
+        address.toLowerCase() === context.walletAddress.toLowerCase(),
+      suinsName,
     };
 
     const defiSegment = defiValue > 0

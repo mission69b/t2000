@@ -205,6 +205,7 @@ export {
   spendingAnalyticsTool,
   yieldSummaryTool,
   activitySummaryTool,
+  resolveSuinsTool,
 } from './tools/index.js';
 
 // Built-in tools — writes
@@ -233,6 +234,23 @@ export { requireAgent, hasNaviMcp, getMcpManager, getWalletAddress } from './too
 // Sui RPC utilities
 export { fetchWalletCoins } from './sui-rpc.js';
 export type { WalletCoin, SuiCoinBalance } from './sui-rpc.js';
+
+// [v1.2 SuiNS] Address normalization (canonical 0x ↔ SuiNS resolver).
+// Audric can re-export `looksLikeSuiNs` to keep the host-side
+// suins-resolver thin, and surface `SuinsRpcError` etc. for typed
+// error narration.
+export {
+  normalizeAddressInput,
+  resolveSuinsViaRpc,
+  looksLikeSuiNs,
+  SUI_ADDRESS_REGEX,
+  SUI_ADDRESS_STRICT_REGEX,
+  SUINS_NAME_REGEX,
+  InvalidAddressError,
+  SuinsNotRegisteredError,
+  SuinsRpcError,
+} from './sui-address.js';
+export type { NormalizedAddress } from './sui-address.js';
 
 // [v1.4 — Day 2] BlockVision Indexer REST API price resolver. Replaced the
 // legacy DefiLlama `fetchTokenPrices` export wholesale: the

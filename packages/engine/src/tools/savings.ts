@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { fetchSavings } from '../navi-reads.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
+import { normalizeAddressInput } from '../sui-address.js';
 import type { PositionEntry, SavingsResult } from '../navi-transforms.js';
 import type { ServerPositionData } from '../types.js';
 
 const DUST_THRESHOLD_USD = 0.01;
-const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{1,64}$/;
 
 function buildSavingsFromPositions(sp: ServerPositionData): SavingsResult {
   const positions: PositionEntry[] = [
@@ -60,14 +60,14 @@ function formatSavingsDisplay(
   result: SavingsResult,
   isSelfQuery: boolean = true,
   address?: string,
+  suinsName?: string | null,
 ): string {
   const { positions, earnings, fundStatus } = result;
   const supplies = positions.filter((p) => p.type === 'supply');
   const borrows = positions.filter((p) => p.type === 'borrow');
 
-  const subjectPrefix = isSelfQuery || !address
-    ? ''
-    : `${address.slice(0, 6)}…${address.slice(-4)} — `;
+  const subjectLabel = suinsName ?? (address ? `${address.slice(0, 6)}…${address.slice(-4)}` : null);
+  const subjectPrefix = isSelfQuery || !subjectLabel ? '' : `${subjectLabel} — `;
 
   const lines: string[] = [];
   if (supplies.length > 0) {
@@ -90,21 +90,19 @@ function formatSavingsDisplay(
 export const savingsInfoTool = buildTool({
   name: 'savings_info',
   description:
-    'Get detailed savings positions and earnings for the signed-in user OR any public Sui address: current deposits by protocol, APY, total yield earned, daily earning rate, and projected monthly returns. Pass `address` to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
+    'Get detailed savings positions and earnings for the signed-in user OR any public Sui address or SuiNS name: current deposits by protocol, APY, total yield earned, daily earning rate, and projected monthly returns. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
   inputSchema: z.object({
     address: z
       .string()
-      .regex(SUI_ADDRESS_REGEX)
       .optional()
-      .describe('Sui address to inspect (defaults to the signed-in wallet)'),
+      .describe('Sui address (0x…) or SuiNS name (alex.sui). Defaults to the signed-in wallet when omitted.'),
   }),
   jsonSchema: {
     type: 'object',
     properties: {
       address: {
         type: 'string',
-        pattern: '^0x[a-fA-F0-9]{1,64}$',
-        description: 'Sui address to inspect (defaults to the signed-in wallet)',
+        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
       },
     },
     required: [],
@@ -124,7 +122,19 @@ export const savingsInfoTool = buildTool({
      * `context.walletAddress` when the param is absent. Stamps `address`
      * + `isSelfQuery` on the result.
      */
-    const targetAddress = input.address ?? context.walletAddress;
+    // [v1.2 SuiNS] Normalize the user-supplied address (0x or *.sui).
+    let suinsName: string | null = null;
+    let targetAddress: string | undefined;
+    if (input.address) {
+      const normalized = await normalizeAddressInput(input.address, {
+        suiRpcUrl: context.suiRpcUrl,
+        signal: context.signal,
+      });
+      targetAddress = normalized.address;
+      suinsName = normalized.suinsName;
+    } else {
+      targetAddress = context.walletAddress;
+    }
     const isSelfQuery =
       !!context.walletAddress &&
       !!targetAddress &&
@@ -133,24 +143,24 @@ export const savingsInfoTool = buildTool({
     if (context.positionFetcher && targetAddress) {
       const sp = await context.positionFetcher(targetAddress);
       const result = buildSavingsFromPositions(sp);
-      const stamped = { ...result, address: targetAddress, isSelfQuery };
-      return { data: stamped, displayText: formatSavingsDisplay(result, isSelfQuery, targetAddress) };
+      const stamped = { ...result, address: targetAddress, isSelfQuery, suinsName };
+      return { data: stamped, displayText: formatSavingsDisplay(result, isSelfQuery, targetAddress, suinsName) };
     }
 
     if (hasNaviMcpGlobal(context) && targetAddress) {
       const savings = await fetchSavings(getMcpManager(context), targetAddress);
       savings.positions = savings.positions.filter((p) => p.valueUsd >= DUST_THRESHOLD_USD);
-      const stamped = { ...savings, address: targetAddress, isSelfQuery };
-      return { data: stamped, displayText: formatSavingsDisplay(savings, isSelfQuery, targetAddress) };
+      const stamped = { ...savings, address: targetAddress, isSelfQuery, suinsName };
+      return { data: stamped, displayText: formatSavingsDisplay(savings, isSelfQuery, targetAddress, suinsName) };
     }
 
     if (
-      input.address &&
+      targetAddress &&
       context.walletAddress &&
-      input.address.toLowerCase() !== context.walletAddress.toLowerCase()
+      targetAddress.toLowerCase() !== context.walletAddress.toLowerCase()
     ) {
       throw new Error(
-        `Cannot inspect ${input.address.slice(0, 8)}… without NAVI MCP or a positionFetcher. Configure NAVI MCP to enable third-party address reads.`,
+        `Cannot inspect ${targetAddress.slice(0, 8)}… without NAVI MCP or a positionFetcher. Configure NAVI MCP to enable third-party address reads.`,
       );
     }
     const agent = requireAgent(context);
@@ -188,7 +198,7 @@ export const savingsInfoTool = buildTool({
       },
     };
 
-    const stamped = { ...result, address: targetAddress ?? '', isSelfQuery: true };
-    return { data: stamped, displayText: formatSavingsDisplay(result, true, undefined) };
+    const stamped = { ...result, address: targetAddress ?? '', isSelfQuery: true, suinsName };
+    return { data: stamped, displayText: formatSavingsDisplay(result, true, undefined, suinsName) };
   },
 });

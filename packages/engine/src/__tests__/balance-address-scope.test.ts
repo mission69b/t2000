@@ -143,6 +143,44 @@ describe('[v0.49] balance_check address scope', () => {
   });
 
   /**
+   * [v1.2 SuiNS] balance_check now accepts a *.sui name. Pre-fix the
+   * Zod schema rejected anything that wasn't a 0x address, so "what's
+   * obehi.sui's balance" was untooled — the LLM either fell back to
+   * web_search (no SuiNS index) or local-contact lookup (wrong wallet).
+   * Now: the engine resolves the name via Sui RPC, queries the resolved
+   * 0x address, and stamps `suinsName` on the result so cards can title
+   * themselves "Balance · obehi.sui".
+   */
+  it('resolves a SuiNS name and queries the resolved 0x address', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(init.body as string) : null;
+      if (body?.method === 'suix_resolveNameServiceAddress') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ result: FUNKII_ADDR }),
+        } as Response;
+      }
+      throw new Error(`unexpected fetch: ${url} ${init?.body}`);
+    }) as unknown as typeof fetch;
+
+    try {
+      const res = (await balanceCheckTool.call(
+        { address: 'obehi.sui' },
+        ctx(),
+      )) as BalanceResult & { data: { suinsName?: string | null } };
+      expect(res.data.address).toBe(FUNKII_ADDR);
+      expect(res.data.suinsName).toBe('obehi.sui');
+      expect(res.data.isSelfQuery).toBe(false);
+      expect(positionFetcher).toHaveBeenCalledWith(FUNKII_ADDR);
+      expect(res.displayText).toContain('obehi.sui');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  /**
    * SDK fallback (no MCP, no positionFetcher) cannot honor a non-self
    * address because the agent is bound to its own wallet. Refuse rather
    * than silently returning the agent's balance under a wrong heading.

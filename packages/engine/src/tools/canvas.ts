@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { buildTool } from '../tool.js';
+import { normalizeAddressInput } from '../sui-address.js';
 import type { ToolResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
@@ -99,6 +100,27 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
     const title = CANVAS_TITLES[template];
 
     /**
+     * [v1.2 SuiNS] Pre-resolve `params.address` once at the top of
+     * `call()` (instead of inside the per-template branches) so that
+     * SuiNS names like \`alex.sui\` work for every address-aware
+     * template without each branch having to thread normalization
+     * through. Templates already index the resolved 0x for any
+     * downstream API call; the original SuiNS name is preserved in
+     * `suinsName` so the canvas can title itself with the human-readable
+     * name (e.g. "Activity for alex.sui").
+     */
+    let suinsName: string | null = null;
+    let resolvedParamAddress: string | null = null;
+    if (params?.address) {
+      const normalized = await normalizeAddressInput(params.address, {
+        suiRpcUrl: context.suiRpcUrl,
+        signal: context.signal,
+      });
+      resolvedParamAddress = normalized.address;
+      suinsName = normalized.suinsName;
+    }
+
+    /**
      * [v0.48] Address resolution for the four address-aware templates
      * (activity_heatmap, portfolio_timeline, spending_breakdown,
      * watch_address). Pre-v0.48 only `watch_address` consulted
@@ -117,13 +139,21 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
      * from…"). Without this flag, a heatmap cell click on a watched
      * address routes back into the user's own transaction history.
      */
-    const resolveAddressTarget = (): { address: string | null; isSelfRender: boolean } => {
-      const fromParams = params?.address;
+    const resolveAddressTarget = (): { address: string | null; isSelfRender: boolean; suinsName: string | null } => {
+      const fromParams = resolvedParamAddress;
       const fromContext = context.walletAddress;
       const target = fromParams ?? fromContext ?? null;
       const isSelfRender = !!target && !!fromContext && target.toLowerCase() === fromContext.toLowerCase();
-      return { address: target, isSelfRender };
+      return { address: target, isSelfRender, suinsName };
     };
+
+    /**
+     * [v1.2 SuiNS] Prefer the human-readable SuiNS name in titles +
+     * narration when present; fall back to the truncated 0x address.
+     * Used by every address-aware template's titleSuffix + displayText.
+     */
+    const formatAddrLabel = (address: string, suins: string | null): string =>
+      suins ?? `${address.slice(0, 6)}…${address.slice(-4)}`;
 
     // Full portfolio — 4-panel capstone with live position data
     if (template === 'full_portfolio') {
@@ -136,7 +166,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
        * routes (`/api/balances`, `/api/savings`, etc.), so we just hand
        * it the address + isSelfRender flag.
        */
-      const { address, isSelfRender } = resolveAddressTarget();
+      const { address, isSelfRender, suinsName: resolvedSuins } = resolveAddressTarget();
       if (!address) {
         return {
           data: {
@@ -148,7 +178,8 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
           displayText: 'Full Portfolio requires an address.',
         };
       }
-      const titleSuffix = isSelfRender ? '' : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
+      const addrLabel = formatAddrLabel(address, resolvedSuins);
+      const titleSuffix = isSelfRender ? '' : ` — ${addrLabel}`;
       const pos = isSelfRender ? context.serverPositions : null;
       const rate = normalizeSavingsRate(pos?.savingsRate);
       const savings = pos?.savings ?? 0;
@@ -162,6 +193,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
             available: true,
             address,
             isSelfRender,
+            suinsName: resolvedSuins,
             currentSavings: savings,
             currentDebt: borrows,
             healthFactor: pos?.healthFactor ?? null,
@@ -170,38 +202,41 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
         },
         displayText: isSelfRender
           ? `Opened Full Portfolio Overview.`
-          : `Opened Full Portfolio Overview for ${address.slice(0, 6)}…${address.slice(-4)}.`,
+          : `Opened Full Portfolio Overview for ${addrLabel}.`,
       };
     }
 
-    // Watch address — show balances for any public Sui address
+    // Watch address — show balances for any public Sui address (or SuiNS name).
     if (template === 'watch_address') {
-      const targetAddress = params?.address ?? '';
-      if (!targetAddress || !targetAddress.startsWith('0x')) {
+      // [v1.2 SuiNS] resolvedParamAddress comes from the top-of-call
+      // normalization, so a SuiNS name like "alex.sui" resolves here.
+      const targetAddress = resolvedParamAddress ?? '';
+      if (!targetAddress) {
         return {
           data: {
             __canvas: true,
             template,
             title,
-            templateData: { available: false, message: 'Please provide a valid Sui address to watch.' },
+            templateData: { available: false, message: 'Please provide a valid Sui address or SuiNS name to watch.' },
           },
-          displayText: 'No valid address provided. Ask the user for a Sui address.',
+          displayText: 'No valid address provided. Ask the user for a Sui address or SuiNS name.',
         };
       }
+      const addrLabel = formatAddrLabel(targetAddress, suinsName);
       return {
         data: {
           __canvas: true,
           template,
-          title: `Watch ${targetAddress.slice(0, 6)}…${targetAddress.slice(-4)}`,
-          templateData: { available: true, address: targetAddress },
+          title: `Watch ${addrLabel}`,
+          templateData: { available: true, address: targetAddress, suinsName },
         },
-        displayText: `Opened Watch Address canvas for ${targetAddress.slice(0, 6)}…${targetAddress.slice(-4)}.`,
+        displayText: `Opened Watch Address canvas for ${addrLabel}.`,
       };
     }
 
     // Portfolio timeline — fetches from /api/analytics/portfolio-history
     if (template === 'portfolio_timeline') {
-      const { address, isSelfRender } = resolveAddressTarget();
+      const { address, isSelfRender, suinsName: resolvedSuins } = resolveAddressTarget();
       if (!address) {
         return {
           data: {
@@ -213,9 +248,8 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
           displayText: 'Portfolio Timeline requires an address.',
         };
       }
-      const titleSuffix = isSelfRender
-        ? ''
-        : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
+      const addrLabel = formatAddrLabel(address, resolvedSuins);
+      const titleSuffix = isSelfRender ? '' : ` — ${addrLabel}`;
       return {
         data: {
           __canvas: true,
@@ -225,17 +259,18 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
             available: true,
             address,
             isSelfRender,
+            suinsName: resolvedSuins,
           },
         },
         displayText: isSelfRender
           ? `Opened Portfolio Timeline. Shows your net worth, savings, and debt over time.`
-          : `Opened Portfolio Timeline for ${address.slice(0, 6)}…${address.slice(-4)}.`,
+          : `Opened Portfolio Timeline for ${addrLabel}.`,
       };
     }
 
     // Spending breakdown — fetches from /api/analytics/spending
     if (template === 'spending_breakdown') {
-      const { address, isSelfRender } = resolveAddressTarget();
+      const { address, isSelfRender, suinsName: resolvedSuins } = resolveAddressTarget();
       if (!address) {
         return {
           data: {
@@ -247,9 +282,8 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
           displayText: 'Spending Breakdown requires an address.',
         };
       }
-      const titleSuffix = isSelfRender
-        ? ''
-        : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
+      const addrLabel = formatAddrLabel(address, resolvedSuins);
+      const titleSuffix = isSelfRender ? '' : ` — ${addrLabel}`;
       return {
         data: {
           __canvas: true,
@@ -259,17 +293,18 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
             available: true,
             address,
             isSelfRender,
+            suinsName: resolvedSuins,
           },
         },
         displayText: isSelfRender
           ? `Opened Spending Breakdown. Shows your service spending by category.`
-          : `Opened Spending Breakdown for ${address.slice(0, 6)}…${address.slice(-4)}.`,
+          : `Opened Spending Breakdown for ${addrLabel}.`,
       };
     }
 
     // Activity heatmap — client-side fetches from /api/analytics/activity-heatmap
     if (template === 'activity_heatmap') {
-      const { address, isSelfRender } = resolveAddressTarget();
+      const { address, isSelfRender, suinsName: resolvedSuins } = resolveAddressTarget();
       if (!address) {
         return {
           data: {
@@ -281,9 +316,8 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
           displayText: 'Activity Heatmap requires an address.',
         };
       }
-      const titleSuffix = isSelfRender
-        ? ''
-        : ` — ${address.slice(0, 6)}…${address.slice(-4)}`;
+      const addrLabel = formatAddrLabel(address, resolvedSuins);
+      const titleSuffix = isSelfRender ? '' : ` — ${addrLabel}`;
       return {
         data: {
           __canvas: true,
@@ -293,11 +327,12 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
             available: true,
             address,
             isSelfRender,
+            suinsName: resolvedSuins,
           },
         },
         displayText: isSelfRender
           ? `Opened Activity Heatmap for your wallet. Click any day to explore transactions.`
-          : `Opened Activity Heatmap for ${address.slice(0, 6)}…${address.slice(-4)}. Click any day to explore that address's transactions.`,
+          : `Opened Activity Heatmap for ${addrLabel}. Click any day to explore that address's transactions.`,
       };
     }
 
@@ -332,7 +367,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
        * `address` via `/api/health` to populate the live HF readout,
        * so seeding here is just for the slider initial state.
        */
-      const { address: targetAddress, isSelfRender } = resolveAddressTarget();
+      const { address: targetAddress, isSelfRender, suinsName: resolvedSuins } = resolveAddressTarget();
       const seedFromPos = isSelfRender;
       const seedSavings = seedFromPos ? totalSavings : 0;
       const seedBorrows = seedFromPos ? totalBorrows : 0;
@@ -342,7 +377,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
         : (seedBorrows > 0 ? parseFloat(seedBorrows.toFixed(4)) : 0);
       const titleSuffix = !targetAddress || isSelfRender
         ? ''
-        : ` — ${targetAddress.slice(0, 6)}…${targetAddress.slice(-4)}`;
+        : ` — ${formatAddrLabel(targetAddress, resolvedSuins)}`;
       return {
         data: {
           __canvas: true,
@@ -352,6 +387,7 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
             available: true,
             address: targetAddress ?? '',
             isSelfRender,
+            suinsName: resolvedSuins,
             initialCollateral: seedSavings > 0 ? Math.round(seedSavings) : 1500,
             initialDebt: roundedDebt > 0 ? roundedDebt : (seedSavings > 0 ? 0 : 500),
             currentHf: seedHf,

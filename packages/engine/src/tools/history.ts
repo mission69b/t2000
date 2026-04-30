@@ -8,6 +8,7 @@ import {
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 import { fetchAudricHistory } from '../audric-api.js';
+import { normalizeAddressInput } from '../sui-address.js';
 
 type RpcBalanceChange = ClassifyBalanceChange;
 
@@ -241,16 +242,10 @@ type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 
 const DEFAULT_LOOKBACK_DAYS = 30;
 
-/**
- * Sui address regex — used for the new `address` and `counterparty`
- * params. Pre-v0.48 the tool only ever queried `context.walletAddress`,
- * so address validation was implicit. Now that callers can pass a third
- * party (a watched address, a saved contact), reject anything that isn't
- * the canonical 0x + 64 hex-char shape so a typo can't silently fall
- * back to "the user's own history" — that masquerade would put the
- * wrong card in front of the user.
- */
-const SUI_ADDRESS_REGEX = /^0x[0-9a-fA-F]{64}$/;
+// [v1.2 SuiNS] The local SUI_ADDRESS_REGEX has moved to `sui-address.ts`
+// (canonical normalizer). The Zod schema below accepts both 0x addresses
+// and *.sui names; `normalizeAddressInput` validates and resolves at the
+// top of `call()`.
 
 export const transactionHistoryTool = buildTool({
   name: 'transaction_history',
@@ -263,14 +258,12 @@ export const transactionHistoryTool = buildTool({
     limit: z.number().int().min(1).max(50).optional(),
     address: z
       .string()
-      .regex(SUI_ADDRESS_REGEX, 'Must be a 0x-prefixed 64-hex Sui address')
       .optional()
-      .describe('Sui address to query history FOR. When omitted, defaults to the signed-in user\'s wallet. Pass this when the user asks about a contact\'s, watched address\'s, or any other public wallet\'s history.'),
+      .describe('Sui address (0x…) or SuiNS name (e.g. "alex.sui") to query history FOR. When omitted, defaults to the signed-in user\'s wallet. Pass this when the user asks about a contact\'s, watched address\'s, or any other public wallet\'s history.'),
     counterparty: z
       .string()
-      .regex(SUI_ADDRESS_REGEX, 'Must be a 0x-prefixed 64-hex Sui address')
       .optional()
-      .describe('Sui address to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries. Compares against `tx.recipient` (case-insensitive).'),
+      .describe('Sui address (0x…) or SuiNS name (e.g. "alex.sui") to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries. Compares against `tx.recipient` (case-insensitive).'),
     date: z.string().optional().describe('Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.'),
     action: z.enum(HISTORY_ACTIONS).optional().describe('Filter by action: send, lending, swap, or transaction.'),
     minUsd: z.number().min(0).optional().describe('Minimum transaction amount in USD. Use this for "transactions over $X" — the amount is converted to USD using the asset price snapshot.'),
@@ -286,11 +279,11 @@ export const transactionHistoryTool = buildTool({
       },
       address: {
         type: 'string',
-        description: 'Sui address to query history FOR (defaults to the signed-in user when omitted). Use for queries about a contact\'s, watched address\'s, or any other wallet\'s history.',
+        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui) to query history FOR (defaults to the signed-in user when omitted). The engine resolves SuiNS names to addresses before querying. Use for queries about a contact\'s, watched address\'s, or any other wallet\'s history.',
       },
       counterparty: {
         type: 'string',
-        description: 'Sui address to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries.',
+        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui) to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries.',
       },
       date: {
         type: 'string',
@@ -373,18 +366,42 @@ export const transactionHistoryTool = buildTool({
     const assetSymbol = input.assetSymbol?.toLowerCase();
     const direction = input.direction;
     const minUsd = input.minUsd;
-    const counterpartyLower = input.counterparty?.toLowerCase();
 
     /**
-     * Resolve the address whose history we're fetching. `input.address`
-     * (when present and Zod-validated) takes precedence; falls back to
+     * [v1.2 SuiNS] Normalize both the primary address and counterparty
+     * (each accepts a 0x address OR a *.sui name). Uses `Promise.all`
+     * so a SuiNS round-trip on either field doesn't add up serially.
+     */
+    const [normalizedAddress, normalizedCounterparty] = await Promise.all([
+      input.address
+        ? normalizeAddressInput(input.address, {
+            suiRpcUrl: context.suiRpcUrl,
+            signal: context.signal,
+          })
+        : Promise.resolve(null),
+      input.counterparty
+        ? normalizeAddressInput(input.counterparty, {
+            suiRpcUrl: context.suiRpcUrl,
+            signal: context.signal,
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const suinsName = normalizedAddress?.suinsName ?? null;
+    const counterpartySuinsName = normalizedCounterparty?.suinsName ?? null;
+    const counterpartyLower = normalizedCounterparty?.address.toLowerCase();
+
+    /**
+     * Resolve the address whose history we're fetching. Normalized
+     * `input.address` (when present) takes precedence; falls back to
      * the signed-in user. Tracking `isSelfQuery` lets the result payload
      * advertise whether the rows belong to the user or a third party,
      * which the frontend card uses to title itself ("Recent
-     * Transactions" vs "0x40cd…3e62 — Recent Transactions") and which
-     * the LLM uses to narrate correctly without re-typing the address.
+     * Transactions" vs "alex.sui — Recent Transactions" vs "0x40cd…3e62
+     * — Recent Transactions") and which the LLM uses to narrate
+     * correctly without re-typing the address.
      */
-    const targetAddress = input.address ?? context.walletAddress;
+    const targetAddress = normalizedAddress?.address ?? context.walletAddress;
     const isSelfQuery =
       !!targetAddress &&
       !!context.walletAddress &&
@@ -463,9 +480,13 @@ export const transactionHistoryTool = buildTool({
       minUsd: minUsd ?? null,
       assetSymbol: input.assetSymbol ?? null,
       direction: direction ?? null,
-      counterparty: input.counterparty ?? null,
+      // Pre-resolved counterparty address (for the LLM/UI). Original
+      // SuiNS name is preserved in `counterpartySuinsName` below.
+      counterparty: normalizedCounterparty?.address ?? null,
+      counterpartySuinsName,
       address: targetAddress ?? null,
       isSelfQuery,
+      suinsName,
     };
 
     /**
