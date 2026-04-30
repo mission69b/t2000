@@ -225,3 +225,36 @@ describe('[v0.49] health_simulator seeds neutral defaults for watched addresses'
     expect(res.data.title).toContain(FUNKII_ADDR.slice(-4));
   });
 });
+
+/**
+ * [v1.2.1 — bug fix] Non-address-aware templates must NOT trigger
+ * address normalization, even when the LLM accidentally passes a
+ * `params.address`. Pre-fix, `yield_projector` and `dca_planner` would
+ * crash with `InvalidAddressError` if the LLM passed a malformed
+ * address to them — even though those templates ignore the address
+ * entirely.
+ *
+ * The canvas tool now scopes the normalization to the six
+ * address-aware templates only.
+ */
+describe('[v1.2.1 — bug fix] non-address-aware templates ignore params.address', () => {
+  it('yield_projector does NOT throw on malformed params.address', async () => {
+    const res = (await renderCanvasTool.call(
+      { template: 'yield_projector', params: { address: 'not-an-address-at-all' } },
+      baseCtx,
+    )) as CanvasResult;
+    expect(res.data.template).toBe('yield_projector');
+    expect(res.data.templateData.available).toBe(true);
+  });
+
+  it('dca_planner does NOT throw on a SuiNS name (no RPC round-trip)', async () => {
+    // Even if the SuiNS RPC would succeed, dca_planner doesn't use
+    // the address — it should never be called.
+    const res = (await renderCanvasTool.call(
+      { template: 'dca_planner', params: { address: 'some.sui' } },
+      baseCtx,
+    )) as CanvasResult;
+    expect(res.data.template).toBe('dca_planner');
+    expect(res.data.templateData.available).toBe(true);
+  });
+});

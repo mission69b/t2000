@@ -108,10 +108,24 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
      * downstream API call; the original SuiNS name is preserved in
      * `suinsName` so the canvas can title itself with the human-readable
      * name (e.g. "Activity for alex.sui").
+     *
+     * SCOPE. Only normalize for the six address-aware templates. The
+     * pure simulators (`yield_projector`, `dca_planner`) ignore
+     * `params.address` entirely — running the normalizer for them would
+     * regress to "transient SuiNS RPC failure crashes a yield-projector
+     * canvas the user didn't even ask to be address-scoped".
      */
+    const ADDRESS_AWARE_TEMPLATES = new Set<CanvasTemplate>([
+      'full_portfolio',
+      'watch_address',
+      'portfolio_timeline',
+      'spending_breakdown',
+      'activity_heatmap',
+      'health_simulator',
+    ]);
     let suinsName: string | null = null;
     let resolvedParamAddress: string | null = null;
-    if (params?.address) {
+    if (params?.address && ADDRESS_AWARE_TEMPLATES.has(template)) {
       const normalized = await normalizeAddressInput(params.address, {
         suiRpcUrl: context.suiRpcUrl,
         signal: context.signal,
