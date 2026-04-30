@@ -207,15 +207,24 @@ describe('[PR 1 — v0.55] InMemoryWalletCacheStore', () => {
 
   it('delete removes a single address only', async () => {
     const store = new InMemoryWalletCacheStore();
-    const e = (totalUsd: number) => ({
-      data: { coins: [], totalUsd, pricedAt: Date.now(), source: 'blockvision' as const },
-      pricedAt: Date.now(),
-    });
-    await store.set('0xa', e(1), 60);
-    await store.set('0xb', e(2), 60);
+    // Pre-compute the entries once so that the round-trip equality assertion
+    // below compares stable references — pre-fix, `e(2)` was called twice and
+    // the two `Date.now()` calls inside it could differ by 1ms in CI, causing
+    // a flaky `pricedAt` mismatch on `toEqual(e(2))`.
+    const e = (totalUsd: number) => {
+      const now = Date.now();
+      return {
+        data: { coins: [], totalUsd, pricedAt: now, source: 'blockvision' as const },
+        pricedAt: now,
+      };
+    };
+    const a = e(1);
+    const b = e(2);
+    await store.set('0xa', a, 60);
+    await store.set('0xb', b, 60);
     await store.delete('0xa');
     expect(await store.get('0xa')).toBeNull();
-    expect(await store.get('0xb')).toEqual(e(2));
+    expect(await store.get('0xb')).toEqual(b);
   });
 
   it('clear removes all entries', async () => {
