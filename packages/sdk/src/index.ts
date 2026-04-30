@@ -131,6 +131,8 @@ export {
   resolveTokenType,
   resolveSymbol,
   getDecimalsForCoinType,
+  getCoinMeta,
+  isInRegistry,
   isTier1,
   isTier2,
   isSupported,

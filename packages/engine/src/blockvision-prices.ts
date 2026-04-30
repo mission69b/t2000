@@ -29,7 +29,7 @@
 // path so callers can decide whether to badge "approximate" totals.
 // ---------------------------------------------------------------------------
 
-import { getDecimalsForCoinType, resolveSymbol, normalizeCoinType } from '@t2000/sdk';
+import { getDecimalsForCoinType, resolveSymbol, normalizeCoinType, isInRegistry } from '@t2000/sdk';
 import { fetchWalletCoins } from './sui-rpc.js';
 import { getDefiCacheStore, type DefiCacheEntry, type DefiCacheStore } from './defi-cache.js';
 import { getWalletCacheStore, type WalletCacheEntry, type WalletCacheStore } from './wallet-cache.js';
@@ -627,7 +627,26 @@ async function fetchPortfolioFromBlockVision(
   const rawCoins = json.result.coins ?? [];
   const coins: PortfolioCoin[] = rawCoins.map((c) => {
     const coinType = c.coinType;
-    const symbol = c.symbol || resolveSymbol(coinType);
+    // [v0.55.0 Fix 1] Prefer canonical SDK symbol over the raw symbol returned
+    // by BlockVision when the coin type is in COIN_REGISTRY. BlockVision can
+    // return uppercase variants (e.g. 'USDSUI') that don't match the canonical
+    // mixed-case symbol ('USDsui'), and downstream consumers (balance.ts
+    // STABLE_SYMBOLS set + saveableUsdsui find, audric chip flows, useBalance
+    // hook) all key off the canonical form. The earlier `c.symbol || resolveSymbol`
+    // ordering caused saveableUsdsui to read 0 right after a USDC→USDsui swap
+    // because BV's 'USDSUI' beat the registry's 'USDsui' and the find() missed.
+    //
+    // We use `isInRegistry` (NOT `isSupported`) on purpose: USDsui/USDe/USDT
+    // are legacy/no-tier registry entries today, but they STILL have canonical
+    // symbol metadata that downstream code keys off. `isSupported` would
+    // exclude them and re-introduce the bug.
+    //
+    // For coins NOT in the registry (memecoins, long-tail tokens) we fall
+    // back to whatever BV returns since it's typically more user-friendly
+    // than resolveSymbol's last-segment heuristic.
+    const symbol = isInRegistry(coinType)
+      ? resolveSymbol(coinType)
+      : c.symbol || resolveSymbol(coinType);
     const decimals = typeof c.decimals === 'number' ? c.decimals : getDecimalsForCoinType(coinType);
     const stablePrice = STABLE_USD_PRICES[coinType];
     const apiPrice = parseNumberOrNull(c.price);

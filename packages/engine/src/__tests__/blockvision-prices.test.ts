@@ -114,6 +114,66 @@ describe('blockvision-prices — fetchAddressPortfolio', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('1b) [v0.55 Fix 1] canonical SDK symbol wins over BlockVision raw symbol for known coin types', async () => {
+    // Regression guard: BlockVision returns 'USDSUI' (uppercase) but the
+    // SDK token registry's canonical symbol is 'USDsui' (mixed case).
+    // Downstream consumers — balance.ts STABLE_SYMBOLS, the saveableUsdsui
+    // find() in balance.ts, the audric chip flows that key off
+    // `assetBalances['USDsui']` — all use the canonical form. Pre-fix,
+    // `c.symbol || resolveSymbol(coinType)` let BV's 'USDSUI' win and
+    // saveableUsdsui silently read 0 right after a USDC→USDsui swap.
+    // Post-fix, isSupported(coinType) routes known types through the
+    // registry first, so the symbol is always 'USDsui' regardless of what
+    // BV returned. For coins NOT in the registry (memecoins) we keep BV's
+    // symbol since it's typically more user-friendly than the last-segment
+    // fallback inside resolveSymbol.
+    const { COIN_REGISTRY } = await import('@t2000/sdk');
+    // The registry keys are UPPERCASE (e.g. 'USDSUI') but the canonical
+    // symbol is mixed case ('USDsui'). The fix relies on the symbol field,
+    // not the registry key.
+    const usdsuiType = COIN_REGISTRY.USDSUI?.type;
+    if (!usdsuiType) {
+      throw new Error('USDSUI not in COIN_REGISTRY — registry restructured?');
+    }
+
+    const fetchMock = vi.fn(async () =>
+      mockJsonResponse({
+        code: 200,
+        message: 'OK',
+        result: {
+          coins: [
+            {
+              coinType: usdsuiType,
+              symbol: 'USDSUI', // BV uppercase — the bug source
+              decimals: 6,
+              balance: '5000000',
+              usdValue: '5.00',
+              price: '1.00',
+            },
+            {
+              // Unknown coin (no registry entry) — should keep BV's symbol.
+              coinType: '0xfeed::dog::PEPE',
+              symbol: 'pepe-coin',
+              decimals: 9,
+              balance: '1000000000',
+              usdValue: '0.50',
+              price: '0.50',
+            },
+          ],
+          usdValue: '5.50',
+        },
+      }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const portfolio = await fetchAddressPortfolio(ADDRESS, 'test-key');
+    const usdsui = portfolio.coins.find((c) => c.coinType === usdsuiType);
+    expect(usdsui?.symbol).toBe('USDsui');
+
+    const pepe = portfolio.coins.find((c) => c.coinType === '0xfeed::dog::PEPE');
+    expect(pepe?.symbol).toBe('pepe-coin');
+  });
+
   it('2) 5xx on BOTH BV endpoints → falls back to Sui-RPC + hardcoded stables (source = sui-rpc-degraded)', async () => {
     const fetchMock = vi.fn(async (input: FetchInput) => {
       if (isBlockVisionHost(input)) {

@@ -55,6 +55,30 @@ for (const meta of Object.values(COIN_REGISTRY)) {
   BY_TYPE.set(meta.type, meta);
 }
 
+// ── Lookup helpers ───────────────────────────────────────────────────────
+
+/**
+ * Returns the registry metadata for a coin type, or `undefined` if the coin
+ * is not in the registry. Use this when you need to distinguish "known coin"
+ * from "supported coin" — `isSupported` only flags tiered (active) coins,
+ * but legacy coins like USDsui / USDe / USDT are in the registry without a
+ * tier and still need canonical-symbol resolution.
+ */
+export function getCoinMeta(coinType: string): CoinMeta | undefined {
+  return BY_TYPE.get(coinType);
+}
+
+/**
+ * Returns true if the coin type appears anywhere in COIN_REGISTRY (tier 1, 2,
+ * OR legacy/no-tier). Different from `isSupported`, which excludes legacy
+ * entries. The blockvision-prices canonical-symbol gate uses this looser
+ * check so that USDsui (legacy/no-tier today, but with a registry-canonical
+ * mixed-case symbol) still wins over BlockVision's uppercase 'USDSUI'.
+ */
+export function isInRegistry(coinType: string): boolean {
+  return BY_TYPE.has(coinType);
+}
+
 // ── Tier helpers ─────────────────────────────────────────────────────────
 
 /** Returns true if the coin type is Tier 1 (USDC — the financial layer). */
