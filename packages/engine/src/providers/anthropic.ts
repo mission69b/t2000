@@ -63,7 +63,6 @@ export class AnthropicProvider implements LLMProvider {
         if (!yieldedAnything && isRetriableError(err) && attempt < this.maxRetries) {
           attempt++;
           const delayMs = computeBackoffMs(attempt);
-          // eslint-disable-next-line no-console
           console.warn(
             `[anthropic] retriable error (attempt ${attempt}/${this.maxRetries}, retrying in ${delayMs}ms): ${rawErrorMessage(err)}`,
           );

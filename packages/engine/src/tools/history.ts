@@ -9,8 +9,6 @@ import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 import { fetchAudricHistory } from '../audric-api.js';
 
-const SUI_MAINNET_URL = 'https://fullnode.mainnet.sui.io:443';
-
 type RpcBalanceChange = ClassifyBalanceChange;
 
 interface RpcTxBlock {

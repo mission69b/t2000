@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 describe('server', () => {
   it('has required env var list', async () => {
-    const { default: app } = await import('./index.js').catch(() => ({ default: null }));
+    await import('./index.js').catch(() => null);
     expect(true).toBe(true);
   });
 });

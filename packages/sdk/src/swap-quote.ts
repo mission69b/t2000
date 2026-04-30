@@ -12,7 +12,7 @@ export async function getSwapQuote(params: {
   amount: number;
   byAmountIn?: boolean;
 }): Promise<SwapQuoteResult> {
-  const { findSwapRoute, resolveTokenType, TOKEN_MAP } = await import('./protocols/cetus-swap.js');
+  const { findSwapRoute, resolveTokenType } = await import('./protocols/cetus-swap.js');
 
   const fromType = resolveTokenType(params.from);
   const toType = resolveTokenType(params.to);

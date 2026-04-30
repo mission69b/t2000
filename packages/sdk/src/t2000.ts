@@ -55,7 +55,7 @@ import type {
   UnstakeVSuiResult,
 } from './types.js';
 import { T2000Error } from './errors.js';
-import { SUPPORTED_ASSETS, DEFAULT_NETWORK, MIST_PER_SUI, assertAllowedAsset, type SupportedAsset } from './constants.js';
+import { SUPPORTED_ASSETS, MIST_PER_SUI, assertAllowedAsset, type SupportedAsset } from './constants.js';
 
 import { truncateAddress } from './utils/sui.js';
 import { SafeguardEnforcer } from './safeguards/enforcer.js';
@@ -336,7 +336,7 @@ export class T2000 extends EventEmitter<T2000Events> {
   }): Promise<SwapResult> {
     this.enforcer.assertNotLocked();
 
-    const { findSwapRoute, buildSwapTx, resolveTokenType, TOKEN_MAP } = await import('./protocols/cetus-swap.js');
+    const { findSwapRoute, buildSwapTx, resolveTokenType } = await import('./protocols/cetus-swap.js');
 
     const fromType = resolveTokenType(params.from);
     const toType = resolveTokenType(params.to);
@@ -470,7 +470,7 @@ export class T2000 extends EventEmitter<T2000Events> {
     amount: number;
     byAmountIn?: boolean;
   }): Promise<SwapQuoteResult> {
-    const { findSwapRoute, resolveTokenType, TOKEN_MAP } = await import('./protocols/cetus-swap.js');
+    const { findSwapRoute, resolveTokenType } = await import('./protocols/cetus-swap.js');
 
     const fromType = resolveTokenType(params.from);
     const toType = resolveTokenType(params.to);

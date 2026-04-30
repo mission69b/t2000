@@ -43,7 +43,7 @@ afterEach(() => {
 
 type FetchInput = Parameters<typeof fetch>[0];
 
-function mockJsonResponse(json: unknown, ok = true, status = 200): Response {
+function mockJsonResponse(json: unknown, _ok = true, status = 200): Response {
   return new Response(JSON.stringify(json), {
     status,
     headers: { 'Content-Type': 'application/json' },

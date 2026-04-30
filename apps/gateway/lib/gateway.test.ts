@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { fetchWithRetry } from './gateway';
 
 function mockResponse(status: number, body: unknown = {}): Response {
@@ -8,8 +8,12 @@ function mockResponse(status: number, body: unknown = {}): Response {
   });
 }
 
+// `vi.spyOn(global, 'fetch')` returns the most generic `MockInstance` shape
+// when typed as `ReturnType<typeof vi.spyOn>`, which loses fetch's overload
+// signatures and breaks `mockResolvedValueOnce(Response)` typing. Use the
+// explicit `MockInstance<typeof fetch>` form so test assertions stay typed.
 describe('fetchWithRetry — 4xx responses are never retried', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(global, 'fetch');
@@ -50,7 +54,7 @@ describe('fetchWithRetry — 4xx responses are never retried', () => {
 });
 
 describe('fetchWithRetry — 5xx responses trigger retries', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(global, 'fetch');

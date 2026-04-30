@@ -13,7 +13,6 @@ const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const SALT_LENGTH = 32;
 const IV_LENGTH = 16;
-const TAG_LENGTH = 16;
 
 interface EncryptedKey {
   version: 1;
