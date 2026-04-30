@@ -34,6 +34,23 @@ source .env.local && npx tsx scripts/run-all.ts
 |------|---------|
 | `debug-navi-positions.ts` | Raw Sui BCS decode of NAVI `UserStateInfo` for troubleshooting position reads. Not a test — inspect output by hand. |
 
+## One-off ops scripts
+
+| File | Purpose |
+|------|---------|
+| `sweep-treasury.sh` | One-time admin sweep of the deprecated Move treasury (B5 v2, 2026-04-30). Switches `sui client` to the admin keypair (`gracious-chrysoberyl`), reads the residual `Treasury<USDC>.balance`, and calls `withdraw_fees`. Idempotent — re-running on an empty treasury exits 0. Requires `sui` CLI + the admin keypair already in your local sui keystore. |
+| `b5-v2-e2e-verify.ts` | End-to-end verification of the B5 v2 fee architecture. Snapshots treasury wallet (RPC) + ProtocolFeeLedger (`/api/stats`), prompts the operator to run one Audric write, then polls for the on-chain inflow + indexer row + stats-API surfacing. Default action is `swap` (covers the Cetus overlay path); pass `--action=save` or `--action=borrow` for the other write paths. Run all three to fully cover B5 v2. |
+
+```bash
+# Admin sweep (one-time)
+bash scripts/sweep-treasury.sh
+
+# E2E verify
+npx tsx scripts/b5-v2-e2e-verify.ts                 # swap (default)
+npx tsx scripts/b5-v2-e2e-verify.ts --action=save
+npx tsx scripts/b5-v2-e2e-verify.ts --action=borrow
+```
+
 ## CLI integration tests (`cli/*.sh`)
 
 Shell wrappers that exercise `@t2000/cli` end-to-end via `npx t2000 ...`. Use these to verify that CLI UX output matches `CLI_UX_SPEC.md` after making command changes.
