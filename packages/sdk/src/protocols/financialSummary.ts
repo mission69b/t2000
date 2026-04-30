@@ -41,10 +41,10 @@ async function fetchSuiPriceUsd(client: SuiJsonRpcClient): Promise<number> {
   return 1.0;
 }
 
-export interface FinancialSummaryOptions {
-  // Reserved for future per-call options. Keeping the parameter shape stable
-  // avoids a breaking-change for callers that pass `{}` defensively.
-}
+// Reserved for future per-call options. Keeping the shape stable avoids a
+// breaking-change for callers that pass `{}` defensively. Using a type alias
+// (not `interface {}`) so eslint's no-empty-object-type rule is happy.
+export type FinancialSummaryOptions = Record<string, never>;
 
 /**
  * Fetch a complete financial snapshot for one wallet in parallel.

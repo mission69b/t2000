@@ -52,6 +52,7 @@ jobs:
       - run: pnpm --filter @t2000/mcp test
       - run: pnpm --filter @t2000/cli build
       - run: pnpm --filter @t2000/cli test
+      - run: pnpm --filter @t2000/web test
       - run: pnpm --filter gateway test
 
   adapters:

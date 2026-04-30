@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { StatsView } from "./StatsView";
 
 export const metadata: Metadata = {
@@ -17,12 +18,12 @@ export default function StatsPage() {
     <main className="min-h-screen bg-background text-foreground relative z-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <header className="mb-12 sm:mb-16">
-          <a
+          <Link
             href="/"
             className="inline-block text-muted hover:text-accent text-xs font-mono mb-8 transition-colors"
           >
             ← t2000.ai
-          </a>
+          </Link>
           <div className="flex items-center gap-4 mb-3">
             <h1 className="text-3xl sm:text-4xl font-serif italic text-foreground tracking-tight">
               Network Stats
@@ -43,9 +44,9 @@ export default function StatsPage() {
         <footer className="mt-20 pt-8 border-t border-border text-center">
           <p className="text-muted text-xs">
             t2000 — A bank account for AI agents.{" "}
-            <a href="/" className="text-accent hover:underline">
+            <Link href="/" className="text-accent hover:underline">
               Home
-            </a>{" "}
+            </Link>{" "}
             ·{" "}
             <a href="/docs" className="text-accent hover:underline">
               Docs

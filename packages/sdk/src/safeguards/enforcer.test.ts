@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SafeguardEnforcer } from './enforcer.js';
@@ -150,7 +150,6 @@ describe('SafeguardEnforcer', () => {
 
       const config = JSON.parse(readFileSync(join(dir, 'config.json'), 'utf-8'));
       config.dailyResetDate = '2020-01-01';
-      const { writeFileSync } = require('node:fs');
       writeFileSync(join(dir, 'config.json'), JSON.stringify(config, null, 2));
 
       const fresh = new SafeguardEnforcer(dir);
@@ -193,7 +192,6 @@ describe('SafeguardEnforcer', () => {
     });
 
     it('preserves non-safeguard keys in config', () => {
-      const { writeFileSync } = require('node:fs');
       writeFileSync(join(dir, 'config.json'), JSON.stringify({ rpcUrl: 'https://custom.rpc', network: 'mainnet' }, null, 2));
 
       enforcer.load();

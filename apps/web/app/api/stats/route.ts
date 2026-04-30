@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
+import { aggregateFees } from "./aggregateFees";
 
 const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
+
+// Cetus USDC/SUI pool — same address as `CETUS_USDC_SUI_POOL` in @t2000/sdk
+// (apps/web is the marketing site and doesn't depend on the SDK package).
+const CETUS_USDC_SUI_POOL = "0x51e883ba7c0b566a26cbc8a94cd33eb0abd418a77cc1e60ad22fd9b1f29cd2ab";
 
 // Treasury is a regular wallet address. Fees flow as `splitCoins + transferObjects`
 // from Audric's prepare/route.ts. MUST match `T2000_OVERLAY_FEE_WALLET` in
@@ -13,6 +18,32 @@ const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
 const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY ?? "0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012";
 
 const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
+
+/**
+ * Spot SUI/USDC from the Cetus pool. Same parser as `fetchSuiPriceUsd` in
+ * `packages/sdk/src/protocols/financialSummary.ts` — kept inline here to
+ * avoid making the SDK helper public for one stats consumer. Falls back to
+ * 1.0 if the read fails so the route never 5xxs on a price-feed glitch.
+ */
+async function fetchSuiPriceUsd(client: SuiJsonRpcClient): Promise<number> {
+  try {
+    const pool = await client.getObject({
+      id: CETUS_USDC_SUI_POOL,
+      options: { showContent: true },
+    });
+    if (pool.data?.content?.dataType === "moveObject") {
+      const fields = pool.data.content.fields as Record<string, unknown>;
+      const sqrtPrice = BigInt(String(fields.current_sqrt_price ?? "0"));
+      if (sqrtPrice > BigInt(0)) {
+        const Q64 = BigInt(2) ** BigInt(64);
+        const sqrtFloat = Number(sqrtPrice) / Number(Q64);
+        const price = 1000 / (sqrtFloat * sqrtFloat);
+        if (price > 0.01 && price < 1000) return price;
+      }
+    }
+  } catch { /* fallback */ }
+  return 1.0;
+}
 
 export async function GET() {
   const now = new Date();
@@ -83,53 +114,14 @@ async function getAgentStats(oneDayAgo: Date, sevenDaysAgo: Date, thirtyDaysAgo:
  * since (which would zero out the live RPC balance above).
  */
 async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
-  const allFees = await prisma.protocolFeeLedger.findMany({
-    select: { feeAmount: true, feeAsset: true, operation: true, createdAt: true },
-  });
+  const [allFees, suiPriceUsd] = await Promise.all([
+    prisma.protocolFeeLedger.findMany({
+      select: { feeAmount: true, feeAsset: true, operation: true, createdAt: true },
+    }),
+    fetchSuiPriceUsd(new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" })),
+  ]);
 
-  // The ledger column is raw on-chain amounts (BigInt-as-string). USDC is 6 decimals.
-  // Pre-B5 v2 rows from the deprecated `parseFeeEvents` indexer path used the same
-  // raw-amount convention, so the math is consistent across the cutover.
-  const toUsdc = (raw: unknown) => Number(raw) / 1e6;
-
-  // [B5 v2] Cetus swap overlay fees come in the swap's OUTPUT asset, which can
-  // be SUI / NAVX / etc. — not USDC. The indexer records all asset types; the
-  // stats UI shows USDC totals (the most meaningful aggregate), plus a raw
-  // by-asset breakdown so non-USDC volume is at least visible to operators.
-  const usdcFees = allFees.filter((f) => f.feeAsset === "USDC");
-  const totalUsdc = usdcFees.reduce((s, f) => s + toUsdc(f.feeAmount), 0);
-
-  const byOperation: Record<string, { count: number; totalUsdc: number }> = {};
-  for (const f of usdcFees) {
-    if (!byOperation[f.operation]) byOperation[f.operation] = { count: 0, totalUsdc: 0 };
-    byOperation[f.operation].count++;
-    byOperation[f.operation].totalUsdc += toUsdc(f.feeAmount);
-  }
-
-  // Number arithmetic (not BigInt) — some legacy ledger rows have decimal
-  // fee_amount values that BigInt() would throw on. Number is precise for fee
-  // totals up to 2^53 raw units (>> any realistic treasury size).
-  const byAsset: Record<string, { count: number; rawAmount: string }> = {};
-  for (const f of allFees) {
-    const k = f.feeAsset;
-    if (!byAsset[k]) byAsset[k] = { count: 0, rawAmount: "0" };
-    byAsset[k].count++;
-    byAsset[k].rawAmount = String(Number(byAsset[k].rawAmount) + Number(f.feeAmount));
-  }
-
-  const last24hRows = usdcFees.filter((f) => f.createdAt >= oneDayAgo);
-  const last7dRows = usdcFees.filter((f) => f.createdAt >= sevenDaysAgo);
-
-  return {
-    totalRecords: allFees.length,
-    totalUsdcCollected: +totalUsdc.toFixed(4),
-    byOperation: Object.fromEntries(
-      Object.entries(byOperation).map(([k, v]) => [k, { count: v.count, totalUsdc: +v.totalUsdc.toFixed(4) }]),
-    ),
-    byAsset,
-    last24h: { count: last24hRows.length, usdc: +last24hRows.reduce((s, f) => s + toUsdc(f.feeAmount), 0).toFixed(4) },
-    last7d: { count: last7dRows.length, usdc: +last7dRows.reduce((s, f) => s + toUsdc(f.feeAmount), 0).toFixed(4) },
-  };
+  return aggregateFees(allFees, suiPriceUsd, oneDayAgo, sevenDaysAgo);
 }
 
 async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {

@@ -176,8 +176,9 @@ export function TabbedTerminal() {
   const lines = TABS[activeTab].lines;
 
   useEffect(() => {
-    setVisibleLines(0);
     const timers: ReturnType<typeof setTimeout>[] = [];
+
+    timers.push(setTimeout(() => setVisibleLines(0), 0));
 
     let total = 400;
     lines.forEach((_, i) => {
