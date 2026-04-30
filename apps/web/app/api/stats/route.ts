@@ -114,12 +114,15 @@ async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
     byOperation[f.operation].totalUsdc += toUsdc(f.feeAmount);
   }
 
+  // Number arithmetic (not BigInt) — legacy /api/fees POST rows may have
+  // decimal fee_amount values that BigInt() would throw on. Number is precise
+  // for fee totals up to 2^53 raw units (>> any realistic treasury size).
   const byAsset: Record<string, { count: number; rawAmount: string }> = {};
   for (const f of allFees) {
     const k = f.feeAsset;
     if (!byAsset[k]) byAsset[k] = { count: 0, rawAmount: "0" };
     byAsset[k].count++;
-    byAsset[k].rawAmount = (BigInt(byAsset[k].rawAmount) + BigInt(f.feeAmount.toString())).toString();
+    byAsset[k].rawAmount = String(Number(byAsset[k].rawAmount) + Number(f.feeAmount));
   }
 
   const last24hRows = usdcFees.filter((f) => f.createdAt >= oneDayAgo);
