@@ -139,7 +139,8 @@ t2000 uses an MCP-first integration model for DeFi protocol reads, with thin tra
 | NAVI (`navi`) | Lending | save, withdraw, borrow, repay; claim rewards | Built-in |
 | Cetus Aggregator V3 | Swap | Multi-DEX swap routing (20+ DEXs); t2000 **0.1% overlay** on swaps (`overlayFeeRate` / `overlayFeeReceiver`) | Built-in |
 | VOLO | Liquid Staking | Stake SUI → vSUI, unstake vSUI → SUI | Built-in |
-| DefiLlama | Market Data | Token prices, yields, TVL, protocol info, fees | Built-in (engine) |
+| BlockVision | Market Data | Wallet portfolio + multi-token spot price + 24h change (Indexer REST API) | Built-in (engine) |
+| DefiLlama | Market Data | Protocol-level deep dive (TVL, fees, yields) — narrow scope, lone consumer is `protocol_deep_dive` | Built-in (engine) |
 
 - `LendingAdapter` interface: save, withdraw, borrow, repay, getRates, getPositions, getHealth, getPendingRewards, addClaimRewardsToTx
 - `ProtocolRegistry` auto-selects best rates across registered adapters
@@ -147,9 +148,10 @@ t2000 uses an MCP-first integration model for DeFi protocol reads, with thin tra
 - Third-party adapters can be registered via `agent.registerAdapter(new MyAdapter())`
 - Cetus SDK (`@cetusprotocol/aggregator-sdk`) is isolated to `packages/sdk/src/protocols/cetus-swap.ts`
 - VOLO uses thin tx builders (direct Move calls) — no SDK dependency
-- DefiLlama uses free public REST API (`coins.llama.fi`, `yields.llama.fi`, `api.llama.fi`)
+- BlockVision: `api.blockvision.org/v2` (`fetchAddressPortfolio`, `fetchTokenPrices`); requires `BLOCKVISION_API_KEY`
+- DefiLlama: `api.llama.fi` only (the legacy `coins.llama.fi` + `yields.llama.fi` paths were retired with the v0.47.0 BlockVision swap)
 
-Source: `packages/sdk/src/adapters/`, `packages/sdk/src/protocols/`, `packages/engine/src/tools/defillama.ts`
+Source: `packages/sdk/src/adapters/`, `packages/sdk/src/protocols/`, `packages/engine/src/blockvision-prices.ts`, `packages/engine/src/tools/protocol-deep-dive.ts`
 
 ---
 
