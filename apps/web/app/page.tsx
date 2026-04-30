@@ -121,7 +121,7 @@ const ARCH_LAYERS = [
   {
     label: "Layer 2 \u2014 Protocols",
     split: [
-      { title: "t2000 (owned)", items: "treasury.move \u00B7 payment-kit", sub: "Sponsored gas \u00B7 receive flow" },
+      { title: "t2000 (owned)", items: "payment-kit \u00B7 treasury wallet", sub: "Sponsored gas \u00B7 receive flow" },
       { title: "Third-party (via MCP)", items: "NAVI lending + yield \u00B7 Cetus 20+ DEXs" },
     ],
   },

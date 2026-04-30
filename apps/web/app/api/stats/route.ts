@@ -3,12 +3,19 @@ import { prisma } from "@/app/lib/prisma";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 
 const SUI_RPC = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl("mainnet");
-const TREASURY_ID = "0x3bb501b8300125dca59019247941a42af6b292a150ce3cfcce9449456be2ec91";
-const REBATE_ADDRESS = "0x94bb9f0dcf957b0874e7c3f228517ef8800a500f40596bafad8a35ef6f85f0d6";
+
+// [B5 v2 / 2026-04-30] Treasury is now a regular wallet address (not a Move object).
+// The Move `t2000::treasury` contract is deprecated for new traffic — fees flow as
+// `splitCoins + transferObjects(treasuryWallet)` from Audric's prepare/route.ts.
+// MUST match `T2000_OVERLAY_FEE_WALLET` in @t2000/sdk and the indexer.
+const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
+  ?? "0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a";
+
 const MPP_GATEWAY_TREASURY = process.env.MPP_GATEWAY_TREASURY ?? "0x76d70cf9d3ab7f714a35adf8766a2cb25929cae92ab4de54ff4dea0482b05012";
 
-export async function GET() {
+const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
 
+export async function GET() {
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -32,60 +39,31 @@ export async function GET() {
   });
 }
 
+/**
+ * Live treasury wallet balance via RPC. Single source of truth for "what's in
+ * the treasury right now." Historical totals come from `getFeeStats` (Prisma
+ * `ProtocolFeeLedger`, indexer-fed).
+ *
+ * [B5 v2] Replaces the legacy on-chain `Treasury<USDC>` Move object reads —
+ * those required reading two separate object IDs that disagreed and never
+ * accounted for admin withdrawals correctly.
+ */
 async function getWalletBalances() {
   try {
     const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
-    const results: Record<string, { address?: string; balanceSui: number; balanceUsdc?: number }> = {};
 
-    const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
-
-    const [rebateSui, rebateUsdc] = await Promise.all([
-      client.getBalance({ owner: REBATE_ADDRESS }),
-      client.getBalance({ owner: REBATE_ADDRESS, coinType: USDC_TYPE }),
+    const [treasurySui, treasuryUsdc] = await Promise.all([
+      client.getBalance({ owner: T2000_OVERLAY_FEE_WALLET }),
+      client.getBalance({ owner: T2000_OVERLAY_FEE_WALLET, coinType: USDC_TYPE }),
     ]);
 
-    // Read on-chain treasury balance (populated by collect_fee since v2).
-    // Fall back to DB fee ledger if on-chain read fails.
-    let treasuryUsdc = 0;
-    try {
-      const treasuryObj = await client.getObject({
-        id: TREASURY_ID,
-        options: { showContent: true },
-      });
-      if (treasuryObj.data?.content?.dataType === "moveObject") {
-        const fields = treasuryObj.data.content.fields as Record<string, unknown>;
-        const raw = fields.balance;
-        const balanceValue =
-          typeof raw === "string" || typeof raw === "number"
-            ? String(raw)
-            : typeof raw === "object" && raw !== null
-              ? ((raw as Record<string, unknown>).fields as Record<string, string> | undefined)?.value
-                ?? String((raw as Record<string, unknown>).value ?? "0")
-              : "0";
-        treasuryUsdc = Number(balanceValue) / 1e6;
-      }
-    } catch {
-      const allFees = await prisma.protocolFeeLedger.findMany({
-        select: { feeAmount: true, feeAsset: true },
-      });
-      treasuryUsdc = allFees
-        .filter((f) => f.feeAsset === "USDC")
-        .reduce((s, f) => s + Number(f.feeAmount), 0);
-    }
-
-    results.treasury = {
-      address: TREASURY_ID,
-      balanceSui: 0,
-      balanceUsdc: +treasuryUsdc.toFixed(6),
+    return {
+      treasury: {
+        address: T2000_OVERLAY_FEE_WALLET,
+        balanceSui: Number(treasurySui.totalBalance) / 1e9,
+        balanceUsdc: Number(treasuryUsdc.totalBalance) / 1e6,
+      },
     };
-
-    results.rebate = {
-      address: REBATE_ADDRESS,
-      balanceSui: Number(rebateSui.totalBalance) / 1e9,
-      balanceUsdc: Number(rebateUsdc.totalBalance) / 1e6,
-    };
-
-    return results;
   } catch {
     return null;
   }
@@ -102,55 +80,64 @@ async function getAgentStats(oneDayAgo: Date, sevenDaysAgo: Date, thirtyDaysAgo:
   return { total, last24h, last7d, last30d };
 }
 
+/**
+ * Historical fee totals + by-operation breakdown from the indexer-fed ledger.
+ * The indexer scans every checkpoint, detects USDC transfers to the treasury
+ * wallet, and writes a `ProtocolFeeLedger` row. So this query is the canonical
+ * "total fees ever collected" — even if the admin has withdrawn the wallet
+ * since (which would zero out the live RPC balance above).
+ *
+ * [B5 v2] Replaces the dual-source pattern (on-chain Move `Treasury.total_collected`
+ * + DB fallback) with a single source: the indexer-derived ledger.
+ */
 async function getFeeStats(oneDayAgo: Date, sevenDaysAgo: Date) {
-  let onChainTotal = 0;
-  try {
-    const client = new SuiJsonRpcClient({ url: SUI_RPC, network: "mainnet" });
-    const treasuryObj = await client.getObject({
-      id: TREASURY_ID,
-      options: { showContent: true },
-    });
-    if (treasuryObj.data?.content?.dataType === "moveObject") {
-      const fields = treasuryObj.data.content.fields as Record<string, unknown>;
-      const raw = fields.total_collected;
-      onChainTotal = Number(typeof raw === "string" || typeof raw === "number" ? raw : "0") / 1e6;
-    }
-  } catch { /* fall through to DB */ }
-
-  const V2_DEPLOY = new Date("2025-06-02T00:00:00Z");
   const allFees = await prisma.protocolFeeLedger.findMany({
-    where: { createdAt: { gte: V2_DEPLOY } },
     select: { feeAmount: true, feeAsset: true, operation: true, createdAt: true },
   });
 
-  const dbTotal = allFees
-    .filter((f) => f.feeAsset === "USDC")
-    .reduce((s, f) => s + Number(f.feeAmount), 0);
+  // The ledger column is raw on-chain amounts (BigInt-as-string). USDC is 6 decimals.
+  // Pre-B5 v2 rows from the deprecated `parseFeeEvents` indexer path used the same
+  // raw-amount convention, so the math is consistent across the cutover.
+  const toUsdc = (raw: unknown) => Number(raw) / 1e6;
 
-  const totalUsdc = onChainTotal > 0 ? onChainTotal : dbTotal;
+  // [B5 v2] Cetus swap overlay fees come in the swap's OUTPUT asset, which can
+  // be SUI / NAVX / etc. — not USDC. The indexer records all asset types; the
+  // stats UI shows USDC totals (the most meaningful aggregate), plus a raw
+  // by-asset breakdown so non-USDC volume is at least visible to operators.
+  const usdcFees = allFees.filter((f) => f.feeAsset === "USDC");
+  const totalUsdc = usdcFees.reduce((s, f) => s + toUsdc(f.feeAmount), 0);
 
   const byOperation: Record<string, { count: number; totalUsdc: number }> = {};
-  for (const f of allFees) {
+  for (const f of usdcFees) {
     if (!byOperation[f.operation]) byOperation[f.operation] = { count: 0, totalUsdc: 0 };
     byOperation[f.operation].count++;
-    byOperation[f.operation].totalUsdc += Number(f.feeAmount);
+    byOperation[f.operation].totalUsdc += toUsdc(f.feeAmount);
   }
 
-  const last24h = allFees.filter((f) => f.createdAt >= oneDayAgo);
-  const last7d = allFees.filter((f) => f.createdAt >= sevenDaysAgo);
+  const byAsset: Record<string, { count: number; rawAmount: string }> = {};
+  for (const f of allFees) {
+    const k = f.feeAsset;
+    if (!byAsset[k]) byAsset[k] = { count: 0, rawAmount: "0" };
+    byAsset[k].count++;
+    byAsset[k].rawAmount = (BigInt(byAsset[k].rawAmount) + BigInt(f.feeAmount.toString())).toString();
+  }
+
+  const last24hRows = usdcFees.filter((f) => f.createdAt >= oneDayAgo);
+  const last7dRows = usdcFees.filter((f) => f.createdAt >= sevenDaysAgo);
 
   return {
     totalRecords: allFees.length,
     totalUsdcCollected: +totalUsdc.toFixed(4),
-    byOperation,
-    last24h: { count: last24h.length, usdc: +last24h.reduce((s, f) => s + Number(f.feeAmount), 0).toFixed(4) },
-    last7d: { count: last7d.length, usdc: +last7d.reduce((s, f) => s + Number(f.feeAmount), 0).toFixed(4) },
+    byOperation: Object.fromEntries(
+      Object.entries(byOperation).map(([k, v]) => [k, { count: v.count, totalUsdc: +v.totalUsdc.toFixed(4) }]),
+    ),
+    byAsset,
+    last24h: { count: last24hRows.length, usdc: +last24hRows.reduce((s, f) => s + toUsdc(f.feeAmount), 0).toFixed(4) },
+    last7d: { count: last7dRows.length, usdc: +last7dRows.reduce((s, f) => s + toUsdc(f.feeAmount), 0).toFixed(4) },
   };
 }
 
 async function getMppStats(oneDayAgo: Date, sevenDaysAgo: Date) {
-  const USDC_TYPE = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC";
-
   const legacyTotal = 0;
   const legacySettled = 0;
   const legacyAmount = 0;

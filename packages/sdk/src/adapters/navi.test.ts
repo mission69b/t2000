@@ -111,13 +111,13 @@ describe('NaviAdapter', () => {
     expect(result.healthFactor).toBe(3.5);
   });
 
-  it('buildSaveTx delegates with collectFee', async () => {
+  it('buildSaveTx delegates without fee plumbing (B5 v2 — SDK is fee-free)', async () => {
     const tx = new Transaction();
     vi.mocked(naviProtocol.buildSaveTx).mockResolvedValue(tx);
 
-    const result = await adapter.buildSaveTx('0xaddr', 100, 'USDC', { collectFee: true });
+    const result = await adapter.buildSaveTx('0xaddr', 100, 'USDC');
     expect(result.tx).toBe(tx);
-    expect(naviProtocol.buildSaveTx).toHaveBeenCalledWith(mockClient, '0xaddr', 100, { collectFee: true, asset: 'USDC' });
+    expect(naviProtocol.buildSaveTx).toHaveBeenCalledWith(mockClient, '0xaddr', 100, { asset: 'USDC' });
   });
 
   it('buildSaveTx normalizes "usdt" to "USDT"', async () => {
@@ -149,11 +149,11 @@ describe('NaviAdapter', () => {
     );
   });
 
-  it('buildBorrowTx delegates', async () => {
+  it('buildBorrowTx delegates without fee plumbing (B5 v2 — SDK is fee-free)', async () => {
     const tx = new Transaction();
     vi.mocked(naviProtocol.buildBorrowTx).mockResolvedValue(tx);
 
-    const result = await adapter.buildBorrowTx('0xaddr', 50, 'USDC', { collectFee: true });
+    const result = await adapter.buildBorrowTx('0xaddr', 50, 'USDC');
     expect(result.tx).toBe(tx);
   });
 

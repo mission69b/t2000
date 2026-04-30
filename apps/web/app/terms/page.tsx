@@ -170,14 +170,6 @@ export default function TermsPage() {
                 <strong className="text-foreground">Merchandise</strong> —
                 estimated cost plus a 5% service fee
               </li>
-              <li>
-                <strong className="text-foreground">
-                  DeFi protocol fees
-                </strong>{" "}
-                — a small protocol fee (currently 0.1%) may apply on certain
-                operations such as deposits, subject to an on-chain timelock
-                with a hard cap of 5%
-              </li>
             </ul>
             <p className="mt-2">
               The AI assistant itself (chat messages, analysis, recommendations)

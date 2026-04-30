@@ -2,7 +2,14 @@ import { writeFileSync } from 'node:fs';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { prisma } from '../db/prisma.js';
 import { fetchCheckpoints, getLatestCheckpoint } from './checkpoint.js';
-import { parseFeeEvents, parseTransfers } from './eventParser.js';
+import { parseTreasuryFees, parseTransfers } from './eventParser.js';
+
+// [B5 v2 / 2026-04-30] Treasury wallet — fees flow here as a regular USDC transfer
+// inside Audric's PTBs (replaces the deprecated `t2000::treasury::collect_fee`
+// Move call). Indexer detects USDC inflows to this wallet and writes them to
+// `ProtocolFeeLedger`. MUST match `T2000_OVERLAY_FEE_WALLET` in the SDK.
+const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
+  ?? '0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a';
 
 const POLL_INTERVAL_MS = parseInt(process.env.INDEXER_POLL_INTERVAL_MS ?? '2000', 10);
 const BATCH_SIZE = parseInt(process.env.INDEXER_BATCH_SIZE ?? '10', 10);
@@ -66,24 +73,33 @@ async function processCheckpoints(
 
   for (const cp of batch.checkpoints) {
     for (const tx of cp.transactions) {
-      // Parse fee events
-      const fees = parseFeeEvents(tx);
+      // [B5 v2] Detect token transfers to the treasury wallet (replaces the deprecated
+      // `FeeCollected` Move event parser). Operation classified from moveCall targets.
+      // Multi-asset capable: a single tx can transfer different assets (e.g. a swap
+      // can pay its fee in SUI), so we dedup on (txDigest, feeAsset) — no schema
+      // unique constraint required (kept the schema unchanged for v2).
+      const fees = parseTreasuryFees(tx, T2000_OVERLAY_FEE_WALLET);
       for (const fee of fees) {
         try {
-          await prisma.protocolFeeLedger.upsert({
-            where: { txDigest: fee.txDigest } as never,
-            update: {},
-            create: {
+          const existing = await prisma.protocolFeeLedger.findFirst({
+            where: { txDigest: fee.txDigest, feeAsset: fee.feeAsset },
+            select: { id: true },
+          });
+          if (existing) continue;
+          await prisma.protocolFeeLedger.create({
+            data: {
               agentAddress: fee.agentAddress,
               operation: fee.operation,
               feeAmount: fee.feeAmount,
-              feeRate: '0',
+              feeAsset: fee.feeAsset,
+              feeRate: fee.feeRate,
               txDigest: fee.txDigest,
             },
           });
           feeCount++;
         } catch {
-          // Duplicate or FK constraint — skip
+          // FK constraint or transient DB error — skip; the next pass over this
+          // checkpoint will retry (cursor is committed only after the batch).
         }
       }
 

@@ -20,7 +20,8 @@ import { buildSendTx } from './wallet/send.js';
 import { queryBalance } from './wallet/balance.js';
 import { queryHistory, queryTransaction } from './wallet/history.js';
 import { getDecimalsForCoinType, resolveSymbol } from './token-registry.js';
-import { calculateFee, reportFee } from './protocols/protocolFee.js';
+// [B5 v2 / 2026-04-30] No fee imports — CLI / direct SDK is fee-free. Consumer
+// apps (Audric) own fee policy via `addFeeTransfer` from `./protocols/protocolFee.js`.
 import * as yieldTracker from './protocols/yieldTracker.js';
 import { ProtocolRegistry } from './adapters/registry.js';
 import { NaviAdapter } from './adapters/navi.js';
@@ -708,7 +709,9 @@ export class T2000 extends EventEmitter<T2000Events> {
       }
     }
 
-    const fee = calculateFee('save', amount);
+    // [B5 v2 / 2026-04-30] CLI / direct SDK calls are fee-free. Consumer apps
+    // (Audric) charge their own fees by adding `addFeeTransfer` to the tx before
+    // calling the SDK builders. `fee` is reported as 0 in the result.
     const saveAmount = amount;
     const adapter = await this.resolveLending(params.protocol, asset, 'save');
     const canPTB = !!adapter.addSaveToTx;
@@ -724,16 +727,15 @@ export class T2000 extends EventEmitter<T2000Events> {
         const rawAmount = BigInt(Math.floor(saveAmount * 10 ** assetInfo.decimals));
         const [inputCoin] = tx.splitCoins(merged, [rawAmount]);
 
-        await adapter.addSaveToTx!(tx, this._address, inputCoin, asset, { collectFee: true });
+        await adapter.addSaveToTx!(tx, this._address, inputCoin, asset);
         return tx;
       }
 
-      const { tx } = await adapter.buildSaveTx(this._address, saveAmount, asset, { collectFee: true });
+      const { tx } = await adapter.buildSaveTx(this._address, saveAmount, asset);
       return tx;
     });
 
     const rates = await adapter.getRates(asset);
-    reportFee(this._address, 'save', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(asset, saveAmount, 'save', gasResult.digest);
 
     let savingsBalance = saveAmount;
@@ -756,7 +758,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       tx: gasResult.digest,
       amount: saveAmount,
       apy: rates.saveApy,
-      fee: fee.amount,
+      fee: 0,
       gasCost: gasResult.gasCostSui,
       savingsBalance,
     };
@@ -1074,16 +1076,15 @@ export class T2000 extends EventEmitter<T2000Events> {
         currentHF: maxResult.currentHF,
       });
     }
-    const fee = calculateFee('borrow', params.amount);
+    // [B5 v2 / 2026-04-30] CLI / direct SDK borrows are fee-free. See save() above.
     const borrowAmount = params.amount;
 
     const gasResult = await executeTx(this.client, this._signer, async () => {
-      const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset, { collectFee: true });
+      const { tx } = await adapter.buildBorrowTx(this._address, borrowAmount, asset);
       return tx;
     });
 
     const hf = await adapter.getHealth(this._address);
-    reportFee(this._address, 'borrow', fee.amount, fee.rate, gasResult.digest);
     this.emitBalanceChange(asset, borrowAmount, 'borrow', gasResult.digest);
 
     return {
@@ -1091,7 +1092,7 @@ export class T2000 extends EventEmitter<T2000Events> {
       tx: gasResult.digest,
       amount: borrowAmount,
       asset,
-      fee: fee.amount,
+      fee: 0,
       healthFactor: hf.healthFactor,
       gasCost: gasResult.gasCostSui,
     };
@@ -1428,7 +1429,7 @@ export class T2000 extends EventEmitter<T2000Events> {
           if (coins.length === 0) throw new T2000Error('INSUFFICIENT_BALANCE', 'No USDC coins after swap');
           const merged = this._mergeCoinsInTx(tx, coins);
           const [inputCoin] = tx.splitCoins(merged, [gainedRaw]);
-          await adapter.addSaveToTx!(tx, this._address, inputCoin, 'USDC', { collectFee: false });
+          await adapter.addSaveToTx!(tx, this._address, inputCoin, 'USDC');
           return tx;
         });
         depositTx = depositResult.digest;

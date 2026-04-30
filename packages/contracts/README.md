@@ -7,7 +7,7 @@ Move source for the t2000 protocol on Sui mainnet.
 | Module | Purpose |
 |--------|---------|
 | `t2000.move` | Top-level package — version + migration entrypoints |
-| `treasury.move` | Per-coin Treasury<T> shared object — fee collection, admin withdraw |
+| `treasury.move` | **Deprecated for new fee traffic (B5 v2, 2026-04-30).** Per-coin `Treasury<T>` shared object — kept only for legacy balance withdrawals. Active fee collection is now `T2000_OVERLAY_FEE_WALLET` (a regular USDC wallet); see "Treasury behaviour" below. |
 | `admin.move` | AdminCap + UpgradeCap helpers, timelocked admin actions |
 | `constants.move` | Package version constant; bumps with each on-chain upgrade |
 | `errors.move` | Centralized abort code ledger |
@@ -19,7 +19,8 @@ Move source for the t2000 protocol on Sui mainnet.
 |--------|----|
 | Package | `0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad` |
 | Config | `0x08ba26f0d260b5edf6a19c71492b3eb914906a7419baf2df1426765157e5862a` |
-| Treasury (USDC) | `0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8` |
+| ~~Treasury (USDC)~~ | ~~`0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8`~~ — **deprecated for new fees** (B5 v2). Sweep balance via `withdraw_fees<USDC>` once, then leave inert. |
+| Treasury wallet (active) | `0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a` — `T2000_OVERLAY_FEE_WALLET`, plain USDC wallet, treasury admin keys |
 
 AdminCap and UpgradeCap IDs live in `.env.local` only. Mirrored in `packages/sdk/src/constants.ts`.
 
@@ -42,12 +43,14 @@ The `Allowance` Move type was published as part of an earlier package (separate 
 
 ## Treasury behaviour
 
-Treasury exposes a per-coin shared object pattern:
+> **Deprecated for new fee traffic (B5 v2, 2026-04-30).** Active protocol fees route to a regular USDC wallet (`T2000_OVERLAY_FEE_WALLET`) inline within the consumer's PTB; the indexer detects the inflow on-chain and writes `ProtocolFeeLedger`. The Move treasury below is kept only to drain residual balances.
 
-- `collect_fee<T>()` — called inline within a PTB; splits a fee from `&mut Coin<T>` into the Treasury's internal `Balance<T>`
-- `receive_coins<T>()` — admin recovery of coins sent to the treasury via `transferObjects` (object-owned)
-- `withdraw_fees<T>()` — admin withdraw from the treasury balance (requires AdminCap)
-- `migrate_treasury<T>()` — version bump guard called after package upgrade (requires AdminCap)
+Historical (pre-B5 v2) per-coin shared object pattern:
+
+- ~~`collect_fee<T>()`~~ — **do not call from new code.** Audric's `prepare/route.ts` uses `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` instead (split + transferObjects in the same PTB).
+- `receive_coins<T>()` — admin recovery of coins sent to the legacy treasury via `transferObjects` (object-owned). Used during the B5 v2 stranded-fee sweep, then inactive.
+- `withdraw_fees<T>()` — admin withdraw from the legacy treasury balance (requires AdminCap). Used once during the B5 v2 sweep.
+- `migrate_treasury<T>()` — version bump guard called after package upgrade (requires AdminCap). Still required if the package itself is upgraded for unrelated reasons.
 
 ## Build / test
 
@@ -62,4 +65,4 @@ sui move test
 sui client publish --gas-budget 200000000
 ```
 
-Then update `T2000_PACKAGE_ID`, `T2000_CONFIG_ID`, `T2000_TREASURY_ID` in `packages/sdk/src/constants.ts` and `infra/server-task-definition.json`.
+Then update `T2000_PACKAGE_ID` and `T2000_CONFIG_ID` in `packages/sdk/src/constants.ts` and `infra/server-task-definition.json`. (`T2000_TREASURY_ID` was removed in B5 v2 — fees no longer route through the Move treasury.)

@@ -18,7 +18,6 @@ import { SUPPORTED_ASSETS, ALL_NAVI_ASSETS } from '../constants.js';
 import type { SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { stableToRaw } from '../utils/format.js';
-import { addCollectFeeToTx } from './protocolFee.js';
 import type { PendingReward } from '../adapters/types.js';
 import type {
   RatesResult,
@@ -271,7 +270,7 @@ export async function buildSaveTx(
   client: SuiJsonRpcClient,
   address: string,
   amount: number,
-  options: { collectFee?: boolean; asset?: string } = {},
+  options: { asset?: string } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Save amount must be a positive number');
@@ -289,9 +288,9 @@ export async function buildSaveTx(
 
   const coinObj = mergeCoins(tx, coins);
 
-  if (options.collectFee) {
-    addCollectFeeToTx(tx, coinObj, 'save');
-  }
+  // [B5 v2 / 2026-04-30] No fee collection here. SDK + CLI are fee-free by design.
+  // Consumer apps (Audric) collect fees by calling `addFeeTransfer(tx, coinObj, ...)`
+  // BEFORE invoking this builder. See packages/sdk/src/protocols/protocolFee.ts.
 
   const rawAmount = Math.min(Number(stableToRaw(amount, assetInfo.decimals)), Number(totalBalance));
 
@@ -403,14 +402,12 @@ export async function addSaveToTx(
   _client: SuiJsonRpcClient,
   _address: string,
   coin: TransactionObjectArgument,
-  options: { asset?: string; collectFee?: boolean } = {},
+  options: { asset?: string } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
 
-  if (options.collectFee) {
-    addCollectFeeToTx(tx, coin, 'save');
-  }
+  // [B5 v2 / 2026-04-30] No fee collection — see comment in `buildSaveTx`.
 
   try {
     await depositCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });
@@ -446,7 +443,7 @@ export async function buildBorrowTx(
   address: string,
   amount: number,
   // See note on buildWithdrawTx for skipPythUpdate semantics.
-  options: { collectFee?: boolean; asset?: string; skipPythUpdate?: boolean } = {},
+  options: { asset?: string; skipPythUpdate?: boolean } = {},
 ): Promise<Transaction> {
   if (!amount || amount <= 0 || !Number.isFinite(amount)) {
     throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be a positive number');
@@ -463,9 +460,10 @@ export async function buildBorrowTx(
   try {
     const borrowedCoin = await borrowCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
 
-    if (options.collectFee) {
-      addCollectFeeToTx(tx, borrowedCoin as TransactionObjectArgument, 'borrow');
-    }
+    // [B5 v2 / 2026-04-30] No fee collection — consumer apps that want to
+    // charge a fee should use `addBorrowToTx` directly, split the fee from
+    // the returned coin via `addFeeTransfer`, then transfer the remainder.
+    // See packages/sdk/src/protocols/protocolFee.ts.
 
     tx.transferObjects([borrowedCoin as TransactionObjectArgument], address);
   } catch (err) {
@@ -474,6 +472,41 @@ export async function buildBorrowTx(
   }
 
   return tx;
+}
+
+/**
+ * [B5 v2] Add a NAVI borrow to an existing PTB and return the borrowed coin
+ * WITHOUT transferring it to the user. Lets consumer apps interpose a fee
+ * transfer (split → transfer to treasury) before the final transfer to user.
+ *
+ * This is the lower-level companion to `buildBorrowTx`. CLI / direct SDK
+ * callers should keep using `buildBorrowTx` (it transfers to user automatically
+ * and is fee-free); Audric uses this to wedge `addFeeTransfer` between the
+ * borrow and the user transfer.
+ */
+export async function addBorrowToTx(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  address: string,
+  amount: number,
+  options: { asset?: string; skipPythUpdate?: boolean } = {},
+): Promise<TransactionObjectArgument> {
+  if (!amount || amount <= 0 || !Number.isFinite(amount)) {
+    throw new T2000Error('INVALID_AMOUNT', 'Borrow amount must be a positive number');
+  }
+  const asset = options.asset ?? 'USDC';
+  const assetInfo = resolveAssetInfo(asset);
+  const rawAmount = Number(stableToRaw(amount, assetInfo.decimals));
+
+  await refreshOracle(tx, client, address, { skipPythUpdate: options.skipPythUpdate });
+
+  try {
+    const borrowedCoin = await borrowCoinPTB(tx, assetInfo.type, rawAmount, sdkOptions(client));
+    return borrowedCoin as TransactionObjectArgument;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error('PROTOCOL_UNAVAILABLE', `NAVI borrow failed: ${msg}`);
+  }
 }
 
 export async function buildRepayTx(

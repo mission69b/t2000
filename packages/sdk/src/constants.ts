@@ -123,10 +123,27 @@ export function assertAllowedAsset(op: Operation, asset: string | undefined): vo
   }
 }
 
+// Move package + config — kept for reference (treasury contract is deprecated for new traffic
+// as of @t2000/sdk@1.1.0; see treasury.move deprecation header). AdminCap is still used for
+// any one-off ops against the deployed treasury (e.g. draining residual balances).
+//
+// `T2000_TREASURY_ID` was removed in 1.1.0 — it pointed to a Move object that's no longer
+// the destination for any new fees. Pre-1.1.0 ledger rows on the deployed Treasury<USDC>
+// remain valid; the admin can sweep via `treasury::withdraw_fees<USDC>` using AdminCap.
 export const T2000_PACKAGE_ID = process.env.T2000_PACKAGE_ID ?? '0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad';
 export const T2000_CONFIG_ID = process.env.T2000_CONFIG_ID ?? '0x08ba26f0d260b5edf6a19c71492b3eb914906a7419baf2df1426765157e5862a';
 export const T2000_ADMIN_CAP_ID = '0xa97bfff140f5a2c268a03fe5422d382c228057deb7bcfdaf2967ca18b9bdbbd9';
-export const T2000_TREASURY_ID = process.env.T2000_TREASURY_ID ?? '0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8';
+
+// [B5 v2 / 2026-04-30] All protocol fees route here as a regular USDC wallet transfer.
+// Replaces the deprecated `t2000::treasury::collect_fee` Move call path. Audric's
+// prepare/route.ts adds `addFeeTransfer(...)` inline for save/borrow and passes
+// `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` for swaps. The CLI/SDK never
+// charge fees — this constant is exported for consumer apps only.
+//
+// Address corresponds to the treasury admin wallet. Override via env for local dev /
+// testnet only — production must use the canonical mainnet address below.
+export const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
+  ?? '0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a';
 
 export const DEFAULT_NETWORK = 'mainnet' as const;
 export const DEFAULT_RPC_URL = 'https://fullnode.mainnet.sui.io:443';

@@ -79,19 +79,24 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 | Operation | BPS | Rate | Notes |
 |-----------|-----|------|-------|
 | Save | 10 | 0.1% | Protocol fee on deposit |
-| Borrow | 5 | 0.05% | Protocol fee on loan |
+| Borrow | 5 | 0.05% | Audric fee on loan (USDC borrows only) |
 | Withdraw | — | Free | |
 | Repay | — | Free | |
 | Send | — | Free | |
 | Receive | — | Free | Payment request generation is local; uses Sui Payment Kit (`sui:pay?` URIs) for QR codes |
-| Swap | 10 | 0.1% | t2000 overlay fee on swap (`overlayFeeRate` / `overlayFeeReceiver` in `cetus-swap.ts`); Cetus Aggregator network fees still apply |
+| Swap | 10 | 0.1% | Audric overlay fee on swap (Cetus `overlayFeeReceiver` = `T2000_OVERLAY_FEE_WALLET`); Cetus Aggregator network fees still apply |
 | Stake (vSUI) | — | Free | VOLO protocol fees only |
 | Unstake (vSUI) | — | Free | |
 | Pay (MPP) | — | Free | Agent pays the API price, no t2000 surcharge |
 
-Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `BORROW_FEE_BPS`
+Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, `T2000_OVERLAY_FEE_WALLET`.
 
-Fees are collected on-chain via `t2000::treasury::collect_fee()` within the same PTB as the operation. The Move function takes `&mut Coin<T>` and splits the fee into the Treasury's internal `Balance<T>`.
+**Fees are an Audric (consumer) concern, not a t2000 (infra) concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30):
+
+- **CLI / direct SDK calls** (`@t2000/cli`, `T2000.swap()` / `.save()` / `.borrow()`) are **fee-free by design**. t2000 is the infra brand — no opinion on fees.
+- **Audric** is the only fee owner. `audric/apps/web/app/api/transactions/prepare/route.ts` calls `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` inline for save/borrow and passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for swaps via Cetus's overlay-fee mechanism. Both paths produce a USDC transfer to the treasury wallet inside the same PTB.
+- **Indexer is the ledger writer.** `apps/server/src/indexer/eventParser.ts` `parseTreasuryFees(tx, treasuryWallet)` detects USDC inflows to the treasury wallet on every checkpoint and writes a `ProtocolFeeLedger` row tagged with the operation classified from the tx's moveCall targets. The wallet is the live cash; the DB is the historical log.
+- **Move treasury contract is deprecated for new traffic.** The legacy `t2000::treasury::collect_fee` Move function and `addCollectFeeToTx` SDK helper were removed in `@t2000/sdk@1.1.0`. The deployed `Treasury<USDC>` Move object remains on-chain with its existing balance — admins can sweep via `treasury::withdraw_fees` using AdminCap. See `packages/contracts/sources/treasury.move` deprecation header.
 
 ---
 
@@ -592,19 +597,22 @@ Source: `packages/sdk/src/constants.ts` (core constants), `packages/cli/src/comm
 |--------|----|
 | Package | `0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad` |
 | Config | `0x08ba26f0d260b5edf6a19c71492b3eb914906a7419baf2df1426765157e5862a` |
-| Treasury (USDC) | `0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8` |
+| **Treasury Wallet** (Audric overlay fees) | `0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a` |
+| ~~Treasury Move Object (USDC)~~ — *deprecated for new traffic* | `0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8` |
 
-> **Note:** AdminCap and UpgradeCap IDs are intentionally omitted — stored in `.env.local` only. The IDs above are the canonical mainnet IDs in use today; they are mirrored in `packages/sdk/src/constants.ts` (`T2000_PACKAGE_ID`, `T2000_CONFIG_ID`, `T2000_TREASURY_ID`) and `infra/server-task-definition.json`. An earlier abandoned package (`0xab92e9f1...`) and its associated Config / Treasury are no longer referenced by any code path.
-> **Contract Version:** 1 (set in `packages/contracts/sources/constants.move`). Source and the active on-chain Config + Treasury are all at v1. The next package upgrade — when there's a real reason to ship one — should bump `VERSION` and call `migrate_config` + `migrate_treasury` with AdminCap so the new package's `assert_version` rejects calls into the previous binary.
+> **Note:** AdminCap and UpgradeCap IDs are intentionally omitted — stored in `.env.local` only. The Package + Config IDs are mirrored in `packages/sdk/src/constants.ts` (`T2000_PACKAGE_ID`, `T2000_CONFIG_ID`). The new **Treasury Wallet** is the canonical overlay-fee receiver as of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30) — exported as `T2000_OVERLAY_FEE_WALLET`. An earlier abandoned package (`0xab92e9f1...`) and its associated Config / Treasury are no longer referenced by any code path.
+> **Contract Version:** 1 (set in `packages/contracts/sources/constants.move`). Source and the active on-chain Config are at v1. The Treasury Move object is deprecated for new fee traffic but the contract source remains for any future ops (admin sweep, version bump if extending the package for non-fee functionality).
 
-### Treasury Functions (v2)
+### Treasury Functions — DEPRECATED for new fee traffic (B5 v2, 2026-04-30)
 
-| Function | Description |
-|----------|-------------|
-| `collect_fee<T>()` | Called in PTB — splits fee from `&mut Coin<T>` into `Balance<T>` |
-| `receive_coins<T>()` | Admin recovery of coins sent via `transferObjects` (object-owned) |
-| `withdraw_fees<T>()` | Admin withdraw from treasury balance (requires AdminCap) |
-| `migrate_treasury<T>()` | Version bump guard — call after package upgrade (requires AdminCap) |
+The `t2000::treasury` Move contract is no longer the destination for new protocol fees. As of `@t2000/sdk@1.1.0`, fees flow as a regular USDC transfer to `T2000_OVERLAY_FEE_WALLET` inside the same PTB as the operation (see Fees section above for the new architecture). The Move functions below remain on-chain — admins use them to drain residual balances from the legacy treasury — but no new traffic touches them.
+
+| Function | Description | Status |
+|----------|-------------|--------|
+| `collect_fee<T>()` | Splits fee from `&mut Coin<T>` into `Balance<T>` | **DEPRECATED** — replaced by `splitCoins + transferObjects(treasuryWallet)` |
+| `receive_coins<T>()` | Admin recovery of coins sent via `transferObjects` (object-owned) | **In use** — sweep pre-B5 orphaned coins |
+| `withdraw_fees<T>()` | Admin withdraw from treasury balance (requires AdminCap) | **In use** — sweep legacy treasury balance |
+| `migrate_treasury<T>()` | Version bump guard — call after package upgrade (requires AdminCap) | **In use** if Move package is ever upgraded |
 
 ### MPP Payments (Sui Payment Kit)
 

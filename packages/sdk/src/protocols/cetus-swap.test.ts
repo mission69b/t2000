@@ -142,3 +142,99 @@ describe('findSwapRoute', () => {
     expect(result!.insufficientLiquidity).toBe(true);
   });
 });
+
+describe('per-call overlay fee config (B5 v2)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('CLI / direct SDK swap (no overlayFee arg) does NOT pass overlay config to AggregatorClient', async () => {
+    const ctorSpy = vi.fn();
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        constructor(opts: unknown) { ctorSpy(opts); }
+        async findRouters() {
+          return { amountIn: '1000000', amountOut: '999000', insufficientLiquidity: false, deviationRatio: 0.001 };
+        }
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+
+    const { findSwapRoute } = await import('./cetus-swap.js');
+    await findSwapRoute({
+      walletAddress: '0x' + 'a'.repeat(64),
+      from: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      to: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+      amount: 1000000n,
+      byAmountIn: true,
+    });
+
+    expect(ctorSpy).toHaveBeenCalledOnce();
+    const opts = ctorSpy.mock.calls[0][0];
+    expect(opts.overlayFeeRate).toBeUndefined();
+    expect(opts.overlayFeeReceiver).toBeUndefined();
+  });
+
+  it('Audric-style swap (overlayFee provided) DOES pass overlay config to AggregatorClient', async () => {
+    const ctorSpy = vi.fn();
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        constructor(opts: unknown) { ctorSpy(opts); }
+        async findRouters() {
+          return { amountIn: '1000000', amountOut: '999000', insufficientLiquidity: false, deviationRatio: 0.001 };
+        }
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+
+    const { findSwapRoute } = await import('./cetus-swap.js');
+    await findSwapRoute({
+      walletAddress: '0x' + 'a'.repeat(64),
+      from: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      to: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+      amount: 1000000n,
+      byAmountIn: true,
+      overlayFee: {
+        rate: 0.001,
+        receiver: '0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a',
+      },
+    });
+
+    expect(ctorSpy).toHaveBeenCalledOnce();
+    const opts = ctorSpy.mock.calls[0][0];
+    expect(opts.overlayFeeRate).toBe(0.001);
+    expect(opts.overlayFeeReceiver).toBe('0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a');
+  });
+
+  it('client cache key includes overlay config — different overlay = different client instance', async () => {
+    const ctorSpy = vi.fn();
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        constructor(opts: unknown) { ctorSpy(opts); }
+        async findRouters() {
+          return { amountIn: '1000000', amountOut: '999000', insufficientLiquidity: false, deviationRatio: 0.001 };
+        }
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+
+    const { findSwapRoute } = await import('./cetus-swap.js');
+    const baseParams = {
+      walletAddress: '0x' + 'a'.repeat(64),
+      from: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      to: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+      amount: 1000000n,
+      byAmountIn: true,
+    };
+
+    // First call — no overlay (CLI path)
+    await findSwapRoute(baseParams);
+    // Second call — same wallet but with overlay (Audric path)
+    await findSwapRoute({ ...baseParams, overlayFee: { rate: 0.001, receiver: '0x' + 'b'.repeat(64) } });
+    // Third call — same wallet, no overlay → should hit cache from call 1
+    await findSwapRoute(baseParams);
+
+    // Two distinct clients constructed (CLI variant + Audric variant); third call reused client 1
+    expect(ctorSpy).toHaveBeenCalledTimes(2);
+  });
+});

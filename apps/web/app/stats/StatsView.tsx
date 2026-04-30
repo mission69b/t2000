@@ -6,7 +6,6 @@ interface Stats {
   timestamp: string;
   wallets: {
     treasury: { address?: string; balanceSui: number; balanceUsdc?: number };
-    rebate: { address?: string; balanceSui: number; balanceUsdc?: number };
   } | null;
   agents: {
     total: number;
@@ -19,6 +18,7 @@ interface Stats {
     totalRecords: number;
     totalUsdcCollected: number;
     byOperation: Record<string, { count: number; totalUsdc: number }>;
+    byAsset: Record<string, { count: number; rawAmount: string }>;
     last24h: { count: number; usdc: number };
     last7d: { count: number; usdc: number };
   };
@@ -390,17 +390,8 @@ export function StatsView() {
             <WalletRow
               label="Treasury"
               address={stats.wallets.treasury?.address}
-              linkType="object"
+              linkType="account"
               balance={`$${(stats.wallets.treasury?.balanceUsdc ?? 0).toFixed(4)} USDC`}
-            />
-            <WalletRow
-              label="Rebate"
-              address={stats.wallets.rebate?.address}
-              balance={
-                (stats.wallets.rebate?.balanceUsdc ?? 0) > 0
-                  ? `$${stats.wallets.rebate!.balanceUsdc!.toFixed(4)} USDC`
-                  : `${(stats.wallets.rebate?.balanceSui ?? 0).toFixed(2)} SUI`
-              }
             />
             {stats.mpp.gatewayAddress && (
               <WalletRow

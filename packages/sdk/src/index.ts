@@ -45,6 +45,7 @@ export {
   BPS_DENOMINATOR,
   SAVE_FEE_BPS,
   BORROW_FEE_BPS,
+  T2000_OVERLAY_FEE_WALLET,
   SUPPORTED_ASSETS,
   CLOCK_ID,
   DEFAULT_NETWORK,
@@ -106,7 +107,7 @@ export {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
-export { calculateFee, addCollectFeeToTx } from './protocols/protocolFee.js';
+export { calculateFee, addFeeTransfer } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export {
   getFinancialSummary,
@@ -123,7 +124,7 @@ export {
   buildSwapTx,
   OVERLAY_FEE_RATE,
 } from './protocols/cetus-swap.js';
-export type { SwapRouteResult } from './protocols/cetus-swap.js';
+export type { SwapRouteResult, OverlayFeeConfig } from './protocols/cetus-swap.js';
 export {
   COIN_REGISTRY,
   TOKEN_MAP,

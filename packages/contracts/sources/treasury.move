@@ -1,3 +1,19 @@
+/// DEPRECATED FOR NEW FEE TRAFFIC (B5 v2, 2026-04-30) — kept only for legacy balance withdrawals.
+///
+/// As of `@t2000/sdk@1.1.0`, no consumer calls `collect_fee`. Audric (the only fee owner) now
+/// splits the fee inside the same PTB as the main operation and transfers it directly to
+/// `T2000_OVERLAY_FEE_WALLET` (a regular USDC wallet, treasury admin keys). The indexer detects
+/// the USDC inflow on-chain and writes `ProtocolFeeLedger` rows. There is no off-chain submission
+/// path and no Move call required to record a fee.
+///
+/// What this module is still used for:
+///   - Withdrawing the residual ~$10–50 USDC + ~5 SUI sitting in the legacy Treasury<T> objects
+///     (admin-only, runs once during the B5 v2 sweep, then never again).
+///   - Reading historical `total_collected` for reconciliation against `ProtocolFeeLedger` rows
+///     dated before 2026-04-30.
+///
+/// Do NOT call `collect_fee` from new code. Do NOT add new Treasury<T> objects.
+/// See: `apps/web/app/stats/StatsView.tsx` (treasury wallet card), `audric-build-tracker.md` S.43.
 module t2000::treasury;
 
 use sui::coin::{Self, Coin};

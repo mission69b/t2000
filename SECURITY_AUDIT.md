@@ -91,7 +91,7 @@ An attacker could:
 - Call `/api/gas` to sponsor transactions using the server's gas wallet.
 - Call `/api/sponsor` to trigger wallet-init fund transfers.
 - Read `/api/health` to leak wallet balances and system status.
-- Submit fake fee reports to `/api/fees` or `/api/gas/report`.
+- ~~Submit fake fee reports to `/api/fees`~~ — endpoint deleted in B5 v2 (2026-04-30). Indexer is the only writer; only chain state can produce ledger rows.
 
 **Impact:** Any website can abuse the server's financial endpoints. Combined with C-1, this significantly lowers the barrier for gas-draining attacks.
 
@@ -141,20 +141,17 @@ This data is served without any authentication and could be used for competitive
 
 ---
 
-### H-4: /api/fees Endpoint Accepts Unverified Fee Records — ✅ REMEDIATED
+### H-4: /api/fees Endpoint Accepts Unverified Fee Records — ✅ CLOSED BY DELETION (B5 v2, 2026-04-30)
 
-**Location:** `apps/server/src/routes/fees.ts:6-35`
+**Location:** ~~`apps/server/src/routes/fees.ts`~~ — file deleted.
 
-**Status:** Fixed. Added `isValidSuiAddress()` validation, txDigest format regex, and duplicate txDigest check (prevents replay). Error responses sanitized.
+**Status:** Closed. The entire `/api/fees` POST + GET route was removed in `@t2000/sdk@1.1.0` (B5 v2). The vulnerability disappears by deletion: there's no endpoint to submit unverified records to.
 
-**Description:** Similar to H-3, the POST `/api/fees` endpoint records fee data with no authentication or on-chain verification. An attacker could inject false fee records, polluting the fee ledger and stats.
+**New architecture (resolves the data-integrity concern by construction):** The indexer is now the only writer to `ProtocolFeeLedger`. It scans every checkpoint, detects USDC inflows to `T2000_OVERLAY_FEE_WALLET` via on-chain `balanceChanges`, and writes a row tagged with the operation classified from the tx's moveCall targets. There is no off-chain submission path — every ledger row is provably backed by an on-chain USDC transfer.
 
-**Impact:** Data integrity compromise of the protocol fee ledger.
+**Description (historical):** Pre-B5 v2, the POST `/api/fees` endpoint recorded fee data with no authentication or on-chain verification. An attacker could inject false fee records, polluting the fee ledger and stats. The H-4 hardening (address validation, txDigest regex, dedup) reduced but did not eliminate the attack surface — only on-chain verification or endpoint deletion could fully close it. We chose deletion.
 
-**Recommendation:** Since fees are now collected on-chain via `treasury::collect_fee`, the off-chain ledger should be treated as a secondary index. Either:
-- Remove the POST endpoint entirely and rely on the indexer.
-- Add authentication (API key for SDK clients).
-- Verify `txDigest` on-chain.
+**Why deletion was correct:** The endpoint had exactly one consumer (Audric's prepare/route.ts → execute/route.ts pipeline). With the indexer producing the same data more reliably (and from a stronger root of trust — chain state vs HTTP submission), the endpoint became dead weight that introduced an attack surface. Removing it is strictly better.
 
 ---
 
@@ -471,7 +468,7 @@ The price cache (`apps/server/src/lib/priceCache.ts`) implements a circuit break
 - `routes/sponsor.ts` — Wallet init sponsorship
 - `routes/gas.ts` — Gas sponsorship + reporting
 - `routes/mpp.ts` — MPP payment verification + settlement
-- `routes/fees.ts` — Fee ledger
+- ~~`routes/fees.ts`~~ — Fee ledger (deleted in B5 v2; indexer writes directly to `ProtocolFeeLedger`)
 - `routes/health.ts` — Health check
 - `services/gasStation.ts` — Gas sponsorship logic
 - `services/sponsor.ts` — Sponsor wallet init logic

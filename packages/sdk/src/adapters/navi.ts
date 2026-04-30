@@ -62,10 +62,9 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { collectFee?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
-    const tx = await naviProtocol.buildSaveTx(this.client, address, amount, { ...options, asset: normalized });
+    const tx = await naviProtocol.buildSaveTx(this.client, address, amount, { asset: normalized });
     return { tx };
   }
 
@@ -87,7 +86,7 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     amount: number,
     asset: string,
-    options?: { collectFee?: boolean; skipPythUpdate?: boolean },
+    options?: { skipPythUpdate?: boolean },
   ): Promise<AdapterTxResult> {
     const normalized = normalizeAsset(asset);
     const tx = await naviProtocol.buildBorrowTx(this.client, address, amount, { ...options, asset: normalized });
@@ -136,10 +135,23 @@ export class NaviAdapter implements LendingAdapter {
     address: string,
     coin: TransactionObjectArgument,
     asset: string,
-    options?: { collectFee?: boolean },
   ): Promise<void> {
     const normalized = normalizeAsset(asset);
-    return naviProtocol.addSaveToTx(tx, this.client, address, coin, { ...options, asset: normalized });
+    return naviProtocol.addSaveToTx(tx, this.client, address, coin, { asset: normalized });
+  }
+
+  async addBorrowToTx(
+    tx: Transaction,
+    address: string,
+    amount: number,
+    asset: string,
+    options?: { skipPythUpdate?: boolean },
+  ): Promise<TransactionObjectArgument> {
+    const normalized = normalizeAsset(asset);
+    return naviProtocol.addBorrowToTx(tx, this.client, address, amount, {
+      asset: normalized,
+      skipPythUpdate: options?.skipPythUpdate,
+    });
   }
 
   async addRepayToTx(

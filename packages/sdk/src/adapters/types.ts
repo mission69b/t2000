@@ -73,18 +73,28 @@ export interface LendingAdapter {
   getPositions(address: string): Promise<AdapterPositions>;
   getHealth(address: string): Promise<HealthInfo>;
 
-  buildSaveTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean }): Promise<AdapterTxResult>;
+  // [B5 v2 / 2026-04-30] `collectFee` option dropped — SDK + CLI are fee-free by
+  // design. Consumer apps own the fee policy and call `addFeeTransfer` inline.
+  buildSaveTx(address: string, amount: number, asset: string): Promise<AdapterTxResult>;
   // skipPythUpdate=true is REQUIRED for sponsored builds (e.g. Enoki).
   // See packages/sdk/src/protocols/navi.ts -> buildWithdrawTx jsdoc.
   buildWithdrawTx(address: string, amount: number, asset: string, options?: { skipPythUpdate?: boolean }): Promise<AdapterTxResult & { effectiveAmount: number }>;
-  buildBorrowTx(address: string, amount: number, asset: string, options?: { collectFee?: boolean; skipPythUpdate?: boolean }): Promise<AdapterTxResult>;
+  buildBorrowTx(address: string, amount: number, asset: string, options?: { skipPythUpdate?: boolean }): Promise<AdapterTxResult>;
   buildRepayTx(address: string, amount: number, asset: string, options?: { skipOracle?: boolean; skipPythUpdate?: boolean }): Promise<AdapterTxResult>;
 
   maxWithdraw(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;
   maxBorrow(address: string, asset: string): Promise<{ maxAmount: number; healthFactorAfter: number; currentHF: number }>;
 
   addWithdrawToTx?(tx: Transaction, address: string, amount: number, asset: string, options?: { skipPythUpdate?: boolean }): Promise<{ coin: TransactionObjectArgument; effectiveAmount: number }>;
-  addSaveToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string, options?: { collectFee?: boolean }): Promise<void>;
+  addSaveToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string): Promise<void>;
+
+  /**
+   * [B5 v2] Add a borrow to an existing PTB and return the borrowed coin
+   * WITHOUT transferring it to the user. Lets consumer apps wedge a fee
+   * transfer between the borrow and the user transfer (see
+   * `audric/apps/web/app/api/transactions/prepare/route.ts`).
+   */
+  addBorrowToTx?(tx: Transaction, address: string, amount: number, asset: string, options?: { skipPythUpdate?: boolean }): Promise<TransactionObjectArgument>;
   addRepayToTx?(tx: Transaction, address: string, coin: TransactionObjectArgument, asset: string, options?: { skipPythUpdate?: boolean }): Promise<void>;
 
   getPendingRewards?(address: string): Promise<PendingReward[]>;

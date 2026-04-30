@@ -23,8 +23,9 @@ Backend server for protocol fee indexing, agent registry, and Audric daily-intel
 | Route | Method | Auth | Description |
 |-------|--------|------|-------------|
 | `/api/health` | GET | None | Health check |
-| `/api/fees` | POST | None | Protocol fee report (called by SDK) |
 | `/api/stats` | GET | None | Aggregate stats |
+
+> Pre-B5 v2 also exposed `POST /api/fees` for off-chain fee submission — removed in `@t2000/sdk@1.1.0` (2026-04-30). Fees are now indexed directly from on-chain USDC transfers to `T2000_OVERLAY_FEE_WALLET` (the indexer is the only writer to `ProtocolFeeLedger`).
 
 ## Development
 

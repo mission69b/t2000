@@ -111,7 +111,8 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 6. **Always check CLI_UX_SPEC.md** before modifying CLI command output.
 7. **Always use `token-registry.ts`** for token metadata (tiers, `COIN_REGISTRY`, `isTier1` / `isTier2` / `isSupported` / `getTier`). Never hardcode decimals or coin types.
 8. **Never read `process.env.X` directly in any app or package.** Every app MUST validate its env contract at boot via a Zod schema and expose values through a typed `env` proxy. Direct `process.env` reads bypass the gate that catches the empty-string-in-Vercel bug class. The canonical template is `audric/apps/web/lib/env.ts` (v0.53.x) — schema + `instrumentation.ts` boot-time validation + ESLint `no-restricted-syntax` rule that fails CI on raw `process.env` reads. The only exemption is `process.env.NODE_ENV` (a build-time constant). New env vars: add to the schema first, then read via `env.X`. See the lessons-learned entry in `audric-build-tracker.md` (S.20 / April 2026 BlockVision incident).
-9. **Push back** if a task violates simplicity or adds unnecessary complexity.
+9. **Fees are an Audric concern, not a t2000 concern.** As of `@t2000/sdk@1.1.0` (B5 v2, 2026-04-30), the SDK + CLI are fee-free by design. Audric is the only fee owner: `audric/apps/web/app/api/transactions/prepare/route.ts` calls `addFeeTransfer(tx, coin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` inline for save/borrow and passes `overlayFeeReceiver: T2000_OVERLAY_FEE_WALLET` for Cetus swaps. The deprecated `t2000::treasury::collect_fee` Move call and `addCollectFeeToTx` helper were removed. New consumer apps that want to charge fees follow the same pattern (split + transfer to wallet inside the same PTB; the indexer detects USDC inflows to the wallet and writes `ProtocolFeeLedger` rows). See S.43 in `audric-build-tracker.md`.
+10. **Push back** if a task violates simplicity or adds unnecessary complexity.
 
 ---
 

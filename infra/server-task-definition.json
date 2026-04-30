@@ -35,7 +35,7 @@
         { "name": "T2000_PAYMENT_REGISTRY_ID", "value": "0x4009dd17305ed1b33352b808e9d0e9eb94d09085b2d5ec0f395c5cdfa2271291" },
         { "name": "T2000_PACKAGE_ID", "value": "0xd775fcc66eae26797654d435d751dea56b82eeb999de51fd285348e573b968ad" },
         { "name": "T2000_CONFIG_ID", "value": "0x08ba26f0d260b5edf6a19c71492b3eb914906a7419baf2df1426765157e5862a" },
-        { "name": "T2000_TREASURY_ID", "value": "0xf420ec0dcad44433042fb56e1413fb88d3ff65be94fcf425ef9ff750164590e8" }
+        { "name": "T2000_OVERLAY_FEE_WALLET", "value": "0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a" }
       ],
       "secrets": [
         { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:t2000/mainnet/database-url" },

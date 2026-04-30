@@ -119,22 +119,40 @@ t2000 save 100
 
 ## Fee Collection
 
-If your adapter charges protocol fees, integrate with `addCollectFeeToTx`:
+> **Adapters do not collect fees.** The SDK is fee-free by design (`@t2000/sdk@1.1.0`+, B5 v2 / 2026-04-30). Adapters expose pure tx-building primitives only — fee policy is owned by the consumer app, never by the adapter.
+
+The deprecated `addCollectFeeToTx` (Move call to `t2000::treasury::collect_fee`) was removed. The replacement helper, `addFeeTransfer`, is exported for **consumer apps** to use — adapters should not reach for it.
+
+If your adapter needs to expose a low-level handle so a consumer can interpose a fee transfer between the adapter's coin acquisition and final transfer (the way `addBorrowToTx` works for NAVI), follow this pattern:
 
 ```typescript
-import { addCollectFeeToTx } from '../protocols/protocolFee.js';
+// In your adapter's protocol file (e.g. protocols/myprotocol.ts):
+export async function addBorrowToTx(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  address: string,
+  amount: number,
+  options: { asset?: string } = {},
+): Promise<TransactionObjectArgument> {
+  // ... build the borrow logic and RETURN the borrowed coin (do NOT transfer it) ...
+  return borrowedCoin;
+}
 
-async buildSaveTx(address, amount, asset, options?) {
-  const tx = new Transaction();
-  // ... build your deposit logic ...
-
-  if (options?.collectFee) {
-    addCollectFeeToTx(tx, mergedCoin, 'save');
-  }
-
-  return { tx };
+// In adapters/myprotocol.ts, expose it on the LendingAdapter interface:
+async addBorrowToTx(tx, address, amount, asset, options) {
+  return await myProtocol.addBorrowToTx(tx, this.client, address, amount, { asset, ...options });
 }
 ```
+
+The consumer (e.g. Audric's `prepare/route.ts`) then chains:
+
+```typescript
+const borrowedCoin = await adapter.addBorrowToTx(tx, address, amount, 'USDC');
+addFeeTransfer(tx, borrowedCoin, BORROW_FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount);
+tx.transferObjects([borrowedCoin], tx.pure.address(address));
+```
+
+If your adapter doesn't need to support consumer-side fee interposition, just keep `buildSaveTx` / `buildBorrowTx` as full end-to-end builders — the consumer can still charge a fee on the user's wallet coin before calling the adapter (see Audric's USDC save flow for the pre-fee pattern).
 
 ## Testing
 

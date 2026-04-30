@@ -277,7 +277,7 @@ isSupported(USDT_TYPE); // false (legacy — no tier)
 getTier(SUI_TYPE); // 2
 ```
 
-Swap uses Cetus Aggregator V3 (with a **0.1% t2000 overlay fee** on executed swaps). Use `COIN_REGISTRY`, `getDecimalsForCoinType()`, `resolveSymbol()`, and `resolveTokenType()` for token data.
+Swap uses Cetus Aggregator V3. Per-call `overlayFee` is opt-in — the SDK and CLI never charge fees by default. Consumer apps that want to charge an overlay (e.g. Audric) pass `overlayFee: { rate: 10n, receiver: T2000_OVERLAY_FEE_WALLET }` to `findSwapRoute` / `buildSwapTx`. Use `COIN_REGISTRY`, `getDecimalsForCoinType()`, `resolveSymbol()`, and `resolveTokenType()` for token data.
 
 ## Error Handling
 
@@ -318,20 +318,20 @@ SMOKE=1 pnpm --filter @t2000/sdk test -- src/__smoke__
 
 ## Protocol Fees
 
-| Operation | Fee | Notes |
-|-----------|-----|-------|
-| Save (deposit) | 0.10% | Protocol fee on deposit |
-| Borrow | 0.05% | Protocol fee on loan |
-| Withdraw | Free | |
-| Repay | Free | |
-| Send | Free | |
-| Receive | Free | QR payment request generation, no fee |
-| Swap | 0.10% | t2000 overlay on swap amount; Cetus Aggregator network fees still apply |
-| Stake (vSUI) | Free | VOLO protocol fees only |
-| Unstake (vSUI) | Free | |
-| Pay (MPP) | Free | Agent pays the API price, no t2000 surcharge |
+> **The SDK and CLI are fee-free by design (as of `@t2000/sdk@1.1.0`, B5 v2 / 2026-04-30).** Direct SDK / CLI calls — `t2000 save`, `t2000 borrow`, `t2000 swap`, plus `T2000.save()` / `T2000.borrow()` / `swapExecute()` from any third-party integrator — never charge a t2000 protocol fee. The CLI is dev-focused tooling and intentionally has no monetization.
 
-Fees are collected by the t2000 protocol treasury on-chain.
+Fees only apply when the **Audric** consumer app calls these primitives. Audric layers a fee transfer step (`addFeeTransfer`) inside the same PTB and routes the USDC to `T2000_OVERLAY_FEE_WALLET`.
+
+| Operation | Audric fee | SDK / CLI fee | Notes |
+|-----------|-----------|--------------|-------|
+| Save (deposit) | 0.10% | Free | USDC only; USDsui save is free in Audric too |
+| Borrow | 0.05% | Free | USDC only; USDsui borrow is free in Audric too |
+| Swap | 0.10% | Free | Audric passes Cetus `overlayFee`. CLI omits it. Cetus Aggregator network fees still apply both ways. |
+| Withdraw / Repay / Send / Receive / Stake / Unstake / Pay (MPP) | Free | Free | No surcharge anywhere. |
+
+How Audric collects fees: `prepare/route.ts` calls `addFeeTransfer(tx, paymentCoin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and passes `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` for swaps. Both flows produce a USDC transfer to the treasury wallet inside the same atomic PTB. The t2000 server-side indexer detects the on-chain USDC inflow and records a `ProtocolFeeLedger` row — no off-chain submission is involved. The deprecated `t2000::treasury::collect_fee` Move call is no longer used.
+
+Need to charge an overlay fee in your own consumer app? Import `addFeeTransfer` and `T2000_OVERLAY_FEE_WALLET` from `@t2000/sdk` (or use your own receiver address — the SDK never assumes the t2000 treasury).
 
 ## MCP Server
 

@@ -3,7 +3,6 @@ import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
 import { health } from './routes/health.js';
-import { fees } from './routes/fees.js';
 import { testDatabaseConnection } from './db/prisma.js';
 
 const REQUIRED_ENV = ['DATABASE_URL'];
@@ -42,7 +41,9 @@ app.use('*', async (c, next) => {
 });
 
 app.route('/', health);
-app.route('/', fees);
+// [B5 v2 / 2026-04-30] /api/fees POST + GET removed. Fees are now indexed
+// directly from on-chain USDC transfers to T2000_OVERLAY_FEE_WALLET. Stats
+// API queries `ProtocolFeeLedger` via Prisma directly.
 
 app.get('/', (c) => c.json({ service: 't2000-server', version: '0.1.0' }));
 

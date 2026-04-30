@@ -45,6 +45,8 @@ export interface ParsedFeeEvent {
   agentAddress: string;
   operation: string;
   feeAmount: string;
+  feeAsset: string;
+  feeRate: string;
   txDigest: string;
 }
 
@@ -62,19 +64,78 @@ export function isT2000Event(event: SuiEvent): boolean {
   return event.type.startsWith(T2000_PACKAGE_ID);
 }
 
-export function parseFeeEvents(tx: ParsedTransaction): ParsedFeeEvent[] {
+// Operation → fee rate (matches packages/sdk/src/constants.ts SAVE/BORROW_FEE_BPS
+// and the swap overlay rate). Indexer only sees on-chain amounts; the rate is
+// derived from the operation type at index time.
+const OPERATION_RATES: Record<string, string> = {
+  save: '0.001',    // 10 bps
+  borrow: '0.0005', // 5 bps
+  swap: '0.001',    // 10 bps overlay
+  unknown: '0',
+};
+
+/**
+ * Extract the asset symbol from a Sui coin type string.
+ *
+ *   0xdba34…::usdc::USDC → "USDC"
+ *   0x2::sui::SUI        → "SUI"
+ *   0xabc::cert::CERT    → "CERT"
+ *
+ * Matches the convention used throughout the codebase (token-registry, balance
+ * changes, etc.). Stored on `ProtocolFeeLedger.feeAsset` so the stats layer
+ * can break fees down by asset and apply the right decimals when converting
+ * raw amounts to human values.
+ */
+function extractAssetSymbol(coinType: string): string {
+  const segments = coinType.split('::');
+  return segments[segments.length - 1] ?? coinType;
+}
+
+/**
+ * Detect token transfers to the T2000 overlay-fee wallet inside a transaction
+ * and classify each as a save / borrow / swap fee from the tx's moveCall
+ * targets. Replaces `parseFeeEvents` (which parsed the deprecated
+ * `t2000::treasury::FeeCollected` Move event).
+ *
+ * Audric's prepare/route.ts adds fees in two ways:
+ *   - save / borrow: `addFeeTransfer` splits a USDC fee from the operation's
+ *     coin and transfers it inline. Always USDC.
+ *   - swap: Cetus aggregator's `overlayFeeReceiver` takes the fee from the
+ *     swap's output coin (default `byAmountIn=true`). Asset varies — e.g.
+ *     a USDC→SUI swap pays its fee in SUI, a SUI→USDC swap pays in USDC.
+ *
+ * We detect ANY positive balance change to `treasuryWallet` (regardless of
+ * coin type) and record it with the asset symbol. The stats layer applies
+ * the correct decimals via the SDK token registry at display time.
+ *
+ * @param tx              The parsed transaction
+ * @param treasuryWallet  The wallet address that receives all overlay fees
+ *                        (matches `T2000_OVERLAY_FEE_WALLET` from the SDK)
+ */
+export function parseTreasuryFees(
+  tx: ParsedTransaction,
+  treasuryWallet: string,
+): ParsedFeeEvent[] {
+  if (!treasuryWallet) return [];
+  const treasuryLower = treasuryWallet.toLowerCase();
+
   const fees: ParsedFeeEvent[] = [];
+  const operation = classifyFromMoveCallTargets(tx.moveCallTargets).action;
+  const feeRate = OPERATION_RATES[operation] ?? '0';
 
-  for (const event of tx.events) {
-    if (!event.type.includes('FeeCollected')) continue;
+  for (const change of tx.balanceChanges) {
+    const ownerAddr = 'AddressOwner' in change.owner ? change.owner.AddressOwner : null;
+    if (!ownerAddr || ownerAddr.toLowerCase() !== treasuryLower) continue;
 
-    const fields = event.parsedJson as Record<string, unknown> | null;
-    if (!fields) continue;
+    const amount = BigInt(change.amount);
+    if (amount <= 0n) continue;
 
     fees.push({
-      agentAddress: String(fields.agent ?? fields.sender ?? tx.sender),
-      operation: String(fields.operation ?? 'unknown'),
-      feeAmount: String(fields.amount ?? '0'),
+      agentAddress: tx.sender,
+      operation,
+      feeAmount: amount.toString(),
+      feeAsset: extractAssetSymbol(change.coinType),
+      feeRate,
       txDigest: tx.digest,
     });
   }
