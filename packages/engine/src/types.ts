@@ -26,8 +26,30 @@ export interface Message {
 // ---------------------------------------------------------------------------
 
 export type EngineEvent =
-  | { type: 'thinking_delta'; text: string }
-  | { type: 'thinking_done'; signature?: string }
+  /**
+   * [SPEC 8 v0.5.1] `blockIndex` identifies which thinking block this delta
+   * belongs to. Anthropic streams multi-block thinking with rising indices
+   * across each turn (block 0, 1, 2, ...). Hosts use this to render
+   * chronologically interleaved thinking accordions instead of flattening
+   * every delta into one string. Backwards-compatible: older hosts that
+   * ignore the field still see deltas in emission order.
+   */
+  | { type: 'thinking_delta'; text: string; blockIndex: number }
+  /**
+   * [SPEC 8 v0.5.1] When the thinking block contained a parseable
+   * `<eval_summary>...</eval_summary>` marker, `summaryMode` flips true
+   * and `evaluationItems` carries the structured rows. Hosts render the
+   * `HowIEvaluatedBlock` ("✦ HOW I EVALUATED THIS") trust card from
+   * these fields. Both undefined when the block had no marker (every
+   * read-only and most write turns).
+   */
+  | {
+      type: 'thinking_done';
+      blockIndex: number;
+      signature?: string;
+      summaryMode?: boolean;
+      evaluationItems?: import('./eval-summary.js').EvaluationItem[];
+    }
   | { type: 'text_delta'; text: string }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | {
@@ -86,7 +108,61 @@ export type EngineEvent =
    * boolean for the `TurnMetrics.compactionTriggered` column. Carries no
    * payload — `compactMessages` stays a pure function.
    */
-  | { type: 'compaction' };
+  | { type: 'compaction' }
+  /**
+   * [SPEC 8 v0.5.1] Side-channel event paired to every `update_todo` tool
+   * call. Hosts render the persistent todo card from this event (NOT from
+   * the tool_result — see `tools/update-todo.ts` § "side-channel" for
+   * rationale). Carries the full items array so the host can
+   * unconditionally replace its rendered list (the tool is idempotent —
+   * each call replaces the previous state). `toolUseId` lets the host
+   * key the render cell to the originating tool call.
+   */
+  | { type: 'todo_update'; items: TodoItem[]; toolUseId: string }
+  /**
+   * [SPEC 8 v0.5.1] Mid-execution progress signal from a long-running tool
+   * (Cetus swap_execute 2-5s, protocol_deep_dive 3-8s, portfolio_analysis
+   * 1-2s). Tools opt in by calling `context.progress?.(msg, pct?)` from
+   * inside their `call` implementation. Hosts render the message + bar
+   * inside the corresponding tool block's spinner — kills the dead-air
+   * static-spinner UX that's the explicit SPEC 8 v0.3 fix target.
+   *
+   * Engine wiring (queue-and-yield in the dispatcher) lands with the
+   * Cetus integration in a follow-on slice. SPEC 8 v0.5.1 reserves the
+   * event type now so hosts can pre-wire the renderer.
+   *
+   * `pct` is 0–100 when the tool can express progress quantitatively,
+   * undefined otherwise (free-text status only).
+   */
+  | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
+  /**
+   * [SPEC 8 v0.5.1, D2] Inline-form structured input event reserved for
+   * SPEC 9 v0.1.2 (`pending_input` form primitive). The engine does NOT
+   * emit this event under SPEC 8 — the type is reserved so legacy hosts
+   * can add a no-op handler now and avoid crashing when SPEC 9 ships
+   * `pending_input` emission. See SPEC 8 § "v0.5 cross-spec coupling
+   * fixes" — gap D2 — for the forward-compat rationale.
+   */
+  | {
+      type: 'pending_input';
+      /** Form schema (shape locked in SPEC 9 v0.1.2; engine treats it opaquely). */
+      schema: unknown;
+      /** Engine round-trip identifier — host posts the answer back keyed on this. */
+      inputId: string;
+      /** Optional human-readable prompt the LLM wants the host to display above the form. */
+      prompt?: string;
+    };
+
+/**
+ * [SPEC 8 v0.5.1] One row in an `update_todo` payload. Mirrored from
+ * `packages/engine/src/tools/update-todo.ts`. Kept here so hosts that
+ * consume `EngineEvent` don't need to depend on the tool module.
+ */
+export interface TodoItem {
+  id: string;
+  label: string;
+  status: 'pending' | 'in_progress' | 'completed';
+}
 
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
 
@@ -461,8 +537,17 @@ export interface ToolDefinition {
 }
 
 export type ProviderEvent =
-  | { type: 'thinking_delta'; text: string }
-  | { type: 'thinking_done'; thinking: string; signature: string }
+  | { type: 'thinking_delta'; text: string; blockIndex: number }
+  | {
+      type: 'thinking_done';
+      blockIndex: number;
+      thinking: string;
+      signature: string;
+      // [SPEC 8 v0.5.1] populated by the provider when a parseable
+      // <eval_summary> marker was found in the thinking text.
+      summaryMode?: boolean;
+      evaluationItems?: import('./eval-summary.js').EvaluationItem[];
+    }
   | { type: 'redacted_thinking'; data: string }
   | { type: 'text_delta'; text: string }
   | { type: 'tool_use_start'; id: string; name: string }

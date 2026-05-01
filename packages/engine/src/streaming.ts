@@ -1,12 +1,22 @@
-import type { EngineEvent, PendingAction, StopReason } from './types.js';
+import type { EngineEvent, PendingAction, StopReason, TodoItem } from './types.js';
+import type { EvaluationItem } from './eval-summary.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
 // ---------------------------------------------------------------------------
 
 export type SSEEvent =
-  | { type: 'thinking_delta'; text: string }
-  | { type: 'thinking_done'; signature?: string }
+  // [SPEC 8 v0.5.1] blockIndex identifies the thinking block this delta belongs to.
+  | { type: 'thinking_delta'; text: string; blockIndex: number }
+  | {
+      type: 'thinking_done';
+      blockIndex: number;
+      signature?: string;
+      // [SPEC 8 v0.5.1] HowIEvaluated block fields — populated when the
+      // thinking text contained a parseable <eval_summary> marker.
+      summaryMode?: boolean;
+      evaluationItems?: EvaluationItem[];
+    }
   | { type: 'text_delta'; text: string }
   | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
   | {
@@ -26,7 +36,17 @@ export type SSEEvent =
   | { type: 'turn_complete'; stopReason: StopReason }
   | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }
   | { type: 'error'; message: string }
-  | { type: 'canvas'; template: string; data: unknown; title: string; toolUseId: string };
+  | { type: 'canvas'; template: string; data: unknown; title: string; toolUseId: string }
+  // [SPEC 8 v0.5.1] todo_update side-channel event paired to every
+  // update_todo tool call. Mirrors EngineEvent.todo_update.
+  | { type: 'todo_update'; items: TodoItem[]; toolUseId: string }
+  // [SPEC 8 v0.5.1] tool_progress mid-execution signal from long-running
+  // tools (Cetus swap_execute, protocol_deep_dive, portfolio_analysis).
+  // Engine wiring lands with the Cetus integration in a follow-on slice.
+  | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
+  // [SPEC 8 v0.5.1, D2] pending_input reserved for SPEC 9 v0.1.2 inline
+  // forms. Engine doesn't emit under SPEC 8; reservation is forward-compat.
+  | { type: 'pending_input'; schema: unknown; inputId: string; prompt?: string };
 
 // ---------------------------------------------------------------------------
 // Serialise: SSEEvent → SSE text

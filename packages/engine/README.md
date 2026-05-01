@@ -261,8 +261,11 @@ The `submitMessage()` async generator yields `EngineEvent`:
 | Event | Fields | When |
 |-------|--------|------|
 | `text_delta` | `text` | LLM streams a text chunk |
-| `thinking_delta` | `text` | Extended thinking chunk (reasoning accordion) |
-| `thinking_done` | — | Extended thinking complete |
+| `thinking_delta` | `text`, `blockIndex` | Extended thinking chunk (reasoning accordion). **`blockIndex`** identifies which thinking block this delta belongs to so hosts can render multi-block thinking chronologically (Anthropic streams ≥1 thinking blocks per turn at high effort). |
+| `thinking_done` | `blockIndex`, `signature?`, `summaryMode?`, `evaluationItems?` | Extended thinking block complete. `blockIndex` matches the `thinking_delta` events for that block. **`summaryMode`** flips true and **`evaluationItems`** is populated when the block contained a parseable `<eval_summary>` marker — hosts render `HowIEvaluatedBlock` ("✦ HOW I EVALUATED THIS") from these fields. |
+| `todo_update` | `items`, `toolUseId` | **[SPEC 8 v0.5.1]** Side-channel event paired to every `update_todo` tool call. `items` is the full `TodoItem[]` array; hosts unconditionally replace their rendered list (the tool is idempotent). `toolUseId` keys the render to the originating call. |
+| `tool_progress` | `toolUseId`, `toolName`, `message`, `pct?` | **[SPEC 8 v0.5.1]** Mid-execution progress signal from long-running tools (Cetus swap, protocol_deep_dive, portfolio_analysis). Tools opt in via `context.progress?.(msg, pct?)`. Engine wiring lands with the Cetus SDK integration in a follow-on slice. |
+| `pending_input` | `schema`, `inputId`, `prompt?` | **[SPEC 8 v0.5.1, D2]** Reserved for SPEC 9 v0.1.2 inline forms. Engine doesn't emit under SPEC 8 — host adds a no-op handler now to avoid crashing when SPEC 9 ships emission. |
 | `tool_start` | `toolName`, `toolUseId`, `input` | Tool execution begins |
 | `tool_result` | `toolName`, `toolUseId`, `result`, `isError` | Tool execution completes |
 | `pending_action` | `action` (PendingAction with `attemptId`, `toolUseId`, `turnIndex`, `name`, `input`) | Write tool awaiting client-side execution. `attemptId` is a per-yield UUID — hosts persist it on TurnMetrics and key the resume `updateMany` on it (avoids ambiguous `(sessionId, turnIndex)` updates) |

@@ -21,6 +21,7 @@ import { getTelemetrySink } from './telemetry.js';
 import { randomUUID } from 'node:crypto';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { estimatePayApiCost } from './tools/pay.js';
+import { clampThinkingForEffort } from './thinking-budget.js';
 import {
   type GuardConfig,
   type GuardRunnerState,
@@ -708,6 +709,12 @@ export class QueryEngine {
           }
         }
 
+        // [SPEC 8 v0.5.1] HARD-cap thinking budget per effort tier.
+        // lean=disabled, standard=8k, rich=16k, max=32k. Hosts that pass
+        // a smaller budget keep it; the engine only ever clamps DOWN.
+        // See thinking-budget.ts for the full rationale.
+        const cappedThinking = clampThinkingForEffort(this.thinking, this.outputConfig?.effort);
+
         const stream = this.provider.chat({
           messages: this.messages,
           systemPrompt: effectivePrompt,
@@ -716,7 +723,7 @@ export class QueryEngine {
           maxTokens: this.maxTokens,
           temperature: this.temperature,
           toolChoice: effectiveToolChoice,
-          thinking: this.thinking,
+          thinking: cappedThinking,
           outputConfig: this.outputConfig,
           signal,
         });
@@ -810,6 +817,16 @@ export class QueryEngine {
                   template: String(r.template ?? ''),
                   title: String(r.title ?? ''),
                   data: r.templateData ?? null,
+                  toolUseId: finalEvent.toolUseId,
+                };
+              }
+              // [SPEC 8 v0.5.1] Side-channel todo_update event paired to
+              // every update_todo tool result. Mirrors the __canvas
+              // pattern above; see tools/update-todo.ts for rationale.
+              if (r && r.__todoUpdate === true && Array.isArray(r.items)) {
+                yield {
+                  type: 'todo_update',
+                  items: r.items as { id: string; label: string; status: 'pending' | 'in_progress' | 'completed' }[],
                   toolUseId: finalEvent.toolUseId,
                 };
               }
@@ -1074,6 +1091,16 @@ export class QueryEngine {
                 toolUseId: finalEvent.toolUseId,
               };
             }
+            // [SPEC 8 v0.5.1] Side-channel todo_update event for the
+            // late-dispatch path. Mirrors the early-dispatch emission
+            // ~250 lines above.
+            if (r && r.__todoUpdate === true && Array.isArray(r.items)) {
+              yield {
+                type: 'todo_update',
+                items: r.items as { id: string; label: string; status: 'pending' | 'in_progress' | 'completed' }[],
+                toolUseId: finalEvent.toolUseId,
+              };
+            }
 
             // [v1.4] Fire onAutoExecuted for write tools that auto-executed
             // (non-readonly tools that reach this loop have already passed the
@@ -1207,6 +1234,25 @@ export class QueryEngine {
       this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
       this.messages.push({ role: 'user', content: toolResultBlocks });
 
+      // [SPEC 8 v0.5.1] update_todo maxTurns exemption.
+      //
+      // Calling update_todo documents work; it doesn't advance work. If the
+      // LLM fires it 4× during a 5-tool plan, that's 4 of its 10-turn budget
+      // gone to narration before any real action. We exempt iterations
+      // whose only tool calls were update_todo by decrementing the counter.
+      //
+      // The check looks at every `tool_use` block in this iteration's
+      // `acc.assistantBlocks` (covers both early-dispatched and late-
+      // dispatched calls). If every one was `update_todo`, decrement.
+      // Mixed iterations (e.g. balance_check + update_todo) DO count —
+      // that's a real piece of work the LLM is doing.
+      const toolUseBlocks = acc.assistantBlocks.filter((b) => b.type === 'tool_use') as { name: string }[];
+      const allUpdateTodo =
+        toolUseBlocks.length > 0 && toolUseBlocks.every((b) => b.name === 'update_todo');
+      if (allUpdateTodo) {
+        turns--;
+      }
+
       if (this.costTracker.isOverBudget()) {
         yield { type: 'error', error: new Error('Session budget exceeded') };
         return;
@@ -1239,7 +1285,7 @@ export class QueryEngine {
   ): Generator<EngineEvent> {
     switch (event.type) {
       case 'thinking_delta': {
-        yield { type: 'thinking_delta', text: event.text };
+        yield { type: 'thinking_delta', text: event.text, blockIndex: event.blockIndex };
         break;
       }
 
@@ -1249,7 +1295,16 @@ export class QueryEngine {
           thinking: event.thinking,
           signature: event.signature,
         });
-        yield { type: 'thinking_done', signature: event.signature };
+        yield {
+          type: 'thinking_done',
+          blockIndex: event.blockIndex,
+          signature: event.signature,
+          // [SPEC 8 v0.5.1] forward HowIEvaluated structured fields when
+          // the provider parsed an <eval_summary> marker.
+          ...(event.summaryMode && event.evaluationItems
+            ? { summaryMode: true, evaluationItems: event.evaluationItems }
+            : {}),
+        };
         break;
       }
 

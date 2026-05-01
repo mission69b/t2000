@@ -9,6 +9,7 @@ import type {
   ThinkingConfig,
   ToolDefinition,
 } from '../types.js';
+import { parseEvalSummary } from '../eval-summary.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -183,7 +184,7 @@ export class AnthropicProvider implements LLMProvider {
             } else if (delta.type === 'thinking_delta') {
               const buf = thinkingBuffers.get(event.index);
               if (buf?.type === 'thinking') buf.text += delta.thinking ?? '';
-              yield { type: 'thinking_delta', text: delta.thinking ?? '' };
+              yield { type: 'thinking_delta', text: delta.thinking ?? '', blockIndex: event.index };
             } else if (delta.type === 'signature_delta') {
               const buf = thinkingBuffers.get(event.index);
               if (buf?.type === 'thinking') buf.signature = delta.signature ?? '';
@@ -210,7 +211,19 @@ export class AnthropicProvider implements LLMProvider {
             }
             const thinkBuf = thinkingBuffers.get(event.index);
             if (thinkBuf?.type === 'thinking') {
-              yield { type: 'thinking_done', thinking: thinkBuf.text, signature: thinkBuf.signature };
+              // [SPEC 8 v0.5.1] Detect <eval_summary> marker in the
+              // thinking buffer. When present + parseable, populate the
+              // structured fields the host renders as HowIEvaluatedBlock.
+              const summary = parseEvalSummary(thinkBuf.text);
+              yield {
+                type: 'thinking_done',
+                blockIndex: event.index,
+                thinking: thinkBuf.text,
+                signature: thinkBuf.signature,
+                ...(summary
+                  ? { summaryMode: true, evaluationItems: summary.evaluationItems }
+                  : {}),
+              };
               thinkingBuffers.delete(event.index);
             } else if (thinkBuf?.type === 'redacted_thinking') {
               yield { type: 'redacted_thinking', data: thinkBuf.data };

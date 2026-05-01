@@ -36,6 +36,12 @@ import { spendingAnalyticsTool } from './spending.js';
 import { yieldSummaryTool } from './yield-summary.js';
 import { activitySummaryTool } from './activity-summary.js';
 import { resolveSuinsTool } from './resolve-suins.js';
+// [SPEC 8 v0.5.1] update_todo is opt-in — NOT included in READ_TOOLS.
+// Hosts adopt by appending `updateTodoTool` to their tool list:
+//   tools: [...getDefaultTools(), updateTodoTool]
+// This keeps the existing audric/web call sites zero-risk until the
+// SPEC 8 host wiring (P3.3) lands.
+import { updateTodoTool } from './update-todo.js';
 // [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed. The
 // BlockVision-backed `token_prices` tool covers spot prices; the
 // surviving DefiLlama dependency is `protocol_deep_dive`, which holds
@@ -138,4 +144,5 @@ export {
   yieldSummaryTool,
   activitySummaryTool,
   resolveSuinsTool,
+  updateTodoTool,
 };

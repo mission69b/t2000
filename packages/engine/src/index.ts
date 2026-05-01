@@ -83,6 +83,19 @@ export type { Recipe, RecipeStep, RecipeStepOnError, RecipePrerequisite } from '
 
 // Complexity classifier
 export { classifyEffort } from './classify-effort.js';
+// [SPEC 8 v0.5.1] Per-shape thinking-budget HARD caps + clamp utility.
+export {
+  EFFORT_THINKING_BUDGET_CAPS,
+  clampThinkingForEffort,
+} from './thinking-budget.js';
+// [SPEC 8 v0.5.1] <eval_summary> marker parser + EvaluationItem type.
+// Hosts use these to render the HowIEvaluatedBlock trust card.
+export { parseEvalSummary } from './eval-summary.js';
+export type {
+  EvaluationItem,
+  EvaluationStatus,
+  EvalSummaryParseResult,
+} from './eval-summary.js';
 
 // Prompt caching
 export { buildCachedSystemPrompt } from './prompt-cache.js';
@@ -206,7 +219,12 @@ export {
   yieldSummaryTool,
   activitySummaryTool,
   resolveSuinsTool,
+  // [SPEC 8 v0.5.1] update_todo is exported but NOT in READ_TOOLS — hosts
+  // opt in via [...getDefaultTools(), updateTodoTool].
+  updateTodoTool,
 } from './tools/index.js';
+export type { TodoItem } from './types.js';
+export type { TodoItem as UpdateTodoItem, UpdateTodoInput } from './tools/update-todo.js';
 
 // Built-in tools — writes
 export {
