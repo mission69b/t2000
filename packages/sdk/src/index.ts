@@ -108,6 +108,34 @@ export {
   getAddress,
 } from './wallet/keyManager.js';
 export { buildSendTx, addSendToTx } from './wallet/send.js';
+export {
+  fetchAllCoins,
+  selectAndSplitCoin,
+  selectSuiCoin,
+} from './wallet/coinSelection.js';
+export type { CoinPage, SelectAndSplitResult } from './wallet/coinSelection.js';
+export {
+  composeTx,
+  deriveAllowedAddressesFromPtb,
+  WRITE_APPENDER_REGISTRY,
+} from './composeTx.js';
+export type {
+  WriteToolName,
+  WriteStep,
+  ComposeTxOptions,
+  ComposeTxResult,
+  AppenderContext,
+  StepPreview,
+  SaveDepositInput,
+  WithdrawInput,
+  BorrowInput,
+  RepayDebtInput,
+  SendTransferInput,
+  SwapExecuteInput,
+  ClaimRewardsInput,
+  VoloStakeInput,
+  VoloUnstakeInput,
+} from './composeTx.js';
 export { calculateFee, addFeeTransfer } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export {

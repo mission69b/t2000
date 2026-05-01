@@ -422,13 +422,21 @@ export async function addRepayToTx(
   client: SuiJsonRpcClient,
   address: string,
   coin: TransactionObjectArgument,
-  // See note on buildWithdrawTx for skipPythUpdate semantics.
-  options: { asset?: string; skipPythUpdate?: boolean } = {},
+  // skipOracle bypasses oracle entirely (safe for repay — no HF risk; debt
+  // reduction never triggers liquidation). skipPythUpdate is the narrower
+  // flag — preserves on-chain `update_single_price_v2` calls but skips the
+  // tx.gas-using Pyth fee payment. Sponsored callers (Enoki) typically pass
+  // skipOracle=true; self-funded callers can leave both undefined.
+  // See note on buildWithdrawTx for sponsored-build details.
+  options: { asset?: string; skipPythUpdate?: boolean; skipOracle?: boolean } = {},
 ): Promise<void> {
   const asset = options.asset ?? 'USDC';
   const assetInfo = resolveAssetInfo(asset);
 
-  await refreshOracle(tx, client, address, { skipPythUpdate: options.skipPythUpdate });
+  await refreshOracle(tx, client, address, {
+    skipPythUpdate: options.skipPythUpdate,
+    skipOracle: options.skipOracle,
+  });
 
   try {
     await repayCoinPTB(tx, assetInfo.type, coin as never, { env: 'prod' });
