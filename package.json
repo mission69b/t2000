@@ -10,6 +10,8 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
+    "@mysten/sui": "^2.11.0",
+    "@mysten/suins": "^1.1.1",
     "prettier": "^3",
     "tsx": "^4",
     "turbo": "^2",

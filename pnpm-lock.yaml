@@ -18,6 +18,12 @@ importers:
 
   .:
     devDependencies:
+      '@mysten/sui':
+        specifier: ^2.11.0
+        version: 2.11.0(typescript@5.9.3)
+      '@mysten/suins':
+        specifier: ^1.1.1
+        version: 1.1.1(@mysten/sui@2.11.0(typescript@5.9.3))
       prettier:
         specifier: ^3
         version: 3.8.1
@@ -309,7 +315,7 @@ importers:
     dependencies:
       '@cetusprotocol/aggregator-sdk':
         specifier: ^1.4.8
-        version: 1.4.8(axios@1.13.6)(typescript@5.9.3)
+        version: 1.4.8(axios@1.15.2)(typescript@5.9.3)
       '@mysten/payment-kit':
         specifier: ^0.1.6
         version: 0.1.6(@mysten/sui@2.11.0(typescript@5.9.3))
@@ -1087,6 +1093,12 @@ packages:
   '@mysten/sui@2.11.0':
     resolution: {integrity: sha512-MuqbFf5buLpHoTujKF8mHnMHRJ+MpiaN0Ruoi+gr3+Gho0h5njMRv0jpso37THAQSc5Cwc8JbT+uY59OXk47Zw==}
     engines: {node: '>=22'}
+
+  '@mysten/suins@1.1.1':
+    resolution: {integrity: sha512-b3sJe/trqxnMpvo/zxHJPokQkc4ujJmDEvKhASngJjMmeRdDe7+Hduo7GzEqM9QhPgVy/p4nl/3zLlCHn0HZOw==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@mysten/sui': ^2.11.0
 
   '@mysten/utils@0.3.1':
     resolution: {integrity: sha512-36KhxG284uhDdSnlkyNaS6fzKTX9FpP2WQWOwUKIRsqQFFIm2ooCf2TP1IuqrtMpkairwpiWkAS0eg7cpemVzg==}
@@ -1947,8 +1959,16 @@ packages:
   axios-retry@3.9.1:
     resolution: {integrity: sha512-8PJDLJv7qTTMMwdnbMvrLYuvB47M81wRtxQmEdV5w4rgbTXTt+vtPkXwajOfOdSyv/wZICJOC+/UhXH4aQ/R+w==}
 
+  axios-retry@4.5.0:
+    resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
+    peerDependencies:
+      axios: 0.x || 1.x
+
   axios@1.13.6:
     resolution: {integrity: sha512-ChTCHMouEe2kn713WHbQGcuYrr6fXTBiu460OTwWrWob16g1bXn4vtz07Ope7ewMozJAnEquLk5lWQWtBig9DQ==}
+
+  axios@1.15.2:
+    resolution: {integrity: sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -3439,6 +3459,10 @@ packages:
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
 
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
+
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
@@ -4291,10 +4315,10 @@ snapshots:
       css-tree: 3.2.1
     optional: true
 
-  '@cetusprotocol/aggregator-sdk@1.4.8(axios@1.13.6)(typescript@5.9.3)':
+  '@cetusprotocol/aggregator-sdk@1.4.8(axios@1.15.2)(typescript@5.9.3)':
     dependencies:
       '@mysten/sui': 2.11.0(typescript@5.9.3)
-      '@pythnetwork/hermes-client': 3.1.0(axios@1.13.6)
+      '@pythnetwork/hermes-client': 3.1.0(axios@1.15.2)
       bip39: 3.1.0
       dotenv: 16.6.1
       json-bigint: 1.0.0
@@ -4836,6 +4860,14 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
+  '@mysten/suins@1.1.1(@mysten/sui@2.11.0(typescript@5.9.3))':
+    dependencies:
+      '@mysten/sui': 2.11.0(typescript@5.9.3)
+      axios: 1.15.2
+      axios-retry: 4.5.0(axios@1.15.2)
+    transitivePeerDependencies:
+      - debug
+
   '@mysten/utils@0.3.1':
     dependencies:
       '@scure/base': 2.0.0
@@ -4978,9 +5010,9 @@ snapshots:
 
   '@protobuf-ts/runtime@2.11.1': {}
 
-  '@pythnetwork/hermes-client@3.1.0(axios@1.13.6)':
+  '@pythnetwork/hermes-client@3.1.0(axios@1.15.2)':
     dependencies:
-      '@zodios/core': 10.9.6(axios@1.13.6)(zod@3.25.76)
+      '@zodios/core': 10.9.6(axios@1.15.2)(zod@3.25.76)
       eventsource: 3.0.7
       zod: 3.25.76
     transitivePeerDependencies:
@@ -5539,9 +5571,9 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@zodios/core@10.9.6(axios@1.13.6)(zod@3.25.76)':
+  '@zodios/core@10.9.6(axios@1.15.2)(zod@3.25.76)':
     dependencies:
-      axios: 1.13.6
+      axios: 1.15.2
       zod: 3.25.76
 
   abitype@1.2.3(typescript@5.9.3)(zod@3.25.76):
@@ -5693,11 +5725,24 @@ snapshots:
       '@babel/runtime': 7.29.2
       is-retry-allowed: 2.2.0
 
+  axios-retry@4.5.0(axios@1.15.2):
+    dependencies:
+      axios: 1.15.2
+      is-retry-allowed: 2.2.0
+
   axios@1.13.6:
     dependencies:
       follow-redirects: 1.15.11
       form-data: 4.0.5
       proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.15.2:
+    dependencies:
+      follow-redirects: 1.15.11
+      form-data: 4.0.5
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
 
@@ -6142,7 +6187,7 @@ snapshots:
       eslint: 9.39.4(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.39.4(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.0.1(eslint@9.39.4(jiti@2.6.1))
@@ -6175,7 +6220,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -6189,7 +6234,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)))(eslint@9.39.4(jiti@2.6.1)):
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -7370,6 +7415,8 @@ snapshots:
       ipaddr.js: 1.9.1
 
   proxy-from-env@1.1.0: {}
+
+  proxy-from-env@2.1.0: {}
 
   punycode@2.3.1: {}
 
