@@ -156,6 +156,8 @@ export type { CoinMeta } from './token-registry.js';
 export {
   buildStakeVSuiTx,
   buildUnstakeVSuiTx,
+  addStakeVSuiToTx,
+  addUnstakeVSuiToTx,
   getVoloStats,
   VSUI_TYPE,
   VOLO_PKG,
