@@ -124,6 +124,8 @@ export type {
   WriteStep,
   ComposeTxOptions,
   ComposeTxResult,
+  ComposeTxFeeHooks,
+  ComposeTxFeeHookContext,
   AppenderContext,
   StepPreview,
   SaveDepositInput,

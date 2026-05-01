@@ -449,3 +449,170 @@ describe('composeTx — error handling', () => {
     ).rejects.toThrow(/Unknown token in swap/);
   });
 });
+
+describe('composeTx — fee hooks (audric host migration surface)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockNaviAdapter();
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(STUB_BYTES);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('save_deposit feeHook fires with (tx, coin, input, sender) before NAVI deposit', async () => {
+    const navi = await import('@naviprotocol/lending');
+    const { composeTx } = await import('./composeTx.js');
+    const client = mockRpcClient({
+      [USDC_TYPE]: [{ coinObjectId: '0x' + '9'.repeat(64), balance: '10000000' }],
+    });
+
+    const calls: Array<{ hasTx: boolean; hasCoin: boolean; inputAsset: string | undefined; sender: string }> = [];
+    let hookCalledBeforeDeposit = false;
+    (navi.depositCoinPTB as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      hookCalledBeforeDeposit = calls.length > 0;
+      return undefined;
+    });
+
+    await composeTx({
+      sender: VALID_ADDRESS,
+      client,
+      sponsoredContext: true,
+      steps: [{ toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } }],
+      feeHooks: {
+        save_deposit: ({ tx, coin, input, sender }) => {
+          calls.push({
+            hasTx: tx instanceof Transaction,
+            hasCoin: coin !== undefined,
+            inputAsset: input.asset,
+            sender,
+          });
+        },
+      },
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({
+      hasTx: true,
+      hasCoin: true,
+      inputAsset: 'USDC',
+      sender: VALID_ADDRESS,
+    });
+    expect(hookCalledBeforeDeposit).toBe(true);
+  });
+
+  it('borrow feeHook fires AFTER addBorrowToTx, BEFORE transferObjects(coin, sender)', async () => {
+    const { composeTx } = await import('./composeTx.js');
+    const client = mockRpcClient({});
+
+    const order: string[] = [];
+    const result = await composeTx({
+      sender: VALID_ADDRESS,
+      client,
+      sponsoredContext: true,
+      steps: [{ toolName: 'borrow', input: { amount: 10, asset: 'USDC' } }],
+      feeHooks: {
+        borrow: ({ tx, coin }) => {
+          order.push('feeHook');
+          // Simulate addFeeTransfer: split a fee chunk + transfer to fee wallet
+          const FEE_WALLET = '0x' + 'f'.repeat(64);
+          const [feeCoin] = tx.splitCoins(coin, [tx.pure.u64(1000n)]);
+          tx.transferObjects([feeCoin], tx.pure.address(FEE_WALLET));
+          order.push('feeTransfer');
+        },
+      },
+    });
+
+    expect(order).toEqual(['feeHook', 'feeTransfer']);
+    // The fee wallet address from the hook lands in derivedAllowedAddresses
+    // alongside the canonical self-transfer of the borrowed coin to sender.
+    expect(result.derivedAllowedAddresses).toContain(VALID_ADDRESS);
+    expect(result.derivedAllowedAddresses).toContain('0x' + 'f'.repeat(64));
+  });
+
+  it('save_deposit without feeHook produces no fee-side derivedAllowedAddresses', async () => {
+    const { composeTx } = await import('./composeTx.js');
+    const client = mockRpcClient({
+      [USDC_TYPE]: [{ coinObjectId: '0x' + 'a'.repeat(64), balance: '10000000' }],
+    });
+
+    const result = await composeTx({
+      sender: VALID_ADDRESS,
+      client,
+      sponsoredContext: true,
+      steps: [{ toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } }],
+    });
+
+    expect(result.derivedAllowedAddresses).toEqual([]);
+  });
+
+  it('feeHooks are tool-scoped — borrow hook does NOT fire on save_deposit', async () => {
+    const { composeTx } = await import('./composeTx.js');
+    const client = mockRpcClient({
+      [USDC_TYPE]: [{ coinObjectId: '0x' + 'b'.repeat(64), balance: '10000000' }],
+    });
+
+    const borrowHook = vi.fn();
+    const saveHook = vi.fn();
+
+    await composeTx({
+      sender: VALID_ADDRESS,
+      client,
+      sponsoredContext: true,
+      steps: [{ toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } }],
+      feeHooks: { borrow: borrowHook, save_deposit: saveHook },
+    });
+
+    expect(saveHook).toHaveBeenCalledOnce();
+    expect(borrowHook).not.toHaveBeenCalled();
+  });
+
+  it('feeHook can be conditional — host can skip fee for non-USDC saves', async () => {
+    const { composeTx } = await import('./composeTx.js');
+    const client = mockRpcClient({
+      [USDSUI_TYPE]: [{ coinObjectId: '0x' + 'c'.repeat(64), balance: '10000000' }],
+    });
+
+    const hook = vi.fn(({ input }: { input: { asset?: string } }) => {
+      // Audric's pattern — fee USDC only, USDsui is fee-free at host layer
+      if (input.asset !== 'USDC') return;
+      throw new Error('should not reach this — USDsui must skip fee');
+    });
+
+    await expect(
+      composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [{ toolName: 'save_deposit', input: { amount: 5, asset: 'USDsui' } }],
+        feeHooks: { save_deposit: hook },
+      }),
+    ).resolves.toBeDefined();
+
+    expect(hook).toHaveBeenCalledOnce();
+  });
+
+  it('feeHook supports async work (e.g. async fee-policy resolution)', async () => {
+    const { composeTx } = await import('./composeTx.js');
+    const client = mockRpcClient({
+      [USDC_TYPE]: [{ coinObjectId: '0x' + 'd'.repeat(64), balance: '10000000' }],
+    });
+
+    let asyncResolved = false;
+    await composeTx({
+      sender: VALID_ADDRESS,
+      client,
+      sponsoredContext: true,
+      steps: [{ toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } }],
+      feeHooks: {
+        save_deposit: async () => {
+          await new Promise((r) => setTimeout(r, 1));
+          asyncResolved = true;
+        },
+      },
+    });
+
+    expect(asyncResolved).toBe(true);
+  });
+});

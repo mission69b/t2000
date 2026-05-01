@@ -203,6 +203,58 @@ export interface ComposeTxOptions {
    * `addSwapToTx`'s `input.overlayFee`.
    */
   overlayFee?: OverlayFeeConfig;
+  /**
+   * Optional fee-injection hooks for save_deposit + borrow. Fires inside
+   * the appender at the exact moment the user's coin is in hand and BEFORE
+   * the protocol step consumes (save) or the canonical transferObjects
+   * finalizes (borrow). Audric host uses this to inline `addFeeTransfer`
+   * for USDC SAVE_FEE_BPS / BORROW_FEE_BPS without ever leaving the
+   * canonical write contract — keeps the SDK fee-free per CLAUDE.md
+   * rule #9 while letting hosts charge their own overlay fees.
+   *
+   * Hooks are fire-and-forget (no return value). They mutate `tx` directly
+   * (e.g., `addFeeTransfer(tx, coin, ...)` splits the fee chunk off and
+   * appends a top-level `transferObjects` to the host's fee wallet — that
+   * recipient automatically appears in `derivedAllowedAddresses`).
+   */
+  feeHooks?: ComposeTxFeeHooks;
+}
+
+/**
+ * Per-tool fee-injection callbacks. Each hook fires at a tool-specific
+ * moment in the appender flow (see field JSDoc). Currently scoped to
+ * the 2 fee-eligible tools — extend if/when new ones land.
+ */
+export interface ComposeTxFeeHooks {
+  /**
+   * Fires inside the `save_deposit` appender AFTER the user's USDC/USDsui
+   * coin is split into the deposit amount, BEFORE NAVI's `deposit` move
+   * call consumes the coin. Order matters: the `coin` reference passed in
+   * is the SAME `TransactionObjectArgument` that flows into the deposit,
+   * so any `splitCoins(coin, [feeAmount])` inside the hook reduces the
+   * deposit by exactly that fee.
+   */
+  save_deposit?: (ctx: ComposeTxFeeHookContext<SaveDepositInput>) => void | Promise<void>;
+  /**
+   * Fires inside the `borrow` appender AFTER NAVI returns the borrowed
+   * coin, BEFORE the canonical `transferObjects(coin, sender)` finalizes.
+   * The `coin` reference is the borrowed-and-not-yet-transferred output;
+   * splitting a fee here means the user receives the remainder.
+   */
+  borrow?: (ctx: ComposeTxFeeHookContext<BorrowInput>) => void | Promise<void>;
+}
+
+/**
+ * Context object passed to every fee hook. Carries the `tx` (mutate it),
+ * the in-flight `coin` (split fees off it), the resolved tool input
+ * (asset/amount for fee-policy decisions), and the sender (rarely needed
+ * but kept for symmetry with `AppenderContext`).
+ */
+export interface ComposeTxFeeHookContext<TInput> {
+  tx: Transaction;
+  coin: TransactionObjectArgument;
+  input: TInput;
+  sender: string;
 }
 
 /** Per-step preview returned by each registry appender. Tool-specific shape. */
@@ -245,6 +297,7 @@ export interface AppenderContext {
   sender: string;
   sponsoredContext: boolean;
   overlayFee?: OverlayFeeConfig;
+  feeHooks?: ComposeTxFeeHooks;
 }
 
 type AppenderFn<TInput, TPreview extends StepPreview> = (
@@ -320,6 +373,9 @@ export const WRITE_APPENDER_REGISTRY: {
     const { coin, effectiveAmount } = await selectAndSplitCoin(
       tx, ctx.client, ctx.sender, assetInfo.type, rawAmount,
     );
+    if (ctx.feeHooks?.save_deposit) {
+      await ctx.feeHooks.save_deposit({ tx, coin, input, sender: ctx.sender });
+    }
     await addSaveToTx(tx, ctx.client, ctx.sender, coin, { asset });
     return {
       toolName: 'save_deposit',
@@ -350,6 +406,9 @@ export const WRITE_APPENDER_REGISTRY: {
       tx, ctx.client, ctx.sender, input.amount,
       { asset, skipPythUpdate: ctx.sponsoredContext },
     );
+    if (ctx.feeHooks?.borrow) {
+      await ctx.feeHooks.borrow({ tx, coin, input, sender: ctx.sender });
+    }
     tx.transferObjects([coin], ctx.sender);
     return { toolName: 'borrow', effectiveAmount: input.amount, asset };
   },
@@ -559,6 +618,7 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
     sender: opts.sender,
     sponsoredContext: opts.sponsoredContext ?? false,
     overlayFee: opts.overlayFee,
+    feeHooks: opts.feeHooks,
   };
 
   const previews: StepPreview[] = [];
