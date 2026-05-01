@@ -1,4 +1,4 @@
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { SUPPORTED_ASSETS, type SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
@@ -45,5 +45,36 @@ export async function buildSendTx({
   }
 
   return tx;
+}
+
+/**
+ * Fragment-appender for the chain-mode send leg of SPEC 7 multi-write
+ * PTBs. Consumes a coin reference produced by a previous appender (e.g.
+ * `addWithdrawToTx`, `addSwapToTx`) and transfers it to `recipient`
+ * within the same PTB — no intermediate wallet materialization.
+ *
+ * Codifies the hand-built send leg from
+ * `scripts/smoke-spec7-withdraw-then-send.ts` (P2.1) into a typed
+ * appender. SPEC 7 § "Layer 1" registers this in the
+ * `WRITE_APPENDER_REGISTRY` (P2.2b) under `send_transfer` for chain-mode
+ * dispatch; the registry adapter handles wallet-fetch fallback by
+ * delegating to `buildSendTx` when no upstream coin is available.
+ *
+ * For single-step send_transfer flows (no chained predecessor), use
+ * `buildSendTx` directly — it builds a complete tx including the
+ * wallet-coin selection / merge / split prelude.
+ *
+ * @returns void — the coin is consumed by `tx.transferObjects`. Callers
+ *   that need the post-transfer "effective amount" should rely on the
+ *   upstream appender's `effectiveAmount` (e.g. `addWithdrawToTx`'s
+ *   return), not on this appender.
+ */
+export function addSendToTx(
+  tx: Transaction,
+  coin: TransactionObjectArgument,
+  recipient: string,
+): void {
+  const validRecipient = validateAddress(recipient);
+  tx.transferObjects([coin], validRecipient);
 }
 

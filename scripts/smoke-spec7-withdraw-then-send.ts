@@ -53,6 +53,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { addWithdrawToTx, getPositions } from '../packages/sdk/src/protocols/navi.js';
+import { addSendToTx } from '../packages/sdk/src/wallet/send.js';
 
 const TEST_AMOUNT_USDC = 0.01;
 const MIN_DEPOSIT_REQUIRED_USDC = 0.05;
@@ -139,12 +140,14 @@ const main = async () => {
   log('Returned coin ref', `<TransactionObjectArgument> (typed)`);
   log('Effective amount', `${effectiveAmount.toFixed(6)} USDC`);
 
-  // Hand-built send leg. P2.2 will codify this as `addSendToTx`. The
-  // smoke test deliberately uses raw `transferObjects` to prove the
-  // typed coin-ref handoff works WITHOUT requiring a new appender.
-  tx.transferObjects([coin], recipientAddress);
-  log('tx.transferObjects([coin]) added', '✓');
-  log('PTB step count', '2 (withdraw + transfer + Pyth oracle prelude)');
+  // P2.2.1 (2026-05-02): hand-built `tx.transferObjects([coin], ...)` is
+  // now codified as `addSendToTx(tx, coin, recipient)` — the smoke uses
+  // the canonical appender. The runbook's "Working PTB shape" section
+  // below shows the codified API; the original hand-built form stays
+  // documented in the P2.1 commit message for historical context.
+  addSendToTx(tx, coin, recipientAddress);
+  log('addSendToTx(coin, recipient) added', '✓');
+  log('PTB step count', '2 (withdraw + send + Pyth oracle prelude)');
 
   // ── Step 3: Dry-run on mainnet ───────────────────────────────────────
   banner('Step 3 — Dry-run on mainnet via client.dryRunTransactionBlock');
@@ -194,10 +197,10 @@ const main = async () => {
     `- PTB size: \`${txKindBytes.byteLength} bytes\`\n` +
     `- Dry-run status: \`success\`\n` +
     `- Net gas: \`${netGas} MIST\` (~$${(netGas / 1e9 * 3.5).toFixed(6)} @ $3.50/SUI)\n\n` +
-    `**Working PTB shape (becomes \`addSendToTx\` implementation seed in P2.2 Layer 1):**\n\n` +
+    `**Working PTB shape (codified in P2.2.1 \`addSendToTx\` 2026-05-02):**\n\n` +
     `\`\`\`typescript\n` +
     `import { Transaction } from '@mysten/sui/transactions';\n` +
-    `import { addWithdrawToTx } from '@t2000/sdk';\n\n` +
+    `import { addWithdrawToTx, addSendToTx } from '@t2000/sdk';\n\n` +
     `const tx = new Transaction();\n` +
     `tx.setSender(senderAddress);\n\n` +
     `// Step 1: NAVI withdraw — returns a typed TransactionObjectArgument coin ref.\n` +
@@ -206,15 +209,16 @@ const main = async () => {
     `  { asset: 'USDC', skipPythUpdate: true },\n` +
     `);\n\n` +
     `// Step 2: send leg — consumes the coin ref WITHOUT materializing in wallet.\n` +
-    `// (P2.2 will codify this as \`addSendToTx(tx, coin, recipient)\`.)\n` +
-    `tx.transferObjects([coin], recipientAddress);\n\n` +
+    `// Codified as \`addSendToTx\` in P2.2.1 (2026-05-02 t2000 commit).\n` +
+    `addSendToTx(tx, coin, recipientAddress);\n\n` +
     `// Step 3: simulate.\n` +
     `await client.dryRunTransactionBlock({\n` +
     `  transactionBlock: await tx.build({ client }),\n` +
     `});\n` +
     `\`\`\`\n\n` +
-    `**Implications for P2.2 / P2.2b:**\n` +
-    `- \`addSendToTx(tx, coin, recipient)\` — the appender signature can take \`coin: TransactionObjectArgument\` directly. No serialization layer needed.\n` +
+    `**Implications for P2.2b (Layer 0 — \`composeTx\` registry):**\n` +
+    `- \`addSendToTx(tx, coin, recipient)\` — appender signature takes \`coin: TransactionObjectArgument\` directly. No serialization layer needed. Synchronous (no client argument). Recipient validated via \`validateAddress\` at the appender level.\n` +
+    `- For single-step \`send_transfer\` (no chained predecessor), the registry adapter delegates to \`buildSendTx\` instead — which fetches coins from the wallet, merges/splits, and transfers in a single complete tx.\n` +
     `- \`composeTx({ steps: [{ toolName: 'withdraw', input }, { toolName: 'send_transfer', input: { ...consumesPrevious } }] })\` — the registry lookup needs to plumb the previous step's \`produces.coin\` into the next step's \`coin\` argument. Untyped chaining (e.g. JSON-RPC string handoff) would not work; typed in-memory \`TransactionObjectArgument\` references are the right shape.\n` +
     `- \`deriveAllowedAddressesFromPtb(tx)\` — should pick up \`recipientAddress\` from the \`transferObjects\` call. Confirmed via dry-run that the recipient is the correct end-of-chain destination.\n\n` +
     `**Indexer / oracle freshness observation:** Pyth update was skipped (\`skipPythUpdate: true\`); dry-run succeeded against the existing on-chain oracle staleness. Production sponsored path uses the same shape, so behaviour matches.\n`;

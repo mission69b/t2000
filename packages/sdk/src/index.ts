@@ -107,6 +107,7 @@ export {
   exportPrivateKey,
   getAddress,
 } from './wallet/keyManager.js';
+export { buildSendTx, addSendToTx } from './wallet/send.js';
 export { calculateFee, addFeeTransfer } from './protocols/protocolFee.js';
 export type { ProtocolFeeInfo, FeeOperation } from './protocols/protocolFee.js';
 export {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Transaction } from '@mysten/sui/transactions';
-import { buildSendTx } from './send.js';
+import { buildSendTx, addSendToTx } from './send.js';
 import { SUPPORTED_ASSETS } from '../constants.js';
 
 function mockClient(usdcBalance: bigint = 10_000_000n) {
@@ -89,5 +89,55 @@ describe('buildSendTx', () => {
     await expect(
       buildSendTx({ client, address: VALID_ADDRESS, to: VALID_ADDRESS, amount: 1 }),
     ).rejects.toThrow('No USDC coins found');
+  });
+});
+
+describe('addSendToTx (SPEC 7 chain-mode send appender)', () => {
+  it('appends a transferObjects command to an existing PTB', () => {
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const [synthCoin] = tx.splitCoins(tx.gas, [1_000_000n]);
+    const beforeCommands = (tx.getData().commands as unknown[]).length;
+
+    addSendToTx(tx, synthCoin, VALID_ADDRESS);
+
+    const afterCommands = (tx.getData().commands as unknown[]).length;
+    expect(afterCommands).toBe(beforeCommands + 1);
+    const last = tx.getData().commands[tx.getData().commands.length - 1] as { TransferObjects?: unknown };
+    expect(last.TransferObjects).toBeDefined();
+  });
+
+  it('validates the recipient address', () => {
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const [synthCoin] = tx.splitCoins(tx.gas, [1_000_000n]);
+
+    expect(() => addSendToTx(tx, synthCoin, 'not-an-address')).toThrow();
+  });
+
+  it('does not call any RPC (synchronous, no client argument)', () => {
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const [synthCoin] = tx.splitCoins(tx.gas, [1_000_000n]);
+
+    expect(() => addSendToTx(tx, synthCoin, VALID_ADDRESS)).not.toThrow();
+    expect(typeof addSendToTx).toBe('function');
+    expect(addSendToTx.length).toBe(3);
+  });
+
+  it('chains correctly from a prior appender output (smoke-pattern regression)', () => {
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+
+    const [withdrawnCoin] = tx.splitCoins(tx.gas, [10_000n]);
+    addSendToTx(tx, withdrawnCoin, VALID_ADDRESS);
+
+    const commands = tx.getData().commands as unknown[];
+    expect(commands.length).toBe(2);
+
+    const split = commands[0] as { SplitCoins?: unknown };
+    const transfer = commands[1] as { TransferObjects?: unknown };
+    expect(split.SplitCoins).toBeDefined();
+    expect(transfer.TransferObjects).toBeDefined();
   });
 });
