@@ -118,7 +118,7 @@ export {
 export type { FinancialSummaryOptions } from './protocols/financialSummary.js';
 export { simulateTransaction, throwIfSimulationFailed } from './utils/simulate.js';
 export type { SimulationResult } from './utils/simulate.js';
-export { getRates, getPendingRewards } from './protocols/navi.js';
+export { getRates, getPendingRewards, buildClaimRewardsTx } from './protocols/navi.js';
 export { getSwapQuote } from './swap-quote.js';
 export {
   findSwapRoute,

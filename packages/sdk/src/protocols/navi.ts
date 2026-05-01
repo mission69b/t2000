@@ -672,6 +672,35 @@ export async function addClaimRewardsToTx(
 }
 
 /**
+ * Standalone builder for the `claim_rewards` tool. Wraps the existing
+ * `addClaimRewardsToTx` appender into a complete PTB so the SPEC 7
+ * `composeTx` registry adapter has a single-step builder it can dispatch
+ * to when `claim_rewards` is invoked alone (the chain-mode path uses
+ * `addClaimRewardsToTx` directly inside a multi-step PTB).
+ *
+ * Multi-protocol claim flows (e.g. NAVI + Suilend in a future world)
+ * still go through the `T2000` class's `claimRewards()` method, which
+ * iterates every registered lending adapter via the adapter registry —
+ * this standalone builder is intentionally NAVI-only to keep the shape
+ * symmetric with the rest of SPEC 7's Layer 1 builders.
+ *
+ * Returns `{ tx, rewards }`:
+ * - `tx` — built PTB with sender set; if no rewards are claimable, no
+ *   move calls are appended (caller should skip executing).
+ * - `rewards` — what WILL be claimed by `tx`. Empty array means nothing
+ *   to claim.
+ */
+export async function buildClaimRewardsTx(
+  client: SuiJsonRpcClient,
+  address: string,
+): Promise<{ tx: Transaction; rewards: PendingReward[] }> {
+  const tx = new Transaction();
+  tx.setSender(address);
+  const rewards = await addClaimRewardsToTx(tx, client, address);
+  return { tx, rewards };
+}
+
+/**
  * Minimal shape we read off the NAVI SDK's `LendingReward` rows. Kept
  * structural rather than imported so the tests don't have to reproduce
  * the full upstream type and the function works for any future caller

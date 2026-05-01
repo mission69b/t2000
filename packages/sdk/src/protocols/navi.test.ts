@@ -1,5 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { aggregateClaimableRewards } from './navi.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Transaction } from '@mysten/sui/transactions';
+import { aggregateClaimableRewards, buildClaimRewardsTx } from './navi.js';
+
+vi.mock('@naviprotocol/lending', async (importActual) => {
+  const actual = await importActual<typeof import('@naviprotocol/lending')>();
+  return {
+    ...actual,
+    getUserAvailableLendingRewards: vi.fn(),
+    claimLendingRewardsPTB: vi.fn().mockResolvedValue([]),
+  };
+});
+
+import {
+  getUserAvailableLendingRewards,
+  claimLendingRewardsPTB,
+} from '@naviprotocol/lending';
 
 const RATE_DECIMALS = 27;
 const MIN_HEALTH_FACTOR = 1.5;
@@ -466,6 +481,74 @@ describe('navi', () => {
       expect(result[0]?.symbol).not.toBe('REWARD');
       expect(result[0]?.coinType).not.toBe('');
       expect(result[0]?.amount).not.toBe(0);
+    });
+  });
+
+  describe('buildClaimRewardsTx (SPEC 7 P2.2.2 standalone builder)', () => {
+    const VSUI = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
+    const VALID_ADDRESS = '0x' + 'a'.repeat(64);
+    const fakeClient = {} as unknown as Parameters<typeof buildClaimRewardsTx>[0];
+
+    beforeEach(() => {
+      vi.mocked(getUserAvailableLendingRewards).mockReset();
+      vi.mocked(claimLendingRewardsPTB).mockReset().mockResolvedValue([]);
+    });
+
+    it('returns { tx, rewards } shape with sender set on tx', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([]);
+      const result = await buildClaimRewardsTx(fakeClient, VALID_ADDRESS);
+
+      expect(result.tx).toBeInstanceOf(Transaction);
+      expect(result.tx.getData().sender).toBe(VALID_ADDRESS);
+      expect(Array.isArray(result.rewards)).toBe(true);
+    });
+
+    it('returns empty rewards + empty tx when no claimable rewards exist', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([]);
+      const result = await buildClaimRewardsTx(fakeClient, VALID_ADDRESS);
+
+      expect(result.rewards).toEqual([]);
+      expect(result.tx.getData().commands).toEqual([]);
+      expect(claimLendingRewardsPTB).not.toHaveBeenCalled();
+    });
+
+    it('returns empty rewards when only zero-amount rewards exist (filtered)', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([
+        { userClaimableReward: 0, rewardCoinType: VSUI, assetId: 5 } as never,
+      ]);
+      const result = await buildClaimRewardsTx(fakeClient, VALID_ADDRESS);
+
+      expect(result.rewards).toEqual([]);
+      expect(claimLendingRewardsPTB).not.toHaveBeenCalled();
+    });
+
+    it('returns aggregated rewards + appends PTB calls when claimable rewards exist', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([
+        { userClaimableReward: 0.0165, rewardCoinType: VSUI, assetId: 5 } as never,
+      ]);
+      const result = await buildClaimRewardsTx(fakeClient, VALID_ADDRESS);
+
+      expect(result.rewards).toHaveLength(1);
+      expect(result.rewards[0]?.amount).toBeCloseTo(0.0165, 6);
+      expect(result.rewards[0]?.coinType).toBe(VSUI);
+      expect(claimLendingRewardsPTB).toHaveBeenCalledTimes(1);
+      expect(claimLendingRewardsPTB).toHaveBeenCalledWith(
+        result.tx,
+        expect.any(Array),
+        expect.objectContaining({
+          env: 'prod',
+          customCoinReceive: { type: 'transfer', transfer: VALID_ADDRESS },
+        }),
+      );
+    });
+
+    it('returns empty rewards on NAVI SDK error (resilient — does not throw)', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockRejectedValue(new Error('Network down'));
+      const result = await buildClaimRewardsTx(fakeClient, VALID_ADDRESS);
+
+      expect(result.rewards).toEqual([]);
+      expect(result.tx).toBeInstanceOf(Transaction);
+      expect(result.tx.getData().sender).toBe(VALID_ADDRESS);
     });
   });
 });
