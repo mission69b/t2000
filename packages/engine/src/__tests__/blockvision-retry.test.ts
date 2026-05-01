@@ -393,4 +393,70 @@ describe('fetchBlockVisionWithRetry', () => {
     // 5s defi). This is the contract the caller relies on.
     expect(totalWait).toBeLessThan(1500);
   });
+
+  // -------------------------------------------------------------------
+  // [SPEC 8 v0.5.1 B3.2] retryStats counter — surfaces HTTP attempt
+  // count to the engine dispatcher. The dispatcher reads it back after
+  // the tool returns and emits `attemptCount` on `tool_result` when > 1
+  // so the host renders "TOOL · attempt N · 1.4s".
+  // -------------------------------------------------------------------
+
+  it('leaves retryStats at 1 on a first-try success', async () => {
+    fetchSpy.mockResolvedValueOnce(mockResponse(200, {}, { ok: true }));
+    const retryStats = { attemptCount: 1 };
+
+    await fetchBlockVisionWithRetry(
+      URL,
+      { headers: HEADERS },
+      { sleep, rng, retryStats },
+    );
+
+    expect(retryStats.attemptCount).toBe(1);
+  });
+
+  it('bumps retryStats to 2 when the second attempt succeeds', async () => {
+    fetchSpy
+      .mockResolvedValueOnce(mockResponse(429))
+      .mockResolvedValueOnce(mockResponse(200, {}, { ok: true }));
+    const retryStats = { attemptCount: 1 };
+
+    await fetchBlockVisionWithRetry(
+      URL,
+      { headers: HEADERS },
+      { sleep, rng, retryStats },
+    );
+
+    expect(retryStats.attemptCount).toBe(2);
+  });
+
+  it('bumps retryStats to 3 when all three attempts run', async () => {
+    fetchSpy
+      .mockResolvedValueOnce(mockResponse(429))
+      .mockResolvedValueOnce(mockResponse(429))
+      .mockResolvedValueOnce(mockResponse(429));
+    const retryStats = { attemptCount: 1 };
+
+    await fetchBlockVisionWithRetry(
+      URL,
+      { headers: HEADERS },
+      { sleep, rng, retryStats },
+    );
+
+    expect(retryStats.attemptCount).toBe(3);
+  });
+
+  it('records the attempt count even when a network error precedes a final success', async () => {
+    fetchSpy
+      .mockRejectedValueOnce(new Error('ECONNRESET'))
+      .mockResolvedValueOnce(mockResponse(200, {}, { ok: true }));
+    const retryStats = { attemptCount: 1 };
+
+    await fetchBlockVisionWithRetry(
+      URL,
+      { headers: HEADERS },
+      { sleep, rng, retryStats },
+    );
+
+    expect(retryStats.attemptCount).toBe(2);
+  });
 });

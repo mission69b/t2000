@@ -96,12 +96,16 @@ async function loadPortfolio(
   blockvisionApiKey: string | undefined,
   fallbackRpcUrl: string | undefined,
   cache: Map<string, AddressPortfolio> | undefined,
+  // [SPEC 8 v0.5.1 B3.2] Forward the per-tool retry counter so any
+  // BlockVision retries during the wallet read surface as `attemptCount`
+  // on the eventual `tool_result` event.
+  retryStats?: { attemptCount: number },
 ): Promise<AddressPortfolio> {
   if (cache) {
     const hit = cache.get(address);
     if (hit) return hit;
   }
-  const portfolio = await fetchAddressPortfolio(address, blockvisionApiKey, fallbackRpcUrl);
+  const portfolio = await fetchAddressPortfolio(address, blockvisionApiKey, fallbackRpcUrl, { retryStats });
   if (cache) cache.set(address, portfolio);
   return portfolio;
 }
@@ -230,6 +234,7 @@ export const balanceCheckTool = buildTool({
               context.blockvisionApiKey,
               context.suiRpcUrl,
               context.portfolioCache,
+              context.retryStats,
             ).catch((err) => {
               console.warn('[balance_check] portfolio fetch failed, returning empty:', err);
               const fallback: AddressPortfolio = {
@@ -269,7 +274,7 @@ export const balanceCheckTool = buildTool({
         // as defi.totalUsd === 0 and `source: 'degraded'`, leaving the
         // rest of balance_check unaffected. The fetcher fills its own
         // prices via fetchTokenPrices for any coin types it discovers.
-        fetchAddressDefiPortfolio(address, context.blockvisionApiKey).catch((err) => {
+        fetchAddressDefiPortfolio(address, context.blockvisionApiKey, {}, { retryStats: context.retryStats }).catch((err) => {
           console.warn('[balance_check] defi fetch failed:', err);
           const fallback: DefiSummary = {
             totalUsd: 0,
@@ -469,7 +474,7 @@ export const balanceCheckTool = buildTool({
     const fetchAddress = (targetAddress ?? context.walletAddress) as string;
     const [balance, defi] = await Promise.all([
       agent.balance(),
-      fetchAddressDefiPortfolio(fetchAddress, context.blockvisionApiKey).catch((err) => {
+      fetchAddressDefiPortfolio(fetchAddress, context.blockvisionApiKey, {}, { retryStats: context.retryStats }).catch((err) => {
         console.warn('[balance_check] sdk-path defi fetch failed:', err);
         const fallback: DefiSummary = {
           totalUsd: 0,

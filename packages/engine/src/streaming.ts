@@ -1,4 +1,4 @@
-import type { EngineEvent, PendingAction, StopReason, TodoItem } from './types.js';
+import type { EngineEvent, HarnessShape, PendingAction, StopReason, TodoItem } from './types.js';
 import type { EvaluationItem } from './eval-summary.js';
 
 // ---------------------------------------------------------------------------
@@ -31,6 +31,10 @@ export type SSEEvent =
       // [v1.5] true when injected by the engine's post-write refresh
       // (see EngineConfig.postWriteRefresh)
       wasPostWriteRefresh?: boolean;
+      // [SPEC 8 v0.5.1 B3.2] HTTP attempt count — set only when > 1 so
+      // hosts can render "TOOL · attempt N · 1.4s" without header noise
+      // on the common single-attempt path.
+      attemptCount?: number;
     }
   | { type: 'pending_action'; action: PendingAction }
   | { type: 'turn_complete'; stopReason: StopReason }
@@ -46,7 +50,10 @@ export type SSEEvent =
   | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
   // [SPEC 8 v0.5.1, D2] pending_input reserved for SPEC 9 v0.1.2 inline
   // forms. Engine doesn't emit under SPEC 8; reservation is forward-compat.
-  | { type: 'pending_input'; schema: unknown; inputId: string; prompt?: string };
+  | { type: 'pending_input'; schema: unknown; inputId: string; prompt?: string }
+  // [SPEC 8 v0.5.1 B3.2] One-shot per-turn harness shape declaration.
+  // Mirrors EngineEvent.harness_shape — see types.ts for full contract.
+  | { type: 'harness_shape'; shape: HarnessShape; rationale: string };
 
 // ---------------------------------------------------------------------------
 // Serialise: SSEEvent → SSE text

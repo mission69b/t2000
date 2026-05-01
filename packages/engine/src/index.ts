@@ -29,7 +29,11 @@ export type {
   OutputConfig,
   SystemBlock,
   SystemPrompt,
+  HarnessShape,
 } from './types.js';
+
+// [SPEC 8 v0.5.1 B3.2] Adaptive harness shape mapping helper.
+export { harnessShapeForEffort } from './types.js';
 
 // Tool factory
 export { buildTool, toolsToDefinitions, findTool } from './tool.js';

@@ -116,7 +116,14 @@ describe('[v0.49] balance_check address scope', () => {
   it('passes the target address to fetchAddressPortfolio', async () => {
     const { fetchAddressPortfolio } = await import('../blockvision-prices.js');
     await balanceCheckTool.call({ address: FUNKII_ADDR }, ctx());
-    expect(fetchAddressPortfolio).toHaveBeenCalledWith(FUNKII_ADDR, 'test', undefined);
+    // [SPEC 8 v0.5.1 B3.2] 4th arg is the retryStats opts bag — the test
+    // ctx() doesn't set retryStats, so it forwards as undefined.
+    expect(fetchAddressPortfolio).toHaveBeenCalledWith(
+      FUNKII_ADDR,
+      'test',
+      undefined,
+      { retryStats: undefined },
+    );
   });
 
   it('case-insensitive equality decides isSelfQuery', async () => {
@@ -243,8 +250,20 @@ describe('[v0.50] balance_check DeFi rollup', () => {
   it('passes the target address (not user address) to the DeFi fetcher', async () => {
     const { fetchAddressDefiPortfolio } = await import('../blockvision-prices.js');
     await balanceCheckTool.call({ address: FUNKII_ADDR }, ctx());
-    expect(fetchAddressDefiPortfolio).toHaveBeenCalledWith(FUNKII_ADDR, 'test');
-    expect(fetchAddressDefiPortfolio).not.toHaveBeenCalledWith(USER_ADDR, 'test');
+    // [SPEC 8 v0.5.1 B3.2] 3rd arg is `priceHints` (default {}), 4th is
+    // the retryStats opts bag.
+    expect(fetchAddressDefiPortfolio).toHaveBeenCalledWith(
+      FUNKII_ADDR,
+      'test',
+      {},
+      { retryStats: undefined },
+    );
+    expect(fetchAddressDefiPortfolio).not.toHaveBeenCalledWith(
+      USER_ADDR,
+      'test',
+      {},
+      { retryStats: undefined },
+    );
   });
 
   it('mentions DeFi in displayText when totalUsd > 0', async () => {

@@ -12,7 +12,7 @@
 
 import type { EngineEvent, Tool, ToolContext } from './types.js';
 import { findTool } from './tool.js';
-import { budgetToolResult, type PendingToolCall } from './orchestration.js';
+import { budgetToolResult, withRetryStats, type PendingToolCall } from './orchestration.js';
 import { TurnReadCache } from './turn-read-cache.js';
 
 interface DispatchEntry {
@@ -27,6 +27,13 @@ interface DispatchEntry {
    * the data it needs to answer its `tool_use_id`.
    */
   deduped: boolean;
+  /**
+   * [SPEC 8 v0.5.1 B3.2] Per-tool HTTP retry counter. Reads back the
+   * mutable `retryStats` ref the dispatcher attached to the tool's
+   * context — undefined for cached/deduped entries (no fresh execution
+   * happened, so no retries to surface).
+   */
+  readAttemptCount: () => number | undefined;
 }
 
 export class EarlyToolDispatcher {
@@ -69,12 +76,18 @@ export class EarlyToolDispatcher {
           tool,
           promise: Promise.resolve({ data: cached.result, isError: false }),
           deduped: true,
+          readAttemptCount: () => undefined,
         });
         return true;
       }
     }
 
-    const childContext = { ...this.context, signal: this.abortController.signal };
+    // [SPEC 8 v0.5.1 B3.2] Per-tool retry counter — fresh ref per
+    // dispatch so concurrent reads in the early-dispatch batch keep
+    // their attempt counts isolated. The signal override on the child
+    // context is preserved through the spread.
+    const baseChildContext: ToolContext = { ...this.context, signal: this.abortController.signal };
+    const { context: childContext, readAttemptCount } = withRetryStats(baseChildContext);
     const promise = executeTool(tool, call, childContext).then((result) => {
       // Populate the cache on a successful, non-cached execution so a
       // later identical call this turn dedups instead of re-running.
@@ -88,7 +101,7 @@ export class EarlyToolDispatcher {
       return result;
     });
 
-    this.entries.push({ call, tool, promise, deduped: false });
+    this.entries.push({ call, tool, promise, deduped: false, readAttemptCount });
     return true;
   }
 
@@ -124,6 +137,7 @@ export class EarlyToolDispatcher {
           ? result.data
           : budgetToolResult(result.data, entry.tool);
 
+        const attemptCount = entry.readAttemptCount();
         yield {
           type: 'tool_result',
           toolName: entry.call.name,
@@ -132,6 +146,7 @@ export class EarlyToolDispatcher {
           isError: result.isError,
           wasEarlyDispatched: true,
           ...(entry.deduped ? { resultDeduped: true } : {}),
+          ...(attemptCount !== undefined ? { attemptCount } : {}),
         };
       } catch (err) {
         yield {

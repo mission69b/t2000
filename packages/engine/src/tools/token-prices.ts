@@ -51,7 +51,7 @@ export const tokenPricesTool = buildTool({
   isReadOnly: true,
 
   async call(input, context) {
-    const prices = await fetchTokenPrices(input.coinTypes, context.blockvisionApiKey);
+    const prices = await fetchTokenPrices(input.coinTypes, context.blockvisionApiKey, { retryStats: context.retryStats });
 
     const results = input.coinTypes.map((coinType) => {
       const entry = prices[coinType];

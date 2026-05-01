@@ -152,6 +152,7 @@ export const portfolioAnalysisTool = buildTool({
               address,
               context.blockvisionApiKey,
               context.suiRpcUrl,
+              { retryStats: context.retryStats },
             );
             context.portfolioCache?.set(address, fresh);
             return fresh;
@@ -213,7 +214,7 @@ export const portfolioAnalysisTool = buildTool({
             pricedAt: Date.now(),
             source: audricSnapshot.defiSource,
           })
-        : fetchAddressDefiPortfolio(address, context.blockvisionApiKey).catch(
+        : fetchAddressDefiPortfolio(address, context.blockvisionApiKey, {}, { retryStats: context.retryStats }).catch(
             (err): DefiSummary => {
               console.warn('[portfolio_analysis] defi fetch failed:', err);
               return { totalUsd: 0, perProtocol: {}, pricedAt: Date.now(), source: 'degraded' };

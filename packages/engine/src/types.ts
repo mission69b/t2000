@@ -80,6 +80,22 @@ export type EngineEvent =
        * UI affordances (e.g. a subtle "auto-refreshed" badge).
        */
       wasPostWriteRefresh?: boolean;
+      /**
+       * [SPEC 8 v0.5.1 B3.2] Number of HTTP attempts the tool made before
+       * succeeding (or returning the final result). Surfaced when the tool
+       * went through one or more retries inside its retry wrapper
+       * (`fetchBlockVisionWithRetry` and equivalents). Set ONLY when N > 1
+       * — a successful first try leaves the field undefined to avoid
+       * header noise in the host's `ToolBlockView`. Hosts render
+       * "TOOL · attempt N · 1.4s" subtitle when present, hidden otherwise.
+       *
+       * Plumbing: engine sets a per-tool `retryStats: { attemptCount: 1 }`
+       * counter on `ToolContext`; the BlockVision retry wrapper increments
+       * it on every retry attempt; the engine reads it back after the tool
+       * returns and surfaces here when > 1. Tools that don't use a retry
+       * wrapper never emit a value.
+       */
+      attemptCount?: number;
     }
   | {
       type: 'pending_action';
@@ -151,7 +167,65 @@ export type EngineEvent =
       inputId: string;
       /** Optional human-readable prompt the LLM wants the host to display above the form. */
       prompt?: string;
+    }
+  /**
+   * [SPEC 8 v0.5.1 B3.2] One-shot per-turn declaration of which adaptive
+   * harness shape this turn is running under. Emitted at the start of
+   * `submitMessage` BEFORE `agentLoop` begins (not on `resumeWithToolResult`
+   * — resume is a continuation of the same turn, not a new shape decision).
+   *
+   * Derived from `classifyEffort()` on the host side: `low → 'lean'`,
+   * `medium → 'standard'`, `high → 'rich'`, `max → 'max'`. Hosts use it
+   * to (a) pre-allocate UI affordances (todo surface for `rich+`),
+   * (b) stamp `TurnMetrics.harnessShape` for dashboard segmentation,
+   * and (c) gate optional features (e.g. forbid `update_todo` rendering
+   * on `lean` even if a misbehaving LLM emits one).
+   *
+   * If absent, hosts MUST default to `'legacy'` for telemetry purposes
+   * (existing engines that don't emit this event are pre-SPEC-8). The
+   * engine emits it ONLY when the host passes `harnessShape` into
+   * `submitMessage` options; hosts that don't classify won't see this
+   * event.
+   */
+  | {
+      type: 'harness_shape';
+      shape: HarnessShape;
+      /**
+       * 1-line human-readable explanation of why this shape was picked.
+       * Examples: "matched recipe portfolio_rebalance → max",
+       * "session has prior writes + 'borrow' keyword → rich",
+       * "single-fact lookup → lean". Forwarded into telemetry verbatim.
+       */
+      rationale: string;
     };
+
+/**
+ * [SPEC 8 v0.5.1 B3.2] Adaptive harness shape — driven by `classifyEffort()`,
+ * pinned per-turn at turn start. Each shape implies a different
+ * `thinking.budget_tokens` cap, soft block limit, and `update_todo`
+ * permission. See SPEC 8 § "Adaptive thresholds: harness shape gate"
+ * for the canonical mapping.
+ */
+export type HarnessShape = 'lean' | 'standard' | 'rich' | 'max';
+
+/**
+ * [SPEC 8 v0.5.1 B3.2] Maps the engine's `ThinkingEffort` to the host-facing
+ * harness shape. Single source of truth for the `low → lean`, `medium →
+ * standard`, `high → rich`, `max → max` mapping. Exported so hosts (and
+ * tests) get the mapping for free without re-implementing it.
+ */
+export function harnessShapeForEffort(effort: ThinkingEffort): HarnessShape {
+  switch (effort) {
+    case 'low':
+      return 'lean';
+    case 'medium':
+      return 'standard';
+    case 'high':
+      return 'rich';
+    case 'max':
+      return 'max';
+  }
+}
 
 /**
  * [SPEC 8 v0.5.1] One row in an `update_todo` payload. Mirrored from
@@ -290,6 +364,21 @@ export interface ToolContext {
    * primarily a fast-path optimisation rather than a correctness primitive.
    */
   portfolioCache?: Map<string, import('./blockvision-prices.js').AddressPortfolio>;
+  /**
+   * [SPEC 8 v0.5.1 B3.2] Per-tool-invocation HTTP attempt counter. The
+   * engine's tool dispatcher attaches a fresh `{ attemptCount: 1 }` to
+   * the context before calling each tool; retry wrappers
+   * (`fetchBlockVisionWithRetry` and equivalents) bump
+   * `retryStats.attemptCount` on every retry beyond the first attempt;
+   * the dispatcher reads the final value back and surfaces it on the
+   * `tool_result` event (only when > 1). Tools that don't use a retry
+   * wrapper never observe a non-default value.
+   *
+   * The mutable-ref shape is deliberate — it lets retry wrappers deep
+   * in the call stack record state without changing every caller's
+   * return type.
+   */
+  retryStats?: { attemptCount: number };
 }
 
 export interface ServerPositionData {

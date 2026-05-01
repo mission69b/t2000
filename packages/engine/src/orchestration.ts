@@ -40,6 +40,33 @@ export class TxMutex {
 }
 
 // ---------------------------------------------------------------------------
+// [SPEC 8 v0.5.1 B3.2] withRetryStats — per-tool retry attempt counter
+//
+// Engine dispatchers wrap each tool invocation with a fresh
+// `retryStats: { attemptCount: 1 }` so every tool gets an isolated counter.
+// The BlockVision retry wrapper (`fetchBlockVisionWithRetry`) deep in the
+// call stack increments `retryStats.attemptCount` on every retry beyond
+// the first attempt; the dispatcher reads it back via `readAttemptCount()`
+// and surfaces the value (when > 1) on the `tool_result` event.
+//
+// Tools that don't use a retry wrapper never observe a non-default value,
+// so `attemptCount` stays undefined on `tool_result` for them — matching
+// the spec's "kept undefined to avoid header noise on the common path."
+// ---------------------------------------------------------------------------
+
+export function withRetryStats(context: ToolContext): {
+  context: ToolContext;
+  readAttemptCount: () => number | undefined;
+} {
+  const retryStats = { attemptCount: 1 };
+  return {
+    context: { ...context, retryStats },
+    readAttemptCount: () =>
+      retryStats.attemptCount > 1 ? retryStats.attemptCount : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // runTools — executes tool calls with parallel reads, serial writes
 // ---------------------------------------------------------------------------
 
@@ -57,25 +84,37 @@ export async function* runTools(
       reads.map(async (call) => {
         const tool = findTool(tools, call.name);
         if (!tool) {
-          return { call, result: { data: { error: `Unknown tool: ${call.name}` } }, isError: true };
+          return {
+            call,
+            result: { data: { error: `Unknown tool: ${call.name}` } },
+            isError: true,
+            attemptCount: undefined as number | undefined,
+          };
         }
-        const execResult = await executeSingleTool(tool, call, context);
+        const { context: toolCtx, readAttemptCount } = withRetryStats(context);
+        const execResult = await executeSingleTool(tool, call, toolCtx);
         if (!execResult.isError) {
           execResult.data = budgetToolResult(execResult.data, tool);
         }
-        return { call, result: execResult, isError: execResult.isError };
+        return {
+          call,
+          result: execResult,
+          isError: execResult.isError,
+          attemptCount: readAttemptCount(),
+        };
       }),
     );
 
     for (const settled of readResults) {
       if (settled.status === 'fulfilled') {
-        const { call, result, isError } = settled.value;
+        const { call, result, isError, attemptCount } = settled.value;
         yield {
           type: 'tool_result',
           toolName: call.name,
           toolUseId: call.id,
           result: result.data,
           isError,
+          ...(attemptCount !== undefined ? { attemptCount } : {}),
         };
       } else {
         const idx = readResults.indexOf(settled);
@@ -106,16 +145,19 @@ export async function* runTools(
     }
     await txMutex.acquire();
     try {
-      const result = await executeSingleTool(tool, call, context);
+      const { context: toolCtx, readAttemptCount } = withRetryStats(context);
+      const result = await executeSingleTool(tool, call, toolCtx);
       if (!result.isError) {
         result.data = budgetToolResult(result.data, tool);
       }
+      const attemptCount = readAttemptCount();
       yield {
         type: 'tool_result',
         toolName: call.name,
         toolUseId: call.id,
         result: result.data,
         isError: result.isError,
+        ...(attemptCount !== undefined ? { attemptCount } : {}),
       };
     } catch (err) {
       yield {

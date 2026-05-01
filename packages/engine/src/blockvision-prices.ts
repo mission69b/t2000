@@ -159,6 +159,15 @@ interface BvRetryOpts {
   sleep?: (ms: number) => Promise<void>;
   /** Test seam — defaults to `Date.now()`. Inject for deterministic CB tests. */
   now?: () => number;
+  /**
+   * [SPEC 8 v0.5.1 B3.2] Mutable counter the engine attaches to
+   * `ToolContext.retryStats`. Bumped to `attempt + 1` on every retry
+   * iteration past the first, so a 1st-try success leaves the value
+   * at 1 and a 2nd-try success leaves it at 2. The dispatcher reads
+   * the final value back and surfaces it on the `tool_result` event
+   * (only when > 1) so the host renders "TOOL · attempt N · 1.4s".
+   */
+  retryStats?: { attemptCount: number };
 }
 
 /**
@@ -204,6 +213,11 @@ export async function fetchBlockVisionWithRetry(
   let lastResponse: Response | null = null;
 
   for (let attempt = 0; attempt < BV_RETRY_MAX_ATTEMPTS; attempt++) {
+    // [SPEC 8 v0.5.1 B3.2] Reflect the actual attempt count (1-indexed) into
+    // the caller's mutable counter. Done at the top of every iteration so
+    // even a network-error path (which `continue`s) still advances the
+    // visible attempt count for the dispatcher's read-back.
+    if (opts.retryStats) opts.retryStats.attemptCount = attempt + 1;
     if (attempt > 0) {
       // Base wait with exponential growth: 250, 750, 2250 ms.
       let waitMs = BV_RETRY_BASE_DELAY_MS * Math.pow(BV_RETRY_BACKOFF_FACTOR, attempt - 1);
@@ -448,6 +462,12 @@ export async function fetchAddressPortfolio(
   address: string,
   apiKey: string | undefined,
   fallbackRpcUrl?: string,
+  // [SPEC 8 v0.5.1 B3.2] Optional retry-stats counter forwarded to
+  // `fetchBlockVisionWithRetry`. The dispatcher passes
+  // `ctx.retryStats` here; the wrapper bumps `.attemptCount` on each
+  // retry; the dispatcher reads the final value and surfaces it on
+  // the `tool_result` event when > 1.
+  opts: { retryStats?: { attemptCount: number } } = {},
 ): Promise<AddressPortfolio> {
   const store = getWalletCacheStore();
 
@@ -492,7 +512,7 @@ export async function fetchAddressPortfolio(
 
           // Try BlockVision first (fast path).
           if (apiKey && apiKey.trim().length > 0) {
-            const blockvision = await fetchPortfolioFromBlockVision(address, apiKey);
+            const blockvision = await fetchPortfolioFromBlockVision(address, apiKey, opts.retryStats);
             if (blockvision) {
               // `blockvision` always wins — latest BV truth.
               await safeWalletStoreSet(
@@ -588,6 +608,7 @@ export async function fetchAddressPortfolio(
 async function fetchPortfolioFromBlockVision(
   address: string,
   apiKey: string,
+  retryStats?: { attemptCount: number },
 ): Promise<AddressPortfolio | null> {
   const url = `${BLOCKVISION_BASE}/account/coins?account=${encodeURIComponent(address)}`;
   const signal = AbortSignal.timeout(PORTFOLIO_TIMEOUT_MS);
@@ -599,7 +620,7 @@ async function fetchPortfolioFromBlockVision(
         headers: { 'x-api-key': apiKey, accept: 'application/json' },
         signal,
       },
-      { signal },
+      { signal, retryStats },
     );
   } catch (err) {
     console.warn('[blockvision-prices] portfolio fetch threw, degrading:', err);
@@ -745,6 +766,9 @@ async function fetchPortfolioFromSuiRpc(
 export async function fetchTokenPrices(
   coinTypes: string[],
   apiKey: string | undefined,
+  // [SPEC 8 v0.5.1 B3.2] See `fetchAddressPortfolio` for the retry-stats
+  // contract.
+  opts: { retryStats?: { attemptCount: number } } = {},
 ): Promise<Record<string, { price: number; change24h?: number }>> {
   if (coinTypes.length === 0) return {};
 
@@ -777,7 +801,7 @@ export async function fetchTokenPrices(
     return result;
   }
 
-  const fetched = await fetchPricesFromBlockVision(stillMissing, apiKey);
+  const fetched = await fetchPricesFromBlockVision(stillMissing, apiKey, opts.retryStats);
   Object.assign(result, fetched);
 
   // Cache by long form so subsequent calls with either form hit the cache.
@@ -794,6 +818,7 @@ export async function fetchTokenPrices(
 async function fetchPricesFromBlockVision(
   coinTypes: string[],
   apiKey: string,
+  retryStats?: { attemptCount: number },
 ): Promise<Record<string, { price: number; change24h?: number }>> {
   const out: Record<string, { price: number; change24h?: number }> = {};
 
@@ -822,7 +847,7 @@ async function fetchPricesFromBlockVision(
           headers: { 'x-api-key': apiKey, accept: 'application/json' },
           signal,
         },
-        { signal },
+        { signal, retryStats },
       );
     } catch (err) {
       console.warn('[blockvision-prices] price chunk threw, skipping:', err);
@@ -1083,6 +1108,9 @@ export async function fetchAddressDefiPortfolio(
   address: string,
   apiKey: string | undefined,
   priceHints: Record<string, number> = {},
+  // [SPEC 8 v0.5.1 B3.2] See `fetchAddressPortfolio` for the retry-stats
+  // contract.
+  opts: { retryStats?: { attemptCount: number } } = {},
 ): Promise<DefiSummary> {
   if (!apiKey || apiKey.trim().length === 0) {
     if (!warnedMissingApiKey) {
@@ -1164,7 +1192,7 @@ export async function fetchAddressDefiPortfolio(
           const fanoutAt = Date.now();
 
           const settled = await Promise.allSettled(
-            DEFI_PROTOCOLS.map((p) => fetchOneDefiProtocol(address, p, apiKey)),
+            DEFI_PROTOCOLS.map((p) => fetchOneDefiProtocol(address, p, apiKey, opts.retryStats)),
           );
 
           // Pass 1 — discover every coin type referenced across all protocol
@@ -1310,6 +1338,7 @@ async function fetchOneDefiProtocol(
   address: string,
   protocol: DefiProtocol,
   apiKey: string,
+  retryStats?: { attemptCount: number },
 ): Promise<Record<string, unknown> | null> {
   const url = `${BLOCKVISION_BASE}/account/defiPortfolio?address=${encodeURIComponent(address)}&protocol=${protocol}`;
   const signal = AbortSignal.timeout(DEFI_PORTFOLIO_TIMEOUT_MS);
@@ -1321,7 +1350,7 @@ async function fetchOneDefiProtocol(
         headers: { 'x-api-key': apiKey, accept: 'application/json' },
         signal,
       },
-      { signal },
+      { signal, retryStats },
     );
   } catch (err) {
     console.warn(`[defi] ${protocol} fetch threw:`, err);

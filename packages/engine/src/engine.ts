@@ -1,6 +1,7 @@
 import type {
   EngineConfig,
   EngineEvent,
+  HarnessShape,
   Message,
   ContentBlock,
   PendingAction,
@@ -12,7 +13,7 @@ import type {
   StopReason,
 } from './types.js';
 import { toolsToDefinitions, findTool } from './tool.js';
-import { TxMutex, runTools, type PendingToolCall } from './orchestration.js';
+import { TxMutex, runTools, withRetryStats, type PendingToolCall } from './orchestration.js';
 import { getDefaultTools } from './tools/index.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
@@ -154,8 +155,23 @@ export class QueryEngine {
    * `pending_action` event and the stream ends — no persistent connection needed.
    * The caller should save messages + pendingAction to the session store, then
    * call `resumeWithToolResult()` after the user approves/denies and executes.
+   *
+   * [SPEC 8 v0.5.1 B3.2] Optional `options.harnessShape` + `options.harnessRationale`
+   * cause a one-shot `harness_shape` event to be yielded BEFORE the agent loop
+   * begins. The engine itself doesn't classify — the host calls
+   * `classifyEffort()` (host already does this for thinking-budget routing)
+   * and maps via `harnessShapeForEffort()` before calling `submitMessage`.
+   * Hosts that don't pass `harnessShape` won't see the event (existing
+   * pre-SPEC-8 hosts continue to work; their `TurnMetrics.harnessShape`
+   * defaults to `'legacy'`).
    */
-  async *submitMessage(prompt: string): AsyncGenerator<EngineEvent> {
+  async *submitMessage(
+    prompt: string,
+    options?: {
+      harnessShape?: HarnessShape;
+      harnessRationale?: string;
+    },
+  ): AsyncGenerator<EngineEvent> {
     if (this.costTracker.isOverBudget()) {
       yield { type: 'error', error: new Error('Session budget exceeded') };
       return;
@@ -171,6 +187,22 @@ export class QueryEngine {
       role: 'user',
       content: [{ type: 'text', text: prompt }],
     });
+
+    // [SPEC 8 v0.5.1 B3.2] Emit the per-turn harness shape declaration
+    // BEFORE agentLoop runs. Single emission per `submitMessage` call;
+    // `resumeWithToolResult` does NOT re-emit (resume continues the same
+    // turn under the same shape). Empty rationale falls back to the
+    // shape name so dashboards always have non-null context.
+    if (options?.harnessShape) {
+      yield {
+        type: 'harness_shape',
+        shape: options.harnessShape,
+        rationale:
+          options.harnessRationale && options.harnessRationale.trim().length > 0
+            ? options.harnessRationale
+            : `host-classified ${options.harnessShape}`,
+      };
+    }
 
     // [v0.46.8] Reset the pause flag at turn start. Any cache entries
     // populated by the host's pre-dispatch (`invokeReadTool`) BEFORE
@@ -393,10 +425,21 @@ export class QueryEngine {
               data: {
                 error: `Post-write refresh: invalid input for ${tool.name}`,
               },
+              attemptCount: undefined as number | undefined,
             };
           }
-          const result = await tool.call(parsed.data, context);
-          return { tool, id, isError: false as const, data: result.data };
+          // [SPEC 8 v0.5.1 B3.2] Per-tool retry counter — each refresh
+          // gets its own context override so attemptCount doesn't bleed
+          // across the parallel batch.
+          const { context: toolCtx, readAttemptCount } = withRetryStats(context);
+          const result = await tool.call(parsed.data, toolCtx);
+          return {
+            tool,
+            id,
+            isError: false as const,
+            data: result.data,
+            attemptCount: readAttemptCount(),
+          };
         } catch (err) {
           return {
             tool,
@@ -408,6 +451,7 @@ export class QueryEngine {
                   ? err.message
                   : 'Post-write refresh failed',
             },
+            attemptCount: undefined as number | undefined,
           };
         }
       }),
@@ -452,6 +496,7 @@ export class QueryEngine {
         result: r.data,
         isError: r.isError,
         wasPostWriteRefresh: true,
+        ...(r.attemptCount !== undefined ? { attemptCount: r.attemptCount } : {}),
       };
     }
   }
