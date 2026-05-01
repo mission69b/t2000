@@ -16,6 +16,8 @@
  */
 import { AggregatorClient, Env, type FindRouterParams, type RouterDataV3 } from '@cetusprotocol/aggregator-sdk';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import { resolveTokenType, getDecimalsForCoinType } from '../token-registry.js';
 
 export interface OverlayFeeConfig {
   /** Fee rate as a fraction (e.g. 0.001 = 0.1%). Pass 0 to disable. */
@@ -159,6 +161,168 @@ export async function buildSwapTx(params: {
   });
 
   return outputCoin;
+}
+
+/**
+ * Append a swap fragment to an existing PTB. SPEC 7 § "Layer 1" Cetus
+ * appender. Two modes, dispatched by the presence of `input.inputCoin`:
+ *
+ * - **Wallet mode** (`inputCoin` omitted) — fetches `from`-asset coins
+ *   from the sender's wallet (paginated), merges/splits to the
+ *   requested amount, runs the swap. Mirrors the audric host's
+ *   `transactions/prepare/route.ts` swap branch (P2.2c will retire that
+ *   branch in favor of this appender via `composeTx`).
+ *
+ * - **Chain mode** (`inputCoin` provided) — consumes the passed-in coin
+ *   reference (typically produced by an upstream appender like
+ *   `addWithdrawToTx`) directly, no wallet fetch / no merge / no
+ *   split. This is the SPEC 7 multi-write enabler ("withdraw → swap →
+ *   save" without intermediate wallet materialization).
+ *
+ * **SUI in wallet mode:** uses `client.getCoins` like every other
+ * token. This works for sponsored flows (Enoki — `tx.gas` belongs to
+ * the sponsor, swap input comes from the user's separate SUI coin
+ * objects). For non-sponsored flows where `tx.gas` IS the user's SUI,
+ * the caller should pre-build the inputCoin via
+ * `tx.splitCoins(tx.gas, [rawAmount])[0]` and pass it via chain mode
+ * instead. (`T2000.swap()` already handles this internally — direct SDK
+ * users go through the high-level class, not through this appender.)
+ *
+ * **`swapAll` semantics (wallet mode):** if the requested raw amount
+ * is >= the wallet's total `from` balance, the appender consumes the
+ * entire merged primary coin (not a split), matching audric's host
+ * route's `swapAll` clipping. The returned `effectiveAmountIn` reflects
+ * the actual consumed amount in display units.
+ *
+ * **Slippage:** clamped to [0.001, 0.05] (0.1% – 5%). Defaults to 0.01.
+ *
+ * @returns
+ * - `coin` — output coin reference, ready for downstream consumption
+ *   (e.g. `addSaveToTx`) or wallet transfer (`tx.transferObjects`).
+ * - `effectiveAmountIn` — display-units input amount the swap actually
+ *   consumes (handles `swapAll` clipping in wallet mode; in chain mode
+ *   echoes the requested `input.amount`).
+ * - `expectedAmountOut` — display-units output amount per the route
+ *   quote. Actual on-chain output may differ within slippage.
+ * - `route` — raw `SwapRouteResult` for downstream telemetry / logging.
+ */
+export async function addSwapToTx(
+  tx: Transaction,
+  client: SuiJsonRpcClient,
+  address: string,
+  input: {
+    from: string;
+    to: string;
+    amount: number;
+    slippage?: number;
+    byAmountIn?: boolean;
+    overlayFee?: OverlayFeeConfig;
+    inputCoin?: TransactionObjectArgument;
+  },
+): Promise<{
+  coin: TransactionObjectArgument;
+  effectiveAmountIn: number;
+  expectedAmountOut: number;
+  route: SwapRouteResult;
+}> {
+  const { T2000Error } = await import('../errors.js');
+
+  const fromType = resolveTokenType(input.from);
+  const toType = resolveTokenType(input.to);
+  if (!fromType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${input.from}. Provide the symbol (USDC, SUI, ...) or full coin type.`);
+  if (!toType) throw new T2000Error('ASSET_NOT_SUPPORTED', `Unknown token: ${input.to}. Provide the symbol (USDC, SUI, ...) or full coin type.`);
+  if (fromType === toType) throw new T2000Error('SWAP_FAILED', 'Cannot swap a token to itself');
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    throw new T2000Error('INVALID_AMOUNT', 'Amount must be greater than zero');
+  }
+
+  const fromDecimals = getDecimalsForCoinType(fromType);
+  const toDecimals = getDecimalsForCoinType(toType);
+  const requestedRaw = BigInt(Math.floor(input.amount * 10 ** fromDecimals));
+
+  const slippage = Math.max(0.001, Math.min(input.slippage ?? 0.01, 0.05));
+  const byAmountIn = input.byAmountIn ?? true;
+
+  let inputCoin: TransactionObjectArgument;
+  let effectiveRaw: bigint;
+
+  if (input.inputCoin) {
+    inputCoin = input.inputCoin;
+    effectiveRaw = requestedRaw;
+  } else {
+    const { ids, totalBalance } = await fetchAllCoinsForSwap(client, address, fromType);
+    if (ids.length === 0) {
+      throw new T2000Error('INSUFFICIENT_BALANCE', `No ${input.from} coins found in wallet`);
+    }
+
+    const swapAll = requestedRaw >= totalBalance;
+    effectiveRaw = swapAll ? totalBalance : requestedRaw;
+
+    const primary = tx.object(ids[0]);
+    if (ids.length > 1) {
+      tx.mergeCoins(primary, ids.slice(1).map((id) => tx.object(id)));
+    }
+    inputCoin = swapAll ? primary : tx.splitCoins(primary, [effectiveRaw])[0];
+  }
+
+  const route = await findSwapRoute({
+    walletAddress: address,
+    from: fromType,
+    to: toType,
+    amount: effectiveRaw,
+    byAmountIn,
+    overlayFee: input.overlayFee,
+  });
+
+  if (!route) {
+    throw new T2000Error('SWAP_NO_ROUTE', `No swap route found for ${input.from} → ${input.to}`);
+  }
+  if (route.insufficientLiquidity) {
+    throw new T2000Error('SWAP_NO_ROUTE', `Insufficient liquidity for ${input.from} → ${input.to}`);
+  }
+
+  const outputCoin = await buildSwapTx({
+    walletAddress: address,
+    route,
+    tx,
+    inputCoin,
+    slippage,
+    overlayFee: input.overlayFee,
+  });
+
+  return {
+    coin: outputCoin,
+    effectiveAmountIn: Number(effectiveRaw) / 10 ** fromDecimals,
+    expectedAmountOut: Number(route.amountOut) / 10 ** toDecimals,
+    route,
+  };
+}
+
+/**
+ * Paginated coin lookup for swap input selection. Local helper kept
+ * inline so `cetus-swap.ts` stays self-contained — P2.2c may extract a
+ * shared `wallet/coinSelection.ts` once `addStakeVSuiToTx` and the
+ * future `addSendToTxFromWallet` need the same prelude.
+ */
+async function fetchAllCoinsForSwap(
+  client: SuiJsonRpcClient,
+  owner: string,
+  coinType: string,
+): Promise<{ ids: string[]; totalBalance: bigint }> {
+  const ids: string[] = [];
+  let totalBalance = 0n;
+  let cursor: string | null | undefined;
+  let hasNext = true;
+  while (hasNext) {
+    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
+    for (const c of page.data) {
+      ids.push(c.coinObjectId);
+      totalBalance += BigInt(c.balance);
+    }
+    cursor = page.nextCursor;
+    hasNext = page.hasNextPage;
+  }
+  return { ids, totalBalance };
 }
 
 /**

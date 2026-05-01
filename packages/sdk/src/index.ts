@@ -123,6 +123,7 @@ export { getSwapQuote } from './swap-quote.js';
 export {
   findSwapRoute,
   buildSwapTx,
+  addSwapToTx,
   OVERLAY_FEE_RATE,
 } from './protocols/cetus-swap.js';
 export type { SwapRouteResult, OverlayFeeConfig } from './protocols/cetus-swap.js';
