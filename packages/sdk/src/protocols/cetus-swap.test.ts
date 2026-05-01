@@ -141,6 +141,56 @@ describe('findSwapRoute', () => {
     expect(result).not.toBeNull();
     expect(result!.insufficientLiquidity).toBe(true);
   });
+
+  it('forwards providers allow-list to Cetus findRouters', async () => {
+    const findRoutersSpy = vi.fn().mockResolvedValue({
+      amountIn: '1000000', amountOut: '999000', insufficientLiquidity: false, deviationRatio: 0.001,
+    });
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        findRouters = findRoutersSpy;
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+
+    const { findSwapRoute } = await import('./cetus-swap.js');
+    await findSwapRoute({
+      walletAddress: '0x' + 'a'.repeat(64),
+      from: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      to: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+      amount: 1000000n,
+      byAmountIn: true,
+      providers: ['CETUS', 'BLUEFIN', 'KRIYAV3'],
+    });
+
+    expect(findRoutersSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ providers: ['CETUS', 'BLUEFIN', 'KRIYAV3'] }),
+    );
+  });
+
+  it('omits providers field when not specified (default = all DEXes)', async () => {
+    const findRoutersSpy = vi.fn().mockResolvedValue({
+      amountIn: '1000000', amountOut: '999000', insufficientLiquidity: false, deviationRatio: 0.001,
+    });
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        findRouters = findRoutersSpy;
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+
+    const { findSwapRoute } = await import('./cetus-swap.js');
+    await findSwapRoute({
+      walletAddress: '0x' + 'a'.repeat(64),
+      from: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      to: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+      amount: 1000000n,
+      byAmountIn: true,
+    });
+
+    const callArgs = findRoutersSpy.mock.calls[0][0];
+    expect(callArgs.providers).toBeUndefined();
+  });
 });
 
 describe('per-call overlay fee config (B5 v2)', () => {
@@ -506,5 +556,39 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
 
     expect(callCount).toBe(2);
     expect(result.effectiveAmountIn).toBeCloseTo(5, 6);
+  });
+
+  it('forwards providers allow-list to findSwapRoute (sponsored Pyth-exclusion)', async () => {
+    const findRoutersSpy = vi.fn().mockResolvedValue({
+      amountIn: '5000000', amountOut: '4995000', insufficientLiquidity: false,
+      deviationRatio: 0.001, paths: [{ provider: 'CETUS' }],
+    });
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        findRouters = findRoutersSpy;
+        async routerSwap() { return { $kind: 'NestedResult', NestedResult: [99, 0] } as unknown; }
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+
+    const { addSwapToTx } = await import('./cetus-swap.js');
+    const { Transaction } = await import('@mysten/sui/transactions');
+
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const client = mockClient([
+      { coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' },
+    ]);
+
+    await addSwapToTx(tx, client, VALID_ADDRESS, {
+      from: USDC_TYPE,
+      to: USDT_TYPE,
+      amount: 5,
+      providers: ['CETUS', 'BLUEFIN', 'KRIYAV3'],
+    });
+
+    expect(findRoutersSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ providers: ['CETUS', 'BLUEFIN', 'KRIYAV3'] }),
+    );
   });
 });

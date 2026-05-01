@@ -55,10 +55,10 @@ export async function buildSendTx({
  *
  * Codifies the hand-built send leg from
  * `scripts/smoke-spec7-withdraw-then-send.ts` (P2.1) into a typed
- * appender. SPEC 7 § "Layer 1" registers this in the
- * `WRITE_APPENDER_REGISTRY` (P2.2b) under `send_transfer` for chain-mode
- * dispatch; the registry adapter handles wallet-fetch fallback by
- * delegating to `buildSendTx` when no upstream coin is available.
+ * appender. SPEC 7 § "Layer 1" — P2.2b will register this in the
+ * `WRITE_APPENDER_REGISTRY` under `send_transfer` for chain-mode
+ * dispatch; the registry adapter will handle the wallet-fetch fallback
+ * by delegating to `buildSendTx` when no upstream coin is available.
  *
  * For single-step send_transfer flows (no chained predecessor), use
  * `buildSendTx` directly — it builds a complete tx including the

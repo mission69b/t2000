@@ -81,6 +81,16 @@ export async function findSwapRoute(params: {
   amount: bigint;
   byAmountIn: boolean;
   overlayFee?: OverlayFeeConfig;
+  /**
+   * Optional Cetus provider allow-list. When omitted, all 30+ DEXes
+   * are eligible. Sponsored flows (Enoki) MUST pass an exclusion list
+   * computed via `getProvidersExcluding([...])` from the Cetus SDK to
+   * remove Pyth-dependent providers (HAEDALPMM, METASTABLE, OBRIC,
+   * STEAMM_OMM, STEAMM_OMM_V2, SEVENK, HAEDALHMMV2) — those reference
+   * `tx.gas` for oracle fees, which Enoki rejects in sponsored txs.
+   * Non-sponsored callers (CLI, direct SDK) leave this undefined.
+   */
+  providers?: string[];
 }): Promise<SwapRouteResult | null> {
   const client = getClient(params.walletAddress, params.overlayFee);
 
@@ -89,6 +99,7 @@ export async function findSwapRoute(params: {
     target: params.to,
     amount: params.amount.toString(),
     byAmountIn: params.byAmountIn,
+    ...(params.providers ? { providers: params.providers } : {}),
   };
 
   const routerData = await client.findRouters(findParams);
@@ -218,6 +229,13 @@ export async function addSwapToTx(
     byAmountIn?: boolean;
     overlayFee?: OverlayFeeConfig;
     inputCoin?: TransactionObjectArgument;
+    /**
+     * Optional Cetus provider allow-list. Forwarded to `findSwapRoute`.
+     * Sponsored flows (Enoki) MUST pass `getProvidersExcluding([...])`
+     * to remove Pyth-dependent providers — see `findSwapRoute`'s JSDoc
+     * for the exclusion list. Non-sponsored callers omit this.
+     */
+    providers?: string[];
   },
 ): Promise<{
   coin: TransactionObjectArgument;
@@ -272,6 +290,7 @@ export async function addSwapToTx(
     amount: effectiveRaw,
     byAmountIn,
     overlayFee: input.overlayFee,
+    providers: input.providers,
   });
 
   if (!route) {
