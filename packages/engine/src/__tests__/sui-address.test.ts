@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   normalizeAddressInput,
   resolveSuinsViaRpc,
+  resolveAddressToSuinsViaRpc,
   looksLikeSuiNs,
   SUI_ADDRESS_REGEX,
   SUI_ADDRESS_STRICT_REGEX,
@@ -205,6 +206,89 @@ describe('normalizeAddressInput', () => {
     }));
     globalThis.fetch = fetchSpy as unknown as typeof fetch;
     await normalizeAddressInput('obehi.sui', { suiRpcUrl: 'https://custom.rpc.example/v1' });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://custom.rpc.example/v1',
+      expect.any(Object),
+    );
+  });
+});
+
+describe('resolveAddressToSuinsViaRpc — reverse lookup (v1.3)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns the registered SuiNS names for the given address', async () => {
+    mockFetchOk({
+      result: { data: ['ossy.sui', 'ossy-alt.sui'], nextCursor: null, hasNextPage: false },
+    });
+    const names = await resolveAddressToSuinsViaRpc(FULL_ADDR);
+    expect(names).toEqual(['ossy.sui', 'ossy-alt.sui']);
+  });
+
+  it('returns [] when the address has no SuiNS records', async () => {
+    mockFetchOk({ result: { data: [], nextCursor: null, hasNextPage: false } });
+    const names = await resolveAddressToSuinsViaRpc(FULL_ADDR);
+    expect(names).toEqual([]);
+  });
+
+  it('returns [] when result is missing entirely', async () => {
+    mockFetchOk({ result: undefined });
+    const names = await resolveAddressToSuinsViaRpc(FULL_ADDR);
+    expect(names).toEqual([]);
+  });
+
+  it('throws InvalidAddressError on non-0x input', async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    await expect(resolveAddressToSuinsViaRpc('not-an-address')).rejects.toThrow(
+      InvalidAddressError,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('lowercases the address before sending to RPC', async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ result: { data: [], nextCursor: null, hasNextPage: false } }),
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    await resolveAddressToSuinsViaRpc(FULL_ADDR.toUpperCase());
+    const callArgs = fetchSpy.mock.calls[0] as unknown as [string, { body: string }];
+    const requestBody = JSON.parse(callArgs[1].body) as { params: string[] };
+    expect(requestBody.params[0]).toBe(FULL_ADDR.toLowerCase());
+  });
+
+  it('throws SuinsRpcError on HTTP failure', async () => {
+    mockFetchHttpError(503);
+    await expect(resolveAddressToSuinsViaRpc(FULL_ADDR)).rejects.toThrow(SuinsRpcError);
+  });
+
+  it('throws SuinsRpcError on RPC error body', async () => {
+    mockFetchOk({ error: { code: -32000, message: 'internal error' } });
+    await expect(resolveAddressToSuinsViaRpc(FULL_ADDR)).rejects.toThrow(SuinsRpcError);
+  });
+
+  it('throws SuinsRpcError on network throw', async () => {
+    mockFetchThrows(new Error('connection refused'));
+    await expect(resolveAddressToSuinsViaRpc(FULL_ADDR)).rejects.toThrow(SuinsRpcError);
+  });
+
+  it('passes the rpcUrl through to the resolver', async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ result: { data: [], nextCursor: null, hasNextPage: false } }),
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    await resolveAddressToSuinsViaRpc(FULL_ADDR, {
+      suiRpcUrl: 'https://custom.rpc.example/v1',
+    });
     expect(fetchSpy).toHaveBeenCalledWith(
       'https://custom.rpc.example/v1',
       expect.any(Object),

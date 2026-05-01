@@ -242,6 +242,7 @@ export type { WalletCoin, SuiCoinBalance } from './sui-rpc.js';
 export {
   normalizeAddressInput,
   resolveSuinsViaRpc,
+  resolveAddressToSuinsViaRpc,
   looksLikeSuiNs,
   SUI_ADDRESS_REGEX,
   SUI_ADDRESS_STRICT_REGEX,

@@ -144,6 +144,74 @@ export async function resolveSuinsViaRpc(
   return body.result ?? null;
 }
 
+/**
+ * Reverse-resolve a 0x address to its registered SuiNS names via
+ * `suix_resolveNameServiceNames`. Returns the names sorted by the
+ * registry (the first entry is conventionally the user's "primary"
+ * name on dApps that show one), or `[]` when the address has no
+ * SuiNS records. Throws `SuinsRpcError` on RPC/network failure.
+ *
+ * Why this is its own helper (not folded into `normalizeAddressInput`):
+ * a reverse lookup adds a second RPC round-trip per tool call. We don't
+ * want every read tool that takes an `address` to silently double its
+ * latency. The lookup primitive is opt-in via the `resolve_suins` tool;
+ * normalizers stay forward-only.
+ */
+export async function resolveAddressToSuinsViaRpc(
+  rawAddress: string,
+  ctx: { suiRpcUrl?: string; signal?: AbortSignal } = {},
+): Promise<string[]> {
+  const address = rawAddress.trim().toLowerCase();
+  if (!SUI_ADDRESS_REGEX.test(address)) {
+    throw new InvalidAddressError(rawAddress);
+  }
+
+  const url = ctx.suiRpcUrl || SUI_MAINNET_URL;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'suix_resolveNameServiceNames',
+        params: [address],
+      }),
+      signal: ctx.signal ?? AbortSignal.timeout(8_000),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new SuinsRpcError(address, msg);
+  }
+
+  if (!res.ok) {
+    throw new SuinsRpcError(address, `HTTP ${res.status}`);
+  }
+
+  // SuiNS reverse-lookup returns a paginated page object. We don't
+  // bother paginating because (a) the LLM consumer only needs the
+  // primary name, and (b) addresses with >50 names are vanishingly
+  // rare. The first page (default 50) is the canonical view.
+  let body: {
+    result?: { data: string[]; nextCursor: string | null; hasNextPage: boolean };
+    error?: { code: number; message: string };
+  };
+  try {
+    body = (await res.json()) as typeof body;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new SuinsRpcError(address, `JSON parse failed: ${msg}`);
+  }
+
+  if (body.error) {
+    throw new SuinsRpcError(address, body.error.message);
+  }
+
+  return body.result?.data ?? [];
+}
+
 export interface NormalizedAddress {
   /**
    * Canonical 0x-prefixed lowercase hex address. Always set on success.
