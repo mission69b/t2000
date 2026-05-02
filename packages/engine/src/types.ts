@@ -261,6 +261,28 @@ export interface PendingActionModifiableField {
 }
 
 /**
+ * [SPEC 7 v0.4 Layer 2] One step inside a multi-write Payment Stream
+ * `PendingAction`. Single-write actions never carry `steps[]`; the
+ * legacy `toolName`/`toolUseId`/`input`/`attemptId` fields cover them.
+ */
+export interface PendingActionStep {
+  toolName: string;
+  toolUseId: string;
+  /**
+   * Per-step UUID v4 stamped at emit time. Hosts write one
+   * `TurnMetrics` row per step keyed on this id; the resume route's
+   * `updateMany({ where: { attemptId } })` extends trivially to the
+   * per-step shape (loop `stepResults`, update each row).
+   */
+  attemptId: string;
+  input: unknown;
+  /** Per-step user-facing summary (rendered in the PermissionCard). */
+  description: string;
+  /** Optional modifiable fields for THIS step (rare in v1; sourced from `tool-modifiable-fields.ts`). */
+  modifiableFields?: PendingActionModifiableField[];
+}
+
+/**
  * Serializable description of a write tool that needs user approval.
  * Stored in the session so the client can act on it in a separate request.
  */
@@ -298,18 +320,89 @@ export interface PendingAction {
    * matching the pair, which is exactly the false-resolution bug Item 3
    * exists to kill. Also survives session persistence so the resume call
    * can read it back from the rehydrated `PendingAction`.
+   *
+   * **Bundles:** when `steps !== undefined` (multi-write Payment Stream),
+   * the top-level `attemptId` mirrors `steps[0].attemptId` per SPEC 7
+   * § Layer 2 line 463 ("`steps[0]` mirrors the top-level
+   * toolName/toolUseId/input/attemptId for hosts that haven't been
+   * updated"). Pre-bundle hosts that key TurnMetrics rows on top-level
+   * `attemptId` collide cleanly with the bundle-aware host's step-0 row.
+   * Bundle-aware hosts iterate `steps[]` and write N TurnMetrics rows
+   * (one per step `attemptId`); the resume route's
+   * `updateMany({ where: { attemptId } })` keys still work because the
+   * route loops `stepResults` and updates each per-step row.
    */
   attemptId: string;
+  /**
+   * [SPEC 7 v0.4 Layer 2] When set, this `pending_action` represents a
+   * multi-write Payment Stream. Single-step bundles are NOT created — the
+   * engine emits the legacy single-write shape when N=1. Hosts that haven't
+   * been updated read `toolName`/`toolUseId`/`input` (which mirror
+   * `steps[0]`); newer hosts iterate `steps`.
+   *
+   * Bundleable tools (v1): `save_deposit`, `withdraw`, `borrow`,
+   * `repay_debt`, `send_transfer`, `swap_execute`, `claim_rewards`,
+   * `volo_stake`, `volo_unstake`. Non-bundleable: `pay_api`
+   * (HTTPS coupling), `save_contact` (Postgres only).
+   */
+  steps?: PendingActionStep[];
+  /**
+   * [SPEC 7 v0.3 Quote-Refresh] Milliseconds since the upstream read tools
+   * that fed this bundle's composition completed. Engine stamps at emit
+   * time using `Date.now() - min(tool_result.timestamp)` across the listed
+   * `regenerateInput.toolUseIds`. Host renders as a "QUOTE Ns OLD" badge in
+   * the PermissionCard header. Only set on bundled `pending_action`s.
+   */
+  quoteAge?: number;
+  /**
+   * [SPEC 7 v0.3 Quote-Refresh] True when the bundle was composed from
+   * re-runnable read tools (`swap_quote`, `rates_info`, `balance_check`,
+   * `portfolio_analysis`). False when amounts came from user-provided
+   * inputs that don't depend on upstream quotes. Single-write
+   * `pending_action`s set this to `false` (regenerate is N≥2 only).
+   */
+  canRegenerate?: boolean;
+  /**
+   * [SPEC 7 v0.3 Quote-Refresh] Engine-internal payload listing which
+   * upstream read `tool_use` ids to re-fire when the user taps REGENERATE.
+   * Host echoes this back via `POST /api/engine/regenerate`; engine re-runs
+   * each tool with the same input (no LLM call), rebuilds the bundle, and
+   * emits a fresh `pending_action` with new per-step `attemptId`s.
+   */
+  regenerateInput?: {
+    toolUseIds: string[];
+  };
 }
 
 /**
  * Response from the client when resolving a pending action.
  * - `approved: false` → tool is declined, LLM is told "user declined"
  * - `approved: true` with `executionResult` → engine uses the client-provided result
+ *   (single-write path)
+ * - `approved: true` with `stepResults` → engine pushes one `tool_result`
+ *   block per step into the conversation (bundle path)
  */
 export interface PermissionResponse {
   approved: boolean;
+  /** Single-write (legacy) execution result. Ignored when `stepResults` is set. */
   executionResult?: unknown;
+  /**
+   * [SPEC 7 v0.4 Layer 2] Per-step results for a bundle resume. One entry
+   * per step in the original `PendingAction.steps`, in the same order.
+   * Each carries the step's `toolUseId` + `attemptId` so the host's resume
+   * route can update the matching `TurnMetrics` row.
+   *
+   * **Atomic semantics:** PTB execution is atomic at the Sui layer. If the
+   * host detects a bundle-level failure, it should populate every entry
+   * with `isError: true` carrying the same error message (so the LLM
+   * narrates the failure once, not N times).
+   */
+  stepResults?: Array<{
+    toolUseId: string;
+    attemptId: string;
+    result: unknown;
+    isError: boolean;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -406,6 +499,24 @@ export interface ToolFlags {
   producesArtifact?: boolean;
   costAware?: boolean;
   maxRetries?: number;
+  /**
+   * [SPEC 7 v0.4 Layer 2] Opt-in: this write tool can participate in a
+   * multi-write Payment Stream. When the LLM emits ≥2 `tool_use` blocks
+   * in a single assistant turn AND every block resolves to a `confirm`-tier
+   * write tool with `bundleable: true`, the engine collapses them into one
+   * `pending_action` with `steps[]` instead of yielding N times. Default
+   * `false` — silently opt-out. v1 set: `save_deposit`, `withdraw`,
+   * `borrow`, `repay_debt`, `send_transfer`, `swap_execute`,
+   * `claim_rewards`, `volo_stake`, `volo_unstake`.
+   *
+   * **Permanently non-bundleable:**
+   *  - `pay_api` — recipient/amount/currency aren't known at LLM intent
+   *    time (gateway 402 challenge resolves them at route time, after a
+   *    network round-trip the engine has no knowledge of). PTB cannot be
+   *    composed at compose time.
+   *  - `save_contact` — Postgres-only, no on-chain effect.
+   */
+  bundleable?: boolean;
 }
 
 export type PreflightResult =

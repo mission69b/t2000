@@ -21,7 +21,7 @@ import { clearPortfolioCacheFor } from './blockvision-prices.js';
 import { getTelemetrySink } from './telemetry.js';
 import { randomUUID } from 'node:crypto';
 import { CostTracker, type CostSnapshot } from './cost.js';
-import { estimatePayApiCost } from './tools/pay.js';
+import { describeAction } from './describe-action.js';
 import { clampThinkingForEffort } from './thinking-budget.js';
 import {
   type GuardConfig,
@@ -40,6 +40,7 @@ import { microcompact } from './compact/microcompact.js';
 import { resolvePermissionTier, resolveUsdValue, toolNameToOperation } from './permission-rules.js';
 import { EarlyToolDispatcher } from './early-dispatcher.js';
 import { TurnReadCache } from './turn-read-cache.js';
+import { composeBundleFromToolResults } from './compose-bundle.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -235,23 +236,87 @@ export class QueryEngine {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
-    const writeResult: ContentBlock = response.approved
-      ? {
-          type: 'tool_result',
-          toolUseId: action.toolUseId,
-          content: JSON.stringify(response.executionResult ?? { success: true }),
-          isError: false,
+    // [SPEC 7 P2.3 Layer 2] Bundle resume vs single-write resume.
+    // - Bundle: action.steps is an array of N steps; response.stepResults
+    //   carries one outcome per step. We push N `tool_result` blocks back
+    //   into the conversation (one per step's tool_use_id) so the LLM has
+    //   complete context for the bundle's atomic outcome.
+    // - Single-write (legacy): action.steps is undefined; response.executionResult
+    //   carries the singular outcome. Behavior unchanged from pre-P2.3.
+    const isBundle = Array.isArray(action.steps) && action.steps.length > 0;
+
+    // Build the write tool_result blocks (N for bundles, 1 for single-write).
+    const writeResultBlocks: ContentBlock[] = [];
+    if (isBundle) {
+      const steps = action.steps!;
+      const stepResults = response.stepResults ?? [];
+
+      // Build a quick lookup so step ordering doesn't depend on host
+      // ordering. Hosts that return stepResults in a different order
+      // (or omit one) still produce correct LLM context.
+      const resultByToolUseId = new Map(stepResults.map((r) => [r.toolUseId, r]));
+
+      for (const step of steps) {
+        if (response.approved) {
+          const stepResult = resultByToolUseId.get(step.toolUseId);
+          if (stepResult) {
+            writeResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: step.toolUseId,
+              content: JSON.stringify(stepResult.result),
+              isError: stepResult.isError,
+            });
+          } else {
+            // [SPEC 7 P2.3 audit fix — BUG 11] Host approved the bundle
+            // but didn't supply this step's result. Fail closed — treat
+            // as an error so the LLM narrates "this step's outcome is
+            // unknown" instead of fake-success. PTB execution is atomic
+            // at the Sui layer, so an approved+missing-result is a host
+            // bug; surfacing it to the LLM as an error is safer than
+            // pretending success and locking the user into a bad state.
+            writeResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: step.toolUseId,
+              content: JSON.stringify({
+                error:
+                  'Host omitted this step\'s execution result. Treating ' +
+                  'as failure — actual on-chain state is unknown. Re-check ' +
+                  'wallet via balance_check before re-attempting.',
+                _hostBugMissingStepResult: true,
+              }),
+              isError: true,
+            });
+          }
+        } else {
+          writeResultBlocks.push({
+            type: 'tool_result',
+            toolUseId: step.toolUseId,
+            content: JSON.stringify({ error: 'User declined this action' }),
+            isError: true,
+          });
         }
-      : {
-          type: 'tool_result',
-          toolUseId: action.toolUseId,
-          content: JSON.stringify({ error: 'User declined this action' }),
-          isError: true,
-        };
+      }
+    } else {
+      writeResultBlocks.push(
+        response.approved
+          ? {
+              type: 'tool_result',
+              toolUseId: action.toolUseId,
+              content: JSON.stringify(response.executionResult ?? { success: true }),
+              isError: false,
+            }
+          : {
+              type: 'tool_result',
+              toolUseId: action.toolUseId,
+              content: JSON.stringify({ error: 'User declined this action' }),
+              isError: true,
+            },
+      );
+    }
 
     // Reconstruct the full turn atomically:
     // 1. Push the assistant message that was deferred during pending_action
-    // 2. Push ALL tool_results (completed reads + write) in one user message
+    // 2. Push ALL tool_results (completed reads + writes) in one user message
     if (action.assistantContent?.length) {
       this.messages.push({ role: 'assistant', content: action.assistantContent });
     }
@@ -263,20 +328,58 @@ export class QueryEngine {
         content: r.content,
         isError: r.isError,
       })),
-      writeResult,
+      ...writeResultBlocks,
     ];
 
     this.messages.push({ role: 'user', content: allResults });
 
-    yield {
-      type: 'tool_result',
-      toolName: action.toolName,
-      toolUseId: action.toolUseId,
-      result: response.approved
-        ? (response.executionResult ?? { success: true })
-        : { error: 'User declined this action' },
-      isError: !response.approved,
-    };
+    // Yield a `tool_result` event per write step (or single write for
+    // legacy). Hosts use these to render per-step outcome rows in the
+    // PermissionCard UI.
+    if (isBundle) {
+      const steps = action.steps!;
+      const stepResults = response.stepResults ?? [];
+      const resultByToolUseId = new Map(stepResults.map((r) => [r.toolUseId, r]));
+      for (const step of steps) {
+        const stepResult = resultByToolUseId.get(step.toolUseId);
+        // [SPEC 7 P2.3 audit fix — BUG 11] When approved+missing-result,
+        // mirror the writeResultBlocks fail-closed semantics on the event
+        // stream: emit an error event so host UI flags the step as failed
+        // (not pretend-success).
+        let eventResult: unknown;
+        let eventIsError: boolean;
+        if (!response.approved) {
+          eventResult = { error: 'User declined this action' };
+          eventIsError = true;
+        } else if (stepResult) {
+          eventResult = stepResult.result;
+          eventIsError = stepResult.isError;
+        } else {
+          eventResult = {
+            error: 'Host omitted this step\'s execution result.',
+            _hostBugMissingStepResult: true,
+          };
+          eventIsError = true;
+        }
+        yield {
+          type: 'tool_result',
+          toolName: step.toolName,
+          toolUseId: step.toolUseId,
+          result: eventResult,
+          isError: eventIsError,
+        };
+      }
+    } else {
+      yield {
+        type: 'tool_result',
+        toolName: action.toolName,
+        toolUseId: action.toolUseId,
+        result: response.approved
+          ? (response.executionResult ?? { success: true })
+          : { error: 'User declined this action' },
+        isError: !response.approved,
+      };
+    }
 
     if (!response.approved) {
       yield { type: 'turn_complete', stopReason: 'end_turn' };
@@ -329,18 +432,41 @@ export class QueryEngine {
     response: PermissionResponse,
     signal: AbortSignal,
   ): AsyncGenerator<EngineEvent> {
-    const refreshList = this.postWriteRefresh?.[action.toolName];
-    if (!refreshList || refreshList.length === 0) return;
+    // [SPEC 7 P2.3 Layer 2] Bundle-aware refresh.
+    // - Bundle: union of refresh tools across every step's
+    //   `postWriteRefresh` entry, deduped (Set semantics).
+    // - Single-write: per-tool list as before.
+    const isBundle = Array.isArray(action.steps) && action.steps.length > 0;
+    const refreshSet = new Set<string>();
+    if (isBundle) {
+      for (const step of action.steps!) {
+        const stepRefresh = this.postWriteRefresh?.[step.toolName];
+        if (stepRefresh) for (const t of stepRefresh) refreshSet.add(t);
+      }
+    } else {
+      const singleRefresh = this.postWriteRefresh?.[action.toolName];
+      if (singleRefresh) for (const t of singleRefresh) refreshSet.add(t);
+    }
+    if (refreshSet.size === 0) return;
+    const refreshList = Array.from(refreshSet);
 
-    // Refresh only on confirmed success. Failed writes leave on-chain
-    // state untouched; refreshing would just surface the pre-write
-    // snapshot a second time — wasted RPC + zero new info.
-    const exec = response.executionResult;
-    const writeFailed =
-      exec != null &&
-      typeof exec === 'object' &&
-      'success' in exec &&
-      (exec as { success?: unknown }).success === false;
+    // Refresh only on confirmed success. For bundles, treat as failed
+    // when ANY step's stepResult.isError is true (atomic semantics —
+    // PTB execution fails as a whole, so partial success is impossible
+    // on-chain; if the host reports any step error we honor it).
+    const writeFailed = (() => {
+      if (isBundle) {
+        const stepResults = response.stepResults ?? [];
+        return stepResults.some((r) => r.isError);
+      }
+      const exec = response.executionResult;
+      return (
+        exec != null &&
+        typeof exec === 'object' &&
+        'success' in exec &&
+        (exec as { success?: unknown }).success === false
+      );
+    })();
     if (writeFailed) return;
 
     // Resolve & filter — silently drop unknown / non-readonly entries
@@ -681,6 +807,18 @@ export class QueryEngine {
 
       const dispatcher = new EarlyToolDispatcher(this.tools, context, this.turnReadCache);
 
+      // [SPEC 7 P2.3 Layer 2] Track every read tool that lands during this
+      // turn so the bundle composer can populate `regenerateInput.toolUseIds`
+      // when ≥2 confirm-tier bundleable writes follow. Contributing reads
+      // are filtered to the canonical regeneratable set inside the
+      // composer; we just collect everything here. Cleared per-turn at
+      // the top of the while loop above (declaration is fresh each turn).
+      const turnReadToolResults: Array<{
+        toolUseId: string;
+        toolName: string;
+        timestamp: number;
+      }> = [];
+
       try {
         // B.3: Zero-cost dedup of identical tool calls every turn.
         // [v1.4 Item 4] Emit a synthetic tool_result event for each
@@ -877,6 +1015,17 @@ export class QueryEngine {
               }
             }
 
+            // [SPEC 7 P2.3 Layer 2] Track successful reads for bundle
+            // composition. The composer filters to the canonical
+            // regeneratable set; collecting all reads here is fine.
+            if (!finalEvent.isError && tool && tool.isReadOnly) {
+              turnReadToolResults.push({
+                toolUseId: finalEvent.toolUseId,
+                toolName: finalEvent.toolName,
+                timestamp: Date.now(),
+              });
+            }
+
             earlyResultBlocks.push({
               type: 'tool_result',
               toolUseId: finalEvent.toolUseId,
@@ -908,9 +1057,16 @@ export class QueryEngine {
       }
 
       // --- Permission gate (only for non-early-dispatched calls) ---
+      // [SPEC 7 P2.3 Layer 2] Refactored from `pendingWrite` singular →
+      // `pendingWrites` array. The pre-P2.3 loop did `pendingWrite = ...;
+      // break;` on the first confirm-tier write, silently dropping any
+      // siblings (gap G2 in spec v0.3.1). Now we collect ALL confirm
+      // writes; bundle composition runs AFTER guards (below) so the
+      // bundleable + non-bundleable partition can be made on guard-passed
+      // calls only.
       const approved: PendingToolCall[] = [];
       const toolResultBlocks: ContentBlock[] = [...earlyResultBlocks];
-      let pendingWrite: { call: PendingToolCall; tool: Tool } | null = null;
+      const pendingWrites: Array<{ call: PendingToolCall; tool: Tool }> = [];
 
       for (const call of acc.pendingToolCalls) {
         const tool = findTool(this.tools, call.name);
@@ -991,8 +1147,9 @@ export class QueryEngine {
           continue;
         }
 
-        pendingWrite = { call, tool: tool! };
-        break;
+        // [SPEC 7 P2.3 Layer 2] Collect every confirm-tier write — no break.
+        // Bundle vs single-write decision happens after guards (below).
+        pendingWrites.push({ call, tool: tool! });
       }
 
       // --- Guard checks (pre-execution) ---
@@ -1118,6 +1275,15 @@ export class QueryEngine {
                 result: finalEvent.result,
                 sourceToolUseId: finalEvent.toolUseId,
               });
+              // [SPEC 7 P2.3 Layer 2] Track late-dispatched reads too —
+              // mirrors the early-dispatch path above so the bundle
+              // composer sees every contributing read regardless of
+              // dispatch timing.
+              turnReadToolResults.push({
+                toolUseId: finalEvent.toolUseId,
+                toolName: finalEvent.toolName,
+                timestamp: Date.now(),
+              });
             } else {
               this.turnReadCache.clear();
             }
@@ -1187,72 +1353,155 @@ export class QueryEngine {
         yield toolEvent;
       }
 
-      // --- Guard check on pending write tool ---
-      if (pendingWrite && this.guardConfig) {
-        const convCtx = extractConversationText(this.messages);
-        const check = runGuards(
-          pendingWrite.tool,
-          pendingWrite.call,
-          this.guardState,
-          this.guardConfig,
-          convCtx,
-          this.onGuardFired,
-          { contacts: this.contacts, walletAddress: this.walletAddress },
-        );
-        this.guardEvents.push(...check.events);
+      // --- Guard check on every pending write ---
+      // [SPEC 7 P2.3 Layer 2] Run guards on each pending write. Blocked
+      // writes feed an error tool_result back to the LLM and are dropped
+      // from the bundle/single-write yield. Pre-P2.3 the loop only ran
+      // guards on the first (singular) pendingWrite; now we run guards
+      // on every collected confirm-tier write so a bundleable trio
+      // doesn't silently skip guard checks on steps 2 and 3.
+      const guardPassedWrites: Array<{ call: PendingToolCall; tool: Tool }> = [];
+      const guardInjectionsByCallId: Record<string, Array<{ _gate: string; _hint?: string; _warning?: string }>> = {};
+      let anyGuardBlocked = false;
 
-        if (check.blocked) {
-          yield {
-            type: 'tool_result',
-            toolName: pendingWrite.call.name,
-            toolUseId: pendingWrite.call.id,
-            result: { error: check.blockReason, _gate: check.blockGate },
-            isError: true,
-          };
-          toolResultBlocks.push({
-            type: 'tool_result',
-            toolUseId: pendingWrite.call.id,
-            content: JSON.stringify({ error: check.blockReason, _gate: check.blockGate }),
-            isError: true,
-          });
-          // Blocked write — don't yield pending_action, feed error back to LLM
+      if (this.guardConfig && pendingWrites.length > 0) {
+        const convCtx = extractConversationText(this.messages);
+        for (const write of pendingWrites) {
+          const check = runGuards(
+            write.tool,
+            write.call,
+            this.guardState,
+            this.guardConfig,
+            convCtx,
+            this.onGuardFired,
+            { contacts: this.contacts, walletAddress: this.walletAddress },
+          );
+          this.guardEvents.push(...check.events);
+
+          if (check.blocked) {
+            anyGuardBlocked = true;
+            yield {
+              type: 'tool_result',
+              toolName: write.call.name,
+              toolUseId: write.call.id,
+              result: { error: check.blockReason, _gate: check.blockGate },
+              isError: true,
+            };
+            toolResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: write.call.id,
+              content: JSON.stringify({ error: check.blockReason, _gate: check.blockGate }),
+              isError: true,
+            });
+            continue;
+          }
+
+          if (check.injections.length > 0) {
+            guardInjectionsByCallId[write.call.id] = check.injections;
+            (write.call as PendingToolCall & { _guardInjections?: unknown[] })._guardInjections = check.injections;
+          }
+          guardPassedWrites.push(write);
+        }
+
+        // If ANY write was blocked, feed errors back to the LLM and
+        // re-prompt — don't surface a partial bundle/single-write
+        // pending_action with missing pieces. The LLM will narrate the
+        // block and either retry with corrected input or refuse cleanly.
+        if (anyGuardBlocked) {
           this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
           this.messages.push({ role: 'user', content: toolResultBlocks });
           continue;
         }
-
-        if (check.injections.length > 0) {
-          (pendingWrite.call as PendingToolCall & { _guardInjections?: unknown[] })._guardInjections = check.injections;
-        }
+      } else {
+        // No guard config — all collected writes pass through.
+        guardPassedWrites.push(...pendingWrites);
       }
 
-      if (pendingWrite) {
-        // Do NOT push assistant message to this.messages — session stays clean.
-        // The full assistant content is stored in PendingAction so
-        // resumeWithToolResult can reconstruct the turn atomically.
-        const writeGuardInjections =
-          (pendingWrite.call as PendingToolCall & { _guardInjections?: Array<{ _gate: string; _hint?: string; _warning?: string }> })._guardInjections;
+      // [SPEC 7 P2.3 Layer 2] Bundle vs single-write decision.
+      //
+      // After guards, partition guardPassedWrites into bundleable + non-
+      // bundleable. Bundling rules:
+      //  - 0 writes → fall through to "all auto-approved" path below.
+      //  - 1 write (any kind) → emit legacy single-write pending_action.
+      //  - ≥2 writes, all bundleable → emit bundle with steps[].
+      //  - ≥2 writes, mixed → emit FIRST as single-write (matches pre-
+      //    P2.3 break-on-first behavior); the LLM will re-emit the rest
+      //    in a follow-up turn after this one resolves.
+      if (guardPassedWrites.length > 0) {
+        const allBundleable =
+          guardPassedWrites.length >= 2 &&
+          guardPassedWrites.every((w) => w.tool.flags?.bundleable === true);
 
-        // [v1.4 Item 6] Stamp the action with the registry's modifiable
-        // fields (UI uses this to render editable controls) and a turnIndex
-        // derived from the assistant message count so hosts can update the
-        // matching `TurnMetrics` row when the action resolves.
-        const modifiableFields = getModifiableFields(pendingWrite.call.name);
         const turnIndex = this.messages.filter((m) => m.role === 'assistant').length;
-        // [v1.4.2 — Day 3] Per-yield UUID. Hosts write this onto the
-        // `TurnMetrics` row at chat-time and key the resume route's update
-        // on it (instead of `(sessionId, turnIndex)`), eliminating the
-        // false-resolution path documented in spec §Item 3. Generated at
-        // yield rather than at construction so each emission of a write
-        // (e.g. user-edited resume that re-runs the agent loop) gets a
-        // fresh id and its own `TurnMetrics` row.
-        const attemptId = randomUUID();
-
         // [v0.46.8] Mark the turn as paused so the submitMessage /
         // resumeWithToolResult `finally` blocks DON'T clear the cache.
-        // The pending write may resume; cache must survive the pause
-        // so post-resume execution still benefits from intra-turn dedup.
         this.turnPaused = true;
+
+        if (allBundleable) {
+          // Multi-write Payment Stream — compose bundle.
+          const completedResults = toolResultBlocks.map((b) => ({
+            toolUseId: (b as { toolUseId: string }).toolUseId,
+            content: (b as { content: string }).content,
+            isError: (b as { isError?: boolean }).isError ?? false,
+          }));
+          const bundleAction = composeBundleFromToolResults({
+            pendingWrites: guardPassedWrites.map((w) => w.call),
+            tools: this.tools,
+            readResults: turnReadToolResults,
+            assistantContent: acc.assistantBlocks,
+            completedResults,
+            guardInjectionsByCallId,
+            turnIndex,
+          });
+          yield { type: 'pending_action', action: bundleAction };
+          return;
+        }
+
+        // Single-write (legacy shape). Honors backwards compat — pre-P2.3
+        // hosts that key off `attemptId` continue to work.
+        //
+        // [SPEC 7 P2.3 audit fix — BUG 1] When mixed-bundleability forces
+        // single-write fallback (≥2 writes guard-passed but not all
+        // bundleable), the dropped writes' `tool_use` blocks are still
+        // present in `assistantContent`. Without a matching `tool_result`,
+        // the next Anthropic call rejects the turn (orphan tool_use).
+        // Synthesize error `tool_result` blocks for every dropped write
+        // and append to `toolResultBlocks` BEFORE pulling completedResults.
+        // The LLM sees "this write didn't run, ask user again next turn".
+        // Pre-existing bug class (pre-P2.3 had the same `break;` shape) —
+        // we fix it here while we have visibility.
+        const pendingWrite = guardPassedWrites[0];
+        if (guardPassedWrites.length > 1) {
+          for (let i = 1; i < guardPassedWrites.length; i++) {
+            const dropped = guardPassedWrites[i];
+            const errBody = JSON.stringify({
+              error:
+                'This write was emitted alongside another write that requires a separate confirmation. ' +
+                'Re-emit it after the first write resolves.',
+              _droppedDueToMixedBundleability: true,
+            });
+            yield {
+              type: 'tool_result',
+              toolName: dropped.call.name,
+              toolUseId: dropped.call.id,
+              result: { error: errBody },
+              isError: true,
+            };
+            toolResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: dropped.call.id,
+              content: errBody,
+              isError: true,
+            });
+          }
+        }
+        const writeGuardInjections = guardInjectionsByCallId[pendingWrite.call.id];
+        const modifiableFields = getModifiableFields(pendingWrite.call.name);
+        // [v1.4.2 — Day 3] Per-yield UUID. Hosts write this onto the
+        // `TurnMetrics` row at chat-time and key the resume route's
+        // update on it instead of `(sessionId, turnIndex)`.
+        const attemptId = randomUUID();
+
         yield {
           type: 'pending_action',
           action: {
@@ -1560,50 +1809,6 @@ export function validateHistory(messages: Message[]): Message[] {
   return merged;
 }
 
-function resolveTokenSymbol(nameOrType: string): string {
-  if (!nameOrType.includes('::')) return nameOrType;
-  const parts = nameOrType.split('::');
-  return parts[parts.length - 1];
-}
-
-function describeAction(tool: Tool, call: PendingToolCall): string {
-  const input = call.input as Record<string, unknown>;
-  switch (tool.name) {
-    case 'save_deposit': {
-      return `Save ${input.amount} USDC into lending`;
-    }
-    case 'withdraw': {
-      const wAsset = input.asset ?? '';
-      return `Withdraw ${input.amount}${wAsset ? ' ' + wAsset : ''} from lending`;
-    }
-    case 'send_transfer':
-      return `Send $${input.amount} to ${input.to}`;
-    case 'borrow':
-      return `Borrow $${input.amount} against collateral`;
-    case 'repay_debt':
-      return `Repay $${input.amount} of outstanding debt`;
-    case 'claim_rewards':
-      return 'Claim all pending protocol rewards';
-    case 'pay_api': {
-      const url = String(input.url ?? '');
-      const cost = estimatePayApiCost(url);
-      return `Pay for API call to ${url} (~$${cost})`;
-    }
-    case 'swap_execute': {
-      const from = resolveTokenSymbol(String(input.from ?? '?'));
-      const to = resolveTokenSymbol(String(input.to ?? '?'));
-      const amt = input.amount ?? '?';
-      const slippagePct = ((input.slippage as number) ?? 0.01) * 100;
-      return `Swap ${amt} ${from} for ${to} (${slippagePct}% max slippage)`;
-    }
-    case 'volo_stake':
-      return `Stake ${input.amount} SUI for vSUI`;
-    case 'volo_unstake':
-      return `Unstake ${input.amount === 'all' ? 'all' : input.amount} vSUI`;
-    default:
-      return `Execute ${tool.name}`;
-  }
-}
 
 function flagSuspiciousResult(toolName: string, result: unknown): string | null {
   if (!result || typeof result !== 'object') return null;

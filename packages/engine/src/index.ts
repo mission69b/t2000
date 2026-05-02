@@ -9,6 +9,7 @@ export type {
   EngineConfig,
   StopReason,
   PendingAction,
+  PendingActionStep,
   PendingActionModifiableField,
   Tool,
   ToolFlags,
@@ -35,6 +36,10 @@ export type {
 // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape mapping helper.
 export { harnessShapeForEffort } from './types.js';
 
+// [SPEC 7 v0.4 Layer 2] Per-tool result freshness budgets for the
+// Quote-Refresh ReviewCard (Layer 3 / P2.4b host wires the regenerate UI).
+export { TOOL_TTL_MS, DEFAULT_TOOL_TTL_MS, bundleShortestTtl, REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
+
 // Tool factory
 export { buildTool, toolsToDefinitions, findTool } from './tool.js';
 export type { BuildToolOptions } from './tool.js';
@@ -55,8 +60,8 @@ export type { SSEEvent } from './streaming.js';
 export { MemorySessionStore } from './session.js';
 export type { SessionData, SessionStore } from './session.js';
 
-// Tool flags (RE-2.1)
-export { TOOL_FLAGS, applyToolFlags, getToolFlags } from './tool-flags.js';
+// Tool flags (RE-2.1) + bundleable predicate (SPEC 7 P2.5)
+export { TOOL_FLAGS, applyToolFlags, getToolFlags, isBundleableTool } from './tool-flags.js';
 
 // Guard runner (RE-2.2)
 export {

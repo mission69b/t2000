@@ -34,6 +34,19 @@ export interface RecipeStep {
   on_error?: RecipeStepOnError;
   input_template?: Record<string, string>;
   cost_per_unit?: string;
+  /**
+   * [SPEC 7 P2.5 Layer 4] When true, this step is part of a multi-write
+   * Payment Stream bundle group. Steps with `bundle: true` MUST resolve
+   * to confirm-tier write tools that carry `bundleable: true` in
+   * `TOOL_FLAGS` (validated at recipe load time). The loader fails fast
+   * on auto-tier writes / read-only tools / non-bundleable confirm tools
+   * (`pay_api`, `save_contact`) inside a `bundle: true` group.
+   *
+   * The engine emits parallel `tool_use` blocks for `bundle: true`
+   * steps in the same turn; the permission gate (Layer 2) collapses
+   * them into a single bundled `pending_action`.
+   */
+  bundle?: boolean;
 }
 
 export interface Recipe {

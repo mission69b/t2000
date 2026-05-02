@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import type { Recipe, RecipeStep } from './types.js';
+import { isBundleableTool } from '../tool-flags.js';
 
 const StepRequirementSchema = z.object({
   step: z.string().optional(),
@@ -33,6 +34,7 @@ const StepSchema: z.ZodType<RecipeStep> = z.object({
   on_error: OnErrorSchema.optional(),
   input_template: z.record(z.string()).optional(),
   cost_per_unit: z.string().optional(),
+  bundle: z.boolean().optional(),
 });
 
 const RecipeSchema = z.object({
@@ -48,6 +50,28 @@ const RecipeSchema = z.object({
     return new Set(names).size === names.length;
   },
   { message: 'Step names must be unique within a recipe' },
+).refine(
+  (r) => {
+    // [SPEC 7 P2.5 Layer 4] `bundle: true` steps MUST reference a
+    // bundleable confirm-tier write tool. See `isBundleableTool` in
+    // `tool-flags.ts` for the v1 set. Catches: read tools in a bundle,
+    // auto-tier writes, `pay_api` / `save_contact` (non-bundleable
+    // confirm), unknown tool names, missing `tool:` field.
+    for (const step of r.steps) {
+      if (step.bundle === true) {
+        if (!step.tool) return false;
+        if (!isBundleableTool(step.tool)) return false;
+      }
+    }
+    return true;
+  },
+  {
+    message:
+      'Steps with bundle: true must reference a bundleable confirm-tier write tool. ' +
+      'Allowed: save_deposit, withdraw, borrow, repay_debt, send_transfer, ' +
+      'swap_execute, claim_rewards, volo_stake, volo_unstake. ' +
+      'Forbidden: pay_api, save_contact, any read tool, any auto-tier write.',
+  },
 );
 
 /**
