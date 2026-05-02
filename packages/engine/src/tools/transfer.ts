@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ALL_NAVI_ASSETS, SUPPORTED_ASSETS, type SupportedAsset } from '@t2000/sdk';
+import { ALL_NAVI_ASSETS, SUPPORTED_ASSETS, normalizeAsset, type SupportedAsset } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 
@@ -69,7 +69,15 @@ export const sendTransferTool = buildTool({
       return { valid: false, error: 'Amount must be positive.' };
     }
     if (input.asset !== undefined) {
-      const normalized = String(input.asset).toUpperCase();
+      // F10 fix (P2.7 soak, 2026-05-03): SUPPORTED_ASSETS keys are mostly
+      // uppercase (USDC, SUI, ETH) but `USDe` and `USDsui` are mixed case.
+      // The pre-fix `String(input.asset).toUpperCase() in SUPPORTED_ASSETS`
+      // check rejected USDsui ("USDSUI" not in registry) and USDe ("USDE"
+      // not in registry). `normalizeAsset` is the canonical case-insensitive
+      // resolver from @t2000/sdk — already used by the NAVI adapter, returns
+      // the original input unchanged when no match is found so `in` still
+      // rejects truly unsupported tokens.
+      const normalized = normalizeAsset(String(input.asset));
       if (!(normalized in SUPPORTED_ASSETS)) {
         return {
           valid: false,
@@ -83,7 +91,7 @@ export const sendTransferTool = buildTool({
   async call(input, context) {
     const agent = requireAgent(context);
     const asset = input.asset
-      ? (String(input.asset).toUpperCase() as SupportedAsset)
+      ? (normalizeAsset(String(input.asset)) as SupportedAsset)
       : 'USDC';
     const result = await agent.send({ to: input.to, amount: input.amount, asset });
 

@@ -97,6 +97,7 @@ export {
   formatUsd,
   formatSui,
   formatAssetAmount,
+  normalizeAsset,
 } from './utils/format.js';
 export {
   generateKeypair,
