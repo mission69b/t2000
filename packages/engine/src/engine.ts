@@ -799,6 +799,22 @@ export class QueryEngine {
     let hasRetriedWithCleanHistory = false;
     let turnStartMs = Date.now();
 
+    // [SPEC 7 P2.3 Layer 2 — P2.6 Gate C fix] Track every read tool that lands
+    // during the user's turn so the bundle composer can populate
+    // `regenerateInput.toolUseIds` when ≥2 confirm-tier bundleable writes
+    // follow. Scoped to the entire `agentLoop` invocation (one user message),
+    // NOT to a single LLM response — the canonical bundle pattern is "LLM
+    // response 1 emits the read, LLM response 2 emits the writes", and
+    // resetting per-iteration means response 2 sees an empty `readResults`
+    // and emits `canRegenerate: false`. Contributing reads are filtered to
+    // the canonical regeneratable set inside the composer; we collect
+    // everything here.
+    const turnReadToolResults: Array<{
+      toolUseId: string;
+      toolName: string;
+      timestamp: number;
+    }> = [];
+
     while (turns < this.maxTurns) {
       if (signal.aborted) {
         yield { type: 'error', error: new Error('Aborted') };
@@ -817,18 +833,6 @@ export class QueryEngine {
       };
 
       const dispatcher = new EarlyToolDispatcher(this.tools, context, this.turnReadCache);
-
-      // [SPEC 7 P2.3 Layer 2] Track every read tool that lands during this
-      // turn so the bundle composer can populate `regenerateInput.toolUseIds`
-      // when ≥2 confirm-tier bundleable writes follow. Contributing reads
-      // are filtered to the canonical regeneratable set inside the
-      // composer; we just collect everything here. Cleared per-turn at
-      // the top of the while loop above (declaration is fresh each turn).
-      const turnReadToolResults: Array<{
-        toolUseId: string;
-        toolName: string;
-        timestamp: number;
-      }> = [];
 
       try {
         // B.3: Zero-cost dedup of identical tool calls every turn.

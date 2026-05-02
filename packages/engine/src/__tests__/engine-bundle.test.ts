@@ -148,6 +148,37 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     expect(pending!.action.quoteAge).toBeGreaterThanOrEqual(0);
   });
 
+  // [SPEC 7 P2.6 Gate C — regression] The canonical bundle pattern is the
+  // 2-LLM-response shape: response 1 emits the read (e.g. swap_quote),
+  // response 2 emits the writes after seeing the quote. Pre-fix, the
+  // engine declared `turnReadToolResults` INSIDE the while loop, so it
+  // reset between LLM responses — response 2 saw `readResults: []` and
+  // emitted `canRegenerate: false`. The host's regenerate badge + button
+  // never rendered, leaving users stranded with stale quotes.
+  it('canRegenerate=true when reads land in response 1 and writes in response 2', async () => {
+    const provider = createMockProvider([
+      // Response 1: just the read
+      [{ type: 'tool_call', id: 'rd-1', name: 'balance_check', input: {} }],
+      // Response 2: just the writes (LLM has now seen the read result)
+      [
+        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
+      ],
+    ]);
+    const tools = applyToolFlags([readBalance, makeWrite('send_transfer')]);
+    const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
+
+    const events = await collectEvents(engine.submitMessage('check balance then split it'));
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(2);
+    expect(pending!.action.canRegenerate).toBe(true);
+    expect(pending!.action.regenerateInput?.toolUseIds).toContain('rd-1');
+    expect(pending!.action.quoteAge).toBeGreaterThanOrEqual(0);
+  });
+
   it('falls back to single-write for mixed bundleable + non-bundleable', async () => {
     // pay_api is non-bundleable (in tool-flags). Pair it with send_transfer.
     const payApi = buildTool({
