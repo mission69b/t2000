@@ -5,8 +5,9 @@
  * given coin type.
  *
  * Replaces three earlier inline implementations:
- * - `cetus-swap.ts:fetchAllCoinsForSwap` (kept for backwards-compat,
- *   delegates here)
+ * - `cetus-swap.ts:fetchAllCoinsForSwap` (deleted 2026-05-02 — addSwapToTx
+ *   now calls `selectAndSplitCoin` directly so the merge cache is shared
+ *   across every appender in a multi-write bundle)
  * - `volo.ts:fetchCoinsByType` (kept for backwards-compat, delegates
  *   here)
  * - audric host's `transactions/prepare/route.ts:fetchCoinsForSwap`
@@ -15,7 +16,10 @@
  * Single source of truth for the "fetch coins of type X owned by
  * address Y, paginated" pattern. P2.2b extracts this so `composeTx`'s
  * registry adapters can build a wallet-mode `TransactionObjectArgument`
- * uniformly across save / send / repay / etc.
+ * uniformly across save / send / repay / etc. The 2026-05-02 P2.7 fix
+ * adds a per-PTB merge cache so multi-write bundles that touch the same
+ * coin type twice (swap+save, save+send, etc.) only emit `mergeCoins`
+ * once — see `ptbMergeCache` JSDoc below.
  */
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
@@ -24,6 +28,39 @@ import { T2000Error } from '../errors.js';
 export interface CoinPage {
   ids: string[];
   totalBalance: bigint;
+}
+
+/**
+ * Per-PTB merge cache. Keyed by `(sender|coinType)`, stores the primary
+ * coin reference + remaining unconsumed balance.
+ *
+ * **Why this exists.** Pre-2026-05-02 every appender call re-fetched the
+ * sender's coins of `coinType` and re-emitted `mergeCoins(primary,
+ * [secondaries])`. That works in a single-write PTB. In a multi-write
+ * bundle that touches the same coin type twice (e.g. swap+save+send all
+ * spending USDC), the second `mergeCoins` references `Input(secondary)`
+ * slots that the FIRST `mergeCoins` already consumed — Enoki's dry-run
+ * rejects with `CommandArgumentError { kind: ArgumentWithoutValue }`.
+ *
+ * The cache makes the first call for `(sender, coinType)` do the full
+ * fetch + merge + split, and subsequent calls split from the cached
+ * primary directly. No re-fetch, no re-merge, no double-consume.
+ *
+ * Lives on the `Transaction` instance via a WeakMap so it auto-clears
+ * once the PTB is built and the Transaction is GC'd.
+ */
+const ptbMergeCache = new WeakMap<
+  Transaction,
+  Map<string, { primary: TransactionObjectArgument; remaining: bigint }>
+>();
+
+function getMergeCache(tx: Transaction) {
+  let cache = ptbMergeCache.get(tx);
+  if (!cache) {
+    cache = new Map();
+    ptbMergeCache.set(tx, cache);
+  }
+  return cache;
 }
 
 /**
@@ -108,6 +145,37 @@ export async function selectAndSplitCoin(
   amount: bigint | 'all',
   options: { allowSwapAll?: boolean } = {},
 ): Promise<SelectAndSplitResult> {
+  const cache = getMergeCache(tx);
+  const cacheKey = `${owner}|${coinType}`;
+  const cached = cache.get(cacheKey);
+
+  // Fast path — second+ call for this (sender, coinType) inside the same PTB.
+  // First call already merged all on-chain coin objects into a single primary
+  // and stashed it in the cache; we just split off another chunk here. No RPC
+  // re-fetch, no re-emitted MergeCoins (which would reference already-consumed
+  // input slots and trip Enoki's dry-run with ArgumentWithoutValue — the
+  // P2.7 multi-write bundle bug).
+  if (cached) {
+    const allowSwapAll = options.allowSwapAll ?? true;
+    if (amount !== 'all' && amount > cached.remaining && !allowSwapAll) {
+      throw new T2000Error('INSUFFICIENT_BALANCE', `Insufficient balance for ${coinType}`, {
+        available: cached.remaining.toString(),
+        required: amount.toString(),
+      });
+    }
+    const requested = amount === 'all' ? cached.remaining : amount;
+    const swapAll = amount === 'all' || requested >= cached.remaining;
+    const effectiveAmount = swapAll ? cached.remaining : requested;
+
+    // `swapAll` from a cached primary means "consume the whole remainder" —
+    // callers that pass 'all' (or oversize amount with allowSwapAll) get the
+    // primary itself, leaving the cache slot drained for any future caller.
+    const coin = swapAll ? cached.primary : tx.splitCoins(cached.primary, [effectiveAmount])[0];
+    cached.remaining = swapAll ? 0n : cached.remaining - effectiveAmount;
+    return { coin, effectiveAmount, swapAll };
+  }
+
+  // Slow path — first call for this (sender, coinType).
   const { ids, totalBalance } = await fetchAllCoins(client, owner, coinType);
   if (ids.length === 0) {
     throw new T2000Error('INSUFFICIENT_BALANCE', `No coins found for ${coinType}`);
@@ -132,6 +200,16 @@ export async function selectAndSplitCoin(
   }
 
   const coin = swapAll ? primary : tx.splitCoins(primary, [effectiveAmount])[0];
+
+  // Cache the primary + remaining balance for any subsequent caller in the
+  // same PTB. If the first caller drained everything (`swapAll`), remaining
+  // is 0 and the next caller will hit INSUFFICIENT_BALANCE — which is
+  // correct: the primary has no value left to split.
+  cache.set(cacheKey, {
+    primary,
+    remaining: swapAll ? 0n : totalBalance - effectiveAmount,
+  });
+
   return { coin, effectiveAmount, swapAll };
 }
 

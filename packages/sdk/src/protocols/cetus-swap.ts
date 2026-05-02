@@ -268,19 +268,18 @@ export async function addSwapToTx(
     inputCoin = input.inputCoin;
     effectiveRaw = requestedRaw;
   } else {
-    const { ids, totalBalance } = await fetchAllCoinsForSwap(client, address, fromType);
-    if (ids.length === 0) {
-      throw new T2000Error('INSUFFICIENT_BALANCE', `No ${input.from} coins found in wallet`);
-    }
-
-    const swapAll = requestedRaw >= totalBalance;
-    effectiveRaw = swapAll ? totalBalance : requestedRaw;
-
-    const primary = tx.object(ids[0]);
-    if (ids.length > 1) {
-      tx.mergeCoins(primary, ids.slice(1).map((id) => tx.object(id)));
-    }
-    inputCoin = swapAll ? primary : tx.splitCoins(primary, [effectiveRaw])[0];
+    // Delegate to the canonical wallet-mode prelude. Critically, this path
+    // shares a per-PTB merge cache with every other appender via
+    // `selectAndSplitCoin` — when a multi-write bundle includes
+    // `swap_execute` alongside `save_deposit`/`send_transfer` of the same
+    // input asset (e.g. swap+save+send all from USDC), the second/third
+    // appender hits the cache and splits from the already-merged primary
+    // instead of re-emitting `mergeCoins` on consumed input slots. That's
+    // the P2.7 multi-write bundle fix landed 2026-05-02.
+    const { selectAndSplitCoin } = await import('../wallet/coinSelection.js');
+    const result = await selectAndSplitCoin(tx, client, address, fromType, requestedRaw);
+    inputCoin = result.coin;
+    effectiveRaw = result.effectiveAmount;
   }
 
   const route = await findSwapRoute({
@@ -315,33 +314,6 @@ export async function addSwapToTx(
     expectedAmountOut: Number(route.amountOut) / 10 ** toDecimals,
     route,
   };
-}
-
-/**
- * Paginated coin lookup for swap input selection. Local helper kept
- * inline so `cetus-swap.ts` stays self-contained — P2.2c may extract a
- * shared `wallet/coinSelection.ts` once `addStakeVSuiToTx` and the
- * future `addSendToTxFromWallet` need the same prelude.
- */
-async function fetchAllCoinsForSwap(
-  client: SuiJsonRpcClient,
-  owner: string,
-  coinType: string,
-): Promise<{ ids: string[]; totalBalance: bigint }> {
-  const ids: string[] = [];
-  let totalBalance = 0n;
-  let cursor: string | null | undefined;
-  let hasNext = true;
-  while (hasNext) {
-    const page = await client.getCoins({ owner, coinType, cursor: cursor ?? undefined });
-    for (const c of page.data) {
-      ids.push(c.coinObjectId);
-      totalBalance += BigInt(c.balance);
-    }
-    cursor = page.nextCursor;
-    hasNext = page.hasNextPage;
-  }
-  return { ids, totalBalance };
 }
 
 /**
