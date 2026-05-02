@@ -309,7 +309,7 @@ type EngineEvent =
 - `confirm` — write tools, yield `pending_action` for client-side execution
 - `explicit` — manual-only, never dispatched by LLM
 
-**Granular USD-aware permissions (B.4):** When `permissionConfig` + `priceCache` are set on `ToolContext`, write tool permission is resolved dynamically via `resolvePermissionTier(operation, amountUsd, config)`. Small amounts auto-execute; large amounts require confirmation. Three presets: `conservative`, `balanced`, `aggressive`.
+**Granular USD-aware permissions (B.4):** Active in audric/web today. When `permissionConfig` + `priceCache` are set on `ToolContext` (audric does this on every chat request), write permissions resolve dynamically via `resolvePermissionTier(operation, amountUsd, config)` — sub-threshold writes auto-execute, larger writes downgrade to `confirm`, very large writes go `explicit` (manual only). Three presets: `conservative` (default for new accounts; most writes auto under $5), `balanced` (DEFAULT_PERMISSION_CONFIG; most writes auto under $10–$25), `aggressive` (most writes auto under $25–$100). `borrow` is always `confirm` (`autoBelow: 0` across every preset). Cumulative daily spend > `autonomousDailyLimit` downgrades any `auto` to `confirm` as a runtime safety net. See `.cursor/rules/safeguards-defense-in-depth.mdc` for the full table + canonical preset values.
 
 ### Tool result budgeting (B.2)
 

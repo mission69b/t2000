@@ -48,21 +48,50 @@ Adding a new guard:
 
 ## USD-aware permission resolver (B.4)
 
-`resolvePermissionTier(operation, amountUsd, config)` dynamically downgrades a write's permission level based on USD value:
+`resolvePermissionTier(operation, amountUsd, config)` dynamically downgrades a write's permission level based on USD value. The resolver is **active in audric/web today** (P2.6 UC4b confirmed via live run: a 1.27 SUI / ~$1.20 swap auto-executed under the `conservative` preset).
 
 ```typescript
-DEFAULT_PERMISSION_CONFIG = { /* conservative — confirm everything */ };
+// packages/engine/src/permission-rules.ts
+DEFAULT_PERMISSION_CONFIG = {
+  globalAutoBelow: 10,
+  autonomousDailyLimit: 200,
+  rules: [
+    { operation: 'save',     autoBelow: 50, confirmBetween: 1000 },
+    { operation: 'send',     autoBelow: 10, confirmBetween: 200  },
+    { operation: 'borrow',   autoBelow: 0,  confirmBetween: 500  }, // always confirm
+    { operation: 'withdraw', autoBelow: 25, confirmBetween: 500  },
+    { operation: 'swap',     autoBelow: 25, confirmBetween: 300  },
+    { operation: 'pay',      autoBelow: 1,  confirmBetween: 50   },
+    { operation: 'repay',    autoBelow: 50, confirmBetween: 1000 },
+  ],
+};
 
 PERMISSION_PRESETS = {
-  conservative: { /* always confirm */ },
-  balanced: { autoUpToUsd: 5, autonomousDailyLimit: 50, ... },
-  aggressive: { autoUpToUsd: 50, autonomousDailyLimit: 500, ... },
+  conservative: { globalAutoBelow: 5,  autonomousDailyLimit: 100, /* most writes autoBelow: 5 */ },
+  balanced:     DEFAULT_PERMISSION_CONFIG,
+  aggressive:   { globalAutoBelow: 25, autonomousDailyLimit: 500, /* most writes autoBelow: 25–100 */ },
 };
 ```
 
-**Important.** Even with `aggressive` preset enabled, audric/web does NOT pass these into `ToolContext` today. Every write is `confirm` under zkLogin because the ephemeral key needs user presence. The resolver is wired for future non-zkLogin runtimes (Audric CLI, server-signed automations).
+**How a write is resolved:**
+1. If `amountUsd < rule.autoBelow` (or `globalAutoBelow` when no per-op rule) → `auto`.
+2. If `amountUsd ≤ rule.confirmBetween` → `confirm`.
+3. Else → `explicit` (LLM never dispatches; user must initiate manually).
+4. Cumulative daily spend > `autonomousDailyLimit` downgrades any `auto` to `confirm` (runtime safety net).
+5. `borrow` always confirms (`autoBelow: 0` across every preset) — debt is too consequential to silently take on.
 
-Don't enable USD-aware auto-execute for audric/web without explicit roadmap approval. It IS a security regression in the current trust model.
+**Audric/web's wiring (today):**
+- The session permission preset is plumbed through to the engine via `ToolContext.permissionConfig` + `priceCache`.
+- Default is `conservative` for new accounts (set in user settings; settable to `balanced` / `aggressive`).
+- Sub-threshold writes auto-execute via the same sponsored-tx path; the user sees the receipt only after on-chain settlement.
+- `attemptId` is still stamped on auto-executed writes so audit + rollback paths work identically to confirm-tier.
+
+**Trust model under zkLogin:**
+- Auto-execution does NOT bypass user consent — the user opted into the preset (and thus into "small writes happen without a tap"). Tap-to-confirm is recoverable per-operation by toggling to `conservative`+raising thresholds, or by switching to `balanced` for a higher per-op tap-to-confirm baseline.
+- Each leg still flows through the same Enoki-sponsored builder; auto-execute changes WHO presses the button (engine vs. user), not WHAT gets signed.
+
+**When NOT to auto-execute (engineering rule):**
+- Don't add a new write tool whose preset entry has `autoBelow > 0` without a guard that re-validates fresh balance / health-factor at execute time. The `<financial_context>` snapshot is daily; small auto-writes that race a position change can wedge HF if you trust stale data.
 
 ## Tool result budgeting (B.2)
 

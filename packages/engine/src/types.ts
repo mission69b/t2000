@@ -662,6 +662,45 @@ export interface EngineConfig {
     walletAddress?: string;
   }) => void | Promise<void>;
   /**
+   * [v1.11 F2] Trust signal from the host: the system prompt already
+   * embeds a fresh financial-context snapshot covering balance + HF as
+   * of `balanceAt` (Unix ms). Pre-seeds the guard runner so the
+   * "Balance has not been checked this session" / "Health factor has
+   * not been checked this session" hints DON'T fire on the first turn.
+   *
+   * Pre-v1.11 the guards started cold every chat: the LLM saw the
+   * `<financial_context>` block in the system prompt (with balances +
+   * HF baked in) but the BalanceTracker still reported `hasEverRead()`
+   * = false, so every first-turn write got pinged with a redundant
+   * "call balance_check first" hint. Audric's UC1/UC2/UC3 P2.6 runs
+   * showed the noise verbatim ("Balance not checked this session"
+   * appeared on every first-turn permission card).
+   *
+   * Why a host-supplied seed (vs. engine sniffing the system prompt):
+   * the engine doesn't own the prompt format. Audric builds
+   * `<financial_context>` from `UserFinancialContext`; another host
+   * may not (Audric CLI, server-signed automations). Having the host
+   * pass an explicit seed keeps the engine prompt-agnostic.
+   *
+   * Stale snapshots (>30min old): still seed. The LLM can judge
+   * whether to call `balance_check` for a fresh value based on the
+   * snapshot timestamp surfaced inside the financial-context block;
+   * the guard's job is to prevent unprompted writes against
+   * unknown-state, NOT to enforce a freshness SLA.
+   */
+  financialContextSeed?: {
+    /** Unix ms timestamp of the snapshot. Any non-zero value seeds `lastBalanceAt`. */
+    balanceAt?: number;
+    /**
+     * Health factor at snapshot time. Pass `null` if the user has no
+     * debt (HF undefined / Infinity in audric — render the snapshot
+     * row as "no debt" and don't seed). Pass a number to skip the
+     * "Health factor has not been checked this session" hint on
+     * first-turn write.
+     */
+    healthFactor?: number | null;
+  };
+  /**
    * [v1.4 Item 4] Per-guard observation hook. Forwarded to `runGuards`
    * and fired once per non-`pass` verdict so hosts can record guard
    * behaviour in `TurnMetrics.guardsFired` without re-implementing the

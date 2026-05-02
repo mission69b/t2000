@@ -133,6 +133,15 @@ export class QueryEngine {
     this.costTracker = new CostTracker(config.costTracker);
     this.guardConfig = config.guards;
     this.guardState = createGuardRunnerState();
+    if (config.financialContextSeed) {
+      const { balanceAt, healthFactor } = config.financialContextSeed;
+      if (typeof balanceAt === 'number' && balanceAt > 0) {
+        this.guardState.balanceTracker.recordReadAt(balanceAt);
+      }
+      if (typeof healthFactor === 'number') {
+        this.guardState.lastHealthFactor = healthFactor;
+      }
+    }
     this.recipes = config.recipes;
     this.contextBudget = new ContextBudget(config.contextBudget);
     this.contextSummarizer = config.contextSummarizer;
