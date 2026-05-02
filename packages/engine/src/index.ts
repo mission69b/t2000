@@ -40,6 +40,20 @@ export { harnessShapeForEffort } from './types.js';
 // Quote-Refresh ReviewCard (Layer 3 / P2.4b host wires the regenerate UI).
 export { TOOL_TTL_MS, DEFAULT_TOOL_TTL_MS, bundleShortestTtl, REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
 
+// [SPEC 7 P2.4b] Bundle regeneration — re-fire upstream reads + rebuild
+// a multi-step pending_action without re-running the LLM. Hosts call
+// this from `POST /api/engine/regenerate` (synchronous JSON endpoint —
+// the chat SSE stream has already closed by the time the user taps
+// REGENERATE). See `packages/engine/src/regenerate.ts` for the full
+// contract + failure modes.
+export { regenerateBundle } from './regenerate.js';
+export type {
+  RegenerateResult,
+  RegenerateSuccess,
+  RegenerateFailure,
+  RegenerateTimelineEvent,
+} from './regenerate.js';
+
 // Tool factory
 export { buildTool, toolsToDefinitions, findTool } from './tool.js';
 export type { BuildToolOptions } from './tool.js';

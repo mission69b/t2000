@@ -635,6 +635,17 @@ export class QueryEngine {
     return this.messages;
   }
 
+  /**
+   * [SPEC 7 P2.4b] Read-only access to the engine's tool registry.
+   * Exposed so out-of-band utilities like `regenerateBundle` can call
+   * `composeBundleFromToolResults({ tools: engine.getTools(), ... })`
+   * without forcing the host to hand-thread the tool array. Mirrors
+   * `getMessages()` access pattern.
+   */
+  getTools(): readonly Tool[] {
+    return this.tools;
+  }
+
   getMatchedRecipe(): Recipe | null {
     return this.matchedRecipe;
   }
