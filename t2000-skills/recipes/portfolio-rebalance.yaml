@@ -23,16 +23,23 @@ steps:
       - "List each swap with estimated amounts"
       - "Calculate total slippage across all swaps"
 
+  # [SPEC 7 P2.5] Marking `execute_swaps` with `bundle: true` flips the
+  # rebalance flow from "execute one swap, wait, execute next" to "emit ALL
+  # the swap_execute calls in the same assistant turn so the engine bundles
+  # them into one Payment Stream PTB". Result: every swap in the rebalance
+  # executes against the same on-chain price snapshot — no slippage drift
+  # between legs — and the user signs once.
   - name: execute_swaps
     tool: swap_execute
-    purpose: Execute each swap in sequence
+    purpose: Execute every required swap as parallel `tool_use` blocks in the same turn
+    bundle: true
     requires:
       - step: plan_trades
         confirmation: true
-    notes: "Execute one swap at a time. Check balance after each before the next."
+    notes: "Emit one swap_execute call per leg of the rebalance — ALL in the same assistant turn. The engine collapses them into one atomic Payment Stream so every leg prices against the same Sui state. Do NOT call them sequentially across turns."
     on_error:
-      action: report
-      message: "Swap {{current}} of {{total}} failed — {{error}}. Previous swaps completed. Check balance for current state."
+      action: abort
+      message: "Stream failed — {{error}}. No swaps executed (atomic Payment Stream)."
 
   - name: summary
     purpose: Report final positions

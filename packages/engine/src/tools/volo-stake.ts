@@ -5,7 +5,8 @@ import { requireAgent } from './utils.js';
 export const voloStakeTool = buildTool({
   name: 'volo_stake',
   description:
-    'Stake SUI for vSUI via VOLO liquid staking. Earn ~3-5% APY. Rewards compound automatically via exchange rate — no claiming needed. Minimum 1 SUI.',
+    'Stake SUI for vSUI via VOLO liquid staking. Earn ~3-5% APY. Rewards compound automatically via exchange rate — no claiming needed. Minimum 1 SUI. ' +
+    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "swap USDC to SUI and stake"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
   inputSchema: z.object({
     amount: z.number().min(1).describe('Amount of SUI to stake (minimum 1)'),
   }),

@@ -27,12 +27,22 @@ steps:
       message: "Cannot determine safe withdrawal amount. {{error}}"
       suggest: "Try repaying some debt first to increase safe withdrawal capacity."
 
+  # [SPEC 7 P2.5] Marking `execute_withdraw` with `bundle: true` allows the
+  # close-my-position flow to bundle when the LLM also emits a paired write
+  # in the same turn (e.g. `repay_debt` first → `withdraw` after, both as
+  # parallel `tool_use` blocks). The engine collapses the pair into ONE
+  # Payment Stream — atomic repay-then-withdraw, one signature. When the
+  # user has no debt, this stays a single-write step (engine only bundles
+  # when ≥2 writes emit in the same turn — `bundle: true` on a lone step
+  # is a no-op).
   - name: execute_withdraw
     tool: withdraw
-    purpose: Withdraw the safe amount
+    purpose: Withdraw the safe amount (bundled with repay_debt when paired)
+    bundle: true
     requires:
       - step: evaluate_safety
         confirmation: true
+    notes: "If the user has outstanding debt and the safe amount requires repaying first, emit repay_debt + withdraw as parallel tool_use blocks in the SAME turn so they bundle. Otherwise emit just withdraw."
     on_error:
       action: abort
-      message: "Withdrawal failed. No funds were moved. {{error}}"
+      message: "Stream failed — {{error}}. No funds moved (atomic Payment Stream)."

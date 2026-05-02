@@ -61,6 +61,18 @@ export class RecipeRegistry {
       'Follow these steps:',
     ];
 
+    // [SPEC 7 P2.5 Layer 4] Steps marked `bundle: true` form a Payment
+    // Stream group — surface them as ONE bracketed "PAYMENT STREAM —
+    // emit in parallel" block inline with the step list so the LLM sees
+    // the explicit bundle instruction next to the affected steps. Without
+    // this, recipes that mark write steps as bundleable would still drive
+    // sequential emission because the LLM only reads the numbered list.
+    const bundleSteps = recipe.steps.filter((s) => s.bundle === true);
+    const bundleStepNames = new Set(bundleSteps.map((s) => s.name));
+    const showBundleHeader = bundleStepNames.size >= 2;
+
+    let openedBundleHeader = false;
+
     for (let i = 0; i < recipe.steps.length; i++) {
       const step = recipe.steps[i];
       const num = i + 1;
@@ -71,7 +83,21 @@ export class RecipeRegistry {
         ? ` [GATE: ${step.gate}]`
         : '';
 
-      let line = `${num}. ${step.name}${toolNote}${serviceNote}${costNote}${gateNote}`;
+      // Open the bundle block on the first bundle step.
+      if (showBundleHeader && step.bundle === true && !openedBundleHeader) {
+        lines.push(
+          'PAYMENT STREAM — emit ALL the following bundleable writes as parallel `tool_use` blocks IN THE SAME ASSISTANT TURN. The engine collapses them into ONE atomic PTB the user signs once. Do NOT execute step-by-step across turns:',
+        );
+        openedBundleHeader = true;
+      }
+
+      // The per-step tag rides on the same `≥2 bundle: true` gate as the
+      // header — a lone `bundle: true` marker is reserved for future
+      // paired-write composition (e.g. emergency_withdraw will pair with
+      // repay_debt in close-position flows) and is a no-op at LLM-prompt
+      // time. Tagging it would be confusing.
+      const bundleTag = showBundleHeader && step.bundle === true ? ' [PAYMENT STREAM]' : '';
+      let line = `${num}. ${step.name}${toolNote}${serviceNote}${costNote}${gateNote}${bundleTag}`;
 
       if (step.gate_prompt) {
         line += ` — "${step.gate_prompt}"`;

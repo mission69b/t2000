@@ -20,7 +20,8 @@ export const saveDepositTool = buildTool({
     'When the user says "save 10 USDC" pass asset="USDC". When they say "save 10 USDsui" pass asset="USDsui". ' +
     'When they say "save 10" with no asset, ALWAYS call balance_check first and ask which stable they want to ' +
     'deposit (or default to whichever they hold more of, with a one-line note). Never silently substitute USDsui ' +
-    'for USDC or vice versa.',
+    'for USDC or vice versa. ' +
+    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "swap to USDC and save"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
   inputSchema: z.object({
     amount: z.number().positive(),
     asset: z.enum(SAVE_ASSETS).optional().describe('"USDC" or "USDsui". Defaults to USDC when omitted.'),

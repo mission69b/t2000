@@ -15,9 +15,15 @@ steps:
       action: retry
       message: "Balance check failed. Retrying once."
 
+  # [SPEC 7 P2.5] Both writes carry `bundle: true` so the LLM emits the two
+  # `tool_use` blocks in the same assistant turn. The engine's permission gate
+  # collapses them into ONE bundled `pending_action` (one PermissionCard, one
+  # signature, atomic). No more sequential "swap → wait → deposit" — the
+  # `received` coin-ref is handed off in-PTB at compose time (Layer 1).
   - name: swap_to_usdc
     tool: swap_execute
     purpose: Swap source token to USDC
+    bundle: true
     requires:
       - step: check_balance
         field: available_amount
@@ -25,16 +31,17 @@ steps:
     gate_prompt: "At ${{price}}/{{token}}, you'll receive ~${{estimate}} USDC."
     on_error:
       action: abort
-      message: "Swap failed — {{error}}. No deposit attempted. Your original balance is unchanged."
+      message: "Stream failed — {{error}}. No funds moved (atomic Payment Stream)."
 
   - name: deposit
     tool: save_deposit
     purpose: Deposit received USDC into savings
+    bundle: true
     requires:
       - step: swap_to_usdc
         field: received
     gate: none
-    notes: "Use the 'received' field from the swap result — NOT the estimated amount."
+    notes: "Inside the same Payment Stream — the swap's received coin is handed off as the deposit input via PTB coin-ref, not as a separate confirm."
     on_error:
-      action: report
-      message: "Swap succeeded (received {{received}} USDC) but deposit failed — {{error}}. Your USDC is in your wallet. Try depositing manually."
+      action: abort
+      message: "Stream failed — {{error}}. Both legs reverted (atomic Payment Stream)."

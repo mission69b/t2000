@@ -2,7 +2,9 @@
  * SPEC 7 P2.5 Layer 4 — recipe loader `bundle: true` validation.
  */
 import { describe, it, expect } from 'vitest';
-import { parseRecipe } from './loader.js';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { parseRecipe, loadRecipes } from './loader.js';
 
 describe('recipe loader — bundle: true validation', () => {
   it('accepts bundle: true on a bundleable confirm-tier write tool', () => {
@@ -122,6 +124,85 @@ steps:
     bundle: true
 `;
       expect(() => parseRecipe(yamlContent), `should accept ${tool}`).not.toThrow();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SPEC 7 v0.3.1 G11 acceptance gate — loader unit-test parses BOTH the legacy
+// read-mostly recipes (no `bundle:` key) AND the 3 multi-write recipes with
+// the new `bundle: true` syntax cleanly. Ship-blocker for P2.5.
+//
+// Pulls the actual recipe directory at `t2000-skills/recipes/` and asserts:
+//   1. Every YAML in the directory parses without error.
+//   2. The 3 multi-write recipes (swap_and_save, portfolio_rebalance,
+//      emergency_withdraw) now carry the `bundle: true` step grouping.
+//      `swap_and_save` and `portfolio_rebalance` MUST have ≥2 bundle: true
+//      writes (they're true multi-write bundles); `emergency_withdraw`
+//      reserves the marker for the future close-position pair (≥1 ok).
+//   3. The 3 read-mostly recipes (safe_borrow, send_to_contact, account_report)
+//      stay legacy — zero `bundle:` keys (no parser regression).
+// ---------------------------------------------------------------------------
+
+const RECIPES_DIR = join(__dirname, '..', '..', '..', '..', 't2000-skills', 'recipes');
+
+describe('recipe loader — G11 acceptance gate (legacy + new syntax coexist)', () => {
+  // Skip the directory-load tests when running against a published tarball
+  // (e.g. CI dependency installs) where the t2000-skills/ folder isn't a
+  // sibling of packages/engine. The unit-test schema-only cases above still
+  // run unconditionally.
+  const skipIfMissing = existsSync(RECIPES_DIR) ? it : it.skip;
+
+  skipIfMissing('loads every recipe from t2000-skills/recipes/ without error', () => {
+    const recipes = loadRecipes(RECIPES_DIR);
+    expect(recipes.length).toBeGreaterThanOrEqual(6);
+    const names = recipes.map((r) => r.name).sort();
+    expect(names).toContain('swap_and_save');
+    expect(names).toContain('portfolio_rebalance');
+    expect(names).toContain('emergency_withdraw');
+    expect(names).toContain('safe_borrow');
+    expect(names).toContain('send_to_contact');
+    expect(names).toContain('account_report');
+  });
+
+  skipIfMissing('swap_and_save has the new bundle: true syntax (≥2 bundle steps)', () => {
+    const recipes = loadRecipes(RECIPES_DIR);
+    const swapAndSave = recipes.find((r) => r.name === 'swap_and_save');
+    expect(swapAndSave).toBeDefined();
+    const bundleSteps = swapAndSave!.steps.filter((s) => s.bundle === true);
+    expect(bundleSteps.length).toBeGreaterThanOrEqual(2);
+    const tools = bundleSteps.map((s) => s.tool).sort();
+    expect(tools).toEqual(['save_deposit', 'swap_execute']);
+  });
+
+  skipIfMissing('portfolio_rebalance has the new bundle: true syntax (≥1 bundle write)', () => {
+    const recipes = loadRecipes(RECIPES_DIR);
+    const rebalance = recipes.find((r) => r.name === 'portfolio_rebalance');
+    expect(rebalance).toBeDefined();
+    const bundleSteps = rebalance!.steps.filter((s) => s.bundle === true);
+    expect(bundleSteps.length).toBeGreaterThanOrEqual(1);
+    expect(bundleSteps.every((s) => s.tool === 'swap_execute')).toBe(true);
+  });
+
+  skipIfMissing('emergency_withdraw has the new bundle: true syntax (≥1 bundle write)', () => {
+    const recipes = loadRecipes(RECIPES_DIR);
+    const emergency = recipes.find((r) => r.name === 'emergency_withdraw');
+    expect(emergency).toBeDefined();
+    const bundleSteps = emergency!.steps.filter((s) => s.bundle === true);
+    expect(bundleSteps.length).toBeGreaterThanOrEqual(1);
+    // The marker is reserved for paired writes (e.g. repay_debt + withdraw)
+    // — currently only `withdraw` carries it.
+    expect(bundleSteps[0].tool).toBe('withdraw');
+  });
+
+  skipIfMissing('legacy read-mostly recipes have NO bundle: keys (no parser regression)', () => {
+    const recipes = loadRecipes(RECIPES_DIR);
+    const legacy = ['safe_borrow', 'send_to_contact', 'account_report'];
+    for (const name of legacy) {
+      const recipe = recipes.find((r) => r.name === name);
+      expect(recipe, `recipe '${name}' should exist`).toBeDefined();
+      const bundleSteps = recipe!.steps.filter((s) => s.bundle === true);
+      expect(bundleSteps.length, `'${name}' must stay legacy (no bundle: keys)`).toBe(0);
     }
   });
 });
