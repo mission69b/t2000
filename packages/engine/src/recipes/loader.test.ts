@@ -136,10 +136,19 @@ steps:
 // Pulls the actual recipe directory at `t2000-skills/recipes/` and asserts:
 //   1. Every YAML in the directory parses without error.
 //   2. The 3 multi-write recipes (swap_and_save, portfolio_rebalance,
-//      emergency_withdraw) now carry the `bundle: true` step grouping.
-//      `swap_and_save` and `portfolio_rebalance` MUST have ≥2 bundle: true
-//      writes (they're true multi-write bundles); `emergency_withdraw`
-//      reserves the marker for the future close-position pair (≥1 ok).
+//      emergency_withdraw) now carry the `bundle: true` step grouping:
+//        • `swap_and_save` MUST have ≥2 bundle steps (swap + deposit —
+//          a true multi-step bundle whose distinct step names trigger
+//          the PAYMENT STREAM header in `RecipeRegistry.toPromptContext`).
+//        • `portfolio_rebalance` MUST have ≥1 bundle step (`execute_swaps`
+//          alone — the LLM is instructed via the step's `notes` to emit
+//          this single step's `tool_use` block multiple times in one
+//          turn, so the parallel-emission shape is encoded in prose, not
+//          step count).
+//        • `emergency_withdraw` MUST have ≥1 bundle step (`execute_withdraw`
+//          alone — reserves the marker for the future paired close-
+//          position flow `repay_debt + withdraw`; today's solo step is
+//          a no-op when emitted alone).
 //   3. The 3 read-mostly recipes (safe_borrow, send_to_contact, account_report)
 //      stay legacy — zero `bundle:` keys (no parser regression).
 // ---------------------------------------------------------------------------
