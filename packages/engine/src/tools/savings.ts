@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { resolveTokenType, getDecimalsForCoinType } from '@t2000/sdk';
 import { fetchSavings } from '../navi-reads.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
@@ -8,34 +9,57 @@ import type { ServerPositionData } from '../types.js';
 
 const DUST_THRESHOLD_USD = 0.01;
 
+// Mirrors `addWithdrawToTx`'s dust math in `packages/sdk/src/protocols/navi.ts`:
+//   const dustBuffer = 1000 / 10**decimals;
+//   const effective = max(0, deposited - dustBuffer);
+//   if (Math.floor(effective * 10**decimals) <= 0) → SDK throws NO_COLLATERAL.
+// Filtering positions that match the throw condition prevents the LLM from
+// proposing a withdraw the SDK will reject (P2.7 soak finding F9, 2026-05-02).
+function isDustOnChain(symbol: string, amount: number): boolean {
+  const coinType = resolveTokenType(symbol);
+  if (!coinType) return true;
+  const decimals = getDecimalsForCoinType(coinType);
+  const scale = Math.pow(10, decimals);
+  const dustBuffer = 1000 / scale;
+  const effective = Math.max(0, amount - dustBuffer);
+  return Math.floor(effective * scale) <= 0;
+}
+
 function buildSavingsFromPositions(sp: ServerPositionData): SavingsResult {
+  const filteredSupplies = sp.supplies.filter(
+    (s) => s.amountUsd >= DUST_THRESHOLD_USD && !isDustOnChain(s.asset, s.amount),
+  );
+  const filteredBorrows = sp.borrows_detail.filter((b) => b.amountUsd >= DUST_THRESHOLD_USD);
+
   const positions: PositionEntry[] = [
-    ...sp.supplies
-      .filter((s) => s.amountUsd >= DUST_THRESHOLD_USD)
-      .map((s) => ({
-        protocol: s.protocol,
-        type: 'supply' as const,
-        symbol: s.asset,
-        amount: s.amount,
-        valueUsd: s.amountUsd,
-        apy: s.apy,
-        liquidationThreshold: 0,
-      })),
-    ...sp.borrows_detail
-      .filter((b) => b.amountUsd >= DUST_THRESHOLD_USD)
-      .map((b) => ({
-        protocol: b.protocol,
-        type: 'borrow' as const,
-        symbol: b.asset,
-        amount: b.amount,
-        valueUsd: b.amountUsd,
-        apy: b.apy,
-        liquidationThreshold: 0,
-      })),
+    ...filteredSupplies.map((s) => ({
+      protocol: s.protocol,
+      type: 'supply' as const,
+      symbol: s.asset,
+      amount: s.amount,
+      valueUsd: s.amountUsd,
+      apy: s.apy,
+      liquidationThreshold: 0,
+    })),
+    ...filteredBorrows.map((b) => ({
+      protocol: b.protocol,
+      type: 'borrow' as const,
+      symbol: b.asset,
+      amount: b.amount,
+      valueUsd: b.amountUsd,
+      apy: b.apy,
+      liquidationThreshold: 0,
+    })),
   ];
 
-  const supplied = sp.savings;
-  const weightedApy = supplied > 0 ? sp.savingsRate : 0;
+  // Recompute supplied + APY from the filtered set so fundStatus is consistent
+  // with the position list the LLM sees. Trusting `sp.savings` here would
+  // re-introduce the F9 phantom-dust value into the headline number.
+  const supplied = filteredSupplies.reduce((sum, s) => sum + s.amountUsd, 0);
+  const weightedApy =
+    supplied > 0
+      ? filteredSupplies.reduce((sum, s) => sum + s.apy * s.amountUsd, 0) / supplied
+      : 0;
   const dailyEarning = (supplied * weightedApy) / 365;
 
   return {
@@ -149,7 +173,11 @@ export const savingsInfoTool = buildTool({
 
     if (hasNaviMcpGlobal(context) && targetAddress) {
       const savings = await fetchSavings(getMcpManager(context), targetAddress);
-      savings.positions = savings.positions.filter((p) => p.valueUsd >= DUST_THRESHOLD_USD);
+      savings.positions = savings.positions.filter(
+        (p) =>
+          p.valueUsd >= DUST_THRESHOLD_USD &&
+          (p.type !== 'supply' || !isDustOnChain(p.symbol, p.amount)),
+      );
       const stamped = { ...savings, address: targetAddress, isSelfQuery, suinsName };
       return { data: stamped, displayText: formatSavingsDisplay(savings, isSelfQuery, targetAddress, suinsName) };
     }
@@ -179,7 +207,11 @@ export const savingsInfoTool = buildTool({
       valueUsd: ((p.amountUsd ?? p.valueUsd) ?? 0) as number,
       apy: (p.apy ?? 0) as number,
       liquidationThreshold: (p.liquidationThreshold ?? 0) as number,
-    })).filter((p: PositionEntry) => p.valueUsd >= DUST_THRESHOLD_USD);
+    })).filter(
+      (p: PositionEntry) =>
+        p.valueUsd >= DUST_THRESHOLD_USD &&
+        (p.type !== 'supply' || !isDustOnChain(p.symbol, p.amount)),
+    );
 
     const result: SavingsResult = {
       positions,
