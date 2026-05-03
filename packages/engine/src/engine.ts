@@ -40,7 +40,12 @@ import { microcompact } from './compact/microcompact.js';
 import { resolvePermissionTier, resolveUsdValue, toolNameToOperation } from './permission-rules.js';
 import { EarlyToolDispatcher } from './early-dispatcher.js';
 import { TurnReadCache } from './turn-read-cache.js';
-import { composeBundleFromToolResults, MAX_BUNDLE_OPS } from './compose-bundle.js';
+import {
+  composeBundleFromToolResults,
+  MAX_BUNDLE_OPS,
+  VALID_PAIRS,
+  checkValidPair,
+} from './compose-bundle.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -184,6 +189,12 @@ export class QueryEngine {
   ): AsyncGenerator<EngineEvent> {
     if (this.costTracker.isOverBudget()) {
       yield { type: 'error', error: new Error('Session budget exceeded') };
+      // [Phase 0 / SPEC 13] Pre-agentLoop budget exit. Engine.ts:1717
+      // catches the post-agentLoop budget case via the in-loop helper.
+      getTelemetrySink().counter('engine.turn_outcome', {
+        entry: 'submit',
+        outcome: 'error_budget',
+      });
       return;
     }
 
@@ -392,7 +403,14 @@ export class QueryEngine {
 
     if (!response.approved) {
       yield { type: 'turn_complete', stopReason: 'end_turn' };
-      // Turn ended (user declined) — drop the cache.
+      // [Phase 0 / SPEC 13] resumeWithToolResult decline path — turn
+      // ends here without entering agentLoop. Counter mirrors the
+      // in-loop turn_complete shape but tags `outcome=pending_action_decline`
+      // to disambiguate the user-declined case from a natural end_turn.
+      getTelemetrySink().counter('engine.turn_outcome', {
+        entry: 'resume',
+        outcome: 'pending_action_decline',
+      });
       this.turnReadCache.clear();
       return;
     }
@@ -808,6 +826,53 @@ export class QueryEngine {
     let hasRetriedWithCleanHistory = false;
     let turnStartMs = Date.now();
 
+    // [Phase 0 / SPEC 13 / 2026-05-03 evening] agentLoop exit-point
+    // instrumentation. Every termination of this generator emits a
+    // structured `engine.turn_outcome` counter with:
+    //   - `entry`: 'submit' (user message) | 'resume' (host post-write)
+    //   - `outcome`: which exit path fired (see `LoopOutcome` below)
+    //   - `turns`: how many LLM round-trips happened in this loop
+    //   - `durationMs`: wall-clock time from loop entry to exit
+    //
+    // The host pairs this with stream-close logging in chat/resume
+    // routes + useEngine reader so we can diagnose the "Response
+    // interrupted · retry" bug from real traffic. Three failure modes
+    // we're looking for:
+    //   (a) outcome=error_* emitted but host stream closed without an
+    //       `error` event reaching the client (engine→host plumbing
+    //       gap).
+    //   (b) outcome=turn_complete OR outcome=pending_action_* emitted
+    //       but client `useEngine` flagged the message as interrupted
+    //       (SSE flush gap, CDN cut, or a client gate bug).
+    //   (c) NO outcome counter emitted at all (silent generator return
+    //       — should be unreachable; if it fires, an unhandled return
+    //       path slipped past the recordTurnOutcome calls below).
+    const recordTurnOutcome = (
+      outcome:
+        | 'turn_complete'
+        | 'pending_action_single'
+        | 'pending_action_bundle'
+        | 'pending_action_decline'
+        | 'error_aborted'
+        | 'error_budget'
+        | 'error_other'
+        | 'max_turns'
+        | 'guard_block_continue'
+        | 'pair_not_whitelisted_continue'
+        | 'max_bundle_ops_continue',
+      extra: { stopReason?: string } = {},
+    ): void => {
+      const tags: Record<string, string> = {
+        entry: freshPrompt !== null ? 'submit' : 'resume',
+        outcome,
+      };
+      if (extra.stopReason) tags.stopReason = extra.stopReason;
+      const sink = getTelemetrySink();
+      sink.counter('engine.turn_outcome', tags);
+      sink.histogram('engine.turn_duration_ms', Date.now() - turnStartMs, tags);
+      sink.gauge('engine.turn_turns_used', turns, tags);
+    };
+
     // [SPEC 7 P2.3 Layer 2 — P2.6 Gate C fix] Track every read tool that lands
     // during the user's turn so the bundle composer can populate
     // `regenerateInput.toolUseIds` when ≥2 confirm-tier bundleable writes
@@ -827,6 +892,7 @@ export class QueryEngine {
     while (turns < this.maxTurns) {
       if (signal.aborted) {
         yield { type: 'error', error: new Error('Aborted') };
+        recordTurnOutcome('error_aborted');
         return;
       }
 
@@ -1067,6 +1133,7 @@ export class QueryEngine {
         this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
         getTelemetrySink().histogram('anthropic.latency_ms', Date.now() - turnStartMs);
         yield { type: 'turn_complete', stopReason: acc.stopReason };
+        recordTurnOutcome('turn_complete', { stopReason: acc.stopReason });
         return;
       }
 
@@ -1077,6 +1144,7 @@ export class QueryEngine {
         }
         this.addErrorResults(acc.pendingToolCalls, 'Aborted');
         yield { type: 'error', error: new Error('Aborted') };
+        recordTurnOutcome('error_aborted');
         return;
       }
 
@@ -1434,6 +1502,10 @@ export class QueryEngine {
         if (anyGuardBlocked) {
           this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
           this.messages.push({ role: 'user', content: toolResultBlocks });
+          getTelemetrySink().counter('engine.turn_outcome', {
+            entry: freshPrompt !== null ? 'submit' : 'resume',
+            outcome: 'guard_block_continue',
+          });
           continue;
         }
       } else {
@@ -1441,33 +1513,20 @@ export class QueryEngine {
         guardPassedWrites.push(...pendingWrites);
       }
 
-      // [F14-fix-2 / 2026-05-03] MAX_BUNDLE_OPS cap. Compound flows the
-      // LLM tries to atomize into a bundle of >MAX_BUNDLE_OPS writes are
-      // bounded here as a defense-in-depth measure. Why 5:
-      //   - Vercel runtime budget: at >5 writes, Turn 2's emission +
-      //     guard work + bundle compose has been observed to push
-      //     /api/engine/chat past the 300s timeout in production
-      //     (S.53.6 production repro 2026-05-03).
-      //   - Quote-freshness window: SwapQuoteTracker windowMs=60s. With
-      //     >5 writes including 2+ swap legs, Turn 2's planning often
-      //     bleeds past 60s and stale-quote guards block.
-      //   - LLM working-memory: Sonnet+medium has been observed to drop
-      //     legs when bundling >5 writes (S.53.6 B2 incident).
-      //   - PermissionCard cognitive load: a 6+ leg card requires a
-      //     30+ second user re-read; capping at 5 keeps it scannable.
-      //
-      // We drop ALL guardPassedWrites with synthesized error tool_results
-      // so the LLM gets visibility and re-plans into two sequential
-      // bundles. The audric host pairs this with a system-prompt rule
-      // teaching the LLM to split 6+ op compound flows up front.
+      // [Phase 0 / SPEC 13 / 2026-05-03 evening] MAX_BUNDLE_OPS=2 cap.
+      // Compound flows the LLM tries to atomize into a bundle of more
+      // than MAX_BUNDLE_OPS writes get refused; the LLM splits and
+      // re-plans sequentially. See `compose-bundle.ts:MAX_BUNDLE_OPS`
+      // JSDoc for the rationale (chain-handoff is the real gap, cap=2
+      // is the strict tightening until Phase 1 lands the foundation).
       if (guardPassedWrites.length > MAX_BUNDLE_OPS) {
         const cappedError = {
           error:
-            `Compound flows are capped at ${MAX_BUNDLE_OPS} atomic ops per bundle. ` +
+            `Atomic bundles are capped at ${MAX_BUNDLE_OPS} ops in Phase 0. ` +
             `You attempted ${guardPassedWrites.length}. ` +
-            `Split into two sequential bundles (≤${MAX_BUNDLE_OPS} ops each) across two confirmation rounds. ` +
-            `Tell the user "I'll do this in two steps — first <ops 1-${MAX_BUNDLE_OPS}>, then after that confirms, <remaining ops>" and emit ` +
-            `only the first ${MAX_BUNDLE_OPS} writes for the first bundle.`,
+            `Execute these as ${guardPassedWrites.length} sequential single-write transactions: ` +
+            `tell the user "I'll do this in ${guardPassedWrites.length} steps", then emit only the FIRST write. ` +
+            `After it lands and the user confirms each step, emit the next.`,
           _gate: 'max_bundle_ops',
         };
         for (const write of guardPassedWrites) {
@@ -1487,8 +1546,13 @@ export class QueryEngine {
         }
         this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
         this.messages.push({ role: 'user', content: toolResultBlocks });
+        getTelemetrySink().counter('engine.turn_outcome', {
+          entry: freshPrompt !== null ? 'submit' : 'resume',
+          outcome: 'max_bundle_ops_continue',
+        });
         continue;
       }
+
 
       // [SPEC 7 P2.3 Layer 2] Bundle vs single-write decision.
       //
@@ -1511,6 +1575,58 @@ export class QueryEngine {
         this.turnPaused = true;
 
         if (allBundleable) {
+          // [Phase 0 / SPEC 13 / 2026-05-03 evening] VALID_PAIRS whitelist.
+          // For 2-op bundles, the (producer, consumer) pair must be in
+          // the whitelist. Pairs outside it (swap→swap, borrow→swap,
+          // save→send, etc.) fail in production today because of the
+          // chained-asset gap — refusing up front is cheaper than a
+          // guaranteed-revert PREPARE round-trip. Phase 1 (SPEC 13)
+          // lands the chain-handoff primitive and most of these
+          // become valid as the registry grows.
+          //
+          // The cap is already 2 (MAX_BUNDLE_OPS), so length is always
+          // exactly 2 here — but the check is written defensively so
+          // a future cap raise (Phase 2+) doesn't silently bypass it.
+          if (guardPassedWrites.length === 2) {
+            const producer = guardPassedWrites[0].call.name;
+            const consumer = guardPassedWrites[1].call.name;
+            const check = checkValidPair(producer, consumer);
+            if (!check.ok) {
+              const pairError = {
+                error:
+                  `Bundle pair '${check.pair}' is not in the Phase 0 chaining whitelist. ` +
+                  `Whitelisted pairs: ${[...VALID_PAIRS].join(', ')}. ` +
+                  `Run these two writes sequentially: tell the user "I'll do this in two steps", ` +
+                  `emit only the first write, then the second after it lands and confirms.`,
+                _gate: 'pair_not_whitelisted',
+              };
+              for (const write of guardPassedWrites) {
+                yield {
+                  type: 'tool_result',
+                  toolName: write.call.name,
+                  toolUseId: write.call.id,
+                  result: pairError,
+                  isError: true,
+                };
+                toolResultBlocks.push({
+                  type: 'tool_result',
+                  toolUseId: write.call.id,
+                  content: JSON.stringify(pairError),
+                  isError: true,
+                });
+              }
+              this.turnPaused = false;
+              this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+              this.messages.push({ role: 'user', content: toolResultBlocks });
+              getTelemetrySink().counter('engine.turn_outcome', {
+                entry: freshPrompt !== null ? 'submit' : 'resume',
+                outcome: 'pair_not_whitelisted_continue',
+                pair: check.pair,
+              });
+              continue;
+            }
+          }
+
           // Multi-write Payment Stream — compose bundle.
           const completedResults = toolResultBlocks.map((b) => ({
             toolUseId: (b as { toolUseId: string }).toolUseId,
@@ -1527,6 +1643,7 @@ export class QueryEngine {
             turnIndex,
           });
           yield { type: 'pending_action', action: bundleAction };
+          recordTurnOutcome('pending_action_bundle');
           return;
         }
 
@@ -1594,6 +1711,7 @@ export class QueryEngine {
             attemptId,
           },
         };
+        recordTurnOutcome('pending_action_single');
         return;
       }
 
@@ -1622,11 +1740,13 @@ export class QueryEngine {
 
       if (this.costTracker.isOverBudget()) {
         yield { type: 'error', error: new Error('Session budget exceeded') };
+        recordTurnOutcome('error_budget');
         return;
       }
     }
 
     yield { type: 'turn_complete', stopReason: 'max_turns' };
+    recordTurnOutcome('max_turns');
   }
 
   // ---------------------------------------------------------------------------

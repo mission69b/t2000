@@ -39,10 +39,17 @@ export { harnessShapeForEffort } from './types.js';
 // [SPEC 7 v0.4 Layer 2] Per-tool result freshness budgets for the
 // Quote-Refresh ReviewCard (Layer 3 / P2.4b host wires the regenerate UI).
 export { TOOL_TTL_MS, DEFAULT_TOOL_TTL_MS, bundleShortestTtl, REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
-// [F14-fix-2 / 2026-05-03] MAX_BUNDLE_OPS exposed so host system
-// prompts can advertise the cap programmatically (audric/web reads it
-// from `engine-context.ts`). See `compose-bundle.ts` for the rationale.
-export { MAX_BUNDLE_OPS } from './compose-bundle.js';
+// [Phase 0 / SPEC 13 / 2026-05-03] Bundle composition controls exposed
+// to hosts so system prompts can advertise the cap + whitelist
+// programmatically. `MAX_BUNDLE_OPS` was 5 (F14-fix-2 morning) → 2
+// (Phase 0 evening); whitelist enumerates the 7 pairs that can bundle
+// atomically today. See `compose-bundle.ts:MAX_BUNDLE_OPS` JSDoc for
+// the rationale and the SPEC 13 phased rollout that lifts the cap.
+export {
+  MAX_BUNDLE_OPS,
+  VALID_PAIRS,
+  checkValidPair,
+} from './compose-bundle.js';
 
 // [SPEC 7 P2.4b] Bundle regeneration — re-fire upstream reads + rebuild
 // a multi-step pending_action without re-running the LLM. Hosts call

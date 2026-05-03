@@ -48,35 +48,95 @@ import type {
 import type { PendingToolCall } from './orchestration.js';
 
 /**
- * [F14-fix-2 / 2026-05-03] Maximum number of writes per atomic bundle.
+ * [Phase 0 / SPEC 13 / 2026-05-03] Maximum number of writes per atomic bundle.
  *
- * The engine refuses to compose a `pending_action` with more than this
- * many steps. Bundles with N > MAX_BUNDLE_OPS get all-step error
- * tool_results synthesized in `engine.ts` so the LLM re-plans into two
- * sequential ≤N-op bundles. Why 5:
+ * **History.** This was 5 between F14-fix-2 (2026-05-03 morning) and
+ * Phase 0 (2026-05-03 evening). The May 3 production review found that
+ * the underlying problem was never the count — bundles fail because
+ * SDK appenders pre-fetch coins from the wallet and the chained asset
+ * doesn't exist there yet (e.g. `swap_execute(USDC→USDsui) +
+ * save_deposit(USDsui)` reverts at PREPARE because USDsui isn't in the
+ * wallet at compose time). SPEC 13 builds the chained-coin handoff
+ * primitive. Until that ships in `1.13.0`, Phase 0 strict-tightens
+ * bundles to:
  *
- *  - Vercel runtime budget. At N>5 writes, Turn 2's emission + guard
- *    work + bundle compose has been observed in production to push
- *    /api/engine/chat past the 300s `maxDuration`. Reducing the cap
- *    keeps every flow well under the timeout.
- *  - Quote-freshness coupling. SwapQuoteTracker `windowMs = 60_000`.
- *    With N>5 (especially 2+ swap legs), Turn 2's planning + emission
- *    routinely bleeds past 60s; the stale-quote guard then blocks
- *    swap_execute on legs whose quote went stale during thinking.
- *  - LLM working memory. Sonnet+medium has been observed to drop
- *    legs when bundling >5 writes (the original B2 incident — LLM
- *    asked to emit 6 writes in one Turn 2 emitted only 3).
- *  - User cognitive load. A 6+ leg PermissionCard takes 30+ seconds
- *    to re-read; capping at 5 keeps the card scannable.
- *  - PTB instruction budget. Sui PTB max instructions ~1024; each leg
- *    consumes 5–20 instructions. 5 legs ≤ 100 instructions — well
- *    under the cap with comfortable headroom for nested splits.
+ *   - Cap = 2 ops (was 5).
+ *   - Every adjacent pair MUST be in `VALID_PAIRS` (was: any 2
+ *     bundleable tools).
  *
- * Hosts that want to advertise the cap in system prompts should import
- * this constant rather than hardcoding `5` — bumping the cap in one
- * place keeps host prompts and engine behavior in lockstep.
+ * **Why 2.** Every multi-write production failure today reduces to
+ * the same gap: a chained-asset bundle whose intermediate output
+ * doesn't exist in the wallet yet. The `VALID_PAIRS` whitelist below
+ * enumerates every (producer, consumer) couple where chaining either
+ * works today (because the consumer takes a wallet coin that the
+ * producer happens to leave there via `tx.transferObjects`) OR will
+ * work after Phase 1. Anything outside the whitelist falls through
+ * to sequential — same outcome the LLM was already producing as a
+ * fallback, just without the wasted PREPARE round-trip.
+ *
+ * **Why not 3+.** 3-op chains require a graph validator (every adjacent
+ * pair valid + DAG topology checks) — that's Phase 2. Cap stays at 2
+ * until Phase 1 lands the validator.
+ *
+ * Hosts importing this constant for system-prompt construction get the
+ * current cap automatically. Bumping the cap in Phase 1 + Phase 2 + …
+ * is a one-line change here that propagates to prompts via the import.
  */
-export const MAX_BUNDLE_OPS = 5;
+export const MAX_BUNDLE_OPS = 2;
+
+/**
+ * [Phase 0 / SPEC 13] Whitelisted (producer, consumer) pairs for atomic
+ * bundling. Every key has the shape `${producer}->${consumer}`. Bundles
+ * whose adjacent steps aren't in this set get refused with
+ * `_gate: 'pair_not_whitelisted'` so the LLM splits sequentially.
+ *
+ * **The 7 pairs and why they're safe in Phase 0.**
+ *
+ * | Pair | Why it works at compose time today |
+ * |---|---|
+ * | `swap_execute → send_transfer` | Swap's `tx.transferObjects([result.coin], sender)` lands the swap output in the wallet for the same PTB; send's `selectAndSplitCoin` finds it. |
+ * | `swap_execute → save_deposit` | Same mechanism — swap output is back in wallet for save's coin fetch. (P0 caveat: this currently *fails* if the wallet has zero of `swap.to` BEFORE the swap step. Phase 1's `inputCoinFromStep` fixes that. For now we accept the pair but warn the LLM in the prompt rule that wallet must hold ≥0 of target asset.) |
+ * | `swap_execute → repay_debt` | Same as save. Same caveat. |
+ * | `withdraw → swap_execute` | Withdraw's output is transferred to user; swap's coin fetch finds it. Same wallet caveat in reverse. |
+ * | `withdraw → send_transfer` | Same shape. |
+ * | `borrow → send_transfer` | Borrow output lands in wallet; send finds it. |
+ * | `borrow → repay_debt` (same asset) | Unusual but valid — borrow output repays elsewhere. |
+ *
+ * **NOT in the whitelist** (sequential only until Phase 1+):
+ *
+ * - `swap → swap` — chained-asset handoff between two swaps. Phase 3.
+ * - `borrow → swap` — borrow output is `USDC|USDsui`, swap takes any
+ *   `from`. Could be added in Phase 1.
+ * - `claim_rewards → *` — produces N reward coins, structurally
+ *   different. Phase 5+.
+ * - Anything with `volo_stake` / `volo_unstake` chained — Phase 5+.
+ */
+export const VALID_PAIRS: ReadonlySet<string> = new Set([
+  'swap_execute->send_transfer',
+  'swap_execute->save_deposit',
+  'swap_execute->repay_debt',
+  'withdraw->swap_execute',
+  'withdraw->send_transfer',
+  'borrow->send_transfer',
+  'borrow->repay_debt',
+]);
+
+/**
+ * Test whether a 2-op bundle's (producer, consumer) pair is in the
+ * Phase 0 whitelist. Returns the pair key on match, `null` otherwise
+ * so callers can include the rejection reason in the synthesized
+ * tool_result.
+ *
+ * Caller is responsible for ensuring `producer` and `consumer` are the
+ * actual tool names of the bundle's two steps (in execution order).
+ */
+export function checkValidPair(
+  producer: string,
+  consumer: string,
+): { ok: true; pair: string } | { ok: false; pair: string } {
+  const pair = `${producer}->${consumer}`;
+  return VALID_PAIRS.has(pair) ? { ok: true, pair } : { ok: false, pair };
+}
 
 export interface BundleCompositionInput {
   /** All confirm-tier bundleable writes the LLM emitted in this turn. MUST be ≥2. */

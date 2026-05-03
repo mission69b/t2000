@@ -84,21 +84,24 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   it('collapses 2 bundleable writes into a single pending_action with steps[]', async () => {
     const provider = createMockProvider([
       [
-        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
         { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
       ],
     ]);
-    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    // [Phase 0 / SPEC 13] swap_execute → send_transfer is the canonical
+    // whitelisted pair; tool fixture changed but bundle composition
+    // mechanics being tested are unchanged.
+    const tools = applyToolFlags([makeWrite('swap_execute'), makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
-    const events = await collectEvents(engine.submitMessage('send 5 to A and 3 to B'));
+    const events = await collectEvents(engine.submitMessage('swap then send'));
     const pending = events.find((e) => e.type === 'pending_action') as
       | (EngineEvent & { type: 'pending_action'; action: PendingAction })
       | undefined;
     expect(pending).toBeDefined();
     expect(pending!.action.steps).toBeDefined();
     expect(pending!.action.steps).toHaveLength(2);
-    expect(pending!.action.steps![0].toolName).toBe('send_transfer');
+    expect(pending!.action.steps![0].toolName).toBe('swap_execute');
     expect(pending!.action.steps![0].toolUseId).toBe('tc-1');
     expect(pending!.action.steps![1].toolUseId).toBe('tc-2');
     // Each step gets its own attemptId
@@ -127,18 +130,23 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 
   it('regenerateInput.toolUseIds includes contributing reads from the same turn', async () => {
-    // Turn 1: balance_check (read) + 2x send_transfer (writes)
+    // [Phase 0 / SPEC 13] Bundle pair switched to whitelisted swap→send;
+    // regenerateInput threading is independent of pair shape.
     const provider = createMockProvider([
       [
         { type: 'tool_call', id: 'rd-1', name: 'balance_check', input: {} },
-        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
         { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
       ],
     ]);
-    const tools = applyToolFlags([readBalance, makeWrite('send_transfer')]);
+    const tools = applyToolFlags([
+      readBalance,
+      makeWrite('swap_execute'),
+      makeWrite('send_transfer'),
+    ]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
-    const events = await collectEvents(engine.submitMessage('split balance'));
+    const events = await collectEvents(engine.submitMessage('balance then swap and send'));
     const pending = events.find((e) => e.type === 'pending_action') as
       | (EngineEvent & { type: 'pending_action'; action: PendingAction })
       | undefined;
@@ -156,19 +164,23 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   // emitted `canRegenerate: false`. The host's regenerate badge + button
   // never rendered, leaving users stranded with stale quotes.
   it('canRegenerate=true when reads land in response 1 and writes in response 2', async () => {
+    // [Phase 0 / SPEC 13] Bundle pair switched to whitelisted swap→send;
+    // the cross-LLM-response carry-forward of readResults is unchanged.
     const provider = createMockProvider([
-      // Response 1: just the read
       [{ type: 'tool_call', id: 'rd-1', name: 'balance_check', input: {} }],
-      // Response 2: just the writes (LLM has now seen the read result)
       [
-        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
         { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
       ],
     ]);
-    const tools = applyToolFlags([readBalance, makeWrite('send_transfer')]);
+    const tools = applyToolFlags([
+      readBalance,
+      makeWrite('swap_execute'),
+      makeWrite('send_transfer'),
+    ]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
-    const events = await collectEvents(engine.submitMessage('check balance then split it'));
+    const events = await collectEvents(engine.submitMessage('balance then swap and send'));
     const pending = events.find((e) => e.type === 'pending_action') as
       | (EngineEvent & { type: 'pending_action'; action: PendingAction })
       | undefined;
@@ -258,14 +270,19 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 
   it('audit BUG 11: approved bundle with missing stepResult fails closed (not synthetic success)', async () => {
+    // [Phase 0 / SPEC 13] Pair switched from send_transfer+send_transfer
+    // to the whitelisted swap_execute→send_transfer so the bundle still
+    // composes under the new VALID_PAIRS check. The bug-class (host
+    // fails to send a stepResult, engine must synthesize an error)
+    // is unchanged.
     const provider = createMockProvider([
       [
-        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
         { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
       ],
       [{ type: 'text', text: 'Step 2 was missing.' }],
     ]);
-    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    const tools = applyToolFlags([makeWrite('swap_execute'), makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
     const turn1Events = await collectEvents(engine.submitMessage('split'));
@@ -303,7 +320,9 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 
   it('audit BUG 12: quoteAge clamps to >= 0 against clock skew', async () => {
-    // Force a future-dated read by mocking Date.now().
+    // [Phase 0 / SPEC 13] Bundle pair switched from send+send to the
+    // whitelisted swap_execute→send_transfer. The clock-skew invariant
+    // being tested (quoteAge >= 0) is unrelated to which pair is used.
     const realNow = Date.now;
     let mockTime = 1_000_000;
     Date.now = () => mockTime;
@@ -311,7 +330,7 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
       const provider = createMockProvider([
         [
           { type: 'tool_call', id: 'rd-1', name: 'balance_check', input: {} },
-          { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+          { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
           { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
         ],
       ]);
@@ -329,7 +348,7 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
           return { data: { usdc: 100 } };
         },
       });
-      const tools = applyToolFlags([balance, makeWrite('send_transfer')]);
+      const tools = applyToolFlags([balance, makeWrite('swap_execute'), makeWrite('send_transfer')]);
       const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
       const events = await collectEvents(engine.submitMessage('go'));
@@ -389,16 +408,17 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 
   it('resume with stepResults pushes N tool_result events back to the LLM', async () => {
+    // [Phase 0 / SPEC 13] Pair switched from send+send to the
+    // whitelisted swap_execute→send_transfer. The resume mechanics
+    // (N stepResults → N tool_result events) are unchanged.
     const provider = createMockProvider([
-      // Turn 1: emit 2 sends → bundle yields
       [
-        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
         { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
       ],
-      // Turn 2 (after resume): plain text
-      [{ type: 'text', text: 'Both sends succeeded.' }],
+      [{ type: 'text', text: 'Both succeeded.' }],
     ]);
-    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    const tools = applyToolFlags([makeWrite('swap_execute'), makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
     const turn1Events = await collectEvents(engine.submitMessage('split'));
@@ -439,13 +459,14 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 
   it('declined bundle yields N error tool_results (one per step)', async () => {
+    // [Phase 0 / SPEC 13] Pair switched to a whitelisted one.
     const provider = createMockProvider([
       [
-        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
         { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
       ],
     ]);
-    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    const tools = applyToolFlags([makeWrite('swap_execute'), makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
     const turn1Events = await collectEvents(engine.submitMessage('split'));
@@ -462,16 +483,20 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 
   it('atomic bundle failure: all stepResults isError=true → no post-write refresh', async () => {
+    // [Phase 0 / SPEC 13] Pair switched to whitelisted; refresh is
+    // keyed on the consumer (send_transfer) which is unchanged.
     const provider = createMockProvider([
       [
-        { type: 'tool_call', id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
         { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
       ],
-      // Should NOT see a follow-up turn that includes balance_check
-      // because writeFailed branch returns from runPostWriteRefresh.
       [{ type: 'text', text: 'Sorry, both transfers failed.' }],
     ]);
-    const tools = applyToolFlags([makeWrite('send_transfer'), readBalance]);
+    const tools = applyToolFlags([
+      makeWrite('swap_execute'),
+      makeWrite('send_transfer'),
+      readBalance,
+    ]);
     const engine = new QueryEngine({
       provider,
       tools,
@@ -511,89 +536,106 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 });
 
-// [F14-fix-2 / 2026-05-03] MAX_BUNDLE_OPS cap regression suite.
-// Covers the production repro where Sonnet+medium attempted to bundle
-// 6 writes in one Turn 2, blew past Vercel's timeout / quote-window /
-// LLM-working-memory budget, and produced a stuck-pending state with
-// no PermissionCard rendered. Cap = 5 hard refuses anything larger so
-// the LLM is forced to split into two confirmation rounds.
-describe('SPEC F14-fix-2 — MAX_BUNDLE_OPS cap', () => {
-  // Helper: mint N pending writes for a single LLM turn.
-  function makeTurnOf(n: number): ScriptedTurn[] {
-    return Array.from({ length: n }, (_, i) => ({
-      type: 'tool_call' as const,
-      id: `tc-${i + 1}`,
-      name: 'send_transfer',
-      input: { amount: i + 1, to: `0x${i + 1}` },
-    }));
+// [Phase 0 / SPEC 13 / 2026-05-03 evening] MAX_BUNDLE_OPS=2 cap +
+// VALID_PAIRS whitelist regression suite.
+//
+// Replaces the F14-fix-2 (cap=5) suite. Phase 0 strict-tightens to
+// cap=2 because the May 3 production review found that bundle failures
+// reduce to chained-asset gaps (swap output → save input where the
+// asset doesn't exist in the wallet at compose time), not to count.
+// Phase 1 ships the chain-handoff primitive per SPEC 13; cap rises in
+// Phase 3.
+describe('Phase 0 — MAX_BUNDLE_OPS=2 cap', () => {
+  // Helper: mint N pending writes for a single LLM turn. Uses pairs
+  // already in VALID_PAIRS so the 2-op acceptance test isn't gated
+  // by the whitelist check.
+  function makeTurnOfPair(n: number): ScriptedTurn[] {
+    if (n === 1) {
+      return [
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 1 } },
+      ];
+    }
+    if (n === 2) {
+      return [
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 1 } },
+        { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 1, to: '0xabc' } },
+      ];
+    }
+    // For N≥3 pad with whitelisted pairs that bundle never reaches.
+    const out: ScriptedTurn[] = [];
+    for (let i = 0; i < n; i++) {
+      out.push({
+        type: 'tool_call' as const,
+        id: `tc-${i + 1}`,
+        name: 'send_transfer',
+        input: { amount: i + 1, to: `0x${i + 1}` },
+      });
+    }
+    return out;
   }
 
-  it('accepts a 5-op bundle (at the cap)', async () => {
-    const provider = createMockProvider([makeTurnOf(5)]);
-    const tools = applyToolFlags([makeWrite('send_transfer')]);
+  it('accepts a 2-op whitelisted bundle (at the cap)', async () => {
+    const provider = createMockProvider([makeTurnOfPair(2)]);
+    const tools = applyToolFlags([
+      makeWrite('swap_execute'),
+      makeWrite('send_transfer'),
+    ]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
-    const events = await collectEvents(engine.submitMessage('5 sends'));
+    const events = await collectEvents(engine.submitMessage('swap then send'));
     const pending = events.find((e) => e.type === 'pending_action') as
       | (EngineEvent & { type: 'pending_action'; action: PendingAction })
       | undefined;
     expect(pending).toBeDefined();
-    expect(pending!.action.steps).toHaveLength(5);
+    expect(pending!.action.steps).toHaveLength(2);
   });
 
-  it('refuses a 6-op bundle and yields N=6 max_bundle_ops error tool_results', async () => {
-    // Two LLM turns: turn 1 emits 6 writes (refused), turn 2 narrates
-    // the refusal so the engine returns an `end_turn` cleanly.
+  it('refuses a 3-op bundle and yields N=3 max_bundle_ops error tool_results', async () => {
     const provider = createMockProvider([
-      makeTurnOf(6),
+      makeTurnOfPair(3),
       [
         {
           type: 'text',
-          text: 'I will split this into two bundles — first 5 sends, then the 6th after you confirm.',
+          text: 'I will execute these as 3 sequential single-write transactions.',
         },
       ],
     ]);
     const tools = applyToolFlags([makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
-    const events = await collectEvents(engine.submitMessage('6 sends'));
+    const events = await collectEvents(engine.submitMessage('3 sends'));
 
-    // No pending_action — bundle was capped before composition.
-    const pending = events.find((e) => e.type === 'pending_action');
-    expect(pending).toBeUndefined();
+    expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
 
-    // 6 error tool_results (one per dropped write), each with the cap
-    // error envelope so the LLM has visibility into the refusal.
     const errorResults = events.filter(
       (e) => e.type === 'tool_result' && e.isError,
     ) as Array<EngineEvent & { type: 'tool_result' }>;
-    expect(errorResults).toHaveLength(6);
+    expect(errorResults).toHaveLength(3);
     for (const er of errorResults) {
       const result = er.result as { error?: string; _gate?: string };
       expect(result._gate).toBe('max_bundle_ops');
-      expect(result.error).toMatch(/capped at 5/);
-      expect(result.error).toMatch(/Split into two sequential/);
+      expect(result.error).toMatch(/capped at 2/);
+      expect(result.error).toMatch(/sequential single-write transactions/);
     }
   });
 
-  it('refuses a 7-op bundle (above the cap by more than 1)', async () => {
+  it('refuses a 5-op bundle (well above the cap)', async () => {
     const provider = createMockProvider([
-      makeTurnOf(7),
+      makeTurnOfPair(5),
       [{ type: 'text', text: 'I will split.' }],
     ]);
     const tools = applyToolFlags([makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
-    const events = await collectEvents(engine.submitMessage('7 sends'));
+    const events = await collectEvents(engine.submitMessage('5 sends'));
     const errorResults = events.filter(
       (e) => e.type === 'tool_result' && e.isError,
     );
-    expect(errorResults).toHaveLength(7);
+    expect(errorResults).toHaveLength(5);
     expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
   });
 
-  it('production repro: 6-op compound flow (repay + 2 swaps + save + borrow + send) returns capped error', async () => {
-    // Mirrors the exact production failure shape — 6 writes spanning
-    // every confirm-tier bundleable operation. Pre-fix this would
-    // compose a 6-step pending_action; post-fix the engine refuses
-    // and the LLM has to re-plan.
+  it('production repro: 6-op compound flow returns capped error', async () => {
+    // The exact May 3 production failure shape — 6 writes spanning
+    // every confirm-tier bundleable op. Phase 0 refuses up front so
+    // the LLM splits sequentially, no wasted PREPARE round-trip.
     const provider = createMockProvider([
       [
         { type: 'tool_call', id: 'tc-1', name: 'repay_debt', input: { amount: 2 } },
@@ -603,7 +645,7 @@ describe('SPEC F14-fix-2 — MAX_BUNDLE_OPS cap', () => {
         { type: 'tool_call', id: 'tc-5', name: 'borrow', input: { amount: 1 } },
         { type: 'tool_call', id: 'tc-6', name: 'send_transfer', input: { amount: 1 } },
       ],
-      [{ type: 'text', text: 'I will split into two sequential bundles.' }],
+      [{ type: 'text', text: 'I will run these sequentially.' }],
     ]);
     const tools = applyToolFlags([
       makeWrite('repay_debt'),
@@ -620,5 +662,105 @@ describe('SPEC F14-fix-2 — MAX_BUNDLE_OPS cap', () => {
       .filter((e) => e.type === 'tool_result' && e.isError)
       .map((e) => (e as EngineEvent & { type: 'tool_result' }).toolUseId);
     expect(errorIds).toEqual(['tc-1', 'tc-2', 'tc-3', 'tc-4', 'tc-5', 'tc-6']);
+  });
+});
+
+// [Phase 0 / SPEC 13] VALID_PAIRS whitelist enforcement.
+//
+// 2-op bundles whose (producer, consumer) pair is in the whitelist
+// compose a pending_action. Pairs outside the whitelist get refused
+// with `_gate: 'pair_not_whitelisted'` so the LLM splits sequentially
+// instead of wasting a PREPARE round-trip on a guaranteed-revert
+// chained-asset bundle.
+describe('Phase 0 — VALID_PAIRS whitelist', () => {
+  const allWriteTools = [
+    'save_deposit',
+    'withdraw',
+    'borrow',
+    'repay_debt',
+    'send_transfer',
+    'swap_execute',
+  ];
+
+  function setup(producer: string, consumer: string) {
+    const provider = createMockProvider([
+      [
+        { type: 'tool_call', id: 'tc-1', name: producer, input: { amount: 1 } },
+        { type: 'tool_call', id: 'tc-2', name: consumer, input: { amount: 1 } },
+      ],
+      [{ type: 'text', text: 'narration' }],
+    ]);
+    const tools = applyToolFlags(allWriteTools.map((n) => makeWrite(n)));
+    return new QueryEngine({ provider, tools, systemPrompt: 'test' });
+  }
+
+  // The 7 whitelisted pairs — every one MUST compose successfully.
+  const validPairs: Array<[string, string]> = [
+    ['swap_execute', 'send_transfer'],
+    ['swap_execute', 'save_deposit'],
+    ['swap_execute', 'repay_debt'],
+    ['withdraw', 'swap_execute'],
+    ['withdraw', 'send_transfer'],
+    ['borrow', 'send_transfer'],
+    ['borrow', 'repay_debt'],
+  ];
+
+  for (const [producer, consumer] of validPairs) {
+    it(`accepts whitelisted pair: ${producer} → ${consumer}`, async () => {
+      const engine = setup(producer, consumer);
+      const events = await collectEvents(engine.submitMessage(`${producer} then ${consumer}`));
+      const pending = events.find((e) => e.type === 'pending_action') as
+        | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+        | undefined;
+      expect(pending).toBeDefined();
+      expect(pending!.action.steps).toHaveLength(2);
+      expect(pending!.action.steps?.[0]?.toolName).toBe(producer);
+      expect(pending!.action.steps?.[1]?.toolName).toBe(consumer);
+    });
+  }
+
+  // Representative non-whitelisted pairs — each one MUST be refused.
+  // Phase 1+ may add some of these; today they fail because the
+  // chained-asset gap blocks compose at PREPARE time.
+  const invalidPairs: Array<[string, string, string]> = [
+    ['swap_execute', 'swap_execute', 'two swaps in a row — Phase 3'],
+    ['borrow', 'swap_execute', 'borrow→swap — could be added Phase 1'],
+    ['save_deposit', 'send_transfer', 'save produces nothing to send'],
+    ['send_transfer', 'send_transfer', 'two sends — split sequentially'],
+    ['withdraw', 'save_deposit', 'unusual; not in whitelist'],
+    ['repay_debt', 'send_transfer', 'repay produces nothing'],
+  ];
+
+  for (const [producer, consumer, why] of invalidPairs) {
+    it(`refuses non-whitelisted pair: ${producer} → ${consumer} (${why})`, async () => {
+      const engine = setup(producer, consumer);
+      const events = await collectEvents(engine.submitMessage(`${producer} then ${consumer}`));
+
+      expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
+
+      const errorResults = events.filter(
+        (e) => e.type === 'tool_result' && e.isError,
+      ) as Array<EngineEvent & { type: 'tool_result' }>;
+      expect(errorResults).toHaveLength(2);
+      for (const er of errorResults) {
+        const result = er.result as { error?: string; _gate?: string };
+        expect(result._gate).toBe('pair_not_whitelisted');
+        expect(result.error).toMatch(new RegExp(`${producer}->${consumer}`));
+      }
+    });
+  }
+
+  it('production repro: swap_execute(USDC→USDsui) + save_deposit(USDsui) is whitelisted (was the May 3 failure)', async () => {
+    // The exact May 3 failure shape. Pre-Phase-0 the engine composed
+    // a bundle that reverted at PREPARE because USDsui didn't exist
+    // in the wallet yet. Phase 0 still allows compose (this pair IS
+    // in the whitelist) — the wallet caveat is documented in the
+    // system prompt rule and Phase 1's chain-handoff fixes it for
+    // real. The test asserts the whitelist still admits the pair,
+    // not that the prepare succeeds.
+    const engine = setup('swap_execute', 'save_deposit');
+    const events = await collectEvents(engine.submitMessage('swap then save'));
+    const pending = events.find((e) => e.type === 'pending_action');
+    expect(pending).toBeDefined();
   });
 });

@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.12.0 (2026-05-03 evening) — Phase 0: PTB chaining foundation prep + stream instrumentation
+
+Strict-tightening of multi-write bundle composition while SPEC 13 (chained-coin handoff foundation) is being built. Pairs with the May 3 production review that found bundle failures reduce to a missing chain-handoff primitive in `@t2000/sdk` (every appender pre-fetches coins from the wallet via `selectAndSplitCoin`, which fails when the chained asset doesn't exist there yet — e.g. `swap_execute(USDC→USDsui) + save_deposit(USDsui)` reverts at PREPARE).
+
+Also lands streaming instrumentation so we can diagnose the production "Response interrupted · retry" bug from real traffic (the bug is independent of bundles — bites simple flows too).
+
+### Changed
+
+- **`MAX_BUNDLE_OPS` lowered from 5 → 2.** Multi-write bundles are capped at exactly 2 ops in Phase 0. 3+ op compositions get all-step `_gate: 'max_bundle_ops'` errors so the LLM splits sequentially. The cap rises in Phase 2 (3-op chains via SPEC 13 step-graph validator) and Phase 5 (arbitrary). See `compose-bundle.ts:MAX_BUNDLE_OPS` JSDoc for rationale.
+
+### Added
+
+- **`VALID_PAIRS`** — the 7-pair Phase 0 chaining whitelist (`swap_execute → send_transfer | save_deposit | repay_debt`, `withdraw → swap_execute | send_transfer`, `borrow → send_transfer | repay_debt`). Exported from `@t2000/engine` so hosts can advertise the whitelist programmatically. Engine refuses any 2-op bundle whose (producer, consumer) pair is outside the set with `_gate: 'pair_not_whitelisted'`.
+- **`checkValidPair(producer, consumer)`** — typed pair lookup helper. Returns `{ ok: true, pair }` on match, `{ ok: false, pair }` otherwise.
+- **`engine.turn_outcome` counter** — fired at every `agentLoop` exit point with structured tags `{ entry: 'submit'|'resume', outcome: 'turn_complete' | 'pending_action_single' | 'pending_action_bundle' | 'pending_action_decline' | 'error_aborted' | 'error_budget' | 'max_turns' | 'guard_block_continue' | 'pair_not_whitelisted_continue' | 'max_bundle_ops_continue', stopReason? }`. Pairs with new `engine.turn_duration_ms` histogram and `engine.turn_turns_used` gauge. Hosts pair this with stream-close logging at the chat/resume route boundaries to diagnose the "Response interrupted" bug shape (engine emitted but host stream closed without delivering vs engine returned silently).
+- **Engine event regression tests** — 7 whitelisted-pair acceptance tests, 6 non-whitelisted rejection tests (incl. swap+swap, borrow+swap, save+send, send+send, withdraw+save, repay+send), May 3 production-repro test for the 6-op compound flow.
+
+### Notes
+
+- Phase 0 cap+whitelist is paired with audric host system-prompt rules teaching the LLM the new shape (sequential by default, atomic only for whitelisted 2-op pairs). The engine is correct independently — the prompt rules just save round-trips.
+- SPEC 13 (`spec/SPEC_13_PTB_CHAINING_FOUNDATION.md`, local-only) lays out the phased rollout to lift the cap. Phase 1 (chained-coin handoff primitive in the SDK) ships next.
+
 ## 0.47.0 (2026-04-27)
 
 Audric Harness Intelligence v1.4 — vendor consolidation + harness instrumentation. Tagged `v0.47.0` and published in lockstep with `@t2000/sdk`, `@t2000/cli`, and `@t2000/mcp`.
