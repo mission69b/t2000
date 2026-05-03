@@ -238,4 +238,42 @@ describe('PERMISSION_PRESETS', () => {
     expect(agg.globalAutoBelow).toBeGreaterThan(bal.globalAutoBelow);
     expect(agg.autonomousDailyLimit).toBeGreaterThan(bal.autonomousDailyLimit);
   });
+
+  // [F14 / 2026-05-03] Lock the absolute invariant from
+  // `.cursor/rules/safeguards-defense-in-depth.mdc`:
+  // "borrow always confirms (autoBelow: 0 across every preset)".
+  // Regression: aggressive preset shipped with autoBelow: 10 between v1.4
+  // and v1.11.2; a user on aggressive had a 6-op bundle silently auto-
+  // execute because step[0]=`repay $2` resolved to `auto` and the host
+  // gate only inspected step[0]. This invariant guards the engine half
+  // of defense-in-depth (`shouldClientAutoApprove` bundle iteration is
+  // the host half).
+  it('borrow.autoBelow is 0 across every preset (debt is non-auto)', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      const borrowRule = config.rules.find((r) => r.operation === 'borrow');
+      expect(
+        borrowRule,
+        `${presetName} preset must define an explicit borrow rule`,
+      ).toBeDefined();
+      expect(
+        borrowRule!.autoBelow,
+        `${presetName} preset must have borrow.autoBelow === 0 (debt is too consequential to silently take on)`,
+      ).toBe(0);
+    }
+  });
+
+  // [F14 / 2026-05-03] Direct resolver assertion — even at $0 amount,
+  // borrow under any preset must NOT resolve to `auto`. Catches a future
+  // refactor that introduces a bypass (e.g. amountUsd === 0 short-circuit).
+  it('resolvePermissionTier(borrow, $0..$9, *preset*) never returns auto', () => {
+    for (const [presetName, config] of Object.entries(PERMISSION_PRESETS)) {
+      for (const amount of [0, 0.01, 1, 5, 9.99]) {
+        const tier = resolvePermissionTier('borrow', amount, config);
+        expect(
+          tier,
+          `${presetName} preset / borrow $${amount} must not be auto`,
+        ).not.toBe('auto');
+      }
+    }
+  });
 });

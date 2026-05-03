@@ -66,7 +66,18 @@ export const PERMISSION_PRESETS = {
     rules: [
       { operation: 'save' as const, autoBelow: 100, confirmBetween: 2000 },
       { operation: 'send' as const, autoBelow: 25, confirmBetween: 500 },
-      { operation: 'borrow' as const, autoBelow: 10, confirmBetween: 1000 },
+      // [F14 / 2026-05-03] Was `autoBelow: 10` — violated the absolute
+      // invariant in `.cursor/rules/safeguards-defense-in-depth.mdc`:
+      // "borrow always confirms (autoBelow: 0 across every preset) —
+      // debt is too consequential to silently take on." A user on the
+      // aggressive preset had a 6-op bundle (repay/swap/swap/save/borrow/send)
+      // silently auto-execute because step[0]=`repay $2` resolved to
+      // `auto` and the host gate only inspected step[0] (Bug A, fixed
+      // separately on the audric host). Holding the engine constant to
+      // the documented contract here is the second half of defense in
+      // depth — locks every preset to `borrow.autoBelow: 0` regardless
+      // of host-side bundle iteration.
+      { operation: 'borrow' as const, autoBelow: 0, confirmBetween: 1000 },
       { operation: 'withdraw' as const, autoBelow: 50, confirmBetween: 1000 },
       { operation: 'swap' as const, autoBelow: 50, confirmBetween: 500 },
       { operation: 'pay' as const, autoBelow: 5, confirmBetween: 100 },
