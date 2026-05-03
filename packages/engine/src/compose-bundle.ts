@@ -39,6 +39,7 @@ import { findTool } from './tool.js';
 import { describeAction } from './describe-action.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
+import { getTelemetrySink } from './telemetry.js';
 import type {
   ContentBlock,
   PendingAction,
@@ -289,11 +290,22 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
   // loop reads this field at execute time to thread coin handles
   // between appenders. Forward-only references (i-1 → i) — Phase 1 cap
   // is 2 ops so this loop runs at most once. Phase 2+ raises the cap.
+  //
+  // Each chain-mode population fires `engine.bundle_chain_mode_set`
+  // (labels: `producer`, `consumer`) so production can confirm chain-
+  // mode is actually firing per pair, not falling back to wallet-mode.
+  // Without this counter we'd be inferring chain-mode from "things
+  // didn't break" — fine for correctness, useless for diagnosis when
+  // a Phase 2+ pair regresses to wallet-mode silently.
   for (let i = 1; i < input.pendingWrites.length; i++) {
     const producer = input.pendingWrites[i - 1];
     const consumer = input.pendingWrites[i];
     if (shouldChainCoin(producer, consumer)) {
       steps[i].inputCoinFromStep = i - 1;
+      getTelemetrySink().counter('engine.bundle_chain_mode_set', {
+        producer: producer.name,
+        consumer: consumer.name,
+      });
     }
   }
 

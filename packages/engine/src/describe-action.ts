@@ -19,7 +19,13 @@ export function describeAction(tool: Tool, call: PendingToolCall): string {
   const input = call.input as Record<string, unknown>;
   switch (tool.name) {
     case 'save_deposit': {
-      return `Save ${input.amount} USDC into lending`;
+      // [1.13.1] Per the savings-usdc-only.mdc strategic exception, save_deposit
+      // accepts both USDC and USDsui. The previous hardcoded 'USDC' rendered
+      // a USDsui save as "Save 4.997 USDC into lending" on the bundle confirm
+      // card, even though the on-chain action correctly deposited USDsui. Read
+      // the asset from input (default USDC matches the SDK's allowAsset default).
+      const sAsset = (input.asset as string | undefined) ?? 'USDC';
+      return `Save ${input.amount} ${sAsset} into lending`;
     }
     case 'withdraw': {
       const wAsset = input.asset ?? '';
@@ -27,10 +33,20 @@ export function describeAction(tool: Tool, call: PendingToolCall): string {
     }
     case 'send_transfer':
       return `Send $${input.amount} to ${input.to}`;
-    case 'borrow':
-      return `Borrow $${input.amount} against collateral`;
-    case 'repay_debt':
-      return `Repay $${input.amount} of outstanding debt`;
+    case 'borrow': {
+      // [1.13.1] Same class of bug as save_deposit — borrow accepts USDC or
+      // USDsui per the strategic exception, but the description didn't surface
+      // the asset. Defaults to USDC to match the SDK's resolveSaveableAsset.
+      const bAsset = (input.asset as string | undefined) ?? 'USDC';
+      return `Borrow $${input.amount} ${bAsset} against collateral`;
+    }
+    case 'repay_debt': {
+      // [1.13.1] repay_debt enforces "repay with the same asset as the
+      // borrow" per savings-usdc-only.mdc; surfacing the asset here makes
+      // the bundle confirm card honest about which debt leg is being paid.
+      const rAsset = (input.asset as string | undefined) ?? 'USDC';
+      return `Repay $${input.amount} ${rAsset} of outstanding debt`;
+    }
     case 'claim_rewards':
       return 'Claim all pending protocol rewards';
     case 'pay_api': {

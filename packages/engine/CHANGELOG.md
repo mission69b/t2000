@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.13.1 (2026-05-04) — Chain-mode observability + bundle-card asset honesty
+
+Patch follow-up to the SPEC 13 Phase 1 ship. Adds the production observability signal we couldn't infer from existing telemetry, and fixes a cosmetic bundle-card label bug surfaced during the P0-* corpus soak.
+
+### Added
+
+- **`engine.bundle_chain_mode_set` counter** — fired inside `composeBundleFromToolResults` whenever `shouldChainCoin` returns true and a step's `inputCoinFromStep` is populated. Tags: `{ producer, consumer }`. Lets hosts confirm chain-mode is actually firing per pair in production rather than silently falling back to wallet-mode for assets that happen to live in the wallet. Critical input for sizing Phase 2's "raise cap to 3" decision — without this counter, Phase 2 ships blind.
+- **3 new chain-mode telemetry tests** in `engine-bundle.test.ts` covering: counter fires once with correct labels for an aligned whitelisted pair, counter does NOT fire for asset-misaligned pairs (wallet-mode fallback), counter does NOT fire for non-whitelisted pairs.
+
+### Fixed
+
+- **`describeAction` save_deposit** rendered "Save 4.997 USDC into lending" for a USDsui save (the on-chain action correctly deposited USDsui — only the bundle confirm-card label was wrong). Now reads `input.asset` and renders "Save 4.997 USDsui into lending". Per the savings-usdc-only.mdc strategic exception, save_deposit accepts both USDC and USDsui.
+- **`describeAction` borrow** had the same class of bug — hardcoded `$X against collateral` with no asset surfaced. Now renders `Borrow $X USDC|USDsui against collateral`.
+- **`describeAction` repay_debt** had the same class of bug — hardcoded `$X of outstanding debt` with no asset surfaced. Repay must use the same asset as the borrow per `savings-usdc-only.mdc`; surfacing the asset on the confirm card makes that constraint legible to the user.
+
+### Notes
+
+- All three asset-aware fixes default to `USDC` when `input.asset` is absent — matches the SDK's `resolveSaveableAsset` default, so behaviour is identical for the dominant USDC path.
+- 891/891 engine tests passing (was 888/889). Type fix on `vi.fn` generic signature for compatibility with vitest 3.x's narrower mock types.
+
 ## 1.13.0 (2026-05-03 night) — SPEC 13 Phase 1: chained-coin handoff foundation
 
 Lifts SPEC 13's central restriction. Multi-write bundles can now thread a producer's output coin handle directly into a downstream consumer's input slot inside one PTB — no wallet round-trip between steps. The May 3 production failures (`swap_execute(USDC→USDsui) + save_deposit(USDsui)` reverting at PREPARE because USDsui didn't exist in the wallet yet) become impossible by construction for the 7 whitelisted producer→consumer pairs when assets align.

@@ -5,11 +5,13 @@
  * single LLM turn into one bundled `pending_action` (instead of yielding
  * once per write or silently dropping siblings on `break`).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
 import { buildTool } from '../tool.js';
 import { applyToolFlags } from '../tool-flags.js';
+import { setTelemetrySink, resetTelemetrySink } from '../telemetry.js';
+import type { TelemetrySink, TelemetryTags } from '../telemetry.js';
 import type {
   LLMProvider,
   ChatParams,
@@ -1018,6 +1020,130 @@ describe('SPEC 13 Phase 1 — chain-coin handoff (inputCoinFromStep auto-populat
           `pair ${pair[0]} → ${pair[1]} should populate inputCoinFromStep`,
         ).toBe(0);
       }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // [1.13.1] engine.bundle_chain_mode_set telemetry counter
+  // -------------------------------------------------------------------------
+  //
+  // Without this counter we'd be inferring chain-mode firing from "things
+  // didn't break" — fine for correctness, useless for diagnosis when a Phase
+  // 2+ pair regresses to wallet-mode silently. The fix reproduces the May 3
+  // production gap (2-op bundle whose intermediate output didn't exist in
+  // the wallet) with a direct production signal.
+  describe('engine.bundle_chain_mode_set counter (1.13.1)', () => {
+    function makeBundleableWrite(name: string): Tool {
+      return buildTool({
+        name,
+        description: `mock ${name}`,
+        inputSchema: z.object({}).passthrough(),
+        jsonSchema: { type: 'object', properties: {} },
+        isReadOnly: false,
+        permissionLevel: 'confirm',
+        async call() {
+          return { data: { ok: true } };
+        },
+      });
+    }
+
+    function installSpySink(): {
+      counter: ReturnType<typeof vi.fn>;
+      gauge: ReturnType<typeof vi.fn>;
+      histogram: ReturnType<typeof vi.fn>;
+    } {
+      const spy = {
+        counter: vi.fn<(name: string, tags?: TelemetryTags, value?: number) => void>(),
+        gauge: vi.fn<(name: string, value: number, tags?: TelemetryTags) => void>(),
+        histogram: vi.fn<(name: string, value: number, tags?: TelemetryTags) => void>(),
+      };
+      const sink: TelemetrySink = {
+        counter: spy.counter,
+        gauge: spy.gauge,
+        histogram: spy.histogram,
+      };
+      setTelemetrySink(sink);
+      return spy;
+    }
+
+    afterEach(() => {
+      resetTelemetrySink();
+    });
+
+    it('fires once per chained pair with {producer, consumer} tags', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const spy = installSpySink();
+      const tools = applyToolFlags([
+        makeBundleableWrite('swap_execute'),
+        makeBundleableWrite('save_deposit'),
+      ]);
+      composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+
+      const chainModeCalls = spy.counter.mock.calls.filter(
+        (c) => c[0] === 'engine.bundle_chain_mode_set',
+      );
+      expect(chainModeCalls).toHaveLength(1);
+      expect(chainModeCalls[0][1]).toEqual({ producer: 'swap_execute', consumer: 'save_deposit' });
+    });
+
+    it('does NOT fire when assets misalign (wallet-mode fallback)', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const spy = installSpySink();
+      const tools = applyToolFlags([
+        makeBundleableWrite('swap_execute'),
+        makeBundleableWrite('save_deposit'),
+      ]);
+      composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
+          { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+
+      const chainModeCalls = spy.counter.mock.calls.filter(
+        (c) => c[0] === 'engine.bundle_chain_mode_set',
+      );
+      expect(chainModeCalls).toHaveLength(0);
+    });
+
+    it('does NOT fire for non-whitelisted pairs', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const spy = installSpySink();
+      const tools = applyToolFlags([
+        makeBundleableWrite('send_transfer'),
+        makeBundleableWrite('send_transfer'),
+      ]);
+      composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA', asset: 'USDC' } },
+          { id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB', asset: 'USDC' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+
+      const chainModeCalls = spy.counter.mock.calls.filter(
+        (c) => c[0] === 'engine.bundle_chain_mode_set',
+      );
+      expect(chainModeCalls).toHaveLength(0);
     });
   });
 });
