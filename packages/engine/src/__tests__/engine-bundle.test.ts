@@ -764,3 +764,260 @@ describe('Phase 0 — VALID_PAIRS whitelist', () => {
     expect(pending).toBeDefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// SPEC 13 Phase 1 — inputCoinFromStep population (chain-mode handoff)
+// ---------------------------------------------------------------------------
+
+describe('SPEC 13 Phase 1 — chain-coin handoff (inputCoinFromStep auto-population)', () => {
+  describe('inferProducerOutputAsset', () => {
+    it('returns swap.to lowercased', async () => {
+      const { inferProducerOutputAsset } = await import('../compose-bundle.js');
+      expect(inferProducerOutputAsset('swap_execute', { from: 'USDC', to: 'USDsui', amount: 5 }))
+        .toBe('usdsui');
+    });
+
+    it('returns withdraw.asset lowercased (default USDC)', async () => {
+      const { inferProducerOutputAsset } = await import('../compose-bundle.js');
+      expect(inferProducerOutputAsset('withdraw', { amount: 5, asset: 'USDsui' })).toBe('usdsui');
+      expect(inferProducerOutputAsset('withdraw', { amount: 5 })).toBe('usdc');
+    });
+
+    it('returns borrow.asset lowercased (default USDC)', async () => {
+      const { inferProducerOutputAsset } = await import('../compose-bundle.js');
+      expect(inferProducerOutputAsset('borrow', { amount: 5, asset: 'USDsui' })).toBe('usdsui');
+      expect(inferProducerOutputAsset('borrow', { amount: 5 })).toBe('usdc');
+    });
+
+    it('returns null for terminal-consumer tools (save_deposit, repay_debt, send_transfer)', async () => {
+      const { inferProducerOutputAsset } = await import('../compose-bundle.js');
+      expect(inferProducerOutputAsset('save_deposit', { amount: 5 })).toBeNull();
+      expect(inferProducerOutputAsset('repay_debt', { amount: 5 })).toBeNull();
+      expect(inferProducerOutputAsset('send_transfer', { amount: 5, to: '0xA' })).toBeNull();
+    });
+  });
+
+  describe('inferConsumerInputAsset', () => {
+    it('returns send.asset lowercased (default USDC)', async () => {
+      const { inferConsumerInputAsset } = await import('../compose-bundle.js');
+      expect(inferConsumerInputAsset('send_transfer', { amount: 5, to: '0xA', asset: 'USDsui' }))
+        .toBe('usdsui');
+      expect(inferConsumerInputAsset('send_transfer', { amount: 5, to: '0xA' })).toBe('usdc');
+    });
+
+    it('returns swap.from lowercased', async () => {
+      const { inferConsumerInputAsset } = await import('../compose-bundle.js');
+      expect(inferConsumerInputAsset('swap_execute', { from: 'USDC', to: 'SUI', amount: 5 }))
+        .toBe('usdc');
+    });
+  });
+
+  describe('shouldChainCoin — whitelist + asset-alignment gate', () => {
+    it('true when pair is whitelisted AND assets align (swap USDC→USDsui then save USDsui)', async () => {
+      const { shouldChainCoin } = await import('../compose-bundle.js');
+      expect(shouldChainCoin(
+        { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+        { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+      )).toBe(true);
+    });
+
+    it('true when withdraw USDC then send USDC (asset default matches default)', async () => {
+      const { shouldChainCoin } = await import('../compose-bundle.js');
+      expect(shouldChainCoin(
+        { id: 'tc-1', name: 'withdraw', input: { amount: 5 } },
+        { id: 'tc-2', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+      )).toBe(true);
+    });
+
+    it('false when pair is whitelisted but assets misaligned (swap USDC→SUI then save USDsui)', async () => {
+      const { shouldChainCoin } = await import('../compose-bundle.js');
+      expect(shouldChainCoin(
+        { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
+        { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+      )).toBe(false);
+    });
+
+    it('false when pair is NOT whitelisted (e.g. repay_debt → swap_execute)', async () => {
+      const { shouldChainCoin } = await import('../compose-bundle.js');
+      expect(shouldChainCoin(
+        { id: 'tc-1', name: 'repay_debt', input: { amount: 5, asset: 'USDC' } },
+        { id: 'tc-2', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
+      )).toBe(false);
+    });
+
+    it('case-insensitive asset comparison (lowercase ↔ canonical-case)', async () => {
+      const { shouldChainCoin } = await import('../compose-bundle.js');
+      expect(shouldChainCoin(
+        { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'usdsui', amount: 5 } },
+        { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+      )).toBe(true);
+    });
+  });
+
+  describe('composeBundleFromToolResults — inputCoinFromStep auto-population', () => {
+    function makeBundleableWrite(name: string): Tool {
+      return buildTool({
+        name,
+        description: `mock ${name}`,
+        inputSchema: z.object({}).passthrough(),
+        jsonSchema: { type: 'object', properties: {} },
+        isReadOnly: false,
+        permissionLevel: 'confirm',
+        async call() {
+          return { data: { ok: true } };
+        },
+      });
+    }
+
+    it('populates inputCoinFromStep=0 on step 1 for swap → save (aligned)', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const tools = applyToolFlags([
+        makeBundleableWrite('swap_execute'),
+        makeBundleableWrite('save_deposit'),
+      ]);
+      const action = composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+
+      expect(action.steps).toHaveLength(2);
+      expect(action.steps![0].inputCoinFromStep).toBeUndefined();
+      expect(action.steps![1].inputCoinFromStep).toBe(0);
+    });
+
+    it('populates inputCoinFromStep=0 on step 1 for withdraw → send (aligned)', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const tools = applyToolFlags([
+        makeBundleableWrite('withdraw'),
+        makeBundleableWrite('send_transfer'),
+      ]);
+      const action = composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'withdraw', input: { amount: 5, asset: 'USDC' } },
+          { id: 'tc-2', name: 'send_transfer', input: { amount: 5, to: '0xA', asset: 'USDC' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+
+      expect(action.steps![1].inputCoinFromStep).toBe(0);
+    });
+
+    it('does NOT populate inputCoinFromStep when assets misalign (swap USDC→SUI then save USDsui)', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const tools = applyToolFlags([
+        makeBundleableWrite('swap_execute'),
+        makeBundleableWrite('save_deposit'),
+      ]);
+      const action = composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
+          { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+
+      expect(action.steps![1].inputCoinFromStep).toBeUndefined();
+    });
+
+    it('does NOT populate inputCoinFromStep for non-whitelisted pair (would never reach this helper, but defensive)', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const tools = applyToolFlags([
+        makeBundleableWrite('send_transfer'),
+        makeBundleableWrite('send_transfer'),
+      ]);
+      const action = composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA', asset: 'USDC' } },
+          { id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB', asset: 'USDC' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+
+      // send_transfer → send_transfer is NOT in VALID_PAIRS → no chain.
+      expect(action.steps![1].inputCoinFromStep).toBeUndefined();
+    });
+
+    it('all 7 whitelisted pairs populate inputCoinFromStep when assets align', async () => {
+      const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+      const cases: Array<{
+        pair: [string, string];
+        producerInput: Record<string, unknown>;
+        consumerInput: Record<string, unknown>;
+      }> = [
+        {
+          pair: ['swap_execute', 'send_transfer'],
+          producerInput: { from: 'USDC', to: 'SUI', amount: 5 },
+          consumerInput: { amount: 5, to: '0xA', asset: 'SUI' },
+        },
+        {
+          pair: ['swap_execute', 'save_deposit'],
+          producerInput: { from: 'USDC', to: 'USDsui', amount: 5 },
+          consumerInput: { amount: 5, asset: 'USDsui' },
+        },
+        {
+          pair: ['swap_execute', 'repay_debt'],
+          producerInput: { from: 'USDC', to: 'USDsui', amount: 5 },
+          consumerInput: { amount: 5, asset: 'USDsui' },
+        },
+        {
+          pair: ['withdraw', 'swap_execute'],
+          producerInput: { amount: 5, asset: 'USDC' },
+          consumerInput: { from: 'USDC', to: 'SUI', amount: 5 },
+        },
+        {
+          pair: ['withdraw', 'send_transfer'],
+          producerInput: { amount: 5, asset: 'USDC' },
+          consumerInput: { amount: 5, to: '0xA', asset: 'USDC' },
+        },
+        {
+          pair: ['borrow', 'send_transfer'],
+          producerInput: { amount: 5, asset: 'USDC' },
+          consumerInput: { amount: 5, to: '0xA', asset: 'USDC' },
+        },
+        {
+          pair: ['borrow', 'repay_debt'],
+          producerInput: { amount: 5, asset: 'USDC' },
+          consumerInput: { amount: 5, asset: 'USDC' },
+        },
+      ];
+
+      for (const { pair, producerInput, consumerInput } of cases) {
+        const tools = applyToolFlags([makeBundleableWrite(pair[0]), makeBundleableWrite(pair[1])]);
+        const action = composeBundleFromToolResults({
+          pendingWrites: [
+            { id: 'tc-1', name: pair[0], input: producerInput },
+            { id: 'tc-2', name: pair[1], input: consumerInput },
+          ],
+          tools,
+          readResults: [],
+          assistantContent: [],
+          completedResults: [],
+          turnIndex: 0,
+        });
+        expect(
+          action.steps![1].inputCoinFromStep,
+          `pair ${pair[0]} → ${pair[1]} should populate inputCoinFromStep`,
+        ).toBe(0);
+      }
+    });
+  });
+});

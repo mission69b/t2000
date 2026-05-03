@@ -29,6 +29,7 @@ export type T2000ErrorCode =
   | 'SAFEGUARD_BLOCKED'
   | 'SWAP_NO_ROUTE'
   | 'SWAP_FAILED'
+  | 'CHAIN_MODE_INVALID'
   | 'UNKNOWN';
 
 export interface T2000ErrorData {

@@ -280,6 +280,29 @@ export interface PendingActionStep {
   description: string;
   /** Optional modifiable fields for THIS step (rare in v1; sourced from `tool-modifiable-fields.ts`). */
   modifiableFields?: PendingActionModifiableField[];
+  /**
+   * [SPEC 13 Phase 1] Index of an earlier step whose output coin handle
+   * is consumed as THIS step's input coin. When set, the host's
+   * `composeTx({ steps })` call must thread `priorOutputs[N]` into this
+   * step's appender as `inputCoin` (chain mode), skipping the wallet
+   * pre-fetch path. The producer at index `N` MUST be a tool that
+   * returns a coin handle (`withdraw`, `borrow`, `swap_execute`,
+   * `volo_stake`, `volo_unstake`); the consumer at this index MUST be
+   * a tool that accepts an input coin (`save_deposit`, `repay_debt`,
+   * `send_transfer`, `swap_execute`, `volo_stake`, `volo_unstake`).
+   *
+   * Populated by `composeBundleFromToolResults` for whitelisted
+   * producer→consumer pairs (see `compose-bundle.ts` `VALID_PAIRS`).
+   * Hosts that don't yet honour this field fall back to wallet-mode
+   * coin fetching at execute time — which is exactly the pre-Phase-1
+   * behaviour and remains correct for the 7 Phase 0 whitelisted pairs
+   * because every producer in those pairs leaves its output in the
+   * user's wallet via a terminal `tx.transferObjects([coin], sender)`.
+   *
+   * Pre-condition (validated by `composeTx` at execute time):
+   *   `inputCoinFromStep < currentStepIndex` (forward-only references).
+   */
+  inputCoinFromStep?: number;
 }
 
 /**

@@ -162,17 +162,29 @@ export interface VoloUnstakeInput {
  * Discriminated union mapping `toolName` → `input`. Used to type
  * `WriteStep` so consumers get autocomplete + compile-time validation
  * that the input matches the tool.
+ *
+ * **[SPEC 13 Phase 1] `inputCoinFromStep`** — consumer steps may
+ * reference an earlier step's output coin handle by index. When set,
+ * `composeTx`'s orchestration loop threads the producer's
+ * `outputCoin` into this step's appender as the `inputCoin` arg,
+ * bypassing the wallet pre-fetch path. The producer's terminal
+ * `tx.transferObjects([coin], sender)` is suppressed automatically so
+ * the same handle isn't double-consumed.
+ *
+ * Producer-only tools (`withdraw`, `borrow`, `claim_rewards`) don't
+ * accept the field — they have no input coin slot. Consumer +
+ * dual-mode tools all accept it.
  */
 export type WriteStep =
-  | { toolName: 'save_deposit'; input: SaveDepositInput }
+  | { toolName: 'save_deposit'; input: SaveDepositInput; inputCoinFromStep?: number }
   | { toolName: 'withdraw'; input: WithdrawInput }
   | { toolName: 'borrow'; input: BorrowInput }
-  | { toolName: 'repay_debt'; input: RepayDebtInput }
-  | { toolName: 'send_transfer'; input: SendTransferInput }
-  | { toolName: 'swap_execute'; input: SwapExecuteInput }
+  | { toolName: 'repay_debt'; input: RepayDebtInput; inputCoinFromStep?: number }
+  | { toolName: 'send_transfer'; input: SendTransferInput; inputCoinFromStep?: number }
+  | { toolName: 'swap_execute'; input: SwapExecuteInput; inputCoinFromStep?: number }
   | { toolName: 'claim_rewards'; input: ClaimRewardsInput }
-  | { toolName: 'volo_stake'; input: VoloStakeInput }
-  | { toolName: 'volo_unstake'; input: VoloUnstakeInput };
+  | { toolName: 'volo_stake'; input: VoloStakeInput; inputCoinFromStep?: number }
+  | { toolName: 'volo_unstake'; input: VoloUnstakeInput; inputCoinFromStep?: number };
 
 export interface ComposeTxOptions {
   sender: string;
@@ -289,8 +301,8 @@ export interface ComposeTxResult {
 
 /**
  * Per-appender context passed into every registry entry. Carries the
- * RPC client, sender, sponsorship flag, and optional per-call overlay
- * fee config (Cetus swaps).
+ * RPC client, sender, sponsorship flag, optional per-call overlay
+ * fee config (Cetus swaps), and SPEC 13 Phase 1 chain-mode fields.
  */
 export interface AppenderContext {
   client: SuiJsonRpcClient;
@@ -298,13 +310,52 @@ export interface AppenderContext {
   sponsoredContext: boolean;
   overlayFee?: OverlayFeeConfig;
   feeHooks?: ComposeTxFeeHooks;
+  /**
+   * [SPEC 13 Phase 1] When set, the consumer appender consumes this
+   * coin handle directly instead of pre-fetching from the wallet via
+   * `selectAndSplitCoin` / `selectSuiCoin`. Provided by the
+   * orchestration loop when the step has `inputCoinFromStep` set; the
+   * loop looks up `priorOutputs[step.inputCoinFromStep]` and threads
+   * it through here.
+   *
+   * In chain mode, the consumer consumes the handle IN FULL — the
+   * `input.amount` field is treated as informational (used for preview
+   * math). This matches Cetus's `routerSwap`, NAVI's `deposit`/`repay`,
+   * and the Sui `transferObjects` semantics: each takes a coin object
+   * and consumes its entire balance.
+   */
+  chainedCoin?: TransactionObjectArgument;
+  /**
+   * [SPEC 13 Phase 1] True when this step's output coin will be
+   * consumed by a downstream step (some later step has
+   * `inputCoinFromStep === currentStepIndex`). Producer appenders MUST
+   * skip their terminal `tx.transferObjects([coin], ctx.sender)` call
+   * when this is true — otherwise the same `TransactionObjectArgument`
+   * gets used twice (once by the consumer, once by the transfer) and
+   * the PTB build fails or the on-chain leg reverts.
+   */
+  isOutputConsumed?: boolean;
+}
+
+/**
+ * [SPEC 13 Phase 1] Appender return shape. Producers populate
+ * `outputCoin` so the orchestration loop can thread it into a
+ * downstream consumer's `chainedCoin`. Terminal consumers
+ * (`save_deposit`, `repay_debt`, `send_transfer`) omit it.
+ *
+ * `swap_execute`, `volo_stake`, and `volo_unstake` are dual-mode —
+ * they accept `chainedCoin` AND populate `outputCoin`.
+ */
+export interface AppenderResult<TPreview extends StepPreview> {
+  preview: TPreview;
+  outputCoin?: TransactionObjectArgument;
 }
 
 type AppenderFn<TInput, TPreview extends StepPreview> = (
   tx: Transaction,
   input: TInput,
   ctx: AppenderContext,
-) => Promise<TPreview>;
+) => Promise<AppenderResult<TPreview>>;
 
 /**
  * Cetus provider exclusion list for sponsored flows. Mirrors the
@@ -370,17 +421,27 @@ export const WRITE_APPENDER_REGISTRY: {
     }
     const rawAmount = BigInt(Math.floor(input.amount * 10 ** assetInfo.decimals));
 
-    const { coin, effectiveAmount } = await selectAndSplitCoin(
-      tx, ctx.client, ctx.sender, assetInfo.type, rawAmount,
-    );
+    let coin: TransactionObjectArgument;
+    let effectiveAmount: bigint;
+    if (ctx.chainedCoin) {
+      coin = ctx.chainedCoin;
+      effectiveAmount = rawAmount;
+    } else {
+      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount);
+      coin = r.coin;
+      effectiveAmount = r.effectiveAmount;
+    }
+
     if (ctx.feeHooks?.save_deposit) {
       await ctx.feeHooks.save_deposit({ tx, coin, input, sender: ctx.sender });
     }
     await addSaveToTx(tx, ctx.client, ctx.sender, coin, { asset });
     return {
-      toolName: 'save_deposit',
-      effectiveAmount: Number(effectiveAmount) / 10 ** assetInfo.decimals,
-      asset,
+      preview: {
+        toolName: 'save_deposit',
+        effectiveAmount: Number(effectiveAmount) / 10 ** assetInfo.decimals,
+        asset,
+      },
     };
   },
 
@@ -393,8 +454,13 @@ export const WRITE_APPENDER_REGISTRY: {
       tx, ctx.client, ctx.sender, input.amount,
       { asset, skipPythUpdate: ctx.sponsoredContext },
     );
-    tx.transferObjects([coin], ctx.sender);
-    return { toolName: 'withdraw', effectiveAmount, asset };
+    if (!ctx.isOutputConsumed) {
+      tx.transferObjects([coin], ctx.sender);
+    }
+    return {
+      preview: { toolName: 'withdraw', effectiveAmount, asset },
+      outputCoin: coin,
+    };
   },
 
   borrow: async (tx, input, ctx) => {
@@ -409,8 +475,13 @@ export const WRITE_APPENDER_REGISTRY: {
     if (ctx.feeHooks?.borrow) {
       await ctx.feeHooks.borrow({ tx, coin, input, sender: ctx.sender });
     }
-    tx.transferObjects([coin], ctx.sender);
-    return { toolName: 'borrow', effectiveAmount: input.amount, asset };
+    if (!ctx.isOutputConsumed) {
+      tx.transferObjects([coin], ctx.sender);
+    }
+    return {
+      preview: { toolName: 'borrow', effectiveAmount: input.amount, asset },
+      outputCoin: coin,
+    };
   },
 
   repay_debt: async (tx, input, ctx) => {
@@ -421,17 +492,27 @@ export const WRITE_APPENDER_REGISTRY: {
     }
     const rawAmount = BigInt(Math.floor(input.amount * 10 ** assetInfo.decimals));
 
-    const { coin, effectiveAmount } = await selectAndSplitCoin(
-      tx, ctx.client, ctx.sender, assetInfo.type, rawAmount,
-    );
+    let coin: TransactionObjectArgument;
+    let effectiveAmount: bigint;
+    if (ctx.chainedCoin) {
+      coin = ctx.chainedCoin;
+      effectiveAmount = rawAmount;
+    } else {
+      const r = await selectAndSplitCoin(tx, ctx.client, ctx.sender, assetInfo.type, rawAmount);
+      coin = r.coin;
+      effectiveAmount = r.effectiveAmount;
+    }
+
     await addRepayToTx(tx, ctx.client, ctx.sender, coin, {
       asset,
       skipOracle: ctx.sponsoredContext,
     });
     return {
-      toolName: 'repay_debt',
-      effectiveAmount: Number(effectiveAmount) / 10 ** assetInfo.decimals,
-      asset,
+      preview: {
+        toolName: 'repay_debt',
+        effectiveAmount: Number(effectiveAmount) / 10 ** assetInfo.decimals,
+        asset,
+      },
     };
   },
 
@@ -451,7 +532,10 @@ export const WRITE_APPENDER_REGISTRY: {
     let coin: TransactionObjectArgument;
     let effectiveRaw: bigint;
 
-    if (asset === 'SUI') {
+    if (ctx.chainedCoin) {
+      coin = ctx.chainedCoin;
+      effectiveRaw = rawAmount;
+    } else if (asset === 'SUI') {
       const result = await selectSuiCoin(tx, ctx.client, ctx.sender, rawAmount, ctx.sponsoredContext);
       coin = result.coin;
       effectiveRaw = result.effectiveAmount;
@@ -463,10 +547,12 @@ export const WRITE_APPENDER_REGISTRY: {
 
     addSendToTx(tx, coin, recipient);
     return {
-      toolName: 'send_transfer',
-      effectiveAmount: Number(effectiveRaw) / 10 ** assetInfo.decimals,
-      recipient,
-      asset,
+      preview: {
+        toolName: 'send_transfer',
+        effectiveAmount: Number(effectiveRaw) / 10 ** assetInfo.decimals,
+        recipient,
+        asset,
+      },
     };
   },
 
@@ -491,19 +577,25 @@ export const WRITE_APPENDER_REGISTRY: {
       byAmountIn: input.byAmountIn,
       overlayFee: ctx.overlayFee,
       providers,
+      inputCoin: ctx.chainedCoin,
     });
-    tx.transferObjects([result.coin], ctx.sender);
+    if (!ctx.isOutputConsumed) {
+      tx.transferObjects([result.coin], ctx.sender);
+    }
     return {
-      toolName: 'swap_execute',
-      effectiveAmountIn: result.effectiveAmountIn,
-      expectedAmountOut: result.expectedAmountOut,
-      route: result.route,
+      preview: {
+        toolName: 'swap_execute',
+        effectiveAmountIn: result.effectiveAmountIn,
+        expectedAmountOut: result.expectedAmountOut,
+        route: result.route,
+      },
+      outputCoin: result.coin,
     };
   },
 
   claim_rewards: async (tx, _input, ctx) => {
     const rewards = await addClaimRewardsToTx(tx, ctx.client, ctx.sender);
-    return { toolName: 'claim_rewards', rewards };
+    return { preview: { toolName: 'claim_rewards', rewards } };
   },
 
   volo_stake: async (tx, input, ctx) => {
@@ -511,9 +603,17 @@ export const WRITE_APPENDER_REGISTRY: {
       throw new T2000Error('INVALID_AMOUNT', 'Stake amount must be greater than zero');
     }
     const amountMist = BigInt(Math.floor(input.amountSui * 1e9));
-    const result = await addStakeVSuiToTx(tx, ctx.client, ctx.sender, { amountMist });
-    tx.transferObjects([result.coin], ctx.sender);
-    return { toolName: 'volo_stake', effectiveAmountMist: result.effectiveAmountMist };
+    const result = await addStakeVSuiToTx(tx, ctx.client, ctx.sender, {
+      amountMist,
+      inputCoin: ctx.chainedCoin,
+    });
+    if (!ctx.isOutputConsumed) {
+      tx.transferObjects([result.coin], ctx.sender);
+    }
+    return {
+      preview: { toolName: 'volo_stake', effectiveAmountMist: result.effectiveAmountMist },
+      outputCoin: result.coin,
+    };
   },
 
   volo_unstake: async (tx, input, ctx) => {
@@ -522,9 +622,17 @@ export const WRITE_APPENDER_REGISTRY: {
     if (amountMist !== 'all' && amountMist <= 0n) {
       throw new T2000Error('INVALID_AMOUNT', 'Unstake amount must be greater than zero');
     }
-    const result = await addUnstakeVSuiToTx(tx, ctx.client, ctx.sender, { amountMist });
-    tx.transferObjects([result.coin], ctx.sender);
-    return { toolName: 'volo_unstake', effectiveAmountMist: result.effectiveAmountMist };
+    const result = await addUnstakeVSuiToTx(tx, ctx.client, ctx.sender, {
+      amountMist,
+      inputCoin: ctx.chainedCoin,
+    });
+    if (!ctx.isOutputConsumed) {
+      tx.transferObjects([result.coin], ctx.sender);
+    }
+    return {
+      preview: { toolName: 'volo_unstake', effectiveAmountMist: result.effectiveAmountMist },
+      outputCoin: result.coin,
+    };
   },
 };
 
@@ -613,7 +721,7 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
   const tx = new Transaction();
   tx.setSender(opts.sender);
 
-  const ctx: AppenderContext = {
+  const baseCtx = {
     client: opts.client,
     sender: opts.sender,
     sponsoredContext: opts.sponsoredContext ?? false,
@@ -621,8 +729,50 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
     feeHooks: opts.feeHooks,
   };
 
+  // [SPEC 13 Phase 1] First pass: validate every `inputCoinFromStep`
+  // reference and build the `consumedSteps` set. Forward-only
+  // references; producer-only tools can't be consumers.
+  const consumedSteps = new Set<number>();
+  for (let i = 0; i < opts.steps.length; i++) {
+    const step = opts.steps[i];
+    const stepWithChain = step as { inputCoinFromStep?: number };
+    const idx = stepWithChain.inputCoinFromStep;
+    if (idx === undefined) continue;
+
+    if (!Number.isInteger(idx) || idx < 0 || idx >= i) {
+      throw new T2000Error(
+        'CHAIN_MODE_INVALID',
+        `Step ${i} (${step.toolName}) has inputCoinFromStep=${idx}, ` +
+        `which must be a non-negative integer < ${i} (forward-only references).`,
+      );
+    }
+
+    const producer = opts.steps[idx];
+    if (
+      producer.toolName === 'save_deposit' ||
+      producer.toolName === 'repay_debt' ||
+      producer.toolName === 'send_transfer' ||
+      producer.toolName === 'claim_rewards'
+    ) {
+      throw new T2000Error(
+        'CHAIN_MODE_INVALID',
+        `Step ${i} (${step.toolName}) references step ${idx} (${producer.toolName}) as ` +
+        `producer, but '${producer.toolName}' is a terminal consumer that does not ` +
+        `produce a chainable coin handle. Allowed producers: withdraw, borrow, ` +
+        `swap_execute, volo_stake, volo_unstake.`,
+      );
+    }
+
+    consumedSteps.add(idx);
+  }
+
+  // [SPEC 13 Phase 1] Second pass: dispatch each step in order,
+  // capturing producers' output handles in `priorOutputs` and threading
+  // them into consumers' `chainedCoin`.
+  const priorOutputs: (TransactionObjectArgument | null)[] = [];
   const previews: StepPreview[] = [];
-  for (const step of opts.steps) {
+  for (let i = 0; i < opts.steps.length; i++) {
+    const step = opts.steps[i];
     const appender = (WRITE_APPENDER_REGISTRY as Record<string, AppenderFn<unknown, StepPreview>>)[step.toolName];
     if (!appender) {
       throw new T2000Error(
@@ -631,8 +781,32 @@ export async function composeTx(opts: ComposeTxOptions): Promise<ComposeTxResult
         `Allowed: ${(Object.keys(WRITE_APPENDER_REGISTRY) as WriteToolName[]).join(', ')}`,
       );
     }
-    const preview = await appender(tx, step.input, ctx);
-    previews.push(preview);
+
+    const stepWithChain = step as { inputCoinFromStep?: number };
+    let chainedCoin: TransactionObjectArgument | undefined;
+    if (stepWithChain.inputCoinFromStep !== undefined) {
+      const upstream = priorOutputs[stepWithChain.inputCoinFromStep];
+      if (!upstream) {
+        // Producer didn't return an outputCoin (shouldn't happen given the
+        // first-pass guard, but defends against future appender bugs).
+        throw new T2000Error(
+          'CHAIN_MODE_INVALID',
+          `Step ${i} (${step.toolName}) expected a coin handle from step ` +
+          `${stepWithChain.inputCoinFromStep}, but the producer did not return one.`,
+        );
+      }
+      chainedCoin = upstream;
+    }
+
+    const stepCtx: AppenderContext = {
+      ...baseCtx,
+      chainedCoin,
+      isOutputConsumed: consumedSteps.has(i),
+    };
+
+    const result = await appender(tx, step.input, stepCtx);
+    priorOutputs.push(result.outputCoin ?? null);
+    previews.push(result.preview);
   }
 
   const txKindBytes = await tx.build({ client: opts.client, onlyTransactionKind: true });

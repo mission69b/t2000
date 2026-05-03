@@ -616,3 +616,306 @@ describe('composeTx — fee hooks (audric host migration surface)', () => {
     expect(asyncResolved).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// SPEC 13 Phase 1 — chain-mode (inputCoinFromStep) E2E coverage
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper: count top-level `TransferObjects` commands in the assembled PTB
+ * grouped by recipient address. Used to assert that producers' terminal
+ * transfers ARE suppressed in chain mode and ARE NOT suppressed in
+ * wallet mode (the "output-suppression invariant").
+ */
+function countTransferObjectsByRecipient(tx: Transaction): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const data = tx.getData();
+  for (const cmd of data.commands) {
+    const transferCmd = (cmd as { TransferObjects?: unknown }).TransferObjects;
+    if (!transferCmd) continue;
+
+    const addressArg = (transferCmd as { address?: unknown }).address;
+    const idx = (addressArg as { Input?: number } | undefined)?.Input;
+    if (idx === undefined) continue;
+
+    const input = data.inputs[idx];
+    const pure = (input as { Pure?: { bytes?: string } } | undefined)?.Pure?.bytes;
+    if (!pure) continue;
+
+    let hex: string | null = null;
+    try {
+      const bytes =
+        typeof Buffer !== 'undefined'
+          ? Uint8Array.from(Buffer.from(pure, 'base64'))
+          : (() => {
+              const bin = atob(pure);
+              const arr = new Uint8Array(bin.length);
+              for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+              return arr;
+            })();
+      if (bytes.length === 32) {
+        hex = '0x' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+      }
+    } catch {
+      // skip
+    }
+    if (!hex) continue;
+    counts[hex] = (counts[hex] ?? 0) + 1;
+  }
+  return counts;
+}
+
+describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockNaviAdapter([{ asset: 'USDC', type: 'save', amount: 100 }]);
+    mockCetus();
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(STUB_BYTES);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('happy paths — output suppression + consumer chained input', () => {
+    it('swap → save (chained): swap output suppressed, save skips wallet fetch, no sender transfers', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({
+        [USDC_TYPE]: [{ coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' }],
+      });
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { toolName: 'save_deposit', input: { amount: 5, asset: 'USDsui' }, inputCoinFromStep: 0 },
+        ],
+      });
+
+      // getCoins called once (for swap's USDC input) — NOT for save's USDsui (chained).
+      const getCoinsCalls = (client.getCoins as ReturnType<typeof vi.fn>).mock.calls;
+      expect(getCoinsCalls).toHaveLength(1);
+      expect(getCoinsCalls[0][0]).toMatchObject({ coinType: USDC_TYPE });
+
+      // No transferObjects to sender — swap output goes directly to NAVI deposit, no wallet round-trip.
+      const transfers = countTransferObjectsByRecipient(result.tx);
+      expect(transfers[VALID_ADDRESS]).toBeUndefined();
+      expect(result.derivedAllowedAddresses).toEqual([]);
+
+      expect(result.perStepPreviews).toHaveLength(2);
+      expect(result.perStepPreviews[0].toolName).toBe('swap_execute');
+      expect(result.perStepPreviews[1].toolName).toBe('save_deposit');
+    });
+
+    it('withdraw → swap (chained): withdraw output suppressed, swap consumes it directly, swap output transferred to sender', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({});
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'withdraw', input: { amount: 5, asset: 'USDC' } },
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'USDsui', amount: 5 },
+            inputCoinFromStep: 0,
+          },
+        ],
+      });
+
+      // No getCoins calls at all — withdraw doesn't fetch (it's a producer);
+      // swap doesn't fetch (it's chain-mode consuming the withdraw output).
+      expect((client.getCoins as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+
+      // Exactly ONE transferObjects to sender — the SWAP output (terminal step
+      // is not consumed, so its output is transferred to wallet). Withdraw's
+      // output is suppressed because step 1 consumes it.
+      const transfers = countTransferObjectsByRecipient(result.tx);
+      expect(transfers[VALID_ADDRESS]).toBe(1);
+      expect(result.derivedAllowedAddresses).toEqual([VALID_ADDRESS]);
+    });
+
+    it('withdraw → send (chained): both terminal — no transfers to sender, one to recipient', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({});
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'withdraw', input: { amount: 5, asset: 'USDC' } },
+          {
+            toolName: 'send_transfer',
+            input: { to: RECIPIENT_ADDRESS, amount: 5, asset: 'USDC' },
+            inputCoinFromStep: 0,
+          },
+        ],
+      });
+
+      const transfers = countTransferObjectsByRecipient(result.tx);
+      expect(transfers[VALID_ADDRESS]).toBeUndefined();
+      expect(transfers[RECIPIENT_ADDRESS]).toBe(1);
+      expect(result.derivedAllowedAddresses).toEqual([RECIPIENT_ADDRESS]);
+    });
+
+    it('borrow → send (chained): borrow output threads into send, sender NOT in derivedAllowedAddresses', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({});
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'borrow', input: { amount: 10, asset: 'USDC' } },
+          {
+            toolName: 'send_transfer',
+            input: { to: RECIPIENT_ADDRESS, amount: 10, asset: 'USDC' },
+            inputCoinFromStep: 0,
+          },
+        ],
+      });
+
+      const transfers = countTransferObjectsByRecipient(result.tx);
+      expect(transfers[VALID_ADDRESS]).toBeUndefined();
+      expect(transfers[RECIPIENT_ADDRESS]).toBe(1);
+      expect(result.derivedAllowedAddresses).toEqual([RECIPIENT_ADDRESS]);
+    });
+  });
+
+  describe('output-suppression invariant — wallet mode keeps terminal transfers', () => {
+    it('withdraw + send (NO chain): both producers transfer to sender, send to recipient → both addresses in derived', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({
+        [USDC_TYPE]: [{ coinObjectId: '0x' + '5'.repeat(64), balance: '20000000' }],
+      });
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'withdraw', input: { amount: 5, asset: 'USDC' } },
+          // No inputCoinFromStep — wallet mode for send. Send fetches USDC fresh.
+          { toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 3, asset: 'USDC' } },
+        ],
+      });
+
+      const transfers = countTransferObjectsByRecipient(result.tx);
+      // Withdraw materializes its output to sender's wallet (output NOT consumed).
+      expect(transfers[VALID_ADDRESS]).toBe(1);
+      // Send fetches USDC from wallet, transfers to recipient.
+      expect(transfers[RECIPIENT_ADDRESS]).toBe(1);
+      expect(result.derivedAllowedAddresses).toEqual(
+        expect.arrayContaining([VALID_ADDRESS, RECIPIENT_ADDRESS]),
+      );
+    });
+
+    it('single-step send (NO chain): backward-compatible single-step path unchanged', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({
+        [USDC_TYPE]: [{ coinObjectId: '0x' + '6'.repeat(64), balance: '10000000' }],
+      });
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [{ toolName: 'send_transfer', input: { to: RECIPIENT_ADDRESS, amount: 5 } }],
+      });
+
+      expect(result.derivedAllowedAddresses).toEqual([RECIPIENT_ADDRESS]);
+    });
+  });
+
+  describe('validation — chain references are typed and forward-only', () => {
+    it('throws CHAIN_MODE_INVALID when inputCoinFromStep is negative', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({});
+
+      await expect(
+        composeTx({
+          sender: VALID_ADDRESS,
+          client,
+          sponsoredContext: true,
+          steps: [
+            {
+              toolName: 'save_deposit',
+              input: { amount: 5, asset: 'USDC' },
+              inputCoinFromStep: -1,
+            },
+          ],
+        }),
+      ).rejects.toThrow(/CHAIN_MODE_INVALID|forward-only/);
+    });
+
+    it('throws CHAIN_MODE_INVALID when inputCoinFromStep references the same step (self-reference)', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({});
+
+      await expect(
+        composeTx({
+          sender: VALID_ADDRESS,
+          client,
+          sponsoredContext: true,
+          steps: [
+            {
+              toolName: 'save_deposit',
+              input: { amount: 5, asset: 'USDC' },
+              inputCoinFromStep: 0,
+            },
+          ],
+        }),
+      ).rejects.toThrow(/CHAIN_MODE_INVALID|forward-only/);
+    });
+
+    it('throws CHAIN_MODE_INVALID when inputCoinFromStep references a future step', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({});
+
+      await expect(
+        composeTx({
+          sender: VALID_ADDRESS,
+          client,
+          sponsoredContext: true,
+          steps: [
+            {
+              toolName: 'save_deposit',
+              input: { amount: 5, asset: 'USDC' },
+              inputCoinFromStep: 1,
+            },
+            { toolName: 'withdraw', input: { amount: 5, asset: 'USDC' } },
+          ],
+        }),
+      ).rejects.toThrow(/CHAIN_MODE_INVALID|forward-only/);
+    });
+
+    it('throws CHAIN_MODE_INVALID when referencing a terminal-consumer-only producer (e.g. save_deposit)', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({
+        [USDC_TYPE]: [{ coinObjectId: '0x' + '7'.repeat(64), balance: '10000000' }],
+      });
+
+      await expect(
+        composeTx({
+          sender: VALID_ADDRESS,
+          client,
+          sponsoredContext: true,
+          steps: [
+            { toolName: 'save_deposit', input: { amount: 5, asset: 'USDC' } },
+            {
+              toolName: 'send_transfer',
+              input: { to: RECIPIENT_ADDRESS, amount: 5 },
+              inputCoinFromStep: 0,
+            },
+          ],
+        }),
+      ).rejects.toThrow(/CHAIN_MODE_INVALID|terminal consumer/);
+    });
+  });
+});

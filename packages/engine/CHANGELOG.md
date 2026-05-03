@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.13.0 (2026-05-03 night) — SPEC 13 Phase 1: chained-coin handoff foundation
+
+Lifts SPEC 13's central restriction. Multi-write bundles can now thread a producer's output coin handle directly into a downstream consumer's input slot inside one PTB — no wallet round-trip between steps. The May 3 production failures (`swap_execute(USDC→USDsui) + save_deposit(USDsui)` reverting at PREPARE because USDsui didn't exist in the wallet yet) become impossible by construction for the 7 whitelisted producer→consumer pairs when assets align.
+
+The day-1 spike (`spec/SPEC_13_PHASE1_SPIKE_REPORT.md`) found every SDK builder was already structurally chain-ready (consumers accept `coin: TransactionObjectArgument`, producers return the handle, `addSwapToTx` already exposes both modes). Phase 1 is therefore a pure orchestration-layer change in `composeTx` plus one optional field on `PendingActionStep`.
+
+### Added
+
+- **`PendingActionStep.inputCoinFromStep?: number`** — optional index of an earlier step whose output coin handle is consumed as THIS step's input. Auto-populated by `composeBundleFromToolResults` for whitelisted producer→consumer pairs whose assets align.
+- **`shouldChainCoin(producer, consumer)`** — exported from `@t2000/engine`. Returns `true` when the pair is in `VALID_PAIRS` AND producer output asset == consumer input asset (case-insensitive symbol comparison).
+- **`inferProducerOutputAsset(toolName, input)`** + **`inferConsumerInputAsset(toolName, input)`** — exported helpers backing `shouldChainCoin`. Producer output: `swap.to`, `withdraw.asset`, `borrow.asset` (default `USDC`). Consumer input: `send.asset` / `save.asset` / `repay.asset` (default `USDC`), `swap.from`.
+- **19 SPEC 13 chain-mode engine tests** in `engine-bundle.test.ts` covering inferProducerOutputAsset, inferConsumerInputAsset, shouldChainCoin gating (whitelisted+aligned, whitelisted+misaligned, non-whitelisted, case-insensitive), and `composeBundleFromToolResults` populating `inputCoinFromStep` for all 7 whitelisted aligned pairs.
+
+### SDK changes (`@t2000/sdk` 1.13.0, lockstep)
+
+- **`WriteStep.inputCoinFromStep?: number`** added to the consumer/dual variants (`save_deposit`, `repay_debt`, `send_transfer`, `swap_execute`, `volo_stake`, `volo_unstake`). Producer-only tools (`withdraw`, `borrow`, `claim_rewards`) don't accept it.
+- **`AppenderContext.chainedCoin`** — passed by the orchestration loop to consumer appenders. When set, the consumer skips wallet pre-fetch via `selectAndSplitCoin` / `selectSuiCoin` and consumes the handle directly.
+- **`AppenderContext.isOutputConsumed`** — set when a downstream step references this step. Producer appenders skip their terminal `tx.transferObjects([coin], ctx.sender)` when set, so the same handle isn't double-consumed.
+- **`composeTx` orchestration loop** rebuilt — first pass validates every `inputCoinFromStep` reference (forward-only integers, terminal-consumer producers rejected) and computes `consumedSteps: Set<number>`; second pass dispatches each step with the appropriate `chainedCoin` / `isOutputConsumed` flags and captures producers' output handles into `priorOutputs[]`.
+- **New error code `CHAIN_MODE_INVALID`** in `T2000ErrorCode` covering: forward-only violation, self-reference, future-reference, and "terminal consumer can't be a producer" misuse.
+- **10 SPEC 13 chain-mode SDK tests** in `composeTx.test.ts` covering swap+save / withdraw+swap / withdraw+send / borrow+send happy paths, output-suppression invariant in wallet vs chain mode, single-step backward-compat, and all 4 validation error paths.
+
+### Backward compat (locked)
+
+- Single-step `composeTx({ steps: [{...}] })` shape unchanged — no `inputCoinFromStep` means wallet mode, identical to today.
+- Multi-step bundles without `inputCoinFromStep` work identically to today (each step pre-fetches its own coin from wallet).
+- Engine bundle envelope shape unchanged for hosts that don't yet honour the new field. They fall back to wallet mode at execute time, which remains correct for the 7 whitelisted pairs because every producer in those pairs leaves its output in the wallet via terminal `tx.transferObjects` (Phase 0 trick that lets the whitelist work without chained handoff).
+
+### Notes
+
+- Phase 1 ships engine `1.13.0` + sdk `1.13.0` together. Audric host wiring (forwarding `inputCoinFromStep` from the engine bundle envelope through `useAgent.executeBundle` → `/api/transactions/prepare`) lands in audric after this publish completes — `BundleStep` interface gains the optional field, `executeToolAction.ts`'s wireSteps mapping forwards it.
+- SPEC 13 doc bumped to v0.2 with the spike result + revised effort estimate (~10d → ~2.75d).
+- `MAX_BUNDLE_OPS=2` and `VALID_PAIRS` whitelist remain in place — Phase 2 will widen.
+
 ## 1.12.0 (2026-05-03 evening) — Phase 0: PTB chaining foundation prep + stream instrumentation
 
 Strict-tightening of multi-write bundle composition while SPEC 13 (chained-coin handoff foundation) is being built. Pairs with the May 3 production review that found bundle failures reduce to a missing chain-handoff primitive in `@t2000/sdk` (every appender pre-fetches coins from the wallet via `selectAndSplitCoin`, which fails when the chained asset doesn't exist there yet — e.g. `swap_execute(USDC→USDsui) + save_deposit(USDsui)` reverts at PREPARE).

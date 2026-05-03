@@ -138,6 +138,78 @@ export function checkValidPair(
   return VALID_PAIRS.has(pair) ? { ok: true, pair } : { ok: false, pair };
 }
 
+/**
+ * [SPEC 13 Phase 1] Infer the asset symbol of a producer's output coin.
+ * Used to align producer output ↔ consumer input before populating
+ * `inputCoinFromStep` on the consumer step. Returns lowercase symbol or
+ * null if not inferrable (input shape doesn't match expected fields).
+ *
+ * The defaults (`USDC` for `withdraw`/`borrow` when no `asset` field) match
+ * the SDK's `resolveSaveableAsset(input.asset)` default.
+ */
+export function inferProducerOutputAsset(toolName: string, input: unknown): string | null {
+  if (typeof input !== 'object' || input === null) return null;
+  const i = input as Record<string, unknown>;
+  if (toolName === 'swap_execute') {
+    return typeof i.to === 'string' ? i.to.toLowerCase() : null;
+  }
+  if (toolName === 'withdraw' || toolName === 'borrow') {
+    return typeof i.asset === 'string' ? i.asset.toLowerCase() : 'usdc';
+  }
+  return null;
+}
+
+/**
+ * [SPEC 13 Phase 1] Infer the asset symbol the consumer expects to
+ * receive in its input coin. Pair with `inferProducerOutputAsset` to
+ * decide whether `inputCoinFromStep` is safe to populate.
+ */
+export function inferConsumerInputAsset(toolName: string, input: unknown): string | null {
+  if (typeof input !== 'object' || input === null) return null;
+  const i = input as Record<string, unknown>;
+  if (
+    toolName === 'send_transfer' ||
+    toolName === 'save_deposit' ||
+    toolName === 'repay_debt'
+  ) {
+    return typeof i.asset === 'string' ? i.asset.toLowerCase() : 'usdc';
+  }
+  if (toolName === 'swap_execute') {
+    return typeof i.from === 'string' ? i.from.toLowerCase() : null;
+  }
+  return null;
+}
+
+/**
+ * [SPEC 13 Phase 1] Decide whether a (producer, consumer) bundle pair
+ * should be wired with `inputCoinFromStep` for chained-coin handoff.
+ *
+ * Two gates:
+ *   1. The pair MUST be in `VALID_PAIRS` (whitelist).
+ *   2. The producer's output asset MUST equal the consumer's input
+ *      asset (case-insensitive symbol comparison).
+ *
+ * When both gates pass, the orchestration loop at execute time will
+ * thread the producer's `outputCoin` into the consumer's `inputCoin`,
+ * suppressing the producer's terminal `tx.transferObjects` and the
+ * consumer's wallet pre-fetch. Result: one atomic PTB, zero wallet
+ * round-trips for the chained leg.
+ *
+ * When gate 2 fails (assets misaligned), the bundle still composes —
+ * just without `inputCoinFromStep`. The on-chain leg will then fail
+ * at execute time the same way it fails today (consumer's
+ * `selectAndSplitCoin` returns "no coins found"), which is exactly
+ * what the LLM should learn to avoid by rebundling.
+ */
+export function shouldChainCoin(producer: PendingToolCall, consumer: PendingToolCall): boolean {
+  const pair = `${producer.name}->${consumer.name}`;
+  if (!VALID_PAIRS.has(pair)) return false;
+  const out = inferProducerOutputAsset(producer.name, producer.input);
+  const inA = inferConsumerInputAsset(consumer.name, consumer.input);
+  if (!out || !inA) return false;
+  return out === inA;
+}
+
 export interface BundleCompositionInput {
   /** All confirm-tier bundleable writes the LLM emitted in this turn. MUST be ≥2. */
   pendingWrites: PendingToolCall[];
@@ -210,6 +282,20 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
       ...(modifiableFields?.length ? { modifiableFields } : {}),
     };
   });
+
+  // [SPEC 13 Phase 1] Populate `inputCoinFromStep` for adjacent steps
+  // whose pair is whitelisted AND whose producer output asset aligns
+  // with the consumer input asset. The host's `composeTx` orchestration
+  // loop reads this field at execute time to thread coin handles
+  // between appenders. Forward-only references (i-1 → i) — Phase 1 cap
+  // is 2 ops so this loop runs at most once. Phase 2+ raises the cap.
+  for (let i = 1; i < input.pendingWrites.length; i++) {
+    const producer = input.pendingWrites[i - 1];
+    const consumer = input.pendingWrites[i];
+    if (shouldChainCoin(producer, consumer)) {
+      steps[i].inputCoinFromStep = i - 1;
+    }
+  }
 
   // Regenerate-input tracking: any same-turn read tool_use_id that's in
   // the canonical re-runnable allow-list contributes to the bundle's
