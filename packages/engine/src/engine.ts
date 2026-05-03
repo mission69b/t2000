@@ -43,8 +43,6 @@ import { TurnReadCache } from './turn-read-cache.js';
 import {
   composeBundleFromToolResults,
   MAX_BUNDLE_OPS,
-  VALID_PAIRS,
-  checkValidPair,
 } from './compose-bundle.js';
 
 const DEFAULT_MAX_TURNS = 10;
@@ -1513,16 +1511,15 @@ export class QueryEngine {
         guardPassedWrites.push(...pendingWrites);
       }
 
-      // [Phase 0 / SPEC 13 / 2026-05-03 evening] MAX_BUNDLE_OPS=2 cap.
+      // [Phase 3a / SPEC 13 / 1.15.0] MAX_BUNDLE_OPS=4 cap.
       // Compound flows the LLM tries to atomize into a bundle of more
       // than MAX_BUNDLE_OPS writes get refused; the LLM splits and
       // re-plans sequentially. See `compose-bundle.ts:MAX_BUNDLE_OPS`
-      // JSDoc for the rationale (chain-handoff is the real gap, cap=2
-      // is the strict tightening until Phase 1 lands the foundation).
+      // JSDoc for the cap history (Phase 0=2 → Phase 2=3 → Phase 3a=4).
       if (guardPassedWrites.length > MAX_BUNDLE_OPS) {
         const cappedError = {
           error:
-            `Atomic bundles are capped at ${MAX_BUNDLE_OPS} ops in Phase 0. ` +
+            `Atomic bundles are capped at ${MAX_BUNDLE_OPS} ops. ` +
             `You attempted ${guardPassedWrites.length}. ` +
             `Execute these as ${guardPassedWrites.length} sequential single-write transactions: ` +
             `tell the user "I'll do this in ${guardPassedWrites.length} steps", then emit only the FIRST write. ` +
@@ -1575,70 +1572,33 @@ export class QueryEngine {
         this.turnPaused = true;
 
         if (allBundleable) {
-          // [Phase 0 → Phase 2 / SPEC 13] VALID_PAIRS strict-adjacency check.
+          // [Phase 3a / SPEC 13 / 1.15.0] DAG-aware composition.
           //
-          // For multi-write bundles (N ≥ 2), every (step[i], step[i+1])
-          // pair must be in the whitelist. Pairs outside it (swap→swap,
-          // borrow→swap, save→send, etc.) fail in production because of
-          // the chained-asset gap — refusing up front is cheaper than a
-          // guaranteed-revert PREPARE round-trip.
+          // Pre-3a (1.14.x) ran a strict-adjacency check here that
+          // rejected the bundle if ANY (step[i], step[i+1]) pair fell
+          // outside `VALID_PAIRS`. That gated DAG shapes like
+          // `swap → save → send` (last pair `save→send` not in
+          // whitelist even though step 3 runs wallet-mode independent
+          // of step 2's output).
           //
-          // Phase 0 (1.12.0): cap was 2, this loop ran once.
-          // Phase 2 (1.14.0): cap is 3, this loop runs up to twice.
-          // First non-whitelisted pair fails the entire bundle (atomic
-          // — all-or-nothing — there's no "salvage the prefix" path).
+          // Phase 3a relaxation: no envelope-level adjacency rejection.
+          // `composeBundleFromToolResults` opportunistically wires
+          // `inputCoinFromStep` for adjacent pairs that ARE in
+          // `VALID_PAIRS` AND have aligned producer/consumer assets
+          // (`shouldChainCoin`). Non-chained pairs run wallet-mode
+          // independently inside the same atomic PTB; the SDK's
+          // existing `T2000Error('NO_COINS_FOUND')` preflight surfaces
+          // any bad-shape failures at /api/transactions/prepare time
+          // before the user signs.
           //
-          // Phase 3 work: relax to DAG-aware (only validate pairs that
-          // actually chain via inputCoinFromStep). Until then, strict
-          // adjacency is the spec.
-          if (guardPassedWrites.length >= 2) {
-            let badPair: { ok: false; pair: string } | null = null;
-            for (let i = 0; i < guardPassedWrites.length - 1; i++) {
-              const producer = guardPassedWrites[i].call.name;
-              const consumer = guardPassedWrites[i + 1].call.name;
-              const check = checkValidPair(producer, consumer);
-              if (!check.ok) {
-                badPair = check;
-                break;
-              }
-            }
-            if (badPair !== null) {
-              const N = guardPassedWrites.length;
-              const stepsPhrase = N === 2 ? 'two steps' : `${N} steps`;
-              const pairError = {
-                error:
-                  `Bundle pair '${badPair.pair}' is not in the chaining whitelist. ` +
-                  `Whitelisted pairs: ${[...VALID_PAIRS].join(', ')}. ` +
-                  `Run these ${N} writes sequentially: tell the user "I'll do this in ${stepsPhrase}", ` +
-                  `emit only the first write, then the next after it lands and confirms.`,
-                _gate: 'pair_not_whitelisted',
-              };
-              for (const write of guardPassedWrites) {
-                yield {
-                  type: 'tool_result',
-                  toolName: write.call.name,
-                  toolUseId: write.call.id,
-                  result: pairError,
-                  isError: true,
-                };
-                toolResultBlocks.push({
-                  type: 'tool_result',
-                  toolUseId: write.call.id,
-                  content: JSON.stringify(pairError),
-                  isError: true,
-                });
-              }
-              this.turnPaused = false;
-              this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
-              this.messages.push({ role: 'user', content: toolResultBlocks });
-              getTelemetrySink().counter('engine.turn_outcome', {
-                entry: freshPrompt !== null ? 'submit' : 'resume',
-                outcome: 'pair_not_whitelisted_continue',
-                pair: badPair.pair,
-              });
-              continue;
-            }
-          }
+          // Engine direct emission is now a fallback path; audric's
+          // `prepare_bundle` (SPEC 14) is the primary route. Both paths
+          // share this DAG-aware semantics.
+          //
+          // The `pair_not_whitelisted_continue` outcome counter (line
+          // ~861) is preserved as a typed dead string for backward
+          // compatibility with dashboards reading `engine.turn_outcome`;
+          // it never fires in 1.15+.
 
           // Multi-write Payment Stream — compose bundle.
           const completedResults = toolResultBlocks.map((b) => ({

@@ -49,7 +49,7 @@ import type {
 import type { PendingToolCall } from './orchestration.js';
 
 /**
- * [Phase 0 → Phase 2 / SPEC 13] Maximum number of writes per atomic bundle.
+ * [Phase 0 → Phase 3a / SPEC 13] Maximum number of writes per atomic bundle.
  *
  * **History.**
  *  - Pre-Phase-0: 5 (F14-fix-2, 2026-05-03 morning).
@@ -64,31 +64,35 @@ import type { PendingToolCall } from './orchestration.js';
  *    `composeTx` orchestration loop) but didn't widen the cap. The
  *    primitive is what makes Phase 2's raise to 3 possible — without it,
  *    every additional step is another wallet-fetch race.
- *  - Phase 2 (1.14.0, this version): cap raised to 3. Composition rule
- *    is strict-adjacency: every (step[i], step[i+1]) pair must be in
- *    `VALID_PAIRS`. No new pairs added — Phase 2 is purely the cap raise
- *    + adjacency-loop validation. The chain-mode population loop already
- *    runs over every `(i, i+1)` since 1.13.0, so 3-op atomic bundles
- *    like `withdraw → swap → send` thread two coin handles end-to-end
- *    in one PTB.
+ *  - Phase 2 (1.14.0): cap raised to 3. Composition rule was strict-
+ *    adjacency: every (step[i], step[i+1]) pair must be in `VALID_PAIRS`.
+ *    Strict adjacency rejected DAG shapes (`swap → save → send` —
+ *    last pair `save→send` not in whitelist even though step 3 doesn't
+ *    chain from step 2; it pulls a fresh wallet coin).
+ *  - **Phase 3a (1.15.0, this version): cap raised to 4. Composition rule
+ *    relaxed to DAG-aware: only pairs that actually chain via
+ *    `inputCoinFromStep` need whitelist checking. Standalone steps
+ *    interleaved between chained steps run wallet-mode independently
+ *    inside the same atomic PTB.** This unlocks Demo 1 ("swap 10% to
+ *    SUI, save 50% as USDsui, send $100 to Mom" — 4-op DAG with one
+ *    chain at step 1→2, three standalone wallet-mode steps).
  *
- * **Why strict adjacency?** Every consecutive pair must be whitelisted
- * even if the consumer doesn't chain (no `inputCoinFromStep`). This
- * keeps the validator simple and matches the spec's Phase 2 model. The
- * looser DAG-aware variant (where non-chained adjacent steps can be
- * any tool combo) is a Phase 3 follow-up — defer until we see real
- * production flows that need it.
+ * **DAG-aware semantics.** Pre-3a: every adjacent pair gates the entire
+ * bundle. Phase 3a+: each (i, i+1) pair contributes IF a chain is wired
+ * (via `shouldChainCoin`). Non-chained pairs are independent — they
+ * each pre-fetch their own coin from the wallet inside the PTB. Atomic
+ * settlement at the PTB level holds either way.
  *
- * **Phase 3+:** `swap_execute → swap_execute` (Demo 1 unlock) + DAG-aware
- * validator + cap raise to 4. SPEC 13 §"Phase 3" / §"Phase 5" tracks
- * these. Don't pre-emptively raise this constant past 3 without those
- * landing.
+ * **Phase 3b (deferred):** `swap_execute → swap_execute` whitelist add
+ * for explicit multi-hop swap chains (rare; flag-gated when shipped).
+ * **Phase 5+:** cap > 4 once production telemetry confirms zero edge-
+ * case revert rate at cap=4.
  *
  * Hosts importing this constant for system-prompt construction get the
  * current cap automatically. Bumping the cap is a one-line change here
  * that propagates to prompts via the import.
  */
-export const MAX_BUNDLE_OPS = 3;
+export const MAX_BUNDLE_OPS = 4;
 
 /**
  * [Phase 0 / SPEC 13] Whitelisted (producer, consumer) pairs for atomic

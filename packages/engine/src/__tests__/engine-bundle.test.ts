@@ -538,20 +538,18 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   });
 });
 
-// [Phase 0 → Phase 2 / SPEC 13] MAX_BUNDLE_OPS cap + VALID_PAIRS
-// whitelist regression suite.
+// [Phase 0 → Phase 3a / SPEC 13] MAX_BUNDLE_OPS cap regression suite.
 //
 // History:
 //   - Pre-Phase-0 (F14-fix-2): cap=5
 //   - Phase 0 (1.12.0, 2026-05-03): cap=2 strict tightening
-//   - Phase 2 (1.14.0): cap=3, strict-adjacency validator over every
-//     (i, i+1) pair
+//   - Phase 2 (1.14.0): cap=3, strict-adjacency validator
+//   - Phase 3a (1.15.0): cap=4, DAG-aware (no envelope-level
+//     adjacency rejection — see compose-bundle.ts MAX_BUNDLE_OPS JSDoc)
 //
-// Cap tests moved up here cover Phase 2 acceptance (2- and 3-op
-// whitelisted bundles compose) AND rejection (4+-op or any
-// non-whitelisted adjacent pair refuses). The 6-op May 3 production
-// repro stays as-is since 6 > 3.
-describe('Phase 2 — MAX_BUNDLE_OPS=3 cap', () => {
+// Cap tests cover Phase 3a acceptance (2-, 3-, 4-op bundles compose)
+// AND rejection (5+-op refuses with `_gate: 'max_bundle_ops'`).
+describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
   // Helper: mint N pending writes for a single LLM turn. Uses pairs
   // already in VALID_PAIRS so the 2-op / 3-op acceptance tests aren't
   // gated by the whitelist check.
@@ -604,7 +602,7 @@ describe('Phase 2 — MAX_BUNDLE_OPS=3 cap', () => {
     expect(pending!.action.steps).toHaveLength(2);
   });
 
-  it('accepts a 3-op whitelisted bundle (at the new cap)', async () => {
+  it('accepts a 3-op bundle', async () => {
     const provider = createMockProvider([makeTurnOfPair(3)]);
     const tools = applyToolFlags([
       makeWrite('withdraw'),
@@ -620,53 +618,71 @@ describe('Phase 2 — MAX_BUNDLE_OPS=3 cap', () => {
     expect(pending!.action.steps).toHaveLength(3);
   });
 
-  it('refuses a 4-op bundle and yields N=4 max_bundle_ops error tool_results', async () => {
+  it('accepts a 4-op bundle (Phase 3a — at the new cap)', async () => {
+    // [Phase 3a / 1.15.0] cap raised 3→4. P0-10 locked: zero-chain
+    // bundles (e.g. 4 standalone sends) are permitted under the new
+    // DAG-aware semantics. Atomicity at the PTB level holds even when
+    // no `inputCoinFromStep` chains are wired.
+    const provider = createMockProvider([makeTurnOfPair(4)]);
+    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
+    const events = await collectEvents(engine.submitMessage('4 sends'));
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(4);
+  });
+
+  it('refuses a 5-op bundle and yields N=5 max_bundle_ops error tool_results', async () => {
     const provider = createMockProvider([
-      makeTurnOfPair(4),
+      makeTurnOfPair(5),
       [
         {
           type: 'text',
-          text: 'I will execute these as 4 sequential single-write transactions.',
+          text: 'I will execute these as 5 sequential single-write transactions.',
         },
       ],
     ]);
     const tools = applyToolFlags([makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
-    const events = await collectEvents(engine.submitMessage('4 sends'));
+    const events = await collectEvents(engine.submitMessage('5 sends'));
 
     expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
 
     const errorResults = events.filter(
       (e) => e.type === 'tool_result' && e.isError,
     ) as Array<EngineEvent & { type: 'tool_result' }>;
-    expect(errorResults).toHaveLength(4);
+    expect(errorResults).toHaveLength(5);
     for (const er of errorResults) {
       const result = er.result as { error?: string; _gate?: string };
       expect(result._gate).toBe('max_bundle_ops');
-      expect(result.error).toMatch(/capped at 3/);
+      expect(result.error).toMatch(/capped at 4/);
       expect(result.error).toMatch(/sequential single-write transactions/);
     }
   });
 
-  it('refuses a 5-op bundle (well above the cap)', async () => {
+  it('refuses a 6-op bundle (well above the cap)', async () => {
     const provider = createMockProvider([
-      makeTurnOfPair(5),
+      makeTurnOfPair(6),
       [{ type: 'text', text: 'I will split.' }],
     ]);
     const tools = applyToolFlags([makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
-    const events = await collectEvents(engine.submitMessage('5 sends'));
+    const events = await collectEvents(engine.submitMessage('6 sends'));
     const errorResults = events.filter(
       (e) => e.type === 'tool_result' && e.isError,
     );
-    expect(errorResults).toHaveLength(5);
+    expect(errorResults).toHaveLength(6);
     expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
   });
 
   it('production repro: 6-op compound flow returns capped error', async () => {
     // The exact May 3 production failure shape — 6 writes spanning
-    // every confirm-tier bundleable op. Phase 0 refuses up front so
-    // the LLM splits sequentially, no wasted PREPARE round-trip.
+    // every confirm-tier bundleable op. Refuses up front so the LLM
+    // splits sequentially, no wasted PREPARE round-trip. Under
+    // Phase 3a (cap=4), the rejection is the same shape, just
+    // expressed against a higher cap.
     const provider = createMockProvider([
       [
         { type: 'tool_call', id: 'tc-1', name: 'repay_debt', input: { amount: 2 } },
@@ -696,14 +712,18 @@ describe('Phase 2 — MAX_BUNDLE_OPS=3 cap', () => {
   });
 });
 
-// [Phase 0 / SPEC 13] VALID_PAIRS whitelist enforcement.
+// [Phase 0 → Phase 3a / SPEC 13] VALID_PAIRS chain-mode population +
+// Phase 3a relaxation regression suite.
 //
-// 2-op bundles whose (producer, consumer) pair is in the whitelist
-// compose a pending_action. Pairs outside the whitelist get refused
-// with `_gate: 'pair_not_whitelisted'` so the LLM splits sequentially
-// instead of wasting a PREPARE round-trip on a guaranteed-revert
-// chained-asset bundle.
-describe('Phase 0 — VALID_PAIRS whitelist', () => {
+// Pre-Phase-3a: a non-whitelisted adjacent pair fails the entire
+// bundle with `_gate: 'pair_not_whitelisted'`.
+//
+// Phase 3a: no envelope-level rejection. Whitelisted pairs still
+// populate `inputCoinFromStep` (chain-mode); non-whitelisted pairs
+// run wallet-mode independently inside the same atomic PTB. The SDK
+// preflight surfaces any bad-shape failures at /api/transactions/
+// prepare time before the user signs.
+describe('Phase 3a — chain-mode population (no envelope rejection)', () => {
   const allWriteTools = [
     'save_deposit',
     'withdraw',
@@ -725,7 +745,8 @@ describe('Phase 0 — VALID_PAIRS whitelist', () => {
     return new QueryEngine({ provider, tools, systemPrompt: 'test' });
   }
 
-  // The 7 whitelisted pairs — every one MUST compose successfully.
+  // The 7 whitelisted pairs — every one MUST compose successfully
+  // AND populate inputCoinFromStep when assets align.
   const validPairs: Array<[string, string]> = [
     ['swap_execute', 'send_transfer'],
     ['swap_execute', 'save_deposit'],
@@ -750,34 +771,38 @@ describe('Phase 0 — VALID_PAIRS whitelist', () => {
     });
   }
 
-  // Representative non-whitelisted pairs — each one MUST be refused.
-  // Phase 1+ may add some of these; today they fail because the
-  // chained-asset gap blocks compose at PREPARE time.
-  const invalidPairs: Array<[string, string, string]> = [
-    ['swap_execute', 'swap_execute', 'two swaps in a row — Phase 3'],
-    ['borrow', 'swap_execute', 'borrow→swap — could be added Phase 1'],
-    ['save_deposit', 'send_transfer', 'save produces nothing to send'],
-    ['send_transfer', 'send_transfer', 'two sends — split sequentially'],
-    ['withdraw', 'save_deposit', 'unusual; not in whitelist'],
-    ['repay_debt', 'send_transfer', 'repay produces nothing'],
+  // [Phase 3a relaxation] Pre-3a these were rejected with
+  // `pair_not_whitelisted`. Under Phase 3a they compose successfully
+  // and run wallet-mode (no `inputCoinFromStep`). The SDK's existing
+  // wallet-mode preflight surfaces NO_COINS_FOUND at PREPARE time if
+  // the consumer's wallet doesn't hold the input asset.
+  const previouslyRejectedPairs: Array<[string, string, string]> = [
+    ['swap_execute', 'swap_execute', 'multi-hop swaps — Phase 3b unlock'],
+    ['borrow', 'swap_execute', 'borrow output funds a swap'],
+    ['save_deposit', 'send_transfer', 'wallet send after independent save'],
+    ['send_transfer', 'send_transfer', 'two independent sends in one PTB'],
+    ['withdraw', 'save_deposit', 'withdraw + save (separate USDC pulls)'],
+    ['repay_debt', 'send_transfer', 'wallet send after independent repay'],
   ];
 
-  for (const [producer, consumer, why] of invalidPairs) {
-    it(`refuses non-whitelisted pair: ${producer} → ${consumer} (${why})`, async () => {
+  for (const [producer, consumer, why] of previouslyRejectedPairs) {
+    it(`Phase 3a accepts previously-rejected pair: ${producer} → ${consumer} (${why})`, async () => {
       const engine = setup(producer, consumer);
       const events = await collectEvents(engine.submitMessage(`${producer} then ${consumer}`));
 
-      expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
+      const pending = events.find((e) => e.type === 'pending_action') as
+        | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+        | undefined;
+      expect(pending).toBeDefined();
+      expect(pending!.action.steps).toHaveLength(2);
+      expect(pending!.action.steps?.[0]?.toolName).toBe(producer);
+      expect(pending!.action.steps?.[1]?.toolName).toBe(consumer);
+      expect(pending!.action.steps?.[1]?.inputCoinFromStep).toBeUndefined();
 
       const errorResults = events.filter(
         (e) => e.type === 'tool_result' && e.isError,
-      ) as Array<EngineEvent & { type: 'tool_result' }>;
-      expect(errorResults).toHaveLength(2);
-      for (const er of errorResults) {
-        const result = er.result as { error?: string; _gate?: string };
-        expect(result._gate).toBe('pair_not_whitelisted');
-        expect(result.error).toMatch(new RegExp(`${producer}->${consumer}`));
-      }
+      );
+      expect(errorResults).toHaveLength(0);
     });
   }
 
@@ -796,18 +821,17 @@ describe('Phase 0 — VALID_PAIRS whitelist', () => {
   });
 });
 
-// [Phase 2 / SPEC 13 / 1.14.0] 3-op composition rules.
+// [Phase 2 → Phase 3a / SPEC 13 / 1.15.0] 3-op composition rules.
 //
-// Phase 2 raises the cap to 3 with strict-adjacency: every (i, i+1)
-// pair must be in VALID_PAIRS. This block tests:
-//   - Happy paths: 3-op flows whose every adjacent pair is whitelisted
-//     compose successfully and stamp inputCoinFromStep on chained legs.
-//   - Invalid topologies: any single non-whitelisted adjacent pair
-//     fails the entire bundle (atomic, all-or-nothing — the LLM splits
-//     and re-plans sequentially).
+// Pre-3a (1.14.x): strict adjacency — every (i, i+1) pair must be in
+// VALID_PAIRS. Any single non-whitelisted adjacent pair failed the
+// whole bundle.
 //
-// SPEC 13 §"Phase 2 — 3-op chains" (no new pairs, just composition).
-describe('Phase 2 — 3-op composition rules (1.14.0)', () => {
+// Phase 3a (1.15.0): DAG-aware. Whitelisted asset-aligned pairs
+// populate inputCoinFromStep; non-chained pairs compose AND run
+// wallet-mode independently. Bundles compose successfully even when
+// adjacent steps are completely independent.
+describe('Phase 3a — 3-op composition rules (1.15.0)', () => {
   function setup3op(
     a: string,
     b: string,
@@ -871,71 +895,54 @@ describe('Phase 2 — 3-op composition rules (1.14.0)', () => {
     expect(pending!.action.steps![2].inputCoinFromStep).toBe(1);
   });
 
-  it('accepts borrow → send + swap → repay variants — every adjacent pair whitelisted', async () => {
-    // borrow → send_transfer is whitelisted. send → ... has nothing to
-    // produce, so no third step can chain off it. But the engine
-    // doesn't require chaining — strict adjacency is "pair exists in
-    // whitelist", not "pair must chain". send → save IS in the
-    // whitelist? No — save_deposit doesn't appear after send_transfer
-    // in any whitelisted pair (send produces nothing). So this 3-op
-    // test pivots: we use swap → save → ... no, save produces nothing.
-    // The cleanest 3-op happy path with a non-chaining tail is
-    // withdraw → send_transfer → ... but send produces nothing.
-    //
-    // Conclusion: the only fully-whitelisted 3-op shapes are the
-    // ones tested above (withdraw → swap → send/save). Other
-    // permutations either have a non-whitelisted pair OR have a
-    // terminal-producer mid-chain. This is fine — Phase 2 is about
-    // proving the cap raise works, not about exhaustive permutations.
-    expect(true).toBe(true);
-  });
-
-  // 3-op invalid topology — any one bad adjacent pair fails the bundle.
-  it('refuses 3-op when first pair (0→1) is not whitelisted: send → withdraw → swap', async () => {
-    // send_transfer → withdraw is NOT whitelisted (send produces
-    // nothing for withdraw to consume). The engine refuses the
-    // entire bundle on the first bad pair.
+  // [Phase 3a relaxation] Previously-rejected 3-op topologies now
+  // compose successfully. They run wallet-mode for non-whitelisted
+  // pairs. The SDK preflight surfaces NO_COINS_FOUND at PREPARE
+  // time if the wallet doesn't hold the consumer's input asset.
+  it('Phase 3a accepts 3-op with first pair not whitelisted: send → withdraw → swap', async () => {
     const engine = setup3op('send_transfer', 'withdraw', 'swap_execute');
     const events = await collectEvents(engine.submitMessage('send, withdraw, swap'));
-    expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
-    const errorResults = events.filter(
-      (e) => e.type === 'tool_result' && e.isError,
-    ) as Array<EngineEvent & { type: 'tool_result' }>;
-    expect(errorResults).toHaveLength(3);
-    for (const er of errorResults) {
-      const result = er.result as { error?: string; _gate?: string };
-      expect(result._gate).toBe('pair_not_whitelisted');
-      expect(result.error).toMatch(/send_transfer->withdraw/);
-    }
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(3);
+    expect(pending!.action.steps![1].inputCoinFromStep).toBeUndefined();
+    expect(pending!.action.steps![2].inputCoinFromStep).toBeUndefined();
   });
 
-  it('refuses 3-op when second pair (1→2) is not whitelisted: withdraw → swap → save_deposit (asset misalign would still pass adjacency, so use a different shape)', async () => {
-    // withdraw → swap_execute IS whitelisted. swap_execute → withdraw
-    // is NOT whitelisted (no whitelisted pair where withdraw is the
-    // consumer — withdraw produces, doesn't consume coin input).
-    const engine = setup3op('withdraw', 'swap_execute', 'withdraw');
+  it('Phase 3a accepts 3-op with second pair not whitelisted: withdraw → swap → withdraw', async () => {
+    const engine = setup3op('withdraw', 'swap_execute', 'withdraw', {
+      a: { amount: 5, asset: 'USDC' },
+      b: { from: 'USDC', to: 'SUI', amount: 5 },
+      c: { amount: 3, asset: 'USDsui' },
+    });
     const events = await collectEvents(engine.submitMessage('withdraw, swap, withdraw'));
-    expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
-    const errorResults = events.filter(
-      (e) => e.type === 'tool_result' && e.isError,
-    ) as Array<EngineEvent & { type: 'tool_result' }>;
-    expect(errorResults).toHaveLength(3);
-    for (const er of errorResults) {
-      const result = er.result as { error?: string; _gate?: string };
-      expect(result._gate).toBe('pair_not_whitelisted');
-      // Error reports the FIRST bad pair encountered in the loop.
-      expect(result.error).toMatch(/swap_execute->withdraw/);
-    }
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(3);
+    expect(pending!.action.steps![1].inputCoinFromStep).toBe(0);
+    expect(pending!.action.steps![2].inputCoinFromStep).toBeUndefined();
   });
 
-  it('refuses 3-op all-bad: send → send → send (no adjacent pair whitelisted)', async () => {
+  it('Phase 3a accepts 3-op zero-chain bundle: send → send → send (P0-10 — multiple independent sends)', async () => {
     const engine = setup3op('send_transfer', 'send_transfer', 'send_transfer');
     const events = await collectEvents(engine.submitMessage('three sends'));
-    expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(3);
+    // None of the steps chain — every step runs wallet-mode independently.
+    expect(pending!.action.steps![0].inputCoinFromStep).toBeUndefined();
+    expect(pending!.action.steps![1].inputCoinFromStep).toBeUndefined();
+    expect(pending!.action.steps![2].inputCoinFromStep).toBeUndefined();
     const errorResults = events.filter(
       (e) => e.type === 'tool_result' && e.isError,
     );
-    expect(errorResults).toHaveLength(3);
+    expect(errorResults).toHaveLength(0);
   });
 
   it('chain-mode counter fires twice for asset-aligned 3-op (withdraw → swap → send all aligned)', async () => {
@@ -1367,5 +1374,191 @@ describe('SPEC 13 Phase 1 — chain-coin handoff (inputCoinFromStep auto-populat
       );
       expect(chainModeCalls).toHaveLength(0);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SPEC 13 Phase 3a — 4-op DAG-aware composition (1.15.0)
+// ---------------------------------------------------------------------------
+//
+// Demo 1 shape: a 4-op bundle with ONE chained pair (e.g., swap →
+// save) and three independent legs running wallet-mode. Demonstrates
+// the headline Phase 3a unlock: atomic compound flows with mixed
+// chain/wallet semantics.
+//
+// Phase 3a invariant: chain-mode counter fires exactly once per
+// actually-chained pair (where producer.output asset matches
+// consumer.input asset AND the pair is in VALID_PAIRS). Adjacent
+// non-chained pairs do NOT fire the counter.
+describe('SPEC 13 Phase 3a — 4-op DAG composition (1.15.0)', () => {
+  function makeBundleableWrite(name: string): Tool {
+    return buildTool({
+      name,
+      description: `mock ${name}`,
+      inputSchema: z.object({}).passthrough(),
+      jsonSchema: { type: 'object', properties: {} },
+      isReadOnly: false,
+      permissionLevel: 'confirm',
+      async call() {
+        return { data: { ok: true } };
+      },
+    });
+  }
+
+  function setup4op(
+    a: string,
+    b: string,
+    c: string,
+    d: string,
+    inputs: { a?: unknown; b?: unknown; c?: unknown; d?: unknown } = {},
+  ) {
+    const allWriteTools = [
+      'save_deposit',
+      'withdraw',
+      'borrow',
+      'repay_debt',
+      'send_transfer',
+      'swap_execute',
+    ];
+    const provider = createMockProvider([
+      [
+        { type: 'tool_call', id: 'tc-1', name: a, input: inputs.a ?? { amount: 1 } },
+        { type: 'tool_call', id: 'tc-2', name: b, input: inputs.b ?? { amount: 1 } },
+        { type: 'tool_call', id: 'tc-3', name: c, input: inputs.c ?? { amount: 1 } },
+        { type: 'tool_call', id: 'tc-4', name: d, input: inputs.d ?? { amount: 1, to: '0xabc' } },
+      ],
+      [{ type: 'text', text: 'narration' }],
+    ]);
+    const tools = applyToolFlags(allWriteTools.map((n) => makeWrite(n)));
+    return new QueryEngine({ provider, tools, systemPrompt: 'test' });
+  }
+
+  // P0-8 shape: 4-op DAG with mid-bundle chain. swap_execute(USDC→USDsui)
+  // → save_deposit(USDsui) is whitelisted + asset-aligned, so step 1
+  // chains from step 0. The bracketing send (step 2) and the trailing
+  // send (step 3) run wallet-mode.
+  it('accepts 4-op DAG with one chained pair (swap → save chained, sends wallet-mode)', async () => {
+    const engine = setup4op(
+      'send_transfer',
+      'swap_execute',
+      'save_deposit',
+      'send_transfer',
+      {
+        a: { amount: 5, to: '0xfirst', asset: 'USDC' },
+        b: { from: 'USDC', to: 'USDsui', amount: 10 },
+        c: { amount: 10, asset: 'USDsui' },
+        d: { amount: 100, to: '0xlast', asset: 'USDC' },
+      },
+    );
+    const events = await collectEvents(engine.submitMessage('demo-1 shape'));
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(4);
+    expect(pending!.action.steps![0].inputCoinFromStep).toBeUndefined();
+    expect(pending!.action.steps![1].inputCoinFromStep).toBeUndefined();
+    expect(pending!.action.steps![2].inputCoinFromStep).toBe(1);
+    expect(pending!.action.steps![3].inputCoinFromStep).toBeUndefined();
+  });
+
+  // P0-9 shape: 4-op partial-chain bundle. withdraw(USDC) → swap(USDC→SUI)
+  // chains; swap → send(SUI) chains (both whitelisted + aligned); fourth
+  // step is an independent send running wallet-mode.
+  it('accepts 4-op partial-chain bundle (withdraw → swap → send chained, fourth send wallet-mode)', async () => {
+    const engine = setup4op(
+      'withdraw',
+      'swap_execute',
+      'send_transfer',
+      'send_transfer',
+      {
+        a: { amount: 5, asset: 'USDC' },
+        b: { from: 'USDC', to: 'SUI', amount: 5 },
+        c: { amount: 5, to: '0xrecipient', asset: 'SUI' },
+        d: { amount: 1, to: '0xother', asset: 'USDC' },
+      },
+    );
+    const events = await collectEvents(engine.submitMessage('partial chain'));
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(4);
+    expect(pending!.action.steps![0].inputCoinFromStep).toBeUndefined();
+    expect(pending!.action.steps![1].inputCoinFromStep).toBe(0);
+    expect(pending!.action.steps![2].inputCoinFromStep).toBe(1);
+    expect(pending!.action.steps![3].inputCoinFromStep).toBeUndefined();
+  });
+
+  // P0-10: zero-chain 4-op bundle (four independent sends). No
+  // `inputCoinFromStep` populated anywhere. Atomicity at the PTB
+  // level still holds (all-or-nothing settlement).
+  it('accepts 4-op zero-chain bundle (four independent sends — P0-10)', async () => {
+    const engine = setup4op(
+      'send_transfer',
+      'send_transfer',
+      'send_transfer',
+      'send_transfer',
+    );
+    const events = await collectEvents(engine.submitMessage('four sends'));
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(4);
+    for (let i = 0; i < 4; i++) {
+      expect(pending!.action.steps![i].inputCoinFromStep).toBeUndefined();
+    }
+    const errorResults = events.filter(
+      (e) => e.type === 'tool_result' && e.isError,
+    );
+    expect(errorResults).toHaveLength(0);
+  });
+
+  // Counter invariant: chain-mode fires ONCE per actually-chained pair
+  // even in a 4-op bundle with mixed chain/wallet legs.
+  it('chain-mode counter fires only for actually-chained pairs in a 4-op DAG', async () => {
+    const { composeBundleFromToolResults } = await import('../compose-bundle.js');
+    const spyCounter = vi.fn<(name: string, tags?: TelemetryTags, value?: number) => void>();
+    const sink: TelemetrySink = {
+      counter: spyCounter,
+      gauge: vi.fn(),
+      histogram: vi.fn(),
+    };
+    setTelemetrySink(sink);
+    try {
+      const tools = applyToolFlags([
+        makeBundleableWrite('send_transfer'),
+        makeBundleableWrite('swap_execute'),
+        makeBundleableWrite('save_deposit'),
+        makeBundleableWrite('send_transfer'),
+      ]);
+      composeBundleFromToolResults({
+        pendingWrites: [
+          { id: 'tc-1', name: 'send_transfer', input: { amount: 5, to: '0xA', asset: 'USDC' } },
+          { id: 'tc-2', name: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 10 } },
+          { id: 'tc-3', name: 'save_deposit', input: { amount: 10, asset: 'USDsui' } },
+          { id: 'tc-4', name: 'send_transfer', input: { amount: 1, to: '0xB', asset: 'USDC' } },
+        ],
+        tools,
+        readResults: [],
+        assistantContent: [],
+        completedResults: [],
+        turnIndex: 0,
+      });
+      const chainModeCalls = spyCounter.mock.calls.filter(
+        (c) => c[0] === 'engine.bundle_chain_mode_set',
+      );
+      // Only swap_execute → save_deposit chains (assets align). The
+      // other three adjacent pairs (send→swap, save→send) are not
+      // whitelisted/asset-aligned and run wallet-mode silently.
+      expect(chainModeCalls).toHaveLength(1);
+      expect(chainModeCalls[0][1]).toEqual({
+        producer: 'swap_execute',
+        consumer: 'save_deposit',
+      });
+    } finally {
+      resetTelemetrySink();
+    }
   });
 });
