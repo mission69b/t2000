@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getSwapQuote } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
+import { getTelemetrySink } from '../telemetry.js';
 import { getWalletAddress } from './utils.js';
 
 export const swapQuoteTool = buildTool({
@@ -30,17 +31,33 @@ export const swapQuoteTool = buildTool({
       ? (context.agent as { address(): string }).address()
       : getWalletAddress(context);
 
-    const result = await getSwapQuote({
-      walletAddress,
-      from: input.from,
-      to: input.to,
-      amount: input.amount,
-      byAmountIn: input.byAmountIn,
-    });
-
-    return {
-      data: result,
-      displayText: `${result.fromAmount} ${result.fromToken} → ${result.toAmount.toFixed(4)} ${result.toToken} (impact: ${(result.priceImpact * 100).toFixed(2)}%, via ${result.route})`,
-    };
+    // [Backlog 2a / 2026-05-04] Cetus route-fetch baseline. Times the
+    // SDK call end-to-end (`getSwapQuote` is a thin wrapper over
+    // `findSwapRoute`, so this is effectively pure route-fetch latency).
+    // Pairs with `cetus.swap_execute_total_ms` in the swap_execute tool
+    // — together they let us compute the % of swap_execute latency that
+    // route fetching represents, which gates the Backlog 2b decision
+    // (build a per-request route cache keyed on (from, to, amount)) on
+    // real production data instead of guesses.
+    const sink = getTelemetrySink();
+    const start = Date.now();
+    try {
+      const result = await getSwapQuote({
+        walletAddress,
+        from: input.from,
+        to: input.to,
+        amount: input.amount,
+        byAmountIn: input.byAmountIn,
+      });
+      sink.histogram('cetus.find_route_ms', Date.now() - start);
+      sink.counter('cetus.find_route_count', { outcome: 'success' });
+      return {
+        data: result,
+        displayText: `${result.fromAmount} ${result.fromToken} → ${result.toAmount.toFixed(4)} ${result.toToken} (impact: ${(result.priceImpact * 100).toFixed(2)}%, via ${result.route})`,
+      };
+    } catch (err) {
+      sink.counter('cetus.find_route_count', { outcome: 'error' });
+      throw err;
+    }
   },
 });

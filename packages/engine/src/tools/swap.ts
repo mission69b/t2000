@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { buildTool } from '../tool.js';
+import { getTelemetrySink } from '../telemetry.js';
 import { requireAgent } from './utils.js';
 
 export const swapExecuteTool = buildTool({
@@ -37,26 +38,42 @@ export const swapExecuteTool = buildTool({
 
   async call(input, context) {
     const agent = requireAgent(context);
-    const result = await agent.swap({
-      from: input.from,
-      to: input.to,
-      amount: input.amount,
-      byAmountIn: input.byAmountIn,
-      slippage: input.slippage,
-    });
-
-    return {
-      data: {
-        tx: result.tx,
-        fromToken: result.fromToken,
-        toToken: result.toToken,
-        fromAmount: result.fromAmount,
-        toAmount: result.toAmount,
-        priceImpact: result.priceImpact,
-        route: result.route,
-        gasCost: result.gasCost,
-      },
-      displayText: `Swapped ${result.fromAmount} ${result.fromToken} for ${result.toAmount.toFixed(4)} ${result.toToken} (tx: ${result.tx.slice(0, 8)}...)`,
-    };
+    // [Backlog 2a / 2026-05-04] swap_execute end-to-end timing baseline.
+    // Times the SDK `agent.swap()` call which wraps findSwapRoute +
+    // buildSwapTx + sign + waitForTransaction. The headline ratio
+    // `cetus.find_route_ms / cetus.swap_execute_total_ms` tells us what
+    // fraction of swap_execute latency is route fetching — i.e. the
+    // upper bound on what a per-request route cache would save. Backlog
+    // 2b is gated on this ratio + the % of swap_execute calls that land
+    // within 30s of a swap_quote (TTL window).
+    const sink = getTelemetrySink();
+    const start = Date.now();
+    try {
+      const result = await agent.swap({
+        from: input.from,
+        to: input.to,
+        amount: input.amount,
+        byAmountIn: input.byAmountIn,
+        slippage: input.slippage,
+      });
+      sink.histogram('cetus.swap_execute_total_ms', Date.now() - start);
+      sink.counter('cetus.swap_execute_count', { outcome: 'success' });
+      return {
+        data: {
+          tx: result.tx,
+          fromToken: result.fromToken,
+          toToken: result.toToken,
+          fromAmount: result.fromAmount,
+          toAmount: result.toAmount,
+          priceImpact: result.priceImpact,
+          route: result.route,
+          gasCost: result.gasCost,
+        },
+        displayText: `Swapped ${result.fromAmount} ${result.fromToken} for ${result.toAmount.toFixed(4)} ${result.toToken} (tx: ${result.tx.slice(0, 8)}...)`,
+      };
+    } catch (err) {
+      sink.counter('cetus.swap_execute_count', { outcome: 'error' });
+      throw err;
+    }
   },
 });
