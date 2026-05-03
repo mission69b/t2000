@@ -918,4 +918,67 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
       ).rejects.toThrow(/CHAIN_MODE_INVALID|terminal consumer/);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // [SPEC 13 Phase 2 / 1.14.0] 3-op chain — proves the orchestration loop
+  // handles a producer that's also a consumer of its predecessor.
+  //
+  // The 1.13.0 chain-mode tests covered 2-op shapes (one producer + one
+  // consumer). Phase 2 needs to assert that mid-chain steps (consumer of
+  // step N AND producer for step N+2) thread coin handles correctly:
+  //
+  //   step 0: withdraw   — produces USDC handle (consumed by step 1, suppressed)
+  //   step 1: swap       — consumes step 0's USDC, produces SUI handle (consumed by step 2, suppressed)
+  //   step 2: send        — consumes step 1's SUI, terminal (no output)
+  //
+  // Expected:
+  //   - Zero getCoins calls (no wallet pre-fetch — every consumer chains)
+  //   - Zero transferObjects to sender (every producer's output is consumed)
+  //   - One transferObjects to recipient (send's destination)
+  //   - 3 perStepPreviews
+  // -------------------------------------------------------------------------
+  describe('Phase 2 (1.14.0) — 3-op chain orchestration', () => {
+    it('withdraw → swap → send: all chained, zero wallet fetch, zero sender-transfers, one recipient-transfer', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const client = mockRpcClient({});
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'withdraw', input: { amount: 5, asset: 'USDC' } },
+          {
+            toolName: 'swap_execute',
+            input: { from: 'USDC', to: 'SUI', amount: 5 },
+            inputCoinFromStep: 0,
+          },
+          {
+            toolName: 'send_transfer',
+            input: { amount: 5, to: RECIPIENT_ADDRESS, asset: 'SUI' },
+            inputCoinFromStep: 1,
+          },
+        ],
+      });
+
+      // No wallet fetches at all — every consumer chains from upstream.
+      expect((client.getCoins as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+
+      // No transferObjects to sender — withdraw output is consumed by swap,
+      // swap output is consumed by send, send terminates with the recipient
+      // transfer. No coins ever land in the sender's wallet inside this PTB.
+      const transfers = countTransferObjectsByRecipient(result.tx);
+      expect(transfers[VALID_ADDRESS]).toBeUndefined();
+      expect(transfers[RECIPIENT_ADDRESS]).toBe(1);
+
+      expect(result.perStepPreviews).toHaveLength(3);
+      expect(result.perStepPreviews[0].toolName).toBe('withdraw');
+      expect(result.perStepPreviews[1].toolName).toBe('swap_execute');
+      expect(result.perStepPreviews[2].toolName).toBe('send_transfer');
+
+      // derivedAllowedAddresses should include the recipient (only address
+      // receiving a coin in the PTB).
+      expect(result.derivedAllowedAddresses).toEqual([RECIPIENT_ADDRESS]);
+    });
+  });
 });

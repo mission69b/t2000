@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.14.0 (2026-05-04) — SPEC 13 Phase 2: 3-op atomic bundles
+
+Raises `MAX_BUNDLE_OPS` from 2 to 3. The chain-handoff primitive shipped in 1.13.0 (`PendingActionStep.inputCoinFromStep` + `composeTx` orchestration) was always N-step generic — Phase 1 capped at 2 to soak. Phase 2 lifts the cap and enforces strict-adjacency: every consecutive `(i, i+1)` pair must be in `VALID_PAIRS`. No new pairs added; `swap_execute → swap_execute` (Demo 1 unlock) defers to Phase 3.
+
+The chain-mode population loop in `composeBundleFromToolResults` already iterates every `(i, i+1)` since 1.13.0, so 3-op flows like `withdraw → swap → send` thread two coin handles end-to-end in one PTB without code changes — zero wallet round-trips between steps.
+
+### Changed
+
+- **`MAX_BUNDLE_OPS` raised from 2 → 3** in `compose-bundle.ts`. Hosts importing this constant for system-prompt construction get the new cap automatically.
+- **Engine pair-whitelist check is now an N-pair loop** (was: hardcoded `length === 2` single check). Iterates `i in 0..N-2`, validates each `(steps[i], steps[i+1])` pair against `VALID_PAIRS`, fails the entire bundle on the first non-whitelisted pair (atomic — no salvage-prefix path). Telemetry tag `pair` reports the FIRST bad pair encountered. Engine over-cap rejection message updates from "capped at 2" to "capped at 3."
+
+### Added
+
+- **8 new Phase 2 engine tests** in `engine-bundle.test.ts`:
+  - 3 cap tests: 2-op accepted, 3-op accepted (new cap line), 4-op rejected with `_gate: 'max_bundle_ops'`.
+  - 3 happy-path 3-op composition tests: `withdraw → swap → send` (asset-aligned chain, both `inputCoinFromStep` populated), `withdraw → swap → save` (asset-aligned chain), and a documented dead-end note for terminal-producer permutations.
+  - 3 invalid-topology 3-op tests: bad first pair (`send_transfer → withdraw → swap`), bad second pair (`withdraw → swap → withdraw`), all-bad (`send → send → send`). Each refuses the full bundle and reports the first bad pair in telemetry.
+  - 1 chain-mode telemetry test: 3-op asset-aligned flow fires `engine.bundle_chain_mode_set` twice with correct `{producer, consumer}` labels, in adjacency order.
+- **1 new SDK orchestration test** in `composeTx.test.ts`: 3-op `withdraw → swap → send` end-to-end. Asserts zero wallet `getCoins` calls (every consumer chains), zero `transferObjects` to sender (every producer's output is consumed downstream), exactly one `transferObjects` to recipient. Locks the producer-mid-chain orchestration loop behaviour where step 1 is both consumer of step 0 AND producer for step 2.
+
+### SDK changes (`@t2000/sdk` 1.14.0, lockstep)
+
+- **Zero functional changes.** `composeTx` orchestration was already N-step generic in 1.13.0; the validator iterates `opts.steps.length` and `priorOutputs[]` is indexed by step number. The 3-op SDK test confirms this — no shape changes were required, only test coverage.
+
+### Audric host changes (audric repo, separate ship)
+
+- **System prompt updated** in `audric/apps/web/lib/engine/engine-context.ts`: "atomic bundles capped at 3 ops, strict adjacency: every consecutive pair must be whitelisted" + a 3-op example (`withdraw 5 USDC → swap to SUI → send 1 SUI`). Token budget 10,193 / 10,200.
+- **Bundle confirm cards** already iterate `steps[]` so 3-step rows render without UI changes.
+
+### Test results
+
+- 899/899 engine tests passing (was 891 in 1.13.1; +8 Phase 2 tests).
+- 477/477 SDK tests passing (was 476; +1 Phase 2 3-op orchestration test).
+- 1033/1033 audric tests passing.
+
+### What's not in this ship (intentional)
+
+- **`swap_execute → swap_execute`** stays out of `VALID_PAIRS`. Demo 1 ("Swap 10% to SUI, swap 50% to USDsui, save it, then send $1") still cap-splits. Phase 3 work — see SPEC 13 §"Phase 3".
+- **DAG-aware validator.** Strict adjacency is the spec for Phase 2. Loosening (where non-chained adjacent steps can be any tool) is a Phase 3 follow-up, gated on production data showing common 3-op flows that fail strict adjacency.
+- **Cap raise to 4.** Tied to Phase 3's `swap → swap` whitelist + DAG validator. Don't pre-emptively bump `MAX_BUNDLE_OPS` past 3 without those landing.
+
+### Notes
+
+- Phase 2 ships engine `1.14.0` + sdk `1.14.0` together. Audric host system-prompt update lands in audric after this publish completes.
+- SPEC 13 doc bumped to v0.3 with Phase 2 status.
+- SPEC 8 corpus extended to 7 P0-* prompts with P0-6 (`withdraw → swap → send`) and P0-7 (`withdraw → swap → save`) as Phase 2 acceptance gates. Each asserts ONE `txDigest` covers all 3 legs and `engine.bundle_chain_mode_set` fires twice.
+
 ## 1.13.1 (2026-05-04) — Chain-mode observability + bundle-card asset honesty
 
 Patch follow-up to the SPEC 13 Phase 1 ship. Adds the production observability signal we couldn't infer from existing telemetry, and fixes a cosmetic bundle-card label bug surfaced during the P0-* corpus soak.

@@ -49,41 +49,46 @@ import type {
 import type { PendingToolCall } from './orchestration.js';
 
 /**
- * [Phase 0 / SPEC 13 / 2026-05-03] Maximum number of writes per atomic bundle.
+ * [Phase 0 → Phase 2 / SPEC 13] Maximum number of writes per atomic bundle.
  *
- * **History.** This was 5 between F14-fix-2 (2026-05-03 morning) and
- * Phase 0 (2026-05-03 evening). The May 3 production review found that
- * the underlying problem was never the count — bundles fail because
- * SDK appenders pre-fetch coins from the wallet and the chained asset
- * doesn't exist there yet (e.g. `swap_execute(USDC→USDsui) +
- * save_deposit(USDsui)` reverts at PREPARE because USDsui isn't in the
- * wallet at compose time). SPEC 13 builds the chained-coin handoff
- * primitive. Until that ships in `1.13.0`, Phase 0 strict-tightens
- * bundles to:
+ * **History.**
+ *  - Pre-Phase-0: 5 (F14-fix-2, 2026-05-03 morning).
+ *  - Phase 0 (1.12.0, 2026-05-03 evening): tightened to 2 after the May 3
+ *    production review found bundle failures all reduced to chained-asset
+ *    gaps — the SDK pre-fetched coins from the wallet and the chained
+ *    asset didn't exist yet (e.g. `swap_execute(USDC→USDsui) +
+ *    save_deposit(USDsui)` reverted at PREPARE because USDsui wasn't in
+ *    the wallet at compose time).
+ *  - Phase 1 (1.13.0): cap stayed 2. SPEC 13 Phase 1 added the chained-
+ *    coin handoff primitive (`PendingActionStep.inputCoinFromStep` +
+ *    `composeTx` orchestration loop) but didn't widen the cap. The
+ *    primitive is what makes Phase 2's raise to 3 possible — without it,
+ *    every additional step is another wallet-fetch race.
+ *  - Phase 2 (1.14.0, this version): cap raised to 3. Composition rule
+ *    is strict-adjacency: every (step[i], step[i+1]) pair must be in
+ *    `VALID_PAIRS`. No new pairs added — Phase 2 is purely the cap raise
+ *    + adjacency-loop validation. The chain-mode population loop already
+ *    runs over every `(i, i+1)` since 1.13.0, so 3-op atomic bundles
+ *    like `withdraw → swap → send` thread two coin handles end-to-end
+ *    in one PTB.
  *
- *   - Cap = 2 ops (was 5).
- *   - Every adjacent pair MUST be in `VALID_PAIRS` (was: any 2
- *     bundleable tools).
+ * **Why strict adjacency?** Every consecutive pair must be whitelisted
+ * even if the consumer doesn't chain (no `inputCoinFromStep`). This
+ * keeps the validator simple and matches the spec's Phase 2 model. The
+ * looser DAG-aware variant (where non-chained adjacent steps can be
+ * any tool combo) is a Phase 3 follow-up — defer until we see real
+ * production flows that need it.
  *
- * **Why 2.** Every multi-write production failure today reduces to
- * the same gap: a chained-asset bundle whose intermediate output
- * doesn't exist in the wallet yet. The `VALID_PAIRS` whitelist below
- * enumerates every (producer, consumer) couple where chaining either
- * works today (because the consumer takes a wallet coin that the
- * producer happens to leave there via `tx.transferObjects`) OR will
- * work after Phase 1. Anything outside the whitelist falls through
- * to sequential — same outcome the LLM was already producing as a
- * fallback, just without the wasted PREPARE round-trip.
- *
- * **Why not 3+.** 3-op chains require a graph validator (every adjacent
- * pair valid + DAG topology checks) — that's Phase 2. Cap stays at 2
- * until Phase 1 lands the validator.
+ * **Phase 3+:** `swap_execute → swap_execute` (Demo 1 unlock) + DAG-aware
+ * validator + cap raise to 4. SPEC 13 §"Phase 3" / §"Phase 5" tracks
+ * these. Don't pre-emptively raise this constant past 3 without those
+ * landing.
  *
  * Hosts importing this constant for system-prompt construction get the
- * current cap automatically. Bumping the cap in Phase 1 + Phase 2 + …
- * is a one-line change here that propagates to prompts via the import.
+ * current cap automatically. Bumping the cap is a one-line change here
+ * that propagates to prompts via the import.
  */
-export const MAX_BUNDLE_OPS = 2;
+export const MAX_BUNDLE_OPS = 3;
 
 /**
  * [Phase 0 / SPEC 13] Whitelisted (producer, consumer) pairs for atomic

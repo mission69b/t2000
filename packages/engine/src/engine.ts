@@ -1575,29 +1575,42 @@ export class QueryEngine {
         this.turnPaused = true;
 
         if (allBundleable) {
-          // [Phase 0 / SPEC 13 / 2026-05-03 evening] VALID_PAIRS whitelist.
-          // For 2-op bundles, the (producer, consumer) pair must be in
-          // the whitelist. Pairs outside it (swap→swap, borrow→swap,
-          // save→send, etc.) fail in production today because of the
-          // chained-asset gap — refusing up front is cheaper than a
-          // guaranteed-revert PREPARE round-trip. Phase 1 (SPEC 13)
-          // lands the chain-handoff primitive and most of these
-          // become valid as the registry grows.
+          // [Phase 0 → Phase 2 / SPEC 13] VALID_PAIRS strict-adjacency check.
           //
-          // The cap is already 2 (MAX_BUNDLE_OPS), so length is always
-          // exactly 2 here — but the check is written defensively so
-          // a future cap raise (Phase 2+) doesn't silently bypass it.
-          if (guardPassedWrites.length === 2) {
-            const producer = guardPassedWrites[0].call.name;
-            const consumer = guardPassedWrites[1].call.name;
-            const check = checkValidPair(producer, consumer);
-            if (!check.ok) {
+          // For multi-write bundles (N ≥ 2), every (step[i], step[i+1])
+          // pair must be in the whitelist. Pairs outside it (swap→swap,
+          // borrow→swap, save→send, etc.) fail in production because of
+          // the chained-asset gap — refusing up front is cheaper than a
+          // guaranteed-revert PREPARE round-trip.
+          //
+          // Phase 0 (1.12.0): cap was 2, this loop ran once.
+          // Phase 2 (1.14.0): cap is 3, this loop runs up to twice.
+          // First non-whitelisted pair fails the entire bundle (atomic
+          // — all-or-nothing — there's no "salvage the prefix" path).
+          //
+          // Phase 3 work: relax to DAG-aware (only validate pairs that
+          // actually chain via inputCoinFromStep). Until then, strict
+          // adjacency is the spec.
+          if (guardPassedWrites.length >= 2) {
+            let badPair: { ok: false; pair: string } | null = null;
+            for (let i = 0; i < guardPassedWrites.length - 1; i++) {
+              const producer = guardPassedWrites[i].call.name;
+              const consumer = guardPassedWrites[i + 1].call.name;
+              const check = checkValidPair(producer, consumer);
+              if (!check.ok) {
+                badPair = check;
+                break;
+              }
+            }
+            if (badPair !== null) {
+              const N = guardPassedWrites.length;
+              const stepsPhrase = N === 2 ? 'two steps' : `${N} steps`;
               const pairError = {
                 error:
-                  `Bundle pair '${check.pair}' is not in the Phase 0 chaining whitelist. ` +
+                  `Bundle pair '${badPair.pair}' is not in the chaining whitelist. ` +
                   `Whitelisted pairs: ${[...VALID_PAIRS].join(', ')}. ` +
-                  `Run these two writes sequentially: tell the user "I'll do this in two steps", ` +
-                  `emit only the first write, then the second after it lands and confirms.`,
+                  `Run these ${N} writes sequentially: tell the user "I'll do this in ${stepsPhrase}", ` +
+                  `emit only the first write, then the next after it lands and confirms.`,
                 _gate: 'pair_not_whitelisted',
               };
               for (const write of guardPassedWrites) {
@@ -1621,7 +1634,7 @@ export class QueryEngine {
               getTelemetrySink().counter('engine.turn_outcome', {
                 entry: freshPrompt !== null ? 'submit' : 'resume',
                 outcome: 'pair_not_whitelisted_continue',
-                pair: check.pair,
+                pair: badPair.pair,
               });
               continue;
             }
