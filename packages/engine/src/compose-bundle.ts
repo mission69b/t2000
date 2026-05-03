@@ -47,6 +47,37 @@ import type {
 } from './types.js';
 import type { PendingToolCall } from './orchestration.js';
 
+/**
+ * [F14-fix-2 / 2026-05-03] Maximum number of writes per atomic bundle.
+ *
+ * The engine refuses to compose a `pending_action` with more than this
+ * many steps. Bundles with N > MAX_BUNDLE_OPS get all-step error
+ * tool_results synthesized in `engine.ts` so the LLM re-plans into two
+ * sequential ≤N-op bundles. Why 5:
+ *
+ *  - Vercel runtime budget. At N>5 writes, Turn 2's emission + guard
+ *    work + bundle compose has been observed in production to push
+ *    /api/engine/chat past the 300s `maxDuration`. Reducing the cap
+ *    keeps every flow well under the timeout.
+ *  - Quote-freshness coupling. SwapQuoteTracker `windowMs = 60_000`.
+ *    With N>5 (especially 2+ swap legs), Turn 2's planning + emission
+ *    routinely bleeds past 60s; the stale-quote guard then blocks
+ *    swap_execute on legs whose quote went stale during thinking.
+ *  - LLM working memory. Sonnet+medium has been observed to drop
+ *    legs when bundling >5 writes (the original B2 incident — LLM
+ *    asked to emit 6 writes in one Turn 2 emitted only 3).
+ *  - User cognitive load. A 6+ leg PermissionCard takes 30+ seconds
+ *    to re-read; capping at 5 keeps the card scannable.
+ *  - PTB instruction budget. Sui PTB max instructions ~1024; each leg
+ *    consumes 5–20 instructions. 5 legs ≤ 100 instructions — well
+ *    under the cap with comfortable headroom for nested splits.
+ *
+ * Hosts that want to advertise the cap in system prompts should import
+ * this constant rather than hardcoding `5` — bumping the cap in one
+ * place keeps host prompts and engine behavior in lockstep.
+ */
+export const MAX_BUNDLE_OPS = 5;
+
 export interface BundleCompositionInput {
   /** All confirm-tier bundleable writes the LLM emitted in this turn. MUST be ≥2. */
   pendingWrites: PendingToolCall[];

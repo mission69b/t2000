@@ -40,7 +40,7 @@ import { microcompact } from './compact/microcompact.js';
 import { resolvePermissionTier, resolveUsdValue, toolNameToOperation } from './permission-rules.js';
 import { EarlyToolDispatcher } from './early-dispatcher.js';
 import { TurnReadCache } from './turn-read-cache.js';
-import { composeBundleFromToolResults } from './compose-bundle.js';
+import { composeBundleFromToolResults, MAX_BUNDLE_OPS } from './compose-bundle.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -1439,6 +1439,55 @@ export class QueryEngine {
       } else {
         // No guard config — all collected writes pass through.
         guardPassedWrites.push(...pendingWrites);
+      }
+
+      // [F14-fix-2 / 2026-05-03] MAX_BUNDLE_OPS cap. Compound flows the
+      // LLM tries to atomize into a bundle of >MAX_BUNDLE_OPS writes are
+      // bounded here as a defense-in-depth measure. Why 5:
+      //   - Vercel runtime budget: at >5 writes, Turn 2's emission +
+      //     guard work + bundle compose has been observed to push
+      //     /api/engine/chat past the 300s timeout in production
+      //     (S.53.6 production repro 2026-05-03).
+      //   - Quote-freshness window: SwapQuoteTracker windowMs=60s. With
+      //     >5 writes including 2+ swap legs, Turn 2's planning often
+      //     bleeds past 60s and stale-quote guards block.
+      //   - LLM working-memory: Sonnet+medium has been observed to drop
+      //     legs when bundling >5 writes (S.53.6 B2 incident).
+      //   - PermissionCard cognitive load: a 6+ leg card requires a
+      //     30+ second user re-read; capping at 5 keeps it scannable.
+      //
+      // We drop ALL guardPassedWrites with synthesized error tool_results
+      // so the LLM gets visibility and re-plans into two sequential
+      // bundles. The audric host pairs this with a system-prompt rule
+      // teaching the LLM to split 6+ op compound flows up front.
+      if (guardPassedWrites.length > MAX_BUNDLE_OPS) {
+        const cappedError = {
+          error:
+            `Compound flows are capped at ${MAX_BUNDLE_OPS} atomic ops per bundle. ` +
+            `You attempted ${guardPassedWrites.length}. ` +
+            `Split into two sequential bundles (≤${MAX_BUNDLE_OPS} ops each) across two confirmation rounds. ` +
+            `Tell the user "I'll do this in two steps — first <ops 1-${MAX_BUNDLE_OPS}>, then after that confirms, <remaining ops>" and emit ` +
+            `only the first ${MAX_BUNDLE_OPS} writes for the first bundle.`,
+          _gate: 'max_bundle_ops',
+        };
+        for (const write of guardPassedWrites) {
+          yield {
+            type: 'tool_result',
+            toolName: write.call.name,
+            toolUseId: write.call.id,
+            result: cappedError,
+            isError: true,
+          };
+          toolResultBlocks.push({
+            type: 'tool_result',
+            toolUseId: write.call.id,
+            content: JSON.stringify(cappedError),
+            isError: true,
+          });
+        }
+        this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+        this.messages.push({ role: 'user', content: toolResultBlocks });
+        continue;
       }
 
       // [SPEC 7 P2.3 Layer 2] Bundle vs single-write decision.

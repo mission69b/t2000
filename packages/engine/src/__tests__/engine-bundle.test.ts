@@ -510,3 +510,115 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     expect(refreshStarts).toHaveLength(0);
   });
 });
+
+// [F14-fix-2 / 2026-05-03] MAX_BUNDLE_OPS cap regression suite.
+// Covers the production repro where Sonnet+medium attempted to bundle
+// 6 writes in one Turn 2, blew past Vercel's timeout / quote-window /
+// LLM-working-memory budget, and produced a stuck-pending state with
+// no PermissionCard rendered. Cap = 5 hard refuses anything larger so
+// the LLM is forced to split into two confirmation rounds.
+describe('SPEC F14-fix-2 — MAX_BUNDLE_OPS cap', () => {
+  // Helper: mint N pending writes for a single LLM turn.
+  function makeTurnOf(n: number): ScriptedTurn[] {
+    return Array.from({ length: n }, (_, i) => ({
+      type: 'tool_call' as const,
+      id: `tc-${i + 1}`,
+      name: 'send_transfer',
+      input: { amount: i + 1, to: `0x${i + 1}` },
+    }));
+  }
+
+  it('accepts a 5-op bundle (at the cap)', async () => {
+    const provider = createMockProvider([makeTurnOf(5)]);
+    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
+    const events = await collectEvents(engine.submitMessage('5 sends'));
+    const pending = events.find((e) => e.type === 'pending_action') as
+      | (EngineEvent & { type: 'pending_action'; action: PendingAction })
+      | undefined;
+    expect(pending).toBeDefined();
+    expect(pending!.action.steps).toHaveLength(5);
+  });
+
+  it('refuses a 6-op bundle and yields N=6 max_bundle_ops error tool_results', async () => {
+    // Two LLM turns: turn 1 emits 6 writes (refused), turn 2 narrates
+    // the refusal so the engine returns an `end_turn` cleanly.
+    const provider = createMockProvider([
+      makeTurnOf(6),
+      [
+        {
+          type: 'text',
+          text: 'I will split this into two bundles — first 5 sends, then the 6th after you confirm.',
+        },
+      ],
+    ]);
+    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
+    const events = await collectEvents(engine.submitMessage('6 sends'));
+
+    // No pending_action — bundle was capped before composition.
+    const pending = events.find((e) => e.type === 'pending_action');
+    expect(pending).toBeUndefined();
+
+    // 6 error tool_results (one per dropped write), each with the cap
+    // error envelope so the LLM has visibility into the refusal.
+    const errorResults = events.filter(
+      (e) => e.type === 'tool_result' && e.isError,
+    ) as Array<EngineEvent & { type: 'tool_result' }>;
+    expect(errorResults).toHaveLength(6);
+    for (const er of errorResults) {
+      const result = er.result as { error?: string; _gate?: string };
+      expect(result._gate).toBe('max_bundle_ops');
+      expect(result.error).toMatch(/capped at 5/);
+      expect(result.error).toMatch(/Split into two sequential/);
+    }
+  });
+
+  it('refuses a 7-op bundle (above the cap by more than 1)', async () => {
+    const provider = createMockProvider([
+      makeTurnOf(7),
+      [{ type: 'text', text: 'I will split.' }],
+    ]);
+    const tools = applyToolFlags([makeWrite('send_transfer')]);
+    const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
+    const events = await collectEvents(engine.submitMessage('7 sends'));
+    const errorResults = events.filter(
+      (e) => e.type === 'tool_result' && e.isError,
+    );
+    expect(errorResults).toHaveLength(7);
+    expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
+  });
+
+  it('production repro: 6-op compound flow (repay + 2 swaps + save + borrow + send) returns capped error', async () => {
+    // Mirrors the exact production failure shape — 6 writes spanning
+    // every confirm-tier bundleable operation. Pre-fix this would
+    // compose a 6-step pending_action; post-fix the engine refuses
+    // and the LLM has to re-plan.
+    const provider = createMockProvider([
+      [
+        { type: 'tool_call', id: 'tc-1', name: 'repay_debt', input: { amount: 2 } },
+        { type: 'tool_call', id: 'tc-2', name: 'swap_execute', input: { amount: 1.98 } },
+        { type: 'tool_call', id: 'tc-3', name: 'swap_execute', input: { amount: 5 } },
+        { type: 'tool_call', id: 'tc-4', name: 'save_deposit', input: { amount: 9.99 } },
+        { type: 'tool_call', id: 'tc-5', name: 'borrow', input: { amount: 1 } },
+        { type: 'tool_call', id: 'tc-6', name: 'send_transfer', input: { amount: 1 } },
+      ],
+      [{ type: 'text', text: 'I will split into two sequential bundles.' }],
+    ]);
+    const tools = applyToolFlags([
+      makeWrite('repay_debt'),
+      makeWrite('swap_execute'),
+      makeWrite('save_deposit'),
+      makeWrite('borrow'),
+      makeWrite('send_transfer'),
+    ]);
+    const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
+    const events = await collectEvents(engine.submitMessage('compound 6'));
+
+    expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
+    const errorIds = events
+      .filter((e) => e.type === 'tool_result' && e.isError)
+      .map((e) => (e as EngineEvent & { type: 'tool_result' }).toolUseId);
+    expect(errorIds).toEqual(['tc-1', 'tc-2', 'tc-3', 'tc-4', 'tc-5', 'tc-6']);
+  });
+});

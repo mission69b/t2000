@@ -39,6 +39,10 @@ export { harnessShapeForEffort } from './types.js';
 // [SPEC 7 v0.4 Layer 2] Per-tool result freshness budgets for the
 // Quote-Refresh ReviewCard (Layer 3 / P2.4b host wires the regenerate UI).
 export { TOOL_TTL_MS, DEFAULT_TOOL_TTL_MS, bundleShortestTtl, REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
+// [F14-fix-2 / 2026-05-03] MAX_BUNDLE_OPS exposed so host system
+// prompts can advertise the cap programmatically (audric/web reads it
+// from `engine-context.ts`). See `compose-bundle.ts` for the rationale.
+export { MAX_BUNDLE_OPS } from './compose-bundle.js';
 
 // [SPEC 7 P2.4b] Bundle regeneration — re-fire upstream reads + rebuild
 // a multi-step pending_action without re-running the LLM. Hosts call
