@@ -45,11 +45,28 @@ export { TOOL_TTL_MS, DEFAULT_TOOL_TTL_MS, bundleShortestTtl, REGENERATABLE_READ
 // (Phase 0 evening); whitelist enumerates the 7 pairs that can bundle
 // atomically today. See `compose-bundle.ts:MAX_BUNDLE_OPS` JSDoc for
 // the rationale and the SPEC 13 phased rollout that lifts the cap.
+//
+// **[SPEC 15 v0.7 follow-up #3 — single-source bundle composer, 2026-05-04]**
+// `composeBundleFromToolResults` is now a public export. Hosts that
+// produce bundles outside the canonical engine agent loop (today:
+// audric's chip-Confirm fast-path in `audric/apps/web/lib/engine/
+// fast-path-bundle.ts`) MUST call this helper instead of building
+// `PendingAction`s by hand — that's how the bundle PermissionCard's
+// `↻ Refresh quote` button + `modifiableFields` inline edits + every
+// future bundle-shape addition stay in sync across paths. Drift was
+// the root cause of the "no Refresh button on chip-confirmed
+// bundles" production bug fixed here.
+//
+// `BundleCompositionInput` is exported so hosts can type the input
+// without re-importing the type from a deeper path.
 export {
   MAX_BUNDLE_OPS,
   VALID_PAIRS,
   checkValidPair,
+  composeBundleFromToolResults,
+  computeRegenerateFields,
 } from './compose-bundle.js';
+export type { BundleCompositionInput } from './compose-bundle.js';
 
 // [SPEC 7 P2.4b] Bundle regeneration — re-fire upstream reads + rebuild
 // a multi-step pending_action without re-running the LLM. Hosts call
