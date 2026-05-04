@@ -14,7 +14,7 @@ export const borrowTool = buildTool({
     'Returns tx hash, fee, asset borrowed, and post-borrow health factor. ' +
     'When the user says "borrow 10 USDC" pass asset="USDC". When they say "borrow 10 USDsui" pass asset="USDsui". ' +
     'When they say "borrow 10" with no asset, default to USDC unless the user has only USDsui collateral. ' +
-    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "borrow $50 and send to Mom"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
+    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "borrow $50 and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     amount: z.number().positive(),
     asset: z.enum(BORROW_ASSETS).optional().describe('"USDC" or "USDsui". Defaults to USDC when omitted.'),

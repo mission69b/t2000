@@ -11,7 +11,7 @@ export const repayDebtTool = buildTool({
     'Pass asset="USDC" or asset="USDsui" to target a specific debt. When omitted, repays the highest-APY borrow first. ' +
     'Important: a USDsui debt MUST be repaid with USDsui (and USDC debt with USDC) — the SDK fetches the correct coin type for the targeted asset, but the user must hold enough of that stable in their wallet. ' +
     'If the user has only the wrong stable, do NOT auto-swap — tell them to swap manually first. Returns tx hash, amount repaid, asset, and remaining debt. ' +
-    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "repay debt then withdraw the rest"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
+    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "repay debt then withdraw the rest"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     amount: z.number().positive(),
     asset: z.enum(REPAY_ASSETS).optional().describe('"USDC" or "USDsui". When omitted, repays the highest-APY borrow first.'),

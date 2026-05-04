@@ -86,7 +86,7 @@ export class RecipeRegistry {
       // Open the bundle block on the first bundle step.
       if (showBundleHeader && step.bundle === true && !openedBundleHeader) {
         lines.push(
-          'PAYMENT STREAM — emit ALL the following bundleable writes as parallel `tool_use` blocks IN THE SAME ASSISTANT TURN. The engine collapses them into ONE atomic PTB the user signs once. Do NOT execute step-by-step across turns:',
+          'PAYMENT INTENT — emit ALL the following composable writes as parallel `tool_use` blocks IN THE SAME ASSISTANT TURN. The engine compiles them into ONE atomic Payment Intent the user signs once. Do NOT execute step-by-step across turns:',
         );
         openedBundleHeader = true;
       }
@@ -96,7 +96,7 @@ export class RecipeRegistry {
       // paired-write composition (e.g. emergency_withdraw will pair with
       // repay_debt in close-position flows) and is a no-op at LLM-prompt
       // time. Tagging it would be confusing.
-      const bundleTag = showBundleHeader && step.bundle === true ? ' [PAYMENT STREAM]' : '';
+      const bundleTag = showBundleHeader && step.bundle === true ? ' [PAYMENT INTENT]' : '';
       let line = `${num}. ${step.name}${toolNote}${serviceNote}${costNote}${gateNote}${bundleTag}`;
 
       if (step.gate_prompt) {

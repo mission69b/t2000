@@ -9,7 +9,7 @@ export const withdrawTool = buildTool({
     'Audric supports ONLY USDC and USDsui — these are the same two stables save_deposit accepts. ' +
     'NAVI may also surface legacy positions (USDe, SUI, etc.) in savings_info / balance_check; those are READ-ONLY through Audric. ' +
     'For non-canonical positions, direct the user to NAVI\'s app (https://app.naviprotocol.io) — Audric will not withdraw them. ' +
-    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "withdraw and send to Mom"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
+    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "withdraw and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     amount: z.number().positive(),
     asset: z.string().optional().describe('Asset to withdraw — must be USDC (default) or USDsui. Other assets surfaced in savings_info are read-only via Audric.'),

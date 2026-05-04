@@ -25,7 +25,7 @@ export const sendTransferTool = buildTool({
     `MUST set the \`asset\` field to the token symbol you want to send (case-insensitive). If \`asset\` is omitted, USDC is assumed — only do this when the user explicitly asks for USDC. ` +
     `When the user asks to send a token by name (SUI, USDT, etc.) or to send the proceeds of a just-completed swap, you MUST pass \`asset\` matching that token. ` +
     `Returns tx hash, gas cost, and updated balance. ` +
-    `Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "swap to USDC and send to Mom", "withdraw and send"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.`,
+    `Payment Intent: composable — when paired with another composable write in the same request (e.g. "swap to USDC and send to Mom", "withdraw and send"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.`,
   inputSchema: z.object({
     to: z.string().min(1),
     amount: z.number().positive(),

@@ -6,7 +6,7 @@ export const voloStakeTool = buildTool({
   name: 'volo_stake',
   description:
     'Stake SUI for vSUI via VOLO liquid staking. Earn ~3-5% APY. Rewards compound automatically via exchange rate — no claiming needed. Minimum 1 SUI. ' +
-    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "swap USDC to SUI and stake"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
+    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "swap USDC to SUI and stake"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     amount: z.number().min(1).describe('Amount of SUI to stake (minimum 1)'),
   }),

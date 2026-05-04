@@ -42,29 +42,29 @@ const safeBorrowLike: Recipe = {
 };
 
 describe('RecipeRegistry.toPromptContext — bundle annotations', () => {
-  it('shows the PAYMENT STREAM header when ≥2 bundle: true steps exist', () => {
+  it('shows the PAYMENT INTENT header when ≥2 bundle: true steps exist', () => {
     const registry = new RecipeRegistry();
     const out = registry.toPromptContext(swapAndSaveLike);
-    expect(out).toContain('PAYMENT STREAM — emit ALL the following bundleable writes as parallel');
-    expect(out).toMatch(/swap_to_usdc.*\[PAYMENT STREAM\]/);
-    expect(out).toMatch(/deposit.*\[PAYMENT STREAM\]/);
-    expect(out).not.toMatch(/check_balance.*\[PAYMENT STREAM\]/);
+    expect(out).toContain('PAYMENT INTENT — emit ALL the following composable writes as parallel');
+    expect(out).toMatch(/swap_to_usdc.*\[PAYMENT INTENT\]/);
+    expect(out).toMatch(/deposit.*\[PAYMENT INTENT\]/);
+    expect(out).not.toMatch(/check_balance.*\[PAYMENT INTENT\]/);
   });
 
-  it('does NOT show the PAYMENT STREAM header when 0 bundle: true steps exist', () => {
+  it('does NOT show the PAYMENT INTENT header when 0 bundle: true steps exist', () => {
     const registry = new RecipeRegistry();
     const out = registry.toPromptContext(accountReportLike);
-    expect(out).not.toContain('PAYMENT STREAM');
+    expect(out).not.toContain('PAYMENT INTENT');
   });
 
-  it('does NOT show the PAYMENT STREAM header when only 1 bundle: true step exists', () => {
+  it('does NOT show the PAYMENT INTENT header when only 1 bundle: true step exists', () => {
     // The marker exists for future paired-write composition but a lone
     // bundle: true step is a no-op (engine only bundles when ≥2 writes
     // emit in the same turn).
     const registry = new RecipeRegistry();
     const out = registry.toPromptContext(safeBorrowLike);
-    expect(out).not.toContain('PAYMENT STREAM — emit ALL');
-    expect(out).not.toMatch(/\[PAYMENT STREAM\]/);
+    expect(out).not.toContain('PAYMENT INTENT — emit ALL');
+    expect(out).not.toMatch(/\[PAYMENT INTENT\]/);
   });
 
   it('preserves all the legacy step fields (tool, gate, notes, on_error)', () => {

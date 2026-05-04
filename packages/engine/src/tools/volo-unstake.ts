@@ -6,7 +6,7 @@ export const voloUnstakeTool = buildTool({
   name: 'volo_unstake',
   description:
     'Unstake vSUI back to SUI. Returns SUI including accumulated yield. Use amount in vSUI units or "all" to unstake entire position. ' +
-    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "unstake vSUI and send to Mom"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
+    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "unstake vSUI and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     amount: z.union([z.number().positive(), z.literal('all')]).describe('Amount of vSUI to unstake, or "all"'),
   }),

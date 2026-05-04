@@ -25,9 +25,9 @@ describe('[F8] withdraw tool description — USDC + USDsui only, no legacy claim
     expect(withdrawTool.description).toMatch(/naviprotocol\.io|NAVI'?s? app/);
   });
 
-  it('keeps the Payment Stream bundleable hint intact', () => {
-    expect(withdrawTool.description).toMatch(/Payment Stream/);
-    expect(withdrawTool.description).toMatch(/bundleable/);
+  it('keeps the Payment Intent composable hint intact', () => {
+    expect(withdrawTool.description).toMatch(/Payment Intent/);
+    expect(withdrawTool.description).toMatch(/composable/);
   });
 
   it('asset jsonSchema description constrains to USDC + USDsui', () => {

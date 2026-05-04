@@ -18,7 +18,7 @@ export const claimRewardsTool = buildTool({
   name: 'claim_rewards',
   description:
     'Claim all pending protocol rewards across lending adapters. Returns the claimed reward breakdown (per-asset symbol + amount), total USD value (best effort — may be 0 when oracle prices are unavailable), and the on-chain tx hash. When the rewards list is empty the response will explicitly say "no pending rewards"; when it is non-empty narrate the per-symbol amounts even if totalValueUsd is 0 (the on-chain credit still happened). ' +
-    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "claim rewards and stake them"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
+    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "claim rewards and stake them"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({}),
   jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: false,

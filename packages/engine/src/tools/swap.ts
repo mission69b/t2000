@@ -7,7 +7,7 @@ export const swapExecuteTool = buildTool({
   name: 'swap_execute',
   description:
     'Swap tokens on Sui via Cetus Aggregator (20+ DEXs). Supports any token pair with liquidity. Use user-friendly names (SUI, USDC, CETUS, DEEP, etc.) or full coin types. ' +
-    'Payment Stream: bundleable — when paired with another bundleable write in the same request (e.g. "swap to USDC and save", "swap and send to Mom"), emit all calls in the same assistant turn so the engine collapses them into one atomic PTB the user signs once.',
+    'Payment Intent: composable — when paired with another composable write in the same request (e.g. "swap to USDC and save", "swap and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     from: z.string().describe('Source token (e.g. "SUI", "USDC", or full coin type)'),
     to: z.string().describe('Target token (e.g. "USDC", "CETUS", or full coin type)'),

@@ -117,7 +117,7 @@ const PRIMITIVES = [
 ];
 
 const ARCH_LAYERS = [
-  { label: "Layer 1 \u2014 Sui L1", content: "400ms finality \u00B7 USDC \u00B7 PTBs \u00B7 zkLogin primitive" },
+  { label: "Layer 1 \u2014 Sui L1", content: "400ms finality \u00B7 USDC \u00B7 Payment Intents \u00B7 zkLogin primitive" },
   {
     label: "Layer 2 \u2014 Protocols",
     split: [
