@@ -25,8 +25,8 @@ steps:
 
   # [SPEC 7 P2.5] Marking `execute_swaps` with `bundle: true` flips the
   # rebalance flow from "execute one swap, wait, execute next" to "emit ALL
-  # the swap_execute calls in the same assistant turn so the engine bundles
-  # them into one Payment Stream PTB". Result: every swap in the rebalance
+  # the swap_execute calls in the same assistant turn so the engine compiles
+  # them into one Payment Intent". Result: every swap in the rebalance
   # executes against the same on-chain price snapshot — no slippage drift
   # between legs — and the user signs once.
   - name: execute_swaps
@@ -36,10 +36,10 @@ steps:
     requires:
       - step: plan_trades
         confirmation: true
-    notes: "Emit one swap_execute call per leg of the rebalance — ALL in the same assistant turn. The engine collapses them into one atomic Payment Stream so every leg prices against the same Sui state. Do NOT call them sequentially across turns."
+    notes: "Emit one swap_execute call per leg of the rebalance — ALL in the same assistant turn. The engine compiles them into one atomic Payment Intent so every leg prices against the same Sui state. Do NOT call them sequentially across turns."
     on_error:
       action: abort
-      message: "Stream failed — {{error}}. No swaps executed (atomic Payment Stream)."
+      message: "Intent failed — {{error}}. No swaps executed (atomic Payment Intent)."
 
   - name: summary
     purpose: Report final positions

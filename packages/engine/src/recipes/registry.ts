@@ -62,10 +62,10 @@ export class RecipeRegistry {
     ];
 
     // [SPEC 7 P2.5 Layer 4] Steps marked `bundle: true` form a Payment
-    // Stream group — surface them as ONE bracketed "PAYMENT STREAM —
+    // Intent group — surface them as ONE bracketed "PAYMENT INTENT —
     // emit in parallel" block inline with the step list so the LLM sees
-    // the explicit bundle instruction next to the affected steps. Without
-    // this, recipes that mark write steps as bundleable would still drive
+    // the explicit compile instruction next to the affected steps. Without
+    // this, recipes that mark write steps as composable would still drive
     // sequential emission because the LLM only reads the numbered list.
     const bundleSteps = recipe.steps.filter((s) => s.bundle === true);
     const bundleStepNames = new Set(bundleSteps.map((s) => s.name));

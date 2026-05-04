@@ -17,9 +17,9 @@ steps:
 
   # [SPEC 7 P2.5] Both writes carry `bundle: true` so the LLM emits the two
   # `tool_use` blocks in the same assistant turn. The engine's permission gate
-  # collapses them into ONE bundled `pending_action` (one PermissionCard, one
+  # compiles them into ONE compiled `pending_action` (one PermissionCard, one
   # signature, atomic). No more sequential "swap → wait → deposit" — the
-  # `received` coin-ref is handed off in-PTB at compose time (Layer 1).
+  # `received` coin-ref is handed off in-Payment-Intent at compose time (Layer 1).
   - name: swap_to_usdc
     tool: swap_execute
     purpose: Swap source token to USDC
@@ -31,7 +31,7 @@ steps:
     gate_prompt: "At ${{price}}/{{token}}, you'll receive ~${{estimate}} USDC."
     on_error:
       action: abort
-      message: "Stream failed — {{error}}. No funds moved (atomic Payment Stream)."
+      message: "Intent failed — {{error}}. No funds moved (atomic Payment Intent)."
 
   - name: deposit
     tool: save_deposit
@@ -41,7 +41,7 @@ steps:
       - step: swap_to_usdc
         field: received
     gate: none
-    notes: "Inside the same Payment Stream — the swap's received coin is handed off as the deposit input via PTB coin-ref, not as a separate confirm."
+    notes: "Inside the same Payment Intent — the swap's received coin is handed off as the deposit input via coin-ref, not as a separate confirm."
     on_error:
       action: abort
-      message: "Stream failed — {{error}}. Both legs reverted (atomic Payment Stream)."
+      message: "Intent failed — {{error}}. Both legs reverted (atomic Payment Intent)."
