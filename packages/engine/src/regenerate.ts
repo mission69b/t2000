@@ -1,7 +1,7 @@
 /**
  * SPEC 7 v0.3 Quote-Refresh ReviewCard — engine-side bundle regeneration.
  *
- * When a user takes 30–60s to read a multi-step Payment Stream
+ * When a user takes 30–60s to read a multi-step Payment Intent
  * `pending_action`, the upstream read results that fed bundle composition
  * (Cetus quotes, NAVI APYs, wallet balances) drift. Today the user has to
  * either approve with stale data (Sui dry-run is the safety gate, but the

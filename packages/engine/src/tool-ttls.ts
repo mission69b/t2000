@@ -1,7 +1,7 @@
 /**
  * SPEC 7 v0.3 Quote-Refresh ReviewCard — per-tool result freshness budgets.
  *
- * When a Payment Stream `pending_action` is composed at T=0 from upstream
+ * When a Payment Intent `pending_action` is composed at T=0 from upstream
  * read results, the user may take 30–60s to read + tap APPROVE. By that
  * time some upstream results have drifted (Cetus quotes refresh in
  * ~30s; NAVI APYs change slower). The host renders a "QUOTE Ns OLD"

@@ -1212,7 +1212,7 @@ Tag v0.1.0 (mission69b/suimpp repo)
 | **Keys**          | Ed25519 keypair, AES-256-GCM encrypted at rest with scrypt-derived key |
 | **Non-custodial** | Private key never leaves `~/.t2000/wallet.key` — server never sees it  |
 | **Safeguards**    | Local spending limits, emergency lock, daily budgets                   |
-| **On-chain**      | Inline fee transfer (Audric only), atomic PTBs, indexed ledger         |
+| **On-chain**      | Inline fee transfer (Audric only), atomic Payment Intents, indexed ledger |
 | **MPP**           | HMAC-bound challenges (stateless), on-chain USDC verification          |
 | **API keys**      | Upstream keys stored as Vercel env vars, never exposed to agents       |
 

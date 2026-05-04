@@ -49,9 +49,10 @@ export async function buildSendTx({
 
 /**
  * Fragment-appender for the chain-mode send leg of SPEC 7 multi-write
- * PTBs. Consumes a coin reference produced by a previous appender (e.g.
- * `addWithdrawToTx`, `addSwapToTx`) and transfers it to `recipient`
- * within the same PTB — no intermediate wallet materialization.
+ * Payment Intents. Consumes a coin reference produced by a previous
+ * appender (e.g. `addWithdrawToTx`, `addSwapToTx`) and transfers it to
+ * `recipient` within the same Payment Intent — no intermediate wallet
+ * materialization.
  *
  * Codifies the hand-built send leg from
  * `scripts/smoke-spec7-withdraw-then-send.ts` (P2.1) into a typed

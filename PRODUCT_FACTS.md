@@ -101,16 +101,16 @@ Source: `packages/sdk/src/constants.ts` → `SAVE_FEE_BPS`, `BORROW_FEE_BPS`, `T
 
 ## Architecture
 
-### Programmable Transaction Blocks (PTBs)
+### Payment Intents (Programmable Transaction Blocks)
 
-All multi-step operations use single atomic PTBs. If any step fails, the entire transaction reverts — no funds left in intermediate states.
+All multi-step operations use single atomic Payment Intents (compiled into a single Sui Programmable Transaction Block under the hood). If any step fails, the entire intent reverts — no funds left in intermediate states.
 
-| Operation | PTB Composition |
+| Operation | Payment Intent Composition |
 |-----------|----------------|
-| Save | Deposit USDC — single PTB (Audric prepends an inline fee transfer; CLI/SDK do not) |
-| Withdraw | Withdraw USDC from protocol → transfer — single PTB |
-| Repay | Split USDC → repay debt — single PTB |
-| Withdraw all | Withdraw all USDC positions → merge → transfer — single PTB |
+| Save | Deposit USDC — single Payment Intent (Audric prepends an inline fee transfer; CLI/SDK do not) |
+| Withdraw | Withdraw USDC from protocol → transfer — single Payment Intent |
+| Repay | Split USDC → repay debt — single Payment Intent |
+| Withdraw all | Withdraw all USDC positions → merge → transfer — single Payment Intent |
 
 ### Dust Filtering
 

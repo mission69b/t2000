@@ -14,11 +14,12 @@ import type { Tool, ToolFlags } from './types.js';
  *   producesArtifact — returns images, documents, generated content
  *   costAware       — has a monetary cost the user should know about
  *   maxRetries      — max calls with same input (default: unlimited for reads, 1 for writes)
- *   bundleable      — [SPEC 7 Layer 2] can participate in a multi-write Payment Stream
- *                     PTB. Set on every confirm-tier write whose on-chain effect is
- *                     fully expressible at compose time. Excluded: `pay_api` (recipient/
- *                     amount/currency unknown until gateway 402 challenge resolves at
- *                     route time) and `save_contact` (Postgres-only, no on-chain effect).
+ *   bundleable      — [SPEC 7 Layer 2] can participate in a multi-write Payment
+ *                     Intent. Set on every confirm-tier write whose on-chain effect
+ *                     is fully expressible at compose time. Excluded: `pay_api`
+ *                     (recipient/amount/currency unknown until gateway 402 challenge
+ *                     resolves at route time) and `save_contact` (Postgres-only, no
+ *                     on-chain effect).
  */
 export const TOOL_FLAGS: Record<string, ToolFlags> = {
   // Write tools — financial (bundleable — SPEC 7 Layer 2)

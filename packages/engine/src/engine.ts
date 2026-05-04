@@ -289,7 +289,7 @@ export class QueryEngine {
             // [SPEC 7 P2.3 audit fix — BUG 11] Host approved the bundle
             // but didn't supply this step's result. Fail closed — treat
             // as an error so the LLM narrates "this step's outcome is
-            // unknown" instead of fake-success. PTB execution is atomic
+            // unknown" instead of fake-success. Payment Intent execution is atomic
             // at the Sui layer, so an approved+missing-result is a host
             // bug; surfacing it to the LLM as an error is safer than
             // pretending success and locking the user into a bad state.
@@ -478,7 +478,7 @@ export class QueryEngine {
 
     // Refresh only on confirmed success. For bundles, treat as failed
     // when ANY step's stepResult.isError is true (atomic semantics —
-    // PTB execution fails as a whole, so partial success is impossible
+    // Payment Intent execution fails as a whole, so partial success is impossible
     // on-chain; if the host reports any step error we honor it).
     const writeFailed = (() => {
       if (isBundle) {
@@ -1587,7 +1587,7 @@ export class QueryEngine {
           // `inputCoinFromStep` for adjacent pairs that ARE in
           // `VALID_PAIRS` AND have aligned producer/consumer assets
           // (`shouldChainCoin`). Non-chained pairs run wallet-mode
-          // independently inside the same atomic PTB; the SDK's
+          // independently inside the same atomic Payment Intent; the SDK's
           // existing `T2000Error('NO_COINS_FOUND')` preflight surfaces
           // any bad-shape failures at /api/transactions/prepare time
           // before the user signs.
@@ -1601,7 +1601,7 @@ export class QueryEngine {
           // compatibility with dashboards reading `engine.turn_outcome`;
           // it never fires in 1.15+.
 
-          // Multi-write Payment Stream — compose bundle.
+          // Multi-write Payment Intent — compose bundle.
           const completedResults = toolResultBlocks.map((b) => ({
             toolUseId: (b as { toolUseId: string }).toolUseId,
             content: (b as { content: string }).content,

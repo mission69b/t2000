@@ -232,7 +232,7 @@ Every transaction is self-funded by the agent's wallet. Keep at least ~0.05 SUI 
 
 > **Audric web app exception:** Audric web users transact under Enoki gas sponsorship (zkLogin), so `INSUFFICIENT_GAS` is not a user-facing concern there. The SDK itself is sponsorship-agnostic — sponsorship is wired in at the host layer (Audric web), not inside `@t2000/sdk`.
 
-**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable PTB) functions. Multi-step flows compose multiple protocol calls into a single atomic PTB. If any step within a PTB fails, the entire transaction reverts — no funds left in intermediate states.
+**Architecture:** Each protocol operation (NAVI, send) exposes both `buildXxxTx()` (standalone transaction) and `addXxxToTx()` (composable fragment) functions. Multi-step flows compose multiple protocol calls into a single atomic Payment Intent (a Sui Programmable Transaction Block under the hood). If any step within a Payment Intent fails, the entire transaction reverts — no funds left in intermediate states.
 
 ## Configuration
 
@@ -329,7 +329,7 @@ Fees only apply when the **Audric** consumer app calls these primitives. Audric 
 | Swap | 0.10% | Free | Audric passes Cetus `overlayFee`. CLI omits it. Cetus Aggregator network fees still apply both ways. |
 | Withdraw / Repay / Send / Receive / Stake / Unstake / Pay (MPP) | Free | Free | No surcharge anywhere. |
 
-How Audric collects fees: `prepare/route.ts` calls `addFeeTransfer(tx, paymentCoin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and passes `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` for swaps. Both flows produce a USDC transfer to the treasury wallet inside the same atomic PTB. The t2000 server-side indexer detects the on-chain USDC inflow and records a `ProtocolFeeLedger` row — no off-chain submission is involved.
+How Audric collects fees: `prepare/route.ts` calls `addFeeTransfer(tx, paymentCoin, FEE_BPS, T2000_OVERLAY_FEE_WALLET, amount)` for save/borrow and passes `overlayFee.receiver = T2000_OVERLAY_FEE_WALLET` for swaps. Both flows produce a USDC transfer to the treasury wallet inside the same atomic Payment Intent. The t2000 server-side indexer detects the on-chain USDC inflow and records a `ProtocolFeeLedger` row — no off-chain submission is involved.
 
 Need to charge an overlay fee in your own consumer app? Import `addFeeTransfer` and `T2000_OVERLAY_FEE_WALLET` from `@t2000/sdk` (or use your own receiver address — the SDK never assumes the t2000 treasury).
 

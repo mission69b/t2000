@@ -1,9 +1,9 @@
 /**
- * SPEC 7 P2.3 Layer 2 — multi-write Payment Stream bundling.
+ * SPEC 7 P2.3 Layer 2 — multi-write Payment Intent compilation.
  *
- * Verifies the engine collapses ≥2 confirm-tier bundleable writes in a
- * single LLM turn into one bundled `pending_action` (instead of yielding
- * once per write or silently dropping siblings on `break`).
+ * Verifies the engine collapses ≥2 confirm-tier `bundleable: true` writes
+ * in a single LLM turn into one compiled `pending_action` (instead of
+ * yielding once per write or silently dropping siblings on `break`).
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { z } from 'zod';
@@ -517,13 +517,13 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
           {
             toolUseId: 'tc-1',
             attemptId: action.steps![0].attemptId,
-            result: { error: 'PTB execution failed' },
+            result: { error: 'Payment Intent execution failed' },
             isError: true,
           },
           {
             toolUseId: 'tc-2',
             attemptId: action.steps![1].attemptId,
-            result: { error: 'PTB execution failed' },
+            result: { error: 'Payment Intent execution failed' },
             isError: true,
           },
         ],
@@ -621,7 +621,7 @@ describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
   it('accepts a 4-op bundle (Phase 3a — at the new cap)', async () => {
     // [Phase 3a / 1.15.0] cap raised 3→4. P0-10 locked: zero-chain
     // bundles (e.g. 4 standalone sends) are permitted under the new
-    // DAG-aware semantics. Atomicity at the PTB level holds even when
+    // DAG-aware semantics. Atomicity at the Payment Intent level holds even when
     // no `inputCoinFromStep` chains are wired.
     const provider = createMockProvider([makeTurnOfPair(4)]);
     const tools = applyToolFlags([makeWrite('send_transfer')]);
@@ -720,7 +720,7 @@ describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
 //
 // Phase 3a: no envelope-level rejection. Whitelisted pairs still
 // populate `inputCoinFromStep` (chain-mode); non-whitelisted pairs
-// run wallet-mode independently inside the same atomic PTB. The SDK
+// run wallet-mode independently inside the same atomic Payment Intent. The SDK
 // preflight surfaces any bad-shape failures at /api/transactions/
 // prepare time before the user signs.
 describe('Phase 3a — chain-mode population (no envelope rejection)', () => {
@@ -780,7 +780,7 @@ describe('Phase 3a — chain-mode population (no envelope rejection)', () => {
     ['swap_execute', 'swap_execute', 'multi-hop swaps — Phase 3b unlock'],
     ['borrow', 'swap_execute', 'borrow output funds a swap'],
     ['save_deposit', 'send_transfer', 'wallet send after independent save'],
-    ['send_transfer', 'send_transfer', 'two independent sends in one PTB'],
+    ['send_transfer', 'send_transfer', 'two independent sends in one Payment Intent'],
     ['withdraw', 'save_deposit', 'withdraw + save (separate USDC pulls)'],
     ['repay_debt', 'send_transfer', 'wallet send after independent repay'],
   ];
@@ -1491,8 +1491,8 @@ describe('SPEC 13 Phase 3a — 4-op DAG composition (1.15.0)', () => {
   });
 
   // P0-10: zero-chain 4-op bundle (four independent sends). No
-  // `inputCoinFromStep` populated anywhere. Atomicity at the PTB
-  // level still holds (all-or-nothing settlement).
+  // `inputCoinFromStep` populated anywhere. Atomicity at the Payment
+  // Intent level still holds (all-or-nothing settlement).
   it('accepts 4-op zero-chain bundle (four independent sends — P0-10)', async () => {
     const engine = setup4op(
       'send_transfer',

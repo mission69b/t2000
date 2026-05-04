@@ -99,11 +99,11 @@ t2000 wraps financial primitives into a single interface:
 | **Safeguards** | Per-tx and daily limits, agent lock | `t2000 config show/set`, `t2000 lock/unlock` |
 | **MCP** | AI agent banking — natural language | Claude Desktop, Cursor, Windsurf via [@t2000/mcp](packages/mcp) |
 
-Every transaction is self-funded by the agent's wallet. Multi-step operations execute as single atomic PTBs.
+Every transaction is self-funded by the agent's wallet. Multi-step operations execute as single atomic Payment Intents (compiled into one Sui Programmable Transaction Block).
 
 ### Fees
 
-The t2000 SDK + CLI are **fee-free** by design. Fees are an Audric concern — when [Audric](https://audric.ai) is the consumer, it adds protocol fees inline within the same PTB:
+The t2000 SDK + CLI are **fee-free** by design. Fees are an Audric concern — when [Audric](https://audric.ai) is the consumer, it adds protocol fees inline within the same Payment Intent:
 
 | Operation | Audric fee | Notes |
 |-----------|-----|-------|

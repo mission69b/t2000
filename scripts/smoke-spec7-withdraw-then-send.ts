@@ -11,12 +11,12 @@
  *   3. `client.dryRunTransactionBlock` accepts the assembled PTB on
  *      mainnet and reports success + a gas-cost estimate.
  *
- * This is the cleanest demonstration of why PTBs matter for Audric: in
- * Use case 2 ("withdraw and send to Mom"), today the user signs two
- * separate transactions (~12s end-to-end). With the typed coin-ref
+ * This is the cleanest demonstration of why Payment Intents matter for
+ * Audric: in Use case 2 ("withdraw and send to Mom"), today the user signs
+ * two separate transactions (~12s end-to-end). With the typed coin-ref
  * handoff proven here, P2.2 (`addSendToTx` appender) + P2.2b (`composeTx`
- * canonical primitive) collapse the same intent into a single atomic PTB
- * with one user confirmation.
+ * canonical primitive) collapse the same intent into a single atomic
+ * Payment Intent with one user confirmation.
  *
  * Output:
  *   - PASS / FAIL of the dry-run

@@ -1,10 +1,10 @@
 /**
  * SPEC 7 P2.5 Layer 4 — `RecipeRegistry.toPromptContext` surfaces
- * `bundle: true` step grouping as a "PAYMENT STREAM — emit in parallel"
- * block so the LLM sees the bundle instruction next to the affected steps.
+ * `bundle: true` step grouping as a "PAYMENT INTENT — emit in parallel"
+ * block so the LLM sees the compile instruction next to the affected steps.
  *
- * Without this, recipes that mark write steps as bundleable would still
- * drive sequential emission because the LLM only reads the numbered list.
+ * Without this, recipes that mark write steps as `bundleable: true` would
+ * still drive sequential emission because the LLM only reads the numbered list.
  */
 import { describe, it, expect } from 'vitest';
 import { RecipeRegistry } from './registry.js';

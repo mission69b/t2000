@@ -28,7 +28,7 @@
  *  - Run guards (caller does that BEFORE calling here).
  *  - Apply USD permission resolution (caller does it per-step BEFORE
  *    calling here, to decide which writes get bundled).
- *  - Compose the on-chain PTB (host does that via `composeTx({ steps })`
+ *  - Compose the on-chain Payment Intent (host does that via `composeTx({ steps })`
  *    after the user approves).
  *
  * The helper is pure synchronous transformation: takes typed inputs,
@@ -73,15 +73,15 @@ import type { PendingToolCall } from './orchestration.js';
  *    relaxed to DAG-aware: only pairs that actually chain via
  *    `inputCoinFromStep` need whitelist checking. Standalone steps
  *    interleaved between chained steps run wallet-mode independently
- *    inside the same atomic PTB.** This unlocks Demo 1 ("swap 10% to
+ *    inside the same atomic Payment Intent.** This unlocks Demo 1 ("swap 10% to
  *    SUI, save 50% as USDsui, send $100 to Mom" — 4-op DAG with one
  *    chain at step 1→2, three standalone wallet-mode steps).
  *
  * **DAG-aware semantics.** Pre-3a: every adjacent pair gates the entire
  * bundle. Phase 3a+: each (i, i+1) pair contributes IF a chain is wired
  * (via `shouldChainCoin`). Non-chained pairs are independent — they
- * each pre-fetch their own coin from the wallet inside the PTB. Atomic
- * settlement at the PTB level holds either way.
+ * each pre-fetch their own coin from the wallet inside the Payment Intent.
+ * Atomic settlement at the Payment Intent level holds either way.
  *
  * **Phase 3b (deferred):** `swap_execute → swap_execute` whitelist add
  * for explicit multi-hop swap chains (rare; flag-gated when shipped).
@@ -104,7 +104,7 @@ export const MAX_BUNDLE_OPS = 4;
  *
  * | Pair | Why it works at compose time today |
  * |---|---|
- * | `swap_execute → send_transfer` | Swap's `tx.transferObjects([result.coin], sender)` lands the swap output in the wallet for the same PTB; send's `selectAndSplitCoin` finds it. |
+ * | `swap_execute → send_transfer` | Swap's `tx.transferObjects([result.coin], sender)` lands the swap output in the wallet for the same Payment Intent; send's `selectAndSplitCoin` finds it. |
  * | `swap_execute → save_deposit` | Same mechanism — swap output is back in wallet for save's coin fetch. (P0 caveat: this currently *fails* if the wallet has zero of `swap.to` BEFORE the swap step. Phase 1's `inputCoinFromStep` fixes that. For now we accept the pair but warn the LLM in the prompt rule that wallet must hold ≥0 of target asset.) |
  * | `swap_execute → repay_debt` | Same as save. Same caveat. |
  * | `withdraw → swap_execute` | Withdraw's output is transferred to user; swap's coin fetch finds it. Same wallet caveat in reverse. |
@@ -202,7 +202,7 @@ export function inferConsumerInputAsset(toolName: string, input: unknown): strin
  * When both gates pass, the orchestration loop at execute time will
  * thread the producer's `outputCoin` into the consumer's `inputCoin`,
  * suppressing the producer's terminal `tx.transferObjects` and the
- * consumer's wallet pre-fetch. Result: one atomic PTB, zero wallet
+ * consumer's wallet pre-fetch. Result: one atomic Payment Intent, zero wallet
  * round-trips for the chained leg.
  *
  * When gate 2 fails (assets misaligned), the bundle still composes —

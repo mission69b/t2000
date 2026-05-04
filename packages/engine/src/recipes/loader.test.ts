@@ -139,7 +139,7 @@ steps:
 //      emergency_withdraw) now carry the `bundle: true` step grouping:
 //        • `swap_and_save` MUST have ≥2 bundle steps (swap + deposit —
 //          a true multi-step bundle whose distinct step names trigger
-//          the PAYMENT STREAM header in `RecipeRegistry.toPromptContext`).
+//          the PAYMENT INTENT header in `RecipeRegistry.toPromptContext`).
 //        • `portfolio_rebalance` MUST have ≥1 bundle step (`execute_swaps`
 //          alone — the LLM is instructed via the step's `notes` to emit
 //          this single step's `tool_use` block multiple times in one

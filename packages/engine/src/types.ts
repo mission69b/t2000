@@ -261,7 +261,7 @@ export interface PendingActionModifiableField {
 }
 
 /**
- * [SPEC 7 v0.4 Layer 2] One step inside a multi-write Payment Stream
+ * [SPEC 7 v0.4 Layer 2] One step inside a multi-write Payment Intent
  * `PendingAction`. Single-write actions never carry `steps[]`; the
  * legacy `toolName`/`toolUseId`/`input`/`attemptId` fields cover them.
  */
@@ -344,7 +344,7 @@ export interface PendingAction {
    * exists to kill. Also survives session persistence so the resume call
    * can read it back from the rehydrated `PendingAction`.
    *
-   * **Bundles:** when `steps !== undefined` (multi-write Payment Stream),
+   * **Bundles:** when `steps !== undefined` (multi-write Payment Intent),
    * the top-level `attemptId` mirrors `steps[0].attemptId` per SPEC 7
    * § Layer 2 line 463 ("`steps[0]` mirrors the top-level
    * toolName/toolUseId/input/attemptId for hosts that haven't been
@@ -358,7 +358,7 @@ export interface PendingAction {
   attemptId: string;
   /**
    * [SPEC 7 v0.4 Layer 2] When set, this `pending_action` represents a
-   * multi-write Payment Stream. Single-step bundles are NOT created — the
+   * multi-write Payment Intent. Single-step bundles are NOT created — the
    * engine emits the legacy single-write shape when N=1. Hosts that haven't
    * been updated read `toolName`/`toolUseId`/`input` (which mirror
    * `steps[0]`); newer hosts iterate `steps`.
@@ -431,7 +431,7 @@ export interface PermissionResponse {
    * Each carries the step's `toolUseId` + `attemptId` so the host's resume
    * route can update the matching `TurnMetrics` row.
    *
-   * **Atomic semantics:** PTB execution is atomic at the Sui layer. If the
+   * **Atomic semantics:** Payment Intent execution is atomic at the Sui layer. If the
    * host detects a bundle-level failure, it should populate every entry
    * with `isError: true` carrying the same error message (so the LLM
    * narrates the failure once, not N times).
@@ -540,7 +540,7 @@ export interface ToolFlags {
   maxRetries?: number;
   /**
    * [SPEC 7 v0.4 Layer 2] Opt-in: this write tool can participate in a
-   * multi-write Payment Stream. When the LLM emits ≥2 `tool_use` blocks
+   * multi-write Payment Intent. When the LLM emits ≥2 `tool_use` blocks
    * in a single assistant turn AND every block resolves to a `confirm`-tier
    * write tool with `bundleable: true`, the engine collapses them into one
    * `pending_action` with `steps[]` instead of yielding N times. Default
@@ -551,8 +551,8 @@ export interface ToolFlags {
    * **Permanently non-bundleable:**
    *  - `pay_api` — recipient/amount/currency aren't known at LLM intent
    *    time (gateway 402 challenge resolves them at route time, after a
-   *    network round-trip the engine has no knowledge of). PTB cannot be
-   *    composed at compose time.
+   *    network round-trip the engine has no knowledge of). Payment Intent
+   *    cannot be composed at compose time.
    *  - `save_contact` — Postgres-only, no on-chain effect.
    */
   bundleable?: boolean;
