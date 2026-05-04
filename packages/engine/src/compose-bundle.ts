@@ -220,6 +220,70 @@ export function shouldChainCoin(producer: PendingToolCall, consumer: PendingTool
   return out === inA;
 }
 
+/**
+ * [SPEC 15 v0.7 follow-up — single-write regenerate, 2026-05-04]
+ * Shared helper that derives the Quote-Refresh fields
+ * (`canRegenerate`, `regenerateInput.toolUseIds`, `quoteAge`) from a
+ * collection of same-turn read tool_results. Used by both
+ * `composeBundleFromToolResults` (bundle path, N≥2) AND the engine's
+ * single-write `pending_action` yield path (N=1) — keeping the
+ * derivation in one place so the two paths can't drift on what
+ * counts as "regeneratable" or how `quoteAge` is computed.
+ *
+ * **Why the same logic on N=1.** Pre-v0.7 single-write actions never
+ * carried these fields (the original SPEC 7 P2.4b assumed bundles
+ * only), which left a UX gap: a single-write confirm-tier swap whose
+ * Cetus quote went stale had no Refresh-quote affordance. Bundles
+ * had it; single-writes didn't. v0.7 closes the gap by populating
+ * the same fields here, so the host's PermissionCard can render the
+ * same regenerate slot for either shape and `regenerateBundle()`
+ * can re-fire the same reads regardless of N.
+ *
+ * **Conservative inclusion.** Any same-turn read whose name is in
+ * `REGENERATABLE_READ_TOOLS` contributes — we don't inspect the
+ * write's input shape to confirm the read was actually consumed.
+ * False positives just enable the Refresh button when it could've
+ * stayed off; they don't change correctness (the re-fire is
+ * deterministic and the new bundle's input is recomputed from
+ * scratch).
+ *
+ * **`quoteAge` semantics.** Milliseconds since the stalest
+ * contributing read. `min` not `max` — we report the freshness of
+ * the WORST input because that's what gates UX. Clamped at ≥0
+ * against NTP clock skew (negative ages would render as
+ * "QUOTE -3s OLD" otherwise — see SPEC 7 P2.3 audit BUG 12).
+ *
+ * Returns `{ canRegenerate: false, regenerateToolUseIds: [],
+ * quoteAge: undefined }` when no contributing reads landed — the
+ * caller should NOT spread `regenerateInput` onto the action in
+ * that case (omit the field entirely).
+ */
+export function computeRegenerateFields(
+  readResults: Array<{ toolUseId: string; toolName: string; timestamp: number }>,
+): {
+  canRegenerate: boolean;
+  regenerateToolUseIds: string[];
+  quoteAge: number | undefined;
+} {
+  const regenerateToolUseIds = readResults
+    .filter((r) => REGENERATABLE_READ_TOOLS.has(r.toolName))
+    .map((r) => r.toolUseId);
+
+  const canRegenerate = regenerateToolUseIds.length > 0;
+
+  let quoteAge: number | undefined;
+  if (canRegenerate) {
+    const stalest = Math.min(
+      ...readResults
+        .filter((r) => REGENERATABLE_READ_TOOLS.has(r.toolName))
+        .map((r) => r.timestamp),
+    );
+    quoteAge = Math.max(0, Date.now() - stalest);
+  }
+
+  return { canRegenerate, regenerateToolUseIds, quoteAge };
+}
+
 export interface BundleCompositionInput {
   /** All confirm-tier bundleable writes the LLM emitted in this turn. MUST be ≥2. */
   pendingWrites: PendingToolCall[];
@@ -318,33 +382,8 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
     }
   }
 
-  // Regenerate-input tracking: any same-turn read tool_use_id that's in
-  // the canonical re-runnable allow-list contributes to the bundle's
-  // freshness. Conservative — we don't (yet) inspect step inputs to
-  // confirm a reference; if a read landed earlier this turn AND it's in
-  // REGENERATABLE_READ_TOOLS, we include it. False positives just
-  // enable the REGENERATE button; they don't change correctness.
-  const regenerateToolUseIds = input.readResults
-    .filter((r) => REGENERATABLE_READ_TOOLS.has(r.toolName))
-    .map((r) => r.toolUseId);
-
-  const canRegenerate = regenerateToolUseIds.length > 0;
-
-  // quoteAge = now − stalest contributing read timestamp. Min, not max:
-  // we report the freshness of the WORST input (that's what gates UX).
-  // [SPEC 7 P2.3 audit fix — BUG 12] Clamp to >= 0 against clock skew.
-  // `Date.now()` is monotonic-ish but not guaranteed; if a read was
-  // recorded a few ms in the future (NTP correction, VM clock drift),
-  // a negative quoteAge would render as "QUOTE -3s OLD" in the UI.
-  let quoteAge: number | undefined;
-  if (regenerateToolUseIds.length > 0) {
-    const stalest = Math.min(
-      ...input.readResults
-        .filter((r) => REGENERATABLE_READ_TOOLS.has(r.toolName))
-        .map((r) => r.timestamp),
-    );
-    quoteAge = Math.max(0, Date.now() - stalest);
-  }
+  const { canRegenerate, regenerateToolUseIds, quoteAge } =
+    computeRegenerateFields(input.readResults);
 
   // Concatenated guard injections across every step. Hosts that don't
   // iterate `steps` see the union; hosts that do can re-derive per-step

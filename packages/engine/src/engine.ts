@@ -42,6 +42,7 @@ import { EarlyToolDispatcher } from './early-dispatcher.js';
 import { TurnReadCache } from './turn-read-cache.js';
 import {
   composeBundleFromToolResults,
+  computeRegenerateFields,
   MAX_BUNDLE_OPS,
 } from './compose-bundle.js';
 
@@ -1665,6 +1666,20 @@ export class QueryEngine {
         // update on it instead of `(sessionId, turnIndex)`.
         const attemptId = randomUUID();
 
+        // [SPEC 15 v0.7 follow-up — single-write regenerate, 2026-05-04]
+        // Populate the same Quote-Refresh fields the bundle path
+        // emits so the host's PermissionCard can render the same
+        // Refresh-quote affordance for confirm-tier single writes
+        // (e.g. a $50 swap_execute whose Cetus quote ages out before
+        // the user taps Approve). Pre-v0.7 these fields were bundle-
+        // only — the audric host's `showRegenerate` was gated to
+        // `isBundle && action.steps`, leaving single-write confirm-
+        // tier with no recovery affordance. Re-using
+        // `computeRegenerateFields` keeps the two emission sites in
+        // lockstep on what counts as "regeneratable" + how
+        // `quoteAge` is computed.
+        const singleWriteRegen = computeRegenerateFields(turnReadToolResults);
+
         yield {
           type: 'pending_action',
           action: {
@@ -1682,6 +1697,15 @@ export class QueryEngine {
             ...(modifiableFields?.length ? { modifiableFields } : {}),
             turnIndex,
             attemptId,
+            ...(singleWriteRegen.canRegenerate
+              ? {
+                  canRegenerate: true,
+                  regenerateInput: { toolUseIds: singleWriteRegen.regenerateToolUseIds },
+                  ...(singleWriteRegen.quoteAge !== undefined
+                    ? { quoteAge: singleWriteRegen.quoteAge }
+                    : {}),
+                }
+              : {}),
           },
         };
         recordTurnOutcome('pending_action_single');

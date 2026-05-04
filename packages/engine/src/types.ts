@@ -371,26 +371,42 @@ export interface PendingAction {
   steps?: PendingActionStep[];
   /**
    * [SPEC 7 v0.3 Quote-Refresh] Milliseconds since the upstream read tools
-   * that fed this bundle's composition completed. Engine stamps at emit
+   * that fed this action's composition completed. Engine stamps at emit
    * time using `Date.now() - min(tool_result.timestamp)` across the listed
    * `regenerateInput.toolUseIds`. Host renders as a "QUOTE Ns OLD" badge in
-   * the PermissionCard header. Only set on bundled `pending_action`s.
+   * the PermissionCard header.
+   *
+   * **[SPEC 15 v0.7 follow-up — 2026-05-04]** Now also stamped on
+   * single-write confirm-tier `pending_action`s when same-turn
+   * regeneratable reads contributed (e.g. a confirm-tier
+   * `swap_execute` whose Cetus quote is referenced via the prior
+   * `swap_quote` read). Pre-v0.7 this was bundle-only.
    */
   quoteAge?: number;
   /**
-   * [SPEC 7 v0.3 Quote-Refresh] True when the bundle was composed from
+   * [SPEC 7 v0.3 Quote-Refresh] True when the action was composed from
    * re-runnable read tools (`swap_quote`, `rates_info`, `balance_check`,
    * `portfolio_analysis`). False when amounts came from user-provided
-   * inputs that don't depend on upstream quotes. Single-write
-   * `pending_action`s set this to `false` (regenerate is N≥2 only).
+   * inputs that don't depend on upstream quotes.
+   *
+   * **[SPEC 15 v0.7 follow-up — 2026-05-04]** Now populated for
+   * single-write confirm-tier actions too — pre-v0.7 single-writes
+   * always emitted `false` because the regenerate path was N≥2 only.
+   * Closing that gap surfaced the Refresh-quote affordance for the
+   * single-write confirm-tier scenario (e.g. $50 swap_execute).
    */
   canRegenerate?: boolean;
   /**
    * [SPEC 7 v0.3 Quote-Refresh] Engine-internal payload listing which
    * upstream read `tool_use` ids to re-fire when the user taps REGENERATE.
    * Host echoes this back via `POST /api/engine/regenerate`; engine re-runs
-   * each tool with the same input (no LLM call), rebuilds the bundle, and
-   * emits a fresh `pending_action` with new per-step `attemptId`s.
+   * each tool with the same input (no LLM call), rebuilds the action, and
+   * emits a fresh `pending_action` with a fresh `attemptId`.
+   *
+   * **[SPEC 15 v0.7 follow-up — 2026-05-04]** Populated for both
+   * bundle (N≥2) and single-write (N=1) shapes; the engine's
+   * `regenerateBundle()` rebuild branches on `action.steps?.length`
+   * to pick the right composition path.
    */
   regenerateInput?: {
     toolUseIds: string[];

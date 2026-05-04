@@ -254,7 +254,16 @@ describe('SPEC 7 P2.4b — regenerateBundle', () => {
     ).toBe(true);
   });
 
-  it('returns pending_action_not_found for non-bundle (single-write) actions', async () => {
+  // [SPEC 15 v0.7 follow-up — single-write regenerate, 2026-05-04]
+  // Pre-v0.7 this test asserted that single-write actions short-
+  // circuited with `pending_action_not_found`. v0.7 lifts that gate
+  // and makes regenerate work for any action carrying
+  // `canRegenerate=true` + non-empty `regenerateInput`. A single-
+  // write action that DOESN'T carry those fields (e.g. a write whose
+  // input came from user-typed values, not an upstream read) still
+  // bails — but now correctly via `cannot_regenerate` rather than
+  // `pending_action_not_found`.
+  it('returns cannot_regenerate for single-write actions WITHOUT canRegenerate=true', async () => {
     const tools = applyToolFlags([makeBundleableWrite('swap_execute')]);
     const engine = new QueryEngine({
       provider: createNoOpProvider(),
@@ -269,12 +278,98 @@ describe('SPEC 7 P2.4b — regenerateBundle', () => {
       assistantContent: [],
       turnIndex: 1,
       attemptId: 'attempt-1',
-      // No `steps` → not a bundle.
+      // No `steps`, no `canRegenerate` → not refreshable by intent.
     };
     const result = await regenerateBundle(engine, singleWriteAction);
     expect(result.success).toBe(false);
     if (result.success) return;
-    expect(result.reason).toBe('pending_action_not_found');
+    expect(result.reason).toBe('cannot_regenerate');
+  });
+
+  // [SPEC 15 v0.7 follow-up — single-write regenerate, 2026-05-04]
+  // Positive path for single-write actions: a confirm-tier
+  // `swap_execute` whose composition referenced a same-turn
+  // `swap_quote` carries `canRegenerate=true` + non-empty
+  // `regenerateInput`. Regenerate re-fires the upstream read, mints
+  // a fresh `attemptId` (per SPEC 1), keeps the same `toolUseId`
+  // (so resume's tool_use→tool_result pairing stays intact), and
+  // preserves the action's input verbatim — only the freshness
+  // metadata changes.
+  it('re-fires regeneratable reads and rebuilds a single-write action with a fresh attemptId', async () => {
+    const swapQuote = makeFlippingRead('swap_quote');
+    const tools = applyToolFlags([
+      swapQuote.tool,
+      makeBundleableWrite('swap_execute'),
+    ]);
+    const engine = new QueryEngine({
+      provider: createNoOpProvider(),
+      tools,
+      systemPrompt: 'test',
+    });
+
+    engine.loadMessages(
+      buildPriorReadHistory([
+        { id: 'read-swap-1', name: 'swap_quote', result: { snapshot: 'call-pre' } },
+      ]),
+    );
+
+    const singleWriteAction: PendingAction = {
+      toolName: 'swap_execute',
+      toolUseId: 'write-swap-1',
+      input: { amount: 50, from: 'USDC', to: 'SUI' },
+      description: 'Swap 50 USDC → SUI',
+      assistantContent: [
+        {
+          type: 'tool_use',
+          id: 'write-swap-1',
+          name: 'swap_execute',
+          input: { amount: 50, from: 'USDC', to: 'SUI' },
+        },
+      ],
+      completedResults: [],
+      turnIndex: 1,
+      attemptId: 'original-write-swap-1',
+      canRegenerate: true,
+      regenerateInput: { toolUseIds: ['read-swap-1'] },
+      quoteAge: 47_000,
+      // No `steps` — single-write shape.
+    };
+
+    const result = await regenerateBundle(engine, singleWriteAction);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(swapQuote.callCount()).toBe(1);
+
+    // Single-write rebuild — no `steps` populated.
+    expect(result.newPendingAction.steps).toBeUndefined();
+
+    // Same write, same toolUseId, same input — only attemptId is fresh.
+    expect(result.newPendingAction.toolName).toBe('swap_execute');
+    expect(result.newPendingAction.toolUseId).toBe('write-swap-1');
+    expect(result.newPendingAction.input).toEqual({
+      amount: 50,
+      from: 'USDC',
+      to: 'SUI',
+    });
+    expect(result.newPendingAction.attemptId).not.toBe('original-write-swap-1');
+
+    // Freshness metadata recomputed off the new read timestamp.
+    expect(result.newPendingAction.canRegenerate).toBe(true);
+    expect(result.newPendingAction.quoteAge).toBeDefined();
+    expect(result.newPendingAction.quoteAge!).toBeLessThan(2_000);
+
+    const newRegenIds = result.newPendingAction.regenerateInput?.toolUseIds ?? [];
+    expect(newRegenIds).toHaveLength(1);
+    expect(newRegenIds[0].startsWith('regen_')).toBe(true);
+
+    // timelineEvents: one tool_start + one tool_result for the
+    // single re-fired read.
+    expect(result.timelineEvents).toHaveLength(2);
+    expect(result.timelineEvents[0].type).toBe('tool_start');
+    expect(result.timelineEvents[0].toolName).toBe('swap_quote');
+    expect(result.timelineEvents[1].type).toBe('tool_result');
   });
 
   it('returns cannot_regenerate when canRegenerate=false', async () => {
