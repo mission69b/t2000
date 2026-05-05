@@ -196,6 +196,19 @@ export {
   VOLO_METADATA,
 } from './protocols/volo.js';
 export type { VoloStats } from './protocols/volo.js';
+export {
+  AUDRIC_PARENT_NAME,
+  AUDRIC_PARENT_NFT_ID,
+  buildAddLeafTx,
+  buildRevokeLeafTx,
+  fullHandle,
+  validateLabel,
+} from './protocols/suins-leaf.js';
+export type {
+  BuildAddLeafParams,
+  BuildRevokeLeafParams,
+  LabelValidationResult,
+} from './protocols/suins-leaf.js';
 export * from './adapters/index.js';
 export { SafeguardEnforcer, SafeguardError } from './safeguards/index.js';
 export type { SafeguardConfig, TxMetadata, SafeguardRule, SafeguardErrorDetails } from './safeguards/index.js';
