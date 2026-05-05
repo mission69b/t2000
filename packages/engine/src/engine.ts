@@ -19,6 +19,7 @@ import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
 import { clearPortfolioCacheFor } from './blockvision-prices.js';
 import { getTelemetrySink } from './telemetry.js';
+import { extractAllProactiveMarkers } from './proactive-marker.js';
 import { randomUUID } from 'node:crypto';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { describeAction } from './describe-action.js';
@@ -116,6 +117,17 @@ export class QueryEngine {
   // their `finally` block so they DON'T clear the cache mid-turn — the
   // pending write may resume, and the cache should survive the pause.
   private turnPaused = false;
+  // [SPEC 9 v0.1.1 P9.2 / R3] Per-engine-instance cooldown set for
+  // proactive insight markers. Same `(proactiveType, subjectKey)` tuple
+  // emitted twice in one session ⇒ second emission is suppressed (host
+  // strips the wrapper, renders body as plain text). Cooldown is
+  // per-session, not cross-session — a fresh QueryEngine on the next
+  // user session starts with an empty set and may re-emit the same
+  // tuple. Drops automatically when the engine is GC'd.
+  //
+  // Storage shape: serialised key `${type}:${subjectKey}` for cheap
+  // Set membership without an extra hash function.
+  private readonly proactiveCooldown = new Set<string>();
 
   constructor(config: EngineConfig) {
     this.provider = config.provider;
@@ -694,6 +706,34 @@ export class QueryEngine {
 
   loadMessages(messages: Message[]): void {
     this.messages = [...messages];
+    // [SPEC 9 v0.1.1 P9.2 / R3] Rehydrate per-session proactive cooldown
+    // from the loaded history. Assistant text blocks retain their original
+    // `<proactive type="..." subjectKey="...">...</proactive>` wrappers in
+    // session storage (the engine never strips for storage, only the host
+    // strips for display). Without this rehydrate, audric — which builds
+    // a fresh QueryEngine per HTTP request and replays history via this
+    // method — would emit the same insight on every turn because the
+    // in-memory Set always starts empty.
+    this.rehydrateProactiveCooldown();
+  }
+
+  /**
+   * [SPEC 9 v0.1.1 P9.2 / R3] Walk loaded assistant text blocks and seed the
+   * cooldown set with every parseable `(proactiveType, subjectKey)` tuple.
+   * Called automatically from `loadMessages`. Idempotent — safe to call on
+   * an already-populated set; duplicates are absorbed by Set semantics.
+   */
+  private rehydrateProactiveCooldown(): void {
+    for (const message of this.messages) {
+      if (message.role !== 'assistant') continue;
+      const blocks = Array.isArray(message.content) ? message.content : [];
+      for (const block of blocks) {
+        if (block.type !== 'text' || typeof block.text !== 'string') continue;
+        for (const { proactiveType, subjectKey } of extractAllProactiveMarkers(block.text)) {
+          this.proactiveCooldown.add(`${proactiveType}:${subjectKey}`);
+        }
+      }
+    }
   }
 
   /**
@@ -1803,6 +1843,44 @@ export class QueryEngine {
       case 'text_delta': {
         acc.text += event.text;
         yield { type: 'text_delta', text: event.text };
+        break;
+      }
+
+      case 'text_done': {
+        // [SPEC 9 v0.1.1 P9.2] Provider parsed the closed text block and
+        // surfaced any `<proactive>` marker. Run the per-session cooldown
+        // check + emit the public `proactive_text` event. Suppressed when
+        // (proactiveType, subjectKey) was already seen this session ⇒
+        // host strips the marker but renders body as regular text.
+        if (event.proactiveMarker) {
+          const { proactiveType, subjectKey, body, markerCount } = event.proactiveMarker;
+          const dedupKey = `${proactiveType}:${subjectKey}`;
+          const suppressed = this.proactiveCooldown.has(dedupKey);
+          if (!suppressed) this.proactiveCooldown.add(dedupKey);
+          // Telemetry: emit the count side-channel so audric's
+          // proactive_text_emitted_count{type} + proactive_text_suppressed_count{reason}
+          // counters get a wire-compatible signal. The host receives the
+          // engine event directly and bumps its counters on observation
+          // (matches the eval_summary violation pattern: engine surfaces
+          // the count, host records the metric).
+          const sink = getTelemetrySink();
+          if (suppressed) {
+            sink.counter('audric.harness.proactive_text_suppressed_count', { reason: 'cooldown' }, 1);
+          } else {
+            sink.counter('audric.harness.proactive_text_emitted_count', { type: proactiveType }, 1);
+          }
+          if (markerCount > 1) {
+            sink.counter('audric.harness.proactive_marker_violations_count', {}, 1);
+          }
+          yield {
+            type: 'proactive_text',
+            proactiveType,
+            subjectKey,
+            body,
+            suppressed,
+            markerCount,
+          };
+        }
         break;
       }
 

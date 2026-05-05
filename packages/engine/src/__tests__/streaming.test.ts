@@ -157,4 +157,56 @@ describe('engineToSSE', () => {
       expect(parsed.message).toBe('Network failure');
     }
   });
+
+  it('passes through proactive_text events with all fields preserved', async () => {
+    async function* fakeEngine(): AsyncGenerator<EngineEvent> {
+      yield {
+        type: 'proactive_text',
+        proactiveType: 'idle_balance',
+        subjectKey: 'USDC',
+        body: 'You have $120 USDC sitting idle.',
+        suppressed: false,
+        markerCount: 1,
+      };
+    }
+
+    const chunks: string[] = [];
+    for await (const chunk of engineToSSE(fakeEngine())) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toHaveLength(1);
+    const parsed = parseSSE(chunks[0]);
+    expect(parsed).toEqual({
+      type: 'proactive_text',
+      proactiveType: 'idle_balance',
+      subjectKey: 'USDC',
+      body: 'You have $120 USDC sitting idle.',
+      suppressed: false,
+      markerCount: 1,
+    });
+  });
+
+  it('passes through suppressed proactive_text events (cooldown hit)', async () => {
+    async function* fakeEngine(): AsyncGenerator<EngineEvent> {
+      yield {
+        type: 'proactive_text',
+        proactiveType: 'hf_warning',
+        subjectKey: '1.45',
+        body: 'Your HF dropped below 1.5.',
+        suppressed: true,
+        markerCount: 1,
+      };
+    }
+
+    const chunks: string[] = [];
+    for await (const chunk of engineToSSE(fakeEngine())) {
+      chunks.push(chunk);
+    }
+    const parsed = parseSSE(chunks[0]);
+    if (parsed?.type === 'proactive_text') {
+      expect(parsed.suppressed).toBe(true);
+      expect(parsed.proactiveType).toBe('hf_warning');
+    }
+  });
 });

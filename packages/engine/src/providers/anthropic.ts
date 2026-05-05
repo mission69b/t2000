@@ -10,6 +10,7 @@ import type {
   ToolDefinition,
 } from '../types.js';
 import { parseEvalSummary } from '../eval-summary.js';
+import { parseProactiveMarker } from '../proactive-marker.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -120,6 +121,12 @@ export class AnthropicProvider implements LLMProvider {
 
     const toolInputBuffers = new Map<number, { id: string; name: string; json: string }>();
     const thinkingBuffers = new Map<number, { type: 'thinking'; text: string; signature: string } | { type: 'redacted_thinking'; data: string }>();
+    // [SPEC 9 v0.1.1 P9.2] Per-text-block buffers for `<proactive>` marker
+    // scanning at content_block_stop. Mirrors the thinking-buffer pattern
+    // used for `<eval_summary>` parsing — we accumulate the full text body
+    // so the regex can run on a complete string instead of per-delta
+    // chunks (which can split a marker across two deltas).
+    const textBuffers = new Map<number, { text: string }>();
     let outputTokensFromStart = 0;
 
     try {
@@ -163,6 +170,10 @@ export class AnthropicProvider implements LLMProvider {
               thinkingBuffers.set(event.index, { type: 'thinking', text: '', signature: '' });
             } else if (block.type === 'redacted_thinking') {
               thinkingBuffers.set(event.index, { type: 'redacted_thinking', data: block.data ?? '' });
+            } else if (block.type === 'text') {
+              // [SPEC 9 v0.1.1 P9.2] Start a fresh text buffer for proactive
+              // marker scanning at content_block_stop.
+              textBuffers.set(event.index, { text: '' });
             }
             break;
           }
@@ -170,6 +181,8 @@ export class AnthropicProvider implements LLMProvider {
           case 'content_block_delta': {
             const delta = event.delta as { type: string; text?: string; partial_json?: string; thinking?: string; signature?: string };
             if (delta.type === 'text_delta') {
+              const buf = textBuffers.get(event.index);
+              if (buf) buf.text += delta.text ?? '';
               yield { type: 'text_delta', text: delta.text! };
             } else if (delta.type === 'input_json_delta') {
               const buf = toolInputBuffers.get(event.index);
@@ -228,6 +241,19 @@ export class AnthropicProvider implements LLMProvider {
             } else if (thinkBuf?.type === 'redacted_thinking') {
               yield { type: 'redacted_thinking', data: thinkBuf.data };
               thinkingBuffers.delete(event.index);
+            }
+            // [SPEC 9 v0.1.1 P9.2] Detect <proactive> marker in the text
+            // buffer. When present + parseable, surface the parsed payload
+            // on text_done so the engine can run the cooldown check and
+            // emit the public `proactive_text` event.
+            const textBuf = textBuffers.get(event.index);
+            if (textBuf) {
+              const proactiveMarker = parseProactiveMarker(textBuf.text);
+              yield {
+                type: 'text_done',
+                ...(proactiveMarker ? { proactiveMarker } : {}),
+              };
+              textBuffers.delete(event.index);
             }
             break;
           }

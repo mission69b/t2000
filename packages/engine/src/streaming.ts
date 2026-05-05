@@ -1,5 +1,6 @@
 import type { EngineEvent, HarnessShape, PendingAction, StopReason, TodoItem } from './types.js';
 import type { EvaluationItem } from './eval-summary.js';
+import type { ProactiveType } from './proactive-marker.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
@@ -51,6 +52,19 @@ export type SSEEvent =
   // [SPEC 8 v0.5.1, D2] pending_input reserved for SPEC 9 v0.1.2 inline
   // forms. Engine doesn't emit under SPEC 8; reservation is forward-compat.
   | { type: 'pending_input'; schema: unknown; inputId: string; prompt?: string }
+  // [SPEC 9 v0.1.1 P9.2] Proactive insight marker payload. Mirrors
+  // EngineEvent.proactive_text — see types.ts for full contract. Hosts
+  // apply `✦ ADDED BY AUDRIC` lockup styling on the text TimelineBlock
+  // when `suppressed: false`; strip the wrapper and render plain text
+  // when `suppressed: true` (per-session cooldown hit).
+  | {
+      type: 'proactive_text';
+      proactiveType: ProactiveType;
+      subjectKey: string;
+      body: string;
+      suppressed: boolean;
+      markerCount: number;
+    }
   // [SPEC 8 v0.5.1 B3.2] One-shot per-turn harness shape declaration.
   // Mirrors EngineEvent.harness_shape — see types.ts for full contract.
   | { type: 'harness_shape'; shape: HarnessShape; rationale: string };

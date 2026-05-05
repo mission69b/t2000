@@ -147,6 +147,15 @@ export type {
   EvaluationStatus,
   EvalSummaryParseResult,
 } from './eval-summary.js';
+// [SPEC 9 v0.1.1 P9.2] <proactive> marker parser + types. Hosts use the
+// `proactive_text` SSE event (carrying these fields) to render the
+// `✦ ADDED BY AUDRIC` lockup variant of the text TimelineBlock.
+export {
+  parseProactiveMarker,
+  stripProactiveMarkers,
+  extractAllProactiveMarkers,
+} from './proactive-marker.js';
+export type { ProactiveMarker, ProactiveType } from './proactive-marker.js';
 
 // Prompt caching
 export { buildCachedSystemPrompt } from './prompt-cache.js';

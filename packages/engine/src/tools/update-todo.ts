@@ -65,6 +65,14 @@ const todoItemSchema = z.object({
     .min(1, 'label must be a non-empty string')
     .max(80, 'label must be ≤80 chars (the whole point of this tool is concision)'),
   status: todoStatusSchema,
+  // [SPEC 9 v0.1.3 P9.3] Per-item persistence flag — opt this todo item
+  // into the long-lived `Goal` row surface. Hosts that wire goal storage
+  // (audric) write a Goal row with `content: label`, `status: 'in_progress'`,
+  // `sourceSessionId: <currentSession>` when this flag is true. Default
+  // false — most turn-scoped items don't survive the turn. Engine is
+  // unaware of how/where the host persists; it just passes the flag
+  // through on the `todo_update` side-channel event.
+  persist: z.boolean().optional(),
 });
 
 const inputSchema = z.object({
@@ -92,7 +100,13 @@ export const updateTodoTool = buildTool({
     "seeing the plan unfold ('save my idle USDC' → check balance → check rates → " +
     "compute split → propose). " +
     "\n\nThis call doesn't count against your turn budget — re-narrating the plan " +
-    "as items move from pending → in_progress → completed is encouraged.",
+    "as items move from pending → in_progress → completed is encouraged. " +
+    "\n\n[SPEC 9 v0.1.3] To promote an item into a long-lived goal that survives " +
+    "across sessions, set `persist: true` on that item. Reserve this for multi-week " +
+    "commitments the user explicitly wants remembered (e.g. \"save $500 by month-end\", " +
+    "\"track NAVI USDC APY weekly\"). DO NOT set persist on within-turn steps " +
+    "(\"check balance\", \"compute split\") — those vanish when the turn ends, which is " +
+    "what you want. Default behaviour (no persist field) is don't-persist.",
   inputSchema,
   jsonSchema: {
     type: 'object',
@@ -116,6 +130,14 @@ export const updateTodoTool = buildTool({
               type: 'string',
               enum: ['pending', 'in_progress', 'completed'],
               description: 'Lifecycle state. Exactly one item must be `in_progress` per call.',
+            },
+            persist: {
+              type: 'boolean',
+              description:
+                'Set true to promote this item into a long-lived goal that survives across sessions ' +
+                '(e.g. "save $500 by month-end"). Default false — only set true when the item ' +
+                'represents a multi-week / multi-session commitment, not a within-turn step. ' +
+                'When false or omitted, the item lives only for this turn.',
             },
           },
           required: ['id', 'label', 'status'],

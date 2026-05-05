@@ -126,6 +126,39 @@ export type EngineEvent =
    */
   | { type: 'compaction' }
   /**
+   * [SPEC 9 v0.1.1 P9.2] Proactive insight emitted by the LLM via a
+   * `<proactive type="..." subjectKey="...">BODY</proactive>` wrapper in
+   * the final-text block. Engine fires this event AFTER the matching
+   * text_delta stream has finished, once `parseProactiveMarker` has
+   * extracted the marker at content_block_stop on the text block AND
+   * the per-session cooldown check has run.
+   *
+   * `suppressed === false` (cold marker, first time seen this session)
+   * → host applies the `✦ ADDED BY AUDRIC` lockup styling on the matching
+   *   `text` TimelineBlock (italic body, dim border-left accent).
+   * `suppressed === true` (cooldown hit, same `(type, subjectKey)` already
+   *   fired this session) → host strips the wrapper from the displayed
+   *   text and renders as a regular text block — narrative still flows,
+   *   the visual lockup just doesn't fire twice.
+   *
+   * In both cases the streamed `text_delta` events still contain the raw
+   * marker chars (the engine doesn't buffer-and-rewrite mid-stream); the
+   * host applies marker stripping post-hoc using `body` from this event.
+   * Hosts that ignore this event render markers visibly — acceptable for
+   * legacy hosts as a graceful fallback.
+   */
+  | {
+      type: 'proactive_text';
+      proactiveType: 'idle_balance' | 'hf_warning' | 'apy_drift' | 'goal_progress';
+      subjectKey: string;
+      /** Marker body, trimmed. Host renders this inside the lockup (or as plain text when suppressed). */
+      body: string;
+      /** True when (proactiveType, subjectKey) was already seen this session — host skips the lockup. */
+      suppressed: boolean;
+      /** Total marker count detected in the text. >1 = LLM violation; counted by the host telemetry. */
+      markerCount: number;
+    }
+  /**
    * [SPEC 8 v0.5.1] Side-channel event paired to every `update_todo` tool
    * call. Hosts render the persistent todo card from this event (NOT from
    * the tool_result — see `tools/update-todo.ts` § "side-channel" for
@@ -231,11 +264,17 @@ export function harnessShapeForEffort(effort: ThinkingEffort): HarnessShape {
  * [SPEC 8 v0.5.1] One row in an `update_todo` payload. Mirrored from
  * `packages/engine/src/tools/update-todo.ts`. Kept here so hosts that
  * consume `EngineEvent` don't need to depend on the tool module.
+ *
+ * [SPEC 9 v0.1.3 P9.3] `persist?: boolean` — when true, hosts wired
+ * for goal storage (audric) write a long-lived `Goal` row from this
+ * item. Engine is unaware of how the host persists; this flag just
+ * passes through on the `todo_update` side-channel event.
  */
 export interface TodoItem {
   id: string;
   label: string;
   status: 'pending' | 'in_progress' | 'completed';
+  persist?: boolean;
 }
 
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'max_turns' | 'error';
@@ -828,6 +867,23 @@ export type ProviderEvent =
     }
   | { type: 'redacted_thinking'; data: string }
   | { type: 'text_delta'; text: string }
+  /**
+   * [SPEC 9 v0.1.1 P9.2] Fired by the provider at content_block_stop on
+   * a TEXT block when a `<proactive>` marker was detected in the
+   * accumulated text. Carries the parsed marker payload so the engine
+   * can run cooldown logic (per-session dedup) and emit the public
+   * `proactive_text` engine event. Absent when no marker was found —
+   * regular text turns don't pay the cost.
+   *
+   * The provider does NOT do the cooldown check (that's engine state);
+   * it just parses + forwards. Pre-SPEC-9 hosts that handle provider
+   * events directly will silently no-op on this event; the engine's
+   * `handleProviderEvent` is the only consumer in production.
+   */
+  | {
+      type: 'text_done';
+      proactiveMarker?: import('./proactive-marker.js').ProactiveMarker;
+    }
   | { type: 'tool_use_start'; id: string; name: string }
   | { type: 'tool_use_delta'; id: string; partialJson: string }
   | { type: 'tool_use_done'; id: string; name: string; input: unknown }
