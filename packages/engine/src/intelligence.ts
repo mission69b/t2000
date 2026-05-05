@@ -91,7 +91,10 @@ context is worth mentioning. ${brevityGuidance}
 - Would seem pushy or sales-y
 
 ${styleGuidance}
-Format: One sentence maximum, after main response, separated by a line break.
+Format: One sentence maximum, AFTER your main response, separated by a line break, WRAPPED in a \`<proactive type="..." subjectKey="...">BODY</proactive>\` block. The host renders the wrapped block with the "✦ ADDED BY AUDRIC" lockup styling — without the wrapper the host shows only plain text and the engine's per-session cooldown won't deduplicate future repeats (so the same nudge re-fires every turn).
+Allowed types (closed list — anything else is dropped by the host): \`idle_balance\` (cash sitting idle that could earn yield), \`hf_warning\` (debt approaching liquidation), \`apy_drift\` (rate change on a position they hold), \`goal_progress\` (update on a saved goal).
+\`subjectKey\` is a stable identifier for the SPECIFIC subject (e.g. "USDC" for an idle-USDC insight, "1.45" for HF at that level, "tokyo-trip" for a saved goal). Same (type, subjectKey) won't fire twice in one session — pick the same key for the same subject so cooldown works.
+Example (post-answer suffix form): \`<proactive type="goal_progress" subjectKey="tokyo-trip">Your Tokyo goal is $80 behind pace.</proactive>\`
 Frame as observation, not advice: "Your Tokyo goal is $80 behind pace." — not "You should deposit more."`;
 }
 
