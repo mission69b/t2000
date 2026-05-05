@@ -212,6 +212,36 @@ export type EngineEvent =
       schema: FormSchema;
       /** Optional human-readable description rendered above the form (e.g. "Add a new contact"). */
       description?: string;
+      /**
+       * Assistant message blocks captured at pause time. Hosts that
+       * re-instantiate `QueryEngine` per-request (e.g. audric) MUST
+       * persist these alongside the rest of the `PendingInput` payload
+       * and echo them back on `resumeWithInput` so the conversation
+       * stays well-formed.
+       *
+       * Mirrors `pending_action.action.assistantContent` — same
+       * round-trip pattern. In-process hosts can ignore the field
+       * (the engine also stashes the state on `this.pendingInputs`
+       * keyed by `inputId`).
+       *
+       * Typed as `unknown[]` to avoid pulling `ContentBlock` into
+       * `pending-input.ts` and creating a type-import cycle.
+       */
+      assistantContent: unknown[];
+      /**
+       * Tool results from reads that completed BEFORE the paused tool
+       * call (same turn). On resume the engine merges these with the
+       * resumed tool's result into ONE `user`-role message — keeps
+       * Anthropic's "every tool_use must have a tool_result in the next
+       * user message" invariant satisfied.
+       *
+       * Mirrors the round-trip half of `PendingAction.completedResults`.
+       */
+      completedResults: Array<{
+        toolUseId: string;
+        content: string;
+        isError: boolean;
+      }>;
     }
   /**
    * [SPEC 8 v0.5.1 B3.2] One-shot per-turn declaration of which adaptive

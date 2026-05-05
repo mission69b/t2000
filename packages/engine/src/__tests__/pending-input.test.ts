@@ -167,6 +167,12 @@ describe('engine — pending_input emission', () => {
     expect(pending!.description).toBe('Add a new contact');
     expect(pending!.schema.fields).toHaveLength(2);
 
+    // [SPEC 9 v0.1.3 P9.4] Round-trip fields ride on the wire so
+    // stateless hosts can persist + echo back on resume. Mirrors the
+    // pending_action.action.assistantContent pattern.
+    expect(Array.isArray(pending!.assistantContent)).toBe(true);
+    expect(Array.isArray(pending!.completedResults)).toBe(true);
+
     // Engine stopped after pending_input — no turn_complete event.
     const turnComplete = events.find((e) => e.type === 'turn_complete');
     expect(turnComplete).toBeUndefined();

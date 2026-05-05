@@ -1571,6 +1571,14 @@ export class QueryEngine {
               toolUseId: call.id,
               schema: check.needsInput.schema,
               description: check.needsInput.description,
+              // [SPEC 9 v0.1.3 P9.4] Round-trip fields on the wire so
+              // stateless hosts (audric — request-scoped engines) can
+              // persist + echo back on resume. In-process hosts (CLI,
+              // long-lived engine instances) can ignore — the engine
+              // also stashes the state on `this.pendingInputs[inputId]`
+              // for in-memory recall.
+              assistantContent: pendingInput.assistantContent,
+              completedResults: pendingInput.completedResults,
             };
             recordTurnOutcome('pending_input');
             return;

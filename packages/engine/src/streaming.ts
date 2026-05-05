@@ -56,8 +56,9 @@ export type SSEEvent =
   // `/api/engine/resume-with-input`. Wire-compatible upgrade of the
   // SPEC 8 v0.5.1 D2 reservation — `schema` narrows from `unknown`
   // to `FormSchema`; the additional `toolName` / `toolUseId` /
-  // `description` fields are new; the round-trip state stays
-  // engine-internal (host stores it as-is in the session payload).
+  // `description` fields are new; the round-trip state (`assistantContent`
+  // / `completedResults`) is carried on the wire so stateless hosts
+  // can persist + echo back on resume.
   | {
       type: 'pending_input';
       inputId: string;
@@ -65,6 +66,12 @@ export type SSEEvent =
       toolUseId: string;
       schema: FormSchema;
       description?: string;
+      assistantContent: unknown[];
+      completedResults: Array<{
+        toolUseId: string;
+        content: string;
+        isError: boolean;
+      }>;
     }
   // [SPEC 9 v0.1.1 P9.2] Proactive insight marker payload. Mirrors
   // EngineEvent.proactive_text — see types.ts for full contract. Hosts
