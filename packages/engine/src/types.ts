@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { FormSchema } from './pending-input.js';
 
 // ---------------------------------------------------------------------------
 // Messages — provider-agnostic conversation format
@@ -185,21 +186,32 @@ export type EngineEvent =
    */
   | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
   /**
-   * [SPEC 8 v0.5.1, D2] Inline-form structured input event reserved for
-   * SPEC 9 v0.1.2 (`pending_input` form primitive). The engine does NOT
-   * emit this event under SPEC 8 — the type is reserved so legacy hosts
-   * can add a no-op handler now and avoid crashing when SPEC 9 ships
-   * `pending_input` emission. See SPEC 8 § "v0.5 cross-spec coupling
-   * fixes" — gap D2 — for the forward-compat rationale.
+   * [SPEC 9 v0.1.3 P9.4] Inline-form structured input event. Emitted when a
+   * tool's preflight returns `needsInput` — the engine pauses the turn,
+   * stores the pending state on the QueryEngine instance keyed by `inputId`,
+   * and waits for the host to call `engine.resumeWithInput(inputId, values)`
+   * with the user's submitted form values. The schema is the typed shape
+   * defined in `pending-input.ts` (closed list of field kinds).
+   *
+   * Upgraded from the SPEC 8 v0.5.1 D2 forward-compat reservation (which
+   * carried `schema: unknown` + a `prompt?: string` placeholder). The
+   * upgrade is wire-compatible: the new shape is a SUPERSET of the
+   * reservation — `schema` narrows from `unknown` to `FormSchema`, and the
+   * additional `toolName` / `toolUseId` / `description` fields are new.
+   * Legacy hosts that no-op on `pending_input` keep working.
    */
   | {
       type: 'pending_input';
-      /** Form schema (shape locked in SPEC 9 v0.1.2; engine treats it opaquely). */
-      schema: unknown;
-      /** Engine round-trip identifier — host posts the answer back keyed on this. */
+      /** UUID v4 stamped per-emit. Host posts back keyed on this. */
       inputId: string;
-      /** Optional human-readable prompt the LLM wants the host to display above the form. */
-      prompt?: string;
+      /** Tool that requested the input — useful for host debug logs + fallback caption. */
+      toolName: string;
+      /** Original `tool_use_id` from the LLM's call — preserved for the resumed tool_result. */
+      toolUseId: string;
+      /** Form schema (typed — see `pending-input.ts`). */
+      schema: FormSchema;
+      /** Optional human-readable description rendered above the form (e.g. "Add a new contact"). */
+      description?: string;
     }
   /**
    * [SPEC 8 v0.5.1 B3.2] One-shot per-turn declaration of which adaptive
@@ -599,7 +611,26 @@ export interface ToolFlags {
 
 export type PreflightResult =
   | { valid: true }
-  | { valid: false; error: string };
+  | { valid: false; error: string }
+  // [SPEC 9 v0.1.3 P9.4] Tool needs structured input before it can run.
+  // Engine yields `pending_input` (with the schema below) and pauses the
+  // turn; the host renders the form, the user fills it, the host calls
+  // `engine.resumeWithInput(inputId, values)` to feed values back as the
+  // tool's input. Distinct from `{ valid: false, error }` — that pushes a
+  // tool_result error back to the LLM so it can re-ask; this PAUSES the
+  // engine and waits for a separate user-supplied payload.
+  //
+  // Note: `valid: false` sits on this branch too because the tool's
+  // `call()` body MUST NOT run with the original (incomplete) input. The
+  // engine treats this branch as "valid pause request" and never fires
+  // the `error` narration path.
+  | {
+      valid: false;
+      needsInput: {
+        schema: FormSchema;
+        description?: string;
+      };
+    };
 
 export interface Tool<TInput = unknown, TOutput = unknown> {
   name: string;

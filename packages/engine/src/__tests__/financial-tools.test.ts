@@ -23,7 +23,7 @@ describe('save_deposit tool', () => {
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
     const result = saveDepositTool.preflight?.(badInput);
     expect(result?.valid).toBe(false);
-    if (result && !result.valid) expect(result.error).toContain('USDC or USDsui');
+    if (result && !result.valid && 'error' in result) expect(result.error).toContain('USDC or USDsui');
   });
 
   it('runtime preflight rejects SUI', async () => {
@@ -85,7 +85,7 @@ describe('borrow tool', () => {
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
     const result = borrowTool.preflight?.(badInput);
     expect(result?.valid).toBe(false);
-    if (result && !result.valid) expect(result.error).toContain('USDC or USDsui');
+    if (result && !result.valid && 'error' in result) expect(result.error).toContain('USDC or USDsui');
   });
 
   it('runtime preflight rejects SUI', async () => {
@@ -138,7 +138,7 @@ describe('repay_debt tool', () => {
     const badInput = { amount: 10, asset: 'USDT' } as unknown as { amount: number; asset?: 'USDC' | 'USDsui' };
     const result = repayDebtTool.preflight?.(badInput);
     expect(result?.valid).toBe(false);
-    if (result && !result.valid) expect(result.error).toContain('USDC or USDsui');
+    if (result && !result.valid && 'error' in result) expect(result.error).toContain('USDC or USDsui');
   });
 
   it('preflight accepts USDC, USDsui, and omitted asset', () => {

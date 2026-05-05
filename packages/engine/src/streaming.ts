@@ -1,6 +1,7 @@
 import type { EngineEvent, HarnessShape, PendingAction, StopReason, TodoItem } from './types.js';
 import type { EvaluationItem } from './eval-summary.js';
 import type { ProactiveType } from './proactive-marker.js';
+import type { FormSchema } from './pending-input.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
@@ -49,9 +50,22 @@ export type SSEEvent =
   // tools (Cetus swap_execute, protocol_deep_dive, portfolio_analysis).
   // Engine wiring lands with the Cetus integration in a follow-on slice.
   | { type: 'tool_progress'; toolUseId: string; toolName: string; message: string; pct?: number }
-  // [SPEC 8 v0.5.1, D2] pending_input reserved for SPEC 9 v0.1.2 inline
-  // forms. Engine doesn't emit under SPEC 8; reservation is forward-compat.
-  | { type: 'pending_input'; schema: unknown; inputId: string; prompt?: string }
+  // [SPEC 9 v0.1.3 P9.4] Inline-form structured input event. Engine
+  // emits when a tool's preflight returns `needsInput`; host renders
+  // a typed form against `schema.fields` and POSTs values back via
+  // `/api/engine/resume-with-input`. Wire-compatible upgrade of the
+  // SPEC 8 v0.5.1 D2 reservation — `schema` narrows from `unknown`
+  // to `FormSchema`; the additional `toolName` / `toolUseId` /
+  // `description` fields are new; the round-trip state stays
+  // engine-internal (host stores it as-is in the session payload).
+  | {
+      type: 'pending_input';
+      inputId: string;
+      toolName: string;
+      toolUseId: string;
+      schema: FormSchema;
+      description?: string;
+    }
   // [SPEC 9 v0.1.1 P9.2] Proactive insight marker payload. Mirrors
   // EngineEvent.proactive_text — see types.ts for full contract. Hosts
   // apply `✦ ADDED BY AUDRIC` lockup styling on the text TimelineBlock

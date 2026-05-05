@@ -42,6 +42,14 @@ import { resolveSuinsTool } from './resolve-suins.js';
 // This keeps the existing audric/web call sites zero-risk until the
 // SPEC 8 host wiring (P3.3) lands.
 import { updateTodoTool } from './update-todo.js';
+// [SPEC 9 v0.1.3 P9.4] add_recipient is opt-in for the same reason —
+// hosts that don't yet render `pending_input` forms shouldn't expose
+// the tool to the LLM (they'd receive an event they can't handle).
+// Adopt by appending `addRecipientTool` to the tool list:
+//   tools: [...getDefaultTools(), addRecipientTool]
+// Once audric's form renderer + resume endpoint ship, audric/web
+// adopts; other hosts follow when ready.
+import { addRecipientTool } from './add-recipient.js';
 // [v1.4 — Day 3] All 7 `defillama_*` LLM tools removed. The
 // BlockVision-backed `token_prices` tool covers spot prices; the
 // surviving DefiLlama dependency is `protocol_deep_dive`, which holds
@@ -145,4 +153,5 @@ export {
   activitySummaryTool,
   resolveSuinsTool,
   updateTodoTool,
+  addRecipientTool,
 };

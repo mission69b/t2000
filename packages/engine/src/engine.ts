@@ -20,6 +20,7 @@ import { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
 import { clearPortfolioCacheFor } from './blockvision-prices.js';
 import { getTelemetrySink } from './telemetry.js';
 import { extractAllProactiveMarkers } from './proactive-marker.js';
+import type { PendingInputState } from './pending-input.js';
 import { randomUUID } from 'node:crypto';
 import { CostTracker, type CostSnapshot } from './cost.js';
 import { describeAction } from './describe-action.js';
@@ -128,6 +129,15 @@ export class QueryEngine {
   // Storage shape: serialised key `${type}:${subjectKey}` for cheap
   // Set membership without an extra hash function.
   private readonly proactiveCooldown = new Set<string>();
+  // [SPEC 9 v0.1.3 P9.4] In-flight `pending_input` state, keyed by `inputId`.
+  // Set when the agent loop hits a tool whose preflight returned `needsInput`;
+  // consulted by `resumeWithInput()` to look up which paused tool call to
+  // re-feed with the user's submitted values. Cleared on resume (whether
+  // success or abandonment via a fresh `submitMessage`). Multiple concurrent
+  // entries are allowed in principle (LLM could call two `add_recipient`s
+  // in one turn) but in practice we yield + return on the FIRST hit, so
+  // the map is almost always 0 or 1 entries deep.
+  private readonly pendingInputs = new Map<string, PendingInputState>();
 
   constructor(config: EngineConfig) {
     this.provider = config.provider;
@@ -446,6 +456,205 @@ export class QueryEngine {
     // post-write refresh above re-populated the cache with fresh
     // post-write reads; agentLoop may add more during follow-up tool
     // calls; finally clears it at turn end (skipping when paused).
+    this.turnPaused = false;
+    try {
+      yield* this.agentLoop(null, signal, false);
+    } finally {
+      if (!this.turnPaused) {
+        this.turnReadCache.clear();
+      }
+    }
+  }
+
+  /**
+   * [SPEC 9 v0.1.3 P9.4] Resume a turn that paused on `pending_input`.
+   *
+   * Called by the host after the user submitted the inline form. The
+   * `pendingInput` argument is the EXACT payload that was yielded as
+   * `pending_input` (host stored it in session storage); `values` is the
+   * `{ fieldName: value }` map the user submitted, post-host-validation
+   * against `pendingInput.schema`.
+   *
+   * Engine responsibilities (in order):
+   * 1. Push the captured `assistantContent` (assistant blocks from the
+   *    paused turn — includes the tool_use that triggered this pause).
+   * 2. Run the paused tool's `call()` with `values` as input. Re-runs
+   *    preflight first as a defense-in-depth gate (host SHOULD have
+   *    validated against the schema, but malformed input would otherwise
+   *    poison the conversation history with an orphan tool_use).
+   * 3. Combine `completedResults` (read tool_results that already ran in
+   *    the same turn before the pause) with the new tool_result into ONE
+   *    user-role message. Anthropic's API requires every tool_use to have
+   *    a tool_result in the immediately-following user message — splitting
+   *    them would produce two consecutive user messages, which the API
+   *    rejects.
+   * 4. Yield `tool_result` for the host's timeline + run `agentLoop` to
+   *    continue the turn (LLM gets the resumed result and narrates).
+   *
+   * Mirrors `resumeWithToolResult` for the user-confirm case but feeds
+   * the values back as the tool's INPUT (the call() runs here for the
+   * first time) instead of as the tool's OUTPUT (the call() ran on the
+   * client side via sponsored-tx for pending_action).
+   */
+  async *resumeWithInput(
+    pendingInput: PendingInputState,
+    values: Record<string, unknown>,
+  ): AsyncGenerator<EngineEvent> {
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
+
+    // 1. Restore the assistant-blocks-side of the conversation.
+    if (pendingInput.assistantContent.length > 0) {
+      this.messages.push({
+        role: 'assistant',
+        content: pendingInput.assistantContent as ContentBlock[],
+      });
+    }
+
+    // 2. Resolve the paused tool. If it's gone (engine reload dropped a
+    // tool the host expected), fail closed — push an error tool_result
+    // so the LLM can re-narrate "I tried to add the contact but the
+    // engine doesn't have that tool anymore" rather than crashing.
+    const tool = findTool(this.tools, pendingInput.toolName);
+    let resumedToolResult: { content: string; isError: boolean };
+    let toolResultEventPayload: { result: unknown; isError: boolean };
+
+    if (!tool) {
+      const errorPayload = {
+        error: `Tool "${pendingInput.toolName}" not found on resume — engine may have been reconfigured between pause and resume.`,
+        _hostBugMissingTool: true,
+      };
+      resumedToolResult = {
+        content: JSON.stringify(errorPayload),
+        isError: true,
+      };
+      toolResultEventPayload = { result: errorPayload, isError: true };
+    } else {
+      // 2a. Defense-in-depth preflight + Zod validation. Host SHOULD have
+      // validated against the form schema before calling resume; if it
+      // didn't (or the schema drifted between emit and resume), the bad
+      // input fails here and the LLM sees a tool_result error instead of
+      // running with garbage. Notably we do NOT re-emit `pending_input`
+      // on a failed re-validation — that risks an emit/resume infinite
+      // loop. The user gets one chance per submission.
+      const preflightCheck = tool.preflight ? tool.preflight(values) : { valid: true } as const;
+      if (!preflightCheck.valid && 'error' in preflightCheck) {
+        const errorPayload = {
+          error: `Form values failed re-validation: ${preflightCheck.error}`,
+          _hostFormValidationFailed: true,
+        };
+        resumedToolResult = {
+          content: JSON.stringify(errorPayload),
+          isError: true,
+        };
+        toolResultEventPayload = { result: errorPayload, isError: true };
+      } else if (!preflightCheck.valid && 'needsInput' in preflightCheck) {
+        // Edge case: tool wants a SECOND form. Don't loop — push an
+        // error so the LLM narrates and the user can re-prompt.
+        // (Multi-step forms aren't a v0.1.3 deliverable; if SPEC 10
+        // needs them, design the contract in v0.2.)
+        const errorPayload = {
+          error:
+            'Tool requested another form on resume — multi-step forms are not supported in v0.1.3. ' +
+            'Re-prompt the user with a fresh single-step request.',
+          _multiStepFormUnsupported: true,
+        };
+        resumedToolResult = {
+          content: JSON.stringify(errorPayload),
+          isError: true,
+        };
+        toolResultEventPayload = { result: errorPayload, isError: true };
+      } else {
+        const parsed = tool.inputSchema.safeParse(values);
+        if (!parsed.success) {
+          const errorPayload = {
+            error: `Invalid input on resume: ${parsed.error.issues.map((i) => i.message).join(', ')}`,
+            _hostFormZodFailed: true,
+          };
+          resumedToolResult = {
+            content: JSON.stringify(errorPayload),
+            isError: true,
+          };
+          toolResultEventPayload = { result: errorPayload, isError: true };
+        } else {
+          // 2b. Build a minimal ToolContext + invoke. Mirrors the shape
+          // built in `agentLoop` and `resumeWithToolResult` — kept inline
+          // until `engine.ts` gets a `buildToolContext()` extraction
+          // (out of scope for P9.4; tracked as tech debt).
+          const context: ToolContext = {
+            agent: this.agent,
+            mcpManager: this.mcpManager,
+            walletAddress: this.walletAddress,
+            suiRpcUrl: this.suiRpcUrl,
+            serverPositions: this.serverPositions,
+            positionFetcher: this.positionFetcher,
+            env: this.env,
+            signal,
+            priceCache: this.priceCache,
+            permissionConfig: this.permissionConfig,
+            sessionSpendUsd: this.sessionSpendUsd,
+            blockvisionApiKey: this.blockvisionApiKey,
+            portfolioCache: this.portfolioCache,
+          };
+
+          try {
+            const callResult = await tool.call(parsed.data, context);
+            resumedToolResult = {
+              content: JSON.stringify(callResult.data),
+              isError: false,
+            };
+            toolResultEventPayload = { result: callResult.data, isError: false };
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Tool execution failed';
+            const errorPayload = { error: message };
+            resumedToolResult = {
+              content: JSON.stringify(errorPayload),
+              isError: true,
+            };
+            toolResultEventPayload = { result: errorPayload, isError: true };
+          }
+        }
+      }
+    }
+
+    // 3. Merge completedResults + the resumed tool's result into one
+    // user-role message — keeps the (tool_use, tool_result) pairing
+    // invariant Anthropic enforces.
+    const userMessageBlocks: ContentBlock[] = [
+      ...pendingInput.completedResults.map((r) => ({
+        type: 'tool_result' as const,
+        toolUseId: r.toolUseId,
+        content: r.content,
+        isError: r.isError,
+      })),
+      {
+        type: 'tool_result' as const,
+        toolUseId: pendingInput.toolUseId,
+        content: resumedToolResult.content,
+        isError: resumedToolResult.isError,
+      },
+    ];
+    this.messages.push({ role: 'user', content: userMessageBlocks });
+
+    // 4. Yield the resumed-tool's result for the host timeline. (Hosts
+    // that don't render in-flight tool calls can ignore; the canvas-style
+    // confirmation comes from the LLM's narration in the next agentLoop
+    // turn.)
+    yield {
+      type: 'tool_result',
+      toolName: pendingInput.toolName,
+      toolUseId: pendingInput.toolUseId,
+      result: toolResultEventPayload.result,
+      isError: toolResultEventPayload.isError,
+    };
+
+    // Drop the pending-input state — turn is no longer paused on this id.
+    this.pendingInputs.delete(pendingInput.inputId);
+
+    // 5. Resume the agent loop. `freshPrompt: null` signals "this is a
+    // resume, not a new user message" — agentLoop skips the user-message
+    // push at entry and goes straight to the LLM round-trip with the
+    // updated history.
     this.turnPaused = false;
     try {
       yield* this.agentLoop(null, signal, false);
@@ -892,6 +1101,7 @@ export class QueryEngine {
         | 'pending_action_single'
         | 'pending_action_bundle'
         | 'pending_action_decline'
+        | 'pending_input'
         | 'error_aborted'
         | 'error_budget'
         | 'error_other'
@@ -1319,6 +1529,51 @@ export class QueryEngine {
               isError: true,
             });
             continue;
+          }
+
+          // [SPEC 9 v0.1.3 P9.4] Tool's preflight returned `needsInput`.
+          // The tool can't run yet — it needs structured input from the
+          // user. Yield `pending_input`, mark the turn paused, and exit
+          // the agent loop. Host stores the full PendingInput payload
+          // (assistantContent + completedResults included) and replays
+          // it on resume via `engine.resumeWithInput(pendingInput, values)`.
+          //
+          // Round-trip fields mirror the pending_action pattern (action
+          // carries assistantContent / completedResults; resume pushes
+          // them back atomically). Keeps the conversation history from
+          // ever holding an orphan tool_use block.
+          if (check.needsInput) {
+            const inputId = randomUUID();
+            const pendingInput: PendingInputState = {
+              inputId,
+              toolName: call.name,
+              toolUseId: call.id,
+              schema: check.needsInput.schema,
+              description: check.needsInput.description,
+              assistantContent: acc.assistantBlocks,
+              completedResults: toolResultBlocks.map((b) => ({
+                toolUseId: (b as { toolUseId: string }).toolUseId,
+                content: (b as { content: string }).content,
+                isError: (b as { isError?: boolean }).isError ?? false,
+              })),
+            };
+            this.pendingInputs.set(inputId, pendingInput);
+            this.turnPaused = true;
+
+            getTelemetrySink().counter('engine.pending_input_emitted', {
+              tool: call.name,
+            });
+
+            yield {
+              type: 'pending_input',
+              inputId,
+              toolName: call.name,
+              toolUseId: call.id,
+              schema: check.needsInput.schema,
+              description: check.needsInput.description,
+            };
+            recordTurnOutcome('pending_input');
+            return;
           }
 
           if (check.injections.length > 0) {

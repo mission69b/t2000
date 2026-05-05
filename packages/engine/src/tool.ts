@@ -20,6 +20,22 @@ export interface BuildToolOptions<TInput, TOutput> {
   jsonSchema: ToolJsonSchema;
   call: (input: TInput, context: ToolContext) => Promise<ToolResult<TOutput>>;
   isReadOnly?: boolean;
+  /**
+   * [SPEC 9 v0.1.3 P9.4] When `false`, the tool opts out of mid-stream
+   * `EarlyToolDispatcher` execution and is forced through the post-stream
+   * guard loop where `tool.preflight` runs (Tier 0 of `runGuards`).
+   *
+   * Default: `isReadOnly` (mirrors v1 behavior — read-only tools are
+   * considered concurrency-safe by default).
+   *
+   * Set to `false` for read-only tools that need preflight before
+   * executing. Notable example: `add_recipient` returns `needsInput`
+   * from preflight to pause the turn for an inline form. If it ran
+   * via early-dispatch, the tool's `call()` would fire BEFORE preflight
+   * is consulted (early-dispatch skips the guard loop), and the form
+   * pause path would be unreachable.
+   */
+  isConcurrencySafe?: boolean;
   permissionLevel?: PermissionLevel;
   flags?: ToolFlags;
   preflight?: (input: TInput) => PreflightResult;
@@ -45,7 +61,7 @@ export function buildTool<TInput, TOutput>(
     jsonSchema: opts.jsonSchema,
     call: opts.call,
     isReadOnly,
-    isConcurrencySafe: isReadOnly,
+    isConcurrencySafe: opts.isConcurrencySafe ?? isReadOnly,
     permissionLevel: opts.permissionLevel ?? (isReadOnly ? 'auto' : 'confirm'),
     flags: opts.flags ?? {},
     preflight: opts.preflight as AnyPreflight | undefined,

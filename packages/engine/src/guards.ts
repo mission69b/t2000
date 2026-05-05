@@ -29,6 +29,18 @@ export interface GuardCheckResult {
   blockGate?: string;
   injections: GuardInjection[];
   events: GuardEvent[];
+  /**
+   * [SPEC 9 v0.1.3 P9.4] Set when the tool's preflight returned
+   * `needsInput` instead of either valid or error. The engine consults
+   * this BEFORE checking `blocked`: if present, the engine yields a
+   * `pending_input` event and pauses the turn. Distinct from `blocked`
+   * because the engine should NOT push a tool_result error back to the
+   * LLM — the turn is intentionally paused, not failed.
+   */
+  needsInput?: {
+    schema: import('./pending-input.js').FormSchema;
+    description?: string;
+  };
 }
 
 export interface GuardEvent {
@@ -866,10 +878,52 @@ export function runGuards(
     }
   };
 
-  // Tier 0: Input validation (preflight) — runs first, invalid input = immediate block
+  // Tier 0: Input validation (preflight) — runs first, invalid input = immediate block.
+  // [SPEC 9 v0.1.3 P9.4] When preflight returns `needsInput`, the engine
+  // pauses the turn instead of feeding an error back to the LLM. Surfaced
+  // via a discrete `needsInput` field on the result; the engine consults
+  // it BEFORE the `blocked` check.
   if (config.inputValidation !== false && tool.preflight) {
     const check = tool.preflight(call.input);
     if (!check.valid) {
+      // Branch A: tool wants structured input — pause the turn, don't block.
+      // [SPEC 9 v0.1.3 P9.4] Reuse the existing `pass` verdict for the
+      // "pause for user input" case. Strictly speaking the call doesn't
+      // pass (it pauses), but adding a 5th verdict ('pause') would force
+      // every host that switches on `GuardVerdict` to add a new branch.
+      // Hosts that segment dashboards on "pause-for-input rate" can key
+      // on the dedicated `audric.harness.pending_input_emitted_count`
+      // telemetry counter the engine fires on this branch.
+      if ('needsInput' in check && check.needsInput) {
+        const event: GuardEvent = {
+          timestamp: now,
+          toolName: tool.name,
+          toolUseId: call.id,
+          gate: 'input_validation',
+          verdict: 'pass',
+          tier: 'safety',
+          message: check.needsInput.description,
+        };
+        fire('pass', 'safety', 'input_validation', false);
+        return {
+          blocked: false,
+          injections: [],
+          events: [event],
+          needsInput: check.needsInput,
+        };
+      }
+      // Branch B: classical block — bad input the LLM should re-ask.
+      // We've already handled the `needsInput` branch above, so this is
+      // the `{ valid: false; error: string }` branch. Narrow explicitly.
+      if (!('error' in check)) {
+        // Unreachable — needsInput branch already returned. Defensive throw
+        // so a future PreflightResult union extension fails loudly here
+        // instead of silently dropping into the block branch with an
+        // undefined message.
+        throw new Error(
+          `Preflight returned a non-needsInput, non-error invalid result for tool ${tool.name}`,
+        );
+      }
       const event: GuardEvent = {
         timestamp: now,
         toolName: tool.name,

@@ -51,9 +51,15 @@ async function collectEvents(gen: AsyncGenerator<EngineEvent>): Promise<EngineEv
 // ---------------------------------------------------------------------------
 
 // Narrowing helper — surfaces the error message once we've asserted invalid.
+// update_todo never returns the SPEC 9 P9.4 `needsInput` branch — its
+// preflight is pure validation. We narrow accordingly.
 function expectInvalid(r: ReturnType<NonNullable<typeof updateTodoTool.preflight>>): string {
   expect(r.valid).toBe(false);
   if (r.valid) throw new Error('preflight unexpectedly valid');
+  if ('needsInput' in r && r.needsInput) {
+    throw new Error('update_todo preflight unexpectedly returned needsInput');
+  }
+  if (!('error' in r)) throw new Error('expected error branch');
   return r.error;
 }
 

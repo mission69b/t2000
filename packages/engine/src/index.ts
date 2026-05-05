@@ -157,6 +157,20 @@ export {
 } from './proactive-marker.js';
 export type { ProactiveMarker, ProactiveType } from './proactive-marker.js';
 
+// [SPEC 9 v0.1.3 P9.4] Inline-form structured input primitive. Tools
+// that need user-supplied fields before they can run return
+// `{ valid: false, needsInput: { schema, description } }` from preflight;
+// the engine yields `pending_input`; the host renders the form; the
+// host calls `engine.resumeWithInput(pendingInput, values)` to feed
+// validated values back as the tool's input.
+export type {
+  FormFieldKind,
+  FormField,
+  FormSchema,
+  PendingInput,
+  PendingInputState,
+} from './pending-input.js';
+
 // Prompt caching
 export { buildCachedSystemPrompt } from './prompt-cache.js';
 
@@ -282,6 +296,9 @@ export {
   // [SPEC 8 v0.5.1] update_todo is exported but NOT in READ_TOOLS — hosts
   // opt in via [...getDefaultTools(), updateTodoTool].
   updateTodoTool,
+  // [SPEC 9 v0.1.3 P9.4] add_recipient is also opt-in — hosts that
+  // don't yet render `pending_input` forms shouldn't expose it.
+  addRecipientTool,
 } from './tools/index.js';
 export type { TodoItem } from './types.js';
 export type { TodoItem as UpdateTodoItem, UpdateTodoInput } from './tools/update-todo.js';

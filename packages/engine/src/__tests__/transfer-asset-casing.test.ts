@@ -68,7 +68,7 @@ describe('[F10] send_transfer accepts mixed-case asset symbols', () => {
         asset: 'FAKE_TOKEN',
       });
       expect(result.valid).toBe(false);
-      if (!result.valid) {
+      if (!result.valid && 'error' in result) {
         expect(result.error).toMatch(/Unsupported asset/);
       }
     });
