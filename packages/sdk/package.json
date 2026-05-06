@@ -59,23 +59,23 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@cetusprotocol/aggregator-sdk": "^1.4.8",
-    "@mysten/payment-kit": "^0.1.6",
-    "@mysten/sui": "^2.11.0",
+    "@cetusprotocol/aggregator-sdk": "^1.5.3",
+    "@mysten/payment-kit": "^0.1.9",
+    "@mysten/sui": "^2.16.0",
     "@mysten/suins": "^1.1.1",
     "@mysten/zklogin": "^0.8.1",
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.4.0",
-    "@suimpp/mpp": "^0.3.1",
+    "@suimpp/mpp": "^0.6.0",
     "eventemitter3": "^5",
-    "mppx": "^0.4.9"
+    "mppx": "^0.6.15"
   },
   "devDependencies": {
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",
     "typescript": "^5",
-    "typescript-eslint": "^8.58.0",
+    "typescript-eslint": "^8.59.2",
     "vitest": "^3"
   },
   "license": "MIT"

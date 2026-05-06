@@ -48,7 +48,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.28.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@t2000/sdk": "workspace:*",
     "@types/node": "^20",
     "eslint": "^9",

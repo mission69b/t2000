@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1",
-    "@mysten/sui": "^2.11.0",
+    "@mysten/sui": "^2.16.0",
     "@prisma/client": "^6",
     "@t2000/sdk": "workspace:*",
     "eventemitter3": "^5",
@@ -30,7 +30,7 @@
     "tsup": "^8",
     "tsx": "^4",
     "typescript": "^5",
-    "typescript-eslint": "^8.58.0",
+    "typescript-eslint": "^8.59.2",
     "vitest": "^3"
   }
 }

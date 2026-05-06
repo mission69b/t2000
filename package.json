@@ -10,7 +10,7 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
-    "@mysten/sui": "^2.11.0",
+    "@mysten/sui": "^2.16.0",
     "@mysten/suins": "^1.1.1",
     "prettier": "^3",
     "tsx": "^4",
@@ -28,7 +28,7 @@
       "unrs-resolver"
     ],
     "overrides": {
-      "@mysten/sui": "^2.11.0",
+      "@mysten/sui": "^2.16.0",
       "@mysten/bcs": "^2.0.1",
       "@pythnetwork/pyth-sui-js": "2.2.0"
     },
