@@ -1102,6 +1102,8 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 Signed-in users can link up to 10 Sui addresses (e.g. a hardware wallet alongside their zkLogin wallet); `FullPortfolioCanvas` aggregates them via `GET /api/analytics/portfolio-multi`. Backed by the `LinkedWallet` Prisma model.
 
 > **Removed in S.22 (April 2026):** the public `/report/[address]` wallet report (and its `PublicReport` cache). The "Audric would do" suggestions there were promoting features deleted in S.0–S.12 (24/7 alerts, recurring transactions, savings-goal automation), and a second standalone product surface contradicted the chat-first thesis. Heuristic portfolio analysis lives inside chat now via `portfolio_overview` + `health_check`.
+>
+> **Update (S.103, SPEC 17, May 2026):** the broader savings-goal layer is now fully removed — `SavingsGoal` Prisma table, 4 `savings_goal_*` engine tools, the audric `GoalsPanel` settings/dashboard surface, the `openGoals` snapshot field, the heuristic prompt line that nudged "your goal is off-track", and the t2000 MCP `savings-goal` prompt. The "track my savings progress" job-to-be-done is served by `health_check` + `portfolio_overview` + `yield_summary`.
 
 ### Intelligence Layer (silent context that survives the simplification)
 

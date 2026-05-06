@@ -295,10 +295,11 @@ describe('Confirmation flow (pending_action + resumeWithToolResult)', () => {
   });
 
   it('regression: auto-approves write tools with permissionLevel: auto WITHOUT an agent', async () => {
-    // Repros the v0.46.14 audric bug where save_contact (and every other
-    // Prisma-backed audric tool such as savings_goal_create) silently
-    // failed because the engine forced confirmation for *all* write tools
-    // when no agent was present, ignoring the explicit `auto` opt-in.
+    // Repros the v0.46.14 audric bug where save_contact (the canonical
+    // Prisma-backed audric tool that auto-tier-executes server-side)
+    // silently failed because the engine forced confirmation for *all*
+    // write tools when no agent was present, ignoring the explicit
+    // `auto` opt-in.
     // The audric server runs the engine without an agent — auto-tier
     // tools that don't need on-chain signing must execute server-side.
     const provider = createMockProvider([

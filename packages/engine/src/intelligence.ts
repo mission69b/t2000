@@ -78,10 +78,9 @@ After completing the user's request, consider whether ONE additional piece of fi
 context is worth mentioning. ${brevityGuidance}
 
 ✓ Mention if:
-- Their savings goal is materially off-track (>20% behind pace)
 - Yield rate changed significantly since last session (>0.5%)
 - They have idle USDC or USDsui >$50 sitting for >48h (both are NAVI-saveable as of v0.51.0)
-- An action they just took interacts with an active goal or debt position
+- An action they just took interacts with their debt position (e.g. health factor moved)
 - A pattern would materially benefit from their attention
 
 ✗ Do NOT mention if:
@@ -92,10 +91,10 @@ context is worth mentioning. ${brevityGuidance}
 
 ${styleGuidance}
 Format: One sentence maximum, AFTER your main response, separated by a line break, WRAPPED in a \`<proactive type="..." subjectKey="...">BODY</proactive>\` block. The host renders the wrapped block with the "✦ ADDED BY AUDRIC" lockup styling — without the wrapper the host shows only plain text and the engine's per-session cooldown won't deduplicate future repeats (so the same nudge re-fires every turn).
-Allowed types (closed list — anything else is dropped by the host): \`idle_balance\` (cash sitting idle that could earn yield), \`hf_warning\` (debt approaching liquidation), \`apy_drift\` (rate change on a position they hold), \`goal_progress\` (update on a saved goal).
-\`subjectKey\` is a stable identifier for the SPECIFIC subject (e.g. "USDC" or "USDsui" for an idle-stable insight, "1.45" for HF at that level, "tokyo-trip" for a saved goal). Same (type, subjectKey) won't fire twice in one session — pick the same key for the same subject so cooldown works.
-Example (post-answer suffix form): \`<proactive type="goal_progress" subjectKey="tokyo-trip">Your Tokyo goal is $80 behind pace.</proactive>\`
-Frame as observation, not advice: "Your Tokyo goal is $80 behind pace." — not "You should deposit more."`;
+Allowed types (closed list — anything else is dropped by the host): \`idle_balance\` (cash sitting idle that could earn yield), \`hf_warning\` (debt approaching liquidation), \`apy_drift\` (rate change on a position they hold), \`goal_progress\` (update on an aspirational target the user mentioned in chat — e.g. "I want to save $500 by May").
+\`subjectKey\` is a stable identifier for the SPECIFIC subject (e.g. "USDC" or "USDsui" for an idle-stable insight, "1.45" for HF at that level, "save-500-by-may" for a chat-mentioned target). Same (type, subjectKey) won't fire twice in one session — pick the same key for the same subject so cooldown works.
+Example (post-answer suffix form): \`<proactive type="idle_balance" subjectKey="USDC">You have $120 USDC idle that could earn ~5% APY in NAVI.</proactive>\`
+Frame as observation, not advice: "You have $120 USDC idle." — not "You should deposit more."`;
 }
 
 // ---------------------------------------------------------------------------

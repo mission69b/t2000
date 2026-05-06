@@ -577,60 +577,10 @@ export function registerPrompts(server: McpServer): void {
     }),
   );
 
-  server.prompt(
-    'savings-goal',
-    'Set a savings target — "I want to save $X by date Y" → calculates weekly/monthly amount needed.',
-    {
-      target: z.number().optional().describe('Target savings amount in dollars'),
-      months: z.number().optional().describe('Number of months to reach the target'),
-    },
-    async ({ target, months }) => ({
-      messages: [{
-        role: 'user',
-        content: {
-          type: 'text',
-          text: [
-            'You are a savings goal planner for a t2000 AI agent bank account on Sui.',
-            '',
-            target ? `Target: $${target}` : '',
-            months ? `Timeline: ${months} months` : '',
-            '',
-            'IMPORTANT: Call t2000_overview FIRST to see current state.',
-            '',
-            '🎯 SAVINGS GOAL',
-            '────────────────',
-            '',
-            'If target or timeline is missing, ask the user.',
-            '',
-            'Calculate and present:',
-            '',
-            '  Goal: $X by [date]',
-            '  Currently saved: $X',
-            '  Gap: $X needed',
-            '',
-            '  Weekly deposit: $X/week',
-            '  Monthly deposit: $X/month',
-            '',
-            '  With yield (at current APY X%):',
-            '    Without yield you\'d need: $X total deposits',
-            '    With yield you\'d need: $X total deposits (yield covers ~$X)',
-            '',
-            '  Feasibility check:',
-            '    Current checking: $X',
-            '    Can fund from checking: $X of $X gap',
-            '    Remaining to earn/deposit: $X',
-            '',
-            'If they can reach the goal with current funds + yield:',
-            '  → Offer to save it all now: t2000_save',
-            '',
-            'If they need regular deposits:',
-            '  → Suggest a manual rhythm (weekly / monthly) the user can run themselves',
-            '  → Show how yield accelerates the goal',
-            '',
-            'End with a clear YES/NO on whether the goal is achievable in the timeline.',
-          ].join('\n'),
-        },
-      }],
-    }),
-  );
+  // [SPEC 17 — 2026-05-07] `savings-goal` MCP prompt removed alongside the
+  // audric-side SavingsGoal table + savings_goal_* engine tools. The
+  // "track my savings progress" job-to-be-done is now served by
+  // `t2000_overview` + `t2000_all_rates` directly — users can ask the
+  // agent "how much should I save weekly to hit $X" and it computes
+  // the answer from current balance + APY without a dedicated prompt.
 }

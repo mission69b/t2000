@@ -168,7 +168,6 @@ All support `dryRun: true` for previews without signing.
 | `onboarding` | New user setup — deposit, first save, explore features |
 | `emergency` | Lock account, assess damage, recovery guidance |
 | `optimize-all` | One-shot full optimization — sweep, compare APYs, claim rewards |
-| `savings-goal` | Set a savings target and calculate weekly/monthly amounts needed |
 
 ## Troubleshooting
 

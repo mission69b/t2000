@@ -1447,8 +1447,8 @@ export class QueryEngine {
           if (tool.permissionLevel === 'explicit') return true;
           // [v0.46.15] Honor `permissionLevel: 'auto'` on write tools even
           // when no agent is present. These are custom tools (e.g. audric's
-          // server-owned save_contact / savings_goal_*) that persist via
-          // their own data layer (Prisma) and never need on-chain signing.
+          // server-owned save_contact) that persist via their own data
+          // layer (Prisma) and never need on-chain signing.
           // They explicitly opted into auto by setting the permission
           // level — gating them on `context.agent` here silently broke
           // every audric Prisma-backed write tool. Tools that DO need

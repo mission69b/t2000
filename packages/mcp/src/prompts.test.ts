@@ -21,8 +21,8 @@ describe('prompts', () => {
     registerPrompts(server);
   });
 
-  it('should register 16 prompts', () => {
-    expect(prompts.size).toBe(15);
+  it('should register 14 prompts', () => {
+    expect(prompts.size).toBe(14);
     expect(prompts.has('financial-report')).toBe(true);
     expect(prompts.has('optimize-yield')).toBe(true);
     expect(prompts.has('send-money')).toBe(true);
@@ -37,7 +37,6 @@ describe('prompts', () => {
     expect(prompts.has('onboarding')).toBe(true);
     expect(prompts.has('emergency')).toBe(true);
     expect(prompts.has('optimize-all')).toBe(true);
-    expect(prompts.has('savings-goal')).toBe(true);
   });
 
   it('financial-report should return valid message array', async () => {
@@ -149,12 +148,4 @@ describe('prompts', () => {
     expect(result.messages[0].content.text).toContain('t2000_all_rates');
   });
 
-  it('savings-goal should accept target and months parameters', async () => {
-    const handler = prompts.get('savings-goal')!;
-    const result = await handler({ target: 1000, months: 6 });
-    expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].content.text).toContain('$1000');
-    expect(result.messages[0].content.text).toContain('6 months');
-    expect(result.messages[0].content.text).toContain('t2000_overview');
-  });
 });
