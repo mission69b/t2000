@@ -123,7 +123,7 @@ NAVI MCP (`https://open-api.naviprotocol.io/api/mcp`) handles all read operation
 | `CLI_UX_SPEC.md` | Output primitives, formatting rules, display precision | CLI changes |
 | `ARCHITECTURE.md` | Payment reporting, server registration flows | API or integration work |
 | `audric-roadmap.md` | Product roadmap, feature specs, revenue model (**local-only as of S.23 — gitignored**) | Feature planning |
-| `audric-build-tracker.md` | Execution status per phase and task (**local-only as of S.23 — gitignored**) | Status checks |
+| `audric-build-tracker.md` | Execution status per phase and task (**local-only as of S.23 — gitignored**). **Top of file has the canonical "Forward backlog" table — the source of truth for SPEC numbering. Always read it before assigning a SPEC number to any new work.** | Status checks; before promoting any work to a SPEC number |
 | `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md` | Spec 1 — engine harness correctness (TurnMetrics, attemptId, modifiableFields). Shipped engine v0.41.0–v0.50.3. **Local-only — gitignored.** | Engine/harness changes |
 | `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md` | Spec 2 — harness intelligence (BlockVision swap, `<financial_context>`, attemptId resume keying). Shipped engine v0.47.0–v0.50.3. **Local-only — gitignored.** | Engine/intelligence changes |
 | `.cursor/rules/engineering-principles.mdc` | Scalability, single source of truth, trace-before-fix | **Every task** |
