@@ -154,7 +154,7 @@ Full API reference: [`@t2000/sdk` README](packages/sdk)
 
 `@t2000/engine` powers [Audric](https://audric.ai) — the conversational finance agent. It implements **Audric Intelligence**, the 5-system moat that makes Audric a financial agent rather than a chatbot. Every action it triggers still waits on Audric Passport's tap-to-confirm.
 
-> _Not a chatbot. A financial agent._ Five systems work together to **understand** your money (Silent Profile), **reason** about decisions (Reasoning Engine), **act** through 34 financial tools in one conversation (Agent Harness), **remember** what you do on-chain (Chain Memory), and **remember what it told you** (AdviceLog). Picks the tool, clears the guards, never contradicts itself.
+> _Not a chatbot. A financial agent._ Five systems work together to **understand** your money (Silent Profile), **reason** about decisions (Reasoning Engine), **act** through 35 financial tools in one conversation (Agent Harness), **remember** what you do on-chain (Chain Memory), and **remember what it told you** (AdviceLog). Picks the tool, clears the guards, never contradicts itself.
 
 | System | What it does | Implementation |
 |---|---|---|

@@ -56,7 +56,7 @@ const PACKAGES = [
   {
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine for financial agents. 34 tools, adaptive thinking, 14 step guards, 6 skill recipes, silent intelligence layer, canvas, streaming.",
+    desc: "Reasoning engine for financial agents. 35 tools, adaptive thinking, 14 step guards, 6 skill recipes, silent intelligence layer, canvas, streaming.",
     install: "npm i @t2000/engine",
     npm: "https://www.npmjs.com/package/@t2000/engine",
     github: `${GITHUB_URL}/tree/main/packages/engine`,
@@ -64,7 +64,7 @@ const PACKAGES = [
       "1. classify effort (quick/moderate/deep)",
       "2. match recipe (6 skill recipes)",
       "3. run guards (14 pre/post gates across 3 tiers)",
-      "4. execute tools (34 financial tools)",
+      "4. execute tools (35 financial tools)",
       "5. self-evaluate (post-flight checklist)",
     ],
   },

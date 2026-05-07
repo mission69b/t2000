@@ -164,7 +164,7 @@ If implementing open model routing, validate these flows:
 | Rate query | `rates_info` | Correct tool, formatted response |
 | Savings info | `savings_info` | Correct tool, APY displayed |
 | Health check | `health_check` | Correct tool, HF interpreted |
-| Price lookup | `defillama_token_prices` | Correct token symbols passed |
+| Price lookup | `token_prices` | Correct token symbols passed (BlockVision-backed; replaced `defillama_token_prices` in v1.4) |
 | TX history | `transaction_history` | Optional limit param correct |
 | Web search | `web_search` | Query string passed, results summarized |
 | Portfolio | `portfolio_analysis` | Correct tool selection from 50+ options |

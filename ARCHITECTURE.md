@@ -799,7 +799,7 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 
 ## Engine (`@t2000/engine`) — Audric Intelligence implementation
 
-`@t2000/engine` is the moat. It implements **Audric Intelligence** — the 5-system financial agent that sits between the LLM and the SDK and turns "what does the user want?" into a safe, recorded, on-chain action. Audric Intelligence is _not a chatbot_: it understands the user's money (Silent Profile), reasons before acting (Reasoning Engine), orchestrates 34 financial tools in one conversation (Agent Harness), remembers what the user did on-chain (Chain Memory), and remembers what it told the user (AdviceLog).
+`@t2000/engine` is the moat. It implements **Audric Intelligence** — the 5-system financial agent that sits between the LLM and the SDK and turns "what does the user want?" into a safe, recorded, on-chain action. Audric Intelligence is _not a chatbot_: it understands the user's money (Silent Profile), reasons before acting (Reasoning Engine), orchestrates 35 financial tools in one conversation (Agent Harness), remembers what the user did on-chain (Chain Memory), and remembers what it told the user (AdviceLog).
 
 ```
                 ┌────────────────────────────────────────────────┐

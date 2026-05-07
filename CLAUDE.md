@@ -79,7 +79,7 @@ Every Audric action runs through Passport. It's the wallet itself.
    - **profile inference, memory extraction, chain-fact classification, advice logging, guard runs, recipe matching, complexity classification** → Audric Intelligence (silent — never user-facing as a verb)
    - **sign-in, wallet creation, tap-to-confirm, sponsored gas** → Audric Passport
    - **listing, pay-to-unlock, Walrus upload, creator payout** → Audric Store
-3. **MPP / 41 AI services is NOT a product.** It's an internal capability (the MPP gateway) exposed via the `pay_api` engine tool — Audric uses it under the hood, same way it uses NAVI or Cetus. Do not brand it as Audric Pay. Audric Pay = money transfer between users.
+3. **MPP / 40+ AI services is NOT a product.** It's an internal capability (the MPP gateway) exposed via the `pay_api` engine tool — Audric uses it under the hood, same way it uses NAVI or Cetus. Do not brand it as Audric Pay. Audric Pay = money transfer between users.
 4. **Audric Receive is not a product** — it's the receive-half of *Audric Pay*.
 5. **Audric Intelligence has 5 named systems** — Agent Harness, Reasoning Engine, Silent Profile, Chain Memory, AdviceLog. Always reference by these names. They are the moat.
 6. **Operations** stay lowercase verbs. The capitalised noun forms (Save, Send, Swap, Credit, Receive, Charts) are UI chip labels — they live inside Finance or Pay.

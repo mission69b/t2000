@@ -28,7 +28,7 @@ const PACKAGES = [
     icon: "⟡",
     title: "MCP",
     pkg: "@t2000/mcp",
-    desc: "29 tools, 15 prompts. Works with Claude, Cursor, any MCP client.",
+    desc: "29 tools, 14 prompts. Works with Claude, Cursor, any MCP client.",
     install: "npx @t2000/mcp",
     href: "https://www.npmjs.com/package/@t2000/mcp",
   },
@@ -36,7 +36,7 @@ const PACKAGES = [
     icon: "◈",
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine. 34 tools, adaptive thinking, guards, recipes, silent memory, canvas.",
+    desc: "Reasoning engine. 35 tools, adaptive thinking, guards, recipes, silent memory, canvas.",
     install: "npm i @t2000/engine",
     href: "https://www.npmjs.com/package/@t2000/engine",
   },
@@ -428,8 +428,8 @@ export default function Home() {
 
             <div className="grid grid-cols-4 gap-px bg-border border border-border mb-10 sm:mb-14 max-w-[600px]">
               {[
-                { value: "41", label: "Services" },
-                { value: "90+", label: "Endpoints" },
+                { value: "40", label: "Services" },
+                { value: "88", label: "Endpoints" },
                 { value: "$0.001", label: "From" },
                 { value: "USDC", label: "Payment" },
               ].map((stat) => (
