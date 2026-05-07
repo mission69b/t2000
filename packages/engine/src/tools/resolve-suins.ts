@@ -6,7 +6,7 @@ import {
   SUI_ADDRESS_REGEX,
   SUINS_NAME_REGEX,
   SuinsRpcError,
-} from '../sui-address.js';
+} from '../sui/address.js';
 
 // ---------------------------------------------------------------------------
 // resolve_suins — SuiNS lookup primitive (forward + reverse)

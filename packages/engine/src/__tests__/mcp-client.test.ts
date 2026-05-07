@@ -3,8 +3,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { z } from 'zod';
-import { McpClientManager, McpResponseCache } from '../mcp-client.js';
-import { adaptMcpTool, adaptAllMcpTools, adaptAllServerTools } from '../mcp-tool-adapter.js';
+import { McpClientManager, McpResponseCache } from '../mcp/client.js';
+import { adaptMcpTool, adaptAllMcpTools, adaptAllServerTools } from '../mcp/tool-adapter.js';
 
 // ---------------------------------------------------------------------------
 // Helper: create a mock MCP server + linked in-memory transports

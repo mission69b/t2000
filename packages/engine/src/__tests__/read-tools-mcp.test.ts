@@ -3,8 +3,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { z } from 'zod';
-import { McpClientManager } from '../mcp-client.js';
-import { NAVI_SERVER_NAME, NaviTools } from '../navi-config.js';
+import { McpClientManager } from '../mcp/client.js';
+import { NAVI_SERVER_NAME, NaviTools } from '../navi/config.js';
 import type { ToolContext } from '../types.js';
 import { hasNaviMcp } from '../tools/utils.js';
 
@@ -12,7 +12,7 @@ import { balanceCheckTool } from '../tools/balance.js';
 import { savingsInfoTool } from '../tools/savings.js';
 import { healthCheckTool } from '../tools/health.js';
 import { ratesInfoTool } from '../tools/rates.js';
-import { resetNaviCacheStore } from '../navi-cache.js';
+import { resetNaviCacheStore } from '../navi/cache.js';
 
 // Reset the NAVI read cache between every test — prevents cached results
 // from a successful test feeding into a test that uses a different mock server

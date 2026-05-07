@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { buildMcpTools, registerEngineTools } from '../mcp.js';
+import { buildMcpTools, registerEngineTools } from '../mcp/index.js';
 import { buildTool } from '../tool.js';
 import type { Tool, ToolContext } from '../types.js';
 

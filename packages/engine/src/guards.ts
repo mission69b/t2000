@@ -72,7 +72,7 @@ export interface GuardMetric {
  * `pass` and `hint` collapse to `allow` because hint is non-blocking —
  * the model just sees a soft note.
  */
-export function guardVerdictToAction(verdict: GuardVerdict): GuardMetric['action'] {
+function guardVerdictToAction(verdict: GuardVerdict): GuardMetric['action'] {
   if (verdict === 'pass' || verdict === 'hint') return 'allow';
   if (verdict === 'warn') return 'warn';
   return 'block';

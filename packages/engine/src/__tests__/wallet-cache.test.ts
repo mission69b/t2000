@@ -41,7 +41,7 @@ import {
   resetWalletCacheStore,
   InMemoryWalletCacheStore,
   type WalletCacheStore,
-} from '../wallet-cache.js';
+} from '../cache/wallet.js';
 
 const ADDRESS = '0xc4c4c4';
 const SUI_TYPE = '0x2::sui::SUI';

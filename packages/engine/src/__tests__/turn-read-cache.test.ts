@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TurnReadCache } from '../turn-read-cache.js';
+import { TurnReadCache } from '../cache/turn-read.js';
 
 describe('TurnReadCache.keyFor', () => {
   it('produces the same key for empty input regardless of representation', () => {

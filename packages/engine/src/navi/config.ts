@@ -1,4 +1,4 @@
-import type { McpServerConfig } from './mcp-client.js';
+import type { McpServerConfig } from '../mcp/client.js';
 
 // ---------------------------------------------------------------------------
 // NAVI MCP server configuration

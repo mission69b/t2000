@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { fetchRates } from '../navi-reads.js';
+import { fetchRates } from '../navi/reads.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcpGlobal, getMcpManager, hasAgent, requireAgent } from './utils.js';
 

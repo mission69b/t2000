@@ -1,4 +1,4 @@
-import type { SystemBlock } from './types.js';
+import type { SystemBlock } from '../types.js';
 
 /**
  * Build a cacheable system prompt array from static and dynamic parts.

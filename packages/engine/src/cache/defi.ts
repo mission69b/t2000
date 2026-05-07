@@ -43,7 +43,7 @@
 // whether to render it as-is or with a 'last refresh Nm ago' caveat."
 // ---------------------------------------------------------------------------
 
-import type { DefiSummary } from './blockvision-prices.js';
+import type { DefiSummary } from '../blockvision-prices.js';
 
 /** Cache entry stored under each address key. */
 export interface DefiCacheEntry {

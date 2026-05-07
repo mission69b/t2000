@@ -3,8 +3,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { z } from 'zod';
-import { McpClientManager } from '../mcp-client.js';
-import { NAVI_SERVER_NAME, NaviTools } from '../navi-config.js';
+import { McpClientManager } from '../mcp/client.js';
+import { NAVI_SERVER_NAME, NaviTools } from '../navi/config.js';
 import {
   fetchRates,
   fetchHealthFactor,
@@ -14,13 +14,13 @@ import {
   fetchAvailableRewards,
   fetchProtocolStats,
   _resetNaviCircuitBreaker,
-} from '../navi-reads.js';
+} from '../navi/reads.js';
 import {
   InMemoryNaviCacheStore,
   setNaviCacheStore,
   resetNaviCacheStore,
   naviKey,
-} from '../navi-cache.js';
+} from '../navi/cache.js';
 
 // Reset cache and CB state between every test case so successful tests
 // don't contaminate error-handling tests with cached results.

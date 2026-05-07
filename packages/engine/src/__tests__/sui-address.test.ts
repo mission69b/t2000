@@ -10,7 +10,7 @@ import {
   InvalidAddressError,
   SuinsNotRegisteredError,
   SuinsRpcError,
-} from '../sui-address.js';
+} from '../sui/address.js';
 
 const FULL_ADDR = `0x${'a'.repeat(64)}`;
 const RESOLVED_ADDR = `0x${'b'.repeat(64)}`;

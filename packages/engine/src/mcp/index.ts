@@ -1,5 +1,5 @@
-import type { Tool, ToolContext } from './types.js';
-import { getDefaultTools } from './tools/index.js';
+import type { Tool, ToolContext } from '../types.js';
+import { getDefaultTools } from '../tools/index.js';
 
 // ---------------------------------------------------------------------------
 // MCP tool descriptor — the shape MCP servers need to register tools

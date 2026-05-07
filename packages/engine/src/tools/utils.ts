@@ -1,6 +1,6 @@
 import type { T2000 } from '@t2000/sdk';
-import type { McpClientManager } from '../mcp-client.js';
-import { NAVI_SERVER_NAME } from '../navi-config.js';
+import type { McpClientManager } from '../mcp/client.js';
+import { NAVI_SERVER_NAME } from '../navi/config.js';
 import type { ToolContext } from '../types.js';
 
 export function hasAgent(context: ToolContext): boolean {

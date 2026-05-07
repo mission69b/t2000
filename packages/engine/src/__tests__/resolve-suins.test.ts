@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolveSuinsTool } from '../tools/resolve-suins.js';
-import { SuinsRpcError } from '../sui-address.js';
+import { SuinsRpcError } from '../sui/address.js';
 import type { ToolContext } from '../types.js';
 
 const RESOLVED_ADDR = `0x${'b'.repeat(64)}`;

@@ -30,9 +30,9 @@
 // ---------------------------------------------------------------------------
 
 import { getDecimalsForCoinType, resolveSymbol, normalizeCoinType, isInRegistry } from '@t2000/sdk';
-import { fetchWalletCoins } from './sui-rpc.js';
-import { getDefiCacheStore, type DefiCacheEntry, type DefiCacheStore } from './defi-cache.js';
-import { getWalletCacheStore, type WalletCacheEntry, type WalletCacheStore } from './wallet-cache.js';
+import { fetchWalletCoins } from './sui/rpc.js';
+import { getDefiCacheStore, type DefiCacheEntry, type DefiCacheStore } from './cache/defi.js';
+import { getWalletCacheStore, type WalletCacheEntry, type WalletCacheStore } from './cache/wallet.js';
 import { awaitOrFetch } from './cross-instance-lock.js';
 import { getTelemetrySink } from './telemetry.js';
 

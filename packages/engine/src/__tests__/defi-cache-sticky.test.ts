@@ -39,7 +39,7 @@ import {
   InMemoryDefiCacheStore,
   type DefiCacheStore,
   type DefiCacheEntry,
-} from '../defi-cache.js';
+} from '../cache/defi.js';
 
 const ADDRESS = '0xc4c4c4';
 const USDC_TYPE =

@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { buildTool } from '../tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
-import type { McpClientManager } from '../mcp-client.js';
-import { NAVI_SERVER_NAME, NaviTools } from '../navi-config.js';
+import type { McpClientManager } from '../mcp/client.js';
+import { NAVI_SERVER_NAME, NaviTools } from '../navi/config.js';
 import {
   parseMcpJson,
   transformPositions,
   transformRewards,
-} from '../navi-transforms.js';
+} from '../navi/transforms.js';
 import {
   fetchAddressPortfolio,
   fetchAddressDefiPortfolio,
@@ -15,7 +15,7 @@ import {
   type DefiSummary,
 } from '../blockvision-prices.js';
 import { fetchAudricPortfolio, type AudricPortfolioResult } from '../audric-api.js';
-import { normalizeAddressInput } from '../sui-address.js';
+import { normalizeAddressInput } from '../sui/address.js';
 
 const GAS_RESERVE_SUI = 0.05;
 

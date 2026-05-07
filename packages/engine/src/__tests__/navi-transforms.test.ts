@@ -13,7 +13,7 @@ import {
   type NaviRawHealthFactor,
   type NaviRawCoin,
   type NaviRawRewardsResponse,
-} from '../navi-transforms.js';
+} from '../navi/transforms.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures — shapes as observed from live NAVI MCP discovery

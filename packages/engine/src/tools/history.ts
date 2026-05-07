@@ -8,7 +8,7 @@ import {
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 import { fetchAudricHistory } from '../audric-api.js';
-import { normalizeAddressInput } from '../sui-address.js';
+import { normalizeAddressInput } from '../sui/address.js';
 
 type RpcBalanceChange = ClassifyBalanceChange;
 

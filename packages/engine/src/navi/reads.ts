@@ -1,5 +1,5 @@
-import type { McpClientManager, McpCallResult } from './mcp-client.js';
-import { NAVI_SERVER_NAME, NaviTools } from './navi-config.js';
+import type { McpClientManager, McpCallResult } from '../mcp/client.js';
+import { NAVI_SERVER_NAME, NaviTools } from './config.js';
 import {
   parseMcpJson,
   transformBalance,
@@ -14,14 +14,14 @@ import {
   type PositionEntry,
   type RatesResult,
   type SavingsResult,
-} from './navi-transforms.js';
+} from './transforms.js';
 import {
   getNaviCacheStore,
   naviKey,
   NAVI_ADDR_TTL_SEC,
   NAVI_RATES_TTL_SEC,
-} from './navi-cache.js';
-import { getTelemetrySink } from './telemetry.js';
+} from './cache.js';
+import { getTelemetrySink } from '../telemetry.js';
 
 // ---------------------------------------------------------------------------
 // Options for composite reads

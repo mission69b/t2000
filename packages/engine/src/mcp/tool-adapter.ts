@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Tool as McpToolDef } from '@modelcontextprotocol/sdk/types.js';
-import type { Tool, ToolJsonSchema, PermissionLevel } from './types.js';
-import type { McpClientManager } from './mcp-client.js';
+import type { Tool, ToolJsonSchema, PermissionLevel } from '../types.js';
+import type { McpClientManager } from './client.js';
 
 // ---------------------------------------------------------------------------
 // Configuration

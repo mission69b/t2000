@@ -13,7 +13,7 @@
 import type { EngineEvent, Tool, ToolContext } from './types.js';
 import { findTool } from './tool.js';
 import { budgetToolResult, withRetryStats, type PendingToolCall } from './orchestration.js';
-import { TurnReadCache } from './turn-read-cache.js';
+import { TurnReadCache } from './cache/turn-read.js';
 
 interface DispatchEntry {
   call: PendingToolCall;

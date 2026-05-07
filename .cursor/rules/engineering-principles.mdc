@@ -53,3 +53,21 @@ This codebase has distinct layers. Fixes in the wrong layer waste time:
 | System prompt | Runtime (built at engine creation) | Vercel deploy |
 
 Before coding, identify which layer owns the bug.
+
+## 6. Engine cache pattern — factor when LOGIC duplicates, not when SHAPE does
+
+The `@t2000/engine` package has 5 cache modules (`cache/defi`, `cache/wallet`, `cache/turn-read`, `navi/cache`, `prompt/cache`). 3 of them (`cache/defi`, `cache/wallet`, `navi/cache`) share an identical structural pattern: `XCacheStore` interface + `InMemoryXCacheStore` impl + `setXCacheStore` / `getXCacheStore` / `resetXCacheStore` injectors.
+
+**Decision (SPEC 12 Phase 1, 2026-05-07): keep them separate. Do NOT factor a `cache/base.ts`.**
+
+Reasoning:
+- The 3 caches share **shape** (CRUD interface + injector pattern) but differ in **logic**:
+  - `cache/defi`: sticky-positive read path (15s fresh + 30min sticky for partial-zero degradation), DefiCacheEntry with sticky metadata.
+  - `cache/wallet`: similar sticky window but distinct entry shape (AddressPortfolio).
+  - `navi/cache`: TWO TTLs (30s for address-scoped reads, 5min for rates), `naviKey` namespace helper for key construction.
+- A `BaseStore<E>` could absorb the shape (~30-40 LoC saved per cache, ~120 LoC total) but each cache would still own ~80-100 LoC of logic. Net: chase 30 LoC at the cost of one more abstraction layer every reader has to learn.
+- Each cache today is **independently readable**: open `cache/defi.ts` and you see exactly how DeFi caching works without bouncing through a base abstraction.
+
+**The principle**: factor when the duplication is the LOGIC, not just the SHAPE. If a 4th cache lands that needs the same sticky-positive logic OR the same TTL classification, revisit. Until then, each cache stays standalone.
+
+This is consistent with `coding-discipline.mdc` Simplicity First — *"No abstractions for single-use code"* extends to *"No abstractions whose shape is shared but whose logic isn't."*

@@ -172,7 +172,7 @@ export type {
 } from './pending-input.js';
 
 // Prompt caching
-export { buildCachedSystemPrompt } from './prompt-cache.js';
+export { buildCachedSystemPrompt } from './prompt/cache.js';
 
 // Intelligence Layer (F1, F2, F5)
 export {
@@ -215,19 +215,19 @@ export type {
 } from './permission-rules.js';
 
 // MCP server adapter
-export { buildMcpTools, registerEngineTools } from './mcp.js';
-export type { McpToolDescriptor } from './mcp.js';
+export { buildMcpTools, registerEngineTools } from './mcp/index.js';
+export type { McpToolDescriptor } from './mcp/index.js';
 
 // MCP client
-export { McpClientManager, McpResponseCache } from './mcp-client.js';
-export type { McpServerConfig, McpServerConnection, McpCallResult } from './mcp-client.js';
+export { McpClientManager, McpResponseCache } from './mcp/client.js';
+export type { McpServerConfig, McpServerConnection, McpCallResult } from './mcp/client.js';
 
 // MCP tool adapter
-export { adaptMcpTool, adaptAllMcpTools, adaptAllServerTools } from './mcp-tool-adapter.js';
-export type { McpToolAdapterConfig } from './mcp-tool-adapter.js';
+export { adaptMcpTool, adaptAllMcpTools, adaptAllServerTools } from './mcp/tool-adapter.js';
+export type { McpToolAdapterConfig } from './mcp/tool-adapter.js';
 
 // NAVI MCP integration
-export { NAVI_SERVER_NAME, NAVI_MCP_URL, NAVI_MCP_CONFIG, NaviTools } from './navi-config.js';
+export { NAVI_SERVER_NAME, NAVI_MCP_URL, NAVI_MCP_CONFIG, NaviTools } from './navi/config.js';
 export {
   transformRates,
   transformPositions,
@@ -237,7 +237,7 @@ export {
   transformRewards,
   extractMcpText,
   parseMcpJson,
-} from './navi-transforms.js';
+} from './navi/transforms.js';
 export type {
   NaviRawPool,
   NaviRawPosition,
@@ -253,7 +253,7 @@ export type {
   PositionEntry,
   SavingsResult,
   PendingReward,
-} from './navi-transforms.js';
+} from './navi/transforms.js';
 export {
   fetchRates,
   fetchHealthFactor,
@@ -262,8 +262,8 @@ export {
   fetchPositions,
   fetchAvailableRewards,
   fetchProtocolStats,
-} from './navi-reads.js';
-export type { NaviReadOptions, ProtocolStats } from './navi-reads.js';
+} from './navi/reads.js';
+export type { NaviReadOptions, ProtocolStats } from './navi/reads.js';
 
 // Providers
 export { AnthropicProvider } from './providers/anthropic.js';
@@ -327,8 +327,8 @@ export { getModifiableFields, TOOL_MODIFIABLE_FIELDS } from './tools/tool-modifi
 export { requireAgent, hasNaviMcp, getMcpManager, getWalletAddress } from './tools/utils.js';
 
 // Sui RPC utilities
-export { fetchWalletCoins } from './sui-rpc.js';
-export type { WalletCoin, SuiCoinBalance } from './sui-rpc.js';
+export { fetchWalletCoins } from './sui/rpc.js';
+export type { WalletCoin, SuiCoinBalance } from './sui/rpc.js';
 
 // [v1.2 SuiNS] Address normalization (canonical 0x ↔ SuiNS resolver).
 // Audric can re-export `looksLikeSuiNs` to keep the host-side
@@ -345,8 +345,8 @@ export {
   InvalidAddressError,
   SuinsNotRegisteredError,
   SuinsRpcError,
-} from './sui-address.js';
-export type { NormalizedAddress } from './sui-address.js';
+} from './sui/address.js';
+export type { NormalizedAddress } from './sui/address.js';
 
 // [v1.4 — Day 2] BlockVision Indexer REST API price resolver. Replaced the
 // legacy DefiLlama `fetchTokenPrices` export wholesale: the
@@ -379,8 +379,8 @@ export {
   setDefiCacheStore,
   getDefiCacheStore,
   resetDefiCacheStore,
-} from './defi-cache.js';
-export type { DefiCacheStore, DefiCacheEntry } from './defi-cache.js';
+} from './cache/defi.js';
+export type { DefiCacheStore, DefiCacheEntry } from './cache/defi.js';
 
 // [PR 1 — v0.55] Pluggable wallet-portfolio cache store. Same shape
 // and rationale as the DeFi cache, but for the BlockVision
@@ -394,8 +394,8 @@ export {
   setWalletCacheStore,
   getWalletCacheStore,
   resetWalletCacheStore,
-} from './wallet-cache.js';
-export type { WalletCacheStore, WalletCacheEntry } from './wallet-cache.js';
+} from './cache/wallet.js';
+export type { WalletCacheStore, WalletCacheEntry } from './cache/wallet.js';
 
 // [PR 2 — v0.55] Pluggable cross-instance request coalescer. Wraps
 // BlockVision fan-outs (wallet portfolio + 9-protocol DeFi) so at
@@ -439,7 +439,7 @@ export type {
 export { tokenPricesTool } from './tools/token-prices.js';
 
 // System prompt
-export { DEFAULT_SYSTEM_PROMPT } from './prompt.js';
+export { DEFAULT_SYSTEM_PROMPT } from './prompt/index.js';
 
 // [PR 4 — v0.56] Pluggable NAVI MCP read cache. 30s TTL for address-scoped
 // reads (savings, health), 5-min TTL for rates. Default in-memory store for
@@ -452,11 +452,11 @@ export {
   NAVI_ADDR_TTL_SEC,
   NAVI_RATES_TTL_SEC,
   naviKey,
-} from './navi-cache.js';
-export type { NaviCacheStore, NaviCacheEntry } from './navi-cache.js';
+} from './navi/cache.js';
+export type { NaviCacheStore, NaviCacheEntry } from './navi/cache.js';
 
 // Also export the NAVI CB test seam
-export { _resetNaviCircuitBreaker } from './navi-reads.js';
+export { _resetNaviCircuitBreaker } from './navi/reads.js';
 
 // [PR 5 — v0.56] Pluggable telemetry sink. Default NoopSink (CLI/MCP/tests);
 // Audric injects VercelTelemetrySink at engine init to emit structured

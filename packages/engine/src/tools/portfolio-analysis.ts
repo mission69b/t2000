@@ -7,7 +7,7 @@ import {
   type DefiSummary,
 } from '../blockvision-prices.js';
 import { fetchAudricPortfolio } from '../audric-api.js';
-import { normalizeAddressInput } from '../sui-address.js';
+import { normalizeAddressInput } from '../sui/address.js';
 import type { ServerPositionData } from '../types.js';
 
 const inputSchema = z.object({

@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { resolveTokenType, getDecimalsForCoinType } from '@t2000/sdk';
-import { fetchSavings } from '../navi-reads.js';
+import { fetchSavings } from '../navi/reads.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
-import { normalizeAddressInput } from '../sui-address.js';
-import type { PositionEntry, SavingsResult } from '../navi-transforms.js';
+import { normalizeAddressInput } from '../sui/address.js';
+import type { PositionEntry, SavingsResult } from '../navi/transforms.js';
 import type { ServerPositionData } from '../types.js';
 
 const DUST_THRESHOLD_USD = 0.01;

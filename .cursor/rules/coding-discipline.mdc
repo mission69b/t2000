@@ -58,6 +58,68 @@ We've shipped fixes that took 4+ iterations because:
 
 Time spent thinking before coding is faster than time spent unwinding the wrong fix.
 
+## ESLint flat config — rules with array values OVERRIDE across blocks; consolidate
+
+**The bug**: in ESLint flat config (the new `eslint.config.mjs` format), if the same rule key appears in multiple config blocks, the LATER block fully replaces the earlier value. For rules that take an array of selectors / patterns (`no-restricted-syntax`, `no-restricted-imports`, `no-restricted-properties`), this means the first block's selectors are silently dropped.
+
+```js
+// ❌ BUG — second block overrides the first; canonical-portfolio bans are silently dropped
+[
+  { rules: { 'no-restricted-syntax': [['error', { selector: 'fetch(api.blockvision...)', message: '...' }]] } },
+  { rules: { 'no-restricted-syntax': [['error', { selector: 'process.env.X', message: '...' }]] } },
+]
+```
+
+```js
+// ✅ FIX — consolidate every selector into one rule entry
+const combinedRestrictedSyntax = [
+  { selector: 'fetch(api.blockvision...)', message: '...' },
+  { selector: 'process.env.X', message: '...' },
+];
+[
+  { rules: { 'no-restricted-syntax': ['error', ...combinedRestrictedSyntax] } },
+]
+```
+
+**The canonical reference is `audric/apps/web/eslint.config.mjs`** (consolidated 2026-05-02 during SPEC 7 v0.4.1 C0.2). Look at the `combinedRestrictedSyntax` array — it holds env-gate, canonical-portfolio vendor-fetch, and canonical-write `new Transaction()` selectors all in ONE rule entry. The header comment (lines ~137-142) documents the empirical verification.
+
+**When you add a new ESLint flat-config rule**:
+- If it takes an array value (`no-restricted-syntax`, `no-restricted-imports`, `no-restricted-properties`, `no-magic-numbers`, etc.) AND the same rule already exists in another block → **consolidate**, don't add a sibling block.
+- If you absolutely need different selectors for different file globs, use `files:` patterns to scope the WHOLE block (one rule entry per scope is fine).
+
+**How to audit**: search every `eslint.config.mjs` in the monorepo for the rule name; if it appears more than once across blocks → consolidate.
+
+```bash
+rg "no-restricted-syntax" --glob 'eslint.config.mjs'
+rg "no-restricted-imports" --glob 'eslint.config.mjs'
+rg "no-restricted-properties" --glob 'eslint.config.mjs'
+```
+
+Audited 2026-05-07 (SPEC 12 Phase 1 Step 5): all 5 flat configs across t2000 + audric are clean. Only audric/apps/web uses array-valued restricted rules; it already consolidates correctly.
+
+## Test file location convention
+
+**Inline tests next to source — `Foo.ts` + `Foo.test.ts` in the same folder.** This is the canonical convention across the t2000 monorepo (~42 test files in SDK / CLI / MCP follow it).
+
+The engine package's existing `packages/engine/src/__tests__/` folder is **grandfathered** — pre-existing tests stay where they are. New engine tests follow the inline convention to match what the rest of the package already does (e.g. `packages/engine/src/recipes/loader.test.ts` lives next to `recipes/loader.ts`, not in `__tests__/`).
+
+Why inline:
+- Tests live next to the code they exercise → easier to find, easier to keep in sync, easier to delete when source is deleted.
+- Matches the dominant pattern in the codebase (no churn cost to onboard).
+- `tsup` / `tsc` builds correctly exclude `*.test.ts` from publish output regardless of folder layout.
+
+Forbidden:
+- Adding a new `__tests__/` folder to a package that doesn't have one.
+- Mass-moving inline tests into `__tests__/` "for consistency" — the established convention IS inline; that move is the inconsistency.
+
+When you grep for inline tests:
+
+```bash
+find packages -name '*.test.ts' -not -path '*/node_modules/*' -not -path '*__tests__*' -not -path '*/dist/*'
+```
+
+Expect **~44 matches across SDK / CLI / MCP / engine** — that's the canonical state, not a finding to fix.
+
 ## Working signals
 
 These guidelines are working if:

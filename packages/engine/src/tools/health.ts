@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { fetchHealthFactor } from '../navi-reads.js';
+import { fetchHealthFactor } from '../navi/reads.js';
 import { buildTool } from '../tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
-import { normalizeAddressInput } from '../sui-address.js';
+import { normalizeAddressInput } from '../sui/address.js';
 
 /**
  * Anything below this threshold is treated as "no real debt" — NAVI can

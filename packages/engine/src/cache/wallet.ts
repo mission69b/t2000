@@ -41,7 +41,7 @@
 // "last refresh Nm ago" if it wants to caveat the staleness.
 // ---------------------------------------------------------------------------
 
-import type { AddressPortfolio } from './blockvision-prices.js';
+import type { AddressPortfolio } from '../blockvision-prices.js';
 
 /** Cache entry stored under each address key. */
 export interface WalletCacheEntry {
