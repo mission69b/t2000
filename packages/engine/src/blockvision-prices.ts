@@ -991,6 +991,68 @@ const DEFI_PROTOCOLS = [
 ] as const;
 export type DefiProtocol = (typeof DEFI_PROTOCOLS)[number];
 
+// ---------------------------------------------------------------------------
+// [S18-F4 / vercel-logs L11 — May 2026] Bounded-concurrency fan-out.
+//
+// The pre-fix code below fired all 9 BlockVision per-protocol calls in
+// parallel via `Promise.allSettled(DEFI_PROTOCOLS.map(...))`. At burst
+// (e.g. 100 concurrent dashboard loads), peak QPS = 100 × 9 = 900 req/s
+// against a single BlockVision API key, well above the ~30 req/s/key
+// soft cap. Result: rolling 429 cluster captured in the May 2026
+// vercel-logs triage, absorbed by `fetchBlockVisionWithRetry`'s exponential
+// backoff but visible as user-facing latency spikes during dashboard auto-
+// refresh windows.
+//
+// Fix: cap the per-portfolio fan-out at `DEFI_PROTOCOL_CONCURRENCY` in-flight
+// requests. With concurrency=3, a single portfolio fetch becomes:
+//   ceil(9 / 3) = 3 batches × ~200ms typical per-protocol latency = ~600ms
+// vs. the pre-fix ~200ms fully-parallel case. The +400ms latency cost lands
+// only on COLD-cache fetches (warm cache hits Upstash and skips the fan-out
+// entirely). Peak burst QPS drops 3× (900 → 300), which combined with the
+// per-instance fetchBlockVisionWithRetry circuit-breaker eliminates the 429
+// cluster pattern while preserving cache-warming semantics.
+//
+// `mapWithConcurrency` returns the same `PromiseSettledResult[]` shape as
+// `Promise.allSettled`, so every downstream consumer (price collection,
+// sticky-cache logic, source attribution) is untouched — this is a pure
+// concurrency-control swap, no semantic change.
+// ---------------------------------------------------------------------------
+const DEFI_PROTOCOL_CONCURRENCY = 3;
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  fn: (item: T, index: number) => Promise<R>,
+  concurrency: number,
+): Promise<PromiseSettledResult<R>[]> {
+  if (items.length === 0) return [];
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let nextIdx = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const myIdx = nextIdx;
+      nextIdx += 1;
+      if (myIdx >= items.length) return;
+      try {
+        const value = await fn(items[myIdx], myIdx);
+        results[myIdx] = { status: 'fulfilled', value };
+      } catch (reason) {
+        results[myIdx] = { status: 'rejected', reason };
+      }
+    }
+  }
+
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+// Exported for tests + downstream throttle benchmarking. Not part of the
+// public engine API surface; reserve the right to inline this if a
+// dedicated concurrency utility lands later.
+export const __internal_mapWithConcurrency = mapWithConcurrency;
+export const __internal_DEFI_PROTOCOL_CONCURRENCY = DEFI_PROTOCOL_CONCURRENCY;
+
 // Implied coin types for protocols whose response shape buries the coin
 // identity in the protocol's own conventions (no `coinType` field).
 const SUI_TYPE_FULL =
@@ -1191,8 +1253,12 @@ export async function fetchAddressDefiPortfolio(
           const stickyBasis: DefiCacheEntry | null = recheck ?? cachedEntry;
           const fanoutAt = Date.now();
 
-          const settled = await Promise.allSettled(
-            DEFI_PROTOCOLS.map((p) => fetchOneDefiProtocol(address, p, apiKey, opts.retryStats)),
+          // [S18-F4] Bounded-concurrency fan-out — see DEFI_PROTOCOL_CONCURRENCY
+          // header above for rationale + trade-off table.
+          const settled = await mapWithConcurrency(
+            DEFI_PROTOCOLS,
+            (p) => fetchOneDefiProtocol(address, p, apiKey, opts.retryStats),
+            DEFI_PROTOCOL_CONCURRENCY,
           );
 
           // Pass 1 — discover every coin type referenced across all protocol
