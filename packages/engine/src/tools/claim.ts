@@ -1,6 +1,17 @@
 import { z } from 'zod';
+import type { PendingReward } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
+
+interface ClaimRewardsResult {
+  success: boolean;
+  tx: string | null;
+  rewards: PendingReward[];
+  totalValueUsd: number;
+  gasCost: number;
+  degraded: boolean;
+  degradationReason: string | null;
+}
 
 /**
  * Format an amount with adaptive precision so a 0.0165 vSUI claim
@@ -27,7 +38,33 @@ export const claimRewardsTool = buildTool({
 
   async call(_input, context) {
     const agent = requireAgent(context);
-    const result = await agent.claimRewards();
+    let result;
+    try {
+      result = await agent.claimRewards();
+    } catch (err) {
+      // [S18-F20] NAVI rewards degradation surfaces as a T2000Error with
+      // code 'PROTOCOL_UNAVAILABLE' (see `packages/sdk/src/protocols/navi.ts`).
+      // Pre-fix this was silently swallowed and the LLM narrated "no
+      // pending rewards" — a false negative that lied to the user about
+      // their on-chain state. Now we surface degradation truthfully.
+      const errAny = err as { code?: string; message?: string };
+      const isProtocolDown = errAny?.code === 'PROTOCOL_UNAVAILABLE';
+      const detail =
+        typeof errAny?.message === 'string' ? errAny.message.replace(/^[^:]*:\s*/, '') : '';
+      const displayText = isProtocolDown
+        ? `Could not check pending rewards — NAVI is degraded right now${detail ? ` (${detail.slice(0, 80)})` : ''}. Try again in a moment.`
+        : 'Could not check pending rewards — protocol error. Try again in a moment.';
+      const data: ClaimRewardsResult = {
+        success: false,
+        tx: null,
+        rewards: [],
+        totalValueUsd: 0,
+        gasCost: 0,
+        degraded: true,
+        degradationReason: errAny?.code ?? 'UNKNOWN',
+      };
+      return { data, displayText };
+    }
 
     // The SDK adapter doesn't have access to a price oracle, so
     // `estimatedValueUsd` is always 0 from upstream. The engine, however,
@@ -64,15 +101,15 @@ export const claimRewardsTool = buildTool({
       displayText = `Claimed ${breakdown}${usdSuffix}${txSuffix}`;
     }
 
-    return {
-      data: {
-        success: result.success,
-        tx: result.tx || null,
-        rewards: enrichedRewards,
-        totalValueUsd,
-        gasCost: result.gasCost,
-      },
-      displayText,
+    const data: ClaimRewardsResult = {
+      success: result.success,
+      tx: result.tx || null,
+      rewards: enrichedRewards,
+      totalValueUsd,
+      gasCost: result.gasCost,
+      degraded: false,
+      degradationReason: null,
     };
+    return { data, displayText };
   },
 });

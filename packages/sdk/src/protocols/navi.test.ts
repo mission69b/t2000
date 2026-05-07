@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Transaction } from '@mysten/sui/transactions';
-import { aggregateClaimableRewards, buildClaimRewardsTx } from './navi.js';
+import {
+  aggregateClaimableRewards,
+  buildClaimRewardsTx,
+  getPendingRewards,
+  addClaimRewardsToTx,
+} from './navi.js';
+import { T2000Error } from '../errors.js';
 
 vi.mock('@naviprotocol/lending', async (importActual) => {
   const actual = await importActual<typeof import('@naviprotocol/lending')>();
@@ -542,13 +548,108 @@ describe('navi', () => {
       );
     });
 
-    it('returns empty rewards on NAVI SDK error (resilient — does not throw)', async () => {
+    it('S18-F20: throws PROTOCOL_UNAVAILABLE on NAVI SDK error (no longer silently empty)', async () => {
+      // Pre-S18-F20 this returned `{ rewards: [], tx }` and the engine
+      // narrated "no pending rewards" — a false negative when NAVI was
+      // actually degraded. Now the typed throw lets the engine tool
+      // surface "NAVI is degraded right now, try again in a moment."
       vi.mocked(getUserAvailableLendingRewards).mockRejectedValue(new Error('Network down'));
-      const result = await buildClaimRewardsTx(fakeClient, VALID_ADDRESS);
+      await expect(buildClaimRewardsTx(fakeClient, VALID_ADDRESS)).rejects.toThrow(T2000Error);
+      await expect(buildClaimRewardsTx(fakeClient, VALID_ADDRESS)).rejects.toMatchObject({
+        code: 'PROTOCOL_UNAVAILABLE',
+        retryable: true,
+      });
+    });
+  });
 
-      expect(result.rewards).toEqual([]);
-      expect(result.tx).toBeInstanceOf(Transaction);
-      expect(result.tx.getData().sender).toBe(VALID_ADDRESS);
+  // [S18-F20 contract test] The harness has two readers for NAVI rewards
+  // — `getPendingRewards` (read-only, called by `pending_rewards` tool)
+  // and `addClaimRewardsToTx` (PTB-builder, called inside claim flows).
+  // Both go through `getUserAvailableLendingRewards` + `summaryLendingRewards` /
+  // direct filter on `userClaimableReward`. Pre-fix they could drift —
+  // a NAVI SDK upgrade that changed `summaryLendingRewards`'s aggregation
+  // would put one reader ahead of the other and the engine would
+  // silently disagree with itself ("you have rewards" → claim narration
+  // "no pending rewards"). This contract test pins their per-coinType
+  // totals to the same input so drift fails CI.
+  describe('getPendingRewards ≡ addClaimRewardsToTx contract (S18-F20)', () => {
+    const VSUI = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
+    const NAVX = '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX';
+    const NS = '0xbc3a676894871284b3ccfb2eec66f428612000e2a6e6d23f592ce8833c27c973::coin::COIN';
+    const VALID_ADDRESS = '0x' + 'a'.repeat(64);
+    const fakeClient = {} as unknown as Parameters<typeof getPendingRewards>[0];
+
+    beforeEach(() => {
+      vi.mocked(getUserAvailableLendingRewards).mockReset();
+      vi.mocked(claimLendingRewardsPTB).mockReset().mockResolvedValue([]);
+    });
+
+    function totalsByCoinType(rewards: Array<{ coinType: string; amount: number }>): Record<string, number> {
+      const out: Record<string, number> = {};
+      for (const r of rewards) {
+        out[r.coinType] = (out[r.coinType] ?? 0) + r.amount;
+      }
+      return out;
+    }
+
+    it('per-coinType totals match for a single-pool single-coin reward', async () => {
+      const mockRewards = [
+        { userClaimableReward: 0.0165, rewardCoinType: VSUI, assetId: 5 },
+      ] as never;
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue(mockRewards);
+
+      const pending = await getPendingRewards(fakeClient, VALID_ADDRESS);
+      const tx = new Transaction();
+      tx.setSender(VALID_ADDRESS);
+      const claimable = await addClaimRewardsToTx(tx, fakeClient, VALID_ADDRESS);
+
+      expect(totalsByCoinType(pending)).toEqual(totalsByCoinType(claimable));
+    });
+
+    it('per-coinType totals match for multi-pool same-coin (aggregation case)', async () => {
+      const mockRewards = [
+        { userClaimableReward: 0.01, rewardCoinType: VSUI, assetId: 0 },
+        { userClaimableReward: 0.0065, rewardCoinType: VSUI, assetId: 5 },
+      ] as never;
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue(mockRewards);
+
+      const pending = await getPendingRewards(fakeClient, VALID_ADDRESS);
+      const tx = new Transaction();
+      tx.setSender(VALID_ADDRESS);
+      const claimable = await addClaimRewardsToTx(tx, fakeClient, VALID_ADDRESS);
+
+      expect(totalsByCoinType(pending)).toEqual(totalsByCoinType(claimable));
+      expect(Object.keys(totalsByCoinType(pending))).toHaveLength(1);
+    });
+
+    it('per-coinType totals match for cross-coin rewards (vSUI + NAVX + NS)', async () => {
+      const mockRewards = [
+        { userClaimableReward: 0.0165, rewardCoinType: VSUI, assetId: 5 },
+        { userClaimableReward: 12.4, rewardCoinType: NAVX, assetId: 7 },
+        { userClaimableReward: 8.2, rewardCoinType: NS, assetId: 11 },
+      ] as never;
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue(mockRewards);
+
+      const pending = await getPendingRewards(fakeClient, VALID_ADDRESS);
+      const tx = new Transaction();
+      tx.setSender(VALID_ADDRESS);
+      const claimable = await addClaimRewardsToTx(tx, fakeClient, VALID_ADDRESS);
+
+      expect(totalsByCoinType(pending)).toEqual(totalsByCoinType(claimable));
+      expect(Object.keys(totalsByCoinType(pending))).toHaveLength(3);
+    });
+
+    it('both throw PROTOCOL_UNAVAILABLE when NAVI is degraded — no silent disagreement', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockRejectedValue(new Error('NAVI 503'));
+
+      await expect(getPendingRewards(fakeClient, VALID_ADDRESS)).rejects.toMatchObject({
+        code: 'PROTOCOL_UNAVAILABLE',
+      });
+      const tx = new Transaction();
+      tx.setSender(VALID_ADDRESS);
+      await expect(addClaimRewardsToTx(tx, fakeClient, VALID_ADDRESS)).rejects.toMatchObject({
+        code: 'PROTOCOL_UNAVAILABLE',
+      });
     });
   });
 });

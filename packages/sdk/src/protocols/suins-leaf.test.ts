@@ -6,6 +6,7 @@ import {
   AUDRIC_PARENT_NFT_ID,
   buildAddLeafTx,
   buildRevokeLeafTx,
+  displayHandle,
   fullHandle,
   validateLabel,
 } from './suins-leaf.js';
@@ -86,6 +87,35 @@ describe('suins-leaf', () => {
 
     it('does not validate the label (callers must validateLabel first if needed)', () => {
       expect(fullHandle('Alice')).toBe('Alice.audric.sui');
+    });
+  });
+
+  // [S.118] SuiNS V2 short-form display alias. Reverses SPEC 10 D10
+  // ("full handle ALWAYS"). Verified mainnet 2026-05-08 (PF1) — both
+  // forms resolve to the same address via SuiNS RPC, so this is
+  // purely a render-layer choice with no on-chain implications.
+  describe('displayHandle', () => {
+    it('returns the @ form (drops the .sui TLD)', () => {
+      expect(displayHandle('alice')).toBe('alice@audric');
+    });
+
+    it('does not collapse with fullHandle (the two are distinct contracts)', () => {
+      expect(displayHandle('alice')).not.toBe(fullHandle('alice'));
+      expect(displayHandle('alice')).toBe('alice@audric');
+      expect(fullHandle('alice')).toBe('alice.audric.sui');
+    });
+
+    it('handles short labels per SuiNS minimum (3+ chars)', () => {
+      expect(displayHandle('abc')).toBe('abc@audric');
+    });
+
+    it('handles maximum-length labels (63 chars)', () => {
+      const longLabel = 'a'.repeat(63);
+      expect(displayHandle(longLabel)).toBe(`${longLabel}@audric`);
+    });
+
+    it('does not validate the label (matches fullHandle convention)', () => {
+      expect(displayHandle('Alice')).toBe('Alice@audric');
     });
   });
 

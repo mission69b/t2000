@@ -1265,15 +1265,28 @@ export class T2000 extends EventEmitter<T2000Events> {
   // -- Claim Rewards --
 
   async getPendingRewards(): Promise<PendingReward[]> {
-    const adapters = this.registry.listLending();
+    const adapters = this.registry.listLending().filter((a) => a.getPendingRewards);
+    if (adapters.length === 0) return [];
+
     const results = await Promise.allSettled(
-      adapters
-        .filter((a) => a.getPendingRewards)
-        .map((a) => a.getPendingRewards!(this._address)),
+      adapters.map((a) => a.getPendingRewards!(this._address)),
     );
     const all: PendingReward[] = [];
+    const errors: unknown[] = [];
     for (const r of results) {
       if (r.status === 'fulfilled') all.push(...r.value);
+      else errors.push(r.reason);
+    }
+    // [S18-F20] If every adapter failed and we have nothing to show,
+    // propagate the first error so the engine tool can surface
+    // "NAVI degraded" instead of narrating "no pending rewards"
+    // (a false negative). Today there is only one claim-capable adapter
+    // (NAVI), so this collapses to "if NAVI threw, throw"; the loop
+    // shape preserves graceful partial degradation when a 2nd adapter
+    // (e.g. Suilend) lands.
+    if (all.length === 0 && errors.length === adapters.length) {
+      const first = errors[0];
+      throw first instanceof Error ? first : new Error(String(first));
     }
     return all;
   }
@@ -1290,11 +1303,23 @@ export class T2000 extends EventEmitter<T2000Events> {
     tx.setSender(this._address);
 
     const allRewards: PendingReward[] = [];
+    const errors: unknown[] = [];
     for (const adapter of adapters) {
       try {
         const claimed = await adapter.addClaimRewardsToTx!(tx, this._address);
         allRewards.push(...claimed);
-      } catch { /* skip unavailable adapters */ }
+      } catch (err) {
+        errors.push(err);
+      }
+    }
+
+    // [S18-F20] Propagate degradation when every adapter failed AND we
+    // have nothing to claim. See `getPendingRewards` for the full
+    // rationale — silent skip here was a primary contributor to the
+    // engine narrating "no pending rewards" during NAVI degradation.
+    if (allRewards.length === 0 && errors.length === adapters.length) {
+      const first = errors[0];
+      throw first instanceof Error ? first : new Error(String(first));
     }
 
     if (allRewards.length === 0) {

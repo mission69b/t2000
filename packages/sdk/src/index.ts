@@ -201,6 +201,7 @@ export {
   AUDRIC_PARENT_NFT_ID,
   buildAddLeafTx,
   buildRevokeLeafTx,
+  displayHandle,
   fullHandle,
   validateLabel,
 } from './protocols/suins-leaf.js';

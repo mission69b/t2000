@@ -181,11 +181,51 @@ export function buildRevokeLeafTx(
 /**
  * Convenience: turn a bare label into the full `<label>.audric.sui` path.
  *
- * Audric host code uses this when rendering handles in chat / cards / receipts
- * per SPEC 10 D10 (full handle ALWAYS — `@alice` is an input shortcut only).
- * Keeps the canonical concatenation in one place so a hypothetical future parent
- * rename only touches this module.
+ * **Use this for ON-CHAIN operations** — SuiNS leaf NFT `name` field, the
+ * `createLeafSubName` / `removeLeafSubName` move calls, and any RPC call
+ * that returns/expects the canonical name string. The `<label>.audric.sui`
+ * form is what the SuiNS protocol writes into the NFT `name` field.
+ *
+ * **Do NOT use this for UI rendering** — that's `displayHandle()`'s job
+ * (S.118 reversal of SPEC 10 D10, see audric-build-tracker). Pre-S.118
+ * we surfaced the full `.sui` form everywhere; we now use the SuiNS V2
+ * `@` form (`alice@audric`) for display because it's shorter, fits the
+ * agent harness mono aesthetic, and matches SuiNS's own V2 standard.
+ *
+ * Both forms resolve to the same address via SuiNS RPC (verified
+ * mainnet 2026-05-08 PF1) — `displayHandle()` is purely a render-layer
+ * choice, not a backend storage change.
  */
 export function fullHandle(label: string): string {
   return `${label}.${AUDRIC_PARENT_NAME}`;
+}
+
+/**
+ * SuiNS V2 short-form display alias. `displayHandle('alice')` →
+ * `'alice@audric'`. Use for chat narration, permission cards, receipts,
+ * profile pages, share-to-X copy, OG metadata, and lookup_user output.
+ *
+ * **Why a separate function from `fullHandle`:**
+ *  - `fullHandle('alice')` → `'alice.audric.sui'` is the **on-chain**
+ *    NFT name field; SuiNS's `createLeafSubName` writes exactly this
+ *    string and `suix_resolveNameServiceAddress` accepts it.
+ *  - `displayHandle('alice')` → `'alice@audric'` is the **UI** form
+ *    that users see and share. SuiNS RPC also accepts this form
+ *    (verified mainnet 2026-05-08 PF1 — both forms return the same
+ *    address), so we have one storage form (`<label>.audric.sui`) and
+ *    two interchangeable input forms (the user can paste either).
+ *
+ * Reverses SPEC 10 D10 ("full handle ALWAYS"). See audric-build-tracker
+ * S.118 for the rationale; see also `audric/apps/web/lib/identity/`
+ * for canonicalization in the input parser (which is a no-op since
+ * SuiNS RPC accepts both — kept available for future-proofing).
+ */
+export function displayHandle(label: string): string {
+  // Strip trailing `.sui` from the parent for the display form.
+  // Today AUDRIC_PARENT_NAME is `'audric.sui'` → `'audric'`. If the
+  // parent ever changes (e.g. `audric.app.sui` becomes the parent),
+  // this still produces a sensible display form by removing only the
+  // top-level TLD.
+  const parentDisplay = AUDRIC_PARENT_NAME.replace(/\.sui$/, '');
+  return `${label}@${parentDisplay}`;
 }

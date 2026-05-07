@@ -609,37 +609,51 @@ export async function getPendingRewards(
   client: SuiJsonRpcClient,
   address: string,
 ): Promise<PendingReward[]> {
+  let rewards;
   try {
-    const rewards = await getUserAvailableLendingRewards(address, {
+    rewards = await getUserAvailableLendingRewards(address, {
       ...sdkOptions(client),
       markets: ['main'],
     });
-
-    if (!rewards || rewards.length === 0) return [];
-
-    const summary = summaryLendingRewards(rewards);
-    const result: PendingReward[] = [];
-
-    for (const s of summary) {
-      for (const rw of s.rewards) {
-        const available = Number(rw.available);
-        if (available <= 0) continue;
-        const symbol = rw.coinType.split('::').pop() ?? 'UNKNOWN';
-        result.push({
-          protocol: 'navi',
-          asset: String(s.assetId),
-          coinType: rw.coinType,
-          symbol,
-          amount: available,
-          estimatedValueUsd: 0,
-        });
-      }
-    }
-
-    return result;
-  } catch {
-    return [];
+  } catch (err) {
+    // [S18-F20] Pre-fix this swallowed every NAVI failure with `return []`,
+    // making the engine's claim_rewards tool narrate "no pending rewards"
+    // when NAVI was actually degraded. Now we throw a typed error so the
+    // engine tool can surface "NAVI degraded — try again in a moment"
+    // (truthful) instead of "no pending rewards" (false negative).
+    // See `single-source-of-truth.mdc` rule on never silently downgrading
+    // vendor degradation.
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error(
+      'PROTOCOL_UNAVAILABLE',
+      `NAVI rewards lookup failed: ${msg}`,
+      { source: 'navi-rewards-read' },
+      true,
+    );
   }
+
+  if (!rewards || rewards.length === 0) return [];
+
+  const summary = summaryLendingRewards(rewards);
+  const result: PendingReward[] = [];
+
+  for (const s of summary) {
+    for (const rw of s.rewards) {
+      const available = Number(rw.available);
+      if (available <= 0) continue;
+      const symbol = rw.coinType.split('::').pop() ?? 'UNKNOWN';
+      result.push({
+        protocol: 'navi',
+        asset: String(s.assetId),
+        coinType: rw.coinType,
+        symbol,
+        amount: available,
+        estimatedValueUsd: 0,
+      });
+    }
+  }
+
+  return result;
 }
 
 export async function addClaimRewardsToTx(
@@ -647,36 +661,61 @@ export async function addClaimRewardsToTx(
   client: SuiJsonRpcClient,
   address: string,
 ): Promise<PendingReward[]> {
+  let rewards;
   try {
-    const rewards = await getUserAvailableLendingRewards(address, {
+    rewards = await getUserAvailableLendingRewards(address, {
       ...sdkOptions(client),
       markets: ['main'],
     });
-
-    if (!rewards || rewards.length === 0) return [];
-
-    const claimable = rewards.filter(
-      (r) => Number(r.userClaimableReward) > 0,
+  } catch (err) {
+    // [S18-F20] See `getPendingRewards` for rationale — silent `return []`
+    // here was a primary contributor to the engine's claim_rewards tool
+    // narrating "no pending rewards" during NAVI degradation. Throw a
+    // typed error; the engine tool catches and surfaces a truthful
+    // "NAVI degraded" message instead.
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error(
+      'PROTOCOL_UNAVAILABLE',
+      `NAVI rewards lookup failed: ${msg}`,
+      { source: 'navi-rewards-claim-prelude' },
+      true,
     );
-    if (claimable.length === 0) return [];
+  }
 
-    // Capture per-reward metadata from the source `claimable` list before
-    // it gets handed to the NAVI PTB builder. We previously stubbed every
-    // returned reward as `{ symbol: 'REWARD', amount: 0 }`, which made
-    // the engine narrate "no pending rewards" / "Claimed $0.00" even when
-    // the on-chain tx successfully credited e.g. vSUI to the wallet. The
-    // PTB builder's return value is just an internal opaque list of move
-    // calls — the truth about which assets / amounts were claimed lives
-    // in the `claimable` rows we filtered above.
+  if (!rewards || rewards.length === 0) return [];
+
+  const claimable = rewards.filter(
+    (r) => Number(r.userClaimableReward) > 0,
+  );
+  if (claimable.length === 0) return [];
+
+  // Capture per-reward metadata from the source `claimable` list before
+  // it gets handed to the NAVI PTB builder. We previously stubbed every
+  // returned reward as `{ symbol: 'REWARD', amount: 0 }`, which made
+  // the engine narrate "no pending rewards" / "Claimed $0.00" even when
+  // the on-chain tx successfully credited e.g. vSUI to the wallet. The
+  // PTB builder's return value is just an internal opaque list of move
+  // calls — the truth about which assets / amounts were claimed lives
+  // in the `claimable` rows we filtered above.
+  try {
     await claimLendingRewardsPTB(tx, claimable, {
       env: 'prod',
       customCoinReceive: { type: 'transfer', transfer: address },
     });
-
-    return aggregateClaimableRewards(claimable);
-  } catch {
-    return [];
+  } catch (err) {
+    // [S18-F20] PTB-build failures are also worth surfacing rather than
+    // silently returning empty — the lookup succeeded but the builder
+    // (e.g. missing reward fund config) failed.
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new T2000Error(
+      'PROTOCOL_UNAVAILABLE',
+      `NAVI claim PTB build failed: ${msg}`,
+      { source: 'navi-rewards-claim-ptb' },
+      true,
+    );
   }
+
+  return aggregateClaimableRewards(claimable);
 }
 
 /**

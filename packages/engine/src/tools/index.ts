@@ -36,6 +36,11 @@ import { spendingAnalyticsTool } from './spending.js';
 import { yieldSummaryTool } from './yield-summary.js';
 import { activitySummaryTool } from './activity-summary.js';
 import { resolveSuinsTool } from './resolve-suins.js';
+// [S18-F20] Read-only inspector for pending NAVI lending rewards.
+// Companion to claim_rewards (read → write split) so the LLM can
+// disclose what's claimable BEFORE asking for a confirm card.
+// Also feeds the upcoming harvest_rewards compound tool.
+import { pendingRewardsTool } from './pending-rewards.js';
 // [SPEC 8 v0.5.1] update_todo is opt-in — NOT included in READ_TOOLS.
 // Hosts adopt by appending `updateTodoTool` to their tool list:
 //   tools: [...getDefaultTools(), updateTodoTool]
@@ -97,6 +102,7 @@ export const READ_TOOLS: Tool[] = [
   yieldSummaryTool,
   activitySummaryTool,
   resolveSuinsTool,
+  pendingRewardsTool,
 ];
 
 export const WRITE_TOOLS: Tool[] = [
@@ -153,6 +159,7 @@ export {
   yieldSummaryTool,
   activitySummaryTool,
   resolveSuinsTool,
+  pendingRewardsTool,
   updateTodoTool,
   addRecipientTool,
 };

@@ -154,4 +154,47 @@ describe('claim_rewards tool', () => {
     expect(claimRewardsTool.permissionLevel).toBe('confirm');
     expect(claimRewardsTool.flags?.mutating).toBe(true);
   });
+
+  // [S18-F20] When NAVI's read endpoint is degraded, agent.claimRewards()
+  // throws a T2000Error with code 'PROTOCOL_UNAVAILABLE'. Pre-fix the
+  // error was swallowed at the SDK layer and the tool narrated "no
+  // pending rewards" — a false negative. The tool MUST now catch the
+  // typed throw and surface degradation truthfully.
+  it('S18-F20: surfaces NAVI degradation truthfully (does not narrate "no pending rewards")', async () => {
+    const agent = {
+      claimRewards: async () => {
+        const err = new Error('NAVI rewards lookup failed: Network down') as Error & {
+          code?: string; retryable?: boolean;
+        };
+        err.code = 'PROTOCOL_UNAVAILABLE';
+        err.retryable = true;
+        throw err;
+      },
+    } as unknown as ToolContext['agent'];
+
+    const result = await claimRewardsTool.call({}, { agent });
+
+    expect(result.displayText).toContain('NAVI');
+    expect(result.displayText).toContain('degraded');
+    expect(result.displayText).not.toContain('No pending rewards');
+    const data = result.data as { degraded: boolean; degradationReason: string; success: boolean };
+    expect(data.degraded).toBe(true);
+    expect(data.degradationReason).toBe('PROTOCOL_UNAVAILABLE');
+    expect(data.success).toBe(false);
+  });
+
+  it('S18-F20: surfaces unknown error category gracefully (no thrown error escapes)', async () => {
+    const agent = {
+      claimRewards: async () => {
+        throw new Error('completely unexpected RPC failure');
+      },
+    } as unknown as ToolContext['agent'];
+
+    const result = await claimRewardsTool.call({}, { agent });
+
+    expect(result.displayText).toContain('protocol error');
+    const data = result.data as { degraded: boolean; success: boolean };
+    expect(data.degraded).toBe(true);
+    expect(data.success).toBe(false);
+  });
 });
