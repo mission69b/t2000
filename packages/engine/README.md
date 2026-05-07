@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (34 tools — 23 read, 11 write), Reasoning Engine (14 guards across 3 priority tiers + 6 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (35 tools — 24 read, 11 write), Reasoning Engine (14 guards across 3 priority tiers + 6 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 QueryEngine orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop.
 
@@ -35,11 +35,11 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 ## Audric Intelligence — the 5 systems
 
-> _Not a chatbot. A financial agent._ Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 34 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
+> _Not a chatbot. A financial agent._ Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 35 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
-| 🎛️ **Agent Harness** | 34 tools, one agent. | Tool registry, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| 🎛️ **Agent Harness** | 35 tools, one agent. | Tool registry, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), 6 YAML skill recipes, prompt caching, preflight validation | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -161,7 +161,10 @@ QueryEngine.submitMessage()
 > `defillama_sui_protocols`. Added 1 — `token_prices` (BlockVision-backed). `balance_check`
 > and `portfolio_analysis` rewired to BlockVision Indexer REST API for sub-500ms portfolio
 > fetches. `protocol_deep_dive` retains its DefiLlama dependency (narrow scope, no
-> equivalent on BlockVision). Net: 23 reads + 11 writes = 34 tools.
+> equivalent on BlockVision). Net post-v1.4: 23 reads + 11 writes = 34 tools.
+>
+> **SPEC 10 SuiNS reverse-lookup (May 2026):** Added 1 read tool — `resolve_suins`.
+> Net post-SPEC-10: **24 reads + 11 writes = 35 tools** (current).
 
 ## Recent Upgrades — Spec 1 (Correctness) + Spec 2 (Intelligence)
 

@@ -64,7 +64,7 @@
 | `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
 | `@t2000/engine`     | Published       | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
-| `@t2000/mcp`        | Published       | MCP server — 29 tools + 15 prompts (subset of engine's 34 tools), stdio transport |
+| `@t2000/mcp`        | Published       | MCP server — 29 tools + 14 prompts (subset of engine's 35 tools), stdio transport |
 | `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
 | `@suimpp/discovery` | Published       | Sui-specific discovery validation — OpenAPI checks + 402 probe                    |
 | `mppx`              | External (wevm) | MPP protocol middleware — 402 challenge/credential flow                           |
@@ -815,7 +815,7 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 
 | System | Owns | Implementation files |
 |---|---|---|
-| 🎛️ **Agent Harness** | 34 tools, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| 🎛️ **Agent Harness** | 35 tools, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
 | ⚡ **Reasoning Engine** | Adaptive thinking, 14 guards, 6 skill recipes, prompt caching, preflight | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
 | 🧠 **Silent Profile** | Daily on-chain snapshot + Claude-inferred profile, injected as `<financial_context>` block | audric-side: `UserFinancialProfile`, `UserFinancialContext`, `buildFinancialContextBlock()`, `buildProfileContext()` |
 | 🔗 **Chain Memory** | 7 classifiers extract `ChainFact` rows from on-chain history; injected silently | audric-side: classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -1089,7 +1089,7 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 | System | One-line pitch | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 34 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (23 read + 11 write) |
+| 🎛️ **Agent Harness** | 35 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (24 read + 11 write) |
 | ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 14 guards, 6 skill recipes, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
 | 🧠 **Silent Profile** | Knows your finances — daily on-chain snapshot + chat-inferred profile, injected silently. | `UserFinancialProfile` + `UserFinancialContext` + `buildFinancialContextBlock()` + 02:00 UTC cron |
 | 🔗 **Chain Memory** | Remembers what you do on-chain — 7 classifiers, no proposals, silent context. | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |

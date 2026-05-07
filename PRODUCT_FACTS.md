@@ -6,7 +6,7 @@
 > For CLI output formatting (primitives, precision, header styles, exact output per command), see **`CLI_UX_SPEC.md`**.
 >
 > Source: derived from actual source code in `packages/*/src/`.
-> Last verified: 2026-04-28 (post-S.26 — engine 0.54.1, Spec 1 (Correctness) + Spec 2 (Intelligence) shipped)
+> Last verified: 2026-05-07 (post-SPEC-12 P1+P2 — engine 1.22.1, all 4 packages aligned, 35 tools / 14 MCP prompts)
 
 ---
 
@@ -17,7 +17,7 @@
 | Product | What it is |
 |---------|-----------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, Enoki-sponsored gas (web only). Wraps every other product. |
-| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (34 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
+| 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (35 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
 | 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Move money — Send USDC, Receive (payment links, invoices, QR). Free, global, instant on Sui. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5). |
@@ -28,13 +28,13 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 ## Audric Intelligence — the 5 systems (canonical)
 
-> **Not a chatbot. A financial agent.** Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 34 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
+> **Not a chatbot. A financial agent.** Five systems work together to **understand** the user's money, **reason** about decisions, **act** through 35 financial tools in one conversation, **remember** what they did on-chain, and **remember what it told them**. Every action still waits on Audric Passport's tap-to-confirm.
 >
 > _This block is the canonical definition. README, docs, marketing copy, and the engine system prompt must match it. Implementation details live in `ARCHITECTURE.md` (`## Engine (@t2000/engine) — Audric Intelligence implementation`)._
 
 | # | System | One-line | Owns | Implementation |
 |---|---|---|---|---|
-| 1 | 🎛️ **Agent Harness** | 34 tools, one agent. | Tool registry, parallel reads, serial writes (`TxMutex`), permission gates, streaming dispatch (`EarlyToolDispatcher`) | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (23 read + 11 write) |
+| 1 | 🎛️ **Agent Harness** | 35 tools, one agent. | Tool registry, parallel reads, serial writes (`TxMutex`), permission gates, streaming dispatch (`EarlyToolDispatcher`) | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (24 read + 11 write) |
 | 2 | ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards across 3 priority tiers (12 pre-exec + 2 post-exec hints), 6 YAML skill recipes, prompt caching, preflight validation | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` `cache_control` |
 | 3 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot (`UserFinancialContext`) + Claude-inferred profile (`UserFinancialProfile`), injected as `<financial_context>` block at every engine boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` + 02:00 UTC `financial-context-snapshot` cron + `buildProfileContext()` |
 | 4 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows; injected silently as `<chain_memory>` | _Audric-side_: 7 chain classifiers in `daily-intel` cron group + `ChainFact` Prisma model + `buildMemoryContext()` |
@@ -44,7 +44,7 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 - The phrase **"5 systems"** is canonical — never list 4, never list 6.
 - Always use the system names exactly as written: `Agent Harness`, `Reasoning Engine`, `Silent Profile`, `Chain Memory`, `AdviceLog`.
 - The Reasoning Engine has **14 guards** (12 pre-exec gates + 2 post-exec hints) across **3 priority tiers** (Safety > Financial > UX) and **6 YAML skill recipes**.
-- The Agent Harness has **34 tools** (23 read + 11 write).
+- The Agent Harness has **35 tools** (24 read + 11 write).
 
 ---
 
@@ -52,11 +52,11 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Package | Version |
 |---------|---------|
-| `@t2000/sdk` | `0.54.1` |
-| `@t2000/engine` | `0.54.1` |
-| `@t2000/cli` | `0.54.1` |
+| `@t2000/sdk` | `1.22.1` |
+| `@t2000/engine` | `1.22.1` |
+| `@t2000/cli` | `1.22.1` |
 | `@suimpp/mpp` | `0.3.1` |
-| `@t2000/mcp` | `0.54.1` |
+| `@t2000/mcp` | `1.22.1` |
 | Agent Skills | `3.0` |
 
 ---
@@ -654,7 +654,7 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/engine` |
-| Version | `0.54.1` |
+| Version | `1.22.1` |
 | Description | Agent engine for conversational finance — implements Audric Intelligence (the moat) |
 | Entry point | `@t2000/engine` (ESM only) |
 | Build | tsup → ESM bundle |
@@ -785,7 +785,7 @@ Two correctness/intelligence upgrades shipped on top of the 5-system base. Both 
 | Fact | Value |
 |------|-------|
 | Package | `@t2000/mcp` |
-| Version | `0.54.1` |
+| Version | `1.22.1` |
 | Tool count | 29 — read-only `t2000_*` namespaced subset of the engine (verified by `packages/mcp/src/integration.test.ts` `toHaveLength(29)`) |
 | Description | MCP-first financial tools for AI agents. Non-custodial. Part of the t2000 infrastructure behind Audric. |
 | Transport | stdio |

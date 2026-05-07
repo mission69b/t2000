@@ -5,7 +5,7 @@ description: >-
   Continue, or any MCP-compatible client. Use when asked to set up MCP,
   paste an MCP server config, install @t2000/mcp, or troubleshoot why
   the MCP server "doesn't do anything" when run from a terminal.
-  Provides 29 tools and 15 prompts over stdio.
+  Provides 29 tools and 14 prompts over stdio.
 license: MIT
 metadata:
   author: t2000
@@ -17,7 +17,7 @@ metadata:
 
 ## Purpose
 Expose a t2000 agent bank account (Sui wallet + DeFi positions) to any
-MCP-compatible AI client over stdio. **29 tools, 15 prompts**, safeguard
+MCP-compatible AI client over stdio. **29 tools, 14 prompts**, safeguard
 enforced. No global install required — the recommended path uses `npx`
 so the AI client always pulls the latest published version.
 
@@ -151,7 +151,7 @@ All support `dryRun: true` for previews without signing.
 | `t2000_config` | View/set limits |
 | `t2000_lock` | Emergency freeze |
 
-## Prompts (15)
+## Prompts (14)
 | Prompt | Description |
 |--------|-------------|
 | `financial-report` | Full financial summary |

@@ -68,8 +68,9 @@ import { tokenPricesTool } from './token-prices.js';
 //
 // [v1.4 — Day 3] All 7 defillama_* LLM tools deleted (Day 2: prices/
 // change → BlockVision; Day 3: yield-pools/protocol-info/chain-tvl/
-// protocol-fees/sui-protocols deleted, no replacement). Current tool
-// count: 23 reads + 11 writes = 34 tools.
+// protocol-fees/sui-protocols deleted, no replacement). v1.4 left the
+// engine at 23 reads + 11 writes = 34 tools. SPEC 10 (May 2026) added
+// resolve_suins → current count is 24 reads + 11 writes = 35 tools.
 
 export const READ_TOOLS: Tool[] = [
   renderCanvasTool,
