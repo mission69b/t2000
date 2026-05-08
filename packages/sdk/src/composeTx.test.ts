@@ -726,7 +726,7 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
     it('swap → save (chained): BOTH overlay fee AND save feeHook fire (multi-op fee wiring)', async () => {
       const { composeTx } = await import('./composeTx.js');
       const FEE_WALLET = '0x' + 'f'.repeat(64);
-      const OVERLAY_RATE = '0.001';
+      const OVERLAY_RATE = 0.001;
 
       const client = mockRpcClient({
         [USDC_TYPE]: [{ coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' }],
@@ -788,7 +788,12 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
       // Track call order: feeHook should fire BEFORE depositCoinPTB is invoked.
       const order: string[] = [];
       const naviModule = await import('@naviprotocol/lending');
-      const depositSpy = vi.spyOn(naviModule, 'depositCoinPTB').mockImplementation(async () => {
+      // Cast to vi.Mock to bypass spyOn's strict signature inference — the
+      // navi adapter's auto-mock at top of file uses the same `async () =>
+      // undefined` shape (line 45) and depositCoinPTB's return value is
+      // not consumed downstream.
+      const depositSpy = (naviModule.depositCoinPTB as unknown as ReturnType<typeof vi.fn>);
+      depositSpy.mockImplementation(async () => {
         order.push('depositCoinPTB');
         return undefined;
       });
@@ -832,7 +837,7 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
           { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
           { toolName: 'save_deposit', input: { amount: 5, asset: 'USDsui' }, inputCoinFromStep: 0 },
         ],
-        overlayFee: { rate: '0.001', receiver: FEE_WALLET },
+        overlayFee: { rate: 0.001, receiver: FEE_WALLET },
         // No feeHooks — verify save_deposit does NOT fee a transfer to fee wallet.
       });
 
