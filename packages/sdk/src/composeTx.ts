@@ -651,10 +651,19 @@ export const WRITE_APPENDER_REGISTRY: {
   // can compare claimed amounts to USD.
   harvest_rewards: async (tx, input, ctx) => {
     const providers = ctx.sponsoredContext ? await getSponsoredSwapProviders() : undefined;
+    // [v1.24.2 fee wiring] Forward host fee config into the harvest macro
+    // so each internal swap leg charges the overlay AND the deposit leg
+    // skims the save fee. Without this, harvest_rewards bypassed both
+    // mechanisms (live-prod regression observed 2026-05-08 — see S.120).
+    // The save_deposit hook is reused as-is; the harvest macro calls it
+    // with `input.asset === 'USDC'` and the merged USDC deposit coin,
+    // matching what the audric host's hook already expects.
     const plan = await addHarvestToTx(tx, ctx.client, ctx.sender, {
       slippage: input.slippage,
       minRewardUsd: input.minRewardUsd,
       providers,
+      overlayFee: ctx.overlayFee,
+      saveFeeHook: ctx.feeHooks?.save_deposit,
     });
     return {
       preview: {

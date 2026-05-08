@@ -68,7 +68,7 @@ import { getUserAvailableLendingRewards, claimLendingRewardsPTB } from '@navipro
 import { T2000Error } from '../errors.js';
 import { getCoinMeta, USDC_TYPE } from '../token-registry.js';
 import { addSaveToTx, aggregateClaimableRewards } from './navi.js';
-import { addSwapToTx } from './cetus-swap.js';
+import { addSwapToTx, type OverlayFeeConfig } from './cetus-swap.js';
 import type { PendingReward } from '../adapters/types.js';
 
 // -- types --------------------------------------------------------------
@@ -107,6 +107,20 @@ export interface HarvestPlan {
   expectedUsdcDeposited: number;
 }
 
+/**
+ * Callback invoked right before the harvest's internal `addSaveToTx`.
+ * Mirrors the shape of `composeTx`'s `feeHooks.save_deposit` so audric's
+ * existing hook can be threaded straight through without adapters. The
+ * SDK never invents a fee — the host decides whether to skim from
+ * `coin` and to where. See CLAUDE.md rule #9 (fees are a host concern).
+ */
+export type HarvestSaveFeeHook = (ctx: {
+  tx: Transaction;
+  coin: TransactionObjectArgument;
+  input: { asset: 'USDC'; amount: number };
+  sender: string;
+}) => void | Promise<void>;
+
 export interface BuildHarvestRewardsTxOptions {
   /** Per-swap slippage tolerance (0.001–0.05). Defaults to 0.01 (1%). */
   slippage?: number;
@@ -129,6 +143,27 @@ export interface BuildHarvestRewardsTxOptions {
    * Pyth-free. Non-sponsored callers omit this.
    */
   providers?: string[];
+  /**
+   * [v1.24.2 fee wiring] Overlay fee forwarded to EACH internal
+   * `addSwapToTx` call. When set, every swap leg charges the rate to
+   * the receiver (typically `T2000_OVERLAY_FEE_WALLET` for audric).
+   * Omit for fee-free harvests (CLI / direct SDK callers).
+   */
+  overlayFee?: OverlayFeeConfig;
+  /**
+   * [v1.24.2 fee wiring] Fired immediately before the internal
+   * `addSaveToTx` consumes the merged USDC deposit coin. The hook
+   * receives the deposit handle so it can split a fee off via
+   * `addFeeTransfer(...)` (host's call). Audric threads its
+   * `feeHooks.save_deposit` straight through here so a harvest's
+   * deposit leg pays the same `SAVE_FEE_BPS` as a single-op `save`.
+   *
+   * Order is load-bearing: this hook fires AFTER all USDC handles
+   * are merged into one and BEFORE the NAVI deposit consumes it.
+   * Fee receiver gets recorded as a top-level transferObjects, so
+   * it's automatically picked up by `derivedAllowedAddresses`.
+   */
+  saveFeeHook?: HarvestSaveFeeHook;
 }
 
 // -- builders -----------------------------------------------------------
@@ -293,6 +328,7 @@ export async function addHarvestToTx(
         slippage,
         inputCoin: coin,
         providers: options.providers,
+        overlayFee: options.overlayFee,
       });
       usdcHandles.push(swapResult.coin);
       expectedUsdcDeposited += swapResult.expectedAmountOut;
@@ -331,6 +367,21 @@ export async function addHarvestToTx(
       const [primary, ...rest] = usdcHandles;
       tx.mergeCoins(primary, rest);
       depositCoin = primary;
+    }
+    // [v1.24.2 fee wiring] Skim the host's save fee BEFORE deposit
+    // consumes the coin. Same ordering rule as the single-op `save`
+    // path: feeHooks.save_deposit fires after the user's USDC is in
+    // hand, before the NAVI deposit move call. `expectedUsdcDeposited`
+    // is the pre-fee total (claimed USDC + each swap quote); the hook
+    // skims a fraction of it and the NAVI deposit consumes the
+    // remainder.
+    if (options.saveFeeHook) {
+      await options.saveFeeHook({
+        tx,
+        coin: depositCoin,
+        input: { asset: 'USDC', amount: expectedUsdcDeposited },
+        sender: address,
+      });
     }
     try {
       await addSaveToTx(tx, client, address, depositCoin, { asset: 'USDC' });

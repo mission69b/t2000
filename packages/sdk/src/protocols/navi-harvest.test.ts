@@ -393,4 +393,107 @@ describe('buildHarvestRewardsTx', () => {
       });
     });
   });
+
+  /**
+   * [v1.24.2 — S.120] Fee wiring contract: harvest must charge per-leg
+   * fees when the host opts in. Confirms both halves of the gap that
+   * shipped in v1.24.0 (overlay fee bypassed on swap legs + save fee
+   * hook bypassed on deposit). The mainnet-observed harvest on
+   * 2026-05-08 settled with $0 fees because both wires were missing —
+   * these tests are the regression net.
+   */
+  describe('fee wiring (v1.24.2)', () => {
+    const FEE_WALLET = '0x' + 'b'.repeat(64);
+
+    it('forwards overlayFee to every internal addSwapToTx call', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([
+        { userClaimableReward: 0.0165, rewardCoinType: VSUI_TYPE, assetId: 5 },
+        { userClaimableReward: 12.4, rewardCoinType: NAVX_TYPE, assetId: 7 },
+      ] as never);
+      mockClaimEmits({ [VSUI_TYPE]: 1, [NAVX_TYPE]: 1 });
+      mockSwapReturns(0.5);
+
+      await buildHarvestRewardsTx(fakeClient, VALID_ADDRESS, {
+        overlayFee: { rate: 0.001, receiver: FEE_WALLET },
+      });
+
+      expect(addSwapToTx).toHaveBeenCalledTimes(2);
+      for (const call of vi.mocked(addSwapToTx).mock.calls) {
+        expect(call?.[3].overlayFee).toEqual({ rate: 0.001, receiver: FEE_WALLET });
+      }
+    });
+
+    it('does NOT forward overlayFee when omitted (CLI / direct SDK path stays fee-free)', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([
+        { userClaimableReward: 0.0165, rewardCoinType: VSUI_TYPE, assetId: 5 },
+      ] as never);
+      mockClaimEmits({ [VSUI_TYPE]: 1 });
+      mockSwapReturns(0.0162);
+
+      await buildHarvestRewardsTx(fakeClient, VALID_ADDRESS);
+
+      expect(addSwapToTx).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(addSwapToTx).mock.calls[0]?.[3].overlayFee).toBeUndefined();
+    });
+
+    it('invokes saveFeeHook with the deposit coin handle BEFORE addSaveToTx', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([
+        { userClaimableReward: 0.5, rewardCoinType: USDC_TYPE, assetId: 0 },
+        { userClaimableReward: 0.0165, rewardCoinType: VSUI_TYPE, assetId: 5 },
+      ] as never);
+      mockClaimEmits({ [USDC_TYPE]: 1, [VSUI_TYPE]: 1 });
+      mockSwapReturns(0.0162);
+
+      const callOrder: string[] = [];
+      vi.mocked(addSaveToTx).mockImplementation(async () => {
+        callOrder.push('save');
+      });
+      const saveFeeHook = vi.fn().mockImplementation(() => {
+        callOrder.push('feeHook');
+      });
+
+      await buildHarvestRewardsTx(fakeClient, VALID_ADDRESS, {
+        saveFeeHook,
+      });
+
+      expect(saveFeeHook).toHaveBeenCalledTimes(1);
+      // Deterministic ordering: hook always fires BEFORE deposit.
+      expect(callOrder).toEqual(['feeHook', 'save']);
+
+      const hookCtx = saveFeeHook.mock.calls[0]?.[0];
+      expect(hookCtx).toBeDefined();
+      expect(hookCtx.input.asset).toBe('USDC');
+      // Total = 0.5 USDC reward + 0.0162 swap output.
+      expect(hookCtx.input.amount).toBeCloseTo(0.5162, 4);
+      expect(hookCtx.sender).toBe(VALID_ADDRESS);
+      expect(hookCtx.coin).toBeDefined();
+      expect(hookCtx.tx).toBeDefined();
+    });
+
+    it('does NOT invoke saveFeeHook when there is nothing to deposit (all skipped)', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([
+        { userClaimableReward: 5, rewardCoinType: UNKNOWN_TYPE, assetId: 99 },
+      ] as never);
+      mockClaimEmits({ [UNKNOWN_TYPE]: 1 });
+      const saveFeeHook = vi.fn();
+
+      const { plan } = await buildHarvestRewardsTx(fakeClient, VALID_ADDRESS, { saveFeeHook });
+
+      expect(plan.expectedUsdcDeposited).toBe(0);
+      expect(addSaveToTx).not.toHaveBeenCalled();
+      expect(saveFeeHook).not.toHaveBeenCalled();
+    });
+
+    it('does NOT invoke saveFeeHook when the hook is omitted (CLI / direct SDK path stays fee-free)', async () => {
+      vi.mocked(getUserAvailableLendingRewards).mockResolvedValue([
+        { userClaimableReward: 0.5, rewardCoinType: USDC_TYPE, assetId: 0 },
+      ] as never);
+      mockClaimEmits({ [USDC_TYPE]: 1 });
+
+      // No saveFeeHook in options — deposit fires, no fee skim.
+      await buildHarvestRewardsTx(fakeClient, VALID_ADDRESS);
+
+      expect(addSaveToTx).toHaveBeenCalledTimes(1);
+    });
+  });
 });
