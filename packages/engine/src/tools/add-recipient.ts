@@ -25,8 +25,9 @@
 // The form has TWO fields, not three:
 //   - `name` (text)         — user-friendly nickname ("Mom")
 //   - `identifier` (sui-recipient) — polymorphic: accepts an Audric handle
-//     (`@alice` / `alice.audric.sui`), an external SuiNS name (`alex.sui`),
-//     or a bare 0x. Resolved server-side via `normalizeAddressInput`
+//     (`alice@audric` / `alice.audric.sui` — both forms resolve to the
+//     same address), an external SuiNS name (`alex.sui`), or a bare 0x.
+//     Resolved server-side via `normalizeAddressInput`
 //     (sui-address.ts) on the resume route, BEFORE this tool's call() runs.
 //
 // The single-field design matches how users actually think — "the way I
@@ -73,9 +74,9 @@ const ADD_RECIPIENT_FORM: FormSchema = {
       // the resolution.
       kind: 'sui-recipient',
       required: true,
-      placeholder: 'mom.audric.sui  /  alex.sui  /  0x40cd…3e62',
+      placeholder: 'mom@audric  /  alex.sui  /  0x40cd…3e62',
       helpText:
-        'Type @alice for an Audric user, alex.sui for any SuiNS, or paste a 0x address. ' +
+        'Type alice@audric for an Audric user, alex.sui for any SuiNS, or paste a 0x address. ' +
         'We\'ll resolve it to the canonical wallet automatically.',
     },
   ],

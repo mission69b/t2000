@@ -10,7 +10,6 @@ import {
   repayCoinPTB,
   getUserAvailableLendingRewards,
   claimLendingRewardsPTB,
-  summaryLendingRewards,
   updateOraclePriceBeforeUserOperationPTB,
   type Pool,
 } from '@naviprotocol/lending';
@@ -18,6 +17,7 @@ import { SUPPORTED_ASSETS, ALL_NAVI_ASSETS } from '../constants.js';
 import type { SupportedAsset } from '../constants.js';
 import { T2000Error } from '../errors.js';
 import { stableToRaw } from '../utils/format.js';
+import { getCoinMeta } from '../token-registry.js';
 import type { PendingReward } from '../adapters/types.js';
 import type {
   RatesResult,
@@ -634,26 +634,20 @@ export async function getPendingRewards(
 
   if (!rewards || rewards.length === 0) return [];
 
-  const summary = summaryLendingRewards(rewards);
-  const result: PendingReward[] = [];
-
-  for (const s of summary) {
-    for (const rw of s.rewards) {
-      const available = Number(rw.available);
-      if (available <= 0) continue;
-      const symbol = rw.coinType.split('::').pop() ?? 'UNKNOWN';
-      result.push({
-        protocol: 'navi',
-        asset: String(s.assetId),
-        coinType: rw.coinType,
-        symbol,
-        amount: available,
-        estimatedValueUsd: 0,
-      });
-    }
-  }
-
-  return result;
+  // [S.118 follow-up — 2026-05-08]
+  // Read from the same source as `addClaimRewardsToTx` (raw
+  // `userClaimableReward`) and reuse the same aggregator
+  // (`aggregateClaimableRewards`). Pre-fix this read iterated
+  // `summaryLendingRewards(rewards).rewards.available` — a different NAVI
+  // aggregation that produced row-structure AND per-coinType-total drift
+  // vs the claim path (smoke on funkii's mainnet wallet showed 2 rows
+  // here vs 1 row from `addClaimRewardsToTx`, with totals diverging by
+  // ~1.36e-7 for the same vSUI cert across two NAVI pools). Routing both
+  // through the same source + same aggregator removes the drift class
+  // entirely and makes the contract test a true equality check (not
+  // a tolerance-based one).
+  const claimable = rewards.filter((r) => Number(r.userClaimableReward) > 0);
+  return aggregateClaimableRewards(claimable);
 }
 
 export async function addClaimRewardsToTx(
@@ -774,7 +768,12 @@ export function aggregateClaimableRewards(
   for (const c of claimable) {
     const coinType = c.rewardCoinType;
     if (!coinType) continue;
-    const symbol = coinType.split('::').pop() ?? 'REWARD';
+    // [S18-F20 follow-up] Resolve symbol via canonical registry first; falls
+    // back to raw struct name only for unregistered coins. Mirrors the same
+    // resolution in `getPendingRewards` so both readers narrate vSUI rewards
+    // as "vSUI" instead of the raw "CERT" struct name.
+    const meta = getCoinMeta(coinType);
+    const symbol = meta?.symbol ?? coinType.split('::').pop() ?? 'REWARD';
     const amount = Number(c.userClaimableReward);
     if (!Number.isFinite(amount) || amount <= 0) continue;
 

@@ -17,7 +17,8 @@
 //
 // `text`           — free-form string. Matches default HTML <input type="text">.
 // `sui-recipient`  — polymorphic identifier accepting an Audric handle
-//                    (`@alice` / `alice.audric.sui`), an external SuiNS name
+//                    (`alice@audric` / `alice.audric.sui` — both forms
+//                    resolve to the same address), an external SuiNS name
 //                    (`alex.sui`), or a bare 0x address. Resolved server-side
 //                    via `normalizeAddressInput` (sui-address.ts) at the host's
 //                    resume endpoint, BEFORE calling `resumeWithInput()`.

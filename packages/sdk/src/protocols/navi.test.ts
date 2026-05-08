@@ -429,7 +429,12 @@ describe('navi', () => {
           protocol: 'navi',
           asset: '5',
           coinType: VSUI,
-          symbol: 'CERT',
+          // [S.118 follow-up 2026-05-08] vSUI now resolves via the canonical
+          // token registry (`getCoinMeta(coinType).symbol`) instead of
+          // returning the raw struct name 'CERT' — Volo's vSUI cert had a
+          // misleading on-chain struct name that the LLM previously
+          // surfaced verbatim.
+          symbol: 'vSUI',
           amount: 0.01649,
           estimatedValueUsd: 0,
         },
@@ -562,16 +567,20 @@ describe('navi', () => {
     });
   });
 
-  // [S18-F20 contract test] The harness has two readers for NAVI rewards
-  // — `getPendingRewards` (read-only, called by `pending_rewards` tool)
-  // and `addClaimRewardsToTx` (PTB-builder, called inside claim flows).
-  // Both go through `getUserAvailableLendingRewards` + `summaryLendingRewards` /
-  // direct filter on `userClaimableReward`. Pre-fix they could drift —
-  // a NAVI SDK upgrade that changed `summaryLendingRewards`'s aggregation
-  // would put one reader ahead of the other and the engine would
-  // silently disagree with itself ("you have rewards" → claim narration
-  // "no pending rewards"). This contract test pins their per-coinType
-  // totals to the same input so drift fails CI.
+  // [S18-F20 contract test, hardened in S.118 follow-up 2026-05-08]
+  // The harness has two readers for NAVI rewards — `getPendingRewards`
+  // (read-only, called by `pending_rewards` tool) and `addClaimRewardsToTx`
+  // (PTB-builder, called inside claim flows). Both NOW go through the
+  // SAME source (`userClaimableReward` filter) and the SAME aggregator
+  // (`aggregateClaimableRewards`), which means the contract is true
+  // structural equality (not just per-coinType total tolerance).
+  //
+  // Pre-S.118-follow-up `getPendingRewards` iterated `summaryLendingRewards.available`
+  // — a different NAVI aggregation that produced row-structure AND
+  // per-coinType-total drift on real mainnet data (smoke against funkii's
+  // wallet returned 2 rows here vs 1 row from `addClaimRewardsToTx` for
+  // the same vSUI cert across two NAVI pools, with totals diverging by
+  // ~1.36e-7). Routing both through the same source removes the drift class.
   describe('getPendingRewards ≡ addClaimRewardsToTx contract (S18-F20)', () => {
     const VSUI = '0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT';
     const NAVX = '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX';
@@ -592,7 +601,18 @@ describe('navi', () => {
       return out;
     }
 
-    it('per-coinType totals match for a single-pool single-coin reward', async () => {
+    // [S.118 follow-up] Helper: normalize a reward row to its identity-relevant
+    // fields so structural equality works regardless of per-row asset id (which
+    // can legitimately differ — getPendingRewards picks the first asset id seen,
+    // addClaimRewardsToTx picks per-claimable-row id; both are arbitrary
+    // labels for an aggregated row).
+    function structuralView(rewards: Array<{ coinType: string; symbol: string; amount: number }>) {
+      return rewards
+        .map((r) => ({ coinType: r.coinType, symbol: r.symbol, amount: r.amount }))
+        .sort((a, b) => a.coinType.localeCompare(b.coinType));
+    }
+
+    it('row structure + totals match for a single-pool single-coin reward', async () => {
       const mockRewards = [
         { userClaimableReward: 0.0165, rewardCoinType: VSUI, assetId: 5 },
       ] as never;
@@ -604,9 +624,10 @@ describe('navi', () => {
       const claimable = await addClaimRewardsToTx(tx, fakeClient, VALID_ADDRESS);
 
       expect(totalsByCoinType(pending)).toEqual(totalsByCoinType(claimable));
+      expect(structuralView(pending)).toEqual(structuralView(claimable));
     });
 
-    it('per-coinType totals match for multi-pool same-coin (aggregation case)', async () => {
+    it('row structure + totals match for multi-pool same-coin (aggregation case)', async () => {
       const mockRewards = [
         { userClaimableReward: 0.01, rewardCoinType: VSUI, assetId: 0 },
         { userClaimableReward: 0.0065, rewardCoinType: VSUI, assetId: 5 },
@@ -619,10 +640,12 @@ describe('navi', () => {
       const claimable = await addClaimRewardsToTx(tx, fakeClient, VALID_ADDRESS);
 
       expect(totalsByCoinType(pending)).toEqual(totalsByCoinType(claimable));
-      expect(Object.keys(totalsByCoinType(pending))).toHaveLength(1);
+      expect(structuralView(pending)).toEqual(structuralView(claimable));
+      expect(pending).toHaveLength(1);
+      expect(claimable).toHaveLength(1);
     });
 
-    it('per-coinType totals match for cross-coin rewards (vSUI + NAVX + NS)', async () => {
+    it('row structure + totals match for cross-coin rewards (vSUI + NAVX + NS)', async () => {
       const mockRewards = [
         { userClaimableReward: 0.0165, rewardCoinType: VSUI, assetId: 5 },
         { userClaimableReward: 12.4, rewardCoinType: NAVX, assetId: 7 },
@@ -636,7 +659,9 @@ describe('navi', () => {
       const claimable = await addClaimRewardsToTx(tx, fakeClient, VALID_ADDRESS);
 
       expect(totalsByCoinType(pending)).toEqual(totalsByCoinType(claimable));
-      expect(Object.keys(totalsByCoinType(pending))).toHaveLength(3);
+      expect(structuralView(pending)).toEqual(structuralView(claimable));
+      expect(pending).toHaveLength(3);
+      expect(claimable).toHaveLength(3);
     });
 
     it('both throw PROTOCOL_UNAVAILABLE when NAVI is degraded — no silent disagreement', async () => {
