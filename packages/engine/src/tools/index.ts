@@ -39,8 +39,13 @@ import { resolveSuinsTool } from './resolve-suins.js';
 // [S18-F20] Read-only inspector for pending NAVI lending rewards.
 // Companion to claim_rewards (read → write split) so the LLM can
 // disclose what's claimable BEFORE asking for a confirm card.
-// Also feeds the upcoming harvest_rewards compound tool.
+// Also feeds the harvest_rewards compound tool.
 import { pendingRewardsTool } from './pending-rewards.js';
+// [Track B / 2026-05-08] Compound write — claim NAVI rewards, swap each
+// non-USDC reward to USDC inline, deposit to NAVI savings. Single PTB,
+// single confirm card, atomic settlement. Powers the audric "🌾 HARVEST"
+// chip under Save.
+import { harvestRewardsTool, narrateHarvestResult } from './harvest-rewards.js';
 // [SPEC 8 v0.5.1] update_todo is opt-in — NOT included in READ_TOOLS.
 // Hosts adopt by appending `updateTodoTool` to their tool list:
 //   tools: [...getDefaultTools(), updateTodoTool]
@@ -112,6 +117,7 @@ export const WRITE_TOOLS: Tool[] = [
   borrowTool,
   repayDebtTool,
   claimRewardsTool,
+  harvestRewardsTool,
   payApiTool,
   swapExecuteTool,
   voloStakeTool,
@@ -160,6 +166,8 @@ export {
   activitySummaryTool,
   resolveSuinsTool,
   pendingRewardsTool,
+  harvestRewardsTool,
+  narrateHarvestResult,
   updateTodoTool,
   addRecipientTool,
 };

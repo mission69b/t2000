@@ -156,6 +156,18 @@ export {
   buildClaimRewardsTx,
   aggregateClaimableRewards,
 } from './protocols/navi.js';
+// [Track B / 2026-05-08] Single-PTB compound flow: claim NAVI rewards,
+// swap each non-USDC reward to USDC inline (Cetus chain mode), deposit
+// the merged USDC into the NAVI USDC pool. ONE confirm card, atomic
+// settlement. Powers the engine's `harvest_rewards` tool and the
+// audric "🌾 HARVEST" chip.
+export { buildHarvestRewardsTx } from './protocols/navi-harvest.js';
+export type {
+  HarvestPlan,
+  HarvestSwapLeg,
+  HarvestSkippedLeg,
+  BuildHarvestRewardsTxOptions,
+} from './protocols/navi-harvest.js';
 export { getSwapQuote } from './swap-quote.js';
 export {
   findSwapRoute,

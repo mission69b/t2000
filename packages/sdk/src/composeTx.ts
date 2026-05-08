@@ -74,6 +74,7 @@ import {
   addRepayToTx,
   addClaimRewardsToTx,
 } from './protocols/navi.js';
+import { addHarvestToTx } from './protocols/navi-harvest.js';
 import type { PendingReward } from './adapters/types.js';
 import { addSwapToTx, type SwapRouteResult } from './protocols/cetus-swap.js';
 import {
@@ -88,7 +89,8 @@ import { T2000Error } from './errors.js';
 import { validateAddress } from './utils/sui.js';
 
 /**
- * Canonical write tools. The 9 tools that can be composed into a PTB.
+ * Canonical write tools. The 10 tools that can be composed into a PTB
+ * (Track B 2026-05-08 added `harvest_rewards`).
  *
  * Excluded by design:
  * - `pay_api` — recipient/amount unknown at compose time; the on-chain
@@ -103,6 +105,9 @@ export type WriteToolName =
   | 'send_transfer'
   | 'swap_execute'
   | 'claim_rewards'
+  // [Track B / 2026-05-08] Compound: claim NAVI rewards → swap each non-USDC
+  // reward to USDC inline → deposit into NAVI USDC pool. ONE confirm card.
+  | 'harvest_rewards'
   | 'volo_stake'
   | 'volo_unstake';
 
@@ -150,6 +155,19 @@ export interface SwapExecuteInput {
 
 export type ClaimRewardsInput = Record<string, never>;
 
+/**
+ * [Track B] `harvest_rewards` accepts only optional tunables — no required
+ * inputs, since the user's choice is binary ("harvest now" or not). Default
+ * slippage 1%, default dust floor $0.01. The audric host's HARVEST chip
+ * passes literal `{}` and gets sensible defaults.
+ */
+export interface HarvestRewardsInput {
+  /** Per-swap slippage tolerance (0.001–0.05). Default 0.01 (1%). */
+  slippage?: number;
+  /** USD floor for "is this worth swapping?" — dust below transfers to wallet. Default $0.01. */
+  minRewardUsd?: number;
+}
+
 export interface VoloStakeInput {
   amountSui: number;
 }
@@ -183,6 +201,11 @@ export type WriteStep =
   | { toolName: 'send_transfer'; input: SendTransferInput; inputCoinFromStep?: number }
   | { toolName: 'swap_execute'; input: SwapExecuteInput; inputCoinFromStep?: number }
   | { toolName: 'claim_rewards'; input: ClaimRewardsInput }
+  // Self-contained compound — internally claims, swaps, and deposits in
+  // one PTB. Doesn't accept `inputCoinFromStep` because it's the only
+  // step in the bundle (it's a "macro" appender, not a chainable producer
+  // or consumer).
+  | { toolName: 'harvest_rewards'; input: HarvestRewardsInput }
   | { toolName: 'volo_stake'; input: VoloStakeInput; inputCoinFromStep?: number }
   | { toolName: 'volo_unstake'; input: VoloUnstakeInput; inputCoinFromStep?: number };
 
@@ -278,6 +301,27 @@ export type StepPreview =
   | { toolName: 'send_transfer'; effectiveAmount: number; recipient: string; asset: SupportedAsset }
   | { toolName: 'swap_execute'; effectiveAmountIn: number; expectedAmountOut: number; route: SwapRouteResult }
   | { toolName: 'claim_rewards'; rewards: PendingReward[] }
+  // Compact: the audric host renders a multi-line "Claim → Swap → Save"
+  // breakdown card from this preview (claimed[], swaps[], skipped[],
+  // expectedUsdcDeposited). One signature, one settlement.
+  | {
+      toolName: 'harvest_rewards';
+      claimed: PendingReward[];
+      swaps: Array<{
+        fromSymbol: string;
+        fromCoinType: string;
+        toSymbol: 'USDC';
+        inputAmount: number;
+        expectedOutputUsdc: number;
+      }>;
+      skipped: Array<{
+        symbol: string;
+        coinType: string;
+        amount: number;
+        reason: 'untradeable' | 'dust' | 'no-route';
+      }>;
+      expectedUsdcDeposited: number;
+    }
   | { toolName: 'volo_stake'; effectiveAmountMist: bigint }
   | { toolName: 'volo_unstake'; effectiveAmountMist: bigint | 'all' };
 
@@ -399,7 +443,7 @@ function resolveSaveableAsset(asset: 'USDC' | 'USDsui' | undefined): 'USDC' | 'U
 /**
  * The typed registry. Each entry is a wallet-mode dispatcher that takes
  * (tx, input, ctx) and returns a per-step preview. Compile-time check
- * that all 9 `WriteToolName` values have an entry — TypeScript will
+ * that all 10 `WriteToolName` values have an entry — TypeScript will
  * fail the build if a tool is missing.
  */
 export const WRITE_APPENDER_REGISTRY: {
@@ -410,6 +454,7 @@ export const WRITE_APPENDER_REGISTRY: {
   send_transfer: AppenderFn<SendTransferInput, Extract<StepPreview, { toolName: 'send_transfer' }>>;
   swap_execute: AppenderFn<SwapExecuteInput, Extract<StepPreview, { toolName: 'swap_execute' }>>;
   claim_rewards: AppenderFn<ClaimRewardsInput, Extract<StepPreview, { toolName: 'claim_rewards' }>>;
+  harvest_rewards: AppenderFn<HarvestRewardsInput, Extract<StepPreview, { toolName: 'harvest_rewards' }>>;
   volo_stake: AppenderFn<VoloStakeInput, Extract<StepPreview, { toolName: 'volo_stake' }>>;
   volo_unstake: AppenderFn<VoloUnstakeInput, Extract<StepPreview, { toolName: 'volo_unstake' }>>;
 } = {
@@ -596,6 +641,30 @@ export const WRITE_APPENDER_REGISTRY: {
   claim_rewards: async (tx, _input, ctx) => {
     const rewards = await addClaimRewardsToTx(tx, ctx.client, ctx.sender);
     return { preview: { toolName: 'claim_rewards', rewards } };
+  },
+
+  // [Track B / 2026-05-08] Macro appender — assembles claim → swap(s) →
+  // save inline. The audric host wires `getSponsoredSwapProviders()` into
+  // `options.providers` automatically when `ctx.sponsoredContext === true`
+  // (parity with `swap_execute` below). Slippage + dust-floor pulled from
+  // the input; price cache is forwarded from the host so the dust filter
+  // can compare claimed amounts to USD.
+  harvest_rewards: async (tx, input, ctx) => {
+    const providers = ctx.sponsoredContext ? await getSponsoredSwapProviders() : undefined;
+    const plan = await addHarvestToTx(tx, ctx.client, ctx.sender, {
+      slippage: input.slippage,
+      minRewardUsd: input.minRewardUsd,
+      providers,
+    });
+    return {
+      preview: {
+        toolName: 'harvest_rewards',
+        claimed: plan.claimed,
+        swaps: plan.swaps,
+        skipped: plan.skipped,
+        expectedUsdcDeposited: plan.expectedUsdcDeposited,
+      },
+    };
   },
 
   volo_stake: async (tx, input, ctx) => {
