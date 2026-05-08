@@ -29,6 +29,18 @@ export interface MicrocompactResult extends Array<Message> {
  * later call with identical inputs gets replaced — necessary because
  * their results depend on mutable on-chain state that writes invalidate.
  *
+ * [v1.24.6 / S.122] Tools whose `flags.mutating === true` are ALSO
+ * implicitly non-cacheable. Each call to a write tool produces a NEW
+ * on-chain transaction (different digest, different balance changes, real
+ * state mutation) — replacing the second result with "[Same result as
+ * call #N — identical inputs]" lies to the LLM, which then narrates
+ * "transaction deduplicated" to the user even though the on-chain write
+ * actually settled. Surfaced during S.121 smoke testing: a second
+ * `send_transfer` with identical inputs produced a real on-chain tx but
+ * the engine narrated as if it had been skipped. Explicit `cacheable`
+ * still wins (a `cacheable: true` write would be a tool-author bug, but
+ * we don't override it), so the rule is: mutating ⇒ default `false`.
+ *
  * Returns a new array — does not mutate the input. The returned array
  * carries a `dedupedToolUseIds` property listing every tool-use ID whose
  * tool_result block was replaced with a back-reference this pass.
@@ -48,11 +60,19 @@ export function microcompact(
   const toolUseInputs = new Map<string, string>();
   // Map tool name → cacheable flag. Default behavior (no entry, or
   // `cacheable === undefined`) is `true` — back-compat with hosts that
-  // don't pass a tools array.
+  // don't pass a tools array. EXCEPT: write tools (`flags.mutating: true`)
+  // default to `false` because each call produces a new on-chain tx
+  // (S.122).
   const cacheableByName = new Map<string, boolean>();
   if (tools) {
     for (const t of tools) {
-      cacheableByName.set(t.name, t.cacheable ?? true);
+      const explicit = t.cacheable;
+      const isMutating = t.flags?.mutating === true;
+      // Resolve precedence: explicit `cacheable` > mutating-implied-false
+      // > default true. A write tool that explicitly opts back in (rare,
+      // arguably a bug) is honored — the rule is "don't surprise the
+      // tool author," not "block them from doing it."
+      cacheableByName.set(t.name, explicit ?? !isMutating);
     }
   }
   const dedupedToolUseIds = new Set<string>();

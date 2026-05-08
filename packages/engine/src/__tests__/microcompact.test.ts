@@ -11,14 +11,25 @@ function msg(role: 'user' | 'assistant', content: Message['content']): Message {
 /**
  * [v1.5.1] Helper to spin up a minimal Tool for the cacheable-flag tests.
  * The `call` is never invoked — microcompact only inspects metadata.
+ *
+ * [v1.24.6 / S.122] Optional `flags` lets mutating-write tests exercise
+ * the implicit-non-cacheable path (each call is a new on-chain tx).
  */
-function fakeTool(name: string, cacheable?: boolean): Tool {
+function fakeTool(
+  name: string,
+  cacheable?: boolean,
+  flags?: { mutating?: boolean },
+): Tool {
+  const isMutating = flags?.mutating === true;
   return buildTool({
     name,
     description: `${name} (test)`,
     inputSchema: z.object({}).passthrough(),
     jsonSchema: { type: 'object', properties: {}, required: [] },
     cacheable,
+    flags,
+    isReadOnly: !isMutating,
+    permissionLevel: isMutating ? 'confirm' : 'auto',
     async call() {
       throw new Error('not invoked');
     },
@@ -346,6 +357,116 @@ describe('microcompact', () => {
       if (r2.type === 'tool_result') {
         expect(r2.content).toContain('Same result as call #1');
       }
+    });
+  });
+
+  describe('[v1.24.6 / S.122] mutating-write implicit non-cacheable', () => {
+    /**
+     * The exact failure mode surfaced during S.121 smoke testing: a user
+     * sent USDC to the same contact twice in a row with the same amount.
+     * The second `send_transfer` produced a NEW on-chain tx (different
+     * digest, real state mutation), but microcompact replaced its
+     * tool_result with a back-reference to the first call. The LLM then
+     * narrated "transaction deduplicated" — a lie about real money that
+     * actually moved.
+     *
+     * Fix: tools with `flags.mutating === true` default to cacheable:
+     * false. The user has to pass `cacheable: true` explicitly to opt
+     * back in, which would be a tool-author bug for any write.
+     */
+    it('never dedupes write tools (flags.mutating === true) by default', () => {
+      const tools = [fakeTool('send_transfer', undefined, { mutating: true })];
+      const messages: Message[] = [
+        msg('assistant', [
+          { type: 'tool_use', id: 's1', name: 'send_transfer', input: { to: 'alex', amount: 5 } },
+        ]),
+        msg('user', [
+          { type: 'tool_result', toolUseId: 's1', content: '{"tx":"0xabc","amount":5}' },
+        ]),
+        msg('assistant', [
+          { type: 'tool_use', id: 's2', name: 'send_transfer', input: { to: 'alex', amount: 5 } },
+        ]),
+        msg('user', [
+          { type: 'tool_result', toolUseId: 's2', content: '{"tx":"0xdef","amount":5}' },
+        ]),
+      ];
+
+      const result = microcompact(messages, tools);
+      const r1 = result[1].content[0];
+      const r2 = result[3].content[0];
+      if (r1.type === 'tool_result') expect(r1.content).toBe('{"tx":"0xabc","amount":5}');
+      if (r2.type === 'tool_result') expect(r2.content).toBe('{"tx":"0xdef","amount":5}');
+      expect(result.dedupedToolUseIds.size).toBe(0);
+    });
+
+    it('honors explicit cacheable: true on a write tool (back-compat escape hatch)', () => {
+      // Hypothetical — no production tool sets this, but the precedence
+      // contract is "explicit `cacheable` wins" so a tool author who
+      // genuinely wants dedupe must be able to opt back in.
+      const tools = [fakeTool('idempotent_write', true, { mutating: true })];
+      const messages: Message[] = [
+        msg('assistant', [
+          { type: 'tool_use', id: 'w1', name: 'idempotent_write', input: { x: 1 } },
+        ]),
+        msg('user', [
+          { type: 'tool_result', toolUseId: 'w1', content: '{"ok":true}' },
+        ]),
+        msg('assistant', [
+          { type: 'tool_use', id: 'w2', name: 'idempotent_write', input: { x: 1 } },
+        ]),
+        msg('user', [
+          { type: 'tool_result', toolUseId: 'w2', content: '{"ok":true}' },
+        ]),
+      ];
+
+      const result = microcompact(messages, tools);
+      const r2 = result[3].content[0];
+      if (r2.type === 'tool_result') expect(r2.content).toContain('Same result as call #1');
+      expect(result.dedupedToolUseIds.has('w2')).toBe(true);
+    });
+
+    it('mixed reads + writes: dedupes the read, never the write', () => {
+      // The realistic scenario — same turn issues `balance_check` twice
+      // (cacheable: true by default) and `send_transfer` twice (mutating).
+      // Result: the second read collapses to a back-reference; the
+      // second write keeps its full result.
+      const tools = [
+        fakeTool('balance_check'), // default cacheable: true
+        fakeTool('send_transfer', undefined, { mutating: true }),
+      ];
+      const messages: Message[] = [
+        msg('assistant', [
+          { type: 'tool_use', id: 'b1', name: 'balance_check', input: {} },
+          { type: 'tool_use', id: 's1', name: 'send_transfer', input: { to: 'alex', amount: 5 } },
+        ]),
+        msg('user', [
+          { type: 'tool_result', toolUseId: 'b1', content: '{"wallet":100}' },
+          { type: 'tool_result', toolUseId: 's1', content: '{"tx":"0xabc","amount":5}' },
+        ]),
+        msg('assistant', [
+          { type: 'tool_use', id: 'b2', name: 'balance_check', input: {} },
+          { type: 'tool_use', id: 's2', name: 'send_transfer', input: { to: 'alex', amount: 5 } },
+        ]),
+        msg('user', [
+          { type: 'tool_result', toolUseId: 'b2', content: '{"wallet":100}' },
+          { type: 'tool_result', toolUseId: 's2', content: '{"tx":"0xdef","amount":5}' },
+        ]),
+      ];
+
+      const result = microcompact(messages, tools);
+      const blocks = result[3].content;
+      const balResult = blocks.find(
+        (b): b is Extract<typeof b, { type: 'tool_result' }> =>
+          b.type === 'tool_result' && b.toolUseId === 'b2',
+      );
+      const sendResult = blocks.find(
+        (b): b is Extract<typeof b, { type: 'tool_result' }> =>
+          b.type === 'tool_result' && b.toolUseId === 's2',
+      );
+      expect(balResult?.content).toContain('Same result as call #');
+      expect(sendResult?.content).toBe('{"tx":"0xdef","amount":5}');
+      expect(result.dedupedToolUseIds.has('b2')).toBe(true);
+      expect(result.dedupedToolUseIds.has('s2')).toBe(false);
     });
   });
 });
