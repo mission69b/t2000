@@ -113,6 +113,7 @@ export {
   runGuards,
   createGuardRunnerState,
   updateGuardStateAfterToolResult,
+  extractTrustedAddressesFromResult,
   extractConversationText,
   guardArtifactPreview,
   guardStaleData,

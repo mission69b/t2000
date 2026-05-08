@@ -32,6 +32,7 @@ import {
   createGuardRunnerState,
   runGuards,
   updateGuardStateAfterToolResult,
+  extractTrustedAddressesFromResult,
   extractConversationText,
   guardArtifactPreview,
   guardStaleData,
@@ -1276,6 +1277,11 @@ export class QueryEngine {
         if (signal.aborted) {
           dispatcher.abort();
         }
+        // [S.121] Snapshot conversation text once per iteration so each
+        // tool_result can scan against the user's recent messages without
+        // re-extracting (extractConversationText is cheap but called per
+        // result it's wasted work).
+        const earlyConvCtx = extractConversationText(this.messages);
         for await (const earlyEvent of dispatcher.collectResults()) {
           if (earlyEvent.type === 'tool_result') {
             if (!earlyEvent.isError) {
@@ -1307,6 +1313,18 @@ export class QueryEngine {
             updateGuardStateAfterToolResult(
               earlyEvent.toolName, tool, earlyInput, earlyEvent.result, earlyEvent.isError, this.guardState,
             );
+            // [S.121] Identity-resolving reads (lookup_user, resolve_suins)
+            // contribute to the trusted-address set when their input identifier
+            // appeared in the user's recent messages. See guards.ts.
+            if (!earlyEvent.isError) {
+              extractTrustedAddressesFromResult(
+                earlyEvent.toolName,
+                earlyInput,
+                earlyEvent.result,
+                earlyConvCtx.recentUserText,
+                this.guardState,
+              );
+            }
 
             let enrichedResult = earlyEvent.result;
             if (this.guardConfig && !earlyEvent.isError && tool) {
@@ -1593,6 +1611,11 @@ export class QueryEngine {
         guardedApproved.push(...approved);
       }
 
+      // [S.121] Snapshot conversation text for the trusted-address scan
+      // below. Captured once per turn so each tool_result can scan against
+      // the user's recent messages without re-extracting.
+      const runConvCtx = extractConversationText(this.messages);
+
       // Execute auto-approved tool calls (reads) even if a write is pending
       for await (const toolEvent of runTools(guardedApproved, this.tools, context, this.txMutex)) {
         if (toolEvent.type === 'tool_result' && !toolEvent.isError) {
@@ -1622,6 +1645,18 @@ export class QueryEngine {
           updateGuardStateAfterToolResult(
             toolEvent.toolName, tool, originalCall?.input ?? null, toolEvent.result, toolEvent.isError, this.guardState,
           );
+          // [S.121] Identity-resolving reads (lookup_user, resolve_suins)
+          // contribute to the trusted-address set when their input identifier
+          // appeared in the user's recent messages. See guards.ts.
+          if (!toolEvent.isError) {
+            extractTrustedAddressesFromResult(
+              toolEvent.toolName,
+              originalCall?.input ?? null,
+              toolEvent.result,
+              runConvCtx.recentUserText,
+              this.guardState,
+            );
+          }
 
           let enrichedResult = toolEvent.result;
 

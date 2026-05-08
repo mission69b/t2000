@@ -647,6 +647,7 @@ function guardAddressSource(
   userText: string,
   contacts: ReadonlyArray<{ name: string; address: string }>,
   walletAddress: string | undefined,
+  trustedAddresses: ReadonlySet<string>,
 ): GuardResult {
   if (tool.name !== 'send_transfer') {
     return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
@@ -681,13 +682,122 @@ function guardAddressSource(
     return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
   }
 
+  // [S.121] 4th trusted source: addresses resolved THIS SESSION via an
+  // identity-resolving read tool (`lookup_user`, `resolve_suins`) where
+  // the tool's input identifier appeared verbatim in the user's recent
+  // messages. The trust transfer is: "user typed @alice → fresh DB
+  // lookup confirmed @alice → 0xA → 0xA is trusted because the user
+  // legitimately initiated the resolution, even though they never typed
+  // 0xA."
+  //
+  // SAFETY INVARIANT (load-bearing): the address ONLY enters this set
+  // when the upstream tool call's input identifier matched user text
+  // (see `extractTrustedAddressesFromResult`). LLM-hallucinated lookups
+  // (e.g. `lookup_user("@bob")` when user said "@alice") never reach
+  // this set, so the original "no addresses from LLM memory" invariant
+  // is preserved.
+  if (trustedAddresses.has(normalizedTo)) {
+    return { verdict: 'pass', gate: 'address_source', tier: 'safety' };
+  }
+
   return {
     verdict: 'block',
     gate: 'address_source',
     tier: 'safety',
     message:
-      `Safety check failed: the recipient address "${rawTo}" was not provided by the user (no saved contact matches, address is not the user's own wallet, and it does not appear verbatim in the user's recent messages). For safety, addresses must be supplied directly by the user — never reconstructed from memory or partial recall. Ask the user to paste the destination address again exactly.`,
+      `Safety check failed: the recipient address "${rawTo}" was not provided by the user (no saved contact matches, address is not the user's own wallet, address does not appear verbatim in the user's recent messages, and no identity-resolving tool call this session linked it to a user-named handle). For safety, addresses must be supplied directly by the user — never reconstructed from memory or partial recall. Ask the user to paste the destination address again exactly, or call lookup_user / resolve_suins with the user-typed handle.`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// extractTrustedAddressesFromResult — turns identity-resolving tool results
+// into entries in `GuardRunnerState.trustedAddresses`.
+//
+// Allow-list (deliberately small): only tools whose primary purpose is to
+// resolve an identifier to a Sui address. Adding `transaction_history` /
+// `balance_check` / `portfolio_analysis` would be wrong — they return
+// COUNTERPARTY addresses the user didn't ask about, which would silently
+// expand trust beyond the input identifier the user named.
+//
+// The address ONLY enters the trusted set when the tool call's input
+// identifier appeared in `recentUserText` (case-insensitive). This is the
+// safety invariant: LLM-hallucinated lookups (e.g. `lookup_user("@bob")`
+// when user said "@alice") never make it into the set.
+// ---------------------------------------------------------------------------
+
+const IDENTITY_RESOLVING_TOOLS: ReadonlySet<string> = new Set([
+  'lookup_user',
+  'resolve_suins',
+]);
+
+function collectAddressesFromResult(value: unknown, out: Set<string>): void {
+  if (value === null || value === undefined) return;
+  if (typeof value === 'string') {
+    if (SUI_ADDRESS_REGEX.test(value)) {
+      out.add(normalizeAddress(value));
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectAddressesFromResult(item, out);
+    return;
+  }
+  if (typeof value === 'object') {
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      collectAddressesFromResult(v, out);
+    }
+  }
+}
+
+function collectInputStringValues(value: unknown, out: string[]): void {
+  if (value === null || value === undefined) return;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) out.push(trimmed);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectInputStringValues(item, out);
+    return;
+  }
+  if (typeof value === 'object') {
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      collectInputStringValues(v, out);
+    }
+  }
+}
+
+export function extractTrustedAddressesFromResult(
+  toolName: string,
+  input: unknown,
+  result: unknown,
+  recentUserText: string,
+  state: GuardRunnerState,
+): void {
+  if (!IDENTITY_RESOLVING_TOOLS.has(toolName)) return;
+  if (input === null || input === undefined) return;
+  if (result === null || result === undefined) return;
+
+  const inputStrings: string[] = [];
+  collectInputStringValues(input, inputStrings);
+  if (inputStrings.length === 0) return;
+
+  const normalizedUserText = recentUserText.toLowerCase();
+  const inputMatchesUser = inputStrings.some((s) => {
+    const norm = s.toLowerCase();
+    // Substring match — handles "@alice" appearing in "Send $1 to @alice".
+    // Don't trust 0x inputs as a "match" (those are already handled by the
+    // verbatim path); only handle/name-shaped inputs need this trust transfer.
+    if (SUI_ADDRESS_REGEX.test(s)) return false;
+    return normalizedUserText.includes(norm);
+  });
+  if (!inputMatchesUser) return;
+
+  const found = new Set<string>();
+  collectAddressesFromResult(result, found);
+  for (const addr of found) {
+    state.trustedAddresses.add(addr);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -826,6 +936,19 @@ export interface GuardRunnerState {
   retryTracker: RetryTracker;
   swapQuoteTracker: SwapQuoteTracker;
   lastHealthFactor: number | null;
+  /**
+   * [S.121 Option C] Per-session set of normalized 0x addresses that
+   * identity-resolving read tools (`lookup_user`, `resolve_suins`)
+   * resolved from a user-typed identifier. Acts as the 4th trusted
+   * source for `guardAddressSource` so the LLM can pass the resolved
+   * 0x address to `send_transfer` without the guard demanding the user
+   * paste the raw address themselves.
+   *
+   * Persisted across turns within a session. Reset per-session by
+   * `createGuardRunnerState()`. Safety invariant: see
+   * `extractTrustedAddressesFromResult`.
+   */
+  trustedAddresses: Set<string>;
 }
 
 export function createGuardRunnerState(): GuardRunnerState {
@@ -834,6 +957,7 @@ export function createGuardRunnerState(): GuardRunnerState {
     retryTracker: new RetryTracker(),
     swapQuoteTracker: new SwapQuoteTracker(),
     lastHealthFactor: null,
+    trustedAddresses: new Set<string>(),
   };
 }
 
@@ -956,6 +1080,7 @@ export function runGuards(
         conversationContext.recentUserText,
         identity?.contacts ?? [],
         identity?.walletAddress,
+        state.trustedAddresses,
       ),
     );
   }

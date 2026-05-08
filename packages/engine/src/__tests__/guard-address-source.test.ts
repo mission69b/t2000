@@ -4,6 +4,7 @@ import {
   runGuards,
   createGuardRunnerState,
   extractConversationText,
+  extractTrustedAddressesFromResult,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
 import { buildTool } from '../tool.js';
@@ -205,5 +206,231 @@ describe('guardAddressSource (send_transfer safety guard)', () => {
     );
 
     expect(result.blocked).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// [S.121 Option C] Trusted-from-resolution tests.
+//
+// 4th trusted source: addresses resolved THIS SESSION via an identity-resolving
+// read tool (`lookup_user`, `resolve_suins`) where the tool's input identifier
+// appeared in the user's recent messages. Closes the UX gap where the LLM
+// non-deterministically chose to pass the SuiNS name (which bypassed the
+// guard's 0x-hex check) vs. the resolved 0x address (which the guard blocked
+// because the user never typed the address themselves).
+//
+// Safety invariant: a hallucinated lookup (LLM resolves a handle the user
+// never named) never enters the trusted set, so the original "no addresses
+// from LLM memory" guarantee is preserved.
+// ---------------------------------------------------------------------------
+
+const RESOLVED = '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc';
+const HALLUCINATED = '0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
+
+describe('guardAddressSource — trustedAddresses (S.121 Option C)', () => {
+  it('PASSES: lookup_user resolved a user-named handle, send to that resolved 0x', () => {
+    const state = createGuardRunnerState();
+    const convCtx = makeConvCtx('Send 1 USDC to @funkii');
+
+    extractTrustedAddressesFromResult(
+      'lookup_user',
+      { query: '@funkii' },
+      { found: true, address: RESOLVED, fullHandle: 'funkii.audric.sui' },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.has(RESOLVED.toLowerCase())).toBe(true);
+
+    const result = runGuards(
+      sendTransfer,
+      makeCall({ to: RESOLVED, amount: 1 }),
+      state,
+      DEFAULT_GUARD_CONFIG,
+      convCtx,
+    );
+
+    expect(result.blocked).toBe(false);
+  });
+
+  it('BLOCKS: hallucinated lookup_user (LLM made up a handle the user never typed)', () => {
+    const state = createGuardRunnerState();
+    const convCtx = makeConvCtx('Send 1 USDC to @funkii');
+
+    extractTrustedAddressesFromResult(
+      'lookup_user',
+      { query: '@bob' },
+      { found: true, address: HALLUCINATED, fullHandle: 'bob.audric.sui' },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.has(HALLUCINATED.toLowerCase())).toBe(false);
+
+    const result = runGuards(
+      sendTransfer,
+      makeCall({ to: HALLUCINATED, amount: 1 }),
+      state,
+      DEFAULT_GUARD_CONFIG,
+      convCtx,
+    );
+
+    expect(result.blocked).toBe(true);
+    expect(result.blockGate).toBe('address_source');
+  });
+
+  it('PASSES: resolve_suins for a user-named .sui name, send to resolved 0x', () => {
+    const state = createGuardRunnerState();
+    // User text contains ".sui" → trips guardAssetIntent's `\bSUI\b` regex.
+    // Pass `asset: 'USDC'` explicitly on the call (the audric prod path
+    // always does this) so the test isolates the address_source guard.
+    const convCtx = makeConvCtx('send 1 usdc to adeniyi.sui');
+
+    extractTrustedAddressesFromResult(
+      'resolve_suins',
+      { name: 'adeniyi.sui' },
+      { address: RESOLVED, name: 'adeniyi.sui' },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.has(RESOLVED.toLowerCase())).toBe(true);
+
+    const result = runGuards(
+      sendTransfer,
+      makeCall({ to: RESOLVED, amount: 1, asset: 'USDC' }),
+      state,
+      DEFAULT_GUARD_CONFIG,
+      convCtx,
+    );
+
+    expect(result.blocked).toBe(false);
+  });
+
+  it('BLOCKS: resolve_suins for a name the user never said (hallucinated)', () => {
+    const state = createGuardRunnerState();
+    const convCtx = makeConvCtx('send 1 to adeniyi.sui');
+
+    extractTrustedAddressesFromResult(
+      'resolve_suins',
+      { name: 'attacker.sui' },
+      { address: HALLUCINATED, name: 'attacker.sui' },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.has(HALLUCINATED.toLowerCase())).toBe(false);
+
+    const result = runGuards(
+      sendTransfer,
+      makeCall({ to: HALLUCINATED, amount: 1, asset: 'USDC' }),
+      state,
+      DEFAULT_GUARD_CONFIG,
+      convCtx,
+    );
+
+    expect(result.blocked).toBe(true);
+  });
+
+  it('does NOT trust addresses from non-allow-listed tools (e.g. transaction_history)', () => {
+    // transaction_history returns counterparty addresses for many parties —
+    // trusting all of them would silently expand the trust set far beyond
+    // what the user named. Only `lookup_user` and `resolve_suins` should
+    // contribute to the trusted set.
+    const state = createGuardRunnerState();
+    const convCtx = makeConvCtx('show my history');
+
+    extractTrustedAddressesFromResult(
+      'transaction_history',
+      { address: SELF },
+      { items: [{ counterparty: HALLUCINATED, amount: 5 }] },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.size).toBe(0);
+  });
+
+  it('does NOT add addresses when input identifier is absent from user text', () => {
+    // Edge case: assistant text mentions the handle but user never did.
+    // We only check `recentUserText` (user messages), so this should NOT
+    // contribute — same invariant as the existing "assistant messages
+    // don't count" test for verbatim addresses.
+    const state = createGuardRunnerState();
+    const convCtx = extractConversationText([
+      { role: 'user', content: [{ type: 'text', text: 'send 1 usdc' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'to @funkii?' }] },
+    ]);
+
+    extractTrustedAddressesFromResult(
+      'lookup_user',
+      { query: '@funkii' },
+      { found: true, address: RESOLVED },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.has(RESOLVED.toLowerCase())).toBe(false);
+  });
+
+  it('PASSES: trust persists across multiple runGuards calls in the same session', () => {
+    // Multi-turn: lookup_user resolved @funkii in turn 1; send_transfer
+    // fires in turn 2 (or later in turn 1). Both calls share the same
+    // GuardRunnerState, so the trust carries over.
+    const state = createGuardRunnerState();
+
+    const turn1Ctx = makeConvCtx('who is @funkii');
+    extractTrustedAddressesFromResult(
+      'lookup_user',
+      { query: '@funkii' },
+      { found: true, address: RESOLVED },
+      turn1Ctx.recentUserText,
+      state,
+    );
+
+    const turn2Ctx = makeConvCtx(`who is @funkii\nsend 1 usdc`);
+    const result = runGuards(
+      sendTransfer,
+      makeCall({ to: RESOLVED, amount: 1 }),
+      state,
+      DEFAULT_GUARD_CONFIG,
+      turn2Ctx,
+    );
+
+    expect(result.blocked).toBe(false);
+  });
+
+  it('handles case-insensitive handle matching (user types @Funkii, lookup uses @funkii)', () => {
+    const state = createGuardRunnerState();
+    const convCtx = makeConvCtx('Send to @Funkii');
+
+    extractTrustedAddressesFromResult(
+      'lookup_user',
+      { query: '@funkii' },
+      { found: true, address: RESOLVED },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.has(RESOLVED.toLowerCase())).toBe(true);
+  });
+
+  it('does NOT trust addresses returned for a 0x-shaped input (verbatim path handles those)', () => {
+    // If the LLM passes an existing 0x address to lookup_user (reverse
+    // lookup), we shouldn't promote OTHER addresses in the result to
+    // trusted just because the 0x input echoes user text — that path is
+    // already covered by the verbatim check.
+    const state = createGuardRunnerState();
+    const convCtx = makeConvCtx(`look up ${SELF}`);
+
+    extractTrustedAddressesFromResult(
+      'lookup_user',
+      { query: SELF },
+      { found: true, address: HALLUCINATED },
+      convCtx.recentUserText,
+      state,
+    );
+
+    expect(state.trustedAddresses.has(HALLUCINATED.toLowerCase())).toBe(false);
   });
 });
