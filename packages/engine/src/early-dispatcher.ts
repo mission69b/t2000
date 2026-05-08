@@ -101,6 +101,25 @@ export class EarlyToolDispatcher {
       return result;
     });
 
+    // [S.123 v1.24.7] Suppress UnhandledRejection on early-dispatched promises.
+    //
+    // Promises sit in `entries[]` until `collectResults()` iterates them
+    // (which can be 2–30s later, after the LLM stream completes). If a tool
+    // throws synchronously inside that window, Node's unhandled-rejection
+    // detector fires BEFORE `collectResults()` awaits the promise inside its
+    // try/catch. On Vercel/Node 20+ the default is `--unhandled-rejections=throw`,
+    // which calls `process.exit(128)` → killing every in-flight request on the
+    // serverless instance.
+    //
+    // The no-op `.catch` here attaches a handler synchronously (same microtask),
+    // so Node never flags the rejection as unhandled. The original promise still
+    // rejects when `collectResults()` awaits it; the inner try/catch there
+    // converts the rejection into a structured `tool_result` event.
+    //
+    // This is the structural fix that catches every tool throw, every asset,
+    // every error type — not just the SSUI cascade that surfaced it.
+    promise.catch(() => {});
+
     this.entries.push({ call, tool, promise, deduped: false, readAttemptCount });
     return true;
   }

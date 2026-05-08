@@ -187,4 +187,52 @@ describe('EarlyToolDispatcher', () => {
     const events = await collectAll(dispatcher.collectResults());
     expect(events).toHaveLength(0);
   });
+
+  // [S.123 v1.24.7] Regression: a thrown promise that sits in the dispatcher's
+  // entries[] without being awaited for ≥1 microtask MUST NOT trigger Node's
+  // unhandled-rejection detector. Before the .catch fix, this scenario crashed
+  // the Vercel serverless function (process.exit(128)), killing every in-flight
+  // request. The test simulates the timing race: throw + multiple ticks of
+  // delay before collectResults() iterates.
+  it('does NOT trigger unhandledRejection when a thrown promise sits in entries before collectResults()', async () => {
+    const failTool = makeTool({
+      name: 'ssui_swap_quote',
+      call: vi.fn().mockImplementation(() => Promise.reject(new Error('Unknown token: SSUI. Provide the full coin type.'))),
+    });
+
+    const unhandledRejections: unknown[] = [];
+    const handler = (reason: unknown) => unhandledRejections.push(reason);
+    process.on('unhandledRejection', handler);
+
+    try {
+      const dispatcher = new EarlyToolDispatcher([failTool], ctx);
+      dispatcher.tryDispatch(makeCall('t1', 'ssui_swap_quote'));
+
+      // Simulate the LLM stream still running for several microtasks before
+      // collectResults() is called. This is the EXACT timing race that crashed
+      // the process before the .catch fix.
+      for (let i = 0; i < 10; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
+      // Node's unhandled-rejection detector fires at the END of microtask
+      // queue drain. By this point, before the .catch fix, the rejection
+      // would already be flagged as unhandled.
+      expect(unhandledRejections).toHaveLength(0);
+
+      // Now consume the results — rejection should be cleanly converted to
+      // a structured tool_result event with isError: true.
+      const events = await collectAll(dispatcher.collectResults());
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({ type: 'tool_result', isError: true });
+      if (events[0].type === 'tool_result') {
+        expect(events[0].result).toMatchObject({ error: 'Unknown token: SSUI. Provide the full coin type.' });
+      }
+
+      // Final check: still no unhandled rejection after consumption.
+      expect(unhandledRejections).toHaveLength(0);
+    } finally {
+      process.off('unhandledRejection', handler);
+    }
+  });
 });

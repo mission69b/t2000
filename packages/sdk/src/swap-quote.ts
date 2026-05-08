@@ -2,6 +2,7 @@
  * Standalone swap quote — no T2000 agent instance required.
  * Only needs a wallet address for Cetus Aggregator routing.
  */
+import { T2000Error } from './errors.js';
 import { getDecimalsForCoinType } from './token-registry.js';
 import type { SwapQuoteResult } from './types.js';
 
@@ -16,8 +17,22 @@ export async function getSwapQuote(params: {
 
   const fromType = resolveTokenType(params.from);
   const toType = resolveTokenType(params.to);
-  if (!fromType) throw new Error(`Unknown token: ${params.from}. Provide the full coin type.`);
-  if (!toType) throw new Error(`Unknown token: ${params.to}. Provide the full coin type.`);
+  // [S.123 v1.24.7] Use T2000Error('ASSET_NOT_SUPPORTED') consistently with the
+  // other 4 throw sites in t2000.ts / cetus-swap.ts. Allows tools to branch
+  // on `err.code === 'ASSET_NOT_SUPPORTED'` and return a structured recovery
+  // hint to the LLM instead of re-throwing a generic error string.
+  if (!fromType) {
+    throw new T2000Error(
+      'ASSET_NOT_SUPPORTED',
+      `Unknown token: ${params.from}. Provide the symbol (USDC, SUI, ...) or full coin type.`,
+    );
+  }
+  if (!toType) {
+    throw new T2000Error(
+      'ASSET_NOT_SUPPORTED',
+      `Unknown token: ${params.to}. Provide the symbol (USDC, SUI, ...) or full coin type.`,
+    );
+  }
 
   const byAmountIn = params.byAmountIn ?? true;
 
@@ -32,8 +47,10 @@ export async function getSwapQuote(params: {
     byAmountIn,
   });
 
-  if (!route) throw new Error(`No swap route found for ${params.from} -> ${params.to}.`);
-  if (route.insufficientLiquidity) throw new Error(`Insufficient liquidity for ${params.from} -> ${params.to}.`);
+  if (!route) throw new T2000Error('SWAP_FAILED', `No swap route found for ${params.from} -> ${params.to}.`);
+  if (route.insufficientLiquidity) {
+    throw new T2000Error('SWAP_FAILED', `Insufficient liquidity for ${params.from} -> ${params.to}.`);
+  }
 
   const toDecimals = getDecimalsForCoinType(toType);
   const fromAmount = Number(route.amountIn) / 10 ** fromDecimals;

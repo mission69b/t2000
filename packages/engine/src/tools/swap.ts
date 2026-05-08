@@ -1,7 +1,36 @@
 import { z } from 'zod';
+import { T2000Error } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { getTelemetrySink } from '../telemetry.js';
 import { requireAgent } from './utils.js';
+
+// [S.123 v1.24.7] Mirrors the swap_quote recovery hints. Even though
+// swap_execute is a `confirm` write tool that audric/web typically dispatches
+// via the sponsored-transaction flow (not the engine's `call`), this branch
+// still fires for CLI / server-side / future direct-execute paths and gives
+// the LLM a deterministic recovery path when the user-facing SDK rejects.
+const RECOVERY_HINTS = {
+  ASSET_NOT_SUPPORTED:
+    'This token symbol is not in the standard registry. Call `navi_navi_search_tokens` with the symbol to find its full coin type, then retry `swap_execute` with the full type string.',
+  SWAP_FAILED:
+    'No route or insufficient liquidity for this pair. Try a different amount, a different intermediate token, or check `balance_check` to confirm the source token is held.',
+} as const;
+
+interface SwapExecuteSuccessData {
+  tx: string;
+  fromToken: string;
+  toToken: string;
+  fromAmount: number;
+  toAmount: number;
+  priceImpact: number;
+  route: string;
+  gasCost: number;
+}
+
+// [S.123 v1.24.7] Discriminated union return type for swap_execute.
+export type SwapExecuteToolResult =
+  | SwapExecuteSuccessData
+  | { error: string; errorCode: 'ASSET_NOT_SUPPORTED' | 'SWAP_FAILED'; hint: string; recoverable: true };
 
 export const swapExecuteTool = buildTool({
   name: 'swap_execute',
@@ -36,7 +65,7 @@ export const swapExecuteTool = buildTool({
     return { valid: true };
   },
 
-  async call(input, context) {
+  async call(input, context): Promise<{ data: SwapExecuteToolResult; displayText: string }> {
     const agent = requireAgent(context);
     // [Backlog 2a / 2026-05-04] swap_execute end-to-end timing baseline.
     // Times the SDK `agent.swap()` call which wraps findSwapRoute +
@@ -73,6 +102,23 @@ export const swapExecuteTool = buildTool({
       };
     } catch (err) {
       sink.counter('cetus.swap_execute_count', { outcome: 'error' });
+
+      if (err instanceof T2000Error && (err.code === 'ASSET_NOT_SUPPORTED' || err.code === 'SWAP_FAILED')) {
+        const hint = RECOVERY_HINTS[err.code];
+        return {
+          data: {
+            error: err.message,
+            errorCode: err.code,
+            hint,
+            recoverable: true,
+          },
+          displayText:
+            err.code === 'ASSET_NOT_SUPPORTED'
+              ? `Token "${input.from}" not in standard registry — searching for full coin type.`
+              : `No swap route available for ${input.from} → ${input.to}.`,
+        };
+      }
+
       throw err;
     }
   },

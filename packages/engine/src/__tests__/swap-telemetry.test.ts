@@ -26,11 +26,19 @@ import {
   type TelemetryTags,
 } from '../telemetry.js';
 
-vi.mock('@t2000/sdk', () => ({
-  getSwapQuote: vi.fn(),
-}));
+// [S.123 v1.24.7] Mock partial — keep T2000Error real so the
+// `instanceof T2000Error` branch in swap_quote / swap_execute fires
+// correctly. Mocking the whole module would replace T2000Error with a
+// vi.fn() that doesn't satisfy instanceof checks.
+vi.mock('@t2000/sdk', async () => {
+  const actual = await vi.importActual<typeof import('@t2000/sdk')>('@t2000/sdk');
+  return {
+    ...actual,
+    getSwapQuote: vi.fn(),
+  };
+});
 
-import { getSwapQuote } from '@t2000/sdk';
+import { getSwapQuote, T2000Error } from '@t2000/sdk';
 import { swapQuoteTool } from '../tools/swap-quote.js';
 import { swapExecuteTool } from '../tools/swap.js';
 import type { ToolContext } from '../types.js';
@@ -146,6 +154,67 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
     });
   });
 
+  // [S.123 v1.24.7] Structured-error recovery for ASSET_NOT_SUPPORTED.
+  // Before this fix, an unsupported symbol (sSUI, AFSUI, BLUE, etc.) caused
+  // the SDK to throw a generic Error which propagated up through the
+  // EarlyToolDispatcher's promise — and Node's unhandled-rejection
+  // detector crashed the Vercel function (process.exit(128)). The fix
+  // converts T2000Error('ASSET_NOT_SUPPORTED') into a structured tool
+  // result with a recovery hint, giving the LLM a deterministic path:
+  // call `navi_navi_search_tokens` to find the full coin type, then retry.
+  it('returns structured error with hint when SDK throws T2000Error("ASSET_NOT_SUPPORTED") (NOT just SSUI)', async () => {
+    const errors = [
+      new T2000Error('ASSET_NOT_SUPPORTED', 'Unknown token: SSUI. Provide the symbol or full coin type.'),
+      new T2000Error('ASSET_NOT_SUPPORTED', 'Unknown token: AFSUI. Provide the symbol or full coin type.'),
+      new T2000Error('ASSET_NOT_SUPPORTED', 'Unknown token: BLUE. Provide the symbol or full coin type.'),
+    ];
+
+    for (const err of errors) {
+      mockedGetSwapQuote.mockRejectedValueOnce(err);
+      const result = await swapQuoteTool.call(
+        { from: err.message.split(': ')[1].split('.')[0], to: 'USDC', amount: 1 },
+        makeQuoteContext(),
+      );
+
+      expect(result.data).toMatchObject({
+        errorCode: 'ASSET_NOT_SUPPORTED',
+        recoverable: true,
+      });
+      expect((result.data as { hint: string }).hint).toContain('navi_navi_search_tokens');
+      expect((result.data as { hint: string }).hint).toContain('full coin type');
+    }
+  });
+
+  it('returns structured error with hint when SDK throws T2000Error("SWAP_FAILED") (no route)', async () => {
+    const noRoute = new T2000Error('SWAP_FAILED', 'No swap route found for OBSCURE -> USDC.');
+    mockedGetSwapQuote.mockRejectedValueOnce(noRoute);
+
+    const result = await swapQuoteTool.call(
+      { from: 'OBSCURE', to: 'USDC', amount: 1 },
+      makeQuoteContext(),
+    );
+
+    expect(result.data).toMatchObject({
+      errorCode: 'SWAP_FAILED',
+      recoverable: true,
+    });
+    expect((result.data as { hint: string }).hint).toContain('balance_check');
+  });
+
+  it('still re-throws unknown errors (lets dispatcher convert via collectResults try/catch)', async () => {
+    const unknownErr = new Error('cetus 503 internal error');
+    mockedGetSwapQuote.mockRejectedValueOnce(unknownErr);
+
+    // Generic errors aren't soft-handled — they re-throw. The dispatcher's
+    // `.catch` plus the audric process handler keep the process alive.
+    await expect(
+      swapQuoteTool.call(
+        { from: 'USDC', to: 'USDsui', amount: 1 },
+        makeQuoteContext(),
+      ),
+    ).rejects.toBe(unknownErr);
+  });
+
   it('measures wall-clock time of the SDK call (not zero on a deferred promise)', async () => {
     mockedGetSwapQuote.mockImplementationOnce(async () => {
       await new Promise((resolve) => setTimeout(resolve, 15));
@@ -182,7 +251,9 @@ describe('swap_execute telemetry (Backlog 2a)', () => {
       ctx,
     );
 
-    expect(result.data.tx).toBe(FAKE_SWAP_RESULT.tx);
+    // [S.123 v1.24.7] Result is a discriminated union — narrow to the success
+    // branch by checking for the `tx` property's presence.
+    expect('tx' in result.data ? result.data.tx : null).toBe(FAKE_SWAP_RESULT.tx);
 
     expect(spy.histogram).toHaveBeenCalledTimes(1);
     const [histogramName, histogramValue, histogramTags] = spy.histogram.mock.calls[0]!;
@@ -215,5 +286,27 @@ describe('swap_execute telemetry (Backlog 2a)', () => {
     expect(spy.counter).toHaveBeenCalledWith('cetus.swap_execute_count', {
       outcome: 'error',
     });
+  });
+
+  // [S.123 v1.24.7] swap_execute mirrors swap_quote for symmetry. Audric/web
+  // typically dispatches via sponsored-tx path (not engine.call), but the CLI
+  // and any future direct-execute consumer benefit from the same recovery
+  // hint pattern.
+  it('returns structured error with hint when agent.swap throws T2000Error("ASSET_NOT_SUPPORTED")', async () => {
+    const err = new T2000Error('ASSET_NOT_SUPPORTED', 'Unknown token: SSUI. Provide the symbol or full coin type.');
+    const ctx = makeExecuteContext(async () => {
+      throw err;
+    });
+
+    const result = await swapExecuteTool.call(
+      { from: 'SSUI', to: 'USDC', amount: 1 },
+      ctx,
+    );
+
+    expect(result.data).toMatchObject({
+      errorCode: 'ASSET_NOT_SUPPORTED',
+      recoverable: true,
+    });
+    expect((result.data as { hint: string }).hint).toContain('navi_navi_search_tokens');
   });
 });

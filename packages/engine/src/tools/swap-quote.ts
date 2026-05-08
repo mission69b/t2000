@@ -1,8 +1,27 @@
 import { z } from 'zod';
-import { getSwapQuote } from '@t2000/sdk';
+import { getSwapQuote, T2000Error, type SwapQuoteResult } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { getTelemetrySink } from '../telemetry.js';
 import { getWalletAddress } from './utils.js';
+
+// [S.123 v1.24.7] Recovery hints surfaced to the LLM when a swap quote fails
+// with a known, recoverable error. Putting these in tool results (not
+// re-thrown errors) makes the recovery path deterministic — the LLM ALWAYS
+// knows what to call next, instead of guessing from a generic error string.
+const RECOVERY_HINTS = {
+  ASSET_NOT_SUPPORTED:
+    'This token symbol is not in the standard registry. Call `navi_navi_search_tokens` with the symbol to find its full coin type, then retry `swap_quote` with the full type string (e.g. "0x83556...::spring_sui::SPRING_SUI").',
+  SWAP_FAILED:
+    'No route or insufficient liquidity for this pair. Try a different amount, a different intermediate token, or check `balance_check` to confirm the source token is held.',
+} as const;
+
+// [S.123 v1.24.7] Discriminated union return type — `swap_quote` either
+// returns a successful quote or a structured recovery hint. The LLM sees
+// `errorCode` + `hint` and follows the deterministic recovery path
+// (`navi_navi_search_tokens` → retry with full coin type).
+export type SwapQuoteToolResult =
+  | SwapQuoteResult
+  | { error: string; errorCode: 'ASSET_NOT_SUPPORTED' | 'SWAP_FAILED'; hint: string; recoverable: true };
 
 export const swapQuoteTool = buildTool({
   name: 'swap_quote',
@@ -26,7 +45,7 @@ export const swapQuoteTool = buildTool({
   },
   isReadOnly: true,
 
-  async call(input, context) {
+  async call(input, context): Promise<{ data: SwapQuoteToolResult; displayText: string }> {
     const walletAddress = context.agent
       ? (context.agent as { address(): string }).address()
       : getWalletAddress(context);
@@ -57,6 +76,39 @@ export const swapQuoteTool = buildTool({
       };
     } catch (err) {
       sink.counter('cetus.find_route_count', { outcome: 'error' });
+
+      // [S.123 v1.24.7] Convert known T2000Error categories into structured
+      // tool results with recovery hints, instead of re-throwing. Re-throws
+      // here used to bubble all the way up to the EarlyToolDispatcher
+      // promise — and before the dispatcher's `.catch` fix, that was the
+      // exact path that crashed the Vercel function (process.exit(128))
+      // when sSUI was queried as a symbol.
+      //
+      // Even with the dispatcher fix in place, returning a structured error
+      // is still strictly better UX: the LLM gets a deterministic recovery
+      // path (call the named tool below) instead of guessing from a
+      // stringified error.
+      if (err instanceof T2000Error && (err.code === 'ASSET_NOT_SUPPORTED' || err.code === 'SWAP_FAILED')) {
+        const hint = RECOVERY_HINTS[err.code];
+        return {
+          data: {
+            error: err.message,
+            errorCode: err.code,
+            hint,
+            recoverable: true,
+          },
+          displayText:
+            err.code === 'ASSET_NOT_SUPPORTED'
+              ? `Token "${input.from === input.to ? input.from : `${input.from}/${input.to}`}" not in standard registry — searching for full coin type.`
+              : `No swap route available for ${input.from} → ${input.to}.`,
+        };
+      }
+
+      // Unknown errors still re-throw — the dispatcher's `.catch` plus the
+      // process-level handler in audric/web `instrumentation.ts` ensures
+      // the process survives, and `collectResults()` converts the rejection
+      // into an `isError: true` tool_result. We only soft-handle errors we
+      // know how to give a useful recovery hint for.
       throw err;
     }
   },
