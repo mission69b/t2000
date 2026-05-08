@@ -709,6 +709,139 @@ describe('composeTx — SPEC 13 Phase 1 chain mode (inputCoinFromStep)', () => {
       expect(result.perStepPreviews[1].toolName).toBe('save_deposit');
     });
 
+    /**
+     * [v1.24.4 / S.120-FU2] Multi-op fee wiring regression. Audric production
+     * shipped a chained `swap_execute → save_deposit` bundle and observed only
+     * the swap overlay fee landing in T2000_OVERLAY_FEE_WALLET — the save fee
+     * leg was missing. These tests verify both fee mechanisms fire inside the
+     * SAME PTB when the bundle chains:
+     *   1. swap overlay (Cetus skims output) — passed via composeTx `overlayFee`
+     *   2. save fee (split from chained coin) — invoked via `feeHooks.save_deposit`
+     *
+     * Forbidden silent-skip class: the chained coin handle from the swap step
+     * MUST flow to the save_deposit appender's feeHook with the correct shape
+     * (tx + coin + input + sender), and the hook MUST be allowed to mutate the
+     * coin (split a fee chunk) BEFORE addSaveToTx consumes it.
+     */
+    it('swap → save (chained): BOTH overlay fee AND save feeHook fire (multi-op fee wiring)', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const FEE_WALLET = '0x' + 'f'.repeat(64);
+      const OVERLAY_RATE = '0.001';
+
+      const client = mockRpcClient({
+        [USDC_TYPE]: [{ coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' }],
+      });
+
+      const saveFeeHookCalls: Array<{
+        hasCoin: boolean;
+        inputAsset: string | undefined;
+        sender: string;
+      }> = [];
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { toolName: 'save_deposit', input: { amount: 5, asset: 'USDsui' }, inputCoinFromStep: 0 },
+        ],
+        overlayFee: { rate: OVERLAY_RATE, receiver: FEE_WALLET },
+        feeHooks: {
+          save_deposit: ({ tx, coin, input, sender }) => {
+            saveFeeHookCalls.push({
+              hasCoin: coin !== undefined,
+              inputAsset: input.asset,
+              sender,
+            });
+            // Simulate audric's addFeeTransfer — split fee + transfer to fee wallet.
+            const [feeCoin] = tx.splitCoins(coin, [tx.pure.u64(1000n)]);
+            tx.transferObjects([feeCoin], tx.pure.address(FEE_WALLET));
+          },
+        },
+      });
+
+      // The save_deposit feeHook MUST fire exactly once, with the chained coin
+      // (not undefined), correct asset, and correct sender. Pre-fix, audric saw
+      // this hook silently no-op for chained saves.
+      expect(saveFeeHookCalls).toHaveLength(1);
+      expect(saveFeeHookCalls[0]).toEqual({
+        hasCoin: true,
+        inputAsset: 'USDsui',
+        sender: VALID_ADDRESS,
+      });
+
+      // Both fee mechanisms must contribute to derivedAllowedAddresses:
+      //   - overlay fee receiver (Cetus skims via Move call — not necessarily
+      //     present in derivedAllowedAddresses since it's not a top-level transfer)
+      //   - save fee transfer (top-level transferObjects — MUST appear)
+      expect(result.derivedAllowedAddresses).toContain(FEE_WALLET);
+    });
+
+    it('swap → save (chained): save feeHook fires with chained coin, BEFORE addSaveToTx consumes it', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const FEE_WALLET = '0x' + 'f'.repeat(64);
+      const client = mockRpcClient({
+        [USDC_TYPE]: [{ coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' }],
+      });
+
+      // Track call order: feeHook should fire BEFORE depositCoinPTB is invoked.
+      const order: string[] = [];
+      const naviModule = await import('@naviprotocol/lending');
+      const depositSpy = vi.spyOn(naviModule, 'depositCoinPTB').mockImplementation(async () => {
+        order.push('depositCoinPTB');
+        return undefined;
+      });
+
+      await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { toolName: 'save_deposit', input: { amount: 5, asset: 'USDsui' }, inputCoinFromStep: 0 },
+        ],
+        feeHooks: {
+          save_deposit: ({ tx, coin }) => {
+            order.push('feeHook');
+            const [feeCoin] = tx.splitCoins(coin, [tx.pure.u64(500n)]);
+            tx.transferObjects([feeCoin], tx.pure.address(FEE_WALLET));
+          },
+        },
+      });
+
+      // Hook must fire before deposit so the fee splits OFF the coin BEFORE
+      // it's consumed (post-deposit splits would fail — the coin handle is
+      // already moved into the NAVI pool).
+      expect(order).toEqual(['feeHook', 'depositCoinPTB']);
+      expect(depositSpy).toHaveBeenCalledOnce();
+    });
+
+    it('swap → save (chained, no save feeHook): only overlay fee fires (CLI / direct SDK path stays free)', async () => {
+      const { composeTx } = await import('./composeTx.js');
+      const FEE_WALLET = '0x' + 'f'.repeat(64);
+      const client = mockRpcClient({
+        [USDC_TYPE]: [{ coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' }],
+      });
+
+      const result = await composeTx({
+        sender: VALID_ADDRESS,
+        client,
+        sponsoredContext: true,
+        steps: [
+          { toolName: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { toolName: 'save_deposit', input: { amount: 5, asset: 'USDsui' }, inputCoinFromStep: 0 },
+        ],
+        overlayFee: { rate: '0.001', receiver: FEE_WALLET },
+        // No feeHooks — verify save_deposit does NOT fee a transfer to fee wallet.
+      });
+
+      // FEE_WALLET should NOT appear in derivedAllowedAddresses (Cetus overlay
+      // routes through a Move call, not a top-level transferObjects). If it
+      // appears, something else is leaking a fee transfer.
+      expect(result.derivedAllowedAddresses).not.toContain(FEE_WALLET);
+    });
+
     it('withdraw → swap (chained): withdraw output suppressed, swap consumes it directly, swap output transferred to sender', async () => {
       const { composeTx } = await import('./composeTx.js');
       const client = mockRpcClient({});
