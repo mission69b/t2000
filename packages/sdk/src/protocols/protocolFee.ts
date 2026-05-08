@@ -15,8 +15,9 @@ import {
   SAVE_FEE_BPS,
   BORROW_FEE_BPS,
   BPS_DENOMINATOR,
+  USDC_DECIMALS,
 } from '../constants.js';
-import { usdcToRaw } from '../utils/format.js';
+import { stableToRaw } from '../utils/format.js';
 
 export type FeeOperation = 'save' | 'borrow' | 'swap';
 
@@ -43,7 +44,7 @@ const FEE_RATES: Record<FeeOperation, bigint> = {
 export function calculateFee(operation: FeeOperation, amount: number): ProtocolFeeInfo {
   const bps = FEE_RATES[operation];
   const feeAmount = amount * Number(bps) / Number(BPS_DENOMINATOR);
-  const rawAmount = usdcToRaw(feeAmount);
+  const rawAmount = stableToRaw(feeAmount, USDC_DECIMALS);
 
   return {
     amount: feeAmount,
@@ -68,8 +69,15 @@ export function calculateFee(operation: FeeOperation, amount: number): ProtocolF
  * @param paymentCoin Coin to split the fee from (mutated in place)
  * @param feeBps      Fee rate in basis points (e.g. `SAVE_FEE_BPS = 10n` = 0.1%)
  * @param receiver    Treasury wallet address (typically `T2000_OVERLAY_FEE_WALLET`)
- * @param amount      USD-denominated input amount (matches what was passed to the
+ * @param amount      Display-units input amount (matches what was passed to the
  *                    protocol operation; used to compute the raw fee amount)
+ * @param decimals    Coin decimals for raw conversion. Defaults to USDC_DECIMALS
+ *                    (6). Pass the actual coin decimals when skimming a fee
+ *                    from a non-USDC coin (e.g. USDsui = 6, GOLD = 6, ETH = 8,
+ *                    SUI = 9). Backward-compatible: existing USDC callers can
+ *                    omit. Wrong decimals → wrong raw amount → either fee
+ *                    too small (silent loss) or too large (PTB revert from
+ *                    insufficient coin balance).
  */
 export function addFeeTransfer(
   tx: Transaction,
@@ -77,12 +85,13 @@ export function addFeeTransfer(
   feeBps: bigint,
   receiver: string,
   amount: number,
+  decimals: number = USDC_DECIMALS,
 ): void {
   if (feeBps <= 0n) return;
   if (amount <= 0) return;
 
   const feeAmount = amount * Number(feeBps) / Number(BPS_DENOMINATOR);
-  const rawFee = usdcToRaw(feeAmount);
+  const rawFee = stableToRaw(feeAmount, decimals);
   if (rawFee <= 0n) return;
 
   const [feeCoin] = tx.splitCoins(paymentCoin, [tx.pure.u64(rawFee)]);

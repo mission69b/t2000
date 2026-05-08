@@ -865,12 +865,12 @@ Tools are built with `buildTool()` which enforces:
 | `health_check`            | `borrow`                |
 | `rates_info`              | `repay_debt`            |
 | `transaction_history`     | `claim_rewards`         |
-| `swap_quote`              | `pay_api`               |
-| `volo_stats`              | `swap_execute`          |
-| `mpp_services`            | `volo_stake`            |
-| `web_search`              | `volo_unstake`          |
-| `explain_tx`              | `save_contact`          |
-| `portfolio_analysis`      |                         |
+| `swap_quote`              | `harvest_rewards`       |
+| `volo_stats`              | `pay_api`               |
+| `mpp_services`            | `swap_execute`          |
+| `web_search`              | `volo_stake`            |
+| `explain_tx`              | `volo_unstake`          |
+| `portfolio_analysis`      | `save_contact`          |
 | `protocol_deep_dive`      |                         |
 | `token_prices`            |                         |
 | `create_payment_link`     |                         |
@@ -882,9 +882,11 @@ Tools are built with `buildTool()` which enforces:
 | `spending_analytics`      |                         |
 | `yield_summary`           |                         |
 | `activity_summary`        |                         |
+| `resolve_suins`           |                         |
+| `pending_rewards`         |                         |
 
 
-23 read tools, 11 write tools, **34 total**. Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
+25 read tools, 12 write tools, **37 total**. (Reads went 23 → 24 in SPEC 10 May 2026 with `resolve_suins` for the Audric Passport identity layer; reads → 25 + writes → 12 in S.119 May 2026 with `pending_rewards` + `harvest_rewards` — the NAVI rewards preview + the single-PTB compound that claims, swaps each non-USDC reward to USDC, and deposits into NAVI savings.) Read tools implement an MCP-first strategy: if a `McpClientManager` is configured and connected to NAVI MCP, data is fetched via MCP. Otherwise, the SDK is used as fallback. `balance_check`, `portfolio_analysis`, and `token_prices` use the BlockVision Indexer REST API for spot prices and wallet portfolio (Sui-RPC + hardcoded-stable degraded fallback).
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions` (allowance contract dormant), `create_schedule`, `list_schedules`, `cancel_schedule` (DCA can't sign without user presence under zkLogin), `pause_pattern`, `pattern_status` (proposal pipeline removed; classifiers stay as silent context). See the S.0–S.12 entries in `audric-build-tracker.md`.
 >
@@ -1051,7 +1053,7 @@ Spec 2 swapped the data layer + added boot-time orientation:
 
 | Change | Why |
 |---|---|
-| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net: 29 → 23 read tools, 40 → 34 total. |
+| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net post-v1.4: 29 → 23 read tools, 40 → 34 total. (SPEC 10 then added `resolve_suins` → current 24 reads / 35 total.) |
 | **Sticky-positive cache + retry/circuit breaker** for BlockVision (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) | BlockVision started returning 429s under load; the cache no longer overwrites known-good positive values with degraded zeros. |
 | **`<financial_context>` block** injected at every engine boot from the daily `UserFinancialContext` snapshot | Every chat starts oriented — no warm-up tool calls before useful answers. Silent Profile system. |
 | **`attemptId` keyed resume** — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |

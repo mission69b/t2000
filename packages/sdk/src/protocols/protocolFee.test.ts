@@ -140,5 +140,63 @@ describe('protocolFee', () => {
       // 1 splitCoins (the fee split) + 1 transferObjects = 2 new commands
       expect(cmdsAfter).toBe(cmdsBefore + 2);
     });
+
+    /**
+     * [v1.24.3 — S.120 follow-up] decimals param enables fees on non-USDC
+     * stables (USDsui = 6, GOLD = 6) and other coins (SUI = 9, ETH = 8).
+     * Backward-compatible: omitting decimals defaults to USDC_DECIMALS so
+     * existing USDC callers don't change.
+     */
+    describe('decimals param (S.120 follow-up — non-USDC fees)', () => {
+      it('defaults to USDC decimals (6) when omitted (backward compatible)', () => {
+        const tx = new Transaction();
+        tx.setSender('0x' + 'a'.repeat(64));
+
+        const [paymentCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(1_000_000_000n)]);
+        const cmdsBefore = tx.getData().commands.length;
+        // Omitted decimals → USDC default (6).
+        addFeeTransfer(tx, paymentCoin, SAVE_FEE_BPS, TREASURY_ADDR, 100);
+
+        // Fee math: 100 * 10/10000 = 0.1 → raw = 0.1 * 1e6 = 100_000.
+        // Verify split + transfer commands appended.
+        expect(tx.getData().commands.length).toBe(cmdsBefore + 2);
+      });
+
+      it('accepts explicit USDsui decimals (6) — same raw amount as USDC default', () => {
+        const tx = new Transaction();
+        tx.setSender('0x' + 'a'.repeat(64));
+
+        const [paymentCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(1_000_000_000n)]);
+        const cmdsBefore = tx.getData().commands.length;
+        // USDsui has 6 decimals (same as USDC) — explicit pass.
+        addFeeTransfer(tx, paymentCoin, SAVE_FEE_BPS, TREASURY_ADDR, 100, 6);
+
+        expect(tx.getData().commands.length).toBe(cmdsBefore + 2);
+      });
+
+      it('accepts SUI decimals (9) — produces a larger raw fee amount', () => {
+        const tx = new Transaction();
+        tx.setSender('0x' + 'a'.repeat(64));
+
+        const [paymentCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(1_000_000_000n)]);
+        const cmdsBefore = tx.getData().commands.length;
+        // 1 SUI fee at 10 bps = 0.001 SUI = 0.001 * 1e9 = 1_000_000 raw.
+        addFeeTransfer(tx, paymentCoin, SAVE_FEE_BPS, TREASURY_ADDR, 1, 9);
+
+        expect(tx.getData().commands.length).toBe(cmdsBefore + 2);
+      });
+
+      it('no-ops on sub-raw-unit fee at high decimals', () => {
+        const tx = new Transaction();
+        tx.setSender('0x' + 'a'.repeat(64));
+
+        const [paymentCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(1_000_000_000n)]);
+        const cmdsBefore = tx.getData().commands.length;
+        // 0.0000001 USDC fee at 10 bps → raw = round(0.00000001 * 1e6) = 0 → no-op.
+        addFeeTransfer(tx, paymentCoin, SAVE_FEE_BPS, TREASURY_ADDR, 0.0000001, 6);
+
+        expect(tx.getData().commands.length).toBe(cmdsBefore);
+      });
+    });
   });
 });

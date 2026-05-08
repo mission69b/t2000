@@ -61,10 +61,23 @@ export interface ParsedTransfer {
 // Operation → fee rate (matches packages/sdk/src/constants.ts SAVE/BORROW_FEE_BPS
 // and the swap overlay rate). Indexer only sees on-chain amounts; the rate is
 // derived from the operation type at index time.
+//
+// [v1.24.3 / S.120 follow-up] `harvest` represents the per-leg sum of a
+// `harvest_rewards` compound tx (1 swap overlay per non-USDC reward leg + 1
+// save fee on the deposit). Each balance change to the treasury wallet still
+// gets recorded individually with its own raw amount; the displayed rate is a
+// single composite (~20 bps) for stats-layer attribution. This is an upper
+// bound — actual per-tx total varies by how many swap legs the tx contains
+// (USDC-reward-only harvests pay only the save fee, single-coin-non-USDC
+// harvests pay swap + save, etc.).
 const OPERATION_RATES: Record<string, string> = {
   save: '0.001',    // 10 bps
   borrow: '0.0005', // 5 bps
   swap: '0.001',    // 10 bps overlay
+  harvest: '0.002', // ~20 bps — composite of swap overlay + save fee per leg
+  claim: '0',       // fee-free per CLAUDE.md fee table — present so descriptor-tagged claims don't fall through to 'unknown'
+  withdraw: '0',
+  repay: '0',
   unknown: '0',
 };
 
@@ -137,35 +150,80 @@ export function parseTreasuryFees(
 }
 
 function classifyFromMoveCallTargets(targets: string[]): { action: string; protocol: string | null } {
+  // [v1.24.3 / S.120 follow-up] Compound-operation detection runs FIRST.
+  // `harvest_rewards` packs claim + N swaps + 1 deposit into a single PTB.
+  // Without this, the per-target loop below classifies the WHOLE tx as
+  // whichever single op (claim / swap / save) the iterator hits first —
+  // every fee row from a harvest tx ends up tagged with that one op, masking
+  // the actual harvest revenue in `ProtocolFeeLedger`. We require BOTH a
+  // claim target AND a save/deposit target as the harvest signature (a
+  // tx with claim alone is just `claim_rewards`; deposit alone is `save`).
+  // The swap target is implied (any non-USDC reward forces one) but we
+  // don't require it — a USDC-only-reward harvest is still a harvest.
+  let hasClaim = false;
+  let hasDeposit = false;
+  let harvestProtocol: string | null = null;
+
   for (const target of targets) {
-    // 1. Check static package rules (exact package ID match)
-    for (const [pkgId, rule] of packageRules) {
-      if (!target.startsWith(pkgId)) continue;
-      const suffix = target.slice(pkgId.length + 2);
-      if (rule.actionMap[suffix]) {
-        return { action: rule.actionMap[suffix], protocol: rule.protocol };
-      }
-      return { action: 'unknown', protocol: rule.protocol };
-    }
-
-    // 2. Check dynamic rules (module::function match, ignores package ID)
-    const parts = target.split('::');
-    if (parts.length === 3) {
-      const moduleFunc = `${parts[1]}::${parts[2]}`;
-      for (const rule of dynamicRules) {
-        if (rule.actionMap[moduleFunc]) {
-          return { action: rule.actionMap[moduleFunc], protocol: rule.protocol };
-        }
-      }
-    }
-
-    // 3. Cetus aggregator fallback (aggregator SDK uses varying package IDs)
-    if (target.includes('aggregator') || target.includes('router')) {
-      return { action: 'swap', protocol: 'cetus' };
+    const action = matchActionForTarget(target);
+    if (!action) continue;
+    if (action.action === 'claim') {
+      hasClaim = true;
+      harvestProtocol = harvestProtocol ?? action.protocol;
+    } else if (action.action === 'save') {
+      hasDeposit = true;
+      harvestProtocol = harvestProtocol ?? action.protocol;
     }
   }
 
+  if (hasClaim && hasDeposit) {
+    return { action: 'harvest', protocol: harvestProtocol };
+  }
+
+  // Fall back to first-match classification for non-compound txs.
+  for (const target of targets) {
+    const matched = matchActionForTarget(target);
+    if (matched) return matched;
+  }
+
   return { action: 'unknown', protocol: null };
+}
+
+/**
+ * Match a single moveCall target to a (action, protocol) pair using the
+ * descriptor-based ruleset. Returns null on no match. Extracted from the
+ * per-target loop so `classifyFromMoveCallTargets` can iterate twice — once
+ * for compound-op detection (look for both claim + save), once for
+ * first-match fallback.
+ */
+function matchActionForTarget(target: string): { action: string; protocol: string | null } | null {
+  // 1. Check static package rules (exact package ID match)
+  for (const [pkgId, rule] of packageRules) {
+    if (!target.startsWith(pkgId)) continue;
+    const suffix = target.slice(pkgId.length + 2);
+    if (rule.actionMap[suffix]) {
+      return { action: rule.actionMap[suffix], protocol: rule.protocol };
+    }
+    return { action: 'unknown', protocol: rule.protocol };
+  }
+
+  // 2. Check dynamic rules (module::function match, ignores package ID)
+  const parts = target.split('::');
+  if (parts.length === 3) {
+    const moduleFunc = `${parts[1]}::${parts[2]}`;
+    for (const rule of dynamicRules) {
+      if (rule.actionMap[moduleFunc]) {
+        return { action: rule.actionMap[moduleFunc], protocol: rule.protocol };
+      }
+    }
+  }
+
+  // 3. Cetus aggregator fallback (aggregator SDK uses varying package IDs)
+  if (target.includes('aggregator') || target.includes('router')) {
+    return { action: 'swap', protocol: 'cetus' };
+  }
+
+  return null;
 }
 
 function classifyFromEvents(events: SuiEvent[]): { action: string; protocol: string | null } {

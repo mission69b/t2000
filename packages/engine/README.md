@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (35 tools — 24 read, 11 write), Reasoning Engine (14 guards across 3 priority tiers + 6 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (37 tools — 25 read, 12 write), Reasoning Engine (14 guards across 3 priority tiers + 6 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 QueryEngine orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop.
 
@@ -164,7 +164,13 @@ QueryEngine.submitMessage()
 > equivalent on BlockVision). Net post-v1.4: 23 reads + 11 writes = 34 tools.
 >
 > **SPEC 10 SuiNS reverse-lookup (May 2026):** Added 1 read tool — `resolve_suins`.
-> Net post-SPEC-10: **24 reads + 11 writes = 35 tools** (current).
+> Net post-SPEC-10: 24 reads + 11 writes = 35 tools.
+>
+> **S.119 NAVI rewards (May 2026):** Added 1 read tool — `pending_rewards` (preview claimable
+> rewards without triggering a claim) — and 1 write tool — `harvest_rewards` (compound: claim
+> NAVI rewards → swap each non-USDC reward to USDC → deposit merged USDC into NAVI savings,
+> single PTB). Per-leg fees (10 bps Cetus overlay × N + 10 bps NAVI save fee) wired in S.120.
+> Net post-S.119: **25 reads + 12 writes = 37 tools** (current).
 
 ## Recent Upgrades — Spec 1 (Correctness) + Spec 2 (Intelligence)
 

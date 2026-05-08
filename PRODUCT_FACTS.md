@@ -18,7 +18,7 @@
 |---------|-----------|
 | 🪪 **Audric Passport** | Trust layer — identity (zkLogin via Google), non-custodial wallet on Sui, tap-to-confirm consent, Enoki-sponsored gas (web only). Wraps every other product. |
 | 🧠 **Audric Intelligence** | Brain (the moat) — 5 systems: Agent Harness (35 tools), Reasoning Engine (14 guards, 6 skill recipes), Silent Profile, Chain Memory, AdviceLog. Engineering-facing brand; users experience it as "Audric just understood me." |
-| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
+| 💰 **Audric Finance** | Manage your money on Sui — Save (NAVI lend, 3–8% APY on USDC + USDsui), Credit (NAVI borrow, health factor), Swap (Cetus aggregator, 20+ DEXs, 0.1% fee), Harvest (single-PTB compound: claim NAVI rewards → swap each non-USDC reward to USDC → deposit into savings; per-leg fees), Charts (yield/health/portfolio viz). Every write taps to confirm via Passport. |
 | 💸 **Audric Pay** | Move money — Send USDC, Receive (payment links, invoices, QR). Free, global, instant on Sui. |
 | 🛒 **Audric Store** | Creator marketplace at `audric.ai/username`. Coming soon (Phase 5). |
 
@@ -78,10 +78,12 @@ See `audric-roadmap.md` for the full taxonomy + naming rules and `CLAUDE.md` for
 
 | Operation | BPS | Rate | Notes |
 |-----------|-----|------|-------|
-| Save | 10 | 0.1% | Protocol fee on deposit |
-| Borrow | 5 | 0.05% | Audric fee on loan (USDC borrows only) |
+| Save | 10 | 0.1% | Protocol fee on deposit. **Charged on both USDC and USDsui deposits** as of v1.24.3 / S.120 follow-up (pre-v1.24.3 the hook short-circuited on `asset !== 'USDC'`, so USDsui deposits were silently fee-free). Treasury already accepts multi-currency inflows from Cetus swap overlays, so dual-stable fees added no surface area. |
+| Borrow | 5 | 0.05% | Audric fee on loan. **Charged on both USDC and USDsui borrows** as of v1.24.3 / S.120 follow-up (same rationale as Save). |
+| Harvest | 20 | ~0.2% composite | Per-leg: 10 bps Cetus overlay per non-USDC reward swap + 10 bps NAVI save fee on the deposit. A USDC-only-reward harvest pays only the save leg (10 bps); a single non-USDC reward harvest pays both legs (~20 bps); a multi-reward harvest pays N swap legs + 1 save. The indexer classifies these txs as `harvest` (composite — see `apps/server/src/indexer/eventParser.ts`) so `ProtocolFeeLedger` attributes harvest revenue distinctly from pure swap or save. |
 | Withdraw | — | Free | |
 | Repay | — | Free | |
+| Claim (raw) | — | Free | `claim_rewards` — pulls rewards into wallet as-is, no swap/deposit |
 | Send | — | Free | |
 | Receive | — | Free | Payment request generation is local; uses Sui Payment Kit (`sui:pay?` URIs) for QR codes |
 | Swap | 10 | 0.1% | Audric overlay fee on swap (Cetus `overlayFeeReceiver` = `T2000_OVERLAY_FEE_WALLET`); Cetus Aggregator network fees still apply |
@@ -660,7 +662,7 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | Build | tsup → ESM bundle |
 | Test framework | Vitest |
 | Test count | 250 |
-| Total tools | **34** (23 reads + 11 writes) — see breakdown below |
+| Total tools | **35** (24 reads + 11 writes) — see breakdown below |
 
 ### Engine Public Exports
 
@@ -686,7 +688,7 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | `fetchTokenPrices` | function | Batch USD prices from BlockVision Indexer REST (Sui-RPC + hardcoded-stable degraded fallback) |
 | `fetchAddressPortfolio` | function | Wallet coins + balances + USD prices + totals from BlockVision (single round-trip) |
 | `clearPortfolioCache` / `clearPortfolioCacheFor` / `clearPriceMapCache` | function | Reset BlockVision portfolio + price caches |
-| `getDefaultTools` | function | All 34 built-in tools (23 read, 11 write) |
+| `getDefaultTools` | function | All 35 built-in tools (24 read, 11 write) |
 | `DEFAULT_SYSTEM_PROMPT` | string | Audric system prompt |
 | `classifyEffort` | function | Adaptive thinking effort classifier |
 | `ContextBudget` | class | Context window budget tracking + compaction trigger |
@@ -717,13 +719,13 @@ Two correctness/intelligence upgrades shipped on top of the 5-system base. Both 
 | Spec | Versions | What it added | Cross-repo contract |
 |------|----------|---------------|---------------------|
 | **Spec 1 — Correctness** | engine `0.41.0` → `0.50.3` | Per-yield `attemptId` UUID v4 stamped on every `pending_action` (stable join key from action → on-chain receipt → `TurnMetrics(sessionId, turnIndex)` row). `modifiableFields` registry — fields the user can edit on a confirm card without losing the LLM's reasoning (resume route applies `modifications` so conversation history reflects what was approved on-chain). `EngineConfig.onAutoExecuted({ toolName, input, result, walletAddress, sessionId, turnIndex })` hook so `auto`-permission writes participate in the same telemetry as confirm-gated ones (currently no `auto` writes in Audric, but the hook is wired). | `t2000/.cursor/rules/agent-harness-spec.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc` |
-| **Spec 2 — Intelligence** | engine `0.47.0` → `0.54.1` | BlockVision swap — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one BlockVision-backed `token_prices` tool. `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST (single round-trip wallet portfolio + USD prices). Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) for graceful 429 handling. `<financial_context>` boot-time orientation block injected at every engine boot from the daily 02:00 UTC `UserFinancialContext` snapshot — every chat starts oriented, no warm-up tool calls (Silent Profile system). `attemptId`-keyed resume — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` so two pending actions in the same turn never clobber each other's `pendingActionOutcome`. `protocol_deep_dive` retained on DefiLlama as the lone exception. Net tool count: 29 → 23 reads, 40 → 34 total. | `t2000/.cursor/rules/blockvision-resilience.mdc` + `audric/.cursor/rules/audric-canonical-portfolio.mdc` + `audric/.cursor/rules/engine-context-assembly.mdc` |
+| **Spec 2 — Intelligence** | engine `0.47.0` → `0.54.1` | BlockVision swap — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one BlockVision-backed `token_prices` tool. `balance_check` + `portfolio_analysis` rewired to BlockVision Indexer REST (single round-trip wallet portfolio + USD prices). Sticky-positive cache + retry/circuit breaker (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) for graceful 429 handling. `<financial_context>` boot-time orientation block injected at every engine boot from the daily 02:00 UTC `UserFinancialContext` snapshot — every chat starts oriented, no warm-up tool calls (Silent Profile system). `attemptId`-keyed resume — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` so two pending actions in the same turn never clobber each other's `pendingActionOutcome`. `protocol_deep_dive` retained on DefiLlama as the lone exception. Net tool count after Spec 2: 29 → 23 reads, 40 → 34 total. (SPEC 10 then added `resolve_suins` → current count 24 reads / 35 total.) | `t2000/.cursor/rules/blockvision-resilience.mdc` + `audric/.cursor/rules/audric-canonical-portfolio.mdc` + `audric/.cursor/rules/engine-context-assembly.mdc` |
 
 > Local-only specs (private working documents): `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Both are gitignored — the cross-repo `.cursor/rules/*.mdc` files are the public contract.
 
 ### Engine Tool Names
 
-| Read Tools (23) | Write Tools (11) |
+| Read Tools (25) | Write Tools (12) |
 |-----------|------------|
 | `render_canvas` | `save_deposit` |
 | `balance_check` | `withdraw` |
@@ -731,12 +733,12 @@ Two correctness/intelligence upgrades shipped on top of the 5-system base. Both 
 | `health_check` | `borrow` |
 | `rates_info` | `repay_debt` |
 | `transaction_history` | `claim_rewards` |
-| `swap_quote` | `pay_api` |
-| `volo_stats` | `swap_execute` |
-| `mpp_services` | `volo_stake` |
-| `web_search` | `volo_unstake` |
-| `explain_tx` | `save_contact` |
-| `portfolio_analysis` | |
+| `swap_quote` | `harvest_rewards` |
+| `volo_stats` | `pay_api` |
+| `mpp_services` | `swap_execute` |
+| `web_search` | `volo_stake` |
+| `explain_tx` | `volo_unstake` |
+| `portfolio_analysis` | `save_contact` |
 | `protocol_deep_dive` | |
 | `token_prices` | |
 | `create_payment_link` | |
@@ -748,10 +750,14 @@ Two correctness/intelligence upgrades shipped on top of the 5-system base. Both 
 | `spending_analytics` | |
 | `yield_summary` | |
 | `activity_summary` | |
+| `resolve_suins` | |
+| `pending_rewards` | |
+
+> **Added in S.119 (May 2026):** `pending_rewards` (read) + `harvest_rewards` (write). `pending_rewards` previews unclaimed NAVI rewards without triggering a claim — pairs with the chip surface (`{🌾 HARVEST ALL, 🎁 JUST CLAIM}`). `harvest_rewards` is a single-PTB compound: claim NAVI rewards → swap each non-USDC reward to USDC via Cetus → deposit merged USDC into NAVI savings. Per-leg fees (10 bps swap overlay × N + 10 bps save), wired in S.120. Net post-S.119: 24 → 25 reads, 35 → 37 total.
 
 > **Removed in the April 2026 simplification (S.7):** `allowance_status`, `toggle_allowance`, `update_daily_limit`, `update_permissions`, `create_schedule`, `list_schedules`, `cancel_schedule`, `pattern_status`, `pause_pattern` — 9 tools deleted. Allowance contract is dormant; scheduled actions can't sign without user presence under zkLogin; pattern detectors stay as silent classifiers (not user-facing proposals). See the S.0–S.12 entries in `audric-build-tracker.md`.
 >
-> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST. `protocol_deep_dive` is the lone surviving DefiLlama consumer. Net: 29 → 23 reads, 40 → 34 total. See `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
+> **Removed in v1.4 BlockVision swap (April 2026):** 7 `defillama_*` tools — `defillama_token_prices`, `defillama_price_change`, `defillama_yield_pools`, `defillama_protocol_info`, `defillama_chain_tvl`, `defillama_protocol_fees`, `defillama_sui_protocols`. Replaced by 1 `token_prices` tool (BlockVision-backed). `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST. `protocol_deep_dive` is the lone surviving DefiLlama consumer. Net post-v1.4: 29 → 23 reads, 40 → 34 total. SPEC 10 (May 2026) then added `resolve_suins` → current count 24 reads / 35 total. See `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`.
 >
 > `record_advice` lives in `audric/apps/web/lib/engine/advice-tool.ts` (audric-side tool that writes `AdviceLog` rows; not exported from `@t2000/engine`).
 

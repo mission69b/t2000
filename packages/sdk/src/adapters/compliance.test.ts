@@ -79,7 +79,9 @@ import { descriptor as naviDesc } from './navi.js';
 import { allDescriptors } from './index.js';
 import type { ProtocolDescriptor } from './types.js';
 
-const VALID_ACTIONS = ['save', 'withdraw', 'borrow', 'repay'];
+// `claim` added v1.24.3 / S.120 follow-up — required for harvest classification
+// in the indexer (claim + save targets together → operation tag `harvest`).
+const VALID_ACTIONS = ['save', 'withdraw', 'borrow', 'repay', 'claim'];
 
 function runDescriptorComplianceTests(desc: ProtocolDescriptor) {
   describe(`ProtocolDescriptor: ${desc.id}`, () => {

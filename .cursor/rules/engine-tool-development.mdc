@@ -101,6 +101,46 @@ Runs **before** the LLM round-trip when the engine pre-screens a tool call. Fast
 - `<object>_<state>` or `<verb>_<object>` for reads — `balance_check`, `health_check`, `transaction_history`.
 - New tool? Update CLAUDE.md tool counts AND `getDefaultTools()` exports.
 
+## Compound tools — must forward host context to nested SDK calls
+
+**The S.120 lesson, in a checklist.** A compound tool packs multiple single-op writes (claim + swap + save, or send + record_advice, etc.) into one PTB. The trap: each single-op tool has a host-injected fee/auth/preflight surface — when you wrap them in a compound, the nested SDK calls bypass the host's per-tool surface. Result: silent fee skips, missing allow-list entries, dropped onchain validations.
+
+**Symptom (S.120):** `harvest_rewards` (compound: NAVI claim → Cetus swap → NAVI deposit) silently skipped both the Cetus overlay fee on the internal swap AND the save fee on the internal deposit. The macro called `addSwapToTx(...)` and `addSaveToTx(...)` directly, never threading through the host's `overlayFee` config or `feeHooks.save_deposit` callback. Treasury collected $0 on the harvest until v1.24.2 patched the wiring (`ctx.overlayFee` + `ctx.feeHooks?.save_deposit` now forwarded into `addHarvestToTx`).
+
+**Required for every compound write tool:**
+
+1. **Forward `overlayFee` config** — every nested swap inside the compound must accept `overlayFee` from `composeTx`'s `ctx` and pass it to `addSwapToTx(... { overlayFee })`. Don't hardcode "free" — let the host policy decide.
+2. **Forward `feeHooks`** — every nested save / borrow / send inside the compound must invoke the matching hook from `ctx.feeHooks?.<single_op_name>` BEFORE the SDK call that consumes the coin. The hook's contract is `({ tx, coin, input }) => void`; call it with the about-to-be-consumed coin handle and the operation amount.
+3. **Forward `allowedAddresses` extensions** — if the compound introduces a new top-level `transferObjects` recipient (e.g. dust-reward fallback), the recipient must be added to the `allowedAddresses` array that's passed to Enoki. Don't rely on the single-op tools' lists.
+4. **Forward `attemptId`** — the compound write yields ONE `pending_action` with ONE `attemptId`. The host's resume route still keys on `attemptId` for the entire compound — don't generate per-leg IDs.
+5. **Update the indexer classifier** — compound txs contain N matching moveCall targets. The indexer's `classifyFromMoveCallTargets` does first-match classification by default; add a compound-detection path BEFORE the per-target loop so `ProtocolFeeLedger` attributes the compound's revenue to a dedicated operation tag (`harvest`, not `claim` or `save`). See `apps/server/src/indexer/eventParser.ts`.
+6. **Test the fee forwarding** — every compound tool's SDK test must assert that omitting `overlayFee` / `feeHooks` results in zero fee transfers (CLI / direct SDK path stays free), AND that providing them produces the expected fee splits. See `packages/sdk/src/protocols/navi-harvest.test.ts` for the canonical pattern.
+7. **Plan a per-leg post-write refresh** — `POST_WRITE_REFRESH_MAP` in audric's `engine-factory.ts` should list every read tool the compound's individual legs would normally trigger. A `harvest_rewards` write should refresh `balance_check` (claim) + `savings_info` (deposit) + `health_check` (deposit changes HF).
+
+**Forbidden in compound tools:**
+
+```typescript
+// ❌ Hardcoding "no fee" — ignores host policy
+addSwapToTx(tx, client, /* swap params */, /* overlayFee */ undefined);
+
+// ❌ Skipping the fee hook — silently bypasses save fee
+await addSaveToTx(tx, client, depositCoin, asset, amount, address);
+
+// ❌ Generating per-leg attemptIds — breaks resume keying
+const claimAttemptId = randomUUID(); const swapAttemptId = randomUUID();
+
+// ✅ Forward what the host gave you
+addSwapToTx(tx, client, /* swap params */, { overlayFee: options.overlayFee });
+if (options.saveFeeHook) options.saveFeeHook({ tx, coin: depositCoin, input: { amount: expectedDeposit, asset } });
+await addSaveToTx(tx, client, depositCoin, asset, amount, address);
+```
+
+**Cross-references for the S.120 fix:**
+- SDK macro pattern → `packages/sdk/src/protocols/navi-harvest.ts` (`addHarvestToTx`)
+- `composeTx` registry forwarding → `packages/sdk/src/composeTx.ts` (`harvest_rewards` appender)
+- Audric host wiring → `audric/apps/web/app/api/transactions/prepare/route.ts` (`needsOverlayFee` + `feeHooks`)
+- Indexer composite classification → `apps/server/src/indexer/eventParser.ts` (`classifyFromMoveCallTargets` harvest detection)
+
 ## Required tests
 
 Every new tool needs:
