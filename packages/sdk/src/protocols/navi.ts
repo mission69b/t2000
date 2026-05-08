@@ -605,6 +605,39 @@ export async function maxBorrowAmount(
 // Rewards
 // ---------------------------------------------------------------------------
 
+/**
+ * [Track B follow-up / 2026-05-08] Stateless wrapper around `getPendingRewards`
+ * that creates its own `SuiJsonRpcClient`. Used by the engine's
+ * `pending_rewards` tool — engine doesn't import `@mysten/sui` directly
+ * (would expand its dep surface), so this helper accepts just `(address,
+ * suiRpcUrl?)` and instantiates the client internally.
+ *
+ * **Why this exists.** Pre-fix the engine tool went through
+ * `requireAgent(context).getPendingRewards()`, which threw
+ * "Tool requires a T2000 agent instance — pass `agent` in EngineConfig"
+ * in audric prod (audric uses sponsored-tx flow, never instantiates a
+ * T2000 agent). Live mainnet smoke on funkii's wallet 2026-05-08 caught
+ * this immediately when the LLM correctly called pending_rewards before
+ * harvest_rewards. This helper makes the audric/CLI paths symmetric
+ * (both work, neither requires an agent).
+ *
+ * Defaults `suiRpcUrl` to mainnet fullnode for CLI / standalone callers
+ * that don't pass one. Errors propagate with the same `T2000Error`
+ * shape as the underlying `getPendingRewards` (PROTOCOL_UNAVAILABLE on
+ * NAVI degradation, etc.) so the engine tool's catch path is unchanged.
+ */
+export async function getPendingRewardsByAddress(
+  address: string,
+  suiRpcUrl?: string,
+): Promise<PendingReward[]> {
+  const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+  const client = new SuiJsonRpcClient({
+    url: suiRpcUrl ?? getJsonRpcFullnodeUrl('mainnet'),
+    network: 'mainnet',
+  });
+  return getPendingRewards(client, address);
+}
+
 export async function getPendingRewards(
   client: SuiJsonRpcClient,
   address: string,

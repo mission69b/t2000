@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { pendingRewardsTool } from './pending-rewards.js';
 import type { ToolContext } from '../types.js';
+import * as sdk from '@t2000/sdk';
 
 /**
  * [S18-F20] Tests for the new `pending_rewards` read-only tool.
@@ -109,5 +110,94 @@ describe('pending_rewards tool', () => {
     expect(result.displayText).not.toContain('total');
     const data = result.data as { totalValueUsd: number };
     expect(data.totalValueUsd).toBe(0);
+  });
+});
+
+/**
+ * [Track B follow-up / 2026-05-08] Audric path tests — `pending_rewards`
+ * MUST work without `context.agent` because audric never instantiates a
+ * T2000 agent (sponsored-tx flow). The stateless helper
+ * `getPendingRewardsByAddress(walletAddress, suiRpcUrl)` is the audric
+ * code path — verified here by stubbing the SDK function so we don't
+ * hit a live Sui RPC during unit tests.
+ */
+describe('pending_rewards tool — audric path (no agent, walletAddress only)', () => {
+  beforeEach(() => {
+    vi.spyOn(sdk, 'getPendingRewardsByAddress').mockReset();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('uses getPendingRewardsByAddress when context.agent is absent', async () => {
+    const stub = vi.spyOn(sdk, 'getPendingRewardsByAddress').mockResolvedValue([
+      { protocol: 'navi', asset: '5', coinType: '0xabc::cert::CERT', symbol: 'vSUI', amount: 0.0165, estimatedValueUsd: 0 },
+    ]);
+
+    const ctx = {
+      walletAddress: '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc',
+      suiRpcUrl: 'https://fullnode.mainnet.sui.io:443',
+    } as ToolContext;
+
+    const result = await pendingRewardsTool.call({}, ctx);
+    const data = result.data as { rewards: unknown[]; degraded: boolean };
+
+    expect(stub).toHaveBeenCalledWith(
+      '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc',
+      'https://fullnode.mainnet.sui.io:443',
+    );
+    expect(data.rewards).toHaveLength(1);
+    expect(data.degraded).toBe(false);
+    expect(result.displayText).toContain('vSUI');
+  });
+
+  it('surfaces NAVI degradation truthfully on the audric path too', async () => {
+    vi.spyOn(sdk, 'getPendingRewardsByAddress').mockRejectedValue(
+      Object.assign(new Error('NAVI rewards lookup failed: 503 Service Unavailable'), {
+        code: 'PROTOCOL_UNAVAILABLE',
+      }),
+    );
+
+    const ctx = {
+      walletAddress: '0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc',
+    } as ToolContext;
+
+    const result = await pendingRewardsTool.call({}, ctx);
+    const data = result.data as { degraded: boolean; degradationReason: string };
+
+    expect(result.displayText).toContain('NAVI');
+    expect(result.displayText).toContain('degraded');
+    expect(data.degraded).toBe(true);
+    expect(data.degradationReason).toBe('PROTOCOL_UNAVAILABLE');
+  });
+
+  it('throws a clear error when neither agent nor walletAddress is present', async () => {
+    const result = await pendingRewardsTool.call({}, {} as ToolContext);
+    const data = result.data as { degraded: boolean; degradationReason: string };
+    // The catch path treats this as a degraded outcome (truthful surface,
+    // never a silent empty-list).
+    expect(data.degraded).toBe(true);
+    expect(result.displayText).toContain('protocol error');
+  });
+
+  it('prefers context.agent over the stateless helper when both are available (CLI back-compat)', async () => {
+    const stub = vi.spyOn(sdk, 'getPendingRewardsByAddress').mockResolvedValue([]);
+    const agent = {
+      getPendingRewards: async () => [
+        { protocol: 'navi', asset: '5', coinType: '0xabc::cert::CERT', symbol: 'vSUI', amount: 0.5, estimatedValueUsd: 0 },
+      ],
+    } as unknown as ToolContext['agent'];
+
+    const ctx = {
+      agent,
+      walletAddress: '0xdeadbeef',
+      suiRpcUrl: 'https://fullnode.mainnet.sui.io:443',
+    } as ToolContext;
+
+    const result = await pendingRewardsTool.call({}, ctx);
+    const data = result.data as { rewards: Array<{ amount: number }> };
+
+    expect(stub).not.toHaveBeenCalled();
+    expect(data.rewards[0].amount).toBe(0.5);
   });
 });

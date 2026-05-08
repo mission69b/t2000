@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import type { PendingReward } from '@t2000/sdk';
+import { getPendingRewardsByAddress, type PendingReward } from '@t2000/sdk';
 import { buildTool } from '../tool.js';
-import { requireAgent } from './utils.js';
 
 interface PendingRewardsResult {
   rewards: PendingReward[];
@@ -52,10 +51,34 @@ export const pendingRewardsTool = buildTool({
   cacheable: false,
 
   async call(_input, context) {
-    const agent = requireAgent(context);
+    // [Track B follow-up / 2026-05-08] Two equally-valid paths:
+    //   - Agent path (CLI / standalone): `context.agent.getPendingRewards()`.
+    //   - Stateless path (audric): `getPendingRewardsByAddress(walletAddress, suiRpcUrl)`.
+    // Audric NEVER instantiates a T2000 agent (it uses the sponsored-tx
+    // flow), so the pre-fix `requireAgent` jump was a hard fail — caught
+    // by live mainnet smoke 2026-05-08 when the LLM correctly called
+    // pending_rewards as a precursor to harvest. Prefer the agent when
+    // present (back-compat with CLI tests), fall back to the stateless
+    // helper otherwise (audric path). Both call into the same underlying
+    // `getPendingRewards(client, address)` so degradation behavior is
+    // identical (PROTOCOL_UNAVAILABLE flows through unchanged).
     let rewards;
     try {
-      rewards = await agent.getPendingRewards();
+      const agent = context.agent as
+        | { getPendingRewards: () => Promise<PendingReward[]> }
+        | undefined;
+      if (agent && typeof agent.getPendingRewards === 'function') {
+        rewards = await agent.getPendingRewards();
+      } else if (context.walletAddress) {
+        rewards = await getPendingRewardsByAddress(
+          context.walletAddress,
+          context.suiRpcUrl,
+        );
+      } else {
+        throw new Error(
+          'pending_rewards requires either context.agent (CLI path) or context.walletAddress + context.suiRpcUrl (audric path).',
+        );
+      }
     } catch (err) {
       const errAny = err as { code?: string; message?: string };
       const isProtocolDown = errAny?.code === 'PROTOCOL_UNAVAILABLE';

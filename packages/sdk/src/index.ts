@@ -152,6 +152,7 @@ export type { SimulationResult } from './utils/simulate.js';
 export {
   getRates,
   getPendingRewards,
+  getPendingRewardsByAddress,
   addClaimRewardsToTx,
   buildClaimRewardsTx,
   aggregateClaimableRewards,
