@@ -18,7 +18,6 @@ import { getDefaultTools } from './tools/index.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt/index.js';
 import { clearPortfolioCacheFor } from './blockvision-prices.js';
-import { fetchWalletCoins } from './sui/rpc.js';
 import { getTelemetrySink } from './telemetry.js';
 import { extractAllProactiveMarkers } from './proactive-marker.js';
 import type { PendingInputState } from './pending-input.js';
@@ -361,7 +360,10 @@ export class QueryEngine {
     // 1. Push the assistant message that was deferred during pending_action
     // 2. Push ALL tool_results (completed reads + writes) in one user message
     if (action.assistantContent?.length) {
-      this.messages.push({ role: 'assistant', content: action.assistantContent });
+      this.messages.push({
+        role: 'assistant',
+        content: stripPseudoThinking(action.assistantContent),
+      });
     }
 
     const allResults: ContentBlock[] = [
@@ -509,7 +511,7 @@ export class QueryEngine {
     if (pendingInput.assistantContent.length > 0) {
       this.messages.push({
         role: 'assistant',
-        content: pendingInput.assistantContent as ContentBlock[],
+        content: stripPseudoThinking(pendingInput.assistantContent as ContentBlock[]),
       });
     }
 
@@ -769,22 +771,6 @@ export class QueryEngine {
     // when Audric injects the store) — MUST be awaited or the next
     // `balance_check` races the Redis delete and refetches the stale
     // pre-write balance.
-    //
-    // [SPEC 19 Option 3 — v1.24.12 / 2026-05-09] Capture the pre-invalidation
-    // Sui-RPC wallet snapshot in the BACKGROUND (not awaited). It feeds the
-    // post-refresh staleness counter below — pure observability, never
-    // blocks the critical path. `null` on any failure (no walletAddress,
-    // no rpc, fetch error) → safety net silently skipped.
-    const canSafetyNet = !!(this.walletAddress && this.suiRpcUrl);
-    const safetyNetBaseline: Promise<Map<string, bigint> | null> | null = canSafetyNet
-      ? fetchWalletCoins(this.walletAddress!, this.suiRpcUrl!)
-          .then(
-            (coins) =>
-              new Map(coins.map((c) => [c.coinType, BigInt(c.totalBalance)])),
-          )
-          .catch(() => null)
-      : null;
-
     const cacheInvalidationStart = Date.now();
     if (this.walletAddress) {
       this.portfolioCache?.delete(this.walletAddress);
@@ -814,24 +800,25 @@ export class QueryEngine {
     //        delta, hits ceiling on 9/10 writes (production smoke
     //        2026-05-09).
     //
-    // Option 3: skip the wait entirely. The host's `/api/transactions/execute`
+    // Option 3 ships the wait removal. The host's `/api/transactions/execute`
     // already awaits `sui_wait_for_transaction` (~2.1s), then the resume
     // request adds ~800ms more boot time, giving the indexer ~2.9s of
     // wall-clock to catch up before refresh tools fire. Production smoke
     // confirmed all 10 narrations cited correct post-write balances even
-    // when the engine waited 0ms (write 9, sleep_ms=0 case).
+    // when the engine waited 0ms.
     //
-    // Safety net (non-blocking): the `safetyNetBaseline` captured above
-    // and a fresh post-refresh fetch are compared in the background after
-    // refresh tools complete. Identical Sui-RPC state pre/post = indexer
-    // didn't move during the entire refresh window → balance_check almost
-    // certainly returned stale data. Counter
-    // `engine.pwr.observed_stale_balance_check` fires when this happens.
-    // If we observe staleness in production, we can re-add a short bounded
-    // wait (capped at TRUE wall-clock, not floor(ms/interval)).
+    // [v1.24.13 / 2026-05-09] The Option 3 v1.24.12 safety net (compare
+    // pre-invalidation Sui-RPC wallet snapshot vs post-refresh) was REMOVED:
+    // it fired `stale=1` on 100% of writes in production (S.134), but
+    // narrations were always numerically correct — proof the counter
+    // was a false-positive by construction, not a real staleness signal.
+    // Both snapshots were captured AFTER the write was already settled
+    // on-chain (we're inside `runPostWriteRefresh` which only runs
+    // post-execution), so they always agree. Detecting actual staleness
+    // would require pre-write state from outside the engine; not worth
+    // building when the empirical narration accuracy is the proof.
     getTelemetrySink().counter('engine.pwr.skipped_sleep_count', {
       has_wallet: this.walletAddress ? '1' : '0',
-      can_safety_net: canSafetyNet ? '1' : '0',
     });
     if (signal.aborted) return;
 
@@ -959,53 +946,6 @@ export class QueryEngine {
         is_bundle: isBundle ? '1' : '0',
       },
     );
-
-    // [SPEC 19 Option 3 — v1.24.12] Non-blocking staleness observation.
-    // Compares pre-invalidation Sui-RPC wallet snapshot vs a fresh
-    // post-refresh snapshot. If they're identical, the indexer hasn't
-    // caught up to the write — meaning `balance_check` (BlockVision
-    // Indexer) almost certainly returned stale data too (both indexers
-    // ultimately read the same chain). Pure observability: never blocks
-    // narration, never retries, never throws.
-    //
-    // Watch `engine.pwr.observed_stale_balance_check{stale="1"}` /
-    // `engine.pwr.skipped_sleep_count` in production. If the rate stays
-    // near 0% for 24h, Option 3 is correct and we close the loop. If it
-    // climbs >5%, re-add a short bounded wait (true wall-clock cap, not
-    // attempt-count cap) before refresh tools fire.
-    if (safetyNetBaseline && canSafetyNet) {
-      const wallet = this.walletAddress!;
-      const rpc = this.suiRpcUrl!;
-      void (async () => {
-        try {
-          const [baseline, current] = await Promise.all([
-            safetyNetBaseline,
-            fetchWalletCoins(wallet, rpc)
-              .then(
-                (coins) =>
-                  new Map(
-                    coins.map((c) => [c.coinType, BigInt(c.totalBalance)]),
-                  ),
-              )
-              .catch(() => null),
-          ]);
-          if (!baseline || !current) return;
-          const stale = !walletStateChanged(baseline, current);
-          if (stale) {
-            getTelemetrySink().counter(
-              'engine.pwr.observed_stale_balance_check',
-              {
-                stale: '1',
-                is_bundle: isBundle ? '1' : '0',
-                tool_count: String(refreshTools.length),
-              },
-            );
-          }
-        } catch {
-          // Best-effort observation — never throw, never re-emit.
-        }
-      })();
-    }
   }
 
   interrupt(): void {
@@ -1530,7 +1470,10 @@ export class QueryEngine {
       const hasRemainingCalls = acc.pendingToolCalls.length > 0;
 
       if (!hasEarlyResults && !hasRemainingCalls) {
-        this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+        this.messages.push({
+          role: 'assistant',
+          content: stripPseudoThinking(acc.assistantBlocks),
+        });
         getTelemetrySink().histogram('anthropic.latency_ms', Date.now() - turnStartMs);
         yield { type: 'turn_complete', stopReason: acc.stopReason };
         recordTurnOutcome('turn_complete', { stopReason: acc.stopReason });
@@ -1538,7 +1481,10 @@ export class QueryEngine {
       }
 
       if (signal.aborted) {
-        this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+        this.messages.push({
+          role: 'assistant',
+          content: stripPseudoThinking(acc.assistantBlocks),
+        });
         if (hasEarlyResults) {
           this.messages.push({ role: 'user', content: earlyResultBlocks });
         }
@@ -1970,7 +1916,10 @@ export class QueryEngine {
         // pending_action with missing pieces. The LLM will narrate the
         // block and either retry with corrected input or refuse cleanly.
         if (anyGuardBlocked) {
-          this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+          this.messages.push({
+            role: 'assistant',
+            content: stripPseudoThinking(acc.assistantBlocks),
+          });
           this.messages.push({ role: 'user', content: toolResultBlocks });
           getTelemetrySink().counter('engine.turn_outcome', {
             entry: freshPrompt !== null ? 'submit' : 'resume',
@@ -2013,7 +1962,10 @@ export class QueryEngine {
             isError: true,
           });
         }
-        this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+        this.messages.push({
+          role: 'assistant',
+          content: stripPseudoThinking(acc.assistantBlocks),
+        });
         this.messages.push({ role: 'user', content: toolResultBlocks });
         getTelemetrySink().counter('engine.turn_outcome', {
           entry: freshPrompt !== null ? 'submit' : 'resume',
@@ -2184,7 +2136,10 @@ export class QueryEngine {
       }
 
       // All tools auto-approved — push the complete turn (assistant + results)
-      this.messages.push({ role: 'assistant', content: acc.assistantBlocks });
+      this.messages.push({
+        role: 'assistant',
+        content: stripPseudoThinking(acc.assistantBlocks),
+      });
       this.messages.push({ role: 'user', content: toolResultBlocks });
 
       // [SPEC 8 v0.5.1] update_todo maxTurns exemption.
@@ -2376,23 +2331,6 @@ export class QueryEngine {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * [SPEC 19 Option 3 / 2026-05-09] Returns true if the two wallet snapshots
- * differ in any coin-type's balance (or in their key sets). Used by the
- * post-write staleness safety net — identical pre/post snapshots = the Sui
- * RPC owned-coin indexer didn't catch up during the refresh window.
- */
-function walletStateChanged(
-  before: Map<string, bigint>,
-  after: Map<string, bigint>,
-): boolean {
-  if (before.size !== after.size) return true;
-  for (const [coinType, balance] of before) {
-    if (after.get(coinType) !== balance) return true;
-  }
-  return false;
-}
-
 function isCorruptHistoryError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return (
@@ -2400,6 +2338,48 @@ function isCorruptHistoryError(err: unknown): boolean {
     msg.includes('roles must alternate') ||
     (msg.includes('400') && msg.includes('invalid_request_error'))
   );
+}
+
+/**
+ * [SPEC 19 v1.24.13 / 2026-05-09] Strip pseudo-`<thinking>` tags from text
+ * blocks before persisting an assistant message.
+ *
+ * Why: Haiku-no-thinking (the post-write demoted narrate path) can't emit
+ * native thinking blocks, so it improvises by writing literal
+ * `<thinking>…</thinking>` markup inside text content. Production smoke
+ * 2026-05-09 (S.134) recorded one bundle narrate turn producing 2271
+ * output tokens — 2200+ of them inside a `<thinking>` block — driving
+ * `anthropic.latency_ms` to 21938ms (~10× the expected 2s). The audric UI
+ * already filters these tags before render, but they pollute persisted
+ * history (cache_read context for every subsequent turn).
+ *
+ * Strategy: lazy-match `<thinking>…</thinking>` (case-insensitive,
+ * multi-line) and remove. Handles unterminated tags (truncated stream)
+ * by stripping from `<thinking>` to end. Idempotent. Native `thinking`
+ * content blocks (`type: 'thinking'`) are NEVER touched — only `text`.
+ *
+ * Edge case: if stripping empties the only text block AND there are no
+ * other blocks, inject a minimal placeholder so role-alternation stays
+ * valid (Anthropic API rejects empty assistant content).
+ */
+function stripPseudoThinking(blocks: ContentBlock[]): ContentBlock[] {
+  const out: ContentBlock[] = [];
+  for (const b of blocks) {
+    if (b.type !== 'text') {
+      out.push(b);
+      continue;
+    }
+    const stripped = b.text
+      .replace(/<thinking\b[^>]*>[\s\S]*?(?:<\/thinking>|$)/gi, '')
+      .trim();
+    if (stripped.length > 0) {
+      out.push({ ...b, text: stripped });
+    }
+  }
+  if (out.length === 0 && blocks.length > 0) {
+    out.push({ type: 'text', text: '[narration omitted]' });
+  }
+  return out;
 }
 
 /**

@@ -344,11 +344,13 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
   // looking for a delta that already happened.
   //
   // Option 3: skip the wait entirely. Refresh tools fire immediately
-  // after cache invalidation. A non-blocking safety net captures
-  // pre-invalidation Sui-RPC state, compares to a fresh post-refresh
-  // snapshot, and emits `engine.pwr.observed_stale_balance_check` if
-  // they're identical (= indexer hadn't moved during the entire refresh
-  // window). Pure observability — never blocks, never retries.
+  // after cache invalidation.
+  //
+  // [v1.24.13 / 2026-05-09 / S.134] The Option 3 v1.24.12 safety net
+  // (`engine.pwr.observed_stale_balance_check`) was REMOVED — fired
+  // `stale=1` on 100% of writes in production but narrations were always
+  // numerically correct. False-positive by construction: both snapshots
+  // captured AFTER the write was settled = always agree.
   // ---------------------------------------------------------------------------
   describe('[SPEC 19 Option 3] no post-write sleep', () => {
     let captured: Array<{
@@ -357,7 +359,6 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       tags?: TelemetryTags;
       value?: number;
     }>;
-    let originalWarn: typeof console.warn;
 
     beforeEach(() => {
       captured = [];
@@ -373,17 +374,10 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
         },
       };
       setTelemetrySink(sink);
-      // Safety-net path fires `fetchWalletCoins`; in unit-test mode there's
-      // no `walletAddress` / `suiRpcUrl` on the engine so the path is
-      // skipped — no live RPC, no warn spam expected. We still suppress
-      // warns defensively in case downstream behavior changes.
-      originalWarn = console.warn;
-      console.warn = () => undefined;
     });
 
     afterEach(() => {
       resetTelemetrySink();
-      console.warn = originalWarn;
     });
 
     it('emits engine.pwr.skipped_sleep_count exactly once per refresh and never engine.pwr.sleep_ms', async () => {
@@ -424,10 +418,30 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       expect(skipped).toHaveLength(0);
     });
 
-    it('does not emit observed_stale_balance_check when no walletAddress is configured (safety net path skipped)', async () => {
+    it('never emits the retired observed_stale_balance_check counter (v1.24.12 → v1.24.13 cleanup)', async () => {
       reset();
-      // Default test engine has no walletAddress → safetyNetBaseline is
-      // null → background diff never fires → counter never emits.
+      await runWriteAndResume({
+        refreshMap: { save_deposit: ['balance_check', 'savings_info'] },
+        write: saveDeposit,
+        writeName: 'save_deposit',
+        writeInput: { amount: 10 },
+        approved: true,
+        executionResult: { success: true },
+      });
+
+      // Give any (would-be) background promise a microtask tick to settle.
+      await new Promise((r) => setTimeout(r, 20));
+
+      const stale = captured.filter(
+        (c) =>
+          c.kind === 'counter' &&
+          c.name === 'engine.pwr.observed_stale_balance_check',
+      );
+      expect(stale).toHaveLength(0);
+    });
+
+    it('skipped_sleep_count tag is just has_wallet — the can_safety_net tag was retired with the safety net', async () => {
+      reset();
       await runWriteAndResume({
         refreshMap: { save_deposit: ['balance_check'] },
         write: saveDeposit,
@@ -437,20 +451,11 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
         executionResult: { success: true },
       });
 
-      // Give the (would-be) background promise a microtask tick to settle.
-      await new Promise((r) => setTimeout(r, 10));
-
-      const stale = captured.filter(
-        (c) =>
-          c.kind === 'counter' &&
-          c.name === 'engine.pwr.observed_stale_balance_check',
-      );
-      expect(stale).toHaveLength(0);
-
       const skipped = captured.find(
         (c) => c.kind === 'counter' && c.name === 'engine.pwr.skipped_sleep_count',
       );
-      expect(skipped?.tags?.can_safety_net).toBe('0');
+      expect(skipped).toBeDefined();
+      expect(skipped?.tags).toEqual({ has_wallet: '0' });
     });
   });
 });

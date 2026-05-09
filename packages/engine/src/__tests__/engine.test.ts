@@ -695,4 +695,103 @@ describe('QueryEngine', () => {
     expect(engine.getMessages()).toHaveLength(0);
     expect(engine.getUsage().inputTokens).toBe(0);
   });
+
+  // [SPEC 19 v1.24.13 / 2026-05-09 / S.134] Pseudo-thinking tag strip.
+  //
+  // Background: Haiku-no-thinking (post-write demoted narrate path) can't
+  // emit native thinking blocks, so it improvises by writing literal
+  // `<thinking>…</thinking>` markup inside text content. Production smoke
+  // 2026-05-09 recorded one bundle narrate turn producing 2271 output
+  // tokens — 2200+ inside `<thinking>` — driving anthropic.latency_ms to
+  // ~22s. The tags also pollute persisted history → cache_read context for
+  // every subsequent turn carries the junk.
+  //
+  // Fix: strip `<thinking>…</thinking>` from text blocks at every assistant
+  // message persist site. Native thinking blocks (`type: 'thinking'`)
+  // are NEVER touched.
+  describe('[SPEC 19 v1.24.13] strips pseudo <thinking> tags before persisting', () => {
+    it('strips a single <thinking>…</thinking> block from text content', async () => {
+      const provider = createMockProvider([
+        [{
+          type: 'text',
+          text: '<thinking>The user wants a swap. Let me think about routes...</thinking>Done. Swapped 0.05 USDC for 0.0468 SUI.',
+        }],
+      ]);
+      const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
+      await collectEvents(engine.submitMessage('Swap'));
+
+      const assistant = engine.getMessages().find((m) => m.role === 'assistant');
+      expect(assistant).toBeDefined();
+      const text = assistant!.content.find((b) => b.type === 'text');
+      expect(text).toBeDefined();
+      // Should contain narration only, no <thinking> tag or its content
+      expect((text as { type: 'text'; text: string }).text).toBe(
+        'Done. Swapped 0.05 USDC for 0.0468 SUI.',
+      );
+      expect((text as { type: 'text'; text: string }).text).not.toContain('<thinking');
+      expect((text as { type: 'text'; text: string }).text).not.toContain('routes');
+    });
+
+    it('strips multi-line <thinking> spanning newlines (the production case)', async () => {
+      const provider = createMockProvider([
+        [{
+          type: 'text',
+          text: '<thinking>\nLooking at the results:\n\nFrom the bundle: save_deposit 0.5 USDC executed\nswap_execute 0.05 USDC → 0.0467 SUI executed\n\nBoth settled atomically.\n</thinking>Done. Saved 0.5 USDC at 4.93% APY and swapped 0.05 USDC for ~0.0467 SUI — both settled atomically.',
+        }],
+      ]);
+      const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
+      await collectEvents(engine.submitMessage('Bundle'));
+
+      const assistant = engine.getMessages().find((m) => m.role === 'assistant')!;
+      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string };
+      expect(text.text).toBe(
+        'Done. Saved 0.5 USDC at 4.93% APY and swapped 0.05 USDC for ~0.0467 SUI — both settled atomically.',
+      );
+    });
+
+    it('strips an unterminated <thinking> tag (truncated stream)', async () => {
+      const provider = createMockProvider([
+        [{
+          type: 'text',
+          text: 'Quote ready.\n\n<thinking>Now I should also consider whether the user might want',
+        }],
+      ]);
+      const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
+      await collectEvents(engine.submitMessage('Quote'));
+
+      const assistant = engine.getMessages().find((m) => m.role === 'assistant')!;
+      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string };
+      expect(text.text).toBe('Quote ready.');
+      expect(text.text).not.toContain('<thinking');
+    });
+
+    it('leaves text without <thinking> tags untouched', async () => {
+      const provider = createMockProvider([
+        [{ type: 'text', text: 'Hello world.' }],
+      ]);
+      const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
+      await collectEvents(engine.submitMessage('Hi'));
+
+      const assistant = engine.getMessages().find((m) => m.role === 'assistant')!;
+      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string };
+      expect(text.text).toBe('Hello world.');
+    });
+
+    it('preserves role-alternation when the entire text was thinking-only (placeholder)', async () => {
+      const provider = createMockProvider([
+        [{ type: 'text', text: '<thinking>Just thinking, nothing to say.</thinking>' }],
+      ]);
+      const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
+      await collectEvents(engine.submitMessage('Hi'));
+
+      const assistant = engine.getMessages().find((m) => m.role === 'assistant')!;
+      // Must have at least one content block — Anthropic API rejects empty
+      // assistant content. Placeholder is acceptable; what's NOT acceptable
+      // is silently dropping the message.
+      expect(assistant.content.length).toBeGreaterThan(0);
+      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined;
+      expect(text).toBeDefined();
+      expect(text!.text).not.toContain('<thinking');
+    });
+  });
 });
