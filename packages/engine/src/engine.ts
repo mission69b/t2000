@@ -18,6 +18,7 @@ import { getDefaultTools } from './tools/index.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt/index.js';
 import { clearPortfolioCacheFor } from './blockvision-prices.js';
+import { pollForIndexerCatchup } from './post-write-poll.js';
 import { getTelemetrySink } from './telemetry.js';
 import { extractAllProactiveMarkers } from './proactive-marker.js';
 import type { PendingInputState } from './pending-input.js';
@@ -784,24 +785,38 @@ export class QueryEngine {
       { has_wallet: this.walletAddress ? '1' : '0' },
     );
 
-    // [v0.46.16] Sui RPC indexer lag — `executeTransactionBlock` returns
-    // as soon as the tx is included in a checkpoint, but the public RPC's
-    // owned-coin index trails by ~500-1500ms. Without this delay the
-    // injected `balance_check` returns the *pre-write* snapshot and the
-    // LLM either trusts it (wrong) or has to reason around it (noisy).
-    // 1500ms catches ~99% of cases on Sui mainnet; the refresh is async
-    // anyway so this doesn't block the UI's pending_action resolution.
+    // [SPEC 19 Phase A — v1.24.10] Bounded poll-on-balance-delta replaces
+    // the hardcoded 1500ms sleep. Same correctness contract (never proceed
+    // until the Sui RPC owned-coin index has caught up post-write), but
+    // exits early on the first detected balance delta vs a baseline.
+    //
+    // Pre-A1 history: v0.46.16 added a fixed 1500ms sleep to mask the
+    // ~500-1500ms owned-coin indexer lag that follows `executeTransactionBlock`
+    // settling in a checkpoint. Without it, the injected `balance_check`
+    // returned pre-write data and the LLM either trusted it (wrong) or had
+    // to reason around it (noisy). The fix paid worst-case latency on every
+    // write even when the indexer was already caught up.
+    //
+    // A1 design: see packages/engine/src/post-write-poll.ts. Median win
+    // ~500-1200ms per write; worst case identical to pre-A1 (defensive
+    // ceiling at 1500ms). All failure modes fall back to fixed-sleep
+    // behavior so reliability is preserved.
     const sleepStart = Date.now();
-    if (!signal.aborted) {
-      await new Promise<void>((resolve) => {
-        const t = setTimeout(resolve, 1500);
-        signal.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
-      });
-    }
+    const pollResult = await pollForIndexerCatchup({
+      suiRpcUrl: this.suiRpcUrl,
+      address: this.walletAddress,
+      ceilingMs: 1500,
+      pollIntervalMs: 250,
+      signal,
+    });
     getTelemetrySink().histogram(
       'engine.pwr.sleep_ms',
       Date.now() - sleepStart,
-      { aborted: signal.aborted ? '1' : '0' },
+      {
+        aborted: signal.aborted ? '1' : '0',
+        outcome: pollResult.outcome,
+        attempts: String(pollResult.attempts),
+      },
     );
     if (signal.aborted) return;
 
