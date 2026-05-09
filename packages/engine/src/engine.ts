@@ -680,6 +680,17 @@ export class QueryEngine {
     response: PermissionResponse,
     signal: AbortSignal,
   ): AsyncGenerator<EngineEvent> {
+    // [SPEC 19 Phase A spike — v1.24.8] Per-phase timing instrumentation.
+    // Captures the four observable phases of post-write refresh so we can
+    // attribute the ~1.2-1.5s wall-clock SPEC 19 telemetry observed:
+    //   1. cache_invalidation_ms — Upstash delete (PR-1 made this awaited)
+    //   2. sleep_ms              — fixed 1500ms Sui RPC indexer-lag window
+    //   3. tool_ms (per tool)    — each refresh tool's call() duration
+    //   4. refresh_total_ms      — Promise.all wall-clock (≈ max of tool_ms)
+    //   5. total_ms              — whole function (bridges to host's
+    //                              `resume_stream_duration_ms`)
+    // Once we know which phase dominates, SPEC 19 Phase A picks its target.
+    const totalStart = Date.now();
     // [SPEC 7 P2.3 Layer 2] Bundle-aware refresh.
     // - Bundle: union of refresh tools across every step's
     //   `postWriteRefresh` entry, deduped (Set semantics).
@@ -762,10 +773,16 @@ export class QueryEngine {
     // pre-write balance. Pre-PR-1 it was a sync Map.delete and
     // fire-and-forget worked; under Redis the network round-trip is
     // load-bearing.
+    const cacheInvalidationStart = Date.now();
     if (this.walletAddress) {
       this.portfolioCache?.delete(this.walletAddress);
       await clearPortfolioCacheFor(this.walletAddress);
     }
+    getTelemetrySink().histogram(
+      'engine.pwr.cache_invalidation_ms',
+      Date.now() - cacheInvalidationStart,
+      { has_wallet: this.walletAddress ? '1' : '0' },
+    );
 
     // [v0.46.16] Sui RPC indexer lag — `executeTransactionBlock` returns
     // as soon as the tx is included in a checkpoint, but the public RPC's
@@ -774,24 +791,37 @@ export class QueryEngine {
     // LLM either trusts it (wrong) or has to reason around it (noisy).
     // 1500ms catches ~99% of cases on Sui mainnet; the refresh is async
     // anyway so this doesn't block the UI's pending_action resolution.
+    const sleepStart = Date.now();
     if (!signal.aborted) {
       await new Promise<void>((resolve) => {
         const t = setTimeout(resolve, 1500);
         signal.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
       });
     }
+    getTelemetrySink().histogram(
+      'engine.pwr.sleep_ms',
+      Date.now() - sleepStart,
+      { aborted: signal.aborted ? '1' : '0' },
+    );
     if (signal.aborted) return;
 
     // Run all refreshes in parallel — they're read-only and target
     // different RPC endpoints (wallet, NAVI positions, health). The
     // common case (1-3 tools) finishes well under 1s.
+    const refreshStart = Date.now();
     const idStem = `pwr_${action.toolUseId.slice(-6)}`;
     const refreshes = await Promise.all(
       refreshTools.map(async (tool, idx) => {
         const id = `${idStem}_${idx}_${tool.name}`;
+        const toolStart = Date.now();
         try {
           const parsed = tool.inputSchema.safeParse({});
           if (!parsed.success) {
+            getTelemetrySink().histogram(
+              'engine.pwr.tool_ms',
+              Date.now() - toolStart,
+              { tool: tool.name, outcome: 'invalid_input' },
+            );
             return {
               tool,
               id,
@@ -807,6 +837,11 @@ export class QueryEngine {
           // across the parallel batch.
           const { context: toolCtx, readAttemptCount } = withRetryStats(context);
           const result = await tool.call(parsed.data, toolCtx);
+          getTelemetrySink().histogram(
+            'engine.pwr.tool_ms',
+            Date.now() - toolStart,
+            { tool: tool.name, outcome: 'success' },
+          );
           return {
             tool,
             id,
@@ -815,6 +850,11 @@ export class QueryEngine {
             attemptCount: readAttemptCount(),
           };
         } catch (err) {
+          getTelemetrySink().histogram(
+            'engine.pwr.tool_ms',
+            Date.now() - toolStart,
+            { tool: tool.name, outcome: 'error' },
+          );
           return {
             tool,
             id,
@@ -829,6 +869,14 @@ export class QueryEngine {
           };
         }
       }),
+    );
+    getTelemetrySink().histogram(
+      'engine.pwr.refresh_total_ms',
+      Date.now() - refreshStart,
+      {
+        tool_count: String(refreshTools.length),
+        is_bundle: isBundle ? '1' : '0',
+      },
     );
 
     // Push synthetic conversation pair so the LLM sees:
@@ -873,6 +921,14 @@ export class QueryEngine {
         ...(r.attemptCount !== undefined ? { attemptCount: r.attemptCount } : {}),
       };
     }
+    getTelemetrySink().histogram(
+      'engine.pwr.total_ms',
+      Date.now() - totalStart,
+      {
+        tool_count: String(refreshTools.length),
+        is_bundle: isBundle ? '1' : '0',
+      },
+    );
   }
 
   interrupt(): void {
