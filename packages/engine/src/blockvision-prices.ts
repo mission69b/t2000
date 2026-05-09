@@ -995,7 +995,28 @@ function parseNumberOrNull(input: unknown): number | null {
 // inside a chat session.
 // ---------------------------------------------------------------------------
 
-const DEFI_PORTFOLIO_TIMEOUT_MS = 4_000;
+// [SPEC 22.1 — 2026-05-10] Lowered 4_000 → 2_000ms. With
+// DEFI_PROTOCOL_CONCURRENCY=3, worst-case fan-out time when one or more
+// protocols hang drops from 12s (3 batches × 4s) to 6s (3 batches × 2s).
+//
+// Triggering smoke (v5, session s_1778369304554_83f742433d1b):
+//   23:29:23.179 — bv.requests status=network_err attempt=0
+//   23:29:23.188 — [defi] scallop fetch threw: Error [AbortError]: Aborted
+//   23:29:23.200 — [portfolio] defi_ms=6482 total_ms=6482
+// → 6.5s blocked the chat turn from starting; client SSE timed out as
+//   "Response interrupted · retry" before the engine could emit the
+//   pending_action. Capping per-protocol at 2s closes that window.
+//
+// Trade-off: legitimately-slow protocols (e.g. occasional 2-3s spike on
+// cetus deep cold-cache) will now `partial`-out, marked `defiSource:
+// 'partial'` with 15s fresh-TTL so the next read retries them. Acceptable
+// — partial reads still cite a positive total and the engine's sticky-
+// positive cache absorbs single-protocol degradation cleanly.
+//
+// `defi.protocol_timeout_count{protocol}` is emitted from
+// `fetchOneDefiProtocol` so we can measure per-protocol timeout rates
+// post-deploy. Healthy target: < 1% per protocol over 24h.
+const DEFI_PORTFOLIO_TIMEOUT_MS = 2_000;
 
 /**
  * Source-aware freshness thresholds. When a cache hit has age <
@@ -1472,6 +1493,16 @@ async function fetchOneDefiProtocol(
       { signal, retryStats },
     );
   } catch (err) {
+    // [SPEC 22.1 — 2026-05-10] Distinguish AbortError (our 2s timeout
+    // fired or upstream cancelled) from other failures so we can chart
+    // per-protocol flakiness without conflating it with 5xx / network
+    // errors that `bv.requests` already tracks. The DOMException name
+    // check covers both `AbortError` (modern Fetch) and the legacy
+    // DOMException variants Node emits.
+    const errName = (err as { name?: string })?.name;
+    if (errName === 'AbortError' || errName === 'TimeoutError') {
+      getTelemetrySink().counter('defi.protocol_timeout_count', { protocol });
+    }
     console.warn(`[defi] ${protocol} fetch threw:`, err);
     return null;
   }
