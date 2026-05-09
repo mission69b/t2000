@@ -17,6 +17,7 @@
 import { AggregatorClient, Env, type FindRouterParams, type RouterDataV3 } from '@cetusprotocol/aggregator-sdk';
 import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import BN from 'bn.js';
 import { resolveTokenType, getDecimalsForCoinType } from '../token-registry.js';
 
 export interface OverlayFeeConfig {
@@ -33,6 +34,200 @@ export interface SwapRouteResult {
   byAmountIn: boolean;
   priceImpact: number;
   insufficientLiquidity: boolean;
+}
+
+// [SPEC 20.2 / D-1 (a)] Typed JSON-friendly representation of a Cetus
+// `RouterDataV3` for cross-process / cross-network transport. The native
+// shape contains `BN` instances (`bn.js`) and a `Map<string, string>`
+// (`packages`) that don't survive JSON.stringify / JSON.parse cleanly:
+// - `BN.toJSON()` returns the internal `{negative,words,length,red}` blob
+// - `Map.toJSON()` returns `{}`
+// Round-tripping via `serializeCetusRoute` + `deserializeCetusRoute`
+// converts BN ↔ decimal string and Map ↔ Record. Engine + audric both
+// reference fields by path (`route.routerData.paths[i].provider`) without
+// needing to know about the underlying BN/Map types.
+export interface SerializedCetusRoutePath {
+  id: string;
+  direction: boolean;
+  provider: string;
+  from: string;
+  target: string;
+  feeRate: number;
+  amountIn: string;
+  amountOut: string;
+  version?: string;
+  publishedAt?: string;
+  extendedDetails?: Record<string, unknown>;
+}
+
+export interface SerializedRouterDataV3 {
+  quoteID?: string;
+  /** RouterDataV3.amountIn (BN) → decimal string */
+  amountIn: string;
+  /** RouterDataV3.amountOut (BN) → decimal string */
+  amountOut: string;
+  byAmountIn: boolean;
+  paths: SerializedCetusRoutePath[];
+  insufficientLiquidity: boolean;
+  deviationRatio: number;
+  /** RouterDataV3.packages (Map) → Record */
+  packages?: Record<string, string>;
+  totalDeepFee?: number;
+  error?: { code: number; msg: string };
+  overlayFee?: number;
+}
+
+export interface SerializedCetusRoute {
+  routerData: SerializedRouterDataV3;
+  amountIn: string;
+  amountOut: string;
+  byAmountIn: boolean;
+  priceImpact: number;
+  insufficientLiquidity: boolean;
+  /**
+   * Wall-clock timestamp (ms since epoch) at which the route was discovered.
+   * Used by audric's prepare-route for SPEC 20.2 D-3 TTL re-validation: if
+   * the route is older than the threshold AND price impact has shifted
+   * beyond tolerance, fall back to a fresh `findSwapRoute()` call.
+   */
+  discoveredAt: number;
+  /**
+   * Snapshot of the input/output coin types the route was discovered for.
+   * SPEC 20.2 D-2 (b) structural verification: prepare-route asserts
+   * input/output coins match before using the fast-path; mismatch falls
+   * back to fresh discovery (defense against client-side tampering and
+   * against legitimate token-type drift in the request).
+   */
+  fromCoinType: string;
+  toCoinType: string;
+}
+
+export function serializeCetusRoute(
+  route: SwapRouteResult,
+  context: { fromCoinType: string; toCoinType: string },
+): SerializedCetusRoute {
+  return {
+    routerData: serializeRouterDataV3(route.routerData),
+    amountIn: route.amountIn,
+    amountOut: route.amountOut,
+    byAmountIn: route.byAmountIn,
+    priceImpact: route.priceImpact,
+    insufficientLiquidity: route.insufficientLiquidity,
+    discoveredAt: Date.now(),
+    fromCoinType: context.fromCoinType,
+    toCoinType: context.toCoinType,
+  };
+}
+
+export function deserializeCetusRoute(serialized: SerializedCetusRoute): SwapRouteResult {
+  return {
+    routerData: deserializeRouterDataV3(serialized.routerData),
+    amountIn: serialized.amountIn,
+    amountOut: serialized.amountOut,
+    byAmountIn: serialized.byAmountIn,
+    priceImpact: serialized.priceImpact,
+    insufficientLiquidity: serialized.insufficientLiquidity,
+  };
+}
+
+function serializeRouterDataV3(rd: RouterDataV3): SerializedRouterDataV3 {
+  const out: SerializedRouterDataV3 = {
+    amountIn: rd.amountIn.toString(),
+    amountOut: rd.amountOut.toString(),
+    byAmountIn: rd.byAmountIn,
+    paths: rd.paths.map(serializeCetusRoutePath),
+    insufficientLiquidity: rd.insufficientLiquidity,
+    deviationRatio: rd.deviationRatio,
+  };
+  if (rd.quoteID !== undefined) out.quoteID = rd.quoteID;
+  if (rd.packages) {
+    const obj: Record<string, string> = {};
+    for (const [k, v] of rd.packages) obj[k] = v;
+    out.packages = obj;
+  }
+  if (rd.totalDeepFee !== undefined) out.totalDeepFee = rd.totalDeepFee;
+  if (rd.error) out.error = { code: rd.error.code, msg: rd.error.msg };
+  if (rd.overlayFee !== undefined) out.overlayFee = rd.overlayFee;
+  return out;
+}
+
+function deserializeRouterDataV3(s: SerializedRouterDataV3): RouterDataV3 {
+  const out: RouterDataV3 = {
+    amountIn: new BN(s.amountIn),
+    amountOut: new BN(s.amountOut),
+    byAmountIn: s.byAmountIn,
+    paths: s.paths.map(deserializeCetusRoutePath),
+    insufficientLiquidity: s.insufficientLiquidity,
+    deviationRatio: s.deviationRatio,
+  };
+  if (s.quoteID !== undefined) out.quoteID = s.quoteID;
+  if (s.packages) out.packages = new Map(Object.entries(s.packages));
+  if (s.totalDeepFee !== undefined) out.totalDeepFee = s.totalDeepFee;
+  if (s.error) out.error = { code: s.error.code, msg: s.error.msg };
+  if (s.overlayFee !== undefined) out.overlayFee = s.overlayFee;
+  return out;
+}
+
+function serializeCetusRoutePath(p: RouterDataV3['paths'][number]): SerializedCetusRoutePath {
+  const out: SerializedCetusRoutePath = {
+    id: p.id,
+    direction: p.direction,
+    provider: p.provider,
+    from: p.from,
+    target: p.target,
+    feeRate: p.feeRate,
+    amountIn: p.amountIn,
+    amountOut: p.amountOut,
+  };
+  if (p.version !== undefined) out.version = p.version;
+  if (p.publishedAt !== undefined) out.publishedAt = p.publishedAt;
+  if (p.extendedDetails) out.extendedDetails = { ...p.extendedDetails };
+  return out;
+}
+
+function deserializeCetusRoutePath(p: SerializedCetusRoutePath): RouterDataV3['paths'][number] {
+  const out: RouterDataV3['paths'][number] = {
+    id: p.id,
+    direction: p.direction,
+    provider: p.provider,
+    from: p.from,
+    target: p.target,
+    feeRate: p.feeRate,
+    amountIn: p.amountIn,
+    amountOut: p.amountOut,
+  };
+  if (p.version !== undefined) out.version = p.version;
+  if (p.publishedAt !== undefined) out.publishedAt = p.publishedAt;
+  if (p.extendedDetails) out.extendedDetails = { ...p.extendedDetails };
+  return out;
+}
+
+/**
+ * SPEC 20.2 D-2 (b) structural verification helper. Returns true when the
+ * serialized route matches the requested coin types (i.e. it's safe to use
+ * as the prepare-route fast-path), false otherwise (tampered, or input
+ * mismatch from a legitimate but stale pending action). Caller falls back
+ * to a fresh `findSwapRoute()` call when verification fails.
+ */
+export function verifyCetusRouteCoinMatch(
+  serialized: SerializedCetusRoute,
+  expected: { fromCoinType: string; toCoinType: string },
+): boolean {
+  return serialized.fromCoinType === expected.fromCoinType && serialized.toCoinType === expected.toCoinType;
+}
+
+/**
+ * SPEC 20.2 D-3 (b) TTL helper. Returns true when the serialized route is
+ * fresh enough to use as the fast-path (< `maxAgeMs` old). Returns false
+ * for stale routes — caller falls back to fresh `findSwapRoute()` to pick
+ * up any pool-price drift since route discovery.
+ *
+ * Default 30s aligns with the existing quote-freshness contract surfaced
+ * to users via `pending_action.quoteAge` (the PermissionCard "QUOTE Ns OLD"
+ * badge starts warning the user past 30s).
+ */
+export function isCetusRouteFresh(serialized: SerializedCetusRoute, maxAgeMs: number = 30_000): boolean {
+  return Date.now() - serialized.discoveredAt < maxAgeMs;
 }
 
 /**
@@ -236,12 +431,28 @@ export async function addSwapToTx(
      * for the exclusion list. Non-sponsored callers omit this.
      */
     providers?: string[];
+    /**
+     * [SPEC 20.2 D-3 (b)] Precomputed route from a prior `findSwapRoute()`
+     * call (typically captured by `swap_quote` and threaded through
+     * `pending_action.cetusRoute`). When present AND not stale (per
+     * `isCetusRouteFresh`) AND the input/output coins match, this skips
+     * the ~400-500ms `findSwapRoute()` discovery call. Stale routes are
+     * silently ignored (caller falls back to fresh discovery).
+     *
+     * Caller responsibility: pass the SAME `overlayFee` / `providers` /
+     * `byAmountIn` that produced the precomputed route. Mismatch will
+     * still produce a working swap but may use the wrong overlay-fee
+     * config (the route data already encodes the chosen DEX path).
+     */
+    precomputedRoute?: SwapRouteResult;
   },
 ): Promise<{
   coin: TransactionObjectArgument;
   effectiveAmountIn: number;
   expectedAmountOut: number;
   route: SwapRouteResult;
+  /** True when `precomputedRoute` was used (no `findSwapRoute()` call). */
+  usedPrecomputedRoute: boolean;
 }> {
   const { T2000Error } = await import('../errors.js');
 
@@ -282,15 +493,33 @@ export async function addSwapToTx(
     effectiveRaw = result.effectiveAmount;
   }
 
-  const route = await findSwapRoute({
-    walletAddress: address,
-    from: fromType,
-    to: toType,
-    amount: effectiveRaw,
-    byAmountIn,
-    overlayFee: input.overlayFee,
-    providers: input.providers,
-  });
+  // [SPEC 20.2 D-3 (b)] Use the precomputed route when available + valid.
+  // Validity = same input/output coin types AND the requested raw amount
+  // matches what the route was discovered for (mismatch indicates the user
+  // edited the amount post-quote, in which case we must re-discover at the
+  // new amount because price impact is amount-dependent). The caller
+  // (`audric prepare-route`) owns the staleness check (`isCetusRouteFresh`)
+  // and only forwards `precomputedRoute` when fresh.
+  let route: SwapRouteResult | null;
+  let usedPrecomputedRoute = false;
+  if (
+    input.precomputedRoute &&
+    input.precomputedRoute.amountIn === effectiveRaw.toString() &&
+    input.precomputedRoute.byAmountIn === byAmountIn
+  ) {
+    route = input.precomputedRoute;
+    usedPrecomputedRoute = true;
+  } else {
+    route = await findSwapRoute({
+      walletAddress: address,
+      from: fromType,
+      to: toType,
+      amount: effectiveRaw,
+      byAmountIn,
+      overlayFee: input.overlayFee,
+      providers: input.providers,
+    });
+  }
 
   if (!route) {
     throw new T2000Error('SWAP_NO_ROUTE', `No swap route found for ${input.from} → ${input.to}`);
@@ -313,6 +542,7 @@ export async function addSwapToTx(
     effectiveAmountIn: Number(effectiveRaw) / 10 ** fromDecimals,
     expectedAmountOut: Number(route.amountOut) / 10 ** toDecimals,
     route,
+    usedPrecomputedRoute,
   };
 }
 

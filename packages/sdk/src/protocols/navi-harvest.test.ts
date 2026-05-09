@@ -99,6 +99,7 @@ function mockSwapReturns(expectedOutputUsdc: number, effectiveAmountIn?: number)
         effectiveAmountIn: effectiveAmountIn ?? input.amount,
         expectedAmountOut: expectedOutputUsdc,
         route: {} as never,
+        usedPrecomputedRoute: false,
       };
     },
   );
@@ -196,6 +197,7 @@ describe('buildHarvestRewardsTx', () => {
         effectiveAmountIn: input.amount,
         expectedAmountOut: expectedOutputs[swapCallIdx++] ?? 0,
         route: {} as never,
+        usedPrecomputedRoute: false,
       }));
 
       const { plan } = await buildHarvestRewardsTx(fakeClient, VALID_ADDRESS);
@@ -305,6 +307,7 @@ describe('buildHarvestRewardsTx', () => {
           effectiveAmountIn: input.amount,
           expectedAmountOut: 1.0,
           route: {} as never,
+          usedPrecomputedRoute: false,
         };
       });
 

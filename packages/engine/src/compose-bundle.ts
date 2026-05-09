@@ -40,6 +40,7 @@ import { describeAction } from './describe-action.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
 import { getTelemetrySink } from './telemetry.js';
+import { findMatchingCetusRoute, type SwapQuoteReadEntry } from './swap-route-matching.js';
 import type {
   ContentBlock,
   PendingAction,
@@ -300,6 +301,14 @@ export interface BundleCompositionInput {
     toolName: string;
     timestamp: number;
   }>;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Same-turn `swap_quote` results paired with their
+   * input + serialized Cetus route. Used to populate `step.cetusRoute` for
+   * any `swap_execute` step whose input matches a quote. Empty / undefined
+   * is fine — the bundle still composes correctly without per-step routes
+   * (audric's prepare-route falls back to fresh `findSwapRoute()`).
+   */
+  swapQuoteReads?: SwapQuoteReadEntry[];
   /** Full assistant message blocks for the deferred turn (engine.ts uses this). */
   assistantContent: ContentBlock[];
   /** Already-resolved tool_result blocks (early-dispatched reads + auto writes). */
@@ -347,6 +356,13 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
     }
     const description = describeAction(tool, call);
     const modifiableFields = getModifiableFields(call.name);
+    // [SPEC 20.2 / D-1 (a)] Thread the matching swap_quote's serialized
+    // route into `step.cetusRoute` for swap_execute steps. No-match is
+    // fine — audric prepare-route falls back to fresh findSwapRoute().
+    const cetusRoute =
+      call.name === 'swap_execute' && input.swapQuoteReads
+        ? findMatchingCetusRoute(call.input, input.swapQuoteReads)
+        : undefined;
     return {
       toolName: call.name,
       toolUseId: call.id,
@@ -354,6 +370,7 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
       input: call.input,
       description,
       ...(modifiableFields?.length ? { modifiableFields } : {}),
+      ...(cetusRoute ? { cetusRoute } : {}),
     };
   });
 
@@ -424,6 +441,10 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
     ...(allGuardInjections.length ? { guardInjections: allGuardInjections } : {}),
     turnIndex: input.turnIndex,
     attemptId: firstStep.attemptId,
+    // [SPEC 20.2 / D-1 (a)] Mirror step[0]'s cetusRoute to the top-level
+    // field for backward compat with pre-bundle hosts that don't iterate
+    // steps[]. Bundle-aware hosts read per-step `step.cetusRoute`.
+    ...(firstStep.cetusRoute ? { cetusRoute: firstStep.cetusRoute } : {}),
     steps,
     canRegenerate,
     ...(quoteAge !== undefined ? { quoteAge } : {}),
@@ -434,3 +455,6 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
 
   return action;
 }
+
+// Re-export so external bundlers (engine.ts) can pass the same type.
+export type { SwapQuoteReadEntry } from './swap-route-matching.js';

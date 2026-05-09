@@ -67,10 +67,12 @@
     "@naviprotocol/lending": "^1.4.0",
     "@pythnetwork/pyth-sui-js": "^2.4.0",
     "@suimpp/mpp": "^0.3.1",
+    "bn.js": "^5.2.1",
     "eventemitter3": "^5",
     "mppx": "^0.4.9"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.1.5",
     "@types/node": "^20",
     "eslint": "^9",
     "tsup": "^8",

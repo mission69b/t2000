@@ -151,6 +151,15 @@ export interface SwapExecuteInput {
    *  to remove Pyth-dependent providers — see addSwapToTx JSDoc. composeTx
    *  derives this automatically from `sponsoredContext` if omitted. */
   providers?: string[];
+  /**
+   * [SPEC 20.2 / D-1 (a)] Optional precomputed Cetus route discovered at
+   * `swap_quote` time. Bypasses `findSwapRoute()` (-400-500ms) inside
+   * `addSwapToTx`. Caller (audric prepare-route) is responsible for
+   * coin-type verification (D-2) + freshness check (D-3) before passing.
+   * `addSwapToTx` performs an additional sanity check on `amountIn` +
+   * `byAmountIn` and falls back to fresh discovery on mismatch.
+   */
+  precomputedRoute?: SwapRouteResult;
 }
 
 export type ClaimRewardsInput = Record<string, never>;
@@ -623,6 +632,7 @@ export const WRITE_APPENDER_REGISTRY: {
       overlayFee: ctx.overlayFee,
       providers,
       inputCoin: ctx.chainedCoin,
+      precomputedRoute: input.precomputedRoute,
     });
     if (!ctx.isOutputConsumed) {
       tx.transferObjects([result.coin], ctx.sender);

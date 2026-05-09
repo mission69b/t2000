@@ -384,6 +384,12 @@ export interface PendingActionStep {
    *   `inputCoinFromStep < currentStepIndex` (forward-only references).
    */
   inputCoinFromStep?: number;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Per-step Cetus route — populated for `swap_execute`
+   * steps when a same-turn `swap_quote` matched the step's input. See
+   * `PendingAction.cetusRoute` for the full contract.
+   */
+  cetusRoute?: import('@t2000/sdk').SerializedCetusRoute;
 }
 
 /**
@@ -437,6 +443,25 @@ export interface PendingAction {
    * route loops `stepResults` and updates each per-step row.
    */
   attemptId: string;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Cetus route captured at `swap_quote` time and
+   * threaded through to the prepare-route to skip the ~400-500ms
+   * `findSwapRoute()` re-discovery call. Only populated when the same-turn
+   * read pipeline included a successful `swap_quote` whose input matches
+   * this `pending_action`'s amount/from/to (the engine matches at emission
+   * time). Audric's prepare-route validates freshness + coin-type match
+   * before using as fast-path; falls back to fresh discovery on any
+   * mismatch (D-2 structural verification + D-3 TTL re-validation).
+   *
+   * Also rendered into the post-write resume system prompt as a
+   * `<canonical_route>` block (D-4) so LLM narration grounds against the
+   * canonical route — closes S19-F2 (LLM cites stale swap routes).
+   *
+   * **Bundles:** when present on a `steps[]` entry, the per-step
+   * `cetusRoute` takes precedence over the top-level field (which mirrors
+   * `steps[0].cetusRoute` for backward compat with pre-bundle hosts).
+   */
+  cetusRoute?: import('@t2000/sdk').SerializedCetusRoute;
   /**
    * [SPEC 7 v0.4 Layer 2] When set, this `pending_action` represents a
    * multi-write Payment Intent. Single-step bundles are NOT created — the

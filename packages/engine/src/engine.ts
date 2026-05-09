@@ -48,6 +48,7 @@ import {
   computeRegenerateFields,
   MAX_BUNDLE_OPS,
 } from './compose-bundle.js';
+import { findMatchingCetusRoute, type SwapQuoteReadEntry } from './swap-route-matching.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -375,6 +376,19 @@ export class QueryEngine {
       })),
       ...writeResultBlocks,
     ];
+
+    // [SPEC 20.2 / D-4 (a)] Append a `<canonical_route>` system-instruction
+    // text block to the user message when this resume includes a
+    // swap_execute step. The block grounds LLM narration against the
+    // canonical Cetus route so the LLM stops citing routes from prior
+    // turns / prior swap_quote calls. Closes S19-F2 (LLM stale-route
+    // citation) + S19-F7 (route mismatch between card and prose).
+    const canonicalRouteText = response.approved
+      ? buildCanonicalRouteText(action)
+      : null;
+    if (canonicalRouteText) {
+      allResults.push({ type: 'text', text: canonicalRouteText });
+    }
 
     this.messages.push({ role: 'user', content: allResults });
 
@@ -1212,6 +1226,13 @@ export class QueryEngine {
       timestamp: number;
     }> = [];
 
+    // [SPEC 20.2 / D-1 (a)] Parallel collection of `swap_quote` results
+    // (input + serializedRoute) so the pending_action emission for
+    // `swap_execute` can thread the matching Cetus route. Kept separate
+    // from `turnReadToolResults` so the existing regenerate-fields logic
+    // stays untouched (it only needs metadata).
+    const swapQuoteReads: SwapQuoteReadEntry[] = [];
+
     while (turns < this.maxTurns) {
       if (signal.aborted) {
         yield { type: 'error', error: new Error('Aborted') };
@@ -1454,6 +1475,26 @@ export class QueryEngine {
                 toolName: finalEvent.toolName,
                 timestamp: Date.now(),
               });
+              // [SPEC 20.2 / D-1 (a)] Capture swap_quote results so the
+              // pending_action emission can thread the matching Cetus
+              // route into `pending_action.cetusRoute`. Only populated
+              // when the SDK returned a `serializedRoute` (post-SPEC-20.2
+              // builds) AND the early input is recoverable.
+              if (finalEvent.toolName === 'swap_quote' && earlyInput) {
+                const r = finalEvent.result as { serializedRoute?: unknown; data?: { serializedRoute?: unknown } } | null;
+                const dataResult = r?.data && typeof r.data === 'object' ? (r.data as { serializedRoute?: unknown }) : null;
+                const serializedRoute = (r?.serializedRoute ?? dataResult?.serializedRoute) as
+                  | import('@t2000/sdk').SerializedCetusRoute
+                  | undefined;
+                if (serializedRoute) {
+                  swapQuoteReads.push({
+                    toolUseId: finalEvent.toolUseId,
+                    input: earlyInput as { from: string; to: string; amount: number; byAmountIn?: boolean },
+                    result: { serializedRoute },
+                    timestamp: Date.now(),
+                  });
+                }
+              }
             }
 
             earlyResultBlocks.push({
@@ -1792,6 +1833,23 @@ export class QueryEngine {
                 toolName: finalEvent.toolName,
                 timestamp: Date.now(),
               });
+              // [SPEC 20.2 / D-1 (a)] Mirror the early-dispatch swap_quote
+              // capture so the late-dispatch path also threads the route.
+              if (finalEvent.toolName === 'swap_quote' && originalCall) {
+                const r = finalEvent.result as { serializedRoute?: unknown; data?: { serializedRoute?: unknown } } | null;
+                const dataResult = r?.data && typeof r.data === 'object' ? (r.data as { serializedRoute?: unknown }) : null;
+                const serializedRoute = (r?.serializedRoute ?? dataResult?.serializedRoute) as
+                  | import('@t2000/sdk').SerializedCetusRoute
+                  | undefined;
+                if (serializedRoute) {
+                  swapQuoteReads.push({
+                    toolUseId: finalEvent.toolUseId,
+                    input: originalCall.input as { from: string; to: string; amount: number; byAmountIn?: boolean },
+                    result: { serializedRoute },
+                    timestamp: Date.now(),
+                  });
+                }
+              }
             } else {
               this.turnReadCache.clear();
             }
@@ -2034,6 +2092,7 @@ export class QueryEngine {
             pendingWrites: guardPassedWrites.map((w) => w.call),
             tools: this.tools,
             readResults: turnReadToolResults,
+            swapQuoteReads,
             assistantContent: acc.assistantBlocks,
             completedResults,
             guardInjectionsByCallId,
@@ -2103,6 +2162,13 @@ export class QueryEngine {
         // `quoteAge` is computed.
         const singleWriteRegen = computeRegenerateFields(turnReadToolResults);
 
+        // [SPEC 20.2 / D-1 (a)] Single-write swap_execute: thread the
+        // matching swap_quote's serialized Cetus route into pending_action.
+        const singleCetusRoute =
+          pendingWrite.call.name === 'swap_execute'
+            ? findMatchingCetusRoute(pendingWrite.call.input, swapQuoteReads)
+            : undefined;
+
         yield {
           type: 'pending_action',
           action: {
@@ -2120,6 +2186,7 @@ export class QueryEngine {
             ...(modifiableFields?.length ? { modifiableFields } : {}),
             turnIndex,
             attemptId,
+            ...(singleCetusRoute ? { cetusRoute: singleCetusRoute } : {}),
             ...(singleWriteRegen.canRegenerate
               ? {
                   canRegenerate: true,
@@ -2330,6 +2397,52 @@ export class QueryEngine {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * [SPEC 20.2 / D-4 (a)] Build the `<canonical_route>` text block injected
+ * into the post-write resume's user message. The block grounds LLM
+ * narration against the canonical route the user just approved.
+ *
+ * Returns null when there's nothing to ground (no swap_execute step OR no
+ * cetusRoute attached). Single-write swap reads `action.cetusRoute`;
+ * bundles iterate `steps[]` and emit one block per swap step.
+ */
+function buildCanonicalRouteText(action: PendingAction): string | null {
+  const swaps: Array<{ input: unknown; cetusRoute: NonNullable<PendingAction['cetusRoute']> }> = [];
+
+  if (Array.isArray(action.steps) && action.steps.length > 0) {
+    for (const step of action.steps) {
+      if (step.toolName === 'swap_execute' && step.cetusRoute) {
+        swaps.push({ input: step.input, cetusRoute: step.cetusRoute });
+      }
+    }
+  } else if (action.toolName === 'swap_execute' && action.cetusRoute) {
+    swaps.push({ input: action.input, cetusRoute: action.cetusRoute });
+  }
+
+  if (swaps.length === 0) return null;
+
+  const blocks = swaps.map(({ input, cetusRoute }) => {
+    const inp = input as { from?: string; to?: string; amount?: number } | null;
+    const providers = cetusRoute.routerData.paths
+      .map((p) => p.provider)
+      .filter(Boolean)
+      .slice(0, 5);
+    const providerLine = providers.length > 0 ? providers.join(' + ') : 'Cetus Aggregator';
+    const impactPct = (cetusRoute.priceImpact * 100).toFixed(3);
+    return [
+      '<canonical_route>',
+      `The user just approved a swap. The CANONICAL route taken on-chain is:`,
+      `- Pair: ${inp?.from ?? '?'} → ${inp?.to ?? '?'}`,
+      `- Path: ${providerLine}`,
+      `- Price impact: ${impactPct}%`,
+      `When narrating this swap, cite this EXACT path string. Do NOT reference any prior swap_quote that produced a different route — that quote is no longer canonical.`,
+      '</canonical_route>',
+    ].join('\n');
+  });
+
+  return blocks.join('\n\n');
+}
 
 function isCorruptHistoryError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);

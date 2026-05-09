@@ -81,7 +81,11 @@ export {
   composeBundleFromToolResults,
   computeRegenerateFields,
 } from './compose-bundle.js';
-export type { BundleCompositionInput } from './compose-bundle.js';
+export type { BundleCompositionInput, SwapQuoteReadEntry } from './compose-bundle.js';
+// [SPEC 20.2] Cetus route matching helper — exposed so hosts can replicate
+// the same matching logic when composing pending_actions from non-engine
+// flows (e.g. audric's bundle-prepare path).
+export { findMatchingCetusRoute } from './swap-route-matching.js';
 
 // [SPEC 7 P2.4b] Bundle regeneration — re-fire upstream reads + rebuild
 // a multi-step pending_action without re-running the LLM. Hosts call

@@ -62,6 +62,13 @@ export async function getSwapQuote(params: {
     .slice(0, 3)
     .join(' + ') ?? 'Cetus Aggregator';
 
+  // [SPEC 20.2 / D-1 (a)] Serialize the Cetus route at quote time so the
+  // engine can attach it to `pending_action.cetusRoute`. The serialized
+  // form survives the SSE → client → POST → prepare-route hop without losing
+  // BN/Map fidelity (raw RouterDataV3 doesn't JSON-stringify cleanly).
+  const { serializeCetusRoute } = await import('./protocols/cetus-swap.js');
+  const serializedRoute = serializeCetusRoute(route, { fromCoinType: fromType, toCoinType: toType });
+
   return {
     fromToken: params.from,
     toToken: params.to,
@@ -69,5 +76,6 @@ export async function getSwapQuote(params: {
     toAmount,
     priceImpact: route.priceImpact,
     route: routeDesc,
+    serializedRoute,
   };
 }

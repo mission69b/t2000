@@ -244,6 +244,15 @@ export interface SwapQuoteResult {
   toAmount: number;
   priceImpact: number;
   route: string;
+  /**
+   * [SPEC 20.2 / D-1 (a)] Structured Cetus route captured at quote time.
+   * Threaded through `pending_action.cetusRoute` so the prepare-route can
+   * skip the ~400-500ms `findSwapRoute()` re-discovery, and so the
+   * post-write resume system prompt can ground LLM narration against the
+   * canonical route (closing S19-F2). Optional for backward compat with
+   * pre-SPEC-20.2 callers (CLI, server-only direct calls).
+   */
+  serializedRoute?: import('./protocols/cetus-swap.js').SerializedCetusRoute;
 }
 
 export interface PayOptions {

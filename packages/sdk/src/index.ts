@@ -175,8 +175,18 @@ export {
   buildSwapTx,
   addSwapToTx,
   OVERLAY_FEE_RATE,
+  serializeCetusRoute,
+  deserializeCetusRoute,
+  verifyCetusRouteCoinMatch,
+  isCetusRouteFresh,
 } from './protocols/cetus-swap.js';
-export type { SwapRouteResult, OverlayFeeConfig } from './protocols/cetus-swap.js';
+export type {
+  SwapRouteResult,
+  OverlayFeeConfig,
+  SerializedCetusRoute,
+  SerializedRouterDataV3,
+  SerializedCetusRoutePath,
+} from './protocols/cetus-swap.js';
 export {
   COIN_REGISTRY,
   TOKEN_MAP,
