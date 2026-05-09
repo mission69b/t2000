@@ -459,4 +459,99 @@ describe('fetchBlockVisionWithRetry', () => {
 
     expect(retryStats.attemptCount).toBe(2);
   });
+
+  // -------------------------------------------------------------------
+  // [SPEC 19 Phase F / S.135 — 2026-05-09] external.retry_count counter
+  //
+  // Cross-vendor unified retry-outcome telemetry. Every BV terminal
+  // exit must emit exactly one `external.retry_count` with vendor='bv'
+  // and one of three outcomes:
+  //   - first_try        (succeeded on attempt 0)
+  //   - retried_success  (succeeded on attempt > 0)
+  //   - exhausted        (max retries hit OR non-retriable 4xx OR CB open)
+  //
+  // Symmetric to withSuiRetry (vendor=sui) and AnthropicProvider.chat
+  // (vendor=anthropic). Exhausted-rate is the alarm signal — see
+  // metrics-and-monitoring.mdc for the SLO.
+  // -------------------------------------------------------------------
+
+  describe('external.retry_count emission', () => {
+    let counterSpy: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+      const telemetryMod = await import('../telemetry.js');
+      counterSpy = vi.fn();
+      telemetryMod.setTelemetrySink({
+        counter: counterSpy,
+        gauge: vi.fn(),
+        histogram: vi.fn(),
+      });
+    });
+
+    afterEach(async () => {
+      const telemetryMod = await import('../telemetry.js');
+      telemetryMod.resetTelemetrySink();
+    });
+
+    it('emits first_try outcome on immediate 200', async () => {
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, {}, { ok: true }));
+      await fetchBlockVisionWithRetry(URL, { headers: HEADERS }, { sleep, rng });
+      expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+        vendor: 'bv',
+        outcome: 'first_try',
+        attempts: '1',
+      });
+    });
+
+    it('emits retried_success outcome when 429 then 200 (attempts=2)', async () => {
+      fetchSpy
+        .mockResolvedValueOnce(mockResponse(429))
+        .mockResolvedValueOnce(mockResponse(200, {}, { ok: true }));
+      await fetchBlockVisionWithRetry(URL, { headers: HEADERS }, { sleep, rng });
+      expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+        vendor: 'bv',
+        outcome: 'retried_success',
+        attempts: '2',
+      });
+    });
+
+    it('emits exhausted outcome when all 3 attempts 429 (attempts=3)', async () => {
+      fetchSpy
+        .mockResolvedValueOnce(mockResponse(429))
+        .mockResolvedValueOnce(mockResponse(429))
+        .mockResolvedValueOnce(mockResponse(429));
+      await fetchBlockVisionWithRetry(URL, { headers: HEADERS }, { sleep, rng });
+      expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+        vendor: 'bv',
+        outcome: 'exhausted',
+        attempts: '3',
+      });
+    });
+
+    it('emits first_try outcome on non-retriable 4xx (no retry needed, attempts=1)', async () => {
+      // A 4xx response is the server saying "no" — the retry layer correctly
+      // did NOT waste retries on a permanent error. From the retry layer's
+      // perspective the call succeeded (got a definitive response on first
+      // attempt), so outcome=first_try. The 4xx itself is observable via the
+      // existing `bv.requests` counter (status=400 attempt=0).
+      fetchSpy.mockResolvedValueOnce(mockResponse(400, {}, { error: 'bad' }));
+      await fetchBlockVisionWithRetry(URL, { headers: HEADERS }, { sleep, rng });
+      expect(counterSpy).toHaveBeenCalledWith('external.retry_count', {
+        vendor: 'bv',
+        outcome: 'first_try',
+        attempts: '1',
+      });
+    });
+
+    it('emits exactly one counter per call (no double-emission)', async () => {
+      fetchSpy
+        .mockResolvedValueOnce(mockResponse(429))
+        .mockResolvedValueOnce(mockResponse(200, {}, { ok: true }));
+      await fetchBlockVisionWithRetry(URL, { headers: HEADERS }, { sleep, rng });
+      const retryCallCount = counterSpy.mock.calls.filter(
+        ([name]) => name === 'external.retry_count',
+      ).length;
+      expect(retryCallCount).toBe(1);
+    });
+  });
 });

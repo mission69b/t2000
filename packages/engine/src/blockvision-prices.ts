@@ -171,6 +171,41 @@ interface BvRetryOpts {
 }
 
 /**
+ * [SPEC 19 Phase F / S.135 — 2026-05-09] Unified retry telemetry. Single
+ * emission per terminal state across every retried external-call helper
+ * (BV here, Anthropic in `providers/anthropic.ts`, Sui RPC in audric's
+ * `lib/sui-retry.ts`). Engine-namespaced (no `audric.` prefix) because
+ * this is a resilience-layer abstraction; vendor tag handles attribution.
+ *
+ * The metric describes the RETRY LAYER's behavior, not the call's success/
+ * failure (errors are tracked separately via existing `bv.requests` per-status
+ * counter).
+ *
+ * Outcomes (caller passes explicitly):
+ *   - `first_try`       — no retry was burned. Either succeeded on attempt 0,
+ *                         or returned a non-retriable response (4xx) on
+ *                         attempt 0 — the layer correctly chose not to retry.
+ *   - `retried_success` — the layer retried at least once and recovered.
+ *   - `exhausted`       — the layer retried at least once and gave up
+ *                         (max attempts hit, OR circuit breaker tripped on
+ *                         a transient error path the layer wanted to retry).
+ *
+ * `attempts` tag is the 1-indexed total attempt count (first_try → '1',
+ * second-try success → '2', exhausted-after-3 → '3', etc.).
+ */
+function emitTerminalRetry(
+  vendor: 'bv',
+  attemptZeroIndexed: number,
+  outcome: 'first_try' | 'retried_success' | 'exhausted',
+): void {
+  getTelemetrySink().counter('external.retry_count', {
+    vendor,
+    outcome,
+    attempts: String(attemptZeroIndexed + 1),
+  });
+}
+
+/**
  * `fetch()` with bounded retry on transient failures.
  *
  * Retries on:
@@ -252,6 +287,9 @@ export async function fetchBlockVisionWithRetry(
     } catch (err) {
       lastError = err;
       // Don't retry if the caller cancelled — that's intentional.
+      // Caller-cancel doesn't go through the unified retry counter (it's
+      // not a vendor-side failure; emitting `exhausted` would falsely
+      // inflate the alert metric).
       if ((err as { name?: string })?.name === 'AbortError') throw err;
       getTelemetrySink().counter('bv.requests', { status: 'network_err', attempt: String(attempt) });
       continue;
@@ -259,11 +297,17 @@ export async function fetchBlockVisionWithRetry(
 
     if (lastResponse.ok) {
       getTelemetrySink().counter('bv.requests', { status: '2xx', attempt: String(attempt) });
+      // Discriminator is whether retries were burned — attempt 0 = first_try,
+      // attempt > 0 = retried_success. Symmetric across vendors.
+      emitTerminalRetry('bv', attempt, attempt === 0 ? 'first_try' : 'retried_success');
       return lastResponse;
     }
     // 4xx other than 429 are permanent client errors — no point retrying.
+    // The retry layer correctly chose not to retry; the response is the
+    // response. Caller translates the 4xx into a user-facing error.
     if (lastResponse.status !== 429 && lastResponse.status < 500) {
       getTelemetrySink().counter('bv.requests', { status: String(lastResponse.status), attempt: String(attempt) });
+      emitTerminalRetry('bv', attempt, attempt === 0 ? 'first_try' : 'retried_success');
       return lastResponse;
     }
     // Track 429s for the circuit breaker — if too many fire in a
@@ -275,6 +319,11 @@ export async function fetchBlockVisionWithRetry(
       const now = (opts.now ?? Date.now)();
       cbRecord429(now);
       if (cbIsOpen(now)) {
+        // Circuit-breaker-open early exit: we still surface the 429 to
+        // the caller (degrades to fallback path). The layer wanted to
+        // retry the 429 but the breaker said no — count as `exhausted`
+        // (the layer's retry intent was abandoned).
+        emitTerminalRetry('bv', attempt, 'exhausted');
         return lastResponse;
       }
     } else {
@@ -282,6 +331,10 @@ export async function fetchBlockVisionWithRetry(
     }
   }
 
+  // Loop exhausted (every attempt was a 429 or 5xx that we kept retrying
+  // until we hit BV_RETRY_MAX_ATTEMPTS). Final attempt is the cap minus 1
+  // (0-indexed) — every retry was burned and we still failed.
+  emitTerminalRetry('bv', BV_RETRY_MAX_ATTEMPTS - 1, 'exhausted');
   if (lastResponse) return lastResponse;
   throw lastError ?? new Error('fetch failed after retries');
 }

@@ -11,6 +11,7 @@ import type {
 } from '../types.js';
 import { parseEvalSummary } from '../eval-summary.js';
 import { parseProactiveMarker } from '../proactive-marker.js';
+import { getTelemetrySink } from '../telemetry.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -48,30 +49,72 @@ export class AnthropicProvider implements LLMProvider {
 
   async *chat(params: ChatParams): AsyncGenerator<ProviderEvent> {
     let attempt = 0;
-    while (true) {
-      let yieldedAnything = false;
-      const inner = this.streamOnce(params);
-      try {
-        for (;;) {
-          const next = await inner.next();
-          if (next.done) return;
-          yieldedAnything = true;
-          yield next.value;
-        }
-      } catch (err) {
-        // Best-effort: tell the inner generator to release the underlying stream.
-        try { await inner.return?.(undefined); } catch { /* noop */ }
+    let success = false;
+    try {
+      while (true) {
+        let yieldedAnything = false;
+        const inner = this.streamOnce(params);
+        try {
+          for (;;) {
+            const next = await inner.next();
+            if (next.done) {
+              success = true;
+              return;
+            }
+            yieldedAnything = true;
+            yield next.value;
+          }
+        } catch (err) {
+          // Best-effort: tell the inner generator to release the underlying stream.
+          try { await inner.return?.(undefined); } catch { /* noop */ }
 
-        if (!yieldedAnything && isRetriableError(err) && attempt < this.maxRetries) {
-          attempt++;
-          const delayMs = computeBackoffMs(attempt);
-          console.warn(
-            `[anthropic] retriable error (attempt ${attempt}/${this.maxRetries}, retrying in ${delayMs}ms): ${rawErrorMessage(err)}`,
-          );
-          await sleep(delayMs);
-          continue;
+          if (!yieldedAnything && isRetriableError(err) && attempt < this.maxRetries) {
+            attempt++;
+            const delayMs = computeBackoffMs(attempt);
+            console.warn(
+              `[anthropic] retriable error (attempt ${attempt}/${this.maxRetries}, retrying in ${delayMs}ms): ${rawErrorMessage(err)}`,
+            );
+            await sleep(delayMs);
+            continue;
+          }
+          throw new Error(friendlyErrorMessage(err));
         }
-        throw new Error(friendlyErrorMessage(err));
+      }
+    } finally {
+      // [SPEC 19 Phase F / S.135 — 2026-05-09] Unified retry telemetry.
+      //
+      // The metric describes the RETRY LAYER's behavior, not the call's
+      // success/failure (errors are tracked separately via anthropic.tokens
+      // gaps and provider.chat error events). Three outcomes:
+      //
+      //   - first_try        : no retry happened (whether the call succeeded
+      //                        OR failed with a non-retriable error). Includes
+      //                        4xx auth errors, 4xx malformed-request errors,
+      //                        and any other "the layer correctly chose not
+      //                        to retry" path.
+      //   - retried_success  : at least one retry happened, and the call
+      //                        eventually succeeded.
+      //   - exhausted        : at least one retry happened, and the layer
+      //                        gave up (max retries hit OR the final retry
+      //                        threw a non-retriable error).
+      //
+      // Discriminator is `attempt > 0` (= retries actually happened), not the
+      // success flag. Symmetric to BV's `external.retry_count` semantics so
+      // ops dashboards can sum across vendors meaningfully.
+      const retried = attempt > 0;
+      const outcome = !retried
+        ? 'first_try'
+        : success
+          ? 'retried_success'
+          : 'exhausted';
+      try {
+        getTelemetrySink().counter('external.retry_count', {
+          vendor: 'anthropic',
+          outcome,
+          attempts: String(attempt + 1),
+        });
+      } catch {
+        // Telemetry must never break the chat call.
       }
     }
   }
