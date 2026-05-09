@@ -44,6 +44,34 @@ export const swapQuoteTool = buildTool({
     required: ['from', 'to', 'amount'],
   },
   isReadOnly: true,
+  // [SPEC 20.2 / D-1 (a) follow-on, 2026-05-10] Quote results MUST NOT be
+  // cross-turn deduped by microcompact. Every call legitimately produces a
+  // new result — pool reserves move per block, slippage windows update, the
+  // best route can shift if liquidity moves, and the result's `discoveredAt`
+  // timestamp is different per call by definition.
+  //
+  // Pre-fix: microcompact's default `cacheable: true` replaced the second
+  // identical-input swap_quote tool_result with a `[Same result as call #N
+  // — swap_quote with identical inputs. Result unchanged.]` placeholder.
+  // The placeholder lied — the route and `discoveredAt` had legitimately
+  // updated. Audric's bundle fast-path (which reads quote results from the
+  // persisted ledger to thread `step.cetusRoute`) lost the fresh route and
+  // had to fall back to whichever earlier same-input call WAS preserved
+  // (the "first-seen" anchor, often >30s old → rejected by audric's
+  // `isCetusRouteFresh` 30s gate → fast path missed → bundle paid full
+  // ~400-500ms `findSwapRoute()` round-trip at confirm time).
+  //
+  // Production smoke trace (2026-05-10, session s_1778362657811_c0ed9009a5fb):
+  //   T0     swap_quote(USDC,SUI,0.5)              → route X discovered
+  //   T0+34s swap_quote(USDC,SUI,0.5) [bundle]     → route Y discovered (FRESH)
+  //   T0+50s "Confirm" → fast-path walks history   → walker sees placeholder
+  //                                                   on route Y, falls back
+  //                                                   to route X (52s old)
+  //   T0+52s prepare → cetusRoute STALE → fallback → no perf win
+  //
+  // With `cacheable: false`: route Y stays as full content in the ledger,
+  // walker finds it (~18s old), passes the freshness gate, fast path fires.
+  cacheable: false,
 
   async call(input, context): Promise<{ data: SwapQuoteToolResult; displayText: string }> {
     const walletAddress = context.agent
