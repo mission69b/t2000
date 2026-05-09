@@ -143,6 +143,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     approved: boolean;
     executionResult?: unknown;
     extraTools?: Tool[];
+    indexerCatchupPromise?: Promise<import('../post-write-poll.js').PostWritePollResult>;
   }): Promise<EngineEvent[]> {
     const provider = createMockProvider([
       [{ type: 'tool_call', id: 'tc-write', name: opts.writeName, input: opts.writeInput }],
@@ -159,6 +160,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       ],
       systemPrompt: 'test',
       postWriteRefresh: opts.refreshMap,
+      indexerCatchupPromise: opts.indexerCatchupPromise,
     });
 
     let pa: PendingAction | null = null;
@@ -323,5 +325,101 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     // Narration still happens
     expect(events.some((e) => e.type === 'text_delta')).toBe(true);
     expect(events.some((e) => e.type === 'turn_complete')).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // [SPEC 19 Phase B / 2026-05-09] Pre-warmed indexerCatchupPromise path.
+  // Hosts (resume route) can fire `pollForIndexerCatchup` in parallel with
+  // `createEngine` and pass the returned Promise via
+  // `EngineConfig.indexerCatchupPromise`. The engine awaits this Promise
+  // inside `runPostWriteRefresh` instead of starting a fresh poll. Net
+  // effect: the ~500-1500ms wait overlaps with engine boot.
+  // ---------------------------------------------------------------------------
+  describe('[SPEC 19 Phase B] indexerCatchupPromise (pre-warmed poll)', () => {
+    it('uses the host-provided pre-warmed Promise instead of starting a fresh poll', async () => {
+      reset();
+      // Pre-warmed Promise that's already resolved — the typical case
+      // when the host fired the poll in parallel with engine boot and
+      // boot wall-clock ≥ poll wall-clock.
+      const indexerCatchupPromise = Promise.resolve({
+        outcome: 'detected_change' as const,
+        attempts: 2,
+        resolvedAtMs: 480,
+      });
+
+      const events = await runWriteAndResume({
+        refreshMap: { save_deposit: ['balance_check', 'savings_info'] },
+        write: saveDeposit,
+        writeName: 'save_deposit',
+        writeInput: { amount: 10 },
+        approved: true,
+        executionResult: { success: true },
+        indexerCatchupPromise,
+      });
+
+      // Refresh tools still ran exactly once each — pre-warmed poll only
+      // changes WHEN we wait, not WHETHER we refresh.
+      expect(balanceCalls).toBe(1);
+      expect(savingsCalls).toBe(1);
+
+      const refreshes = events.filter(
+        (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
+      );
+      expect(refreshes).toHaveLength(2);
+    });
+
+    it('falls back to a fresh poll when the pre-warmed Promise rejects', async () => {
+      reset();
+      // Simulates host's pre-warm path throwing — engine must NOT crash;
+      // it logs warn + falls through to the existing fresh poll.
+      const indexerCatchupPromise = Promise.reject(
+        new Error('host pre-warm flaked'),
+      );
+
+      // Suppress the expected console.warn from the fallback.
+      const originalWarn = console.warn;
+      console.warn = () => undefined;
+      try {
+        const events = await runWriteAndResume({
+          refreshMap: { save_deposit: ['balance_check'] },
+          write: saveDeposit,
+          writeName: 'save_deposit',
+          writeInput: { amount: 10 },
+          approved: true,
+          executionResult: { success: true },
+          indexerCatchupPromise,
+        });
+
+        // Engine recovered: refresh ran, narration happened.
+        expect(balanceCalls).toBe(1);
+        expect(events.some((e) => e.type === 'text_delta')).toBe(true);
+        expect(events.some((e) => e.type === 'turn_complete')).toBe(true);
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+
+    it('starts a fresh poll when no pre-warmed Promise is provided (pre-Phase-B path unchanged)', async () => {
+      reset();
+      // No `indexerCatchupPromise` opt — engine takes the legacy path.
+      // This is the same behavior as `wallet-cache.test.ts` covers, but
+      // pinned here so a future Phase B regression that always-awaits
+      // `this.indexerCatchupPromise` (even when undefined) gets caught.
+      const events = await runWriteAndResume({
+        refreshMap: { save_deposit: ['balance_check'] },
+        write: saveDeposit,
+        writeName: 'save_deposit',
+        writeInput: { amount: 10 },
+        approved: true,
+        executionResult: { success: true },
+        // intentionally omit indexerCatchupPromise
+      });
+
+      expect(balanceCalls).toBe(1);
+      const refreshes = events.filter(
+        (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
+      );
+      expect(refreshes).toHaveLength(1);
+    });
   });
 });

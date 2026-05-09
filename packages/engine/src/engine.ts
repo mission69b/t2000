@@ -18,7 +18,7 @@ import { getDefaultTools } from './tools/index.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt/index.js';
 import { clearPortfolioCacheFor } from './blockvision-prices.js';
-import { pollForIndexerCatchup } from './post-write-poll.js';
+import { pollForIndexerCatchup, type PostWritePollResult } from './post-write-poll.js';
 import { getTelemetrySink } from './telemetry.js';
 import { extractAllProactiveMarkers } from './proactive-marker.js';
 import type { PendingInputState } from './pending-input.js';
@@ -103,6 +103,12 @@ export class QueryEngine {
   // [v1.5] See `EngineConfig.postWriteRefresh` — drives the post-write
   // synthetic read injection in `resumeWithToolResult`.
   private readonly postWriteRefresh: EngineConfig['postWriteRefresh'];
+  // [SPEC 19 Phase B / 2026-05-09] Pre-warmed indexer-catchup poll Promise.
+  // When provided by the host (resume route fires `pollForIndexerCatchup`
+  // in parallel with `createEngine`), `runPostWriteRefresh` awaits this
+  // instead of starting a fresh poll. See `EngineConfig.indexerCatchupPromise`
+  // for the full design rationale.
+  private readonly indexerCatchupPromise: EngineConfig['indexerCatchupPromise'];
   private matchedRecipe: Recipe | null = null;
 
   private messages: Message[] = [];
@@ -180,6 +186,7 @@ export class QueryEngine {
     this.onAutoExecuted = config.onAutoExecuted;
     this.onGuardFired = config.onGuardFired;
     this.postWriteRefresh = config.postWriteRefresh;
+    this.indexerCatchupPromise = config.indexerCatchupPromise;
     this.blockvisionApiKey = config.blockvisionApiKey;
     this.portfolioCache = config.portfolioCache;
 
@@ -801,14 +808,42 @@ export class QueryEngine {
     // ~500-1200ms per write; worst case identical to pre-A1 (defensive
     // ceiling at 1500ms). All failure modes fall back to fixed-sleep
     // behavior so reliability is preserved.
+    //
+    // [SPEC 19 Phase B — v1.24.11] If the host pre-fired the poll in
+    // parallel with engine boot (`config.indexerCatchupPromise`), await
+    // that Promise instead of starting a fresh poll. Net effect: the
+    // ~500-1500ms wait overlaps with engine boot and disappears from the
+    // post-write critical path. Fall through to the fresh poll on Promise
+    // rejection so reliability is preserved.
     const sleepStart = Date.now();
-    const pollResult = await pollForIndexerCatchup({
-      suiRpcUrl: this.suiRpcUrl,
-      address: this.walletAddress,
-      ceilingMs: 1500,
-      pollIntervalMs: 250,
-      signal,
-    });
+    let pollResult: PostWritePollResult;
+    let sleepSource: 'pre-warmed' | 'engine' = 'engine';
+    if (this.indexerCatchupPromise) {
+      try {
+        pollResult = await this.indexerCatchupPromise;
+        sleepSource = 'pre-warmed';
+      } catch (err) {
+        console.warn(
+          '[engine.pwr] pre-warmed indexer catchup promise rejected; falling back to fresh poll:',
+          err,
+        );
+        pollResult = await pollForIndexerCatchup({
+          suiRpcUrl: this.suiRpcUrl,
+          address: this.walletAddress,
+          ceilingMs: 1500,
+          pollIntervalMs: 250,
+          signal,
+        });
+      }
+    } else {
+      pollResult = await pollForIndexerCatchup({
+        suiRpcUrl: this.suiRpcUrl,
+        address: this.walletAddress,
+        ceilingMs: 1500,
+        pollIntervalMs: 250,
+        signal,
+      });
+    }
     getTelemetrySink().histogram(
       'engine.pwr.sleep_ms',
       Date.now() - sleepStart,
@@ -816,6 +851,7 @@ export class QueryEngine {
         aborted: signal.aborted ? '1' : '0',
         outcome: pollResult.outcome,
         attempts: String(pollResult.attempts),
+        source: sleepSource,
       },
     );
     if (signal.aborted) return;

@@ -883,6 +883,42 @@ export interface EngineConfig {
    * Omit (undefined / empty map) to disable post-write refresh entirely.
    */
   postWriteRefresh?: Record<string, string[]>;
+
+  /**
+   * [SPEC 19 Phase B / 2026-05-09] Pre-warmed indexer-catchup poll Promise.
+   *
+   * Hosts that know the wallet address + Sui RPC URL the moment a resume
+   * request lands (e.g. `app/api/engine/resume/route.ts`, where both are
+   * available immediately after JWT validation) can fire
+   * `pollForIndexerCatchup` in parallel with `createEngine` and pass the
+   * returned Promise here. The engine awaits this Promise inside
+   * `runPostWriteRefresh` instead of starting a fresh poll, eliminating
+   * up to ~1.5s of serial wait when engine boot wall-clock ≥ poll
+   * wall-clock.
+   *
+   * Behavior:
+   *   - Promise resolves before refresh starts → instant pass-through
+   *     (poll already done during boot). This is the typical case.
+   *   - Promise still pending when refresh starts → engine awaits it.
+   *     Net effect: same as pre-Phase-B fresh-poll behavior.
+   *   - Promise undefined → engine starts a fresh poll (pre-Phase-B path).
+   *   - Promise rejects → engine logs warn + falls back to fresh poll
+   *     (correctness preserved; same as `outcome: 'fallback_*'`).
+   *
+   * Telemetry: `engine.pwr.sleep_ms` carries `source` tag = `'pre-warmed' | 'engine'`
+   * so the host can verify the parallelization is shaving wall-clock.
+   * On the pre-warmed path, the `outcome` + `attempts` tags are inherited
+   * from the host's poll result — same shape, just resolved earlier.
+   *
+   * Safe because:
+   *   - Poll baseline is captured via Sui RPC `getAllBalances` and is
+   *     independent of any BlockVision cache state. Pre-firing the poll
+   *     before engine boot does NOT race the engine's cache invalidation.
+   *   - The poll's correctness contract (never proceed until indexer
+   *     reflects the write) is preserved — it just runs on a different
+   *     timeline.
+   */
+  indexerCatchupPromise?: Promise<import('./post-write-poll.js').PostWritePollResult>;
 }
 
 // ---------------------------------------------------------------------------

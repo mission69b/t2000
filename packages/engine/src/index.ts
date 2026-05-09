@@ -36,6 +36,20 @@ export type {
 // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape mapping helper.
 export { harnessShapeForEffort } from './types.js';
 
+// [SPEC 19 Phase B / 2026-05-09] Bounded indexer-catchup poll. Hosts that
+// know the wallet address + Sui RPC URL the moment a resume request lands
+// (e.g. `app/api/engine/resume/route.ts`) can fire this in parallel with
+// `createEngine` and pass the returned Promise via
+// `EngineConfig.indexerCatchupPromise` so the post-write refresh wait
+// overlaps with engine boot. Saves ~500-1500ms per write resume when
+// boot wall-clock ≥ poll wall-clock.
+export { pollForIndexerCatchup } from './post-write-poll.js';
+export type {
+  PostWritePollOptions,
+  PostWritePollOutcome,
+  PostWritePollResult,
+} from './post-write-poll.js';
+
 // [SPEC 7 v0.4 Layer 2] Per-tool result freshness budgets for the
 // Quote-Refresh ReviewCard (Layer 3 / P2.4b host wires the regenerate UI).
 export { TOOL_TTL_MS, DEFAULT_TOOL_TTL_MS, bundleShortestTtl, REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
