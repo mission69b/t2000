@@ -383,8 +383,29 @@ export class QueryEngine {
     // canonical Cetus route so the LLM stops citing routes from prior
     // turns / prior swap_quote calls. Closes S19-F2 (LLM stale-route
     // citation) + S19-F7 (route mismatch between card and prose).
+    //
+    // [SPEC 20.2 / D-4 (b) follow-on, 2026-05-10] CRITICAL: gate per-step
+    // tx success, not just `response.approved`. Pre-fix, the block was
+    // emitted whenever the user clicked Confirm — even if the bundle
+    // reverted at sponsor / dry-run / on-chain. The "The user just
+    // approved a swap. The CANONICAL route taken on-chain is..." text is
+    // a strong directive that overrode the failed tool_results in the
+    // same user message, causing the LLM to narrate "executed
+    // atomically" for a tx that never reached chain.
+    //
+    // Production smoke 2026-05-09 (session s_1778363976666_bc618ba691bb,
+    // bundle 351125bd-68fa-4ced-ac38-5f7f1f30791b): Enoki sponsor
+    // returned `err_amount_out_slippage_check_failed`, audric correctly
+    // sent stepResults with `_bundleReverted: true` + `isError: true` for
+    // every leg, but the LLM still narrated "Swapped 0.5 USDC for ~0.469
+    // SUI...both executed atomically." A money-trust failure.
+    //
+    // Fix: only inject the canonical_route block for swap legs whose
+    // tool_result is NOT an error. If every swap leg failed, return null
+    // (no canonical_route text at all) so the LLM narrates the failure
+    // from the error tool_results unambiguously.
     const canonicalRouteText = response.approved
-      ? buildCanonicalRouteText(action)
+      ? buildCanonicalRouteText(action, response)
       : null;
     if (canonicalRouteText) {
       allResults.push({ type: 'text', text: canonicalRouteText });
@@ -2406,18 +2427,61 @@ export class QueryEngine {
  * Returns null when there's nothing to ground (no swap_execute step OR no
  * cetusRoute attached). Single-write swap reads `action.cetusRoute`;
  * bundles iterate `steps[]` and emit one block per swap step.
+ *
+ * [SPEC 20.2 / D-4 (b) follow-on, 2026-05-10] Per-step tx-success gate.
+ * Skip swap legs whose tool_result is an error so the LLM never sees a
+ * "the canonical route taken on-chain is X" claim about a tx that
+ * reverted. See the production smoke trace in the call-site comment.
+ *
+ * Failure detection rules:
+ * - Bundle: a step is failed iff its `stepResults[]` entry has
+ *   `isError === true`. Steps with no matching stepResult entry are
+ *   conservatively treated as failed (the engine already flags
+ *   missing-result steps as errors for atomic-semantics safety — see
+ *   the `_hostBugMissingStepResult` branch above).
+ * - Single-write: failed iff `executionResult` is an object carrying a
+ *   `success: false`, an `error` key, or one of the known revert
+ *   sentinels (`_bundleReverted`, `_sessionExpired`, `_txReverted`).
+ *   The engine's single-write tool_result block always sets
+ *   `isError: false` (a separate-but-related bug), so we can't rely on
+ *   the block-level flag here — we have to inspect the payload shape.
  */
-function buildCanonicalRouteText(action: PendingAction): string | null {
+// Internal — exported only so the canonical-route regression tests can
+// exercise the per-step success gate without spinning a full engine
+// instance. Not part of the public API; do not depend on this from host
+// code (use `engine.resumeWithToolResult(...)` instead).
+export function buildCanonicalRouteText(
+  action: PendingAction,
+  response: PermissionResponse,
+): string | null {
+  const failedToolUseIds = new Set<string>();
+  if (Array.isArray(action.steps) && action.steps.length > 0) {
+    const stepResultByToolUseId = new Map(
+      (response.stepResults ?? []).map((sr) => [sr.toolUseId, sr]),
+    );
+    for (const step of action.steps) {
+      const sr = stepResultByToolUseId.get(step.toolUseId);
+      if (!sr || sr.isError === true) {
+        failedToolUseIds.add(step.toolUseId);
+      }
+    }
+  } else if (isExecutionResultFailure(response.executionResult)) {
+    failedToolUseIds.add(action.toolUseId);
+  }
+
   const swaps: Array<{ input: unknown; cetusRoute: NonNullable<PendingAction['cetusRoute']> }> = [];
 
   if (Array.isArray(action.steps) && action.steps.length > 0) {
     for (const step of action.steps) {
       if (step.toolName === 'swap_execute' && step.cetusRoute) {
+        if (failedToolUseIds.has(step.toolUseId)) continue;
         swaps.push({ input: step.input, cetusRoute: step.cetusRoute });
       }
     }
   } else if (action.toolName === 'swap_execute' && action.cetusRoute) {
-    swaps.push({ input: action.input, cetusRoute: action.cetusRoute });
+    if (!failedToolUseIds.has(action.toolUseId)) {
+      swaps.push({ input: action.input, cetusRoute: action.cetusRoute });
+    }
   }
 
   if (swaps.length === 0) return null;
@@ -2442,6 +2506,50 @@ function buildCanonicalRouteText(action: PendingAction): string | null {
   });
 
   return blocks.join('\n\n');
+}
+
+/**
+ * [SPEC 20.2 / D-4 (b) follow-on, 2026-05-10] Heuristic: does this
+ * single-write `executionResult` payload represent a failure?
+ *
+ * The engine's single-write tool_result block is hardcoded to
+ * `isError: false` (engine.ts ~349) — so we can't use that flag. Instead
+ * we sniff the payload shape for any of the known failure tells:
+ *
+ * - `success: false` (audric's executeToolAction shape on catch)
+ * - `error` key present (audric's pay_api / generic catch shape)
+ * - `_bundleReverted: true` (atomic Payment Intent revert)
+ * - `_sessionExpired: true` (Enoki zkLogin JWT expired)
+ * - `_txReverted: true` (reserved for future on-chain revert sentinel)
+ *
+ * Conservative-by-design: when we can't tell, return false (treat as
+ * success). Wrong-direction failure here would suppress the
+ * canonical_route block on a successful swap; the LLM would still
+ * narrate from the success-shaped tool_result, just without the
+ * route-grounding block. Wrong-direction success would re-introduce the
+ * narration-lie bug, which is what we're fixing.
+ */
+function isExecutionResultFailure(executionResult: unknown): boolean {
+  if (executionResult === null || executionResult === undefined) return false;
+  if (typeof executionResult !== 'object') return false;
+  const er = executionResult as Record<string, unknown>;
+  if (er.success === false) return true;
+  if (typeof er.error === 'string' && er.error.length > 0) return true;
+  if (er._bundleReverted === true) return true;
+  if (er._sessionExpired === true) return true;
+  if (er._txReverted === true) return true;
+  // Audric's executeToolAction wraps payloads as { success, data }; the
+  // failure shape is `{ success: false, data: { error: '...' } }`. The
+  // outer `success: false` already caught it, but inspect data too in
+  // case a future caller flattens.
+  if (er.data && typeof er.data === 'object') {
+    const d = er.data as Record<string, unknown>;
+    if (typeof d.error === 'string' && d.error.length > 0) return true;
+    if (d._bundleReverted === true) return true;
+    if (d._sessionExpired === true) return true;
+    if (d._txReverted === true) return true;
+  }
+  return false;
 }
 
 function isCorruptHistoryError(err: unknown): boolean {
