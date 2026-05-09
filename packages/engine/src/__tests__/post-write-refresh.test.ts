@@ -1,7 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
 import { buildTool } from '../tool.js';
+import {
+  setTelemetrySink,
+  resetTelemetrySink,
+  type TelemetrySink,
+  type TelemetryTags,
+} from '../telemetry.js';
 import type {
   LLMProvider,
   ChatParams,
@@ -143,7 +149,6 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     approved: boolean;
     executionResult?: unknown;
     extraTools?: Tool[];
-    indexerCatchupPromise?: Promise<import('../post-write-poll.js').PostWritePollResult>;
   }): Promise<EngineEvent[]> {
     const provider = createMockProvider([
       [{ type: 'tool_call', id: 'tc-write', name: opts.writeName, input: opts.writeInput }],
@@ -160,7 +165,6 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       ],
       systemPrompt: 'test',
       postWriteRefresh: opts.refreshMap,
-      indexerCatchupPromise: opts.indexerCatchupPromise,
     });
 
     let pa: PendingAction | null = null;
@@ -328,98 +332,125 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // [SPEC 19 Phase B / 2026-05-09] Pre-warmed indexerCatchupPromise path.
-  // Hosts (resume route) can fire `pollForIndexerCatchup` in parallel with
-  // `createEngine` and pass the returned Promise via
-  // `EngineConfig.indexerCatchupPromise`. The engine awaits this Promise
-  // inside `runPostWriteRefresh` instead of starting a fresh poll. Net
-  // effect: the ~500-1500ms wait overlaps with engine boot.
+  // [SPEC 19 Option 3 / v1.24.12 / 2026-05-09] No post-write sleep.
+  //
+  // Phase A's bounded poll regressed median sleep wall-clock by +45% and
+  // worst case by ~4× (production smoke 2026-05-09). Root cause: the
+  // ceiling math used `floor(ceiling/interval)` which doesn't account for
+  // per-iteration RPC time. By the time the poll baseline was captured,
+  // the indexer had typically already caught up (host's
+  // `/api/transactions/execute` already awaits `sui_wait_for_transaction`
+  // ~2.1s before the resume request lands), so the poll busy-waited
+  // looking for a delta that already happened.
+  //
+  // Option 3: skip the wait entirely. Refresh tools fire immediately
+  // after cache invalidation. A non-blocking safety net captures
+  // pre-invalidation Sui-RPC state, compares to a fresh post-refresh
+  // snapshot, and emits `engine.pwr.observed_stale_balance_check` if
+  // they're identical (= indexer hadn't moved during the entire refresh
+  // window). Pure observability — never blocks, never retries.
   // ---------------------------------------------------------------------------
-  describe('[SPEC 19 Phase B] indexerCatchupPromise (pre-warmed poll)', () => {
-    it('uses the host-provided pre-warmed Promise instead of starting a fresh poll', async () => {
-      reset();
-      // Pre-warmed Promise that's already resolved — the typical case
-      // when the host fired the poll in parallel with engine boot and
-      // boot wall-clock ≥ poll wall-clock.
-      const indexerCatchupPromise = Promise.resolve({
-        outcome: 'detected_change' as const,
-        attempts: 2,
-        resolvedAtMs: 480,
-      });
+  describe('[SPEC 19 Option 3] no post-write sleep', () => {
+    let captured: Array<{
+      kind: 'counter' | 'histogram' | 'gauge';
+      name: string;
+      tags?: TelemetryTags;
+      value?: number;
+    }>;
+    let originalWarn: typeof console.warn;
 
-      const events = await runWriteAndResume({
+    beforeEach(() => {
+      captured = [];
+      const sink: TelemetrySink = {
+        counter: (name, tags, value) => {
+          captured.push({ kind: 'counter', name, tags, value });
+        },
+        gauge: (name, value, tags) => {
+          captured.push({ kind: 'gauge', name, value, tags });
+        },
+        histogram: (name, value, tags) => {
+          captured.push({ kind: 'histogram', name, value, tags });
+        },
+      };
+      setTelemetrySink(sink);
+      // Safety-net path fires `fetchWalletCoins`; in unit-test mode there's
+      // no `walletAddress` / `suiRpcUrl` on the engine so the path is
+      // skipped — no live RPC, no warn spam expected. We still suppress
+      // warns defensively in case downstream behavior changes.
+      originalWarn = console.warn;
+      console.warn = () => undefined;
+    });
+
+    afterEach(() => {
+      resetTelemetrySink();
+      console.warn = originalWarn;
+    });
+
+    it('emits engine.pwr.skipped_sleep_count exactly once per refresh and never engine.pwr.sleep_ms', async () => {
+      reset();
+      await runWriteAndResume({
         refreshMap: { save_deposit: ['balance_check', 'savings_info'] },
         write: saveDeposit,
         writeName: 'save_deposit',
         writeInput: { amount: 10 },
         approved: true,
         executionResult: { success: true },
-        indexerCatchupPromise,
       });
 
-      // Refresh tools still ran exactly once each — pre-warmed poll only
-      // changes WHEN we wait, not WHETHER we refresh.
-      expect(balanceCalls).toBe(1);
-      expect(savingsCalls).toBe(1);
-
-      const refreshes = events.filter(
-        (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
+      const skipped = captured.filter(
+        (c) => c.kind === 'counter' && c.name === 'engine.pwr.skipped_sleep_count',
       );
-      expect(refreshes).toHaveLength(2);
+      expect(skipped).toHaveLength(1);
+
+      const sleeps = captured.filter(
+        (c) => c.kind === 'histogram' && c.name === 'engine.pwr.sleep_ms',
+      );
+      expect(sleeps).toHaveLength(0);
     });
 
-    it('falls back to a fresh poll when the pre-warmed Promise rejects', async () => {
+    it('does not emit skipped_sleep_count when the write was declined (refresh skipped entirely)', async () => {
       reset();
-      // Simulates host's pre-warm path throwing — engine must NOT crash;
-      // it logs warn + falls through to the existing fresh poll.
-      const indexerCatchupPromise = Promise.reject(
-        new Error('host pre-warm flaked'),
+      await runWriteAndResume({
+        refreshMap: { save_deposit: ['balance_check', 'savings_info'] },
+        write: saveDeposit,
+        writeName: 'save_deposit',
+        writeInput: { amount: 10 },
+        approved: false,
+      });
+
+      const skipped = captured.filter(
+        (c) => c.kind === 'counter' && c.name === 'engine.pwr.skipped_sleep_count',
       );
-
-      // Suppress the expected console.warn from the fallback.
-      const originalWarn = console.warn;
-      console.warn = () => undefined;
-      try {
-        const events = await runWriteAndResume({
-          refreshMap: { save_deposit: ['balance_check'] },
-          write: saveDeposit,
-          writeName: 'save_deposit',
-          writeInput: { amount: 10 },
-          approved: true,
-          executionResult: { success: true },
-          indexerCatchupPromise,
-        });
-
-        // Engine recovered: refresh ran, narration happened.
-        expect(balanceCalls).toBe(1);
-        expect(events.some((e) => e.type === 'text_delta')).toBe(true);
-        expect(events.some((e) => e.type === 'turn_complete')).toBe(true);
-      } finally {
-        console.warn = originalWarn;
-      }
+      expect(skipped).toHaveLength(0);
     });
 
-    it('starts a fresh poll when no pre-warmed Promise is provided (pre-Phase-B path unchanged)', async () => {
+    it('does not emit observed_stale_balance_check when no walletAddress is configured (safety net path skipped)', async () => {
       reset();
-      // No `indexerCatchupPromise` opt — engine takes the legacy path.
-      // This is the same behavior as `wallet-cache.test.ts` covers, but
-      // pinned here so a future Phase B regression that always-awaits
-      // `this.indexerCatchupPromise` (even when undefined) gets caught.
-      const events = await runWriteAndResume({
+      // Default test engine has no walletAddress → safetyNetBaseline is
+      // null → background diff never fires → counter never emits.
+      await runWriteAndResume({
         refreshMap: { save_deposit: ['balance_check'] },
         write: saveDeposit,
         writeName: 'save_deposit',
         writeInput: { amount: 10 },
         approved: true,
         executionResult: { success: true },
-        // intentionally omit indexerCatchupPromise
       });
 
-      expect(balanceCalls).toBe(1);
-      const refreshes = events.filter(
-        (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
+      // Give the (would-be) background promise a microtask tick to settle.
+      await new Promise((r) => setTimeout(r, 10));
+
+      const stale = captured.filter(
+        (c) =>
+          c.kind === 'counter' &&
+          c.name === 'engine.pwr.observed_stale_balance_check',
       );
-      expect(refreshes).toHaveLength(1);
+      expect(stale).toHaveLength(0);
+
+      const skipped = captured.find(
+        (c) => c.kind === 'counter' && c.name === 'engine.pwr.skipped_sleep_count',
+      );
+      expect(skipped?.tags?.can_safety_net).toBe('0');
     });
   });
 });

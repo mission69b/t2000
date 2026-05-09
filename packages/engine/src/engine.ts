@@ -18,7 +18,7 @@ import { getDefaultTools } from './tools/index.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { DEFAULT_SYSTEM_PROMPT } from './prompt/index.js';
 import { clearPortfolioCacheFor } from './blockvision-prices.js';
-import { pollForIndexerCatchup, type PostWritePollResult } from './post-write-poll.js';
+import { fetchWalletCoins } from './sui/rpc.js';
 import { getTelemetrySink } from './telemetry.js';
 import { extractAllProactiveMarkers } from './proactive-marker.js';
 import type { PendingInputState } from './pending-input.js';
@@ -103,12 +103,6 @@ export class QueryEngine {
   // [v1.5] See `EngineConfig.postWriteRefresh` — drives the post-write
   // synthetic read injection in `resumeWithToolResult`.
   private readonly postWriteRefresh: EngineConfig['postWriteRefresh'];
-  // [SPEC 19 Phase B / 2026-05-09] Pre-warmed indexer-catchup poll Promise.
-  // When provided by the host (resume route fires `pollForIndexerCatchup`
-  // in parallel with `createEngine`), `runPostWriteRefresh` awaits this
-  // instead of starting a fresh poll. See `EngineConfig.indexerCatchupPromise`
-  // for the full design rationale.
-  private readonly indexerCatchupPromise: EngineConfig['indexerCatchupPromise'];
   private matchedRecipe: Recipe | null = null;
 
   private messages: Message[] = [];
@@ -186,7 +180,6 @@ export class QueryEngine {
     this.onAutoExecuted = config.onAutoExecuted;
     this.onGuardFired = config.onGuardFired;
     this.postWriteRefresh = config.postWriteRefresh;
-    this.indexerCatchupPromise = config.indexerCatchupPromise;
     this.blockvisionApiKey = config.blockvisionApiKey;
     this.portfolioCache = config.portfolioCache;
 
@@ -762,25 +755,36 @@ export class QueryEngine {
     };
 
     // [v1.4 — Day 2.5] Bust both portfolio caches for this address before
-    // the 1.5s Sui-RPC-indexer-lag delay. The v1.4 BlockVision swap
-    // introduced two caching layers — `ToolContext.portfolioCache`
-    // (per-request Map, no TTL) and the module-level cache in
-    // `blockvision-prices.ts` (60s TTL). Without explicit invalidation,
-    // `runPostWriteRefresh` re-runs `balance_check`, which calls
-    // `fetchAddressPortfolio()`, which returns the *cached pre-write
-    // snapshot* — defeating the entire point of post-write refresh and
-    // resurrecting the v0.46.16-era class of "I deposited 20 USDC but
-    // the agent says my balance didn't change" bug. Pre-v1.4 the same
-    // path called `fetchWalletCoins` (Sui RPC, no cache) so the 1.5s
-    // delay alone was sufficient; post-v1.4 we MUST invalidate or no
-    // amount of waiting will help.
+    // the refresh tools fire. The v1.4 BlockVision swap introduced two
+    // caching layers — `ToolContext.portfolioCache` (per-request Map, no
+    // TTL) and the module-level cache in `blockvision-prices.ts` (60s
+    // TTL). Without explicit invalidation, `runPostWriteRefresh` re-runs
+    // `balance_check`, which calls `fetchAddressPortfolio()`, which
+    // returns the *cached pre-write snapshot* — defeating the entire
+    // point of post-write refresh and resurrecting the v0.46.16-era
+    // class of "I deposited 20 USDC but the agent says my balance didn't
+    // change" bug.
     //
     // [PR 1 — v0.55] `clearPortfolioCacheFor` is now async (Upstash-backed
     // when Audric injects the store) — MUST be awaited or the next
     // `balance_check` races the Redis delete and refetches the stale
-    // pre-write balance. Pre-PR-1 it was a sync Map.delete and
-    // fire-and-forget worked; under Redis the network round-trip is
-    // load-bearing.
+    // pre-write balance.
+    //
+    // [SPEC 19 Option 3 — v1.24.12 / 2026-05-09] Capture the pre-invalidation
+    // Sui-RPC wallet snapshot in the BACKGROUND (not awaited). It feeds the
+    // post-refresh staleness counter below — pure observability, never
+    // blocks the critical path. `null` on any failure (no walletAddress,
+    // no rpc, fetch error) → safety net silently skipped.
+    const canSafetyNet = !!(this.walletAddress && this.suiRpcUrl);
+    const safetyNetBaseline: Promise<Map<string, bigint> | null> | null = canSafetyNet
+      ? fetchWalletCoins(this.walletAddress!, this.suiRpcUrl!)
+          .then(
+            (coins) =>
+              new Map(coins.map((c) => [c.coinType, BigInt(c.totalBalance)])),
+          )
+          .catch(() => null)
+      : null;
+
     const cacheInvalidationStart = Date.now();
     if (this.walletAddress) {
       this.portfolioCache?.delete(this.walletAddress);
@@ -792,68 +796,43 @@ export class QueryEngine {
       { has_wallet: this.walletAddress ? '1' : '0' },
     );
 
-    // [SPEC 19 Phase A — v1.24.10] Bounded poll-on-balance-delta replaces
-    // the hardcoded 1500ms sleep. Same correctness contract (never proceed
-    // until the Sui RPC owned-coin index has caught up post-write), but
-    // exits early on the first detected balance delta vs a baseline.
+    // [SPEC 19 Option 3 — v1.24.12 / 2026-05-09] No post-write sleep.
     //
-    // Pre-A1 history: v0.46.16 added a fixed 1500ms sleep to mask the
-    // ~500-1500ms owned-coin indexer lag that follows `executeTransactionBlock`
-    // settling in a checkpoint. Without it, the injected `balance_check`
-    // returned pre-write data and the LLM either trusted it (wrong) or had
-    // to reason around it (noisy). The fix paid worst-case latency on every
-    // write even when the indexer was already caught up.
+    // Pre-A1 history (v0.46.16 → v1.24.9): hardcoded 1500ms sleep to mask
+    // ~500-1500ms Sui-RPC owned-coin indexer lag.
     //
-    // A1 design: see packages/engine/src/post-write-poll.ts. Median win
-    // ~500-1200ms per write; worst case identical to pre-A1 (defensive
-    // ceiling at 1500ms). All failure modes fall back to fixed-sleep
-    // behavior so reliability is preserved.
+    // Phase A (v1.24.10 → v1.24.11) — bounded poll-on-balance-delta:
+    //   REGRESSION. Mean wall-clock 2173ms (vs 1500ms baseline, +45%).
+    //   Worst case 5719ms (vs 1500ms, ~4× worse). Two compounding bugs:
+    //     1. `maxAttempts = floor(ceiling/interval)` doesn't account for
+    //        per-iteration RPC time → "1500ms ceiling" was actually
+    //        1500ms + 7×RPC ≈ 3.4s typical, 5.7s observed worst-case.
+    //     2. By the time the poll baseline is captured, the tx has been
+    //        on-chain ≥1s (sui_wait_for_transaction in the host's
+    //        execute path). The Sui indexer is typically already caught
+    //        up — baseline = post-write state, poll never detects a
+    //        delta, hits ceiling on 9/10 writes (production smoke
+    //        2026-05-09).
     //
-    // [SPEC 19 Phase B — v1.24.11] If the host pre-fired the poll in
-    // parallel with engine boot (`config.indexerCatchupPromise`), await
-    // that Promise instead of starting a fresh poll. Net effect: the
-    // ~500-1500ms wait overlaps with engine boot and disappears from the
-    // post-write critical path. Fall through to the fresh poll on Promise
-    // rejection so reliability is preserved.
-    const sleepStart = Date.now();
-    let pollResult: PostWritePollResult;
-    let sleepSource: 'pre-warmed' | 'engine' = 'engine';
-    if (this.indexerCatchupPromise) {
-      try {
-        pollResult = await this.indexerCatchupPromise;
-        sleepSource = 'pre-warmed';
-      } catch (err) {
-        console.warn(
-          '[engine.pwr] pre-warmed indexer catchup promise rejected; falling back to fresh poll:',
-          err,
-        );
-        pollResult = await pollForIndexerCatchup({
-          suiRpcUrl: this.suiRpcUrl,
-          address: this.walletAddress,
-          ceilingMs: 1500,
-          pollIntervalMs: 250,
-          signal,
-        });
-      }
-    } else {
-      pollResult = await pollForIndexerCatchup({
-        suiRpcUrl: this.suiRpcUrl,
-        address: this.walletAddress,
-        ceilingMs: 1500,
-        pollIntervalMs: 250,
-        signal,
-      });
-    }
-    getTelemetrySink().histogram(
-      'engine.pwr.sleep_ms',
-      Date.now() - sleepStart,
-      {
-        aborted: signal.aborted ? '1' : '0',
-        outcome: pollResult.outcome,
-        attempts: String(pollResult.attempts),
-        source: sleepSource,
-      },
-    );
+    // Option 3: skip the wait entirely. The host's `/api/transactions/execute`
+    // already awaits `sui_wait_for_transaction` (~2.1s), then the resume
+    // request adds ~800ms more boot time, giving the indexer ~2.9s of
+    // wall-clock to catch up before refresh tools fire. Production smoke
+    // confirmed all 10 narrations cited correct post-write balances even
+    // when the engine waited 0ms (write 9, sleep_ms=0 case).
+    //
+    // Safety net (non-blocking): the `safetyNetBaseline` captured above
+    // and a fresh post-refresh fetch are compared in the background after
+    // refresh tools complete. Identical Sui-RPC state pre/post = indexer
+    // didn't move during the entire refresh window → balance_check almost
+    // certainly returned stale data. Counter
+    // `engine.pwr.observed_stale_balance_check` fires when this happens.
+    // If we observe staleness in production, we can re-add a short bounded
+    // wait (capped at TRUE wall-clock, not floor(ms/interval)).
+    getTelemetrySink().counter('engine.pwr.skipped_sleep_count', {
+      has_wallet: this.walletAddress ? '1' : '0',
+      can_safety_net: canSafetyNet ? '1' : '0',
+    });
     if (signal.aborted) return;
 
     // Run all refreshes in parallel — they're read-only and target
@@ -980,6 +959,53 @@ export class QueryEngine {
         is_bundle: isBundle ? '1' : '0',
       },
     );
+
+    // [SPEC 19 Option 3 — v1.24.12] Non-blocking staleness observation.
+    // Compares pre-invalidation Sui-RPC wallet snapshot vs a fresh
+    // post-refresh snapshot. If they're identical, the indexer hasn't
+    // caught up to the write — meaning `balance_check` (BlockVision
+    // Indexer) almost certainly returned stale data too (both indexers
+    // ultimately read the same chain). Pure observability: never blocks
+    // narration, never retries, never throws.
+    //
+    // Watch `engine.pwr.observed_stale_balance_check{stale="1"}` /
+    // `engine.pwr.skipped_sleep_count` in production. If the rate stays
+    // near 0% for 24h, Option 3 is correct and we close the loop. If it
+    // climbs >5%, re-add a short bounded wait (true wall-clock cap, not
+    // attempt-count cap) before refresh tools fire.
+    if (safetyNetBaseline && canSafetyNet) {
+      const wallet = this.walletAddress!;
+      const rpc = this.suiRpcUrl!;
+      void (async () => {
+        try {
+          const [baseline, current] = await Promise.all([
+            safetyNetBaseline,
+            fetchWalletCoins(wallet, rpc)
+              .then(
+                (coins) =>
+                  new Map(
+                    coins.map((c) => [c.coinType, BigInt(c.totalBalance)]),
+                  ),
+              )
+              .catch(() => null),
+          ]);
+          if (!baseline || !current) return;
+          const stale = !walletStateChanged(baseline, current);
+          if (stale) {
+            getTelemetrySink().counter(
+              'engine.pwr.observed_stale_balance_check',
+              {
+                stale: '1',
+                is_bundle: isBundle ? '1' : '0',
+                tool_count: String(refreshTools.length),
+              },
+            );
+          }
+        } catch {
+          // Best-effort observation — never throw, never re-emit.
+        }
+      })();
+    }
   }
 
   interrupt(): void {
@@ -2349,6 +2375,23 @@ export class QueryEngine {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * [SPEC 19 Option 3 / 2026-05-09] Returns true if the two wallet snapshots
+ * differ in any coin-type's balance (or in their key sets). Used by the
+ * post-write staleness safety net — identical pre/post snapshots = the Sui
+ * RPC owned-coin indexer didn't catch up during the refresh window.
+ */
+function walletStateChanged(
+  before: Map<string, bigint>,
+  after: Map<string, bigint>,
+): boolean {
+  if (before.size !== after.size) return true;
+  for (const [coinType, balance] of before) {
+    if (after.get(coinType) !== balance) return true;
+  }
+  return false;
+}
 
 function isCorruptHistoryError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
