@@ -117,6 +117,12 @@ export type { CostSnapshot, CostTrackerConfig } from './cost.js';
 export { serializeSSE, parseSSE, engineToSSE } from './streaming.js';
 export type { SSEEvent } from './streaming.js';
 
+// [SPEC 21.1] Stream-state choreography wrapper. Default-applied inside
+// `engineToSSE`; exported standalone for hosts that consume EngineEvent
+// directly (in-process embeddings, unit tests).
+export { withStreamState } from './stream-state.js';
+export type { StreamState, StreamStateEvent } from './stream-state.js';
+
 // Session store
 export { MemorySessionStore } from './session.js';
 export type { SessionData, SessionStore } from './session.js';

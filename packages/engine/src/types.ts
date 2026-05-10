@@ -272,6 +272,52 @@ export type EngineEvent =
        * "single-fact lookup → lean". Forwarded into telemetry verbatim.
        */
       rationale: string;
+    }
+  /**
+   * [SPEC 21.1] Stream-state choreography event — typed transition signal
+   * for hosts to drive UI motion ("Routing 0.05 USDC → SUI…" → "Quote in
+   * hand" → "Confirming…" → "Settling on Sui (~2s)…" → "Done") instead of
+   * the legacy `TASK INITIATED → silence → giant block` shape.
+   *
+   * Engine ALWAYS emits these events when configured tool boundaries are
+   * crossed — additive on the wire, safe for older hosts (they ignore
+   * unknown event types). Hosts opt INTO the visual choreography via a
+   * feature flag (audric uses `NEXT_PUBLIC_HARNESS_TRANSITIONS_V1` per
+   * SPEC 21 D-3 lock = staged rollout).
+   *
+   * Engine-emitted states (auto, via `withStreamState` wrapper around
+   * `engineToSSE`):
+   *  - `'routing'`  — emitted immediately BEFORE the first `tool_start`
+   *                   for `swap_quote` in a turn. Signals "the LLM is
+   *                   asking the aggregator for a route."
+   *  - `'quoting'`  — emitted immediately AFTER the first SUCCESSFUL
+   *                   `tool_result` for `swap_quote` in a turn. Signals
+   *                   "the route is in hand; the quote card is about to
+   *                   render." Skipped on tool error (so the UI doesn't
+   *                   flash `Quote in hand` on a failed routing attempt).
+   *
+   * Host-emitted states (audric layers these in from its sponsored-tx
+   * flow — engine NEVER emits these because the engine doesn't see the
+   * post-pending_action handoff):
+   *  - `'confirming'` — when the client posts to `/api/transactions/prepare`
+   *                     after the user taps Confirm.
+   *  - `'settling'`   — after Enoki sponsorship returns success and the
+   *                     client is awaiting `waitForTransaction`.
+   *  - `'done'`       — on `tx_settled` confirmation, before the receipt
+   *                     card renders.
+   *
+   * Per D-1 (a) lock: typed enum only; NO `copyHint` field on v0.1.
+   * Promote to a hybrid shape (D-1 c) only if a tool-specific copy
+   * override becomes necessary. Hosts pick their own copy + motion per
+   * state.
+   *
+   * Per-turn state — the wrapper resets on `turn_complete` so a
+   * multi-turn session can fire `routing → quoting` again on the next
+   * swap.
+   */
+  | {
+      type: 'stream_state';
+      state: 'routing' | 'quoting' | 'confirming' | 'settling' | 'done';
     };
 
 /**

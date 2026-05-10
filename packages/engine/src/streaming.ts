@@ -2,6 +2,7 @@ import type { EngineEvent, HarnessShape, PendingAction, StopReason, TodoItem } f
 import type { EvaluationItem } from './eval-summary.js';
 import type { ProactiveType } from './proactive-marker.js';
 import type { FormSchema } from './pending-input.js';
+import { withStreamState } from './stream-state.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
@@ -88,7 +89,16 @@ export type SSEEvent =
     }
   // [SPEC 8 v0.5.1 B3.2] One-shot per-turn harness shape declaration.
   // Mirrors EngineEvent.harness_shape — see types.ts for full contract.
-  | { type: 'harness_shape'; shape: HarnessShape; rationale: string };
+  | { type: 'harness_shape'; shape: HarnessShape; rationale: string }
+  // [SPEC 21.1] Stream-state choreography event — typed transition signal
+  // for UI motion ("Routing…" → "Quote in hand" → "Confirming…" → ...).
+  // Mirrors EngineEvent.stream_state — see types.ts for the full contract,
+  // including the routing/quoting (engine-emitted) vs confirming/settling/
+  // done (audric-emitted) split.
+  | {
+      type: 'stream_state';
+      state: 'routing' | 'quoting' | 'confirming' | 'settling' | 'done';
+    };
 
 // ---------------------------------------------------------------------------
 // Serialise: SSEEvent → SSE text
@@ -120,7 +130,12 @@ export function parseSSE(raw: string): SSEEvent | null {
 export async function* engineToSSE(
   events: AsyncGenerator<EngineEvent>,
 ): AsyncGenerator<string> {
-  for await (const event of events) {
+  // [SPEC 21.1] Default-apply the stream-state wrapper. Every host using
+  // this adapter gets `routing` / `quoting` events automatically; opt-out
+  // requires constructing the SSE stream manually (no in-tree caller does
+  // this today). Older hosts that don't render the chip ignore unknown
+  // event types — backward-compatible.
+  for await (const event of withStreamState(events)) {
     if (event.type === 'error') {
       yield serializeSSE({ type: 'error', message: event.error.message });
     } else {
