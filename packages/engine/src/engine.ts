@@ -49,6 +49,7 @@ import {
   MAX_BUNDLE_OPS,
 } from './compose-bundle.js';
 import { findMatchingCetusRoute, type SwapQuoteReadEntry } from './swap-route-matching.js';
+import { stripPseudoThinking } from './strip-pseudo-thinking.js';
 
 const DEFAULT_MAX_TURNS = 10;
 const DEFAULT_MAX_TOKENS = 4096;
@@ -2561,47 +2562,10 @@ function isCorruptHistoryError(err: unknown): boolean {
   );
 }
 
-/**
- * [SPEC 19 v1.24.13 / 2026-05-09] Strip pseudo-`<thinking>` tags from text
- * blocks before persisting an assistant message.
- *
- * Why: Haiku-no-thinking (the post-write demoted narrate path) can't emit
- * native thinking blocks, so it improvises by writing literal
- * `<thinking>…</thinking>` markup inside text content. Production smoke
- * 2026-05-09 (S.134) recorded one bundle narrate turn producing 2271
- * output tokens — 2200+ of them inside a `<thinking>` block — driving
- * `anthropic.latency_ms` to 21938ms (~10× the expected 2s). The audric UI
- * already filters these tags before render, but they pollute persisted
- * history (cache_read context for every subsequent turn).
- *
- * Strategy: lazy-match `<thinking>…</thinking>` (case-insensitive,
- * multi-line) and remove. Handles unterminated tags (truncated stream)
- * by stripping from `<thinking>` to end. Idempotent. Native `thinking`
- * content blocks (`type: 'thinking'`) are NEVER touched — only `text`.
- *
- * Edge case: if stripping empties the only text block AND there are no
- * other blocks, inject a minimal placeholder so role-alternation stays
- * valid (Anthropic API rejects empty assistant content).
- */
-function stripPseudoThinking(blocks: ContentBlock[]): ContentBlock[] {
-  const out: ContentBlock[] = [];
-  for (const b of blocks) {
-    if (b.type !== 'text') {
-      out.push(b);
-      continue;
-    }
-    const stripped = b.text
-      .replace(/<thinking\b[^>]*>[\s\S]*?(?:<\/thinking>|$)/gi, '')
-      .trim();
-    if (stripped.length > 0) {
-      out.push({ ...b, text: stripped });
-    }
-  }
-  if (out.length === 0 && blocks.length > 0) {
-    out.push({ type: 'text', text: '[narration omitted]' });
-  }
-  return out;
-}
+// [SPEC 21.2 / 2026-05-10] `stripPseudoThinking` extracted to its own module
+// (`strip-pseudo-thinking.ts`) so the regex passes can be unit-tested without
+// pulling in the entire engine. Re-imported above; this stub kept as a
+// breadcrumb for future readers grepping `function stripPseudoThinking` here.
 
 /**
  * Pre-flight validation: ensures message history meets Anthropic's requirements
