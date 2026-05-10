@@ -52,13 +52,49 @@ export type EngineEvent =
       evaluationItems?: import('./eval-summary.js').EvaluationItem[];
     }
   | { type: 'text_delta'; text: string }
-  | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
+  | {
+      type: 'tool_start';
+      toolName: string;
+      toolUseId: string;
+      input: unknown;
+      /**
+       * [SPEC 23A-Q-source, 2026-05-11] Origin of this tool dispatch.
+       * Engine ALWAYS stamps this in production; hosts can rely on its
+       * presence to route the resulting blocks (e.g. group `'pwr'`
+       * results under a `<PostWriteRefreshSurface>`).
+       *
+       *  - `'pwr'`  — injected by `runPostWriteRefresh` after a successful
+       *               write. Paired with `wasPostWriteRefresh: true` on the
+       *               matching `tool_result` for one release cycle (the
+       *               boolean field deprecates in the next minor; consume
+       *               `source === 'pwr'` instead).
+       *  - `'llm'`  — default agent-loop dispatch (the LLM emitted a
+       *               `tool_use` block; engine ran the tool). Covers both
+       *               late-dispatch (in-loop) and `EarlyToolDispatcher`
+       *               (`wasEarlyDispatched: true` discriminates within `'llm'`).
+       *  - `'user'` — re-dispatch driven by a host-side user action,
+       *               specifically the `<PermissionCard>` Regenerate flow
+       *               that re-fires the upstream read (e.g. `swap_quote`
+       *               regen on a stale-quote tap).
+       *
+       * Optional in the type for back-compat with internal tests that
+       * pre-date this field. Engine code paths set it unconditionally;
+       * absent on a production event = bug, file an issue.
+       */
+      source?: 'pwr' | 'llm' | 'user';
+    }
   | {
       type: 'tool_result';
       toolName: string;
       toolUseId: string;
       result: unknown;
       isError: boolean;
+      /**
+       * [SPEC 23A-Q-source, 2026-05-11] See `tool_start.source` doc-comment
+       * for the full contract — same field, same values, paired by
+       * `toolUseId` to the originating `tool_start`.
+       */
+      source?: 'pwr' | 'llm' | 'user';
       /**
        * [v1.4 Item 4] True when the tool was executed by `EarlyToolDispatcher`
        * (read tools dispatched concurrently before the LLM yields). Hosts
@@ -72,13 +108,15 @@ export type EngineEvent =
        */
       resultDeduped?: boolean;
       /**
-       * [v1.5] True when this result was produced by the engine's
-       * post-write refresh mechanism (see `EngineConfig.postWriteRefresh`).
-       * The engine auto-runs configured read tools immediately after a
-       * successful write so the LLM narrates from fresh on-chain state
-       * instead of inferring from a stale snapshot. Hosts should render
-       * these like any other tool result; the flag is for analytics and
-       * UI affordances (e.g. a subtle "auto-refreshed" badge).
+       * [v1.5 → DEPRECATED in SPEC 23A-Q-source, 2026-05-11] True when
+       * this result was produced by the engine's post-write refresh
+       * mechanism (see `EngineConfig.postWriteRefresh`). Equivalent to
+       * `source === 'pwr'`; kept in addition to `source` for one
+       * release cycle so existing host code that reads `wasPostWriteRefresh`
+       * (audric `TurnMetricsCollector`, `BlockRouter` legacy paths)
+       * keeps working without a coordinated bump. Migrate consumers to
+       * `event.source === 'pwr'` and this field deletes in the next
+       * minor.
        */
       wasPostWriteRefresh?: boolean;
       /**

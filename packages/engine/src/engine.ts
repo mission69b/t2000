@@ -448,6 +448,7 @@ export class QueryEngine {
           toolUseId: step.toolUseId,
           result: eventResult,
           isError: eventIsError,
+          source: 'llm',
         };
       }
     } else {
@@ -459,6 +460,7 @@ export class QueryEngine {
           ? (response.executionResult ?? { success: true })
           : { error: 'User declined this action' },
         isError: !response.approved,
+        source: 'llm',
       };
     }
 
@@ -686,6 +688,7 @@ export class QueryEngine {
       toolUseId: pendingInput.toolUseId,
       result: toolResultEventPayload.result,
       isError: toolResultEventPayload.isError,
+      source: 'llm',
     };
 
     // Drop the pending-input state — turn is no longer paused on this id.
@@ -970,6 +973,12 @@ export class QueryEngine {
         toolUseId: r.id,
         result: r.data,
         isError: r.isError,
+        // [SPEC 23A-Q-source, 2026-05-11] Stamp `'pwr'` so the audric
+        // host's `<BlockRouter>` groups these under
+        // `<PostWriteRefreshSurface>` instead of stacking as standalone
+        // tool blocks. `wasPostWriteRefresh: true` stays alongside for
+        // one release cycle (deprecated; consume `source === 'pwr'`).
+        source: 'pwr',
         wasPostWriteRefresh: true,
         ...(r.attemptCount !== undefined ? { attemptCount: r.attemptCount } : {}),
       };
@@ -1295,6 +1304,7 @@ export class QueryEngine {
             toolUseId: dedupedId,
             result: null,
             isError: false,
+            source: 'llm',
             resultDeduped: true,
           };
         }
@@ -1590,6 +1600,7 @@ export class QueryEngine {
               toolUseId: call.id,
               result: cached.result,
               isError: false,
+              source: 'llm',
               resultDeduped: true,
             };
             toolResultBlocks.push({
@@ -1644,7 +1655,13 @@ export class QueryEngine {
 
         if (!needsConfirmation) {
           approved.push(call);
-          yield { type: 'tool_start', toolName: call.name, toolUseId: call.id, input: call.input };
+          yield {
+            type: 'tool_start',
+            toolName: call.name,
+            toolUseId: call.id,
+            input: call.input,
+            source: 'llm',
+          };
           continue;
         }
 
@@ -1681,6 +1698,7 @@ export class QueryEngine {
               toolUseId: call.id,
               result: { error: check.blockReason, _gate: check.blockGate },
               isError: true,
+              source: 'llm',
             };
             toolResultBlocks.push({
               type: 'tool_result',
@@ -1974,6 +1992,7 @@ export class QueryEngine {
               toolUseId: write.call.id,
               result: { error: check.blockReason, _gate: check.blockGate },
               isError: true,
+              source: 'llm',
             };
             toolResultBlocks.push({
               type: 'tool_result',
@@ -2034,6 +2053,7 @@ export class QueryEngine {
             toolUseId: write.call.id,
             result: cappedError,
             isError: true,
+            source: 'llm',
           };
           toolResultBlocks.push({
             type: 'tool_result',
@@ -2154,6 +2174,7 @@ export class QueryEngine {
               toolUseId: dropped.call.id,
               result: { error: errBody },
               isError: true,
+              source: 'llm',
             };
             toolResultBlocks.push({
               type: 'tool_result',
@@ -2375,7 +2396,13 @@ export class QueryEngine {
 
         // B.1: Try early dispatch for read-only tools mid-stream
         if (dispatcher?.tryDispatch(call)) {
-          yield { type: 'tool_start', toolName: call.name, toolUseId: call.id, input: call.input };
+          yield {
+            type: 'tool_start',
+            toolName: call.name,
+            toolUseId: call.id,
+            input: call.input,
+            source: 'llm',
+          };
         } else {
           acc.pendingToolCalls.push(call);
         }

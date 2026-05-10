@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.28.0 (2026-05-11) — SPEC 23A-Q-source: tool event provenance
+
+Adds an optional `source: 'pwr' | 'llm' | 'user'` field to `tool_start` and `tool_result` events (`EngineEvent` and the SSE-mirror `SSEEvent`) so hosts can route tool blocks by origin without re-deriving it from heuristics. Engine ALWAYS stamps this in production at every yield site; the field is `?` only to keep test fixtures and pre-1.28 hosts type-compatible.
+
+This is the prereq for SPEC 23A item A6 in the audric host (`<PostWriteRefreshSurface>` wrapper), where reads silently re-fired by the engine after a successful write need to render under a single grouped surface instead of stacking as standalone tool blocks. Pre-1.28 hosts inferred PWR-ness from the `wasPostWriteRefresh: true` boolean — that flag stays in the payload for one cycle as a deprecated alias.
+
+### Added
+
+- **`source?: 'pwr' | 'llm' | 'user'` on `EngineEvent.tool_start` + `EngineEvent.tool_result`** — typed in `packages/engine/src/types.ts`. Engine stamps every yield site in production; values are:
+  - `'pwr'` — emitted by `runPostWriteRefresh` after a successful write to refresh affected reads (`balance_check`, `savings_info`, `health_check`). Currently 1 yield site.
+  - `'llm'` — emitted in response to an LLM-issued `tool_use` block (default path). Currently 12 yield sites in `engine.ts` (incl. cache-hit, deduped, guard-blocked, bundle-cap, and early-dispatch `tool_start`/`tool_result` paths) + 5 in `orchestration.ts` + 2 in `early-dispatcher.ts`.
+  - `'user'` — emitted by the regenerate flow (user-initiated quote refresh from the permission card). 2 yield sites in `regenerate.ts`.
+- **`source: 'user'` is REQUIRED on `RegenerateTimelineEvent`** (not optional) — every regenerate event is user-initiated by construction. Hosts consuming `RegenerateTimelineEvent[]` arrays gain a literal-typed `source` field with no breakage (consumers were never constructing this type).
+- **`source` mirrored on `SSEEvent.tool_start` + `SSEEvent.tool_result`** in `packages/engine/src/streaming.ts` — wire shape unchanged (`source` serializes naturally as a string, absent on pre-1.28 emissions).
+- **3 new test assertions** covering all three source values:
+  - `post-write-refresh.test.ts` — asserts PWR-injected `tool_result` events carry `source: 'pwr'` AND the original write tool's result carries `source: 'llm'`.
+  - `regenerate.test.ts` — asserts every `RegenerateTimelineEvent` carries `source: 'user'`.
+  - `early-dispatcher.test.ts` — asserts early-dispatched read `tool_result` events carry `source: 'llm'` (the LLM emitted the tool_use; the engine just chose to dispatch it before stream end — semantically still LLM-driven).
+
+### Deprecated
+
+- **`tool_result.wasPostWriteRefresh: boolean`** — superseded by `source === 'pwr'`. Engine continues to set both fields for one minor cycle so 1.27.x hosts keep working unchanged. Hosts upgrading to 1.28.0+ should consume `source === 'pwr'` going forward; the boolean will be removed in 1.29.0.
+
+### Notes
+
+- **Wire-format back-compat:** SSE payloads from a 1.28.0 engine to a 1.27.x host serialize cleanly — the new `source` field is silently ignored by older consumers. SSE payloads from a 1.27.x engine to a 1.28.0 host are also fine — `source` is `undefined`, hosts must defensively handle that during the transition.
+- **Why optional on `EngineEvent` but required on `RegenerateTimelineEvent`:** keeping `source` optional on the wider `EngineEvent` union avoids a forced refactor of dozens of internal test fixtures that construct events without it. Required on `RegenerateTimelineEvent` because that type is narrower (only ever emitted by the regenerate flow), and hosts already consume rather than construct.
+- **Audric host adoption** lands separately as SPEC 23A item A6 — `BlockRouter` will switch from `wasPostWriteRefresh`-based grouping to a `source === 'pwr'` check, then collapse PWR results under `<PostWriteRefreshSurface>`. Engine ships the contract first.
+
+### Test results
+
+- 1109/1109 engine tests passing (was 1108 in 1.27.2; +1 from new PWR source test).
+- 0 lint errors / 0 type errors.
+- ESM + DTS build green (422 KB / 184 KB unchanged).
+
 ## 1.14.0 (2026-05-04) — SPEC 13 Phase 2: 3-op atomic bundles
 
 Raises `MAX_BUNDLE_OPS` from 2 to 3. The chain-handoff primitive shipped in 1.13.0 (`PendingActionStep.inputCoinFromStep` + `composeTx` orchestration) was always N-step generic — Phase 1 capped at 2 to soak. Phase 2 lifts the cap and enforces strict-adjacency: every consecutive `(i, i+1)` pair must be in `VALID_PAIRS`. No new pairs added; `swap_execute → swap_execute` (Demo 1 unlock) defers to Phase 3.

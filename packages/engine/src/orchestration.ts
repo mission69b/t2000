@@ -114,6 +114,7 @@ export async function* runTools(
           toolUseId: call.id,
           result: result.data,
           isError,
+          source: 'llm',
           ...(attemptCount !== undefined ? { attemptCount } : {}),
         };
       } else {
@@ -125,6 +126,7 @@ export async function* runTools(
           toolUseId: call.id,
           result: { error: settled.reason?.message ?? 'Tool execution failed' },
           isError: true,
+          source: 'llm',
         };
       }
     }
@@ -140,6 +142,7 @@ export async function* runTools(
         toolUseId: call.id,
         result: { error: `Unknown tool: ${call.name}` },
         isError: true,
+        source: 'llm',
       };
       continue;
     }
@@ -157,6 +160,7 @@ export async function* runTools(
         toolUseId: call.id,
         result: result.data,
         isError: result.isError,
+        source: 'llm',
         ...(attemptCount !== undefined ? { attemptCount } : {}),
       };
     } catch (err) {
@@ -166,6 +170,7 @@ export async function* runTools(
         toolUseId: call.id,
         result: { error: err instanceof Error ? err.message : 'Tool execution failed' },
         isError: true,
+        source: 'llm',
       };
     } finally {
       txMutex.release();

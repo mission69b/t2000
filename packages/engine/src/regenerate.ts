@@ -62,6 +62,11 @@ import type { PendingToolCall } from './orchestration.js';
  * Mirrors the engine's normal SSE event shapes for `tool_start` and
  * `tool_result` so the host can push them onto its timeline as if they
  * had streamed live.
+ *
+ * [SPEC 23A-Q-source, 2026-05-11] Both variants carry `source: 'user'`
+ * so the host's timeline reducer + `<BlockRouter>` can distinguish
+ * regen-driven re-fires from default LLM dispatches and from
+ * post-write-refresh injections.
  */
 export type RegenerateTimelineEvent =
   | {
@@ -69,6 +74,7 @@ export type RegenerateTimelineEvent =
       toolName: string;
       toolUseId: string;
       input: unknown;
+      source: 'user';
     }
   | {
       type: 'tool_result';
@@ -77,6 +83,7 @@ export type RegenerateTimelineEvent =
       result: unknown;
       isError: boolean;
       durationMs: number;
+      source: 'user';
     };
 
 export interface RegenerateSuccess {
@@ -244,6 +251,7 @@ export async function regenerateBundle(
       toolName: r.toolName,
       toolUseId: newToolUseId,
       input: r.input,
+      source: 'user',
     });
     const t0 = Date.now();
     let outcome: { data: unknown; isError: boolean };
@@ -263,6 +271,7 @@ export async function regenerateBundle(
       result: outcome.data,
       isError: outcome.isError,
       durationMs,
+      source: 'user',
     });
     if (outcome.isError) {
       // First read failure terminates the whole regenerate. The host

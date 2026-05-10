@@ -163,6 +163,7 @@ export class EarlyToolDispatcher {
           toolUseId: entry.call.id,
           result: budgeted,
           isError: result.isError,
+          source: 'llm',
           wasEarlyDispatched: true,
           ...(entry.deduped ? { resultDeduped: true } : {}),
           ...(attemptCount !== undefined ? { attemptCount } : {}),
@@ -174,6 +175,7 @@ export class EarlyToolDispatcher {
           toolUseId: entry.call.id,
           result: { error: err instanceof Error ? err.message : 'Tool execution failed' },
           isError: true,
+          source: 'llm',
           wasEarlyDispatched: true,
         };
       }

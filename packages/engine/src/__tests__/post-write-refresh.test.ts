@@ -207,6 +207,42 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     expect(names).toEqual(['balance_check', 'savings_info']);
   });
 
+  it('[SPEC 23A-Q-source] stamps source: "pwr" on every PWR-injected tool_result', async () => {
+    reset();
+    const events = await runWriteAndResume({
+      refreshMap: { save_deposit: ['balance_check', 'savings_info'] },
+      write: saveDeposit,
+      writeName: 'save_deposit',
+      writeInput: { amount: 10 },
+      approved: true,
+      executionResult: { success: true },
+    });
+
+    const refreshes = events.filter(
+      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
+    );
+    expect(refreshes).toHaveLength(2);
+    // Every PWR-injected refresh event must carry source: 'pwr' so the
+    // host's <BlockRouter> can group them under PostWriteRefreshSurface
+    // (SPEC 23A-A6) instead of stacking as standalone tool blocks.
+    for (const r of refreshes) {
+      expect(r.type === 'tool_result' && r.source).toBe('pwr');
+    }
+
+    // Sanity: the write itself (LLM-driven dispatch) must NOT be tagged
+    // as 'pwr'. It rides through the resume path with source: 'llm'.
+    const writeResult = events.find(
+      (e) =>
+        e.type === 'tool_result' &&
+        e.toolName === 'save_deposit' &&
+        !e.wasPostWriteRefresh,
+    );
+    expect(writeResult).toBeDefined();
+    expect(
+      writeResult?.type === 'tool_result' && writeResult.source,
+    ).toBe('llm');
+  });
+
   it('orders refresh events between the write tool_result and the LLM narration', async () => {
     reset();
     const events = await runWriteAndResume({

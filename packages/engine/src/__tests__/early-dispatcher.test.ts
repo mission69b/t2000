@@ -90,6 +90,13 @@ describe('EarlyToolDispatcher', () => {
     expect(events).toHaveLength(2);
     expect(events[0]).toMatchObject({ type: 'tool_result', toolName: 'slow_tool', toolUseId: 't1' });
     expect(events[1]).toMatchObject({ type: 'tool_result', toolName: 'fast_tool', toolUseId: 't2' });
+    // [SPEC 23A-Q-source, 2026-05-11] Early-dispatched reads are still
+    // LLM-driven (the LLM emitted the tool_use; the engine just chose to
+    // dispatch it before the stream finished). source must be 'llm', not
+    // 'pwr' or 'user'.
+    for (const e of events) {
+      expect(e.type === 'tool_result' && e.source).toBe('llm');
+    }
   });
 
   it('handles tool execution errors gracefully', async () => {

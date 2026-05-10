@@ -237,6 +237,14 @@ describe('SPEC 7 P2.4b — regenerateBundle', () => {
     expect(result.timelineEvents[3].type).toBe('tool_result');
     expect(result.timelineEvents[3].toolName).toBe('rates_info');
 
+    // [SPEC 23A-Q-source, 2026-05-11] Every regen-driven event carries
+    // source: 'user' so the host's <BlockRouter> can render the regen
+    // group with a "Regenerated" affordance distinct from default LLM
+    // dispatches and PWR injections.
+    for (const e of result.timelineEvents) {
+      expect(e.source).toBe('user');
+    }
+
     // Engine messages mutated: prior history (3 msgs) + 1 synth assistant
     // + 1 synth user = 5.
     expect(engine.getMessages()).toHaveLength(5);

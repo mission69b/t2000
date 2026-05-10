@@ -21,18 +21,31 @@ export type SSEEvent =
       evaluationItems?: EvaluationItem[];
     }
   | { type: 'text_delta'; text: string }
-  | { type: 'tool_start'; toolName: string; toolUseId: string; input: unknown }
+  | {
+      type: 'tool_start';
+      toolName: string;
+      toolUseId: string;
+      input: unknown;
+      // [SPEC 23A-Q-source, 2026-05-11] Origin of this tool dispatch —
+      // mirrors EngineEvent.tool_start.source. See types.ts for the full
+      // contract; serialised verbatim through JSON.stringify in
+      // `serializeSSE`.
+      source?: 'pwr' | 'llm' | 'user';
+    }
   | {
       type: 'tool_result';
       toolName: string;
       toolUseId: string;
       result: unknown;
       isError: boolean;
+      // [SPEC 23A-Q-source, 2026-05-11] Mirrors EngineEvent.tool_result.source.
+      source?: 'pwr' | 'llm' | 'user';
       // [v1.4] flags carried through unchanged from EngineEvent.tool_result
       wasEarlyDispatched?: boolean;
       resultDeduped?: boolean;
-      // [v1.5] true when injected by the engine's post-write refresh
-      // (see EngineConfig.postWriteRefresh)
+      // [v1.5 → DEPRECATED] true when injected by the engine's post-write
+      // refresh (see EngineConfig.postWriteRefresh). Equivalent to
+      // `source === 'pwr'`; remove in the next minor — see types.ts.
       wasPostWriteRefresh?: boolean;
       // [SPEC 8 v0.5.1 B3.2] HTTP attempt count — set only when > 1 so
       // hosts can render "TOOL · attempt N · 1.4s" without header noise
