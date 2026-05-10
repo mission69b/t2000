@@ -2,6 +2,7 @@ import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { TransactionRecord } from '../types.js';
 import {
   classifyTransaction,
+  extractAllUserLegs,
   extractTransferDetails,
   type ClassifyBalanceChange,
 } from './classify.js';
@@ -106,6 +107,7 @@ function parseTxRecord(tx: SuiRpcTxBlock, address: string): TransactionRecord {
 
   const { moveCallTargets, commandTypes } = extractCommands(tx.transaction);
   const balanceChanges = tx.balanceChanges ?? [];
+  const legs = extractAllUserLegs(balanceChanges, address);
   const { amount, asset, recipient, direction } = extractTransferDetails(balanceChanges, address);
   const { action, label } = classifyTransaction(
     moveCallTargets,
@@ -118,6 +120,7 @@ function parseTxRecord(tx: SuiRpcTxBlock, address: string): TransactionRecord {
     digest: tx.digest,
     action,
     label,
+    legs,
     amount,
     asset,
     recipient,

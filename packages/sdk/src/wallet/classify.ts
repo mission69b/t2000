@@ -282,3 +282,46 @@ export function extractTransferDetails(
 function bigintAbs(n: bigint): bigint {
   return n < 0n ? -n : n;
 }
+
+/**
+ * Extract every non-zero user balance leg for a transaction — not
+ * just the largest one. Order is RPC order; callers responsible for
+ * any sorting (e.g. audric sorts by USD value once it's priced).
+ *
+ * Sui collapses balance changes by coin type, so a 3-step bundle
+ * touching USDC three times surfaces as ONE leg of net USDC delta.
+ * Distinguishing per-step legs would require parsing the PTB's
+ * commands; this helper deliberately stops at the balance-change
+ * granularity because that's what's reliably available across all
+ * Sui RPC versions.
+ *
+ * Pre-v1.27.2 the only public API was `extractTransferDetails`,
+ * which returned a single "primary" leg and made swap rows
+ * unrenderable (showed `Swapped 987.60 MANIFEST` because MANIFEST
+ * was the largest raw delta even though USDC was the value side).
+ */
+export function extractAllUserLegs(
+  changes: ClassifyBalanceChange[] | undefined,
+  sender: string,
+): import('../types.js').TransactionLeg[] {
+  if (!changes || changes.length === 0) return [];
+
+  const legs: import('../types.js').TransactionLeg[] = [];
+  for (const c of changes) {
+    if (resolveOwner(c.owner) !== sender) continue;
+    const raw = BigInt(c.amount);
+    if (raw === 0n) continue;
+    const decimals = getDecimalsForCoinType(c.coinType);
+    const absAmount = bigintAbs(raw);
+    legs.push({
+      coinType: c.coinType,
+      asset: resolveSymbol(c.coinType),
+      decimals,
+      amount: Number(absAmount) / 10 ** decimals,
+      rawAmount: raw.toString(),
+      direction: raw < 0n ? 'out' : 'in',
+    });
+  }
+
+  return legs;
+}

@@ -49,6 +49,7 @@ export {
   refineLendingLabel,
   classifyTransaction,
   extractTransferDetails,
+  extractAllUserLegs,
 } from './wallet/classify.js';
 export type {
   ClassifyBalanceChange,
@@ -122,6 +123,7 @@ export type {
   FundStatusResult,
   DepositInfo,
   TransactionRecord,
+  TransactionLeg,
   ClaimRewardsResult,
   PendingReward,
   PayOptions,

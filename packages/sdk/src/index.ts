@@ -26,6 +26,7 @@ export type {
   DepositInfo,
   PaymentRequest,
   TransactionRecord,
+  TransactionLeg,
   PendingReward,
   ClaimRewardsResult,
   CompoundRewardsResult,
@@ -71,6 +72,7 @@ export {
   refineLendingLabel,
   classifyTransaction,
   extractTransferDetails,
+  extractAllUserLegs,
 } from './wallet/classify.js';
 export type {
   ClassifyBalanceChange,

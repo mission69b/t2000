@@ -3,6 +3,7 @@ import {
   classifyAction,
   classifyLabel,
   classifyTransaction,
+  extractAllUserLegs,
   extractTransferDetails,
   fallbackLabel,
   refineLendingLabel,
@@ -327,5 +328,127 @@ describe('extractTransferDetails (bidirectional)', () => {
     );
     expect(out.direction).toBe('in');
     expect(out.recipient).toBeUndefined();
+  });
+});
+
+describe('extractAllUserLegs (multi-leg / bundle awareness)', () => {
+  // Use a fake non-stable coin with arbitrary decimals so we can verify
+  // the helper isn't quietly preferring one denomination over another
+  // (the way `extractTransferDetails` prefers non-SUI principal).
+  const MANIFEST = '0xfake::manifest::MANIFEST';
+
+  it('returns empty for empty / undefined input', () => {
+    expect(extractAllUserLegs([], ADDR)).toEqual([]);
+    expect(extractAllUserLegs(undefined, ADDR)).toEqual([]);
+  });
+
+  it('returns empty when no user balance changes are present', () => {
+    const legs = extractAllUserLegs(
+      [{ owner: { AddressOwner: '0xother' }, coinType: USDC, amount: '5000000' }],
+      ADDR,
+    );
+    expect(legs).toEqual([]);
+  });
+
+  it('returns one leg for a single-write tx (e.g. save 10 USDC)', () => {
+    const legs = extractAllUserLegs([bc(ADDR, USDC, '-10000000')], ADDR);
+    expect(legs).toHaveLength(1);
+    expect(legs[0]).toMatchObject({
+      coinType: USDC,
+      asset: 'USDC',
+      amount: 10,
+      rawAmount: '-10000000',
+      direction: 'out',
+    });
+  });
+
+  it('returns two legs for a swap (USDC out + MANIFEST in)', () => {
+    // Reproduces the bug context: 1 USDC → 987.60 MANIFEST. Pre-rebuild
+    // the activity row showed `Swapped $987.60 MANIFEST` because the
+    // single-leg picker grabbed MANIFEST (largest raw delta). With
+    // legs[] both sides surface and the route can render
+    // `1 USDC ↔ 987.60 MANIFEST`.
+    const legs = extractAllUserLegs(
+      [
+        bc(ADDR, USDC, '-1000000'), // -1 USDC (1 USDC = 1_000_000 raw at 6dp)
+        bc(ADDR, MANIFEST, '98760000000000'), // +987.60 MANIFEST at 11dp
+      ],
+      ADDR,
+    );
+    expect(legs).toHaveLength(2);
+    const out = legs.find((l) => l.direction === 'out');
+    const inLeg = legs.find((l) => l.direction === 'in');
+    expect(out?.asset).toBe('USDC');
+    expect(out?.amount).toBe(1);
+    expect(inLeg?.asset).toBe('MANIFEST');
+    // MANIFEST isn't in the registry → asset symbol resolves from coinType,
+    // decimals defaults to 9 (registry fallback). With 9dp the raw
+    // 98_760_000_000_000 ≈ 98_760 tokens. We're just asserting the
+    // helper RETURNED the leg — caller is responsible for the registry
+    // bump if MANIFEST gets first-class support.
+    expect(inLeg?.rawAmount).toBe('98760000000000');
+  });
+
+  it('returns three legs for a 3-step bundle (swap+swap+save: -10 USDC, +SUI, +GOLD)', () => {
+    // Sui collapses balance changes by coin type: the three USDC
+    // outflows from leg1 (-5), leg2 (-3), leg3 (-2) surface as ONE
+    // -10 USDC delta. We can't disentangle per-step amounts at the
+    // balance-change layer; bundle detection happens upstream by
+    // counting distinct write Move targets.
+    const GOLD = '0xfake::gold::GOLD';
+    const legs = extractAllUserLegs(
+      [
+        bc(ADDR, USDC, '-10000000'), // -10 USDC net (3 legs collapsed)
+        bc(ADDR, SUI_TYPE, '4400000000'), // +4.4 SUI from leg1
+        bc(ADDR, GOLD, '640000'), // +0.00064 GOLD from leg2 (9dp)
+      ],
+      ADDR,
+    );
+    expect(legs).toHaveLength(3);
+    const usdc = legs.find((l) => l.asset === 'USDC');
+    const sui = legs.find((l) => l.asset === 'SUI');
+    expect(usdc?.amount).toBe(10);
+    expect(usdc?.direction).toBe('out');
+    expect(sui?.amount).toBe(4.4);
+    expect(sui?.direction).toBe('in');
+  });
+
+  it('preserves RPC order (does not sort)', () => {
+    // Order-sensitivity matters because audric sorts by USD value
+    // post-pricing. The SDK shouldn't impose an ordering.
+    const legs = extractAllUserLegs(
+      [
+        bc(ADDR, SUI_TYPE, '500000000'),
+        bc(ADDR, USDC, '-1000000'),
+      ],
+      ADDR,
+    );
+    expect(legs[0].asset).toBe('SUI');
+    expect(legs[1].asset).toBe('USDC');
+  });
+
+  it('skips zero-amount changes', () => {
+    const legs = extractAllUserLegs(
+      [
+        bc(ADDR, USDC, '0'),
+        bc(ADDR, SUI_TYPE, '500000000'),
+      ],
+      ADDR,
+    );
+    expect(legs).toHaveLength(1);
+    expect(legs[0].asset).toBe('SUI');
+  });
+
+  it('filters out non-user balance changes', () => {
+    const legs = extractAllUserLegs(
+      [
+        bc(ADDR, USDC, '-1000000'),
+        { owner: { AddressOwner: '0xpool' }, coinType: USDC, amount: '1000000' },
+        bc(ADDR, SUI_TYPE, '500000000'),
+      ],
+      ADDR,
+    );
+    expect(legs).toHaveLength(2);
+    expect(legs.every((l) => l.asset === 'USDC' || l.asset === 'SUI')).toBe(true);
   });
 });

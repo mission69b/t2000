@@ -152,6 +152,31 @@ export interface PaymentRequest {
   displayText: string;
 }
 
+/**
+ * One non-zero user balance change for a transaction. Sui collapses
+ * balance changes by coin type, so a 3-step bundle that touches USDC
+ * three times surfaces as ONE leg of net USDC delta — not three.
+ *
+ * [Activity rebuild / 2026-05-10] Added so consumers can render swap
+ * + bundle txs accurately instead of picking a single "primary leg"
+ * (which made `Swapped 987.60 MANIFEST` look like +$987 of value when
+ * the user actually paid 1 USDC for it).
+ */
+export interface TransactionLeg {
+  /** Full Sui coin type string (e.g. `0x...usdc::USDC`). */
+  coinType: string;
+  /** Display symbol (USDC, SUI, GOLD, MANIFEST, …) from the token registry. */
+  asset: string;
+  /** On-chain decimals for this coin (used to format `amount`). */
+  decimals: number;
+  /** Token quantity as a positive number (e.g. 987.60). */
+  amount: number;
+  /** Signed raw bigint as a string (preserves sign + precision). */
+  rawAmount: string;
+  /** `'out'` if the user spent this coin, `'in'` if they received it. */
+  direction: 'in' | 'out';
+}
+
 export interface TransactionRecord {
   digest: string;
   /** Coarse bucket — `'send' | 'lending' | 'swap' | 'transaction'`. STABLE. */
@@ -163,7 +188,23 @@ export interface TransactionRecord {
    * when missing. Never used by ACI filters.
    */
   label?: string;
+  /**
+   * All non-zero user balance legs for this transaction. Single-write
+   * txs have `legs.length === 1`; swaps have `2` (one `out`, one
+   * `in`); bundles have `> 2`. Order is RPC order — not sorted by
+   * size or USD value (audric's activity route prices + sorts).
+   *
+   * @since SDK v1.27.2 — was missing from earlier shapes; older
+   * consumers can keep using `amount` / `asset` / `direction` (which
+   * still resolve to the largest absolute leg).
+   */
+  legs: TransactionLeg[];
+  /**
+   * Largest-absolute-leg amount, kept for back-compat with consumers
+   * that pre-date `legs[]`. New code should iterate `legs` instead.
+   */
   amount?: number;
+  /** @see {@link amount} — back-compat alias for `legs[primary].asset`. */
   asset?: string;
   recipient?: string;
   /**
@@ -173,6 +214,8 @@ export interface TransactionRecord {
    * card can render the correct sign even for opaque actions like
    * `swap`/`router`. Undefined when no user balance change is
    * detectable (e.g. pure read-only or admin txs).
+   *
+   * @see {@link amount} — back-compat alias for `legs[primary].direction`.
    */
   direction?: 'in' | 'out';
   timestamp: number;
