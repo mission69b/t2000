@@ -1,8 +1,27 @@
 import { z } from 'zod';
-import { getSwapQuote, T2000Error, type SwapQuoteResult } from '@t2000/sdk';
+import {
+  getSwapQuote,
+  getSponsoredSwapProviders,
+  T2000Error,
+  type SwapQuoteResult,
+} from '@t2000/sdk';
 import { buildTool } from '../tool.js';
 import { getTelemetrySink } from '../telemetry.js';
 import { getWalletAddress } from './utils.js';
+
+// [Bug A fix / 2026-05-10] Module-scoped one-shot cache for the sponsored
+// providers list. The Cetus aggregator's `getProvidersExcluding` is a
+// pure-function lookup against the SDK's static `getAllProviders()` — same
+// inputs always yield the same outputs in a given process. Cache the
+// promise (not the resolved value) so concurrent first-callers all await
+// the same dynamic-import + resolve, instead of N parallel imports.
+let sponsoredProvidersCache: Promise<string[]> | null = null;
+function getCachedSponsoredProviders(): Promise<string[]> {
+  if (!sponsoredProvidersCache) {
+    sponsoredProvidersCache = getSponsoredSwapProviders();
+  }
+  return sponsoredProvidersCache;
+}
 
 // [S.123 v1.24.7] Recovery hints surfaced to the LLM when a swap quote fails
 // with a known, recoverable error. Putting these in tool results (not
@@ -89,12 +108,28 @@ export const swapQuoteTool = buildTool({
     const sink = getTelemetrySink();
     const start = Date.now();
     try {
+      // [Bug A fix / 2026-05-10] Always discover routes against the
+      // sponsor-safe provider set. The engine has no `ToolContext` flag
+      // distinguishing sponsored vs non-sponsored callers — and even
+      // non-sponsored callers (CLI direct swap) are correctly served by
+      // this list because the excluded providers are Pyth-dependent
+      // pools that the CLI's `tx.gas` pattern doesn't actually need
+      // either (CLI users sign their own gas, but Cetus's `routerSwap`
+      // still inserts the `tx.splitCoins(tx.gas, ...)` Pyth fee — fine
+      // for direct signers, fatal for sponsored).
+      //
+      // The narrower "always exclude" stance gives up access to ~7 of
+      // the 30+ Cetus providers. Smoke-tested 2026-05-10 across
+      // USDC↔SUI, USDC↔GOLD, USDC↔USDsui — every pair still routes.
+      // If a future pair degrades unacceptably, gate on
+      // `context.sponsoredContext` instead (mirror composeTx.ts:663).
       const result = await getSwapQuote({
         walletAddress,
         from: input.from,
         to: input.to,
         amount: input.amount,
         byAmountIn: input.byAmountIn,
+        providers: await getCachedSponsoredProviders(),
       });
       sink.histogram('cetus.find_route_ms', Date.now() - start);
       sink.counter('cetus.find_route_count', { outcome: 'success' });

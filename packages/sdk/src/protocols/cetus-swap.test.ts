@@ -591,4 +591,187 @@ describe('addSwapToTx (SPEC 7 P2.2.3 chain + wallet mode appender)', () => {
       expect.objectContaining({ providers: ['CETUS', 'BLUEFIN', 'KRIYAV3'] }),
     );
   });
+
+  // [Bug A defense-in-depth tests / 2026-05-10]
+  // Asserts: a precomputed route whose paths walk an EXCLUDED provider
+  // (Pyth-dependent, e.g. HAEDALPMM) MUST trigger fresh route discovery
+  // even though amountIn/byAmountIn match. Without this fallback, a stale
+  // `pending_action.cetusRoute` from an old engine version would slip
+  // through to Cetus's `routerSwap`, which would insert the
+  // `tx.splitCoins(tx.gas, ...)` Pyth fee call → Enoki rejects with
+  // HTTP 400 "Cannot use GasCoin as a transaction argument".
+  it('falls back to fresh discovery when precomputedRoute walks an excluded provider', async () => {
+    const findRoutersSpy = vi.fn().mockResolvedValue({
+      amountIn: '5000000', amountOut: '4995000', insufficientLiquidity: false,
+      deviationRatio: 0.001, paths: [{ provider: 'CETUS' }],
+    });
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        findRouters = findRoutersSpy;
+        async routerSwap() { return { $kind: 'NestedResult', NestedResult: [99, 0] } as unknown; }
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+    const { addSwapToTx } = await import('./cetus-swap.js');
+    const { Transaction } = await import('@mysten/sui/transactions');
+
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const client = mockClient([
+      { coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' },
+    ]);
+
+    // Precomputed route walks HAEDALPMM (Pyth-dependent, in the
+    // SPONSORED_PYTH_DEPENDENT_PROVIDERS exclusion list).
+    const stalePythRoute = {
+      routerData: {
+        amountIn: { toString: () => '5000000' },
+        amountOut: { toString: () => '4995000' },
+        byAmountIn: true,
+        paths: [{ provider: 'HAEDALPMM', from: USDC_TYPE, target: USDT_TYPE }],
+        insufficientLiquidity: false,
+        deviationRatio: 0.001,
+      },
+      amountIn: '5000000',
+      amountOut: '4995000',
+      byAmountIn: true,
+      priceImpact: 0.001,
+      insufficientLiquidity: false,
+    } as unknown as Parameters<typeof addSwapToTx>[3]['precomputedRoute'];
+
+    const result = await addSwapToTx(tx, client, VALID_ADDRESS, {
+      from: USDC_TYPE,
+      to: USDT_TYPE,
+      amount: 5,
+      precomputedRoute: stalePythRoute,
+      // Caller passes the sponsor-safe providers list (excludes HAEDALPMM).
+      providers: ['CETUS', 'BLUEFIN', 'KRIYAV3', 'TURBOS'],
+    });
+
+    // Fresh discovery WAS invoked (precomputed route was rejected).
+    expect(findRoutersSpy).toHaveBeenCalledTimes(1);
+    expect(result.usedPrecomputedRoute).toBe(false);
+  });
+
+  it('uses precomputedRoute when all paths are in the providers allow-list', async () => {
+    const findRoutersSpy = vi.fn();
+    vi.doMock('@cetusprotocol/aggregator-sdk', () => ({
+      AggregatorClient: class {
+        findRouters = findRoutersSpy;
+        async routerSwap() { return { $kind: 'NestedResult', NestedResult: [99, 0] } as unknown; }
+      },
+      Env: { Mainnet: 'mainnet' },
+    }));
+    const { addSwapToTx } = await import('./cetus-swap.js');
+    const { Transaction } = await import('@mysten/sui/transactions');
+
+    const tx = new Transaction();
+    tx.setSender(VALID_ADDRESS);
+    const client = mockClient([
+      { coinObjectId: '0x' + '1'.repeat(64), balance: '10000000' },
+    ]);
+
+    const safeRoute = {
+      routerData: {
+        amountIn: { toString: () => '5000000' },
+        amountOut: { toString: () => '4995000' },
+        byAmountIn: true,
+        paths: [
+          { provider: 'CETUS', from: USDC_TYPE, target: USDT_TYPE },
+          { provider: 'BLUEFIN', from: USDC_TYPE, target: USDT_TYPE },
+        ],
+        insufficientLiquidity: false,
+        deviationRatio: 0.001,
+      },
+      amountIn: '5000000',
+      amountOut: '4995000',
+      byAmountIn: true,
+      priceImpact: 0.001,
+      insufficientLiquidity: false,
+    } as unknown as Parameters<typeof addSwapToTx>[3]['precomputedRoute'];
+
+    const result = await addSwapToTx(tx, client, VALID_ADDRESS, {
+      from: USDC_TYPE,
+      to: USDT_TYPE,
+      amount: 5,
+      precomputedRoute: safeRoute,
+      providers: ['CETUS', 'BLUEFIN', 'KRIYAV3', 'TURBOS'],
+    });
+
+    // Precomputed route was used (no fresh discovery call).
+    expect(findRoutersSpy).not.toHaveBeenCalled();
+    expect(result.usedPrecomputedRoute).toBe(true);
+  });
+});
+
+describe('isPrecomputedRouteCompatibleWithProviders (Bug A helper)', () => {
+  // Pure helper — no mocks required. Covers the matrix of:
+  //   - undefined providers (non-sponsored caller → always compatible)
+  //   - empty providers (treated same as undefined to keep the no-op
+  //     semantics symmetric with `findSwapRoute`)
+  //   - single-path route, all paths allowed → compatible
+  //   - single-path route, path excluded → incompatible
+  //   - multi-path route, one path excluded → incompatible (split routes
+  //     fail-closed: ANY excluded path triggers fresh discovery, since
+  //     each path leg can independently insert the Pyth update fee
+  //     `tx.splitCoins(tx.gas, ...)` call inside Cetus's `routerSwap`).
+  type RouteForTest = Parameters<typeof import('./cetus-swap.js').isPrecomputedRouteCompatibleWithProviders>[0];
+
+  function makeRoute(providers: string[]): RouteForTest {
+    return {
+      routerData: {
+        amountIn: { toString: () => '0' },
+        amountOut: { toString: () => '0' },
+        byAmountIn: true,
+        paths: providers.map((provider) => ({ provider })),
+        insufficientLiquidity: false,
+        deviationRatio: 0,
+      },
+      amountIn: '0',
+      amountOut: '0',
+      byAmountIn: true,
+      priceImpact: 0,
+      insufficientLiquidity: false,
+    } as unknown as RouteForTest;
+  }
+
+  it('returns true when providers is undefined (non-sponsored caller)', async () => {
+    const { isPrecomputedRouteCompatibleWithProviders } = await import('./cetus-swap.js');
+    expect(isPrecomputedRouteCompatibleWithProviders(makeRoute(['HAEDALPMM']), undefined)).toBe(true);
+  });
+
+  it('returns true when providers is empty (treated as no allow-list)', async () => {
+    const { isPrecomputedRouteCompatibleWithProviders } = await import('./cetus-swap.js');
+    expect(isPrecomputedRouteCompatibleWithProviders(makeRoute(['HAEDALPMM']), [])).toBe(true);
+  });
+
+  it('returns true when every path provider is in the allow-list', async () => {
+    const { isPrecomputedRouteCompatibleWithProviders } = await import('./cetus-swap.js');
+    expect(
+      isPrecomputedRouteCompatibleWithProviders(
+        makeRoute(['CETUS', 'BLUEFIN']),
+        ['CETUS', 'BLUEFIN', 'TURBOS', 'KRIYAV3'],
+      ),
+    ).toBe(true);
+  });
+
+  it('returns false when any single path provider is excluded', async () => {
+    const { isPrecomputedRouteCompatibleWithProviders } = await import('./cetus-swap.js');
+    expect(
+      isPrecomputedRouteCompatibleWithProviders(
+        makeRoute(['HAEDALPMM']),
+        ['CETUS', 'BLUEFIN', 'TURBOS'],
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when ANY path in a split route is excluded (multi-DEX safety)', async () => {
+    const { isPrecomputedRouteCompatibleWithProviders } = await import('./cetus-swap.js');
+    expect(
+      isPrecomputedRouteCompatibleWithProviders(
+        makeRoute(['CETUS', 'OBRIC', 'BLUEFIN']), // OBRIC is Pyth-dependent
+        ['CETUS', 'BLUEFIN', 'TURBOS'],
+      ),
+    ).toBe(false);
+  });
 });

@@ -264,6 +264,34 @@ function getClient(walletAddress: string, overlayFee?: OverlayFeeConfig): Aggreg
 }
 
 /**
+ * [Bug A defense-in-depth / 2026-05-10] Returns true when every path
+ * provider in `route.routerData.paths` is present in the active
+ * `providers` allow-list. Cetus's `getProvidersExcluding(...)` returns
+ * an inclusion list (the complement of the exclusion), so when a caller
+ * passes `providers`, every walked provider must be IN that list to be
+ * compatible.
+ *
+ * When `providers` is undefined (non-sponsored caller, e.g. CLI) every
+ * route is compatible — same semantics as `findSwapRoute` itself.
+ *
+ * Why per-path: a Cetus aggregator route can split across multiple DEXes
+ * (e.g. 60% Cetus + 40% Bluefin). A single excluded provider in any path
+ * triggers `tx.gas` usage in `routerSwap`. Reject the whole route if any
+ * leg is excluded.
+ */
+export function isPrecomputedRouteCompatibleWithProviders(
+  route: SwapRouteResult,
+  providers: string[] | undefined,
+): boolean {
+  if (!providers || providers.length === 0) return true;
+  const allowed = new Set(providers);
+  for (const path of route.routerData.paths) {
+    if (!allowed.has(path.provider)) return false;
+  }
+  return true;
+}
+
+/**
  * Find the optimal swap route via Cetus Aggregator REST API.
  *
  * Pass `overlayFee` to charge an overlay fee on the output (Audric's pattern).
@@ -500,12 +528,22 @@ export async function addSwapToTx(
   // new amount because price impact is amount-dependent). The caller
   // (`audric prepare-route`) owns the staleness check (`isCetusRouteFresh`)
   // and only forwards `precomputedRoute` when fresh.
+  //
+  // [Bug A defense-in-depth / 2026-05-10] Even with the engine fix that
+  // makes `swap_quote` discover sponsor-safe routes, this layer also
+  // validates the precomputed route against the active providers
+  // allow-list. If the route walks any excluded provider (e.g. a stale
+  // `pending_action.cetusRoute` from before the engine fix shipped, or a
+  // provider list that drifted between quote and execute), fall back to
+  // fresh discovery. Better to eat 400ms than to let a Pyth-dependent
+  // route reach Enoki and revert with HTTP 400.
   let route: SwapRouteResult | null;
   let usedPrecomputedRoute = false;
   if (
     input.precomputedRoute &&
     input.precomputedRoute.amountIn === effectiveRaw.toString() &&
-    input.precomputedRoute.byAmountIn === byAmountIn
+    input.precomputedRoute.byAmountIn === byAmountIn &&
+    isPrecomputedRouteCompatibleWithProviders(input.precomputedRoute, input.providers)
   ) {
     route = input.precomputedRoute;
     usedPrecomputedRoute = true;

@@ -420,7 +420,7 @@ type AppenderFn<TInput, TPreview extends StepPreview> = (
  * helper — composeTx forwards the literal list to Cetus, Cetus does the
  * inverse lookup. Result is identical.
  */
-const SPONSORED_PYTH_DEPENDENT_PROVIDERS = [
+export const SPONSORED_PYTH_DEPENDENT_PROVIDERS = [
   'HAEDALPMM',
   'METASTABLE',
   'OBRIC',
@@ -434,8 +434,14 @@ const SPONSORED_PYTH_DEPENDENT_PROVIDERS = [
  * Get all eligible Cetus provider names except the Pyth-dependent ones,
  * for sponsored swap context. Computed from the Cetus SDK's
  * `getAllProviders()` minus the exclusion list.
+ *
+ * [Bug A fix / 2026-05-10] Exported so the engine's `swap_quote` tool can
+ * call this when discovering routes for sponsored hosts. Previously the
+ * engine only exclude these providers at COMPOSE time; now it excludes
+ * at QUOTE time too, so the precomputed route stashed on
+ * `pending_action.cetusRoute` is always sponsor-safe.
  */
-async function getSponsoredSwapProviders(): Promise<string[]> {
+export async function getSponsoredSwapProviders(): Promise<string[]> {
   const { getProvidersExcluding } = await import('@cetusprotocol/aggregator-sdk');
   return getProvidersExcluding([...SPONSORED_PYTH_DEPENDENT_PROVIDERS]);
 }

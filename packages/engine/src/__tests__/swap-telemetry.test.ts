@@ -30,11 +30,18 @@ import {
 // `instanceof T2000Error` branch in swap_quote / swap_execute fires
 // correctly. Mocking the whole module would replace T2000Error with a
 // vi.fn() that doesn't satisfy instanceof checks.
+//
+// [Bug A fix / 2026-05-10] Also mock `getSponsoredSwapProviders` so the
+// `providers-forwarded` test below has a deterministic value to assert
+// against. The real implementation does a dynamic import of
+// `@cetusprotocol/aggregator-sdk` which is fine in production but
+// adds noise to focused unit tests.
 vi.mock('@t2000/sdk', async () => {
   const actual = await vi.importActual<typeof import('@t2000/sdk')>('@t2000/sdk');
   return {
     ...actual,
     getSwapQuote: vi.fn(),
+    getSponsoredSwapProviders: vi.fn().mockResolvedValue(['CETUS', 'BLUEFIN', 'TURBOS', 'KRIYAV3']),
   };
 });
 
@@ -134,6 +141,39 @@ describe('swap_quote telemetry (Backlog 2a)', () => {
     expect(spy.counter).toHaveBeenCalledWith('cetus.find_route_count', {
       outcome: 'success',
     });
+  });
+
+  // [Bug A fix / 2026-05-10] Pin the contract: the engine `swap_quote`
+  // tool MUST forward a sponsor-safe `providers` allow-list to the SDK's
+  // `getSwapQuote`. Without this, `getSwapQuote` discovers routes against
+  // the FULL provider set, which can include Pyth-dependent providers
+  // (HAEDALPMM, METASTABLE, OBRIC, STEAMM_OMM[_V2], SEVENK, HAEDALHMMV2).
+  // Routes walking those providers cause Cetus's `routerSwap` to insert
+  // `tx.splitCoins(tx.gas, ...)` for the Pyth oracle update fee, which
+  // Enoki rejects with HTTP 400 "Cannot use GasCoin as a transaction
+  // argument". Production smoke evidence: 3-step bundle 2026-05-10.
+  //
+  // The exact list `['CETUS','BLUEFIN','TURBOS','KRIYAV3']` is an
+  // arbitrary fixture from the mock above — what matters is that the
+  // tool calls the SDK with the resolved value of
+  // `getSponsoredSwapProviders()`, NOT undefined.
+  it('forwards sponsor-safe providers allow-list to SDK getSwapQuote (Bug A fix)', async () => {
+    mockedGetSwapQuote.mockResolvedValueOnce(FAKE_QUOTE);
+
+    await swapQuoteTool.call(
+      { from: 'USDC', to: 'GOLD', amount: 1 },
+      makeQuoteContext(),
+    );
+
+    expect(mockedGetSwapQuote).toHaveBeenCalledTimes(1);
+    expect(mockedGetSwapQuote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: 'USDC',
+        to: 'GOLD',
+        amount: 1,
+        providers: ['CETUS', 'BLUEFIN', 'TURBOS', 'KRIYAV3'],
+      }),
+    );
   });
 
   it('emits {outcome=error} counter and NO histogram when getSwapQuote throws', async () => {

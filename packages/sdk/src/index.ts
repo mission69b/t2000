@@ -119,6 +119,8 @@ export {
   composeTx,
   deriveAllowedAddressesFromPtb,
   WRITE_APPENDER_REGISTRY,
+  SPONSORED_PYTH_DEPENDENT_PROVIDERS,
+  getSponsoredSwapProviders,
 } from './composeTx.js';
 export type {
   WriteToolName,
