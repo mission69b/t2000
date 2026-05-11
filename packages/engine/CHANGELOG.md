@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.28.3 (2026-05-11) — Fix: PWR `BalanceCard` staleness, take 2 (cache-busting query param)
+
+1.28.2 attempted to fix PWR `BalanceCard` staleness by sending `Cache-Control: no-cache` as a request header from `fetchAudricPortfolio` + `fetchAudricHistory`. **Production smoke 2026-05-11 ~16:11 AEST proved that fix INEFFECTIVE** — the same byte-identical staleness pattern reproduced (Prompt 1 swap+save bundle PWR `BalanceCard` `$78.73 wallet / $20.79 savings`, Prompt 2 withdraw-all-USDC PWR `BalanceCard` STILL `$78.73 wallet / $20.79 savings`, while `SavingsCard` correctly showed `$16.89 USDsui-only`).
+
+Empirical verification (3 sequential probes against `https://audric.ai/api/portfolio?address=0x000...000` from outside Vercel, 2026-05-11 06:13 UTC):
+- **Bare request**: `x-vercel-cache: STALE`, age 17s
+- **`Cache-Control: no-cache` header**: `x-vercel-cache: STALE`, age 17s (no change)
+- **`x-vercel-cache: bypass` header**: `x-vercel-cache: STALE`, age 17s (no change)
+
+Vercel's Edge Network ignores ALL request-side cache headers. Per Vercel's own documentation, the cache key is the URL itself — the only documented bypass is a unique URL per request.
+
+### Fixed
+
+- **`fetchAudricPortfolio` now appends `_engineNoCache=<unix-ms>` to the request URL.** Vercel keys its cache on the FULL URL (including query params) so each engine fetch gets a unique cache key → always a CDN miss → always forwards to origin → engine sees the freshly-invalidated wallet cache.
+- **`fetchAudricHistory` mirrors the same posture symmetrically.**
+- **The audric route only reads `address` from `searchParams`**, so the extra query param is ignored by the handler (no behaviour change inside the route).
+- **The `Cache-Control: no-cache` header from 1.28.2 is kept as defence in depth** — does nothing today against Vercel's CDN, but is harmless and documents intent.
+
+### What this preserves
+
+- **Browser-side hooks (`useBalance`, `FullPortfolioCanvas`, `WatchAddressCanvas`) keep their CDN caching benefit.** They use plain `?address=...` URLs without the `_engineNoCache` param, so their cache key matches across users and across requests, hitting the same edge-cached entry.
+- **Engine cache pollution is bounded.** Each PWR write injects ~1 cache entry per refresh tool. At Vercel's ~1MB cache limit per route, 100k entries before eviction — far above any realistic write rate.
+
+### Updated tests
+
+- `audric-api.test.ts` — both regression tests now assert (a) the URL contains the `_engineNoCache=<unix-ms>` query param within the call window AND (b) the `Cache-Control: no-cache` header is sent.
+
+### Test results
+
+- 1113/1113 engine tests passing (no count change vs 1.28.2; same two regression tests, expanded assertions).
+- 0 lint errors / 0 type errors.
+- ESM + DTS build green.
+
 ## 1.28.2 (2026-05-11) — Fix: PWR `BalanceCard` staleness (Vercel CDN bypass)
 
 Fixes a data correctness regression where `balance_check` returned stale wallet + savings values inside the post-write refresh cluster, while `savings_info` (rendered immediately above it in the same cluster) showed correct fresh values from the same write.

@@ -120,41 +120,52 @@ export async function fetchAudricPortfolio(
   if (!base) return null;
 
   try {
-    // [SPEC 23B-W1.1, 2026-05-11] Bypass Vercel Edge cache.
+    // [SPEC 23B-W1.1, 2026-05-11] Bypass Vercel Edge cache via a unique
+    // query param per call.
     //
     // The audric `/api/portfolio` route ships a `Cache-Control: public,
     // s-maxage=15, stale-while-revalidate=30` header so its three
-    // browser-side consumers (`useBalance` hook, `FullPortfolioCanvas`,
+    // browser-side consumers (`useBalance`, `FullPortfolioCanvas`,
     // `WatchAddressCanvas`) get free CDN caching during normal browsing.
-    // That benefit is fine for those callers — they don't run inside
-    // post-write refresh.
-    //
     // The engine, on the other hand, is the consumer that ABSOLUTELY
     // must see fresh data: `runPostWriteRefresh` invalidates the engine's
     // own Upstash wallet cache via `clearPortfolioCacheFor()` BEFORE
     // dispatching `balance_check`, but that invalidation lives inside
     // the audric route's process. The fetch issued from the engine still
-    // hits Vercel CDN first, and within the 15s `s-maxage` window the CDN
+    // hits Vercel CDN first, and within the s-maxage window the CDN
     // returns the prior turn's cached response WITHOUT EVER REACHING the
-    // route — so the engine's own cache invalidation can't save the day.
+    // route — so the engine's own cache invalidation never has a chance
+    // to take effect.
     //
-    // Symptom in production (smoke 2026-05-11, Prompt 2): user withdrew
-    // 21 USDC from savings. PWR cluster fired ~5s later. `BalanceCard`
-    // returned BYTE-IDENTICAL `wallet=$61.78 / savings=$37.96` to the
-    // prior bundle's PWR — pre-withdraw values, served by Vercel CDN.
-    // `SavingsCard` (which goes through `positionFetcher` directly,
-    // never the audric API) showed the correct post-withdraw $16.89.
+    // Symptom in production (smokes 2026-05-11, Prompts 2): user
+    // withdrew USDC from savings. PWR cluster fired ~5s later.
+    // `BalanceCard` returned BYTE-IDENTICAL pre-withdraw values to the
+    // prior bundle's PWR. `SavingsCard` (which goes through
+    // `positionFetcher` directly, never the audric API) showed the
+    // correct post-withdraw state.
     //
-    // Fix: send a `Cache-Control: no-cache` request header. Vercel CDN
-    // respects this and forwards to the origin instead of returning a
-    // cached response. We deliberately do NOT set the `cache` fetch
-    // option — Node's undici `RequestInit` doesn't expose it (cache is a
-    // browser/Next.js-only field), so the header is the only portable
-    // primitive available to us. `no-cache` (force revalidation) is the
-    // safer standard than `no-store` (don't cache at all) — every CDN
-    // treats `no-cache` as cache-bypass; `no-store` semantics vary.
+    // 1.28.2 attempted to fix this by sending `Cache-Control: no-cache`
+    // as a request header. Empirical verification (3 sequential probes
+    // against `/api/portfolio` from outside Vercel, 2026-05-11 06:13 UTC)
+    // proved Vercel's Edge Network IGNORES request-side `no-cache`
+    // headers — the cache HIT regardless of header presence. Per Vercel
+    // docs, the only documented way to bypass the Edge Network cache is
+    // via the URL key itself.
+    //
+    // 1.28.3 fix: append a per-call `_engineNoCache=<unix-ms>` query
+    // param. Vercel keys its cache on the FULL URL including query
+    // params, so each engine fetch produces a unique cache key → always
+    // a CDN miss → always forwards to origin → engine sees the
+    // freshly-invalidated wallet cache and returns fresh data.
+    //
+    // The audric route only reads `address` from `searchParams`; the
+    // extra query param is ignored by the handler. Browser-side hooks
+    // continue to use the `?address=...`-only URL and keep their CDN
+    // cache benefit. The header is also kept (defence in depth in case
+    // Vercel changes behaviour later).
+    const cacheBuster = `_engineNoCache=${Date.now()}`;
     const res = await fetch(
-      `${base}/api/portfolio?address=${encodeURIComponent(address)}`,
+      `${base}/api/portfolio?address=${encodeURIComponent(address)}&${cacheBuster}`,
       {
         signal: signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
         headers: { 'Cache-Control': 'no-cache' },
@@ -256,11 +267,13 @@ export async function fetchAudricHistory(
 
   try {
     // [SPEC 23B-W1.1, 2026-05-11] Same cache-bypass posture as
-    // `fetchAudricPortfolio`. `/api/history` does NOT ship a Cache-Control
-    // header today (verified 2026-05-11), so this is a no-op against the
-    // CDN — but applied symmetrically with the portfolio fetch so a
-    // future operator who adds caching to `/api/history` for browser
-    // perf can't silently regress engine-side freshness.
+    // `fetchAudricPortfolio` (1.28.3). `/api/history` does NOT ship a
+    // Cache-Control header today (verified 2026-05-11), so this is a
+    // no-op against the CDN — but applied symmetrically with the
+    // portfolio fetch so a future operator who adds caching to
+    // `/api/history` for browser perf can't silently regress engine-side
+    // freshness.
+    params.set('_engineNoCache', String(Date.now()));
     const res = await fetch(`${base}/api/history?${params}`, {
       signal: signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: { 'Cache-Control': 'no-cache' },

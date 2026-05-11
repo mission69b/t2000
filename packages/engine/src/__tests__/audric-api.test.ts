@@ -127,13 +127,17 @@ describe('audric-api', () => {
     });
 
     // [SPEC 23B-W1.1, 2026-05-11] Pin the cache-bypass posture so the
-    // PWR BalanceCard staleness regression cannot return silently. The
-    // audric `/api/portfolio` route ships `Cache-Control: public,
-    // s-maxage=15` for browser-side hooks; the engine MUST send
-    // `Cache-Control: no-cache` to bypass the Vercel Edge cache so
-    // post-write reads always see fresh data. (The `cache` fetch option
-    // is intentionally NOT used — it's not on Node's undici RequestInit.)
-    it('passes Cache-Control:no-cache header to bypass Vercel Edge cache', async () => {
+    // PWR BalanceCard staleness regression cannot return silently.
+    //
+    // 1.28.2 sent `Cache-Control: no-cache` as a request header — proven
+    // INEFFECTIVE in production (Vercel CDN ignores request-side
+    // `no-cache`; cache HIT regardless of header presence).
+    //
+    // 1.28.3 appends a unique `_engineNoCache=<unix-ms>` query param to
+    // each fetch so Vercel keys it as a fresh cache entry → always MISS
+    // → always forwards to origin → engine sees freshly-invalidated
+    // wallet cache. The header is kept as defence in depth.
+    it('appends _engineNoCache query param + sends Cache-Control:no-cache to bypass Vercel Edge cache', async () => {
       const fetchSpy: typeof fetch = vi.fn(async () => new Response(
         JSON.stringify({
           address: ADDRESS,
@@ -150,10 +154,21 @@ describe('audric-api', () => {
       )) as unknown as typeof fetch;
       global.fetch = fetchSpy;
 
+      const before = Date.now();
       await fetchAudricPortfolio(ADDRESS, { T2000_AUDRIC_API: 'https://api.example' });
+      const after = Date.now();
 
-      const mock = (fetchSpy as unknown as { mock: { calls: Array<[unknown, RequestInit?]> } }).mock;
+      const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
       expect(mock.calls).toHaveLength(1);
+      const url = mock.calls[0][0];
+      expect(url).toContain('/api/portfolio?address=' + encodeURIComponent(ADDRESS));
+      // `_engineNoCache=<unix-ms>` query param present and within the
+      // call window (asserts it's a per-call timestamp, not a constant).
+      const match = /_engineNoCache=(\d+)/.exec(url);
+      expect(match).not.toBeNull();
+      const ts = Number(match![1]);
+      expect(ts).toBeGreaterThanOrEqual(before);
+      expect(ts).toBeLessThanOrEqual(after);
       const init = mock.calls[0][1] ?? {};
       const headers = init.headers as Record<string, string> | undefined;
       expect(headers?.['Cache-Control']).toBe('no-cache');
@@ -202,20 +217,30 @@ describe('audric-api', () => {
       expect(result![0].direction).toBe('out');
     });
 
-    // [SPEC 23B-W1.1, 2026-05-11] Symmetric posture with portfolio fetch.
-    // `/api/history` is uncached today, but the test guards against
-    // anyone adding caching to that route in the future.
-    it('passes Cache-Control:no-cache header to bypass Vercel Edge cache', async () => {
+    // [SPEC 23B-W1.1, 2026-05-11] Symmetric posture with portfolio fetch
+    // (1.28.3). `/api/history` is uncached today, but the test guards
+    // against anyone adding caching to that route in the future.
+    it('appends _engineNoCache query param + sends Cache-Control:no-cache to bypass Vercel Edge cache', async () => {
       const fetchSpy: typeof fetch = vi.fn(async () => new Response(
         JSON.stringify({ items: [] }),
         { status: 200 },
       )) as unknown as typeof fetch;
       global.fetch = fetchSpy;
 
+      const before = Date.now();
       await fetchAudricHistory(ADDRESS, { limit: 5 }, { T2000_AUDRIC_API: 'https://api.example' });
+      const after = Date.now();
 
-      const mock = (fetchSpy as unknown as { mock: { calls: Array<[unknown, RequestInit?]> } }).mock;
+      const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
       expect(mock.calls).toHaveLength(1);
+      const url = mock.calls[0][0];
+      expect(url).toContain('/api/history?');
+      expect(url).toContain('address=' + ADDRESS);
+      const match = /_engineNoCache=(\d+)/.exec(url);
+      expect(match).not.toBeNull();
+      const ts = Number(match![1]);
+      expect(ts).toBeGreaterThanOrEqual(before);
+      expect(ts).toBeLessThanOrEqual(after);
       const init = mock.calls[0][1] ?? {};
       const headers = init.headers as Record<string, string> | undefined;
       expect(headers?.['Cache-Control']).toBe('no-cache');
