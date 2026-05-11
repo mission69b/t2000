@@ -120,9 +120,45 @@ export async function fetchAudricPortfolio(
   if (!base) return null;
 
   try {
+    // [SPEC 23B-W1.1, 2026-05-11] Bypass Vercel Edge cache.
+    //
+    // The audric `/api/portfolio` route ships a `Cache-Control: public,
+    // s-maxage=15, stale-while-revalidate=30` header so its three
+    // browser-side consumers (`useBalance` hook, `FullPortfolioCanvas`,
+    // `WatchAddressCanvas`) get free CDN caching during normal browsing.
+    // That benefit is fine for those callers — they don't run inside
+    // post-write refresh.
+    //
+    // The engine, on the other hand, is the consumer that ABSOLUTELY
+    // must see fresh data: `runPostWriteRefresh` invalidates the engine's
+    // own Upstash wallet cache via `clearPortfolioCacheFor()` BEFORE
+    // dispatching `balance_check`, but that invalidation lives inside
+    // the audric route's process. The fetch issued from the engine still
+    // hits Vercel CDN first, and within the 15s `s-maxage` window the CDN
+    // returns the prior turn's cached response WITHOUT EVER REACHING the
+    // route — so the engine's own cache invalidation can't save the day.
+    //
+    // Symptom in production (smoke 2026-05-11, Prompt 2): user withdrew
+    // 21 USDC from savings. PWR cluster fired ~5s later. `BalanceCard`
+    // returned BYTE-IDENTICAL `wallet=$61.78 / savings=$37.96` to the
+    // prior bundle's PWR — pre-withdraw values, served by Vercel CDN.
+    // `SavingsCard` (which goes through `positionFetcher` directly,
+    // never the audric API) showed the correct post-withdraw $16.89.
+    //
+    // Fix: send a `Cache-Control: no-cache` request header. Vercel CDN
+    // respects this and forwards to the origin instead of returning a
+    // cached response. We deliberately do NOT set the `cache` fetch
+    // option — Node's undici `RequestInit` doesn't expose it (cache is a
+    // browser/Next.js-only field), so the header is the only portable
+    // primitive available to us. `no-cache` (force revalidation) is the
+    // safer standard than `no-store` (don't cache at all) — every CDN
+    // treats `no-cache` as cache-bypass; `no-store` semantics vary.
     const res = await fetch(
       `${base}/api/portfolio?address=${encodeURIComponent(address)}`,
-      { signal: signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS) },
+      {
+        signal: signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        headers: { 'Cache-Control': 'no-cache' },
+      },
     );
     if (!res.ok) {
       console.warn(`[audric-api] portfolio ${address.slice(0, 10)} → HTTP ${res.status}`);
@@ -219,8 +255,15 @@ export async function fetchAudricHistory(
   if (opts.limit != null) params.set('limit', String(opts.limit));
 
   try {
+    // [SPEC 23B-W1.1, 2026-05-11] Same cache-bypass posture as
+    // `fetchAudricPortfolio`. `/api/history` does NOT ship a Cache-Control
+    // header today (verified 2026-05-11), so this is a no-op against the
+    // CDN — but applied symmetrically with the portfolio fetch so a
+    // future operator who adds caching to `/api/history` for browser
+    // perf can't silently regress engine-side freshness.
     const res = await fetch(`${base}/api/history?${params}`, {
       signal: signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { 'Cache-Control': 'no-cache' },
     });
     if (!res.ok) {
       console.warn(`[audric-api] history ${address.slice(0, 10)} → HTTP ${res.status}`);

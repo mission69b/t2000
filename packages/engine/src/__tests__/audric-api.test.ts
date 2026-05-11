@@ -125,6 +125,39 @@ describe('audric-api', () => {
       });
       expect(result).toBeNull();
     });
+
+    // [SPEC 23B-W1.1, 2026-05-11] Pin the cache-bypass posture so the
+    // PWR BalanceCard staleness regression cannot return silently. The
+    // audric `/api/portfolio` route ships `Cache-Control: public,
+    // s-maxage=15` for browser-side hooks; the engine MUST send
+    // `Cache-Control: no-cache` to bypass the Vercel Edge cache so
+    // post-write reads always see fresh data. (The `cache` fetch option
+    // is intentionally NOT used — it's not on Node's undici RequestInit.)
+    it('passes Cache-Control:no-cache header to bypass Vercel Edge cache', async () => {
+      const fetchSpy: typeof fetch = vi.fn(async () => new Response(
+        JSON.stringify({
+          address: ADDRESS,
+          netWorthUsd: 0,
+          walletValueUsd: 0,
+          walletAllocations: {},
+          wallet: [],
+          positions: { savings: 0, borrows: 0, savingsRate: 0, healthFactor: null, maxBorrow: 0, pendingRewards: 0, supplies: [], borrowsDetail: [] },
+          estimatedDailyYield: 0,
+          source: 'blockvision',
+          pricedAt: 0,
+        }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+      global.fetch = fetchSpy;
+
+      await fetchAudricPortfolio(ADDRESS, { T2000_AUDRIC_API: 'https://api.example' });
+
+      const mock = (fetchSpy as unknown as { mock: { calls: Array<[unknown, RequestInit?]> } }).mock;
+      expect(mock.calls).toHaveLength(1);
+      const init = mock.calls[0][1] ?? {};
+      const headers = init.headers as Record<string, string> | undefined;
+      expect(headers?.['Cache-Control']).toBe('no-cache');
+    });
   });
 
   describe('fetchAudricHistory', () => {
@@ -167,6 +200,25 @@ describe('audric-api', () => {
       expect(result![0].digest).toBe('0xdig');
       expect(result![0].action).toBe('send');
       expect(result![0].direction).toBe('out');
+    });
+
+    // [SPEC 23B-W1.1, 2026-05-11] Symmetric posture with portfolio fetch.
+    // `/api/history` is uncached today, but the test guards against
+    // anyone adding caching to that route in the future.
+    it('passes Cache-Control:no-cache header to bypass Vercel Edge cache', async () => {
+      const fetchSpy: typeof fetch = vi.fn(async () => new Response(
+        JSON.stringify({ items: [] }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+      global.fetch = fetchSpy;
+
+      await fetchAudricHistory(ADDRESS, { limit: 5 }, { T2000_AUDRIC_API: 'https://api.example' });
+
+      const mock = (fetchSpy as unknown as { mock: { calls: Array<[unknown, RequestInit?]> } }).mock;
+      expect(mock.calls).toHaveLength(1);
+      const init = mock.calls[0][1] ?? {};
+      const headers = init.headers as Record<string, string> | undefined;
+      expect(headers?.['Cache-Control']).toBe('no-cache');
     });
 
     it('returns null on HTTP error and null on network failure', async () => {

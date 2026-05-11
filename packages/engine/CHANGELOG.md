@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.28.2 (2026-05-11) — Fix: PWR `BalanceCard` staleness (Vercel CDN bypass)
+
+Fixes a data correctness regression where `balance_check` returned stale wallet + savings values inside the post-write refresh cluster, while `savings_info` (rendered immediately above it in the same cluster) showed correct fresh values from the same write.
+
+Symptom in production (smoke 2026-05-11, Prompt 2): user withdrew 21 USDC from savings. PWR cluster fired ~5s later. The `BalanceCard` returned BYTE-IDENTICAL `wallet=$61.78 / savings=$37.96` to the prior turn's PWR — pre-withdraw values. The `SavingsCard` (which goes through `positionFetcher` directly, never the audric API) showed the correct post-withdraw `$16.89`. The narration was also fresh (LLM read from `savings_info`'s correct values, not the stale `balance_check`).
+
+Root cause is upstream of the engine's own caches. The audric `/api/portfolio` route ships `Cache-Control: public, s-maxage=15, stale-while-revalidate=30` so its three browser-side consumers (`useBalance`, `FullPortfolioCanvas`, `WatchAddressCanvas`) get free Vercel CDN caching during normal browsing. The engine's `fetchAudricPortfolio` issued a vanilla `fetch()` without any cache-bypass, so within the 15s s-maxage window the CDN returned the prior turn's cached response WITHOUT EVER REACHING the audric route — meaning the engine's own `clearPortfolioCacheFor()` call inside `runPostWriteRefresh` (which correctly invalidated the shared Upstash wallet cache) never had a chance to take effect on the request path.
+
+`savings_info` is unaffected because it calls `context.positionFetcher(addr)` directly (in-process, never crosses the audric API boundary, never touches the CDN).
+
+### Fixed
+
+- **`fetchAudricPortfolio` now sends `Cache-Control: no-cache` request header** to bypass Vercel Edge cache. Vercel's CDN respects this directive by forwarding the request to the origin route handler instead of returning a cached response.
+- **`fetchAudricHistory` gets the same posture symmetrically.** `/api/history` is uncached today, but pinning the same primitive prevents a future operator who adds caching to `/api/history` for browser perf from silently regressing engine-side freshness.
+- **The browser-side cache is preserved.** `useBalance`, `FullPortfolioCanvas`, `WatchAddressCanvas` continue to benefit from the 15s edge cache during normal dashboard browsing — the bypass header is only sent by the engine.
+
+### Added
+
+- **2 new regression tests** in `audric-api.test.ts`: pin that both `fetchAudricPortfolio` and `fetchAudricHistory` send the `Cache-Control: no-cache` request header. Failing the test means the staleness regression is back.
+
+### Why we used the header, not the `cache` fetch option
+
+The `cache: 'no-store'` fetch option is a browser/Next.js convenience that maps to a `Cache-Control: no-store` request header. Node's undici `RequestInit` does NOT expose `cache` (it's on `Request` as a read-only field, not on the init type), so it's not a portable primitive for an engine package that runs on Node. The `Cache-Control: no-cache` request header is the standard, portable, and CDN-respected mechanism. `no-cache` (force revalidation) is also semantically safer than `no-store` (don't cache at all) — every CDN treats `no-cache` as cache-bypass, while `no-store` semantics vary.
+
+### Test results
+
+- 1113/1113 engine tests passing (was 1111 in 1.28.1; +2 from new cache-bypass regression tests).
+- 0 lint errors / 0 type errors.
+- ESM + DTS build green.
+
 ## 1.28.1 (2026-05-11) — Fix: emit `tool_start` for PWR refreshes (silent-drop regression)
 
 Fixes a contract regression where `runPostWriteRefresh` emitted only `tool_result` events for the reads it injected (`balance_check`, `savings_info`, `health_check`), never the corresponding `tool_start`. Hosts that build a chronological timeline by registering blocks on `tool_start` and updating them on `tool_result` (audric SPEC 8 v0.5.1) silently dropped every PWR result because no matching block existed for the `findLastIndex(toolUseId)` lookup.
