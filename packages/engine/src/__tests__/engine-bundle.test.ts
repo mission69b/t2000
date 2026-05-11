@@ -536,6 +536,121 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     );
     expect(refreshStarts).toHaveLength(0);
   });
+
+  it('[v1.28.1] atomic bundle success: emits tool_start + tool_result for each PWR refresh tool (paired by toolUseId, source: "pwr")', async () => {
+    // Companion test to the v1.28.1 silent-PWR-drop fix in
+    // post-write-refresh.test.ts — that one covers the single-write
+    // path; this one covers the BUNDLE path. The bundle case (e.g.
+    // swap+save Payment Intent) is the most common composite write
+    // production sees, so we pin the same four invariants here:
+    //   1. tool_start + tool_result both fire for each refresh tool
+    //   2. Both carry source: 'pwr'
+    //   3. Paired by toolUseId
+    //   4. tool_start precedes tool_result chronologically
+    //
+    // Bundle-specific concern this also pins: the refresh set is the
+    // UNION of every step's `postWriteRefresh` entry, deduped. Pre-1.28.1
+    // the silent-drop bug applied uniformly to single + bundle paths; we
+    // pin the bundle path explicitly so a future "optimization" of the
+    // bundle PWR loop (e.g. parallel Promise.all per step) can't
+    // silently regress the contract for one path while leaving the
+    // single-write test passing.
+    const provider = createMockProvider([
+      [
+        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 5 } },
+        { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
+      ],
+      [{ type: 'text', text: 'Both legs landed.' }],
+    ]);
+    const tools = applyToolFlags([
+      makeWrite('swap_execute'),
+      makeWrite('send_transfer'),
+      readBalance,
+    ]);
+    const engine = new QueryEngine({
+      provider,
+      tools,
+      systemPrompt: 'test',
+      // Different refresh-tool lists per step. Engine should union them.
+      // swap_execute → balance_check; send_transfer → balance_check too.
+      // Union with dedupe → just balance_check fires once.
+      postWriteRefresh: {
+        swap_execute: ['balance_check'],
+        send_transfer: ['balance_check'],
+      },
+    });
+
+    const turn1Events = await collectEvents(engine.submitMessage('split'));
+    const action = (turn1Events.find((e) => e.type === 'pending_action') as
+      EngineEvent & { type: 'pending_action'; action: PendingAction }).action;
+
+    const turn2Events = await collectEvents(
+      engine.resumeWithToolResult(action, {
+        approved: true,
+        stepResults: [
+          {
+            toolUseId: 'tc-1',
+            attemptId: action.steps![0].attemptId,
+            result: { txDigest: 'd1', success: true },
+            isError: false,
+          },
+          {
+            toolUseId: 'tc-2',
+            attemptId: action.steps![1].attemptId,
+            result: { txDigest: 'd2', success: true },
+            isError: false,
+          },
+        ],
+      }),
+    );
+
+    // tool_start + tool_result both fire with source: 'pwr' for the
+    // unioned refresh tool set (just balance_check after dedup).
+    const pwrStarts = turn2Events.filter(
+      (e) => e.type === 'tool_start' && e.source === 'pwr',
+    );
+    const pwrResults = turn2Events.filter(
+      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
+    );
+
+    expect(pwrStarts).toHaveLength(1);
+    expect(pwrResults).toHaveLength(1);
+    expect(pwrStarts[0].type === 'tool_start' && pwrStarts[0].toolName).toBe(
+      'balance_check',
+    );
+
+    // Pairing + chronological ordering invariants.
+    const startId =
+      pwrStarts[0].type === 'tool_start' ? pwrStarts[0].toolUseId : '';
+    const resultId =
+      pwrResults[0].type === 'tool_result' ? pwrResults[0].toolUseId : '';
+    expect(startId).toBe(resultId);
+
+    const startIdx = turn2Events.findIndex(
+      (e) => e.type === 'tool_start' && e.toolUseId === startId,
+    );
+    const resultIdx = turn2Events.findIndex(
+      (e) => e.type === 'tool_result' &&
+        e.toolUseId === resultId &&
+        e.wasPostWriteRefresh,
+    );
+    expect(startIdx).toBeGreaterThanOrEqual(0);
+    expect(resultIdx).toBeGreaterThan(startIdx);
+
+    // Bundle stepResults still ride through as their own (non-PWR)
+    // tool_result events — pin the source: 'llm' stamp on those so a
+    // future regression that mis-tags step results as 'pwr' is caught.
+    const stepResults = turn2Events.filter(
+      (e) =>
+        e.type === 'tool_result' &&
+        !e.wasPostWriteRefresh &&
+        (e.toolName === 'swap_execute' || e.toolName === 'send_transfer'),
+    );
+    expect(stepResults).toHaveLength(2);
+    for (const sr of stepResults) {
+      expect(sr.type === 'tool_result' && sr.source).toBe('llm');
+    }
+  });
 });
 
 // [Phase 0 → Phase 3a / SPEC 13] MAX_BUNDLE_OPS cap regression suite.
