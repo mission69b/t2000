@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.28.1 (2026-05-11) — Fix: emit `tool_start` for PWR refreshes (silent-drop regression)
+
+Fixes a contract regression where `runPostWriteRefresh` emitted only `tool_result` events for the reads it injected (`balance_check`, `savings_info`, `health_check`), never the corresponding `tool_start`. Hosts that build a chronological timeline by registering blocks on `tool_start` and updating them on `tool_result` (audric SPEC 8 v0.5.1) silently dropped every PWR result because no matching block existed for the `findLastIndex(toolUseId)` lookup.
+
+Symptom in production: the audric `<PostWriteRefreshSurface>` cluster never rendered after a successful save / withdraw / borrow / repay / send / swap, despite the engine running the refresh tools correctly and the LLM narrating from the fresh data. Net effect: the entire SPEC 23A-A6 grouped-refresh UI was 50% missing — fresh data flowed into the model context, but never reached the UI.
+
+The engine's own doc-comment on `runPostWriteRefresh` (line 1075) always specified that BOTH `tool_start` and `tool_result` were the contract; the implementation drifted before any host adopted the grouping pattern, so the regression sat dormant until SPEC 23A-A6 (audric 1.28.0) tried to consume it.
+
+### Fixed
+
+- **`runPostWriteRefresh` now emits `tool_start` BEFORE every `tool_result`**, mirroring the auto-tier dispatch path at `engine.ts:1659`. Each `tool_start` carries `source: 'pwr'` so timeline grouping rules can identify the cluster from the very first event, before any result lands. Both events share the same `toolUseId` (`pwr_${action.toolUseId.slice(-6)}_${idx}_${tool.name}`) so hosts can pair them.
+
+### Added
+
+- **New regression test** in `post-write-refresh.test.ts`: `[v1.28.1 — silent-PWR-drop fix] emits a tool_start with source: "pwr" BEFORE every tool_result, paired by toolUseId`. Pins all four invariants:
+  1. `tool_start` fires once per refresh tool (count parity with `tool_result`)
+  2. Each `tool_start` carries `source: 'pwr'` so hosts can route from event one
+  3. `tool_start` and `tool_result` are paired by `toolUseId` and `toolName`
+  4. `tool_start` ALWAYS precedes its matching `tool_result` in stream order
+
+### Notes
+
+- **No wire-format change.** `tool_start` events were already typed and serializable; they just weren't being emitted from this path. Hosts that ignore `tool_start` (or `source === 'pwr'`) on PWR continue to work — the only behavior change is hosts that register on `tool_start` now correctly see the PWR blocks instead of dropping them.
+- **No behavior change for the LLM.** The synthetic `assistant(tool_use)` / `user(tool_result)` ContentBlocks pushed into `this.messages` are unchanged — model context remains identical. The fix is purely additive on the `EngineEvent` stream.
+- **Telemetry unchanged.** `engine.pwr.tool_ms` / `engine.pwr.refresh_total_ms` / `engine.pwr.total_ms` already cover per-tool and aggregate timing; no new histograms needed.
+
+### Test results
+
+- 1110/1110 engine tests passing (was 1109 in 1.28.0; +1 from new PWR `tool_start` regression test).
+- 0 lint errors / 0 type errors.
+- ESM + DTS build green.
+
 ## 1.28.0 (2026-05-11) — SPEC 23A-Q-source: tool event provenance
 
 Adds an optional `source: 'pwr' | 'llm' | 'user'` field to `tool_start` and `tool_result` events (`EngineEvent` and the SSE-mirror `SSEEvent`) so hosts can route tool blocks by origin without re-deriving it from heuristics. Engine ALWAYS stamps this in production at every yield site; the field is `?` only to keep test fixtures and pre-1.28 hosts type-compatible.

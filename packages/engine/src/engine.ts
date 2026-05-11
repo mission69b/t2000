@@ -960,6 +960,31 @@ export class QueryEngine {
     // intra-turn cache so any LLM-driven `tool_use` for the same
     // (name, input) during the resumed agent loop dedups instead of
     // double-rendering on top of the refresh card.
+    //
+    // [v1.28.1, 2026-05-11] Two-phase emit: `tool_start` BEFORE
+    // `tool_result`, mirroring the auto-tier dispatch path at L1659.
+    // Pre-1.28.1 only `tool_result` was emitted — hosts that build a
+    // chronological timeline by registering blocks on `tool_start` and
+    // updating them on `tool_result` (audric's `applyEventToTimeline`,
+    // SPEC 8 v0.5.1) silently dropped every PWR result because no
+    // matching block existed for `findLastIndex(toolUseId)`.
+    // Symptom: `<PostWriteRefreshSurface>` never rendered in audric
+    // production despite the engine running the refresh tools and
+    // narrating correctly from the fresh data — UI was 50% missing.
+    // Defense: `tool_start` carries `source: 'pwr'` so timeline
+    // grouping rules can identify the cluster from the very first
+    // event, before any result lands. Engine doc-comment at
+    // `runPostWriteRefresh` (L1075-1077) always specified both events
+    // were the contract; the implementation drifted.
+    for (const r of refreshes) {
+      yield {
+        type: 'tool_start',
+        toolName: r.tool.name,
+        toolUseId: r.id,
+        input: {},
+        source: 'pwr',
+      };
+    }
     for (const r of refreshes) {
       if (!r.isError) {
         this.turnReadCache.set(

@@ -243,6 +243,71 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     ).toBe('llm');
   });
 
+  it('[v1.28.1 — silent-PWR-drop fix] emits a tool_start with source: "pwr" BEFORE every tool_result, paired by toolUseId', async () => {
+    // Regression for the pre-1.28.1 bug where `runPostWriteRefresh` only
+    // emitted `tool_result` events, never `tool_start`. Hosts that build
+    // a chronological timeline by registering blocks on `tool_start` and
+    // updating them on `tool_result` (audric SPEC 8) silently dropped
+    // every PWR result because no matching block existed for findLastIndex.
+    // Symptom: <PostWriteRefreshSurface> never rendered in production
+    // despite the engine running the refreshes correctly.
+    //
+    // The fix adds a leading `tool_start` emit loop. This test pins:
+    //   1. tool_start fires for every refresh tool (count parity)
+    //   2. Each tool_start carries source: 'pwr' so the host can route
+    //      from the very first event without waiting for the result
+    //   3. Each tool_start is paired by toolUseId with its tool_result
+    //   4. tool_start ALWAYS precedes its matching tool_result in the
+    //      event stream (chronological invariant — hosts that depend on
+    //      this ordering must not see a tool_result for an unknown id)
+    reset();
+    const events = await runWriteAndResume({
+      refreshMap: { save_deposit: ['balance_check', 'savings_info'] },
+      write: saveDeposit,
+      writeName: 'save_deposit',
+      writeInput: { amount: 10 },
+      approved: true,
+      executionResult: { success: true },
+    });
+
+    const pwrStarts = events.filter(
+      (e) => e.type === 'tool_start' && e.source === 'pwr',
+    );
+    const pwrResults = events.filter(
+      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
+    );
+
+    expect(pwrStarts).toHaveLength(2);
+    expect(pwrResults).toHaveLength(2);
+
+    // Each tool_start has a matching tool_result (paired by toolUseId).
+    const startIds = pwrStarts.map((e) =>
+      e.type === 'tool_start' ? e.toolUseId : '',
+    );
+    const resultIds = pwrResults.map((e) =>
+      e.type === 'tool_result' ? e.toolUseId : '',
+    );
+    expect([...startIds].sort()).toEqual([...resultIds].sort());
+
+    // Tool names match too (so the start carries the right glyph/label).
+    const startNames = pwrStarts.map((e) =>
+      e.type === 'tool_start' ? e.toolName : '',
+    );
+    expect([...startNames].sort()).toEqual(['balance_check', 'savings_info']);
+
+    // tool_start ALWAYS precedes its matching tool_result in stream order.
+    for (const id of startIds) {
+      const startIdx = events.findIndex(
+        (e) => e.type === 'tool_start' && e.toolUseId === id,
+      );
+      const resultIdx = events.findIndex(
+        (e) => e.type === 'tool_result' && e.toolUseId === id,
+      );
+      expect(startIdx).toBeGreaterThanOrEqual(0);
+      expect(resultIdx).toBeGreaterThan(startIdx);
+    }
+  });
+
   it('orders refresh events between the write tool_result and the LLM narration', async () => {
     reset();
     const events = await runWriteAndResume({
