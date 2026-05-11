@@ -13,7 +13,9 @@ interface SpendingResponse {
 export const spendingAnalyticsTool = buildTool({
   name: 'spending_analytics',
   description:
-    'Returns MPP service spending breakdown for a period. Shows total spent, request count, and breakdown by service/category. Use when the user asks about their API spending, service usage, or costs.',
+    'Returns MPP service spending breakdown for a period. Shows total spent, request count, and breakdown by service/category. Use when the user asks about their API spending, service usage, or costs. ' +
+    // SPEC 23B-N3 (2026-05-12): when the user wants to SEE their spending — phrased as "show me", "breakdown", "where did my money go", "spending chart", "what am I spending on" — prefer `render_canvas("spending_breakdown")` instead. The canvas opens an interactive panel with rich visuals; this tool returns a flat numeric summary. Reserve `spending_analytics` for narrow numerical questions ("how much did I spend on resend last week?") where a single sentence answers it. The canvas pulls the same data, so visual queries should never see a flat text fallback.
+    'For visual queries — "show me my spending", "spending breakdown", "what did I spend on", "spending chart" — prefer `render_canvas` with `template: "spending_breakdown"` instead. That opens an interactive panel with rich visuals; this tool returns a flat numeric summary best suited to narrow questions ("how much on resend last week?").',
   inputSchema: z.object({
     period: z
       .enum(['week', 'month', 'year', 'all'])
