@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.29.1 (2026-05-11) — SPEC 24 audit-gap patches (G1, G2, G3) — pre-smoke prompt polish
+
+Three surgical prompt edits closing audit gaps surfaced during the pre-ship review of 1.29.0. Together they prevent three predictable LLM failure modes that the F1 prompt didn't cover:
+
+- **G1 — GPT-4o ambiguity.** Pre-1.29.1 the intent map said `"draft a guide" → openai GPT-4o ($0.01)` with no instruction on when to spend vs. write natively. Audric IS Claude — the LLM had no signal to default to free native output. Likely failure: needlessly billing the user $0.01 for content Claude could write for free, OR ignoring the GPT-4o option entirely making it dead capability. Fix: changed the mapping to `default to writing natively (FREE — you are Claude); only call openai GPT-4o ($0.01) when the user EXPLICITLY asks for GPT-4o output, names a different model, or wants a second-opinion voice. Default = native, paid = explicit-request only.`
+- **G2 — "What services do you offer?" leak.** Pre-1.29.1 the LLM might call `mpp_services` (no args), get the full 40-service gateway catalog, and faithfully enumerate all 40 — even though Audric supports only 5. Likely failure: user sees "Audric supports Suno, Fal, Anthropic, Gemini, OpenWeather…" and gets 0 results when they ask for any of them. Fix: added an explicit intent-map entry teaching the LLM to list ONLY the 5 supported services in response to "what services" questions, and that the catalog is for URL/schema discovery (its job), not enumeration to the user.
+- **G3 — Translation/research conflated with "decline outright."** Pre-1.29.1 the "DO NOT support" list lumped things Audric genuinely can't do (weather, music, web search) with things Audric CAN do natively but doesn't have a paid API for (translation, summarization, "research-as-explain"). Telling the LLM to "decline honestly" for translation was wrong — Claude can translate. Likely failure: user gets refused for something that's a 2-token continuation away. Fix: split the unsupported list into two distinct buckets — `What we CANNOT do` (genuinely unavailable; decline honestly) and `What Audric CAN do natively` (no MPP call needed; just answer). Translation, summarization, comparing concepts, drafting prose all moved into the CAN-natively block. The "ONLY use resend when the user wants the email SENT via SMTP" clarification was added to prevent the LLM from billing a $0.005 send when the user only asked for a draft.
+
+**Why now (vs. fold into 1.29.2 follow-up).** Three 1-line edits, each independently catches a likely failure mode. Bundling avoids a second engine release after F5 smoke surfaces the same gaps.
+
+### Added
+
+- **System prompt § MPP services intent map** — new "What services do you offer?" entry teaching the LLM to list ONLY the 5 supported services and never enumerate the full catalog.
+- **System prompt § What Audric CAN do natively** — new dedicated block listing translation, summarization, research-as-explain, comparing concepts, drafting copy, math, coding help, DeFi protocol explanations, drafting emails/messages/scripts as native abilities — answer directly, never call pay_api.
+- **10 new regression tests** in `prompt/index.test.ts` (G1: 2, G2: 2, G3: 6) pinning every audit-gap edit. Including a structural test that asserts "Translation" lives in the CAN-natively block, NOT in the CANNOT-do block (so a future refactor that moves it back fails immediately).
+
+### Changed
+
+- **System prompt § MPP services intent map** — GPT-4o entry rewritten to "default to writing natively (FREE — you are Claude); only call openai GPT-4o ($0.01) when the user EXPLICITLY asks for GPT-4o output, names a different model, or wants a second-opinion voice. Default = native, paid = explicit-request only."
+- **System prompt unsupported list** renamed from "What we DO NOT support" to "What we CANNOT do (genuinely unavailable: neither a paid API nor native ability)." Translation removed from this list (moved to the new CAN-natively block). Web search / weather / forex prefixed with "Live" to clarify the gap is real-time data, not the concept itself. "Alternative chat models" list now reads `(Gemini, Mistral, Llama, etc.)` instead of `(Claude, Gemini, Mistral, etc.)` — Claude is no longer mis-listed as something we don't support, since Audric IS Claude.
+
+### What this preserves
+
+- **F1 + F2 (1.29.0)** — the 5-service lock, intent map, multi-step composition guidance, mpp_services 0-result `_refine` recovery, and `SERVICE_PRICES` map are all unchanged.
+- **All other prompt sections** (Response rules, Caption rules, Execution rule, Before acting, Tool usage, Savings = USDC or USDsui, Fees, Multi-step flows, Recoverable tool errors, Authentication, Safety, Proactive insights) — untouched.
+- **No tool surface changes** — `pay_api` and `mpp_services` source code is unchanged from 1.29.0.
+
+### Test results
+
+- 1154/1154 engine tests passing (was 1144/1144 in 1.29.0 — +10 audit-gap tests).
+- 0 new lint errors / 0 type errors.
+- ESM + DTS build green.
+
 ## 1.29.0 (2026-05-11) — SPEC 24 Phase 2 F1+F2: lock 5-service MPP set + 0-result auto-recovery
 
 Locks the supported MPP gateway service set to **5 services (11 endpoints)** and teaches the LLM to recover from 0-result discovery instead of giving up silently. Replaces the pre-SPEC-24 prompt that lied about music availability and the pay_api tool description that hardcoded a dropped vendor (`fal/fal-ai/flux/dev`) in its postcard workflow.

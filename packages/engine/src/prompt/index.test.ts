@@ -58,13 +58,14 @@ describe('[SPEC 24 F1] DEFAULT_SYSTEM_PROMPT — MPP services block', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/colouring book.*N x openai DALL-E.*pdfshift bind/i);
   });
 
-  it('explicitly lists what we DO NOT support (Fal, Claude/Gemini chat, music, search, weather, translation)', () => {
+  it('explicitly lists what we CANNOT do (genuinely unavailable: music, search, weather, maps, etc.)', () => {
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/What we CANNOT do/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Music composition.*Suno coming Phase 5/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Fal Flux/);
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Alternative chat models.*Claude.*Gemini/);
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Web search, news, research/);
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Translation/);
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Weather, forex/);
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Alternative chat models.*Gemini, Mistral/);
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Live web search, news feeds/);
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Live weather, forex/);
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/Maps, geocoding/);
   });
 
   it('teaches honest-decline behavior for unsupported intents', () => {
@@ -85,5 +86,102 @@ describe('[SPEC 24 F1] DEFAULT_SYSTEM_PROMPT — MPP services block', () => {
     // the framing is locked to the 5 supported services.
     expect(DEFAULT_SYSTEM_PROMPT).not.toMatch(/For real-world questions \(weather, search, news, prices\), use pay_api/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/For image generation, transcription, content generation, premium TTS \/ sound effects, HTML→PDF, physical mail, or transactional email, use pay_api/);
+  });
+});
+
+// SPEC 24 1.29.1 patch — close 3 audit gaps surfaced before founder smoke:
+//   G1 — GPT-4o ambiguity: prompt offered $0.01 GPT-4o for "draft a guide"
+//        but Audric IS Claude — LLM had no instruction on when to spend.
+//   G2 — "What services?" leak: LLM might enumerate the full 40-service
+//        gateway catalog (Fal, Suno, Anthropic, etc.) when asked, even
+//        though only 5 are supported.
+//   G3 — Translation/research conflated with "decline outright" — but
+//        Audric (Claude) can translate / summarize / explain natively.
+//        The blanket-decline list refused things the LLM could just do.
+describe('[SPEC 24 1.29.1] DEFAULT_SYSTEM_PROMPT — audit-gap patches', () => {
+  describe('G1 — GPT-4o is paid-only when explicitly requested (default to native Claude)', () => {
+    it('teaches "default = native (free), paid = explicit-request only"', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /write it natively \(FREE — you are Claude\)/,
+      );
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /Only call openai GPT-4o.*when the user EXPLICITLY asks/,
+      );
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /Default = native, paid = explicit-request only/,
+      );
+    });
+
+    it('still keeps the GPT-4o intent mapping line (we offer the option, just gated)', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(/openai GPT-4o \(\$0\.01\)/);
+    });
+  });
+
+  describe('G2 — "What services do you offer?" lists ONLY the 5 supported', () => {
+    it('teaches the LLM to list only the 5 supported services, never enumerate the full catalog', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /What services do you offer\?.*list ONLY the 5 supported services/,
+      );
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /NEVER enumerate the full mpp_services catalog to the user/,
+      );
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /that catalog is for YOUR URL\/schema discovery, not their consumption/,
+      );
+    });
+
+    it('explicitly states the gateway hosts ~40 services but Audric only supports 5', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /gateway hosts ~40 services but Audric only supports 5/,
+      );
+    });
+  });
+
+  describe('G3 — Audric CAN translate / summarize / explain natively (no MPP call)', () => {
+    it('has a dedicated "What Audric CAN do natively" block', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /What Audric CAN do natively \(no MPP call needed/,
+      );
+    });
+
+    it('lists translation as a native ability (NOT a decline)', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /Translation between languages \(you can translate;/,
+      );
+    });
+
+    it('lists summarization, research-as-explain, comparing concepts as native', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /Summarization, research-as-explain, comparing concepts/,
+      );
+    });
+
+    it('clarifies resend is only for SENDING via SMTP, not for drafting an email body', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /USE pay_api → resend ONLY when the user explicitly wants the email SENT to a recipient via SMTP/,
+      );
+    });
+
+    it('teaches: "just do it natively, don\'t quote a cost, don\'t call pay_api"', () => {
+      expect(DEFAULT_SYSTEM_PROMPT).toMatch(
+        /just do it natively\. Don't quote a cost, don't call pay_api/,
+      );
+    });
+
+    it('keeps "Translation" out of the CANNOT-do block (post-G3 it is a CAN-do natively item)', () => {
+      // Find the CANNOT block and assert "Translation" is NOT inside it.
+      // We do this by extracting the text between "What we CANNOT do" and
+      // "What Audric CAN do natively" — Translation should appear AFTER
+      // the second header, not inside the CANNOT block.
+      const cannotIdx = DEFAULT_SYSTEM_PROMPT.indexOf('What we CANNOT do');
+      const canIdx = DEFAULT_SYSTEM_PROMPT.indexOf('What Audric CAN do natively');
+      expect(cannotIdx).toBeGreaterThan(0);
+      expect(canIdx).toBeGreaterThan(cannotIdx);
+      const cannotBlock = DEFAULT_SYSTEM_PROMPT.slice(cannotIdx, canIdx);
+      // Pre-G3: "Translation (DeepL, Google Translate)" was inside the CANNOT block.
+      // Post-G3: it must NOT be there — it lives in the CAN-natively block instead.
+      expect(cannotBlock).not.toMatch(/Translation \(DeepL/);
+      expect(cannotBlock).not.toMatch(/^- Translation/m);
+    });
   });
 });
