@@ -129,4 +129,76 @@ describe('[v1.4 ACI] mpp_services — category summary + filter', () => {
     expect(data.total).toBe(2);
     expect(data.services.map((s) => s.id).sort()).toEqual(['wx', 'wx2']);
   });
+
+  // SPEC 24 F2 (locked 2026-05-11) — 0-result auto-recovery via _refine payload.
+  // Pre-F2: the LLM saw "Found 0 service(s)..." and gave up, leaving the user
+  // with "no music available" when the underlying problem was that "music"
+  // isn't a real gateway category. F2 surfaces the actual valid categories so
+  // the LLM can self-correct in the same turn.
+  describe('[SPEC 24 F2] 0-result auto-recovery', () => {
+    it('returns _refine payload with validCategories when category filter matches nothing', async () => {
+      const res = await mppServicesTool.call({ category: 'music' }, baseCtx);
+      const data = res.data as {
+        services: unknown[];
+        total: number;
+        _refine?: { reason: string; validCategories: string[]; suggestion: string };
+      };
+      expect(data.total).toBe(0);
+      expect(data.services).toEqual([]);
+      expect(data._refine).toBeDefined();
+      expect(data._refine!.reason).toMatch(/Category "music" doesn't exist/);
+      // Stub catalog has weather + language, both should appear lowercased + sorted
+      expect(data._refine!.validCategories).toEqual(['language', 'weather']);
+      expect(data._refine!.suggestion).toMatch(/Re-call mpp_services with no arguments|pick a category/);
+    });
+
+    it('returns _refine payload with validCategories when query filter matches nothing', async () => {
+      const res = await mppServicesTool.call({ query: 'cryptocurrency' }, baseCtx);
+      const data = res.data as {
+        total: number;
+        _refine?: { reason: string; validCategories: string[]; suggestion: string };
+      };
+      expect(data.total).toBe(0);
+      expect(data._refine).toBeDefined();
+      // Query-no-match path uses the generic "filter matched nothing" reason
+      expect(data._refine!.reason).toMatch(/No services match the supplied filter/);
+      expect(data._refine!.validCategories).toEqual(['language', 'weather']);
+    });
+
+    it('decline guidance is present in the suggestion (teaches LLM to admit unsupported intents)', async () => {
+      const res = await mppServicesTool.call({ category: 'music' }, baseCtx);
+      const data = res.data as {
+        _refine: { suggestion: string };
+      };
+      expect(data._refine.suggestion).toMatch(/decline honestly|Audric doesn't support|system prompt/i);
+    });
+
+    it('does NOT add _refine payload when filter matches at least one service', async () => {
+      const res = await mppServicesTool.call({ category: 'weather' }, baseCtx);
+      const data = res.data as {
+        total: number;
+        _refine?: unknown;
+      };
+      expect(data.total).toBe(2);
+      expect(data._refine).toBeUndefined();
+    });
+
+    it('does NOT add _refine payload on the no-args / full-catalog default path', async () => {
+      const res = await mppServicesTool.call({}, baseCtx);
+      const data = res.data as {
+        total: number;
+        mode: string;
+        _refine?: unknown;
+      };
+      expect(data.total).toBe(3);
+      expect(data.mode).toBe('full');
+      expect(data._refine).toBeUndefined();
+    });
+
+    it('displayText surfaces the valid categories so the LLM has them in caption-context too', async () => {
+      const res = await mppServicesTool.call({ category: 'music' }, baseCtx);
+      expect(res.displayText).toMatch(/Found 0 service\(s\)/);
+      expect(res.displayText).toMatch(/Valid categories: language, weather/);
+    });
+  });
 });

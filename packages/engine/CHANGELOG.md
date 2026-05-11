@@ -1,5 +1,60 @@
 # Changelog
 
+## 1.29.0 (2026-05-11) — SPEC 24 Phase 2 F1+F2: lock 5-service MPP set + 0-result auto-recovery
+
+Locks the supported MPP gateway service set to **5 services (11 endpoints)** and teaches the LLM to recover from 0-result discovery instead of giving up silently. Replaces the pre-SPEC-24 prompt that lied about music availability and the pay_api tool description that hardcoded a dropped vendor (`fal/fal-ai/flux/dev`) in its postcard workflow.
+
+**Why it shipped now.** Founder smoke 2026-05-11 ~19:15 AEST: `create a song about sui` and `make me a PDF colouring book about whales` both returned `0 services available` from `mpp_services` despite Suno + PDFShift being in the gateway. Root cause was a 4-layer mismatch — the gateway serves 40 services, but the engine only supports a few, the prompt lies about the rest, and `mpp_services` returns `0` silently when the LLM picks an invented category like `music`. SPEC 24 §1–§4 traced the failure end-to-end (`spec/SPEC_24_GATEWAY_INVENTORY.md`); this minor bump ships F1 (prompt + tool description rewrite) + F2 (`mpp_services` 0-result auto-recovery). F3 + F4 (audric registry cleanup + per-vendor glyphs) ship next as an audric commit.
+
+### Added
+
+- **System prompt now contains a dedicated `## MPP services (pay_api)` block.** Enumerates the locked 5 services + their costs (~12 lines, ~120 prompt tokens) and the intent → service mapping for every supported lane (image gen → openai DALL-E, transcription → openai Whisper, etc.). Includes explicit "what we DO NOT support" enumeration so the LLM declines honestly for music / Fal / Claude chat / search / weather / translation / maps / etc. Source: `packages/engine/src/prompt/index.ts`.
+- **Multi-step composition guidance baked into both the prompt and `pay_api` description.** Teaches the LLM to chain `openai DALL-E` × N + `pdfshift` for "colouring book" / "illustrated eBook" intents, and to quote total cost upfront ("10 images × $0.05 + $0.01 PDF = $0.51"). The Lob postcard flow stays as the canonical baked example.
+- **`mpp_services` 0-result auto-recovery via `_refine` payload.** When a category- or query-filtered call returns 0 services, the response now includes `_refine: { reason, validCategories, suggestion }` so the LLM can self-correct in the same turn. The reason text differentiates "category doesn't exist" from "query matched nothing"; the suggestion includes explicit decline guidance for unsupported intents. Source: `packages/engine/src/tools/mpp-services.ts`.
+- **31 new regression tests** across 3 test files:
+  - `prompt/index.test.ts` (NEW) — 11 tests pinning the supported service set + intent map + decline list + 0-result recovery guidance in the prompt. Fails if "40+ paid APIs" / "music" / "fal" creep back in.
+  - `__tests__/aci-constraints.test.ts` — 6 new tests pinning the F2 `_refine` payload shape (validCategories alphabetized + lowercased, decline guidance present, no `_refine` on happy paths or no-args full catalog).
+  - `__tests__/pay.test.ts` — 14 new tests pinning the locked 5-service description + endpoint-aware `SERVICE_PRICES` map (DALL-E $0.05, Whisper $0.01, GPT-4o $0.01, ElevenLabs $0.05, PDFShift $0.01, Lob postcards $1.00 / letters $1.50 / verify $0.01, Resend $0.005, unsupported services fall to safe $0.005 default).
+
+### Changed
+
+- **`pay_api` tool description rewritten** to enumerate the 5 supported services up front and explicitly call out that the gateway hosts other services (Fal, Anthropic, Gemini, Suno, etc.) Audric does NOT support — declines honestly instead of routing through hoping the result will render. Source: `packages/engine/src/tools/pay.ts`.
+- **`SERVICE_PRICES` map rewritten** to endpoint-aware pricing for the locked 5-service set. Pre-1.29.0 the map advertised stale prices for 14 dropped services (fal $0.03, perplexity $0.01, brave $0.005, etc.) and missed every supported one — meaning DALL-E calls were estimated at the $0.005 default and surprised the user with a 10x cost overshoot at confirmation. Now pins:
+  - openai images (DALL-E) = $0.05
+  - openai transcriptions (Whisper) = $0.01
+  - openai chat (GPT-4o) = $0.01
+  - elevenlabs (TTS + sound-gen, both $0.05)
+  - pdfshift = $0.01
+  - lob postcards = $1.00, lob letters = $1.50, lob anything else = $0.01 (address-verify)
+  - resend = $0.005
+  - unsupported services fall through to the safe $0.005 default
+- **Lob postcard multi-step flow updated** in the `pay_api` description: was `fal/fal-ai/flux/dev ($0.03)` for the design-image step (a service we no longer support), is now `openai/v1/images/generations` (model "dall-e-3", $0.05). The 3-step pattern (generate → confirm → mail) is unchanged.
+- **System prompt header** no longer claims "40+ paid APIs (music, image, research, translation, weather, fulfilment)" — replaced with the actual 7 supported intents (image generation, transcription, content generation, premium audio, PDF binding, physical mail, transactional email). Removes the longstanding "music available" lie.
+- **System prompt § Tool usage** no longer says "for real-world questions (weather, search, news, prices), use pay_api" — replaced with the actual 5-service framing pointing to the new § MPP services block.
+
+### Removed
+
+- Pre-SPEC-24 system prompt language that advertised music / web search / news / weather / forex / translation as available via pay_api. None of those services are in the supported set; advertising them caused the LLM to call `mpp_services` with invented category labels (`music`, `audio`, `pdf`) that exact-matched zero gateway services.
+
+### What this preserves
+
+- **All write-tool flows (save, swap, borrow, repay, send, withdraw)** are untouched — only the MPP `pay_api` and `mpp_services` surfaces changed.
+- **The `mpp_services` no-args full-catalog default** (added in 0.46.7) is unchanged. The `_refine` recovery only fires when the LLM explicitly filters and gets 0 results.
+- **Cost-quoting requirement** for write tools is unchanged. The prompt's MPP block explicitly tells the LLM to "always quote the cost first."
+- **The `payApiTool.preflight` URL + JSON validation** is unchanged; it still validates the URL starts with `${MPP_GATEWAY}` and the body is valid JSON.
+
+### Test results
+
+- 1144/1144 engine tests passing (was 1113/1113 in 1.28.3 — +31 SPEC 24 tests).
+- 0 new lint errors / 0 type errors.
+- ESM + DTS build green.
+
+### Cross-references
+
+- SPEC 24 master doc: `spec/SPEC_24_MPP_INTEGRATION_AUDIT.md`
+- SPEC 24 inventory + locked supported set: `spec/SPEC_24_GATEWAY_INVENTORY.md` §8 + §9
+- Audric F3 + F4 ship (next, after this engine release): registry cleanup + per-vendor glyphs in audric
+
 ## 1.28.3 (2026-05-11) — Fix: PWR `BalanceCard` staleness, take 2 (cache-busting query param)
 
 1.28.2 attempted to fix PWR `BalanceCard` staleness by sending `Cache-Control: no-cache` as a request header from `fetchAudricPortfolio` + `fetchAudricHistory`. **Production smoke 2026-05-11 ~16:11 AEST proved that fix INEFFECTIVE** — the same byte-identical staleness pattern reproduced (Prompt 1 swap+save bundle PWR `BalanceCard` `$78.73 wallet / $20.79 savings`, Prompt 2 withdraw-all-USDC PWR `BalanceCard` STILL `$78.73 wallet / $20.79 savings`, while `SavingsCard` correctly showed `$16.89 USDsui-only`).

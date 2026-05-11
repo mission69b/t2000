@@ -163,6 +163,37 @@ export const mppServicesTool = buildTool({
       input.query ? `query "${input.query}"` : null,
       input.category ? `category "${input.category}"` : null,
     ].filter(Boolean).join(' + ');
+
+    // SPEC 24 F2 (locked 2026-05-11): 0-result auto-recovery via _refine payload.
+    // Pre-F2 the LLM saw "Found 0 service(s) matching ..." and gave up, leaving
+    // the user with "no music available" when the underlying problem was that
+    // "music" isn't a real gateway category. F2 surfaces the actual valid
+    // categories so the LLM can self-correct in the same turn (the system
+    // prompt teaches it to follow _refine guidance — see § MPP services).
+    if (services.length === 0 && (input.category || input.query)) {
+      const validCategories = [
+        ...new Set(catalog.flatMap((s) => s.categories.map((c) => c.toLowerCase()))),
+      ].sort();
+      return {
+        data: {
+          services: [],
+          total: 0,
+          _refine: {
+            reason:
+              input.category && !catalog.some((s) =>
+                s.categories.some((c) => c.toLowerCase() === input.category!.toLowerCase())
+              )
+                ? `Category "${input.category}" doesn't exist on the gateway.`
+                : `No services match the supplied filter (${filterDesc}).`,
+            validCategories,
+            suggestion:
+              'Re-call mpp_services with no arguments to see the full catalog, or pick a category from validCategories. If the user asked for something Audric doesn\'t support (music pre-Phase-5, web search, news, weather, translation, maps, etc.), decline honestly per the system prompt § MPP services block.',
+          },
+        },
+        displayText: `Found 0 service(s) matching ${filterDesc}. Valid categories: ${validCategories.join(', ')}.`,
+      };
+    }
+
     const summary = `Found ${services.length} service(s) matching ${filterDesc}`;
 
     return {

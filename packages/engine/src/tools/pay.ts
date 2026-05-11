@@ -4,21 +4,26 @@ import { requireAgent } from './utils.js';
 
 const MPP_GATEWAY = 'https://mpp.t2000.ai';
 
+// SPEC 24 (locked 2026-05-11) — endpoint-aware pricing for the 5 supported services.
+// Order matters: most-specific patterns first (e.g. lob postcards $1.00 before any
+// generic /lob/ pattern). The default fall-through ($0.005) only fires for unknown
+// services — those are dropped per SPEC 24 §8 and the system prompt should keep the
+// LLM from calling them, but the safe default keeps the cost estimate honest if it
+// somehow happens.
 const SERVICE_PRICES: [RegExp, number][] = [
-  [/\/fal\//, 0.03],
-  [/\/googlemaps\//, 0.01],
-  [/\/perplexity\//, 0.01],
-  [/\/firecrawl\//, 0.01],
-  [/\/serpapi\//, 0.01],
-  [/\/openweather\//, 0.005],
-  [/\/brave\//, 0.005],
-  [/\/serper\//, 0.005],
-  [/\/newsapi\//, 0.005],
-  [/\/coingecko\//, 0.005],
-  [/\/alphavantage\//, 0.005],
-  [/\/exchangerate\//, 0.005],
-  [/\/deepl\//, 0.005],
-  [/\/jina\//, 0.005],
+  // openai (3 supported endpoints)
+  [/\/openai\/v1\/images\//, 0.05],          // DALL-E
+  [/\/openai\/v1\/audio\/transcriptions/, 0.01], // Whisper
+  [/\/openai\/v1\/chat\//, 0.01],            // GPT-4o
+  // elevenlabs (2 supported endpoints, both $0.05)
+  [/\/elevenlabs\//, 0.05],
+  // lob (3 supported endpoints, distinct prices)
+  [/\/lob\/v1\/letters/, 1.50],
+  [/\/lob\/v1\/postcards/, 1.00],
+  [/\/lob\//, 0.01],                         // address-verify and any future single-cent endpoint
+  // pdfshift
+  [/\/pdfshift\//, 0.01],
+  // resend
   [/\/resend\//, 0.005],
 ];
 
@@ -31,19 +36,31 @@ export function estimatePayApiCost(url: string): number {
 
 export const payApiTool = buildTool({
   name: 'pay_api',
-  description: `Execute any MPP gateway service via on-chain USDC micropayment. The gateway at ${MPP_GATEWAY} hosts 40+ services (88 endpoints). Payment is handled automatically.
+  description: `Execute one of Audric's 5 supported MPP gateway services via on-chain USDC micropayment. Payment is handled automatically. Supported services (11 endpoints):
 
-Use mpp_services tool first to discover available services and get the correct endpoint URL, required body parameters, and pricing. Then call this tool with the full URL and JSON body.
+  openai      — DALL-E images $0.05, Whisper transcription $0.01, GPT-4o chat $0.01
+  elevenlabs  — premium TTS $0.05, sound effects $0.05
+  pdfshift    — HTML/URL → PDF conversion $0.01
+  lob         — postcards $1.00, letters $1.50, address verify $0.01
+  resend      — transactional email $0.005, batch email $0.01
+
+The gateway at ${MPP_GATEWAY} also exposes other services (Fal, Anthropic, Gemini, Suno, etc.) that Audric does NOT support. If the user asks for one of those, decline honestly — DO NOT route through pay_api hoping the result will render. The full list of unsupported intents lives in the system prompt's § MPP services block.
+
+Use mpp_services tool first to discover the exact endpoint URL, required body parameters, and pricing for the chosen service. Then call this tool with the full URL and JSON body.
 
 Always use POST. Construct the URL from the gateway base + service path. Pass parameters as a JSON string in body.
 
 CRITICAL — non-retryable errors: If the result contains "doNotRetry": true or "paymentConfirmed": true, the user has ALREADY been charged. NEVER call pay_api again for the same request. Report the error to the user.
 
 Lob (postcards/letters) — MULTI-STEP, NEVER skip:
-1. Generate design image FIRST via fal/fal-ai/flux/dev ($0.03). Show the image to the user as markdown ![design](url).
+1. Generate design image FIRST via openai/v1/images/generations (model "dall-e-3", $0.05). Show the image to the user as markdown ![design](url).
 2. Ask the user to confirm before mailing ("Here's the design. Print and mail for $1.00?").
 3. ONLY after user confirms: call lob/v1/postcards with the image URL in the front HTML (<img src="URL" style="width:100%;height:100%;object-fit:cover"/>).
-Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("from") is added automatically — do not include one.`,
+Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("from") is added automatically — do not include one.
+
+PDFShift (pdfshift/v1/convert) — composition guidance:
+- Text-only PDFs: call pdfshift directly with HTML content.
+- PDFs with images (eBook covers, illustrated guides, colouring books): generate images first via openai/v1/images/generations ($0.05 each), then call pdfshift with HTML that includes the image URLs as <img src="..."/> tags. Quote the total cost (N images × $0.05 + $0.01) before starting.`,
   inputSchema: z.object({
     url: z.string().url(),
     method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).optional(),
@@ -54,7 +71,7 @@ Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("fr
   jsonSchema: {
     type: 'object',
     properties: {
-      url: { type: 'string', description: 'Full MPP endpoint URL (e.g. https://mpp.t2000.ai/openweather/v1/weather)' },
+      url: { type: 'string', description: 'Full MPP endpoint URL (e.g. https://mpp.t2000.ai/openai/v1/images/generations)' },
       method: { type: 'string', description: 'HTTP method (always POST for MPP gateway)' },
       body: { type: 'string', description: 'JSON request body as string' },
       headers: { type: 'object', description: 'Additional HTTP headers' },
