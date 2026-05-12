@@ -68,8 +68,16 @@ describe('resolveUsdValue', () => {
     expect(resolveUsdValue('swap_execute', { fromAmount: 5, fromAsset: 'SUI' }, priceCache)).toBe(17.5);
   });
 
-  it('returns maxCost for pay_api', () => {
-    expect(resolveUsdValue('pay_api', { maxCost: 2 }, priceCache)).toBe(2);
+  it('returns maxPrice for pay_api when set (matches pay_api schema field)', () => {
+    expect(resolveUsdValue('pay_api', { maxPrice: 2 }, priceCache)).toBe(2);
+  });
+
+  it('returns 0 for pay_api when maxPrice is omitted (the common case)', () => {
+    expect(resolveUsdValue('pay_api', { url: 'https://example.com' }, priceCache)).toBe(0);
+  });
+
+  it('does NOT honor legacy maxCost field on pay_api (was a typo, never in schema)', () => {
+    expect(resolveUsdValue('pay_api', { maxCost: 2 }, priceCache)).toBe(0);
   });
 
   it('returns 0 for unknown tool', () => {
