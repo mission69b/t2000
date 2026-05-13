@@ -131,7 +131,24 @@ export function chargeProxy(
       if (options?.transformUpstreamResponse && res.ok) {
         const ct = res.headers.get('content-type') ?? '';
         if (ct.includes('application/json')) {
-          outgoing = await options.transformUpstreamResponse(res);
+          // Wrap so a normalizer crash (e.g. Vercel Blob upload throws) doesn't
+          // bubble as an unhandled rejection — that path returns an opaque 500
+          // with no body, which audric's `useAgent` then renders as the literal
+          // string "[object Object]". Surfacing the actual error here lets the
+          // host show the user something actionable.
+          try {
+            outgoing = await options.transformUpstreamResponse(res);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error('[chargeProxy] transformUpstreamResponse threw:', message);
+            outgoing = Response.json(
+              {
+                error: `Gateway response transform failed: ${message}`,
+                upstreamStatus: res.status,
+              },
+              { status: 502 },
+            );
+          }
         }
       }
 
