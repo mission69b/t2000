@@ -18,6 +18,10 @@ afterEach(() => {
 });
 
 describe('logSettleEvent — classify event line format', () => {
+  // [v1.0.2 hotfix / 2026-05-14] chargeAmount was REMOVED from event=classify
+  // because the field fired BEFORE mppx.charge ran, producing two
+  // false-alarm-counting incidents in 24 hours. Truth signal lives on
+  // event=charge_succeeded now (see the dedicated describe block below).
   it('emits a single line with prefix + event + flat key=value fields for deliverable', () => {
     logSettleEvent({
       event: 'classify',
@@ -25,32 +29,30 @@ describe('logSettleEvent — classify event line format', () => {
         route: 'openai/v1/images/generations',
         verdict: 'deliverable',
         durationMs: 14203,
-        chargeAmount: '0.05',
       },
     });
 
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(logSpy.mock.calls[0][0]).toBe(
-      '[mpp.settle] event=classify route=openai/v1/images/generations verdict=deliverable durationMs=14203 chargeAmount=0.05',
+      '[mpp.settle] event=classify route=openai/v1/images/generations verdict=deliverable durationMs=14203',
     );
   });
 
-  it('emits chargedFraction only for verdict=mixed', () => {
+  it('emits chargedFraction only for verdict=mixed (no chargeAmount on classify post-hotfix)', () => {
     logSettleEvent({
       event: 'classify',
       fields: {
         route: 'openai/v1/images/generations',
         verdict: 'mixed',
         durationMs: 18901,
-        chargeAmount: '0.0375',
         chargedFraction: 0.75,
       },
     });
 
     const line = logSpy.mock.calls[0][0] as string;
     expect(line).toContain('verdict=mixed');
-    expect(line).toContain('chargeAmount=0.0375');
     expect(line).toContain('chargedFraction=0.75');
+    expect(line).not.toContain('chargeAmount');
   });
 
   it('omits chargeAmount entirely for verdict=refundable (no charge happened)', () => {
@@ -69,6 +71,56 @@ describe('logSettleEvent — classify event line format', () => {
     );
     expect(line).not.toContain('chargeAmount');
     expect(line).not.toContain('chargedFraction');
+  });
+
+  it('includes reason field for refundable / probe-failed (operator diagnostic surface)', () => {
+    logSettleEvent({
+      event: 'classify',
+      fields: {
+        route: 'openai/v1/images/generations',
+        verdict: 'refundable',
+        durationMs: 738,
+        reason: 'probe-failed: ECONNRESET',
+      },
+    });
+
+    const line = logSpy.mock.calls[0][0] as string;
+    expect(line).toContain('reason=probe-failed: ECONNRESET');
+  });
+});
+
+describe('logSettleEvent — charge_succeeded event (v1.0.2 truth signal)', () => {
+  // The whole point of this event: count(event=charge_succeeded) over a
+  // window === true on-chain charge count for that window. Pre-hotfix
+  // founders inferred charge counts from event=classify chargeAmount=…
+  // and got fooled twice (4 classify lines vs 1 charge in the 06:19
+  // smoke). This event fires ONLY after mppx.charge returns 200, so
+  // the count is mathematically the truth.
+  it('emits a single line with route + chargeAmount', () => {
+    logSettleEvent({
+      event: 'charge_succeeded',
+      fields: {
+        route: 'openai/v1/images/generations',
+        chargeAmount: '0.05',
+      },
+    });
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy.mock.calls[0][0]).toBe(
+      '[mpp.settle] event=charge_succeeded route=openai/v1/images/generations chargeAmount=0.05',
+    );
+  });
+
+  it('emits the fractional chargeAmount for mixed-verdict charges', () => {
+    logSettleEvent({
+      event: 'charge_succeeded',
+      fields: {
+        route: 'openai/v1/images/generations',
+        chargeAmount: '0.037500',
+      },
+    });
+
+    expect(logSpy.mock.calls[0][0]).toContain('chargeAmount=0.037500');
   });
 });
 
@@ -152,7 +204,11 @@ describe('logSettleEvent — emits exactly one console.log call per event', () =
   it('every event maps to exactly one log line (Vercel: one record)', () => {
     logSettleEvent({
       event: 'classify',
-      fields: { route: 'a/b', verdict: 'deliverable', durationMs: 100, chargeAmount: '0.01' },
+      fields: { route: 'a/b', verdict: 'deliverable', durationMs: 100 },
+    });
+    logSettleEvent({
+      event: 'charge_succeeded',
+      fields: { route: 'a/b', chargeAmount: '0.01' },
     });
     logSettleEvent({
       event: 'idempotency_hit',
@@ -163,6 +219,6 @@ describe('logSettleEvent — emits exactly one console.log call per event', () =
       fields: { route: 'a/b', reason: 'x', absorbedCostUsd: '0.01' },
     });
 
-    expect(logSpy).toHaveBeenCalledTimes(3);
+    expect(logSpy).toHaveBeenCalledTimes(4);
   });
 });

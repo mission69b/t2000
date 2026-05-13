@@ -428,6 +428,138 @@ describe('chargeProxy.settleOnSuccess — charge fails after successful probe', 
   });
 });
 
+// ─── v1.0.2 hotfix: probe-throw safety net (network/transform/classifier) ──
+
+/**
+ * SPEC 26 v1.0.2 (2026-05-14) wraps the probe + classifier in a try/catch
+ * inside `chargeProxySettleOnSuccess`. Pre-hotfix, an uncaught throw in
+ * `fetchAndTransformUpstream` (network reset, abort, malformed Response)
+ * OR in the classifier propagated to Vercel's outer wrapper as an opaque
+ * HTTP 500 with a Vercel invocation ID — exactly what bit the 06:19 AEST
+ * 2026-05-14 image-gen smoke (the LLM saw `Gateway error (500)` between
+ * two healthy probes).
+ *
+ * Post-hotfix: any probe-side throw → SPEC 26 `refundable` verdict.
+ * User-money invariant unchanged (no charge in either case — we never
+ * reach mppx.charge), but the LLM gets the typed retry signal that
+ * drives the D-8 prompt instead of an opaque 500.
+ *
+ * Each test asserts:
+ *   - status 402 (NOT 500)
+ *   - X-Settle-Verdict: refundable
+ *   - X-Settle-Reason starts with `probe-failed:`
+ *   - mppx.charge NEVER invoked
+ *   - classify event emitted with verdict=refundable + reason=probe-failed:…
+ */
+describe('chargeProxy.settleOnSuccess — probe-throw safety net (v1.0.2)', () => {
+  it('upstream fetch throws (network error) → 402 refundable, NO 500', async () => {
+    fetchSpy.mockRejectedValueOnce(new TypeError('fetch failed: ECONNRESET'));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      { authorization: 'Bearer test-key' },
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequest({ prompt: 'x', model: 'gpt-image-1' }));
+
+    expect(res.status).toBe(402);
+    expect(res.headers.get('X-Settle-Verdict')).toBe('refundable');
+    expect(res.headers.get('X-Settle-Reason')).toMatch(/^probe-failed:/);
+    expect(res.headers.get('X-Settle-Reason')).toMatch(/ECONNRESET/);
+    expect(res.headers.get('Payment-Receipt')).toBeNull();
+    expect(mockChargeImpl).not.toHaveBeenCalled();
+
+    // Body has the diagnostic envelope so the LLM can reason about retry.
+    const body = await res.json();
+    expect(body.error).toBe('Upstream probe failed');
+    expect(body.detail).toMatch(/ECONNRESET/);
+  });
+
+  it('classifier throws → 402 refundable (covered by the same try/catch)', async () => {
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      {
+        settleOnSuccess: true,
+        classifyResponse: async () => {
+          throw new Error('classifier bug: cannot read property of undefined');
+        },
+      },
+    );
+
+    const res = await handler(makeRequest({ prompt: 'x' }));
+
+    expect(res.status).toBe(402);
+    expect(res.headers.get('X-Settle-Verdict')).toBe('refundable');
+    expect(res.headers.get('X-Settle-Reason')).toMatch(/probe-failed:.*classifier bug/);
+    expect(mockChargeImpl).not.toHaveBeenCalled();
+  });
+
+  it('emits classify+refundable with reason=probe-failed: on the throw path', async () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    fetchSpy.mockRejectedValueOnce(new Error('AbortError: signal aborted'));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    await handler(makeRequest({ prompt: 'x' }));
+
+    const lines = consoleSpy.mock.calls
+      .map((c) => c[0] as string)
+      .filter((l) => typeof l === 'string' && l.startsWith('[mpp.settle]'));
+    const classify = lines.find((l) => l.includes('event=classify'));
+    expect(classify).toBeDefined();
+    expect(classify).toContain('verdict=refundable');
+    expect(classify).toMatch(/reason=probe-failed:/);
+    expect(classify).toMatch(/AbortError/);
+    // Sanity: console.error fired with the operator-facing diagnostic
+    // (separate from the structured [mpp.settle] log).
+    expect(
+      consoleErrorSpy.mock.calls.some(
+        (call) =>
+          typeof call[0] === 'string' && (call[0] as string).includes('upstream probe threw'),
+      ),
+    ).toBe(true);
+
+    consoleSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('truncates very long error messages to bounded sizes (no log fragmentation)', async () => {
+    // Synthetic: an upstream error with a 10kb message. The log line +
+    // X-Settle-Reason header MUST stay bounded so Vercel doesn't fragment
+    // the log record into multiple entries (breaks filter recipes).
+    const longMessage = 'X'.repeat(10_000);
+    fetchSpy.mockRejectedValueOnce(new Error(longMessage));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequest({ prompt: 'x' }));
+
+    expect(res.status).toBe(402);
+    const reasonHeader = res.headers.get('X-Settle-Reason') ?? '';
+    // Header capped at 'probe-failed: ' (14) + 200 = 214 chars.
+    expect(reasonHeader.length).toBeLessThanOrEqual(220);
+    expect(reasonHeader).toMatch(/^probe-failed:/);
+  });
+});
+
 // ─── Bonus: regression bar from spec § 6.4 ────────────────────────────
 
 describe('chargeProxy — regression bar (settleOnSuccess: false is byte-identical to legacy)', () => {
@@ -718,7 +850,7 @@ describe('chargeProxy.settleOnSuccess — D-9 metric emission (P9)', () => {
       .filter((line) => typeof line === 'string' && line.startsWith('[mpp.settle]'));
   }
 
-  it('emits classify+deliverable on the happy path', async () => {
+  it('emits classify+deliverable on the happy path (chargeAmount NOT in classify; on charge_succeeded only)', async () => {
     fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
 
     const handler = chargeProxy(
@@ -734,12 +866,20 @@ describe('chargeProxy.settleOnSuccess — D-9 metric emission (P9)', () => {
     const classify = lines.find((l) => l.includes('event=classify'));
     expect(classify).toBeDefined();
     expect(classify).toContain('verdict=deliverable');
-    expect(classify).toContain('chargeAmount=0.05');
     expect(classify).toMatch(/durationMs=\d+/);
     expect(classify).toContain('route=openai/v1/images/generations');
+    // [v1.0.2 hotfix] chargeAmount lives on event=charge_succeeded now,
+    // NOT on event=classify. Reading classify lines as charges produced
+    // two false-alarm-counting incidents in 24 hours; the field moved.
+    expect(classify).not.toContain('chargeAmount');
+
+    const succeeded = lines.find((l) => l.includes('event=charge_succeeded'));
+    expect(succeeded).toBeDefined();
+    expect(succeeded).toContain('chargeAmount=0.05');
+    expect(succeeded).toContain('route=openai/v1/images/generations');
   });
 
-  it('emits classify+refundable (no chargeAmount) on upstream 4xx', async () => {
+  it('emits classify+refundable (no chargeAmount, no charge_succeeded) on upstream 4xx', async () => {
     fetchSpy.mockResolvedValueOnce(
       upstreamResponse(400, { error: { code: 'invalid_size' } }),
     );
@@ -757,11 +897,13 @@ describe('chargeProxy.settleOnSuccess — D-9 metric emission (P9)', () => {
     const classify = lines.find((l) => l.includes('event=classify'));
     expect(classify).toBeDefined();
     expect(classify).toContain('verdict=refundable');
-    // Refundable did NOT charge → no chargeAmount field.
+    // Refundable did NOT charge → no chargeAmount field on classify either.
     expect(classify).not.toContain('chargeAmount');
+    // The truth signal must NOT fire when no on-chain charge happened.
+    expect(lines.find((l) => l.includes('event=charge_succeeded'))).toBeUndefined();
   });
 
-  it('emits classify+mixed with chargedFraction on partial-success', async () => {
+  it('emits classify+mixed with chargedFraction (chargeAmount lives on charge_succeeded only)', async () => {
     fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
 
     const handler = chargeProxy(
@@ -785,7 +927,44 @@ describe('chargeProxy.settleOnSuccess — D-9 metric emission (P9)', () => {
     expect(classify).toBeDefined();
     expect(classify).toContain('verdict=mixed');
     expect(classify).toContain('chargedFraction=0.5');
-    expect(classify).toContain('chargeAmount=0.025000');
+    // chargedFraction stays on classify (pure function of verdict, no
+    // charge dependency); chargeAmount moved to charge_succeeded.
+    expect(classify).not.toContain('chargeAmount');
+
+    const succeeded = lines.find((l) => l.includes('event=charge_succeeded'));
+    expect(succeeded).toBeDefined();
+    expect(succeeded).toContain('chargeAmount=0.025000');
+  });
+
+  it('emits NO charge_succeeded when probe is deliverable but mppx returns 402 (prepare-phase)', async () => {
+    // Audric prepare-phase calls hit the gateway WITHOUT a Payment-Receipt.
+    // mppx returns 402 challenge, no on-chain charge happens. Pre-hotfix
+    // the classify event nonetheless logged chargeAmount=0.05, leading
+    // founders to read N classify lines as N charges. The truth signal
+    // (charge_succeeded) MUST stay quiet here.
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
+    mockChargeImpl.mockResolvedValueOnce(
+      new Response(JSON.stringify({ challenge: 'mppx-stub' }), {
+        status: 402,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequest({ prompt: 'x' }));
+
+    expect(res.status).toBe(402);
+    const lines = getSettleLines();
+    // Classify still emits (probe ran).
+    expect(lines.find((l) => l.includes('event=classify'))).toBeDefined();
+    // But NO charge_succeeded — mppx returned 402, nothing moved on-chain.
+    expect(lines.find((l) => l.includes('event=charge_succeeded'))).toBeUndefined();
   });
 
   it('emits charge_failed with absorbedCostUsd when the charge fails after a successful probe', async () => {

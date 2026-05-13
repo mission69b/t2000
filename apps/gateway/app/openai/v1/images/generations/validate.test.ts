@@ -121,6 +121,70 @@ describe('validateImagesGenerationsBody — size allow-list', () => {
   });
 });
 
+describe('validateImagesGenerationsBody — quality allow-list', () => {
+  // Added in SPEC 26 v1.0.2 hotfix (2026-05-14). The LLM emitted
+  // `quality=standard` (a DALL-E 3 value) on both the 2026-05-13 21:30
+  // smoke and the 2026-05-14 06:19 smoke; gpt-image-* rejects it. Pre-
+  // validate cuts the ~38s OpenAI probe RTT + the ~$0.05 vendor cost the
+  // gateway absorbs per malformed quality value.
+  it('passes when quality is omitted (OpenAI default applies)', () => {
+    expect(validateImagesGenerationsBody({}, OK_ENV)).toBeNull();
+  });
+
+  it('passes for "low"', () => {
+    expect(
+      validateImagesGenerationsBody({ quality: 'low' }, OK_ENV),
+    ).toBeNull();
+  });
+
+  it('passes for "medium"', () => {
+    expect(
+      validateImagesGenerationsBody({ quality: 'medium' }, OK_ENV),
+    ).toBeNull();
+  });
+
+  it('passes for "high"', () => {
+    expect(
+      validateImagesGenerationsBody({ quality: 'high' }, OK_ENV),
+    ).toBeNull();
+  });
+
+  it('passes for "auto"', () => {
+    expect(
+      validateImagesGenerationsBody({ quality: 'auto' }, OK_ENV),
+    ).toBeNull();
+  });
+
+  it('rejects "standard" (DALL-E 3 legacy) with the actionable note', () => {
+    // The exact failure mode that bit smoke 2026-05-13 21:30 + 2026-05-14 06:19.
+    // Once shipped, this can never recur.
+    const out = validateImagesGenerationsBody({ quality: 'standard' }, OK_ENV);
+    expect(out).toMatch(/Quality "standard" is not currently supported/);
+    expect(out).toMatch(/"standard" \/ "hd" were DALL-E 3 values/);
+  });
+
+  it('rejects "hd" (DALL-E 3 legacy)', () => {
+    const out = validateImagesGenerationsBody({ quality: 'hd' }, OK_ENV);
+    expect(out).toMatch(/Quality "hd" is not currently supported/);
+  });
+
+  it('rejects unknown quality value', () => {
+    const out = validateImagesGenerationsBody(
+      { quality: 'ultra' },
+      OK_ENV,
+    );
+    expect(out).toMatch(/Quality "ultra" is not currently supported/);
+  });
+
+  it('rejects non-string quality with type-of message', () => {
+    const out = validateImagesGenerationsBody(
+      { quality: 1 as unknown as string },
+      OK_ENV,
+    );
+    expect(out).toMatch(/Quality must be a string. Got: number/);
+  });
+});
+
 describe('validateImagesGenerationsBody — combined real-world cases', () => {
   it('passes when both model and size are valid', () => {
     expect(
@@ -162,5 +226,21 @@ describe('validateImagesGenerationsBody — combined real-world cases', () => {
         OK_ENV,
       ),
     ).toBeNull();
+  });
+
+  it('reaches quality gate after model + size pass (gate ordering)', () => {
+    // Re-creates the exact 2026-05-14 06:19 smoke shape — all other
+    // params valid, just `quality=standard`. This is the request the
+    // LLM emitted that historically burned ~38s of OpenAI probe time.
+    const out = validateImagesGenerationsBody(
+      {
+        model: 'gpt-image-1',
+        size: '1024x1024',
+        quality: 'standard',
+        prompt: 'a golden retriever surfing a wave at sunset',
+      },
+      OK_ENV,
+    );
+    expect(out).toMatch(/Quality "standard" is not currently supported/);
   });
 });

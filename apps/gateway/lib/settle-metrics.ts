@@ -20,23 +20,48 @@
  * structured-query) stays usable.
  *
  * Example lines:
- *   [mpp.settle] event=classify       route=openai/v1/images/generations verdict=deliverable durationMs=14203 chargeAmount=0.05
- *   [mpp.settle] event=classify       route=openai/v1/images/generations verdict=mixed       durationMs=18901 chargeAmount=0.0375 chargedFraction=0.75
- *   [mpp.settle] event=classify       route=openai/v1/images/generations verdict=refundable  durationMs=1287
- *   [mpp.settle] event=charge_failed  route=openai/v1/images/generations reason=Sui-congestion absorbedCostUsd=0.05
- *   [mpp.settle] event=idempotency_hit route=openai/v1/images/generations
+ *   [mpp.settle] event=classify         route=openai/v1/images/generations verdict=deliverable durationMs=14203
+ *   [mpp.settle] event=classify         route=openai/v1/images/generations verdict=mixed       durationMs=18901 chargedFraction=0.75
+ *   [mpp.settle] event=classify         route=openai/v1/images/generations verdict=refundable  durationMs=1287
+ *   [mpp.settle] event=charge_succeeded route=openai/v1/images/generations chargeAmount=0.05
+ *   [mpp.settle] event=charge_failed    route=openai/v1/images/generations reason=Sui-congestion absorbedCostUsd=0.05
+ *   [mpp.settle] event=idempotency_hit  route=openai/v1/images/generations
  *
  * ## D-9 measurement → log event mapping
  *
  *   - `mpp.settle.classify.{deliverable,refundable,mixed}` → `event=classify verdict=…`
+ *   - `mpp.settle.charge_succeeded_after_probe`            → `event=charge_succeeded chargeAmount=…`
  *   - `mpp.settle.charge_failed_after_probe`               → `event=charge_failed`
  *   - `mpp.settle.absorbed_cost_usd` (weekly sum)          → `event=charge_failed absorbedCostUsd=…`
  *   - `mpp.settle.idempotency_hit`                         → `event=idempotency_hit`
  *   - `mpp.settle.probe_to_charge_latency_ms` (histogram)  → `durationMs=…` on every classify
  *
+ * ## Why `charge_succeeded` is a separate event (split from classify in v1.0.2 hotfix)
+ *
+ * Pre-hotfix, `event=classify` carried both the classifier verdict AND a
+ * `chargeAmount=` field — but the classify event fires at probe-classify
+ * time, BEFORE `mppx.charge` runs. A classify event with `chargeAmount=0.05`
+ * does NOT mean the user paid $0.05 on-chain — it means "if mppx.charge
+ * succeeds, $0.05 is what would be charged."
+ *
+ * That ambiguity bit twice: 2026-05-13 ~21:30 ("triple charge" false alarm)
+ * and 2026-05-14 ~06:20 (5-deliverable-vs-1-charge confusion). Both
+ * resolved on-chain to a single charge, but cost real diagnostic time.
+ *
+ * Post-hotfix, the truth signal lives in `event=charge_succeeded`:
+ *   - emits ONLY after `mppx.charge({ amount }) → 200` returns
+ *   - carries the actual `chargeAmount` (== mppx-confirmed on-chain charge)
+ *   - count(event=charge_succeeded) === true on-chain charge count
+ *
+ * `event=classify` keeps `verdict` + `durationMs` (still useful for probe
+ * latency + verdict distribution) and DROPS `chargeAmount` to remove the
+ * confusion source. `chargedFraction` stays on classify because it's a
+ * pure function of the classifier verdict (no charge dependency).
+ *
  * ## Vercel filter recipes for the founder
  *
  *   - All settle events:                     filter `[mpp.settle]`
+ *   - True charge count today:               filter `[mpp.settle] event=charge_succeeded` + time = last 24h
  *   - Refundable events today:               filter `[mpp.settle] event=classify verdict=refundable` + time = last 24h
  *   - Weekly absorbed cost (read sum):       filter `[mpp.settle] event=charge_failed` + time = last 7d, sum the `absorbedCostUsd=` field manually
  *   - Slow probes (> 5s):                    filter `[mpp.settle] event=classify` + `durationMs=` and visually inspect for high values
@@ -58,14 +83,23 @@
  * vs the 200–500ms upstream RTT this surface is gated on.
  */
 
-export type SettleEvent = 'classify' | 'charge_failed' | 'idempotency_hit';
+export type SettleEvent =
+  | 'classify'
+  | 'charge_succeeded'
+  | 'charge_failed'
+  | 'idempotency_hit';
 
 interface SettleClassifyFields {
   route: string;
   verdict: 'deliverable' | 'refundable' | 'mixed';
   durationMs: number;
-  chargeAmount?: string; // undefined for refundable; numeric string for the others
   chargedFraction?: number; // only present on verdict === 'mixed'
+  reason?: string; // refundable / probe-failed surface the classifier reason here
+}
+
+interface SettleChargeSucceededFields {
+  route: string;
+  chargeAmount: string; // numeric string — actual on-chain charge confirmed by mppx
 }
 
 interface SettleChargeFailedFields {
@@ -80,6 +114,7 @@ interface SettleIdempotencyHitFields {
 
 type EventFields =
   | { event: 'classify'; fields: SettleClassifyFields }
+  | { event: 'charge_succeeded'; fields: SettleChargeSucceededFields }
   | { event: 'charge_failed'; fields: SettleChargeFailedFields }
   | { event: 'idempotency_hit'; fields: SettleIdempotencyHitFields };
 

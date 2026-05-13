@@ -437,32 +437,82 @@ async function chargeProxySettleOnSuccess(params: {
   // probe-to-classify latency (the value the spec asks us to track for
   // the latency histogram).
   const probeStartedAt = Date.now();
-  const probeRes = await fetchAndTransformUpstream(upstream, upstreamHeaders, bodyText, options);
-  // Read the body bytes ONCE so we can both classify and re-emit. Type
-  // is `ArrayBuffer` (not `Uint8Array`) because that's the unambiguous
-  // `BodyInit` shape under Node 22+ DOM types — see CachedUpstreamResponse.
-  const probeBytes = await probeRes.arrayBuffer();
-  const probeContentType = probeRes.headers.get('content-type') ?? 'application/json';
 
-  // Reconstruct a fresh Response for the classifier (the original was
-  // consumed by arrayBuffer above). Body parsing happens here once so
-  // the classifier has the parsed shape without re-decoding bytes.
-  let parsedBody: unknown = undefined;
-  if (probeContentType.includes('application/json')) {
-    try {
-      parsedBody = JSON.parse(new TextDecoder().decode(probeBytes));
-    } catch {
-      parsedBody = undefined;
+  // [SPEC 26 v1.0.2 hotfix / 2026-05-14] Wrap probe + classifier in
+  // try/catch. Pre-hotfix, an uncaught throw inside `fetchAndTransformUpstream`
+  // (network reset reaching OpenAI, abort, malformed Response) OR inside the
+  // classifier propagated up to Vercel's outer wrapper, surfacing as an
+  // opaque HTTP 500 with a Vercel invocation ID. The 2026-05-14 06:19 smoke
+  // hit this path: audric saw `Gateway error (500)` between two successful
+  // image-gen probes (network blip, attempt 3 with identical params worked).
+  //
+  // Conversion: any probe-side throw → SPEC 26 `refundable` verdict. The
+  // user-money invariant is identical (no charge in either case — we never
+  // reach mppx.charge), but the LLM gets the typed `X-Settle-Verdict:
+  // refundable` signal that drives the D-8 retry prompt instead of a
+  // generic 500 it must guess at. Wrapping the WHOLE block (probe +
+  // arrayBuffer + classifier) keeps the catch-all narrow to the
+  // probe-derivation surface; the rest of the flow stays uncatched.
+  let probeBytes: ArrayBuffer;
+  let probeContentType: string;
+  let probeRes: Response;
+  let verdict: ClassifyVerdict;
+  try {
+    probeRes = await fetchAndTransformUpstream(upstream, upstreamHeaders, bodyText, options);
+    // Read the body bytes ONCE so we can both classify and re-emit. Type
+    // is `ArrayBuffer` (not `Uint8Array`) because that's the unambiguous
+    // `BodyInit` shape under Node 22+ DOM types — see CachedUpstreamResponse.
+    probeBytes = await probeRes.arrayBuffer();
+    probeContentType = probeRes.headers.get('content-type') ?? 'application/json';
+
+    // Reconstruct a fresh Response for the classifier (the original was
+    // consumed by arrayBuffer above). Body parsing happens here once so
+    // the classifier has the parsed shape without re-decoding bytes.
+    let parsedBody: unknown = undefined;
+    if (probeContentType.includes('application/json')) {
+      try {
+        parsedBody = JSON.parse(new TextDecoder().decode(probeBytes));
+      } catch {
+        parsedBody = undefined;
+      }
     }
-  }
-  const probeForClassifier = new Response(probeBytes, {
-    status: probeRes.status,
-    headers: { 'content-type': probeContentType },
-  });
+    const probeForClassifier = new Response(probeBytes, {
+      status: probeRes.status,
+      headers: { 'content-type': probeContentType },
+    });
 
-  // Phase 3 — classify
-  const classifier = options.classifyResponse ?? DEFAULT_CLASSIFY_RESPONSE;
-  const verdict = await classifier(probeForClassifier, parsedBody);
+    // Phase 3 — classify
+    const classifier = options.classifyResponse ?? DEFAULT_CLASSIFY_RESPONSE;
+    verdict = await classifier(probeForClassifier, parsedBody);
+  } catch (probeErr) {
+    const message = probeErr instanceof Error ? probeErr.message : String(probeErr);
+    const probeDurationMs = Date.now() - probeStartedAt;
+    console.error(
+      `[chargeProxy:settleOnSuccess] upstream probe threw (treating as refundable): ${message}`,
+    );
+    logSettleEvent({
+      event: 'classify',
+      fields: {
+        route: routeKey,
+        verdict: 'refundable',
+        durationMs: probeDurationMs,
+        reason: `probe-failed: ${message.slice(0, 160)}`,
+      },
+    });
+    return Response.json(
+      {
+        error: 'Upstream probe failed',
+        detail: message.slice(0, 256),
+      },
+      {
+        status: 402,
+        headers: {
+          'X-Settle-Verdict': 'refundable',
+          'X-Settle-Reason': `probe-failed: ${message.slice(0, 200)}`,
+        },
+      },
+    );
+  }
 
   const probeDurationMs = Date.now() - probeStartedAt;
 
@@ -476,6 +526,7 @@ async function chargeProxySettleOnSuccess(params: {
         route: routeKey,
         verdict: 'refundable',
         durationMs: probeDurationMs,
+        reason: verdict.reason.slice(0, 160),
       },
     });
     return new Response(probeBytes, {
@@ -492,15 +543,21 @@ async function chargeProxySettleOnSuccess(params: {
   const chargedFraction = verdict.kind === 'mixed' ? verdict.chargedFraction : 1;
   const chargeAmount = computeChargeAmount(amount, chargedFraction);
 
-  // D-9 classify event for deliverable / mixed — emitted BEFORE the charge
-  // round-trip so a slow charge doesn't skew the probe-latency reading.
+  // [SPEC 26 v1.0.2 hotfix / 2026-05-14] D-9 classify event WITHOUT
+  // chargeAmount. Pre-hotfix this carried `chargeAmount=X`, but the event
+  // fires BEFORE mppx.charge runs — so a classify line with chargeAmount
+  // does NOT prove an on-chain charge happened (mppx may still 402, the
+  // request may abort, etc.). Reading classify=chargeAmount as charges
+  // produced two false alarms in 24 hours. The truth signal moved to a
+  // dedicated `event=charge_succeeded` log emitted only after mppx
+  // returns 200 (Phase 5). Filter `[mpp.settle] event=charge_succeeded`
+  // for true on-chain charge counts.
   logSettleEvent({
     event: 'classify',
     fields: {
       route: routeKey,
       verdict: verdict.kind,
       durationMs: probeDurationMs,
-      chargeAmount,
       ...(verdict.kind === 'mixed' ? { chargedFraction } : {}),
     },
   });
@@ -558,6 +615,16 @@ async function chargeProxySettleOnSuccess(params: {
   if (paymentReceiptHeader) {
     finalHeaders.set('Payment-Receipt', paymentReceiptHeader);
   }
+
+  // [SPEC 26 v1.0.2 hotfix / 2026-05-14] Truth signal: emit AFTER mppx
+  // returns 200 (success). `count(event=charge_succeeded)` over a window
+  // == true on-chain charge count for that window. Founder reads this
+  // instead of `event=classify chargeAmount=…` for charge-count metrics.
+  // See settle-metrics.ts header for the full rationale.
+  logSettleEvent({
+    event: 'charge_succeeded',
+    fields: { route: routeKey, chargeAmount },
+  });
 
   // Cache WRITE is best-effort. The user has already paid AND we have a
   // valid response to return — populating the cache is a "next-retry

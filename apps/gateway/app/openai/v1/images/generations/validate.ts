@@ -13,6 +13,11 @@
  *   3. `size` (if present) is in the current allow-list — closes the
  *      2026-05-13 P7 smoke retry failure ($0.05 charged for "256x256",
  *      a deprecated DALL-E 2 value that gpt-image-* rejects post-charge).
+ *   4. `quality` (if present) is in the current allow-list — closes the
+ *      2026-05-13 + 2026-05-14 smokes where the LLM emitted `quality=standard`
+ *      (a deprecated DALL-E 3 value gpt-image-* rejects). Pre-validate
+ *      avoids ~38s of OpenAI probe RTT + the gateway-absorbed ~$0.05
+ *      vendor cost per malformed quality value.
  *
  * Each gate returns a string (error message) on failure or `null` on pass.
  * The return type matches `chargeProxy`'s `validate` hook contract — any
@@ -22,6 +27,8 @@
 export const VALID_MODELS = new Set(['gpt-image-1', 'gpt-image-1-mini']);
 
 export const VALID_SIZES = new Set(['1024x1024', '1024x1536', '1536x1024', 'auto']);
+
+export const VALID_QUALITIES = new Set(['low', 'medium', 'high', 'auto']);
 
 export interface ValidationEnv {
   blobToken: string | undefined;
@@ -55,6 +62,16 @@ export function validateImagesGenerationsBody(
     }
     if (!VALID_SIZES.has(size)) {
       return `Size "${size}" is not currently supported. Valid sizes: ${[...VALID_SIZES].join(', ')}. Note: 256x256 and 512x512 are DALL-E 2 legacy values rejected by gpt-image-*.`;
+    }
+  }
+
+  const quality = body.quality;
+  if (quality !== undefined && quality !== null && quality !== '') {
+    if (typeof quality !== 'string') {
+      return `Quality must be a string. Got: ${typeof quality}`;
+    }
+    if (!VALID_QUALITIES.has(quality)) {
+      return `Quality "${quality}" is not currently supported. Valid qualities: ${[...VALID_QUALITIES].join(', ')}. Note: "standard" / "hd" were DALL-E 3 values rejected by gpt-image-*.`;
     }
   }
 
