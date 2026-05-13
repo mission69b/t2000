@@ -11,6 +11,7 @@ import {
   type UpstreamResponseCache,
 } from './upstream-response-cache';
 import { getUpstashUpstreamResponseCache } from './upstash-upstream-response-cache';
+import { logSettleEvent } from './settle-metrics';
 
 const NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
 const SERVER_URL = 'https://mpp.t2000.ai';
@@ -114,10 +115,13 @@ export const SETTLE_CACHE_TTL_SECONDS = 60;
  * disconnect, etc.). Routes priced above this limit MUST be opted into
  * `settleOnSuccess` only after a per-route D-question.
  *
- * Today's max route is $1 (Lob postcard); 5x headroom covers any
- * medium-cost service we'd add this year. Datadog `mpp.settle.absorbed_cost_usd`
- * (D-9) tracks weekly absorbed cost; promote to a weekly cap if the gauge
- * trends bad.
+ * Today's max route is $1 (Lob postcard, but Lob lives on `chargeCustom`
+ * which is out of scope for SPEC 26 v1); the gateway-wide max under
+ * `chargeProxy` is $0.05 (DALL-E / TTS). 5x headroom covers any
+ * medium-cost service we'd add this year. The Vercel `[mpp.settle]
+ * event=charge_failed absorbedCostUsd=…` log line (D-9, P9 wiring)
+ * tracks every absorbed cost so the founder can sum the week and
+ * promote to a weekly cap if the trend goes bad.
  */
 export const SETTLE_MAX_ABSORBED_COST_USD = 5;
 
@@ -395,10 +399,32 @@ async function chargeProxySettleOnSuccess(params: {
     apiKeyId,
   });
 
-  const cached = await cache.get(fingerprint);
+  // Cache READ is best-effort: the spec § 5.2 idempotency guarantee is
+  // a NICETY for legitimate retries, not a correctness requirement for
+  // any single request. If Upstash is degraded (timeout, 5xx, etc.) we
+  // intentionally fall through to a fresh probe — the user may be
+  // double-billed across two retries within TTL, but they're never
+  // outright errored. Trade SPEC §5.2 strictness for liveness.
+  let cached: Awaited<ReturnType<typeof cache.get>> | undefined;
+  try {
+    cached = await cache.get(fingerprint);
+  } catch (cacheErr) {
+    const message = cacheErr instanceof Error ? cacheErr.message : String(cacheErr);
+    console.warn(
+      `[chargeProxy:settleOnSuccess] cache.get failed (treating as miss): ${message}`,
+    );
+    cached = undefined;
+  }
+
+  // Resolve route name once for D-9 metric emission (every event below
+  // tags by route so the founder can filter / sum per-endpoint).
+  const routeForMetrics = inferServiceEndpoint(req.url);
+  const routeKey = `${routeForMetrics.service}${routeForMetrics.endpoint}`;
+
   if (cached) {
     // Idempotent retry — return cached body + cached receipt. NO charge,
     // NO probe. Per §5.2 + §5.3 this is the legitimate-retry path.
+    logSettleEvent({ event: 'idempotency_hit', fields: { route: routeKey } });
     const headers = new Headers({ 'content-type': cached.contentType });
     if (cached.paymentReceiptHeader) {
       headers.set('Payment-Receipt', cached.paymentReceiptHeader);
@@ -407,6 +433,10 @@ async function chargeProxySettleOnSuccess(params: {
   }
 
   // Phase 2 — probe upstream
+  // Capture the timestamp before the probe so D-9 `durationMs` measures
+  // probe-to-classify latency (the value the spec asks us to track for
+  // the latency histogram).
+  const probeStartedAt = Date.now();
   const probeRes = await fetchAndTransformUpstream(upstream, upstreamHeaders, bodyText, options);
   // Read the body bytes ONCE so we can both classify and re-emit. Type
   // is `ArrayBuffer` (not `Uint8Array`) because that's the unambiguous
@@ -434,10 +464,20 @@ async function chargeProxySettleOnSuccess(params: {
   const classifier = options.classifyResponse ?? DEFAULT_CLASSIFY_RESPONSE;
   const verdict = await classifier(probeForClassifier, parsedBody);
 
+  const probeDurationMs = Date.now() - probeStartedAt;
+
   if (verdict.kind === 'refundable') {
     // No charge. Return the upstream error body verbatim, but coerce the
     // status to 402 so the client (audric) gets the explicit
     // "no-charge-can-retry" signal per spec §2.3 + D-8.
+    logSettleEvent({
+      event: 'classify',
+      fields: {
+        route: routeKey,
+        verdict: 'refundable',
+        durationMs: probeDurationMs,
+      },
+    });
     return new Response(probeBytes, {
       status: 402,
       headers: {
@@ -451,6 +491,19 @@ async function chargeProxySettleOnSuccess(params: {
   // Phase 4 — charge
   const chargedFraction = verdict.kind === 'mixed' ? verdict.chargedFraction : 1;
   const chargeAmount = computeChargeAmount(amount, chargedFraction);
+
+  // D-9 classify event for deliverable / mixed — emitted BEFORE the charge
+  // round-trip so a slow charge doesn't skew the probe-latency reading.
+  logSettleEvent({
+    event: 'classify',
+    fields: {
+      route: routeKey,
+      verdict: verdict.kind,
+      durationMs: probeDurationMs,
+      chargeAmount,
+      ...(verdict.kind === 'mixed' ? { chargedFraction } : {}),
+    },
+  });
 
   // Stub handler — mppx still needs a handler to run, but we've already
   // probed upstream and don't want to re-fire the request. The stub
@@ -470,10 +523,16 @@ async function chargeProxySettleOnSuccess(params: {
   } catch (chargeErr) {
     // Chain congestion / replay rejection / disconnect mid-charge.
     // We've already paid the upstream vendor cost; absorb it. Return
-    // 402 so the client knows the request is safe to retry. Track on
-    // Datadog `mpp.settle.charge_failed_after_probe` (D-9) when wired.
+    // 402 so the client knows the request is safe to retry. Tracked on
+    // the Vercel `[mpp.settle] event=charge_failed` log line (D-9, P9
+    // wiring) — the founder sums absorbedCostUsd across the week to
+    // verify the SPEC's economic-impact claim.
     const message = chargeErr instanceof Error ? chargeErr.message : String(chargeErr);
     console.error('[chargeProxy:settleOnSuccess] charge failed after successful probe:', message);
+    logSettleEvent({
+      event: 'charge_failed',
+      fields: { route: routeKey, reason: message, absorbedCostUsd: chargeAmount },
+    });
     return new Response(probeBytes, {
       status: 402,
       headers: {
@@ -500,16 +559,27 @@ async function chargeProxySettleOnSuccess(params: {
     finalHeaders.set('Payment-Receipt', paymentReceiptHeader);
   }
 
-  await cache.set(
-    fingerprint,
-    {
-      status: probeRes.status,
-      body: probeBytes,
-      contentType: probeContentType,
-      paymentReceiptHeader,
-    },
-    ttlSeconds,
-  );
+  // Cache WRITE is best-effort. The user has already paid AND we have a
+  // valid response to return — populating the cache is a "next-retry
+  // dedup" niceity (§5.2). If Upstash is degraded, swallow + warn rather
+  // than error out a paid request the user can otherwise be served.
+  try {
+    await cache.set(
+      fingerprint,
+      {
+        status: probeRes.status,
+        body: probeBytes,
+        contentType: probeContentType,
+        paymentReceiptHeader,
+      },
+      ttlSeconds,
+    );
+  } catch (cacheErr) {
+    const message = cacheErr instanceof Error ? cacheErr.message : String(cacheErr);
+    console.warn(
+      `[chargeProxy:settleOnSuccess] cache.set failed (paid response still returned): ${message}`,
+    );
+  }
 
   // Logging + registry report — same as legacy path.
   const { service, endpoint } = inferServiceEndpoint(req.url);

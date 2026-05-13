@@ -554,3 +554,376 @@ describe('computeChargeAmount — fractional charge math (D-6)', () => {
     expect(computeChargeAmount('abc', 0.5)).toBe('abc');
   });
 });
+
+// ─── Anthropic Messages API shape (P6 default-classifier coverage) ───
+
+/**
+ * Anthropic doesn't ship a partial-success body shape, so the route uses
+ * `chargeProxy(... { settleOnSuccess: true })` with NO custom classifier.
+ * Pin the resulting behavior so anyone who later adds a custom classifier
+ * (or accidentally regresses the default) sees a clear test failure.
+ */
+describe('chargeProxy.settleOnSuccess — anthropic default-classifier shape (P6)', () => {
+  it('charges full price on a 200 anthropic Messages response', async () => {
+    fetchSpy.mockResolvedValueOnce(
+      upstreamResponse(200, {
+        id: 'msg_123',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-opus-4',
+        content: [{ type: 'text', text: 'hello world' }],
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 10, output_tokens: 3 },
+      }),
+    );
+
+    const handler = chargeProxy(
+      '0.01',
+      'https://api.anthropic.com/v1/messages',
+      { 'x-api-key': 'test', 'anthropic-version': '2023-06-01' },
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(
+      makeRequest(
+        { model: 'claude-opus-4', max_tokens: 100, messages: [{ role: 'user', content: 'hi' }] },
+        'https://mpp.t2000.ai/anthropic/v1/messages',
+      ),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Payment-Receipt')).toMatch(/^mock-receipt-0\.01/);
+    expect(mockChargeImpl).toHaveBeenCalledTimes(1);
+    const body = await res.json();
+    expect(body.content[0].text).toBe('hello world');
+    expect(body.stop_reason).toBe('end_turn');
+  });
+
+  it('refunds (402, no charge) on anthropic 400 invalid_request_error', async () => {
+    fetchSpy.mockResolvedValueOnce(
+      upstreamResponse(400, {
+        type: 'error',
+        error: { type: 'invalid_request_error', message: 'model: invalid model name' },
+      }),
+    );
+
+    const handler = chargeProxy(
+      '0.01',
+      'https://api.anthropic.com/v1/messages',
+      { 'x-api-key': 'test', 'anthropic-version': '2023-06-01' },
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(
+      makeRequest(
+        { model: 'claude-9000', messages: [{ role: 'user', content: 'hi' }] },
+        'https://mpp.t2000.ai/anthropic/v1/messages',
+      ),
+    );
+
+    expect(res.status).toBe(402);
+    expect(res.headers.get('X-Settle-Verdict')).toBe('refundable');
+    expect(res.headers.get('X-Settle-Reason')).toMatch(/upstream 400/);
+    expect(mockChargeImpl).not.toHaveBeenCalled();
+    // Original anthropic error body preserved verbatim so the LLM sees
+    // the actual error message (drives D-8 settleReason routing).
+    const body = await res.json();
+    expect(body.type).toBe('error');
+    expect(body.error.message).toContain('invalid model');
+  });
+
+  it('refunds (402, no charge) on anthropic 429 rate-limit', async () => {
+    fetchSpy.mockResolvedValueOnce(
+      upstreamResponse(429, {
+        type: 'error',
+        error: { type: 'rate_limit_error', message: 'rate limit exceeded' },
+      }),
+    );
+
+    const handler = chargeProxy(
+      '0.01',
+      'https://api.anthropic.com/v1/messages',
+      { 'x-api-key': 'test', 'anthropic-version': '2023-06-01' },
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(
+      makeRequest(
+        { model: 'claude-opus-4', messages: [{ role: 'user', content: 'hi' }] },
+        'https://mpp.t2000.ai/anthropic/v1/messages',
+      ),
+    );
+
+    expect(res.status).toBe(402);
+    expect(res.headers.get('X-Settle-Verdict')).toBe('refundable');
+    expect(res.headers.get('X-Settle-Reason')).toMatch(/upstream 429/);
+    expect(mockChargeImpl).not.toHaveBeenCalled();
+  });
+
+  it('charges on a 200 with stop_reason=max_tokens (still deliverable — user got tokens)', async () => {
+    fetchSpy.mockResolvedValueOnce(
+      upstreamResponse(200, {
+        id: 'msg_456',
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'partial output...' }],
+        stop_reason: 'max_tokens',
+        usage: { input_tokens: 10, output_tokens: 100 },
+      }),
+    );
+
+    const handler = chargeProxy(
+      '0.01',
+      'https://api.anthropic.com/v1/messages',
+      { 'x-api-key': 'test', 'anthropic-version': '2023-06-01' },
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(
+      makeRequest(
+        { model: 'claude-opus-4', max_tokens: 100, messages: [{ role: 'user', content: 'long' }] },
+        'https://mpp.t2000.ai/anthropic/v1/messages',
+      ),
+    );
+
+    // Truncation isn't a refund event — anthropic charges us, so we charge.
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Payment-Receipt')).toMatch(/^mock-receipt-0\.01/);
+    expect(mockChargeImpl).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── D-9 metric emission (P9 — verifies logSettleEvent is wired) ──────
+
+/**
+ * The `chargeProxySettleOnSuccess` flow MUST emit a `[mpp.settle]` event
+ * at every D-9 measurement point. These tests verify the call sites are
+ * actually wired (a regression where someone removes a `logSettleEvent`
+ * call accidentally would silently break Vercel-side observability).
+ */
+describe('chargeProxy.settleOnSuccess — D-9 metric emission (P9)', () => {
+  let consoleSpy: MockInstance<typeof console.log>;
+
+  beforeEach(() => {
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+
+  function getSettleLines(): string[] {
+    return consoleSpy.mock.calls
+      .map((call) => call[0] as string)
+      .filter((line) => typeof line === 'string' && line.startsWith('[mpp.settle]'));
+  }
+
+  it('emits classify+deliverable on the happy path', async () => {
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    await handler(makeRequest({ prompt: 'x' }));
+
+    const lines = getSettleLines();
+    const classify = lines.find((l) => l.includes('event=classify'));
+    expect(classify).toBeDefined();
+    expect(classify).toContain('verdict=deliverable');
+    expect(classify).toContain('chargeAmount=0.05');
+    expect(classify).toMatch(/durationMs=\d+/);
+    expect(classify).toContain('route=openai/v1/images/generations');
+  });
+
+  it('emits classify+refundable (no chargeAmount) on upstream 4xx', async () => {
+    fetchSpy.mockResolvedValueOnce(
+      upstreamResponse(400, { error: { code: 'invalid_size' } }),
+    );
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    await handler(makeRequest({ prompt: 'x', size: '256x256' }));
+
+    const lines = getSettleLines();
+    const classify = lines.find((l) => l.includes('event=classify'));
+    expect(classify).toBeDefined();
+    expect(classify).toContain('verdict=refundable');
+    // Refundable did NOT charge → no chargeAmount field.
+    expect(classify).not.toContain('chargeAmount');
+  });
+
+  it('emits classify+mixed with chargedFraction on partial-success', async () => {
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      {
+        settleOnSuccess: true,
+        classifyResponse: async (): Promise<ClassifyVerdict> => ({
+          kind: 'mixed',
+          chargedFraction: 0.5,
+          reason: 'half',
+        }),
+      },
+    );
+
+    await handler(makeRequest({ prompt: 'x' }));
+
+    const lines = getSettleLines();
+    const classify = lines.find((l) => l.includes('event=classify'));
+    expect(classify).toBeDefined();
+    expect(classify).toContain('verdict=mixed');
+    expect(classify).toContain('chargedFraction=0.5');
+    expect(classify).toContain('chargeAmount=0.025000');
+  });
+
+  it('emits charge_failed with absorbedCostUsd when the charge fails after a successful probe', async () => {
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
+    mockChargeImpl.mockRejectedValueOnce(new Error('Sui congestion'));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    await handler(makeRequest({ prompt: 'x' }));
+
+    const lines = getSettleLines();
+    const failed = lines.find((l) => l.includes('event=charge_failed'));
+    expect(failed).toBeDefined();
+    expect(failed).toContain('absorbedCostUsd=0.05');
+    expect(failed).toContain('reason=Sui congestion');
+    expect(failed).toContain('route=openai/v1/images/generations');
+  });
+
+  it('emits idempotency_hit on cache replay (no second classify event fires)', async () => {
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    await handler(makeRequest({ prompt: 'same' }));
+    consoleSpy.mockClear();
+
+    // Second identical request — cache hits, no new probe, no new charge.
+    await handler(makeRequest({ prompt: 'same' }));
+
+    const lines = getSettleLines();
+    const hits = lines.filter((l) => l.includes('event=idempotency_hit'));
+    const classifies = lines.filter((l) => l.includes('event=classify'));
+    expect(hits.length).toBe(1);
+    expect(classifies.length).toBe(0);
+  });
+});
+
+// ─── Cache failure-tolerance (P5 review remediation Bug B) ────────────
+
+/**
+ * The cache (Upstash in prod, in-memory in tests) is a NICETY for
+ * legitimate-retry idempotency, NOT load-bearing for any single request.
+ * If Upstash has a transient failure, the request must still complete
+ * cleanly:
+ *   - cache.get throws → treat as a miss, fall through to fresh probe
+ *   - cache.set throws → still return the paid response (don't error
+ *     out a request the user has already paid for)
+ */
+describe('chargeProxy.settleOnSuccess — cache I/O failure tolerance (Bug B)', () => {
+  it('cache.get throws → falls through to fresh probe + charge (no request error)', async () => {
+    const flakyCache: InMemoryUpstreamResponseCache = new InMemoryUpstreamResponseCache();
+    flakyCache.get = vi.fn().mockRejectedValue(new Error('Upstash 503'));
+    setUpstreamResponseCache(flakyCache);
+
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true, id: 'fresh' }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequest({ prompt: 'x' }));
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Payment-Receipt')).toMatch(/^mock-receipt-0\.05/);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(mockChargeImpl).toHaveBeenCalledTimes(1);
+    const body = await res.json();
+    expect(body.id).toBe('fresh');
+  });
+
+  it('cache.set throws → still returns the paid response (does not error out the user)', async () => {
+    const flakyCache: InMemoryUpstreamResponseCache = new InMemoryUpstreamResponseCache();
+    flakyCache.set = vi.fn().mockRejectedValue(new Error('Upstash write timeout'));
+    setUpstreamResponseCache(flakyCache);
+
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { ok: true, id: 'paid' }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequest({ prompt: 'x' }));
+
+    // The user paid; the response must come back cleanly even though
+    // the cache write blew up.
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Payment-Receipt')).toMatch(/^mock-receipt-0\.05/);
+    expect(mockChargeImpl).toHaveBeenCalledTimes(1);
+    const body = await res.json();
+    expect(body.id).toBe('paid');
+  });
+
+  it('cache.get failure does not poison the second request (each call independent)', async () => {
+    let getCalls = 0;
+    const flakyCache: InMemoryUpstreamResponseCache = new InMemoryUpstreamResponseCache();
+    const realGet = flakyCache.get.bind(flakyCache);
+    flakyCache.get = vi.fn(async (fp: string) => {
+      getCalls++;
+      // First call throws; subsequent calls work normally.
+      if (getCalls === 1) throw new Error('Upstash 503');
+      return realGet(fp);
+    });
+    setUpstreamResponseCache(flakyCache);
+
+    fetchSpy
+      .mockResolvedValueOnce(upstreamResponse(200, { id: 'first' }))
+      .mockResolvedValueOnce(upstreamResponse(200, { id: 'second' }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    const res1 = await handler(makeRequest({ prompt: 'x' }));
+    const res2 = await handler(makeRequest({ prompt: 'y' })); // different body, different fingerprint
+
+    expect((await res1.json()).id).toBe('first');
+    expect((await res2.json()).id).toBe('second');
+    expect(getCalls).toBe(2); // both calls hit the cache
+    // Cache.set ran on both successful charges — second call's get
+    // operates against the (working) cache as normal.
+  });
+});

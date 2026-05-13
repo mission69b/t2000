@@ -33,28 +33,19 @@
  *
  * ## What we cache
  *
- * The full response shape needed to reconstruct it: status code, body
- * bytes (string-encoded — JSON for vendor responses; base64 for binary
- * payloads if a non-JSON route ever opts into settle-on-success), and the
- * content-type header so we don't lose the discriminator.
+ * Everything needed to reconstruct the FIRST successful charge's
+ * response: status code, body bytes, content-type, AND the
+ * `Payment-Receipt` header that mppx stamped on that first charge.
  *
- * We do NOT cache the Sui Payment-Receipt header. That's stamped fresh on
- * each charge — even on a cache hit we re-issue a charge so the user sees
- * a deterministic on-chain trail per request. Replay defense is owned by
- * the digest store.
- *
- * Wait — cache hit re-issues a charge? That contradicts the SPEC 26 §5.2
- * "no double-charge" guarantee. Let me re-state correctly:
- *
- * **Cache hit semantics (D-1 + §5.2):** the cached entry holds the
- * upstream body AND the Payment-Receipt header from the FIRST successful
- * charge. On a cache hit within TTL, we return the cached body + cached
- * receipt — NO second charge. The user sees the same digest, the same
- * status, the same body. This is how idempotency holds for legitimate
- * retries (network blip mid-response → client retries → returns the same
- * thing it would have seen). The digest store's separate replay defense
- * (`mppx` enforces "digest already used" → throws) prevents an attacker
- * from re-using a stolen receipt against a different request.
+ * **Cache hit semantics (D-1 + §5.2):** within TTL, an identical retry
+ * returns the cached body + cached `Payment-Receipt` — NO second charge,
+ * NO second probe. The client sees the same digest, body, and status it
+ * would have seen the first time. That's how idempotency holds for
+ * legitimate retries (mid-flight network blip, client retry burst). The
+ * digest store's replay defense (`mppx` rejects "digest already used")
+ * prevents an attacker from re-using a stolen receipt against a
+ * different request — a separate concern owned by the digest store, not
+ * this cache.
  */
 
 export interface CachedUpstreamResponse {
