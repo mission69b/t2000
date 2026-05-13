@@ -36,7 +36,10 @@ describe('[SPEC 24 F1] DEFAULT_SYSTEM_PROMPT — MPP services block', () => {
   });
 
   it('enumerates the locked 5 services with their costs', () => {
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/openai\s+— DALL-E images \$0\.05.*Whisper transcription \$0\.01.*GPT-4o chat \$0\.01/);
+    // 2026-05-14: openai images line was `openai — DALL-E images $0.05` —
+    // updated to `openai — image generation (gpt-image-1) $0.05` after the
+    // dall-e-* shutdown and to stop the LLM narrating "DALL-E" to users.
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/openai\s+— image generation \(gpt-image-1\) \$0\.05.*Whisper transcription \$0\.01.*GPT-4o chat \$0\.01/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/elevenlabs\s+— premium TTS \$0\.05.*sound effects \$0\.05/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/pdfshift\s+— HTML\/URL → PDF conversion \$0\.01/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/lob\s+— physical postcards \$1\.00.*letters \$1\.50.*address verification \$0\.01/);
@@ -44,7 +47,7 @@ describe('[SPEC 24 F1] DEFAULT_SYSTEM_PROMPT — MPP services block', () => {
   });
 
   it('teaches intent → service mapping for every supported lane', () => {
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/openai DALL-E/);
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/openai images \(gpt-image-1/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/openai Whisper/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/openai GPT-4o/);
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/elevenlabs TTS/);
@@ -54,8 +57,12 @@ describe('[SPEC 24 F1] DEFAULT_SYSTEM_PROMPT — MPP services block', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toMatch(/resend/);
   });
 
-  it('teaches multi-step PDF composition pattern (DALL-E images + pdfshift bind)', () => {
-    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/colouring book.*N x openai DALL-E.*pdfshift bind/i);
+  it('teaches multi-step PDF composition pattern (openai images + pdfshift bind)', () => {
+    expect(DEFAULT_SYSTEM_PROMPT).toMatch(/colouring book.*N x openai images.*pdfshift bind/i);
+  });
+
+  it('does NOT mention DALL-E anywhere in DEFAULT_SYSTEM_PROMPT (post-shutdown brand cleanup)', () => {
+    expect(DEFAULT_SYSTEM_PROMPT).not.toMatch(/DALL-E|DALLE|dall-e|dalle/i);
   });
 
   it('explicitly lists what we CANNOT do (genuinely unavailable: music, search, weather, maps, etc.)', () => {

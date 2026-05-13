@@ -58,14 +58,28 @@ describe('pay_api tool — SPEC 24 locked 5-service set in description', () => {
     }
   });
 
-  it('Lob postcard flow uses openai DALL-E (not fal/fal-ai/flux/dev)', () => {
+  it('Lob postcard flow uses openai images (not fal/fal-ai/flux/dev)', () => {
     expect(desc).not.toMatch(/fal\/fal-ai\/flux\/dev/);
     expect(desc).toMatch(/openai\/v1\/images\/generations/);
   });
 
-  it('teaches multi-step PDF composition (DALL-E images → PDFShift bind)', () => {
+  it('teaches multi-step PDF composition (openai images → PDFShift bind)', () => {
     expect(desc).toMatch(/PDFShift/);
     expect(desc).toMatch(/HTML.*image URLs|images first/i);
+  });
+
+  // [2026-05-14] DALL-E was shut down 2026-05-12. The tool description must
+  // not LEAD with the DALL-E brand to the LLM (it leaked into chat narration
+  // — "Image generation via DALL-E is $0.05"). The brand name is allowed
+  // ONCE in the model-guidance paragraph (so the LLM knows to reject any
+  // dall-e-* model name the user asks for) but must NOT appear in the
+  // headline pricing line or the multi-step composition examples.
+  it('does NOT lead with DALL-E brand in the headline pricing line', () => {
+    expect(desc).not.toMatch(/openai\s+— DALL-E/);
+  });
+
+  it('teaches the LLM not to mention DALL-E in user narration', () => {
+    expect(desc).toMatch(/do NOT mention "DALL-E" to the user/);
   });
 
   it('teaches the LLM to decline unsupported intents (Fal / Anthropic / Suno)', () => {
@@ -75,7 +89,7 @@ describe('pay_api tool — SPEC 24 locked 5-service set in description', () => {
 
 describe('estimatePayApiCost — SPEC 24 locked 5-service prices', () => {
   // openai (3 endpoints, distinct prices)
-  it('DALL-E images = $0.05', () => {
+  it('openai images (gpt-image-1) = $0.05', () => {
     expect(estimatePayApiCost('https://mpp.t2000.ai/openai/v1/images/generations')).toBe(0.05);
   });
 

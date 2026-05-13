@@ -12,7 +12,7 @@ const MPP_GATEWAY = 'https://mpp.t2000.ai';
 // somehow happens.
 const SERVICE_PRICES: [RegExp, number][] = [
   // openai (3 supported endpoints)
-  [/\/openai\/v1\/images\//, 0.05],          // DALL-E
+  [/\/openai\/v1\/images\//, 0.05],          // gpt-image-1 (dall-e-* shut down 2026-05-12)
   [/\/openai\/v1\/audio\/transcriptions/, 0.01], // Whisper
   [/\/openai\/v1\/chat\//, 0.01],            // GPT-4o
   // elevenlabs (2 supported endpoints, both $0.05)
@@ -38,7 +38,7 @@ export const payApiTool = buildTool({
   name: 'pay_api',
   description: `Execute one of Audric's 5 supported MPP gateway services via on-chain USDC micropayment. Payment is handled automatically. Supported services (11 endpoints):
 
-  openai      — DALL-E images $0.05, Whisper transcription $0.01, GPT-4o chat $0.01
+  openai      — image generation (gpt-image-1) $0.05, Whisper transcription $0.01, GPT-4o chat $0.01
   elevenlabs  — premium TTS $0.05, sound effects $0.05
   pdfshift    — HTML/URL → PDF conversion $0.01
   lob         — postcards $1.00, letters $1.50, address verify $0.01
@@ -56,9 +56,9 @@ RETRYABLE — free-retry signal (SPEC 26 settle-on-success): If pay_api result h
 
 CRITICAL — abort the chain on dependency failure: If a pay_api call fails AND the failed output was the input to a planned downstream tool (e.g. you were going to feed the image URL into compose_pdf, compose_image_grid, pay_api(lob/postcards), or any tool whose name starts with compose_/bind_/merge_/package_), STOP. Do NOT substitute a placeholder, stub, or "[image: description]" text. Report exactly what failed, what was charged, and what the user can do (retry once Audric publishes a fix; contact support for refund). The user asked for X-with-Y; delivering X-without-Y is a worse outcome than delivering nothing and being clear about it. Only continue the chain if the failed output was independent of subsequent steps (e.g. parallel image + email request — email can ship even if image failed; but report the failure).
 
-OpenAI image models — current valid models: gpt-image-1 (drop-in for legacy dall-e-3, $0.05) or gpt-image-1-mini (cost-efficient, $0.05). Do NOT use "dall-e-3" or "dall-e-2" — both shut down 2026-05-12 and the gateway will reject the request pre-charge. The deprecation runway for gpt-image-1 itself is 2026-10-23; until then it is the recommended default.
+OpenAI image models — current valid models: gpt-image-1 ($0.05) or gpt-image-1-mini (cost-efficient, $0.05). The legacy dall-e-3 / dall-e-2 models were shut down by OpenAI on 2026-05-12 and the gateway will reject any request that names them pre-charge. gpt-image-1 is the only image option; do NOT mention "DALL-E" to the user — they ask for an image, you generate one with gpt-image-1, and the receipt card says "OPENAI · IMAGE". The deprecation runway for gpt-image-1 itself is 2026-10-23; until then it is the recommended default.
 
-OpenAI image sizes — gpt-image-* only accepts: "1024x1024" (default, square), "1024x1536" (portrait), "1536x1024" (landscape), or "auto". Do NOT pass "256x256", "512x512", "1024x1024" with "hd" quality, or any other DALL-E 2/3 legacy values — they will be rejected pre-charge. When the user says "small image" or "thumbnail", default to 1024x1024 (omit the size field) — the gateway has no smaller option, and post-render the image can be displayed at any size. Only override the default when the user explicitly asks for portrait or landscape composition.
+OpenAI image sizes — gpt-image-* only accepts: "1024x1024" (default, square), "1024x1536" (portrait), "1536x1024" (landscape), or "auto". Do NOT pass "256x256", "512x512", "1024x1024" with quality "standard" or "hd", or any other legacy size/quality combinations from the retired dall-e-* models — they will be rejected pre-charge. Valid quality values are: "low", "medium", "high", "auto". When the user says "small image" or "thumbnail", default to 1024x1024 (omit the size field) — the gateway has no smaller option, and post-render the image can be displayed at any size. Only override the default when the user explicitly asks for portrait or landscape composition.
 
 Lob (postcards/letters) — MULTI-STEP, NEVER skip:
 1. Generate design image FIRST via openai/v1/images/generations (model "gpt-image-1", $0.05). Show the image to the user as markdown ![design](url).
@@ -68,7 +68,7 @@ Always use ISO-3166 country codes (GB not UK, US not USA). A return address ("fr
 
 PDFShift (pdfshift/v1/convert) — composition guidance:
 - Text-only PDFs: call pdfshift directly with HTML content.
-- PDFs with images (eBook covers, illustrated guides, colouring books): generate images first via openai/v1/images/generations ($0.05 each), then call pdfshift with HTML that includes the image URLs as <img src="..."/> tags. Quote the total cost (N images × $0.05 + $0.01) before starting.`,
+- PDFs with images (eBook covers, illustrated guides, colouring books): generate images first via openai/v1/images/generations (model "gpt-image-1", $0.05 each), then call pdfshift with HTML that includes the image URLs as <img src="..."/> tags. Quote the total cost (N images × $0.05 + $0.01) before starting.`,
   inputSchema: z.object({
     url: z.string().url(),
     method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).optional(),
