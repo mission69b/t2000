@@ -32,7 +32,7 @@ export const services: Service[] = [
     endpoints: [
       { method: 'POST', path: '/v1/chat/completions', description: 'Chat completions (GPT-4o, o1, etc.)', price: '0.01' },
       { method: 'POST', path: '/v1/embeddings', description: 'Create embeddings', price: '0.001' },
-      { method: 'POST', path: '/v1/images/generations', description: 'Generate images with DALL-E', price: '0.05' },
+      { method: 'POST', path: '/v1/images/generations', description: 'Generate images with gpt-image-1 (DALL-E was shut down 2026-05-12)', price: '0.05' },
       { method: 'POST', path: '/v1/audio/transcriptions', description: 'Transcribe audio with Whisper', price: '0.01' },
       { method: 'POST', path: '/v1/audio/speech', description: 'Text-to-speech', price: '0.02' },
     ],
