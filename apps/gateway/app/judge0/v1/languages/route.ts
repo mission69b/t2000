@@ -7,5 +7,5 @@ export const POST = chargeProxy(
     'x-rapidapi-key': process.env.RAPIDAPI_KEY!,
     'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
   },
-  { upstreamMethod: 'GET' },
+  { settleOnSuccess: true, upstreamMethod: 'GET' },
 );

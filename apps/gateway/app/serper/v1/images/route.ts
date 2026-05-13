@@ -4,4 +4,5 @@ export const POST = chargeProxy(
   '0.005',
   'https://google.serper.dev/images',
   { 'x-api-key': process.env.SERPER_API_KEY! },
+  { settleOnSuccess: true },
 );

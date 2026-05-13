@@ -7,4 +7,5 @@ export const POST = chargeProxy(
     authorization: `Bearer ${process.env.REPLICATE_API_KEY}`,
     prefer: 'wait',
   },
+  { settleOnSuccess: true },
 );
