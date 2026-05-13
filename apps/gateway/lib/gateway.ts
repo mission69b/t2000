@@ -10,6 +10,7 @@ import {
   InMemoryUpstreamResponseCache,
   type UpstreamResponseCache,
 } from './upstream-response-cache';
+import { getUpstashUpstreamResponseCache } from './upstash-upstream-response-cache';
 
 const NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
 const SERVER_URL = 'https://mpp.t2000.ai';
@@ -174,18 +175,36 @@ interface ProxyOptions {
 }
 
 /**
- * Process-wide cache instance for `settleOnSuccess` mode. P1 ships the
- * in-memory default — safe for tests + local dev. P2 will swap this for
- * `UpstashUpstreamResponseCache` so multi-instance deployments (Vercel)
- * share the cache. Override via `setUpstreamResponseCache()` for tests.
+ * Process-wide cache instance for `settleOnSuccess` mode (SPEC 26).
+ *
+ * **Resolution order (first match wins):**
+ *   1. Whatever was last passed to `setUpstreamResponseCache(...)` — the
+ *      test override / explicit injection seam (always wins).
+ *   2. `UpstashUpstreamResponseCache` — when both `KV_REST_API_URL` and
+ *      `KV_REST_API_TOKEN` are present in env (multi-instance correct;
+ *      mandatory for Vercel where ≥2 functions per route share traffic).
+ *   3. `InMemoryUpstreamResponseCache` — local dev / unit tests / any
+ *      env without KV vars wired. NOT safe for multi-instance prod.
+ *
+ * Initialization is lazy (first `getUpstreamResponseCache()` call) so
+ * importing `gateway.ts` doesn't trigger Upstash client construction
+ * (and the implicit env-var read) at module load time. This matches
+ * the `getDigestStore()` lazy pattern for `UpstashDigestStore`.
  */
-let _upstreamResponseCache: UpstreamResponseCache = new InMemoryUpstreamResponseCache();
+let _upstreamResponseCache: UpstreamResponseCache | undefined;
 
 export function setUpstreamResponseCache(cache: UpstreamResponseCache): void {
   _upstreamResponseCache = cache;
 }
 
 export function getUpstreamResponseCache(): UpstreamResponseCache {
+  if (!_upstreamResponseCache) {
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      _upstreamResponseCache = getUpstashUpstreamResponseCache();
+    } else {
+      _upstreamResponseCache = new InMemoryUpstreamResponseCache();
+    }
+  }
   return _upstreamResponseCache;
 }
 
