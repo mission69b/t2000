@@ -31,17 +31,27 @@ describe('payApiTool description — locked failure-mode contract', () => {
     expect(payApiTool.description).toContain('ALREADY been charged');
   });
 
-  it('pins the SPEC 26 D-8 retryable signal (free retry on 402 + paymentConfirmed: false)', () => {
+  it('pins the SPEC 26 D-8 retryable signal (free retry on 402 + paymentConfirmed: false + settleVerdict)', () => {
     expect(payApiTool.description).toContain('"paymentConfirmed": false');
-    expect(payApiTool.description).toContain('status is 402');
+    expect(payApiTool.description).toContain('"status": 402');
+    expect(payApiTool.description).toContain('"settleVerdict"');
     expect(payApiTool.description).toContain('NOT charged');
     expect(payApiTool.description).toContain('Each retry-after-no-charge is free');
   });
 
-  it('pins the D-8 transient-vs-correctable retry guidance', () => {
-    expect(payApiTool.description).toContain('settleReason');
+  it('pins the D-8 transient-vs-correctable retry guidance with concrete examples', () => {
+    expect(payApiTool.description).toContain('"settleReason"');
     expect(payApiTool.description).toContain('transient');
-    expect(payApiTool.description).toContain('correction');
+    expect(payApiTool.description).toContain('correctable');
+    // Concrete reason strings the LLM is likely to see — pin so renaming
+    // the gateway error labels can't silently break the matcher logic.
+    expect(payApiTool.description).toContain('rate-limit');
+    expect(payApiTool.description).toContain('invalid model');
+  });
+
+  it('pins the D-8 settleVerdict enumeration (refundable vs charge-failed)', () => {
+    expect(payApiTool.description).toContain('"refundable"');
+    expect(payApiTool.description).toContain('"charge-failed"');
   });
 
   it('keeps the non-retryable + retryable paragraphs in the canonical order (non-retry first, retry second)', () => {
