@@ -79,7 +79,9 @@ const schemas: Record<string, EndpointSchema> = {
       // [2026-05-13] dall-e-3 and dall-e-2 shut down 2026-05-12 by OpenAI.
       // Current valid models — see route.ts VALID_MODELS for the gateway
       // pre-charge gate that rejects requests using deprecated names.
-      model: str('Model (gpt-image-1, gpt-image-1-mini). Omit to let OpenAI select default.'),
+      model: str(
+        'Model (gpt-image-1, gpt-image-1-mini). Omit to let OpenAI select default. Responses are uploaded to Blob and returned as dall-e-shaped `{ url }` entries.',
+      ),
       prompt: str('Image description'),
       size: str('Image size (1024x1024, 1024x1792, 1792x1024)'),
       n: num('Number of images'),

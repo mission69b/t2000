@@ -1,4 +1,5 @@
 import { chargeProxy } from '@/lib/gateway';
+import { transformOpenAiImageGenerationsResponse } from '@/lib/openai-image-blob-normalize';
 
 /**
  * Allow-list of currently-valid OpenAI image models.
@@ -27,6 +28,11 @@ import { chargeProxy } from '@/lib/gateway';
  * package (different deploy targets), and a copy-pasted constant in 3
  * files is currently cheaper than a 4th source-of-truth abstraction. If
  * a 4th model registry consumer ever shows up, factor.
+ *
+ * **Blob dependency:** Supported `gpt-image-*` models return base64-only
+ * payloads (no hosted `url`). `BLOB_READ_WRITE_TOKEN` must be set so a
+ * successful OpenAI response can be uploaded and rewritten to dall-e-shaped
+ * `{ data: [{ url }] }` before Audric consumes it (`CardPreview`, `compose_*`).
  */
 const VALID_MODELS = new Set(['gpt-image-1', 'gpt-image-1-mini']);
 
@@ -38,6 +44,17 @@ export const POST = chargeProxy(
   },
   {
     validate: (body) => {
+      const blobToken =
+        typeof process.env.BLOB_READ_WRITE_TOKEN === 'string'
+          ? process.env.BLOB_READ_WRITE_TOKEN.trim()
+          : '';
+      if (!blobToken) {
+        return (
+          'Gateway misconfigured: BLOB_READ_WRITE_TOKEN is required for OpenAI image generations. ' +
+          'gpt-image-* models return base64-only responses; the gateway uploads them to Blob before returning URLs.'
+        );
+      }
+
       const model = body.model;
       // Don't validate when model is omitted — OpenAI's API has its own
       // default selection logic and we shouldn't second-guess it. Only
@@ -51,5 +68,6 @@ export const POST = chargeProxy(
       }
       return null;
     },
+    transformUpstreamResponse: transformOpenAiImageGenerationsResponse,
   },
 );

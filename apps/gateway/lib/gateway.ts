@@ -71,6 +71,12 @@ interface ProxyOptions {
   bodyToQuery?: boolean;
   validate?: (body: Record<string, unknown>) => string | null;
   mapBody?: (body: Record<string, unknown>) => Record<string, unknown>;
+  /**
+   * Runs after a successful upstream fetch (`res.ok`) when `content-type`
+   * looks like JSON. Used to normalize vendor quirks before returning through
+   * MPP (e.g. gpt-image-* base64 → hosted URL).
+   */
+  transformUpstreamResponse?: (upstreamResponse: Response) => Promise<Response>;
 }
 
 /**
@@ -88,15 +94,16 @@ export function chargeProxy(
     const bodyText = await req.text();
     const method = options?.upstreamMethod ?? 'POST';
 
-    if (options?.validate && bodyText) {
+    if (options?.validate) {
+      let parsed: Record<string, unknown>;
       try {
-        const parsed = JSON.parse(bodyText) as Record<string, unknown>;
-        const validationError = options.validate(parsed);
-        if (validationError) {
-          return Response.json({ error: validationError }, { status: 400 });
-        }
+        parsed = bodyText ? (JSON.parse(bodyText) as Record<string, unknown>) : {};
       } catch {
         return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
+      const validationError = options.validate(parsed);
+      if (validationError) {
+        return Response.json({ error: validationError }, { status: 400 });
       }
     }
 
@@ -119,9 +126,18 @@ export function chargeProxy(
         },
         body: method === 'POST' ? (bodyText || undefined) : undefined,
       });
-      return new Response(res.body, {
-        status: res.status,
-        headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
+
+      let outgoing = res;
+      if (options?.transformUpstreamResponse && res.ok) {
+        const ct = res.headers.get('content-type') ?? '';
+        if (ct.includes('application/json')) {
+          outgoing = await options.transformUpstreamResponse(res);
+        }
+      }
+
+      return new Response(outgoing.body, {
+        status: outgoing.status,
+        headers: { 'content-type': outgoing.headers.get('content-type') ?? 'application/json' },
       });
     };
 

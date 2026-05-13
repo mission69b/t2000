@@ -46,6 +46,7 @@ Runs on `http://localhost:4402`.
 | `NEXT_PUBLIC_SUI_NETWORK` | Yes | `mainnet` or `testnet` |
 | `NEXT_PUBLIC_GATEWAY_URL` | No | Override base URL (defaults to `https://mpp.t2000.ai`) |
 | `OPENAI_API_KEY` | Yes | OpenAI upstream key |
+| `BLOB_READ_WRITE_TOKEN` | Yes for image gen | Vercel Blob read-write token. Required for `POST /openai/v1/images/generations`: `gpt-image-*` models return base64-only payloads; the gateway uploads each image and rewrites the JSON to dall-e-shaped `{ data: [{ url }] }` before Audric consumes it (cards + `compose_*` tools). Use the same token as audric web if sharing one Blob store. |
 | Various `*_API_KEY` | Yes | Per-service upstream keys |
 
 ## Tests
