@@ -111,6 +111,20 @@ afterEach(() => {
 });
 
 function makeRequest(body: object, url = 'https://mpp.t2000.ai/openai/v1/images/generations'): Request {
+  // [SPEC 26 fix / 2026-05-14] Default to a stub Payment credential so the
+  // probe-and-charge path runs. Tests that need to exercise the no-credential
+  // short-circuit (audric prepare-phase shape) use `makeRequestNoCredential`.
+  return new Request(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Payment dGVzdA==',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+function makeRequestNoCredential(body: object, url = 'https://mpp.t2000.ai/openai/v1/images/generations'): Request {
   return new Request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -125,6 +139,127 @@ function upstreamResponse(status: number, body: object | string): Response {
     headers: { 'content-type': 'application/json' },
   });
 }
+
+// ─── SPEC 26 fix [2026-05-14] — credential-presence guard ────────────
+//
+// Without this guard, every prepare-phase call from audric (no Authorization
+// header — the host needs the 402 challenge to build the payment tx) would
+// trigger an upstream probe whose result is immediately discarded when
+// mppx.charge returns 402. Burns vendor cost, emits misleading
+// `verdict=deliverable chargeAmount=X` logs, and triggers non-idempotent
+// upstream side effects (image gen, TTS) for no user benefit. The legacy
+// chargeProxy path doesn't have this problem because mppx wraps the handler
+// — when no credential is present, mppx returns 402 before the handler runs.
+// SPEC 26 inverted that order; this guard restores it.
+describe('chargeProxy.settleOnSuccess — credential-presence guard (no Authorization header)', () => {
+  it('does NOT probe upstream when no Payment credential is present', async () => {
+    // Make mppx return 402 (the standard challenge response when no creds).
+    mockChargeImpl.mockImplementationOnce(async () =>
+      new Response(
+        JSON.stringify({
+          challenge: { id: 'stub', method: 'sui', intent: 'charge' },
+        }),
+        {
+          status: 402,
+          headers: {
+            'content-type': 'application/json',
+            'www-authenticate': 'Payment realm="mpp.t2000.ai"',
+          },
+        },
+      ),
+    );
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      { authorization: 'Bearer test-key' },
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequestNoCredential({ prompt: 'a frog', model: 'gpt-image-1' }));
+
+    // Critical assertion: NO upstream fetch happened (the probe was
+    // skipped). This is the bug the guard fixes.
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // mppx WAS called — it returned the 402 challenge directly.
+    expect(mockChargeImpl).toHaveBeenCalledTimes(1);
+
+    // Response is the 402 challenge, ready for audric to build the payment tx.
+    expect(res.status).toBe(402);
+  });
+
+  it('passes through the mppx 402 challenge unchanged (preserves audric prepare semantics)', async () => {
+    const challengeBody = JSON.stringify({ challenge: { id: 'cha-123', amount: '0.05' } });
+    mockChargeImpl.mockImplementationOnce(async () =>
+      new Response(challengeBody, {
+        status: 402,
+        headers: {
+          'content-type': 'application/json',
+          'www-authenticate': 'Payment realm="mpp.t2000.ai"',
+        },
+      }),
+    );
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequestNoCredential({ prompt: 'x' }));
+
+    expect(res.status).toBe(402);
+    expect(await res.text()).toBe(challengeBody);
+    expect(res.headers.get('www-authenticate')).toContain('Payment');
+
+    // Specifically: NO `X-Settle-Verdict` header — this is the legacy mppx
+    // challenge path, not the SPEC 26 settle-no-delivery path.
+    expect(res.headers.get('x-settle-verdict')).toBeNull();
+  });
+
+  it('case-insensitive Authorization scheme detection (Payment / payment / PAYMENT)', async () => {
+    fetchSpy.mockResolvedValue(upstreamResponse(200, { ok: true }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      {},
+      { settleOnSuccess: true },
+    );
+
+    // Lowercase "payment" should also be accepted as a credentialed call
+    // and trigger the probe path.
+    const req = new Request('https://mpp.t2000.ai/openai/v1/images/generations', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'payment dGVzdA==' },
+      body: JSON.stringify({ prompt: 'x' }),
+    });
+
+    await handler(req);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('credentialed request DOES probe upstream (probe + classify + charge runs)', async () => {
+    fetchSpy.mockResolvedValueOnce(upstreamResponse(200, { data: [{ url: 'https://img.example/1.png' }] }));
+
+    const handler = chargeProxy(
+      '0.05',
+      'https://api.openai.com/v1/images/generations',
+      { authorization: 'Bearer test-key' },
+      { settleOnSuccess: true },
+    );
+
+    const res = await handler(makeRequest({ prompt: 'a frog', model: 'gpt-image-1' }));
+
+    // With credentials, the full settle-on-success path runs as designed.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Payment-Receipt')).toMatch(/^mock-receipt-0\.05/);
+  });
+});
 
 // ─── Spec § 6.1 path 1: probe-classify-charge happy path ──────────────
 

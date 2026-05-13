@@ -383,6 +383,51 @@ async function chargeProxySettleOnSuccess(params: {
   const ttlSeconds = options.cacheTtlSeconds ?? SETTLE_CACHE_TTL_SECONDS;
   const apiKeyId = options.apiKeyId ?? 'default';
 
+  // Phase 0 — credential-presence guard [SPEC 26 fix / 2026-05-14]
+  //
+  // Without this, EVERY request that arrives with no `Authorization: Payment ...`
+  // header (notably audric's prepare phase, which posts to the gateway WITHOUT
+  // a receipt to obtain the mppx Challenge JSON it needs to build the payment
+  // tx) triggers an upstream probe whose result is immediately discarded when
+  // mppx.charge returns 402. Three concrete consequences observed in the
+  // 2026-05-13 image-gen incident:
+  //
+  //   1. Wasted upstream cost — for a successful audric pay flow the gateway
+  //      called OpenAI TWICE (once during prepare-probe-then-discard, once
+  //      during complete-probe-then-charge). The prepare-time call burned
+  //      ~$amount of vendor cost the gateway absorbed for nothing.
+  //
+  //   2. Misleading telemetry — the `[mpp.settle] event=classify ...
+  //      verdict=deliverable chargeAmount=X` log fires at classify time, not
+  //      after mppx.charge. Probes that never lead to an on-chain charge
+  //      (because mppx 402s for missing credential) still emit a log line
+  //      that looks identical to a real charge — leading the founder to
+  //      mis-count gateway log entries as charges.
+  //
+  //   3. Upstream side-effects on prepare — for non-idempotent upstreams
+  //      (image generation models, TTS, etc.) the prepare-time probe
+  //      generates an artifact that's silently discarded. Doubles vendor
+  //      load + invites rate-limit consumption for no user benefit.
+  //
+  // The legacy `chargeProxy` path (line 337) doesn't have this problem
+  // because mppx.charge wraps the upstream handler — when no credential is
+  // present, mppx returns 402 BEFORE the handler runs. SPEC 26 inverted
+  // that order (probe first, then charge) which broke the property. This
+  // guard restores it.
+  //
+  // The short-circuit calls mppx.charge with a no-op handler so the SAME
+  // 402 challenge response shape goes back to audric — preserving full
+  // semantic compatibility with the legacy flow.
+  const authHeader = req.headers.get('Authorization');
+  const hasPaymentCredential = authHeader ? /^Payment\s+/i.test(authHeader) : false;
+  if (!hasPaymentCredential) {
+    const noOpHandler: RouteHandler = async () =>
+      new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    return await mppx.charge({ amount })(noOpHandler)(
+      new Request(req.url, { method: req.method, headers: req.headers }),
+    );
+  }
+
   // Phase 1 — fingerprint + cache lookup
   const url = (() => {
     try {
