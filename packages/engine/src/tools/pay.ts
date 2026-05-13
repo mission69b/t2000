@@ -56,6 +56,8 @@ CRITICAL — abort the chain on dependency failure: If a pay_api call fails AND 
 
 OpenAI image models — current valid models: gpt-image-1 (drop-in for legacy dall-e-3, $0.05) or gpt-image-1-mini (cost-efficient, $0.05). Do NOT use "dall-e-3" or "dall-e-2" — both shut down 2026-05-12 and the gateway will reject the request pre-charge. The deprecation runway for gpt-image-1 itself is 2026-10-23; until then it is the recommended default.
 
+OpenAI image sizes — gpt-image-* only accepts: "1024x1024" (default, square), "1024x1536" (portrait), "1536x1024" (landscape), or "auto". Do NOT pass "256x256", "512x512", "1024x1024" with "hd" quality, or any other DALL-E 2/3 legacy values — they will be rejected pre-charge. When the user says "small image" or "thumbnail", default to 1024x1024 (omit the size field) — the gateway has no smaller option, and post-render the image can be displayed at any size. Only override the default when the user explicitly asks for portrait or landscape composition.
+
 Lob (postcards/letters) — MULTI-STEP, NEVER skip:
 1. Generate design image FIRST via openai/v1/images/generations (model "gpt-image-1", $0.05). Show the image to the user as markdown ![design](url).
 2. Ask the user to confirm before mailing ("Here's the design. Print and mail for $1.00?").
