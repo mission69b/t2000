@@ -5,15 +5,19 @@ import { _internal } from '../providers/anthropic.js';
 const { isRetriableError, friendlyErrorMessage, computeBackoffMs } = _internal;
 
 // The SDK's `Headers` type is its own class (not the global Fetch Headers).
-// In tests we don't care about the headers value — only the status — so we
-// pass an empty headers-like through `any` to keep the test ergonomics clean.
+// In tests we don't care about the header values — only the status — but
+// the SDK constructor (≥0.96) calls `headers?.get('request-id')` while
+// initialising, so the stub MUST expose a callable `.get`. Returning
+// `null` for every key is correct semantically (no request-id available).
+const HEADERS_STUB = { get: () => null };
+
 function apiError(status: number, body: { type: string; message: string }) {
   return new Anthropic.APIError(
     status,
     body,
     body.message,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    {} as any,
+    HEADERS_STUB as any,
   );
 }
 
