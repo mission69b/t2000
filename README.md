@@ -16,6 +16,7 @@
 
 <p align="center">
   <a href="https://glama.ai/mcp/servers/mission69b/t2000"><img src="https://glama.ai/mcp/servers/mission69b/t2000/badges/score.svg" alt="t2000 MCP server" /></a>
+  <a href="https://github.com/mbeato/awesome-mpp"><img src="https://img.shields.io/badge/Awesome-MPP-orange?style=flat&logo=awesomelists&logoColor=white" alt="Listed on Awesome MPP" /></a>
 </p>
 
 ---
