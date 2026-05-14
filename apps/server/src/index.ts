@@ -1,16 +1,16 @@
+// [SPEC 30 D-14 — 2026-05-14] Importing the env module triggers boot-time
+// Zod validation. Throws a structured error before any service starts up
+// when required vars (DATABASE_URL, AUDRIC_INTERNAL_KEY,
+// T2000_OVERLAY_FEE_WALLET) are missing or empty. Replaces the previous
+// ad-hoc `REQUIRED_ENV.filter` check which only covered `DATABASE_URL`
+// and silently let the others ship as empty strings.
+import { env } from './env.js';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
 import { health } from './routes/health.js';
 import { testDatabaseConnection } from './db/prisma.js';
-
-const REQUIRED_ENV = ['DATABASE_URL'];
-const missing = REQUIRED_ENV.filter((v) => !process.env[v]);
-if (missing.length > 0) {
-  console.error(`[server] Missing required env vars: ${missing.join(', ')}`);
-  process.exit(1);
-}
 
 process.on('unhandledRejection', (reason) => {
   console.error('[server] Unhandled rejection:', reason);
@@ -47,7 +47,7 @@ app.route('/', health);
 
 app.get('/', (c) => c.json({ service: 't2000-server', version: '0.1.0' }));
 
-const port = parseInt(process.env.PORT ?? '3000', 10);
+const port = env.PORT;
 
 (async () => {
   await testDatabaseConnection();

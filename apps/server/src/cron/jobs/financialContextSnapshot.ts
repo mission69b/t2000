@@ -1,11 +1,12 @@
 import type { JobResult } from '../types.js';
+import { env } from '../../env.js';
 
 function getInternalUrl(): string {
-  return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';
+  return env.AUDRIC_INTERNAL_URL;
 }
 
 function getInternalKey(): string {
-  return process.env.AUDRIC_INTERNAL_KEY ?? '';
+  return env.AUDRIC_INTERNAL_KEY;
 }
 
 /**
@@ -28,10 +29,7 @@ export async function runFinancialContextSnapshot(): Promise<JobResult> {
   const baseUrl = `${getInternalUrl()}/api/internal/financial-context-snapshot`;
   const internalKey = getInternalKey();
 
-  const total = Math.max(
-    1,
-    parseInt(process.env.T2000_FIN_CTX_SHARD_COUNT ?? '8', 10) || 8,
-  );
+  const total = Math.max(1, env.T2000_FIN_CTX_SHARD_COUNT);
 
   const shardPromises = Array.from({ length: total }, (_, shard) =>
     fetch(`${baseUrl}?shard=${shard}&total=${total}`, {

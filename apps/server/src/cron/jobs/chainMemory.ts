@@ -1,5 +1,6 @@
 import type { JobResult } from '../types.js';
 import { sleep } from '../utils.js';
+import { env } from '../../env.js';
 
 const CONCURRENCY = 10;
 const BATCH_DELAY_MS = 100;
@@ -9,11 +10,11 @@ interface ChainMemoryUser {
 }
 
 function getInternalUrl(): string {
-  return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';
+  return env.AUDRIC_INTERNAL_URL;
 }
 
 function getInternalKey(): string {
-  return process.env.AUDRIC_INTERNAL_KEY ?? '';
+  return env.AUDRIC_INTERNAL_KEY;
 }
 
 async function fetchEligibleUsers(): Promise<ChainMemoryUser[]> {

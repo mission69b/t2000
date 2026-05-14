@@ -5,6 +5,7 @@ import { runChainMemory } from './jobs/chainMemory.js';
 import { runFinancialContextSnapshot } from './jobs/financialContextSnapshot.js';
 import { fetchNotificationUsers } from './scheduler.js';
 import type { JobResult } from './types.js';
+import { env } from '../env.js';
 
 // [SIMPLIFICATION DAY 5] Folded S.6: deleted all user-facing cron jobs
 // (hfAlerts, briefings, rateAlerts, onboardingFollowup, weeklyBriefing,
@@ -31,7 +32,7 @@ import type { JobResult } from './types.js';
 // hourly + daily-chain EventBridge schedules + their ECS task definitions
 // were deleted from AWS once their bodies became no-ops. Only daily-intel
 // runs in production now; we keep the env override for local re-runs.
-const CRON_GROUP = process.env.CRON_GROUP ?? 'daily-intel';
+const CRON_GROUP = env.CRON_GROUP;
 
 const HOUR_DATA = 7; // midnight US East
 const HOUR_INTELLIGENCE = 19; // 2pm US East
@@ -44,8 +45,8 @@ const HOUR_FIN_CTX = 2;
 
 async function runCron(): Promise<void> {
   const startTime = Date.now();
-  const utcHour = process.env.CRON_OVERRIDE_HOUR
-    ? parseInt(process.env.CRON_OVERRIDE_HOUR, 10)
+  const utcHour = env.CRON_OVERRIDE_HOUR
+    ? parseInt(env.CRON_OVERRIDE_HOUR, 10)
     : new Date().getUTCHours();
 
   console.log(`[cron] Starting group=${CRON_GROUP} UTC hour ${utcHour}`);

@@ -1,11 +1,12 @@
 import type { NotificationUser } from './types.js';
+import { env } from '../env.js';
 
 function getInternalUrl(): string {
-  return process.env.AUDRIC_INTERNAL_URL ?? 'https://audric.ai';
+  return env.AUDRIC_INTERNAL_URL;
 }
 
 function getInternalKey(): string {
-  return process.env.AUDRIC_INTERNAL_KEY ?? '';
+  return env.AUDRIC_INTERNAL_KEY;
 }
 
 const MAX_ATTEMPTS = 3;

@@ -1,9 +1,10 @@
 import type { SuiEvent } from '@mysten/sui/jsonRpc';
 import type { ParsedTransaction } from './checkpoint.js';
 import { allDescriptors } from '@t2000/sdk/descriptors';
+import { env } from '../env.js';
 
 const MPP_GATEWAY_TREASURIES = new Set(
-  (process.env.MPP_GATEWAY_TREASURIES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+  (env.MPP_GATEWAY_TREASURIES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
 );
 
 /**

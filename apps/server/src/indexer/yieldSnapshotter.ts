@@ -1,5 +1,6 @@
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { prisma } from '../db/prisma.js';
+import { env } from '../env.js';
 import type { ProtocolRegistry as RegistryType } from '@t2000/sdk/adapters';
 
 const SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
@@ -9,7 +10,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 let registry: RegistryType | null = null;
 
 function getClient(): SuiJsonRpcClient {
-  const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
+  const url = env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
   return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 

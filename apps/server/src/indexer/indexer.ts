@@ -1,17 +1,17 @@
 import { writeFileSync } from 'node:fs';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { prisma } from '../db/prisma.js';
+import { env } from '../env.js';
 import { fetchCheckpoints, getLatestCheckpoint } from './checkpoint.js';
 import { parseTreasuryFees, parseTransfers } from './eventParser.js';
 
 // Treasury wallet — fees flow here as a regular USDC transfer inside Audric's
 // PTBs. Indexer detects USDC inflows to this wallet and writes them to
 // `ProtocolFeeLedger`. MUST match `T2000_OVERLAY_FEE_WALLET` in the SDK.
-const T2000_OVERLAY_FEE_WALLET = process.env.T2000_OVERLAY_FEE_WALLET
-  ?? '0x5366efbf2b4fe5767fe2e78eb197aa5f5d138d88ac3333fbf3f80a1927da473a';
+const T2000_OVERLAY_FEE_WALLET = env.T2000_OVERLAY_FEE_WALLET;
 
-const POLL_INTERVAL_MS = parseInt(process.env.INDEXER_POLL_INTERVAL_MS ?? '2000', 10);
-const BATCH_SIZE = parseInt(process.env.INDEXER_BATCH_SIZE ?? '10', 10);
+const POLL_INTERVAL_MS = env.INDEXER_POLL_INTERVAL_MS;
+const BATCH_SIZE = env.INDEXER_BATCH_SIZE;
 const CATCHUP_BATCH_SIZE = 50;
 const CATCHUP_THRESHOLD = 1000;
 const HEARTBEAT_PATH = '/tmp/indexer-heartbeat';
@@ -19,7 +19,7 @@ const HEARTBEAT_PATH = '/tmp/indexer-heartbeat';
 let running = false;
 
 function getClient(): SuiJsonRpcClient {
-  const url = process.env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
+  const url = env.SUI_RPC_URL ?? getJsonRpcFullnodeUrl('mainnet');
   return new SuiJsonRpcClient({ url, network: 'mainnet' });
 }
 

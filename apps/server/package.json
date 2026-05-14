@@ -21,7 +21,8 @@
     "@prisma/client": "^6",
     "@t2000/sdk": "workspace:*",
     "eventemitter3": "^5",
-    "hono": "^4"
+    "hono": "^4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20",
