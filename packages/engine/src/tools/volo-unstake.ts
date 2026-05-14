@@ -20,6 +20,22 @@ export const voloUnstakeTool = buildTool({
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true },
+  preflight: (input) => {
+    if (typeof input.amount === 'number') {
+      if (!Number.isFinite(input.amount) || input.amount <= 0) {
+        return { valid: false, error: 'Amount must be positive.' };
+      }
+      if (input.amount > 10_000_000) {
+        return { valid: false, error: 'Amount unreasonable (max 10M vSUI).' };
+      }
+    } else if (input.amount !== 'all') {
+      return {
+        valid: false,
+        error: 'amount must be a positive number of vSUI or the string "all".',
+      };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     const agent = requireAgent(context);

@@ -35,6 +35,10 @@ export const claimRewardsTool = buildTool({
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true },
+  // claim_rewards has no inputs — preflight is structural (satisfies the
+  // "every write tool MUST implement preflight" rule in
+  // safeguards-defense-in-depth.mdc) and will receive any future inputs.
+  preflight: () => ({ valid: true }),
 
   async call(_input, context) {
     const agent = requireAgent(context);

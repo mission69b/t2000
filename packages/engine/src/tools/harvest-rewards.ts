@@ -125,6 +125,20 @@ export const harvestRewardsTool = buildTool({
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true },
+  preflight: (input) => {
+    if (input.slippage !== undefined) {
+      if (input.slippage < 0.001 || input.slippage > 0.05) {
+        return {
+          valid: false,
+          error: 'Slippage must be between 0.001 (0.1%) and 0.05 (5%).',
+        };
+      }
+    }
+    if (input.minRewardUsd !== undefined && input.minRewardUsd < 0) {
+      return { valid: false, error: 'minRewardUsd cannot be negative.' };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     // The actual on-chain execution happens host-side via composeTx +

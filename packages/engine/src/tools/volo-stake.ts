@@ -20,6 +20,15 @@ export const voloStakeTool = buildTool({
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, requiresBalance: true },
+  preflight: (input) => {
+    if (!Number.isFinite(input.amount) || input.amount < 1) {
+      return { valid: false, error: 'Minimum stake is 1 SUI.' };
+    }
+    if (input.amount > 10_000_000) {
+      return { valid: false, error: 'Amount unreasonable (max 10M SUI).' };
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     const agent = requireAgent(context);

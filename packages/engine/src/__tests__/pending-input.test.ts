@@ -374,9 +374,18 @@ describe('engine — resumeWithInput', () => {
     expect(JSON.stringify(toolResult!.result)).toMatch(/_hostBugMissingTool/);
   });
 
-  it('returns an error tool_result when the resumed values fail Zod validation', async () => {
+  it('returns an error tool_result when the resumed values fail re-validation', async () => {
     // Use save_contact which has a stricter schema (requires `name` AND `address`).
-    // Pass an empty values object — Zod validation fails on the resumed call.
+    // Pass an empty values object — re-validation fails on the resumed call.
+    //
+    // Pre-SPEC-30-Phase-1B-followup (2026-05-14): save_contact had no
+    // preflight, so the failure landed at Zod validation
+    // (`_hostFormZodFailed`). After preflight coverage was added across
+    // every write tool, the malformed-input fail-fast path is preflight
+    // (`_hostFormValidationFailed`). Either fail-fast key is acceptable
+    // — the contract is "malformed resume input → error tool_result,
+    // not orphan tool_use" — but the regex below has to accept both
+    // because the engine currently runs preflight before Zod.
     const provider = createMockProvider([
       [{ type: 'tool_call', id: 'tc-1', name: 'add_recipient', input: {} }],
       [{ type: 'text', text: 'follow-up narration' }],
@@ -409,7 +418,8 @@ describe('engine — resumeWithInput', () => {
       | undefined;
     expect(toolResult).toBeDefined();
     expect(toolResult!.isError).toBe(true);
-    // save_contact has no preflight, so it fails at Zod, not at preflight.
-    expect(JSON.stringify(toolResult!.result)).toMatch(/_hostFormZodFailed/);
+    expect(JSON.stringify(toolResult!.result)).toMatch(
+      /_hostFormValidationFailed|_hostFormZodFailed/,
+    );
   });
 });

@@ -30,6 +30,24 @@ export const withdrawTool = buildTool({
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, affectsHealth: true },
+  preflight: (input) => {
+    if (input.amount <= 0) {
+      return { valid: false, error: 'Amount must be positive.' };
+    }
+    if (input.amount > 10_000_000) {
+      return { valid: false, error: 'Amount unreasonable (max 10M).' };
+    }
+    if (input.asset !== undefined) {
+      const normalized = input.asset.toUpperCase();
+      if (normalized !== 'USDC' && normalized !== 'USDSUI') {
+        return {
+          valid: false,
+          error: `Only USDC and USDsui can be withdrawn through Audric. Got "${input.asset}". Other positions surfaced in savings_info are read-only — direct the user to https://app.naviprotocol.io.`,
+        };
+      }
+    }
+    return { valid: true };
+  },
 
   async call(input, context) {
     const agent = requireAgent(context);
