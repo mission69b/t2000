@@ -125,7 +125,11 @@ describe('pollForIndexerCatchup', () => {
 
     expect(result.outcome).toBe('ceiling');
     expect(result.attempts).toBe(4); // floor(100/25) = 4
-    expect(result.resolvedAtMs).toBeGreaterThanOrEqual(100);
+    // Slack of 5ms absorbs scheduler / clock-resolution jitter — 4×setTimeout(25)
+    // is theoretically ≥100ms but Date.now() in CI can round to 99ms. The
+    // assertion is here to confirm the ceiling was actually awaited (i.e. we
+    // didn't bail early); millisecond-exactness is not what we're testing.
+    expect(result.resolvedAtMs).toBeGreaterThanOrEqual(95);
   });
 
   it('returns aborted when signal is pre-aborted', async () => {
@@ -185,7 +189,10 @@ describe('pollForIndexerCatchup', () => {
 
     expect(result.outcome).toBe('fallback_no_baseline');
     expect(result.attempts).toBe(0);
-    expect(elapsed).toBeGreaterThanOrEqual(100); // fixed-sleep fallback
+    // 5ms slack — same scheduler/clock-resolution rationale as the 'ceiling'
+    // test above. This is testing "we waited the fixed-sleep fallback, didn't
+    // bail early" — not millisecond-exact wall-clock.
+    expect(elapsed).toBeGreaterThanOrEqual(95);
     expect(mockFetchWalletCoins).toHaveBeenCalledTimes(1); // only baseline
   });
 
