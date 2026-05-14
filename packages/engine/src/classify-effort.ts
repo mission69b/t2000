@@ -20,7 +20,13 @@ export function classifyEffort(
   if (supportsMax) {
     if (matchedRecipe?.name === 'portfolio_rebalance') return 'max';
     if (matchedRecipe?.name === 'emergency_withdraw') return 'max';
-    if (/rebalance|reallocate|dca setup|close.*position/i.test(msg)) return 'max';
+    // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL `js/polynomial-redos`:
+    // `close.*position` was flagged for unbounded `.*` backtracking on
+    // `close`-repeated inputs. Bounded to ≤50 chars (lazy) — the legit
+    // intent ("close my SUI position", "close all leveraged positions")
+    // fits comfortably under 50; longer matches were never routed by
+    // this branch anyway. Lazy `.{0,50}?` is linear-time.
+    if (/rebalance|reallocate|dca setup|close.{0,50}?position/i.test(msg)) return 'max';
   }
 
   if (matchedRecipe && matchedRecipe.steps.length >= 3) return 'high';

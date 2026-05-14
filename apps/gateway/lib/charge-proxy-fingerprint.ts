@@ -52,6 +52,18 @@ export function chargeProxyFingerprint(input: {
   body: string;
   apiKeyId: string;
 }): string {
+  // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL `js/insufficient-password-hash`
+  // (alert #33) flagged `hash.update(input.apiKeyId)` because the variable
+  // name pattern-matches its 'credential being hashed' heuristic. This is
+  // a FALSE POSITIVE — dismissed in CodeQL UI 2026-05-14. The hash is a
+  // transient cache fingerprint (60s TTL, in-memory only, never compared
+  // against stored credentials). Authentication runs UPSTREAM of this code
+  // via `Mppx Credential.verify()` on the request envelope. `apiKeyId`
+  // participates here purely as a tenant-scope component to prevent
+  // caller-A's request from collapsing into caller-B's identical-body
+  // request inside the idempotency cache. SHA-256 is the correct primitive
+  // for cache keys; bcrypt/scrypt would be wrong here (we WANT a fast
+  // deterministic hash for cache-key derivation).
   const normalizedBody = canonicalJsonOrRaw(input.body);
   const hash = createHash('sha256');
   hash.update(FINGERPRINT_VERSION);

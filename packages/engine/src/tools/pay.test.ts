@@ -62,3 +62,60 @@ describe('payApiTool description — locked failure-mode contract', () => {
     expect(retryIndex).toBeGreaterThan(nonRetryIndex);
   });
 });
+
+// SPEC 30 Phase 1B.5 — 2026-05-14
+// Regression tests for the host-validation bypass that CodeQL alert #24
+// (`js/incomplete-url-substring-sanitization`) flagged. The previous check
+// `input.url.startsWith(MPP_GATEWAY)` accepted attacker-crafted URLs like
+// `https://mpp.t2000.ai.evil.com/...` which prefix-match but resolve to a
+// non-MPP host. Real exploit vector for `pay_api` because it charges USDC
+// against whatever host actually receives the request. These tests assert
+// the bypass closes (and legitimate URLs still pass).
+describe('payApiTool preflight — URL host validation (CodeQL #24 regression)', () => {
+  it('accepts the canonical https://mpp.t2000.ai/{path} URL', () => {
+    const result = payApiTool.preflight!({
+      url: 'https://mpp.t2000.ai/openai/v1/images/generations',
+    });
+    expect(result).toEqual({ valid: true });
+  });
+
+  it('REJECTS the substring-bypass attack (mpp.t2000.ai.evil.com)', () => {
+    const result = payApiTool.preflight!({
+      url: 'https://mpp.t2000.ai.evil.com/openai/v1/images/generations',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+  });
+
+  it('REJECTS userinfo@ injection (https://mpp.t2000.ai@evil.com)', () => {
+    const result = payApiTool.preflight!({
+      url: 'https://mpp.t2000.ai@evil.com/openai/v1/images/generations',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+  });
+
+  it('REJECTS http:// (downgrade attack)', () => {
+    const result = payApiTool.preflight!({
+      url: 'http://mpp.t2000.ai/openai/v1/images/generations',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+  });
+
+  it('REJECTS unparseable garbage', () => {
+    const result = payApiTool.preflight!({
+      url: 'not a url',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/Invalid URL/);
+  });
+
+  it('REJECTS subdomain spoofing (api.mpp.t2000.ai)', () => {
+    const result = payApiTool.preflight!({
+      url: 'https://api.mpp.t2000.ai/openai/v1/images/generations',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+  });
+});

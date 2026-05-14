@@ -62,7 +62,17 @@ const VALID_TYPES: ReadonlySet<ProactiveType> = new Set([
 
 // Capture-group order: 1=attrs, 2=body. Attrs are parsed separately so the
 // regex stays attribute-order agnostic and tolerant of extra whitespace.
-const MARKER_REGEX = /<proactive\s+([^>]+)>([\s\S]*?)<\/proactive>/g;
+//
+// [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL `js/polynomial-redos` flagged
+// the previous pattern `\s+([^>]+)` for backtracking on long
+// whitespace-only strings (overlap between `\s+` and `[^>]+`), and
+// `[\s\S]*?</proactive>` for backtracking on `<proactive` repetitions
+// without a close tag. Rewritten as:
+// - `\s([^>]*)` — single `\s`, single `[^>]*` quantifier, no overlap.
+// - `[^<]*(?:<(?!\/proactive>)[^<]*)*` — tempered greedy token: matches
+//   anything except `</proactive>` literal without backtracking.
+// Behaviour-equivalent for valid LLM output; immune to polynomial ReDoS.
+const MARKER_REGEX = /<proactive\s([^>]*)>([^<]*(?:<(?!\/proactive>)[^<]*)*)<\/proactive>/g;
 
 const ATTR_TYPE_REGEX = /\btype\s*=\s*"([^"]+)"/;
 const ATTR_SUBJECT_KEY_REGEX = /\bsubjectKey\s*=\s*"([^"]+)"/;

@@ -49,7 +49,12 @@ export interface EvalSummaryParseResult {
   markerCount: number;
 }
 
-const MARKER_REGEX = /<eval_summary>([\s\S]*?)<\/eval_summary>/g;
+// [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL `js/polynomial-redos` flagged
+// `[\s\S]*?</eval_summary>` for backtracking on `<eval_summary>`-prefixed
+// inputs without a close tag. Rewritten as a tempered greedy token:
+// `[^<]*(?:<(?!\/eval_summary>)[^<]*)*` — matches anything except the
+// literal `</eval_summary>` without backtracking. Behaviour-equivalent.
+const MARKER_REGEX = /<eval_summary>([^<]*(?:<(?!\/eval_summary>)[^<]*)*)<\/eval_summary>/g;
 const VALID_STATUSES: ReadonlySet<EvaluationStatus> = new Set([
   'good',
   'warning',

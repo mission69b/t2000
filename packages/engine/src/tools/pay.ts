@@ -3,6 +3,7 @@ import { buildTool } from '../tool.js';
 import { requireAgent } from './utils.js';
 
 const MPP_GATEWAY = 'https://mpp.t2000.ai';
+const MPP_GATEWAY_HOST = 'mpp.t2000.ai';
 
 // SPEC 24 (locked 2026-05-11) — endpoint-aware pricing for the 5 supported services.
 // Order matters: most-specific patterns first (e.g. lob postcards $1.00 before any
@@ -91,8 +92,21 @@ PDFShift (pdfshift/v1/convert) — composition guidance:
   permissionLevel: 'confirm',
   flags: { mutating: true, requiresBalance: true, costAware: true, producesArtifact: true, maxRetries: 1 },
   preflight: (input) => {
-    if (!input.url.startsWith(MPP_GATEWAY)) {
-      return { valid: false, error: `URL must start with ${MPP_GATEWAY}. Got: "${input.url}"` };
+    // [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL `js/incomplete-url-substring-sanitization`
+    // flagged the previous `startsWith(MPP_GATEWAY)` check as bypassable
+    // by `https://mpp.t2000.ai.evil.com/path` — a URL that prefix-matches
+    // but resolves to an attacker-controlled host. Real exploit vector
+    // for `pay_api` because (a) the tool charges USDC, and (b) the LLM
+    // could be prompt-injected to construct such a URL. Switched to
+    // proper URL parsing + exact host check.
+    let parsed: URL;
+    try {
+      parsed = new URL(input.url);
+    } catch {
+      return { valid: false, error: `Invalid URL. Got: "${input.url}"` };
+    }
+    if (parsed.protocol !== 'https:' || parsed.host !== MPP_GATEWAY_HOST) {
+      return { valid: false, error: `URL must be on ${MPP_GATEWAY}/. Got: "${input.url}"` };
     }
     if (input.body) {
       try {
