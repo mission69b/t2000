@@ -1,17 +1,29 @@
 /**
  * Boot-time environment validation for `@t2000/gateway`.
  *
- * SPEC 30 D-14 — cross-app env-gate (locked 2026-05-13).
+ * SPEC 30 D-14 — cross-app env-gate (locked 2026-05-13, optional-keys
+ * fix shipped 2026-05-14).
  *
  * Mirrors the canonical pattern at `audric/apps/web/lib/env.ts`. The
  * contract is documented in `t2000/.cursor/rules/env-validation-gate.mdc`.
  *
- * The gateway hosts ~88 endpoints across ~40 vendor APIs. Every vendor
- * API key is required for its specific endpoint; an empty/whitespace
- * value silently turns into a 401 from the upstream which manifests as
- * a "service is broken" report from a user — the same shape as the
- * BlockVision-empty-string-in-Vercel bug class that motivated this
- * gate. We catch ALL of them at boot.
+ * Per-vendor API keys are `optionalString`, NOT `requiredString`. The
+ * gateway is a multi-vendor router by design: each vendor key is read
+ * inside exactly one `chargeProxy` route, and a missing key turns into
+ * an upstream 401 at request time (graceful per-service degradation).
+ * Marking them required would force every vendor key to be set in every
+ * Vercel environment before the gateway can boot at all — which broke
+ * production deploys for 5+ commits before the fix below.
+ *
+ * The empty-string-bug-class that motivated this gate is still caught:
+ * `optionalString` normalises `""` and whitespace-only values to
+ * `undefined`, so an accidentally-empty Vercel var manifests as
+ * "vendor not configured" rather than as a phantom-truthy key that
+ * silently 401s the upstream.
+ *
+ * The three `requiredString` entries below are infrastructure the
+ * gateway literally cannot run without (auth boundary + Upstash
+ * payment ledger). Everything else is per-vendor and optional.
  *
  * Reading vars: import `env` from `@/lib/env` and read `env.X`. The
  * `env` proxy re-parses on every access so `vi.stubEnv()` in tests +
@@ -34,50 +46,55 @@ const optionalStringWithDefault = (defaultValue: string) =>
     .transform((v) => (v === undefined || v.trim().length === 0 ? defaultValue : v.trim()));
 
 const schema = z.object({
-  // ---- Vendor API keys (required — each backs ≥1 production endpoint) ----
-  ALPHAVANTAGE_API_KEY: requiredString,
-  ANTHROPIC_API_KEY: requiredString,
-  ASSEMBLYAI_API_KEY: requiredString,
-  BRAVE_SEARCH_API_KEY: requiredString,
-  COHERE_API_KEY: requiredString,
-  COINGECKO_API_KEY: requiredString,
-  DEEPL_API_KEY: requiredString,
-  DEEPSEEK_API_KEY: requiredString,
-  E2B_API_KEY: requiredString,
-  ELEVENLABS_API_KEY: requiredString,
-  EXA_API_KEY: requiredString,
-  EXCHANGERATE_API_KEY: requiredString,
-  FAL_KEY: requiredString,
-  FIRECRAWL_API_KEY: requiredString,
-  GEMINI_API_KEY: requiredString,
-  GOOGLE_MAPS_API_KEY: requiredString,
-  GOOGLE_TRANSLATE_API_KEY: requiredString,
-  GROQ_API_KEY: requiredString,
-  HUNTER_API_KEY: requiredString,
-  IPINFO_API_KEY: requiredString,
-  JINA_API_KEY: requiredString,
-  LOB_API_KEY: requiredString,
-  MISTRAL_API_KEY: requiredString,
-  NEWSAPI_API_KEY: requiredString,
-  OPENAI_API_KEY: requiredString,
-  OPENWEATHER_API_KEY: requiredString,
-  PDFSHIFT_API_KEY: requiredString,
-  PERPLEXITY_API_KEY: requiredString,
-  PRINTFUL_API_KEY: requiredString,
-  PRINTFUL_STORE_ID: requiredString,
-  PUSHOVER_API_TOKEN: requiredString,
-  RAPIDAPI_KEY: requiredString,
-  REPLICATE_API_KEY: requiredString,
-  RESEND_API_KEY: requiredString,
-  SCREENSHOTONE_API_KEY: requiredString,
-  SERPAPI_API_KEY: requiredString,
-  SERPER_API_KEY: requiredString,
-  SHORTIO_API_KEY: requiredString,
-  STABILITY_API_KEY: requiredString,
-  TOGETHER_API_KEY: requiredString,
-  VIRUSTOTAL_API_KEY: requiredString,
+  // ---- Vendor API keys (optional — gateway is a multi-vendor router;
+  // each key backs exactly one chargeProxy route, missing key → upstream
+  // 401 at request time, gateway as a whole still boots and serves the
+  // routes whose keys ARE configured) ----
+  ALPHAVANTAGE_API_KEY: optionalString,
+  ANTHROPIC_API_KEY: optionalString,
+  ASSEMBLYAI_API_KEY: optionalString,
+  BRAVE_SEARCH_API_KEY: optionalString,
+  COHERE_API_KEY: optionalString,
+  COINGECKO_API_KEY: optionalString,
+  DEEPL_API_KEY: optionalString,
+  DEEPSEEK_API_KEY: optionalString,
+  E2B_API_KEY: optionalString,
+  ELEVENLABS_API_KEY: optionalString,
+  EXA_API_KEY: optionalString,
+  EXCHANGERATE_API_KEY: optionalString,
+  FAL_KEY: optionalString,
+  FIRECRAWL_API_KEY: optionalString,
+  GEMINI_API_KEY: optionalString,
+  GOOGLE_MAPS_API_KEY: optionalString,
+  GOOGLE_TRANSLATE_API_KEY: optionalString,
+  GROQ_API_KEY: optionalString,
+  HUNTER_API_KEY: optionalString,
+  IPINFO_API_KEY: optionalString,
+  JINA_API_KEY: optionalString,
+  LOB_API_KEY: optionalString,
+  MISTRAL_API_KEY: optionalString,
+  NEWSAPI_API_KEY: optionalString,
+  OPENAI_API_KEY: optionalString,
+  OPENWEATHER_API_KEY: optionalString,
+  PDFSHIFT_API_KEY: optionalString,
+  PERPLEXITY_API_KEY: optionalString,
+  PRINTFUL_API_KEY: optionalString,
+  PRINTFUL_STORE_ID: optionalString,
+  PUSHOVER_API_TOKEN: optionalString,
+  RAPIDAPI_KEY: optionalString,
+  REPLICATE_API_KEY: optionalString,
+  RESEND_API_KEY: optionalString,
+  SCREENSHOTONE_API_KEY: optionalString,
+  SERPAPI_API_KEY: optionalString,
+  SERPER_API_KEY: optionalString,
+  SHORTIO_API_KEY: optionalString,
+  STABILITY_API_KEY: optionalString,
+  TOGETHER_API_KEY: optionalString,
+  VIRUSTOTAL_API_KEY: optionalString,
 
-  // ---- Required infrastructure ----
+  // ---- Required infrastructure (the gateway literally cannot run
+  // without these — INTERNAL_API_KEY is the audric ↔ gateway auth
+  // boundary; KV_* is the Upstash payment ledger) ----
   INTERNAL_API_KEY: requiredString,
   KV_REST_API_URL: requiredString,
   KV_REST_API_TOKEN: requiredString,
