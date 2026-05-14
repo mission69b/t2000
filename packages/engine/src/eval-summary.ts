@@ -49,12 +49,18 @@ export interface EvalSummaryParseResult {
   markerCount: number;
 }
 
-// [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL `js/polynomial-redos` flagged
-// `[\s\S]*?</eval_summary>` for backtracking on `<eval_summary>`-prefixed
-// inputs without a close tag. Rewritten as a tempered greedy token:
-// `[^<]*(?:<(?!\/eval_summary>)[^<]*)*` — matches anything except the
-// literal `</eval_summary>` without backtracking. Behaviour-equivalent.
-const MARKER_REGEX = /<eval_summary>([^<]*(?:<(?!\/eval_summary>)[^<]*)*)<\/eval_summary>/g;
+// [SPEC 30 Phase 1A.5 — 2026-05-14] CodeQL `js/polynomial-redos` flagged
+// the prior tempered greedy variant (`[^<]*(?:<(?!\/eval_summary>)[^<]*)*`)
+// as conservatively quadratic. Switched to a bounded lazy quantifier:
+// every repetition has a hard upper limit, so the worst-case runtime
+// collapses to O(n) regardless of how the engine plans the match.
+//
+// Bound rationale: realistic eval-summary JSON payloads are 200-800
+// chars (3-6 items × ~50 chars each + structure); cap at 10000 for
+// multi-row write-recommendation turns. Beyond the cap the marker is
+// silently dropped and the host falls back to standard ThinkingBlock
+// rendering — which is the existing behaviour for malformed JSON anyway.
+const MARKER_REGEX = /<eval_summary>([\s\S]{0,10000}?)<\/eval_summary>/g;
 const VALID_STATUSES: ReadonlySet<EvaluationStatus> = new Set([
   'good',
   'warning',

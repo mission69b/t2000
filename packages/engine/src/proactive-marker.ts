@@ -63,16 +63,19 @@ const VALID_TYPES: ReadonlySet<ProactiveType> = new Set([
 // Capture-group order: 1=attrs, 2=body. Attrs are parsed separately so the
 // regex stays attribute-order agnostic and tolerant of extra whitespace.
 //
-// [SPEC 30 Phase 1B.5 — 2026-05-14] CodeQL `js/polynomial-redos` flagged
-// the previous pattern `\s+([^>]+)` for backtracking on long
-// whitespace-only strings (overlap between `\s+` and `[^>]+`), and
-// `[\s\S]*?</proactive>` for backtracking on `<proactive` repetitions
-// without a close tag. Rewritten as:
-// - `\s([^>]*)` — single `\s`, single `[^>]*` quantifier, no overlap.
-// - `[^<]*(?:<(?!\/proactive>)[^<]*)*` — tempered greedy token: matches
-//   anything except `</proactive>` literal without backtracking.
-// Behaviour-equivalent for valid LLM output; immune to polynomial ReDoS.
-const MARKER_REGEX = /<proactive\s([^>]*)>([^<]*(?:<(?!\/proactive>)[^<]*)*)<\/proactive>/g;
+// [SPEC 30 Phase 1A.5 — 2026-05-14] CodeQL `js/polynomial-redos` flagged
+// the tempered greedy variant ([^<]*(?:<(?!/proactive>)[^<]*)*) as
+// conservatively quadratic. The fix is bounded quantifiers — every
+// repetition gets a hard upper bound, which collapses the worst-case
+// runtime to O(n) regardless of how the engine plans the match.
+//
+// Bounds rationale:
+// - attrs: realistic LLM output is `type="idle_balance" subjectKey="USDC"`
+//   ≈ 60 chars; cap at 500 for headroom.
+// - body: proactive insights are 1-3 sentences ≈ 200 chars; cap at 5000
+//   for poetic LLM days. Anything over the cap is malformed and gets
+//   silently dropped (the parser already returns null on parse failure).
+const MARKER_REGEX = /<proactive\s([^>]{0,500})>([\s\S]{0,5000}?)<\/proactive>/g;
 
 const ATTR_TYPE_REGEX = /\btype\s*=\s*"([^"]+)"/;
 const ATTR_SUBJECT_KEY_REGEX = /\bsubjectKey\s*=\s*"([^"]+)"/;
