@@ -1,10 +1,11 @@
 import { chargeProxy } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeProxy(
   '0.001',
   'https://judge0-ce.p.rapidapi.com/languages',
   {
-    'x-rapidapi-key': process.env.RAPIDAPI_KEY!,
+    'x-rapidapi-key': env.RAPIDAPI_KEY!,
     'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
   },
   { settleOnSuccess: true, upstreamMethod: 'GET' },

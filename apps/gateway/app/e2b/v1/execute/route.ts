@@ -1,8 +1,9 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 const E2B_API = 'https://api.e2b.app';
 const apiHeaders = () => ({
-  'x-api-key': process.env.E2B_API_KEY!,
+  'x-api-key': env.E2B_API_KEY!,
   'content-type': 'application/json',
 });
 

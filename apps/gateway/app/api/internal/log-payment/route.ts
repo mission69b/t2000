@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logPayment } from '@/lib/log-payment';
+import { env } from '@/lib/env';
 
-const INTERNAL_KEY = process.env.INTERNAL_API_KEY;
+const INTERNAL_KEY = env.INTERNAL_API_KEY;
 
 /**
  * Internal-only endpoint for logging payments from deliver-first flows.

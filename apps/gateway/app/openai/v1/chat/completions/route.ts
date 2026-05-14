@@ -1,4 +1,5 @@
 import { chargeProxy } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 /**
  * OpenAI Chat Completions API (gpt-* models) — SPEC 26 P7 settle-on-success.
@@ -23,7 +24,7 @@ export const POST = chargeProxy(
   '0.01',
   'https://api.openai.com/v1/chat/completions',
   {
-    authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    authorization: `Bearer ${env.OPENAI_API_KEY}`,
   },
   {
     settleOnSuccess: true,

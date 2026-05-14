@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import type { DigestStore } from '@suimpp/mpp/server';
+import { env } from '@/lib/env';
 
 const DEFAULT_TTL_SECONDS = 86_400; // 24 hours
 const PREFIX = 'mpp:digest:';
@@ -35,8 +36,8 @@ let _store: UpstashDigestStore | undefined;
 export function getDigestStore(): UpstashDigestStore {
   if (!_store) {
     const redis = new Redis({
-      url: process.env.KV_REST_API_URL!,
-      token: process.env.KV_REST_API_TOKEN!,
+      url: env.KV_REST_API_URL!,
+      token: env.KV_REST_API_TOKEN!,
     });
     _store = new UpstashDigestStore(redis);
   }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from '../components/Header';
 import { formatRelativeTime } from '@/lib/format-time';
+import { env } from '@/lib/env';
 
 interface Payment {
   id: number;
@@ -27,7 +28,7 @@ interface VolumeDay {
   volume: number;
 }
 
-const NETWORK = process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet';
+const NETWORK = env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet';
 const SUISCAN_TX = `https://suiscan.xyz/${NETWORK}/tx/`;
 const PER_PAGE = 20;
 

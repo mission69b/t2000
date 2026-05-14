@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.03', async (bodyText) => {
   const body = JSON.parse(bodyText);
@@ -10,7 +11,7 @@ export const POST = chargeCustom('0.03', async (bodyText) => {
   const res = await fetch('https://api.stability.ai/v2beta/stable-image/edit/search-and-replace', {
     method: 'POST',
     headers: {
-      authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
+      authorization: `Bearer ${env.STABILITY_API_KEY}`,
       accept: 'image/*',
     },
     body: formData,

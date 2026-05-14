@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.005', async (body) => {
   const { url, domain, title } = JSON.parse(body) as {
@@ -17,12 +18,12 @@ export const POST = chargeCustom('0.005', async (body) => {
   const res = await fetch('https://api.short.io/links/public', {
     method: 'POST',
     headers: {
-      authorization: process.env.SHORTIO_API_KEY!,
+      authorization: env.SHORTIO_API_KEY!,
       'content-type': 'application/json',
     },
     body: JSON.stringify({
       originalURL: url,
-      domain: domain ?? process.env.SHORTIO_DOMAIN ?? 'short.icu',
+      domain: domain ?? env.SHORTIO_DOMAIN ?? 'short.icu',
       ...(title && { title }),
     }),
   });

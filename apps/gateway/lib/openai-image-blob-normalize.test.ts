@@ -8,17 +8,19 @@ vi.mock('@vercel/blob', () => ({
 import { put } from '@vercel/blob';
 
 describe('transformOpenAiImageGenerationsResponse', () => {
-  const originalToken = process.env.BLOB_READ_WRITE_TOKEN;
-
   beforeEach(() => {
-    process.env.BLOB_READ_WRITE_TOKEN = 'test-token';
+    // [SPEC 30 D-14 — 2026-05-14] Switched from direct `env.BLOB_READ_WRITE_TOKEN`
+    // mutation to `vi.stubEnv()` — the new env-gate Proxy is read-only.
+    // The Proxy re-reads `process.env` on every access, so stub mutations
+    // propagate live.
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', 'test-token');
     vi.mocked(put).mockResolvedValue({
       url: 'https://blob.example.com/mpp-openai/out.png',
     } as Awaited<ReturnType<typeof put>>);
   });
 
   afterEach(() => {
-    process.env.BLOB_READ_WRITE_TOKEN = originalToken;
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
 
@@ -60,7 +62,7 @@ describe('transformOpenAiImageGenerationsResponse', () => {
   });
 
   it('returns 503 when token missing', async () => {
-    delete process.env.BLOB_READ_WRITE_TOKEN;
+    vi.stubEnv('BLOB_READ_WRITE_TOKEN', '');
 
     const upstream = new Response(
       JSON.stringify({ data: [{ b64_json: 'abcd' }] }),

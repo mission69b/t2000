@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.005', async (body) => {
   const { from, to, amount } = JSON.parse(body) as {
@@ -14,7 +15,7 @@ export const POST = chargeCustom('0.005', async (body) => {
     );
   }
 
-  const apiKey = process.env.EXCHANGERATE_API_KEY!;
+  const apiKey = env.EXCHANGERATE_API_KEY!;
   const res = await fetch(
     `https://v6.exchangerate-api.com/v6/${apiKey}/pair/${from.toUpperCase()}/${to.toUpperCase()}/${amount}`,
     { headers: { accept: 'application/json' } },

@@ -1,8 +1,9 @@
 import { chargeProxy } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeProxy(
   '0.005',
-  `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=${process.env.ALPHAVANTAGE_API_KEY}`,
+  `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=${env.ALPHAVANTAGE_API_KEY}`,
   { accept: 'application/json' },
   { settleOnSuccess: true, upstreamMethod: 'GET', bodyToQuery: true },
 );

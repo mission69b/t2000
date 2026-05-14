@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.005', async (bodyText) => {
   const { url } = JSON.parse(bodyText);
@@ -8,7 +9,7 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
 
   const res = await fetch(`https://r.jina.ai/${url}`, {
     headers: {
-      authorization: `Bearer ${process.env.JINA_API_KEY}`,
+      authorization: `Bearer ${env.JINA_API_KEY}`,
       accept: 'application/json',
     },
   });

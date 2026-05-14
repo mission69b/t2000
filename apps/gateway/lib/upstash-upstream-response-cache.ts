@@ -3,6 +3,7 @@ import type {
   CachedUpstreamResponse,
   UpstreamResponseCache,
 } from './upstream-response-cache';
+import { env } from '@/lib/env';
 
 /**
  * # `UpstashUpstreamResponseCache` — SPEC 26 P2 production implementation
@@ -132,8 +133,8 @@ let _instance: UpstashUpstreamResponseCache | undefined;
 export function getUpstashUpstreamResponseCache(): UpstashUpstreamResponseCache {
   if (!_instance) {
     const redis = new Redis({
-      url: process.env.KV_REST_API_URL!,
-      token: process.env.KV_REST_API_TOKEN!,
+      url: env.KV_REST_API_URL!,
+      token: env.KV_REST_API_TOKEN!,
     });
     _instance = new UpstashUpstreamResponseCache(redis);
   }

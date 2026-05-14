@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.001', async (bodyText) => {
   const { id } = JSON.parse(bodyText);
@@ -7,7 +8,7 @@ export const POST = chargeCustom('0.001', async (bodyText) => {
   }
 
   const res = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
-    headers: { authorization: `Bearer ${process.env.REPLICATE_API_KEY}` },
+    headers: { authorization: `Bearer ${env.REPLICATE_API_KEY}` },
   });
 
   return new Response(res.body, {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { formatRelativeTime } from '@/lib/format-time';
+import { env } from '@/lib/env';
 
 interface Payment {
   service: string;
@@ -11,7 +12,7 @@ interface Payment {
   createdAt: string;
 }
 
-const NETWORK = process.env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet';
+const NETWORK = env.NEXT_PUBLIC_SUI_NETWORK ?? 'mainnet';
 const SUISCAN_TX = `https://suiscan.xyz/${NETWORK}/tx/`;
 const MIN_ROWS = 4;
 

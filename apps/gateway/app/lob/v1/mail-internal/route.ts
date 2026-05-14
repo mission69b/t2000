@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from '@/lib/constants';
+import { env } from '@/lib/env';
 
-const INTERNAL_KEY = process.env.INTERNAL_API_KEY;
+const INTERNAL_KEY = env.INTERNAL_API_KEY;
 const LOB_BASE = 'https://api.lob.com/v1';
 
 function lobAuth(): string {
-  return `Basic ${Buffer.from((process.env.LOB_API_KEY ?? '') + ':').toString('base64')}`;
+  return `Basic ${Buffer.from((env.LOB_API_KEY ?? '') + ':').toString('base64')}`;
 }
 
 interface MailBody {

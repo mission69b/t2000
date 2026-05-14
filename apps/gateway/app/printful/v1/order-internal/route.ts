@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/gateway';
 import { SUI_USDC_TYPE, TREASURY_ADDRESS } from '@/lib/constants';
+import { env } from '@/lib/env';
 
-const INTERNAL_KEY = process.env.INTERNAL_API_KEY;
+const INTERNAL_KEY = env.INTERNAL_API_KEY;
 const SERVICE_FEE_RATE = 0.05;
 
 const storeHeaders = () => ({
-  authorization: `Bearer ${process.env.PRINTFUL_API_KEY}`,
+  authorization: `Bearer ${env.PRINTFUL_API_KEY}`,
   'content-type': 'application/json',
-  'x-pf-store-id': process.env.PRINTFUL_STORE_ID ?? '',
+  'x-pf-store-id': env.PRINTFUL_STORE_ID ?? '',
 });
 
 /**

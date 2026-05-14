@@ -1,9 +1,10 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 const storeHeaders = () => ({
-  authorization: `Bearer ${process.env.PRINTFUL_API_KEY}`,
+  authorization: `Bearer ${env.PRINTFUL_API_KEY}`,
   'content-type': 'application/json',
-  'x-pf-store-id': process.env.PRINTFUL_STORE_ID ?? '',
+  'x-pf-store-id': env.PRINTFUL_STORE_ID ?? '',
 });
 
 export const POST = chargeCustom(

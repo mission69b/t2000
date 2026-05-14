@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.005', async (bodyText) => {
   const { id, category } = JSON.parse(bodyText || '{}');
@@ -8,7 +9,7 @@ export const POST = chargeCustom('0.005', async (bodyText) => {
     : `https://api.printful.com/products${category ? `?category_id=${category}` : ''}`;
 
   const res = await fetch(url, {
-    headers: { authorization: `Bearer ${process.env.PRINTFUL_API_KEY}` },
+    headers: { authorization: `Bearer ${env.PRINTFUL_API_KEY}` },
   });
 
   return new Response(res.body, {

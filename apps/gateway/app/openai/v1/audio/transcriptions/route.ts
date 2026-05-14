@@ -1,4 +1,5 @@
 import { chargeProxy } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 /**
  * OpenAI Audio Transcriptions API (whisper-* models) — SPEC 26 P7
@@ -16,7 +17,7 @@ export const POST = chargeProxy(
   '0.01',
   'https://api.openai.com/v1/audio/transcriptions',
   {
-    authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    authorization: `Bearer ${env.OPENAI_API_KEY}`,
   },
   {
     settleOnSuccess: true,

@@ -2,6 +2,7 @@ import { chargeProxy } from '@/lib/gateway';
 import { transformOpenAiImageGenerationsResponse } from '@/lib/openai-image-blob-normalize';
 import { classifyOpenAiImagesResponse } from '@/lib/openai-images-classify';
 import { validateImagesGenerationsBody } from './validate';
+import { env } from '@/lib/env';
 
 /**
  * MPP gateway entrypoint for OpenAI image generations.
@@ -42,14 +43,14 @@ export const POST = chargeProxy(
   '0.05',
   'https://api.openai.com/v1/images/generations',
   {
-    authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    authorization: `Bearer ${env.OPENAI_API_KEY}`,
   },
   {
     validate: (body) =>
       validateImagesGenerationsBody(body, {
         blobToken:
-          typeof process.env.BLOB_READ_WRITE_TOKEN === 'string'
-            ? process.env.BLOB_READ_WRITE_TOKEN.trim() || undefined
+          typeof env.BLOB_READ_WRITE_TOKEN === 'string'
+            ? env.BLOB_READ_WRITE_TOKEN.trim() || undefined
             : undefined,
       }),
     transformUpstreamResponse: transformOpenAiImageGenerationsResponse,

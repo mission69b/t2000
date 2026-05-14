@@ -6,7 +6,7 @@
     "dev": "next dev --turbo --port 4402",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint app lib test",
     "typecheck": "prisma generate && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.config.e2e.ts"
@@ -22,17 +22,21 @@
     "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "sugar-high": "^1.0.0"
+    "sugar-high": "^1.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@mysten/sui": "^2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9",
     "prisma": "^6",
     "tailwindcss": "^4",
     "typescript": "^5.9",
+    "typescript-eslint": "^8.58.0",
     "vitest": "^3"
   }
 }

@@ -1,3 +1,4 @@
+import { env } from '@/lib/env';
 export interface Endpoint {
   method: string;
   path: string;
@@ -17,7 +18,7 @@ export interface Service {
   endpoints: Endpoint[];
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
+const BASE_URL = env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://mpp.t2000.ai';
 
 export const services: Service[] = [
   {

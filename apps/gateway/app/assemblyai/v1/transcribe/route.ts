@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.02', async (bodyText) => {
   const body = JSON.parse(bodyText);
@@ -14,7 +15,7 @@ export const POST = chargeCustom('0.02', async (bodyText) => {
   const res = await fetch('https://api.assemblyai.com/v2/transcript', {
     method: 'POST',
     headers: {
-      authorization: process.env.ASSEMBLYAI_API_KEY!,
+      authorization: env.ASSEMBLYAI_API_KEY!,
       'content-type': 'application/json',
     },
     body: JSON.stringify(payload),

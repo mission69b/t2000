@@ -1,7 +1,8 @@
 import { chargeCustom, fetchWithRetry } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 function lobAuth(): string {
-  return `Basic ${Buffer.from((process.env.LOB_API_KEY ?? '') + ':').toString('base64')}`;
+  return `Basic ${Buffer.from((env.LOB_API_KEY ?? '') + ':').toString('base64')}`;
 }
 
 export const POST = chargeCustom('1.50', async (bodyText) => {

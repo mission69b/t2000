@@ -1,4 +1,5 @@
 import { chargeProxy } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 /**
  * OpenAI TTS API (tts-1 / tts-1-hd) — SPEC 26 P7 settle-on-success.
@@ -22,7 +23,7 @@ export const POST = chargeProxy(
   '0.02',
   'https://api.openai.com/v1/audio/speech',
   {
-    authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    authorization: `Bearer ${env.OPENAI_API_KEY}`,
   },
   {
     settleOnSuccess: true,

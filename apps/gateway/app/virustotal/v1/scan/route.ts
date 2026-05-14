@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.01', async (body) => {
   const { url: targetUrl, hash } = JSON.parse(body) as {
@@ -13,7 +14,7 @@ export const POST = chargeCustom('0.01', async (body) => {
     );
   }
 
-  const apiKey = process.env.VIRUSTOTAL_API_KEY!;
+  const apiKey = env.VIRUSTOTAL_API_KEY!;
   const headers = { 'x-apikey': apiKey };
 
   if (targetUrl) {

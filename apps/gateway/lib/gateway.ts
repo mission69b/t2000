@@ -12,8 +12,9 @@ import {
 } from './upstream-response-cache';
 import { getUpstashUpstreamResponseCache } from './upstash-upstream-response-cache';
 import { logSettleEvent } from './settle-metrics';
+import { env } from '@/lib/env';
 
-const NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
+const NETWORK = (env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet') ?? 'mainnet';
 const SERVER_URL = 'https://mpp.t2000.ai';
 const REGISTRY_URL = 'https://suimpp.dev/api/report';
 
@@ -203,7 +204,7 @@ export function setUpstreamResponseCache(cache: UpstreamResponseCache): void {
 
 export function getUpstreamResponseCache(): UpstreamResponseCache {
   if (!_upstreamResponseCache) {
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) {
       _upstreamResponseCache = getUpstashUpstreamResponseCache();
     } else {
       _upstreamResponseCache = new InMemoryUpstreamResponseCache();

@@ -1,4 +1,5 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeCustom('0.005', async (body) => {
   const { user, message, title, url, priority } = JSON.parse(body) as {
@@ -20,7 +21,7 @@ export const POST = chargeCustom('0.005', async (body) => {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      token: process.env.PUSHOVER_API_TOKEN!,
+      token: env.PUSHOVER_API_TOKEN!,
       user,
       message,
       ...(title && { title }),

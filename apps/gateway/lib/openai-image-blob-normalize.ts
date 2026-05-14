@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { put } from '@vercel/blob';
+import { env } from '@/lib/env';
 
 function randomSuffix(): string {
   return randomBytes(8).toString('hex');
@@ -37,7 +38,7 @@ export async function transformOpenAiImageGenerationsResponse(res: Response): Pr
     return Response.json(parsed, { status: res.status });
   }
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  const token = env.BLOB_READ_WRITE_TOKEN?.trim();
   if (!token) {
     return Response.json(
       {

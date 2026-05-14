@@ -1,5 +1,6 @@
 import { chargeProxy } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 export const POST = chargeProxy('0.03', 'https://fal.run/fal-ai/flux-realism', {
-  authorization: `Key ${process.env.FAL_KEY}`,
+  authorization: `Key ${env.FAL_KEY}`,
 }, { settleOnSuccess: true });

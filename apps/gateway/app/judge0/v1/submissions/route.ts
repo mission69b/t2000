@@ -1,8 +1,9 @@
 import { chargeCustom } from '@/lib/gateway';
+import { env } from '@/lib/env';
 
 const JUDGE0_URL = 'https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true';
 const JUDGE0_HEADERS = {
-  'x-rapidapi-key': process.env.RAPIDAPI_KEY!,
+  'x-rapidapi-key': env.RAPIDAPI_KEY!,
   'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
   'content-type': 'application/json',
 };
