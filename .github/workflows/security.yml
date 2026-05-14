@@ -23,8 +23,21 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Check for known vulnerabilities
-        run: pnpm audit --prod || true
+      # SPEC 30 follow-up (2026-05-14): the audit step is now a real gate
+      # at `--audit-level=critical` — fails the build on any critical
+      # CVE in production deps. Lower-severity findings (high/moderate/
+      # low) are still printed in the CI log via `--audit-level=low` for
+      # visibility but do NOT fail the build, since the current baseline
+      # is 19 high-sev findings — all transitive through @naviprotocol/
+      # lending and @pythnetwork/pyth-sui-js (both upstream-owned, no
+      # local fix path). Tightening to `--audit-level=high` requires
+      # dropping @naviprotocol/lending — a separate cleanup. Until
+      # then, this is the surgical move: keep the gate REAL on critical
+      # while keeping CI green on the inherited backlog.
+      - name: List known vulnerabilities (informational)
+        run: pnpm audit --prod --audit-level=low || true
+      - name: Fail on CRITICAL vulnerabilities (real gate)
+        run: pnpm audit --prod --audit-level=critical
       - name: License compliance
         run: npx license-checker --production --failOn 'GPL-3.0;AGPL-3.0' || true
 
