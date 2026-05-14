@@ -72,6 +72,16 @@ describe('payApiTool description — locked failure-mode contract', () => {
 // against whatever host actually receives the request. These tests assert
 // the bypass closes (and legitimate URLs still pass).
 describe('payApiTool preflight — URL host validation (CodeQL #24 regression)', () => {
+  // Helper: narrow PreflightResult to the failure branch + return its error.
+  // TypeScript's discriminated-union narrowing requires a type guard, not
+  // just `expect().toBe(false)` at runtime.
+  function expectInvalid(result: { valid: boolean; error?: string }): string {
+    expect(result.valid).toBe(false);
+    if (result.valid) throw new Error('preflight unexpectedly passed');
+    expect(typeof result.error).toBe('string');
+    return result.error ?? '';
+  }
+
   it('accepts the canonical https://mpp.t2000.ai/{path} URL', () => {
     const result = payApiTool.preflight!({
       url: 'https://mpp.t2000.ai/openai/v1/images/generations',
@@ -80,42 +90,35 @@ describe('payApiTool preflight — URL host validation (CodeQL #24 regression)',
   });
 
   it('REJECTS the substring-bypass attack (mpp.t2000.ai.evil.com)', () => {
-    const result = payApiTool.preflight!({
-      url: 'https://mpp.t2000.ai.evil.com/openai/v1/images/generations',
-    });
-    expect(result.valid).toBe(false);
-    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+    const err = expectInvalid(
+      payApiTool.preflight!({ url: 'https://mpp.t2000.ai.evil.com/openai/v1/images/generations' }),
+    );
+    expect(err).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
   });
 
   it('REJECTS userinfo@ injection (https://mpp.t2000.ai@evil.com)', () => {
-    const result = payApiTool.preflight!({
-      url: 'https://mpp.t2000.ai@evil.com/openai/v1/images/generations',
-    });
-    expect(result.valid).toBe(false);
-    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+    const err = expectInvalid(
+      payApiTool.preflight!({ url: 'https://mpp.t2000.ai@evil.com/openai/v1/images/generations' }),
+    );
+    expect(err).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
   });
 
   it('REJECTS http:// (downgrade attack)', () => {
-    const result = payApiTool.preflight!({
-      url: 'http://mpp.t2000.ai/openai/v1/images/generations',
-    });
-    expect(result.valid).toBe(false);
-    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+    const err = expectInvalid(
+      payApiTool.preflight!({ url: 'http://mpp.t2000.ai/openai/v1/images/generations' }),
+    );
+    expect(err).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
   });
 
   it('REJECTS unparseable garbage', () => {
-    const result = payApiTool.preflight!({
-      url: 'not a url',
-    });
-    expect(result.valid).toBe(false);
-    expect(result.error).toMatch(/Invalid URL/);
+    const err = expectInvalid(payApiTool.preflight!({ url: 'not a url' }));
+    expect(err).toMatch(/Invalid URL/);
   });
 
   it('REJECTS subdomain spoofing (api.mpp.t2000.ai)', () => {
-    const result = payApiTool.preflight!({
-      url: 'https://api.mpp.t2000.ai/openai/v1/images/generations',
-    });
-    expect(result.valid).toBe(false);
-    expect(result.error).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
+    const err = expectInvalid(
+      payApiTool.preflight!({ url: 'https://api.mpp.t2000.ai/openai/v1/images/generations' }),
+    );
+    expect(err).toMatch(/must be on https:\/\/mpp\.t2000\.ai/);
   });
 });
