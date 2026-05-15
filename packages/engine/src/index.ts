@@ -295,6 +295,13 @@ export type { NaviReadOptions, ProtocolStats } from './navi/reads.js';
 export { AnthropicProvider } from './providers/anthropic.js';
 export type { AnthropicProviderConfig } from './providers/anthropic.js';
 
+// [SPEC 37 v0.7a Phase 1] AI SDK-backed provider — drop-in replacement for
+// `AnthropicProvider`. Same `LLMProvider` contract; backs onto
+// `@ai-sdk/anthropic` + Vercel AI SDK v6. See
+// `providers/ai-sdk-anthropic.ts` for the soak-period rollback story.
+export { AISDKAnthropicProvider } from './providers/ai-sdk-anthropic.js';
+export type { AISDKAnthropicProviderConfig } from './providers/ai-sdk-anthropic.js';
+
 // Canvas
 export { CANVAS_TEMPLATES } from './tools/canvas.js';
 export type { CanvasTemplate } from './tools/canvas.js';

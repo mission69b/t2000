@@ -58,26 +58,32 @@ jobs:
       - run: pnpm --filter @t2000/mcp build
       - run: pnpm --filter @t2000/cli build
 
+      # SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15): npm provenance
+      # adopted on all 4 publish steps. Requires `id-token: write` on this
+      # job (already set above). Provenance attestations are visible at
+      # https://www.npmjs.com/package/@t2000/sdk?activeTab=provenance and
+      # provide cryptographic linkage from the published tarball back to
+      # the GitHub Actions run that produced it.
       - name: Publish @t2000/sdk
-        run: pnpm --filter @t2000/sdk publish --no-git-checks --access public
+        run: pnpm --filter @t2000/sdk publish --no-git-checks --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true
 
       - name: Publish @t2000/mcp
-        run: pnpm --filter @t2000/mcp publish --no-git-checks --access public
+        run: pnpm --filter @t2000/mcp publish --no-git-checks --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true
 
       - name: Publish @t2000/engine
-        run: pnpm --filter @t2000/engine publish --no-git-checks --access public
+        run: pnpm --filter @t2000/engine publish --no-git-checks --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true
 
       - name: Publish @t2000/cli
-        run: pnpm --filter @t2000/cli publish --no-git-checks --access public
+        run: pnpm --filter @t2000/cli publish --no-git-checks --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true

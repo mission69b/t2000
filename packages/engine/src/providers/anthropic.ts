@@ -12,6 +12,7 @@ import type {
 import { parseEvalSummary } from '../eval-summary.js';
 import { parseProactiveMarker } from '../proactive-marker.js';
 import { getTelemetrySink } from '../telemetry.js';
+import { sanitizeMessages } from './message-sanitization.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -34,6 +35,14 @@ export interface AnthropicProviderConfig {
   maxRetries?: number;
 }
 
+/**
+ * @deprecated Since v0.7a Phase 1 (engine v0.51.0). Prefer
+ * `AISDKAnthropicProvider` (`providers/ai-sdk-anthropic.ts`) which is the
+ * new default — same `LLMProvider` contract, same `ProviderEvent` output,
+ * but backed by `@ai-sdk/anthropic` + Vercel AI SDK v6 instead of the
+ * raw `@anthropic-ai/sdk` stream API. This class stays as an escape hatch
+ * for v0.7a's soak period and will be removed in Phase 8 hardening.
+ */
 export class AnthropicProvider implements LLMProvider {
   private client: Anthropic;
   private defaultModel: string;
@@ -120,9 +129,8 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   private async *streamOnce(params: ChatParams): AsyncGenerator<ProviderEvent> {
-    const messages = sanitizeAnthropicMessages(
-      params.messages.map(toAnthropicMessage),
-    );
+    const sanitized = sanitizeMessages(params.messages);
+    const messages = sanitized.map(toAnthropicMessage);
     const tools = params.tools.map(toAnthropicTool);
 
     let toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] | undefined;
@@ -510,103 +518,3 @@ function mapStopReason(reason: string): StopReason {
   }
 }
 
-/**
- * Last-line-of-defense sanitization operating directly on Anthropic-format messages.
- * Enforces the positional constraint: every tool_use in an assistant message must have
- * a matching tool_result (by tool_use_id) in the immediately next user message.
- * Strips orphans in both directions and fixes role alternation.
- */
-function sanitizeAnthropicMessages(
-  messages: Anthropic.MessageParam[],
-): Anthropic.MessageParam[] {
-  const result: Anthropic.MessageParam[] = [];
-
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i];
-    const content = Array.isArray(msg.content) ? msg.content : [{ type: 'text' as const, text: msg.content }];
-
-    // Collect tool_use ids in this assistant message
-    const toolUseIds = content
-      .filter((b): b is Anthropic.ToolUseBlockParam => (b as { type: string }).type === 'tool_use')
-      .map((b) => b.id);
-
-    if (msg.role === 'assistant' && toolUseIds.length > 0) {
-      const next = messages[i + 1];
-      const nextContent = next ? (Array.isArray(next.content) ? next.content : []) : [];
-      const nextResultIds = new Set(
-        nextContent
-          .filter((b): b is Anthropic.ToolResultBlockParam => (b as { type: string }).type === 'tool_result')
-          .map((b) => b.tool_use_id),
-      );
-
-      // Keep only tool_use blocks that have a result in the next message
-      const cleanContent = content.filter((b) => {
-        if ((b as { type: string }).type === 'tool_use') return nextResultIds.has((b as Anthropic.ToolUseBlockParam).id);
-        return true;
-      });
-
-      // Keep only tool_result blocks in next whose tool_use survived
-      const keptIds = new Set(
-        cleanContent
-          .filter((b): b is Anthropic.ToolUseBlockParam => (b as { type: string }).type === 'tool_use')
-          .map((b) => b.id),
-      );
-      const cleanNext = nextContent.filter((b) => {
-        if ((b as { type: string }).type === 'tool_result')
-          return keptIds.has((b as Anthropic.ToolResultBlockParam).tool_use_id);
-        return true;
-      });
-
-      if (cleanContent.length > 0) result.push({ role: 'assistant', content: cleanContent });
-      if (cleanNext.length > 0 && next) result.push({ role: next.role, content: cleanNext });
-      i++; // skip the next message (already processed)
-
-      if (cleanContent.length < content.length || cleanNext.length < nextContent.length) {
-        console.warn(
-          `[anthropic] sanitized orphans: stripped ${content.length - cleanContent.length} tool_use, ${nextContent.length - cleanNext.length} tool_result`,
-        );
-      }
-      continue;
-    }
-
-    // For user messages: strip tool_result referencing non-existent tool_use in prev assistant
-    if (msg.role === 'user' && content.some((b) => (b as { type: string }).type === 'tool_result')) {
-      const prev = result[result.length - 1];
-      const prevContent = prev?.role === 'assistant' && Array.isArray(prev.content) ? prev.content : [];
-      const prevToolUseIds = new Set(
-        prevContent
-          .filter((b): b is Anthropic.ToolUseBlockParam => (b as { type: string }).type === 'tool_use')
-          .map((b) => b.id),
-      );
-      const cleanContent = content.filter((b) => {
-        if ((b as { type: string }).type === 'tool_result')
-          return prevToolUseIds.has((b as Anthropic.ToolResultBlockParam).tool_use_id);
-        return true;
-      });
-      if (cleanContent.length > 0) result.push({ role: msg.role, content: cleanContent });
-      continue;
-    }
-
-    result.push(msg);
-  }
-
-  // Merge consecutive same-role messages
-  const merged: Anthropic.MessageParam[] = [];
-  for (const msg of result) {
-    const last = merged[merged.length - 1];
-    if (last && last.role === msg.role) {
-      const lastContent = Array.isArray(last.content) ? last.content : [{ type: 'text' as const, text: last.content }];
-      const msgContent = Array.isArray(msg.content) ? msg.content : [{ type: 'text' as const, text: msg.content }];
-      last.content = [...lastContent, ...msgContent];
-    } else {
-      merged.push({ ...msg });
-    }
-  }
-
-  // First message must be user
-  while (merged.length > 0 && merged[0].role !== 'user') {
-    merged.shift();
-  }
-
-  return merged;
-}

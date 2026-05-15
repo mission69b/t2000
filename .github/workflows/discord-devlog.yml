@@ -7,6 +7,14 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15): cancel pending
+# Discord notifications when a newer commit arrives. The notification
+# describes "the latest commit" — stale notifications for superseded
+# commits are confusing noise.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   devlog:
     name: Post to Dev Log

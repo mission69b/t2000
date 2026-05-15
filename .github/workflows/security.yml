@@ -11,6 +11,13 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15): cancel stale security
+# scans on the same PR when a new commit lands. Main pushes / weekly
+# cron get their own per-ref groups and never cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   audit:
     name: Dependency Audit

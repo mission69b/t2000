@@ -6,6 +6,14 @@ on:
     paths:
       - 't2000-skills/**'
 
+# SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15): rapid pushes to
+# t2000-skills/** can stack syncs; latest commit always wins, so cancel
+# in-progress syncs (latest sync covers all queued changes via rsync
+# --delete + commit). Main-branch only — no PR risk.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   sync:
     runs-on: ubuntu-latest
