@@ -497,16 +497,18 @@ The follow-up audit prediction held — the same fixture-shape vs engine-emit-sh
 | 1 | 🔴 CRITICAL | SwapQuoteCardV2 (V1 also affected, prod) | `priceImpact` treated as a raw percentage (e.g. `0.42`), but the engine emits a DECIMAL (`0.0042` = 0.42%). Source: Cetus' `deviationRatio` semantics — engine `swap-quote.ts:138` formats with `(result.priceImpact * 100).toFixed(2)`; SDK `cetus-swap.test.ts` consistently uses `0.0019`/`0.001`. Pre-fix V2 (and V1) rendered every realistic swap as "0.00% impact" and the warning/error colour tiers (`> 1`, `> 3`) NEVER fired because real impact values are always `< 1`. | V2: added `priceImpactToPct()` heuristic mirroring RatesCardV2's `apyToBps` (`< 1` → multiply by 100, `>= 1` → already-percentage). Test fixtures rewritten to canonical engine decimals (0.0042 not 0.42); added historical-raw-percentage fallback test + negative-clamp test. **V1 stays buggy** — flagged below; the 2-line fix is identical but it's a production behaviour change. |
 | 2 | 🟠 HIGH | HealthCardV2 (V1 also renders the row) | Engine's `positionFetcher` path (audric production today, see `health.ts:122`) emits `liquidationThreshold: 0` as a sentinel meaning "unknown" — NOT as a real threshold. Pre-fix V2 rendered both a confusing "Liquidation threshold · 0.00" row AND drew the HFGauge marker at HF=0 (because `0 ?? 1.0` keeps `0` — nullish-coalescing only catches `null`/`undefined`, not `0`). | V2: treat any `liquidationThreshold ≤ 0` as the unknown sentinel — hide the row, fall back to NAVI-canonical `1.0` for the gauge marker. Tests: added 0-sentinel + negative-defensive cases. **V1 also renders "Liq. Threshold · 0.00" in production** — flagged below. |
 
-**V1 follow-up (separate signoff required before patching prod):**
+**V1 PROD-TRUTH FIXES SHIPPED (2026-05-16 ~08:13 AEST, audric commit 920a6b5):**
 
-| Card | V1 file | Behaviour change if patched |
+Founder approved patch-now (option A from the V1 follow-up question). Both V1 fixes landed as 2-line surgical changes that bring V1 in line with engine truth.
+
+| V1 Card | What users see now | What they were seeing |
 |---|---|---|
-| SwapQuoteCard | `apps/web/components/engine/cards/SwapQuoteCard.tsx:23,36` | Users would START seeing real impact percentages on swap quotes (today shows "0.00%" for typical small swaps). Warning/error colour tiers would START firing for >1% / >3% impact swaps. Net: +safety, but it's a behaviour change current users have been habituated to. |
-| HealthCard | `apps/web/components/engine/cards/HealthCard.tsx:197` | Users would STOP seeing the confusing "Liq. Threshold · 0.00" row on every health check (audric prod path). Net: pure UX improvement, low-risk, but still a visible change in a production card. |
+| SwapQuoteCard (`SwapQuoteCard.tsx:23,36`) | Real impact percentages on every quote (`0.42%`, `1.80%`, `5.20%` etc.) — colour tiers (warning >1%, error >3%) NOW fire correctly | "0.00%" on every realistic swap (engine emits decimal `0.0042`, V1 was reading it as raw `0.42` then `toFixed(2)` snapped it to `0.00`) — colour tiers NEVER fired |
+| HealthCard (`HealthCard.tsx:197`) | "Liq. Threshold · 0.00" row hidden when engine emits the unknown sentinel (positionFetcher path, audric production today) | Confusing "Liq. Threshold · 0.00" row on every health check |
 
-Both V1 fixes are 2-line surgical changes (same heuristic / same sentinel filter). Recommendation: ship both V1 fixes once V2 cutover decision is made — either (a) rolling V2 to 100% and retiring V1 (V1 fix becomes moot), or (b) patching V1 in parallel as a small "prod-truth" PR. Founder call.
+V1 fixes use the SAME `priceImpactToPct` heuristic as V2 + the same `> 0` sentinel filter. Added 6 new V1 SwapQuoteCard tests (file was previously 0-coverage); added 2 new HealthCard sentinel tests (existing 27 V1 tests still pass unchanged).
 
-**Verify gates (post-fix):** audric/web suite **3172/3172 passing** (was 3168 → +4 net new tests). typecheck + lint clean. **0 user-visible change in production: flags still default OFF; V1 cards untouched.**
+**Verify gates (final):** audric/web suite **3180/3180 passing** (3168 → 3172 V2 fixes → 3180 V1 fixes; net +12 new tests across the audit). typecheck + lint clean. **No more outstanding bugs in this audit class — both V1 + V2 are now aligned with the engine's actual emit shapes for `priceImpact`, `liquidationThreshold`, `priceImpact`, `saveApy`/`borrowApy`, `SAVE_FEE_BPS`, `BORROW_FEE_BPS`.**
 
 **Refined process learning:** the "read engine emit shape FIRST" rule now extends to BOTH V1 and V2 — when V2 is cloned from V1's behaviour, V1's bugs get inherited silently. For Days 25+ (and Week 4 cleanup) the audit pass should explicitly diff each V2 card against the engine emit shape (not just against V1), so we catch latent V1 bugs that V2 would otherwise carry forward.
 
