@@ -333,6 +333,33 @@ The original v0.7a plan separated tool migration (Phase 2), engine dispatch rewr
 | **`TOOL_UX_DESIGN_v07a.md`** — DESIGN BASELINE doc | **SHIPPED** | ~290 lines. Locks per-tool output patterns + shared audric render components for all 36 tools. 4 patterns (text-only / structured-data / content-blocks / generative-UI). 5 shared components (AssetAmountBlock used by 12 tools, HFGauge used by 3 tools, RouteDiagram used by 2 tools, PreviewCard used by 4 write tools, APYBlock used by 4 tools — added beyond the original 4-component plan because 4 tools needed it). Per-tool decisions: 10 high-value tools as generative-UI, 26 mechanical as text-only or structured-data. Order matches Day 10-26 implementation sequence. Day 6-9 producers: 5 component PRs each with storybook entry + tests. |
 | **What this doc unblocks** | **N/A** | Day 6-9 audric component builds (the components live in audric/, not t2000/, so the build work happens in the audric repo with the design baseline as the canonical source). Day 10+ per-tool migration becomes ASSEMBLY (1 engine commit + 1 audric commit, ~200-400 LoC each PR). |
 
+**Day 6-9 SHIPPED (2026-05-15 evening AEST, audric commit 1a68e7e):**
+
+5 shared render primitives built and tested in `audric/apps/web/components/engine/cards/shared/`. Each is built ONCE here and reused across multiple tools in Day 10+ migration as pure ASSEMBLY (no per-tool render-layer rewrite). All 5 follow the existing audric design system (no new tokens, no new dependencies, no Storybook — repo convention is co-located `.test.tsx` with raw DOM assertions).
+
+| Day | Component | Tools served (post-Day-10 migration) | Tests | Notes |
+|---|---|---|---|---|
+| **Day 6** | `AssetAmountBlock` | 12 (balance_check, portfolio_analysis, pending_rewards, harvest_rewards, claim_rewards, save_deposit, withdraw, swap_quote in/out, swap_execute, borrow, repay_debt, send_transfer) | **10** | Layout: optional logo · large amount + asset · grey USD value. `label` slots an eyebrow above; `suffix` slots a trailer after USD. `usdValue=null` → em-dash (no false `$0.00`). Uses existing `fmtUsd` / `fmtAmt` helpers. |
+| **Day 7** | `HFGauge` | 3 (health_check, borrow, withdraw) | **10** | Wraps existing generic `Gauge` primitive with HF-specific defaults (min/max 0/5, liquidation marker pinned at threshold, HF colour mode). Optional `projection` row with ↑/↓ arrow + colour-coded post-action HF for borrow/withdraw flows. ∞ rendering for un-debted positions. |
+| **Day 8** | `RouteDiagram` | 2 (swap_quote, harvest_rewards swap legs) | **5** | Horizontal asset-pill chain with per-leg pool/fee chips on each arrow. Mid-asset rendered exactly once between adjacent legs (no duplication). Total route fee summary at the bottom. Empty-steps guard returns `null`. |
+| **Day 9 (a)** | `PreviewCard` | 4 write tools (save_deposit, withdraw, borrow, repay_debt) | **9** | Canonical wrapper for HITL pause cards (engine yields `pending_action` → audric renders this). Slots: heading / body (caller-supplied) / optional HFGauge (when `healthFactorImpact` passed) / optional fee row / Cancel + Confirm buttons. `busy` state disables both. Built on existing `CardShell`. |
+| **Day 9 (b)** | `APYBlock` | 4 (save_deposit, withdraw, portfolio_analysis, rates_info) | **9** | One-liner: asset · APY% · trend chip. Input in basis points (engine convention — bps→% formatted once). Trend chip: ↑ 7d (green), ↓ 7d (red), · flat (muted). Defensive em-dash for negative/NaN bps. |
+| **Verify gates** | **ALL GREEN** | — | **43 new** | audric/web suite: **3048/3048 passing** (was 3005 — +43 new). typecheck clean, lint clean (`--max-warnings 0` on the new folder). 0 changes to existing components — purely additive. |
+
+**What Day 6-9 unblocks.** Per-tool migration (Day 10-26) is now ASSEMBLY:
+
+```
+For each high-value tool:
+  1. engine: migrate tool's execute() → AI SDK tool() (1 file)
+  2. engine: update TOOL_POLICY entry if behavior changed (rare)
+  3. audric: register componentKey in BlockRouter (1 line)
+  4. audric: write tool's component using shared primitives (1 file)
+  5. tests: port legacy unit test (1 file)
+  6. PR ships: 1 engine commit + 1 audric commit, ~200-400 LoC total
+```
+
+Without these primitives, step 4 was a day per tool because each tool re-derived render decisions from scratch. With them, step 4 is genuine assembly — render decisions pre-locked in TOOL_UX_DESIGN_v07a.md, building blocks pre-shipped in `cards/shared/`.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
