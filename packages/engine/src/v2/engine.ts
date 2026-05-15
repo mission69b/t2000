@@ -80,15 +80,21 @@ import { CostTracker, type CostSnapshot } from '../cost.js';
 //   - `provider`: hardcoded to @ai-sdk/anthropic (single-provider for now;
 //     multi-provider via LLMProvider abstraction is replaced by AI SDK's
 //     own provider plug-in pattern when needed).
-//   - `mcpManager`: AI SDK has native createMCPClient; MCP tools register
-//     into the same `tools` object as native tools.
 //
 // Fields kept verbatim from legacy EngineConfig:
+//   - `mcpManager`: kept (Day 13 fix). The long-term plan is to register
+//     MCP tools via AI SDK's native `createMCPClient` so they live in
+//     the same `tools` object, but until each tool is migrated
+//     (rates_info, savings_info, health_check, etc., all consume
+//     `context.mcpManager.callTool()`), the manager has to be threaded
+//     through `ToolContext`. Removing it broke ~5 NAVI-MCP tools in
+//     the local smoke (`rates_info: NAVI lending data is currently
+//     unavailable`). Drop-in compatibility > clean architecture for
+//     this soak window.
 //   - All the engine-specific config (guards, recipes, permissionConfig,
 //     priceCache, contacts, postWriteRefresh, onAutoExecuted, etc.)
 // ---------------------------------------------------------------------------
-export interface AISDKEngineConfig
-  extends Omit<EngineConfig, 'provider' | 'mcpManager'> {
+export interface AISDKEngineConfig extends Omit<EngineConfig, 'provider'> {
   /**
    * Anthropic API key. Direct dependency on @ai-sdk/anthropic; no
    * provider abstraction layer.

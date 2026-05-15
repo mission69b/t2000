@@ -55,7 +55,12 @@ export function buildToolContext(
 ): ToolContext {
   return {
     agent: config.agent,
-    mcpManager: undefined,
+    // Day 13 fix: thread `mcpManager` from config so NAVI-MCP-backed
+    // tools (rates_info, savings_info, health_check, ...) keep working
+    // in the v2 path. Local smoke caught the regression — without this,
+    // every read tool that calls `context.mcpManager.callTool()` returned
+    // "NAVI lending data is currently unavailable".
+    mcpManager: config.mcpManager,
     walletAddress: config.walletAddress,
     suiRpcUrl: config.suiRpcUrl,
     serverPositions: config.serverPositions,

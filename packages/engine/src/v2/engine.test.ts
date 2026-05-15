@@ -291,6 +291,37 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     expect(tools[0]?.name).toBe('echo_test');
   });
 
+  it('invokeReadTool threads mcpManager from config to ToolContext (Day 13 fix)', async () => {
+    // SPEC 37 v0.7a Phase 2 Day 13 — local smoke caught that NAVI-MCP-backed
+    // read tools (rates_info, savings_info, health_check) returned "currently
+    // unavailable" under the v2 path because mcpManager was hardcoded to
+    // undefined in tool-context.ts. The fix threads config.mcpManager through
+    // ToolContext; this test asserts a tool can read it back.
+    let observedMcpManager: unknown = 'NEVER_RAN';
+    const probeTool = buildTool({
+      name: 'probe_mcp_manager',
+      description: 'Test-only — captures the mcpManager seen in ToolContext.',
+      inputSchema: z.object({}),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: {},
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async (_input, ctx) => {
+        observedMcpManager = ctx.mcpManager;
+        return { data: { ok: true }, displayText: 'ok' };
+      },
+    });
+    const sentinelMcpManager = { __sentinel: 'mcp-manager-passed-through' } as never;
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [probeTool],
+      mcpManager: sentinelMcpManager,
+    });
+    await engine.invokeReadTool('probe_mcp_manager', {});
+    expect(observedMcpManager).toBe(sentinelMcpManager);
+  });
+
   it('getTools() returns empty array when no tools configured', () => {
     const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
     expect(engine.getTools().length).toBe(0);
