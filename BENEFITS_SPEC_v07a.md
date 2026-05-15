@@ -298,13 +298,69 @@ The original v0.7a plan separated tool migration (Phase 2), engine dispatch rewr
 | **Smoke test** (`v2/engine.test.ts`) | **SHIPPED** | 4 tests: 2 always-run (constructor, loadMessages), 2 gated on `RUN_REAL_API_TESTS=1` + `ANTHROPIC_API_KEY` (real Anthropic round-trip — 749ms text_delta stream verified, history persistence verified at 1.96s). All 4 pass when opted in. |
 | **Verify gates** | **ALL GREEN** | `pnpm --filter @t2000/engine typecheck` clean; `pnpm --filter @t2000/engine lint` clean (6 pre-existing warnings only); `pnpm --filter @t2000/engine test` → **1317/1320 passing + 3 skipped** (1316 baseline + 4 new v2 tests; 3 skipped = 2 RUN_REAL-gated + 1 pre-existing). No legacy regression. |
 
-**Day 2-9 plan (locked):**
-1. **Day 2-3** — `prepareStep` guard pipeline composition (the 14 guards relocated from `runGuards`); `needsApproval` USD-aware permission wrapper (USD resolver from `permission-rules.ts` reused verbatim); `onStepFinish` post-write-refresh injection. ToolContext threading via `experimental_context`. Tools wrapper `toAISDKTools(legacyTools, ctx)` so existing tools work via the new engine without per-tool migration.
-2. **Day 4-9** — Migrate the 36 tools in batches: 10 simple read tools → 14 complex read tools → 11 write tools + `add_recipient`/`update_todo`. Each gets its own commit; existing test ports verbatim. Tools move from `buildTool({...})` to AI SDK `tool({...})`; engine-specific policy moves to the `TOOL_POLICY` map. Business logic unchanged.
-3. **Day 10-12** — Audric chat-route + resume-route compatibility. Either keep emitting `EngineEvent` via the translation layer (zero audric change) OR swap audric to consume `UIMessageChunk` natively via `createUIMessageStream` (smaller audric footprint, but bigger PR). Decision deferred to Day 10 once tool migration LoC delta is known.
-4. **Day 13-14** — Engine v2.0.0 release (major bump: surface-changes — `provider` config field replaced with `anthropicApiKey`; `mcpManager` removed in favour of AI SDK MCP). Audric pin. Feature flag flipped on for 1% of traffic.
-5. **Week 3** — Soak. Watch metrics. Roll out to 100% if stable.
-6. **Week 4** — Delete legacy paths (`AnthropicProvider`, `AISDKAnthropicProvider` wrapper, `EarlyToolDispatcher`, `streaming.ts`, `microcompact.ts`, `McpClientManager`, `engine.ts` legacy class). Engine v2.0.1 ships pure AI-SDK-native.
+**Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
+
+The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
+
+| Aspect | Original C plan | Revised B+ plan |
+|---|---|---|
+| Tools touched twice | 10 high-value tools (mechanical wrap + later UX rewrite) | **0** — every tool migrated once with final shape |
+| Test churn | Tests rewritten twice for the 10 tools | Tests rewritten once per tool |
+| Audric render layer updates | Two waves (engine cutover + per-tool UX waves) | One wave (each tool ships incrementally with audric PR) |
+| Calendar time | ~5-6 weeks | **~5-6 weeks (same)** |
+| First production proof | Day 13-14 (engine v2.0.0 with mechanical tools) | Day 10-11 (first high-value tool ships) |
+
+C's "smaller atomic ships" heuristic doesn't actually buy anything because B is also per-tool incremental — just touches each tool once instead of twice. **B+ adds a 2-day design baseline upfront** to lock the per-tool output patterns before per-tool implementation starts (avoids ad-hoc tool-by-tool drift; identifies shared audric components to build once, reuse 4-8 times).
+
+**Day 2 onward (B+, locked):**
+
+1. **Day 2-3 — Engine foundations (in flight).**
+   - `prepareStep` guard pipeline (the 14 guards relocated from `runGuards`)
+   - `needsApproval` USD-aware permission wrapper (USD resolver from `permission-rules.ts` reused verbatim)
+   - `onStepFinish` post-write-refresh injection
+   - Real `ToolContext` threading via `experimental_context` (replaces Day 1 stub)
+   - **Transitional `toAISDKTools(legacyTools, ctx)` wrapper** — lets unmigrated tools work via the new engine during the 3-week migration window. Gets deleted in Week 6 once every tool is migrated natively.
+
+2. **Day 4-5 — DESIGN BASELINE (the B+ addition).**
+   - For each of 36 tools, pick the output pattern: `text-only` / `structured-data` / `content-blocks` / `generative-UI`. Document in `TOOL_UX_DESIGN_v07a.md` (new doc).
+   - Identify shared audric render components: `<AssetAmountBlock>` (used by 8 tools), `<HFGauge>` (3 tools), `<RouteDiagram>` (2 tools — `swap_quote`, `swap_execute`), `<PreviewCard>` (4 write tools).
+   - Lock the high-value (10) vs mechanical (26) split, so per-tool decisions don't get re-litigated tool-by-tool.
+   - No code yet. Just decisions, frozen in a doc.
+
+3. **Day 6-9 — Build the 4 shared audric render components.**
+   - With `AssetAmountBlock`, `HFGauge`, `RouteDiagram`, `PreviewCard` in place, per-tool migration becomes assembly, not render-layer rewrite each time.
+   - Audric-side TimelineBlock subclasses + storybook entries.
+
+4. **Day 10+ — Per-tool migration following the design baseline:**
+
+   **High-value tools (~10 tools, ~2 days each):**
+   - Day 10-11 — `balance_check` — wallet card with token logos, USD values, NAVI breakdown
+   - Day 12-13 — `swap_quote` — Cetus route diagram, slippage, fee breakdown
+   - Day 14-15 — `health_check` — HF gauge with liquidation threshold marker
+   - Day 16-17 — `pending_rewards` + `harvest_rewards` (paired — same UX) — claimable list + compound preview
+   - Day 18-22 — Write tools with HITL (`save_deposit`, `withdraw`, `borrow`, `repay_debt`) — pre-execution preview cards. Each tool its own PR; shared permission-card revamp batches naturally.
+   - Day 23-24 — `portfolio_analysis` + `rates_info` — multi-section card + APY comparison table.
+
+   Each high-value tool: migrate `execute()` to AI SDK `tool()` with new content-block output → audric assembly using shared components → ship as one PR → 1-day soak behind feature flag → next.
+
+   **Mechanical tools (26 tools, batches of 5-8 per day):**
+   - Day 25-26 — Remaining tools where text output is fine (`web_search`, `explain_tx`, `transaction_history`, `volo_stats`, `mpp_services`, `protocol_deep_dive`, `token_prices`, `spending_analytics`, `yield_summary`, `activity_summary`, `resolve_suins`, `render_canvas`, `list_payment_links`, `list_invoices`, `create_payment_link`, `create_invoice`, `cancel_payment_link`, `cancel_invoice`, `claim_rewards`, `pay_api`, `swap_execute`, `volo_stake`, `volo_unstake`, `save_contact`, plus `add_recipient`, `update_todo`). Existing tests port verbatim.
+
+5. **Day 27-28 — Engine v2.0.0 final ships to npm.** Audric pinned to v2.0.0. Feature flag flipped on for 100% traffic. Legacy QueryEngine still exported as `@deprecated` for one minor cycle. Major bump because surface-changes — `provider` config field replaced with `anthropicApiKey`; `mcpManager` removed in favour of AI SDK MCP.
+
+6. **Week 5 — Soak.** Watch metrics. Document what shipped.
+
+7. **Week 6 — Delete legacy paths.** `AnthropicProvider`, `AISDKAnthropicProvider` wrapper, `EarlyToolDispatcher`, `streaming.ts`, `microcompact.ts`, `McpClientManager`, `engine.ts` legacy class. Engine v2.0.1 ships pure AI-SDK-native.
+
+**Why the 2-day design baseline matters (the B+ add-on rationale):**
+
+Without it, B has a real risk: ad-hoc decisions per tool. Tool 1 gets a beautiful generative-UI component; tool 7 gets a different pattern because the engineer made a different choice that day. By tool 10 there's inconsistency that v0.7c then has to clean up. With the baseline:
+- Every tool's output pattern is decided upfront, in one sitting
+- Shared audric components identified before per-tool work starts (built once, reused 4-8 times)
+- High-value vs mechanical split is locked
+- Future engineer onboarding reads `TOOL_UX_DESIGN_v07a.md` and understands the system
+
+The 2 days pays for itself by Day 10 because per-tool implementation becomes assembly, not design.
 
 **Risk mitigations baked in:**
 - Feature flag (`USE_AI_SDK_NATIVE_ENGINE=1`) means audric runs both engines in parallel during development — flip per-route, roll back via env var.
