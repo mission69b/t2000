@@ -415,7 +415,50 @@ Per-tool migration assembly #4 of 10. PendingRewardsCardV2 — AssetAmountBlock 
 | **harvest_rewards companion DEFERRED** | **DEFERRED** | Moves to Day 18-22 batch (write-tool previews via PermissionCard touch). |
 | **Verify gates** | **ALL GREEN** | audric/web suite **3115/3115 passing** (was 3103 → +12). typecheck + lint clean. 0 user-visible change with flag off. |
 
-**Cumulative progress at end of Day 16 (4 of 10 high-value tools shipped):**
+**Day 17-22 SHIPPED (2026-05-15 evening AEST, audric commit 6e82044):**
+
+Per-tool migration assemblies #5-9 of 10. Five write-tool preview bodies in ONE PR (save_deposit, withdraw, borrow, repay_debt, harvest_rewards) — they share the same UX shape and route through the same shared `PermissionCard` chrome. Flag-gated `NEXT_PUBLIC_WRITE_PREVIEWS_V2`.
+
+**Architectural decision (vs raw design baseline).** The Day 18-22 spec used `PreviewCard` (Day 9 primitive) as the wrapper with built-in Cancel + Confirm buttons. `PermissionCard` ALREADY ships every piece of write-flow chrome — countdown timer + auto-deny, Deny / Approve / Refresh-quote button row, modifiable-field inputs, guard-injection hints, WorkingState transition after approve. Wrapping the body in `PreviewCard` would either (a) double the buttons, or (b) re-implement `PermissionCard`'s machinery in 5 per-tool components — every regenerate / age-badge / timer contract gets re-derived 5 times. Pragmatic compromise: keep `PermissionCard`'s chrome, replace ONLY the `inputSummary` `<p>` body slot with the rich body component. Each body is pure render — receives the action's input, returns JSX. `PermissionCard` threads the body in via a flag-gated branch.
+
+| Day-17-22 Deliverable | Status | Evidence |
+|---|---|---|
+| **`SaveDepositPreviewBody`** | **SHIPPED** | AssetAmountBlock(deposit) → APYBlock(target pool) → fee row. Default APY: USDC 4.62% / USDsui 5.20%. Fee math: amount × overlayFeeBps / 10_000. |
+| **`WithdrawPreviewBody`** | **SHIPPED** | AssetAmountBlock(withdraw) → APYBlock(yield foregone) → fee row. Same asset routing + APY defaults as SaveDeposit. |
+| **`BorrowPreviewBody`** | **SHIPPED** | AssetAmountBlock(borrow) → APYBlock(borrow rate) → fee row. Falls back to supply APY as a borrow-rate ballpark until engine threads `borrowApyBps`. |
+| **`RepayPreviewBody`** | **SHIPPED** | AssetAmountBlock(repay) → APYBlock(borrow rate cleared) → fee row. |
+| **`HarvestRewardsPreviewBody`** | **SHIPPED** | Plain-language compound description (claim → swap → save) + slippage row (default 1.00%) + optional Threshold row (when minRewardUsd > 0) + per-leg fee summary "0.10% Cetus + 0.10% NAVI". |
+| **`renderPreviewBody(toolName, input, options?)` dispatcher** | **SHIPPED** | Plus `SUPPORTED_PREVIEW_TOOLS` export so consumers can gate on the supported set. Returns null for unknown tools (PermissionCard falls back to v1 inputSummary). |
+| **Test file** — 17 tests | **SHIPPED** | All 5 body components (asset routing, default APY, fee math, label copy per tool), harvest body's slippage / threshold / fee chip behavior, dispatcher (every supported tool returns a body, unknown tool returns null, rates/fee overrides thread through), SUPPORTED_PREVIEW_TOOLS contract. |
+| **PermissionCard wiring** | **SHIPPED** | Single-write render branch: replace static `{inputSummary && <p>...</p>}` with IIFE that returns the v2 body when the flag is on AND the tool has a registered body, else falls back to the v1 inputSummary `<p>`. Bundle branch unchanged. Modifiable-field inputs still render below the body — when user edits an amount, the v2 body re-renders with the modified input automatically. |
+| **HF projection DEFERRED** | **DEFERRED** | Engine doesn't thread `currentHF` onto the PendingAction today. Once engine adds it (Week 4 cleanup batch alongside `buildTool() → tool()` migration), bodies gain the HFGauge projection row trivially using the Day 7 primitive that already supports projection. |
+| **Per-swap-leg RouteDiagram for harvest_rewards DEFERRED** | **DEFERRED** | Engine's PendingAction for harvest_rewards doesn't currently include the planned-route preview (route is computed at execute-time post-approval). When that ships, harvest body slots in RouteDiagram via the Day 8 primitive. |
+| **Verify gates** | **ALL GREEN** | audric/web suite **3132/3132 passing** (was 3115 → +17). typecheck + lint clean. 0 user-visible change with flag off. |
+
+**Day 23 SHIPPED (2026-05-16 morning AEST, audric commit 77e4cd1):**
+
+Per-tool migration assembly for `rates_info` (medium-value). RatesCardV2 — APYBlock per cell (consistent with Save/Withdraw/Portfolio APY rendering). Flag-gated `NEXT_PUBLIC_RATES_CARD_V2`.
+
+| Day-23 Deliverable | Status | Evidence |
+|---|---|---|
+| **`RatesCardV2.tsx`** (~95 LoC) | **SHIPPED** | 2-column grid (Supply \| Borrow) with one APYBlock per cell (asset name baked into APYBlock — drops the v1 explicit asset column). Engine emits saveApy/borrowApy as raw percentages; V2 multiplies by 100 to convert to bps before handing to APYBlock. |
+| **`RatesCardV2.test.tsx`** — 8 tests | **SHIPPED** | Header + column labels, per-asset APYBlock rendering, APY conversion correctness, sort order (saveApy desc), defensive filter on missing saveApy, empty-data null return, defensive negative borrowApy clamp. |
+| **ToolResultCard wiring** | **SHIPPED** | rates_info renderer branches on `env.NEXT_PUBLIC_RATES_CARD_V2` — V2 when set, fall through to v1 RatesCard otherwise. |
+| **Verify gates** | **ALL GREEN** | audric/web suite intermediate count `3140` (was 3132 → +8). |
+
+**Day 24 SHIPPED (2026-05-16 morning AEST, audric commit 77e4cd1, paired):**
+
+Per-tool migration assembly #10 of 10 — `portfolio_analysis`. **Final high-value tool.** PortfolioCardV2 leans on every Day 6-9 primitive: AssetAmountBlock × N (per-allocation rows), HFGauge (debt section, replaces v1's manual Gauge + StatusBadge pair), APYBlock (savings APY display), MiniBar (preserved — right primitive for the allocation breakdown). Flag-gated `NEXT_PUBLIC_PORTFOLIO_CARD_V2`.
+
+| Day-24 Deliverable | Status | Evidence |
+|---|---|---|
+| **`PortfolioCardV2.tsx`** (~230 LoC) | **SHIPPED** | Hero (total + week trend) → MiniBar → WALLET section (top-5 AssetAmountBlock + total) → SAVINGS section (AssetAmountBlock + APYBlock + Daily yield) → DEFI row (with `partial`/`partial-stale` provenance) → DEBT + HFGauge → Net worth footer → Insights. |
+| **`PortfolioCardV2.test.tsx`** — 25 tests | **SHIPPED** | Header (self vs watched + AddressBadge), hero (visible / hidden when zero), wallet section (per-allocation, top-5 cap, dust filter, total row, hide-when-empty), savings (visibility, APY decimal vs raw percentage handling, daily yield), DeFi row (3 source variants + hide-when-zero), debt + HFGauge (visible when HF present, debt-only when HF null, hidden when no debt), net worth footer, insights (warning vs neutral, hidden when empty). |
+| **V2 INTENTIONALLY OMITS for now** | **DEFERRED** | Per-pool savings breakdown (engine emits one savingsValue today; when it splits to per-pool, V2 adds AssetAmountBlock rows trivially) · HF projection (no projected action in a read-only context). |
+| **ToolResultCard wiring** | **SHIPPED** | portfolio_analysis renderer branches on `env.NEXT_PUBLIC_PORTFOLIO_CARD_V2` — V2 when set, fall through to v1 PortfolioCard otherwise. |
+| **Verify gates** | **ALL GREEN** | audric/web suite **3165/3165 passing** (was 3132 → +33 across Day 23+24). typecheck + lint clean. 0 user-visible change with both flags off. |
+
+**Cumulative progress at end of Day 24 (10 of 10 high-value tools shipped + medium-value rates_info):**
 
 | Tool | V2 component | Tests added | Audric suite | Flag |
 |---|---|---:|---:|---|
@@ -423,9 +466,12 @@ Per-tool migration assembly #4 of 10. PendingRewardsCardV2 — AssetAmountBlock 
 | Day 12-13 — `swap_quote` | SwapQuoteCardV2 | +18 | 3086 | NEXT_PUBLIC_SWAP_QUOTE_CARD_V2 |
 | Day 14-15 — `health_check` | HealthCardV2 | +17 | 3103 | NEXT_PUBLIC_HEALTH_CARD_V2 |
 | Day 16 — `pending_rewards` | PendingRewardsCardV2 | +12 | 3115 | NEXT_PUBLIC_PENDING_REWARDS_CARD_V2 |
-| **Total since Day 6-9 baseline (3048)** | **4 V2 components** | **+67 tests** | **3115/3115** | **4 flags, all default OFF** |
+| Day 17-22 — `save_deposit` / `withdraw` / `borrow` / `repay_debt` / `harvest_rewards` | 5× preview bodies via PermissionCard slot | +17 | 3132 | NEXT_PUBLIC_WRITE_PREVIEWS_V2 |
+| Day 23 — `rates_info` | RatesCardV2 | +8 | 3140 | NEXT_PUBLIC_RATES_CARD_V2 |
+| Day 24 — `portfolio_analysis` | PortfolioCardV2 | +25 | 3165 | NEXT_PUBLIC_PORTFOLIO_CARD_V2 |
+| **Total since Day 6-9 baseline (3048)** | **11 V2 components + 1 dispatcher** | **+117 tests** | **3165/3165** | **8 flags, all default OFF** |
 
-All 4 V2 components reuse Day 6-9 shared primitives (AssetAmountBlock × 4 cards, HFGauge × 1, RouteDiagram × 1, APYBlock × 1). Engine v1.32.0 still pinned — engine-side `buildTool() → tool()` migrations stay deferred to Week 4 cleanup batch (no per-tool reverse-wrappers shipped along the way). Founder review path remains the same for every flag: set in `audric/apps/web/.env.local` → exercise the corresponding tool in chat → compare V1 vs V2 side-by-side via flag toggle.
+All 11 V2 components reuse Day 6-9 shared primitives (AssetAmountBlock × 8 surfaces, HFGauge × 2 surfaces, RouteDiagram × 1, APYBlock × 5 surfaces). Engine v1.32.0 still pinned — engine-side `buildTool() → tool()` migrations stay deferred to Week 4 cleanup batch (no per-tool reverse-wrappers shipped along the way). Founder review path remains the same for every flag: set in `audric/apps/web/.env.local` → exercise the corresponding tool in chat → compare V1 vs V2 side-by-side via flag toggle.
 
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
