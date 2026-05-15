@@ -360,6 +360,21 @@ For each high-value tool:
 
 Without these primitives, step 4 was a day per tool because each tool re-derived render decisions from scratch. With them, step 4 is genuine assembly — render decisions pre-locked in TOOL_UX_DESIGN_v07a.md, building blocks pre-shipped in `cards/shared/`.
 
+**Day 10-11 SHIPPED (2026-05-15 evening AEST, audric commit e430c43):**
+
+First per-tool migration assembly. Decision update: engine-side `buildTool() → tool()` migrations are deferred to a single batch in Week 4 cleanup (when the legacy engine is being deleted anyway). Doing them per-tool during the migration window would require a throwaway reverse-wrapper (AI SDK `tool()` → legacy `Tool` interface) for each migrated tool that the legacy engine path still consumes. ~50-100 LoC each × 10 tools = 500-1000 LoC of code shipped just to be deleted. Defers cleanly: per-tool DAYS produce the audric component now; engine tool definitions all migrate together when the legacy path is removed.
+
+| Day-10-11 Deliverable | Status | Evidence |
+|---|---|---|
+| **`BalanceCardV2.tsx`** — design-baseline component (~210 LoC) | **SHIPPED** | Wallet section list (AssetAmountBlock × N, sorted by USD desc, capped at 6) + NAVI savings section (deposit row when > 0; APY hints via APYBlock when saveable but no deposits, showing USDC + USDsui pool ballpark) + debt row (when > 0) + footer total chip. Default APY values are props (defaultUsdcApyBps=462, defaultUsdsuiApyBps=520) so callers can override with rates_info data. Reuses Day 6-9 shared primitives (AssetAmountBlock + APYBlock) and existing `CardShell` + `AddressBadge`. Deliberately drops post-write variant + NumberTicker animation + per-pool deposit breakdown — see component header for the deferral list. |
+| **`BalanceCardV2.test.tsx`** — 20 unit tests | **SHIPPED** | Wallet section (6 tests: sorted, capped, dust filter, empty state, USD subtotal, header chrome). Savings section (5 tests: hidden when 0+nothing-saveable, deposit row when > 0, USDC-only APY hint, both stables hint, override props, no APY when deposits exist). Debt + footer (4 tests: hidden when 0, warning color when > 0, footer from data.total, computed from parts when missing, debt subtracted). Watched-address badge (2 tests: shown when watched, hidden when self). |
+| **Env flag wired** | **SHIPPED** | `NEXT_PUBLIC_BALANCE_CARD_V2` added to client schema in `apps/web/lib/env.ts` with full JSDoc explaining rollout strategy + rollback path. Literal runtimeEnv mapping added (Next.js static-replacement). Default OFF → zero impact on shipped users until founder flips. |
+| **`ToolResultCard.tsx` routing** | **SHIPPED** | `balance_check` renderer: when `env.NEXT_PUBLIC_BALANCE_CARD_V2 === '1' \|\| 'true'` AND `variant !== 'post-write'`, route to `BalanceCardV2`; else render existing `BalanceCard`. The post-write guard ensures `PostWriteRefreshSurface` keeps using v1's tighter 3-col layout (V2 doesn't ship that variant). |
+| **No engine change** | **N/A** | Per the deferral decision above. Engine v1.32.0 still pinned. |
+| **Verify gates** | **ALL GREEN** | audric/web suite **3068/3068 passing** (was 3048 → +20 from BalanceCardV2 tests). typecheck clean. lint clean (`--max-warnings 0` on all changed files). 0 user-visible change in production with flag off. |
+
+**Founder review path.** Set `NEXT_PUBLIC_BALANCE_CARD_V2=1` in audric/apps/web/.env.local → ask Audric for "what's my balance?" → V2 renders. Compare side-by-side via flag toggle. If V2 ships well, the same flag flips on in Vercel for staged rollout; final cutover to V2-only happens at Day 27-28 release alongside the engine v2.0.0 + legacy-engine deletion.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
