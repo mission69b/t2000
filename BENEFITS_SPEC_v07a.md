@@ -279,6 +279,44 @@ Founder asked for a thorough audit of all Phase 0 + Phase 1 work to ensure no ga
 - New audric deps: `ai@^6.0.182` + `@ai-sdk/openai@^3.0.63` (both direct now; `ai` was previously a transitive dep via `@t2000/engine`).
 - This is a separate audric PR you'll trigger after the engine release lands.
 
+### Phase 2/3/4 consolidation — AI-SDK-native rewrite (added 2026-05-15 ~18:30 AEST after pre-commit spike)
+
+**Status: GREENLIT by founder; Day 1 scaffolding shipped behind `USE_AI_SDK_NATIVE_ENGINE=1` flag.**
+
+The original v0.7a plan separated tool migration (Phase 2), engine dispatch rewrite (Phase 3), and SSE/cleanup (Phase 4) into three sequential ships. After a pre-commit spike against the real Anthropic API (`packages/engine/scripts/spike-ai-sdk-native.ts`), this was consolidated into a single AI-SDK-native rewrite. Rationale:
+
+- **AI SDK v6 has native primitives for every engine concern.** Spike confirmed `tool()`, `streamText`, `experimental_context`, `prepareStep`, `needsApproval`, and `onStepFinish` cover tool dispatch, parallel reads, HITL approval, guards, and post-write hooks. See `SPIKE_FINDINGS_v07a.md` for the full mapping table.
+- **Sequential phases produced 3 intermediate engines.** Each had to be tested + audric'd + soaked. One rewrite ships the full E-1 LoC delete (~80% reduction, better than the 38% E-1 target) in the same calendar window (3-4 weeks vs 8-12 for the phased path).
+- **Founder constraint: "follow Vercel standards as much as possible, less overhead, less maintenance cost."** The AI-SDK-native end state IS Vercel standards. The phased path kept ~12,000 LoC of glue intact for "later phases" that may never come.
+
+| Day-1 Deliverable | Status | Evidence |
+|---|---|---|
+| **`packages/engine/src/v2/engine.ts`** — `AISDKEngine` class skeleton | **SHIPPED** | ~265 LoC. Constructor + `loadMessages()` + `submitMessage()` mirroring legacy `QueryEngine` API so audric's engine-factory swap is one line. Internally calls `streamText` with `@ai-sdk/anthropic`; translates `TextStreamPart` → legacy `EngineEvent` so audric's stream consumer is unchanged during transition. |
+| **`packages/engine/src/v2/tool-policy.ts`** — engine-policy registry | **SHIPPED** | ~165 LoC. `TOOL_POLICY` map keyed by tool name carries `isReadOnly`, `permissionLevel`, `cacheable`, `maxResultSizeChars`. Splits tool DEFINITION (in AI SDK `tool()`) from tool POLICY (here). All 36 default tools registered with read/write/explicit defaults. |
+| **`packages/engine/src/v2/index.ts`** — barrel export | **SHIPPED** | Re-exports `AISDKEngine`, `tool` (re-exported from `ai`), `TOOL_POLICY`, `getToolPolicy`, `registerToolPolicy`. |
+| **Engine root `index.ts` updated** | **SHIPPED** | Adds `AISDKEngine` + tool-policy exports above the legacy `QueryEngine` export. Behind `USE_AI_SDK_NATIVE_ENGINE` feature flag — audric chooses at engine factory time. Legacy `QueryEngine` exports unchanged. |
+| **Smoke test** (`v2/engine.test.ts`) | **SHIPPED** | 4 tests: 2 always-run (constructor, loadMessages), 2 gated on `RUN_REAL_API_TESTS=1` + `ANTHROPIC_API_KEY` (real Anthropic round-trip — 749ms text_delta stream verified, history persistence verified at 1.96s). All 4 pass when opted in. |
+| **Verify gates** | **ALL GREEN** | `pnpm --filter @t2000/engine typecheck` clean; `pnpm --filter @t2000/engine lint` clean (6 pre-existing warnings only); `pnpm --filter @t2000/engine test` → **1317/1320 passing + 3 skipped** (1316 baseline + 4 new v2 tests; 3 skipped = 2 RUN_REAL-gated + 1 pre-existing). No legacy regression. |
+
+**Day 2-9 plan (locked):**
+1. **Day 2-3** — `prepareStep` guard pipeline composition (the 14 guards relocated from `runGuards`); `needsApproval` USD-aware permission wrapper (USD resolver from `permission-rules.ts` reused verbatim); `onStepFinish` post-write-refresh injection. ToolContext threading via `experimental_context`. Tools wrapper `toAISDKTools(legacyTools, ctx)` so existing tools work via the new engine without per-tool migration.
+2. **Day 4-9** — Migrate the 36 tools in batches: 10 simple read tools → 14 complex read tools → 11 write tools + `add_recipient`/`update_todo`. Each gets its own commit; existing test ports verbatim. Tools move from `buildTool({...})` to AI SDK `tool({...})`; engine-specific policy moves to the `TOOL_POLICY` map. Business logic unchanged.
+3. **Day 10-12** — Audric chat-route + resume-route compatibility. Either keep emitting `EngineEvent` via the translation layer (zero audric change) OR swap audric to consume `UIMessageChunk` natively via `createUIMessageStream` (smaller audric footprint, but bigger PR). Decision deferred to Day 10 once tool migration LoC delta is known.
+4. **Day 13-14** — Engine v2.0.0 release (major bump: surface-changes — `provider` config field replaced with `anthropicApiKey`; `mcpManager` removed in favour of AI SDK MCP). Audric pin. Feature flag flipped on for 1% of traffic.
+5. **Week 3** — Soak. Watch metrics. Roll out to 100% if stable.
+6. **Week 4** — Delete legacy paths (`AnthropicProvider`, `AISDKAnthropicProvider` wrapper, `EarlyToolDispatcher`, `streaming.ts`, `microcompact.ts`, `McpClientManager`, `engine.ts` legacy class). Engine v2.0.1 ships pure AI-SDK-native.
+
+**Risk mitigations baked in:**
+- Feature flag (`USE_AI_SDK_NATIVE_ENGINE=1`) means audric runs both engines in parallel during development — flip per-route, roll back via env var.
+- Translation layer (`translatePart()` in `v2/engine.ts`) preserves byte-compatible `EngineEvent` shape, so audric's UI consumers don't change until we choose to drop the shim.
+- All 14 guards' existing tests run against the new engine path during the soak window. Any guard regression blocks the cutover.
+- `attemptId` becomes the AI SDK `toolCallId` (already a UUID v4) — `TurnMetrics.updateMany({ where: { attemptId } })` resume keying contract from Spec 1 Item 3 still holds verbatim.
+- MemWal Phase 7 work pauses during the rewrite (independent track; MemWal becomes "just another tool" on the new engine — easier to integrate after Phase 2-4 lands).
+
+**E-1 revision based on spike findings:**
+
+The original E-1 target was 38% engine LoC reduction (21,800 → 13,250). The spike's concerns mapping table shows AI SDK v6 covers more than originally anticipated (native parallel tool dispatch replaces `EarlyToolDispatcher`; native MCP replaces `McpClientManager`; native HITL replaces `pending_action` mechanism). Revised target: **~80% engine LoC reduction (21,800 → ~4,500)**. The 38% target stays as the floor; the spike-derived ~80% is the stretch.
+
 ### Phase 7 commitment gate decision (added 2026-05-15 ~15:50 AEST after live MemWal smoke; revised 2026-05-15 ~16:15 AEST after Vercel AI SDK memory page review)
 
 The Phase 0 plan §202 framed the MemWal smoke as the gate: *"if stability concerns surface → consider fallback alternatives per decision-doc §5.1."* The smoke surfaced two distinct concerns:

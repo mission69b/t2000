@@ -302,6 +302,22 @@ export type { AnthropicProviderConfig } from './providers/anthropic.js';
 export { AISDKAnthropicProvider } from './providers/ai-sdk-anthropic.js';
 export type { AISDKAnthropicProviderConfig } from './providers/ai-sdk-anthropic.js';
 
+// [SPEC 37 v0.7a Phase 2-4 — consolidated AI-SDK-native rewrite, Day 1]
+// AISDKEngine is the v0.7a end-state engine: a thin wrapper around AI SDK
+// v6's streamText + native tool() factory. Replaces ~21,800 LoC of custom
+// orchestration with ~4,500 LoC by composing engine-specific concerns
+// (USD permissions, 14 guards, postWriteRefresh, financial context,
+// recipes) around AI SDK primitives instead of re-implementing them.
+//
+// Behind the USE_AI_SDK_NATIVE_ENGINE feature flag — audric chooses at
+// engine factory time which class to instantiate. Legacy QueryEngine
+// stays exported above so production traffic is untouched until cutover.
+//
+// See SPIKE_FINDINGS_v07a.md for the LoC delta + concerns mapping table
+// + 3-4 week effort estimate that justified the consolidated rewrite.
+export { AISDKEngine, TOOL_POLICY, getToolPolicy, registerToolPolicy } from './v2/index.js';
+export type { AISDKEngineConfig, ToolPolicy } from './v2/index.js';
+
 // Canvas
 export { CANVAS_TEMPLATES } from './tools/canvas.js';
 export type { CanvasTemplate } from './tools/canvas.js';
