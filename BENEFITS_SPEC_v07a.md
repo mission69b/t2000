@@ -375,6 +375,58 @@ First per-tool migration assembly. Decision update: engine-side `buildTool() →
 
 **Founder review path.** Set `NEXT_PUBLIC_BALANCE_CARD_V2=1` in audric/apps/web/.env.local → ask Audric for "what's my balance?" → V2 renders. Compare side-by-side via flag toggle. If V2 ships well, the same flag flips on in Vercel for staged rollout; final cutover to V2-only happens at Day 27-28 release alongside the engine v2.0.0 + legacy-engine deletion.
 
+**Day 12-13 SHIPPED (2026-05-15 evening AEST, audric commit 3736917):**
+
+Per-tool migration assembly #2 of 10. SwapQuoteCardV2 — Pay/Receive AssetAmountBlock pair + RouteDiagram for multi-hop + slippage chip + per-leg fee breakdown. Flag-gated NEXT_PUBLIC_SWAP_QUOTE_CARD_V2.
+
+| Day-12-13 Deliverable | Status | Evidence |
+|---|---|---|
+| **`SwapQuoteCardV2.tsx`** (~180 LoC) | **SHIPPED** | Pay leg AssetAmountBlock (USD when priced, em-dash when null) → RouteDiagram (when engine emits `routeSteps` array) OR fallback "via Cetus + Aftermath" caption (when only legacy single-string `route` field) → Receive leg AssetAmountBlock → Rate / Impact / Slippage / Fee details rows → "Quote valid for ~30 seconds" footer caption. Reuses Day 6-9 primitives. |
+| **Defensive guards** | **SHIPPED** | Mirrors v1: `priceImpact` arriving as a non-numeric string falls back to 0.00% + chat error boundary stays intact (Cetus's `deviationRatio` field has shipped as a string in past payloads). Slippage row hidden when prop absent. `totalFeeBps` defaults to 10 (0.10% Cetus overlay). |
+| **`SwapQuoteCardV2.test.tsx`** — 18 tests | **SHIPPED** | Header (trade direction), legs (Pay + Receive, USD when supplied, em-dash when null), route rendering (RouteDiagram for 2-hop, fallback caption when single-string, neither when both absent), details (rate computation, impact color tiers — primary <1%, warning 1-3%, error >3%, defensive string coercion, slippage row, fee default + override), footer caption. |
+| **Env flag wired** | **SHIPPED** | `NEXT_PUBLIC_SWAP_QUOTE_CARD_V2` added to client schema + runtimeEnv mapping. JSDoc explains graceful-degradation behavior. |
+| **`ToolResultCard.tsx` routing** | **SHIPPED** | swap_quote renderer: when flag is '1' or 'true', route to V2; else render existing SwapQuoteCard. |
+| **Verify gates** | **ALL GREEN** | audric/web suite **3086/3086 passing** (was 3068 → +18). typecheck + lint clean. 0 user-visible change with flag off. |
+
+**Day 14-15 SHIPPED (2026-05-15 evening AEST, audric commit f15adc1):**
+
+Per-tool migration assembly #3 of 10. HealthCardV2 — HFGauge as visual hero + 2-col Collateral/Debt grid + borrowing-capacity-remaining footer. Flag-gated NEXT_PUBLIC_HEALTH_CARD_V2.
+
+| Day-14-15 Deliverable | Status | Evidence |
+|---|---|---|
+| **`HealthCardV2.tsx`** (~120 LoC) | **SHIPPED** | HFGauge as hero (current HF as gauge fill + label, liquidation marker pinned at 1.0, no projection — health_check is read-only) → 2-col Collateral/Debt grid (warning color when debt > $0.01 dust, primary when no debt) → Borrowing capacity remaining row when maxBorrow > 0 → Liquidation threshold row when explicitly different from 1.0 default. |
+| **∞ semantics preserved** | **SHIPPED** | Mirrors v1: `borrowed ≤ DEBT_DUST_USD` ($0.01) OR `healthFactor` null/undefined/non-finite → passes Infinity to HFGauge → ∞ glyph + max-fill (right edge). Same invariant as v1. |
+| **`HealthCardV2.test.tsx`** — 17 tests | **SHIPPED** | Header chrome, HFGauge hero (numeric + 3 ∞ scenarios: zero debt, null HF, +Infinity), Collateral/Debt 2-col (USD values + warning color + no-debt primary), borrowing capacity (shown when > 0, hidden when absent/zero, clamps when borrowed > maxBorrow), liquidation threshold (hidden at 1.0 default + when absent, shown when custom), watched-address badge. |
+| **V2 INTENTIONALLY does NOT ship** | **DEFERRED** | post-write variant (existing HealthCard's 3-col grid + status pill stays in PostWriteRefreshSurface; flag check excludes post-write), StatusBadge (HFGauge color tier already conveys healthy/warning/critical), per-asset Collateral/Debt breakdown via AssetAmountBlock (engine emits aggregated USD only — V2 swaps to AssetAmountBlock cleanly when engine adds per-asset arrays in Week 4 cleanup batch). |
+| **Verify gates** | **ALL GREEN** | audric/web suite **3103/3103 passing** (was 3086 → +17). typecheck + lint clean. 0 user-visible change with flag off. |
+
+**Day 16 SHIPPED (2026-05-15 evening AEST, audric commit fcee7d7):**
+
+Per-tool migration assembly #4 of 10. PendingRewardsCardV2 — AssetAmountBlock per reward (sorted by USD desc) + optional protocol eyebrow + total claimable footer. Flag-gated NEXT_PUBLIC_PENDING_REWARDS_CARD_V2.
+
+**Scope adjustment.** Day 16-17 was originally paired (pending_rewards + harvest_rewards). harvest_rewards is a write tool whose pre-execution preview renders through the 1044-LoC shared `PermissionCard` component; its V2 migration touches that shared component AND batches naturally with the Day 18-22 write-tool previews (save_deposit / withdraw / borrow / repay_debt) where PermissionCard is already being touched. Splitting saves one shared-component round-trip + keeps Day 16's scope tight on the read tool that fits the design baseline cleanly.
+
+| Day-16 Deliverable | Status | Evidence |
+|---|---|---|
+| **`PendingRewardsCardV2.tsx`** (~115 LoC) | **SHIPPED** | AssetAmountBlock per reward (sorted by USD desc — v1 rendered in engine emit order), optional protocol eyebrow on AssetAmountBlock label slot when multi-protocol (today only NAVI; future Suilend/Scallop drop in without component change), "Total claimable" footer chip when totalValueUsd > 0. |
+| **3 v1 render states preserved** | **SHIPPED** | Degraded (warning + protocol-aware headline: PROTOCOL_UNAVAILABLE → "NAVI rewards lookup unavailable", UNKNOWN/null → "Rewards lookup failed") · empty (quiet "No claimable rewards yet") · list (the new layout above). |
+| **CTA decision unchanged** | **PRESERVED** | Data-only by design (SPEC 23B-N5 lock — suggested-action chips below assistant turn cover HARVEST ALL / JUST CLAIM; in-card buttons would duplicate them). |
+| **`PendingRewardsCardV2.test.tsx`** — 12 tests | **SHIPPED** | List state (7 tests: header chrome, sorted, amount + USD, total footer when > 0/hidden when 0, em-dash for unpriced rewards, no eyebrow for single-protocol, eyebrow for multi-protocol). Empty state (1). Degraded (3: NAVI-specific headline, UNKNOWN, null reason). |
+| **harvest_rewards companion DEFERRED** | **DEFERRED** | Moves to Day 18-22 batch (write-tool previews via PermissionCard touch). |
+| **Verify gates** | **ALL GREEN** | audric/web suite **3115/3115 passing** (was 3103 → +12). typecheck + lint clean. 0 user-visible change with flag off. |
+
+**Cumulative progress at end of Day 16 (4 of 10 high-value tools shipped):**
+
+| Tool | V2 component | Tests added | Audric suite | Flag |
+|---|---|---:|---:|---|
+| Day 10-11 — `balance_check` | BalanceCardV2 | +20 | 3068 | NEXT_PUBLIC_BALANCE_CARD_V2 |
+| Day 12-13 — `swap_quote` | SwapQuoteCardV2 | +18 | 3086 | NEXT_PUBLIC_SWAP_QUOTE_CARD_V2 |
+| Day 14-15 — `health_check` | HealthCardV2 | +17 | 3103 | NEXT_PUBLIC_HEALTH_CARD_V2 |
+| Day 16 — `pending_rewards` | PendingRewardsCardV2 | +12 | 3115 | NEXT_PUBLIC_PENDING_REWARDS_CARD_V2 |
+| **Total since Day 6-9 baseline (3048)** | **4 V2 components** | **+67 tests** | **3115/3115** | **4 flags, all default OFF** |
+
+All 4 V2 components reuse Day 6-9 shared primitives (AssetAmountBlock × 4 cards, HFGauge × 1, RouteDiagram × 1, APYBlock × 1). Engine v1.32.0 still pinned — engine-side `buildTool() → tool()` migrations stay deferred to Week 4 cleanup batch (no per-tool reverse-wrappers shipped along the way). Founder review path remains the same for every flag: set in `audric/apps/web/.env.local` → exercise the corresponding tool in chat → compare V1 vs V2 side-by-side via flag toggle.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
