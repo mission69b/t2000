@@ -555,6 +555,50 @@ A wins because: (1) **soak is shorter when nothing visible changed** — if metr
 
 **Process learning:** keeping the same surface area (zero audric route change) compresses cutover risk into one variable — engine-internal correctness. The bridge layer's existence (Phase 0 R8 work) is what made this possible; without it, Day 10-12 would have been a 2-week audric-side rewrite instead of a 4-hour wire-what-exists. **Worth re-stating: ship the SHIM with the rewrite, not after.** Cleanup comes when the new path proves stable, not before.
 
+**Day 13 SHIPPED — local smoke + mcpManager regression fix (2026-05-16 ~09:25 AEST):**
+
+Local smoke against `USE_AI_SDK_NATIVE_ENGINE=1` ran end-to-end via the **demo / unauth chat path** (audric Google OAuth blocks localhost; only working path without deploying to Vercel preview). Smoke caught one real drop-in-compatibility regression that engine 1.33.1's "clean architecture" intentionally introduced. Engine 1.33.2 fixes it; audric pin bumped to 1.33.2.
+
+| Smoke step | Result | Evidence |
+|---|---|---|
+| **Engine 1.33.2 boots cleanly via flag** | ✓ | Server log: `[engine-factory] using AISDKEngine (unauth/demo path — SPEC 37 v0.7a Phase 2)` on every chat boot. |
+| **Read tool returns real data** | ✓ | `rates_info` returns `"USDC: Save 4.38% / Borrow 4.65%"` — same shape as legacy. Stream duration 2.2s vs legacy 2.7s (n=1, take with grain of salt). |
+| **EngineEvent stream shape matches legacy** | ✓ (with 2 documented cosmetic deltas) | Side-by-side comparison: `harness_shape`, `tool_start`, `tool_result`, `text_delta`, `usage`, `turn_complete` all emit in same order with same field names + types. Two minor differences logged below. |
+| **Multi-turn with history** | ✓ | Second turn used context from first ("NAVI has no protocol fees on savings"). 1.9s end-to-end. |
+| **NAVI MCP cache hit through new engine** | ✓ | Server log: `navi.cache_hit ... freshness=fresh` — confirms `mcpManager` is actually being threaded into v2 ToolContext (the regression below). |
+
+**Documented EngineEvent shape deltas (consumer-irrelevant):**
+- `harness_shape.rationale`: `"host-classified standard"` (legacy) vs `"standard"` (v2). Cosmetic; audric doesn't surface this string.
+- `tool_result.wasEarlyDispatched`: `true` on legacy when EarlyToolDispatcher fires the read mid-stream; absent on v2 (no early dispatcher). Optional field; audric consumers don't read it.
+- `usage` event count: legacy emits 2 (intermediate during tool dispatch + final); v2 emits 1 cumulative. Cumulative-equivalent at end-of-turn so `engine.getUsage()` returns the same number to downstream consumers.
+
+**Regression caught + fixed (engine c467166c → 1.33.2):**
+
+`AISDKEngineConfig` was `Omit<EngineConfig, 'provider' | 'mcpManager'>` on the (correct, long-term) reasoning that AI SDK's native `createMCPClient` should be the canonical MCP boundary, NOT the legacy `McpClientManager`. `tool-context.ts` hardcoded `mcpManager: undefined`. So every NAVI-MCP-backed read tool (`rates_info`, `savings_info`, `health_check`, `max_borrow`, anything routing through `naviCall`) failed in the v2 path with `"NAVI lending data is currently unavailable"` because `hasNaviMcpGlobal(context)` returned false.
+
+Fix: `AISDKEngineConfig` now extends `Omit<EngineConfig, 'provider'>` only — `mcpManager` is back. `buildToolContext()` reads `config.mcpManager`. Tools migrate to AI SDK's `createMCPClient` one-by-one in a future spec; until they do, threading the manager through preserves drop-in compatibility.
+
+**Regression test added (`engine.test.ts`):** `"invokeReadTool threads mcpManager from config to ToolContext (Day 13 fix)"` — registers a probe tool, asserts a sentinel `mcpManager` value passed via config is observed in `ctx.mcpManager`. Would have caught the regression at Day 10-12. Logged as the Day 10-12 verify-gate gap that this commit closes.
+
+**Lessons logged (process):**
+1. **Day 10-12 verify gates were typecheck + unit tests against MOCKED inputs** — no probe for `mcpManager` threading, no real-API smoke against an MCP-backed tool. Should have run a real-API smoke before npm release. Local smoke caught what tests didn't.
+2. **The "demo path always uses QueryEngine" oversight** — `createUnauthEngine` was never updated to respect the flag, so the unauth flow couldn't smoke the new engine even though that's the only flow available locally. Fixed in same Day-13 commit.
+3. **`pnpm dev` doesn't gracefully reuse ports** — when an old `next dev` worker stays bound to 3000, the new dev silently moves to 3002 and curl smoke against 3000 hits the OLD bundle. Always `pkill -f 'next dev'` between flag flips.
+
+**What's still pending (write + resume smoke):**
+
+The unauth/demo path doesn't exercise write tools or the resume flow — both require an authenticated session, and Google OAuth doesn't work on localhost. The two remaining smoke gates therefore have to run against Vercel preview:
+
+| Smoke gate | Where | Status |
+|---|---|---|
+| Read tool stream shape (legacy vs v2 byte-equivalence) | Local (demo path) | **DONE** — proven on rates_info |
+| Multi-turn history roundtrip | Local (demo path) | **DONE** — proven on second-turn context |
+| NAVI MCP integration | Local (demo path) | **DONE** — `navi.cache_hit` log confirms manager threaded |
+| Write tool with confirm flow (`pending_action` event + `attemptId` stamping) | Vercel preview (auth required) | PENDING — Day 14 |
+| Resume route (`attemptId` roundtrip + `updateMany({ where: { attemptId }})`) | Vercel preview (auth required) | PENDING — Day 14 |
+| Auth-path engine-factory branch (full `sharedEngineConfig` with guards / recipes / permissionConfig) | Vercel preview | PENDING — Day 14 |
+| Production 1% rollout via per-route gate | Vercel production | PENDING — Day 15 (after preview soak holds 24h) |
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
