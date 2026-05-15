@@ -326,6 +326,13 @@ The original v0.7a plan separated tool migration (Phase 2), engine dispatch rewr
 | **`v2/step-finish.test.ts`** — 6 unit tests | **SHIPPED** | Covers onAutoExecuted fires for successful write, NOT for read, NOT on tool-error, sessionSpend accumulation across multi-step, host onAutoExecuted throws caught (no propagation), guard state hasEverRead updated for both read + write tool results. |
 | **Verify gates** | **ALL GREEN** | typecheck clean, lint clean (no new warnings), build clean (ESM 471 KB / DTS 189 KB). Test count: **1340/1344 passing + 3 skipped** (was 1329/1333 + 4 skipped — +11 new tests). 1 pre-existing flake (`multi-block-thinking` real Anthropic API rejection — same flake as Day 2 run, unrelated to Day 3 changes). Downstream sdk/cli/mcp typecheck clean. No audric impact. |
 
+**Day 4-5 SHIPPED (2026-05-15 evening AEST):**
+
+| Day-4-5 Deliverable | Status | Evidence |
+|---|---|---|
+| **`TOOL_UX_DESIGN_v07a.md`** — DESIGN BASELINE doc | **SHIPPED** | ~290 lines. Locks per-tool output patterns + shared audric render components for all 36 tools. 4 patterns (text-only / structured-data / content-blocks / generative-UI). 5 shared components (AssetAmountBlock used by 12 tools, HFGauge used by 3 tools, RouteDiagram used by 2 tools, PreviewCard used by 4 write tools, APYBlock used by 4 tools — added beyond the original 4-component plan because 4 tools needed it). Per-tool decisions: 10 high-value tools as generative-UI, 26 mechanical as text-only or structured-data. Order matches Day 10-26 implementation sequence. Day 6-9 producers: 5 component PRs each with storybook entry + tests. |
+| **What this doc unblocks** | **N/A** | Day 6-9 audric component builds (the components live in audric/, not t2000/, so the build work happens in the audric repo with the design baseline as the canonical source). Day 10+ per-tool migration becomes ASSEMBLY (1 engine commit + 1 audric commit, ~200-400 LoC each PR). |
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
