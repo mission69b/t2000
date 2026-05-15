@@ -27,6 +27,8 @@ import { buildTool } from '../tool.js';
 import type { Tool as LegacyTool, ToolContext, PermissionLevel } from '../types.js';
 import { wrapLegacyTool, toAISDKTools } from './tool-wrapper.js';
 import { DEFAULT_PERMISSION_CONFIG } from '../permission-rules.js';
+import { createGuardRunnerState } from '../guards.js';
+import type { InternalContext } from './internal-context.js';
 
 function makeLegacyTool(overrides: Partial<LegacyTool> = {}): LegacyTool {
   const base: LegacyTool = buildTool({
@@ -57,6 +59,29 @@ function makeCtx(overrides: Partial<ToolContext> = {}): ToolContext {
   };
 }
 
+/**
+ * Day 3: wrapper expects InternalContext (which embeds ToolContext) as
+ * `experimental_context`. This helper wraps a ToolContext into the
+ * minimal InternalContext shape needed for the tool wrapper tests.
+ */
+function makeInternalCtx(overrides: Partial<ToolContext> = {}): InternalContext {
+  return {
+    toolContext: makeCtx(overrides),
+    guardState: createGuardRunnerState(),
+    guardConfig: undefined, // no guards run unless test opts in
+    contacts: [],
+    walletAddress: overrides.walletAddress ?? '0xtest',
+    config: {
+      onAutoExecuted: undefined,
+      onGuardFired: undefined,
+      postWriteRefresh: undefined,
+      permissionConfig: overrides.permissionConfig ?? DEFAULT_PERMISSION_CONFIG,
+      priceCache: overrides.priceCache ?? new Map([['SUI', 1.5]]),
+    },
+    getMessages: () => [],
+  };
+}
+
 describe('wrapLegacyTool', () => {
   it('returns an AI SDK Tool with description + inputSchema preserved', () => {
     const legacy = makeLegacyTool();
@@ -71,12 +96,11 @@ describe('wrapLegacyTool', () => {
     }));
     const legacy = makeLegacyTool({ call: callSpy });
     const wrapped = wrapLegacyTool(legacy);
-    const ctx = makeCtx();
 
     const result = await wrapped.execute!({ x: 'hello' }, {
       toolCallId: 'call_1',
       messages: [],
-      experimental_context: ctx,
+      experimental_context: makeInternalCtx(),
     });
 
     expect(callSpy).toHaveBeenCalledTimes(1);
@@ -99,7 +123,7 @@ describe('wrapLegacyTool', () => {
       toolCallId: 'call_2',
       messages: [],
       abortSignal: controller.signal,
-      experimental_context: makeCtx(),
+      experimental_context: makeInternalCtx(),
     });
 
     expect(callSpy).toHaveBeenCalled();
@@ -119,7 +143,7 @@ describe('wrapLegacyTool', () => {
       wrapped.execute!({ x: 'a' }, {
         toolCallId: 'call_3',
         messages: [],
-        experimental_context: makeCtx(),
+        experimental_context: makeInternalCtx(),
       }),
     ).rejects.toThrow('amount must be positive');
     expect(callSpy).not.toHaveBeenCalled();
@@ -139,7 +163,7 @@ describe('wrapLegacyTool', () => {
       wrapped.execute!({ x: 'a' }, {
         toolCallId: 'call_4',
         messages: [],
-        experimental_context: makeCtx(),
+        experimental_context: makeInternalCtx(),
       }),
     ).rejects.toThrow(/pending_input pattern/);
   });
@@ -164,35 +188,35 @@ describe('wrapLegacyTool needsApproval (USD-aware permission resolver)', () => {
   function callApproval(
     wrapped: ReturnType<typeof wrapLegacyTool>,
     input: unknown,
-    ctx: ToolContext,
+    internal: InternalContext,
   ): Promise<boolean> {
     const fn = wrapped.needsApproval;
     expect(typeof fn).toBe('function');
     return Promise.resolve(
       (fn as (i: unknown, o: { toolCallId: string; messages: unknown[]; experimental_context?: unknown }) => boolean | PromiseLike<boolean>)(
         input,
-        { toolCallId: 'c', messages: [], experimental_context: ctx },
+        { toolCallId: 'c', messages: [], experimental_context: internal },
       ),
     );
   }
 
   it('auto-tier tool: needsApproval always returns false', async () => {
     const wrapped = wrapLegacyTool(makeLegacyTool({ name: 'rates_info' })); // auto in TOOL_POLICY
-    const result = await callApproval(wrapped, { x: 'a' }, makeCtx());
+    const result = await callApproval(wrapped, { x: 'a' }, makeInternalCtx());
     expect(result).toBe(false);
   });
 
   it('confirm-tier tool: large USD amount → needsApproval returns true', async () => {
     const wrapped = makeWrappedWithLevel('confirm');
     // save_deposit autoBelow=50; amount=500 → confirm
-    const result = await callApproval(wrapped, { amount: 500 }, makeCtx());
+    const result = await callApproval(wrapped, { amount: 500 }, makeInternalCtx());
     expect(result).toBe(true);
   });
 
   it('confirm-tier tool: small USD amount under autoBelow → needsApproval returns false', async () => {
     const wrapped = makeWrappedWithLevel('confirm');
     // save_deposit autoBelow=50; amount=10 → auto (no approval needed)
-    const result = await callApproval(wrapped, { amount: 10 }, makeCtx());
+    const result = await callApproval(wrapped, { amount: 10 }, makeInternalCtx());
     expect(result).toBe(false);
   });
 
@@ -201,7 +225,7 @@ describe('wrapLegacyTool needsApproval (USD-aware permission resolver)', () => {
     const result = await callApproval(
       wrapped,
       { amount: 10 },
-      makeCtx({ permissionConfig: undefined }),
+      makeInternalCtx({ permissionConfig: undefined }),
     );
     expect(result).toBe(true);
   });

@@ -22,3 +22,14 @@ export {
   registerToolPolicy,
   type ToolPolicy,
 } from './tool-policy.js';
+// Day 3: internal context + guard runner + step-finish handler are
+// engine-internal helpers; not exported from the package root. They
+// live behind v2/index.ts so tests + future tool migrations can import
+// them under the v2/ namespace, but downstream consumers don't see them.
+export type { InternalContext, ConfigSubsetForStepFinish } from './internal-context.js';
+export { asInternalContext, tryGetInternalContext } from './internal-context.js';
+export { runGuardsForTool, GuardBlockedError } from './guard-runner.js';
+export type { GuardRunnerOutcome } from './guard-runner.js';
+export { buildStepFinishHandler } from './step-finish.js';
+export type { StepFinishMutableState } from './step-finish.js';
+export { bridgeAISDKStream } from './event-translation.js';

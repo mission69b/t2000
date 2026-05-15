@@ -64,6 +64,10 @@ import type {
 } from '../types.js';
 import { toAISDKTools } from './tool-wrapper.js';
 import { buildToolContext } from './tool-context.js';
+import type { InternalContext } from './internal-context.js';
+import { bridgeAISDKStream } from './event-translation.js';
+import { buildStepFinishHandler, type StepFinishMutableState } from './step-finish.js';
+import { createGuardRunnerState, type GuardRunnerState } from '../guards.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -98,9 +102,19 @@ export class AISDKEngine {
   private messages: Message[] = [];
   private abortController: AbortController | null = null;
 
+  // Day 3: per-session guard state + sessionSpend mirror. Both live as
+  // long as the engine instance — survive across `submitMessage` calls
+  // so trackers (balance freshness, retry counts) keep accumulating.
+  private readonly guardState: GuardRunnerState;
+  private readonly stepFinishMutable: StepFinishMutableState;
+
   constructor(config: AISDKEngineConfig) {
     this.config = config;
     this.anthropic = createAnthropic({ apiKey: config.anthropicApiKey });
+    this.guardState = createGuardRunnerState();
+    this.stepFinishMutable = {
+      sessionSpendUsdLocal: config.sessionSpendUsd ?? 0,
+    };
   }
 
   /**
@@ -166,37 +180,61 @@ export class AISDKEngine {
     this.abortController = new AbortController();
 
     // Day 2: wrap legacy tools into AI SDK ToolSet via the bridge.
-    // experimental_context carries ToolContext (built per turn) into
-    // each tool's execute() — same threading as legacy engine's
-    // ToolContext plumbing, just routed through AI SDK's native hook.
+    // Day 3: build InternalContext (ToolContext + engine-internal state)
+    // and thread it through experimental_context. The wrapper extracts
+    // .toolContext for legacy.call; needsApproval extracts .toolContext
+    // + .contacts; onStepFinish reads .guardState + .config.
     const tools = toAISDKTools(this.config.tools ?? []) as ToolSet;
-    const ctx = buildToolContext(this.config, {
+    const toolContext = buildToolContext(this.config, {
       signal: this.abortController.signal,
     });
+    // Mirror the local sessionSpend back into ToolContext so the next
+    // needsApproval call sees the running total without a host round-trip.
+    toolContext.sessionSpendUsd = this.stepFinishMutable.sessionSpendUsdLocal;
+
+    const internal: InternalContext = {
+      toolContext,
+      guardState: this.guardState,
+      guardConfig: this.config.guards,
+      contacts: this.config.contacts ?? [],
+      walletAddress: this.config.walletAddress,
+      config: {
+        onAutoExecuted: this.config.onAutoExecuted,
+        onGuardFired: this.config.onGuardFired,
+        postWriteRefresh: this.config.postWriteRefresh,
+        permissionConfig: this.config.permissionConfig,
+        priceCache: this.config.priceCache,
+      },
+      getMessages: () => this.messages,
+    };
+
+    const onStepFinish = buildStepFinishHandler(
+      this.config.tools ?? [],
+      internal,
+      this.stepFinishMutable,
+    );
 
     const stream = streamText({
       model: this.anthropic(this.config.model ?? 'claude-sonnet-4-5'),
       tools,
       messages: this.toAISDKMessages(this.messages),
       system: this.systemPromptString(),
-      experimental_context: ctx,
+      experimental_context: internal,
       stopWhen: stepCountIs(this.config.maxTurns ?? 10) as StopCondition<typeof tools>,
       abortSignal: this.abortController.signal,
+      onStepFinish,
       onError: (err) => {
-        // Day 3 wires this through friendlyErrorMessage helpers.
+        // Day 3+ may surface this through friendlyErrorMessage helpers.
         console.error('[AISDKEngine] streamText error:', err);
       },
     });
 
-    // Translate AI SDK TextStreamPart → legacy EngineEvent so audric's
-    // existing event consumer doesn't break. Day 10-12 may swap audric
-    // to consume UIMessageChunk natively, dropping this translation.
-    for await (const part of stream.fullStream) {
-      const events = this.translatePart(part);
-      for (const ev of events) {
-        yield ev;
-      }
-    }
+    // Day 3: replace Day 1 minimal translatePart with the R8 bridge —
+    // covers every AI SDK event type (tool-call, tool-result, tool-error,
+    // reasoning-start/delta/end, finish with totalUsage, abort, error).
+    // The bridge owns block-index counters + eval-summary parsing so
+    // multi-block thinking + signed signatures flow through unchanged.
+    yield* bridgeAISDKStream(stream.fullStream);
   }
 
   // -------------------------------------------------------------------
@@ -233,31 +271,6 @@ export class AISDKEngine {
         return { role: m.role, content: text } as ModelMessage;
       })
       .filter((m) => typeof (m as { content: unknown }).content === 'string' && (m as { content: string }).content.length > 0);
-  }
-
-  private translatePart(
-    part: import('ai').TextStreamPart<ToolSet>,
-  ): EngineEvent[] {
-    // Day 1 minimal translation. Day 2 expands to cover all event
-    // types via the existing R8 bridge (packages/engine/src/bridge/).
-    switch (part.type) {
-      case 'text-delta':
-        return [{ type: 'text_delta', text: part.text }];
-      case 'finish':
-        return [{ type: 'turn_complete', stopReason: 'end_turn' }];
-      case 'error':
-        return [
-          {
-            type: 'error',
-            error:
-              part.error instanceof Error ? part.error : new Error(String(part.error)),
-          },
-        ];
-      default:
-        // Day 2: text-end, reasoning-start/delta/end, tool-call,
-        // tool-result, tool-approval-request, finish-step, abort, etc.
-        return [];
-    }
   }
 }
 

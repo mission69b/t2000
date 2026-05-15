@@ -29,7 +29,7 @@ import {
   toolNameToOperation,
 } from '../permission-rules.js';
 import { getToolPolicy } from './tool-policy.js';
-import type { ToolContext } from '../types.js';
+import { tryGetInternalContext } from './internal-context.js';
 
 // AI SDK v6 doesn't re-export ToolNeedsApprovalFunction from the `ai`
 // package barrel (it lives in @ai-sdk/provider-utils which is a
@@ -77,12 +77,15 @@ export function buildNeedsApproval(toolName: string): NeedsApprovalFn {
 
   // 'confirm' policy → defer to the USD-aware resolver per call.
   return (input, options) => {
-    const ctx = options.experimental_context as ToolContext | undefined;
+    const internal = tryGetInternalContext(options.experimental_context);
 
     // Defensive: if the context isn't threaded through (engine bug or
     // test stub), fail closed. Better to over-prompt than to skip
     // approval on a write.
-    if (!ctx?.permissionConfig || !ctx?.priceCache) {
+    if (!internal) return true;
+
+    const ctx = internal.toolContext;
+    if (!ctx.permissionConfig || !ctx.priceCache) {
       return true;
     }
 
@@ -96,15 +99,13 @@ export function buildNeedsApproval(toolName: string): NeedsApprovalFn {
     const amountUsd = resolveUsdValue(toolName, inputObj, ctx.priceCache);
 
     // Build optional sendContext for `send_transfer` (contact lookup
-    // forces confirm regardless of amount per safeguards rule).
+    // forces confirm regardless of amount per safeguards rule). Day 3:
+    // real contacts threaded via InternalContext (was empty in Day 2).
     const sendContext =
       toolName === 'send_transfer' && typeof inputObj.to === 'string'
         ? {
             to: inputObj.to,
-            // Contacts live on EngineConfig but flow into
-            // PermissionConfig calls via this hook. For Day 2 we pass
-            // an empty array; Day 3 wires real contacts through.
-            contacts: [] as ReadonlyArray<{ address: string }>,
+            contacts: internal.contacts,
           }
         : undefined;
 

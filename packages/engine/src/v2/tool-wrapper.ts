@@ -32,8 +32,10 @@
 // ---------------------------------------------------------------------------
 
 import { tool, type Tool as AISDKTool } from 'ai';
-import type { Tool as LegacyTool, ToolContext, PreflightResult } from '../types.js';
+import type { Tool as LegacyTool, PreflightResult } from '../types.js';
 import { buildNeedsApproval } from './need-approval.js';
+import { asInternalContext } from './internal-context.js';
+import { runGuardsForTool, GuardBlockedError } from './guard-runner.js';
 
 /**
  * Wrap one legacy Tool as an AI SDK Tool. The returned tool can be
@@ -44,7 +46,14 @@ export function wrapLegacyTool(legacy: LegacyTool): AISDKTool {
     description: legacy.description,
     inputSchema: legacy.inputSchema,
     needsApproval: buildNeedsApproval(legacy.name),
-    execute: async (input: unknown, options: { experimental_context?: unknown; abortSignal?: AbortSignal }) => {
+    execute: async (
+      input: unknown,
+      options: {
+        experimental_context?: unknown;
+        abortSignal?: AbortSignal;
+        toolCallId?: string;
+      },
+    ) => {
       // Run preflight FIRST — matches engine.ts dispatch order
       // (preflight before guard pipeline before call). Preflight
       // failures throw so AI SDK surfaces them as tool errors back
@@ -72,26 +81,51 @@ export function wrapLegacyTool(legacy: LegacyTool): AISDKTool {
         }
       }
 
-      // Cast experimental_context to ToolContext. The engine's
-      // `buildToolContext` produces this shape; if a test or external
-      // caller misconfigured it, the legacy tool's body will raise on
-      // first field access (caught at execute boundary by AI SDK).
-      const ctx = options.experimental_context as ToolContext;
+      // Extract InternalContext (engine-internal state) from
+      // experimental_context. Throws with a useful message if the
+      // engine forgot to thread it (caught by AI SDK as a tool error).
+      const internal = asInternalContext(options.experimental_context);
+
+      // Run the 14-guard pipeline (Day 3). When `internal.guardConfig`
+      // is undefined, the runner returns `{ allowed: true }` immediately
+      // — no overhead. Block verdicts throw `GuardBlockedError` so AI
+      // SDK surfaces the rejection back to the model in tool-error.
+      const guardOutcome = runGuardsForTool(
+        legacy,
+        {
+          id: options.toolCallId ?? `${legacy.name}-${Date.now()}`,
+          name: legacy.name,
+          input,
+        },
+        internal,
+      );
+
+      if (!guardOutcome.allowed) {
+        if (guardOutcome.needsStructuredInput) {
+          throw new Error(
+            `Tool '${legacy.name}' requires structured input — pending_input ` +
+              `pattern not yet supported in v2 engine.`,
+          );
+        }
+        throw new GuardBlockedError(
+          guardOutcome.blockGate ?? 'unknown',
+          guardOutcome.blockReason ?? 'Guard blocked execution',
+        );
+      }
 
       // Forward the AbortSignal — legacy tools that respect ctx.signal
       // get cancelled when the user aborts.
-      const ctxWithSignal: ToolContext = {
-        ...ctx,
-        signal: options.abortSignal ?? ctx.signal,
+      const ctxForLegacy = {
+        ...internal.toolContext,
+        signal: options.abortSignal ?? internal.toolContext.signal,
       };
 
-      const result = await legacy.call(input, ctxWithSignal);
+      const result = await legacy.call(input, ctxForLegacy);
 
       // Legacy result shape is { data, displayText? }. AI SDK
       // accepts any JSON-serializable output; the model sees the full
-      // shape via tool_result back-reference. The engine's translator
-      // (Day 3) extracts displayText for the EngineEvent shape audric
-      // currently consumes.
+      // shape via tool_result back-reference. The R8 bridge translates
+      // tool-result events into legacy EngineEvent for audric.
       return result;
     },
   });
