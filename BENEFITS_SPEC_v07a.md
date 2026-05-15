@@ -587,17 +587,48 @@ Fix: `AISDKEngineConfig` now extends `Omit<EngineConfig, 'provider'>` only — `
 
 **What's still pending (write + resume smoke):**
 
-The unauth/demo path doesn't exercise write tools or the resume flow — both require an authenticated session, and Google OAuth doesn't work on localhost. The two remaining smoke gates therefore have to run against Vercel preview:
+The unauth/demo path doesn't exercise write tools or the resume flow — both require an authenticated session, and Google OAuth doesn't work on localhost (founder confirmed: "it only works in production"). The remaining smoke gates therefore have to run against Vercel production via a per-wallet allowlist (preview deploys would have the same OAuth limitation).
 
 | Smoke gate | Where | Status |
 |---|---|---|
 | Read tool stream shape (legacy vs v2 byte-equivalence) | Local (demo path) | **DONE** — proven on rates_info |
 | Multi-turn history roundtrip | Local (demo path) | **DONE** — proven on second-turn context |
 | NAVI MCP integration | Local (demo path) | **DONE** — `navi.cache_hit` log confirms manager threaded |
-| Write tool with confirm flow (`pending_action` event + `attemptId` stamping) | Vercel preview (auth required) | PENDING — Day 14 |
-| Resume route (`attemptId` roundtrip + `updateMany({ where: { attemptId }})`) | Vercel preview (auth required) | PENDING — Day 14 |
-| Auth-path engine-factory branch (full `sharedEngineConfig` with guards / recipes / permissionConfig) | Vercel preview | PENDING — Day 14 |
-| Production 1% rollout via per-route gate | Vercel production | PENDING — Day 15 (after preview soak holds 24h) |
+| Write tool with confirm flow (`pending_action` event + `attemptId` stamping) | Vercel production via wallet allowlist | PENDING — Day 14 |
+| Resume route (`attemptId` roundtrip + `updateMany({ where: { attemptId }})`) | Vercel production via wallet allowlist | PENDING — Day 14 |
+| Auth-path engine-factory branch (full `sharedEngineConfig` with guards / recipes / permissionConfig) | Vercel production via wallet allowlist | PENDING — Day 14 |
+| Production 5-10 alpha-tester wallets (allowlist soak) | Vercel production | PENDING — Day 15-21 (after founder soak holds 24h) |
+| Production 100% via global flag | Vercel production | PENDING — Day 22+ (after alpha soak holds 1 week) |
+
+**Day 13 SHIPPED (continued) — wallet allowlist gate (2026-05-16 ~09:35 AEST):**
+
+Per-wallet rollout instrument so the founder can dogfood the new engine on real on-chain data WITHOUT flipping the global kill-switch (which is a 100%-or-nothing dial). Audric commit `(pending)` adds:
+
+| Deliverable | What |
+|---|---|
+| **`USE_AI_SDK_NATIVE_ENGINE_WALLETS` env var** | CSV of normalised Sui addresses. Wired into `audric/apps/web/lib/env.ts` (Zod schema + `runtimeEnv` map + `SERVER_ONLY_KEYS` proxy guard). Default OFF. Server-side, so Vercel runtime env updates take effect on next invocation (~30s, no redeploy). |
+| **`wallet-allowlist.ts` helper (~115 LoC)** | `parseWalletAllowlist(raw)` returns `{ allowlist: Set<string>, dropped: string[] }` — Set for O(1) hot-path lookups; invalid addresses get filtered + reported (don't fail boot — an ops typo shouldn't brick chat). `isAddressAllowlisted(address, raw)` — case-insensitive Sui address comparison via `normalizeSuiAddress` from `@mysten/sui/utils`. Module-level memoised cache (parse-once-per-cold-start; env can only change on Vercel re-deploy / runtime env update / function restart). |
+| **`wallet-allowlist.test.ts` (20 tests)** | Covers: empty/whitespace input → empty Set; multiple comma-separated entries; whitespace trimming; case-insensitive normalisation; invalid-entry filtering with dropped-list reporting; case where ALL entries invalid (no throw); module-cache behaviour + reset-for-tests. |
+| **`engine-factory.ts` resolution order** | Auth path: `isAddressAllowlisted(address, env.USE_AI_SDK_NATIVE_ENGINE_WALLETS) \|\| env.USE_AI_SDK_NATIVE_ENGINE === '1' \|\| 'true'`. Address check fires FIRST so an allowlisted wallet hits the new engine even when the global flag is OFF — every other user stays on legacy. Log line records WHICH gate fired (`'wallet allowlist'` vs `'global flag'`) for prod-soak telemetry correlation. Unauth/demo path stays env-flag-only (no address available). |
+
+**Resolution order in `engine-factory.ts` (auth path):**
+1. `isAddressAllowlisted(address, env.USE_AI_SDK_NATIVE_ENGINE_WALLETS)` → AISDKEngine ("wallet allowlist" gate).
+2. `env.USE_AI_SDK_NATIVE_ENGINE === '1' \|\| 'true'` → AISDKEngine ("global flag" gate).
+3. Default → legacy QueryEngine.
+
+Verify gates after the allowlist commit:
+- `pnpm --filter @audric/web typecheck` → clean
+- `pnpm --filter @audric/web test` → **3200/3200 passing** (was 3180; +20 from `wallet-allowlist.test.ts`)
+- `pnpm --filter @audric/web lint` → clean
+
+**Founder-dogfood production rollout plan:**
+1. **Day 13 (today):** push allowlist gate to main. Set `USE_AI_SDK_NATIVE_ENGINE_WALLETS=<founder-wallet>` in Vercel production env. ~30s for the next chat boot to use the new engine for the founder's wallet only — every other user stays on legacy.
+2. **Day 14:** real-traffic smoke on the founder's wallet — exercise read tools, write tools (small save / swap / borrow), resume after confirm, multi-turn. Watch `TurnMetrics` rows in the DB for: `attemptId` UUID v4 stamping, `harnessShape` field, `costUsd` close to legacy baseline, no error spike.
+3. **Day 15-21:** if Day 14 holds, add 5-10 alpha-tester wallets to the allowlist. Same metrics watch over 1 week.
+4. **Day 22+:** if alpha soak holds, set `USE_AI_SDK_NATIVE_ENGINE=1` globally. The allowlist becomes redundant but stays as a kill-switch (allowlist still routes to new engine even if the global flag is unset).
+5. **Week 6 cleanup:** delete the global flag, the allowlist gate, the legacy `QueryEngine` import path, and the bridge layer.
+
+Rollback at every step: remove the wallet from the CSV (or unset the env var entirely). Same for the global flag. Both are server-side env vars — change takes effect on next invocation, no redeploy.
 
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
