@@ -62,6 +62,8 @@ import type {
   Message,
   Tool as LegacyTool,
 } from '../types.js';
+import { toAISDKTools } from './tool-wrapper.js';
+import { buildToolContext } from './tool-context.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -163,21 +165,25 @@ export class AISDKEngine {
 
     this.abortController = new AbortController();
 
-    // STUB: tools wrapping. Day 2 builds toAISDKTools(legacyTools, ctx)
-    // that maps `Tool[]` → `ToolSet` with experimental_context
-    // threading the legacy ToolContext into each execute() call.
-    const tools = this.buildToolSetStub();
+    // Day 2: wrap legacy tools into AI SDK ToolSet via the bridge.
+    // experimental_context carries ToolContext (built per turn) into
+    // each tool's execute() — same threading as legacy engine's
+    // ToolContext plumbing, just routed through AI SDK's native hook.
+    const tools = toAISDKTools(this.config.tools ?? []) as ToolSet;
+    const ctx = buildToolContext(this.config, {
+      signal: this.abortController.signal,
+    });
 
     const stream = streamText({
       model: this.anthropic(this.config.model ?? 'claude-sonnet-4-5'),
       tools,
       messages: this.toAISDKMessages(this.messages),
       system: this.systemPromptString(),
-      experimental_context: this.buildContextStub(),
+      experimental_context: ctx,
       stopWhen: stepCountIs(this.config.maxTurns ?? 10) as StopCondition<typeof tools>,
       abortSignal: this.abortController.signal,
       onError: (err) => {
-        // Day 2 wires this through friendlyErrorMessage helpers.
+        // Day 3 wires this through friendlyErrorMessage helpers.
         console.error('[AISDKEngine] streamText error:', err);
       },
     });
@@ -194,30 +200,10 @@ export class AISDKEngine {
   }
 
   // -------------------------------------------------------------------
-  // Day 1 STUBS — Day 2-3 fills these in
+  // Day 2 helpers — tool dispatch + context threading via AI SDK natives
+  // (Day 3 adds: prepareStep guard pipeline, onStepFinish post-write
+  // refresh, real EngineEvent translation via the bridge layer)
   // -------------------------------------------------------------------
-
-  private buildToolSetStub(): ToolSet {
-    // Day 2: wrap config.tools (LegacyTool[]) using toAISDKTools() that
-    // builds AI SDK tool() objects whose execute() calls into the
-    // legacy tool's call() method, threading experimental_context as
-    // ToolContext. Day 4-9 migrates tools off legacy buildTool entirely.
-    //
-    // Day 1 stub: no tools. Engine can still answer text-only turns.
-    void this.config; // silence unused warning during Day 1
-    return {} as ToolSet;
-  }
-
-  private buildContextStub(): unknown {
-    // Day 2: build the full ToolContext (walletAddress, suiRpcUrl,
-    // blockvisionApiKey, mcpManager, env, priceCache, permissionConfig,
-    // contacts, etc.) so tools' execute() can read it via
-    // options.experimental_context.
-    return {
-      walletAddress: this.config.walletAddress,
-      suiRpcUrl: this.config.suiRpcUrl,
-    };
-  }
 
   private systemPromptString(): string | undefined {
     const sp = this.config.systemPrompt;
