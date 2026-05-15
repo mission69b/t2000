@@ -61,6 +61,7 @@ import type {
   HarnessShape,
   Message,
   Tool as LegacyTool,
+  ToolContext,
 } from '../types.js';
 import { toAISDKTools } from './tool-wrapper.js';
 import { buildToolContext } from './tool-context.js';
@@ -68,6 +69,8 @@ import type { InternalContext } from './internal-context.js';
 import { bridgeAISDKStream } from './event-translation.js';
 import { buildStepFinishHandler, type StepFinishMutableState } from './step-finish.js';
 import { createGuardRunnerState, type GuardRunnerState } from '../guards.js';
+import { findTool } from '../tool.js';
+import { CostTracker, type CostSnapshot } from '../cost.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -108,6 +111,20 @@ export class AISDKEngine {
   private readonly guardState: GuardRunnerState;
   private readonly stepFinishMutable: StepFinishMutableState;
 
+  // Day 10-12 (SPEC 37 v0.7a Phase 2 cutover-prep): cumulative usage
+  // across every submitMessage call on this engine instance. Audric's
+  // chat / resume / resume-with-input / regenerate routes all read
+  // `engine.getUsage()` at turn close to bill the user + write
+  // SessionUsage rows. Mirrors legacy QueryEngine's CostTracker so
+  // both engines honour the same `getUsage()` contract.
+  //
+  // Pricing defaults to the Sonnet rates baked into CostTracker; the
+  // chat route already overrides per-model pricing via `costRatesForModel`
+  // when computing TurnMetrics.estimatedCostUsd, so the snapshot's
+  // estimatedCostUsd is treated as a fallback only. Token counts (the
+  // load-bearing field for billing) are model-agnostic and accurate.
+  private readonly costTracker: CostTracker;
+
   constructor(config: AISDKEngineConfig) {
     this.config = config;
     this.anthropic = createAnthropic({ apiKey: config.anthropicApiKey });
@@ -115,6 +132,7 @@ export class AISDKEngine {
     this.stepFinishMutable = {
       sessionSpendUsdLocal: config.sessionSpendUsd ?? 0,
     };
+    this.costTracker = new CostTracker(config.costTracker);
   }
 
   /**
@@ -139,6 +157,101 @@ export class AISDKEngine {
    */
   abort(): void {
     this.abortController?.abort();
+  }
+
+  /**
+   * Read-only access to the engine's tool registry. Mirrors
+   * `QueryEngine.getTools()` — audric's fast-path bundle composer
+   * (`tryConsumeFastPathBundle`) calls this so it can rebuild a
+   * `pending_action` payload with `modifiableFields` / `canRegenerate`
+   * without re-importing the tool list.
+   *
+   * SPEC 37 v0.7a Phase 2 Day 10-12 — drop-in compatibility shim.
+   */
+  getTools(): readonly LegacyTool[] {
+    return this.config.tools ?? [];
+  }
+
+  /**
+   * Snapshot of cumulative usage across every `submitMessage` call.
+   * Mirrors `QueryEngine.getUsage()`. Audric's chat / resume /
+   * resume-with-input / regenerate routes all read this at turn close
+   * to bill the user.
+   *
+   * Token counts are sourced from the bridge's `usage` event (which
+   * normalises AI SDK v6's nested `inputTokenDetails` /
+   * `outputTokenDetails` shape into the flat legacy contract). The
+   * route already overrides `estimatedCostUsd` via per-model
+   * `costRatesForModel`, so the snapshot's estimate is a
+   * Sonnet-default fallback — token totals are the load-bearing field.
+   *
+   * SPEC 37 v0.7a Phase 2 Day 10-12 — drop-in compatibility shim.
+   */
+  getUsage(): CostSnapshot {
+    return this.costTracker.getSnapshot();
+  }
+
+  /**
+   * Run a registered read-only tool out-of-band, bypassing the LLM.
+   * Mirrors `QueryEngine.invokeReadTool()`. Audric's chat route uses
+   * this for intent-driven pre-dispatch — when the user asks "what's
+   * my balance?" the route deterministically runs `balance_check`
+   * before the LLM round-trip and stamps the result into history so
+   * the LLM cites real numbers.
+   *
+   * Throws when the tool isn't registered, isn't read-only, or fails
+   * input validation. Tool execution errors are returned as
+   * `{ data, isError: true }` for the caller to handle (typically:
+   * skip the synthetic-prefetch injection so the LLM falls back to
+   * its normal flow).
+   *
+   * v0.7a end-state simplifications vs legacy QueryEngine:
+   *   - No intra-turn TurnReadCache. AI SDK doesn't share a turn
+   *     concept with the legacy engine; in-turn dedup will land via
+   *     a v2-native cache layer (Day 25-28 cleanup).
+   *   - No MCP tool dispatch path. v2 MCP support routes through AI
+   *     SDK's native `createMCPClient`, not the legacy McpClientManager.
+   *   - Builds `ToolContext` via the same `buildToolContext` helper
+   *     that backs in-stream tool execution, so an out-of-band call
+   *     sees the same priceCache / blockvisionApiKey / portfolioCache
+   *     as the LLM-driven path.
+   *
+   * SPEC 37 v0.7a Phase 2 Day 10-12 — drop-in compatibility shim.
+   */
+  async invokeReadTool(
+    toolName: string,
+    input: unknown,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<{ data: unknown; isError: boolean }> {
+    const tool = findTool(this.config.tools ?? [], toolName);
+    if (!tool) {
+      throw new Error(`invokeReadTool: tool not found: ${toolName}`);
+    }
+    if (!tool.isReadOnly) {
+      throw new Error(
+        `invokeReadTool: tool is not read-only: ${toolName} (write tools must go through the permission gate)`,
+      );
+    }
+
+    const parsed = tool.inputSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new Error(
+        `invokeReadTool: invalid input for ${toolName}: ${parsed.error.issues.map((i) => i.message).join(', ')}`,
+      );
+    }
+
+    const signal = options.signal ?? new AbortController().signal;
+    const context: ToolContext = buildToolContext(this.config, { signal });
+
+    try {
+      const result = await tool.call(parsed.data, context);
+      return { data: result.data, isError: false };
+    } catch (err) {
+      return {
+        data: { error: err instanceof Error ? err.message : 'Tool execution failed' },
+        isError: true,
+      };
+    }
   }
 
   /**
@@ -234,7 +347,22 @@ export class AISDKEngine {
     // reasoning-start/delta/end, finish with totalUsage, abort, error).
     // The bridge owns block-index counters + eval-summary parsing so
     // multi-block thinking + signed signatures flow through unchanged.
-    yield* bridgeAISDKStream(stream.fullStream);
+    //
+    // Day 10-12: tap `usage` events as they pass through so getUsage()
+    // returns cumulative token totals across every submitMessage call —
+    // mirrors legacy QueryEngine's CostTracker semantics. Events are
+    // forwarded unchanged; the tap is read-only.
+    for await (const event of bridgeAISDKStream(stream.fullStream)) {
+      if (event.type === 'usage') {
+        this.costTracker.track(
+          event.inputTokens,
+          event.outputTokens,
+          event.cacheReadTokens,
+          event.cacheWriteTokens,
+        );
+      }
+      yield event;
+    }
   }
 
   // -------------------------------------------------------------------

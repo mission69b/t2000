@@ -209,8 +209,11 @@ describe('v2 e2e — Day 3 surface (onAutoExecuted + sessionSpend tracking)', ()
         ...DEFAULT_GUARD_CONFIG,
         // Disable balance/HF/recipient guards for this synthetic test —
         // the test wallet has no on-chain state and recipient is fake.
+        // `addressSource` is the canonical name for the recipient-validation
+        // guard (see guards.ts:104) — earlier draft of this test used
+        // `recipientValidation` which doesn't exist on `GuardConfig`.
         balanceValidation: false,
-        recipientValidation: false,
+        addressSource: false,
       };
 
       // Recipient must be in contacts to bypass the "raw 0x → confirm"

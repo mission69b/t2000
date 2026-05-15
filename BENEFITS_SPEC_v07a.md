@@ -512,6 +512,49 @@ V1 fixes use the SAME `priceImpactToPct` heuristic as V2 + the same `> 0` sentin
 
 **Refined process learning:** the "read engine emit shape FIRST" rule now extends to BOTH V1 and V2 — when V2 is cloned from V1's behaviour, V1's bugs get inherited silently. For Days 25+ (and Week 4 cleanup) the audit pass should explicitly diff each V2 card against the engine emit shape (not just against V1), so we catch latent V1 bugs that V2 would otherwise carry forward.
 
+**Day 10-12 SHIPPED — engine-cutover compatibility shim (2026-05-16 ~08:35 AEST):**
+
+Engine-side drop-in surface + audric-side feature-flag wiring so `USE_AI_SDK_NATIVE_ENGINE=1` can flip between legacy `QueryEngine` and `AISDKEngine` without a single audric route change. The decision: **keep EngineEvent translation (drop-in path) — defer UIMessageChunk-native cutover to Week 6 cleanup.** Rationale below.
+
+**Decision: keep EngineEvent translation (option A, drop-in).** The two paths considered:
+
+| Path | Audric churn | Cutover risk | Code to delete in Week 6 |
+|---|---|---|---|
+| **A. Keep EngineEvent translation (chosen)** | **Zero route changes.** AISDKEngine yields `EngineEvent`s via the existing R8 bridge layer (`packages/engine/src/bridge/event-bridge.ts`). Audric's chat / resume / resume-with-input / regenerate routes consume the stream unchanged. | **Low.** Same byte-shape SSE; same useEngine.ts reducer; same TurnMetrics shape. The only delta is engine-internal (no provider abstraction, no McpClientManager, native streamText). | R8 bridge (~700 LoC) — converts AI SDK streamText events back to EngineEvent. Stays as a safety net during the soak; deletes when audric swaps to UIMessageChunk natively (post-soak refactor). |
+| B. Swap audric routes to UIMessageChunk native | **Substantial.** Chat route's for-await loop, useEngine.ts SSE reducer, every event handler (text_delta / pending_action / tool_result / harness_shape / etc.) re-targets AI SDK's UIMessageChunk format. ~12 surfaces. | Medium. Net-new SSE shape; new test fixtures; race conditions in resume-with-input where the host emits its own pending_action wrapper. | Same R8 bridge gets deleted, AND zero compat layer. |
+
+A wins because: (1) **soak is shorter when nothing visible changed** — if metrics drift it's clearly the engine, not the route or UI; (2) **rollback is one env var** — flag-default-OFF means a bad day is `unset USE_AI_SDK_NATIVE_ENGINE` and you're back on legacy; (3) **the bridge layer was already built and tested** in Phase 0 + Days 1-9, so this is "wire what exists" not "write more code". Option B is the right end-state but it's a follow-up move after the engine itself proves stable.
+
+| Day-10-12 Deliverable | Status | Evidence |
+|---|---|---|
+| **`AISDKEngine.getTools()`** — read-only tool registry getter | **SHIPPED** (engine `packages/engine/src/v2/engine.ts`) | Returns `this.config.tools ?? []`. Audric's `tryConsumeFastPathBundle` calls this for bundle composition (`composeBundleFromToolResults({ tools: engine.getTools() })`). |
+| **`AISDKEngine.getUsage()`** — cumulative cost snapshot | **SHIPPED** | Backed by an internal `CostTracker`. The `submitMessage` loop now taps the bridge stream — every `usage` EngineEvent passing through bumps the tracker. Returns the canonical `CostSnapshot { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, totalTokens, estimatedCostUsd }` so chat / resume / resume-with-input / regenerate routes' "log usage at turn close" call sites work unchanged. Token counts are model-agnostic; `estimatedCostUsd` defaults to Sonnet pricing — audric's chat route already overrides this via `costRatesForModel(modelUsed)` for TurnMetrics. |
+| **`AISDKEngine.invokeReadTool(name, input, options)`** — out-of-band read dispatch | **SHIPPED** | Mirrors `QueryEngine.invokeReadTool()` exactly. Throws on unknown tool / non-read-only tool / invalid input; returns `{ data, isError: true }` envelope on tool-execution failure. Builds `ToolContext` via the same `buildToolContext` helper that backs in-stream tool execution, so out-of-band reads see the same `priceCache` / `blockvisionApiKey` / `portfolioCache` as LLM-driven dispatch. **v0.7a end-state simplifications vs legacy QueryEngine** (documented inline): no intra-turn TurnReadCache (deferred to v2-native cache layer in Week 6 cleanup); no MCP tool dispatch (v2 routes MCP through AI SDK's native `createMCPClient`, not legacy `McpClientManager`). |
+| **Engine v2 tests** — drop-in surface coverage | **SHIPPED** (`packages/engine/src/v2/engine.test.ts`) | 8 new tests covering: getTools returns array / returns empty when unconfigured · getUsage starts at zero · invokeReadTool runs read tool / returns data · throws on unknown / non-read-only / invalid-input · returns isError envelope on tool throw without rethrow. Pre-existing typecheck error (`recipientValidation` field-rename in `e2e-smoke.test.ts:213`) drive-by fixed at the same time (canonical name is `addressSource`, see guards.ts:104). |
+| **`audric/lib/env.ts` — `USE_AI_SDK_NATIVE_ENGINE`** | **SHIPPED** | Server-only `optionalString` slot. Wired into Zod schema, `runtimeEnv` map, and `SERVER_ONLY_KEYS` proxy guard. Default OFF → engine selection unchanged. |
+| **`audric/lib/engine/engine-factory.ts` — branched construction** | **SHIPPED** | Refactored to a `sharedEngineConfig` object that both engines accept. Conditional construction: `useAiSdkNativeEngine ? new AISDKEngine({ ...sharedEngineConfig, anthropicApiKey }) as unknown as QueryEngine : new QueryEngine({ ...sharedEngineConfig, provider, mcpManager })`. The `as unknown as QueryEngine` cast preserves typing for every existing audric call site without forcing a shared interface change today; Day 27-28 cleanup introduces a proper `EngineLike` type once the soak window proves stable. Same return type, same downstream behaviour. |
+| **Verify gates** | **ALL GREEN** | Engine: 33 v2 tests passing (was 25 + 8 new). Audric: **3180/3180 still passing**, typecheck clean, lint clean (5 pre-existing warnings unchanged). Pre-existing failures unrelated (`multi-block-thinking.test.ts` real-API gated; not from these changes). |
+
+**What needs to happen before runtime smoke:**
+
+1. **Engine release** — `gh workflow run release.yml --field bump=minor`. The new methods bump engine to `1.33.0`. Triggers `publish.yml` automatically. (~5 min for npm + GitHub Release + Discord.)
+2. **Audric pin bump** — `pnpm add @t2000/sdk@latest @t2000/engine@latest` in `audric/apps/web`, commit, push. Vercel auto-deploys.
+3. **Smoke against `USE_AI_SDK_NATIVE_ENGINE=1`:**
+   - **Local:** `echo 'USE_AI_SDK_NATIVE_ENGINE=1' >> audric/apps/web/.env.local && pnpm --filter @audric/web dev` → exercise chat (read tools, write tool with confirm, fast-path bundle, intent dispatcher, resume route) → look for `[engine-factory] using AISDKEngine (...)` log line on every chat boot → verify SSE stream + UI render side-by-side identical to legacy. Flip back via `unset` to confirm rollback works.
+   - **Vercel preview:** set the var in the preview environment → run R9 (test wallet exercises one save + one swap + one borrow proposal + one chat read) → confirm TurnMetrics rows write correctly with expected `attemptId` + `harnessShape` fields.
+   - **Production:** roll out 1% via per-route gate when preview soak holds 24h. Day 13-14 target.
+
+**Risk mitigations baked in (re-stated):**
+- Same byte-compatible `EngineEvent` SSE shape via the R8 bridge.
+- Same `attemptId` UUID v4 stamping via the bridge's pass-through (AI SDK's `toolCallId` IS the UUID v4).
+- Same `getUsage()` token totals → same `SessionUsage` rows + `TurnMetrics.estimatedCostUsd`.
+- Same `getTools()` array → same fast-path bundle composition.
+- Same `invokeReadTool()` envelope → same intent-dispatcher synthetic prefetch.
+- Default OFF: production traffic is on legacy `QueryEngine` until the flag is flipped.
+- Rollback path: `unset USE_AI_SDK_NATIVE_ENGINE` in Vercel runtime env (~30s, no redeploy).
+
+**Process learning:** keeping the same surface area (zero audric route change) compresses cutover risk into one variable — engine-internal correctness. The bridge layer's existence (Phase 0 R8 work) is what made this possible; without it, Day 10-12 would have been a 2-week audric-side rewrite instead of a 4-hour wire-what-exists. **Worth re-stating: ship the SHIM with the rewrite, not after.** Cleanup comes when the new path proves stable, not before.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

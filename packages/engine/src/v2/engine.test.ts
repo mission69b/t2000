@@ -211,3 +211,151 @@ describe('AISDKEngine — Day 2 tool dispatch via legacy wrapper', () => {
     expect(engine.getMessages().length).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Day 10-12 tests — drop-in compatibility surface for the audric routes
+// ---------------------------------------------------------------------------
+//
+// The audric chat / resume / resume-with-input / regenerate routes call
+// engine.getTools(), engine.getUsage(), and engine.invokeReadTool() in
+// addition to the streaming submitMessage path tested above. These
+// tests verify each surface matches the legacy QueryEngine contract so
+// the USE_AI_SDK_NATIVE_ENGINE feature flag can swap engines without
+// route changes.
+// ---------------------------------------------------------------------------
+
+describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invokeReadTool)', () => {
+  function makeEchoTool(): LegacyTool {
+    return buildTool({
+      name: 'echo_test',
+      description: 'Echo back the user message. Used only by spike tests.',
+      inputSchema: z.object({
+        message: z.string().describe('Text to echo back verbatim.'),
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', description: 'Text to echo back verbatim.' },
+        },
+        required: ['message'],
+      },
+      flags: {},
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async (input: { message: string }) => ({
+        data: { echoed: input.message },
+        displayText: `Echo: ${input.message}`,
+      }),
+    });
+  }
+
+  function makeWriteTool(): LegacyTool {
+    return buildTool({
+      name: 'write_only_test',
+      description: 'A write tool that should never be invokable read-only.',
+      inputSchema: z.object({}),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: {},
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => ({ data: { wrote: true }, displayText: 'wrote' }),
+    });
+  }
+
+  function makeFailingTool(): LegacyTool {
+    return buildTool({
+      name: 'failing_read',
+      description: 'A read tool that always throws.',
+      inputSchema: z.object({}),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: {},
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async () => {
+        throw new Error('intentional failure');
+      },
+    });
+  }
+
+  it('getTools() returns the registered tool array (read-only)', () => {
+    const echo = makeEchoTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [echo],
+    });
+    const tools = engine.getTools();
+    expect(tools.length).toBe(1);
+    expect(tools[0]?.name).toBe('echo_test');
+  });
+
+  it('getTools() returns empty array when no tools configured', () => {
+    const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
+    expect(engine.getTools().length).toBe(0);
+  });
+
+  it('getUsage() starts at zero', () => {
+    const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
+    const snap = engine.getUsage();
+    expect(snap.inputTokens).toBe(0);
+    expect(snap.outputTokens).toBe(0);
+    expect(snap.cacheReadTokens).toBe(0);
+    expect(snap.cacheWriteTokens).toBe(0);
+    expect(snap.totalTokens).toBe(0);
+    expect(snap.estimatedCostUsd).toBe(0);
+  });
+
+  it('invokeReadTool runs a read tool out-of-band and returns its data', async () => {
+    const echo = makeEchoTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [echo],
+    });
+    const result = await engine.invokeReadTool('echo_test', { message: 'hello' });
+    expect(result.isError).toBe(false);
+    expect(result.data).toEqual({ echoed: 'hello' });
+  });
+
+  it('invokeReadTool throws when tool is not registered', async () => {
+    const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
+    await expect(
+      engine.invokeReadTool('does_not_exist', {}),
+    ).rejects.toThrow(/tool not found/);
+  });
+
+  it('invokeReadTool throws when tool is not read-only (write tool)', async () => {
+    const write = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [write],
+    });
+    await expect(
+      engine.invokeReadTool('write_only_test', {}),
+    ).rejects.toThrow(/not read-only/);
+  });
+
+  it('invokeReadTool throws when input fails schema validation', async () => {
+    const echo = makeEchoTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [echo],
+    });
+    await expect(
+      // missing required `message` field
+      engine.invokeReadTool('echo_test', {}),
+    ).rejects.toThrow(/invalid input/);
+  });
+
+  it('invokeReadTool returns isError envelope when tool throws (no rethrow)', async () => {
+    const failing = makeFailingTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [failing],
+    });
+    const result = await engine.invokeReadTool('failing_read', {});
+    expect(result.isError).toBe(true);
+    expect(result.data).toEqual({ error: 'intentional failure' });
+  });
+});
