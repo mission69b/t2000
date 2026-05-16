@@ -630,6 +630,62 @@ Verify gates after the allowlist commit:
 
 Rollback at every step: remove the wallet from the CSV (or unset the env var entirely). Same for the global flag. Both are server-side env vars — change takes effect on next invocation, no redeploy.
 
+**Day 13 ROLLBACK — production smoke surfaced confirm-tier `pending_action` gap (2026-05-16 ~10:15 AEST):**
+
+Founder smoked the v2 path on production via the wallet allowlist:
+
+| Step | Result |
+|---|---|
+| Read tool ("What APY does NAVI offer for USDC savings?") | ✅ `RATES INFO` card rendered, narration "NAVI is currently offering 4.39% APY on USDC savings." TurnMetrics row: `harnessShape='lean'`, model=`claude-haiku-4-5`, cost=$0.0641, `toolsCalled=[rates_info]`. Real NAVI MCP data flowed end-to-end (the Day 13 `mcpManager` fix). |
+| Write tool ("Save 0.05 USDC into NAVI") | ❌ FAILED. `DEPOSIT` card placeholder rendered (from `tool_start`), then narration: "The deposit failed on my end due to an agent configuration issue — please try again shortly." TurnMetrics row: `pendingActionYielded=false`, `attemptId=NULL`, `toolsCalled` includes `save_deposit` with `latencyMs=0`, `resultSizeChars=67`. **Funds safe — no on-chain execute fired.** |
+
+**Root cause** (traced via DB query + engine source read):
+
+The v2 engine wires AI SDK v6's native `needsApproval` callback into every confirm-tier wrapped tool (`packages/engine/src/v2/need-approval.ts`). When the model emits a `tool_use` for a confirm-tier write, AI SDK v6:
+1. Emits a `tool-call` event (translated correctly → `tool_start` legacy event → DEPOSIT card renders).
+2. Calls `needsApproval(input, options)` which returns `true` (USD-resolver says > $0).
+3. Emits a `tool-approval-request` event with `{ approvalId, toolCallId }`.
+4. **Pauses the stream** awaiting `addToolApprovalResponse(toolCallId, decision)`.
+5. Does NOT call `execute()` — execution gated until host responds.
+
+The R8 bridge layer (`packages/engine/src/bridge/event-bridge.ts:142`) **silently drops** `tool-approval-request` events. The bridge's design comment explicitly says "engine orchestration's job" but the v2 `AISDKEngine.submitMessage()` orchestration loop has NO code that intercepts the raw AI SDK stream for approval-request events. So the legacy `pending_action` event is never emitted, the audric chat route never persists `attemptId` on TurnMetrics, the audric client never sees a permission card to confirm, and the LLM (whose stream pauses then resumes when AI SDK gives up) narrates "deposit failed" because its tool-use was orphaned.
+
+**Why this slipped past local smoke:**
+
+Local smoke exercised read tools only (Google OAuth blocks `localhost`, so write/confirm flows can't be tested without sponsored-tx infrastructure). The wallet allowlist gate was specifically added to test write/confirm flows on production with surgical blast radius — and it caught the bug on the first write attempt. Rollback was clean: founder removed from allowlist + Vercel redeploy → back on legacy QueryEngine in ~3 min, zero funds lost.
+
+**Rollback executed (2026-05-16 ~10:18 AEST):**
+1. `vercel env rm USE_AI_SDK_NATIVE_ENGINE_WALLETS production --yes` (Vercel CLI).
+2. Empty commit on `audric:main` to trigger redeploy: `🔧 chore(web): redeploy to pick up USE_AI_SDK_NATIVE_ENGINE_WALLETS removal`.
+3. Verified deploy `audric-rhspz01v0` Ready in ~2m. Founder back on `QueryEngine` for the next chat boot.
+
+**Fix scope (engine 1.34.0 — IN FLIGHT):**
+
+The v2 engine needs two missing pieces to support confirm-tier writes end-to-end:
+
+1. **`AISDKEngine.submitMessage()` orchestration loop** — iterate `stream.fullStream` directly (not via `bridgeAISDKStream` only). For each event:
+   - Run `translate(event, state)` from the bridge → forward EngineEvents.
+   - Track `tool-call` events in a `Map<toolCallId, {name, input}>` (cache for later).
+   - Accumulate text + tool_use blocks into an `assistantContent: ContentBlock[]` for the eventual `pending_action`.
+   - Track `tool-result` events from auto-approved reads in `completedResults: Array<{toolUseId, content, isError}>`.
+   - On `tool-approval-request`: build a full `PendingAction` (toolName + input from cache; `attemptId` = `crypto.randomUUID()`; `description` from `describeAction(toolName, input)`; `modifiableFields` from `tool-modifiable-fields.ts`; `assistantContent` + `completedResults` from accumulators; `turnIndex` from message-count) and emit as `{ type: 'pending_action', action }`.
+2. **`AISDKEngine.resumeWithToolResult(action, response)`** — accept a host-executed tool result (audric runs the sponsored-tx prepare/execute outside the engine), inject it into `messages` as a synthetic assistant `tool_use` + user `tool_result` pair representing what the engine "would have produced" if it ran inline, then re-invoke `streamText` with the same tools/system/context to narrate. Audric's resume route calls this method on every confirm flow — without it, AISDKEngine instances crash on `engine.resumeWithToolResult is not a function`.
+
+Both pieces are pure additive code in `packages/engine/src/v2/engine.ts` — no breaking changes to legacy QueryEngine path. Behind the same `USE_AI_SDK_NATIVE_ENGINE` flag + wallet allowlist as Day 13, so prod blast radius stays surgical when re-soaked.
+
+**Tests required (companion to fix):**
+- v2 unit test: confirm-tier write yields `pending_action` with correct shape (toolName, input, attemptId, modifiableFields, assistantContent, completedResults, turnIndex).
+- v2 unit test: `resumeWithToolResult` injects synthetic blocks and re-invokes streamText (mock LLM).
+- v2 integration test: read tool followed by write tool in the same turn produces correct `assistantContent` + `completedResults` on the pending_action.
+
+**Re-soak after fix:**
+1. Engine 1.34.0 publishes via `gh workflow run release.yml --field bump=minor`.
+2. Audric pin bumps to 1.34.0; CI green.
+3. Re-add founder wallet to allowlist via Vercel UI.
+4. Re-run the Day 13 smoke checklist: read → write (with confirm tap) → resume.
+5. Verify TurnMetrics row carries `attemptId` (UUID v4), `pendingActionYielded=true`, and the resume row matches via `attemptId` join.
+6. If clean, hold soak for 24h before adding alpha-tester wallets per the Day 14-22 plan above.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
