@@ -690,7 +690,7 @@ export class AISDKEngine {
           name: tool.name,
           input: cached.input,
         }),
-        assistantContent: assistantBlocks as ContentBlock[],
+        assistantContent: normalizeAssistantContentForAnthropic(assistantBlocks),
         completedResults,
         ...(modifiableFields && modifiableFields.length > 0 ? { modifiableFields } : {}),
         turnIndex,
@@ -719,6 +719,106 @@ export class AISDKEngine {
     return undefined;
   }
 
+}
+
+// ---------------------------------------------------------------------------
+// Anthropic strict-format normaliser for deferred assistant content
+// ---------------------------------------------------------------------------
+//
+// [SPEC 37 v0.7a Phase 2 Day 13.4 / 2026-05-16] Production smoke caught a
+// 400 error from Anthropic on the *resume* turn for compound prompts where
+// the LLM emitted text BETWEEN tool_uses in a single assistant message
+// (e.g. "Save $50 USDC" → [text "let me check", tool_use bc1, tool_use bc2,
+// text "let me sort", tool_use send]). The send approval card rendered
+// correctly; on tap-confirm, the resume's streamText call replayed the
+// deferred assistant content verbatim and Anthropic rejected:
+//
+//   messages.9: `tool_use` ids were found without `tool_result` blocks
+//   immediately after: toolu_01DH2LdACfkaGj5MvZZrG52T,
+//   toolu_01FwXtGSaL3BiMq2z6S3PCM4. Each `tool_use` block must have a
+//   corresponding `tool_result` block in the next message.
+//
+// Root cause: Anthropic's input validator does not accept text blocks
+// INTERSPERSED between tool_use blocks in an assistant message, even
+// though Anthropic models CAN output that pattern. The validator wants
+// all tool_use blocks to be contiguous (and the immediately-following
+// user message to start with tool_result blocks for all of them).
+//
+// This is a well-known AI SDK + Anthropic gotcha — see vercel/ai issue
+// #8516. The recommended client-side fix is to normalise the assistant
+// content into Anthropic's accepted shape:
+//
+//   - all text blocks merged into a single leading text block
+//   - all tool_use blocks after the text, preserving their original order
+//   - thinking / redacted_thinking blocks preserved BEFORE text (the
+//     extended-thinking blocks must precede everything else for the
+//     signed-thinking round-trip to validate)
+//
+// Lossy? The middle text block is concatenated into the leading text
+// rather than displayed AFTER bc1/bc2 in the chat narration. The
+// user-visible chat still shows the original assistant message via the
+// host's UI rendering (the host writes the raw LLM output to the
+// timeline before resume); only the *replayed* history sent to the
+// Anthropic API is rearranged. The model never sees the merged form on
+// the wire — it sees the same content blocks in a structurally valid
+// order.
+//
+// Why not split into multiple assistant messages? Anthropic accepts
+// CONSECUTIVE assistant messages, but the conversion would force every
+// tool_use into its own assistant + tool_result pair on the wire (the
+// v4 pattern). That's a heavier change with broader test surface, and
+// the simpler reorder is sufficient — every failure observed in
+// production fits the "text between tool_uses" shape.
+// ---------------------------------------------------------------------------
+function normalizeAssistantContentForAnthropic(
+  blocks: readonly ContentBlock[],
+): ContentBlock[] {
+  // Fast path: no tool_use blocks → no rearrangement needed.
+  const hasToolUse = blocks.some((b) => b.type === 'tool_use');
+  if (!hasToolUse) return [...blocks];
+
+  // Fast path: no text blocks → already valid (just tool_uses, possibly
+  // with thinking). No rearrangement needed.
+  const hasText = blocks.some((b) => b.type === 'text');
+  if (!hasText) return [...blocks];
+
+  const thinkingBlocks: ContentBlock[] = [];
+  const textParts: string[] = [];
+  const toolUseBlocks: ContentBlock[] = [];
+
+  for (const block of blocks) {
+    if (block.type === 'thinking' || block.type === 'redacted_thinking') {
+      thinkingBlocks.push(block);
+    } else if (block.type === 'text') {
+      // Drop empty text blocks (Anthropic rejects them too). Filter on
+      // trimmed length so whitespace-only narration ("\n\n") doesn't
+      // survive the merge.
+      if (block.text.trim().length > 0) textParts.push(block.text);
+    } else if (block.type === 'tool_use') {
+      toolUseBlocks.push(block);
+    } else {
+      // Unknown future block type → preserve in the leading position
+      // alongside thinking. Keeps the normaliser forward-compatible
+      // when new ContentBlock variants land (e.g. citations).
+      thinkingBlocks.push(block);
+    }
+  }
+
+  // Fast path: nothing got reordered (text was already before all
+  // tool_uses) → return the original to preserve referential identity
+  // for caller-side equality checks.
+  const wasAlreadyOrdered =
+    blocks.findIndex((b) => b.type === 'tool_use') >
+    blocks.map((b) => b.type).lastIndexOf('text');
+  if (wasAlreadyOrdered) return [...blocks];
+
+  const out: ContentBlock[] = [...thinkingBlocks];
+  if (textParts.length > 0) {
+    out.push({ type: 'text', text: textParts.join('\n\n') });
+  }
+  out.push(...toolUseBlocks);
+
+  return out;
 }
 
 // ---------------------------------------------------------------------------

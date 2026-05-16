@@ -709,3 +709,205 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
     expect(turnComplete.length).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Day 13.4 regression — Anthropic strict-format assistant message
+// ---------------------------------------------------------------------------
+//
+// SPEC 37 v0.7a Phase 2 Day 13.4 / 2026-05-16 production smoke caught a
+// 400 from Anthropic on the resume turn of a compound prompt ("Save $50
+// USDC" after prior balance_check + send_transfer activity). The LLM
+// emitted text BETWEEN tool_uses in a single assistant message:
+//
+//   [text "let me check first", tool_use bc1, tool_use bc2,
+//    text "let me sort", tool_use send]
+//
+// Anthropic's input validator rejected the replay on the resume turn:
+//
+//   messages.9: `tool_use` ids were found without `tool_result` blocks
+//   immediately after: toolu_01DH2LdACfkaGj5MvZZrG52T,
+//   toolu_01FwXtGSaL3BiMq2z6S3PCM4. Each `tool_use` block must have a
+//   corresponding `tool_result` block in the next message.
+//
+// Fix: AISDKEngine.normalizeAssistantContentForAnthropic() reorders the
+// captured assistantContent so all text is merged into a single leading
+// block, followed by all tool_use blocks contiguously. This matches
+// Anthropic's accepted shape (every model-emitted assistant message
+// also follows this structure on the wire).
+// ---------------------------------------------------------------------------
+describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisation', () => {
+  function makeReadTool(name: string, input: Record<string, unknown> = {}): LegacyTool {
+    return buildTool({
+      name,
+      description: `${name} read tool`,
+      inputSchema: z.object({}).passthrough(),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: { mutating: false },
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async () => ({ data: { stub: name, input }, displayText: `${name} ok` }),
+    });
+  }
+
+  function makeWriteTool(): LegacyTool {
+    return buildTool({
+      name: 'send_transfer',
+      description: 'Send USDC to a recipient.',
+      inputSchema: z.object({
+        to: z.string(),
+        amount: z.number().positive(),
+        asset: z.enum(['USDC', 'USDsui']).optional(),
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          to: { type: 'string' },
+          amount: { type: 'number' },
+          asset: { type: 'string' },
+        },
+        required: ['to', 'amount'],
+      },
+      flags: { mutating: true },
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => {
+        throw new Error('send_transfer.call() must not run on confirm-tier path.');
+      },
+    });
+  }
+
+  it('rearranges interleaved text + tool_use blocks so all text precedes all tool_use blocks', async () => {
+    const balanceCheck = makeReadTool('balance_check');
+    const send = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [balanceCheck, send],
+    });
+
+    // Stream simulates the exact "Save $50 USDC" failure pattern:
+    // text → tool-call (bc1) → tool-call (bc2) → text → tool-call (send)
+    // → finish. The bc1/bc2 reads auto-execute (returning tool-result
+    // events in the same step); the send pauses for approval.
+    //
+    // NOTE: We omit the tool-approval-request event from the stub
+    // because we're testing the *output shape* of pending_action's
+    // assistantContent, not the orchestration of the approval pause
+    // itself (already covered upstream). What we DO need: the stub
+    // must emit a tool-call for the write tool so AISDKEngine puts a
+    // tool_use block in assistantBlocks AFTER the second text. The
+    // engine's needsApproval wrapper will then refuse to execute and
+    // the pending_action emission path triggers.
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: 'Let me check your balances first.' },
+      { type: 'text-end', id: 't1' },
+      {
+        type: 'tool-call',
+        toolCallId: 'toolu_bc1',
+        toolName: 'balance_check',
+        input: '{}',
+      },
+      {
+        type: 'tool-call',
+        toolCallId: 'toolu_bc2',
+        toolName: 'balance_check',
+        input: '{}',
+      },
+      { type: 'text-start', id: 't2' },
+      { type: 'text-delta', id: 't2', delta: 'Now sending the transfer.' },
+      { type: 'text-end', id: 't2' },
+      {
+        type: 'tool-call',
+        toolCallId: 'toolu_send_001',
+        toolName: 'send_transfer',
+        input: JSON.stringify({ to: '0xabc', amount: 0.01, asset: 'USDC' }),
+      },
+      {
+        type: 'finish',
+        finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+        usage: {
+          inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 30, text: 30, reasoning: 0 },
+        },
+      },
+    ]);
+
+    const events = await collect(engine.submitMessage('Send 0.01 USDC to 0xabc and save $50'));
+
+    const pendingActions = events.filter((e) => e.type === 'pending_action');
+    expect(pendingActions.length).toBe(1);
+
+    const ev = pendingActions[0]!;
+    if (ev.type !== 'pending_action') throw new Error('type narrowing');
+    const content = ev.action.assistantContent;
+
+    // Invariant 1: every text block comes before every tool_use block.
+    const lastTextIdx = content
+      .map((b, i) => (b.type === 'text' ? i : -1))
+      .reduce((max, i) => Math.max(max, i), -1);
+    const firstToolUseIdx = content.findIndex((b) => b.type === 'tool_use');
+    expect(lastTextIdx).toBeLessThan(firstToolUseIdx);
+
+    // Invariant 2: text is merged into a single block (not multiple
+    // text blocks scattered through the structure).
+    const textBlocks = content.filter((b) => b.type === 'text');
+    expect(textBlocks.length).toBe(1);
+    if (textBlocks[0]?.type === 'text') {
+      // Both source narration strings are concatenated.
+      expect(textBlocks[0].text).toContain('check your balances');
+      expect(textBlocks[0].text).toContain('Now sending the transfer');
+    }
+
+    // Invariant 3: all three tool_use blocks are preserved with their
+    // original order (bc1, bc2, send) and IDs intact.
+    const toolUses = content.filter((b) => b.type === 'tool_use');
+    expect(toolUses.length).toBe(3);
+    if (toolUses[0]?.type === 'tool_use') expect(toolUses[0].id).toBe('toolu_bc1');
+    if (toolUses[1]?.type === 'tool_use') expect(toolUses[1].id).toBe('toolu_bc2');
+    if (toolUses[2]?.type === 'tool_use') expect(toolUses[2].id).toBe('toolu_send_001');
+  });
+
+  it('passes through already-ordered content unchanged (text → tool_use)', async () => {
+    const send = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [send],
+    });
+
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: 'Sending 0.01 USDC. ' },
+      { type: 'text-end', id: 't1' },
+      {
+        type: 'tool-call',
+        toolCallId: 'toolu_send_001',
+        toolName: 'send_transfer',
+        input: JSON.stringify({ to: '0xabc', amount: 0.01, asset: 'USDC' }),
+      },
+      {
+        type: 'finish',
+        finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+        usage: {
+          inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 20, text: 20, reasoning: 0 },
+        },
+      },
+    ]);
+
+    const events = await collect(engine.submitMessage('Send 0.01 USDC to 0xabc'));
+    const pa = events.find((e) => e.type === 'pending_action');
+    if (!pa || pa.type !== 'pending_action') throw new Error('expected pending_action');
+    const content = pa.action.assistantContent;
+
+    // Single text + single tool_use, in order — no reshuffling needed.
+    expect(content.length).toBe(2);
+    expect(content[0]?.type).toBe('text');
+    expect(content[1]?.type).toBe('tool_use');
+  });
+});
