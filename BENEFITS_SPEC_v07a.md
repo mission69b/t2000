@@ -1034,6 +1034,42 @@ After the founder confirmed 1.34.7's data-loss fix held in production and explic
 
 **Cross-references:** Engine commit `27eab827`. Audric commit `8af2809`. Founder smoke pending production deploy.
 
+---
+
+**Day 14b — Week 4 cleanup second slice: per-asset suppliedAssets + borrowedAssets on health_check (2026-05-16 ~15:50 AEST):**
+
+After founder confirmed 1.34.10 production smoke ("Ok awesome here is the output its looking good!") covering all 4 verb flows (borrow / repay / save / withdraw) + post-write refresh + post-refresh session persistence, picked the next high-leverage polish slice. Choice was between item 3 (per-asset Collateral/Debt arrays — visible polish on the HealthCheck card) vs. items 4/5 (harvest routes / tool migration). Founder chose item 3.
+
+**Visible change in Audric (chat surface):** HEALTH CHECK card's `Collateral` / `Debt` 2-col grid now shows per-asset rows ("USDsui $9.18 · USDC $13.49") underneath the aggregate USD totals, matching the SAVINGS INFO card's per-asset breakdown that already shipped. Net effect: a user with mixed savings (USDC + USDsui) can see at a glance which asset is collateralizing what.
+
+**Engine side — `@t2000/engine@1.34.11`:**
+
+- `packages/engine/src/navi/transforms.ts`: extended `HealthFactorResult` interface with two optional arrays — `suppliedAssets?: HealthPositionAsset[]` and `borrowedAssets?: HealthPositionAsset[]`. Each row is `{ symbol, amount, valueUsd }`. New `HealthPositionAsset` type exported. Both fields are optional so older engine versions + the SDK fallback path remain valid `HealthFactorResult`s. `transformHealthFactor` populates them from the same `positions` array it already uses for aggregate totals (i.e. the engine had this data all along — it was just discarded).
+- `packages/engine/src/tools/health.ts`: `positionFetcher` branch re-keys `ServerPositionData.supplies` / `borrows_detail` (host-side `{ asset, amount, amountUsd, apy, protocol }`) onto the engine-side `HealthPositionAsset` shape (`{ symbol, amount, valueUsd }`), so audric sees one consistent payload regardless of whether the data came from positionFetcher or the NAVI MCP path. SDK agent fallback branch now spreads `...hf` first so future SDK upgrades that populate the new arrays flow through automatically (today the SDK returns aggregated only — fields remain undefined → audric falls back to aggregate-only render).
+- **4 new transform tests** in `__tests__/navi-transforms.test.ts` — covers: per-asset arrays populated from fixture, empty arrays (not undefined) when no positions exist, supply-only when borrow side is empty, per-asset values sum to aggregated totals.
+- **3 new tool tests** in `__tests__/health-check.test.ts` — covers: positionFetcher path emits re-keyed arrays, empty arrays when `supplies`/`borrows_detail` are empty, aggregated totals preserved alongside arrays (backward-compat).
+- Released via `gh workflow run release.yml --field bump=patch` → published to npm at 1.34.11.
+
+**Audric side — `@audric/web` bumped to `@t2000/engine@1.34.11`:**
+
+- `apps/web/components/engine/cards/HealthCardV2.tsx`: extended `HealthCardV2Data` with optional `suppliedAssets` + `borrowedAssets` (new `HealthAssetRow` type matching engine's `HealthPositionAsset`). When array present + non-empty, renders per-asset rows beneath aggregate as `font-mono text-[10px] tabular-nums text-fg-muted` with `flex justify-between` (symbol on left, USD on right). When absent OR empty `[]`, renders the original aggregate-only layout — every pre-Day-14b test still passes.
+- `apps/web/components/engine/ToolResultCard.tsx`: zero changes needed — adapter already passes the engine `data` object through via `Parameters<typeof HealthCardV2>[0]['data']` cast, so the new fields flow through automatically.
+- **7 new tests** in `apps/web/components/engine/cards/HealthCardV2.test.tsx` (under "Day 14b per-asset rows" describe block) — covers: per-asset Collateral rendered when suppliedAssets present, per-asset Debt rendered when borrowedAssets present, aggregate USD preserved as additive (not replacement), fallback to aggregate-only when arrays absent, fallback when arrays empty `[]`, supply-only when borrow array empty, single-asset case.
+
+**Verify gates — ALL GREEN:**
+
+- Engine: navi-transforms 37/37 + health-check 9/9 pass (was 33 + 6 → +7); full engine suite 1399/1400 passes (same pre-existing real-API multi-block-thinking flake from Day 14a).
+- Audric: HealthCardV2 26/26 pass (was 19/19 → +7); full web suite 3219/3219 (was 3212/3212 → +7). Typecheck clean.
+
+**What's NOT in scope yet** (next Week 4 cleanup slices):
+
+- HF *projection* (current → projected) — needs engine to also thread `supplied`/`borrowed`/`liquidationThreshold` so audric can compute the delta. With per-asset arrays now in place, this is the natural next slice for the BorrowPreviewBody / WithdrawPreviewBody confirm cards.
+- Per-asset Collateral/Debt arrays on `savings_info` tool result (`savings_info` already exposes per-asset positions via its own `positions` field — Day 14b only addressed `health_check`; check audric's SavingsCard for parity gaps).
+- Per-swap-leg routes for `harvest_rewards` PendingAction (deferred item 4).
+- `buildTool() → tool()` per-tool migration batch (deferred item 5 — preparation for Week 6 legacy deletion).
+
+**Cross-references:** Engine commit `55356eed` (npm v1.34.11). Audric commit `170d09b`. Founder smoke pending production deploy.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
