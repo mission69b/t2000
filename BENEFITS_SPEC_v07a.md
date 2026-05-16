@@ -1082,6 +1082,45 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 
 **Released as `@t2000/engine@1.34.12`** (engine commit `b52c55fe`). Audric bumped to 1.34.12 in commit `7731429`; the CardShell typecheck regression fix landed in `aa21d76`. Final production smoke (chat URL `s_1778913761389_6097ae0db79d`) confirms: clean single "Health factor" label, `USDsui $9.18` + `USDC $13.49` per-asset rows visible, no dust rows on either side, post-refresh persistence holds.
 
+---
+
+### Day 14c — Week 4 cleanup third slice: `projectedHF` on PendingAction (HF impact preview) (2026-05-16)
+
+**Goal:** When a user is about to borrow / repay / withdraw / save_deposit, show BOTH the current HF AND the projected HF after the action so the user sees the impact before tapping confirm. Closes the "no projection" gap Day 14a explicitly deferred (see Day 14a JSDoc on `currentHF`: *"No projection — engine does not yet thread the supplied/borrowed/ltv needed to compute one."*).
+
+**Design decision — engine owns the projection formula.** Two ways to do this: (A) engine threads raw `supplied` / `borrowed` / `liquidationThreshold` onto PendingAction, audric computes projection client-side; (B) engine computes `projectedHF` inside `enrichPendingActionWithLiveData`, audric just displays "current → projected". Chose B — single source of truth for the HF math, smaller PendingAction wire shape, audric stays a thin adapter. Trade-off accepted: if audric needs to do client-side what-if (e.g. live preview as user edits amount via modifiableFields), it loses the projection. Today that doesn't matter — modifiable amount fields recompute on the engine round-trip.
+
+**Engine changes (`@t2000/engine@1.34.13`):**
+
+- **`packages/engine/src/v2/enrich-pending-action.ts`** — added `projectHF()` helper that applies the action delta to live position data and re-runs the NAVI formula `HF = (supplied × LT) / borrowed`. The four tool branches: `borrow X` → `newBorrowed = borrowed + X`; `repay_debt X` → `newBorrowed = max(0, borrowed - X)`; `withdraw X` → `newSupplied = max(0, supplied - X)`; `save_deposit X` → `newSupplied = supplied + X`. Both supported saveable assets (USDC + USDsui) are stables, so `input.amount` is treated as USD 1:1 — accurate to ±$0.01, far below any HF tier threshold (1.1 / 1.5 / 2.0). Non-stable saveable assets (none today) would need a USD price conversion in the projection.
+- **`packages/engine/src/types.ts`** — extended `PendingAction` with `projectedHF?: number | null`. Also widened `currentHF` from `number | undefined` to `number | null | undefined`. The `null` value is the deliberate ∞ sentinel (no debt = infinitely safe). Pre-14c the engine omitted the field when HF was `Infinity` (no debt), which made "∞ before borrow → 4.5 after" indistinguishable from "no data at all" — both became `undefined`. 14c splits those by sending `null` for ∞ vs `undefined` for missing data.
+- **`packages/engine/src/v2/engine.ts`** — stamps the new `projectedHF` field on the emitted `pending_action` event next to `currentHF`.
+- **HF wire contract (final):**
+  - `number` → finite HF (real debt exists)
+  - `null` → ∞ sentinel (no debt)
+  - `undefined` → fetch failed / out-of-scope tool
+- **Dust handling** — `projectHF()` reuses the same `DEBT_DUST_USD = 0.01` constant as `serializeHf` in `tools/health.ts` and the per-asset filter in `transformHealthFactor`. After applying the delta, if `newBorrowed <= 0.01` we emit `null` (∞) instead of computing a divide-by-tiny value that would explode to a misleading 8500+ display.
+- **12 new tests + 1 updated test** in `enrich-pending-action.test.ts` (28 pass total). Coverage: each of the 4 tool branches with finite math; full repay clears to ∞; no-debt save / withdraw stays ∞; unknown liquidation threshold (=0) → projection undefined (graceful); zero amount → undefined; out-of-scope tool (send_transfer) → undefined; NAVI fetch failure → both currentHF and projectedHF undefined; sub-1.0 projection reports the danger value (guards block before user sees it, but projection is honest about the math). The updated Day 14a "Infinity is dropped" test now asserts `currentHF === null` + computes the projected from ∞ baseline.
+
+**Audric changes (commit `e5751c7`, bumped to engine 1.34.13):**
+
+- **`components/engine/preview-bodies/index.tsx`** — `HFRow` extended:
+  - Accepts `{ healthFactor: number | null, projected?: number | null }`.
+  - `formatHF()` helper: number → `toFixed(2)`; null / Infinity / >=99 → `∞`.
+  - `hfColor()` helper: tiered palette (error <1.1, warning <1.5, success otherwise); null treated as success.
+  - When `projected !== undefined`, renders `<current> → <projected>` with current dimmed (`text-fg-muted`) and projected emphasized. Color tier reflects PROJECTED (worst-case post-write state) — that's what the user is approving INTO.
+  - When `projected === undefined` (pre-14c engine or out-of-scope tool), falls back to single-value display unchanged.
+- **`PreviewBodyProps`** extended with `projectedHF?: number | null`; widened `currentHF` to `number | null`.
+- **All 4 preview bodies** (Borrow / Repay / Withdraw / SaveDeposit) wire `projectedHF` through to HFRow.
+- **`renderPreviewBody()` dispatcher** + **`PermissionCard.tsx`** pass `action.projectedHF` from the engine event.
+- **8 new tests** in `preview-bodies/index.test.tsx` (38 pass total). Coverage: each of the 4 tools renders current → projected; null currentHF + finite projectedHF renders "∞ → finite" (the "borrow into no-debt position" case); fully-cleared repay renders "current → ∞"; backward-compat fallback when projectedHF undefined; color tier follows projected not current (asserts `text-error-solid` on the wrapping span when projected=1.0 even if current=4.25).
+
+**Test posture.** Engine: 28/28 enrich tests pass, typecheck 0 errors, lint 0 errors. Audric: 38/38 preview-body tests pass, typecheck clean on changed files, lint clean on changed files (the 622 repo-wide lint errors are pre-existing in loadtest scripts + unrelated areas — not regressions).
+
+**Founder smoke pending Vercel deploy (commit `e5751c7` should land within ~3 min).** The expected delta on the next borrow / repay / withdraw / save confirm card: the existing single-value HF row becomes `<current> → <projected>` with the projected value dim-emphasis to draw the eye to the post-write state.
+
+**Cross-references:** Engine commit `992110ae` (npm v1.34.13). Audric commit `e5751c7`. Closes the "no projection" Day 14a deferred item.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
