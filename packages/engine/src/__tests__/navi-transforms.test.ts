@@ -446,6 +446,98 @@ describe('transformHealthFactor', () => {
     expect(suppliedSum).toBe(result.supplied);
     expect(borrowedSum).toBe(result.borrowed);
   });
+
+  // [Day 14b polish / 2026-05-16] Dust filter — drop sub-cent positions
+  // (`valueUsd < $0.01`) from the per-asset arrays. NAVI leaves dust
+  // after partial repays / oracle reprices a near-zero position; the
+  // aggregate totals collapse it but the per-asset rendering would
+  // otherwise show noise like "USDC $0.00" + "USDsui $0.00".
+  it('drops sub-cent dust positions from suppliedAssets / borrowedAssets', () => {
+    const dustyPositions: NaviRawPositionsResponse = {
+      address: '0xabc',
+      positions: [
+        // Real supply position
+        {
+          id: 'pos-1',
+          protocol: 'navi',
+          type: 'navi-lending-supply',
+          market: 'main',
+          tokenASymbol: 'USDC',
+          tokenAPrice: 1.0,
+          amountA: '5000.00',
+          valueUSD: '5000.00',
+          apr: '4.50',
+          liquidationThreshold: '0.85',
+        },
+        // Sub-cent supply (dust) — WBTC is NOT in the newer-pool 1000x
+        // factor list, so the valueUSD passes through unchanged. Using
+        // USDsui / USDe / USDSUI here would 1000x and escape the dust
+        // filter (`0.001 * 1000 = 1.0` is above $0.01).
+        {
+          id: 'pos-2',
+          protocol: 'navi',
+          type: 'navi-lending-supply',
+          market: 'main',
+          tokenASymbol: 'WBTC',
+          tokenAPrice: 68000,
+          amountA: '0.0000001',
+          valueUSD: '0.001',
+          apr: '4.00',
+          liquidationThreshold: '0.85',
+        },
+        // Sub-cent borrow (dust leftover after repay)
+        {
+          id: 'pos-3',
+          protocol: 'navi',
+          type: 'navi-lending-borrow',
+          market: 'main',
+          tokenASymbol: 'WBTC',
+          tokenAPrice: 68000,
+          amountA: '0.0000001',
+          valueUSD: '0.001',
+          apr: '6.80',
+          liquidationThreshold: '0.85',
+        },
+      ],
+    };
+    const result = transformHealthFactor(
+      { address: '0xabc', healthFactor: null },
+      dustyPositions,
+    );
+    // Only the real supply position survives the dust filter.
+    expect(result.suppliedAssets).toEqual([
+      { symbol: 'USDC', amount: 5000, valueUsd: 5000 },
+    ]);
+    // No borrows pass the filter (the only borrow was dust).
+    expect(result.borrowedAssets).toEqual([]);
+  });
+
+  it('keeps positions exactly at the dust threshold ($0.01)', () => {
+    const thresholdPositions: NaviRawPositionsResponse = {
+      address: '0xabc',
+      positions: [
+        {
+          id: 'pos-1',
+          protocol: 'navi',
+          type: 'navi-lending-supply',
+          market: 'main',
+          tokenASymbol: 'USDC',
+          tokenAPrice: 1.0,
+          amountA: '0.01',
+          valueUSD: '0.01',
+          apr: '4.50',
+          liquidationThreshold: '0.85',
+        },
+      ],
+    };
+    const result = transformHealthFactor(
+      { address: '0xabc', healthFactor: null },
+      thresholdPositions,
+    );
+    // Boundary: $0.01 passes (the filter uses `>=`, not `>`).
+    expect(result.suppliedAssets).toHaveLength(1);
+    expect(result.suppliedAssets![0].valueUsd).toBe(0.01);
+  });
 });
 
 // ---------------------------------------------------------------------------

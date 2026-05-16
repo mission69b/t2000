@@ -117,16 +117,26 @@ export const healthCheckTool = buildTool({
       // [Day 14b] Per-asset arrays from ServerPositionData — re-map
       // `amount/amountUsd` → `amount/valueUsd` so the host-side shape
       // matches the NAVI MCP path's HealthPositionAsset shape exactly.
-      const suppliedAssets = sp.supplies.map((s) => ({
-        symbol: s.asset,
-        amount: s.amount,
-        valueUsd: s.amountUsd,
-      }));
-      const borrowedAssets = sp.borrows_detail.map((b) => ({
-        symbol: b.asset,
-        amount: b.amount,
-        valueUsd: b.amountUsd,
-      }));
+      //
+      // [Day 14b polish / 2026-05-16] Same sub-cent dust filter as the
+      // NAVI MCP path (`transformHealthFactor` in `navi/transforms.ts`).
+      // NAVI leaves sub-cent dust after partial repays; without this
+      // filter the card renders rows like "USDC $0.00" + "USDsui $0.00"
+      // that the aggregate already shows as collapsed to "$0.00".
+      const suppliedAssets = sp.supplies
+        .filter((s) => s.amountUsd >= DEBT_DUST_USD)
+        .map((s) => ({
+          symbol: s.asset,
+          amount: s.amount,
+          valueUsd: s.amountUsd,
+        }));
+      const borrowedAssets = sp.borrows_detail
+        .filter((b) => b.amountUsd >= DEBT_DUST_USD)
+        .map((b) => ({
+          symbol: b.asset,
+          amount: b.amount,
+          valueUsd: b.amountUsd,
+        }));
       return {
         data: {
           healthFactor: transportHf,

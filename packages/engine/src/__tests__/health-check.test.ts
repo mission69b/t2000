@@ -130,6 +130,39 @@ describe('health_check tool — Day 14b per-asset arrays (positionFetcher)', () 
     expect(data.borrowedAssets).toEqual([]);
   });
 
+  it('drops sub-cent dust positions from suppliedAssets / borrowedAssets', async () => {
+    // [Day 14b polish] NAVI leaves dust after partial repays. Without
+    // the dust filter, audric would render rows like "USDe $0.00" /
+    // "USDsui $0.00" that the aggregate already collapses to "$0.00".
+    const result = await healthCheckTool.call(
+      {},
+      ctxFor({
+        savings: 5000.001, // ~5000 + dust
+        borrows: 0.001, // pure dust
+        healthFactor: null,
+        supplies: [
+          { asset: 'USDC', amount: 5000, amountUsd: 5000, apy: 0.044, protocol: 'navi' },
+          { asset: 'USDe', amount: 0.001, amountUsd: 0.001, apy: 0.04, protocol: 'navi' },
+          { asset: 'SUI', amount: 0.0001, amountUsd: 0.0005, apy: 0.032, protocol: 'navi' },
+        ],
+        borrows_detail: [
+          { asset: 'USDsui', amount: 0.001, amountUsd: 0.001, apy: 0.068, protocol: 'navi' },
+          { asset: 'USDC', amount: 0.001, amountUsd: 0.001, apy: 0.068, protocol: 'navi' },
+        ],
+      }),
+    );
+    const data = result.data as {
+      suppliedAssets: Array<{ symbol: string; valueUsd: number }>;
+      borrowedAssets: Array<{ symbol: string; valueUsd: number }>;
+    };
+    // Only USDC ($5000) survives — USDe + SUI are sub-cent.
+    expect(data.suppliedAssets).toEqual([
+      { symbol: 'USDC', amount: 5000, valueUsd: 5000 },
+    ]);
+    // All borrows were dust.
+    expect(data.borrowedAssets).toEqual([]);
+  });
+
   it('preserves the aggregated totals alongside the per-asset arrays (backward-compat)', async () => {
     const result = await healthCheckTool.call(
       {},

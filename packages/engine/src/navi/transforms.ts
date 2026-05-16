@@ -269,11 +269,20 @@ export function transformHealthFactor(
   // [Day 14b] Per-asset arrays — same positions data, just not aggregated.
   // Empty arrays (no positions of that side) emit as `[]` rather than
   // `undefined` so audric can treat presence consistently.
+  //
+  // [Day 14b polish / 2026-05-16] Dust filter — drop sub-cent positions
+  // (`valueUsd < $0.01`). NAVI leaves sub-cent dust after partial repays
+  // or oracle reprices a near-zero position; the aggregate `supplied` /
+  // `borrowed` totals collapse them to "$0.00" but the per-asset arrays
+  // would otherwise render rows like "USDC $0.00" + "USDsui $0.00" which
+  // is pure noise. Matches the same `DEBT_DUST_USD` semantics the health
+  // status / `serializeHf` use in `tools/health.ts`.
+  const ASSET_DUST_USD = 0.01;
   const suppliedAssets: HealthPositionAsset[] = positions
-    .filter((p) => p.type === 'supply')
+    .filter((p) => p.type === 'supply' && p.valueUsd >= ASSET_DUST_USD)
     .map((p) => ({ symbol: p.symbol, amount: p.amount, valueUsd: p.valueUsd }));
   const borrowedAssets: HealthPositionAsset[] = positions
-    .filter((p) => p.type === 'borrow')
+    .filter((p) => p.type === 'borrow' && p.valueUsd >= ASSET_DUST_USD)
     .map((p) => ({ symbol: p.symbol, amount: p.amount, valueUsd: p.valueUsd }));
 
   return {
