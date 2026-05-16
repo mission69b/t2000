@@ -20,6 +20,7 @@ import { describe, it, expect } from 'vitest';
 import { buildNeedsApproval } from './need-approval.js';
 import type { InternalContext } from './internal-context.js';
 import type { ToolContext } from '../types.js';
+import { createGuardRunnerState } from '../guards.js';
 
 const baseToolContext = (overrides: Partial<ToolContext> = {}): ToolContext => ({
   signal: new AbortController().signal,
@@ -38,13 +39,7 @@ const baseInternal = (toolContext: ToolContext): InternalContext => ({
     permissionConfig: undefined,
     priceCache: undefined,
   },
-  guardState: {
-    sentRecipients: new Set(),
-    proposedActions: new Map(),
-    lastBalanceCheck: 0,
-    lastHealthCheck: 0,
-    sessionAutoSpend: 0,
-  },
+  guardState: createGuardRunnerState(),
   getMessages: () => [],
 });
 
