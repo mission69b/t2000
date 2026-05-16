@@ -154,16 +154,22 @@ The first session of Batch A produces:
 
 | Batch | Started | Closed | Engine version |
 |---|---|---|---|
-| A — simple reads (5/10 — proof of pattern) | 2026-05-16 | partial | 1.35.0 |
-| A — simple reads (remaining 5: balance_check, savings_info, health_check, rates_info, mpp_services) | — | — | — |
+| **A — simple reads (10/10 CLOSED)** | 2026-05-16 | 2026-05-16 | 1.35.0 → 1.35.1 |
 | B — simple writes | — | — | — |
 | C — medium reads | — | — | — |
 | D — medium writes | — | — | — |
 | E — complex reads | — | — | — |
 | F — complex writes | — | — | — |
 
-### Batch A progress detail (2026-05-16)
+### Batch A — CLOSED (2026-05-16, two sessions)
 
-**Migrated (5/10):** `web_search`, `yield_summary`, `volo_stats`, `protocol_deep_dive`, `token_prices`. All use `defineTool` + zero hand-written `jsonSchema`. Tests + typecheck + lint clean. Engine release 1.35.0.
+**Session 1 (engine 1.35.0):** `web_search`, `yield_summary`, `volo_stats`, `protocol_deep_dive`, `token_prices`. Established the `defineTool` factory + parity test contract.
 
-**Remaining (5/10):** `balance_check`, `savings_info`, `health_check`, `rates_info`, `mpp_services`. Pattern is now locked — remaining 5 = ~30 min of mechanical work. Deferred to next session.
+**Session 2 (engine 1.35.1):** `balance_check`, `savings_info`, `health_check`, `rates_info`, `mpp_services`. Mechanical migration following locked template — confirmed `defineTool` scales identically to tools with caching flags (`cacheable: false` on 3 of 5) + result budgeting (`maxResultSizeChars: 12_000` on `mpp_services`) + array/enum Zod fields (`rates_info`, `mpp_services`).
+
+**Total Batch A:** 10/10 tools migrated. ~70 lines of hand-written `jsonSchema` duplication eliminated. Zero behavioral changes (same Tool shape, same emitted events, same display text). Zero engine wiring changes (`buildTool` and `defineTool` both consumed unchanged by `toAISDKTools` wrapper).
+
+**Empirical findings to carry into Batch B:**
+- The `defineTool` template handles every `buildTool` option that Batch A exercised: `cacheable: false`, `maxResultSizeChars`, optional Zod fields, array/enum Zod fields, optional address strings, multi-property objects.
+- `preflight` was NOT exercised in Batch A (no simple-read tool has preflight). Batch B (writes) is the first batch that tests preflight pass-through.
+- `isReadOnly: false` was NOT exercised. Batch B is the first batch where the default `isReadOnly` path matters (`buildTool` defaults `isReadOnly: true` ⇒ `permissionLevel: 'auto'`; writes need `isReadOnly: false` ⇒ `permissionLevel: 'confirm'`).

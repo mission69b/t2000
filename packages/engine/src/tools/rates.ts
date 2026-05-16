@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { fetchRates } from '../navi/reads.js';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 import { hasNaviMcpGlobal, getMcpManager, hasAgent, requireAgent } from './utils.js';
 
 // [v1.4 — Day 3] DefiLlama fallback removed. The two upstream tiers
@@ -105,7 +106,7 @@ function formatRatesSummary(rates: RateMap): string {
     .join(', ');
 }
 
-export const ratesInfoTool = buildTool({
+export const ratesInfoTool = defineTool({
   name: 'rates_info',
   description:
     'NAVI Protocol lending markets ONLY (single-sided save/borrow, no impermanent-loss risk). Use this for stablecoin and bluechip lending yields. Renders a rich rates card. Filter args: `assets` (specific symbols like ["USDC"]), `stableOnly` (true to show only USD-pegged assets), `topN` (max rows in card, default 8, max 50).',
@@ -124,27 +125,8 @@ export const ratesInfoTool = buildTool({
       .min(1)
       .max(50)
       .optional()
-      .describe('Cap the number of rows in the card (default 8). Use 50 to render the full NAVI catalog.'),
+      .describe('Cap the number of rows in the card (default 8, max 50). Use 50 to render the full NAVI catalog.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      assets: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Filter to specific asset symbols (case-insensitive).',
-      },
-      stableOnly: {
-        type: 'boolean',
-        description: 'When true, return only stablecoin markets. Ignored when `assets` is supplied.',
-      },
-      topN: {
-        type: 'number',
-        description: 'Cap the number of rows in the card (default 8, max 50).',
-      },
-    },
-    required: [],
-  },
   isReadOnly: true,
 
   async call(input, context) {

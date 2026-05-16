@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { fetchHealthFactor } from '../navi/reads.js';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
 import { normalizeAddressInput } from '../sui/address.js';
 
@@ -55,7 +56,7 @@ function displayHfText(
   return `${subject}: ${hf.toFixed(2)} (${status})`;
 }
 
-export const healthCheckTool = buildTool({
+export const healthCheckTool = defineTool({
   name: 'health_check',
   description:
     'Check the lending health factor for the signed-in user OR any public Sui address or SuiNS name: current HF ratio, total supplied collateral, total borrowed, max additional borrow capacity, and liquidation threshold. HF < 1.5 is risky, < 1.2 is critical. When the address has no debt the tool returns healthFactor=null (semantically infinity) — render that as "Healthy" / ∞, never as 0 or "Critical". Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
@@ -63,18 +64,8 @@ export const healthCheckTool = buildTool({
     address: z
       .string()
       .optional()
-      .describe('Sui address (0x…) or SuiNS name (alex.sui). Defaults to the signed-in wallet when omitted.'),
+      .describe('Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      address: {
-        type: 'string',
-        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
-      },
-    },
-    required: [],
-  },
   isReadOnly: true,
   // [v1.5.1] Health factor changes on every borrow / repay / collateral
   // movement and even passively as oracle prices update. Never dedupe.

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
 import type { McpClientManager } from '../mcp/client.js';
 import { NAVI_SERVER_NAME, NaviTools } from '../navi/config.js';
@@ -110,7 +111,7 @@ async function loadPortfolio(
   return portfolio;
 }
 
-export const balanceCheckTool = buildTool({
+export const balanceCheckTool = defineTool({
   name: 'balance_check',
   description:
     'Get the full balance breakdown for the signed-in user OR any public Sui address or SuiNS name. Returns wallet holdings (tokens the address owns — NOT savings), NAVI savings deposits (USDC and/or USDsui deposited into NAVI Protocol earning yield), outstanding debt, pending rewards, gas reserve, total net worth, saveableUsdc (USDC wallet balance available to save), and saveableUsdsui (USDsui wallet balance available to save — surfaces only when > 0). IMPORTANT: wallet holdings like GOLD, SUI, USDT, USDe are NOT savings positions and are NOT saveable — only USDC and USDsui can be saved/borrowed. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
@@ -118,18 +119,8 @@ export const balanceCheckTool = buildTool({
     address: z
       .string()
       .optional()
-      .describe('Sui address (0x…) or SuiNS name (alex.sui). Defaults to the signed-in wallet when omitted.'),
+      .describe('Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      address: {
-        type: 'string',
-        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
-      },
-    },
-    required: [],
-  },
   isReadOnly: true,
   // [v1.4 BlockVision] Wallet contents change after every send / swap /
   // save / etc. and the price half of this result is sourced from

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { resolveTokenType, getDecimalsForCoinType } from '@t2000/sdk';
 import { fetchSavings } from '../navi/reads.js';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
 import { normalizeAddressInput } from '../sui/address.js';
 import type { PositionEntry, SavingsResult } from '../navi/transforms.js';
@@ -111,7 +112,7 @@ function formatSavingsDisplay(
   return lines.join('\n');
 }
 
-export const savingsInfoTool = buildTool({
+export const savingsInfoTool = defineTool({
   name: 'savings_info',
   description:
     'Get detailed savings positions and earnings for the signed-in user OR any public Sui address or SuiNS name: current deposits by protocol, APY, total yield earned, daily earning rate, and projected monthly returns. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
@@ -119,18 +120,8 @@ export const savingsInfoTool = buildTool({
     address: z
       .string()
       .optional()
-      .describe('Sui address (0x…) or SuiNS name (alex.sui). Defaults to the signed-in wallet when omitted.'),
+      .describe('Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      address: {
-        type: 'string',
-        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
-      },
-    },
-    required: [],
-  },
   isReadOnly: true,
   // [v1.5.1] NAVI deposits change on save_deposit / withdraw / claim.
   // Each call reflects a fresh on-chain snapshot — never dedupe.

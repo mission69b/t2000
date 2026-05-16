@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 
 const MPP_GATEWAY = 'https://mpp.t2000.ai';
 const CATALOG_URL = `${MPP_GATEWAY}/api/services`;
@@ -60,7 +61,7 @@ function matchesQuery(service: GatewayService, q: string): boolean {
   );
 }
 
-export const mppServicesTool = buildTool({
+export const mppServicesTool = defineTool({
   name: 'mpp_services',
   description:
     'Discover available MPP gateway services. Returns service names, descriptions, endpoints with required parameters, and pricing. Use BEFORE calling pay_api. With no args, returns the FULL catalog as a single card (default behavior — covers "show me available MPP services", "what services exist", "show me all MPP services"). Use `query` to keyword-search a specific need ("translate", "weather", "postcard"). Use `category` to filter to one category. Use `mode: "summary"` only if you explicitly want a category-counts overview without the full list.',
@@ -78,25 +79,6 @@ export const mppServicesTool = buildTool({
       .optional()
       .describe('"full" (default) returns the entire catalog in one card. "summary" returns category counts only — use this only when the user explicitly asks for a category overview.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description: 'Filter by keyword (e.g. "postcard", "translate", "weather").',
-      },
-      category: {
-        type: 'string',
-        description: 'Filter by category exactly (e.g. "weather", "image").',
-      },
-      mode: {
-        type: 'string',
-        enum: ['summary', 'full'],
-        description: '"full" (default) returns the entire catalog in one card. "summary" returns category counts only.',
-      },
-    },
-    required: [],
-  },
   isReadOnly: true,
   // [v0.46.6] Bumped to fit the full catalog (~40 services) in one
   // shot when `mode: 'full'` is used. The summarizeOnTruncate path

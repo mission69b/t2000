@@ -1253,6 +1253,52 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 
 **Status: Batch A 5/10 — proof of pattern verified, template ready to scale.** Tomorrow's session: finish Batch A (remaining 5 tools, ~30 min) then start Batch B (simple writes) which validates the write/preflight/permission plumbing once for 7 tools.
 
+---
+
+### Day 18 — Phase 2 Batch A CLOSED (10/10 simple-read tools migrated) (2026-05-16)
+
+**Framing (founder, immediately after Day 17):** *"ok cool wahts next"* → chose "finish Batch A" over "production smoke" or "skip to Batch B".
+
+**Goal.** Close Batch A — migrate the remaining 5 simple-read tools and verify the `defineTool` template scales to tools with the full range of `buildTool` features that Batch A's first 5 didn't exercise.
+
+**Migration approach.** Pure mechanical: 5 tools × (1 import change + 1 factory rename + 1 jsonSchema-block delete) each. No design decisions, no new abstractions — the template was locked in Day 17. Sole judgment call: each tool's hand-written `description` for the `address` field was richer than the bare Zod `.describe()` (it described SuiNS resolution semantics). Folded the richer prose INTO the Zod `.describe()` so the auto-generated jsonSchema preserves the same field-level help the LLM was seeing before.
+
+**5 tools migrated (Batch A 10/10):**
+
+| Tool | LoC delta | buildTool features exercised | Hand-written jsonSchema removed |
+|---|---|---|---|
+| `balance_check` | -8 | `cacheable: false`, optional address Zod field | yes (10 lines) |
+| `savings_info` | -8 | `cacheable: false`, optional address Zod field | yes (10 lines) |
+| `health_check` | -8 | `cacheable: false`, optional address Zod field | yes (10 lines) |
+| `rates_info` | -16 | array Zod field (`assets`), boolean Zod field, number Zod field with min/max | yes (18 lines) |
+| `mpp_services` | -16 | `maxResultSizeChars: 12_000`, optional Zod fields, enum Zod field (`mode`) | yes (18 lines) |
+
+**Total Batch A line-count delta:** ~33 lines (Day 17 session 1) + ~56 lines (today) = **~89 lines of duplicated `jsonSchema` boilerplate eliminated** across 10 tools. Extrapolating: ~180-220 more lines across the remaining 29 tools when Batches B-F finish.
+
+**Empirical findings (carry into Batch B):**
+
+- The `defineTool` template handled every `buildTool` option that Batch A exercised: `cacheable: false`, `maxResultSizeChars`, optional Zod fields, array Zod fields, enum Zod fields, number Zod fields with bounds, multi-property objects. Zero template changes needed.
+- **`preflight` was NOT exercised in Batch A** — no simple-read tool has preflight. Batch B (writes) is the first batch that tests preflight pass-through. The Day 17 unit test (`v2/define-tool.test.ts` → "preserves preflight") already locked this contract, but Batch B is the real-world validation.
+- **`isReadOnly: false` was NOT exercised** either. `buildTool` defaults `isReadOnly: true` → `permissionLevel: 'auto'`; writes flip both. The Day 17 unit test ("preserves explicit metadata") locked this too — Batch B is the real-world validation.
+
+**Verification:** All gates clean.
+- `pnpm --filter @t2000/engine typecheck` — 0 errors
+- `pnpm --filter @t2000/engine lint` — 0 errors (6 pre-existing test warnings unchanged)
+- `pnpm --filter @t2000/engine test` — 1423/1424 passed (1 pre-existing `multi-block-thinking` real-Anthropic-API flake, unrelated to changes — same failure as Day 17 and Day 14c with no code changes)
+- `pnpm --filter @t2000/engine build` — green (dist size unchanged at 491.12 KB)
+
+**Release:** engine 1.35.1 (patch bump — internal refactor only, no public API additions vs 1.35.0).
+
+**Audric bump:** `@t2000/engine@1.35.1` adopted via `pnpm add`. No code change required in audric.
+
+**Status: Batch A CLOSED. 10/10 simple-read tools on `defineTool`. Template proven to scale across cache flags / result budgeting / array+enum Zod fields.**
+
+**Next session = Batch B (simple writes, 7 tools):** `save_deposit`, `withdraw`, `borrow`, `repay_debt`, `send_transfer`, `claim_rewards`, `save_contact`. Estimated ~1 session. First batch to exercise:
+1. `preflight` pass-through through `defineTool` (every write tool has it)
+2. `isReadOnly: false` + `permissionLevel: 'confirm'` defaults
+3. The 14-guard pipeline running against migrated tools (must verify guards still fire correctly)
+4. Founder smoke on at least 1 production write per Batch B (per `PHASE_2_TOOL_MIGRATION_BACKLOG.md` per-batch acceptance gate)
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
