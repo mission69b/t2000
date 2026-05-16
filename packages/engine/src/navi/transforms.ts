@@ -100,12 +100,34 @@ export interface RatesResult {
   };
 }
 
+/**
+ * [SPEC 37 v0.7a Week 4 cleanup — Day 14b / 2026-05-16] Per-asset
+ * supply / borrow row used by the `suppliedAssets` / `borrowedAssets`
+ * arrays on `HealthFactorResult`. Sourced from the same NAVI positions
+ * payload that drives the aggregated `supplied` / `borrowed` totals.
+ */
+export interface HealthPositionAsset {
+  symbol: string;
+  amount: number;
+  valueUsd: number;
+}
+
 export interface HealthFactorResult {
   healthFactor: number;
   supplied: number;
   borrowed: number;
   maxBorrow: number;
   liquidationThreshold: number;
+  /**
+   * [Day 14b] Per-asset supply positions. Engine has had this data all
+   * along (it's the same `positions` array used to compute `supplied`),
+   * it just wasn't surfaced. Audric `HealthCardV2` renders these as a
+   * per-asset breakdown when present; falls back to aggregate-only when
+   * absent (degraded transports / SDK fallback path).
+   */
+  suppliedAssets?: HealthPositionAsset[];
+  /** [Day 14b] Per-asset borrow positions. Same provenance + fallback. */
+  borrowedAssets?: HealthPositionAsset[];
 }
 
 export interface BalanceResult {
@@ -244,12 +266,24 @@ export function transformHealthFactor(
 
   const maxBorrow = supplied * weightedLt - borrowed;
 
+  // [Day 14b] Per-asset arrays — same positions data, just not aggregated.
+  // Empty arrays (no positions of that side) emit as `[]` rather than
+  // `undefined` so audric can treat presence consistently.
+  const suppliedAssets: HealthPositionAsset[] = positions
+    .filter((p) => p.type === 'supply')
+    .map((p) => ({ symbol: p.symbol, amount: p.amount, valueUsd: p.valueUsd }));
+  const borrowedAssets: HealthPositionAsset[] = positions
+    .filter((p) => p.type === 'borrow')
+    .map((p) => ({ symbol: p.symbol, amount: p.amount, valueUsd: p.valueUsd }));
+
   return {
     healthFactor: toNum(hf?.healthFactor) || (borrowed === 0 ? Infinity : 0),
     supplied,
     borrowed,
     maxBorrow: Math.max(0, maxBorrow),
     liquidationThreshold: weightedLt,
+    suppliedAssets,
+    borrowedAssets,
   };
 }
 

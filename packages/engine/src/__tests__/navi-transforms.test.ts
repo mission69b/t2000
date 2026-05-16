@@ -392,6 +392,60 @@ describe('transformHealthFactor', () => {
     expect(result.liquidationThreshold).toBe(0);
     expect(result.maxBorrow).toBe(0);
   });
+
+  // ── Day 14b — per-asset arrays ────────────────────────────────────────
+  // These arrays let audric's HealthCardV2 swap its aggregate "$22.67"
+  // for a per-asset breakdown ("USDsui $9.18 · USDC $13.49"). Same
+  // positions data the aggregates already consume — just not discarded.
+
+  it('populates suppliedAssets + borrowedAssets per-asset arrays', () => {
+    const result = transformHealthFactor(HEALTH_FACTOR, POSITIONS_RESPONSE);
+    expect(result.suppliedAssets).toEqual([
+      { symbol: 'USDC', amount: 5000, valueUsd: 5000 },
+      { symbol: 'SUI', amount: 1000, valueUsd: 3500 },
+    ]);
+    expect(result.borrowedAssets).toEqual([
+      { symbol: 'USDC', amount: 2000, valueUsd: 2000 },
+    ]);
+  });
+
+  it('emits empty arrays (not undefined) when no positions exist', () => {
+    const result = transformHealthFactor(
+      { address: '0xabc', healthFactor: null },
+      { address: '0xabc', positions: [] },
+    );
+    expect(result.suppliedAssets).toEqual([]);
+    expect(result.borrowedAssets).toEqual([]);
+  });
+
+  it('emits supply-only assets when borrow side is empty', () => {
+    const noBorrowPositions: NaviRawPositionsResponse = {
+      address: '0xabc',
+      positions: [POSITIONS_RESPONSE.positions[0]],
+    };
+    const result = transformHealthFactor(
+      { address: '0xabc', healthFactor: null },
+      noBorrowPositions,
+    );
+    expect(result.suppliedAssets).toEqual([
+      { symbol: 'USDC', amount: 5000, valueUsd: 5000 },
+    ]);
+    expect(result.borrowedAssets).toEqual([]);
+  });
+
+  it('per-asset arrays sum to the aggregated totals', () => {
+    const result = transformHealthFactor(HEALTH_FACTOR, POSITIONS_RESPONSE);
+    const suppliedSum = (result.suppliedAssets ?? []).reduce(
+      (acc, p) => acc + p.valueUsd,
+      0,
+    );
+    const borrowedSum = (result.borrowedAssets ?? []).reduce(
+      (acc, p) => acc + p.valueUsd,
+      0,
+    );
+    expect(suppliedSum).toBe(result.supplied);
+    expect(borrowedSum).toBe(result.borrowed);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -79,3 +79,87 @@ describe('health_check tool — zero-debt regression coverage', () => {
     expect(result.displayText).not.toMatch(/critical/i);
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Day 14b — per-asset arrays via positionFetcher
+//
+// Maps ServerPositionData's `supplies` / `borrows_detail` (engine's host-
+// shape) onto the engine-shape HealthPositionAsset arrays expected by
+// HealthCardV2. The mapping is a re-key (asset→symbol, amountUsd→valueUsd)
+// so the audric consumer sees one consistent shape regardless of whether
+// the data came from positionFetcher OR the NAVI MCP path.
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('health_check tool — Day 14b per-asset arrays (positionFetcher)', () => {
+  it('emits suppliedAssets + borrowedAssets re-keyed from ServerPositionData', async () => {
+    const result = await healthCheckTool.call(
+      {},
+      ctxFor({
+        savings: 22.67,
+        borrows: 5.01,
+        healthFactor: 3.72,
+        supplies: [
+          { asset: 'USDsui', amount: 9.18, amountUsd: 9.18, apy: 0.083, protocol: 'navi' },
+          { asset: 'USDC', amount: 13.49, amountUsd: 13.49, apy: 0.044, protocol: 'navi' },
+        ],
+        borrows_detail: [
+          { asset: 'USDC', amount: 5.01, amountUsd: 5.01, apy: 0.068, protocol: 'navi' },
+        ],
+      }),
+    );
+    const data = result.data as {
+      suppliedAssets: Array<{ symbol: string; amount: number; valueUsd: number }>;
+      borrowedAssets: Array<{ symbol: string; amount: number; valueUsd: number }>;
+    };
+    expect(data.suppliedAssets).toEqual([
+      { symbol: 'USDsui', amount: 9.18, valueUsd: 9.18 },
+      { symbol: 'USDC', amount: 13.49, valueUsd: 13.49 },
+    ]);
+    expect(data.borrowedAssets).toEqual([
+      { symbol: 'USDC', amount: 5.01, valueUsd: 5.01 },
+    ]);
+  });
+
+  it('emits empty arrays when ServerPositionData supplies/borrows_detail are empty', async () => {
+    const result = await healthCheckTool.call({}, ctxFor({ savings: 0, borrows: 0 }));
+    const data = result.data as {
+      suppliedAssets: unknown[];
+      borrowedAssets: unknown[];
+    };
+    expect(data.suppliedAssets).toEqual([]);
+    expect(data.borrowedAssets).toEqual([]);
+  });
+
+  it('preserves the aggregated totals alongside the per-asset arrays (backward-compat)', async () => {
+    const result = await healthCheckTool.call(
+      {},
+      ctxFor({
+        savings: 22.67,
+        borrows: 5.01,
+        healthFactor: 3.72,
+        maxBorrow: 12.34,
+        supplies: [
+          { asset: 'USDsui', amount: 9.18, amountUsd: 9.18, apy: 0.083, protocol: 'navi' },
+          { asset: 'USDC', amount: 13.49, amountUsd: 13.49, apy: 0.044, protocol: 'navi' },
+        ],
+        borrows_detail: [
+          { asset: 'USDC', amount: 5.01, amountUsd: 5.01, apy: 0.068, protocol: 'navi' },
+        ],
+      }),
+    );
+    const data = result.data as {
+      healthFactor: number | null;
+      supplied: number;
+      borrowed: number;
+      maxBorrow: number;
+      suppliedAssets: unknown[];
+      borrowedAssets: unknown[];
+    };
+    expect(data.healthFactor).toBe(3.72);
+    expect(data.supplied).toBe(22.67);
+    expect(data.borrowed).toBe(5.01);
+    expect(data.maxBorrow).toBe(12.34);
+    expect(data.suppliedAssets).toHaveLength(2);
+    expect(data.borrowedAssets).toHaveLength(1);
+  });
+});

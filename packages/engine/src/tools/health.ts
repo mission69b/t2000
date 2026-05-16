@@ -114,6 +114,19 @@ export const healthCheckTool = buildTool({
       const rawHf = sp.healthFactor ?? (borrowed > 0 ? 0 : Infinity);
       const status = hfStatus(rawHf, borrowed);
       const transportHf = serializeHf(rawHf, borrowed);
+      // [Day 14b] Per-asset arrays from ServerPositionData — re-map
+      // `amount/amountUsd` → `amount/valueUsd` so the host-side shape
+      // matches the NAVI MCP path's HealthPositionAsset shape exactly.
+      const suppliedAssets = sp.supplies.map((s) => ({
+        symbol: s.asset,
+        amount: s.amount,
+        valueUsd: s.amountUsd,
+      }));
+      const borrowedAssets = sp.borrows_detail.map((b) => ({
+        symbol: b.asset,
+        amount: b.amount,
+        valueUsd: b.amountUsd,
+      }));
       return {
         data: {
           healthFactor: transportHf,
@@ -125,6 +138,8 @@ export const healthCheckTool = buildTool({
           address: targetAddress,
           isSelfQuery,
           suinsName,
+          suppliedAssets,
+          borrowedAssets,
         },
         displayText: displayHfText(transportHf, borrowed, status, isSelfQuery, targetAddress, suinsName),
       };
@@ -160,6 +175,12 @@ export const healthCheckTool = buildTool({
 
     return {
       data: {
+        // [Day 14b] Spread `hf` first so per-asset arrays
+        // (`suppliedAssets` / `borrowedAssets`) flow through whenever the
+        // SDK populates them. The explicit fields below override the
+        // top-level totals for transport-safety (HF Infinity → null,
+        // etc.) without dropping the new arrays.
+        ...hf,
         healthFactor: transportHf,
         supplied: hf.supplied,
         borrowed,
