@@ -886,6 +886,10 @@ export class AISDKEngine {
         attemptId,
         ...(liveData.borrowApyBps !== undefined ? { borrowApyBps: liveData.borrowApyBps } : {}),
         ...(liveData.currentHF !== undefined ? { currentHF: liveData.currentHF } : {}),
+        // [Day 14c] projectedHF — render alongside currentHF as
+        // "current → projected" so user sees the HF delta before
+        // approving.
+        ...(liveData.projectedHF !== undefined ? { projectedHF: liveData.projectedHF } : {}),
       };
 
       yield { type: 'pending_action', action };

@@ -627,25 +627,53 @@ export interface PendingAction {
    */
   borrowApyBps?: number;
   /**
-   * [SPEC 37 v0.7a Week 4 cleanup — Day 14a / 2026-05-16] Current health
-   * factor BEFORE the pending write executes. Stamped at `pending_action`
-   * emit time from the NAVI health-factor cache (30s TTL); fetches fresh
-   * on cache miss.
+   * [SPEC 37 v0.7a Week 4 cleanup — Day 14a / 2026-05-16, extended
+   * Day 14c / 2026-05-16] Current health factor BEFORE the pending
+   * write executes. Stamped at `pending_action` emit time from the
+   * NAVI health-factor cache (30s TTL); fetches fresh on cache miss.
    *
    * **Populated for:** writes that change HF — `borrow`, `withdraw`,
    * `save_deposit`, `repay_debt`. (Send / swap / pay don't touch HF.)
-   * **Undefined when:** NAVI MCP unavailable, wallet has no positions
-   * (HF is effectively `Infinity`), or tool doesn't affect HF.
    *
-   * **Audric V2 contract.** Combined with the write's input (amount /
-   * asset / direction), audric computes the projected post-write HF
-   * client-side and renders the `HFGauge` primitive with the current →
-   * projected delta. Falling back to "no HF row" when undefined keeps
-   * the card honest about what we know.
+   * **HF semantics (Day 14c):**
+   *   - `number` — finite HF (real debt exists)
+   *   - `null` — deliberate ∞ sentinel (no debt = infinitely safe).
+   *     Pre-14c the engine omitted the field for the ∞ case, which
+   *     made it impossible to distinguish "∞ before borrow" (we want
+   *     to show "∞ → 4.5") from "no data" (we hide the row). 14c
+   *     splits those by sending `null` for ∞ vs `undefined` for
+   *     missing data.
+   *   - `undefined` — NAVI MCP unavailable / fetch failed.
+   *
+   * **Audric V2 contract.** With `projectedHF` shipped (Day 14c)
+   * audric renders both as "current → projected" in HFRow / HFGauge.
+   * The engine owns the projection formula so audric stays a thin
+   * adapter.
    *
    * **v2-only (Week 6).** Same rationale as `borrowApyBps`.
    */
-  currentHF?: number;
+  currentHF?: number | null;
+  /**
+   * [SPEC 37 v0.7a Week 4 cleanup — Day 14c / 2026-05-16] Projected
+   * health factor AFTER the pending write executes. Computed by the
+   * engine's `enrichPendingActionWithLiveData` helper using the live
+   * `supplied` / `borrowed` / `liquidationThreshold` from the
+   * health-factor cache + the write's input amount.
+   *
+   * **Populated for:** same 4 tools as `currentHF` — `borrow`,
+   * `withdraw`, `save_deposit`, `repay_debt`.
+   *
+   * Same `number | null | undefined` semantics as `currentHF`.
+   *
+   * **HF formula:**  HF = (supplied × liquidationThreshold) / borrowed.
+   * After the action's deltas are applied to supplied / borrowed.
+   * Both currently-saveable assets (USDC + USDsui) are stables so the
+   * input amount is treated as USD 1:1; non-stable saveable assets
+   * (none today) would need a USD price conversion in the projection.
+   *
+   * **v2-only (Week 6).** Same rationale as `borrowApyBps`.
+   */
+  projectedHF?: number | null;
 }
 
 /**
