@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 
 const PaymentLinkSchema = z.object({
   amount: z.number().positive().describe('Amount in USDC (required). Ask the user if not specified.'),
@@ -30,21 +30,11 @@ function internalHeaders(context: { walletAddress?: string; env?: Record<string,
   };
 }
 
-export const createPaymentLinkTool = buildTool({
+export const createPaymentLinkTool = defineTool({
   name: 'create_payment_link',
   description:
     'Create a shareable payment link so someone can send USDC to the user. Amount is required — ask the user for the amount if not specified. Returns a URL the user can share. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create a payment link", "generate a payment link", "I want to get paid", or similar.',
   inputSchema: PaymentLinkSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      amount: { type: 'number', description: 'Amount in USDC (required). Ask the user if not specified.' },
-      label: { type: 'string', description: 'Human-readable label e.g. "Consulting fee March"' },
-      memo: { type: 'string', description: 'Optional note shown to the payer' },
-      expiresInHours: { type: 'number', description: 'Hours until the link expires. Omit for permanent links.' },
-    },
-    required: ['amount'],
-  },
   isReadOnly: true,
 
   async call(input, context) {
@@ -88,12 +78,11 @@ export const createPaymentLinkTool = buildTool({
   },
 });
 
-export const listPaymentLinksTool = buildTool({
+export const listPaymentLinksTool = defineTool({
   name: 'list_payment_links',
   description:
     'List the user\'s payment links — active, paid, expired, and cancelled. Use when the user asks "show my payment links", "what payment links do I have", or wants to check payment status.',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
 
   async call(_input, context) {
@@ -123,35 +112,11 @@ export const listPaymentLinksTool = buildTool({
   },
 });
 
-export const createInvoiceTool = buildTool({
+export const createInvoiceTool = defineTool({
   name: 'create_invoice',
   description:
     'Create a formal invoice that the user can share with a client or customer. Returns a URL for the invoice page. Payers can connect their wallet, scan a QR code, or send manually. Use when the user says "create an invoice", "generate an invoice", "bill a client", or similar.',
   inputSchema: InvoiceSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      amount: { type: 'number', description: 'Total invoice amount in USDC' },
-      label: { type: 'string', description: 'Invoice title e.g. "Web design — March 2026"' },
-      memo: { type: 'string', description: 'Optional note or payment terms' },
-      recipientName: { type: 'string', description: 'Name of the person or company being invoiced' },
-      recipientEmail: { type: 'string', description: 'Email address of the recipient' },
-      dueDays: { type: 'number', description: 'Days until payment is due. Omit for no due date.' },
-      items: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            description: { type: 'string' },
-            amount: { type: 'number' },
-          },
-          required: ['description', 'amount'],
-        },
-        description: 'Line items. If omitted, a single line item matching the total is implied.',
-      },
-    },
-    required: ['amount', 'label'],
-  },
   isReadOnly: true,
 
   async call(input, context) {
@@ -195,20 +160,13 @@ export const createInvoiceTool = buildTool({
   },
 });
 
-export const cancelPaymentLinkTool = buildTool({
+export const cancelPaymentLinkTool = defineTool({
   name: 'cancel_payment_link',
   description:
     'Cancel an active payment link so it can no longer be used. Use when the user says "cancel my payment link", "delete my payment link", or "remove the link [slug/label]". Ask for the slug if ambiguous — use list_payment_links first to find it.',
   inputSchema: z.object({
     slug: z.string().describe('The slug of the payment link to cancel (e.g. "LzLawhY7")'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      slug: { type: 'string', description: 'The slug of the payment link to cancel' },
-    },
-    required: ['slug'],
-  },
   isReadOnly: true,
 
   async call(input, context) {
@@ -241,20 +199,13 @@ export const cancelPaymentLinkTool = buildTool({
   },
 });
 
-export const cancelInvoiceTool = buildTool({
+export const cancelInvoiceTool = defineTool({
   name: 'cancel_invoice',
   description:
     'Cancel an invoice that has not yet been paid. Use when the user says "cancel my invoice", "delete invoice", or refers to a specific invoice slug or label. Use list_invoices first if the slug is not known.',
   inputSchema: z.object({
     slug: z.string().describe('The slug of the invoice to cancel (e.g. "xFYKBWy5")'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      slug: { type: 'string', description: 'The slug of the invoice to cancel' },
-    },
-    required: ['slug'],
-  },
   isReadOnly: true,
 
   async call(input, context) {
@@ -287,12 +238,11 @@ export const cancelInvoiceTool = buildTool({
   },
 });
 
-export const listInvoicesTool = buildTool({
+export const listInvoicesTool = defineTool({
   name: 'list_invoices',
   description:
     'List the user\'s invoices — pending, overdue, paid, and cancelled. Use when the user asks "show my invoices", "what invoices do I have", or wants to check invoice status.',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
 
   async call(_input, context) {

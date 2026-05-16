@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import {
   resolveSuinsViaRpc,
   resolveAddressToSuinsViaRpc,
@@ -62,7 +62,7 @@ interface ResolveSuinsResult {
   primary?: string | null;
 }
 
-export const resolveSuinsTool = buildTool({
+export const resolveSuinsTool = defineTool({
   name: 'resolve_suins',
   description:
     'Look up SuiNS records on-chain — works in BOTH directions. ' +
@@ -80,17 +80,6 @@ export const resolveSuinsTool = buildTool({
     'health / transactions"), call the relevant read tool directly with `address: "alex.sui"` — those ' +
     'tools normalize SuiNS internally, so an explicit `resolve_suins` round-trip is wasted.',
   inputSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description:
-          'A SuiNS name (e.g. "alex.sui") for forward resolution, OR a 0x Sui address for reverse resolution.',
-      },
-    },
-    required: ['query'],
-  },
   isReadOnly: true,
   // Lookups map to (address|name) pairs on a per-block basis. Cheap and
   // deterministic for a given block — safe to dedupe within a turn.

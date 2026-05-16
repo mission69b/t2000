@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { normalizeAddressInput } from '../sui/address.js';
 import type { ToolResult } from '../types.js';
 
@@ -21,7 +21,7 @@ interface ActivitySummary {
   suinsName?: string | null;
 }
 
-export const activitySummaryTool = buildTool({
+export const activitySummaryTool = defineTool({
   name: 'activity_summary',
   description:
     'Returns a categorised DeFi activity summary for the signed-in user OR any public Sui address or SuiNS name: transaction count, breakdown by action type (saves, sends, borrows, repayments, swaps, payments), total moved, net savings change, and yield earned. Use when the user asks about activity, transaction history summary, or what someone has done recently. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to inspect a contact / watched / public wallet; defaults to the signed-in user when omitted.',
@@ -33,18 +33,10 @@ export const activitySummaryTool = buildTool({
     address: z
       .string()
       .optional()
-      .describe('Sui address (0x…) or SuiNS name (alex.sui). Defaults to the signed-in wallet when omitted.'),
+      .describe(
+        'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
+      ),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      period: { type: 'string', enum: ['week', 'month', 'year', 'all'] },
-      address: {
-        type: 'string',
-        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
-      },
-    },
-  },
   isReadOnly: true,
 
   async call(input, context): Promise<ToolResult<ActivitySummary>> {

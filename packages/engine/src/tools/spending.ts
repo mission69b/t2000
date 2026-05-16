@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { ToolResult } from '../types.js';
 
 interface SpendingResponse {
@@ -10,7 +10,7 @@ interface SpendingResponse {
   byService: unknown[];
 }
 
-export const spendingAnalyticsTool = buildTool({
+export const spendingAnalyticsTool = defineTool({
   name: 'spending_analytics',
   description:
     'Returns MPP service spending breakdown for a period. Shows total spent, request count, and breakdown by service/category. Use when the user asks about their API spending, service usage, or costs. ' +
@@ -22,12 +22,6 @@ export const spendingAnalyticsTool = buildTool({
       .optional()
       .describe('Time period. Defaults to current month.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      period: { type: 'string', enum: ['week', 'month', 'year', 'all'] },
-    },
-  },
   isReadOnly: true,
 
   async call(input, context): Promise<ToolResult<SpendingResponse>> {
