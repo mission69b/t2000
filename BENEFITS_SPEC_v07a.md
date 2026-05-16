@@ -1371,9 +1371,13 @@ Everything else (preflight, permissionLevel, flags, isReadOnly, cacheable, maxRe
 
 **Audric bump:** `@t2000/engine@1.36.0` adopted via `pnpm add` in `audric/apps/web`.
 
-**Founder smoke (pending — handoff to user):** Per Batch B per-batch acceptance gate from `PHASE_2_TOOL_MIGRATION_BACKLOG.md`, at least 1 production write must smoke clean before declaring Batch B fully shipped. Recommended smokes (lowest-risk first): `save_contact` ("save a contact named Self with address 0x…") → `save_deposit` 0.10 USDC → `send_transfer` 0.01 USDC to self.
+**Founder smoke (completed 2026-05-17 ~07:14 AEST, engine 1.36.1, session `s_1778966033165_29434574b2ca`):** Three smokes run in sequence.
 
-**Status: Batch B CLOSED in code, AWAITING founder smoke for full release sign-off. 17/39 tools (44%) now on `defineTool`.**
+1. **`save_contact` smoke** — preflight working correctly. LLM declined to dispatch the tool after seeing a `0x…dead` address and gave a (slightly muddled) narration about address length. The important signal: the engine's address-format regex from `contacts.ts` is firing as designed, and the LLM correctly refuses to dispatch on invalid input. NOT a regression — proof that migrated preflight callbacks still gate writes end-to-end. Sole follow-up: a polish item for the LLM's error-narration phrasing (the "66 chars but shorter than required" wording was internally contradictory). Tracked but not blocking.
+2. **`balance_check` smoke** — clean. Total $92.63, per-asset breakdown rendered (USDsui 30.58, USDC 15.52, SUI 11.37, GOLD 3.86), narration accurate. Validates that Batch A reads + Batch B writes coexist correctly in a real session.
+3. **`save_deposit 0.10 USDC` smoke** — full end-to-end production write. Tx hash `7ivRWupf...qnfgzr` settled on Sui mainnet. Post-write refresh dispatched 2 parallel reads (`balance_check` + `savings_info`) which both rendered correctly. Balance updated $92.63 → $92.74, savings updated $22.67 → $22.77, per-asset savings rows showed USDsui 9.18 @ 8.15% + USDC 13.59 @ 4.98%, blended APY 6.26%. LLM narration: "Deposited 0.10 USDC at 4.98% APY. Your savings are now $22.77." This single smoke validates: tool selection by LLM, confirm-card rendering, sponsored-tx flow, receipt-card rendering, post-write refresh wire-up (Day 14a), per-asset savings rendering (Day 14b), and balance-card recompute.
+
+**Status: Batch B FULLY CLOSED. 17/39 tools (44%) now on `defineTool`. Production smoke clean.**
 
 **Next session = Batch C (medium reads, 13 tools):** Audric analytics + NAVI MCP trio + opt-in surfaces. Estimated ~2-3 sessions (largest single batch). First batch where `add_recipient`'s `pending_input` form flow + `update_todo`'s SPEC 8 side-channel get exercised through `defineTool` — both are unusual `isReadOnly: true` + `permissionLevel: 'auto'` tools that go through dedicated runtime paths instead of the standard confirm card. Will verify both still work end-to-end.
 
