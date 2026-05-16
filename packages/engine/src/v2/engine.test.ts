@@ -29,26 +29,21 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { AISDKEngine, type AISDKEngineConfig } from './engine.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from './define-tool.js';
 import type { EngineEvent, Tool as LegacyTool } from '../types.js';
 
-const RUN_REAL =
-  process.env.RUN_REAL_API_TESTS === '1' && !!process.env.ANTHROPIC_API_KEY;
+const RUN_REAL = process.env.RUN_REAL_API_TESTS === '1' && !!process.env.ANTHROPIC_API_KEY;
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 
 const baseConfig = (apiKey: string): AISDKEngineConfig => ({
   anthropicApiKey: apiKey,
-  walletAddress:
-    '0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c',
+  walletAddress: '0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c',
   model: 'claude-haiku-4-5-20251001',
   maxTurns: 2,
-  systemPrompt:
-    'You are a brief assistant. Answer in one short sentence.',
+  systemPrompt: 'You are a brief assistant. Answer in one short sentence.',
 });
 
-async function collect(
-  gen: AsyncGenerator<EngineEvent>,
-): Promise<EngineEvent[]> {
+async function collect(gen: AsyncGenerator<EngineEvent>): Promise<EngineEvent[]> {
   const out: EngineEvent[] = [];
   for await (const ev of gen) {
     out.push(ev);
@@ -58,17 +53,13 @@ async function collect(
 
 describe('AISDKEngine — Day 1 scaffolding', () => {
   it('constructs without error', () => {
-    expect(
-      () => new AISDKEngine(baseConfig('sk-test-fake-key-not-used')),
-    ).not.toThrow();
+    expect(() => new AISDKEngine(baseConfig('sk-test-fake-key-not-used'))).not.toThrow();
   });
 
   it('starts with empty message history; loadMessages populates it', () => {
     const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
     expect(engine.getMessages().length).toBe(0);
-    engine.loadMessages([
-      { role: 'user', content: [{ type: 'text', text: 'hello' }] },
-    ]);
+    engine.loadMessages([{ role: 'user', content: [{ type: 'text', text: 'hello' }] }]);
     expect(engine.getMessages().length).toBe(1);
   });
 
@@ -84,9 +75,7 @@ describe('AISDKEngine — Day 1 scaffolding', () => {
       expect(textDeltas.length).toBeGreaterThan(0);
       expect(turnComplete.length).toBe(1);
 
-      const fullText = textDeltas
-        .map((e) => (e.type === 'text_delta' ? e.text : ''))
-        .join('');
+      const fullText = textDeltas.map((e) => (e.type === 'text_delta' ? e.text : '')).join('');
       expect(fullText.length).toBeGreaterThan(0);
       expect(fullText.toLowerCase()).toMatch(/hi|hello|hey/);
     },
@@ -132,19 +121,12 @@ describe('AISDKEngine — Day 2 tool dispatch via legacy wrapper', () => {
         }),
       );
 
-      const echoTool: LegacyTool = buildTool({
+      const echoTool: LegacyTool = defineTool({
         name: 'echo_test',
         description: 'Echo back the user message. Used only by spike tests.',
         inputSchema: z.object({
           message: z.string().describe('Text to echo back verbatim.'),
         }),
-        jsonSchema: {
-          type: 'object',
-          properties: {
-            message: { type: 'string', description: 'Text to echo back verbatim.' },
-          },
-          required: ['message'],
-        },
         flags: {},
         permissionLevel: 'auto',
         isReadOnly: true,
@@ -184,11 +166,10 @@ describe('AISDKEngine — Day 2 tool dispatch via legacy wrapper', () => {
     // Verifies: preflight → throw → AI SDK surfaces error. Doesn't
     // need a real API call because this is testing the wrapper's
     // preflight branch.
-    const failingPreflightTool: LegacyTool = buildTool({
+    const failingPreflightTool: LegacyTool = defineTool({
       name: 'always_fail_preflight',
       description: 'Test tool that always fails preflight.',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       flags: {},
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -226,19 +207,12 @@ describe('AISDKEngine — Day 2 tool dispatch via legacy wrapper', () => {
 
 describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invokeReadTool)', () => {
   function makeEchoTool(): LegacyTool {
-    return buildTool({
+    return defineTool({
       name: 'echo_test',
       description: 'Echo back the user message. Used only by spike tests.',
       inputSchema: z.object({
         message: z.string().describe('Text to echo back verbatim.'),
       }),
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          message: { type: 'string', description: 'Text to echo back verbatim.' },
-        },
-        required: ['message'],
-      },
       flags: {},
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -251,11 +225,10 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
   }
 
   function makeWriteTool(): LegacyTool {
-    return buildTool({
+    return defineTool({
       name: 'write_only_test',
       description: 'A write tool that should never be invokable read-only.',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       flags: {},
       permissionLevel: 'confirm',
       isReadOnly: false,
@@ -265,11 +238,10 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
   }
 
   function makeFailingTool(): LegacyTool {
-    return buildTool({
+    return defineTool({
       name: 'failing_read',
       description: 'A read tool that always throws.',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       flags: {},
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -298,11 +270,10 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     // undefined in tool-context.ts. The fix threads config.mcpManager through
     // ToolContext; this test asserts a tool can read it back.
     let observedMcpManager: unknown = 'NEVER_RAN';
-    const probeTool = buildTool({
+    const probeTool = defineTool({
       name: 'probe_mcp_manager',
       description: 'Test-only — captures the mcpManager seen in ToolContext.',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       flags: {},
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -351,9 +322,7 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
 
   it('invokeReadTool throws when tool is not registered', async () => {
     const engine = new AISDKEngine(baseConfig('sk-test-fake-key-not-used'));
-    await expect(
-      engine.invokeReadTool('does_not_exist', {}),
-    ).rejects.toThrow(/tool not found/);
+    await expect(engine.invokeReadTool('does_not_exist', {})).rejects.toThrow(/tool not found/);
   });
 
   it('invokeReadTool throws when tool is not read-only (write tool)', async () => {
@@ -362,9 +331,7 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
       ...baseConfig('sk-test-fake-key-not-used'),
       tools: [write],
     });
-    await expect(
-      engine.invokeReadTool('write_only_test', {}),
-    ).rejects.toThrow(/not read-only/);
+    await expect(engine.invokeReadTool('write_only_test', {})).rejects.toThrow(/not read-only/);
   });
 
   it('invokeReadTool throws when input fails schema validation', async () => {
@@ -468,27 +435,19 @@ function withStubbedModel(engine: AISDKEngine, parts: LanguageModelV3StreamPart[
   const stubModel = buildStubModel(parts);
   // Override the anthropic factory to return our stub regardless of
   // model name. The factory is called once per submitMessage call.
-  (engine as unknown as { anthropic: (name: string) => LanguageModelV3 }).anthropic =
-    (() => stubModel) as never;
+  (engine as unknown as { anthropic: (name: string) => LanguageModelV3 }).anthropic = (() =>
+    stubModel) as never;
 }
 
 describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => {
   function makeWriteTool(): LegacyTool {
-    return buildTool({
+    return defineTool({
       name: 'save_deposit',
       description: 'Deposit USDC into NAVI savings.',
       inputSchema: z.object({
         amount: z.number().positive(),
         asset: z.enum(['USDC', 'USDsui']).optional(),
       }),
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          amount: { type: 'number' },
-          asset: { type: 'string', enum: ['USDC', 'USDsui'] },
-        },
-        required: ['amount'],
-      },
       flags: { mutating: true },
       permissionLevel: 'confirm',
       isReadOnly: false,
@@ -614,7 +573,12 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
       description: 'Save 0.05 USDC into lending',
       assistantContent: [
         { type: 'text', text: 'Saving 0.05 USDC. ' },
-        { type: 'tool_use', id: 'toolu_save_001', name: 'save_deposit', input: { amount: 0.05, asset: 'USDC' } },
+        {
+          type: 'tool_use',
+          id: 'toolu_save_001',
+          name: 'save_deposit',
+          input: { amount: 0.05, asset: 'USDC' },
+        },
       ],
       completedResults: [],
       turnIndex: 0,
@@ -737,11 +701,10 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
 // ---------------------------------------------------------------------------
 describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisation', () => {
   function makeReadTool(name: string, input: Record<string, unknown> = {}): LegacyTool {
-    return buildTool({
+    return defineTool({
       name,
       description: `${name} read tool`,
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       flags: { mutating: false },
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -751,7 +714,7 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
   }
 
   function makeWriteTool(): LegacyTool {
-    return buildTool({
+    return defineTool({
       name: 'send_transfer',
       description: 'Send USDC to a recipient.',
       inputSchema: z.object({
@@ -759,15 +722,6 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
         amount: z.number().positive(),
         asset: z.enum(['USDC', 'USDsui']).optional(),
       }),
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          to: { type: 'string' },
-          amount: { type: 'number' },
-          asset: { type: 'string' },
-        },
-        required: ['to', 'amount'],
-      },
       flags: { mutating: true },
       permissionLevel: 'confirm',
       isReadOnly: false,
@@ -944,11 +898,10 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
 // ---------------------------------------------------------------------------
 describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', () => {
   function makeReadTool(name: string): LegacyTool {
-    return buildTool({
+    return defineTool({
       name,
       description: `${name} read tool`,
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       flags: { mutating: false },
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -962,11 +915,10 @@ describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', 
     // Pins the conservative gate: if a read tool isn't explicitly
     // marked safe to parallelize, we don't second-guess the LLM's
     // intent to call it twice.
-    return buildTool({
+    return defineTool({
       name,
       description: `${name} unsafe read tool`,
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       flags: { mutating: false },
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -1153,11 +1105,10 @@ describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', 
 // ---------------------------------------------------------------------------
 describe('AISDKEngine — Day 13.7 regression: persist assistant message on clean turns', () => {
   function makeReadTool(name: string): LegacyTool {
-    return buildTool({
+    return defineTool({
       name,
       description: `${name} read tool`,
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       flags: { mutating: false },
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -1254,15 +1205,10 @@ describe('AISDKEngine — Day 13.7 regression: persist assistant message on clea
   });
 
   it('does NOT push assistant message when step ends with pending_action (resumeWithToolResult owns the push)', async () => {
-    const saveDeposit = buildTool({
+    const saveDeposit = defineTool({
       name: 'save_deposit',
       description: 'Save USDC into NAVI for yield.',
       inputSchema: z.object({ amount: z.number(), asset: z.string().default('USDC') }),
-      jsonSchema: {
-        type: 'object',
-        properties: { amount: { type: 'number' }, asset: { type: 'string' } },
-        required: ['amount'],
-      },
       flags: { mutating: true },
       permissionLevel: 'confirm',
       isReadOnly: false,
@@ -1346,11 +1292,10 @@ describe('AISDKEngine — Day 13.7 regression: persist assistant message on clea
 // ---------------------------------------------------------------------------
 describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (multi-step + error + compound)', () => {
   function makeReadTool(name: string): LegacyTool {
-    return buildTool({
+    return defineTool({
       name,
       description: `${name} read tool`,
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       flags: { mutating: false },
       permissionLevel: 'auto',
       isReadOnly: true,
@@ -1360,11 +1305,10 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
   }
 
   function makeWriteTool(name: string): LegacyTool {
-    return buildTool({
+    return defineTool({
       name,
       description: `${name} write tool`,
       inputSchema: z.object({ amount: z.number() }),
-      jsonSchema: { type: 'object', properties: { amount: { type: 'number' } }, required: ['amount'] },
       flags: { mutating: true },
       permissionLevel: 'confirm',
       isReadOnly: false,
@@ -1534,15 +1478,17 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
     // (no save_deposit — that belongs to step 2's deferred action).
     const step1Asst = messages[1]!;
     const step1Content = step1Asst.content as ReadonlyArray<{ type: string; name?: string }>;
-    const step1ToolUseNames = step1Content
-      .filter((b) => b.type === 'tool_use')
-      .map((b) => b.name);
+    const step1ToolUseNames = step1Content.filter((b) => b.type === 'tool_use').map((b) => b.name);
     expect(step1ToolUseNames).toEqual(['balance_check']);
 
     // action.assistantContent contains ONLY step 2's content (the
     // write narration + save_deposit tool_use). Day 13.7's
     // resetStepAccumulators() on start-step is what makes this work.
-    const actionContent = pa.action.assistantContent as ReadonlyArray<{ type: string; name?: string; text?: string }>;
+    const actionContent = pa.action.assistantContent as ReadonlyArray<{
+      type: string;
+      name?: string;
+      text?: string;
+    }>;
     const actionToolUseNames = actionContent
       .filter((b) => b.type === 'tool_use')
       .map((b) => b.name);
@@ -1603,7 +1549,12 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
     // Sanity: all three user prompts are present, in order
     const userPrompts = engine
       .getMessages()
-      .filter((m) => m.role === 'user' && Array.isArray(m.content) && (m.content as ReadonlyArray<{ type: string; text?: string }>)[0]?.type === 'text')
+      .filter(
+        (m) =>
+          m.role === 'user' &&
+          Array.isArray(m.content) &&
+          (m.content as ReadonlyArray<{ type: string; text?: string }>)[0]?.type === 'text',
+      )
       .map((m) => (m.content as ReadonlyArray<{ type: string; text?: string }>)[0]?.text);
     expect(userPrompts).toEqual(['Prompt one.', 'Prompt two.', 'Prompt three.']);
 
@@ -1634,21 +1585,13 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
 
 describe('AISDKEngine — Day 14a: live NAVI data on pending_action (borrowApyBps + currentHF)', () => {
   function makeBorrowTool(): LegacyTool {
-    return buildTool({
+    return defineTool({
       name: 'borrow',
       description: 'Borrow USDC or USDsui against savings collateral.',
       inputSchema: z.object({
         amount: z.number().positive(),
         asset: z.enum(['USDC', 'USDsui']).optional(),
       }),
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          amount: { type: 'number' },
-          asset: { type: 'string', enum: ['USDC', 'USDsui'] },
-        },
-        required: ['amount'],
-      },
       flags: { mutating: true },
       permissionLevel: 'confirm',
       isReadOnly: false,
@@ -1660,21 +1603,13 @@ describe('AISDKEngine — Day 14a: live NAVI data on pending_action (borrowApyBp
   }
 
   function makeSaveTool(): LegacyTool {
-    return buildTool({
+    return defineTool({
       name: 'save_deposit',
       description: 'Deposit USDC or USDsui into NAVI savings.',
       inputSchema: z.object({
         amount: z.number().positive(),
         asset: z.enum(['USDC', 'USDsui']).optional(),
       }),
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          amount: { type: 'number' },
-          asset: { type: 'string', enum: ['USDC', 'USDsui'] },
-        },
-        required: ['amount'],
-      },
       flags: { mutating: true },
       permissionLevel: 'confirm',
       isReadOnly: false,

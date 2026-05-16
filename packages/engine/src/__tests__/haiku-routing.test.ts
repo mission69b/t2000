@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
-import { buildTool } from '../tool.js';
-import type {
-  LLMProvider,
-  ChatParams,
-  ProviderEvent,
-  EngineEvent,
-  Tool,
-} from '../types.js';
+import { defineTool } from '../v2/define-tool.js';
+import type { LLMProvider, ChatParams, ProviderEvent, EngineEvent, Tool } from '../types.js';
 
 type ScriptedTurn =
   | { type: 'text'; text: string }
@@ -27,7 +21,11 @@ function createMockProvider(
       const turn = turns[callIndex] ?? [];
       callIndex++;
 
-      yield { type: 'message_start', messageId: `msg-${callIndex}`, model: expectedModel ?? 'mock' };
+      yield {
+        type: 'message_start',
+        messageId: `msg-${callIndex}`,
+        model: expectedModel ?? 'mock',
+      };
       yield { type: 'usage', inputTokens: 100, outputTokens: 50 };
 
       const hasToolCalls = turn.some((t) => t.type === 'tool_call');
@@ -57,15 +55,10 @@ async function collectEvents(gen: AsyncGenerator<EngineEvent>): Promise<EngineEv
 const HAIKU_MODEL = 'claude-3-5-haiku-20241022';
 
 describe('Haiku model routing validation (Phase F.1)', () => {
-  const balanceTool: Tool = buildTool({
+  const balanceTool: Tool = defineTool({
     name: 'balance_check',
     description: 'Check wallet balance',
     inputSchema: z.object({}),
-    jsonSchema: {
-      type: 'object' as const,
-      properties: {},
-      required: [],
-    },
     permissionLevel: 'auto',
     async call() {
       return {
@@ -75,15 +68,10 @@ describe('Haiku model routing validation (Phase F.1)', () => {
     },
   });
 
-  const saveTool: Tool = buildTool({
+  const saveTool: Tool = defineTool({
     name: 'save_deposit',
     description: 'Deposit USDC into savings',
     inputSchema: z.object({ amount: z.number() }),
-    jsonSchema: {
-      type: 'object' as const,
-      properties: { amount: { type: 'number' as const } },
-      required: ['amount'],
-    },
     isReadOnly: false,
     permissionLevel: 'confirm',
     async call(input: { amount: number }) {
@@ -139,9 +127,7 @@ describe('Haiku model routing validation (Phase F.1)', () => {
 
   it('yields pending_action for confirm-permission tools with Haiku', async () => {
     const { provider } = createMockProvider(
-      [
-        [{ type: 'tool_call', id: 'tc1', name: 'save_deposit', input: { amount: 50 } }],
-      ],
+      [[{ type: 'tool_call', id: 'tc1', name: 'save_deposit', input: { amount: 50 } }]],
       HAIKU_MODEL,
     );
 
@@ -150,7 +136,10 @@ describe('Haiku model routing validation (Phase F.1)', () => {
       tools: [balanceTool, saveTool],
       model: HAIKU_MODEL,
       systemPrompt: 'You are a financial assistant.',
-      priceCache: new Map([['SUI', 3.5], ['USDC', 1]]),
+      priceCache: new Map([
+        ['SUI', 3.5],
+        ['USDC', 1],
+      ]),
       permissionConfig: {
         globalAutoBelow: 10,
         autonomousDailyLimit: 200,
@@ -162,13 +151,13 @@ describe('Haiku model routing validation (Phase F.1)', () => {
 
     const pendingActions = events.filter((e) => e.type === 'pending_action');
     expect(pendingActions.length).toBe(1);
-    expect((pendingActions[0] as { action: { toolName: string } }).action.toolName).toBe('save_deposit');
+    expect((pendingActions[0] as { action: { toolName: string } }).action.toolName).toBe(
+      'save_deposit',
+    );
   });
 
   it('falls back to default model when none specified', async () => {
-    const { provider, receivedModels } = createMockProvider(
-      [[{ type: 'text', text: 'Hello!' }]],
-    );
+    const { provider, receivedModels } = createMockProvider([[{ type: 'text', text: 'Hello!' }]]);
 
     const engine = new QueryEngine({
       provider,

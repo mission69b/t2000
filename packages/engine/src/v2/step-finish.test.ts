@@ -18,7 +18,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import type { StepResult, ToolSet } from 'ai';
-import { buildTool } from '../tool.js';
+import { defineTool } from './define-tool.js';
 import type { Tool as LegacyTool } from '../types.js';
 import { createGuardRunnerState, DEFAULT_GUARD_CONFIG } from '../guards.js';
 import { DEFAULT_PERMISSION_CONFIG } from '../permission-rules.js';
@@ -26,11 +26,10 @@ import { buildStepFinishHandler, type StepFinishMutableState } from './step-fini
 import type { InternalContext } from './internal-context.js';
 
 function makeReadTool(name = 'balance_check'): LegacyTool {
-  return buildTool({
+  return defineTool({
     name,
     description: 'A read tool.',
     inputSchema: z.object({}),
-    jsonSchema: { type: 'object', properties: {} },
     flags: {},
     permissionLevel: 'auto',
     isReadOnly: true,
@@ -40,14 +39,10 @@ function makeReadTool(name = 'balance_check'): LegacyTool {
 }
 
 function makeWriteTool(name = 'send_transfer'): LegacyTool {
-  return buildTool({
+  return defineTool({
     name,
     description: 'A write tool.',
     inputSchema: z.object({ amount: z.number(), to: z.string() }),
-    jsonSchema: {
-      type: 'object',
-      properties: { amount: { type: 'number' }, to: { type: 'string' } },
-    },
     flags: { mutating: true },
     permissionLevel: 'confirm',
     isReadOnly: false,
@@ -287,11 +282,7 @@ describe('buildStepFinishHandler', () => {
     const writeTool = makeWriteTool('send_transfer');
     const internal = makeInternal();
     const mutable: StepFinishMutableState = { sessionSpendUsdLocal: 0 };
-    const handler = buildStepFinishHandler(
-      [readTool, writeTool],
-      internal,
-      mutable,
-    );
+    const handler = buildStepFinishHandler([readTool, writeTool], internal, mutable);
 
     // Pre-state: balance tracker has never read.
     expect(internal.guardState.balanceTracker.hasEverRead()).toBe(false);

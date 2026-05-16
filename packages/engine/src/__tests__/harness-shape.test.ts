@@ -19,7 +19,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { harnessShapeForEffort } from '../types.js';
 import type {
   LLMProvider,
@@ -108,9 +108,7 @@ describe('submitMessage — harness_shape event emission', () => {
       systemPrompt: 'Test',
     });
 
-    const events = await collect(
-      engine.submitMessage('hello', { harnessShape: 'lean' }),
-    );
+    const events = await collect(engine.submitMessage('hello', { harnessShape: 'lean' }));
 
     // `usage` is the only EngineEvent type that may precede agentLoop work
     // (the mock provider emits one as part of `message_start`). The
@@ -137,9 +135,7 @@ describe('submitMessage — harness_shape event emission', () => {
       systemPrompt: 'Test',
     });
 
-    const events = await collect(
-      engine.submitMessage('hello', { harnessShape: 'rich' }),
-    );
+    const events = await collect(engine.submitMessage('hello', { harnessShape: 'rich' }));
 
     const shape = events.find((e) => e.type === 'harness_shape') as Extract<
       EngineEvent,
@@ -182,11 +178,10 @@ describe('harnessShapeForEffort mapping', () => {
 // (2) attemptCount round-trip via ToolContext.retryStats
 // ---------------------------------------------------------------------------
 
-const probeTool: Tool = buildTool({
+const probeTool: Tool = defineTool({
   name: 'probe',
   description: 'Test tool that bumps retryStats from inside its call',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   // `probe` simulates 3 HTTP attempts (the real BlockVision wrapper
   // does this for us — here we bump directly).
@@ -196,11 +191,10 @@ const probeTool: Tool = buildTool({
   },
 });
 
-const cleanTool: Tool = buildTool({
+const cleanTool: Tool = defineTool({
   name: 'clean',
   description: 'Test tool that does not touch retryStats (1st-try success)',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     return { data: { ok: true } };

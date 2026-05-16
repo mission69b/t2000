@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine, validateHistory } from '../engine.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type {
   LLMProvider,
   ChatParams,
@@ -56,26 +56,20 @@ async function collectEvents(gen: AsyncGenerator<EngineEvent>): Promise<EngineEv
 // Test tools
 // ---------------------------------------------------------------------------
 
-const readTool: Tool = buildTool({
+const readTool: Tool = defineTool({
   name: 'check',
   description: 'Read-only check',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     return { data: { balance: 100 } };
   },
 });
 
-const writeTool: Tool = buildTool({
+const writeTool: Tool = defineTool({
   name: 'transfer',
   description: 'Transfer funds',
   inputSchema: z.object({ to: z.string(), amount: z.number() }),
-  jsonSchema: {
-    type: 'object',
-    properties: { to: { type: 'string' }, amount: { type: 'number' } },
-    required: ['to', 'amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   async call(input) {
@@ -83,11 +77,10 @@ const writeTool: Tool = buildTool({
   },
 });
 
-const autoWriteTool: Tool = buildTool({
+const autoWriteTool: Tool = defineTool({
   name: 'auto_action',
   description: 'Auto-approved write',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: false,
   permissionLevel: 'auto',
   async call() {
@@ -376,7 +369,9 @@ describe('Confirmation flow (pending_action + resumeWithToolResult)', () => {
       m.content.filter((b) => b.type === 'tool_use').map((b) => (b as { id: string }).id),
     );
     const allToolResultIds = messages.flatMap((m) =>
-      m.content.filter((b) => b.type === 'tool_result').map((b) => (b as { toolUseId: string }).toolUseId),
+      m.content
+        .filter((b) => b.type === 'tool_result')
+        .map((b) => (b as { toolUseId: string }).toolUseId),
     );
 
     for (const id of allToolUseIds) {
@@ -444,9 +439,7 @@ describe('Confirmation flow (pending_action + resumeWithToolResult)', () => {
 
 describe('Cost tracking integration', () => {
   it('blocks when budget is exceeded', async () => {
-    const provider = createMockProvider([
-      [{ type: 'text', text: 'First response' }],
-    ]);
+    const provider = createMockProvider([[{ type: 'text', text: 'First response' }]]);
 
     const engine = new QueryEngine({
       provider,
@@ -468,9 +461,7 @@ describe('Cost tracking integration', () => {
   });
 
   it('reports cost via getUsage()', async () => {
-    const provider = createMockProvider([
-      [{ type: 'text', text: 'Hi' }],
-    ]);
+    const provider = createMockProvider([[{ type: 'text', text: 'Hi' }]]);
 
     const engine = new QueryEngine({
       provider,
@@ -486,9 +477,7 @@ describe('Cost tracking integration', () => {
   });
 
   it('resets cost on engine reset', async () => {
-    const provider = createMockProvider([
-      [{ type: 'text', text: 'Hi' }],
-    ]);
+    const provider = createMockProvider([[{ type: 'text', text: 'Hi' }]]);
 
     const engine = new QueryEngine({
       provider,
@@ -640,7 +629,9 @@ describe('validateHistory', () => {
       },
       {
         role: 'user',
-        content: [{ type: 'tool_result', toolUseId: 'tc-1', content: '{"balance":100}', isError: false }],
+        content: [
+          { type: 'tool_result', toolUseId: 'tc-1', content: '{"balance":100}', isError: false },
+        ],
       },
       { role: 'assistant', content: [{ type: 'text', text: 'Your balance is $100' }] },
     ];
@@ -739,7 +730,8 @@ describe('validateHistory', () => {
       const orphanResults = result.flatMap((m) =>
         m.content.filter(
           (b): b is { type: 'tool_result'; toolUseId: string; content: string } =>
-            b.type === 'tool_result' && (b.toolUseId === 'prefetch_bal' || b.toolUseId === 'prefetch_sav'),
+            b.type === 'tool_result' &&
+            (b.toolUseId === 'prefetch_bal' || b.toolUseId === 'prefetch_sav'),
         ),
       );
       expect(orphanResults).toHaveLength(0);

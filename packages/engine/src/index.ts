@@ -101,15 +101,16 @@ export type {
   RegenerateTimelineEvent,
 } from './regenerate.js';
 
-// Tool factory
-export { buildTool, toolsToDefinitions, findTool } from './tool.js';
-export type { BuildToolOptions } from './tool.js';
+// Tool helpers (canonical factory is `defineTool` below; legacy
+// `buildTool` + `BuildToolOptions` were retired in Phase 2 Day 20b).
+export { toolsToDefinitions, findTool } from './tool.js';
 
-// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] Migration template for the
-// 39-tool refactor. `defineTool` is `buildTool` minus the hand-written
-// `jsonSchema` field (auto-generated from Zod via zod-to-json-schema). Same
-// returned `Tool` shape — both engines consume identically. See
-// PHASE_2_TOOL_MIGRATION_BACKLOG.md + packages/engine/src/v2/define-tool.ts.
+// [SPEC 37 v0.7a Phase 2 / 2026-05-16 → 2026-05-17] The canonical tool
+// factory. Zod `inputSchema` is the single source of truth — the JSON
+// schema sent to Anthropic is auto-generated via zod-to-json-schema, so
+// the Zod schema and the JSON schema can't drift. Both engines consume
+// the returned `Tool` identically. See PHASE_2_TOOL_MIGRATION_BACKLOG.md
+// + packages/engine/src/v2/define-tool.ts.
 export { defineTool } from './v2/define-tool.js';
 export type { DefineToolOptions } from './v2/define-tool.js';
 

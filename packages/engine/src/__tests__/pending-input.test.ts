@@ -19,15 +19,9 @@ import { QueryEngine } from '../engine.js';
 import { applyToolFlags } from '../tool-flags.js';
 import { addRecipientTool } from '../tools/add-recipient.js';
 import { saveContactTool } from '../tools/contacts.js';
-import type {
-  LLMProvider,
-  ChatParams,
-  ProviderEvent,
-  EngineEvent,
-  Tool,
-} from '../types.js';
+import type { LLMProvider, ChatParams, ProviderEvent, EngineEvent, Tool } from '../types.js';
 import type { PendingInput } from '../pending-input.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -67,11 +61,10 @@ async function collectEvents(gen: AsyncGenerator<EngineEvent>): Promise<EngineEv
 }
 
 // Simple read tool used for "reads-then-paused-write" turns.
-const readBalance: Tool = buildTool({
+const readBalance: Tool = defineTool({
   name: 'balance_check',
   description: 'mock balance',
   inputSchema: z.object({}).passthrough(),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     return { data: { usdc: 100, sui: 50 } };
@@ -289,9 +282,7 @@ describe('engine — resumeWithInput', () => {
       guards: { inputValidation: true },
     });
 
-    const submitEvents = await collectEvents(
-      engine.submitMessage('check my balance and add mom'),
-    );
+    const submitEvents = await collectEvents(engine.submitMessage('check my balance and add mom'));
     const pending = submitEvents.find((e) => e.type === 'pending_input') as
       | (EngineEvent & { type: 'pending_input' })
       | undefined;
@@ -404,9 +395,7 @@ describe('engine — resumeWithInput', () => {
       toolName: 'save_contact',
       toolUseId: 'tc-malformed',
       schema: { fields: [] },
-      assistantContent: [
-        { type: 'tool_use', id: 'tc-malformed', name: 'save_contact', input: {} },
-      ],
+      assistantContent: [{ type: 'tool_use', id: 'tc-malformed', name: 'save_contact', input: {} }],
       completedResults: [],
     };
 

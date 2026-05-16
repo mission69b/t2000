@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { TxMutex, runTools } from '../orchestration.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { EngineEvent, Tool } from '../types.js';
 
 // ---------------------------------------------------------------------------
@@ -9,11 +9,10 @@ import type { EngineEvent, Tool } from '../types.js';
 // ---------------------------------------------------------------------------
 
 function makeReadTool(name: string, delay = 0): Tool {
-  return buildTool({
+  return defineTool({
     name,
     description: `Read tool: ${name}`,
     inputSchema: z.object({}),
-    jsonSchema: { type: 'object', properties: {} },
     isReadOnly: true,
     async call() {
       if (delay) await new Promise((r) => setTimeout(r, delay));
@@ -23,11 +22,10 @@ function makeReadTool(name: string, delay = 0): Tool {
 }
 
 function makeWriteTool(name: string, sideEffect: () => void): Tool {
-  return buildTool({
+  return defineTool({
     name,
     description: `Write tool: ${name}`,
     inputSchema: z.object({}),
-    jsonSchema: { type: 'object', properties: {} },
     isReadOnly: false,
     async call() {
       sideEffect();
@@ -127,22 +125,20 @@ describe('runTools', () => {
 
   it('runs reads before writes in a mixed batch', async () => {
     const order: string[] = [];
-    const readTool = buildTool({
+    const readTool = defineTool({
       name: 'read',
       description: 'Read',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         order.push('read');
         return { data: 'read-result' };
       },
     });
-    const writeTool = buildTool({
+    const writeTool = defineTool({
       name: 'write',
       description: 'Write',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: false,
       async call() {
         order.push('write');
@@ -167,11 +163,10 @@ describe('runTools', () => {
   });
 
   it('handles tool execution errors gracefully', async () => {
-    const failTool = buildTool({
+    const failTool = defineTool({
       name: 'fail',
       description: 'Always fails',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         throw new Error('Boom');
@@ -180,12 +175,7 @@ describe('runTools', () => {
 
     const mutex = new TxMutex();
     const events = await collectEvents(
-      runTools(
-        [{ id: '1', name: 'fail', input: {} }],
-        [failTool],
-        {},
-        mutex,
-      ),
+      runTools([{ id: '1', name: 'fail', input: {} }], [failTool], {}, mutex),
     );
 
     expect(events).toHaveLength(1);
@@ -196,15 +186,10 @@ describe('runTools', () => {
   });
 
   it('rejects invalid input via zod schema', async () => {
-    const strictTool = buildTool({
+    const strictTool = defineTool({
       name: 'strict',
       description: 'Requires a number',
       inputSchema: z.object({ count: z.number() }),
-      jsonSchema: {
-        type: 'object',
-        properties: { count: { type: 'number' } },
-        required: ['count'],
-      },
       isReadOnly: true,
       async call(input) {
         return { data: input };
@@ -252,11 +237,10 @@ describe('runTools', () => {
     // Force an unknown tool into the write partition by having a known write tool
     // alongside an unknown one — the unknown one goes to reads in partition,
     // but let's test the write guard directly
-    const writeTool = buildTool({
+    const writeTool = defineTool({
       name: 'known_write',
       description: 'Write',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: false,
       async call() {
         return { data: 'ok' };
@@ -290,18 +274,15 @@ describe('runTools', () => {
 
   it('yields zero events for empty pending list', async () => {
     const mutex = new TxMutex();
-    const events = await collectEvents(
-      runTools([], [makeReadTool('unused')], {}, mutex),
-    );
+    const events = await collectEvents(runTools([], [makeReadTool('unused')], {}, mutex));
     expect(events).toHaveLength(0);
   });
 
   it('handles write tool errors without breaking the mutex', async () => {
-    const failWrite = buildTool({
+    const failWrite = defineTool({
       name: 'fail_write',
       description: 'Fails',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: false,
       async call() {
         throw new Error('Write failed');

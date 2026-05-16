@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
-import { buildTool } from '../tool.js';
-import type {
-  LLMProvider,
-  ChatParams,
-  ProviderEvent,
-  EngineEvent,
-  Tool,
-} from '../types.js';
+import { defineTool } from '../v2/define-tool.js';
+import type { LLMProvider, ChatParams, ProviderEvent, EngineEvent, Tool } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Mock LLM provider — returns pre-scripted responses
@@ -73,15 +67,10 @@ async function collectEvents(gen: AsyncGenerator<EngineEvent>): Promise<EngineEv
 // ---------------------------------------------------------------------------
 
 describe('QueryEngine', () => {
-  const echoTool: Tool = buildTool({
+  const echoTool: Tool = defineTool({
     name: 'echo',
     description: 'Echoes a message',
     inputSchema: z.object({ msg: z.string() }),
-    jsonSchema: {
-      type: 'object',
-      properties: { msg: { type: 'string' } },
-      required: ['msg'],
-    },
     isReadOnly: true,
     async call(input) {
       return { data: { echoed: input.msg } };
@@ -90,7 +79,10 @@ describe('QueryEngine', () => {
 
   it('streams a simple text response', async () => {
     const provider = createMockProvider([
-      [{ type: 'text', text: 'Hello, ' }, { type: 'text', text: 'world!' }],
+      [
+        { type: 'text', text: 'Hello, ' },
+        { type: 'text', text: 'world!' },
+      ],
     ]);
 
     const engine = new QueryEngine({
@@ -104,9 +96,7 @@ describe('QueryEngine', () => {
     const textDeltas = events.filter((e) => e.type === 'text_delta');
     expect(textDeltas).toHaveLength(2);
 
-    const fullText = textDeltas
-      .map((e) => (e.type === 'text_delta' ? e.text : ''))
-      .join('');
+    const fullText = textDeltas.map((e) => (e.type === 'text_delta' ? e.text : '')).join('');
     expect(fullText).toBe('Hello, world!');
 
     expect(events.at(-1)?.type).toBe('turn_complete');
@@ -144,9 +134,7 @@ describe('QueryEngine', () => {
   });
 
   it('tracks cumulative token usage', async () => {
-    const provider = createMockProvider([
-      [{ type: 'text', text: 'Turn 1' }],
-    ]);
+    const provider = createMockProvider([[{ type: 'text', text: 'Turn 1' }]]);
 
     const engine = new QueryEngine({
       provider,
@@ -161,9 +149,7 @@ describe('QueryEngine', () => {
   });
 
   it('stores messages in conversation history', async () => {
-    const provider = createMockProvider([
-      [{ type: 'text', text: 'Response 1' }],
-    ]);
+    const provider = createMockProvider([[{ type: 'text', text: 'Response 1' }]]);
 
     const engine = new QueryEngine({
       provider,
@@ -203,21 +189,19 @@ describe('QueryEngine', () => {
   });
 
   it('handles multiple tool calls in a single LLM turn', async () => {
-    const toolA = buildTool({
+    const toolA = defineTool({
       name: 'tool_a',
       description: 'Tool A',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         return { data: { result: 'a' } };
       },
     });
-    const toolB = buildTool({
+    const toolB = defineTool({
       name: 'tool_b',
       description: 'Tool B',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         return { data: { result: 'b' } };
@@ -250,9 +234,7 @@ describe('QueryEngine', () => {
 
     // Results added to conversation as user message with tool_result blocks
     const messages = engine.getMessages();
-    const toolResultMsg = messages.find((m) =>
-      m.content.some((b) => b.type === 'tool_result'),
-    );
+    const toolResultMsg = messages.find((m) => m.content.some((b) => b.type === 'tool_result'));
     expect(toolResultMsg).toBeDefined();
     expect(toolResultMsg?.content).toHaveLength(2);
   });
@@ -283,9 +265,7 @@ describe('QueryEngine', () => {
   });
 
   it('restores conversation with loadMessages', async () => {
-    const provider = createMockProvider([
-      [{ type: 'text', text: 'Continued conversation' }],
-    ]);
+    const provider = createMockProvider([[{ type: 'text', text: 'Continued conversation' }]]);
 
     const engine = new QueryEngine({
       provider,
@@ -307,30 +287,20 @@ describe('QueryEngine', () => {
   });
 
   describe('invokeReadTool (v0.46.7)', () => {
-    const readTool: Tool = buildTool({
+    const readTool: Tool = defineTool({
       name: 'fake_read',
       description: 'A read-only tool',
       inputSchema: z.object({ q: z.string() }),
-      jsonSchema: {
-        type: 'object',
-        properties: { q: { type: 'string' } },
-        required: ['q'],
-      },
       isReadOnly: true,
       async call(input) {
         return { data: { echoed: input.q, ts: 'fixed' } };
       },
     });
 
-    const writeTool: Tool = buildTool({
+    const writeTool: Tool = defineTool({
       name: 'fake_write',
       description: 'A write tool',
       inputSchema: z.object({ amount: z.number() }),
-      jsonSchema: {
-        type: 'object',
-        properties: { amount: { type: 'number' } },
-        required: ['amount'],
-      },
       isReadOnly: false,
       permissionLevel: 'confirm',
       async call(input) {
@@ -357,9 +327,7 @@ describe('QueryEngine', () => {
         systemPrompt: 'Test',
       });
 
-      await expect(engine.invokeReadTool('does_not_exist', {})).rejects.toThrow(
-        /tool not found/i,
-      );
+      await expect(engine.invokeReadTool('does_not_exist', {})).rejects.toThrow(/tool not found/i);
     });
 
     it('throws when the tool is not read-only', async () => {
@@ -381,17 +349,14 @@ describe('QueryEngine', () => {
         systemPrompt: 'Test',
       });
 
-      await expect(engine.invokeReadTool('fake_read', { q: 42 })).rejects.toThrow(
-        /invalid input/i,
-      );
+      await expect(engine.invokeReadTool('fake_read', { q: 42 })).rejects.toThrow(/invalid input/i);
     });
 
     it('returns isError=true when the tool throws at runtime', async () => {
-      const throwingTool: Tool = buildTool({
+      const throwingTool: Tool = defineTool({
         name: 'fake_throw',
         description: 'Throws',
         inputSchema: z.object({}),
-        jsonSchema: { type: 'object', properties: {}, required: [] },
         isReadOnly: true,
         async call() {
           throw new Error('boom');
@@ -424,14 +389,10 @@ describe('QueryEngine', () => {
   describe('TurnReadCache (v0.46.8)', () => {
     function buildCountingReadTool(name: string): { tool: Tool; getCallCount: () => number } {
       let calls = 0;
-      const tool: Tool = buildTool({
+      const tool: Tool = defineTool({
         name,
         description: `Counting read tool ${name}`,
         inputSchema: z.object({ q: z.string().optional() }),
-        jsonSchema: {
-          type: 'object',
-          properties: { q: { type: 'string' } },
-        },
         isReadOnly: true,
         async call(input) {
           calls++;
@@ -443,15 +404,10 @@ describe('QueryEngine', () => {
 
     function buildCountingWriteTool(name: string): { tool: Tool; getCallCount: () => number } {
       let calls = 0;
-      const tool: Tool = buildTool({
+      const tool: Tool = defineTool({
         name,
         description: `Counting write tool ${name}`,
         inputSchema: z.object({ amount: z.number() }),
-        jsonSchema: {
-          type: 'object',
-          properties: { amount: { type: 'number' } },
-          required: ['amount'],
-        },
         isReadOnly: false,
         permissionLevel: 'auto',
         async call(input) {
@@ -636,15 +592,10 @@ describe('QueryEngine', () => {
   });
 
   it('yields pending_action for write tools when no agent is configured', async () => {
-    const writeTool: Tool = buildTool({
+    const writeTool: Tool = defineTool({
       name: 'save_deposit',
       description: 'Save USDC',
       inputSchema: z.object({ amount: z.number() }),
-      jsonSchema: {
-        type: 'object',
-        properties: { amount: { type: 'number' } },
-        required: ['amount'],
-      },
       isReadOnly: false,
       permissionLevel: 'confirm',
       async call(input) {
@@ -660,7 +611,10 @@ describe('QueryEngine', () => {
       provider,
       tools: [writeTool],
       systemPrompt: 'Test',
-      priceCache: new Map([['SUI', 3.5], ['USDC', 1]]),
+      priceCache: new Map([
+        ['SUI', 3.5],
+        ['USDC', 1],
+      ]),
       permissionConfig: {
         globalAutoBelow: 10,
         autonomousDailyLimit: 200,
@@ -678,9 +632,7 @@ describe('QueryEngine', () => {
   });
 
   it('can reset conversation state', async () => {
-    const provider = createMockProvider([
-      [{ type: 'text', text: 'Hi' }],
-    ]);
+    const provider = createMockProvider([[{ type: 'text', text: 'Hi' }]]);
 
     const engine = new QueryEngine({
       provider,
@@ -712,10 +664,12 @@ describe('QueryEngine', () => {
   describe('[SPEC 19 v1.24.13] strips pseudo <thinking> tags before persisting', () => {
     it('strips a single <thinking>…</thinking> block from text content', async () => {
       const provider = createMockProvider([
-        [{
-          type: 'text',
-          text: '<thinking>The user wants a swap. Let me think about routes...</thinking>Done. Swapped 0.05 USDC for 0.0468 SUI.',
-        }],
+        [
+          {
+            type: 'text',
+            text: '<thinking>The user wants a swap. Let me think about routes...</thinking>Done. Swapped 0.05 USDC for 0.0468 SUI.',
+          },
+        ],
       ]);
       const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
       await collectEvents(engine.submitMessage('Swap'));
@@ -734,16 +688,21 @@ describe('QueryEngine', () => {
 
     it('strips multi-line <thinking> spanning newlines (the production case)', async () => {
       const provider = createMockProvider([
-        [{
-          type: 'text',
-          text: '<thinking>\nLooking at the results:\n\nFrom the bundle: save_deposit 0.5 USDC executed\nswap_execute 0.05 USDC → 0.0467 SUI executed\n\nBoth settled atomically.\n</thinking>Done. Saved 0.5 USDC at 4.93% APY and swapped 0.05 USDC for ~0.0467 SUI — both settled atomically.',
-        }],
+        [
+          {
+            type: 'text',
+            text: '<thinking>\nLooking at the results:\n\nFrom the bundle: save_deposit 0.5 USDC executed\nswap_execute 0.05 USDC → 0.0467 SUI executed\n\nBoth settled atomically.\n</thinking>Done. Saved 0.5 USDC at 4.93% APY and swapped 0.05 USDC for ~0.0467 SUI — both settled atomically.',
+          },
+        ],
       ]);
       const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
       await collectEvents(engine.submitMessage('Bundle'));
 
       const assistant = engine.getMessages().find((m) => m.role === 'assistant')!;
-      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string };
+      const text = assistant.content.find((b) => b.type === 'text') as {
+        type: 'text';
+        text: string;
+      };
       expect(text.text).toBe(
         'Done. Saved 0.5 USDC at 4.93% APY and swapped 0.05 USDC for ~0.0467 SUI — both settled atomically.',
       );
@@ -751,29 +710,35 @@ describe('QueryEngine', () => {
 
     it('strips an unterminated <thinking> tag (truncated stream)', async () => {
       const provider = createMockProvider([
-        [{
-          type: 'text',
-          text: 'Quote ready.\n\n<thinking>Now I should also consider whether the user might want',
-        }],
+        [
+          {
+            type: 'text',
+            text: 'Quote ready.\n\n<thinking>Now I should also consider whether the user might want',
+          },
+        ],
       ]);
       const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
       await collectEvents(engine.submitMessage('Quote'));
 
       const assistant = engine.getMessages().find((m) => m.role === 'assistant')!;
-      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string };
+      const text = assistant.content.find((b) => b.type === 'text') as {
+        type: 'text';
+        text: string;
+      };
       expect(text.text).toBe('Quote ready.');
       expect(text.text).not.toContain('<thinking');
     });
 
     it('leaves text without <thinking> tags untouched', async () => {
-      const provider = createMockProvider([
-        [{ type: 'text', text: 'Hello world.' }],
-      ]);
+      const provider = createMockProvider([[{ type: 'text', text: 'Hello world.' }]]);
       const engine = new QueryEngine({ provider, tools: [], systemPrompt: 'Test' });
       await collectEvents(engine.submitMessage('Hi'));
 
       const assistant = engine.getMessages().find((m) => m.role === 'assistant')!;
-      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string };
+      const text = assistant.content.find((b) => b.type === 'text') as {
+        type: 'text';
+        text: string;
+      };
       expect(text.text).toBe('Hello world.');
     });
 
@@ -789,7 +754,9 @@ describe('QueryEngine', () => {
       // assistant content. Placeholder is acceptable; what's NOT acceptable
       // is silently dropping the message.
       expect(assistant.content.length).toBeGreaterThan(0);
-      const text = assistant.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined;
+      const text = assistant.content.find((b) => b.type === 'text') as
+        | { type: 'text'; text: string }
+        | undefined;
       expect(text).toBeDefined();
       expect(text!.text).not.toContain('<thinking');
     });

@@ -7,7 +7,7 @@ import {
   DEFAULT_GUARD_CONFIG,
   BalanceTracker,
 } from '../guards.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { PendingToolCall } from '../orchestration.js';
 
 /**
@@ -28,27 +28,25 @@ import type { PendingToolCall } from '../orchestration.js';
  * guards trust the snapshot.
  */
 
-const SAVE = buildTool({
+const SAVE = defineTool({
   name: 'save_deposit',
   description: 'save',
   inputSchema: z.object({
     amount: z.number(),
     asset: z.string().optional(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: false,
   flags: { mutating: true, requiresBalance: true },
   call: async () => ({ data: {} }),
 });
 
-const BORROW = buildTool({
+const BORROW = defineTool({
   name: 'borrow',
   description: 'borrow',
   inputSchema: z.object({
     amount: z.number(),
     asset: z.string().optional(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: false,
   flags: { mutating: true, requiresBalance: true, affectsHealth: true },
   call: async () => ({ data: {} }),
@@ -92,7 +90,9 @@ describe('BalanceTracker.recordReadAt (F2 v1.11)', () => {
   });
 });
 
-function injectionMessages(result: { injections: Array<{ _hint?: string; _warning?: string }> }): string[] {
+function injectionMessages(result: {
+  injections: Array<{ _hint?: string; _warning?: string }>;
+}): string[] {
   return result.injections
     .flatMap((inj) => [inj._hint, inj._warning])
     .filter((m): m is string => typeof m === 'string');

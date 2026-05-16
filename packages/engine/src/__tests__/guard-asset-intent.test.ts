@@ -6,7 +6,7 @@ import {
   extractConversationText,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { PendingToolCall } from '../orchestration.js';
 
 /**
@@ -18,7 +18,7 @@ import type { PendingToolCall } from '../orchestration.js';
  * LLM is forced to re-issue with `asset: "SUI"`.
  */
 
-const sendTransfer = buildTool({
+const sendTransfer = defineTool({
   name: 'send_transfer',
   description: 'send',
   inputSchema: z.object({
@@ -26,7 +26,6 @@ const sendTransfer = buildTool({
     amount: z.number(),
     asset: z.string().optional(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: false,
   flags: { mutating: true, irreversible: true, requiresBalance: true },
   call: async () => ({ data: {} }),
@@ -39,9 +38,7 @@ function makeCall(input: Record<string, unknown>): PendingToolCall {
 }
 
 function makeConvCtx(userText: string) {
-  return extractConversationText([
-    { role: 'user', content: [{ type: 'text', text: userText }] },
-  ]);
+  return extractConversationText([{ role: 'user', content: [{ type: 'text', text: userText }] }]);
 }
 
 describe('guardAssetIntent (send_transfer asset safety)', () => {
@@ -154,11 +151,10 @@ describe('guardAssetIntent (send_transfer asset safety)', () => {
   });
 
   it('does not run on non-send_transfer tools', () => {
-    const otherTool = buildTool({
+    const otherTool = defineTool({
       name: 'save_deposit',
       description: 's',
       inputSchema: z.object({ amount: z.number() }),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: false,
       flags: { mutating: true, requiresBalance: true },
       call: async () => ({ data: {} }),

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { microcompact } from '../compact/microcompact.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { Message, Tool } from '../types.js';
 
 function msg(role: 'user' | 'assistant', content: Message['content']): Message {
@@ -15,17 +15,12 @@ function msg(role: 'user' | 'assistant', content: Message['content']): Message {
  * [v1.24.6 / S.122] Optional `flags` lets mutating-write tests exercise
  * the implicit-non-cacheable path (each call is a new on-chain tx).
  */
-function fakeTool(
-  name: string,
-  cacheable?: boolean,
-  flags?: { mutating?: boolean },
-): Tool {
+function fakeTool(name: string, cacheable?: boolean, flags?: { mutating?: boolean }): Tool {
   const isMutating = flags?.mutating === true;
-  return buildTool({
+  return defineTool({
     name,
     description: `${name} (test)`,
     inputSchema: z.object({}).passthrough(),
-    jsonSchema: { type: 'object', properties: {}, required: [] },
     cacheable,
     flags,
     isReadOnly: !isMutating,
@@ -43,17 +38,13 @@ describe('microcompact', () => {
       msg('assistant', [
         { type: 'tool_use', id: 'tu1', name: 'balance_check', input: { asset: 'USDC' } },
       ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' },
-      ]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' }]),
       msg('assistant', [{ type: 'text', text: 'You have 100 USDC' }]),
       msg('user', [{ type: 'text', text: 'check again' }]),
       msg('assistant', [
         { type: 'tool_use', id: 'tu2', name: 'balance_check', input: { asset: 'USDC' } },
       ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' },
-      ]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' }]),
     ];
 
     const result = microcompact(messages);
@@ -70,15 +61,11 @@ describe('microcompact', () => {
       msg('assistant', [
         { type: 'tool_use', id: 'tu1', name: 'balance_check', input: { asset: 'USDC' } },
       ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' },
-      ]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' }]),
       msg('assistant', [
         { type: 'tool_use', id: 'tu2', name: 'balance_check', input: { asset: 'SUI' } },
       ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu2', content: '{"balance":50}' },
-      ]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"balance":50}' }]),
     ];
 
     const result = microcompact(messages);
@@ -100,18 +87,10 @@ describe('microcompact', () => {
 
   it('is idempotent', () => {
     const messages: Message[] = [
-      msg('assistant', [
-        { type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} },
-      ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' },
-      ]),
-      msg('assistant', [
-        { type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} },
-      ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' },
-      ]),
+      msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' }]),
+      msg('assistant', [{ type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} }]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' }]),
     ];
 
     const once = microcompact(messages);
@@ -121,18 +100,12 @@ describe('microcompact', () => {
 
   it('does not replace error results', () => {
     const messages: Message[] = [
-      msg('assistant', [
-        { type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} },
-      ]),
+      msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
       msg('user', [
         { type: 'tool_result', toolUseId: 'tu1', content: '{"error":"timeout"}', isError: true },
       ]),
-      msg('assistant', [
-        { type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} },
-      ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' },
-      ]),
+      msg('assistant', [{ type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} }]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' }]),
     ];
 
     const result = microcompact(messages);
@@ -144,18 +117,10 @@ describe('microcompact', () => {
 
   it('does not mutate original messages', () => {
     const original: Message[] = [
-      msg('assistant', [
-        { type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} },
-      ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' },
-      ]),
-      msg('assistant', [
-        { type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} },
-      ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' },
-      ]),
+      msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"balance":100}' }]),
+      msg('assistant', [{ type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} }]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"balance":100}' }]),
     ];
 
     const contentBefore = original[3].content[0];
@@ -168,15 +133,11 @@ describe('microcompact', () => {
       msg('assistant', [
         { type: 'tool_use', id: 'tu1', name: 'history', input: { limit: 10, asset: 'USDC' } },
       ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu1', content: '{"txs":[]}' },
-      ]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"txs":[]}' }]),
       msg('assistant', [
         { type: 'tool_use', id: 'tu2', name: 'history', input: { asset: 'USDC', limit: 10 } },
       ]),
-      msg('user', [
-        { type: 'tool_result', toolUseId: 'tu2', content: '{"txs":[]}' },
-      ]),
+      msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"txs":[]}' }]),
     ];
 
     const result = microcompact(messages);
@@ -200,24 +161,12 @@ describe('microcompact', () => {
     it('never dedupes calls to a tool marked cacheable: false', () => {
       const tools = [fakeTool('balance_check', false)];
       const messages: Message[] = [
-        msg('assistant', [
-          { type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} },
-        ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":93}' },
-        ]),
-        msg('assistant', [
-          { type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} },
-        ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":83}' },
-        ]),
-        msg('assistant', [
-          { type: 'tool_use', id: 'tu3', name: 'balance_check', input: {} },
-        ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu3', content: '{"wallet":103}' },
-        ]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":93}' }]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} }]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":83}' }]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu3', name: 'balance_check', input: {} }]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu3', content: '{"wallet":103}' }]),
       ];
 
       const result = microcompact(messages, tools);
@@ -236,10 +185,7 @@ describe('microcompact', () => {
       // cacheable. The latter replaces the deleted `defillama_token_prices`
       // fixture used pre-v1.4 — same semantics (multi-token spot prices,
       // safe to dedupe inside a turn) just BlockVision-backed now.
-      const tools = [
-        fakeTool('balance_check', false),
-        fakeTool('token_prices'),
-      ];
+      const tools = [fakeTool('balance_check', false), fakeTool('token_prices')];
       const messages: Message[] = [
         msg('assistant', [
           { type: 'tool_use', id: 'b1', name: 'balance_check', input: {} },
@@ -288,18 +234,10 @@ describe('microcompact', () => {
       // pass-through, never as dedupe anchors.
       const tools = [fakeTool('balance_check', false)];
       const messages: Message[] = [
-        msg('assistant', [
-          { type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} },
-        ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":100}' },
-        ]),
-        msg('assistant', [
-          { type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} },
-        ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":80}' },
-        ]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":100}' }]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} }]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":80}' }]),
       ];
 
       const result = microcompact(messages, tools);
@@ -310,18 +248,10 @@ describe('microcompact', () => {
       // No tools registry — every tool is treated as cacheable, so the
       // pre-v1.5.1 dedupe behavior is preserved for legacy hosts.
       const messages: Message[] = [
-        msg('assistant', [
-          { type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} },
-        ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":100}' },
-        ]),
-        msg('assistant', [
-          { type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} },
-        ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":80}' },
-        ]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu1', name: 'balance_check', input: {} }]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"wallet":100}' }]),
+        msg('assistant', [{ type: 'tool_use', id: 'tu2', name: 'balance_check', input: {} }]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"wallet":80}' }]),
       ];
 
       const result = microcompact(messages);
@@ -339,17 +269,23 @@ describe('microcompact', () => {
       const tools = [fakeTool('protocol_deep_dive', true)];
       const messages: Message[] = [
         msg('assistant', [
-          { type: 'tool_use', id: 'tu1', name: 'protocol_deep_dive', input: { protocol: 'navi-lending' } },
+          {
+            type: 'tool_use',
+            id: 'tu1',
+            name: 'protocol_deep_dive',
+            input: { protocol: 'navi-lending' },
+          },
         ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu1', content: '{"name":"NAVI"}' },
-        ]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu1', content: '{"name":"NAVI"}' }]),
         msg('assistant', [
-          { type: 'tool_use', id: 'tu2', name: 'protocol_deep_dive', input: { protocol: 'navi-lending' } },
+          {
+            type: 'tool_use',
+            id: 'tu2',
+            name: 'protocol_deep_dive',
+            input: { protocol: 'navi-lending' },
+          },
         ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'tu2', content: '{"name":"NAVI"}' },
-        ]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'tu2', content: '{"name":"NAVI"}' }]),
       ];
 
       const result = microcompact(messages, tools);
@@ -408,15 +344,11 @@ describe('microcompact', () => {
         msg('assistant', [
           { type: 'tool_use', id: 'w1', name: 'idempotent_write', input: { x: 1 } },
         ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'w1', content: '{"ok":true}' },
-        ]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'w1', content: '{"ok":true}' }]),
         msg('assistant', [
           { type: 'tool_use', id: 'w2', name: 'idempotent_write', input: { x: 1 } },
         ]),
-        msg('user', [
-          { type: 'tool_result', toolUseId: 'w2', content: '{"ok":true}' },
-        ]),
+        msg('user', [{ type: 'tool_result', toolUseId: 'w2', content: '{"ok":true}' }]),
       ];
 
       const result = microcompact(messages, tools);

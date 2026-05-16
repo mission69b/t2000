@@ -6,7 +6,7 @@ import {
   extractConversationText,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { PendingToolCall } from '../orchestration.js';
 
 /**
@@ -19,29 +19,27 @@ import type { PendingToolCall } from '../orchestration.js';
  * LLM is forced to re-issue with `address: "0x40cd..."`.
  */
 
-const balanceCheck = buildTool({
+const balanceCheck = defineTool({
   name: 'balance_check',
   description: 'check balance',
   inputSchema: z.object({
     address: z.string().optional(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   call: async () => ({ data: {} }),
 });
 
-const portfolioAnalysis = buildTool({
+const portfolioAnalysis = defineTool({
   name: 'portfolio_analysis',
   description: 'portfolio',
   inputSchema: z.object({
     address: z.string().optional(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   call: async () => ({ data: {} }),
 });
 
-const swapQuote = buildTool({
+const swapQuote = defineTool({
   name: 'swap_quote',
   description: 'swap quote',
   inputSchema: z.object({
@@ -49,7 +47,6 @@ const swapQuote = buildTool({
     to: z.string(),
     amount: z.number(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   call: async () => ({ data: {} }),
 });
@@ -63,9 +60,7 @@ function makeCall(name: string, input: Record<string, unknown>): PendingToolCall
 }
 
 function makeConvCtx(userText: string) {
-  return extractConversationText([
-    { role: 'user', content: [{ type: 'text', text: userText }] },
-  ]);
+  return extractConversationText([{ role: 'user', content: [{ type: 'text', text: userText }] }]);
 }
 
 describe('guardAddressScope (read-tool address safety)', () => {
@@ -194,8 +189,21 @@ describe('guardAddressScope (read-tool address safety)', () => {
     // with input:{} should default to the signed-in user and pass.
     const messages = [
       { role: 'user', content: [{ type: 'text', text: `Send 0.01 USDC to ${WATCHED}` }] },
-      { role: 'assistant', content: [{ type: 'tool_use', id: 'send_1', name: 'send_transfer', input: { to: WATCHED, amount: 0.01 } }] },
-      { role: 'user', content: [{ type: 'tool_result', toolUseId: 'send_1', content: '{"success":true}' }] },
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'send_1',
+            name: 'send_transfer',
+            input: { to: WATCHED, amount: 0.01 },
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', toolUseId: 'send_1', content: '{"success":true}' }],
+      },
       { role: 'user', content: [{ type: 'text', text: 'Save $10 USDC' }] },
     ];
     const convCtx = extractConversationText(messages);
@@ -258,8 +266,21 @@ describe('guardAddressScope (read-tool address safety)', () => {
       '<post_write_anchor>\nA write executed earlier in this session. The freshest balance_check / savings_info result in your conversation history is at turn 2…\n</post_write_anchor>';
     const messages = [
       { role: 'user', content: [{ type: 'text', text: `Send 0.01 USDC to ${WATCHED}` }] },
-      { role: 'assistant', content: [{ type: 'tool_use', id: 'send_1', name: 'send_transfer', input: { to: WATCHED, amount: 0.01 } }] },
-      { role: 'user', content: [{ type: 'tool_result', toolUseId: 'send_1', content: '{"success":true}' }] },
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'send_1',
+            name: 'send_transfer',
+            input: { to: WATCHED, amount: 0.01 },
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', toolUseId: 'send_1', content: '{"success":true}' }],
+      },
       { role: 'user', content: [{ type: 'text', text: `${ANCHOR}\n\nSave $10 USDC` }] },
     ];
     const convCtx = extractConversationText(messages);

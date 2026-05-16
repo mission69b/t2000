@@ -23,7 +23,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from './define-tool.js';
 import type { Tool as LegacyTool, ToolContext, PermissionLevel } from '../types.js';
 import { wrapLegacyTool, toAISDKTools } from './tool-wrapper.js';
 import { DEFAULT_PERMISSION_CONFIG } from '../permission-rules.js';
@@ -31,11 +31,10 @@ import { createGuardRunnerState } from '../guards.js';
 import type { InternalContext } from './internal-context.js';
 
 function makeLegacyTool(overrides: Partial<LegacyTool> = {}): LegacyTool {
-  const base: LegacyTool = buildTool({
+  const base: LegacyTool = defineTool({
     name: 'test_tool',
     description: 'A test tool.',
     inputSchema: z.object({ x: z.string() }),
-    jsonSchema: { type: 'object', properties: { x: { type: 'string' } } },
     flags: {},
     permissionLevel: 'auto',
     isReadOnly: true,
@@ -104,11 +103,14 @@ describe('wrapLegacyTool', () => {
     const legacy = makeLegacyTool({ call: callSpy });
     const wrapped = wrapLegacyTool(legacy);
 
-    const result = await wrapped.execute!({ x: 'hello' }, {
-      toolCallId: 'call_1',
-      messages: [],
-      experimental_context: makeInternalCtx(),
-    });
+    const result = await wrapped.execute!(
+      { x: 'hello' },
+      {
+        toolCallId: 'call_1',
+        messages: [],
+        experimental_context: makeInternalCtx(),
+      },
+    );
 
     expect(callSpy).toHaveBeenCalledTimes(1);
     const callRecord = callSpy.mock.calls[0]!;
@@ -126,12 +128,15 @@ describe('wrapLegacyTool', () => {
     const wrapped = wrapLegacyTool(legacy);
     const controller = new AbortController();
 
-    await wrapped.execute!({ x: 'a' }, {
-      toolCallId: 'call_2',
-      messages: [],
-      abortSignal: controller.signal,
-      experimental_context: makeInternalCtx(),
-    });
+    await wrapped.execute!(
+      { x: 'a' },
+      {
+        toolCallId: 'call_2',
+        messages: [],
+        abortSignal: controller.signal,
+        experimental_context: makeInternalCtx(),
+      },
+    );
 
     expect(callSpy).toHaveBeenCalled();
     const passedCtx = callSpy.mock.calls[0][1];
@@ -147,11 +152,14 @@ describe('wrapLegacyTool', () => {
     const wrapped = wrapLegacyTool(legacy);
 
     await expect(
-      wrapped.execute!({ x: 'a' }, {
-        toolCallId: 'call_3',
-        messages: [],
-        experimental_context: makeInternalCtx(),
-      }),
+      wrapped.execute!(
+        { x: 'a' },
+        {
+          toolCallId: 'call_3',
+          messages: [],
+          experimental_context: makeInternalCtx(),
+        },
+      ),
     ).rejects.toThrow('amount must be positive');
     expect(callSpy).not.toHaveBeenCalled();
   });
@@ -167,11 +175,14 @@ describe('wrapLegacyTool', () => {
     const wrapped = wrapLegacyTool(legacy);
 
     await expect(
-      wrapped.execute!({ x: 'a' }, {
-        toolCallId: 'call_4',
-        messages: [],
-        experimental_context: makeInternalCtx(),
-      }),
+      wrapped.execute!(
+        { x: 'a' },
+        {
+          toolCallId: 'call_4',
+          messages: [],
+          experimental_context: makeInternalCtx(),
+        },
+      ),
     ).rejects.toThrow(/pending_input pattern/);
   });
 });
@@ -200,10 +211,12 @@ describe('wrapLegacyTool needsApproval (USD-aware permission resolver)', () => {
     const fn = wrapped.needsApproval;
     expect(typeof fn).toBe('function');
     return Promise.resolve(
-      (fn as (i: unknown, o: { toolCallId: string; messages: unknown[]; experimental_context?: unknown }) => boolean | PromiseLike<boolean>)(
-        input,
-        { toolCallId: 'c', messages: [], experimental_context: internal },
-      ),
+      (
+        fn as (
+          i: unknown,
+          o: { toolCallId: string; messages: unknown[]; experimental_context?: unknown },
+        ) => boolean | PromiseLike<boolean>
+      )(input, { toolCallId: 'c', messages: [], experimental_context: internal }),
     );
   }
 

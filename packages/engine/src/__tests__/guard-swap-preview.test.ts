@@ -7,7 +7,7 @@ import {
   extractConversationText,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { PendingToolCall } from '../orchestration.js';
 
 /**
@@ -21,7 +21,7 @@ import type { PendingToolCall } from '../orchestration.js';
  * amount) within the recent window.
  */
 
-const swapExecute = buildTool({
+const swapExecute = defineTool({
   name: 'swap_execute',
   description: 'swap',
   inputSchema: z.object({
@@ -30,7 +30,6 @@ const swapExecute = buildTool({
     amount: z.number().positive(),
     byAmountIn: z.boolean().optional(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: false,
   flags: { mutating: true, requiresBalance: true },
   preflight: (input) => {
@@ -42,7 +41,7 @@ const swapExecute = buildTool({
   call: async () => ({ data: {} }),
 });
 
-const swapQuote = buildTool({
+const swapQuote = defineTool({
   name: 'swap_quote',
   description: 'quote',
   inputSchema: z.object({
@@ -50,7 +49,6 @@ const swapQuote = buildTool({
     to: z.string(),
     amount: z.number().positive(),
   }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   call: async () => ({ data: {} }),
 });
@@ -194,11 +192,10 @@ describe('guardSwapPreview (swap_execute requires recent swap_quote)', () => {
   });
 
   it('does not run on non-swap_execute tools', () => {
-    const otherTool = buildTool({
+    const otherTool = defineTool({
       name: 'send_transfer',
       description: 'send',
       inputSchema: z.object({ to: z.string(), amount: z.number(), asset: z.string().optional() }),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: false,
       flags: { mutating: true, requiresBalance: true },
       call: async () => ({ data: {} }),

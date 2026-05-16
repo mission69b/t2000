@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { normalizeAddressInput } from '../sui/address.js';
 import type { ToolResult } from '../types.js';
 
@@ -43,7 +43,7 @@ const CANVAS_TITLES: Record<CanvasTemplate, string> = {
 // render_canvas tool
 // ---------------------------------------------------------------------------
 
-export const renderCanvasTool = buildTool({
+export const renderCanvasTool = defineTool({
   name: 'render_canvas',
   description: `Renders an interactive financial canvas inline in the chat.
 
@@ -75,24 +75,6 @@ Always prefer the canvas for visualisation requests. After rendering, offer to e
       })
       .optional(),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      template: {
-        type: 'string',
-        enum: CANVAS_TEMPLATES,
-        description: 'Which canvas template to render',
-      },
-      params: {
-        type: 'object',
-        properties: {
-          period: { type: 'string', enum: ['1m', '3m', '6m', '1y'] },
-          address: { type: 'string' },
-        },
-      },
-    },
-    required: ['template'],
-  },
   isReadOnly: true,
 
   async call(input, context): Promise<ToolResult<unknown>> {

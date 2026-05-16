@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 
 const MPP_GATEWAY = 'https://mpp.t2000.ai';
@@ -35,7 +35,7 @@ export function estimatePayApiCost(url: string): number {
   return 0.005;
 }
 
-export const payApiTool = buildTool({
+export const payApiTool = defineTool({
   name: 'pay_api',
   description: `Execute one of Audric's 5 supported MPP gateway services via on-chain USDC micropayment. Payment is handled automatically. Supported services (11 endpoints):
 
@@ -71,23 +71,22 @@ PDFShift (pdfshift/v1/convert) — composition guidance:
 - Text-only PDFs: call pdfshift directly with HTML content.
 - PDFs with images (eBook covers, illustrated guides, colouring books): generate images first via openai/v1/images/generations (model "gpt-image-1", $0.05 each), then call pdfshift with HTML that includes the image URLs as <img src="..."/> tags. Quote the total cost (N images × $0.05 + $0.01) before starting.`,
   inputSchema: z.object({
-    url: z.string().url(),
-    method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).optional(),
-    body: z.string().optional(),
-    headers: z.record(z.string()).optional(),
-    maxPrice: z.number().positive().optional(),
+    url: z
+      .string()
+      .url()
+      .describe('Full MPP endpoint URL (e.g. https://mpp.t2000.ai/openai/v1/images/generations)'),
+    method: z
+      .enum(['GET', 'POST', 'PUT', 'DELETE'])
+      .optional()
+      .describe('HTTP method (always POST for MPP gateway)'),
+    body: z.string().optional().describe('JSON request body as string'),
+    headers: z.record(z.string()).optional().describe('Additional HTTP headers'),
+    maxPrice: z
+      .number()
+      .positive()
+      .optional()
+      .describe('Maximum price in USD willing to pay (default: service price)'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      url: { type: 'string', description: 'Full MPP endpoint URL (e.g. https://mpp.t2000.ai/openai/v1/images/generations)' },
-      method: { type: 'string', description: 'HTTP method (always POST for MPP gateway)' },
-      body: { type: 'string', description: 'JSON request body as string' },
-      headers: { type: 'object', description: 'Additional HTTP headers' },
-      maxPrice: { type: 'number', description: 'Maximum price in USD willing to pay (default: service price)' },
-    },
-    required: ['url'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, requiresBalance: true, costAware: true, producesArtifact: true, maxRetries: 1 },

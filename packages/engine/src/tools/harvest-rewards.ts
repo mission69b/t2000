@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { PendingReward } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 
 /**
  * [Track B / 2026-05-08] `harvest_rewards` — single-PTB compound flow.
@@ -93,7 +93,7 @@ function formatAmount(amount: number): string {
   return amount.toExponential(2);
 }
 
-export const harvestRewardsTool = buildTool({
+export const harvestRewardsTool = defineTool({
   name: 'harvest_rewards',
   description:
     'Compound write: claim all NAVI rewards, swap each non-USDC reward to USDC inline, deposit the merged USDC into NAVI savings. ONE confirm card, atomic settlement (every leg lands or none of them do). Use when the user wants their rewards to keep earning yield (the common case). Prefer `claim_rewards` instead when the user explicitly wants to RECEIVE the reward token (e.g. "I want my NAVX in my wallet"). Untradeable rewards get transferred back to wallet automatically — they don\'t block the harvest. Dust rewards (< $0.01) likewise. ' +
@@ -114,14 +114,6 @@ export const harvestRewardsTool = buildTool({
         'USD floor for "is this worth swapping?". Rewards below this transfer to wallet instead of being swapped. Default $0.01. Pass 0 to disable.',
       ),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      slippage: { type: 'number', minimum: 0.001, maximum: 0.05 },
-      minRewardUsd: { type: 'number', minimum: 0 },
-    },
-    required: [],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true },

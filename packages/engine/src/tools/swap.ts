@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { T2000Error } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { getTelemetrySink } from '../telemetry.js';
 import { requireAgent } from './utils.js';
 
@@ -32,7 +32,7 @@ export type SwapExecuteToolResult =
   | SwapExecuteSuccessData
   | { error: string; errorCode: 'ASSET_NOT_SUPPORTED' | 'SWAP_FAILED'; hint: string; recoverable: true };
 
-export const swapExecuteTool = buildTool({
+export const swapExecuteTool = defineTool({
   name: 'swap_execute',
   description:
     'Swap tokens on Sui via Cetus Aggregator (20+ DEXs). Supports any token pair with liquidity. Use user-friendly names (SUI, USDC, CETUS, DEEP, etc.) or full coin types. ' +
@@ -44,17 +44,6 @@ export const swapExecuteTool = buildTool({
     byAmountIn: z.boolean().optional().describe('true = fixed input amount (default), false = fixed output amount'),
     slippage: z.number().min(0.001).max(0.05).optional().describe('Max slippage (default 0.01 = 1%, max 5%)'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      from: { type: 'string', description: 'Source token name or coin type' },
-      to: { type: 'string', description: 'Target token name or coin type' },
-      amount: { type: 'number', description: 'Amount to swap' },
-      byAmountIn: { type: 'boolean', description: 'true = fixed input (default), false = fixed output' },
-      slippage: { type: 'number', description: 'Max slippage (0.01 = 1%)' },
-    },
-    required: ['from', 'to', 'amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, requiresBalance: true },

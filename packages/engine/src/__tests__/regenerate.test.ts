@@ -14,7 +14,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { applyToolFlags } from '../tool-flags.js';
 import { regenerateBundle } from '../regenerate.js';
 import type {
@@ -40,14 +40,17 @@ function createNoOpProvider(): LLMProvider {
 // Read tool whose return value flips between two snapshots so we can
 // verify regenerate ACTUALLY re-runs (rather than returning a cached
 // stale result). Each call increments `callCount`.
-function makeFlippingRead(name: string): { tool: Tool; callCount: () => number; reset: () => void } {
+function makeFlippingRead(name: string): {
+  tool: Tool;
+  callCount: () => number;
+  reset: () => void;
+} {
   let calls = 0;
   return {
-    tool: buildTool({
+    tool: defineTool({
       name,
       description: `mock ${name}`,
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         calls += 1;
@@ -73,15 +76,10 @@ function makeFlippingRead(name: string): { tool: Tool; callCount: () => number; 
 // executes during regenerate — confirm-tier writes only run when the
 // host approves a pending_action.
 function makeBundleableWrite(name: string): Tool {
-  return buildTool({
+  return defineTool({
     name,
     description: `mock ${name}`,
     inputSchema: z.object({ amount: z.number() }).passthrough(),
-    jsonSchema: {
-      type: 'object',
-      properties: { amount: { type: 'number' } },
-      required: ['amount'],
-    },
     isReadOnly: false,
     permissionLevel: 'confirm',
     async call() {
@@ -203,18 +201,12 @@ describe('SPEC 7 P2.4b — regenerateBundle', () => {
     expect(result.newPendingAction.steps).toHaveLength(2);
     expect(result.newPendingAction.steps![0].toolName).toBe('swap_execute');
     expect(result.newPendingAction.steps![0].toolUseId).toBe('write-swap-1');
-    expect(result.newPendingAction.steps![0].attemptId).not.toBe(
-      'original-write-swap-1',
-    );
+    expect(result.newPendingAction.steps![0].attemptId).not.toBe('original-write-swap-1');
     expect(result.newPendingAction.steps![1].toolUseId).toBe('write-save-1');
-    expect(result.newPendingAction.steps![1].attemptId).not.toBe(
-      'original-write-save-1',
-    );
+    expect(result.newPendingAction.steps![1].attemptId).not.toBe('original-write-save-1');
 
     // SPEC 7 § Layer 2 line 463 invariant — top-level mirrors steps[0].
-    expect(result.newPendingAction.attemptId).toBe(
-      result.newPendingAction.steps![0].attemptId,
-    );
+    expect(result.newPendingAction.attemptId).toBe(result.newPendingAction.steps![0].attemptId);
 
     // canRegenerate stays true; quoteAge is fresh (~0ms — clamped at >= 0).
     expect(result.newPendingAction.canRegenerate).toBe(true);
@@ -305,10 +297,7 @@ describe('SPEC 7 P2.4b — regenerateBundle', () => {
   // metadata changes.
   it('re-fires regeneratable reads and rebuilds a single-write action with a fresh attemptId', async () => {
     const swapQuote = makeFlippingRead('swap_quote');
-    const tools = applyToolFlags([
-      swapQuote.tool,
-      makeBundleableWrite('swap_execute'),
-    ]);
+    const tools = applyToolFlags([swapQuote.tool, makeBundleableWrite('swap_execute')]);
     const engine = new QueryEngine({
       provider: createNoOpProvider(),
       tools,
@@ -461,11 +450,10 @@ describe('SPEC 7 P2.4b — regenerateBundle', () => {
   });
 
   it('returns engine_error and surfaces the failure when a re-execution throws', async () => {
-    const failingRead = buildTool({
+    const failingRead = defineTool({
       name: 'swap_quote',
       description: 'failing',
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         throw new Error('Cetus 503');

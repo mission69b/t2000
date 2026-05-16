@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { updateTodoTool } from '../tools/update-todo.js';
-import type {
-  ChatParams,
-  EngineEvent,
-  LLMProvider,
-  ProviderEvent,
-} from '../types.js';
+import type { ChatParams, EngineEvent, LLMProvider, ProviderEvent } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Mock LLM provider — same shape as engine.test.ts
@@ -161,7 +156,8 @@ describe('update_todo preflight', () => {
     const items = Array.from({ length: 8 }, (_, i) => ({
       id: `step-${i}`,
       label: `Step ${i}`,
-      status: i === 3 ? ('in_progress' as const) : i < 3 ? ('completed' as const) : ('pending' as const),
+      status:
+        i === 3 ? ('in_progress' as const) : i < 3 ? ('completed' as const) : ('pending' as const),
     }));
     const r = updateTodoTool.preflight!({ items });
     expect(r.valid).toBe(true);
@@ -232,10 +228,7 @@ describe('update_todo engine integration', () => {
         },
       },
     ]);
-    const provider = createMockProvider([
-      ...todoCalls,
-      [{ type: 'text', text: 'All planned.' }],
-    ]);
+    const provider = createMockProvider([...todoCalls, [{ type: 'text', text: 'All planned.' }]]);
     const engine = new QueryEngine({
       provider,
       tools: [updateTodoTool],
@@ -255,11 +248,10 @@ describe('update_todo engine integration', () => {
   it('does NOT exempt mixed iterations (update_todo + another tool)', async () => {
     // Mixed iteration counts — when the LLM calls update_todo alongside a
     // real read tool, the iteration is real work and the budget MUST tick.
-    const otherTool = buildTool({
+    const otherTool = defineTool({
       name: 'noop',
       description: 'No-op',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         return { data: { ok: true } };

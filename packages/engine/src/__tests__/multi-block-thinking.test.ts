@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
 import { AnthropicProvider } from '../providers/anthropic.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { EngineEvent } from '../types.js';
 
 // ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ import type { EngineEvent } from '../types.js';
 
 const HAS_API_KEY = Boolean(process.env.ANTHROPIC_API_KEY);
 
-const dummyTool = buildTool({
+const dummyTool = defineTool({
   name: 'lookup_demo_value',
   description:
     'Returns a small piece of data the model can reason about. ' +
@@ -54,11 +54,6 @@ const dummyTool = buildTool({
   inputSchema: z.object({
     topic: z.string().describe('Short topic name'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: { topic: { type: 'string' } },
-    required: ['topic'],
-  },
   isReadOnly: true,
   cacheable: false,
   async call(input) {
@@ -72,54 +67,64 @@ const dummyTool = buildTool({
   },
 });
 
-describe.skipIf(!HAS_API_KEY)('multi-block thinking signature continuity (real Anthropic API)', () => {
-  it('round-trips ≥2 thinking blocks without signature errors', async () => {
-    const provider = new AnthropicProvider({
-      apiKey: process.env.ANTHROPIC_API_KEY!,
-      defaultModel: 'claude-sonnet-4-20250514',
-      defaultMaxTokens: 4096,
-    });
+describe.skipIf(!HAS_API_KEY)(
+  'multi-block thinking signature continuity (real Anthropic API)',
+  () => {
+    it('round-trips ≥2 thinking blocks without signature errors', async () => {
+      const provider = new AnthropicProvider({
+        apiKey: process.env.ANTHROPIC_API_KEY!,
+        defaultModel: 'claude-sonnet-4-20250514',
+        defaultMaxTokens: 4096,
+      });
 
-    const engine = new QueryEngine({
-      provider,
-      tools: [dummyTool],
-      systemPrompt:
-        "You are a careful assistant. When the user asks you to think through " +
-        "something, ALWAYS call lookup_demo_value first with a short topic, then " +
-        "consider the returned data carefully before responding. Your final " +
-        "response should reference the value you saw.",
-      thinking: { type: 'enabled', budgetTokens: 16_000 },
-      maxTurns: 3,
-      model: 'claude-sonnet-4-20250514',
-    });
+      const engine = new QueryEngine({
+        provider,
+        tools: [dummyTool],
+        systemPrompt:
+          'You are a careful assistant. When the user asks you to think through ' +
+          'something, ALWAYS call lookup_demo_value first with a short topic, then ' +
+          'consider the returned data carefully before responding. Your final ' +
+          'response should reference the value you saw.',
+        thinking: { type: 'enabled', budgetTokens: 16_000 },
+        maxTurns: 3,
+        model: 'claude-sonnet-4-20250514',
+      });
 
-    const events: EngineEvent[] = [];
-    for await (const event of engine.submitMessage(
-      'Think through whether 0.42 is a meaningful figure for a hypothetical metric. ' +
-        'Pull the demo data first, then reason about it carefully and respond.',
-    )) {
-      events.push(event);
-    }
+      const events: EngineEvent[] = [];
+      for await (const event of engine.submitMessage(
+        'Think through whether 0.42 is a meaningful figure for a hypothetical metric. ' +
+          'Pull the demo data first, then reason about it carefully and respond.',
+      )) {
+        events.push(event);
+      }
 
-    const errorEvents = events.filter((e) => e.type === 'error');
-    expect(errorEvents, `unexpected errors: ${JSON.stringify(errorEvents)}`).toHaveLength(0);
+      const errorEvents = events.filter((e) => e.type === 'error');
+      expect(errorEvents, `unexpected errors: ${JSON.stringify(errorEvents)}`).toHaveLength(0);
 
-    const turnComplete = events.find((e) => e.type === 'turn_complete');
-    expect(turnComplete).toBeDefined();
+      const turnComplete = events.find((e) => e.type === 'turn_complete');
+      expect(turnComplete).toBeDefined();
 
-    const thinkingDones = events.filter((e): e is Extract<EngineEvent, { type: 'thinking_done' }> => e.type === 'thinking_done');
-    expect(
-      thinkingDones.length,
-      `expected ≥2 thinking_done events to validate multi-block continuity, got ${thinkingDones.length}`,
-    ).toBeGreaterThanOrEqual(2);
+      const thinkingDones = events.filter(
+        (e): e is Extract<EngineEvent, { type: 'thinking_done' }> => e.type === 'thinking_done',
+      );
+      expect(
+        thinkingDones.length,
+        `expected ≥2 thinking_done events to validate multi-block continuity, got ${thinkingDones.length}`,
+      ).toBeGreaterThanOrEqual(2);
 
-    const indices = thinkingDones.map((e) => e.blockIndex);
-    expect(new Set(indices).size, 'thinking blockIndex values must be unique').toBe(indices.length);
+      const indices = thinkingDones.map((e) => e.blockIndex);
+      expect(new Set(indices).size, 'thinking blockIndex values must be unique').toBe(
+        indices.length,
+      );
 
-    const toolStarts = events.filter((e) => e.type === 'tool_start');
-    expect(toolStarts.length, 'expected the LLM to call lookup_demo_value at least once').toBeGreaterThan(0);
-  }, 90_000);
-});
+      const toolStarts = events.filter((e) => e.type === 'tool_start');
+      expect(
+        toolStarts.length,
+        'expected the LLM to call lookup_demo_value at least once',
+      ).toBeGreaterThan(0);
+    }, 90_000);
+  },
+);
 
 describe('multi-block thinking continuity (gating sentinel)', () => {
   it('runs only when ANTHROPIC_API_KEY is set', () => {

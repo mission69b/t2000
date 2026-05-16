@@ -1,29 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { buildMcpTools, registerEngineTools } from '../mcp/index.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { Tool, ToolContext } from '../types.js';
 
-const testTool: Tool = buildTool({
+const testTool: Tool = defineTool({
   name: 'test_action',
   description: 'A test tool',
   inputSchema: z.object({ value: z.string() }),
-  jsonSchema: {
-    type: 'object',
-    properties: { value: { type: 'string' } },
-    required: ['value'],
-  },
   isReadOnly: true,
   async call(input) {
     return { data: { echoed: input.value } };
   },
 });
 
-const failTool: Tool = buildTool({
+const failTool: Tool = defineTool({
   name: 'fail_action',
   description: 'Always fails',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     throw new Error('Tool crashed');

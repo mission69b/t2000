@@ -1,65 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { buildTool, toolsToDefinitions, findTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
+import { toolsToDefinitions, findTool } from '../tool.js';
 
-describe('buildTool', () => {
-  const echoTool = buildTool({
-    name: 'echo',
-    description: 'Echoes input',
-    inputSchema: z.object({ message: z.string() }),
-    jsonSchema: {
-      type: 'object',
-      properties: { message: { type: 'string' } },
-      required: ['message'],
-    },
-    async call(input) {
-      return { data: { echoed: input.message } };
-    },
-  });
-
-  it('creates a read-only tool by default', () => {
-    expect(echoTool.isReadOnly).toBe(true);
-    expect(echoTool.isConcurrencySafe).toBe(true);
-    expect(echoTool.permissionLevel).toBe('auto');
-  });
-
-  it('creates a write tool with confirm permission', () => {
-    const writeTool = buildTool({
-      name: 'transfer',
-      description: 'Transfers funds',
-      inputSchema: z.object({ to: z.string(), amount: z.number() }),
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          to: { type: 'string' },
-          amount: { type: 'number' },
-        },
-        required: ['to', 'amount'],
-      },
-      isReadOnly: false,
-      async call() {
-        return { data: { success: true } };
-      },
-    });
-
-    expect(writeTool.isReadOnly).toBe(false);
-    expect(writeTool.isConcurrencySafe).toBe(false);
-    expect(writeTool.permissionLevel).toBe('confirm');
-  });
-
-  it('calls the tool and returns result', async () => {
-    const result = await echoTool.call({ message: 'hello' }, {});
-    expect(result.data).toEqual({ echoed: 'hello' });
-  });
-});
+// ---------------------------------------------------------------------------
+// Tool helper tests
+//
+// The `defineTool` factory itself is covered by `v2/define-tool.test.ts`.
+// This file covers the two surviving helpers in `tool.ts` —
+// `toolsToDefinitions` (Tool[] → Anthropic tool definition shape) and
+// `findTool` (Tool[] → Tool | undefined by name).
+// ---------------------------------------------------------------------------
 
 describe('toolsToDefinitions', () => {
   it('converts tools to LLM-compatible definitions', () => {
-    const tool = buildTool({
+    const tool = defineTool({
       name: 'test_tool',
       description: 'A test tool',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       async call() {
         return { data: {} };
       },
@@ -70,27 +28,25 @@ describe('toolsToDefinitions', () => {
     expect(defs[0]).toEqual({
       name: 'test_tool',
       description: 'A test tool',
-      input_schema: { type: 'object', properties: {} },
+      input_schema: { type: 'object', properties: {}, required: [] },
     });
   });
 });
 
 describe('findTool', () => {
   const tools = [
-    buildTool({
+    defineTool({
       name: 'alpha',
       description: 'Alpha tool',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       async call() {
         return { data: 'a' };
       },
     }),
-    buildTool({
+    defineTool({
       name: 'beta',
       description: 'Beta tool',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       async call() {
         return { data: 'b' };
       },

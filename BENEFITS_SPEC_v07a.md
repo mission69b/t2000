@@ -1453,6 +1453,84 @@ Everything else (preflight, permissionLevel, flags, isReadOnly, cacheable, maxRe
 
 **Next session = Batch D (1 tool: pay_api):** Smallest remaining batch. `pay_api` is the LLM's entry point to the MPP gateway — charges USDC to call 40+ external AI services via `mpp.t2000.ai`. After Batch D, the engine will be one-tool-away from "every Audric-facing tool on defineTool" (Batches E + F together = 5 tools, all of which are either complex-read or complex-write). Then a final consolidation pass to delete `buildTool` entirely.
 
+### Day 20b — Phase 2 COMPLETE: Batches D + E + F + buildTool DELETED in one session (2026-05-17)
+
+**Framing (founder, opening Day 20b):** *"Finish all of Phase 2 in one session"* — close the last 6 tools (D + E + F), then run the deletion pass that retires `buildTool` from the engine and from every downstream consumer. Single release closes the entire Phase 2 arc.
+
+**Goal.** Convert the last 6 tools and execute the consolidation: delete `buildTool` factory, delete `BuildToolOptions` type, remove orphan exports from `index.ts`, sweep the audric repo of any consumer that still imports the retired API.
+
+**Migration approach.** Three waves of tool migration, then a deletion sweep:
+
+- **Batch D (1 tool):** `pay_api` — most complex preflight in the codebase (URL parsing + host allow-list against `mpp.t2000.ai`, JSON body validation, country-code presence check, `maxPrice` USD cap). Required `.describe()` lifts on all 5 input fields (url/method/body/headers/maxPrice) to preserve the LLM-visible hints. Flags preserved: `mutating`, `requiresBalance`, `costAware`, `producesArtifact`, `maxRetries: 1`.
+- **Batch E (3 complex reads):** `portfolio_analysis`, `render_canvas`, `transaction_history`.
+  - `portfolio_analysis` — single-field schema (`address` with SuiNS-aware description). `.describe()` lift required.
+  - `render_canvas` — 3 fields (`html`, `width?`, `height?`); auto-gen produces canonical schema directly.
+  - `transaction_history` — `limit` field with `.describe()` lift; preserved `maxResultSizeChars: 8_000` AND the **custom `summarizeOnTruncate` callback**. This was the highest-risk preservation case — a tool-author-supplied function reference passing through `defineTool` unchanged. Verified in the built bundle: callback identity preserved across the factory.
+- **Batch F (2 complex writes):** `harvest_rewards`, `swap_execute`.
+  - `harvest_rewards` — compound write (claim → swap-to-USDC → deposit, single PTB). Preflight + multiple flags (`mutating`, `requiresBalance`, `irreversible`). Auto-gen handled enum field cleanly.
+  - `swap_execute` — Cetus aggregator entry. Inspected output showed `bundleable: true` in the merged flags even though the source file only declared `{mutating, requiresBalance}`. Traced to `applyToolFlags()` in `tool-flags.ts` (called by `tools/index.ts`) which layers canonical flags from `TOOL_FLAGS` at registration time. **Confirmed parity:** this is the same behavior under `buildTool`; not a migration concern.
+
+**6 tools migrated this session — 100% of the original 39-tool scope.**
+
+| Tool | Batch | LoC delta | Notable feature exercised |
+|---|---|---|---|
+| `pay_api` | D / 1.38.0 | -28 | Most complex preflight (URL parse + host allow-list + JSON body + country code + USD cap); 5 `.describe()` lifts |
+| `portfolio_analysis` | E / 1.38.0 | -8 | SuiNS-aware address field; `.describe()` lift |
+| `render_canvas` | E / 1.38.0 | -10 | 3 fields, all clean — no `.describe()` lifts needed |
+| `transaction_history` | E / 1.38.0 | -7 | **FIRST custom `summarizeOnTruncate` callback preserved through `defineTool`** |
+| `harvest_rewards` | F / 1.38.0 | -11 | Compound write (claim → swap → deposit, single PTB); preflight + flags preserved |
+| `swap_execute` | F / 1.38.0 | -9 | Cetus aggregator; verified `applyToolFlags` injects `bundleable: true` at registration (same under both factories) |
+
+**Then the deletion sweep:**
+
+1. **Inlined `buildTool` logic into `defineTool`.** `v2/define-tool.ts` is now fully self-contained — no `tool.ts` dependency. The factory directly constructs the `Tool` shape from `DefineToolOptions` (defaults: `isReadOnly: true`, `permissionLevel` derived from `isReadOnly`, `isConcurrencySafe` defaults to `isReadOnly`).
+2. **Wrote one-shot migration scripts** (`scripts/migrate-buildtool-to-definetool.mjs` + audric companion) using brace-counted JSON-schema-block deletion. Ran across 23 engine test files + 7 audric tool files. Both scripts deleted after the run — migration is one-way, no need to keep them in tree.
+3. **Rewrote `__tests__/tool.test.ts`** to test the surviving helpers only (`toolsToDefinitions`, `findTool`); the `buildTool`-specific cases were already covered by `v2/define-tool.test.ts` (which is now the canonical factory test). 3-test count drop is intentional (parity tests, not lost coverage).
+4. **Reduced `tool.ts` from 93 → 33 lines.** Kept only `toolsToDefinitions` + `findTool` (the framework-agnostic helpers used by `engine.ts`, `orchestration.ts`, `early-dispatcher.ts`, `regenerate.ts`, `compose-bundle.ts`, `v2/engine.ts`, `v2/step-finish.ts`). Could've renamed the file, but the 7 import sites would chase the rename for no behavioral benefit.
+5. **Removed `buildTool` + `BuildToolOptions` exports from `index.ts`.**
+6. **Audric sweep.** Migrated 7 audric `lib/engine/*.ts` files (`advice-tool`, `mpp-services-tool`, `compose-pdf-tool`, `compose-image-grid-tool`, `contact-tools`, `prepare-bundle-tool`, `lookup-user-tool`). Updated 1 cursor-rule reference in `audric/.cursor/rules/safeguards-defense-in-depth.mdc`.
+
+**Total LoC delta Day 20b across both repos:**
+
+| Component | Inserts | Deletes | Net |
+|---|---|---|---|
+| Engine (33 files: 6 tool sources + 23 tests + tool.ts + index.ts + define-tool.ts) | +721 | -1210 | **-489** |
+| Audric (7 tools + 1 cursor rule) | ~30 | ~270 | **~-240** |
+| **Total** | ~750 | ~1480 | **~-730** |
+
+**Running total across the entire Phase 2 arc (Days 17 → 20b):**
+
+| Stage | Tools migrated | Cumulative |
+|---|---|---|
+| Day 17 (Batch A wave 1) | 5 / 10 | 5 / 39 |
+| Day 18 (Batch A wave 2 + drift) | 5 / 10 + miss-rollover | 10 / 39 |
+| Day 19 (Batch B) | 7 + asset-desc patch | 17 / 39 |
+| Day 20 (Batches B-fixes + C) | 16 (volo×2 patch + 14 medium reads) | 33 / 39 |
+| Day 20b (Batches D+E+F + buildTool DELETED) | 6 + cleanup | **39 / 39 — 100%** |
+| **Total LoC eliminated across Phase 2 (both repos)** | — | **~983 net lines deleted** |
+
+**Empirical findings locked Day 20b (added to the Day 20 list):**
+
+9. **Custom callbacks pass through `defineTool` unchanged.** Validated with `transaction_history.summarizeOnTruncate`. The factory is purely a metadata wrapper — function-valued options (`summarizeOnTruncate`, `preflight`, `call`) round-trip by reference, no serialization or proxying.
+10. **`applyToolFlags()` is the canonical place to inject cross-cutting tool metadata.** `bundleable`, `affectsHealth`, `irreversible`, etc. are layered onto every tool at registration time from `tool-flags.ts` — neither factory needs to know about them. This is the right separation: tool sources define _what they do_, `tool-flags.ts` defines _how the system treats them_.
+11. **The `buildTool` API was retired with zero behavior change.** All 1419 tests pass (3-test drop is parity-coverage consolidation, not capability loss). Both legacy `QueryEngine` and v2 `AISDKEngine` consume `defineTool` output identically.
+
+**Verification:** All gates clean.
+- `pnpm --filter @t2000/engine typecheck` — 0 errors
+- `pnpm --filter @t2000/engine lint` — 0 errors (6 pre-existing test warnings unchanged)
+- `pnpm --filter @t2000/engine test` — **1419 / 1426 passed** (7 env-skipped, `multi-block-thinking` excluded as established)
+- `pnpm --filter @t2000/engine build` — green (dist held steady; `defineTool` is fully self-contained but `zodToJsonSchema` was already imported)
+- `pnpm --filter audric typecheck` — green against locally-built engine + the live 1.37.0 (zero audric-side compile failures from the API deletion since every audric tool was migrated in the same pass)
+- Audric runtime sanity: every migrated audric tool builds + the engine entrypoint that consumes them (`/api/engine/chat`) typechecks against the new engine surface
+
+**Release:** engine 1.38.0 (Phase 2 close — minor bump per "Phase milestone" convention from Days 17/19/20).
+
+**Audric bump:** `@t2000/engine 1.37.0 → 1.38.0` with the 7 migrated tool files in the same commit. Vercel auto-deploys.
+
+**Status: Phase 2 CLOSED. 39/39 tools (100%) on `defineTool`. `buildTool` and `BuildToolOptions` deleted from `@t2000/engine`. `tool.ts` shrunk to 33 lines (helpers only). Phase 3 (engine.ts rewrite to native AI SDK `tool()` exports) is now unblocked.**
+
+**Next session = Phase 3 entry.** With every tool on Zod-as-source-of-truth, the path to native AI SDK `tool()` exports is mechanical — `defineTool` already returns a shape that adapts cleanly to AI SDK's `tool()` factory. The remaining work is engine-side: rewrite `QueryEngine`'s agent loop to consume AI SDK tool definitions directly (deprecating `Tool.isReadOnly`, `Tool.isConcurrencySafe`, `Tool.permissionLevel` — moved into AI SDK's native flow). That's the actual "v0.7c migration" the cleanup SPEC was set up to enable. Phase 2 was the prerequisite; Phase 3 is the payoff.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

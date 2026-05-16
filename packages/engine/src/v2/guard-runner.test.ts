@@ -17,18 +17,17 @@
 
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from './define-tool.js';
 import type { Tool as LegacyTool } from '../types.js';
 import { createGuardRunnerState, DEFAULT_GUARD_CONFIG } from '../guards.js';
 import { runGuardsForTool, GuardBlockedError } from './guard-runner.js';
 import type { InternalContext } from './internal-context.js';
 
 function makeReadTool(): LegacyTool {
-  return buildTool({
+  return defineTool({
     name: 'read_test',
     description: 'A read tool.',
     inputSchema: z.object({ x: z.string() }),
-    jsonSchema: { type: 'object', properties: { x: { type: 'string' } } },
     flags: {},
     permissionLevel: 'auto',
     isReadOnly: true,
@@ -38,11 +37,10 @@ function makeReadTool(): LegacyTool {
 }
 
 function makeWriteTool(name = 'write_test'): LegacyTool {
-  return buildTool({
+  return defineTool({
     name,
     description: 'A write tool.',
     inputSchema: z.object({ amount: z.number() }),
-    jsonSchema: { type: 'object', properties: { amount: { type: 'number' } } },
     flags: { mutating: true },
     permissionLevel: 'confirm',
     isReadOnly: false,
@@ -78,11 +76,7 @@ describe('runGuardsForTool', () => {
     const tool = makeReadTool();
     const internal = makeInternal({ guardConfig: undefined });
 
-    const out = runGuardsForTool(
-      tool,
-      { id: 'c1', name: tool.name, input: { x: 'a' } },
-      internal,
-    );
+    const out = runGuardsForTool(tool, { id: 'c1', name: tool.name, input: { x: 'a' } }, internal);
 
     expect(out.allowed).toBe(true);
     expect(out.injections).toEqual([]);
@@ -93,11 +87,7 @@ describe('runGuardsForTool', () => {
     const tool = makeReadTool();
     const internal = makeInternal({ guardConfig: DEFAULT_GUARD_CONFIG });
 
-    const out = runGuardsForTool(
-      tool,
-      { id: 'c2', name: tool.name, input: { x: 'a' } },
-      internal,
-    );
+    const out = runGuardsForTool(tool, { id: 'c2', name: tool.name, input: { x: 'a' } }, internal);
 
     expect(out.allowed).toBe(true);
   });
@@ -131,11 +121,7 @@ describe('runGuardsForTool', () => {
     };
     const internal = makeInternal({ guardConfig: DEFAULT_GUARD_CONFIG });
 
-    const out = runGuardsForTool(
-      tool,
-      { id: 'c4', name: tool.name, input: {} },
-      internal,
-    );
+    const out = runGuardsForTool(tool, { id: 'c4', name: tool.name, input: {} }, internal);
 
     expect(out.allowed).toBe(false);
     expect(out.needsStructuredInput).toBe(true);

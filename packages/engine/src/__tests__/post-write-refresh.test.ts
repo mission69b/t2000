@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import {
   setTelemetrySink,
   resetTelemetrySink,
@@ -63,11 +63,10 @@ let balanceCalls = 0;
 let savingsCalls = 0;
 let healthCalls = 0;
 
-const balanceTool: Tool = buildTool({
+const balanceTool: Tool = defineTool({
   name: 'balance_check',
   description: 'wallet balance',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     balanceCalls++;
@@ -75,11 +74,10 @@ const balanceTool: Tool = buildTool({
   },
 });
 
-const savingsTool: Tool = buildTool({
+const savingsTool: Tool = defineTool({
   name: 'savings_info',
   description: 'savings positions',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     savingsCalls++;
@@ -87,11 +85,10 @@ const savingsTool: Tool = buildTool({
   },
 });
 
-const healthTool: Tool = buildTool({
+const healthTool: Tool = defineTool({
   name: 'health_check',
   description: 'borrow health',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     healthCalls++;
@@ -100,15 +97,10 @@ const healthTool: Tool = buildTool({
 });
 
 // Save deposit — write tool requiring confirmation.
-const saveDeposit: Tool = buildTool({
+const saveDeposit: Tool = defineTool({
   name: 'save_deposit',
   description: 'deposit USDC into NAVI',
   inputSchema: z.object({ amount: z.number() }),
-  jsonSchema: {
-    type: 'object',
-    properties: { amount: { type: 'number' } },
-    required: ['amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   async call(input) {
@@ -117,15 +109,10 @@ const saveDeposit: Tool = buildTool({
 });
 
 // Failing write — used to assert refresh is skipped on { success: false }.
-const failingWrite: Tool = buildTool({
+const failingWrite: Tool = defineTool({
   name: 'borrow',
   description: 'borrow against savings',
   inputSchema: z.object({ amount: z.number() }),
-  jsonSchema: {
-    type: 'object',
-    properties: { amount: { type: 'number' } },
-    required: ['amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   async call(input) {
@@ -156,13 +143,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     ]);
     const engine = new QueryEngine({
       provider,
-      tools: [
-        opts.write,
-        balanceTool,
-        savingsTool,
-        healthTool,
-        ...(opts.extraTools ?? []),
-      ],
+      tools: [opts.write, balanceTool, savingsTool, healthTool, ...(opts.extraTools ?? [])],
       systemPrompt: 'test',
       postWriteRefresh: opts.refreshMap,
     });
@@ -199,9 +180,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     const toolResults = events.filter((e) => e.type === 'tool_result');
     // 1 for the write itself + 2 for refresh
     expect(toolResults.length).toBeGreaterThanOrEqual(3);
-    const refreshes = toolResults.filter(
-      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
-    );
+    const refreshes = toolResults.filter((e) => e.type === 'tool_result' && e.wasPostWriteRefresh);
     expect(refreshes).toHaveLength(2);
     const names = refreshes.map((e) => (e.type === 'tool_result' ? e.toolName : ''));
     expect(names).toEqual(['balance_check', 'savings_info']);
@@ -218,9 +197,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       executionResult: { success: true },
     });
 
-    const refreshes = events.filter(
-      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
-    );
+    const refreshes = events.filter((e) => e.type === 'tool_result' && e.wasPostWriteRefresh);
     expect(refreshes).toHaveLength(2);
     // Every PWR-injected refresh event must carry source: 'pwr' so the
     // host's <BlockRouter> can group them under PostWriteRefreshSurface
@@ -232,15 +209,10 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     // Sanity: the write itself (LLM-driven dispatch) must NOT be tagged
     // as 'pwr'. It rides through the resume path with source: 'llm'.
     const writeResult = events.find(
-      (e) =>
-        e.type === 'tool_result' &&
-        e.toolName === 'save_deposit' &&
-        !e.wasPostWriteRefresh,
+      (e) => e.type === 'tool_result' && e.toolName === 'save_deposit' && !e.wasPostWriteRefresh,
     );
     expect(writeResult).toBeDefined();
-    expect(
-      writeResult?.type === 'tool_result' && writeResult.source,
-    ).toBe('llm');
+    expect(writeResult?.type === 'tool_result' && writeResult.source).toBe('llm');
   });
 
   it('[v1.28.1 — silent-PWR-drop fix] emits a tool_start with source: "pwr" BEFORE every tool_result, paired by toolUseId', async () => {
@@ -270,39 +242,25 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       executionResult: { success: true },
     });
 
-    const pwrStarts = events.filter(
-      (e) => e.type === 'tool_start' && e.source === 'pwr',
-    );
-    const pwrResults = events.filter(
-      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
-    );
+    const pwrStarts = events.filter((e) => e.type === 'tool_start' && e.source === 'pwr');
+    const pwrResults = events.filter((e) => e.type === 'tool_result' && e.wasPostWriteRefresh);
 
     expect(pwrStarts).toHaveLength(2);
     expect(pwrResults).toHaveLength(2);
 
     // Each tool_start has a matching tool_result (paired by toolUseId).
-    const startIds = pwrStarts.map((e) =>
-      e.type === 'tool_start' ? e.toolUseId : '',
-    );
-    const resultIds = pwrResults.map((e) =>
-      e.type === 'tool_result' ? e.toolUseId : '',
-    );
+    const startIds = pwrStarts.map((e) => (e.type === 'tool_start' ? e.toolUseId : ''));
+    const resultIds = pwrResults.map((e) => (e.type === 'tool_result' ? e.toolUseId : ''));
     expect([...startIds].sort()).toEqual([...resultIds].sort());
 
     // Tool names match too (so the start carries the right glyph/label).
-    const startNames = pwrStarts.map((e) =>
-      e.type === 'tool_start' ? e.toolName : '',
-    );
+    const startNames = pwrStarts.map((e) => (e.type === 'tool_start' ? e.toolName : ''));
     expect([...startNames].sort()).toEqual(['balance_check', 'savings_info']);
 
     // tool_start ALWAYS precedes its matching tool_result in stream order.
     for (const id of startIds) {
-      const startIdx = events.findIndex(
-        (e) => e.type === 'tool_start' && e.toolUseId === id,
-      );
-      const resultIdx = events.findIndex(
-        (e) => e.type === 'tool_result' && e.toolUseId === id,
-      );
+      const startIdx = events.findIndex((e) => e.type === 'tool_start' && e.toolUseId === id);
+      const resultIdx = events.findIndex((e) => e.type === 'tool_result' && e.toolUseId === id);
       expect(startIdx).toBeGreaterThanOrEqual(0);
       expect(resultIdx).toBeGreaterThan(startIdx);
     }
@@ -373,9 +331,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       executionResult: { success: true },
     });
     expect(balanceCalls).toBe(0);
-    const refreshes = events.filter(
-      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
-    );
+    const refreshes = events.filter((e) => e.type === 'tool_result' && e.wasPostWriteRefresh);
     expect(refreshes).toHaveLength(0);
   });
 
@@ -392,19 +348,16 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       executionResult: { success: true },
     });
     expect(balanceCalls).toBe(1);
-    const refreshes = events.filter(
-      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
-    );
+    const refreshes = events.filter((e) => e.type === 'tool_result' && e.wasPostWriteRefresh);
     expect(refreshes).toHaveLength(1);
   });
 
   it('still continues to the LLM narration when a refresh tool throws', async () => {
     reset();
-    const flakyTool: Tool = buildTool({
+    const flakyTool: Tool = defineTool({
       name: 'health_check_flaky',
       description: 'simulates RPC failure',
       inputSchema: z.object({}),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: true,
       async call() {
         throw new Error('rpc 503');
@@ -421,10 +374,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
     });
     expect(balanceCalls).toBe(1);
     const errored = events.filter(
-      (e) =>
-        e.type === 'tool_result' &&
-        e.wasPostWriteRefresh &&
-        e.isError,
+      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh && e.isError,
     );
     expect(errored).toHaveLength(1);
     // Narration still happens
@@ -534,9 +484,7 @@ describe('Post-write refresh ([v1.5] EngineConfig.postWriteRefresh)', () => {
       await new Promise((r) => setTimeout(r, 20));
 
       const stale = captured.filter(
-        (c) =>
-          c.kind === 'counter' &&
-          c.name === 'engine.pwr.observed_stale_balance_check',
+        (c) => c.kind === 'counter' && c.name === 'engine.pwr.observed_stale_balance_check',
       );
       expect(stale).toHaveLength(0);
     });

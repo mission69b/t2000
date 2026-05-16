@@ -157,7 +157,10 @@ The first session of Batch A produces:
 | **A — simple reads (10/10 CLOSED)** | 2026-05-16 | 2026-05-16 | 1.35.0 → 1.35.1 |
 | **B — simple writes (9/9 CLOSED)** | 2026-05-17 | 2026-05-17 | 1.36.0 → 1.36.2 |
 | **C — medium reads + leftover simple reads (14/14 CLOSED)** | 2026-05-17 | 2026-05-17 | 1.37.0 |
-| D — medium writes (2/3 already done as part of Batch B — only `pay_api` remaining) | — | — | — |
+| **D — medium writes (1/1 CLOSED — `pay_api`)** | 2026-05-17 | 2026-05-17 | 1.38.0 |
+| **E — complex reads (3/3 CLOSED — `portfolio_analysis`, `render_canvas`, `transaction_history`)** | 2026-05-17 | 2026-05-17 | 1.38.0 |
+| **F — complex writes (2/2 CLOSED — `harvest_rewards`, `swap_execute`)** | 2026-05-17 | 2026-05-17 | 1.38.0 |
+| **PHASE 2 CLEANUP — `buildTool` factory + `BuildToolOptions` DELETED** | 2026-05-17 | 2026-05-17 | 1.38.0 |
 | E — complex reads (1/4 already done as part of Batch A — `balance_check`; `portfolio_analysis`/`render_canvas`/`transaction_history` remaining) | — | — | — |
 | F — complex writes (0/2 remaining — `harvest_rewards`, `swap_execute`) | — | — | — |
 
@@ -166,9 +169,8 @@ The first session of Batch A produces:
 - **Batch A (Days 17-18, engine 1.35.0-1.35.1):** 10 tools — 5 simple reads (web_search/yield_summary/volo_stats/protocol_deep_dive/token_prices) + 4 medium reads (savings_info/health_check/rates_info/mpp_services) + 1 complex read (balance_check). Empirical learning: complexity classification is mostly about tool BODY complexity (multi-source fan-out, caching layers, large display builders), not migration complexity. defineTool migration is uniformly mechanical regardless of body complexity.
 - **Batch B (Day 19, engine 1.36.0-1.36.2):** 9 tools — 7 originally-Batch-B simple writes (save_contact/claim_rewards*/save_deposit/borrow/repay_debt/withdraw/send_transfer*) + 2 missed Batch B tools migrated as 1.36.2 patch (volo_stake/volo_unstake). *claim_rewards + send_transfer are classified medium-writes (originally Batch D) but were folded into Batch B because they shared the simple-write migration shape — see Day 19 entry in `BENEFITS_SPEC_v07a.md`.
 - **Batch C (Day 20, engine 1.37.0):** 14 tools across 3 waves — Wave C1 (9 tools / 4 files): receive.ts × 6 (create_payment_link/list_payment_links/create_invoice/cancel_payment_link/cancel_invoice/list_invoices — includes 4 leftover simple reads from original Batch A scope), resolve_suins (leftover simple read from Batch A), activity_summary, spending_analytics. Wave C2 (3 tools): explain_tx, pending_rewards, swap_quote. Wave C3 (2 opt-in oddities): update_todo (SPEC 8 side-channel + nested array-of-objects + enums), add_recipient (SPEC 9 pending_input form + isConcurrencySafe:false).
-- **Batch D (next session):** 1 tool remaining — pay_api.
-- **Batch E (after D):** 3 tools remaining — portfolio_analysis, render_canvas, transaction_history.
-- **Batch F (last):** 2 tools — harvest_rewards, swap_execute.
+- **Batches D + E + F (Day 20b, engine 1.38.0):** 6 tools — Batch D `pay_api` (most complex preflight in the codebase: URL parse + host allow-list + JSON body + country code + USD cap), Batch E `portfolio_analysis`/`render_canvas`/`transaction_history` (the latter validates custom `summarizeOnTruncate` callback pass-through), Batch F `harvest_rewards`/`swap_execute` (compound write + Cetus aggregator; confirmed `applyToolFlags()` correctly layers `bundleable: true` from `tool-flags.ts` at registration — same under both factories).
+- **CLEANUP PASS (Day 20b, engine 1.38.0):** `buildTool` factory + `BuildToolOptions` interface DELETED from `tool.ts`. `tool.ts` shrunk from 93 → 33 lines (keeps surviving helpers `toolsToDefinitions` + `findTool` only). `index.ts` updated to drop `buildTool` + `BuildToolOptions` exports. `__tests__/tool.test.ts` rewritten to test surviving helpers via `defineTool`. `v2/define-tool.ts` made fully self-contained (no `tool.ts` dependency — inlined the Tool construction). 23 engine test files migrated via one-shot script. 7 audric tool files (`advice-tool`, `mpp-services-tool`, `compose-pdf-tool`, `compose-image-grid-tool`, `contact-tools`, `prepare-bundle-tool`, `lookup-user-tool`) migrated via audric-side one-shot script. 1 cursor rule reference updated. Net delete: ~983 lines across both repos.
 
 **Running total: 33/39 (85%) on defineTool. 6 tools remaining across 3 future batches.**
 

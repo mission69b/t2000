@@ -33,21 +33,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { AISDKEngine, type AISDKEngineConfig } from './engine.js';
-import { buildTool } from '../tool.js';
-import {
-  DEFAULT_GUARD_CONFIG,
-  type GuardConfig,
-} from '../guards.js';
+import { defineTool } from './define-tool.js';
+import { DEFAULT_GUARD_CONFIG, type GuardConfig } from '../guards.js';
 import { DEFAULT_PERMISSION_CONFIG } from '../permission-rules.js';
 import type { EngineEvent, Tool as LegacyTool, ToolContext } from '../types.js';
 
-const RUN_REAL =
-  process.env.RUN_REAL_API_TESTS === '1' && !!process.env.ANTHROPIC_API_KEY;
+const RUN_REAL = process.env.RUN_REAL_API_TESTS === '1' && !!process.env.ANTHROPIC_API_KEY;
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 
-async function collect(
-  gen: AsyncGenerator<EngineEvent>,
-): Promise<EngineEvent[]> {
+async function collect(gen: AsyncGenerator<EngineEvent>): Promise<EngineEvent[]> {
   const out: EngineEvent[] = [];
   for await (const ev of gen) out.push(ev);
   return out;
@@ -55,8 +49,7 @@ async function collect(
 
 const baseConfig = (apiKey: string): AISDKEngineConfig => ({
   anthropicApiKey: apiKey,
-  walletAddress:
-    '0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c',
+  walletAddress: '0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c',
   model: 'claude-haiku-4-5-20251001',
   maxTurns: 3,
   systemPrompt:
@@ -72,9 +65,7 @@ describe('v2 e2e — Day 1 surface (text round-trip)', () => {
     'streams text_delta + turn_complete via R8 bridge translation',
     async () => {
       const engine = new AISDKEngine(baseConfig(API_KEY!));
-      const events = await collect(
-        engine.submitMessage('Reply with the single word "hello".'),
-      );
+      const events = await collect(engine.submitMessage('Reply with the single word "hello".'));
 
       const textDeltas = events.filter((e) => e.type === 'text_delta');
       const turnComplete = events.filter((e) => e.type === 'turn_complete');
@@ -98,31 +89,23 @@ describe('v2 e2e — Day 2 surface (tool dispatch)', () => {
   it.skipIf(!RUN_REAL)(
     'dispatches a wrapped read tool, threads ToolContext, emits tool_start + tool_result',
     async () => {
-      const callSpy = vi.fn(
-        async (input: { topic: string }, ctx: ToolContext) => {
-          // Verify ToolContext was threaded through experimental_context.
-          expect(ctx.walletAddress).toBe(baseConfig(API_KEY!).walletAddress);
-          expect(ctx.retryStats).toEqual({ attemptCount: 1 });
-          return {
-            data: { topic: input.topic, fact: `${input.topic} is a token on Sui.` },
-            displayText: `${input.topic} is a token on Sui.`,
-          };
-        },
-      );
+      const callSpy = vi.fn(async (input: { topic: string }, ctx: ToolContext) => {
+        // Verify ToolContext was threaded through experimental_context.
+        expect(ctx.walletAddress).toBe(baseConfig(API_KEY!).walletAddress);
+        expect(ctx.retryStats).toEqual({ attemptCount: 1 });
+        return {
+          data: { topic: input.topic, fact: `${input.topic} is a token on Sui.` },
+          displayText: `${input.topic} is a token on Sui.`,
+        };
+      });
 
-      const lookupTool: LegacyTool = buildTool({
+      const lookupTool: LegacyTool = defineTool({
         name: 'lookup_fact',
-        description: 'Look up a single fact about a token. Use this when asked about a specific token.',
+        description:
+          'Look up a single fact about a token. Use this when asked about a specific token.',
         inputSchema: z.object({
           topic: z.string().describe('The token name to look up (e.g. SUI, USDC).'),
         }),
-        jsonSchema: {
-          type: 'object',
-          properties: {
-            topic: { type: 'string', description: 'The token name to look up.' },
-          },
-          required: ['topic'],
-        },
         flags: {},
         permissionLevel: 'auto',
         isReadOnly: true,
@@ -179,22 +162,13 @@ describe('v2 e2e — Day 3 surface (onAutoExecuted + sessionSpend tracking)', ()
     async () => {
       const onAutoExecuted = vi.fn();
 
-      const writeTool: LegacyTool = buildTool({
+      const writeTool: LegacyTool = defineTool({
         name: 'send_transfer',
-        description:
-          'Send USDC to a recipient. Always call this when the user asks to send money.',
+        description: 'Send USDC to a recipient. Always call this when the user asks to send money.',
         inputSchema: z.object({
           amount: z.number().describe('Amount to send.'),
           to: z.string().describe('Recipient address.'),
         }),
-        jsonSchema: {
-          type: 'object',
-          properties: {
-            amount: { type: 'number' },
-            to: { type: 'string' },
-          },
-          required: ['amount', 'to'],
-        },
         flags: { mutating: true },
         permissionLevel: 'confirm',
         isReadOnly: false,
@@ -220,8 +194,7 @@ describe('v2 e2e — Day 3 surface (onAutoExecuted + sessionSpend tracking)', ()
       // safeguard. Without this, send-safety overrides the auto-tier
       // amount check and forces confirm regardless. (See
       // permission-rules.ts:resolvePermissionTier send-safety branch.)
-      const recipient =
-        '0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c';
+      const recipient = '0x91b88d0e7eaf45e3252a06ad57f6b9c79b1e7f8d3e0a6c1d2b3c4d5e6f7a8b9c';
       const engine = new AISDKEngine({
         ...baseConfig(API_KEY!),
         tools: [writeTool],
@@ -237,9 +210,7 @@ describe('v2 e2e — Day 3 surface (onAutoExecuted + sessionSpend tracking)', ()
       // Amount $3 < auto threshold for send (autoBelow=10) AND recipient
       // is a saved contact → auto tier holds → tool auto-executes →
       // onAutoExecuted fires.
-      await collect(
-        engine.submitMessage(`Send 3 USDC to ${recipient}.`),
-      );
+      await collect(engine.submitMessage(`Send 3 USDC to ${recipient}.`));
 
       // Wait for the background promise chain in onStepFinish.
       await new Promise((r) => setImmediate(r));
@@ -268,15 +239,10 @@ describe('v2 e2e — Day 3 surface (guard pipeline blocking)', () => {
     async () => {
       const callSpy = vi.fn(async () => ({ data: null }));
 
-      const failingTool: LegacyTool = buildTool({
+      const failingTool: LegacyTool = defineTool({
         name: 'always_fail',
         description: 'Test tool that always fails preflight. Call this when asked.',
         inputSchema: z.object({ x: z.string() }),
-        jsonSchema: {
-          type: 'object',
-          properties: { x: { type: 'string' } },
-          required: ['x'],
-        },
         flags: {},
         permissionLevel: 'auto',
         isReadOnly: true,
@@ -293,17 +259,13 @@ describe('v2 e2e — Day 3 surface (guard pipeline blocking)', () => {
           'You are a test bot. When asked to call always_fail, do so once with x="anything", then narrate the result.',
       });
 
-      const events = await collect(
-        engine.submitMessage('Call always_fail with x="anything".'),
-      );
+      const events = await collect(engine.submitMessage('Call always_fail with x="anything".'));
 
       // Tool itself was never called (preflight rejected before legacy.call).
       expect(callSpy).not.toHaveBeenCalled();
 
       // Bridge translated tool-error → tool_result with isError=true.
-      const errorResults = events.filter(
-        (e) => e.type === 'tool_result' && e.isError === true,
-      );
+      const errorResults = events.filter((e) => e.type === 'tool_result' && e.isError === true);
       expect(errorResults.length).toBeGreaterThanOrEqual(1);
       expect(errorResults[0]).toMatchObject({
         type: 'tool_result',

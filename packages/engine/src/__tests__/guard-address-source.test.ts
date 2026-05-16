@@ -7,16 +7,15 @@ import {
   extractTrustedAddressesFromResult,
   DEFAULT_GUARD_CONFIG,
 } from '../guards.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { PendingToolCall } from '../orchestration.js';
 
 // Synthetic send_transfer tool — minimal surface, just enough for the
 // runGuards code path to find tool.name === 'send_transfer'.
-const sendTransfer = buildTool({
+const sendTransfer = defineTool({
   name: 'send_transfer',
   description: 'send',
   inputSchema: z.object({ to: z.string(), amount: z.number() }),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: false,
   flags: { mutating: true, irreversible: true, requiresBalance: true },
   call: async () => ({ data: {} }),
@@ -31,9 +30,7 @@ function makeCall(input: Record<string, unknown>): PendingToolCall {
 }
 
 function makeConvCtx(userText: string) {
-  return extractConversationText([
-    { role: 'user', content: [{ type: 'text', text: userText }] },
-  ]);
+  return extractConversationText([{ role: 'user', content: [{ type: 'text', text: userText }] }]);
 }
 
 describe('guardAddressSource (send_transfer safety guard)', () => {
@@ -104,7 +101,7 @@ describe('guardAddressSource (send_transfer safety guard)', () => {
     expect(result.blockGate).toBe('address_source');
   });
 
-  it('passes when sending to the user\'s own wallet (self)', () => {
+  it("passes when sending to the user's own wallet (self)", () => {
     const result = runGuards(
       sendTransfer,
       makeCall({ to: SELF, amount: 5 }),
@@ -131,11 +128,10 @@ describe('guardAddressSource (send_transfer safety guard)', () => {
   });
 
   it('does not block other tools (e.g. save_deposit)', () => {
-    const otherTool = buildTool({
+    const otherTool = defineTool({
       name: 'save_deposit',
       description: 's',
       inputSchema: z.object({ amount: z.number() }),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: false,
       flags: { mutating: true, requiresBalance: true },
       call: async () => ({ data: {} }),

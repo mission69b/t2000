@@ -8,7 +8,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { z } from 'zod';
 import { QueryEngine } from '../engine.js';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { applyToolFlags } from '../tool-flags.js';
 import { setTelemetrySink, resetTelemetrySink } from '../telemetry.js';
 import type { TelemetrySink, TelemetryTags } from '../telemetry.js';
@@ -57,11 +57,10 @@ async function collectEvents(gen: AsyncGenerator<EngineEvent>): Promise<EngineEv
 // because confirm-tier writes always yield pending_action and wait for
 // the host to call resumeWithToolResult).
 function makeWrite(name: string): Tool {
-  return buildTool({
+  return defineTool({
     name,
     description: `mock ${name}`,
     inputSchema: z.object({ amount: z.number() }).passthrough(),
-    jsonSchema: { type: 'object', properties: { amount: { type: 'number' } }, required: ['amount'] },
     isReadOnly: false,
     permissionLevel: 'confirm',
     async call() {
@@ -71,11 +70,10 @@ function makeWrite(name: string): Tool {
 }
 
 // Read tool — auto-tier, executes immediately
-const readBalance: Tool = buildTool({
+const readBalance: Tool = defineTool({
   name: 'balance_check',
   description: 'mock balance',
   inputSchema: z.object({}).passthrough(),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
   async call() {
     return { data: { usdc: 100, sui: 50 } };
@@ -195,11 +193,10 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
 
   it('falls back to single-write for mixed bundleable + non-bundleable', async () => {
     // pay_api is non-bundleable (in tool-flags). Pair it with send_transfer.
-    const payApi = buildTool({
+    const payApi = defineTool({
       name: 'pay_api',
       description: 'mock pay_api',
       inputSchema: z.object({ url: z.string() }).passthrough(),
-      jsonSchema: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] },
       isReadOnly: false,
       permissionLevel: 'confirm',
       async call() {
@@ -228,11 +225,10 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
   // -------- Audit fixes (post-P2.3 review) --------
 
   it('audit BUG 1: mixed-bundleability fallback synthesises error tool_results for dropped writes (Anthropic protocol)', async () => {
-    const payApi = buildTool({
+    const payApi = defineTool({
       name: 'pay_api',
       description: 'mock pay_api',
       inputSchema: z.object({ url: z.string() }).passthrough(),
-      jsonSchema: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] },
       isReadOnly: false,
       permissionLevel: 'confirm',
       async call() {
@@ -263,9 +259,7 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
 
     // completedResults MUST contain an error tool_result for tc-2 so
     // the next provider call doesn't see an orphaned tool_use.
-    const tc2Result = (pending!.action.completedResults ?? []).find(
-      (r) => r.toolUseId === 'tc-2',
-    );
+    const tc2Result = (pending!.action.completedResults ?? []).find((r) => r.toolUseId === 'tc-2');
     expect(tc2Result).toBeDefined();
     expect(tc2Result!.isError).toBe(true);
     expect(tc2Result!.content).toContain('separate confirmation');
@@ -288,8 +282,12 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
     const turn1Events = await collectEvents(engine.submitMessage('split'));
-    const action = (turn1Events.find((e) => e.type === 'pending_action') as
-      EngineEvent & { type: 'pending_action'; action: PendingAction }).action;
+    const action = (
+      turn1Events.find((e) => e.type === 'pending_action') as EngineEvent & {
+        type: 'pending_action';
+        action: PendingAction;
+      }
+    ).action;
 
     // Host approves but only sends ONE step's result (host bug).
     const turn2Events = await collectEvents(
@@ -308,16 +306,12 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     );
 
     // tc-2's tool_result event is emitted with isError=true (fail-closed).
-    const tc2Event = turn2Events.find(
-      (e) => e.type === 'tool_result' && e.toolUseId === 'tc-2',
-    );
+    const tc2Event = turn2Events.find((e) => e.type === 'tool_result' && e.toolUseId === 'tc-2');
     expect(tc2Event).toBeDefined();
     expect(tc2Event!.type === 'tool_result' && tc2Event!.isError).toBe(true);
 
     // tc-1 is success.
-    const tc1Event = turn2Events.find(
-      (e) => e.type === 'tool_result' && e.toolUseId === 'tc-1',
-    );
+    const tc1Event = turn2Events.find((e) => e.type === 'tool_result' && e.toolUseId === 'tc-1');
     expect(tc1Event!.type === 'tool_result' && tc1Event!.isError).toBe(false);
   });
 
@@ -336,11 +330,10 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
           { type: 'tool_call', id: 'tc-2', name: 'send_transfer', input: { amount: 3, to: '0xB' } },
         ],
       ]);
-      const balance: Tool = buildTool({
+      const balance: Tool = defineTool({
         name: 'balance_check',
         description: 'mock',
         inputSchema: z.object({}).passthrough(),
-        jsonSchema: { type: 'object', properties: {} },
         isReadOnly: true,
         async call() {
           // Bump the clock BACKWARDS just before the read result lands.
@@ -350,7 +343,11 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
           return { data: { usdc: 100 } };
         },
       });
-      const tools = applyToolFlags([balance, makeWrite('swap_execute'), makeWrite('send_transfer')]);
+      const tools = applyToolFlags([
+        balance,
+        makeWrite('swap_execute'),
+        makeWrite('send_transfer'),
+      ]);
       const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
       const events = await collectEvents(engine.submitMessage('go'));
@@ -381,11 +378,10 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     const tools = [
       makeWrite('send_transfer'),
       // Define pay_api WITHOUT applying tool flags (so bundleable stays unset)
-      buildTool({
+      defineTool({
         name: 'pay_api',
         description: 'mock',
         inputSchema: z.object({}).passthrough(),
-        jsonSchema: { type: 'object', properties: {} },
         isReadOnly: false,
         permissionLevel: 'confirm',
         async call() {
@@ -472,15 +468,17 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
 
     const turn1Events = await collectEvents(engine.submitMessage('split'));
-    const action = (turn1Events.find((e) => e.type === 'pending_action') as
-      EngineEvent & { type: 'pending_action'; action: PendingAction }).action;
+    const action = (
+      turn1Events.find((e) => e.type === 'pending_action') as EngineEvent & {
+        type: 'pending_action';
+        action: PendingAction;
+      }
+    ).action;
 
     const turn2Events = await collectEvents(
       engine.resumeWithToolResult(action, { approved: false }),
     );
-    const errors = turn2Events.filter(
-      (e) => e.type === 'tool_result' && e.isError,
-    );
+    const errors = turn2Events.filter((e) => e.type === 'tool_result' && e.isError);
     expect(errors).toHaveLength(2);
   });
 
@@ -507,8 +505,12 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     });
 
     const turn1Events = await collectEvents(engine.submitMessage('split'));
-    const action = (turn1Events.find((e) => e.type === 'pending_action') as
-      EngineEvent & { type: 'pending_action'; action: PendingAction }).action;
+    const action = (
+      turn1Events.find((e) => e.type === 'pending_action') as EngineEvent & {
+        type: 'pending_action';
+        action: PendingAction;
+      }
+    ).action;
 
     const turn2Events = await collectEvents(
       engine.resumeWithToolResult(action, {
@@ -581,8 +583,12 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
     });
 
     const turn1Events = await collectEvents(engine.submitMessage('split'));
-    const action = (turn1Events.find((e) => e.type === 'pending_action') as
-      EngineEvent & { type: 'pending_action'; action: PendingAction }).action;
+    const action = (
+      turn1Events.find((e) => e.type === 'pending_action') as EngineEvent & {
+        type: 'pending_action';
+        action: PendingAction;
+      }
+    ).action;
 
     const turn2Events = await collectEvents(
       engine.resumeWithToolResult(action, {
@@ -606,33 +612,23 @@ describe('SPEC 7 P2.3 — bundle composition', () => {
 
     // tool_start + tool_result both fire with source: 'pwr' for the
     // unioned refresh tool set (just balance_check after dedup).
-    const pwrStarts = turn2Events.filter(
-      (e) => e.type === 'tool_start' && e.source === 'pwr',
-    );
-    const pwrResults = turn2Events.filter(
-      (e) => e.type === 'tool_result' && e.wasPostWriteRefresh,
-    );
+    const pwrStarts = turn2Events.filter((e) => e.type === 'tool_start' && e.source === 'pwr');
+    const pwrResults = turn2Events.filter((e) => e.type === 'tool_result' && e.wasPostWriteRefresh);
 
     expect(pwrStarts).toHaveLength(1);
     expect(pwrResults).toHaveLength(1);
-    expect(pwrStarts[0].type === 'tool_start' && pwrStarts[0].toolName).toBe(
-      'balance_check',
-    );
+    expect(pwrStarts[0].type === 'tool_start' && pwrStarts[0].toolName).toBe('balance_check');
 
     // Pairing + chronological ordering invariants.
-    const startId =
-      pwrStarts[0].type === 'tool_start' ? pwrStarts[0].toolUseId : '';
-    const resultId =
-      pwrResults[0].type === 'tool_result' ? pwrResults[0].toolUseId : '';
+    const startId = pwrStarts[0].type === 'tool_start' ? pwrStarts[0].toolUseId : '';
+    const resultId = pwrResults[0].type === 'tool_result' ? pwrResults[0].toolUseId : '';
     expect(startId).toBe(resultId);
 
     const startIdx = turn2Events.findIndex(
       (e) => e.type === 'tool_start' && e.toolUseId === startId,
     );
     const resultIdx = turn2Events.findIndex(
-      (e) => e.type === 'tool_result' &&
-        e.toolUseId === resultId &&
-        e.wasPostWriteRefresh,
+      (e) => e.type === 'tool_result' && e.toolUseId === resultId && e.wasPostWriteRefresh,
     );
     expect(startIdx).toBeGreaterThanOrEqual(0);
     expect(resultIdx).toBeGreaterThan(startIdx);
@@ -670,9 +666,7 @@ describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
   // gated by the whitelist check.
   function makeTurnOfPair(n: number): ScriptedTurn[] {
     if (n === 1) {
-      return [
-        { type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 1 } },
-      ];
+      return [{ type: 'tool_call', id: 'tc-1', name: 'swap_execute', input: { amount: 1 } }];
     }
     if (n === 2) {
       return [
@@ -685,7 +679,12 @@ describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
       // Both adjacent pairs (withdraw→swap, swap→send) are whitelisted.
       return [
         { type: 'tool_call', id: 'tc-1', name: 'withdraw', input: { amount: 1, asset: 'USDC' } },
-        { type: 'tool_call', id: 'tc-2', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 1 } },
+        {
+          type: 'tool_call',
+          id: 'tc-2',
+          name: 'swap_execute',
+          input: { from: 'USDC', to: 'SUI', amount: 1 },
+        },
         { type: 'tool_call', id: 'tc-3', name: 'send_transfer', input: { amount: 1, to: '0xabc' } },
       ];
     }
@@ -704,10 +703,7 @@ describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
 
   it('accepts a 2-op whitelisted bundle', async () => {
     const provider = createMockProvider([makeTurnOfPair(2)]);
-    const tools = applyToolFlags([
-      makeWrite('swap_execute'),
-      makeWrite('send_transfer'),
-    ]);
+    const tools = applyToolFlags([makeWrite('swap_execute'), makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
     const events = await collectEvents(engine.submitMessage('swap then send'));
     const pending = events.find((e) => e.type === 'pending_action') as
@@ -765,9 +761,9 @@ describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
 
     expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
 
-    const errorResults = events.filter(
-      (e) => e.type === 'tool_result' && e.isError,
-    ) as Array<EngineEvent & { type: 'tool_result' }>;
+    const errorResults = events.filter((e) => e.type === 'tool_result' && e.isError) as Array<
+      EngineEvent & { type: 'tool_result' }
+    >;
     expect(errorResults).toHaveLength(5);
     for (const er of errorResults) {
       const result = er.result as { error?: string; _gate?: string };
@@ -785,9 +781,7 @@ describe('Phase 3a — MAX_BUNDLE_OPS=4 cap', () => {
     const tools = applyToolFlags([makeWrite('send_transfer')]);
     const engine = new QueryEngine({ provider, tools, systemPrompt: 'test' });
     const events = await collectEvents(engine.submitMessage('6 sends'));
-    const errorResults = events.filter(
-      (e) => e.type === 'tool_result' && e.isError,
-    );
+    const errorResults = events.filter((e) => e.type === 'tool_result' && e.isError);
     expect(errorResults).toHaveLength(6);
     expect(events.find((e) => e.type === 'pending_action')).toBeUndefined();
   });
@@ -914,9 +908,7 @@ describe('Phase 3a — chain-mode population (no envelope rejection)', () => {
       expect(pending!.action.steps?.[1]?.toolName).toBe(consumer);
       expect(pending!.action.steps?.[1]?.inputCoinFromStep).toBeUndefined();
 
-      const errorResults = events.filter(
-        (e) => e.type === 'tool_result' && e.isError,
-      );
+      const errorResults = events.filter((e) => e.type === 'tool_result' && e.isError);
       expect(errorResults).toHaveLength(0);
     });
   }
@@ -1054,9 +1046,7 @@ describe('Phase 3a — 3-op composition rules (1.15.0)', () => {
     expect(pending!.action.steps![0].inputCoinFromStep).toBeUndefined();
     expect(pending!.action.steps![1].inputCoinFromStep).toBeUndefined();
     expect(pending!.action.steps![2].inputCoinFromStep).toBeUndefined();
-    const errorResults = events.filter(
-      (e) => e.type === 'tool_result' && e.isError,
-    );
+    const errorResults = events.filter((e) => e.type === 'tool_result' && e.isError);
     expect(errorResults).toHaveLength(0);
   });
 
@@ -1119,8 +1109,9 @@ describe('SPEC 13 Phase 1 — chain-coin handoff (inputCoinFromStep auto-populat
   describe('inferProducerOutputAsset', () => {
     it('returns swap.to lowercased', async () => {
       const { inferProducerOutputAsset } = await import('../compose-bundle.js');
-      expect(inferProducerOutputAsset('swap_execute', { from: 'USDC', to: 'USDsui', amount: 5 }))
-        .toBe('usdsui');
+      expect(
+        inferProducerOutputAsset('swap_execute', { from: 'USDC', to: 'USDsui', amount: 5 }),
+      ).toBe('usdsui');
     });
 
     it('returns withdraw.asset lowercased (default USDC)', async () => {
@@ -1146,67 +1137,78 @@ describe('SPEC 13 Phase 1 — chain-coin handoff (inputCoinFromStep auto-populat
   describe('inferConsumerInputAsset', () => {
     it('returns send.asset lowercased (default USDC)', async () => {
       const { inferConsumerInputAsset } = await import('../compose-bundle.js');
-      expect(inferConsumerInputAsset('send_transfer', { amount: 5, to: '0xA', asset: 'USDsui' }))
-        .toBe('usdsui');
+      expect(
+        inferConsumerInputAsset('send_transfer', { amount: 5, to: '0xA', asset: 'USDsui' }),
+      ).toBe('usdsui');
       expect(inferConsumerInputAsset('send_transfer', { amount: 5, to: '0xA' })).toBe('usdc');
     });
 
     it('returns swap.from lowercased', async () => {
       const { inferConsumerInputAsset } = await import('../compose-bundle.js');
-      expect(inferConsumerInputAsset('swap_execute', { from: 'USDC', to: 'SUI', amount: 5 }))
-        .toBe('usdc');
+      expect(inferConsumerInputAsset('swap_execute', { from: 'USDC', to: 'SUI', amount: 5 })).toBe(
+        'usdc',
+      );
     });
   });
 
   describe('shouldChainCoin — whitelist + asset-alignment gate', () => {
     it('true when pair is whitelisted AND assets align (swap USDC→USDsui then save USDsui)', async () => {
       const { shouldChainCoin } = await import('../compose-bundle.js');
-      expect(shouldChainCoin(
-        { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
-        { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
-      )).toBe(true);
+      expect(
+        shouldChainCoin(
+          { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'USDsui', amount: 5 } },
+          { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+        ),
+      ).toBe(true);
     });
 
     it('true when withdraw USDC then send USDC (asset default matches default)', async () => {
       const { shouldChainCoin } = await import('../compose-bundle.js');
-      expect(shouldChainCoin(
-        { id: 'tc-1', name: 'withdraw', input: { amount: 5 } },
-        { id: 'tc-2', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
-      )).toBe(true);
+      expect(
+        shouldChainCoin(
+          { id: 'tc-1', name: 'withdraw', input: { amount: 5 } },
+          { id: 'tc-2', name: 'send_transfer', input: { amount: 5, to: '0xA' } },
+        ),
+      ).toBe(true);
     });
 
     it('false when pair is whitelisted but assets misaligned (swap USDC→SUI then save USDsui)', async () => {
       const { shouldChainCoin } = await import('../compose-bundle.js');
-      expect(shouldChainCoin(
-        { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
-        { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
-      )).toBe(false);
+      expect(
+        shouldChainCoin(
+          { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
+          { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+        ),
+      ).toBe(false);
     });
 
     it('false when pair is NOT whitelisted (e.g. repay_debt → swap_execute)', async () => {
       const { shouldChainCoin } = await import('../compose-bundle.js');
-      expect(shouldChainCoin(
-        { id: 'tc-1', name: 'repay_debt', input: { amount: 5, asset: 'USDC' } },
-        { id: 'tc-2', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
-      )).toBe(false);
+      expect(
+        shouldChainCoin(
+          { id: 'tc-1', name: 'repay_debt', input: { amount: 5, asset: 'USDC' } },
+          { id: 'tc-2', name: 'swap_execute', input: { from: 'USDC', to: 'SUI', amount: 5 } },
+        ),
+      ).toBe(false);
     });
 
     it('case-insensitive asset comparison (lowercase ↔ canonical-case)', async () => {
       const { shouldChainCoin } = await import('../compose-bundle.js');
-      expect(shouldChainCoin(
-        { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'usdsui', amount: 5 } },
-        { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
-      )).toBe(true);
+      expect(
+        shouldChainCoin(
+          { id: 'tc-1', name: 'swap_execute', input: { from: 'USDC', to: 'usdsui', amount: 5 } },
+          { id: 'tc-2', name: 'save_deposit', input: { amount: 5, asset: 'USDsui' } },
+        ),
+      ).toBe(true);
     });
   });
 
   describe('composeBundleFromToolResults — inputCoinFromStep auto-population', () => {
     function makeBundleableWrite(name: string): Tool {
-      return buildTool({
+      return defineTool({
         name,
         description: `mock ${name}`,
         inputSchema: z.object({}).passthrough(),
-        jsonSchema: { type: 'object', properties: {} },
         isReadOnly: false,
         permissionLevel: 'confirm',
         async call() {
@@ -1378,11 +1380,10 @@ describe('SPEC 13 Phase 1 — chain-coin handoff (inputCoinFromStep auto-populat
   // the wallet) with a direct production signal.
   describe('engine.bundle_chain_mode_set counter (1.13.1)', () => {
     function makeBundleableWrite(name: string): Tool {
-      return buildTool({
+      return defineTool({
         name,
         description: `mock ${name}`,
         inputSchema: z.object({}).passthrough(),
-        jsonSchema: { type: 'object', properties: {} },
         isReadOnly: false,
         permissionLevel: 'confirm',
         async call() {
@@ -1507,11 +1508,10 @@ describe('SPEC 13 Phase 1 — chain-coin handoff (inputCoinFromStep auto-populat
 // non-chained pairs do NOT fire the counter.
 describe('SPEC 13 Phase 3a — 4-op DAG composition (1.15.0)', () => {
   function makeBundleableWrite(name: string): Tool {
-    return buildTool({
+    return defineTool({
       name,
       description: `mock ${name}`,
       inputSchema: z.object({}).passthrough(),
-      jsonSchema: { type: 'object', properties: {} },
       isReadOnly: false,
       permissionLevel: 'confirm',
       async call() {
@@ -1553,18 +1553,12 @@ describe('SPEC 13 Phase 3a — 4-op DAG composition (1.15.0)', () => {
   // chains from step 0. The bracketing send (step 2) and the trailing
   // send (step 3) run wallet-mode.
   it('accepts 4-op DAG with one chained pair (swap → save chained, sends wallet-mode)', async () => {
-    const engine = setup4op(
-      'send_transfer',
-      'swap_execute',
-      'save_deposit',
-      'send_transfer',
-      {
-        a: { amount: 5, to: '0xfirst', asset: 'USDC' },
-        b: { from: 'USDC', to: 'USDsui', amount: 10 },
-        c: { amount: 10, asset: 'USDsui' },
-        d: { amount: 100, to: '0xlast', asset: 'USDC' },
-      },
-    );
+    const engine = setup4op('send_transfer', 'swap_execute', 'save_deposit', 'send_transfer', {
+      a: { amount: 5, to: '0xfirst', asset: 'USDC' },
+      b: { from: 'USDC', to: 'USDsui', amount: 10 },
+      c: { amount: 10, asset: 'USDsui' },
+      d: { amount: 100, to: '0xlast', asset: 'USDC' },
+    });
     const events = await collectEvents(engine.submitMessage('demo-1 shape'));
     const pending = events.find((e) => e.type === 'pending_action') as
       | (EngineEvent & { type: 'pending_action'; action: PendingAction })
@@ -1581,18 +1575,12 @@ describe('SPEC 13 Phase 3a — 4-op DAG composition (1.15.0)', () => {
   // chains; swap → send(SUI) chains (both whitelisted + aligned); fourth
   // step is an independent send running wallet-mode.
   it('accepts 4-op partial-chain bundle (withdraw → swap → send chained, fourth send wallet-mode)', async () => {
-    const engine = setup4op(
-      'withdraw',
-      'swap_execute',
-      'send_transfer',
-      'send_transfer',
-      {
-        a: { amount: 5, asset: 'USDC' },
-        b: { from: 'USDC', to: 'SUI', amount: 5 },
-        c: { amount: 5, to: '0xrecipient', asset: 'SUI' },
-        d: { amount: 1, to: '0xother', asset: 'USDC' },
-      },
-    );
+    const engine = setup4op('withdraw', 'swap_execute', 'send_transfer', 'send_transfer', {
+      a: { amount: 5, asset: 'USDC' },
+      b: { from: 'USDC', to: 'SUI', amount: 5 },
+      c: { amount: 5, to: '0xrecipient', asset: 'SUI' },
+      d: { amount: 1, to: '0xother', asset: 'USDC' },
+    });
     const events = await collectEvents(engine.submitMessage('partial chain'));
     const pending = events.find((e) => e.type === 'pending_action') as
       | (EngineEvent & { type: 'pending_action'; action: PendingAction })
@@ -1609,12 +1597,7 @@ describe('SPEC 13 Phase 3a — 4-op DAG composition (1.15.0)', () => {
   // `inputCoinFromStep` populated anywhere. Atomicity at the Payment
   // Intent level still holds (all-or-nothing settlement).
   it('accepts 4-op zero-chain bundle (four independent sends — P0-10)', async () => {
-    const engine = setup4op(
-      'send_transfer',
-      'send_transfer',
-      'send_transfer',
-      'send_transfer',
-    );
+    const engine = setup4op('send_transfer', 'send_transfer', 'send_transfer', 'send_transfer');
     const events = await collectEvents(engine.submitMessage('four sends'));
     const pending = events.find((e) => e.type === 'pending_action') as
       | (EngineEvent & { type: 'pending_action'; action: PendingAction })
@@ -1624,9 +1607,7 @@ describe('SPEC 13 Phase 3a — 4-op DAG composition (1.15.0)', () => {
     for (let i = 0; i < 4; i++) {
       expect(pending!.action.steps![i].inputCoinFromStep).toBeUndefined();
     }
-    const errorResults = events.filter(
-      (e) => e.type === 'tool_result' && e.isError,
-    );
+    const errorResults = events.filter((e) => e.type === 'tool_result' && e.isError);
     expect(errorResults).toHaveLength(0);
   });
 

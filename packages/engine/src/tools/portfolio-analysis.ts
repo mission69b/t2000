@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import {
   fetchAddressPortfolio,
   fetchAddressDefiPortfolio,
@@ -14,7 +14,9 @@ const inputSchema = z.object({
   address: z
     .string()
     .optional()
-    .describe('Sui address (0x…) or SuiNS name (alex.sui) to analyze. Defaults to the signed-in wallet when omitted.'),
+    .describe(
+      'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
+    ),
 });
 
 interface AssetAllocation {
@@ -75,21 +77,11 @@ interface PortfolioResult {
 
 const STABLECOINS = new Set(['USDC', 'USDT', 'USDe', 'USDsui']);
 
-export const portfolioAnalysisTool = buildTool({
+export const portfolioAnalysisTool = defineTool({
   name: 'portfolio_analysis',
   description:
     'Analyze portfolio allocation, risk exposure, and yield optimization for the signed-in user OR any public Sui address or SuiNS name. Shows asset breakdown, diversification score, health factor assessment, and actionable suggestions. Pass `address` as a 0x address OR a SuiNS name (e.g. "alex.sui") to analyze a contact / watched / public wallet.',
   inputSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      address: {
-        type: 'string',
-        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui). The engine resolves the name to an on-chain address before querying. Omit to default to the signed-in wallet.',
-      },
-    },
-    required: [],
-  },
   isReadOnly: true,
   async call(input, context) {
     // [v1.2 SuiNS] Normalize the user-supplied address (0x or *.sui).

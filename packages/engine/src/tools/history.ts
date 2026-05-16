@@ -5,7 +5,7 @@ import {
   type ClassifyBalanceChange,
   type TxDirection,
 } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 import { fetchAudricHistory } from '../audric-api.js';
 import { normalizeAddressInput } from '../sui/address.js';
@@ -247,7 +247,7 @@ const DEFAULT_LOOKBACK_DAYS = 30;
 // and *.sui names; `normalizeAddressInput` validates and resolves at the
 // top of `call()`.
 
-export const transactionHistoryTool = buildTool({
+export const transactionHistoryTool = defineTool({
   name: 'transaction_history',
   description:
     'Retrieve recent transaction history (last 30 days by default): sends, saves, withdrawals, borrows, repayments, swaps, and rewards claims. Renders a rich transaction card.\n\n' +
@@ -255,7 +255,13 @@ export const transactionHistoryTool = buildTool({
     'Filter args: `date` (YYYY-MM-DD), `action` (send/lending/swap), `minUsd` (minimum amount in USD — use this for "transactions over $X" instead of post-filtering), `assetSymbol` (e.g. "USDC", "SUI"), `direction` ("in" or "out"). The card itself respects all filters — never re-list the rows in narration.\n\n' +
     'Internally queries both `FromAddress` and `ToAddress` filters in parallel and dedupes by digest, so pure-receive transactions (someone sends to the queried address with no balance-affecting outbound) are no longer dropped.',
   inputSchema: z.object({
-    limit: z.number().int().min(1).max(50).optional(),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('Maximum number of transactions to return (1-50, default 10)'),
     address: z
       .string()
       .optional()
@@ -270,45 +276,6 @@ export const transactionHistoryTool = buildTool({
     assetSymbol: z.string().optional().describe('Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI", "LOFI"). Matches `tx.asset` exactly.'),
     direction: z.enum(['in', 'out']).optional().describe('Filter by user-side balance flow: "in" = received, "out" = spent.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      limit: {
-        type: 'number',
-        description: 'Maximum number of transactions to return (1-50, default 10)',
-      },
-      address: {
-        type: 'string',
-        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui) to query history FOR (defaults to the signed-in user when omitted). The engine resolves SuiNS names to addresses before querying. Use for queries about a contact\'s, watched address\'s, or any other wallet\'s history.',
-      },
-      counterparty: {
-        type: 'string',
-        description: 'Sui address (0x…) or SuiNS name (e.g. alex.sui) to filter rows by — only transactions where the queried address sent to or received from this counterparty are returned. Use for "show transactions with <contact>" queries.',
-      },
-      date: {
-        type: 'string',
-        description: 'Specific date to search for transactions (YYYY-MM-DD format). Paginates back to find that day.',
-      },
-      action: {
-        type: 'string',
-        enum: [...HISTORY_ACTIONS],
-        description: 'Filter results by action category: send, lending, swap, or transaction.',
-      },
-      minUsd: {
-        type: 'number',
-        description: 'Minimum transaction amount in USD. Use this for "transactions over $X" queries.',
-      },
-      assetSymbol: {
-        type: 'string',
-        description: 'Filter to a single asset symbol (case-insensitive, e.g. "USDC", "SUI").',
-      },
-      direction: {
-        type: 'string',
-        enum: ['in', 'out'],
-        description: 'Filter by direction of user balance change: "in" = received, "out" = spent.',
-      },
-    },
-  },
   isReadOnly: true,
   maxResultSizeChars: 8_000,
   // [v1.5.1] New transactions land continuously. Even with an explicit
