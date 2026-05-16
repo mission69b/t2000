@@ -1568,7 +1568,7 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
       maxTurns: 1,
     });
 
-    const buildStub = (text: string, toolCallId: string) => [
+    const buildStub = (text: string, toolCallId: string): LanguageModelV3StreamPart[] => [
       { type: 'stream-start', warnings: [] },
       { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
       { type: 'text-start', id: 't1' },
