@@ -1123,6 +1123,41 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 
 **Verification gap (2026-05-16 ~17:12 AEST).** Founder ran a borrow $5 / repay all smoke (chat `s_1778915408778_da6775749336`) but didn't explicitly check whether the confirm card showed `Health factor: ∞ → 17.00` (the Day 14c rendering). Borrow + repay both executed correctly end-to-end and the engine PendingAction emit definitely included `projectedHF` (engine 1.34.13 deployed pre-smoke; 28/28 enrich tests pass; the field stamping is dead-simple). The audric render path is also tested (8/8 preview-body Day 14c tests pass; PermissionCard wiring is one line). High confidence Day 14c works in production. The check we'd want next time: take a screenshot of the confirm card before tapping, look for the `→` arrow between current and projected HF.
 
+---
+
+### Day 15 — JWT 1h logout investigation (scoped out, deferred) (2026-05-16)
+
+**Why this is captured.** Founder picked "JWT 1h logout fix" as the next slice after Day 14c, expecting "silent refresh + proactive toast at 55min" to be a 2-3h fix. A 30-min auth trace revealed the silent-refresh half is **not feasible in 2-3h** — it needs an OAuth architecture refactor. Recording the findings here so the next session that picks this up doesn't re-trace from scratch.
+
+**The bug (real, real user pain).** During Day 13 smoke, founder reported being silently logged out mid-session. Root cause:
+
+- `useExpirySoonToast` exists but fires on the **epoch** boundary (~24h `maxEpoch - currentEpoch <= 1`) — wrong threshold.
+- The actual silent-kick happens at the **JWT** boundary (Google OIDC `exp`, ~1h). `useZkLogin`'s 60s interval polls `isJwtExpired`, flips `status` to `'expired'`, `AuthGuard` runs `router.replace('/')`. No toast in between.
+- `refresh()` exists but is `logout() + full Google OAuth round-trip` — destructive, not silent.
+
+**Why silent refresh is hard.** The current auth flow uses Google `response_type=id_token` (implicit flow), which gives an ID token with no refresh token by spec. To silently renew, would need one of:
+
+1. **OAuth refactor to `response_type=code` + refresh tokens.** Requires backend exchange endpoint, secure refresh-token storage (server-side preferred — sets cookies vs localStorage), updated zkLogin nonce flow to thread through the auth-code exchange. 1-2 days of work. Compatible with current Enoki integration but Enoki may need to be notified of the new token shape.
+2. **Google `prompt=none` iframe pattern.** Mostly deprecated; CSP-blocked in many browsers. Not recommended for new builds in 2026.
+3. **Enoki-side session extension.** No such API exists today (verified by reading the Enoki integration code in `lib/zklogin.ts`). Would need Mysten to ship it.
+
+**What WAS shippable in 2-3h (declined, scope-pivot):** A proactive toast hook (`useJwtExpirySoonToast`, mirroring `useExpirySoonToast` but targeting the JWT `exp` claim instead of `maxEpoch`). 5-min warning at 55min mark with "Stay signed in" button calling `refresh()`. Covers ~80% of the felt pain (active users get warned + can re-auth); leaves the "idle user away from screen" case unfixed. Founder elected to defer rather than ship the partial fix.
+
+**Recommendation for the future session that picks this up.**
+
+- **Easy path (2-3h):** Build `useJwtExpirySoonToast`, mount it alongside `useExpirySoonToast` in `ChunkErrorReloader`. Ship the partial fix. Buys time before tackling the OAuth refactor.
+- **Right path (1-2 days):** Refactor to `response_type=code` + refresh tokens. Server-side cookie storage for refresh tokens (the access/ID token can stay client-side or move to a httpOnly cookie too — depends on how `authFetch` ends up looking). New `/api/auth/refresh` route. Update zkLogin flow to handle the auth-code exchange before computing the nonce. Test surface: middleware (validates refreshed JWT), `useZkLogin` (silent renewal triggers ~5min before expiry), refresh failure path (toast + force re-auth).
+- **Either path needs:** A new toast component for "Session expired" landing state (so the user lands on `/` and knows WHY they were logged out — not just thinks the app broke).
+
+**Key reference files (5 most important):**
+- `apps/web/lib/zklogin.ts` — session shape + OAuth flow + Enoki integration
+- `apps/web/components/auth/useZkLogin.ts` — hook with the 60s expiry polling
+- `apps/web/components/auth/AuthGuard.tsx` — the silent-kick redirect
+- `apps/web/hooks/useExpirySoonToast.ts` — template for the new JWT toast
+- `apps/web/middleware.ts` — server-side `jwtVerify` against Google JWKS
+
+**Status: deferred.** Not scoped today. Reopen as Day 16 (easy path) or as its own SPEC item under v0.7b (right path).
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
