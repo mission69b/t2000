@@ -960,6 +960,34 @@ This bug had been actively corrupting every v2 session since 1.34.0 (Day 13.2). 
 
 Test verify: 23/23 v2 tests pass (3 skipped real-API); 1369/1370 full engine suite passes (the same pre-existing real-API multi-block-thinking flake stays).
 
+---
+
+**Day 13.8 — minimal integration-harness coverage (founder pivot from 5-day plan to 1-day approach):**
+
+After 1.34.7 shipped (Day 13.7's data-loss fix), I scoped a 5-day full-integration harness for `audric/apps/web/__tests__/integration-harness/` (mock auth + mock sponsored-tx + mock Sui RPC + mock BlockVision + mock NAVI + Anthropic fixture record/replay + Redis mock + diff legacy vs v2 streams + persisted session shape + render rehydration). Founder pushed back: *"once we delete legacy at Week 6, the diff harness is worthless — why are we going in circles?"*. Honest reassessment: the user was right.
+
+**The pivot:** instead of 5 days of audric/web integration infrastructure that becomes obsolete in 4-6 weeks (when legacy QueryEngine is deleted), fold the high-value invariants into engine-side integration tests. Same coverage for the bug CLASS that motivated the harness (silent persistence corruption), zero infrastructure cost, permanent value (doesn't expire when legacy goes away). The 633 LoC of audric scaffolding (README + mock-redis + mock-auth + harness.ts skeleton) was deleted from `audric/apps/web/__tests__/integration-harness/`.
+
+**What landed in `packages/engine/src/v2/engine.test.ts` (Day 13.8 block, 3 new tests, ~270 LoC):**
+
+1. **`'text-then-tool-call within a single step persists assistant text + tool_use + tool_result'`** — Pins that within a single AI SDK step, narration text + tool_call both end up in the persisted assistant message (text-first ordering enforced by Day 13.4's `normalizeAssistantContentForAnthropic`), and the tool_result follows as a user message. Sanity check that the per-step push from 13.7 doesn't lose the text component when a tool call is also present.
+
+2. **`'compound pending_action: step 1 (read) lands in history, step 2 (write) goes into action'`** — The single most architecturally subtle case from 13.7. Counter-driven stub model: step 1 emits text + balance_check tool_call (auto-tier, completes), step 2 emits text + save_deposit tool_call (confirm-tier, fires `tool-approval-request`). Asserts: (a) step 1's text + balance_check tool_use + tool_result land in `this.messages` (3 messages: user prompt + assistant + user-with-tool_result); (b) `action.assistantContent` contains ONLY step 2's text + save_deposit tool_use, NOT step 1's content. This proves the `start-step` accumulator reset works correctly across step boundaries — without it, step 2's deferred action would include step 1's content too, causing the deferred assistant message to mismatch the resume-time tool_results and trigger Anthropic's strict-format error (same class as 13.4).
+
+3. **`'multi-prompt single engine: each prompt persists its assistant message (regression for Day 13.7 across many turns)'`** — Drives 3 sequential prompts through the same engine instance (matches the audric chat-route pattern where each `/api/engine/chat` request hits an engine constructed from the persisted session). Asserts message count grows monotonically (3 → 6 → 9), all 3 user prompts present in order, all 3 assistant replies present in order. The audric production bug from session `s_1778900893492_12f0d4287565` was specifically this pattern: multiple prompts in one session, with the assistant messages silently disappearing across the read-only ones. This test fails on 1.34.0-1.34.6 and passes on 1.34.7+.
+
+**What we DELIBERATELY didn't build (and why):**
+
+- **Audric-side intent-dispatcher tests** (the `prefetch_bal` + `auto_2_balance_check` double-tile bug from session `s_1778900893492_12f0d4287565`). This is an audric-side issue, not engine. Deferred to be found and fixed via natural alpha-tester smoke or Audric-specific integration tests. Doesn't corrupt data; just a UX symptom.
+- **Render rehydration tests** (the "DISPATCHING N READS PARALLEL" wrapper appearing only after refresh). Audric-side render layer. Same deferral — not engine.
+- **Sponsored-tx mock + full chat-route invocation tests.** Heavy infrastructure for catching bugs that the engine-side tests already cover at the data-shape level.
+- **Anthropic fixture record/replay system.** Required for live-LLM end-to-end tests. The compound-pending_action stub model approach gives equivalent coverage with no fixture maintenance burden.
+- **Side-by-side legacy vs v2 diff harness.** Pivoted away from precisely because legacy is going away.
+
+**Founder's strategic insight made concrete:** the pattern of "each engine bug we find gets a focused regression test in `@t2000/engine`" + "ship a release per fix" + "founder smokes in production" is the actual harness. Days 13.4, 13.5, 13.6, 13.7, 13.8 ALL have regression tests now. The harness IS our test suite — we just don't call it that.
+
+Test verify: 26/26 v2 tests pass (3 skipped real-API); 1372/1373 full engine suite passes (same pre-existing real-API multi-block-thinking flake).
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

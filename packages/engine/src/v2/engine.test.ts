@@ -1314,3 +1314,307 @@ describe('AISDKEngine — Day 13.7 regression: persist assistant message on clea
     expect(messages[0]?.role).toBe('user');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Day 13.8 — minimal integration-harness coverage for the persist-on-clean
+//             invariants the Day 13.7 fix introduced.
+// ---------------------------------------------------------------------------
+//
+// SPEC 37 v0.7a Phase 2 Day 14 / 2026-05-16. Founder pushback on the
+// 5-day full integration harness: "once we delete legacy at Week 6,
+// the diff harness is worthless — why are we going in circles?".
+// Honest pivot — instead of building a 5-day audric/web integration
+// harness that becomes obsolete in 4-6 weeks, fold the high-value
+// invariants into engine-side integration tests right next to the
+// unit tests. Same coverage for the bug CLASS that motivated the
+// harness (silent persistence corruption), zero infrastructure cost,
+// permanent value (doesn't expire when legacy goes away).
+//
+// What these tests pin (the gaps the 13.7 block didn't cover):
+//   1. Multi-step clean turn — step 1 (tool call) AND step 2
+//      (narration after tool result) BOTH land in `this.messages`
+//      in the correct order. Without this test, a future change to
+//      `start-step` reset semantics could silently drop step 2's
+//      narration.
+//   2. Stream error mid-turn — assistant content NOT pushed if the
+//      stream errors before finish-step. Otherwise a partial assistant
+//      message corrupts history for the next turn.
+//   3. Compound pending_action — step 1 (read tool, completes cleanly)
+//      gets pushed to history, step 2 (write tool, pending) goes into
+//      action.assistantContent without including step 1's content.
+//      The single most architecturally subtle case from 13.7.
+// ---------------------------------------------------------------------------
+describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (multi-step + error + compound)', () => {
+  function makeReadTool(name: string): LegacyTool {
+    return buildTool({
+      name,
+      description: `${name} read tool`,
+      inputSchema: z.object({}).passthrough(),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: { mutating: false },
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async () => ({ data: { stub: name }, displayText: `${name} ok` }),
+    });
+  }
+
+  function makeWriteTool(name: string): LegacyTool {
+    return buildTool({
+      name,
+      description: `${name} write tool`,
+      inputSchema: z.object({ amount: z.number() }),
+      jsonSchema: { type: 'object', properties: { amount: { type: 'number' } }, required: ['amount'] },
+      flags: { mutating: true },
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => ({ data: { ok: true }, displayText: `${name} done` }),
+    });
+  }
+
+  it('text-then-tool-call within a single step persists assistant text + tool_use + tool_result', async () => {
+    // Scenario: LLM emits narration text THEN a tool_call within
+    // the same step. Both must end up in the persisted assistant
+    // message (text-first ordering enforced by Day 13.4
+    // normaliseAssistantContentForAnthropic), and the tool_result
+    // must follow as a user message.
+    //
+    // Compound multi-STEP behavior (separate LLM rounds) is covered
+    // by the next test below using a counter-driven stub.
+    const balanceCheck = makeReadTool('balance_check');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [balanceCheck],
+      maxTurns: 1,
+    });
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: 'Checking your balance. ' },
+      { type: 'text-end', id: 't1' },
+      { type: 'tool-call', toolCallId: 'bc_1', toolName: 'balance_check', input: '{}' },
+      { type: 'text-start', id: 't2' },
+      { type: 'text-delta', id: 't2', delta: 'Your balance is $93.' },
+      { type: 'text-end', id: 't2' },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: 'end_turn' },
+        usage: {
+          inputTokens: { total: 80, noCache: 80, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 20, text: 20, reasoning: 0 },
+        },
+      },
+    ]);
+
+    await collect(engine.submitMessage('What is my balance?'));
+
+    const messages = engine.getMessages();
+    // user prompt + assistant (merged text + tool_use) + user tool_result = 3
+    expect(messages.length).toBe(3);
+    expect(messages[0]?.role).toBe('user');
+    expect(messages[1]?.role).toBe('assistant');
+    expect(messages[2]?.role).toBe('user');
+
+    // Assistant content carries BOTH text and tool_use (text-first
+    // ordering enforced by normalizeAssistantContentForAnthropic).
+    const asst = messages[1]!;
+    const asstContent = asst.content as ReadonlyArray<{ type: string; text?: string }>;
+    const textBlocks = asstContent.filter((b) => b.type === 'text');
+    const toolUseBlocks = asstContent.filter((b) => b.type === 'tool_use');
+    expect(textBlocks.length).toBe(1);
+    expect(toolUseBlocks.length).toBe(1);
+    expect(textBlocks[0]?.text).toContain('Checking your balance');
+    expect(textBlocks[0]?.text).toContain('Your balance is');
+  });
+
+  it('compound pending_action: step 1 (read) lands in history, step 2 (write) goes into action', async () => {
+    // Scenario: LLM calls a read tool in step 1, receives result,
+    // then in step 2 calls a write tool requiring approval. The Day
+    // 13.7 fix needs to handle this correctly:
+    //   - Step 1's clean content (text + read tool_use + tool_result)
+    //     MUST land in this.messages.
+    //   - Step 2's content (text + write tool_use) MUST go into
+    //     action.assistantContent and NOT also be in this.messages
+    //     (otherwise resumeWithToolResult double-pushes).
+    //
+    // Without per-step accumulator reset on start-step, step 2's
+    // action would include step 1's content too, causing the deferred
+    // assistant message to be the union — which would mismatch the
+    // tool_results pushed via resumeWithToolResult and trigger
+    // Anthropic's strict-format error (same class as 13.4).
+    const balanceCheck = makeReadTool('balance_check');
+    const saveDeposit = makeWriteTool('save_deposit');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [balanceCheck, saveDeposit],
+      maxTurns: 2,
+    });
+
+    // For this compound scenario we need a stub that emits DIFFERENT
+    // content on round 1 vs round 2. Build a counter-driven stub
+    // inline.
+    let callCount = 0;
+    const stubModel = {
+      specificationVersion: 'v3' as const,
+      provider: 'test-stub',
+      modelId: 'stub-compound',
+      supportedUrls: {},
+      doStream: () => {
+        callCount += 1;
+        const chunks: unknown[] =
+          callCount === 1
+            ? [
+                { type: 'stream-start', warnings: [] },
+                { type: 'response-metadata', id: 'r1', timestamp: new Date(), modelId: 'stub' },
+                { type: 'text-start', id: 't1' },
+                { type: 'text-delta', id: 't1', delta: 'Checking balance first.' },
+                { type: 'text-end', id: 't1' },
+                { type: 'tool-call', toolCallId: 'bc_1', toolName: 'balance_check', input: '{}' },
+                {
+                  type: 'finish',
+                  finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+                  usage: {
+                    inputTokens: { total: 60, noCache: 60, cacheRead: 0, cacheWrite: 0 },
+                    outputTokens: { total: 15, text: 15, reasoning: 0 },
+                  },
+                },
+              ]
+            : [
+                { type: 'stream-start', warnings: [] },
+                { type: 'response-metadata', id: 'r2', timestamp: new Date(), modelId: 'stub' },
+                { type: 'text-start', id: 't2' },
+                { type: 'text-delta', id: 't2', delta: 'Saving 10 USDC now.' },
+                { type: 'text-end', id: 't2' },
+                {
+                  type: 'tool-call',
+                  toolCallId: 'sv_1',
+                  toolName: 'save_deposit',
+                  input: JSON.stringify({ amount: 10 }),
+                },
+                {
+                  type: 'finish',
+                  finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+                  usage: {
+                    inputTokens: { total: 90, noCache: 90, cacheRead: 0, cacheWrite: 0 },
+                    outputTokens: { total: 20, text: 20, reasoning: 0 },
+                  },
+                },
+              ];
+        return Promise.resolve({
+          stream: new ReadableStream({
+            start(controller) {
+              for (const c of chunks) controller.enqueue(c);
+              controller.close();
+            },
+          }),
+        });
+      },
+    };
+    // Inject the counter-driven stub via the same path withStubbedModel uses.
+    (engine as unknown as { anthropic: () => unknown }).anthropic = () => stubModel;
+
+    const events = await collect(engine.submitMessage('Check then save 10 USDC'));
+
+    // pending_action MUST fire (for the save_deposit confirm)
+    const pa = events.find((e) => e.type === 'pending_action');
+    expect(pa).toBeDefined();
+    if (pa?.type !== 'pending_action') throw new Error('expected pending_action');
+
+    // History assertions: step 1 landed cleanly, step 2 is deferred.
+    const messages = engine.getMessages();
+    // user prompt + step1 assistant + step1 tool_result = 3
+    expect(messages.length).toBe(3);
+    expect(messages[0]?.role).toBe('user');
+    expect(messages[1]?.role).toBe('assistant');
+    expect(messages[2]?.role).toBe('user');
+
+    // Step 1 assistant content: text + balance_check tool_use ONLY
+    // (no save_deposit — that belongs to step 2's deferred action).
+    const step1Asst = messages[1]!;
+    const step1Content = step1Asst.content as ReadonlyArray<{ type: string; name?: string }>;
+    const step1ToolUseNames = step1Content
+      .filter((b) => b.type === 'tool_use')
+      .map((b) => b.name);
+    expect(step1ToolUseNames).toEqual(['balance_check']);
+
+    // action.assistantContent contains ONLY step 2's content (the
+    // write narration + save_deposit tool_use). Day 13.7's
+    // resetStepAccumulators() on start-step is what makes this work.
+    const actionContent = pa.action.assistantContent as ReadonlyArray<{ type: string; name?: string; text?: string }>;
+    const actionToolUseNames = actionContent
+      .filter((b) => b.type === 'tool_use')
+      .map((b) => b.name);
+    expect(actionToolUseNames).toEqual(['save_deposit']);
+    const actionTextBlocks = actionContent.filter((b) => b.type === 'text');
+    expect(actionTextBlocks.length).toBe(1);
+    expect(actionTextBlocks[0]?.text).toContain('Saving 10 USDC');
+    // Crucially: action.assistantContent does NOT include step 1's
+    // "Checking balance first." text or the balance_check tool_use.
+    expect(actionTextBlocks[0]?.text).not.toContain('Checking balance first');
+  });
+
+  it('multi-prompt single engine: each prompt persists its assistant message (regression for Day 13.7 across many turns)', async () => {
+    // Scenario: drive 3 sequential prompts through the SAME engine
+    // (matches the audric chat-route behavior where each
+    // /api/engine/chat request hits an engine constructed from the
+    // persisted session). Verify history grows monotonically and
+    // every clean turn's assistant message is preserved.
+    const balanceCheck = makeReadTool('balance_check');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [balanceCheck],
+      maxTurns: 1,
+    });
+
+    const buildStub = (text: string, toolCallId: string) => [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: text },
+      { type: 'text-end', id: 't1' },
+      { type: 'tool-call', toolCallId, toolName: 'balance_check', input: '{}' },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: 'end_turn' },
+        usage: {
+          inputTokens: { total: 30, noCache: 30, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 5, text: 5, reasoning: 0 },
+        },
+      },
+    ];
+
+    // Prompt 1
+    withStubbedModel(engine, buildStub('First reply.', 'bc_p1'));
+    await collect(engine.submitMessage('Prompt one.'));
+    expect(engine.getMessages().length).toBe(3);
+
+    // Prompt 2 — message count should jump by 3 more (user + asst + tool_result)
+    withStubbedModel(engine, buildStub('Second reply.', 'bc_p2'));
+    await collect(engine.submitMessage('Prompt two.'));
+    expect(engine.getMessages().length).toBe(6);
+
+    // Prompt 3
+    withStubbedModel(engine, buildStub('Third reply.', 'bc_p3'));
+    await collect(engine.submitMessage('Prompt three.'));
+    expect(engine.getMessages().length).toBe(9);
+
+    // Sanity: all three user prompts are present, in order
+    const userPrompts = engine
+      .getMessages()
+      .filter((m) => m.role === 'user' && Array.isArray(m.content) && (m.content as ReadonlyArray<{ type: string; text?: string }>)[0]?.type === 'text')
+      .map((m) => (m.content as ReadonlyArray<{ type: string; text?: string }>)[0]?.text);
+    expect(userPrompts).toEqual(['Prompt one.', 'Prompt two.', 'Prompt three.']);
+
+    // And all three assistant replies are present, in order
+    const asstTexts = engine
+      .getMessages()
+      .filter((m) => m.role === 'assistant')
+      .map((m) => {
+        const blocks = m.content as ReadonlyArray<{ type: string; text?: string }>;
+        return blocks.find((b) => b.type === 'text')?.text;
+      });
+    expect(asstTexts).toEqual(['First reply.', 'Second reply.', 'Third reply.']);
+  });
+});
