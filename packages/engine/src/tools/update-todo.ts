@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 
 // ---------------------------------------------------------------------------
 // update_todo — persistent per-turn todo list (SPEC 8 v0.5.1, P3.2 slice 2)
@@ -53,17 +53,21 @@ import { buildTool } from '../tool.js';
 // tool's preflight.
 // ---------------------------------------------------------------------------
 
-const todoStatusSchema = z.enum(['pending', 'in_progress', 'completed']);
+const todoStatusSchema = z
+  .enum(['pending', 'in_progress', 'completed'])
+  .describe('Lifecycle state. Exactly one item must be `in_progress` per call.');
 
 const todoItemSchema = z.object({
   id: z
     .string()
     .min(1, 'id must be a non-empty string')
-    .max(40, 'id must be ≤40 chars (use a slug, not a sentence)'),
+    .max(40, 'id must be ≤40 chars (use a slug, not a sentence)')
+    .describe('Stable identifier across calls within the same turn (e.g. "check-balance"). ≤40 chars.'),
   label: z
     .string()
     .min(1, 'label must be a non-empty string')
-    .max(80, 'label must be ≤80 chars (the whole point of this tool is concision)'),
+    .max(80, 'label must be ≤80 chars (the whole point of this tool is concision)')
+    .describe('What this step is doing, ≤80 chars. Concrete (e.g. "Check USDC rate") not abstract ("Gather data").'),
   status: todoStatusSchema,
   // [SPEC 9 v0.1.3 P9.3] Per-item persistence flag — opt this todo item
   // into the long-lived `Goal` row surface. Hosts that wire goal storage
@@ -72,7 +76,15 @@ const todoItemSchema = z.object({
   // false — most turn-scoped items don't survive the turn. Engine is
   // unaware of how/where the host persists; it just passes the flag
   // through on the `todo_update` side-channel event.
-  persist: z.boolean().optional(),
+  persist: z
+    .boolean()
+    .optional()
+    .describe(
+      'Set true to promote this item into a long-lived goal that survives across sessions ' +
+        '(e.g. "save $500 by month-end"). Default false — only set true when the item ' +
+        'represents a multi-week / multi-session commitment, not a within-turn step. ' +
+        'When false or omitted, the item lives only for this turn.',
+    ),
 });
 
 const inputSchema = z.object({
@@ -85,7 +97,7 @@ const inputSchema = z.object({
 export type TodoItem = z.infer<typeof todoItemSchema>;
 export type UpdateTodoInput = z.infer<typeof inputSchema>;
 
-export const updateTodoTool = buildTool({
+export const updateTodoTool = defineTool({
   name: 'update_todo',
   description:
     "Declare or replace your plan for the current turn as a structured todo list. " +
@@ -108,44 +120,6 @@ export const updateTodoTool = buildTool({
     "(\"check balance\", \"compute split\") — those vanish when the turn ends, which is " +
     "what you want. Default behaviour (no persist field) is don't-persist.",
   inputSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      items: {
-        type: 'array',
-        minItems: 1,
-        maxItems: 8,
-        items: {
-          type: 'object',
-          properties: {
-            id: {
-              type: 'string',
-              description: 'Stable identifier across calls within the same turn (e.g. "check-balance"). ≤40 chars.',
-            },
-            label: {
-              type: 'string',
-              description: 'What this step is doing, ≤80 chars. Concrete (e.g. "Check USDC rate") not abstract ("Gather data").',
-            },
-            status: {
-              type: 'string',
-              enum: ['pending', 'in_progress', 'completed'],
-              description: 'Lifecycle state. Exactly one item must be `in_progress` per call.',
-            },
-            persist: {
-              type: 'boolean',
-              description:
-                'Set true to promote this item into a long-lived goal that survives across sessions ' +
-                '(e.g. "save $500 by month-end"). Default false — only set true when the item ' +
-                'represents a multi-week / multi-session commitment, not a within-turn step. ' +
-                'When false or omitted, the item lives only for this turn.',
-            },
-          },
-          required: ['id', 'label', 'status'],
-        },
-      },
-    },
-    required: ['items'],
-  },
   isReadOnly: true,
   // No I/O, just a pass-through that emits a side-channel event. Skip the
   // turn-read cache — every call is intentionally distinct (ids may match

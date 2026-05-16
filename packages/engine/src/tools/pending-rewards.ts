@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getPendingRewardsByAddress, type PendingReward } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 
 interface PendingRewardsResult {
   rewards: PendingReward[];
@@ -39,12 +39,11 @@ function formatAmount(amount: number): string {
   return amount.toExponential(2);
 }
 
-export const pendingRewardsTool = buildTool({
+export const pendingRewardsTool = defineTool({
   name: 'pending_rewards',
   description:
     "Inspect unclaimed protocol rewards for the signed-in user without claiming them. Returns a per-asset breakdown — symbol, amount, USD value (when oracle prices are known) — plus the total claimable USD. Use BEFORE calling claim_rewards or harvest_rewards so you can tell the user exactly what's claimable; if zero rewards or NAVI is degraded, surface that truthfully instead of jumping to a write. Read-only, never opens a confirm card.",
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
   // Rewards accrue continuously and are zeroed on claim — never dedupe
   // across turns within the same session.

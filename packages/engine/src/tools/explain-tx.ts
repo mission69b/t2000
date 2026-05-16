@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getDecimalsForCoinType, resolveSymbol } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 
 const inputSchema = z.object({
   digest: z.string().describe('Sui transaction digest to explain'),
@@ -21,18 +21,11 @@ interface ExplainedTx {
   summary: string;
 }
 
-export const explainTxTool = buildTool({
+export const explainTxTool = defineTool({
   name: 'explain_tx',
   description:
     'Explain a Sui transaction in plain English. Provide a transaction digest and get a human-readable breakdown of what happened — transfers, swaps, deposits, etc.',
   inputSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      digest: { type: 'string', description: 'Sui transaction digest' },
-    },
-    required: ['digest'],
-  },
   isReadOnly: true,
   async call(input, context) {
     const rpcUrl = context.suiRpcUrl ?? 'https://fullnode.mainnet.sui.io:443';

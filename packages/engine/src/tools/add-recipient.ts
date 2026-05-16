@@ -52,7 +52,7 @@
 // ---------------------------------------------------------------------------
 
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import type { FormSchema } from '../pending-input.js';
 
 const ADD_RECIPIENT_FORM: FormSchema = {
@@ -82,7 +82,7 @@ const ADD_RECIPIENT_FORM: FormSchema = {
   ],
 };
 
-export const addRecipientTool = buildTool({
+export const addRecipientTool = defineTool({
   name: 'add_recipient',
   description:
     'Add a new contact to the user\'s saved-recipients list. Call this when you (the LLM) ' +
@@ -94,26 +94,20 @@ export const addRecipientTool = buildTool({
     'user-initiated flow that doesn\'t need the LLM. Only call when YOU need to add a contact ' +
     'mid-conversation to make a downstream action work.',
   inputSchema: z.object({
-    name: z.string().min(1).optional(),
-    identifier: z.string().min(1).optional(),
-  }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      name: {
-        type: 'string',
-        description:
-          'Optional nickname for the contact ("Mom"). Omit to let the user fill the form.',
-      },
-      identifier: {
-        type: 'string',
-        description:
-          'Optional polymorphic identifier (Audric handle, SuiNS name, or 0x address). ' +
+    name: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('Optional nickname for the contact ("Mom"). Omit to let the user fill the form.'),
+    identifier: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        'Optional polymorphic identifier (Audric handle, SuiNS name, or 0x address). ' +
           'Omit to let the user fill the form.',
-      },
-    },
-    required: [],
-  },
+      ),
+  }),
   // Permission: read-only from the engine's perspective. The HOST writes
   // the Contact row in the resume endpoint; the tool's call() body is a
   // thin confirmation message. Treating as read-only keeps the engine's

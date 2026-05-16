@@ -5,7 +5,7 @@ import {
   T2000Error,
   type SwapQuoteResult,
 } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { getTelemetrySink } from '../telemetry.js';
 import { getWalletAddress } from './utils.js';
 
@@ -42,7 +42,7 @@ export type SwapQuoteToolResult =
   | SwapQuoteResult
   | { error: string; errorCode: 'ASSET_NOT_SUPPORTED' | 'SWAP_FAILED'; hint: string; recoverable: true };
 
-export const swapQuoteTool = buildTool({
+export const swapQuoteTool = defineTool({
   name: 'swap_quote',
   description:
     'Get a swap quote without executing. Shows expected output amount, price impact, and route. Use before swap_execute to preview a trade.',
@@ -52,16 +52,6 @@ export const swapQuoteTool = buildTool({
     amount: z.number().positive().describe('Amount to swap'),
     byAmountIn: z.boolean().optional().describe('true = fixed input (default), false = fixed output'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      from: { type: 'string', description: 'Source token name or coin type' },
-      to: { type: 'string', description: 'Target token name or coin type' },
-      amount: { type: 'number', description: 'Amount to swap' },
-      byAmountIn: { type: 'boolean', description: 'true = fixed input (default), false = fixed output' },
-    },
-    required: ['from', 'to', 'amount'],
-  },
   isReadOnly: true,
   // [SPEC 20.2 / D-1 (a) follow-on, 2026-05-10] Quote results MUST NOT be
   // cross-turn deduped by microcompact. Every call legitimately produces a
