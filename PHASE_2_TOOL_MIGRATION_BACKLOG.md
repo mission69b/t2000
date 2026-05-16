@@ -1,0 +1,154 @@
+# Phase 2 — Tool Migration Backlog (`buildTool()` → AI SDK `tool()`)
+
+> **Created:** 2026-05-16 ~18:00 AEST (end of Day 14c session, immediately after audit).  
+> **Scope:** SPEC 37 v0.7a Phase 2 per `/Users/funkii/.cursor/plans/audric-v07a-engine-drain.plan.md`.  
+> **Goal:** Migrate all 37 default tools (+2 opt-in = 39 total) from the legacy `buildTool()` factory to Vercel AI SDK's native `tool()` factory, preserving the engine's public API.  
+> **Plan estimate:** ~2 weeks (~7-12 FTE-days). Reality TBD based on first-batch friction.
+
+---
+
+## Why this doc exists
+
+Days 13.x – 14c shipped real value (HF projection, per-asset rows, APY rendering) but as one-off slices on top of the legacy `buildTool()` plumbing. Phase 2 per the plan is a SYSTEMATIC migration of every tool. Without this backlog, we keep drifting into "what's the next neat thing to ship" instead of "which tool is next." Read this doc at the start of every Phase 2 session.
+
+The audit was run 2026-05-16 ~17:50 AEST via the explore subagent. Source files: `packages/engine/src/tools/*.ts`. Canonical list in `packages/engine/src/tools/index.ts`.
+
+## Verification (canonical counts)
+
+- **READ_TOOLS:** 25 (`renderCanvasTool` through `pendingRewardsTool`)
+- **WRITE_TOOLS:** 12 (`saveDepositTool` through `saveContactTool`)
+- **Default total via `getDefaultTools()`:** **37**
+- **Opt-in (imported but NOT in `getDefaultTools()`):** `updateTodoTool`, `addRecipientTool` → **+2** → **39 total to migrate** if opt-in surfaces are included.
+- **⚠️ Stale comment in `tools/index.ts` (lines 82-83) says "24 reads + 11 writes = 35 tools".** Update to "25 reads + 12 writes = 37 tools (+2 opt-in)" as part of Batch A migration.
+
+## Permission semantics (no-op work — already correct)
+
+- **No tool passes `permission:` field directly.** `buildTool` in `packages/engine/src/tool.ts` defaults `permissionLevel` to `auto` when `isReadOnly: true` (default), else `confirm`.
+- **Explicit `permissionLevel: 'confirm'` overrides** found on: typical write tools (redundant with default, can be dropped during migration).
+- **`add_recipient`** overrides to `permissionLevel: 'auto'` with `isReadOnly: true` (it goes through the `pending_input` form flow, not a permission card).
+- **USD-aware downgrade** happens at runtime via `resolvePermissionTier()` — no per-tool change required for Phase 2. Just preserve the existing permission levels.
+
+## Modifiable fields (Item 6 of correctness spec)
+
+NOT inlined on tools. Sourced from `packages/engine/src/tools/tool-modifiable-fields.ts` via `getModifiableFields(toolName)`. Phase 2 must preserve this lookup pattern when migrating; the new `tool()` factory's call site stays unchanged.
+
+---
+
+## Per-tool backlog (sorted: complexity ↑, then type read→write)
+
+| # | toolName | type | permission | hasZodSchema | hasPreflight | dependencies | LoC bucket | complexity | modifiable | notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `cancel_invoice` | read | auto | ✅ | ❌ | external | small | simple | none | `fetch` PATCH to `AUDRIC_INTERNAL_API_URL`; flagged `isReadOnly: true` despite mutating remote |
+| 2 | `cancel_payment_link` | read | auto | ✅ | ❌ | external | small | simple | none | same pattern as `cancel_invoice` |
+| 3 | `list_invoices` | read | auto | ✅ | ❌ | external | small | simple | none | empty input schema |
+| 4 | `list_payment_links` | read | auto | ✅ | ❌ | external | small | simple | none | empty input schema |
+| 5 | `protocol_deep_dive` | read | auto | ✅ | ❌ | defillama, external | medium | simple | none | **Lone prod consumer of `api.llama.fi`** — keep as-is |
+| 6 | `resolve_suins` | read | auto | ✅ | ✅ | external | medium | simple | none | SuiNS via RPC helpers; `cacheable: true` |
+| 7 | `token_prices` | read | auto | ✅ | ❌ | blockvision | small | simple | none | `fetchTokenPrices` + `blockvisionApiKey` |
+| 8 | `volo_stats` | read | auto | ✅ | ❌ | external | small | simple | none | `fetch` to NAVI open-api VOLO stats |
+| 9 | `web_search` | read | auto | ✅ | ❌ | external | small | simple | none | Brave Search; `maxResultSizeChars` set |
+| 10 | `yield_summary` | read | auto | ✅ | ❌ | external | small | simple | none | Audric `/api/analytics/yield-summary` |
+| 11 | `borrow` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | simple | `amount` (USDC) | `assertAllowedAsset` + `agent.borrow` |
+| 12 | `repay_debt` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | simple | `amount` (USDC) | `agent.repay` |
+| 13 | `save_contact` | write | confirm | ✅ | ✅ | none | small | simple | none | No `requireAgent`; host persists; thin `call()` |
+| 14 | `save_deposit` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | simple | `amount` (USDC) | `assertAllowedAsset` + `agent.save` |
+| 15 | `volo_stake` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | simple | `amount` (SUI) | `agent.stakeVSui` |
+| 16 | `volo_unstake` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | simple | `amount` (vSUI) | amount or `'all'` |
+| 17 | `withdraw` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | simple | `amount` (USDC) | USDC / USDsui preflight |
+| 18 | `activity_summary` | read | auto | ✅ | ❌ | external | small | medium | none | Audric analytics + SuiNS normalize |
+| 19 | `add_recipient` (opt-in) | read | auto | ✅ | ✅ | none | small | medium | none | `needsInput` / `pending_input`; `isConcurrencySafe: false`; host persists before `call()` |
+| 20 | `create_invoice` | read | auto | ✅ | ❌ | external | medium | medium | none | POST Audric internal payments API |
+| 21 | `create_payment_link` | read | auto | ✅ | ❌ | external | medium | medium | none | POST Audric internal payments API |
+| 22 | `explain_tx` | read | auto | ✅ | ❌ | sdk, external | medium | medium | none | Sui JSON-RPC; SDK symbol/decimals helpers |
+| 23 | `health_check` | read | auto | ✅ | ❌ | mcp, sdk | medium | medium | none | NAVI MCP + `requireAgent` path |
+| 24 | `mpp_services` | read | auto | ✅ | ❌ | mppGateway, external | medium | medium | none | `mpp.t2000.ai/api/services` + in-memory catalog cache |
+| 25 | `pending_rewards` | read | auto | ✅ | ❌ | sdk | medium | medium | none | Agent vs `getPendingRewardsByAddress`; `priceCache` enrichment |
+| 26 | `rates_info` | read | auto | ✅ | ❌ | mcp, sdk | medium | medium | none | MCP rates + SDK/agent fallback |
+| 27 | `savings_info` | read | auto | ✅ | ❌ | mcp, sdk | medium | medium | none | MCP + SDK coin helpers + agent |
+| 28 | `spending_analytics` | read | auto | ✅ | ❌ | external | small | medium | none | Audric `/api/analytics/spending` |
+| 29 | `swap_quote` | read | auto | ✅ | ❌ | sdk | medium | medium | none | `getSwapQuote` / Cetus; `cacheable: false`; telemetry |
+| 30 | `update_todo` (opt-in) | read | auto | ✅ | ✅ | none | medium | medium | none | SPEC 8 side-channel `__todoUpdate`; engine `maxTurns` exemption |
+| 31 | `claim_rewards` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | medium | none | `agent.claimRewards` + `priceCache` enrichment |
+| 32 | `pay_api` | write | confirm | ✅ | ✅ | mppGateway, sdk, sponsoredTx | medium | medium | none | `agent.pay`; strict URL host gate in preflight; `costAware` / artifact flags |
+| 33 | `send_transfer` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | small | medium | `amount`, `to` | `normalizeAsset`; `agent.send`; burn-address guard |
+| 34 | `balance_check` | read | auto | ✅ | ❌ | mcp, sdk, blockvision, canonicalPortfolio | large | complex | none | BlockVision + MCP fan-out; `portfolioCache`; sticky cache; large display builder |
+| 35 | `portfolio_analysis` | read | auto | ✅ | ❌ | blockvision, canonicalPortfolio, external | large | complex | none | `portfolioCache`; optional `fetchAudricPortfolio` trust gate; insights math |
+| 36 | `render_canvas` | read | auto | ✅ | ❌ | external | large | complex | none | Many templates; SuiNS normalize; `context.serverPositions` seeding; triggers `__canvas` |
+| 37 | `transaction_history` | read | auto | ✅ | ❌ | sdk, external | large | complex | none | SDK `classifyTransaction`; RPC pagination; `summarizeOnTruncate` |
+| 38 | `harvest_rewards` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | medium | complex | none | Pre-confirm shell `call()`; host `composeTx` / PTB; `narrateHarvestResult` helper |
+| 39 | `swap_execute` | write | confirm | ✅ | ✅ | sdk, sponsoredTx | medium | complex | `amount` | Cetus via `agent.swap`; `T2000Error` recovery union; telemetry |
+
+**Total: 37 default + 2 opt-in = 39.**
+
+## Batch ordering (recommended migration sequence)
+
+| Batch | Tools | Count | Est. session-days | Why this order |
+|---|---|---|---|---|
+| **A** — simple reads | 1-10 above | 10 | ~0.5-1d | Lowest coupling. Establishes `tool()` + Zod schema parity pattern before any write or MCP tool. First migration validates the template. |
+| **B** — simple writes | 11-17 above | 7 | ~1d | Same shape (SDK call + sponsoredTx) repeated 7 times. Validates the write/preflight/permission plumbing once. |
+| **C** — medium reads | 18-30 above | 13 | ~2-3d | Audric analytics + NAVI MCP trio + opt-in surfaces. Harness edge cases dominate (`update_todo` side-channel, `add_recipient` pending_input form). |
+| **D** — medium writes | 31-33 above | 3 | ~1d | Permission/guards + richer preflights + `send_transfer` modifiable fields. |
+| **E** — complex reads | 34-37 above | 4 | ~2-3d | Highest regression risk (caching, truncation, multi-source reads). Run extended smoke per tool. |
+| **F** — complex writes | 38-39 above | 2 | ~1-2d | Cetus aggregator + harvest compound PTB. Migrate LAST — needs SDK + sponsored-tx assumptions stable across all prior batches. |
+
+**Total estimate: 6 batches × 0.5-1.5d each ≈ ~7-12 FTE-days (~56-96 hours), matching the plan's ~2-week window.**
+
+## Dependency graph (cross-tool sequencing)
+
+**No tool imports another tool module.** All coupling is behavioral / data-flow:
+
+- **`mpp_services` → `pay_api`:** LLM discovers gateway URLs before charging USDC. Migrate `mpp_services` (Batch C) before `pay_api` (Batch D).
+- **`swap_quote` → `swap_execute`:** Quote freshness / route threading is load-bearing for bundles. Migrate `swap_quote` (Batch C) before `swap_execute` (Batch F).
+- **`pending_rewards` → `claim_rewards` / `harvest_rewards`:** Read-before-write disclosure. Migrate `pending_rewards` (Batch C) before either write.
+- **`harvest_rewards`:** Builds one PTB via SDK (`buildHarvestRewardsTx`); does NOT call `swap_execute` / `save_deposit` tools. But stabilize `@t2000/sdk` builders + audric `composeTx` registry first.
+- **`balance_check` / `savings_info` / `rates_info`:** Often precede NAVI writes in prompts. Migrate before NAVI write tools so any regression surfaces in the read tool first (cheaper to roll back).
+
+## Per-batch acceptance gate
+
+Each batch closes only when ALL of these pass:
+
+1. `pnpm --filter @t2000/engine test` — 0 regressions vs pre-batch baseline
+2. `pnpm --filter @t2000/engine typecheck` — 0 errors
+3. `pnpm --filter @t2000/engine lint` — 0 NEW errors (warnings tolerated)
+4. Per-tool LLM round-trip test still works (mock provider + assert tool dispatched correctly + Zod input validation matches)
+5. For batches that touch sponsored-tx writes (B, D, F): smoke at least 1 production write per batch (founder smoke, no automation)
+6. Cross-repo: `audric/web` chat path against the latest engine still produces correct cards (visual smoke)
+7. Update `agent-harness-spec.mdc` if any field changed wire shape
+
+## Migration template (to design at Batch A Day 1)
+
+The first session of Batch A produces:
+
+1. A **canonical "simple read" tool migration template** showing before/after for one tool (probably `web_search` — smallest + zero deps).
+2. A **per-tool checklist** that subsequent migrations follow (Zod schema, `execute()` body, `needsApproval` for writes, `experimental_toToolResultContent` if budgeting needed, preserve `cacheable` / `isConcurrencySafe` flags as new metadata).
+3. The first 3-5 migrations done end-to-end as a proof of pattern.
+
+## What's NOT in Phase 2 scope
+
+- `update_todo` and `add_recipient` (opt-in) MAY defer to Phase 3 if Batch C runs long. Engine v0.7a doesn't require opt-in tool migration before Phase 3's engine-loop rewrite.
+- `protocol_deep_dive`'s DefiLlama dependency stays. Per CLAUDE.md rule #2: "Never import protocol SDKs for new features (except Cetus)." `protocol_deep_dive` is the lone exception.
+- Tool **removals** are NOT in scope. The 9 simplification removals (S.7) and 7 DefiLlama removals (v1.4) are already done.
+- Tool **additions** are NOT in scope. If a new tool surfaces during the migration (unlikely), add it to this backlog at the appropriate complexity tier.
+
+## Open questions to resolve at Batch A Day 1
+
+1. Does AI SDK `tool()` natively support our `maxResultSizeChars` / `summarizeOnTruncate` pattern (B.2 tool result budgeting)? If not, where does the wrapper live? (Probably `packages/engine/src/v2/tool-budget-wrapper.ts`.)
+2. Does AI SDK `tool()` cleanly express our `isReadOnly` / `isConcurrencySafe` metadata, or do we attach via a separate registry? Affects how Phase 3 (`streamText + prepareStep`) consumes the flags.
+3. Does the existing v2 `AISDKEngine` consume tools via `buildTool()` or `tool()` today? (Audit revealed all tools still export the legacy shape — the v2 engine wraps them. Phase 2 unwraps that.)
+
+## Where to find this doc
+
+- Local: `/Users/funkii/dev/t2000/PHASE_2_TOOL_MIGRATION_BACKLOG.md` (this file)
+- Linked from: `BENEFITS_SPEC_v07a.md` (cross-reference added end of session)
+- Referenced by: the plan at `/Users/funkii/.cursor/plans/audric-v07a-engine-drain.plan.md` Phase 2 section (cross-link to be added at Batch A Day 1)
+
+## Status tracker (update as batches close)
+
+| Batch | Started | Closed | Engine version |
+|---|---|---|---|
+| A — simple reads | — | — | — |
+| B — simple writes | — | — | — |
+| C — medium reads | — | — | — |
+| D — medium writes | — | — | — |
+| E — complex reads | — | — | — |
+| F — complex writes | — | — | — |

@@ -1158,6 +1158,46 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 
 **Status: deferred.** Not scoped today. Reopen as Day 16 (easy path) or as its own SPEC item under v0.7b (right path).
 
+---
+
+### Day 16 — Phase 2 audit (per-tool migration backlog produced) (2026-05-16)
+
+**Framing (founder, end of Day 14c session):** *"i honestly dont know i feel like we are diverging from the plan what ever happen to phase 2 or 3? is the slice 4 and 5 needed if we refactor the t2000 engine"*
+
+**Honest assessment.** Days 13.x – 14c shipped real UX value (HF projection, per-asset rows, APY rendering, dust filter) but as one-off slices on top of legacy `buildTool()` plumbing. The work was in the v2 engine (`AISDKEngine`) so it's structurally on the path — but the SYSTEMATIC Phase 2 work (the actual 37-tool migration from `buildTool()` → AI SDK `tool()`) had not started. We had been picking "next neat slice" instead of "next tool in the migration." Founder's gut was correct: we were drifting.
+
+**Decision (founder, ~18:00 AEST):** stop drifting. Take 1 hour, audit all 37 tools, produce a per-tool migration backlog. End of session. Tomorrow's session opens with the backlog as the canonical "what's next."
+
+**Audit method.** Single explore subagent traversed `packages/engine/src/tools/*.ts` (~43 files including tests) and extracted per-tool signals: toolName, type, permission level, Zod schema presence, preflight presence, dependencies, LoC bucket, complexity classification (simple/medium/complex), modifiable fields, special notes. Cross-checked against `tools/index.ts` canonical list.
+
+**Verified counts:** 25 reads + 12 writes = **37 default** tools + 2 opt-in (`update_todo`, `add_recipient`) = **39 total** to migrate. CLAUDE.md tool counts match. ⚠️ `tools/index.ts` comments (lines 82-83) say "35 tools" — stale, predates the addition of `pending_rewards` (S.119) and `harvest_rewards` (Track B). To be corrected during Batch A.
+
+**Migration plan: 6 batches × ~0.5-1.5d each = ~7-12 FTE-days (~56-96h)** = matches the plan's ~2-week window.
+
+| Batch | What | Count | Est. |
+|---|---|---|---|
+| A | Simple reads | 10 | 0.5-1d |
+| B | Simple writes | 7 | 1d |
+| C | Medium reads | 13 | 2-3d |
+| D | Medium writes | 3 | 1d |
+| E | Complex reads | 4 | 2-3d |
+| F | Complex writes | 2 | 1-2d |
+
+**Per-batch acceptance gate** (every batch must pass before moving to next): 0 test regressions, 0 typecheck errors, 0 NEW lint errors, mock-provider LLM round-trip per tool, founder smoke for Batches B/D/F (sponsored-tx writes), audric chat-path visual smoke, `agent-harness-spec.mdc` updated if any field wire shape changed.
+
+**Dependency notes:** No tool imports another tool module — all coupling is behavioral. `mpp_services` → `pay_api` (Batch C before D). `swap_quote` → `swap_execute` (C before F). `pending_rewards` → `claim_rewards`/`harvest_rewards` (C before D/F). `harvest_rewards` builds its PTB via SDK directly (not via tool calls) so SDK stability gates it.
+
+**Open questions for Batch A Day 1:**
+1. Does AI SDK `tool()` natively support our `maxResultSizeChars` / `summarizeOnTruncate` budgeting (B.2)? If not — wrapper at `packages/engine/src/v2/tool-budget-wrapper.ts`.
+2. Does `tool()` cleanly express `isReadOnly` / `isConcurrencySafe` metadata, or do we attach via separate registry?
+3. Does v2 `AISDKEngine` already consume tools via `tool()` or still through `buildTool()`? Audit revealed all 37 still export legacy shape — v2 engine wraps them. Phase 2 unwraps.
+
+**Output:** `/Users/funkii/dev/t2000/PHASE_2_TOOL_MIGRATION_BACKLOG.md` (full per-tool table + batch sequence + acceptance gates + status tracker). **This doc is the canonical Phase 2 progress tracker** — read at the start of every Phase 2 session, update the status table at the end. Replaces ad-hoc "what's next" decisions for the next 2 weeks.
+
+**Cross-references:** Phase 2 plan section in `/Users/funkii/.cursor/plans/audric-v07a-engine-drain.plan.md`. Tool counts validated against CLAUDE.md + `agent-harness-spec.mdc`.
+
+**Status: audit complete, ready for Batch A Day 1.** Founder elected to stop here and pick up Batch A in a fresh session with the backlog in hand.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
