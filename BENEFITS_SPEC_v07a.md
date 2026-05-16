@@ -1198,6 +1198,61 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 
 **Status: audit complete, ready for Batch A Day 1.** Founder elected to stop here and pick up Batch A in a fresh session with the backlog in hand.
 
+---
+
+### Day 17 — Phase 2 Batch A Day 1 (proof of pattern: 5/10 simple-read tools migrated) (2026-05-16)
+
+**Framing (founder, immediately after Day 16):** *"im thinkin we ship it now. i have some time. is it 3-5 simple-read tools end-to-end as proof of pattern. ?"*
+
+**Goal.** Lock the per-tool migration template by migrating the first 3-5 simple-read tools end-to-end. Validate the pattern before scaling to the remaining 34.
+
+**The 3 open questions from Day 16 — RESOLVED:**
+
+1. **`maxResultSizeChars` / `summarizeOnTruncate` → KEEP as `Tool` metadata.** AI SDK `tool()` has no native equivalent; truncation is engine-level work (`budgetToolResult`) consumed identically by BOTH engines. No separate wrapper needed for Phase 2.
+2. **`isReadOnly` / `isConcurrencySafe` → STAY on the returned Tool through Phase 2.** Legacy `QueryEngine` reads them for parallel dispatch; v2 `AISDKEngine` reads them via `toAISDKTools` wrapper for the same decisions. Retirement deferred to Phase 3+ when QueryEngine is deleted.
+3. **v2 engine tool consumption.** Both engines consume the legacy `Tool[]` shape — `AISDKEngine` calls `toAISDKTools(legacyTools)` at construction. Phase 2 is a **purely internal refactor** that does not change this wiring. Native `tool()` exports defer to Phase 3 (engine-loop rewrite).
+
+**Locked design (Batch A): `defineTool` factory.**
+
+- **New file:** `packages/engine/src/v2/define-tool.ts` (~110 LoC) — defines `defineTool({...})` and a `zodToToolJsonSchema()` helper.
+- **Shape:** identical options as `buildTool` MINUS the hand-written `jsonSchema` field (auto-generated from Zod via `zod-to-json-schema`). Returns the EXACT same `Tool` shape — drop-in replacement.
+- **Both engines consume the returned Tool unchanged.** No engine-side wiring change.
+- **New dep:** `zod-to-json-schema@^3.25.1` (already a transitive dep via AI SDK; promoted to direct dep on `@t2000/engine`).
+- **Tests:** 9 unit tests in `packages/engine/src/v2/define-tool.test.ts` lock the parity contract (jsonSchema auto-gen matches hand-written shape on `web_search` Zod input + Tool defaults / metadata pass-through / preflight preservation / call signature unchanged).
+- **`buildTool` is NOT deprecated yet** — coexists with `defineTool`. Migrated tools use `defineTool`; unmigrated tools stay on `buildTool`. Phase 3 deprecates `buildTool` once 39/39 tools are on `defineTool`.
+
+**5 tools migrated end-to-end (Batch A 5/10):**
+
+| Tool | LoC delta | Hand-written jsonSchema removed |
+|---|---|---|
+| `web_search` | -5 | yes (8 lines) |
+| `yield_summary` | 0 | yes (1 line) |
+| `volo_stats` | 0 | yes (1 line) |
+| `protocol_deep_dive` | -7 | yes (7 lines) |
+| `token_prices` | -16 | yes (16 lines) |
+
+**~33 lines of hand-written `jsonSchema` duplication eliminated** across 5 tools. Extrapolation: ~250 lines across the remaining 34 tools. Single source of truth — Zod schema becomes the only place tool inputs are described.
+
+**Verification:** All gates clean.
+- `pnpm --filter @t2000/engine typecheck` — 0 errors
+- `pnpm --filter @t2000/engine lint` — 0 errors (6 pre-existing test warnings)
+- `pnpm --filter @t2000/engine test` — 1423/1424 passed; the 1 failure is the pre-existing `multi-block-thinking` real-Anthropic-API flake (also failed in Day 14c with no code changes — unrelated)
+- `pnpm --filter @t2000/engine build` — green
+- 9/9 new `defineTool` parity tests pass
+- 28/28 existing `enrich-pending-action` tests pass (no regression in the v2 engine path)
+
+**Public surface change:** `@t2000/engine` now exports `defineTool` + `DefineToolOptions` alongside `buildTool` + `BuildToolOptions`. Audric (and any future engine consumer) can use either factory to define tools.
+
+**What's NOT in this batch:**
+- The 5 remaining simple-read tools (`balance_check`, `savings_info`, `health_check`, `rates_info`, `mpp_services`). Pattern is locked; the rest is mechanical (~30 min of work to finish Batch A). Deferred to next session.
+- Native `tool()` exports per tool. That's a Phase 3 concern (engine-loop rewrite) — Phase 2 is the Zod-as-source-of-truth thinning.
+
+**Release:** engine 1.35.0 (minor bump for Phase 2 milestone + new `defineTool` public API).
+
+**Audric bump:** `@t2000/engine@1.35.0` adopted via `pnpm add` in `audric/apps/web`. No code change required in audric — the 5 migrated tools behave identically from audric's perspective (same `Tool` shape, same emitted events, same display text).
+
+**Status: Batch A 5/10 — proof of pattern verified, template ready to scale.** Tomorrow's session: finish Batch A (remaining 5 tools, ~30 min) then start Batch B (simple writes) which validates the write/preflight/permission plumbing once for 7 tools.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

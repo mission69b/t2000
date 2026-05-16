@@ -1,14 +1,14 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 
 const VOLO_STATS_URL = 'https://open-api.naviprotocol.io/api/volo/stats';
 
-export const voloStatsTool = buildTool({
+export const voloStatsTool = defineTool({
   name: 'volo_stats',
   description:
     'Get current VOLO liquid staking stats: vSUI APY, exchange rate, total staked SUI, and total vSUI supply.',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {} },
   isReadOnly: true,
 
   async call() {

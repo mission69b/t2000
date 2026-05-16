@@ -130,11 +130,19 @@ The first session of Batch A produces:
 - Tool **removals** are NOT in scope. The 9 simplification removals (S.7) and 7 DefiLlama removals (v1.4) are already done.
 - Tool **additions** are NOT in scope. If a new tool surfaces during the migration (unlikely), add it to this backlog at the appropriate complexity tier.
 
-## Open questions to resolve at Batch A Day 1
+## Open questions resolved at Batch A Day 1 (2026-05-16)
 
-1. Does AI SDK `tool()` natively support our `maxResultSizeChars` / `summarizeOnTruncate` pattern (B.2 tool result budgeting)? If not, where does the wrapper live? (Probably `packages/engine/src/v2/tool-budget-wrapper.ts`.)
-2. Does AI SDK `tool()` cleanly express our `isReadOnly` / `isConcurrencySafe` metadata, or do we attach via a separate registry? Affects how Phase 3 (`streamText + prepareStep`) consumes the flags.
-3. Does the existing v2 `AISDKEngine` consume tools via `buildTool()` or `tool()` today? (Audit revealed all tools still export the legacy shape — the v2 engine wraps them. Phase 2 unwraps that.)
+1. **maxResultSizeChars / summarizeOnTruncate — KEEP as Tool metadata.** AI SDK `tool()` has no native equivalent; truncation is engine-level work (`budgetToolResult`) that runs identically for both engines. `defineTool` passes the field through to the returned `Tool` unchanged. No separate wrapper module needed for Phase 2.
+2. **isReadOnly / isConcurrencySafe — STAY on the returned Tool through Phase 2.** Legacy `QueryEngine` reads them for parallel dispatch + early-dispatch gating; v2 `AISDKEngine` reads them for the same decisions. Retirement deferred to Phase 3+ when QueryEngine is deleted.
+3. **v2 engine tool consumption pattern.** Today both engines consume the legacy `Tool[]` shape — `AISDKEngine` calls `toAISDKTools(legacyTools)` (`packages/engine/src/v2/tool-wrapper.ts`) which wraps each `Tool` into an AI SDK `tool()` at engine construction. Phase 2 is a **purely internal refactor** that does not change this wiring — `defineTool` produces a `Tool` that flows through the same wrapper. Phase 3 (engine-loop rewrite) is where tools would optionally export native `tool()` instances directly; that's not in Phase 2 scope.
+
+**Locked design decisions (Batch A):**
+
+- New factory: `defineTool({...})` in `packages/engine/src/v2/define-tool.ts`. Same options as `buildTool` MINUS the hand-written `jsonSchema` (auto-generated from Zod via `zod-to-json-schema`).
+- Returns the EXACT same `Tool` shape `buildTool` returns. Drop-in replacement.
+- `buildTool` is **NOT** deprecated yet — coexists. Migrated tools use `defineTool`; unmigrated tools stay on `buildTool`. At end of Phase 2, all 39 tools are on `defineTool`; Phase 3 deprecates `buildTool`.
+- New dep: `zod-to-json-schema@^3.25.1` (already a transitive dep via AI SDK; promoted to direct dep on `@t2000/engine`).
+- 9 unit tests in `packages/engine/src/v2/define-tool.test.ts` lock the parity contract (jsonSchema generation matches hand-written shape + Tool defaults / metadata pass-through / preflight preservation / call signature).
 
 ## Where to find this doc
 
@@ -146,9 +154,16 @@ The first session of Batch A produces:
 
 | Batch | Started | Closed | Engine version |
 |---|---|---|---|
-| A — simple reads | — | — | — |
+| A — simple reads (5/10 — proof of pattern) | 2026-05-16 | partial | 1.35.0 |
+| A — simple reads (remaining 5: balance_check, savings_info, health_check, rates_info, mpp_services) | — | — | — |
 | B — simple writes | — | — | — |
 | C — medium reads | — | — | — |
 | D — medium writes | — | — | — |
 | E — complex reads | — | — | — |
 | F — complex writes | — | — | — |
+
+### Batch A progress detail (2026-05-16)
+
+**Migrated (5/10):** `web_search`, `yield_summary`, `volo_stats`, `protocol_deep_dive`, `token_prices`. All use `defineTool` + zero hand-written `jsonSchema`. Tests + typecheck + lint clean. Engine release 1.35.0.
+
+**Remaining (5/10):** `balance_check`, `savings_info`, `health_check`, `rates_info`, `mpp_services`. Pattern is now locked — remaining 5 = ~30 min of mechanical work. Deferred to next session.

@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 import type { ToolResult } from '../types.js';
 
 interface YieldSummary {
@@ -13,12 +14,11 @@ interface YieldSummary {
   sparkline: number[];
 }
 
-export const yieldSummaryTool = buildTool({
+export const yieldSummaryTool = defineTool({
   name: 'yield_summary',
   description:
     'Returns yield earnings breakdown: today, this week, this month, all-time, current APY, deposited amount, projected yearly earnings, and a monthly sparkline. Use when the user asks about yield, earnings, or how much they have earned.',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: true,
 
   async call(_input, context): Promise<ToolResult<YieldSummary>> {

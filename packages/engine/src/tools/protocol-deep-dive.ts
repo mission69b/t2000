@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 
 const LLAMA_API = 'https://api.llama.fi';
 
@@ -55,18 +56,11 @@ function fmtTvl(tvl: number): string {
   return `$${tvl.toFixed(0)}`;
 }
 
-export const protocolDeepDiveTool = buildTool({
+export const protocolDeepDiveTool = defineTool({
   name: 'protocol_deep_dive',
   description:
     'Get a comprehensive safety and financial profile of a DeFi protocol. Includes TVL trends, revenue, audit status, and risk assessment. Use when users ask "is X safe?" or "tell me about protocol Y".',
   inputSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      protocol: { type: 'string', description: 'Protocol slug (e.g. "navi-lending", "cetus")' },
-    },
-    required: ['protocol'],
-  },
   isReadOnly: true,
   async call(input) {
     let slug = input.protocol.toLowerCase().replace(/\s+/g, '-');

@@ -105,6 +105,14 @@ export type {
 export { buildTool, toolsToDefinitions, findTool } from './tool.js';
 export type { BuildToolOptions } from './tool.js';
 
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] Migration template for the
+// 39-tool refactor. `defineTool` is `buildTool` minus the hand-written
+// `jsonSchema` field (auto-generated from Zod via zod-to-json-schema). Same
+// returned `Tool` shape — both engines consume identically. See
+// PHASE_2_TOOL_MIGRATION_BACKLOG.md + packages/engine/src/v2/define-tool.ts.
+export { defineTool } from './v2/define-tool.js';
+export type { DefineToolOptions } from './v2/define-tool.js';
+
 // Orchestration
 export { TxMutex, runTools, budgetToolResult } from './orchestration.js';
 export type { PendingToolCall } from './orchestration.js';

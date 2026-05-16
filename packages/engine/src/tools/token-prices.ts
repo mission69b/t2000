@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] buildTool → defineTool.
+import { defineTool } from '../v2/define-tool.js';
 import { fetchTokenPrices } from '../blockvision-prices.js';
 
 // ---------------------------------------------------------------------------
@@ -18,7 +19,7 @@ import { fetchTokenPrices } from '../blockvision-prices.js';
 // untouched — protocol-level safety data has no BlockVision equivalent.
 // ---------------------------------------------------------------------------
 
-export const tokenPricesTool = buildTool({
+export const tokenPricesTool = defineTool({
   name: 'token_prices',
   description:
     'Get current USD prices for Sui tokens, with optional 24h change. Accepts full coin type strings (e.g. "0x2::sui::SUI"). Returns price per token and (when requested) 24h change percentage. Use for "what is X worth?" or "did Y move today?". For balance + portfolio rendering, prefer balance_check / portfolio_analysis instead — they bundle the same prices into the standard cards.',
@@ -33,21 +34,6 @@ export const tokenPricesTool = buildTool({
       .optional()
       .describe('When true, include 24h change percentage per token in the output.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      coinTypes: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Sui coin type strings (max 10).',
-      },
-      include24hChange: {
-        type: 'boolean',
-        description: 'Include 24h change percentage per token.',
-      },
-    },
-    required: ['coinTypes'],
-  },
   isReadOnly: true,
 
   async call(input, context) {

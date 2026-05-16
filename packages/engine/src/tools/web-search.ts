@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+// [SPEC 37 v0.7a Phase 2 Batch A / 2026-05-16] Migrated from buildTool →
+// defineTool. The hand-written `jsonSchema` field is gone — auto-generated
+// from the Zod `inputSchema` so we have ONE source of truth. Behavior
+// unchanged (same Tool shape returned, both engines consume identically).
+// See packages/engine/src/v2/define-tool.ts for the migration template.
+import { defineTool } from '../v2/define-tool.js';
 
 const BRAVE_API = 'https://api.search.brave.com/res/v1/web/search';
 
@@ -19,19 +24,11 @@ interface WebSearchData {
   error?: string;
 }
 
-export const webSearchTool = buildTool({
+export const webSearchTool = defineTool({
   name: 'web_search',
   description:
     'Search the web for real-time information. Use for news, token info, project details, protocol documentation, or any question that needs current web data. Free for users.',
   inputSchema,
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'Search query' },
-      count: { type: 'number', description: 'Number of results (1-10)', default: 5 },
-    },
-    required: ['query'],
-  },
   isReadOnly: true,
   maxResultSizeChars: 8_000,
   async call(input, context): Promise<{ data: WebSearchData; displayText: string }> {
