@@ -725,6 +725,79 @@ Both pieces are pure additive code in `packages/engine/src/v2/engine.ts` — no 
 - Read tool: unchanged behaviour (already worked).
 - Write tool: confirm card renders (DEPOSIT preview), tap-to-confirm flows through the sponsored-tx prepare/execute round-trip, the resume-route narrates the receipt, and TurnMetrics carries `attemptId` (UUID v4), `pendingActionYielded=true`, AND a paired resume row with `turnPhase='resume'` joined via `attemptId`.
 
+**Day 13.2 — second production smoke FAILED, root cause + fix shipped (2026-05-16 ~10:51 AEST):**
+
+Founder re-tested with engine 1.34.1 + wallet re-added to allowlist. Read tool worked unchanged. Write tool ("Save 0.05 USDC into NAVI") FAILED again with the same narration shape ("There was a configuration error on the backend — the deposit didn't go through. Try again in a moment, or refresh the session.").
+
+TurnMetrics row (00:51:32Z, the failing write turn):
+- `model=claude-sonnet-4-6`, `harnessShape=standard`, `pendingActionYielded=false`, `attemptId=NULL`
+- `toolsCalled` includes `save_deposit` with `latencyMs=2`, `resultSizeChars=67` — proof the tool ACTUALLY EXECUTED inline (legacy QueryEngine NEVER calls `tool.call()` for confirm-tier writes; would yield pending_action first). 67 chars = "agent configuration issue" string.
+
+**Root cause** (traced via `engine.ts:1657` vs `v2/need-approval.ts:80-85`):
+
+The legacy `QueryEngine` has a critical safeguard at the top of its needsConfirmation resolver:
+
+```js
+// engine.ts:1657
+if (!context.agent && !tool.isReadOnly) return true;  // force confirm regardless of USD tier
+```
+
+Audric runs WITHOUT a server-side `agent` (it client-signs every write via Enoki sponsored tx — `ToolContext.agent` is always undefined on the audric server). The legacy guard short-circuits the USD-aware resolver for this case so EVERY write tool (regardless of $ amount) yields `pending_action`. This guard has shipped since v0.46.x.
+
+The v2 `buildNeedsApproval` was missing the same line. For "save 0.05 USDC":
+1. Tool policy resolves `permissionLevel: 'confirm'` → falls through to USD resolver.
+2. `resolveUsdValue('save_deposit', {amount: 0.05, asset: 'USDC'}, priceCache)` → `$0.05`.
+3. `resolvePermissionTier('save', 0.05, ..., autoBelow=$50, ...)` → `'auto'`.
+4. `needsApproval` returns `false`.
+5. AI SDK calls `execute()` → `wrapLegacyTool` calls `legacy.call()` → `requireAgent(ctx)` throws → 67-char "agent configuration issue".
+
+**Why local smoke missed it (twice):**
+- Phase 1 (initial Day 10-12 push) — Google OAuth blocks `localhost` so write/confirm flows can't be tested without sponsored-tx infrastructure. Read-only smokes pass.
+- Phase 2 (Day 13.1 unit tests for pending_action emission) — used a stub `LanguageModelV3` that emits `tool-call` directly. The stub's stub model never wires through the `needsApproval` USD resolver; it just emits a `tool-approval-request` event verbatim. So my pending_action emission test was correct in isolation but it tested the WRONG scenario (a tool that DID need approval instead of a tool whose USD-resolver was incorrectly downgrading it to auto).
+
+**Fix shipped (engine 1.34.3):** One additional branch in `v2/need-approval.ts`, placed AFTER the InternalContext defensive bail and BEFORE the permissionConfig/USD-resolver:
+
+```ts
+// Mirror engine.ts:1657 — when no agent is present, every confirm-tier write
+// MUST tap to approve. The audric client signs via sponsored tx; without this
+// guard sub-threshold writes try to execute inline and trip requireAgent().
+if (!ctx.agent) {
+  return true;
+}
+```
+
+Pre-existing tests in `v2/tool-wrapper.test.ts` were written assuming the OLD behaviour (sub-threshold → false even without agent). Updated `makeCtx()` in that file to inject a stub agent by default so the resolver-path tests still exercise the USD logic.
+
+**New regression test** (`v2/need-approval.test.ts`, 6 tests covering the matrix):
+1. `ctx.agent=undefined` + sub-threshold save_deposit → `true` (the audric case, the test that would have caught Day 13.2)
+2. `ctx.agent` set + sub-threshold → `false` (CLI/non-audric resolver-path still works)
+3. `ctx.agent` set + over-threshold → `true`
+4. Missing InternalContext → `true` (fail-closed)
+5. Missing permissionConfig → `true` (fail-closed)
+6. Auto-policy tool (read) → `false` regardless of agent
+
+**Day 13.2 SHIPPED — engine 1.34.3 + audric pin bump + production smoke GREEN (2026-05-16 ~11:13 AEST):**
+
+| Step | Result |
+|---|---|
+| engine 1.34.2 release.yml | ❌ CI failed on a stale `GuardRunnerState` shape in `need-approval.test.ts` (hand-rolled object missed the v0.46.x `trustedAddresses` field). |
+| engine 1.34.3 fix-forward | ✅ Replaced the hand-rolled state with `createGuardRunnerState()` factory call. release.yml + publish.yml both green. |
+| `npm view @t2000/engine version` | ✅ `1.34.3` |
+| audric pin bump | ✅ `pnpm add @t2000/sdk@latest @t2000/engine@latest` → both at 1.34.3. typecheck clean. |
+| Vercel production deploy | ✅ `5d01c4e4` "Deployment has completed" at 01:12:16Z. |
+| **Production smoke #2 — Save 0.05 USDC** | ✅ **PASS.** DEPOSIT confirm card rendered. Founder tapped confirm. Sponsored tx executed: `3tLqBJmJ...1QfZ8e` (visible on Suiscan). Resume route narrated: "Deposited 0.05 USDC into NAVI savings." 32,928 tokens for the full turn. |
+
+**TurnMetrics verification** (the load-bearing assertion for the rollout):
+
+| Phase | Time | Model | pendingActionYielded | outcome | attemptId | toolsCalled |
+|---|---|---|---|---|---|---|
+| `initial` | 01:15:05Z | claude-sonnet-4-6 | `true` | `approved` | `5e6baf99-f393-4c11-b45b-98eed08bfdc7` | `[]` (CRITICAL — proves AI SDK paused on `tool-approval-request` BEFORE execute()) |
+| `resume` | 01:15:12Z | claude-haiku-4-5 (S.126 Tier 2c demote) | `false` | NULL | NULL (resume row joins via initial's attemptId) | `[{ save_deposit, latencyMs:0, resultSizeChars:97 }]` (synthetic injection from host's executionResult) |
+
+Both rows live on `sessionId=s_1778894099676_bee7def4f2f1, turnIndex=2` and join via `attemptId`. The 7-second gap is the tap → sponsored-tx prepare/execute → resume narration round-trip.
+
+**Confidence on the AISDKEngine confirm-tier path:** ✅ High. The exact failure mode that broke Day 13.1 + Day 13.2 is now covered by 6 regression tests + a documented audric-runtime invariant. Founder wallet stays on the v2 path; soak proceeds per the Day 14-22 percentage rollout schedule.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
