@@ -686,6 +686,45 @@ Both pieces are pure additive code in `packages/engine/src/v2/engine.ts` — no 
 5. Verify TurnMetrics row carries `attemptId` (UUID v4), `pendingActionYielded=true`, and the resume row matches via `attemptId` join.
 6. If clean, hold soak for 24h before adding alpha-tester wallets per the Day 14-22 plan above.
 
+**Day 13 FIX SHIPPED — engine 1.34.1 with pending_action + resumeWithToolResult (2026-05-16 ~10:35 AEST):**
+
+| Step | Result |
+|---|---|
+| Engine 1.34.0 release.yml run | ✅ tagged + pushed; bumped sdk/engine/cli/mcp in lockstep |
+| Engine 1.34.0 publish.yml CI | ❌ FAILED — `Cannot find module '@ai-sdk/provider'` in `src/v2/engine.test.ts`. The type-only import on `LanguageModelV3StreamPart` / `LanguageModelV3` requires the package as a direct devDependency; transitive resolution through `@ai-sdk/anthropic` doesn't satisfy `tsc --noEmit`. No packages reached npm. |
+| Engine 1.34.1 fix-forward | ✅ Added `@ai-sdk/provider@^3.0.10` to `packages/engine/devDependencies`. Aligned 2 test fixtures with the V3 spec — `finishReason` is now `{unified, raw}`, `usage.inputTokens` is now `{total, noCache, cacheRead, cacheWrite}`, `usage.outputTokens` is now `{total, text, reasoning}`. release.yml + publish.yml both green. |
+| `npm view @t2000/engine version` | ✅ `1.34.1` |
+| audric pin bump | ✅ `pnpm add @t2000/sdk@latest @t2000/engine@latest` → both at 1.34.1. typecheck clean. lint introduces no new errors in our files. Push triggers Vercel deploy automatically. |
+
+**What's now in v0.7a end-state (AISDKEngine):**
+
+1. `submitMessage(prompt, options)` — same shape as legacy `QueryEngine`, but now wires a `runStream()` helper that iterates `streamText().fullStream` per-event AND maintains a 4-state-machine on top of the bridge:
+   - `currentText` accumulator (text-delta → `text` ContentBlock on next tool-call)
+   - `assistantBlocks: ContentBlock[]` (text + tool_use blocks held back for the deferred assistant message that replays into history on resume)
+   - `toolCallCache: Map<toolCallId, {name, input}>` (so `tool-approval-request`'s `toolCall.toolCallId` resolves to a fully validated `{name, input}` shape; AI SDK v6's `ToolApprovalRequestOutput` carries `toolCall: TypedToolCall`, NOT raw `toolCallId` — accessing `event.toolCallId` directly is a TS2551)
+   - `completedResults: Array<{toolUseId, content, isError}>` (auto-approved reads that completed in the same step before the write paused for approval — needed to satisfy Anthropic's "every tool_use must have a matching tool_result" invariant on resume)
+2. On `tool-approval-request`: build full `PendingAction` with `toolName` + `toolUseId` + `input` (from cache) + `description` (from `describeAction`) + `assistantContent` + `completedResults` + `modifiableFields` (from `getModifiableFields` registry; omitted when empty) + `turnIndex` (from `messages.filter(role==='assistant').length`) + `attemptId` (UUID v4 via `crypto.randomUUID()`). Emit as `EngineEvent` so audric's chat-route + resume-route persist it without code changes.
+3. `resumeWithToolResult(action, response)` — accepts a `PendingAction` + `PermissionResponse`. Pushes the deferred assistant message into history, builds a synthetic user message carrying `completedResults` + the new write tool_result (or `'User declined this action'` error), yields a `tool_result` event for the UI, and (if approved) re-invokes `runStream()` to narrate. Bundle resume (`action.steps !== undefined`) emits a clear error event — first-cut handles single-write only; audric falls back to legacy QueryEngine for bundle sessions per the existing engine-factory routing.
+4. Replaced the buggy text-only stub `toAISDKMessages` with the canonical converter at `providers/ai-sdk-message-conversion.ts`. The stub silently dropped tool_use + tool_result blocks during message conversion, so even successful read-tool turns lost tool-history context across `submitMessage` calls.
+
+**Test coverage added** (`packages/engine/src/v2/engine.test.ts`):
+- `'yields pending_action for a confirm-tier write with full action shape'` — uses a stub `LanguageModelV3` (V3 spec shape: `{unified, raw}` finishReason + nested token usage) emitting `text-delta` → `tool-call(save_deposit)` → `finish` parts. Asserts `pending_action` event fires with: toolName, toolUseId, input, `attemptId` matches UUID v4 regex, `assistantContent` carries text + tool_use, `completedResults` is empty (write was first), `modifiableFields` populated from the registry, `turnIndex` correct, `description` present. Also asserts the legacy tool's `call()` function is NEVER reached (the needsApproval gate blocks execution).
+- `'resumeWithToolResult (declined) pushes decline tool_result + turn_complete'` — asserts `tool_result` event with `isError=true` + `'User declined'` content, then `turn_complete` with `stopReason=end_turn`. No streamText call, no further events, history contains the synthetic decline.
+- `'resumeWithToolResult (bundle action) emits error event without crashing'` — asserts an error event for `action.steps !== undefined` (deferred-implementation guard).
+
+**Verify gates passed:**
+- `pnpm --filter @t2000/engine typecheck` → clean
+- `pnpm --filter @t2000/engine lint` → 0 errors on v2/ files (legacy QueryEngine has 6 pre-existing `any` warnings, unrelated)
+- `pnpm --filter @t2000/engine test` → 1352/1360 (3 new green tests; 1 pre-existing flaky multi-block-thinking against real Anthropic API)
+- `pnpm --filter @t2000/engine exec vitest run src/v2` → 37/44 (7 skipped real-API or e2e gated)
+- `pnpm typecheck` (audric/apps/web with engine 1.34.1) → clean
+
+**Production re-soak (PENDING founder action — must re-add wallet to Vercel allowlist):**
+
+`vercel env add USE_AI_SDK_NATIVE_ENGINE_WALLETS production` with value `0x7f2059fb1c395f4800809b4b97ed8e661535c8c55f89b1379b6b9d0208d2f6dc`, then re-run the Day 13 smoke checklist (read → write → resume). On the same wallet that hit the failure the first time, with the same prompt sequence ("APY?" → "save 0.05 USDC"), the expected outcome is:
+- Read tool: unchanged behaviour (already worked).
+- Write tool: confirm card renders (DEPOSIT preview), tap-to-confirm flows through the sponsored-tx prepare/execute round-trip, the resume-route narrates the receipt, and TurnMetrics carries `attemptId` (UUID v4), `pendingActionYielded=true`, AND a paired resume row with `turnPhase='resume'` joined via `attemptId`.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
