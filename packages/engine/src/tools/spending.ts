@@ -35,10 +35,17 @@ export const spendingAnalyticsTool = defineTool({
     }
 
     try {
+      const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+      // [Day 20d / 2026-05-17] See activity-summary.ts — engine path uses
+      // `x-internal-key` so `authenticateAnalyticsRequest()` accepts the call
+      // server-side (JWT-only auth would 401 the engine on every read).
       const res = await fetch(
         `${apiUrl}/api/analytics/spending?address=${address}&period=${period}`,
         {
-          headers: { 'x-sui-address': address },
+          headers: {
+            'x-sui-address': address,
+            ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+          },
           signal: context.signal,
         },
       );

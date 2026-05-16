@@ -1606,6 +1606,71 @@ Tests added:
 
 **Status: Phase 2 still CLOSED (39/39 tools on `defineTool`). The AISDKEngine canvas-render bug was a pre-existing v0.7a bridge bug that just became visible during Phase 2's allowlist activation. Phase 3 remains unblocked.**
 
+---
+
+### Day 20d — Analytics dual-auth (engine ↔ audric API) (2026-05-17)
+
+**Framing (founder, after the 1.38.1 smoke):** *"Ok much better but the activity summary card shows 0 but the analytics network over time card shows perfectly, and the headmap shows perfectly also."*
+
+The Day 20c canvas-rendering fix landed cleanly. The next bug surfaced from the same smoke session: every canvas now mounts and renders, but the `activity_summary` tool card shows `0 transactions / $0.00 total moved` despite the heatmap canvas (same wallet, same day) correctly reporting `Transactions 591 · Active days 34 · Peak 78/day`. The user had transacted half a dozen times the same morning (deposits / borrows / swaps) — none of it surfaced in the activity card.
+
+**Diagnosis.** Two different code paths fetch activity data:
+
+| Surface | Path | Auth |
+|---|---|---|
+| Activity heatmap canvas | client `ActivityHeatmapCanvas.tsx` → `authFetch('/api/analytics/activity-heatmap')` | zkLogin JWT (browser-attached) |
+| `activity_summary` engine tool | server-side engine → `fetch('/api/analytics/activity-summary', { headers: { 'x-sui-address' } })` | Header only — NO JWT |
+
+SPEC 30 Phase 1A.5 tightened all `/api/analytics/*` routes to JWT-only (the pre-fix `x-sui-address` header was forgeable from the browser; switching to JWT-verified identity closed the IDOR class). That hardening was correct for browser callers but **quietly broke every engine read of audric's analytics surface**:
+
+- `activity_summary` → `/api/analytics/activity-summary`
+- `yield_summary` → `/api/analytics/yield-summary`
+- `spending_analytics` → `/api/analytics/spending`
+- `portfolio_analysis` → `/api/analytics/portfolio-history` (supplementary, try/catch)
+
+The engine has no JWT to attach — it runs server-side inside the audric Next.js process during a turn. All 4 routes silently 401'd. The engine tools caught the 4xx and returned empty payloads. The LLM, seeing `{ totalTransactions: 0, byAction: [] }` and a `displayText: 'Could not fetch activity data (HTTP 401).'`, narrated "No on-chain transactions recorded for your wallet this month" — re-framing the 401 as user-friendly nothingness. The card showed `0`. The user reasonably called it a bug.
+
+**The pre-existing fix that wasn't applied.** `/api/analytics/weekly-summary` already supports dual-auth (`x-internal-key` OR `x-zklogin-jwt`) — added when the t2000 ECS cron started pulling weekly recaps. The pattern existed in one route but was never lifted to the other 4 analytics routes during the SPEC 30 Phase 1A.5 sweep. Classic "the hardening pass migrated 7 of 7 IDOR-prone routes but missed that 5 of them were ALSO consumed by a trusted server-side caller."
+
+**The fix (Day 20d):**
+
+1. **`lib/internal-auth.ts`** — extracted `authenticateAnalyticsRequest()` helper that:
+   - First checks `x-internal-key` against `env.T2000_INTERNAL_KEY`. Match → returns `{ address, isInternal: true }` where `address` MUST come from the query string (no JWT → no fallback). Internal-key path is server-only by construction (the key is never exposed to browsers).
+   - Otherwise falls through to `authenticateRequest()` (JWT verify) + `assertOwnsOrWatched()` (existing SPEC 30 Phase 1A.5 ownership gate). Browser callers see identical behavior to before.
+2. **5 analytics routes migrated to the helper:** `activity-summary`, `yield-summary`, `spending`, `portfolio-history`, AND `weekly-summary` (consolidated from its previously-inline dual-auth shape so all 5 routes share one implementation).
+3. **4 engine tools attach `x-internal-key`** (via `context.env.AUDRIC_INTERNAL_KEY`, already plumbed through `ToolContext.env` for `receive.ts`). Pattern is identical to the existing `internalHeaders()` helper in `receive.ts`. The header is optional in the tool code — degrades gracefully when the env isn't set, but in prod it always is.
+4. **`portfolio_analysis` tool also gained `&address=${address}` in the query string** because the new internal-key path requires explicit address (the route can't derive it from JWT in that branch).
+
+Tests added (`lib/internal-auth.test.ts`, 11 cases):
+- `validateInternalKey` — accept / 401 missing / 401 mismatch.
+- `authenticateAnalyticsRequest` internal-key branch — happy path (returns `isInternal: true` + address), `400` when no `?address=`, `400` on malformed address, wrong-key falls through to JWT path.
+- `authenticateAnalyticsRequest` JWT branch — happy path (no address → defaults to JWT-verified address), own-address (bypasses DB), non-watched address → `403` (IDOR blocked), no auth headers → `401`.
+
+Reused `vi.stubEnv('T2000_INTERNAL_KEY', ...)` + `vi.resetModules()` so the env module re-reads the stubbed key cleanly. Without that, `.env.local`'s real `T2000_INTERNAL_KEY` from the developer machine wins and the tests fail with confusing 401s.
+
+**Security analysis.** Adding the `x-internal-key` branch does NOT loosen the SPEC 30 Phase 1A.5 posture. `T2000_INTERNAL_KEY` is server-only (Vercel encrypted env, never shipped to the client, required by `lib/env.ts` Zod schema — boot fails if missing). Browsers cannot send the header — the network gate is structural, not a `try/catch` on a config flag. SPEC 30's "forgeable header" critique applied to `x-sui-address` (browsers could set it to any value); `x-internal-key` is the inverse (browsers cannot know the value at all).
+
+**Verification:** All gates clean.
+- `pnpm --filter @t2000/engine typecheck` — 0 errors
+- `pnpm --filter @t2000/engine lint` — 0 errors (6 pre-existing warnings unchanged)
+- `pnpm --filter @t2000/engine test` — **1427 / 1428 passed** (`multi-block-thinking` real-API flake unchanged)
+- `pnpm --filter @t2000/engine build` — green (dist 483.05 KB)
+- `pnpm --filter @audric/web typecheck` — 0 errors
+- `pnpm --filter @audric/web test` — **3243 / 3243 passed** (+11 new dual-auth helper tests vs Day 20c baseline of 3232)
+- `pnpm --filter @audric/web lint` — 0 source errors (1 pre-existing display-name error in a `.next/server/edge-chunks/*.js` build artifact, unrelated)
+
+**Empirical findings locked Day 20d (added to the Phase 2 list):**
+
+15. **A "hardening pass" that migrates IDOR-prone routes from header-auth to JWT-auth MUST audit the FULL caller graph, not just the browser callers.** SPEC 30 Phase 1A.5 missed that 4 analytics routes were ALSO consumed by trusted server-side callers (the engine, the cron). Browser-only thinking introduced a silent degradation that took ~1 month to surface (Apr → mid-May 2026, founder smoke). Going forward: any auth-tightening sweep on a route that an engine tool touches needs a dual-auth path landed in the same diff, OR an explicit "internal callers migrated to JWT pass-through" plan documented in the same SPEC.
+16. **One existing dual-auth route ≠ the canonical pattern.** `/api/analytics/weekly-summary` had the dual-auth shape inline since the cron was wired. Future me / future contributors will not infer "this pattern should be lifted to siblings" from a single inline example. Extracting `authenticateAnalyticsRequest()` makes the pattern discoverable AND ensures the next analytics route is one helper call away from doing it right.
+17. **`activity_summary` and `yield_summary` had zero observability for this bug** because they returned valid (empty) JSON to the LLM, which narrated the emptiness as truth. The route's `console.error('[activity-summary] Error:', err)` only fires for the catch branch — the 401 returned a clean JSON response. Add a "tool returned empty when source was 401" alarm if it's worth the noise, or accept that this class of bug needs founder smoke + persisted-session inspection to catch.
+
+**Release:** engine **1.38.2** (patch — bug fix only, no API surface change).
+
+**Audric bump:** `@t2000/engine 1.38.1 → 1.38.2` lands with the dual-auth helper + 5 route migrations in the same commit. Vercel auto-deploys.
+
+**Status: 1.38.2 closes the analytics-401 class. `activity_summary` should now render real data on the next smoke. Phase 3 remains unblocked.**
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

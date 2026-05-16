@@ -35,9 +35,20 @@ export const yieldSummaryTool = defineTool({
     }
 
     try {
+      const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+      // [Day 20d / 2026-05-17] See activity-summary.ts — the analytics
+      // routes use `authenticateAnalyticsRequest()` which accepts
+      // `x-internal-key` for server-side callers (engine) AND `x-zklogin-jwt`
+      // for browser callers. Engine path → internal key.
       const res = await fetch(
         `${apiUrl}/api/analytics/yield-summary?address=${address}`,
-        { headers: { 'x-sui-address': address }, signal: context.signal },
+        {
+          headers: {
+            'x-sui-address': address,
+            ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+          },
+          signal: context.signal,
+        },
       );
 
       if (!res.ok) {

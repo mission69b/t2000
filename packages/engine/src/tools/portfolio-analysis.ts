@@ -166,12 +166,26 @@ export const portfolioAnalysisTool = defineTool({
             })
           : Promise.resolve(null),
       apiUrl
-        ? fetch(
-            `${apiUrl}/api/analytics/portfolio-history?days=7`,
-            { headers: { 'x-sui-address': address }, signal: context.signal },
-          )
-            .then((res) => (res.ok ? res.json() as Promise<{ change?: WeekChange }> : null))
-            .catch(() => null)
+        ? (() => {
+            const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+            // [Day 20d / 2026-05-17] See activity-summary.ts — engine path
+            // uses `x-internal-key` so `authenticateAnalyticsRequest()`
+            // accepts the call. portfolio-history is a try/catch supplementary
+            // here (week change for the narration banner), so a missing key
+            // degrades gracefully but the data should be there in prod.
+            return fetch(
+              `${apiUrl}/api/analytics/portfolio-history?days=7&address=${address}`,
+              {
+                headers: {
+                  'x-sui-address': address,
+                  ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+                },
+                signal: context.signal,
+              },
+            )
+              .then((res) => (res.ok ? res.json() as Promise<{ change?: WeekChange }> : null))
+              .catch(() => null);
+          })()
         : Promise.resolve(null),
       // DeFi fetch — prefer the audric snapshot's already-computed
       // value, but only when we can trust it. Two trust signals:

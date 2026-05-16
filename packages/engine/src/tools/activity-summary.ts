@@ -73,9 +73,22 @@ export const activitySummaryTool = defineTool({
 
     try {
       const callerHeader = context.walletAddress ?? targetAddress;
+      const internalKey = context.env?.AUDRIC_INTERNAL_KEY;
+      // [Day 20d / 2026-05-17] The audric `/api/analytics/*` routes were
+      // tightened to JWT-only by SPEC 30 Phase 1A.5. The engine runs
+      // server-side and has no JWT — `x-internal-key` is the dual-auth
+      // path the route's `authenticateAnalyticsRequest()` helper recognises.
+      // Falls back to header-only for older audric deploys that haven't
+      // shipped the dual-auth helper yet.
       const res = await fetch(
         `${apiUrl}/api/analytics/activity-summary?address=${targetAddress}&period=${period}`,
-        { headers: { 'x-sui-address': callerHeader }, signal: context.signal },
+        {
+          headers: {
+            'x-sui-address': callerHeader,
+            ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+          },
+          signal: context.signal,
+        },
       );
 
       if (!res.ok) {
