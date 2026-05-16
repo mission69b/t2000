@@ -96,9 +96,10 @@ describe('wrapLegacyTool', () => {
     expect(wrapped.inputSchema).toBe(legacy.inputSchema);
   });
 
-  it('execute() defers to legacy call() with input + ToolContext', async () => {
+  it('execute() defers to legacy call() with input + ToolContext, returns UNWRAPPED data', async () => {
     const callSpy = vi.fn(async (input: { x: string }, _ctx: ToolContext) => ({
       data: { received: input.x },
+      displayText: `received ${input.x}`,
     }));
     const legacy = makeLegacyTool({ call: callSpy });
     const wrapped = wrapLegacyTool(legacy);
@@ -116,7 +117,51 @@ describe('wrapLegacyTool', () => {
     const callRecord = callSpy.mock.calls[0]!;
     expect(callRecord[0]).toEqual({ x: 'hello' });
     expect(callRecord[1].walletAddress).toBe('0xtest');
-    expect(result).toEqual({ data: { received: 'hello' } });
+    // [Day 17b] Wrapper must unwrap `ToolResult<T>` → just `data`.
+    // Returning `{ data, displayText }` (the wrapped shape) propagates a
+    // one-level-too-deep result to AI SDK, the LLM, persistence, AND
+    // the bridge's `__canvas` detection. Mirrors the legacy
+    // `executeTool` contract exactly.
+    expect(result).toEqual({ received: 'hello' });
+  });
+
+  it('execute() unwraps __canvas-shaped tool results so the signal lives at the top level', async () => {
+    // [Day 17b] Regression test for the AISDKEngine canvas-render bug.
+    // Pre-fix: render_canvas tools persisted as
+    // `{ data: { __canvas: true, ... }, displayText: "..." }`, which
+    // broke both the bridge's `canvas`-event emission AND audric's
+    // rehydration check (`isCanvasShapedResult` looks for
+    // `result.__canvas === true`, not `result.data.__canvas`).
+    const callSpy = vi.fn(async () => ({
+      data: {
+        __canvas: true,
+        template: 'portfolio_timeline',
+        title: 'Net Worth Over Time',
+        templateData: { available: true, address: '0xabc' },
+      },
+      displayText: 'Opened Portfolio Timeline.',
+    }));
+    const legacy = makeLegacyTool({ call: callSpy });
+    const wrapped = wrapLegacyTool(legacy);
+
+    const result = (await wrapped.execute!(
+      { x: 'a' },
+      {
+        toolCallId: 'call_canvas',
+        messages: [],
+        experimental_context: makeInternalCtx(),
+      },
+    )) as Record<string, unknown>;
+
+    // __canvas signal MUST sit at top level, not nested under .data.
+    expect(result.__canvas).toBe(true);
+    expect(result.template).toBe('portfolio_timeline');
+    expect(result.title).toBe('Net Worth Over Time');
+    expect(result.templateData).toEqual({ available: true, address: '0xabc' });
+    // displayText is intentionally dropped — it's a host-UI hint, not
+    // model-visible. Matches `executeTool` in orchestration.ts.
+    expect(result).not.toHaveProperty('displayText');
+    expect(result).not.toHaveProperty('data');
   });
 
   it('forwards AI SDK abortSignal into ToolContext.signal', async () => {

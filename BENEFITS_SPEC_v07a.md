@@ -1531,6 +1531,81 @@ Everything else (preflight, permissionLevel, flags, isReadOnly, cacheable, maxRe
 
 **Next session = Phase 3 entry.** With every tool on Zod-as-source-of-truth, the path to native AI SDK `tool()` exports is mechanical — `defineTool` already returns a shape that adapts cleanly to AI SDK's `tool()` factory. The remaining work is engine-side: rewrite `QueryEngine`'s agent loop to consume AI SDK tool definitions directly (deprecating `Tool.isReadOnly`, `Tool.isConcurrencySafe`, `Tool.permissionLevel` — moved into AI SDK's native flow). That's the actual "v0.7c migration" the cleanup SPEC was set up to enable. Phase 2 was the prerequisite; Phase 3 is the payoff.
 
+---
+
+### Day 20c — AISDKEngine canvas-render bug (Phase 2 post-smoke fix) (2026-05-17)
+
+**Framing (founder, immediately after the Day 20b smoke):** *"Just one thing to note, the test 'Show me my portfolio chart for the last 3 months' didn't actually render any canvas and 'Give me an activity summary for this month and render the activity heatmap'.. Showed a canvas but no data."*
+
+What looked like a Phase-2 regression turned out to be a pre-existing AISDKEngine bridge bug that had been latent since the v0.7a engine cutover. Phase 2's wallet-allowlist activation just made it visible — the founder's wallet `0x7f2059…` started routing through `AISDKEngine` instead of the legacy `QueryEngine`, and every canvas-rendering tool silently failed.
+
+**Diagnosis (the actual debugging path, not the "JWT first" detour):**
+
+The first hypothesis was JWT expiry — `authFetch` returned 401s silently from `/api/analytics/*` endpoints, and the "activity_summary HTTP 401" line in the smoke transcript made it look like a session-token bug. Shipped a fix for that anyway (`authFetch` dispatches a `zklogin:expired` event on 401 → `useZkLogin` flips to `'expired'` → `AuthGuard` redirects). That fix is correct and stays, but it was NOT the root cause for the missing canvases.
+
+With a fresh JWT, the portfolio chart STILL didn't render. The activity heatmap rendered an empty card frame but no data. Console showed nothing; Network tab showed no request to `/api/analytics/portfolio-history`. The `PortfolioTimelineCanvas` component never mounted.
+
+The breakthrough was pulling the persisted session via the API:
+
+```bash
+curl -s -H "x-zklogin-jwt: $JWT" 'https://audric.ai/api/engine/sessions/s_1778971295673_1b511a1f4ab8'
+```
+
+The `render_canvas` tool result was persisted as:
+
+```json
+{
+  "data": {
+    "__canvas": true,
+    "template": "portfolio_timeline",
+    "title": "Net Worth Over Time",
+    "templateData": { "available": true, "address": "0x7f2059…", "isSelfRender": true }
+  },
+  "displayText": "Opened Portfolio Timeline..."
+}
+```
+
+The `__canvas: true` signal is at `result.data.__canvas` — ONE LEVEL TOO DEEP. The legacy `QueryEngine` persists the unwrapped inner data (so `__canvas` sits at the top level). Two separate AISDKEngine bridge bugs combined to break canvases:
+
+| # | Bug | File | Why it broke canvases |
+|---|---|---|---|
+| 1 | `wrapLegacyTool` returns the full `ToolResult<T>` wrapper `{data, displayText}` instead of unwrapping to `result.data` | `packages/engine/src/v2/tool-wrapper.ts:123` | Every downstream consumer (LLM via AI SDK back-reference, bridge translator, AISDKEngine persistence, audric rehydration synthesizer) sees the wrapped shape. `result.__canvas` is undefined; `result.data.__canvas` is true. Every check fails. |
+| 2 | Bridge `translate()` `tool-result` case doesn't emit side-channel `canvas` / `todo_update` events for canvas-shaped tool outputs | `packages/engine/src/bridge/event-bridge.ts:196-210` | The legacy `QueryEngine` emits both `tool_result` AND a separate `canvas` event when `result.__canvas === true` (`engine.ts:1505-1523` + `1927-1945`). The bridge only emits `tool_result`. Live SSE consumers never receive a `canvas` event → no `CanvasTimelineBlock` is appended to the message timeline. |
+
+Combined impact:
+- **LIVE SSE:** No `canvas` event → no canvas card mounts → portfolio chart never renders.
+- **REHYDRATION:** Persisted result has wrong shape → audric's `isCanvasShapedResult(tool.result)` returns false → no `CanvasTimelineBlock` synthesized on reload.
+
+**Why activity_heatmap rendered partially.** The heatmap turn bundled `activity_summary` + `render_canvas` in parallel. Subtle differences in the audric chip-renderer / pre-dispatch paths surfaced an empty card frame for the heatmap (still wrong shape, but the frame chrome leaked through). The portfolio chart turn was a single tool → no card at all. Both failures share the same root cause.
+
+**The fix (Day 20c, ~30 lines net):**
+
+1. **`v2/tool-wrapper.ts`** — `return result.data;` instead of `return result;`. Matches the legacy `executeTool` contract exactly. The wrapper is now structurally equivalent to `executeTool` minus the input validation (which AI SDK handles).
+2. **`bridge/event-bridge.ts`** — in the `tool-result` case, after yielding the `tool_result` event, check `event.output.__canvas === true` and yield a `canvas` event; check `event.output.__todoUpdate === true` and yield a `todo_update` event. Mirrors the legacy QueryEngine emission shape one-for-one (`String(r.template ?? '')` coercion, `r.templateData ?? null` fallback, all preserved).
+
+Tests added:
+- `v2/tool-wrapper.test.ts` — `execute() defers to legacy call() with input + ToolContext, returns UNWRAPPED data` (rewritten to assert `result.data`, not `{data, displayText}`); new test `execute() unwraps __canvas-shaped tool results so the signal lives at the top level`.
+- `bridge/event-bridge.test.ts` — 5 new tests: canvas-event emission, todo_update-event emission, non-emission for ordinary outputs, non-emission for non-object outputs, non-emission when `__todoUpdate` is true but `items` is not an array, coercion of missing template/title strings on malformed canvas output.
+
+**Verification:** All gates clean.
+- `pnpm --filter @t2000/engine typecheck` — 0 errors
+- `pnpm --filter @t2000/engine lint` — 0 errors (6 pre-existing warnings unchanged)
+- `pnpm --filter @t2000/engine test src/bridge/event-bridge.test.ts src/v2/tool-wrapper.test.ts` — **59 / 59 passed** (47 bridge + 12 wrapper, +7 net tests)
+- Full engine suite — **1427 / 1428 passed** (`multi-block-thinking` real-Anthropic-API flake unchanged from Days 17-20b)
+- `pnpm --filter @t2000/engine build` — green (dist 482.30 KB, -7 KB vs Day 20b's 489.31 KB because the canvas-emission code is much smaller than what it replaces)
+
+**Empirical findings locked Day 20c (added to the Phase 2 list):**
+
+12. **Bridge translators must mirror EVERY side-channel event the legacy engine emits.** The Phase 1 bridge implementation focused on `tool_result` parity and silently dropped `canvas` + `todo_update`. There's no test that catches "engine yields N events but bridge yields M < N" for the same input — only per-event correctness tests. The audit equivalent for Phase 3 (full engine.ts rewrite) MUST enumerate every legacy side-channel emission and assert the bridge yields the same set.
+13. **`ToolResult<T>` unwrapping is an invariant, not an option.** Every legacy execution path (`executeTool`, `executeSingleTool`, `invokeReadTool`, `EarlyToolDispatcher`) returns `result.data` — not the wrapped form. The v2 wrapper diverged because the JSDoc said "AI SDK accepts any JSON-serializable output" and the author optimised for that rather than for downstream consumer compatibility. The invariant is now load-bearing for Phase 3+ tool natives.
+14. **Production-smoke + persisted-session inspection beats unit tests for cross-layer bugs.** All unit tests passed across Phase 2; the bug only surfaced when (a) a real user hit the AISDKEngine code path AND (b) the founder reported the visual symptom AND (c) we curl'd the persisted session to see the raw shape. The two-bug interaction (wrap + missing emission) isn't a single point of failure — neither bug alone would have produced the symptom in isolation.
+
+**Release:** engine **1.38.1** (patch — bug fix only, no API surface change).
+
+**Audric bump:** `@t2000/engine 1.38.0 → 1.38.1`. No audric code change required; the fix is purely engine-side. Vercel auto-deploys.
+
+**Status: Phase 2 still CLOSED (39/39 tools on `defineTool`). The AISDKEngine canvas-render bug was a pre-existing v0.7a bridge bug that just became visible during Phase 2's allowlist activation. Phase 3 remains unblocked.**
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

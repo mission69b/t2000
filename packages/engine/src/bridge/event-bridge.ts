@@ -42,10 +42,19 @@
 //   v0.7a keeps the existing `EngineConfig.onPermissionRequest` /
 //   `pending_action` orchestration path; engine code calls the AI SDK's
 //   `addToolApprovalResponse` from outside the bridge.
-// • Does NOT emit canvas / todo_update / proactive_text / harness_shape /
-//   stream_state / tool_progress / pending_input / compaction. Those
-//   are emitted by engine code OUTSIDE the LLM stream — outer loop
-//   interleaves them with bridge output.
+// • Does NOT emit proactive_text / harness_shape / stream_state /
+//   tool_progress / pending_input / compaction. Those are emitted by
+//   engine code OUTSIDE the LLM stream — outer loop interleaves them
+//   with bridge output.
+// • DOES emit canvas + todo_update side-channel events on `tool-result`
+//   when the unwrapped tool payload carries the engine's `__canvas` /
+//   `__todoUpdate` sentinel. Mirrors QueryEngine's emission at
+//   engine.ts:1505-1523 / 1927-1945. Pre-Day-17b the bridge dropped
+//   them silently, which broke live canvas rendering for every
+//   AISDKEngine session (portfolio_timeline + activity_heatmap rendered
+//   the tool tile but no card). Tool-wrapper.ts's `return result.data`
+//   unwrap is the partner fix: the bridge expects the unwrapped shape
+//   where `__canvas` sits at the top level.
 // • Does NOT stamp `attemptId`. Per `agent-harness-spec.mdc` Item 3,
 //   `attemptId` is stamped by the engine at `pending_action` emit time.
 //   Bridge never emits `pending_action`; constraint is met by construction.
@@ -77,7 +86,7 @@
 //     tool-approval-request) silently drop.
 // ---------------------------------------------------------------------------
 
-import type { EngineEvent, StopReason } from '../types.js';
+import type { EngineEvent, StopReason, TodoItem } from '../types.js';
 import { parseEvalSummary } from '../eval-summary.js';
 import type {
   AISDKFinishReason,
@@ -193,12 +202,12 @@ export function translate(event: AISDKStreamEvent, state: BridgeState): EngineEv
         },
       ];
 
-    case 'tool-result':
+    case 'tool-result': {
       // v6 tool-result carries toolName directly (eliminates the
       // toolNameByCallId carry the v5 bridge needed). `output` is
       // typed by the originating tool; we forward as `unknown`
       // because the bridge is tool-agnostic.
-      return [
+      const out: EngineEvent[] = [
         {
           type: 'tool_result',
           toolName: event.toolName,
@@ -208,6 +217,48 @@ export function translate(event: AISDKStreamEvent, state: BridgeState): EngineEv
           source: 'llm',
         },
       ];
+
+      // Side-channel parity with legacy QueryEngine. The legacy
+      // engine emits a `canvas` / `todo_update` EngineEvent IN ADDITION
+      // to the `tool_result` event whenever a tool result carries the
+      // `__canvas` / `__todoUpdate` sentinel (see engine.ts:1505-1523
+      // and 1927-1945 for the originals). Hosts (audric) rely on those
+      // side-channel events to synthesize CanvasTimelineBlock /
+      // TodoTimelineBlock entries on the wire — without them the live
+      // SSE stream lands a tool_result tile but never a canvas card.
+      //
+      // The bridge must mirror that behavior or the AISDKEngine path
+      // silently drops every canvas + todo emission. (Pre-Day-17b
+      // production smoke caught the resulting "🖼️ DRAW CANVAS" badge
+      // landing without an actual canvas render — both portfolio_timeline
+      // and activity_heatmap rendered the tool tile but no card.)
+      //
+      // `event.output` is the unwrapped data the tool returned via
+      // tool-wrapper.ts's `return result.data`. So `result.__canvas`
+      // is at the TOP level, not nested under `.data`. The shape match
+      // here is symmetric with the Day-17b tool-wrapper unwrap fix.
+      const r = event.output;
+      if (r && typeof r === 'object') {
+        const rec = r as Record<string, unknown>;
+        if (rec.__canvas === true) {
+          out.push({
+            type: 'canvas',
+            template: String(rec.template ?? ''),
+            title: String(rec.title ?? ''),
+            data: rec.templateData ?? null,
+            toolUseId: event.toolCallId,
+          });
+        }
+        if (rec.__todoUpdate === true && Array.isArray(rec.items)) {
+          out.push({
+            type: 'todo_update',
+            items: rec.items as TodoItem[],
+            toolUseId: event.toolCallId,
+          });
+        }
+      }
+      return out;
+    }
 
     case 'tool-error':
       // v6 tool-error carries toolName + structured `error` (unknown).

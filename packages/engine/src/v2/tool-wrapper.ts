@@ -122,11 +122,30 @@ export function wrapLegacyTool(legacy: LegacyTool): AISDKTool {
 
       const result = await legacy.call(input, ctxForLegacy);
 
-      // Legacy result shape is { data, displayText? }. AI SDK
-      // accepts any JSON-serializable output; the model sees the full
-      // shape via tool_result back-reference. The R8 bridge translates
-      // tool-result events into legacy EngineEvent for audric.
-      return result;
+      // Unwrap the legacy `ToolResult<T>` wrapper before handing
+      // the value to AI SDK. Mirrors what the legacy QueryEngine's
+      // `executeTool` (orchestration.ts) does — it returns `result.data`,
+      // not the full `{ data, displayText }`. Returning the wrapper
+      // here propagates a one-level-too-deep shape to every downstream
+      // consumer:
+      //   - the LLM sees `{ data: {…}, displayText: "…" }` instead of
+      //     the inner payload (more confusing tokens, no functional gain
+      //     since `displayText` is meant for the host UI, not the model);
+      //   - the bridge's `tool-result` translator forwards `event.output`
+      //     verbatim, so `result.__canvas === true` checks fail (the
+      //     `__canvas` signal lives on `result.data.__canvas`);
+      //   - AISDKEngine.runStream persists `JSON.stringify(event.output)`
+      //     into the session ledger with the wrapped shape, so audric's
+      //     rehydration synthesizer `isCanvasShapedResult(tool.result)`
+      //     also misses the signal → no `CanvasTimelineBlock` on reload.
+      //
+      // The fix is intentionally narrow: unwrap to `result.data` to match
+      // the legacy contract exactly. The bridge fix (event-bridge.ts) is
+      // the partner change that closes the live-canvas path; together
+      // they restore parity with QueryEngine for canvas + todo_update
+      // side-channel events. See BENEFITS_SPEC_v07a.md Day 17b for the
+      // production smoke trace that motivated this.
+      return result.data;
     },
   });
 }
