@@ -798,6 +798,60 @@ Both rows live on `sessionId=s_1778894099676_bee7def4f2f1, turnIndex=2` and join
 
 **Confidence on the AISDKEngine confirm-tier path:** ✅ High. The exact failure mode that broke Day 13.1 + Day 13.2 is now covered by 6 regression tests + a documented audric-runtime invariant. Founder wallet stays on the v2 path; soak proceeds per the Day 14-22 percentage rollout schedule.
 
+---
+
+**Day 13.4 — compound-prompt smoke surfaced Anthropic strict-format violation, fix + regression tests shipped (2026-05-16 ~11:36 AEST):**
+
+After 13.3 went green, founder probed harder by stacking three writes in one prompt ("Borrow $0.01 USDC → Send $0.01 USDC to 0xaca2…3d11 → Save $50 USDC"). Each individual write tap-confirmed correctly; on the SAVE $50 USDC resume turn, the engine returned `INTERRUPTED` and emitted an Anthropic API 400:
+
+```
+messages.9: `tool_use` ids were found without `tool_result` blocks
+immediately after: toolu_01DH2LdACfkaGj5MvZZrG52T,
+toolu_01FwXtGSaL3BiMq2z6S3PCM4. Each `tool_use` block must have a
+corresponding `tool_result` block in the next message.
+```
+
+Two orphaned ids both pointed at `balance_check` calls that had been blocked by address-scope guards.
+
+**Root cause** (confirmed via session dump from Redis + AI SDK Anthropic provider trace + vercel/ai issue #8516):
+
+The LLM emitted text BETWEEN tool_use blocks inside a single assistant message:
+
+```
+msg 13 (assistant):
+  [0] text: "Freshest balance is stale — let me check current balances…"
+  [1] tool_use id=toolu_…F4 name=balance_check
+  [2] tool_use id=toolu_…2T name=balance_check
+  [3] text: "It looks like there are a few requests here — let me sort…
+            1. Send $0.01 USDC to 0xaca2…3d11 — ready to execute.
+            2. Save $50 USDC — I need to check balance first."
+  [4] tool_use id=toolu_…Fg name=send_transfer
+```
+
+Anthropic's input validator does NOT accept text interspersed between tool_use blocks — even though the model itself CAN output that shape, the API rejects it on replay. The matching tool_results all lived in msg 14, but Anthropic only counts "immediately after" as "the very next message's first N blocks of type tool_result, no interruptions." Text in msg 13 broke the contiguity.
+
+This is a well-known AI SDK + Anthropic gotcha (vercel/ai issue #8516 has 6 months of community reports of the same error pattern under different orchestration setups).
+
+**Fix shipped (engine 1.34.4):** New `normalizeAssistantContentForAnthropic()` helper in `v2/engine.ts`. Called once when stamping `pending_action.assistantContent` from the captured `assistantBlocks` accumulator. Reorders blocks into Anthropic's accepted shape:
+
+1. `thinking` / `redacted_thinking` blocks first (extended-thinking signed-round-trip invariant).
+2. All text blocks merged into ONE leading text block (joined with `\n\n`, whitespace-only blocks dropped — Anthropic rejects those too).
+3. All tool_use blocks contiguously, preserving their original emission order.
+
+Lossy? The middle text gets concatenated to the leading text rather than rendered AFTER bc1/bc2 in the chat narration on the wire. The user-visible chat is unaffected — audric writes the raw LLM output to the timeline via text-delta events BEFORE the resume call; only the *replayed* history sent to Anthropic is restructured. The model never sees the merged shape on subsequent turns either — Anthropic itself will emit its next assistant message in the same all-text-then-all-tool_use shape (which is its own canonical output form).
+
+Fast paths (preserve referential identity, zero allocation): no tool_use blocks → return original copy; no text blocks → return original copy; already-ordered (last text index < first tool_use index) → return original copy. The reordering only triggers when the actual interleaving pattern is detected.
+
+**Regression tests added** (`v2/engine.test.ts` — Day 13.4 block, 2 new tests):
+- `'rearranges interleaved text + tool_use blocks so all text precedes all tool_use blocks'` — recreates the exact failure pattern (text → tool-call(bc1) → tool-call(bc2) → text → tool-call(send_transfer) → finish) with a stub LanguageModelV3. Asserts the emitted pending_action's assistantContent has lastTextIdx < firstToolUseIdx, single merged text block containing both source narrations, and all three tool_uses preserved with original ids in original order.
+- `'passes through already-ordered content unchanged (text → tool_use)'` — the simple case (one text then one tool_use). Asserts no spurious reshuffling — exact length 2, text first, tool_use second.
+
+**Test suite verify:** `pnpm test` engine — 1360 tests pass + 17 v2/engine tests including both new regressions. The single failing test (`multi-block-thinking.test.ts`) is an unrelated real-Anthropic-API test that hit a transient API error and is not part of the v2 path.
+
+**Why this wouldn't have shown up in single-write smoke:** the single-write path always produces `[text, tool_use]` (already-ordered) because there's no second tool emission to interleave around. The Day 13.3 smoke was correct but insufficient to surface this failure mode — needed a prompt that triggers parallel read tools followed by a confirm-tier write in the same assistant turn. The smoke checklist now adds a compound-prompt scenario for the Day 14-22 rollout: "Send $X to 0x… AND save $Y USDC" (one prompt that yields 2-3 tool_uses + the confirm pause) before promoting to 1%/10%/50% wallet bands.
+
+**Defense-in-depth note:** The fix is purely on the producer side (engine packs the deferred assistant content into a shape Anthropic accepts). It does NOT depend on AI SDK or Anthropic provider behaviour. If Anthropic changes its input validator in either direction (relaxes the rule, or tightens it further), our shape remains valid because it matches the canonical pattern every Anthropic model itself emits.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
