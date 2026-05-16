@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 
-export const voloStakeTool = buildTool({
+export const voloStakeTool = defineTool({
   name: 'volo_stake',
   description:
     'Stake SUI for vSUI via VOLO liquid staking. Earn ~3-5% APY. Rewards compound automatically via exchange rate — no claiming needed. Minimum 1 SUI. ' +
@@ -10,13 +10,6 @@ export const voloStakeTool = buildTool({
   inputSchema: z.object({
     amount: z.number().min(1).describe('Amount of SUI to stake (minimum 1)'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      amount: { type: 'number', description: 'Amount of SUI to stake' },
-    },
-    required: ['amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, requiresBalance: true },
