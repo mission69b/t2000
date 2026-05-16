@@ -55,6 +55,13 @@ function makeCtx(overrides: Partial<ToolContext> = {}): ToolContext {
     permissionConfig: DEFAULT_PERMISSION_CONFIG,
     sessionSpendUsd: 0,
     retryStats: { attemptCount: 1 },
+    // [Day 13.2 / 2026-05-16] Tests in this file exercise the USD-aware
+    // resolver path. Audric (no agent) forces `needsApproval=true` for ALL
+    // confirm-tier writes via the agent-absent guard in
+    // `need-approval.ts`. Set a stub agent here so the resolver-path tests
+    // can still assert sub-threshold writes resolve to `auto`. Audric's
+    // no-agent behaviour has its own test in `need-approval.test.ts`.
+    agent: { stub: true },
     ...overrides,
   };
 }

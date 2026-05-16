@@ -85,6 +85,35 @@ export function buildNeedsApproval(toolName: string): NeedsApprovalFn {
     if (!internal) return true;
 
     const ctx = internal.toolContext;
+
+    // [SPEC 37 v0.7a Phase 2 Day 13.2 / 2026-05-16] CRITICAL — mirror
+    // the legacy QueryEngine `engine.ts:1657` safeguard: when no
+    // `agent` is in the ToolContext (audric's client-signed sponsored-
+    // tx flow), write tools CANNOT execute server-side. Forcing
+    // approval here makes AI SDK pause on `tool-approval-request` →
+    // engine emits `pending_action` → audric's chat route hands the
+    // tool input to the client which signs the sponsored tx and POSTs
+    // the result back via `/api/engine/resume`.
+    //
+    // Without this guard the USD-aware resolver below would route a
+    // sub-threshold write (e.g. 0.05 USDC save → 'auto' tier per
+    // DEFAULT_PERMISSION_CONFIG.save.autoBelow=50) to inline execute,
+    // which trips `requireAgent()` inside the legacy tool factory and
+    // throws "agent configuration issue". Caught in production by the
+    // Day 13 founder smoke; legacy QueryEngine has had this exact line
+    // since v0.46.x. Rule belongs in BOTH engines for the migration
+    // window.
+    //
+    // The check is a no-op when `ctx.agent` is set (e.g., t2000 CLI
+    // engine usage where the engine itself signs — the USD resolver
+    // below decides per-call as designed). We only reach this branch
+    // for confirm-tier tools (auto/explicit short-circuited above), so
+    // `isReadOnly` is implicitly false — any tool needing approval at
+    // all is by definition a write.
+    if (!ctx.agent) {
+      return true;
+    }
+
     if (!ctx.permissionConfig || !ctx.priceCache) {
       return true;
     }
