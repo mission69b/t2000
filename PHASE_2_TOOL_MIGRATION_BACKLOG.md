@@ -156,21 +156,31 @@ The first session of Batch A produces:
 |---|---|---|---|
 | **A — simple reads (10/10 CLOSED)** | 2026-05-16 | 2026-05-16 | 1.35.0 → 1.35.1 |
 | **B — simple writes (9/9 CLOSED)** | 2026-05-17 | 2026-05-17 | 1.36.0 → 1.36.2 |
-| C — medium reads (0/9 remaining — 4 medium reads were pulled into Batch A) | — | — | — |
+| **C — medium reads + leftover simple reads (14/14 CLOSED)** | 2026-05-17 | 2026-05-17 | 1.37.0 |
 | D — medium writes (2/3 already done as part of Batch B — only `pay_api` remaining) | — | — | — |
 | E — complex reads (1/4 already done as part of Batch A — `balance_check`; `portfolio_analysis`/`render_canvas`/`transaction_history` remaining) | — | — | — |
 | F — complex writes (0/2 remaining — `harvest_rewards`, `swap_execute`) | — | — | — |
 
-**Empirical batch-boundary drift (2026-05-17, end of Day 19):** The original batch ordering in this doc was a planning artifact. Actual migration in Days 17-19 cherry-picked tools based on which were easiest at the moment, not strictly by batch number. The audit is now:
+**Empirical batch-boundary drift (2026-05-17, end of Day 20):** The original batch ordering in this doc was a planning artifact. Actual migration in Days 17-20 cherry-picked tools based on which were easiest at the moment, not strictly by batch number. The audit is now:
 
 - **Batch A (Days 17-18, engine 1.35.0-1.35.1):** 10 tools — 5 simple reads (web_search/yield_summary/volo_stats/protocol_deep_dive/token_prices) + 4 medium reads (savings_info/health_check/rates_info/mpp_services) + 1 complex read (balance_check). Empirical learning: complexity classification is mostly about tool BODY complexity (multi-source fan-out, caching layers, large display builders), not migration complexity. defineTool migration is uniformly mechanical regardless of body complexity.
-- **Batch B (Days 19, engine 1.36.0-1.36.2):** 9 tools — 7 originally-Batch-B simple writes (save_contact/claim_rewards*/save_deposit/borrow/repay_debt/withdraw/send_transfer*) + 2 missed Batch B tools migrated as 1.36.2 patch (volo_stake/volo_unstake). *claim_rewards + send_transfer are classified medium-writes (originally Batch D) but were folded into Batch B because they shared the simple-write migration shape — see Day 19 entry in `BENEFITS_SPEC_v07a.md`.
-- **Batch C (next session):** 9 tools remaining — activity_summary, add_recipient (opt-in), create_invoice, create_payment_link, explain_tx, pending_rewards, spending_analytics, swap_quote, update_todo (opt-in).
-- **Batch D (after C):** 1 tool remaining — pay_api.
+- **Batch B (Day 19, engine 1.36.0-1.36.2):** 9 tools — 7 originally-Batch-B simple writes (save_contact/claim_rewards*/save_deposit/borrow/repay_debt/withdraw/send_transfer*) + 2 missed Batch B tools migrated as 1.36.2 patch (volo_stake/volo_unstake). *claim_rewards + send_transfer are classified medium-writes (originally Batch D) but were folded into Batch B because they shared the simple-write migration shape — see Day 19 entry in `BENEFITS_SPEC_v07a.md`.
+- **Batch C (Day 20, engine 1.37.0):** 14 tools across 3 waves — Wave C1 (9 tools / 4 files): receive.ts × 6 (create_payment_link/list_payment_links/create_invoice/cancel_payment_link/cancel_invoice/list_invoices — includes 4 leftover simple reads from original Batch A scope), resolve_suins (leftover simple read from Batch A), activity_summary, spending_analytics. Wave C2 (3 tools): explain_tx, pending_rewards, swap_quote. Wave C3 (2 opt-in oddities): update_todo (SPEC 8 side-channel + nested array-of-objects + enums), add_recipient (SPEC 9 pending_input form + isConcurrencySafe:false).
+- **Batch D (next session):** 1 tool remaining — pay_api.
 - **Batch E (after D):** 3 tools remaining — portfolio_analysis, render_canvas, transaction_history.
 - **Batch F (last):** 2 tools — harvest_rewards, swap_execute.
 
-**Running total: 19/39 (49%) on defineTool. 20 tools remaining across 4 future batches.**
+**Running total: 33/39 (85%) on defineTool. 6 tools remaining across 3 future batches.**
+
+**Empirical learnings locked through Batch C:**
+1. **Nested array-of-objects schemas just work.** `create_invoice.items` (Wave C1) and `update_todo.items` (Wave C3) both produce correct nested `type:object/required/additionalProperties:false` via `zod-to-json-schema`. Anthropic accepts.
+2. **Union types (`z.union([number, literal('all')])`) produce canonical `anyOf`** (volo_unstake, Day 19). Locked.
+3. **`z.array().min(1).max(8)` correctly emits `minItems:1, maxItems:8`** (update_todo). Locked.
+4. **`z.string().min(1).max(40)` correctly emits `minLength:1, maxLength:40`** (update_todo id field). Locked.
+5. **Zod `.describe()` is the SINGLE source of truth for field descriptions.** Any description in the hand-written jsonSchema that is NOT in the Zod definition will be LOST in auto-gen. This bit us 3 times now (borrow/save/repay asset field on Day 19; update_todo item fields + add_recipient fields on Day 20). For any new write tool, audit every field description BEFORE migration and add `.describe()` calls where missing.
+6. **`isConcurrencySafe` defaults to `isReadOnly`** in both buildTool (`opts.isConcurrencySafe ?? isReadOnly`) and defineTool. Read-only tools without explicit setting are still safe for early-dispatch.
+7. **`zod-to-json-schema` adds `additionalProperties: false` to nested objects by default.** Anthropic accepts; no impact on LLM behavior.
+8. **Auto-gen often IMPROVES on hand-written schemas** by adding missing validations (`.positive()` → `exclusiveMinimum: 0`, `.int()` → `type: integer`) and missing descriptions when Zod has `.describe()` but hand-written omitted it (saw this on activity_summary/spending_analytics period field on Day 20).
 
 ### Batch A — CLOSED (2026-05-16, two sessions)
 

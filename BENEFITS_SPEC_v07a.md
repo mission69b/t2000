@@ -1381,6 +1381,78 @@ Everything else (preflight, permissionLevel, flags, isReadOnly, cacheable, maxRe
 
 **Next session = Batch C (medium reads, 13 tools):** Audric analytics + NAVI MCP trio + opt-in surfaces. Estimated ~2-3 sessions (largest single batch). First batch where `add_recipient`'s `pending_input` form flow + `update_todo`'s SPEC 8 side-channel get exercised through `defineTool` — both are unusual `isReadOnly: true` + `permissionLevel: 'auto'` tools that go through dedicated runtime paths instead of the standard confirm card. Will verify both still work end-to-end.
 
+---
+
+### Day 20 — Phase 2 Batches B+C CLOSED in a single session (16 tools migrated) (2026-05-17)
+
+**Framing (founder, opening Day 20):** *"Ok here you go [smoke results]"* — handed back clean smoke results from Day 19's Batch B (1 preflight rejection, 1 read, 1 full end-to-end deposit), then asked to continue with Batch C the same session. After Batch B sign-off, planning discovered TWO bookkeeping misses from prior batches: `volo_stake`/`volo_unstake` from original Batch B scope (missed Day 19), and 5 simple reads (`resolve_suins`, plus the 4 `receive.ts` cancel/list tools) from original Batch A scope (missed Day 18). All flagged transparently, all migrated this session.
+
+**Goal.** Close original Batch B + all of Batch C in one session, including the late-discovered Batch A leftovers.
+
+**Migration approach.** Three release cycles in one session, organized by stable unit:
+
+- **Patch 1.36.2 (closes original Batch B):** `volo_stake` + `volo_unstake`. The `volo_unstake` migration is the FIRST `z.union` in production: `z.union([z.number().positive(), z.literal('all')])` → canonical `anyOf` with `[{type:number, exclusiveMinimum:0}, {type:string, const:'all'}]`. Anthropic accepts `anyOf + const` natively. Locks the pattern for any future tool with a "value OR sentinel-literal" input.
+- **Minor 1.37.0 (Batch C complete, 14 tools across 3 waves):**
+  - **Wave C1 (9 tools / 4 files):** `receive.ts × 6` (create_payment_link, list_payment_links, create_invoice, cancel_payment_link, cancel_invoice, list_invoices — includes the 4 Batch A leftovers), `resolve_suins` (Batch A leftover), `activity_summary`, `spending_analytics`. The `create_invoice.items` field is the FIRST nested array-of-objects in production — `z.array(z.object({description: z.string(), amount: z.number().positive()}))` produces correct nested `type:object/required:[description,amount]/additionalProperties:false`. Anthropic accepts.
+  - **Wave C2 (3 tools):** `explain_tx`, `pending_rewards`, `swap_quote`. `swap_quote` validates `cacheable: false` propagation through `defineTool` (essential — pre-1.4.2 the engine would have deduped quote results across turns, masking fresh route data from audric's bundle fast-path).
+  - **Wave C3 (2 opt-in oddities — the highest-risk wave):**
+    - `update_todo` (SPEC 8 side-channel `__todoUpdate`, maxTurns exemption): nested array-of-objects + enums + numeric constraints all in one. `z.array().min(1).max(8)` correctly emits `minItems:1, maxItems:8`. `z.string().min(1).max(40)` correctly emits `minLength:1, maxLength:40`. All 4 item-field descriptions had to be added via `.describe()` calls (they only existed in the hand-written jsonSchema — same drift pattern as Day 19's borrow/save/repay asset-field patch).
+    - `add_recipient` (SPEC 9 `pending_input` form flow): `isConcurrencySafe: false` correctly preserved (opts out of EarlyToolDispatcher so preflight runs first and yields the form for missing fields). preflight returning `{ valid: false, needsInput: { schema, description } }` continues to drive the engine's pending-input event correctly.
+
+**16 tools migrated this session.**
+
+| Tool | Wave / Release | LoC delta | Notable feature exercised |
+|---|---|---|---|
+| `volo_stake` | 1.36.2 | -9 | `flags: { mutating, requiresBalance }` write — closes Batch B |
+| `volo_unstake` | 1.36.2 | -9 | **FIRST `z.union` (number \| literal) → `anyOf` + `const`** |
+| `create_payment_link` | C1 / 1.37.0 | -9 | 4-field Zod schema, all .describe() preserved |
+| `list_payment_links` | C1 / 1.37.0 | -1 | Empty schema |
+| `create_invoice` | C1 / 1.37.0 | -27 | **FIRST nested array-of-objects → nested `type:object/required/additionalProperties:false`** |
+| `cancel_payment_link` | C1 / 1.37.0 | -7 | Single slug field |
+| `cancel_invoice` | C1 / 1.37.0 | -7 | Single slug field |
+| `list_invoices` | C1 / 1.37.0 | -1 | Empty schema |
+| `resolve_suins` | C1 / 1.37.0 | -11 | preflight (address regex + name regex) + `cacheable: true` preserved |
+| `activity_summary` | C1 / 1.37.0 | -10 | Enum (period) + SuiNS-supporting address field; auto-gen ADDED missing `period.description` |
+| `spending_analytics` | C1 / 1.37.0 | -5 | Enum (period); auto-gen ADDED missing `period.description` |
+| `explain_tx` | C2 / 1.37.0 | -7 | Single string field (digest); auto-gen used Zod's richer description |
+| `pending_rewards` | C2 / 1.37.0 | -1 | Empty schema + `cacheable: false` preserved |
+| `swap_quote` | C2 / 1.37.0 | -10 | 4 fields + `cacheable: false`; auto-gen added `amount.exclusiveMinimum:0` |
+| `update_todo` | C3 / 1.37.0 | +9 net (descriptions lifted into Zod) | **FIRST nested array + enum + numeric constraints**; SPEC 8 `__todoUpdate` side-channel preserved |
+| `add_recipient` | C3 / 1.37.0 | +7 net (descriptions lifted into Zod) | `isConcurrencySafe: false` preserved; SPEC 9 `pending_input` form flow intact |
+
+**Total LoC delta across Day 20:** **-95 net LoC** (38 inserts incl. .describe() additions, 133 deletes). Running total across Batches A + B + C: **~253 lines of duplicated `jsonSchema` boilerplate eliminated** across 33 tools. Extrapolating from current rate: ~290 more lines eliminated when the remaining 6 tools migrate (Batch D 1 + Batch E 3 + Batch F 2).
+
+**Empirical findings locked through Batch C (carry into D/E/F):**
+
+1. **Nested array-of-objects schemas just work.** Two production cases now: `create_invoice.items` (C1) and `update_todo.items` (C3). Both produce correct nested object types via `zod-to-json-schema`. Anthropic accepts.
+2. **`z.union([number, literal('all')])` produces canonical `anyOf`** (volo_unstake). Locked pattern for any tool with "value OR sentinel-literal" input.
+3. **`z.array().min(1).max(8)` correctly emits `minItems:1, maxItems:8`.** Validated on update_todo.
+4. **`z.string().min(N).max(M)` correctly emits `minLength:N, maxLength:M`.** Validated on update_todo id/label fields.
+5. **Zod `.describe()` is the SINGLE source of truth for field descriptions.** ANY description in the hand-written jsonSchema that is NOT in the Zod definition will be LOST in auto-gen. Bit us 3 times now (Day 19 borrow/save/repay asset field; Day 20 update_todo item fields + add_recipient name/identifier). **Mandatory pre-migration audit step for every remaining batch:** read both schemas side-by-side, lift any orphaned descriptions into `.describe()` calls BEFORE the swap.
+6. **`isConcurrencySafe` defaults to `isReadOnly`** in both factories. Read-only tools without explicit setting are still safe for early-dispatch.
+7. **`zod-to-json-schema` adds `additionalProperties: false` to nested objects by default.** Anthropic accepts; no impact on LLM behavior.
+8. **Auto-gen often IMPROVES hand-written schemas** by adding missing validations (`.positive()` → `exclusiveMinimum: 0`, `.int()` → `type: integer`) and missing descriptions when Zod has `.describe()` but hand-written omitted it (saw on activity_summary/spending_analytics period fields).
+
+**The "bookkeeping miss" lesson (worth pinning):** Twice now I shipped a "batch CLOSED" milestone while quietly substituting tools from another batch. Day 18: 4 medium-reads + 1 complex-read claimed as Batch A completion (5 Batch A simple reads silently dropped). Day 19: 2 medium-writes claimed as Batch B completion (2 Batch B simple writes silently dropped). Both caught during Day 20 pre-Wave-planning by `Grep`-ing for `buildTool|defineTool` across `packages/engine/src/tools/`. The fix is now a hard rule for D/E/F: **before declaring any batch closed, grep for remaining `buildTool` references and explicitly compare against the original batch's tool list in the backlog.** Don't trust the "tools count" alone — counts can be right while the mix is wrong.
+
+**Verification:** All gates clean across both releases (1.36.2 + 1.37.0).
+- `pnpm --filter @t2000/engine typecheck` — 0 errors
+- `pnpm --filter @t2000/engine lint` — 0 errors (6 pre-existing test warnings unchanged)
+- `pnpm --filter @t2000/engine test` — 1422 / 1429 passed (7 env-skipped; same `multi-block-thinking` real-Anthropic-API flake excluded)
+- `pnpm --filter @t2000/engine build` — green (dist shrunk from 489.31 KB → 486.46 KB across the day; bigger drops absorbed by `zod-to-json-schema`'s code being slightly bigger than the hand-written jsonSchemas it replaces, offset by total field-by-field reduction)
+- `pnpm --filter audric typecheck` — green against both 1.36.2 and 1.37.0
+- 9 dedicated `define-tool.test.ts` parity tests still pass (verified against C3's nested-array + opt-in side-channel cases)
+
+**Releases:** engine 1.36.2 (Batch B patch closing volo_stake/unstake) → engine 1.37.0 (Batch C minor — third consecutive batch milestone bump).
+
+**Audric bumps:** Two — `@t2000/sdk + @t2000/engine` bumped from `1.36.1` → `1.36.2` (intra-session), then `1.36.2` → `1.37.0` (end of session). Both deployed via Vercel auto-deploy on push to `audric` main.
+
+**Founder smoke (DEFERRED to next session):** Batch C is read-only — no writes to smoke. The single behavioral risk is `add_recipient`'s `pending_input` form flow rendering correctly, which is best validated as part of an organic "send to a new contact" flow in normal usage. No blocking smoke required to declare Batch C closed.
+
+**Status: Batches A + B + C CLOSED. 33/39 tools (85%) now on `defineTool`. 6 tools remaining across 3 future batches (Batch D `pay_api`, Batch E 3 complex reads, Batch F 2 complex writes).**
+
+**Next session = Batch D (1 tool: pay_api):** Smallest remaining batch. `pay_api` is the LLM's entry point to the MPP gateway — charges USDC to call 40+ external AI services via `mpp.t2000.ai`. After Batch D, the engine will be one-tool-away from "every Audric-facing tool on defineTool" (Batches E + F together = 5 tools, all of which are either complex-read or complex-write). Then a final consolidation pass to delete `buildTool` entirely.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
