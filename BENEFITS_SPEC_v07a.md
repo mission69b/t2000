@@ -988,6 +988,52 @@ After 1.34.7 shipped (Day 13.7's data-loss fix), I scoped a 5-day full-integrati
 
 Test verify: 26/26 v2 tests pass (3 skipped real-API); 1372/1373 full engine suite passes (same pre-existing real-API multi-block-thinking flake).
 
+**Day 14a — Week 4 cleanup first slice: live borrowApyBps + currentHF on PendingAction (2026-05-16 ~15:30 AEST):**
+
+After the founder confirmed 1.34.7's data-loss fix held in production and explicitly said "I want to start progressing on new tasks. instead of playing whack a mole no?" — the natural next slice is the Week 4 cleanup batch (closes deferred items 1 + 2 from the audit log above).
+
+**What the cleanup unblocks (visible to the user):**
+
+| Component | Pre-Day-14a (1.34.9) | Post-Day-14a (1.34.10) |
+|---|---|---|
+| BorrowPreviewBody confirm card | Italic disclaimer: *"Variable rate — locked at execute time"* | Canonical APYBlock primitive: *"Borrow rate · USDC 4.67% ↑"* |
+| RepayPreviewBody confirm card | Italic disclaimer: *"Clears principal at the current variable borrow rate"* | Canonical APYBlock primitive: *"Borrow rate cleared · USDC 4.67%"* |
+| Borrow / Repay / Withdraw / Save confirm cards | No HF row at all | Compact color-tiered Health-factor row: *"Health factor · 3.80"* (red <1.1, warning <1.5, success ≥1.5) |
+
+**Engine change** (`@t2000/engine` 1.34.10, v2-only — legacy `QueryEngine` is deleted at Week 6 anyway):
+
+- Added `borrowApyBps?: number` (basis points integer) + `currentHF?: number` (raw float) to `PendingAction` in `types.ts`.
+- New helper `v2/enrich-pending-action.ts` (~100 LoC) reads NAVI rates cache (5-min TTL) + health-factor cache (30s TTL) via `fetchRates` + `fetchHealthFactor`. Both NAVI calls fire in parallel via `Promise.all` (~30ms saved on cache-miss).
+- Wired into `v2/engine.ts` just before yielding `pending_action`. Fail-soft on every error: returns `{}` and the V2 component falls back to honest degradation (italic disclaimer / no HF row).
+- Asset routing: `borrowApyBps` is populated for `borrow` + `repay_debt`; `currentHF` is populated for `borrow` + `repay_debt` + `withdraw` + `save_deposit`. Non-write tools (`send_transfer`, `swap_execute`, `pay_api`) get no NAVI lookups.
+
+**Tests added (20 new, all passing):**
+
+- **16 unit tests** in `v2/enrich-pending-action.test.ts` — asset routing per tool, case-insensitive asset lookup (`'usdc'` → `'USDC'`), USDsui pool selection, default-to-USDC fallback, mcpManager-absent short-circuit, walletAddress-absent fallback (borrow APY only), graceful degradation on every error path (rates throws → HF still populates, HF throws → rates still populates), Infinity HF dropped, parallel-fetch timing assertion (<55ms vs sequential ~60ms).
+- **4 integration tests** in `v2/engine.test.ts` (Day 14a block) — confirms the fields actually land on the emitted `pending_action`. Uses `vi.spyOn` (per-test scope, no global mock pollution) to stub `fetchRates` + `fetchHealthFactor`. Covers: borrow populates both fields, save_deposit populates currentHF only (no borrowApyBps because save isn't in BORROW_APY_TOOLS), NAVI MCP unavailable → both undefined (no throw), mcpManager absent → no NAVI calls.
+
+**Audric change** (`@audric/web` bumped to `@t2000/engine@1.34.10`):
+
+- `PreviewBodyProps` interface extended with `borrowApyBps?` + `currentHF?` — both optional, opt-in consumption pattern.
+- `BorrowPreviewBody` + `RepayPreviewBody`: when `borrowApyBps !== undefined`, render `APYRow` with the new label ("Borrow rate" / "Borrow rate cleared") instead of the italic caption. Falls back to the caption when the engine couldn't reach NAVI.
+- `BorrowPreviewBody` + `RepayPreviewBody` + `WithdrawPreviewBody` + `SaveDepositPreviewBody`: when `currentHF !== undefined`, render the new `HFRow` (compact text row, `font-mono tabular-nums`, color-tiered red/warning/success matching the HFGauge primitive's tier palette, `∞` for HF ≥99). No projection yet — that needs the engine to also thread `supplied` / `borrowed` / `liquidationThreshold` (or a precomputed projected HF). Next Week 4 cleanup slice if/when wanted.
+- `renderPreviewBody` dispatcher signature extended with the two new optional fields; `PermissionCard.tsx` reads `action.borrowApyBps` + `action.currentHF` and threads them through.
+- **12 new audric tests** in `preview-bodies/index.test.tsx` — covers the rendered-vs-fallback path for both new fields, USDsui asset routing on borrow, HF threshold formatting (∞ for ≥99, decimal otherwise), no-HF-row when undefined, harvest_rewards not rendering HF even when accidentally threaded.
+
+**Verify gates — ALL GREEN:**
+
+- Engine: 30/33 v2 tests pass (3 skipped real-API); 1392/1393 full engine suite passes (same pre-existing real-API multi-block-thinking flake).
+- Audric: 3212/3212 web suite passes (was 3180/3180 → +32). Lint clean on changed files. Typecheck clean.
+
+**What's NOT in scope yet** (next Week 4 cleanup slices, if/when prioritized):
+
+- HF *projection* (current → projected). Needs engine to thread `supplied` / `borrowed` / `liquidationThreshold` OR a precomputed projected HF. Audric computes the projection client-side from the deltas.
+- Per-asset Collateral/Debt arrays on `savings_info` / `health_check` tool results (deferred item 3 from the audit log).
+- Per-swap-leg routes for `harvest_rewards` PendingAction (deferred item 4).
+- `buildTool() → tool()` per-tool migration batch (deferred item 5 — preparation for Week 6 legacy deletion).
+
+**Cross-references:** Engine commit `27eab827`. Audric commit `8af2809`. Founder smoke pending production deploy.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
