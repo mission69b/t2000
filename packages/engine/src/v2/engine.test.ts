@@ -1104,3 +1104,213 @@ describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', 
     expect(toolStarts.length).toBe(2);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Day 13.7 regression — push assistant message to history on clean turn
+// ---------------------------------------------------------------------------
+//
+// SPEC 37 v0.7a Phase 2 Day 13.7 / 2026-05-16 — production dump of
+// session s_1778900893492_12f0d4287565 revealed the v2 engine was
+// silently dropping the assistant message from `this.messages` on
+// every turn that did NOT trigger a `pending_action`.
+//
+// Symptoms:
+//   - User types "What's my balance?" → LLM responds with narration
+//     + (auto-tier) tool calls → engine streams events to host → host
+//     persists `engine.getMessages()` to Redis.
+//   - On the SAME tab session, the next LLM turn sees the prior
+//     assistant message via the live in-process `this.messages` (so
+//     things appear to work).
+//   - On REFRESH, the session rehydrates from Redis. The persisted
+//     `messages` array is MISSING every assistant message for read-only
+//     turns. The user's history shows their prompts but no responses.
+//
+// Root cause:
+//   - submitMessage()` pushes the user message at line ~291.
+//   - `runStream` accumulates `assistantBlocks` from the AI SDK stream.
+//   - For `pending_action`: the deferred assistant content goes into
+//     `action.assistantContent`, and resumeWithToolResult` pushes it
+//     to `this.messages` (line ~408).
+//   - For CLEAN turns (no pending_action): nothing pushed. Lost.
+//
+// Fix (Day 13.7):
+//   - `runStream` now pushes the per-step assistant message + matched
+//     tool_results into `this.messages` on every `finish-step` event
+//     where `stepHadApproval === false`.
+//   - `start-step` resets the per-step accumulators (`assistantBlocks`,
+//     `completedResults`, dedup state, currentText, stepHadApproval).
+//   - `tool-approval-request` sets `stepHadApproval = true` so the
+//     subsequent `finish-step` (if any) doesn't double-push the
+//     deferred content (which resumeWithToolResult will push instead).
+//
+// Test scope:
+//   - Single read tool, clean turn → assistant + tool_result in
+//     `getMessages()` after stream end.
+//   - Text-only turn → assistant text in `getMessages()` after stream
+//     end.
+//   - Multi-step turn (text → tool → text) → BOTH steps' assistant
+//     messages in `getMessages()` in order.
+// ---------------------------------------------------------------------------
+describe('AISDKEngine — Day 13.7 regression: persist assistant message on clean turns', () => {
+  function makeReadTool(name: string): LegacyTool {
+    return buildTool({
+      name,
+      description: `${name} read tool`,
+      inputSchema: z.object({}).passthrough(),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: { mutating: false },
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async () => ({ data: { stub: name, value: 42 }, displayText: `${name} ok` }),
+    });
+  }
+
+  it('pushes assistant message + tool_result to history on a clean read-only turn', async () => {
+    const balanceCheck = makeReadTool('balance_check');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [balanceCheck],
+      maxTurns: 1,
+    });
+
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: 'Your balance is $93.' },
+      { type: 'text-end', id: 't1' },
+      { type: 'tool-call', toolCallId: 'bc_1', toolName: 'balance_check', input: '{}' },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: 'end_turn' },
+        usage: {
+          inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 10, text: 10, reasoning: 0 },
+        },
+      },
+    ]);
+
+    await collect(engine.submitMessage('What is my balance?'));
+
+    const messages = engine.getMessages();
+    // user prompt + assistant response + tool_result user message = 3
+    expect(messages.length).toBe(3);
+    expect(messages[0]?.role).toBe('user');
+    expect(messages[1]?.role).toBe('assistant');
+    expect(messages[2]?.role).toBe('user');
+
+    // Assistant message contains BOTH the narration text and the tool_use
+    const asst = messages[1]!;
+    const asstContent = asst.content as ReadonlyArray<{ type: string }>;
+    const types = asstContent.map((b) => b.type);
+    expect(types).toContain('text');
+    expect(types).toContain('tool_use');
+
+    // tool_result user message ties back to the tool_use
+    const trUser = messages[2]!;
+    const trContent = trUser.content as ReadonlyArray<{ type: string; toolUseId?: string }>;
+    expect(trContent.length).toBe(1);
+    expect(trContent[0]?.type).toBe('tool_result');
+    expect(trContent[0]?.toolUseId).toBe('bc_1');
+  });
+
+  it('pushes assistant message on a text-only turn (no tools)', async () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [],
+      maxTurns: 1,
+    });
+
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: 'Hello! How can I help?' },
+      { type: 'text-end', id: 't1' },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: 'end_turn' },
+        usage: {
+          inputTokens: { total: 20, noCache: 20, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 5, text: 5, reasoning: 0 },
+        },
+      },
+    ]);
+
+    await collect(engine.submitMessage('hi'));
+
+    const messages = engine.getMessages();
+    // user prompt + assistant text response = 2
+    expect(messages.length).toBe(2);
+    expect(messages[0]?.role).toBe('user');
+    expect(messages[1]?.role).toBe('assistant');
+
+    const asst = messages[1]!;
+    const asstContent = asst.content as ReadonlyArray<{ type: string; text?: string }>;
+    expect(asstContent.length).toBe(1);
+    expect(asstContent[0]?.type).toBe('text');
+    expect(asstContent[0]?.text).toContain('Hello');
+  });
+
+  it('does NOT push assistant message when step ends with pending_action (resumeWithToolResult owns the push)', async () => {
+    const saveDeposit = buildTool({
+      name: 'save_deposit',
+      description: 'Save USDC into NAVI for yield.',
+      inputSchema: z.object({ amount: z.number(), asset: z.string().default('USDC') }),
+      jsonSchema: {
+        type: 'object',
+        properties: { amount: { type: 'number' }, asset: { type: 'string' } },
+        required: ['amount'],
+      },
+      flags: { mutating: true },
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => ({ data: { ok: true }, displayText: 'saved' }),
+    });
+
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [saveDeposit],
+      maxTurns: 1,
+    });
+
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: 'Saving 10 USDC.' },
+      { type: 'text-end', id: 't1' },
+      {
+        type: 'tool-call',
+        toolCallId: 'sv_1',
+        toolName: 'save_deposit',
+        input: JSON.stringify({ amount: 10, asset: 'USDC' }),
+      },
+      {
+        type: 'finish',
+        finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+        usage: {
+          inputTokens: { total: 60, noCache: 60, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 15, text: 15, reasoning: 0 },
+        },
+      },
+    ]);
+
+    const events = await collect(engine.submitMessage('Save 10 USDC'));
+
+    // pending_action MUST fire (sanity check the test scenario)
+    const pa = events.find((e) => e.type === 'pending_action');
+    expect(pa).toBeDefined();
+
+    // History should contain ONLY the user prompt — the assistant
+    // message + tool_use are deferred into action.assistantContent
+    // and only land in history when resumeWithToolResult is called.
+    // Day 13.7's stepHadApproval flag exists to enforce this and
+    // prevent the double-push that would otherwise corrupt history.
+    const messages = engine.getMessages();
+    expect(messages.length).toBe(1);
+    expect(messages[0]?.role).toBe('user');
+  });
+});

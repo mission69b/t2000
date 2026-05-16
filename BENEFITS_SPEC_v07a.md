@@ -925,6 +925,41 @@ Day 13.5's session dump showed the LLM emitted TWO duplicate `balance_check(inpu
 
 Test verify: 20/20 v2 tests pass (3 skipped real-API); 1366/1367 full engine suite passes (the 1 unrelated real-API multi-block-thinking flake stays).
 
+---
+
+**Day 13.7 — silent data-loss: assistant messages dropped on clean turns (2026-05-16 ~13:30 AEST):**
+
+Founder asked "is this the right approach or are we playing whack-a-mole?" after the Day 13.6 fix didn't address the visible "two BALANCE CHECK tiles" symptom they reported. Dumping session `s_1778900893492_12f0d4287565` revealed three things:
+
+1. **The two BALANCE CHECK tiles aren't an engine bug.** They're `prefetch_bal` (audric's session bootstrap prefetch in `engine-factory.ts:939`) + `auto_2_balance_check` (audric's intent-dispatcher pre-firing on intent-match in `intent-dispatcher.ts`) — both happening BEFORE the user even types "What's my balance?". The engine's Day 13.6 per-step dedup is correct and useful but the wrong layer for this symptom.
+
+2. **A much worse bug was hiding underneath: silent data loss on every clean (read-only) turn.** The dump showed messages `6` (user: "What's my balance?") and `13` (user: "What's the balance of funkii.sui") with NO assistant response between them or after them. The user SAW the LLM respond in-session via the live SSE stream, but the persisted session in Redis was missing every assistant turn that didn't trigger a `pending_action`. After page refresh, every read-only turn appeared empty.
+
+3. **Root cause** — `runStream` in `v2/engine.ts` accumulates `assistantBlocks` from the AI SDK stream but only pushes them to `this.messages` via `resumeWithToolResult` (line 408 — the confirm-tier write path). For a clean turn with no pending_action: the host's `engine.getMessages()` returns a copy of `this.messages` that NEVER got the assistant message appended. Audric's chat route persists this corrupted message ledger to Redis (`chat/route.ts:1121`). Confirm-tier writes worked by luck because the resume path does the push. Read-only turns, narration-only turns, and writes that auto-executed under the USD-aware resolver ALL silently dropped the assistant response.
+
+This bug had been actively corrupting every v2 session since 1.34.0 (Day 13.2). Earlier smoke missed it because:
+- Smoke tests were single-turn (no second LLM call to expose the corrupt history)
+- The in-session live SSE rendering masks the corruption (the host's local view of `messages` includes whatever the SSE stream forwarded)
+- Audric's intent-dispatcher pre-fires reads into history with its own synthetic tool_use + tool_result pairs, so the visible UI looks more populated than the LLM-driven history actually is
+
+**Fix (engine 1.34.7):** `runStream` now persists per-step assistant + tool_results to `this.messages` on every `finish-step` event. Three coordinated changes in `v2/engine.ts`:
+
+- `assistantBlocks` and `completedResults` changed from `const` to `let` so `start-step` can reset them between steps in a multi-step stream.
+- New `pushStepToHistory()` helper — pushes the assistant message (with `normalizeAssistantContentForAnthropic` applied) + a user message containing the matched `tool_result` blocks.
+- New `resetStepAccumulators()` helper — clears assistantBlocks, completedResults, currentText, stepHadApproval flag, and dedup maps.
+- New `stepHadApproval: boolean` flag — set to `true` when `tool-approval-request` fires. The subsequent `finish-step` skips the history push because the deferred assistant content goes into `action.assistantContent` instead (and `resumeWithToolResult` persists it).
+- `start-step` event now calls `resetStepAccumulators()` (replaces the dedup-only reset from 13.6 — it now also resets the assistant-message accumulators).
+- `finish-step` event now calls `pushStepToHistory()` when `!stepHadApproval` (mirrors legacy `engine.ts:2274` clean-turn behavior).
+
+**Regression tests added** (`v2/engine.test.ts` — Day 13.7 block, 3 new tests):
+- `'pushes assistant message + tool_result to history on a clean read-only turn'` — asserts `engine.getMessages()` after a single read-tool turn has length 3 (user prompt + assistant with text+tool_use + user with tool_result), all in correct order with correct content.
+- `'pushes assistant message on a text-only turn (no tools)'` — asserts text-only chitchat persists the assistant text response. Length 2 (user prompt + assistant text).
+- `'does NOT push assistant message when step ends with pending_action'` — pins the no-double-push invariant: confirm-tier write turns have length 1 (just the user prompt) until `resumeWithToolResult` pushes the deferred content.
+
+**Strategic implication:** Today's bug-fight (Days 13.0–13.7, six patch releases in ~26h) is whack-a-mole because the only way we discover engine bugs is founder-on-production smoke (Google OAuth blocks localhost, so the full sponsored-tx + resume path can't be fully exercised locally). Founder asked "are we playing whack-a-mole?" — answer: yes. We agreed to PAUSE rolling fixes after 13.7 ships and build a full-integration harness (mock auth + mock sponsored-tx + mock Sui RPC + diff legacy vs v2 EngineEvent streams + persisted session shape diff + render rehydration diff) before any further alpha-wallet expansion. The harness work is the next milestone after 1.34.7 lands.
+
+Test verify: 23/23 v2 tests pass (3 skipped real-API); 1369/1370 full engine suite passes (the same pre-existing real-API multi-block-thinking flake stays).
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

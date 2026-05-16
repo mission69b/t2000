@@ -544,8 +544,8 @@ export class AISDKEngine {
 
     const bridgeState = createBridgeState();
     const toolCallCache = new Map<string, { name: string; input: unknown }>();
-    const assistantBlocks: ContentBlock[] = [];
-    const completedResults: Array<{ toolUseId: string; content: string; isError: boolean }> = [];
+    let assistantBlocks: ContentBlock[] = [];
+    let completedResults: Array<{ toolUseId: string; content: string; isError: boolean }> = [];
     let currentText = '';
 
     const flushCurrentText = () => {
@@ -556,6 +556,71 @@ export class AISDKEngine {
     };
 
     let pendingApprovalToolCallId: string | null = null;
+
+    // [SPEC 37 v0.7a Phase 2 Day 13.7 / 2026-05-16] Per-step flag that
+    // suppresses the push-to-history at `finish-step` when the step
+    // ended with a tool-approval-request. Without this, the deferred
+    // assistant content would be persisted TWICE: once at finish-step
+    // (here) and again at resumeWithToolResult (via action.assistantContent).
+    let stepHadApproval = false;
+
+    /**
+     * [Day 13.7] Push the accumulated assistant message + tool_results
+     * from the current step into `this.messages`. Called on every
+     * `finish-step` event for clean steps (no pending approval). This
+     * was the bug behind the v1.34.0–1.34.6 silent data-loss for
+     * read-only turns: AI SDK runs the LLM, the engine streams events
+     * out to the host, but the host's `engine.getMessages()` round-trip
+     * returned a copy of `this.messages` that NEVER had the assistant
+     * message appended. Confirm-tier writes worked by luck because
+     * `resumeWithToolResult` does the push. Read-only turns and
+     * writes that auto-executed silently dropped the assistant
+     * response from session history → invisible until page refresh.
+     *
+     * The legacy QueryEngine pushes assistant messages in MANY places
+     * (engine.ts:2274 — clean turn with all auto-approved tools;
+     * engine.ts:1571, 1582 — early-results / aborted paths; etc.).
+     * Day 13.7 mirrors the clean-turn path; we don't yet need the
+     * aborted/early-results variants because v2's AI SDK runtime
+     * surfaces those as ordinary errors that don't pretend to commit
+     * an assistant turn.
+     */
+    const pushStepToHistory = () => {
+      flushCurrentText();
+      if (assistantBlocks.length === 0) return;
+      this.messages.push({
+        role: 'assistant',
+        content: normalizeAssistantContentForAnthropic(assistantBlocks),
+      });
+      if (completedResults.length > 0) {
+        this.messages.push({
+          role: 'user',
+          content: completedResults.map((r) => ({
+            type: 'tool_result' as const,
+            toolUseId: r.toolUseId,
+            content: r.content,
+            isError: r.isError,
+          })),
+        });
+      }
+    };
+
+    /**
+     * [Day 13.7] Reset per-step accumulators so a multi-step stream's
+     * second step starts with a clean slate. AI SDK fires
+     * `start-step` between steps; without this reset, step 2's
+     * assistant message would include step 1's text + tool_use
+     * blocks, leading to duplicate persistence + a corrupt history
+     * shape on `pending_action`.
+     */
+    const resetStepAccumulators = () => {
+      assistantBlocks = [];
+      completedResults = [];
+      currentText = '';
+      stepHadApproval = false;
+      dedupKeyToOriginalCallId.clear();
+      dedupedToolCallIds.clear();
+    };
 
     // [SPEC 37 v0.7a Phase 2 Day 13.6 / 2026-05-16] Per-step dedupe of
     // identical concurrent tool_use blocks. The LLM occasionally emits
@@ -631,10 +696,19 @@ export class AISDKEngine {
       // accumulators see every event (translate() may drop some).
       switch (event.type) {
         case 'start-step':
-          // Reset per-step dedup state — see the comment block at the
-          // dedup state declarations above for the full rationale.
-          dedupKeyToOriginalCallId.clear();
-          dedupedToolCallIds.clear();
+          // [Day 13.6 + 13.7] Reset per-step dedup state AND
+          // assistant-block accumulators. See the dedup state +
+          // pushStepToHistory comments above for the full rationale.
+          resetStepAccumulators();
+          break;
+        case 'finish-step':
+          // [Day 13.7] Persist the just-finished step's assistant
+          // content + tool_results into history. Skipped when the
+          // step ended with a tool-approval-request — that case
+          // captures the content into `action.assistantContent`
+          // and persists via resumeWithToolResult on the host
+          // round-trip.
+          if (!stepHadApproval) pushStepToHistory();
           break;
         case 'text-delta':
           currentText += event.text;
@@ -710,6 +784,11 @@ export class AISDKEngine {
           // verbatim) the validated shape is correct.
           flushCurrentText();
           pendingApprovalToolCallId = event.toolCall.toolCallId;
+          // [Day 13.7] Mark this step so the subsequent finish-step
+          // doesn't push the deferred assistant content into history
+          // (that's resumeWithToolResult's job — it gets the write
+          // tool's result to pair with the deferred tool_use).
+          stepHadApproval = true;
           break;
         default:
           break;
