@@ -888,7 +888,42 @@ Test verify: 10/10 in the address-scope file pass; 1363/1364 in the full engine 
 1. Compound prompt within a single submitMessage (Day 13.4 — text-between-tool_uses).
 2. Sequential writes across multiple submitMessages within the same session, where prior writes named recipient addresses (Day 13.5 — multi-turn address-scope window).
 
-**Adjacent issue not fixed (LLM noise, lower priority):** The session dump also shows the LLM emitted TWO duplicate `balance_check` calls with identical `input: {}` in the same step (alongside save_deposit). Pure LLM noise under thinking mode + parallel tool calling — not a correctness bug. Mitigations to consider in a later release: (a) tool-description hint that `balance_check` is idempotent within a turn, (b) engine-side dedupe of identical concurrent tool calls in the same step. Defer until next user-visible noise complaint.
+**Adjacent issue not fixed (LLM noise, lower priority):** The session dump also shows the LLM emitted TWO duplicate `balance_check` calls with identical `input: {}` in the same step (alongside save_deposit). Pure LLM noise under thinking mode + parallel tool calling — not a correctness bug. Mitigations to consider in a later release: (a) tool-description hint that `balance_check` is idempotent within a turn, (b) engine-side dedupe of identical concurrent tool calls in the same step. Defer until next user-visible noise complaint. **[Update 2026-05-16 ~12:55 AEST: shipped in 13.6, see below.]**
+
+---
+
+**Day 13.6 — per-step dedupe of identical concurrent tool_use blocks (2026-05-16 ~13:00 AEST):**
+
+Day 13.5's session dump showed the LLM emitted TWO duplicate `balance_check(input:{})` tool_use blocks alongside the `save_deposit` in the same assistant message. Even after the 13.5 fix made the guard pass, two GREEN `BALANCE CHECK` tiles would still render side-by-side — UI noise the user would notice. (The user had already noticed it as RED tiles pre-13.5, so the noise is real and worth eliminating.)
+
+**Implementation (engine 1.34.6):** Engine-side stream-event filter inside `AISDKEngine.runStream`. Maintains two per-step accumulators reset on every `start-step` event from `streamText().fullStream`:
+
+- `dedupKeyToOriginalCallId: Map<string, string>` — stable-stringified `${toolName}::${JSON.stringify(input)}` → first toolCallId that emitted that key.
+- `dedupedToolCallIds: Set<string>` — toolCallIds that were duplicates (so their matching `tool-result` / `tool-error` events also get dropped).
+
+**Dedupe gates (deliberately conservative):**
+1. **Tool eligibility:** only `isReadOnly && isConcurrencySafe` tools. Writes might legitimately repeat (user wants to send twice); silently dropping would mask intent. Strict criterion matches the legacy `EarlyToolDispatcher`'s "safe to parallelize" rule.
+2. **Per-step scope:** `start-step` resets the maps. A `balance_check` repeated in a later step (e.g. after a write) is NOT deduped — fresh read is the user's intent.
+3. **Stable-stringify keys:** `{a:1,b:2}` and `{b:2,a:1}` collide. Sorted-key implementation, faster than deep-equal hash for typical tool inputs.
+
+**What gets dropped for a duplicate:**
+- The duplicate `tool-call` event is NOT forwarded to the bridge → no second `tool_start` legacy EngineEvent → no second UI tile.
+- The duplicate is NOT pushed into `assistantBlocks` → the deferred assistant message replayed on resume contains only one `tool_use` per logical operation (also satisfies the Anthropic strict-format rule we fixed in 13.4 by the simpler path of not generating a duplicate at all).
+- The matching `tool-result` / `tool-error` event is NOT forwarded to the bridge.
+- The matching tool result is NOT pushed into `completedResults` → the resume turn's user message stays consistent with the assistant message's tool_use count.
+
+**What is NOT prevented (deferred optimisation):** AI SDK still calls the wrapper's `execute()` for the duplicate — guards run twice, tool.call runs twice. A future optimisation can add a per-step Promise cache in the wrapper to skip duplicate work; today we accept the small cost since duplicates are rare and the user-facing fix is the bridge filter.
+
+**Regression tests added** (`v2/engine.test.ts` — Day 13.6 block, 3 new tests):
+- `'drops duplicate concurrent tool_use blocks for read+safe tools (UI dedupe)'` — feeds two duplicate `balance_check(input:{})` chunks into the stub provider stream. Asserts only ONE `tool_start` and ONE `tool_result` flow through the EngineEvent stream, and that the FIRST tool_use's id wins (`bc_1`, not `bc_2`).
+- `'does NOT dedupe non-identical inputs (different addresses are independent reads)'` — sanity check the dedupe doesn't accidentally collapse legitimate parallel reads (`balance_check(self)` + `balance_check(other)`). Asserts both survive.
+- `'does NOT dedupe tools that are isReadOnly but NOT isConcurrencySafe'` — pins the conservative gate. A tool flagged as read-only but not parallelism-safe gets BOTH duplicates through. Defensive default; tools opt INTO dedupe by setting `isConcurrencySafe=true`.
+
+**Test infrastructure note:** All three tests required `maxTurns: 1` in the test engine config because the default `maxTurns: 2` lets AI SDK do a follow-up LLM round to incorporate tool results. Since `withStubbedModel` returns the same response on every call, the second round re-emits all the same tool_call chunks and double-counts tool_starts. Production use is unaffected (real LLMs emit different chunks on the follow-up turn).
+
+**Day 13.4 test fixture impact:** The `'rearranges interleaved text + tool_use blocks…'` test in the Day 13.4 block previously fed two duplicate `balance_check(input:{})` calls; updated to use distinct inputs (`{}` and `{address: '0xother'}`) so the dedupe doesn't collapse them. The test's assertions are unchanged — it pins text-then-tool_use ordering, not dedupe semantics.
+
+Test verify: 20/20 v2 tests pass (3 skipped real-API); 1366/1367 full engine suite passes (the 1 unrelated real-API multi-block-thinking flake stays).
 
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 

@@ -557,14 +557,105 @@ export class AISDKEngine {
 
     let pendingApprovalToolCallId: string | null = null;
 
+    // [SPEC 37 v0.7a Phase 2 Day 13.6 / 2026-05-16] Per-step dedupe of
+    // identical concurrent tool_use blocks. The LLM occasionally emits
+    // duplicate parallel tool calls (e.g. `balance_check(input:{})` ×2
+    // alongside a `save_deposit`) under thinking-mode + parallel
+    // tool-calling. Production smoke (sessions s_1778897667420…)
+    // showed this surfacing as two RED `BALANCE CHECK` tiles next to
+    // a single SAVE result.
+    //
+    // Dedupe rules (deliberately conservative):
+    //   - ONLY for tools where `isReadOnly && isConcurrencySafe`. Writes
+    //     might legitimately repeat (e.g. user wants to send twice);
+    //     deduping them would silently drop a real intent. The strict
+    //     read-and-safe gate matches the legacy EarlyToolDispatcher's
+    //     "safe to parallelize" criterion.
+    //   - PER-STEP, not per-stream. AI SDK v6 emits `start-step` /
+    //     `finish-step` around each LLM iteration; we reset both maps
+    //     at the start of each step. This way: balance_check called
+    //     in step 1 → balance_check called again in step 2 (e.g.
+    //     after a write) is NOT deduped — a fresh read is the user's
+    //     intent.
+    //   - Dedup key = `${toolName}::${stableJsonStringify(input)}`.
+    //     Stable stringify so `{a:1,b:2}` and `{b:2,a:1}` collide.
+    //
+    // What gets dropped for duplicates:
+    //   - The duplicate `tool-call` event is NOT forwarded to the
+    //     bridge → no second `tool_start` EngineEvent → no second UI
+    //     tile.
+    //   - The duplicate is NOT pushed into `assistantBlocks` → the
+    //     deferred assistant message replayed on resume contains only
+    //     one `tool_use` per logical operation (also satisfies the
+    //     Anthropic strict-format rule we fixed in 13.4 by the
+    //     simpler path of not generating a duplicate at all).
+    //   - The matching `tool-result` / `tool-error` event is NOT
+    //     forwarded to the bridge → no second `tool_result` EngineEvent.
+    //   - The matching tool result is NOT pushed into
+    //     `completedResults` → the resume turn's user message stays
+    //     consistent with the assistant message's tool_use count.
+    //
+    // What is NOT prevented:
+    //   - AI SDK still calls the wrapper's `execute()` for the
+    //     duplicate — the wrapper runs the guard pipeline + tool.call
+    //     for both. A future optimisation (Day 13.7+) can add a
+    //     per-step Promise cache in the wrapper to skip the duplicate
+    //     work; today we accept the small cost since duplicates are
+    //     rare and the user-facing fix is the bridge filter above.
+    const dedupKeyToOriginalCallId = new Map<string, string>();
+    const dedupedToolCallIds = new Set<string>();
+
+    /**
+     * Deterministic JSON stringify with sorted keys. Two inputs with
+     * the same keys+values produce the same string regardless of key
+     * order or insertion order. Cheaper than a deep-equal hash for
+     * typical tool inputs (small flat objects).
+     */
+    const stableStringify = (v: unknown): string => {
+      if (v === null || typeof v !== 'object') return JSON.stringify(v);
+      if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`;
+      const keys = Object.keys(v as Record<string, unknown>).sort();
+      return `{${keys
+        .map((k) => `${JSON.stringify(k)}:${stableStringify((v as Record<string, unknown>)[k])}`)
+        .join(',')}}`;
+    };
+
+    /** Look up the legacy tool to check isReadOnly + isConcurrencySafe. */
+    const isSafeToDedupTool = (name: string): boolean => {
+      const t = findTool(this.config.tools ?? [], name);
+      return !!(t?.isReadOnly && t?.isConcurrencySafe);
+    };
+
     for await (const event of stream.fullStream) {
       // State tracking — done BEFORE translation so the per-event
       // accumulators see every event (translate() may drop some).
       switch (event.type) {
+        case 'start-step':
+          // Reset per-step dedup state — see the comment block at the
+          // dedup state declarations above for the full rationale.
+          dedupKeyToOriginalCallId.clear();
+          dedupedToolCallIds.clear();
+          break;
         case 'text-delta':
           currentText += event.text;
           break;
         case 'tool-call': {
+          // Dedup check: skip duplicate concurrent tool_uses for
+          // read-and-safe tools. See the comment block above for the
+          // full rationale + criteria.
+          if (isSafeToDedupTool(event.toolName)) {
+            const key = `${event.toolName}::${stableStringify(event.input)}`;
+            const existing = dedupKeyToOriginalCallId.get(key);
+            if (existing) {
+              // Mark this toolCallId as deduped so the matching
+              // tool-result/tool-error event below is also dropped.
+              // Crucially: do NOT push to assistantBlocks, do NOT
+              // forward to bridge — `continue` the outer loop.
+              dedupedToolCallIds.add(event.toolCallId);
+              continue;
+            }
+            dedupKeyToOriginalCallId.set(key, event.toolCallId);
+          }
           flushCurrentText();
           toolCallCache.set(event.toolCallId, {
             name: event.toolName,
@@ -579,6 +670,10 @@ export class AISDKEngine {
           break;
         }
         case 'tool-result': {
+          // Dedup gate: drop the result event for any deduped
+          // toolCallId. Skip both the completedResults push AND the
+          // bridge forward by continuing the outer loop.
+          if (dedupedToolCallIds.has(event.toolCallId)) continue;
           // Auto-approved reads complete with a tool-result event in
           // the same step. Capture into completedResults so a later
           // pending_action in this step can replay the read's
@@ -591,6 +686,7 @@ export class AISDKEngine {
           break;
         }
         case 'tool-error': {
+          if (dedupedToolCallIds.has(event.toolCallId)) continue;
           // Read tool error in the same step — still need a tool_result
           // for resume's history-replay invariant.
           completedResults.push({

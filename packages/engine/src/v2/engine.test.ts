@@ -805,6 +805,10 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
       { type: 'text-start', id: 't1' },
       { type: 'text-delta', id: 't1', delta: 'Let me check your balances first.' },
       { type: 'text-end', id: 't1' },
+      // [Day 13.6 update] Use DISTINCT inputs for the two reads so the
+      // Day 13.6 dedupe filter doesn't collapse them. The Day 13.4
+      // test fixture's job is to verify text-then-tool_use ordering;
+      // the dedupe semantics get their own test block below.
       {
         type: 'tool-call',
         toolCallId: 'toolu_bc1',
@@ -815,7 +819,7 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
         type: 'tool-call',
         toolCallId: 'toolu_bc2',
         toolName: 'balance_check',
-        input: '{}',
+        input: JSON.stringify({ address: '0xother' }),
       },
       { type: 'text-start', id: 't2' },
       { type: 'text-delta', id: 't2', delta: 'Now sending the transfer.' },
@@ -909,5 +913,194 @@ describe('AISDKEngine — Day 13.4 regression: text-between-tool_uses normalisat
     expect(content.length).toBe(2);
     expect(content[0]?.type).toBe('text');
     expect(content[1]?.type).toBe('tool_use');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Day 13.6 regression — per-step dedupe of duplicate concurrent tool_uses
+// ---------------------------------------------------------------------------
+//
+// SPEC 37 v0.7a Phase 2 Day 13.6 / 2026-05-16 production smoke surfaced
+// LLM noise: the model emitted TWO duplicate `balance_check(input:{})`
+// tool_uses alongside a `save_deposit` in the same assistant message.
+// Both balance_checks ran the guard pipeline, both got blocked
+// (separate but related Day 13.5 bug), and the audric UI rendered two
+// RED `BALANCE CHECK` tiles next to the SAVE result.
+//
+// The dedupe runs at the AI SDK stream-event level inside runStream:
+//   - `tool-call` events for read-and-safe tools whose
+//     (toolName, stableStringify(input)) key was already seen this
+//     step are filtered out: not forwarded to bridge → no UI tile,
+//     not pushed to assistantBlocks → clean replay history.
+//   - The matching `tool-result` / `tool-error` events for those
+//     toolCallIds are also filtered out: not forwarded to bridge,
+//     not pushed to completedResults.
+//   - Reset on `start-step` so dedupe is per-LLM-iteration; a
+//     balance_check repeated in a later step is NOT deduped (fresh
+//     read is the user's intent after a write).
+//   - Only `isReadOnly && isConcurrencySafe` tools are eligible —
+//     writes might legitimately repeat and silently dropping them
+//     would mask real intent.
+// ---------------------------------------------------------------------------
+describe('AISDKEngine — Day 13.6 regression: per-step duplicate-tool dedupe', () => {
+  function makeReadTool(name: string): LegacyTool {
+    return buildTool({
+      name,
+      description: `${name} read tool`,
+      inputSchema: z.object({}).passthrough(),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: { mutating: false },
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: true,
+      call: async () => ({ data: { stub: name }, displayText: `${name} ok` }),
+    });
+  }
+
+  function makeUnsafeReadTool(name: string): LegacyTool {
+    // isReadOnly=true but isConcurrencySafe=false → MUST NOT be deduped.
+    // Pins the conservative gate: if a read tool isn't explicitly
+    // marked safe to parallelize, we don't second-guess the LLM's
+    // intent to call it twice.
+    return buildTool({
+      name,
+      description: `${name} unsafe read tool`,
+      inputSchema: z.object({}).passthrough(),
+      jsonSchema: { type: 'object', properties: {} },
+      flags: { mutating: false },
+      permissionLevel: 'auto',
+      isReadOnly: true,
+      isConcurrencySafe: false,
+      call: async () => ({ data: { stub: name }, displayText: `${name} ok` }),
+    });
+  }
+
+  it('drops duplicate concurrent tool_use blocks for read+safe tools (UI dedupe)', async () => {
+    const balanceCheck = makeReadTool('balance_check');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [balanceCheck],
+      // Force exactly 1 LLM round — without this, AI SDK runs a
+      // follow-up turn after tool execution, the stub returns the
+      // same chunks again, and we double-count every tool_start.
+      maxTurns: 1,
+    });
+
+    // Provider stream emits two duplicate tool-call events with
+    // identical empty input. AI SDK invokes the wrapper for both;
+    // the wrapper returns the same result both times. AI SDK then
+    // emits two tool-result events on the fullStream — and our
+    // dedupe filter drops the second one.
+    //
+    // (start-step / finish-step / tool-result chunks are NOT valid
+    // provider stream parts; AI SDK adds those to fullStream itself.
+    // Including them in withStubbedModel's chunks throws "Unhandled
+    // chunk type: start-step" from run-tools-transformation.)
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 't1' },
+      { type: 'text-delta', id: 't1', delta: 'Checking balance.' },
+      { type: 'text-end', id: 't1' },
+      { type: 'tool-call', toolCallId: 'bc_1', toolName: 'balance_check', input: '{}' },
+      { type: 'tool-call', toolCallId: 'bc_2', toolName: 'balance_check', input: '{}' },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: 'end_turn' },
+        usage: {
+          inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 10, text: 10, reasoning: 0 },
+        },
+      },
+    ]);
+
+    const events = await collect(engine.submitMessage('What is my balance?'));
+
+    // EngineEvent stream: ONE tool_start + ONE tool_result for
+    // balance_check, NOT two of each. Confirms the bridge-forward
+    // dedupe filtered the duplicate stream events.
+    const toolStarts = events.filter(
+      (e) => e.type === 'tool_start' && (e as { toolName?: string }).toolName === 'balance_check',
+    );
+    const toolResults = events.filter(
+      (e) => e.type === 'tool_result' && (e as { toolName?: string }).toolName === 'balance_check',
+    );
+    expect(toolStarts.length).toBe(1);
+    expect(toolResults.length).toBe(1);
+
+    // First tool_use's id wins (bc_1, not bc_2).
+    if (toolStarts[0]?.type === 'tool_start') {
+      expect((toolStarts[0] as { toolUseId?: string }).toolUseId).toBe('bc_1');
+    }
+  });
+
+  it('does NOT dedupe non-identical inputs (different addresses are independent reads)', async () => {
+    const balanceCheck = makeReadTool('balance_check');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [balanceCheck],
+      maxTurns: 1,
+    });
+
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'tool-call', toolCallId: 'bc_self', toolName: 'balance_check', input: '{}' },
+      {
+        type: 'tool-call',
+        toolCallId: 'bc_other',
+        toolName: 'balance_check',
+        input: JSON.stringify({ address: '0xabc' }),
+      },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: 'end_turn' },
+        usage: {
+          inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 10, text: 10, reasoning: 0 },
+        },
+      },
+    ]);
+
+    const events = await collect(engine.submitMessage('Check both wallets'));
+
+    const toolStarts = events.filter(
+      (e) => e.type === 'tool_start' && (e as { toolName?: string }).toolName === 'balance_check',
+    );
+    expect(toolStarts.length).toBe(2);
+  });
+
+  it('does NOT dedupe tools that are isReadOnly but NOT isConcurrencySafe', async () => {
+    const unsafeRead = makeUnsafeReadTool('unsafe_read');
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [unsafeRead],
+      maxTurns: 1,
+    });
+
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'r', timestamp: new Date(), modelId: 'stub' },
+      { type: 'tool-call', toolCallId: 'u_1', toolName: 'unsafe_read', input: '{}' },
+      { type: 'tool-call', toolCallId: 'u_2', toolName: 'unsafe_read', input: '{}' },
+      {
+        type: 'finish',
+        finishReason: { unified: 'stop', raw: 'end_turn' },
+        usage: {
+          inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 10, text: 10, reasoning: 0 },
+        },
+      },
+    ]);
+
+    const events = await collect(engine.submitMessage('Run twice'));
+
+    const toolStarts = events.filter(
+      (e) => e.type === 'tool_start' && (e as { toolName?: string }).toolName === 'unsafe_read',
+    );
+    // Both tool_uses survive — unsafe-to-parallelize tools opt out
+    // of dedupe. Defensive default; a tool can opt IN by setting
+    // isConcurrencySafe=true in its build definition.
+    expect(toolStarts.length).toBe(2);
   });
 });
