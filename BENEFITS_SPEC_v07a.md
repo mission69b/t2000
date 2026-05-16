@@ -1070,6 +1070,18 @@ After founder confirmed 1.34.10 production smoke ("Ok awesome here is the output
 
 **Cross-references:** Engine commit `55356eed` (npm v1.34.11). Audric commit `170d09b`. Founder smoke pending production deploy.
 
+**Day 14b polish iteration — production-smoke surfaced 3 issues (2026-05-16 ~16:30 AEST):**
+
+Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Vercel — production was serving HealthCard V1 the entire time, so all the Day 14b work was invisible. Founder enabled the flag in Vercel dashboard; empty commit `72e3386` (audric) triggered the rebuild that picked up the new `NEXT_PUBLIC_*` value (Next.js inlines these at build time). With V2 active in production, two visual issues emerged:
+
+1. **Duplicate "Health factor" label** — CardShell rendered `title="Health factor"` AND HFGauge's internal label said `Health factor`. Visual stutter. Fix: drop the CardShell title via `noHeader`. `noHeader` also drops the badge slot (per `primitives.tsx` JSDoc), so the watched-address badge is now rendered inline above the gauge for symmetric layout. CardShell's `title: string` is required even with `noHeader: true` (CI typecheck caught the first attempt where I'd omitted it — audric commit `aa21d76` corrected to `title="Health factor" noHeader`).
+
+2. **Dust positions cluttering per-asset rows** — sub-cent positions ($0.001 USDe, $0.001 SUI in collateral; $0.001 USDsui + $0.001 USDC in debt leftover from prior repays) rendered as `$0.00` rows beneath the aggregate. Aggregate `supplied` / `borrowed` totals already collapse them to `$0.00`, and the existing `DEBT_DUST_USD = 0.01` constant treats sub-cent as no-debt for the HF calc — the per-asset arrays now apply the same filter for consistency. Engine fix at both code paths: `transformHealthFactor` in `navi/transforms.ts` (NAVI MCP) + `tools/health.ts` positionFetcher branch. 3 new tests cover the filter (drops dust, dust-only side emits empty array, threshold boundary `$0.01` included).
+
+3. **V2 flag rollout** — promoted `NEXT_PUBLIC_HEALTH_CARD_V2=1` to Vercel production. Three sibling V2 flags remain off in Vercel (`BALANCE_CARD_V2`, `SWAP_QUOTE_CARD_V2`, `PENDING_REWARDS_CARD_V2`) — they're enabled locally in `.env.local` but founder elected to roll them out one at a time as their respective surfaces are exercised.
+
+**Released as `@t2000/engine@1.34.12`** (engine commit `b52c55fe`). Audric bumped to 1.34.12 in commit `7731429`; the CardShell typecheck regression fix landed in `aa21d76`. Final production smoke (chat URL `s_1778913761389_6097ae0db79d`) confirms: clean single "Health factor" label, `USDsui $9.18` + `USDC $13.49` per-asset rows visible, no dust rows on either side, post-refresh persistence holds.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
