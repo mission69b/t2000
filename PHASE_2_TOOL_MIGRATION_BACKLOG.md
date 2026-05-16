@@ -155,11 +155,22 @@ The first session of Batch A produces:
 | Batch | Started | Closed | Engine version |
 |---|---|---|---|
 | **A — simple reads (10/10 CLOSED)** | 2026-05-16 | 2026-05-16 | 1.35.0 → 1.35.1 |
-| **B — simple writes (7/7 CLOSED)** | 2026-05-17 | 2026-05-17 | 1.36.0 |
-| C — medium reads | — | — | — |
-| D — medium writes | — | — | — |
-| E — complex reads | — | — | — |
-| F — complex writes | — | — | — |
+| **B — simple writes (9/9 CLOSED)** | 2026-05-17 | 2026-05-17 | 1.36.0 → 1.36.2 |
+| C — medium reads (0/9 remaining — 4 medium reads were pulled into Batch A) | — | — | — |
+| D — medium writes (2/3 already done as part of Batch B — only `pay_api` remaining) | — | — | — |
+| E — complex reads (1/4 already done as part of Batch A — `balance_check`; `portfolio_analysis`/`render_canvas`/`transaction_history` remaining) | — | — | — |
+| F — complex writes (0/2 remaining — `harvest_rewards`, `swap_execute`) | — | — | — |
+
+**Empirical batch-boundary drift (2026-05-17, end of Day 19):** The original batch ordering in this doc was a planning artifact. Actual migration in Days 17-19 cherry-picked tools based on which were easiest at the moment, not strictly by batch number. The audit is now:
+
+- **Batch A (Days 17-18, engine 1.35.0-1.35.1):** 10 tools — 5 simple reads (web_search/yield_summary/volo_stats/protocol_deep_dive/token_prices) + 4 medium reads (savings_info/health_check/rates_info/mpp_services) + 1 complex read (balance_check). Empirical learning: complexity classification is mostly about tool BODY complexity (multi-source fan-out, caching layers, large display builders), not migration complexity. defineTool migration is uniformly mechanical regardless of body complexity.
+- **Batch B (Days 19, engine 1.36.0-1.36.2):** 9 tools — 7 originally-Batch-B simple writes (save_contact/claim_rewards*/save_deposit/borrow/repay_debt/withdraw/send_transfer*) + 2 missed Batch B tools migrated as 1.36.2 patch (volo_stake/volo_unstake). *claim_rewards + send_transfer are classified medium-writes (originally Batch D) but were folded into Batch B because they shared the simple-write migration shape — see Day 19 entry in `BENEFITS_SPEC_v07a.md`.
+- **Batch C (next session):** 9 tools remaining — activity_summary, add_recipient (opt-in), create_invoice, create_payment_link, explain_tx, pending_rewards, spending_analytics, swap_quote, update_todo (opt-in).
+- **Batch D (after C):** 1 tool remaining — pay_api.
+- **Batch E (after D):** 3 tools remaining — portfolio_analysis, render_canvas, transaction_history.
+- **Batch F (last):** 2 tools — harvest_rewards, swap_execute.
+
+**Running total: 19/39 (49%) on defineTool. 20 tools remaining across 4 future batches.**
 
 ### Batch A — CLOSED (2026-05-16, two sessions)
 
