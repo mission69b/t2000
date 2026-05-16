@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ALL_NAVI_ASSETS, SUPPORTED_ASSETS, normalizeAsset, type SupportedAsset } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 
 /**
@@ -18,7 +18,7 @@ import { requireAgent } from './utils.js';
  */
 const ASSET_LIST = ALL_NAVI_ASSETS.map((a) => String(a)).join(', ');
 
-export const sendTransferTool = buildTool({
+export const sendTransferTool = defineTool({
   name: 'send_transfer',
   description:
     `Send ANY supported token (${ASSET_LIST}) to another Sui address or contact name. Validates the address, checks balance, and executes the on-chain transfer. ` +
@@ -27,33 +27,24 @@ export const sendTransferTool = buildTool({
     `Returns tx hash, gas cost, and updated balance. ` +
     `Payment Intent: composable — when paired with another composable write in the same request (e.g. "swap to USDC and send to Mom", "withdraw and send"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.`,
   inputSchema: z.object({
-    to: z.string().min(1),
-    amount: z.number().positive(),
-    asset: z.string().optional(),
-    memo: z.string().optional(),
+    to: z.string().min(1).describe('Sui address (0x…) or saved contact name'),
+    amount: z
+      .number()
+      .positive()
+      .describe(
+        'Amount of the asset to send (denominated in the asset\u2019s own units, NOT USD). For USDC this is the USDC count; for SUI this is the SUI count.',
+      ),
+    asset: z
+      .string()
+      .optional()
+      .describe(
+        `Token symbol to send. One of: ${ASSET_LIST}. Defaults to USDC if omitted. REQUIRED whenever the user names a non-USDC token or you are forwarding the proceeds of a swap.`,
+      ),
+    memo: z
+      .string()
+      .optional()
+      .describe('Optional note attached to the transfer (shown in transaction receipt)'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      to: {
-        type: 'string',
-        description: 'Sui address (0x…) or saved contact name',
-      },
-      amount: {
-        type: 'number',
-        description: 'Amount of the asset to send (denominated in the asset\u2019s own units, NOT USD). For USDC this is the USDC count; for SUI this is the SUI count.',
-      },
-      asset: {
-        type: 'string',
-        description: `Token symbol to send. One of: ${ASSET_LIST}. Defaults to USDC if omitted. REQUIRED whenever the user names a non-USDC token or you are forwarding the proceeds of a swap.`,
-      },
-      memo: {
-        type: 'string',
-        description: 'Optional note attached to the transfer (shown in transaction receipt)',
-      },
-    },
-    required: ['to', 'amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, requiresBalance: true, irreversible: true },

@@ -155,7 +155,7 @@ The first session of Batch A produces:
 | Batch | Started | Closed | Engine version |
 |---|---|---|---|
 | **A — simple reads (10/10 CLOSED)** | 2026-05-16 | 2026-05-16 | 1.35.0 → 1.35.1 |
-| B — simple writes | — | — | — |
+| **B — simple writes (7/7 CLOSED)** | 2026-05-17 | 2026-05-17 | 1.36.0 |
 | C — medium reads | — | — | — |
 | D — medium writes | — | — | — |
 | E — complex reads | — | — | — |
@@ -173,3 +173,23 @@ The first session of Batch A produces:
 - The `defineTool` template handles every `buildTool` option that Batch A exercised: `cacheable: false`, `maxResultSizeChars`, optional Zod fields, array/enum Zod fields, optional address strings, multi-property objects.
 - `preflight` was NOT exercised in Batch A (no simple-read tool has preflight). Batch B (writes) is the first batch that tests preflight pass-through.
 - `isReadOnly: false` was NOT exercised. Batch B is the first batch where the default `isReadOnly` path matters (`buildTool` defaults `isReadOnly: true` ⇒ `permissionLevel: 'auto'`; writes need `isReadOnly: false` ⇒ `permissionLevel: 'confirm'`).
+
+### Batch B — CLOSED (2026-05-17, single session)
+
+**Tools migrated (in three sub-waves, ascending preflight complexity):**
+
+- **Wave 1 (lowest risk):** `save_contact`, `claim_rewards`. `save_contact` has rich preflight (name length + Sui address regex); `claim_rewards` has empty input + structural-only preflight.
+- **Wave 2 (canonical writes):** `save_deposit`, `borrow`, `repay_debt`. All three share an asset-enum preflight pattern (`USDC | USDsui`); all three call `agent.{save|borrow|repay}` via the sponsored-tx path.
+- **Wave 3 (complex preflight):** `withdraw`, `send_transfer`. `withdraw` has amount-bound + asset-restriction preflight; `send_transfer` has the most complex preflight in the engine (address-format check, zero-address burn guard, multi-token asset normalization via `normalizeAsset`).
+
+**Total Batch B:** 7/7 tools migrated. **-69 net LoC** (112 deletions, 43 insertions) — bigger reduction than Batch A's ~-50 LoC because write tools had more hand-written `jsonSchema` per file (enum + amount + asset + memo + to). All 9 `define-tool.test.ts` parity tests pass; full engine suite green (1422 / 1429, 7 env-skipped; one real-Anthropic-API test failed transiently with `"rejected by Anthropic"` — same flaky test that failed on Day 18, not caused by migration).
+
+**Empirical findings to carry into Batch C:**
+- **`preflight` passes through unchanged.** All 7 Batch B tools have non-trivial preflight (asset-enum checks, amount bounds, address regex, zero-address guard, asset-symbol normalization). `defineTool` preserves the preflight callback verbatim — verified by the dedicated `preserves preflight` parity test + zero behavioral changes across the 7 tools.
+- **`isReadOnly: false` works identically.** `defineTool` doesn't override the `permissionLevel` default — `confirm` is correctly applied to all 7 Batch B tools, same as `buildTool` did.
+- **`flags: { mutating, requiresBalance, affectsHealth, irreversible }` passes through unchanged.** All Batch B tools set at least one flag; the returned `Tool.flags` matches the original. Confirmed via `git diff` — no flags lost in the migration.
+- **Auto-generated JSON schemas are stricter than hand-written ones (in a good way).** Where `buildTool` hand-written schemas often omitted `type: 'number'` on amount fields, the Zod schema's `.number().positive()` auto-generates `{ type: 'number', exclusiveMinimum: 0 }`. Anthropic accepts both `exclusiveMinimum` and `minLength` (JSON Schema draft-7 standard) — no LLM-side regression, just tighter validation surface.
+- **Field-level descriptions must move from `jsonSchema` into Zod `.describe()`.** A handful of tools (`save_deposit`, `repay_debt`, `withdraw`, `send_transfer`) had richer field-level descriptions in their hand-written `jsonSchema` than in their Zod `.describe()` calls. Migration lifted those into Zod (Zod is now the single source of truth) — verified by inspecting the post-migration `tool.jsonSchema` output, all descriptions preserved.
+- **`assertAllowedAsset` SDK call runs identically.** No engine-side change needed for the `assertAllowedAsset('save', input.asset)` / `assertAllowedAsset('borrow', input.asset)` pattern that gates the `OPERATION_ASSETS` allow-list.
+
+**Pattern locked for Batches C → F:** `import { defineTool } from '../v2/define-tool.js'`; swap `buildTool({...})` → `defineTool({...})`; drop the hand-written `jsonSchema` block; move any hand-written field descriptions into the Zod schema via `.describe()`. Everything else (preflight, permissionLevel, flags, isReadOnly, cacheable, maxResultSizeChars, summarizeOnTruncate, call body) passes through unchanged.

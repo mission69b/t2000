@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 
-export const withdrawTool = buildTool({
+export const withdrawTool = defineTool({
   name: 'withdraw',
   description:
     'Withdraw USDC or USDsui from NAVI lending back to wallet. Defaults to USDC. ' +
@@ -11,22 +11,14 @@ export const withdrawTool = buildTool({
     'For non-canonical positions, direct the user to NAVI\'s app (https://app.naviprotocol.io) — Audric will not withdraw them. ' +
     'Payment Intent: composable — when paired with another composable write in the same request (e.g. "withdraw and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
-    amount: z.number().positive(),
-    asset: z.string().optional().describe('Asset to withdraw — must be USDC (default) or USDsui. Other assets surfaced in savings_info are read-only via Audric.'),
+    amount: z.number().positive().describe('Exact amount to withdraw in token units'),
+    asset: z
+      .string()
+      .optional()
+      .describe(
+        'Asset to withdraw — USDC (default) or USDsui only. Other assets surfaced in savings_info are read-only via Audric; direct the user to https://app.naviprotocol.io for those.',
+      ),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      amount: {
-        description: 'Exact amount to withdraw in token units',
-      },
-      asset: {
-        type: 'string',
-        description: 'Asset to withdraw — USDC (default) or USDsui only. Other assets surfaced in savings_info are read-only via Audric; direct the user to https://app.naviprotocol.io for those.',
-      },
-    },
-    required: ['amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, affectsHealth: true },

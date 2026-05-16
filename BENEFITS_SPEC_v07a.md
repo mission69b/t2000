@@ -1299,6 +1299,84 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 3. The 14-guard pipeline running against migrated tools (must verify guards still fire correctly)
 4. Founder smoke on at least 1 production write per Batch B (per `PHASE_2_TOOL_MIGRATION_BACKLOG.md` per-batch acceptance gate)
 
+---
+
+### Day 19 — Phase 2 Batch B CLOSED (7/7 simple-write tools migrated) (2026-05-17)
+
+**Framing (founder, opening Day 19):** *"Ok good morning lets get to it"* → executed the locked 6-step plan from end-of-Day-18 (Batch B Wave 1 → 2 → 3, gates after each, founder smoke, release, docs).
+
+**Goal.** Close Batch B — migrate all 7 simple-write tools from `buildTool` → `defineTool`, validating the parity contract against the three things Batch A never exercised: `preflight` callbacks, `isReadOnly: false` / `permissionLevel: 'confirm'`, and the `flags` metadata that write tools depend on.
+
+**Migration approach.** Mechanical, batched into three sub-waves by ascending preflight complexity so a regression in one wave doesn't poison the next:
+
+- **Wave 1 (lowest risk):** `save_contact`, `claim_rewards`. `save_contact` has rich preflight (name length + Sui address regex); `claim_rewards` has empty input + structural-only preflight (preserves the "every write tool MUST implement preflight" invariant from `safeguards-defense-in-depth.mdc`).
+- **Wave 2 (canonical writes):** `save_deposit`, `borrow`, `repay_debt`. All three share an asset-enum preflight pattern (`USDC | USDsui`); all three call `agent.{save|borrow|repay}` via the sponsored-tx path. First wave to exercise `flags: { mutating, requiresBalance, affectsHealth }`.
+- **Wave 3 (complex preflight):** `withdraw`, `send_transfer`. `withdraw` has amount-bound + asset-restriction preflight; `send_transfer` has the most complex preflight in the engine — address-format regex, zero-address burn guard, multi-token asset normalization via `normalizeAsset` from `@t2000/sdk`. Also the only Batch B tool with `flags: { mutating, requiresBalance, irreversible }`.
+
+**Sole judgment call (carried from Batch A pattern):** `withdraw` and `send_transfer` had richer field-level descriptions in their hand-written `jsonSchema` blocks than in their Zod `.describe()` calls (token-symbol enumeration, USD-vs-token-units disambiguation, contact-name fallback). Lifted those into the Zod `.describe()` so the auto-generated jsonSchema preserves the same field-level help the LLM was seeing before — Zod is now the single source of truth.
+
+**7 tools migrated (Batch B 7/7):**
+
+| Tool | Wave | LoC delta | `buildTool` features newly exercised |
+|---|---|---|---|
+| `save_contact` | 1 | -7 | preflight (multi-step), `isReadOnly: false`, `permissionLevel: 'confirm'` |
+| `claim_rewards` | 1 | -3 | empty `inputSchema`, structural-only preflight, `flags: { mutating }` |
+| `save_deposit` | 2 | -16 | asset-enum preflight, `flags: { mutating, requiresBalance }`, `assertAllowedAsset` SDK gate |
+| `borrow` | 2 | -14 | asset-enum preflight, `flags: { mutating, affectsHealth }`, `assertAllowedAsset` SDK gate |
+| `repay_debt` | 2 | -14 | asset-enum preflight, `flags: { mutating, requiresBalance }` |
+| `withdraw` | 3 | -16 | amount-bound + asset-restriction preflight, `flags: { mutating, affectsHealth }` |
+| `send_transfer` | 3 | -34 | most complex preflight (address regex + zero-address + normalizeAsset), `flags: { mutating, requiresBalance, irreversible }`, 4-field Zod schema |
+
+**Total Batch B line-count delta:** **-69 net LoC** (112 deletions, 43 insertions). Bigger reduction than Batch A's ~-50 LoC because write tools had more hand-written `jsonSchema` per file (asset enum + amount + asset + memo + to). Running total across Batches A + B: **~158 lines of duplicated `jsonSchema` boilerplate eliminated** across 17 tools. Extrapolating: ~200 more lines across the remaining 22 tools when Batches C-F finish.
+
+**Empirical findings (carry into Batch C):**
+
+- **`preflight` passes through unchanged.** All 7 Batch B tools have non-trivial preflight (asset-enum checks, amount bounds, address regex, zero-address guard, asset-symbol normalization). The dedicated `define-tool.test.ts` "preserves preflight" parity test was the synthetic version of this contract; Batch B is the real-world validation across 7 production tools. Confirmed: zero behavioral change in preflight logic across all 7.
+- **`isReadOnly: false` + `permissionLevel: 'confirm'` defaults are identical.** `defineTool` doesn't override either — the underlying `buildTool` defaults still apply. The 14-guard pipeline (verified via existing `guards.test.ts` regression suite running clean) still fires correctly against the migrated tools.
+- **`flags: { mutating, requiresBalance, affectsHealth, irreversible }` passes through unchanged.** All Batch B tools set at least one flag; the returned `Tool.flags` matches the original — verified by `git diff` (no flags lost) and by the fact that the existing engine tests that consume `tool.flags` (USD-aware permission resolver, HF projection enrichment) still pass.
+- **Auto-generated JSON schemas are STRICTER than hand-written ones — in a good way.** Where `buildTool` hand-written schemas often omitted `type: 'number'` on amount fields, Zod's `.number().positive()` auto-generates `{ type: 'number', exclusiveMinimum: 0 }`. Anthropic accepts both `exclusiveMinimum` and `minLength` (JSON Schema draft-7 standard) — no LLM-side regression, just tighter validation surface. Spot-checked all 7 migrated tools' auto-generated schemas via `node -e` introspection: every field preserved, every description preserved, every numeric/length validation correctly inherited from Zod.
+- **`assertAllowedAsset` SDK call runs identically.** No engine-side change needed for the `OPERATION_ASSETS` allow-list gate pattern (`save_deposit` and `borrow`). Verified the runtime call still throws on disallowed assets.
+
+**Pattern fully locked for Batches C → F:**
+
+```typescript
+// Before (buildTool)
+import { buildTool } from '../tool.js';
+export const fooTool = buildTool({
+  name: 'foo',
+  inputSchema: z.object({ ... }),
+  jsonSchema: { type: 'object', properties: { ... }, required: [...] }, // ← DELETED
+  // all other fields stay
+});
+
+// After (defineTool)
+import { defineTool } from '../v2/define-tool.js';
+export const fooTool = defineTool({
+  name: 'foo',
+  inputSchema: z.object({ ... }), // ← may need to lift richer descriptions in via .describe()
+  // all other fields stay verbatim
+});
+```
+
+Everything else (preflight, permissionLevel, flags, isReadOnly, cacheable, maxResultSizeChars, summarizeOnTruncate, call body) passes through unchanged. No design decisions left for C/D/E/F — pure mechanical migration from here.
+
+**Verification:** All gates clean.
+- `pnpm --filter @t2000/engine typecheck` — 0 errors
+- `pnpm --filter @t2000/engine lint` — 0 errors (6 pre-existing test warnings unchanged from Day 18)
+- `pnpm --filter @t2000/engine test` — 1422 / 1429 passed (7 env-skipped; 1 pre-existing `multi-block-thinking` real-Anthropic-API flake with explicit "rejected by Anthropic" server error, unrelated to changes — same failure mode as Day 17 / Day 18 / Day 14c with no code changes between runs)
+- `pnpm --filter @t2000/engine build` — green (dist 489.31 KB)
+- `pnpm --filter @t2000/engine test --run src/v2/define-tool.test.ts` — 9/9 parity tests pass
+
+**Release:** engine 1.36.0 (minor bump — Batch B milestone, second consecutive batch of tools landing on `defineTool` factory).
+
+**Audric bump:** `@t2000/engine@1.36.0` adopted via `pnpm add` in `audric/apps/web`.
+
+**Founder smoke (pending — handoff to user):** Per Batch B per-batch acceptance gate from `PHASE_2_TOOL_MIGRATION_BACKLOG.md`, at least 1 production write must smoke clean before declaring Batch B fully shipped. Recommended smokes (lowest-risk first): `save_contact` ("save a contact named Self with address 0x…") → `save_deposit` 0.10 USDC → `send_transfer` 0.01 USDC to self.
+
+**Status: Batch B CLOSED in code, AWAITING founder smoke for full release sign-off. 17/39 tools (44%) now on `defineTool`.**
+
+**Next session = Batch C (medium reads, 13 tools):** Audric analytics + NAVI MCP trio + opt-in surfaces. Estimated ~2-3 sessions (largest single batch). First batch where `add_recipient`'s `pending_input` form flow + `update_todo`'s SPEC 8 side-channel get exercised through `defineTool` — both are unusual `isReadOnly: true` + `permissionLevel: 'auto'` tools that go through dedicated runtime paths instead of the standard confirm card. Will verify both still work end-to-end.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

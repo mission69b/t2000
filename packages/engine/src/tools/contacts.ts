@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 
-export const saveContactTool = buildTool({
+export const saveContactTool = defineTool({
   name: 'save_contact',
   description:
     'Save a contact with a friendly name and Sui address so the user can send to them by name later.',
@@ -9,14 +9,6 @@ export const saveContactTool = buildTool({
     name: z.string().describe('Friendly name for the contact (e.g. "Alex", "Mom")'),
     address: z.string().describe('Full Sui address (0x...)'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      name: { type: 'string', description: 'Friendly name for the contact' },
-      address: { type: 'string', description: 'Full Sui address (0x...)' },
-    },
-    required: ['name', 'address'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   preflight: (input) => {

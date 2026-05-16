@@ -1,15 +1,15 @@
 import { z } from 'zod';
 import { assertAllowedAsset } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 
 // [v0.51.0] Allowed save assets — keep in sync with OPERATION_ASSETS.save in
 // @t2000/sdk. We assert via `assertAllowedAsset('save', ...)` at runtime, but
-// the description + preflight + JSON schema also need to surface the allowed
-// set so the LLM picks correctly without trial-and-error.
+// the description + preflight surface the allowed set so the LLM picks
+// correctly without trial-and-error.
 const SAVE_ASSETS = ['USDC', 'USDsui'] as const;
 
-export const saveDepositTool = buildTool({
+export const saveDepositTool = defineTool({
   name: 'save_deposit',
   description:
     'Deposit USDC or USDsui into NAVI savings to earn yield. ONLY these two stables are accepted. ' +
@@ -23,23 +23,9 @@ export const saveDepositTool = buildTool({
     'for USDC or vice versa. ' +
     'Payment Intent: composable — when paired with another composable write in the same request (e.g. "swap to USDC and save"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
-    amount: z.number().positive(),
+    amount: z.number().positive().describe('Exact amount to deposit (in units of the chosen asset)'),
     asset: z.enum(SAVE_ASSETS).optional().describe('"USDC" or "USDsui". Defaults to USDC when omitted.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      amount: {
-        description: 'Exact amount to deposit (in units of the chosen asset)',
-      },
-      asset: {
-        type: 'string',
-        enum: ['USDC', 'USDsui'],
-        description: 'Stable to deposit. "USDC" or "USDsui". Defaults to USDC when omitted.',
-      },
-    },
-    required: ['amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, requiresBalance: true },

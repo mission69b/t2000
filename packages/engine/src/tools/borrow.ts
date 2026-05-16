@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { assertAllowedAsset } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 
 // [v0.51.0] Allowed borrow assets — keep in sync with OPERATION_ASSETS.borrow.
 const BORROW_ASSETS = ['USDC', 'USDsui'] as const;
 
-export const borrowTool = buildTool({
+export const borrowTool = defineTool({
   name: 'borrow',
   description:
     'Borrow USDC or USDsui against savings collateral. ONLY these two stables are supported. ' +
@@ -16,24 +16,9 @@ export const borrowTool = buildTool({
     'When they say "borrow 10" with no asset, default to USDC unless the user has only USDsui collateral. ' +
     'Payment Intent: composable — when paired with another composable write in the same request (e.g. "borrow $50 and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
-    amount: z.number().positive(),
+    amount: z.number().positive().describe('Amount to borrow (in units of the chosen asset)'),
     asset: z.enum(BORROW_ASSETS).optional().describe('"USDC" or "USDsui". Defaults to USDC when omitted.'),
   }),
-  jsonSchema: {
-    type: 'object',
-    properties: {
-      amount: {
-        type: 'number',
-        description: 'Amount to borrow (in units of the chosen asset)',
-      },
-      asset: {
-        type: 'string',
-        enum: ['USDC', 'USDsui'],
-        description: 'Stable to borrow. "USDC" or "USDsui". Defaults to USDC when omitted.',
-      },
-    },
-    required: ['amount'],
-  },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true, affectsHealth: true },

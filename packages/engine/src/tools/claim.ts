@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { PendingReward } from '@t2000/sdk';
-import { buildTool } from '../tool.js';
+import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
 
 interface ClaimRewardsResult {
@@ -25,13 +25,12 @@ function formatAmount(amount: number): string {
   return amount.toExponential(2);
 }
 
-export const claimRewardsTool = buildTool({
+export const claimRewardsTool = defineTool({
   name: 'claim_rewards',
   description:
     'Claim all pending protocol rewards across lending adapters. Returns the claimed reward breakdown (per-asset symbol + amount), total USD value (best effort — may be 0 when oracle prices are unavailable), and the on-chain tx hash. When the rewards list is empty the response will explicitly say "no pending rewards"; when it is non-empty narrate the per-symbol amounts even if totalValueUsd is 0 (the on-chain credit still happened). ' +
     'Payment Intent: composable — when paired with another composable write in the same request (e.g. "claim rewards and stake them"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({}),
-  jsonSchema: { type: 'object', properties: {}, required: [] },
   isReadOnly: false,
   permissionLevel: 'confirm',
   flags: { mutating: true },
