@@ -966,7 +966,12 @@ export function runGuards(
   call: PendingToolCall,
   state: GuardRunnerState,
   config: GuardConfig,
-  conversationContext: { fullText: string; lastAssistantText: string; recentUserText: string },
+  conversationContext: {
+    fullText: string;
+    lastAssistantText: string;
+    recentUserText: string;
+    currentUserText: string;
+  },
   /**
    * [v1.4 Item 4] Optional per-guard observation hook. Fired exactly
    * once per non-`pass` guard verdict (i.e. for every event that ends
@@ -1088,11 +1093,18 @@ export function runGuards(
     results.push(guardAssetIntent(tool, call, conversationContext.recentUserText));
   }
   if (config.addressScope !== false) {
+    // [SPEC 37 v0.7a Phase 2 Day 13.5 / 2026-05-16] Use currentUserText
+    // (last user-text entry only), NOT recentUserText (last 10 turns).
+    // The guard enforces "the LLM must target the wallet the user
+    // named THIS turn"; multi-turn scope wrongly carried prior
+    // recipient addresses forward and blocked balance_check on
+    // unrelated subsequent saves. See the comment in
+    // extractConversationText for the failure mode.
     results.push(
       guardAddressScope(
         tool,
         call,
-        conversationContext.recentUserText,
+        conversationContext.currentUserText,
         identity?.walletAddress,
       ),
     );
@@ -1222,7 +1234,12 @@ export function updateGuardStateAfterToolResult(
 
 export function extractConversationText(
   messages: Array<{ role: string; content: unknown }>,
-): { fullText: string; lastAssistantText: string; recentUserText: string } {
+): {
+  fullText: string;
+  lastAssistantText: string;
+  recentUserText: string;
+  currentUserText: string;
+} {
   const textParts: string[] = [];
   const userParts: string[] = [];
   let lastAssistantText = '';
@@ -1248,6 +1265,27 @@ export function extractConversationText(
   const RECENT_USER_TURN_WINDOW = 10;
   const recentUserParts = userParts.slice(-RECENT_USER_TURN_WINDOW);
 
+  // [SPEC 37 v0.7a Phase 2 Day 13.5 / 2026-05-16] currentUserText is
+  // the LAST user-text entry only — the prompt the user JUST sent.
+  // Used by `guardAddressScope` so the guard only enforces "you must
+  // target the wallet the user named" against the CURRENT turn's
+  // request, not against any third-party address mentioned several
+  // turns ago. Production smoke caught the wider-window failure mode:
+  //
+  //   turn N:   "Send 0.01 USDC to 0xaca29…"   → enters recentUserText
+  //   turn N+1: "Save $10 USDC"                 → independent op,
+  //             but balance_check(input:{}) was blocked because
+  //             0xaca29… still lived in recentUserText's 10-turn
+  //             window.
+  //
+  // The guard's intent is "did the user this turn ask about a
+  // different wallet?" — single-turn scope, not multi-turn.
+  //
+  // The audric host concatenates `<post_write_anchor>…</post_write_anchor>`
+  // into the user-prompt text block. That's fine: anchors don't
+  // contain Sui addresses, so they don't affect the address regex.
+  const currentUserText = userParts.length > 0 ? userParts[userParts.length - 1]! : '';
+
   // [security] Cap each returned string at ~16KB before guards run any
   // regex over them. A few of the heuristic regexes downstream (e.g.
   // `/preview|...|confirm.*send|.../`, `/[\d,]+\.?\d*\s*(SUI|USDC|...)/`)
@@ -1264,5 +1302,6 @@ export function extractConversationText(
     fullText: cap(textParts.join('\n')),
     lastAssistantText: cap(lastAssistantText),
     recentUserText: cap(recentUserParts.join('\n')),
+    currentUserText: cap(currentUserText),
   };
 }

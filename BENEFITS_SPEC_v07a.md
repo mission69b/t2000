@@ -852,6 +852,44 @@ Fast paths (preserve referential identity, zero allocation): no tool_use blocks 
 
 **Defense-in-depth note:** The fix is purely on the producer side (engine packs the deferred assistant content into a shape Anthropic accepts). It does NOT depend on AI SDK or Anthropic provider behaviour. If Anthropic changes its input validator in either direction (relaxes the rule, or tightens it further), our shape remains valid because it matches the canonical pattern every Anthropic model itself emits.
 
+---
+
+**Day 13.5 — `address_scope` guard window narrowed (2026-05-16 ~12:30 AEST):**
+
+After 13.4 unblocked the compound prompt, founder re-ran the same `Borrow → Send → Save` sequence and observed two RED `BALANCE CHECK` tiles inside the SAVE step (the writes still completed; the LLM's pre-write balance check just failed silently and the agent proceeded with cached data). Audric chat URL: `audric.ai/chat/s_1778897667420_884117f8e142`.
+
+**Root cause from session dump:** the `address_scope` guard was using `recentUserText` (last 10 user turns) when its intent is single-turn scope. Conversation flow:
+
+```
+turn N (user):    "Send 0.01 USDC to 0xaca29…3d11"
+turn N (assist):  send_transfer(...)
+turn N+1 (user):  "Save $10 USDC"
+turn N+1 (assist): balance_check x2 + save_deposit
+```
+
+When the SAVE turn ran, `recentUserText` still contained `0xaca29…3d11` from turn N. The guard saw a third-party address, observed `balance_check(input: {})` defaulting to the signed-in user's wallet (because the user this turn named no address), and BLOCKED — even though "Save $10 USDC" is an independent operation about the user's OWN wallet.
+
+The audric host concatenates `<post_write_anchor>` + the user's prompt into a single user-text block, which kept turn N's text inside the recent-window even though the new prompt was fully self-contained.
+
+**The guard's intent** (from its own comments at `guards.ts:124-134`): "user asks about a watched address (`0x40cd…`) and the LLM calls `balance_check` without passing `address`." Single-turn semantics — "user asked THIS TURN." Multi-turn was always wrong; the existing tests all set up single-turn fixtures (`makeConvCtx(text)` wraps one user message), so the bug never surfaced under unit tests.
+
+**Fix shipped (engine 1.34.5):** `extractConversationText()` now returns a fourth field, `currentUserText: string` — only the LAST user-text entry (i.e. the user's current prompt). `runGuards()` threads it through; `guardAddressScope` uses `currentUserText` exclusively. Other guards (`guardAddressSource`, `guardAssetIntent`) keep `recentUserText` because their semantics genuinely span turns (handle/address tracking, asset-name window).
+
+The change is purely additive — `currentUserText` is a new field; existing `recentUserText` consumers untouched. Audric's host doesn't import `extractConversationText` directly so there are no downstream breaking changes.
+
+**Regression tests added** (`__tests__/guard-address-scope.test.ts` — Day 13.5 block, 3 new tests, total 10):
+- `'does NOT block balance_check on the current turn when prior user turn mentioned a third-party address'` — recreates the production failure exactly. Builds a 4-message conversation (Send-with-WATCHED → tool_use → tool_result → Save). Asserts `recentUserText` still contains WATCHED (proves wider window would have blocked) but `currentUserText` is just `'Save $10 USDC'`. Asserts guard does NOT block.
+- `'still blocks balance_check when the CURRENT turn mentions a third-party address'` — sanity check the fix doesn't weaken the guard. User this turn DOES name `${WATCHED}`; balance_check defaulting to self should still block.
+- `'handles audric host pattern: <post_write_anchor> + user prompt concatenated in one text block'` — pins the exact text shape audric concatenates (anchor + `\n\n` + prompt). Asserts the anchor doesn't contain Sui addresses, currentUserText carries both the anchor and the prompt, and balance_check passes.
+
+Test verify: 10/10 in the address-scope file pass; 1363/1364 in the full engine suite pass (the 1 unrelated real-API multi-block-thinking flake stays).
+
+**Why this wouldn't have shown up in single-write smoke OR Day 13.4's compound smoke:** the address only enters `recentUserText` when there's a PRIOR user turn that named it. Day 13.4's smoke ran each write as the first prompt of its session. Day 13.5's smoke chained writes within the same session (the pattern alpha-testers will actually do). Rollout checklist now pins both:
+1. Compound prompt within a single submitMessage (Day 13.4 — text-between-tool_uses).
+2. Sequential writes across multiple submitMessages within the same session, where prior writes named recipient addresses (Day 13.5 — multi-turn address-scope window).
+
+**Adjacent issue not fixed (LLM noise, lower priority):** The session dump also shows the LLM emitted TWO duplicate `balance_check` calls with identical `input: {}` in the same step (alongside save_deposit). Pure LLM noise under thinking mode + parallel tool calling — not a correctness bug. Mitigations to consider in a later release: (a) tool-description hint that `balance_check` is idempotent within a turn, (b) engine-side dedupe of identical concurrent tool calls in the same step. Defer until next user-visible noise complaint.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
