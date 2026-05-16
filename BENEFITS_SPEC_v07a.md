@@ -1121,6 +1121,8 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 
 **Cross-references:** Engine commit `992110ae` (npm v1.34.13). Audric commit `e5751c7`. Closes the "no projection" Day 14a deferred item.
 
+**Verification gap (2026-05-16 ~17:12 AEST).** Founder ran a borrow $5 / repay all smoke (chat `s_1778915408778_da6775749336`) but didn't explicitly check whether the confirm card showed `Health factor: ∞ → 17.00` (the Day 14c rendering). Borrow + repay both executed correctly end-to-end and the engine PendingAction emit definitely included `projectedHF` (engine 1.34.13 deployed pre-smoke; 28/28 enrich tests pass; the field stamping is dead-simple). The audric render path is also tested (8/8 preview-body Day 14c tests pass; PermissionCard wiring is one line). High confidence Day 14c works in production. The check we'd want next time: take a screenshot of the confirm card before tapping, look for the `→` arrow between current and projected HF.
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:
