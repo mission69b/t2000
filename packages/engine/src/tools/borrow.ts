@@ -17,7 +17,7 @@ export const borrowTool = defineTool({
     'Payment Intent: composable — when paired with another composable write in the same request (e.g. "borrow $50 and send to Mom"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     amount: z.number().positive().describe('Amount to borrow (in units of the chosen asset)'),
-    asset: z.enum(BORROW_ASSETS).optional().describe('"USDC" or "USDsui". Defaults to USDC when omitted.'),
+    asset: z.enum(BORROW_ASSETS).optional().describe('Stable to borrow. "USDC" or "USDsui". Defaults to USDC when omitted.'),
   }),
   isReadOnly: false,
   permissionLevel: 'confirm',

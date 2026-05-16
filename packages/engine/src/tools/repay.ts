@@ -14,7 +14,7 @@ export const repayDebtTool = defineTool({
     'Payment Intent: composable — when paired with another composable write in the same request (e.g. "repay debt then withdraw the rest"), emit all calls in the same assistant turn so the engine compiles them into one atomic Payment Intent the user signs once.',
   inputSchema: z.object({
     amount: z.number().positive().describe('Exact amount to repay (in units of the chosen asset; call balance_check first)'),
-    asset: z.enum(REPAY_ASSETS).optional().describe('"USDC" or "USDsui". When omitted, repays the highest-APY borrow first.'),
+    asset: z.enum(REPAY_ASSETS).optional().describe('Asset of the borrow being repaid. "USDC" or "USDsui". When omitted, repays the highest-APY borrow first.'),
   }),
   isReadOnly: false,
   permissionLevel: 'confirm',
