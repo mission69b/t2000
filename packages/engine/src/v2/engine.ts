@@ -51,26 +51,32 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import {
   streamText,
   stepCountIs,
-  type ModelMessage,
   type ToolSet,
   type StopCondition,
 } from 'ai';
 import type {
+  ContentBlock,
   EngineEvent,
   EngineConfig,
   HarnessShape,
   Message,
+  PendingAction,
+  PermissionResponse,
   Tool as LegacyTool,
   ToolContext,
 } from '../types.js';
 import { toAISDKTools } from './tool-wrapper.js';
 import { buildToolContext } from './tool-context.js';
 import type { InternalContext } from './internal-context.js';
-import { bridgeAISDKStream } from './event-translation.js';
+import { translate, createBridgeState } from '../bridge/event-bridge.js';
 import { buildStepFinishHandler, type StepFinishMutableState } from './step-finish.js';
 import { createGuardRunnerState, type GuardRunnerState } from '../guards.js';
 import { findTool } from '../tool.js';
 import { CostTracker, type CostSnapshot } from '../cost.js';
+import { describeAction } from '../describe-action.js';
+import { getModifiableFields } from '../tools/tool-modifiable-fields.js';
+import { toAISDKMessages } from '../providers/ai-sdk-message-conversion.js';
+import { getToolPolicy } from './tool-policy.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -333,41 +339,365 @@ export class AISDKEngine {
       this.stepFinishMutable,
     );
 
+    yield* this.runStream(tools, internal, onStepFinish);
+  }
+
+  /**
+   * Resume a paused turn after the host (audric) executed the approved
+   * write tool out-of-band (sponsored-tx prepare/execute path) or the
+   * user declined.
+   *
+   * Mirrors `QueryEngine.resumeWithToolResult()` so audric's resume
+   * route call site is unchanged.
+   *
+   * Flow:
+   *   1. Reconstruct the deferred turn into history:
+   *      - Push the assistant message that was held back during
+   *        pending_action emission (`action.assistantContent`).
+   *      - Push a user message containing `action.completedResults`
+   *        (any read tool results from the same step) PLUS the new
+   *        `tool_result` block carrying the host's executionResult
+   *        (or "user declined" error).
+   *   2. Yield a `tool_result` event so audric's UI can render the
+   *      per-step outcome row in the PermissionCard.
+   *   3. If declined → yield `turn_complete` and return (no narration).
+   *   4. If approved → re-invoke streamText to narrate the receipt.
+   *      The post-write refresh tool_results land via onStepFinish
+   *      injection (when configured), so narration cites fresh
+   *      authoritative numbers instead of pre-write balances.
+   *
+   * SPEC 37 v0.7a Phase 2 Day 13 follow-up — added to fix the
+   * confirm-tier write blocker caught in production smoke. The audric
+   * `/api/engine/resume` route calls `engine.resumeWithToolResult(...)`
+   * unconditionally; without this method AISDKEngine instances crash
+   * with "engine.resumeWithToolResult is not a function" on every
+   * confirm flow.
+   *
+   * Bundle support (action.steps !== undefined) is deferred to
+   * Day 14+ — first-cut handles single-write only, which covers the
+   * 95% case. Bundle resume returns an error-yielding generator until
+   * implemented (audric falls back to legacy QueryEngine for bundle
+   * sessions until then; the wallet-allowlist gate makes this a
+   * non-issue for soak).
+   */
+  async *resumeWithToolResult(
+    action: PendingAction,
+    response: PermissionResponse,
+  ): AsyncGenerator<EngineEvent> {
+    if (Array.isArray(action.steps) && action.steps.length > 0) {
+      yield {
+        type: 'error',
+        error: new Error(
+          'AISDKEngine.resumeWithToolResult: bundle resume (action.steps !== undefined) ' +
+            'not yet implemented. Defer to legacy QueryEngine for bundle sessions until ' +
+            'Day 14+ adds bundle handling. The audric host can route bundles to legacy by ' +
+            'pinning the session to the QueryEngine path during the migration window.',
+        ),
+      };
+      yield { type: 'turn_complete', stopReason: 'error' };
+      return;
+    }
+
+    this.abortController = new AbortController();
+
+    // Push the deferred assistant message (text + tool_use blocks) into
+    // history. Without this, the next streamText call sees no record of
+    // the tool_use that the user just confirmed and fails Anthropic's
+    // "every tool_result must follow a tool_use" invariant.
+    if (action.assistantContent && action.assistantContent.length > 0) {
+      this.messages.push({
+        role: 'assistant',
+        content: action.assistantContent as ContentBlock[],
+      });
+    }
+
+    // Build the user message that satisfies the deferred tool_use:
+    //   - completedResults: any read tools from the same step that
+    //     completed before pending_action fired.
+    //   - the write tool's result, or a "user declined" error.
+    const writeResultBlock: ContentBlock = response.approved
+      ? {
+          type: 'tool_result',
+          toolUseId: action.toolUseId,
+          content: JSON.stringify(response.executionResult ?? { success: true }),
+          isError: false,
+        }
+      : {
+          type: 'tool_result',
+          toolUseId: action.toolUseId,
+          content: JSON.stringify({ error: 'User declined this action' }),
+          isError: true,
+        };
+
+    const allResults: ContentBlock[] = [
+      ...(action.completedResults ?? []).map((r) => ({
+        type: 'tool_result' as const,
+        toolUseId: r.toolUseId,
+        content: r.content,
+        isError: r.isError,
+      })),
+      writeResultBlock,
+    ];
+
+    this.messages.push({ role: 'user', content: allResults });
+
+    // Surface the per-step outcome to the host UI before any LLM
+    // narration so the PermissionCard renders the success/error row
+    // immediately on confirm, not after the narration arrives.
+    yield {
+      type: 'tool_result',
+      toolName: action.toolName,
+      toolUseId: action.toolUseId,
+      result: response.approved
+        ? response.executionResult ?? { success: true }
+        : { error: 'User declined this action' },
+      isError: !response.approved,
+      source: 'llm',
+    };
+
+    if (!response.approved) {
+      yield { type: 'turn_complete', stopReason: 'end_turn' };
+      return;
+    }
+
+    // Approved → re-invoke streamText to narrate. Same tool/context/
+    // guard wiring as submitMessage so post-write refresh + chained
+    // tools (rare on resume but possible) flow through the same path.
+    const tools = toAISDKTools(this.config.tools ?? []) as ToolSet;
+    const toolContext = buildToolContext(this.config, {
+      signal: this.abortController.signal,
+    });
+    toolContext.sessionSpendUsd = this.stepFinishMutable.sessionSpendUsdLocal;
+
+    const internal: InternalContext = {
+      toolContext,
+      guardState: this.guardState,
+      guardConfig: this.config.guards,
+      contacts: this.config.contacts ?? [],
+      walletAddress: this.config.walletAddress,
+      config: {
+        onAutoExecuted: this.config.onAutoExecuted,
+        onGuardFired: this.config.onGuardFired,
+        postWriteRefresh: this.config.postWriteRefresh,
+        permissionConfig: this.config.permissionConfig,
+        priceCache: this.config.priceCache,
+      },
+      getMessages: () => this.messages,
+    };
+
+    const onStepFinish = buildStepFinishHandler(
+      this.config.tools ?? [],
+      internal,
+      this.stepFinishMutable,
+    );
+
+    yield* this.runStream(tools, internal, onStepFinish);
+  }
+
+  /**
+   * Shared stream-runner used by submitMessage + resumeWithToolResult.
+   *
+   * Iterates `streamText().fullStream` per-event, runs the bridge's
+   * stateless `translate()` for EngineEvent emission, AND tracks the
+   * extra state required to assemble a `pending_action` event when AI
+   * SDK pauses on `tool-approval-request`.
+   *
+   * State tracked on top of the bridge:
+   *   - `currentText`: text-delta accumulator → flushed to a `text`
+   *     ContentBlock on the next tool-call (or stream end).
+   *   - `assistantBlocks`: `text` + `tool_use` ContentBlocks
+   *     accumulated this step → carried into PendingAction.assistantContent
+   *     so the engine can replay the deferred assistant message into
+   *     history on resume (satisfies Anthropic's tool_result-follows-
+   *     tool_use invariant).
+   *   - `toolCallCache`: maps toolCallId → {name, input}. Needed
+   *     because `tool-approval-request` only carries
+   *     `{approvalId, toolCallId}` — name + input come from the
+   *     earlier `tool-call` event in the same step.
+   *   - `completedResults`: tool_result blocks from auto-approved
+   *     reads in the same step → carried into
+   *     PendingAction.completedResults so the resume turn can replay
+   *     the FULL turn (every tool_use must have a matching tool_result
+   *     in the next user message; without this, the chained
+   *     read+write turn would orphan the read's tool_use).
+   *
+   * SPEC 37 v0.7a Phase 2 Day 13 follow-up.
+   */
+  private async *runStream(
+    tools: ToolSet,
+    internal: InternalContext,
+    onStepFinish: ReturnType<typeof buildStepFinishHandler>,
+  ): AsyncGenerator<EngineEvent> {
     const stream = streamText({
       model: this.anthropic(this.config.model ?? 'claude-sonnet-4-5'),
       tools,
-      messages: this.toAISDKMessages(this.messages),
+      messages: toAISDKMessages(this.messages),
       system: this.systemPromptString(),
       experimental_context: internal,
       stopWhen: stepCountIs(this.config.maxTurns ?? 10) as StopCondition<typeof tools>,
-      abortSignal: this.abortController.signal,
+      abortSignal: this.abortController?.signal,
       onStepFinish,
       onError: (err) => {
-        // Day 3+ may surface this through friendlyErrorMessage helpers.
         console.error('[AISDKEngine] streamText error:', err);
       },
     });
 
-    // Day 3: replace Day 1 minimal translatePart with the R8 bridge —
-    // covers every AI SDK event type (tool-call, tool-result, tool-error,
-    // reasoning-start/delta/end, finish with totalUsage, abort, error).
-    // The bridge owns block-index counters + eval-summary parsing so
-    // multi-block thinking + signed signatures flow through unchanged.
-    //
-    // Day 10-12: tap `usage` events as they pass through so getUsage()
-    // returns cumulative token totals across every submitMessage call —
-    // mirrors legacy QueryEngine's CostTracker semantics. Events are
-    // forwarded unchanged; the tap is read-only.
-    for await (const event of bridgeAISDKStream(stream.fullStream)) {
-      if (event.type === 'usage') {
-        this.costTracker.track(
-          event.inputTokens,
-          event.outputTokens,
-          event.cacheReadTokens,
-          event.cacheWriteTokens,
-        );
+    const bridgeState = createBridgeState();
+    const toolCallCache = new Map<string, { name: string; input: unknown }>();
+    const assistantBlocks: ContentBlock[] = [];
+    const completedResults: Array<{ toolUseId: string; content: string; isError: boolean }> = [];
+    let currentText = '';
+
+    const flushCurrentText = () => {
+      if (currentText.length > 0) {
+        assistantBlocks.push({ type: 'text', text: currentText });
+        currentText = '';
       }
-      yield event;
+    };
+
+    let pendingApprovalToolCallId: string | null = null;
+
+    for await (const event of stream.fullStream) {
+      // State tracking — done BEFORE translation so the per-event
+      // accumulators see every event (translate() may drop some).
+      switch (event.type) {
+        case 'text-delta':
+          currentText += event.text;
+          break;
+        case 'tool-call': {
+          flushCurrentText();
+          toolCallCache.set(event.toolCallId, {
+            name: event.toolName,
+            input: event.input,
+          });
+          assistantBlocks.push({
+            type: 'tool_use',
+            id: event.toolCallId,
+            name: event.toolName,
+            input: event.input,
+          });
+          break;
+        }
+        case 'tool-result': {
+          // Auto-approved reads complete with a tool-result event in
+          // the same step. Capture into completedResults so a later
+          // pending_action in this step can replay the read's
+          // tool_result alongside the write's tool_result on resume.
+          completedResults.push({
+            toolUseId: event.toolCallId,
+            content: typeof event.output === 'string' ? event.output : JSON.stringify(event.output),
+            isError: false,
+          });
+          break;
+        }
+        case 'tool-error': {
+          // Read tool error in the same step — still need a tool_result
+          // for resume's history-replay invariant.
+          completedResults.push({
+            toolUseId: event.toolCallId,
+            content: typeof event.error === 'string' ? event.error : JSON.stringify(event.error),
+            isError: true,
+          });
+          break;
+        }
+        case 'tool-approval-request':
+          // AI SDK v6's `ToolApprovalRequestOutput` carries
+          // `toolCall: TypedToolCall<TOOLS>` (not `toolCallId`
+          // directly). The toolCall object has `.toolCallId` +
+          // `.toolName` + `.input` — the same fields the prior
+          // `tool-call` event surfaced. We could read directly from
+          // event.toolCall, but the toolCallCache is still valuable
+          // because the cached input is the parsed/validated shape
+          // that flowed through `tool-call`'s schema validation,
+          // whereas event.toolCall.input is the raw model emission.
+          // For PendingAction.input (which audric persists + replays
+          // verbatim) the validated shape is correct.
+          flushCurrentText();
+          pendingApprovalToolCallId = event.toolCall.toolCallId;
+          break;
+        default:
+          break;
+      }
+
+      // Translate via the bridge → forward EngineEvents as legacy.
+      // tool-approval-request returns [] from translate by design;
+      // we emit pending_action ourselves below.
+      for (const out of translate(event, bridgeState)) {
+        if (out.type === 'usage') {
+          this.costTracker.track(
+            out.inputTokens,
+            out.outputTokens,
+            out.cacheReadTokens,
+            out.cacheWriteTokens,
+          );
+        }
+        yield out;
+      }
+    }
+
+    // Stream complete. If we hit a tool-approval-request, build the
+    // PendingAction and emit. The bridge already yielded turn_complete
+    // (or finish events that translate to it); pending_action goes
+    // BEFORE turn_complete in legacy QueryEngine, but emitting after
+    // is acceptable because audric's chat route processes both
+    // unconditionally before closing the SSE stream.
+    if (pendingApprovalToolCallId) {
+      const cached = toolCallCache.get(pendingApprovalToolCallId);
+      const tool = cached ? findTool(this.config.tools ?? [], cached.name) : undefined;
+
+      if (!cached || !tool) {
+        // Defensive fallback — emit an error event so audric can
+        // surface a friendly retry prompt instead of a silent stall.
+        yield {
+          type: 'error',
+          error: new Error(
+            `AISDKEngine: tool-approval-request fired for unknown toolCallId=${pendingApprovalToolCallId} ` +
+              `(cached=${!!cached}, tool=${cached?.name ?? 'unresolved'}). This indicates a bug in the ` +
+              `tool-call cache or a tool-name mismatch between the LLM emission and the registered tool set.`,
+          ),
+        };
+        return;
+      }
+
+      // Sanity check: only confirm-tier writes should ever hit the
+      // approval gate. If we got here for an auto/explicit tool, the
+      // tool policy registry is out of sync with the wrapper's
+      // needsApproval wiring. Surface as error so the drift is
+      // visible in TurnMetrics instead of silently fabricating a
+      // confirm card for a non-write.
+      const policy = getToolPolicy(tool.name);
+      if (policy.permissionLevel === 'auto') {
+        yield {
+          type: 'error',
+          error: new Error(
+            `AISDKEngine: tool-approval-request fired for auto-tier tool '${tool.name}'. ` +
+              `Tool policy registry drift — check tool-policy.ts.`,
+          ),
+        };
+        return;
+      }
+
+      const turnIndex = this.messages.filter((m) => m.role === 'assistant').length;
+      const attemptId = crypto.randomUUID();
+      const modifiableFields = getModifiableFields(tool.name);
+
+      const action: PendingAction = {
+        toolName: tool.name,
+        toolUseId: pendingApprovalToolCallId,
+        input: cached.input,
+        description: describeAction(tool, {
+          id: pendingApprovalToolCallId,
+          name: tool.name,
+          input: cached.input,
+        }),
+        assistantContent: assistantBlocks as ContentBlock[],
+        completedResults,
+        ...(modifiableFields && modifiableFields.length > 0 ? { modifiableFields } : {}),
+        turnIndex,
+        attemptId,
+      };
+
+      yield { type: 'pending_action', action };
     }
   }
 
@@ -389,23 +719,6 @@ export class AISDKEngine {
     return undefined;
   }
 
-  private toAISDKMessages(messages: Message[]): ModelMessage[] {
-    // Day 2: full conversion via existing
-    // ai-sdk-message-conversion.ts (Phase 1 work). For Day 1
-    // stub, only handle text-only messages — enough for the smoke test.
-    return messages
-      .filter((m): m is Message & { content: Message['content'] } => true)
-      .map((m) => {
-        const text = Array.isArray(m.content)
-          ? m.content
-              .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
-              .map((b) => b.text)
-              .join('')
-          : '';
-        return { role: m.role, content: text } as ModelMessage;
-      })
-      .filter((m) => typeof (m as { content: unknown }).content === 'string' && (m as { content: string }).content.length > 0);
-  }
 }
 
 // ---------------------------------------------------------------------------

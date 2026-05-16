@@ -390,3 +390,319 @@ describe('AISDKEngine — Day 10-12 drop-in surface (getTools / getUsage / invok
     expect(result.data).toEqual({ error: 'intentional failure' });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Day 13 follow-up tests — confirm-tier pending_action emission + resume
+// ---------------------------------------------------------------------------
+//
+// SPEC 37 v0.7a Phase 2 Day 13 production smoke caught that the v2
+// engine never emitted `pending_action` for confirm-tier writes — the
+// AI SDK v6 `tool-approval-request` event was silently dropped by the
+// bridge and AISDKEngine had no orchestration code to translate it.
+// Founder's "Save 0.05 USDC" attempt failed with "agent configuration
+// issue" because the LLM saw its tool_use orphaned after AI SDK paused.
+//
+// These tests pin the fixed behaviour by running the engine against a
+// mocked language model that emits text + tool-call + tool-approval-
+// request events in the same shape AI SDK v6's streamText produces.
+// They do NOT hit the real Anthropic API — pure unit tests for the
+// orchestration loop.
+//
+// Coverage:
+//   - Confirm-tier write yields a `pending_action` event with the
+//     correct shape (toolName, input, attemptId UUID, modifiableFields,
+//     assistantContent, completedResults, turnIndex).
+//   - assistantContent carries the deferred text + tool_use blocks so
+//     resumeWithToolResult can replay the turn into history.
+//   - completedResults carries auto-approved read tool results from the
+//     same step so resume satisfies Anthropic's "every tool_use must
+//     have a tool_result in the next user message" invariant.
+//   - resumeWithToolResult (declined) yields tool_result + turn_complete
+//     and pushes the synthetic decline blocks into history.
+//   - resumeWithToolResult (bundle action) errors gracefully (Day 14+
+//     scope; first-cut handles single-write only).
+// ---------------------------------------------------------------------------
+
+import {
+  simulateReadableStream,
+  // MockLanguageModelV3 lives in `ai/test` per AI SDK v6's testing
+  // exports; importing as a deep path avoids polluting the top-of-file
+  // imports for tests that don't need it.
+} from 'ai';
+import type { LanguageModelV3StreamPart, LanguageModelV3 } from '@ai-sdk/provider';
+import type { PendingAction, PermissionResponse } from '../types.js';
+
+/**
+ * Build a stub LanguageModelV3 that emits the given stream parts.
+ * Replaces `this.anthropic(model)` in tests so we control the LLM
+ * output without hitting the real Anthropic API.
+ *
+ * Shape mirrors what AI SDK v6's streamText expects from a provider:
+ * a `doStream` method that returns `{ stream, request, response, ... }`
+ * where `stream` is a ReadableStream of LanguageModelV3StreamPart.
+ */
+function buildStubModel(parts: LanguageModelV3StreamPart[]): LanguageModelV3 {
+  return {
+    specificationVersion: 'v3',
+    provider: 'stub',
+    modelId: 'stub-model',
+    supportedUrls: {},
+    doGenerate: async () => {
+      throw new Error('stub model does not support doGenerate');
+    },
+    doStream: async () => ({
+      stream: simulateReadableStream({ chunks: parts }),
+      request: { body: {} },
+      response: { headers: {}, id: 'stub', timestamp: new Date(), modelId: 'stub' },
+      warnings: [],
+    }),
+  } as unknown as LanguageModelV3;
+}
+
+/**
+ * Run an AISDKEngine submitMessage call against a stubbed model.
+ * Reaches into `engine.anthropic` to substitute the model factory —
+ * acceptable test seam for a pure unit test of orchestration.
+ */
+function withStubbedModel(engine: AISDKEngine, parts: LanguageModelV3StreamPart[]): void {
+  const stubModel = buildStubModel(parts);
+  // Override the anthropic factory to return our stub regardless of
+  // model name. The factory is called once per submitMessage call.
+  (engine as unknown as { anthropic: (name: string) => LanguageModelV3 }).anthropic =
+    (() => stubModel) as never;
+}
+
+describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => {
+  function makeWriteTool(): LegacyTool {
+    return buildTool({
+      name: 'save_deposit',
+      description: 'Deposit USDC into NAVI savings.',
+      inputSchema: z.object({
+        amount: z.number().positive(),
+        asset: z.enum(['USDC', 'USDsui']).optional(),
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          amount: { type: 'number' },
+          asset: { type: 'string', enum: ['USDC', 'USDsui'] },
+        },
+        required: ['amount'],
+      },
+      flags: { mutating: true },
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => {
+        // Confirm-tier writes should NEVER reach .call() on the v2
+        // engine — needsApproval gates execution, and the host runs
+        // the actual on-chain side via sponsored-tx prepare/execute.
+        // If this fires in a test, the gate is broken.
+        throw new Error(
+          'save_deposit.call() must not run on confirm-tier path — ' +
+            'the wrapper should pause via needsApproval and the engine ' +
+            'should yield pending_action.',
+        );
+      },
+    });
+  }
+
+  it('yields pending_action for a confirm-tier write with full action shape', async () => {
+    const writeTool = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [writeTool],
+    });
+
+    // Stream parts: text-delta → tool-call → tool-approval-request →
+    // finish. Mirrors what AI SDK v6 emits for a confirm-tier write.
+    withStubbedModel(engine, [
+      { type: 'stream-start', warnings: [] },
+      { type: 'response-metadata', id: 'resp-1', timestamp: new Date(), modelId: 'stub' },
+      { type: 'text-start', id: 'text-1' },
+      { type: 'text-delta', id: 'text-1', delta: 'Saving 0.05 USDC. ' },
+      { type: 'text-end', id: 'text-1' },
+      {
+        type: 'tool-call',
+        toolCallId: 'toolu_save_001',
+        toolName: 'save_deposit',
+        input: JSON.stringify({ amount: 0.05, asset: 'USDC' }),
+      },
+      {
+        type: 'finish',
+        finishReason: 'tool-calls',
+        usage: { inputTokens: 100, outputTokens: 20, totalTokens: 120 },
+      },
+    ]);
+
+    const events = await collect(engine.submitMessage('Save 0.05 USDC'));
+
+    const pendingActions = events.filter((e) => e.type === 'pending_action');
+    expect(pendingActions.length).toBe(1);
+
+    const ev = pendingActions[0]!;
+    if (ev.type !== 'pending_action') throw new Error('type narrowing');
+    const action = ev.action;
+
+    // Core fields
+    expect(action.toolName).toBe('save_deposit');
+    expect(action.toolUseId).toBe('toolu_save_001');
+    expect(action.input).toEqual({ amount: 0.05, asset: 'USDC' });
+
+    // attemptId is a UUID v4 (8-4-4-4-12 hex)
+    expect(action.attemptId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+
+    // assistantContent carries the deferred text + tool_use blocks so
+    // resumeWithToolResult can push the assistant message into history
+    // and satisfy Anthropic's "tool_result must follow tool_use" rule.
+    expect(action.assistantContent.length).toBeGreaterThanOrEqual(2);
+    const textBlock = action.assistantContent.find((b) => b.type === 'text');
+    expect(textBlock).toBeDefined();
+    if (textBlock?.type === 'text') {
+      expect(textBlock.text).toBe('Saving 0.05 USDC. ');
+    }
+    const toolUseBlock = action.assistantContent.find((b) => b.type === 'tool_use');
+    expect(toolUseBlock).toBeDefined();
+    if (toolUseBlock?.type === 'tool_use') {
+      expect(toolUseBlock.id).toBe('toolu_save_001');
+      expect(toolUseBlock.name).toBe('save_deposit');
+      expect(toolUseBlock.input).toEqual({ amount: 0.05, asset: 'USDC' });
+    }
+
+    // No completed reads in this test — empty array, NOT undefined.
+    expect(action.completedResults).toEqual([]);
+
+    // modifiableFields sourced from tool-modifiable-fields registry
+    // (save_deposit has `amount` editable per the registry).
+    expect(action.modifiableFields).toBeDefined();
+    expect(action.modifiableFields![0]?.name).toBe('amount');
+
+    // turnIndex = assistant-message count at emit time. Empty history
+    // means the first assistant turn → 0.
+    expect(action.turnIndex).toBe(0);
+
+    // description sourced from describeAction registry
+    expect(action.description).toContain('0.05');
+    expect(action.description).toContain('USDC');
+
+    // The engine MUST NOT have called write.call() — the wrapper's
+    // needsApproval should have gated it. The makeWriteTool() throws
+    // if .call() runs; we'd see that as a tool_result event with
+    // isError=true. None should be present.
+    const errorToolResults = events.filter(
+      (e) => e.type === 'tool_result' && (e as { isError?: boolean }).isError,
+    );
+    expect(errorToolResults).toEqual([]);
+  });
+
+  it('resumeWithToolResult (declined) pushes decline tool_result + turn_complete', async () => {
+    const writeTool = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [writeTool],
+    });
+
+    const action: PendingAction = {
+      toolName: 'save_deposit',
+      toolUseId: 'toolu_save_001',
+      input: { amount: 0.05, asset: 'USDC' },
+      description: 'Save 0.05 USDC into lending',
+      assistantContent: [
+        { type: 'text', text: 'Saving 0.05 USDC. ' },
+        { type: 'tool_use', id: 'toolu_save_001', name: 'save_deposit', input: { amount: 0.05, asset: 'USDC' } },
+      ],
+      completedResults: [],
+      turnIndex: 0,
+      attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    };
+
+    const response: PermissionResponse = { approved: false };
+
+    const events: EngineEvent[] = [];
+    for await (const e of engine.resumeWithToolResult(action, response)) {
+      events.push(e);
+    }
+
+    const toolResults = events.filter((e) => e.type === 'tool_result');
+    expect(toolResults.length).toBe(1);
+    const tr = toolResults[0]!;
+    if (tr.type !== 'tool_result') throw new Error('type narrowing');
+    expect(tr.toolName).toBe('save_deposit');
+    expect(tr.toolUseId).toBe('toolu_save_001');
+    expect(tr.isError).toBe(true);
+    expect(tr.result).toEqual({ error: 'User declined this action' });
+
+    const turnComplete = events.filter((e) => e.type === 'turn_complete');
+    expect(turnComplete.length).toBe(1);
+
+    // Engine should NOT have re-invoked streamText — no other events
+    // (no text_delta, no usage, etc.) beyond the tool_result + turn_complete.
+    expect(events.length).toBe(2);
+
+    // History should carry the deferred assistant message + the
+    // decline tool_result so the next chat turn rehydrates correctly.
+    const messages = engine.getMessages();
+    expect(messages.length).toBe(2);
+    expect(messages[0]?.role).toBe('assistant');
+    expect(messages[0]?.content.find((b) => b.type === 'tool_use')).toBeDefined();
+    expect(messages[1]?.role).toBe('user');
+    const declineResult = messages[1]?.content.find((b) => b.type === 'tool_result');
+    expect(declineResult).toBeDefined();
+    if (declineResult?.type === 'tool_result') {
+      expect(declineResult.isError).toBe(true);
+      expect(declineResult.content).toContain('User declined');
+    }
+  });
+
+  it('resumeWithToolResult (bundle action) emits error event without crashing', async () => {
+    const writeTool = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [writeTool],
+    });
+
+    const bundleAction: PendingAction = {
+      toolName: 'save_deposit',
+      toolUseId: 'toolu_save_001',
+      input: { amount: 0.05, asset: 'USDC' },
+      description: 'Bundle: save + send',
+      assistantContent: [],
+      completedResults: [],
+      turnIndex: 0,
+      attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      steps: [
+        {
+          toolName: 'save_deposit',
+          toolUseId: 'toolu_save_001',
+          attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+          input: { amount: 0.05 },
+          description: 'Save 0.05 USDC',
+        },
+        {
+          toolName: 'send_transfer',
+          toolUseId: 'toolu_send_001',
+          attemptId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
+          input: { amount: 0.01, to: '0xabc' },
+          description: 'Send 0.01 USDC',
+        },
+      ],
+    };
+
+    const events: EngineEvent[] = [];
+    for await (const e of engine.resumeWithToolResult(bundleAction, { approved: true })) {
+      events.push(e);
+    }
+
+    const errorEvents = events.filter((e) => e.type === 'error');
+    expect(errorEvents.length).toBe(1);
+    if (errorEvents[0]?.type === 'error') {
+      expect(errorEvents[0].error.message).toContain('bundle resume');
+      expect(errorEvents[0].error.message).toContain('not yet implemented');
+    }
+
+    const turnComplete = events.filter((e) => e.type === 'turn_complete');
+    expect(turnComplete.length).toBe(1);
+  });
+});
