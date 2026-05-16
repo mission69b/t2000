@@ -51,6 +51,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "^3.0.10",
     "@mysten-incubation/memwal": "0.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",

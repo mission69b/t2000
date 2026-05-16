@@ -286,6 +286,9 @@ importers:
         specifier: ^3.25.0
         version: 3.25.76
     devDependencies:
+      '@ai-sdk/provider':
+        specifier: ^3.0.10
+        version: 3.0.10
       '@mysten-incubation/memwal':
         specifier: 0.0.4
         version: 0.0.4(@mysten/seal@1.1.3(@mysten/sui@2.11.0(typescript@5.9.3)))(@mysten/sui@2.11.0(typescript@5.9.3))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)

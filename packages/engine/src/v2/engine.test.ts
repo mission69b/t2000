@@ -530,8 +530,11 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
       },
       {
         type: 'finish',
-        finishReason: 'tool-calls',
-        usage: { inputTokens: 100, outputTokens: 20, totalTokens: 120 },
+        finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+        usage: {
+          inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 20, text: 20, reasoning: 0 },
+        },
       },
     ]);
 
