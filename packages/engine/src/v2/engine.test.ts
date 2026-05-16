@@ -1618,3 +1618,291 @@ describe('AISDKEngine — Day 13.8 integration: persist-on-clean invariants (mul
     expect(asstTexts).toEqual(['First reply.', 'Second reply.', 'Third reply.']);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Day 14a — Week 4 cleanup: borrowApyBps + currentHF on PendingAction
+// ---------------------------------------------------------------------------
+//
+// Confirms that the enrichment helper's fields actually land on the
+// `pending_action` event for confirm-tier borrow / save_deposit writes.
+// Unit-level behaviour of the helper itself is pinned by
+// `enrich-pending-action.test.ts` (16 tests, vi.mock approach).
+//
+// Here we use `vi.spyOn` so the stub is scoped to each test and doesn't
+// leak into the other describe blocks above.
+// ---------------------------------------------------------------------------
+
+describe('AISDKEngine — Day 14a: live NAVI data on pending_action (borrowApyBps + currentHF)', () => {
+  function makeBorrowTool(): LegacyTool {
+    return buildTool({
+      name: 'borrow',
+      description: 'Borrow USDC or USDsui against savings collateral.',
+      inputSchema: z.object({
+        amount: z.number().positive(),
+        asset: z.enum(['USDC', 'USDsui']).optional(),
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          amount: { type: 'number' },
+          asset: { type: 'string', enum: ['USDC', 'USDsui'] },
+        },
+        required: ['amount'],
+      },
+      flags: { mutating: true },
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => {
+        throw new Error('borrow.call() must not run on confirm-tier path');
+      },
+    });
+  }
+
+  function makeSaveTool(): LegacyTool {
+    return buildTool({
+      name: 'save_deposit',
+      description: 'Deposit USDC or USDsui into NAVI savings.',
+      inputSchema: z.object({
+        amount: z.number().positive(),
+        asset: z.enum(['USDC', 'USDsui']).optional(),
+      }),
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          amount: { type: 'number' },
+          asset: { type: 'string', enum: ['USDC', 'USDsui'] },
+        },
+        required: ['amount'],
+      },
+      flags: { mutating: true },
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => {
+        throw new Error('save_deposit.call() must not run on confirm-tier path');
+      },
+    });
+  }
+
+  const HAPPY_RATES = {
+    USDC: { saveApy: 0.0439, borrowApy: 0.0467, ltv: 0.8, price: 1 },
+    USDsui: { saveApy: 0.0828, borrowApy: 0.0319, ltv: 0.85, price: 1 },
+  };
+  const HAPPY_HF = {
+    healthFactor: 3.8,
+    supplied: 100,
+    borrowed: 20,
+    maxBorrow: 80,
+    liquidationThreshold: 0.85,
+  };
+
+  it('borrow confirm-tier pending_action carries borrowApyBps + currentHF when NAVI is reachable', async () => {
+    const naviReads = await import('../navi/reads.js');
+    const ratesSpy = vi.spyOn(naviReads, 'fetchRates').mockResolvedValue(HAPPY_RATES);
+    const hfSpy = vi.spyOn(naviReads, 'fetchHealthFactor').mockResolvedValue(HAPPY_HF);
+
+    try {
+      const borrowTool = makeBorrowTool();
+      const engine = new AISDKEngine({
+        ...baseConfig('sk-test-fake-key-not-used'),
+        tools: [borrowTool],
+        mcpManager: { __mock: 'mcp' } as unknown as AISDKEngineConfig['mcpManager'],
+      });
+
+      withStubbedModel(engine, [
+        { type: 'stream-start', warnings: [] },
+        { type: 'response-metadata', id: 'r1', timestamp: new Date(), modelId: 'stub' },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Borrowing $5 USDC. ' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'tool-call',
+          toolCallId: 'toolu_borrow_001',
+          toolName: 'borrow',
+          input: JSON.stringify({ amount: 5, asset: 'USDC' }),
+        },
+        {
+          type: 'finish',
+          finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+          usage: {
+            inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 10, text: 10, reasoning: 0 },
+          },
+        },
+      ]);
+
+      const events = await collect(engine.submitMessage('Borrow $5 USDC.'));
+      const pendingActions = events.filter((e) => e.type === 'pending_action');
+      expect(pendingActions.length).toBe(1);
+      const ev = pendingActions[0]!;
+      if (ev.type !== 'pending_action') throw new Error('type narrowing');
+
+      expect(ev.action.borrowApyBps).toBe(467);
+      expect(ev.action.currentHF).toBeCloseTo(3.8, 5);
+      expect(ratesSpy).toHaveBeenCalledTimes(1);
+      expect(hfSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      ratesSpy.mockRestore();
+      hfSpy.mockRestore();
+    }
+  });
+
+  it('save_deposit confirm-tier pending_action carries currentHF but NOT borrowApyBps', async () => {
+    const naviReads = await import('../navi/reads.js');
+    const ratesSpy = vi.spyOn(naviReads, 'fetchRates').mockResolvedValue(HAPPY_RATES);
+    const hfSpy = vi.spyOn(naviReads, 'fetchHealthFactor').mockResolvedValue(HAPPY_HF);
+
+    try {
+      const saveTool = makeSaveTool();
+      const engine = new AISDKEngine({
+        ...baseConfig('sk-test-fake-key-not-used'),
+        tools: [saveTool],
+        mcpManager: { __mock: 'mcp' } as unknown as AISDKEngineConfig['mcpManager'],
+      });
+
+      withStubbedModel(engine, [
+        { type: 'stream-start', warnings: [] },
+        { type: 'response-metadata', id: 'r1', timestamp: new Date(), modelId: 'stub' },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Saving $10 USDC. ' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'tool-call',
+          toolCallId: 'toolu_save_001',
+          toolName: 'save_deposit',
+          input: JSON.stringify({ amount: 10, asset: 'USDC' }),
+        },
+        {
+          type: 'finish',
+          finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+          usage: {
+            inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 10, text: 10, reasoning: 0 },
+          },
+        },
+      ]);
+
+      const events = await collect(engine.submitMessage('Save $10 USDC.'));
+      const pendingActions = events.filter((e) => e.type === 'pending_action');
+      expect(pendingActions.length).toBe(1);
+      const ev = pendingActions[0]!;
+      if (ev.type !== 'pending_action') throw new Error('type narrowing');
+
+      expect(ev.action.borrowApyBps).toBeUndefined();
+      expect(ev.action.currentHF).toBeCloseTo(3.8, 5);
+      expect(ratesSpy).not.toHaveBeenCalled();
+      expect(hfSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      ratesSpy.mockRestore();
+      hfSpy.mockRestore();
+    }
+  });
+
+  it('graceful: NAVI MCP unavailable → pending_action omits both fields (no throw)', async () => {
+    const naviReads = await import('../navi/reads.js');
+    const ratesSpy = vi
+      .spyOn(naviReads, 'fetchRates')
+      .mockRejectedValue(new Error('NAVI circuit breaker open'));
+    const hfSpy = vi
+      .spyOn(naviReads, 'fetchHealthFactor')
+      .mockRejectedValue(new Error('NAVI timeout'));
+
+    try {
+      const borrowTool = makeBorrowTool();
+      const engine = new AISDKEngine({
+        ...baseConfig('sk-test-fake-key-not-used'),
+        tools: [borrowTool],
+        mcpManager: { __mock: 'mcp' } as unknown as AISDKEngineConfig['mcpManager'],
+      });
+
+      withStubbedModel(engine, [
+        { type: 'stream-start', warnings: [] },
+        { type: 'response-metadata', id: 'r1', timestamp: new Date(), modelId: 'stub' },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Borrowing. ' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'tool-call',
+          toolCallId: 'toolu_borrow_001',
+          toolName: 'borrow',
+          input: JSON.stringify({ amount: 5, asset: 'USDC' }),
+        },
+        {
+          type: 'finish',
+          finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+          usage: {
+            inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 10, text: 10, reasoning: 0 },
+          },
+        },
+      ]);
+
+      const events = await collect(engine.submitMessage('Borrow $5.'));
+      const pendingActions = events.filter((e) => e.type === 'pending_action');
+      expect(pendingActions.length).toBe(1);
+      const ev = pendingActions[0]!;
+      if (ev.type !== 'pending_action') throw new Error('type narrowing');
+
+      expect(ev.action.borrowApyBps).toBeUndefined();
+      expect(ev.action.currentHF).toBeUndefined();
+      expect(ev.action.toolName).toBe('borrow');
+      expect(ratesSpy).toHaveBeenCalledTimes(1);
+      expect(hfSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      ratesSpy.mockRestore();
+      hfSpy.mockRestore();
+    }
+  });
+
+  it('no mcpManager configured → pending_action omits both fields (no NAVI calls)', async () => {
+    const naviReads = await import('../navi/reads.js');
+    const ratesSpy = vi.spyOn(naviReads, 'fetchRates').mockResolvedValue(HAPPY_RATES);
+    const hfSpy = vi.spyOn(naviReads, 'fetchHealthFactor').mockResolvedValue(HAPPY_HF);
+
+    try {
+      const borrowTool = makeBorrowTool();
+      const engine = new AISDKEngine({
+        ...baseConfig('sk-test-fake-key-not-used'),
+        tools: [borrowTool],
+        // No mcpManager — audric not threading MCP this turn
+      });
+
+      withStubbedModel(engine, [
+        { type: 'stream-start', warnings: [] },
+        { type: 'response-metadata', id: 'r1', timestamp: new Date(), modelId: 'stub' },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'Borrowing. ' },
+        { type: 'text-end', id: 't1' },
+        {
+          type: 'tool-call',
+          toolCallId: 'toolu_borrow_001',
+          toolName: 'borrow',
+          input: JSON.stringify({ amount: 5 }),
+        },
+        {
+          type: 'finish',
+          finishReason: { unified: 'tool-calls', raw: 'tool_use' },
+          usage: {
+            inputTokens: { total: 50, noCache: 50, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 10, text: 10, reasoning: 0 },
+          },
+        },
+      ]);
+
+      const events = await collect(engine.submitMessage('Borrow $5.'));
+      const pendingActions = events.filter((e) => e.type === 'pending_action');
+      expect(pendingActions.length).toBe(1);
+      const ev = pendingActions[0]!;
+      if (ev.type !== 'pending_action') throw new Error('type narrowing');
+
+      expect(ev.action.borrowApyBps).toBeUndefined();
+      expect(ev.action.currentHF).toBeUndefined();
+      expect(ratesSpy).not.toHaveBeenCalled();
+      expect(hfSpy).not.toHaveBeenCalled();
+    } finally {
+      ratesSpy.mockRestore();
+      hfSpy.mockRestore();
+    }
+  });
+});

@@ -67,6 +67,7 @@ import type {
 } from '../types.js';
 import { toAISDKTools } from './tool-wrapper.js';
 import { buildToolContext } from './tool-context.js';
+import { enrichPendingActionWithLiveData } from './enrich-pending-action.js';
 import type { InternalContext } from './internal-context.js';
 import { translate, createBridgeState } from '../bridge/event-bridge.js';
 import { buildStepFinishHandler, type StepFinishMutableState } from './step-finish.js';
@@ -856,6 +857,19 @@ export class AISDKEngine {
       const attemptId = crypto.randomUUID();
       const modifiableFields = getModifiableFields(tool.name);
 
+      // [SPEC 37 v0.7a Week 4 cleanup — Day 14a / 2026-05-16] Stamp live
+      // NAVI data (borrowApyBps for borrow/repay, currentHF for borrow/
+      // withdraw/save/repay) so audric's V2 preview bodies render
+      // APYBlock + HFGauge primitives instead of the pre-Week-4 italic
+      // disclaimer + missing HF row. Fail-soft: if NAVI MCP is
+      // unavailable or the cache lookup errors, the helper returns `{}`
+      // and the V2 component falls back to honest degradation.
+      const liveData = await enrichPendingActionWithLiveData(
+        tool.name,
+        cached.input,
+        internal.toolContext,
+      );
+
       const action: PendingAction = {
         toolName: tool.name,
         toolUseId: pendingApprovalToolCallId,
@@ -870,6 +884,8 @@ export class AISDKEngine {
         ...(modifiableFields && modifiableFields.length > 0 ? { modifiableFields } : {}),
         turnIndex,
         attemptId,
+        ...(liveData.borrowApyBps !== undefined ? { borrowApyBps: liveData.borrowApyBps } : {}),
+        ...(liveData.currentHF !== undefined ? { currentHF: liveData.currentHF } : {}),
       };
 
       yield { type: 'pending_action', action };

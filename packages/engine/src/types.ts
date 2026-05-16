@@ -601,6 +601,51 @@ export interface PendingAction {
   regenerateInput?: {
     toolUseIds: string[];
   };
+  /**
+   * [SPEC 37 v0.7a Week 4 cleanup — Day 14a / 2026-05-16] Live borrow APY
+   * in BASIS POINTS (e.g. `467` = 4.67%) for the asset being borrowed or
+   * repaid. Stamped at `pending_action` emit time from the NAVI rates
+   * cache (5-min TTL); fetches fresh on cache miss.
+   *
+   * **Basis-points integer (not decimal fraction)** — matches audric's
+   * `APYBlock` primitive `apyBps` prop so V2 components consume the
+   * field without conversion.
+   *
+   * **Populated for:** `borrow`, `repay_debt`.
+   * **Undefined when:** NAVI MCP unavailable, asset not present in the
+   * rates payload, or tool is not borrow/repay.
+   *
+   * **Audric V2 contract.** `BorrowPreviewBody` / `RepayPreviewBody`
+   * detect this field and render the canonical `APYBlock` primitive
+   * instead of the italic "Variable rate — locked at execute time"
+   * disclaimer. Falling back to the disclaimer when undefined preserves
+   * the existing honest-degradation behaviour.
+   *
+   * **v2-only (Week 6).** Legacy `QueryEngine` never sets this field;
+   * the legacy path is being deleted at Week 6 anyway. Audric's V2
+   * components treat the field as opt-in (undefined → render disclaimer).
+   */
+  borrowApyBps?: number;
+  /**
+   * [SPEC 37 v0.7a Week 4 cleanup — Day 14a / 2026-05-16] Current health
+   * factor BEFORE the pending write executes. Stamped at `pending_action`
+   * emit time from the NAVI health-factor cache (30s TTL); fetches fresh
+   * on cache miss.
+   *
+   * **Populated for:** writes that change HF — `borrow`, `withdraw`,
+   * `save_deposit`, `repay_debt`. (Send / swap / pay don't touch HF.)
+   * **Undefined when:** NAVI MCP unavailable, wallet has no positions
+   * (HF is effectively `Infinity`), or tool doesn't affect HF.
+   *
+   * **Audric V2 contract.** Combined with the write's input (amount /
+   * asset / direction), audric computes the projected post-write HF
+   * client-side and renders the `HFGauge` primitive with the current →
+   * projected delta. Falling back to "no HF row" when undefined keeps
+   * the card honest about what we know.
+   *
+   * **v2-only (Week 6).** Same rationale as `borrowApyBps`.
+   */
+  currentHF?: number;
 }
 
 /**
