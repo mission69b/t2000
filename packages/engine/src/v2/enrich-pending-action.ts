@@ -244,12 +244,58 @@ export async function enrichPendingActionWithLiveData(
             hf.borrowed,
             hf.liquidationThreshold,
           );
+
+          // [Day 14e / 2026-05-17] Temporary diagnostic logging.
+          //
+          // Prod smoke 2026-05-17 12:14 UTC+10 showed borrow $0.5 still
+          // rendering `Health factor ∞ → ∞` after the Day 14d fixes,
+          // despite Save's currentHF correctly flipping from 0.00 to ∞
+          // (proving v1.38.4 IS deployed). One of the inputs to
+          // `projectHF` must be unexpected — most likely `hf.supplied`
+          // or `hf.liquidationThreshold` are coming back as 0 from NAVI
+          // (which would make projectHF return `undefined`, then the
+          // HFRow renderer's `hasProjection` check would be false and
+          // the arrow should NOT render — but it DOES). This logging
+          // surfaces the exact values per emit so we can fix the root
+          // cause with certainty rather than another patch-by-guess.
+          //
+          // TODO Day 14f: REMOVE this block once Bug 2 root cause is
+          // confirmed and the targeted fix lands.
+          if (toolName === 'borrow' || toolName === 'save_deposit') {
+            // eslint-disable-next-line no-console
+            console.log(
+              JSON.stringify({
+                tag: 'enrich-hf-debug',
+                toolName,
+                rawAmount: inputObj.amount,
+                rawAmountType: typeof inputObj.amount,
+                coercedAmount: amount,
+                supplied: hf.supplied,
+                borrowed: hf.borrowed,
+                liquidationThreshold: hf.liquidationThreshold,
+                healthFactor: hf.healthFactor,
+                projected,
+                currentHF: out.currentHF,
+                projectedHF: projected !== undefined ? projected : 'unset',
+              }),
+            );
+          }
+
           if (projected !== undefined) {
             out.projectedHF = projected;
           }
         })
-        .catch(() => {
-          // Graceful degradation
+        .catch((err) => {
+          // Graceful degradation — but log the error so we know if NAVI
+          // is failing silently in prod.
+          // eslint-disable-next-line no-console
+          console.log(
+            JSON.stringify({
+              tag: 'enrich-hf-debug-error',
+              toolName,
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
         }),
     );
   }

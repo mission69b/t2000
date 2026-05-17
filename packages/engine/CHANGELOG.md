@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.38.5 (2026-05-17) — Day 14e diagnostic: HF preview debug logging
+
+Single-purpose release. Adds production logging to `enrichPendingActionWithLiveData` so we can see the actual inputs to `projectHF` per emit for `borrow` and `save_deposit` previews.
+
+### Why
+
+The 2026-05-17 re-smoke of v1.38.4 showed mixed results:
+
+- **`save 6 USDC` preview** → `Health factor ∞ → ∞` (CORRECT — `coerceCurrentHF` fixed the dust-borrow case; v1.38.4 IS deployed).
+- **`borrow $0.5` preview** → `Health factor ∞ → ∞` (STILL WRONG — should render `∞ → ~16.5` against $13.71 collateral with 0 prior debt).
+
+Two failure paths could produce `∞ → ∞` for borrow:
+
+1. `coerceAmount` returns `0` (LLM emitted unexpected shape) — `projectHF` returns `undefined`, arrow shouldn't render. But it DOES, so this isn't the path.
+2. `projectHF` reaches the `newBorrowed <= DEBT_DUST_USD` dust check and returns `null` — but for borrow, `newBorrowed = 0 + 0.5 = 0.5`, which is `> 0.01`. So this shouldn't be the path either.
+
+Neither expected path explains the observed behavior. Rather than ship another patch-by-guess, this release surfaces the exact inputs so we can fix the root cause with certainty on the next iteration.
+
+### Added
+
+- **`enrich-hf-debug` log line** emitted whenever `enrichPendingActionWithLiveData` runs for `borrow` or `save_deposit`. JSON shape, single-line, grep-friendly: `{ tag, toolName, rawAmount, rawAmountType, coercedAmount, supplied, borrowed, liquidationThreshold, healthFactor, projected, currentHF, projectedHF }`.
+- **`enrich-hf-debug-error` log line** emitted when `fetchHealthFactor` rejects (previously a silent `.catch(() => {})`). Logs `{ tag, toolName, error }` so we know if NAVI is failing silently in prod.
+
+### Removal plan
+
+Both log lines are tagged with `[Day 14e]` and a TODO marking them for removal in `Day 14f` once Bug 2 root cause is confirmed and the targeted fix lands. Estimated lifetime: 1-2 days.
+
+### Operational impact
+
+- **Audric**: bump `@t2000/engine` from `1.38.4` → `1.38.5`. No code changes — pure diagnostic.
+- **Log volume**: ~1-3 lines per write-preview emit. Negligible.
+- **No behavioral change** — pure observability addition.
+
 ## 1.38.4 (2026-05-17) — Day 14d HF preview fixes (string-amount coercion + post-write cache bypass)
 
 Two surgical fixes to `enrichPendingActionWithLiveData` that close the prod-observed Health-Factor preview gaps surfaced during the WRITE_PREVIEWS_V2 rollout smoke (2026-05-17).
