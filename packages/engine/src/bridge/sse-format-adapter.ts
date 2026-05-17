@@ -9,12 +9,21 @@
 //
 // Why this module exists
 // ----------------------
-// Today (v0.5x) the engine emits `EngineEvent` from its outer agent loop
-// and `streaming.ts:engineToSSE` serialises directly to legacy SSE bytes.
-// In Phase 5 we replace the streaming layer with `createUIMessageStream`,
-// which produces a typed `UIMessageStreamPart` sequence (text-delta,
-// reasoning-delta, tool-input-available, tool-output-available, plus the
-// `data-{name}` side-channel that carries canvas/pending_action/etc).
+// Pre-v2.0.0 the engine emitted `EngineEvent` from its outer agent loop
+// and the (now-deleted) `streaming.ts:engineToSSE` serialised directly to
+// legacy SSE bytes. v2.0.0's AISDKEngine already emits EngineEvent via
+// `streamText` + `bridge/event-bridge.ts`; audric hosts iterate raw and
+// call `serializeSSE` per event (audric/apps/web/app/api/engine/{chat,
+// resume}/route.ts since v1.4.2 / Spec G3). The Phase 5 Slice A cleanup
+// (v2.2.0) deleted `engineToSSE` because it had no live caller.
+//
+// This adapter remains as the alternative production path: when engine
+// code optionally emits via `createUIMessageStream` (a typed
+// `UIMessageStreamPart` sequence — text-delta, reasoning-delta,
+// tool-input-available, tool-output-available, plus the `data-{name}`
+// side-channel that carries canvas/pending_action/etc), this adapter
+// translates the parts back to legacy SSEEvent so the wire bytes stay
+// byte-identical to the EngineEvent-direct path.
 //
 // This adapter is the seam: `bridgeUIMessageStream(parts)` consumes
 // UIMessageStreamPart and yields legacy `SSEEvent` instances, which can
@@ -109,8 +118,9 @@ export async function* bridgeUIMessageStream(
 /**
  * Convenience: same as `bridgeUIMessageStream` composed with
  * `serializeSSE`. Yields wire bytes ready for an SSE response. Phase-5
- * route handlers (e.g. audric's `/api/engine/chat`) plug this in
- * exactly where `engineToSSE` plugs in today.
+ * route handlers (e.g. a future audric chat route variant) plug this in
+ * at the same site where today's raw-EngineEvent + per-event
+ * `serializeSSE` loop lives.
  */
 export async function* bridgeUIMessageStreamToSSE(
   parts: AsyncIterable<UIMessageStreamPart>,

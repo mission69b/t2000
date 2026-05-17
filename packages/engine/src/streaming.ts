@@ -1,8 +1,33 @@
-import type { EngineEvent, HarnessShape, PendingAction, StopReason, TodoItem } from './types.js';
+// ---------------------------------------------------------------------------
+// SPEC 37 v0.7a Phase 5 Slice A (2026-05-17, engine v2.2.0):
+//
+// This module is the wire-format SSOT only. The `engineToSSE` async-generator
+// adapter that historically wrapped a `QueryEngine.submitMessage()` generator
+// into an SSE byte stream was deleted in v2.2.0 — it had no live caller. The
+// audric host's chat/resume routes iterate `EngineEvent` raw (per `audric/
+// apps/web/app/api/engine/{chat,resume}/route.ts`'s "v1.4.2 — Day 4 / Spec
+// G3" switch to per-event collection + `serializeSSE`-per-event); CLI / MCP
+// embed the engine in-process and never hit SSE. The legacy `withStreamState`
+// wrapper that `engineToSSE` applied by default is still exported standalone
+// from `index.ts` for hosts that want it.
+//
+// What stays:
+//   - `SSEEvent` discriminated union — the wire-format type that audric's
+//     SSE consumer (`useEngine.ts:processSSEChunk`) parses
+//   - `serializeSSE(event) → string` — the canonical per-event wire emitter
+//   - `parseSSE(raw) → SSEEvent | null` — the symmetric parser
+//
+// What got deleted in v2.2.0:
+//   - `engineToSSE(events) → AsyncGenerator<string>` — pre-Phase-5 stream
+//     adapter, no live caller. v2.0.0's AISDKEngine already emitted
+//     EngineEvent directly via `streamText` + `bridge/event-bridge.ts`;
+//     audric switched to raw-event iteration before this deletion.
+// ---------------------------------------------------------------------------
+
+import type { HarnessShape, PendingAction, StopReason, TodoItem } from './types.js';
 import type { EvaluationItem } from './eval-summary.js';
 import type { ProactiveType } from './proactive-marker.js';
 import type { FormSchema } from './pending-input.js';
-import { withStreamState } from './stream-state.js';
 
 // ---------------------------------------------------------------------------
 // SSE event format — serialisable subset of EngineEvent
@@ -136,23 +161,6 @@ export function parseSSE(raw: string): SSEEvent | null {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Stream adapter: engine async generator → SSE text stream
-// ---------------------------------------------------------------------------
-
-export async function* engineToSSE(
-  events: AsyncGenerator<EngineEvent>,
-): AsyncGenerator<string> {
-  // [SPEC 21.1] Default-apply the stream-state wrapper. Every host using
-  // this adapter gets `routing` / `quoting` events automatically; opt-out
-  // requires constructing the SSE stream manually (no in-tree caller does
-  // this today). Older hosts that don't render the chip ignore unknown
-  // event types — backward-compatible.
-  for await (const event of withStreamState(events)) {
-    if (event.type === 'error') {
-      yield serializeSSE({ type: 'error', message: event.error.message });
-    } else {
-      yield serializeSSE(event as SSEEvent);
-    }
-  }
-}
+// `engineToSSE` was deleted in v2.2.0 — see the file header for the deletion
+// rationale. Hosts that want the SPEC 21.1 stream-state wrapper apply
+// `withStreamState` directly (exported standalone from `@t2000/engine`).

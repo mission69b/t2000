@@ -1,10 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import {
-  serializeSSE,
-  parseSSE,
-  engineToSSE,
-} from '../streaming.js';
+import { serializeSSE, parseSSE } from '../streaming.js';
 import type { EngineEvent, SSEEvent } from '../index.js';
+
+// [SPEC 37 v0.7a Phase 5 Slice A / v2.2.0] The legacy `engineToSSE`
+// async-generator was deleted. The modern production pattern (used by
+// audric's chat + resume routes since v1.4.2 — Day 4 / Spec G3) iterates
+// EngineEvent raw and calls `serializeSSE` per event. Test helper below
+// replicates that pattern so we can keep the prior wire-coverage assertions
+// without re-introducing the dead adapter.
+async function engineEventsToWire(events: AsyncGenerator<EngineEvent>): Promise<string[]> {
+  const out: string[] = [];
+  for await (const event of events) {
+    if (event.type === 'error') {
+      out.push(serializeSSE({ type: 'error', message: event.error.message }));
+    } else {
+      out.push(serializeSSE(event as SSEEvent));
+    }
+  }
+  return out;
+}
 
 describe('serializeSSE', () => {
   it('serialises a text_delta event', () => {
@@ -60,17 +74,14 @@ describe('parseSSE', () => {
   });
 });
 
-describe('engineToSSE', () => {
+describe('EngineEvent iteration -> serializeSSE per event (post-v2.2.0 production pattern)', () => {
   it('converts engine events to SSE strings', async () => {
     async function* fakeEngine(): AsyncGenerator<EngineEvent> {
       yield { type: 'text_delta', text: 'Hello' };
       yield { type: 'turn_complete', stopReason: 'end_turn' };
     }
 
-    const chunks: string[] = [];
-    for await (const chunk of engineToSSE(fakeEngine())) {
-      chunks.push(chunk);
-    }
+    const chunks = await engineEventsToWire(fakeEngine());
 
     expect(chunks).toHaveLength(2);
     expect(chunks[0]).toContain('text_delta');
@@ -93,10 +104,7 @@ describe('engineToSSE', () => {
       };
     }
 
-    const chunks: string[] = [];
-    for await (const chunk of engineToSSE(fakeEngine())) {
-      chunks.push(chunk);
-    }
+    const chunks = await engineEventsToWire(fakeEngine());
 
     expect(chunks).toHaveLength(1);
     expect(chunks[0]).toContain('pending_action');
@@ -108,10 +116,7 @@ describe('engineToSSE', () => {
       yield { type: 'usage', inputTokens: 100, outputTokens: 50, cacheReadTokens: 10, cacheWriteTokens: 5 };
     }
 
-    const chunks: string[] = [];
-    for await (const chunk of engineToSSE(fakeEngine())) {
-      chunks.push(chunk);
-    }
+    const chunks = await engineEventsToWire(fakeEngine());
 
     expect(chunks).toHaveLength(1);
     const parsed = parseSSE(chunks[0]);
@@ -130,25 +135,19 @@ describe('engineToSSE', () => {
       yield { type: 'tool_result', toolName: 'balance_check', toolUseId: 'tc-1', result: { balance: 100 }, isError: false };
     }
 
-    const chunks: string[] = [];
-    for await (const chunk of engineToSSE(fakeEngine())) {
-      chunks.push(chunk);
-    }
+    const chunks = await engineEventsToWire(fakeEngine());
 
     expect(chunks).toHaveLength(2);
     expect(parseSSE(chunks[0])?.type).toBe('tool_start');
     expect(parseSSE(chunks[1])?.type).toBe('tool_result');
   });
 
-  it('converts Error objects to message strings', async () => {
+  it('converts Error objects to message strings (the engineToSSE error-normalisation contract preserved)', async () => {
     async function* fakeEngine(): AsyncGenerator<EngineEvent> {
       yield { type: 'error', error: new Error('Network failure') };
     }
 
-    const chunks: string[] = [];
-    for await (const chunk of engineToSSE(fakeEngine())) {
-      chunks.push(chunk);
-    }
+    const chunks = await engineEventsToWire(fakeEngine());
 
     expect(chunks).toHaveLength(1);
     const parsed = parseSSE(chunks[0]);
@@ -170,10 +169,7 @@ describe('engineToSSE', () => {
       };
     }
 
-    const chunks: string[] = [];
-    for await (const chunk of engineToSSE(fakeEngine())) {
-      chunks.push(chunk);
-    }
+    const chunks = await engineEventsToWire(fakeEngine());
 
     expect(chunks).toHaveLength(1);
     const parsed = parseSSE(chunks[0]);
@@ -199,10 +195,7 @@ describe('engineToSSE', () => {
       };
     }
 
-    const chunks: string[] = [];
-    for await (const chunk of engineToSSE(fakeEngine())) {
-      chunks.push(chunk);
-    }
+    const chunks = await engineEventsToWire(fakeEngine());
     const parsed = parseSSE(chunks[0]);
     if (parsed?.type === 'proactive_text') {
       expect(parsed.suppressed).toBe(true);

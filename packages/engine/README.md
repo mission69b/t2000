@@ -79,7 +79,7 @@ QueryEngine.submitMessage()
 | `engine.ts` | `QueryEngine` | Stateful conversation loop with tool dispatch |
 | `tool.ts` | `buildTool` | Typed tool factory with Zod validation |
 | `orchestration.ts` | `runTools`, `TxMutex` | Parallel reads, serial writes |
-| `streaming.ts` | `serializeSSE`, `parseSSE`, `engineToSSE` | SSE wire format |
+| `streaming.ts` | `serializeSSE`, `parseSSE` | SSE wire format SSOT (`engineToSSE` removed in v2.2.0 — hosts iterate EngineEvent raw + call `serializeSSE` per event) |
 | `session.ts` | `MemorySessionStore` | In-memory session store with TTL |
 | `context.ts` | `estimateTokens`, `compactMessages` | Token estimation + message compaction |
 | `cost.ts` | `CostTracker` | Token usage + USD cost tracking with budget limits |

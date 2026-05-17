@@ -977,9 +977,9 @@ This stateless flow is serverless-friendly — no long-lived SSE connections nee
 | `CostTracker`               | Cumulative token usage, USD cost estimation, budget kill switch     |
 | `MemorySessionStore`        | In-memory session store with TTL and data isolation                 |
 | `compactMessages`           | Three-phase context window compaction (summarize → drop → truncate) |
-| `serializeSSE` / `parseSSE` | Wire-safe SSE event format for web transport                        |
+| `serializeSSE` / `parseSSE` | Wire-safe SSE event format for web transport (the only wire-format SSOT) |
 | `validateHistory`           | Pre-flight message history validation before every LLM call         |
-| `engineToSSE`               | Adapts QueryEngine generator to SSE stream                          |
+| `withStreamState`           | SPEC 21.1 stream-state wrapper — `routing`/`quoting`/etc → `stream_state` events for UI motion (hosts wrap EngineEvent iteration; `engineToSSE` adapter was removed in v2.2.0) |
 
 
 ### NAVI MCP Integration

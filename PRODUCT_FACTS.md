@@ -681,8 +681,8 @@ Every transaction is self-funded by the agent's wallet. Throws `INSUFFICIENT_GAS
 | `adaptMcpTool` | function | Convert MCP tool → engine Tool |
 | `buildMcpTools` | function | Convert engine tools → MCP descriptors |
 | `registerEngineTools` | function | Register engine tools on MCP server |
-| `serializeSSE` / `parseSSE` | function | SSE wire format |
-| `engineToSSE` | function | Adapt QueryEngine → SSE stream |
+| `serializeSSE` / `parseSSE` | function | SSE wire format (canonical wire-byte emitter + parser; the only wire-format SSOT post-v2.2.0) |
+| `withStreamState` | function | SPEC 21.1 stream-state choreography wrapper — converts engine-emitted `routing` / `quoting` / `confirming` / `settling` / `done` signals into `stream_state` SSE events for UI motion (previously default-applied inside the deleted `engineToSSE`; hosts now wrap their EngineEvent iteration with it directly) |
 | `estimateTokens` | function | Rough token estimation |
 | `compactMessages` | function | Context window compaction (ContextBudget) |
 | `fetchTokenPrices` | function | Batch USD prices from BlockVision Indexer REST (Sui-RPC + hardcoded-stable degraded fallback) |

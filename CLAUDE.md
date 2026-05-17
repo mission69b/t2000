@@ -257,7 +257,10 @@ import { TxMutex, runTools, budgetToolResult } from '@t2000/engine';
 import { EarlyToolDispatcher } from '@t2000/engine';
 
 // Streaming + sessions
-import { serializeSSE, parseSSE, engineToSSE } from '@t2000/engine';
+// [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice A] `engineToSSE` was deleted —
+// hosts iterate the EngineEvent generator raw and call `serializeSSE`
+// per event (audric switched to this pattern in v1.4.2 / Spec G3).
+import { serializeSSE, parseSSE } from '@t2000/engine';
 import { MemorySessionStore } from '@t2000/engine';
 
 // Context + cost + microcompact

@@ -6,10 +6,11 @@
 // the coupling to specific tool names (today: only `swap_quote`) at the
 // edge instead of the core dispatcher.
 //
-// Default-applied inside `engineToSSE` so every host that uses the SSE
-// adapter gets stream_state events automatically. Hosts that consume
-// `EngineEvent` directly (e.g. unit tests, in-process embeddings) opt in
-// by wrapping their own AsyncGenerator with `withStreamState()`.
+// Hosts apply `withStreamState()` around their EngineEvent iteration. The
+// pre-v2.2.0 `engineToSSE` SSE adapter default-applied this wrapper;
+// `engineToSSE` was removed in Phase 5 Slice A (no live caller — audric
+// switched to raw-event iteration in v1.4.2 / Spec G3), so hosts now wrap
+// directly: `for await (const e of withStreamState(engine.submitMessage(...)))`.
 //
 // Per SPEC 21 D-3 lock (= staged rollout), engine ALWAYS emits these
 // events; audric (and other hosts) gate the visual choreography on a

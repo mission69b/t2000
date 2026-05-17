@@ -104,13 +104,20 @@ export type { PendingToolCall } from './orchestration.js';
 export { CostTracker } from './cost.js';
 export type { CostSnapshot, CostTrackerConfig } from './cost.js';
 
-// Streaming (SSE)
-export { serializeSSE, parseSSE, engineToSSE } from './streaming.js';
+// Streaming (SSE wire format)
+// [SPEC 37 v0.7a Phase 5 Slice A / v2.2.0 / 2026-05-17] `engineToSSE` removed —
+// see `streaming.ts` header for the deletion rationale. Hosts that previously
+// wrapped `engine.submitMessage()` with `engineToSSE` now iterate the
+// EngineEvent generator raw and call `serializeSSE` per-event (audric switched
+// to this pattern in v1.4.2; CLI / MCP never used the SSE path). `SSEEvent` +
+// `serializeSSE` + `parseSSE` remain as the wire-format single source of truth.
+export { serializeSSE, parseSSE } from './streaming.js';
 export type { SSEEvent } from './streaming.js';
 
-// [SPEC 21.1] Stream-state choreography wrapper. Default-applied inside
-// `engineToSSE`; exported standalone for hosts that consume EngineEvent
-// directly (in-process embeddings, unit tests).
+// [SPEC 21.1] Stream-state choreography wrapper — converts `routing` /
+// `quoting` / `confirming` / `settling` / `done` engine signals into
+// `stream_state` events for UI motion. Previously default-applied inside
+// `engineToSSE`; hosts now wrap their EngineEvent iteration with it directly.
 export { withStreamState } from './stream-state.js';
 export type { StreamState, StreamStateEvent } from './stream-state.js';
 

@@ -106,10 +106,18 @@ registerEngineTools(server, getDefaultTools());
 
 ## SSE Streaming (web apps)
 ```typescript
-import { engineToSSE } from '@t2000/engine';
+// [v2.2.0 / SPEC 37 v0.7a Phase 5 Slice A] `engineToSSE` removed —
+// iterate EngineEvent raw and call serializeSSE per event. Audric chat +
+// resume routes have used this pattern since v1.4.2 (Spec G3). Hosts that
+// want the SPEC 21.1 routing/quoting/etc → stream_state choreography wrap
+// with `withStreamState` directly.
+import { serializeSSE, withStreamState } from '@t2000/engine';
 
-for await (const chunk of engineToSSE(engine.submitMessage(prompt))) {
-  // Send chunk to client via SSE
+for await (const event of withStreamState(engine.submitMessage(prompt))) {
+  const wireBytes = event.type === 'error'
+    ? serializeSSE({ type: 'error', message: event.error.message })
+    : serializeSSE(event);
+  // Send wireBytes to client via SSE
 }
 // Write tools yield pending_action → client executes on-chain → POST /api/engine/resume
 ```
@@ -144,8 +152,8 @@ new QueryEngine({
 import { QueryEngine, AnthropicProvider, getDefaultTools } from '@t2000/engine';
 // Tools
 import { buildTool, READ_TOOLS, WRITE_TOOLS } from '@t2000/engine';
-// Streaming
-import { serializeSSE, parseSSE, engineToSSE } from '@t2000/engine';
+// Streaming (`engineToSSE` removed in v2.2.0 — see "SSE Streaming" above)
+import { serializeSSE, parseSSE, withStreamState } from '@t2000/engine';
 // Sessions
 import { MemorySessionStore } from '@t2000/engine';
 // Cost

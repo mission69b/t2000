@@ -323,8 +323,10 @@ export type EngineEvent =
    * feature flag (audric uses `NEXT_PUBLIC_HARNESS_TRANSITIONS_V1` per
    * SPEC 21 D-3 lock = staged rollout).
    *
-   * Engine-emitted states (auto, via `withStreamState` wrapper around
-   * `engineToSSE`):
+   * Engine-emitted states (auto, via `withStreamState` wrapper applied
+   * by hosts around their EngineEvent iteration; `engineToSSE` was the
+   * pre-v2.2.0 SSE adapter that default-applied `withStreamState` — it
+   * was removed in Phase 5 Slice A and hosts now wrap directly):
    *  - `'routing'`  — emitted immediately BEFORE the first `tool_start`
    *                   for `swap_quote` in a turn. Signals "the LLM is
    *                   asking the aggregator for a route."

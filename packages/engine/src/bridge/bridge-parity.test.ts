@@ -118,8 +118,10 @@ const OUTER_ENGINE_EMITS = new Set<EngineEvent['type']>([
   // One-shot per-turn shape declaration. Emitted at `submitMessage` start
   // by the outer engine before `agentLoop` begins.
   'harness_shape',
-  // SPEC 21 transition choreography. Wrapped around `engineToSSE` by
-  // `withStreamState` — outer SSE plumbing, never the LLM stream.
+  // SPEC 21 transition choreography. Hosts wrap their EngineEvent
+  // iteration with `withStreamState` — outer SSE plumbing, never the
+  // LLM stream. (Pre-v2.2.0 the deleted `engineToSSE` adapter applied
+  // this wrapper by default.)
   'stream_state',
 ]);
 

@@ -7,10 +7,14 @@
 //   • Every UIMessageStreamPart variant the adapter consumes maps to
 //     the expected SSEEvent (or correctly drops to nothing).
 //   • Wire-byte equivalence: a fixture UIMessage stream produces
-//     IDENTICAL serialised bytes to the legacy `engineToSSE` path
-//     fed an equivalent `EngineEvent` sequence. This is the load-bearing
-//     contract — it's how we know `audric/web` doesn't notice the
-//     Phase 5 internal swap.
+//     IDENTICAL serialised bytes to the manual `for-await + serializeSSE`
+//     EngineEvent path (which is what audric/web's chat + resume routes
+//     do today since v1.4.2 / Spec G3 — the pre-v2.2.0 `engineToSSE`
+//     adapter was the original equivalence target and was deleted in
+//     Phase 5 Slice A; the contract this test pins is identical).
+//     This is the load-bearing contract — it's how we know `audric/web`
+//     doesn't notice when a Phase 5+ engine code path optionally emits
+//     via `createUIMessageStream` instead of EngineEvent directly.
 //   • Engine side-channel `data-{name}` parts route to the right
 //     SSEEvent variant for all 9 categories (canvas, pending_action,
 //     todo_update, proactive_text, harness_shape, stream_state,
