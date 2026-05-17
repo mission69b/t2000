@@ -12,7 +12,7 @@
 
 ## 1. What shipped under the v0.7a label (engine releases)
 
-Recent run (Phase 4 → Phase 5 → Phase 5.5 → Phase 6 → Phase 6G → Phase 5 deferred follow-ups), all 2026-05-17:
+Recent run (Phase 4 → Phase 5 → Phase 5.5 → Phase 6 → Phase 6G → Phase 5 deferred follow-ups → D-6 prep → Phase 7 engine prototype), 2026-05-17 + 2026-05-18:
 
 | Release | Phase | What shipped | Audric impact |
 |---|---|---|---|
@@ -68,7 +68,7 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 | **D-4** | **`TurnMetrics.streamResumeOutcome` column** | onStreamResume telemetry consumer | ~2h Prisma migration + dashboard tile | Audric-side. Cheap once Vercel logs justify it. |
 | **D-5** | **MemWal Path B pivot** (Mem0 / Letta cloud / Letta self-hosted / Supermemory / Hindsight) | Phase 7 commitment gate | ~1-2 weeks if triggered | Only if 2026-06-26 Plan A decision fails. Otherwise Phase 7 absorbs MemWal as scoped. |
 | **D-6** | ~~**AI SDK shape alignment (prep)**~~ ✅ **SHIPPED engine v2.6.0 2026-05-18.** D-6.1 (approvalId alias) + D-6.3 (impedance docs) landed; D-6.2 (event-name rename) + D-6.4 (compat mode) remain deferred to v0.7c with full Slice D. | This scoping doc (2026-05-18) | ✅ done | — |
-| **D-7** | **Audric dry-run integration of engine v2.7.0 memory path** — wire `EngineConfig.memoryStore` (with `InMemoryMemoryStore` mock) + move `<financial_context>` + skill recipe text from `systemPrompt` into the new typed config fields. Proves F-4 ordering works in audric system prompts BEFORE MemWal stabilizes; when MemWal lands, only the store impl swap is required. Add `[memory-recall]` Vercel telemetry tag (parallels `[stream-resume]`). | Phase 7 audric prep | ~3-4h | De-risks the audric coordinated change; verifies prompt-caching behavior is unchanged when system arg moves to prepareStep return value. |
+| **D-7** | ~~**Audric dry-run integration of engine v2.7.0 memory path**~~ ✅ **SHIPPED audric `363e4f1` 2026-05-18 as S.153.** Opt-in via `ENGINE_MEMORY_PATH_ENABLED` env flag (default OFF). Wires `EngineConfig.memoryStore` (`InMemoryMemoryStore` mock; audric never calls `remember()` in dry-run so layer 3 stays empty) + extracts `<financial_context>` from inline dynamic block into `EngineConfig.financialContextBlock` via new `buildFullDynamicContextSeparated` helper. `skillRecipeBlock` left undefined (audric does not use `McpPromptAdapter` today; layer 4 stays empty). Operator-side smoke check via `vercel logs \| grep '[memory-path]'`. When MemWal lands, only the store impl swap is required (replace `new InMemoryMemoryStore()` with `new MemWalMemoryStore(...)`). | Phase 7 audric prep | ✅ done | De-risked: legacy path bit-identical when flag OFF; mock-recall returns [] → prompt-caching preserved in dry-run. |
 
 ### v0.7b explicit NON-goals
 
@@ -83,7 +83,7 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 
 | Signal | Pick |
 |---|---|
-| Founder wants user-visible progress | ~~Phase 7 design scoping~~ ✅ shipped 2026-05-18 as engine v2.7.0. Next user-visible step: audric dry-run integration against the in-memory mock (proves F-4 wiring end-to-end before MemWal stabilizes; ~3-4h). |
+| Founder wants user-visible progress | ~~Phase 7 design scoping + audric dry-run~~ ✅ both shipped 2026-05-18 (engine v2.7.0 + audric S.153 `363e4f1`). Next user-visible Phase 7 step: flip `ENGINE_MEMORY_PATH_ENABLED=1` in Vercel for canary observation (~1 week of token usage + cache-hit comparison), then promote to default-ON. Production realization (F-11/F-12/O-1/S-1/S-10) remains MemWal-gated. |
 | Founder wants platform-alignment win in v0.7b | ~~**D-6** lightweight cosmetic prep (~half day)~~ ✅ shipped 2026-05-18 as engine v2.6.0. Full Slice D remains v0.7c-class. |
 | Founder wants platform-alignment win and is ready for v0.7c | Pair D + B as a coupled migration alongside chatbot template fork |
 | Vercel logs show `mid_tool` resumes >5% of resume volume | **D-2** Path A engine-side prototype |
