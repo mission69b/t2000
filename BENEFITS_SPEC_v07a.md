@@ -131,7 +131,7 @@ verification_phases: [phase-0-baseline, phase-4, phase-7, phase-8, v07b-decision
 | **F-4** | `prepareStep` (per-step tool gating) | Phase 7 | LLM injection: system → financial_context → memory → skill → user message | All 5 layers in correct order |
 | **F-5** | `experimental_transcribe` (voice native) | Phase 1 | Hand-rolled Whisper code deleted; AI SDK transcribe path active | `audric/apps/web/voice/transcribe/route.ts` uses `experimental_transcribe` |
 | **F-6** | `experimental_toToolResultContent` | Phase 2 | Tool results render via AI SDK content protocol | All 35 tools migrated |
-| **F-7** | Sui protocol MCP composability | Phase 4 + ongoing | Future Sui protocol MCPs (DeepBook V2, Cetus, Volo) added via 1 registry entry | Zero engine changes per new protocol |
+| **F-7** | Sui protocol MCP composability | ✅ **REALIZED** Phase 4 (2026-05-17, engine v2.1.0) + ongoing | `McpClientManager` internals migrated to `@ai-sdk/mcp`'s `createMCPClient`; public surface preserved verbatim. Adding a new MCP server now requires only an `McpServerConfig` + a `manager.connect(config)` call — `adaptAllServerTools(manager)` auto-flows the discovered tools into the engine registry (verified by `__tests__/mcp-client.test.ts:287` 2-server fixture + `mcp/createMCPClient-integration.test.ts` `buildMcpTools` ↔ `createMCPClient` wire test). NEW `McpPromptAdapter` (Phase 4 ship) closes the prompt half of the composition story; Phase 6 wires `t2000-skills/skills/` through `@t2000/mcp` into it. | Zero engine changes per new protocol — confirmed at Phase 4 close |
 | **F-8** | v0.7b option creation (engine deletion path open) | Phase 8 close | v0.7b SPEC drafted with go/no-go decision criteria | Option exists; exercise discretionary |
 | **F-9** | v0.7c option creation (UI modernization path open) | v0.7b close | v0.7c SPEC drafted (this doc references it) | Option exists; exercise discretionary |
 | **F-10** | Cross-tool composability (skills consumable by Cursor/Claude/audric/CLI) | Phase 6 close | Same skill files in `t2000-skills/skills/` consumed by 4+ clients | 1 source of truth, N consumers |
@@ -1898,7 +1898,7 @@ Independent of the commitment gate decision above, four design questions surface
 
 - **Phase 1 close:** verify F-3, F-5, O-2 (preliminary measurement)
 - **Phase 2 close:** verify F-6
-- **Phase 4 close:** verify F-7 (1+ MCP integration tested)
+- **Phase 4 close:** verify F-7 (1+ MCP integration tested) — ✅ **VERIFIED 2026-05-17** (engine v2.1.0): NAVI MCP wire preserved + `buildMcpTools` ↔ `createMCPClient` fixture green + `adaptAllServerTools` 2-server flow green. Live NAVI wallet smoke (founder-owned) is the one open soak item — see S.149 in `audric-build-tracker.md`.
 - **Phase 6 close:** verify F-10, S-7 (skills repo + MCP distribution live)
 - **Phase 7 close:** verify O-1, F-11, F-12, S-1 (engine layer)
 - **Phase 8 close (v0.7a final):** verify all E-* + most O-* + most S-* + F-1, F-2, F-13

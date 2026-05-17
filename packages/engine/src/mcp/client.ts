@@ -162,6 +162,15 @@ export class McpResponseCache {
 function wrapAISDKClient(aiClient: AISDKMcpClient): McpUnderlyingClient {
   // Materialize the AI SDK tool set lazily on first callTool. Cached for
   // the lifetime of the connection (cleared on disconnect via aiClient.close).
+  //
+  // Behavior delta from legacy `Client.callTool`: the legacy SDK made a
+  // fresh JSON-RPC `tools/list` roundtrip on construction and a fresh
+  // `tools/call` on every invocation, so server-side tool list mutations
+  // mid-connection were visible. The cached `toolSetPromise` here freezes
+  // the AI SDK toolset at first-call time. Acceptable for NAVI (static
+  // tool list per connection) and every production MCP server we know
+  // of; if a future server hot-adds tools mid-connection, swap this for
+  // a fresh `aiClient.tools()` await per call.
   let toolSetPromise: Promise<Record<string, { execute: (input: unknown, opts: unknown) => Promise<unknown> }>> | null = null;
   const getToolSet = () => {
     if (!toolSetPromise) {
@@ -218,23 +227,26 @@ export class McpClientManager {
 
     // AI SDK's MCPTransportConfig uses 'http' for streamable HTTP; the
     // legacy public field 'streamable-http' maps onto it.
+    //
+    // Behavior delta from legacy `StreamableHTTPClientTransport`: the AI
+    // SDK transport does NOT expose `maxRetries` / `reconnectionDelayGrowFactor`
+    // tuning knobs. Legacy used `{ maxRetries: 3, reconnectionDelayGrowFactor: 1.5 }`.
+    // The default AI SDK retry semantics are sufficient for the production
+    // NAVI workload observed to date; if soak surfaces a gap, the
+    // mitigation is to add a manager-level retry wrapper around `connect`,
+    // not to fork the transport.
     const aiTransportType: 'http' | 'sse' =
       config.transport === 'sse' ? 'sse' : 'http';
 
-    let aiClient: AISDKMcpClient;
-    try {
-      aiClient = await createMCPClient({
-        transport: {
-          type: aiTransportType,
-          url: config.url,
-          ...(config.headers ? { headers: config.headers } : {}),
-        },
-        clientName: 'audric-engine',
-        version: '0.1.0',
-      });
-    } catch (err) {
-      throw err;
-    }
+    const aiClient: AISDKMcpClient = await createMCPClient({
+      transport: {
+        type: aiTransportType,
+        url: config.url,
+        ...(config.headers ? { headers: config.headers } : {}),
+      },
+      clientName: 'audric-engine',
+      version: '0.1.0',
+    });
 
     let tools: McpToolDef[];
     try {
