@@ -1,10 +1,28 @@
 # ENGINE v2.0.0 ROLLOUT PLAN — v0.7a Phase 2 → Phase 3 close
 
+> # 🗄 OBSOLETE — ARCHIVED 2026-05-18
+>
+> **This rollout plan was executed at insane speed: Day 0 (2026-05-17) shipped engine v2.0.0 + v2.0.1 with the entire V2 card + write-previews + USE_AI_SDK_NATIVE_ENGINE flag rollout completed AND THE FLAGS DELETED in the same calendar day.** The 11-day calendar in this doc never ran as planned because the bridge layer + V1 fallback path proved bulletproof on first contact, so the founder + agent flipped everything together rather than gating per-block.
+>
+> **Current state (post-execution):**
+> - Engine at **v2.7.0** (see HANDOFF_NEXT_AGENT.md banner phase status table)
+> - Audric pinned **v2.7.0**
+> - Legacy `engine.ts` / `providers/anthropic.ts` / `recipes/` directory **all DELETED**
+> - `USE_AI_SDK_NATIVE_ENGINE` + 7 `NEXT_PUBLIC_*_CARD_V2` + `NEXT_PUBLIC_WRITE_PREVIEWS_V2` flags **all DELETED** from `audric/apps/web/lib/env.ts` (see `// [v2.0.0 — 2026-05-17]` + `// [v2.0.1 — 2026-05-17]` comments in env.ts)
+>
+> **Kept here for historical reference only — the rollout-as-shipped is in `audric-build-tracker.md` S.150+ entries + `BENEFITS_SPEC_v07a.md` "Phase 2/3/4 consolidation" + Days 17-26 sections.**
+>
+> **Do NOT use this doc as a forward plan — it has been superseded by:**
+> - `V07B_ROADMAP_DRAFT.md` — live forward-looking triage
+> - `HANDOFF_NEXT_AGENT.md` banner — current SPEC 37 phase status
+> - `~/.cursor/plans/audric-v07a-engine-drain.plan.md` — master plan (still canonical for Phase 7 + 8)
+
 ```yaml
 spec_id: engine-v2-rollout-v07a
 version: 1.1
-status: locked
+status: obsolete (was: locked)
 locked_at: 2026-05-17T10:45+10:00
+archived_at: 2026-05-18T10:00+10:00
 related_specs:
   - /Users/funkii/dev/t2000/BENEFITS_SPEC_v07a.md
   - /Users/funkii/dev/t2000/TOOL_UX_DESIGN_v07a.md

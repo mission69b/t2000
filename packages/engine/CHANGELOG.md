@@ -589,7 +589,7 @@ Audric still imports + calls `engine.resumeWithInput(...)` from its `/api/engine
 
 **Breaking release.** The legacy `QueryEngine` (~21,800 LoC of custom orchestration) is deleted. `AISDKEngine` (~4,500 LoC wrapper around Vercel AI SDK v6 native primitives) is the only engine. Net **~17.3k LoC removed** from the package.
 
-This is the v0.7a end-state shipped after 4 weeks of Phase 1 (provider swap), Phase 2 (tool migration to `defineTool`), and Phase 3 (V2 card rollout + AISDKEngine global flip). See SPEC 37 (`SPIKE_FINDINGS_v07a.md` + `ENGINE_V2_ROLLOUT_PLAN_v07a.md`) for the full rationale.
+This is the v0.7a end-state shipped after 4 weeks of Phase 1 (provider swap), Phase 2 (tool migration to `defineTool`), and Phase 3 (V2 card rollout + AISDKEngine global flip). See SPEC 37 (`SPIKE_FINDINGS_v07a.md` + `spec/archive/ENGINE_V2_ROLLOUT_PLAN_v07a.md`) for the full rationale.
 
 ### Why the major version bump
 

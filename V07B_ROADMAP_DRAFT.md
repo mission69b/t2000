@@ -10,6 +10,39 @@
 
 ---
 
+## 0. SPEC 37 phase-status cheat sheet (canonical — keep current)
+
+> Mirror of the table in `HANDOFF_NEXT_AGENT.md` banner. Source of truth for "where are we in the 8-phase 12-14 week plan" question. Original plan: `~/.cursor/plans/audric-v07a-engine-drain.plan.md`.
+
+| Phase | Status | Engine version | Realizes |
+|---|---|---|---|
+| 0 — Preparation (bridge, baselines, R6, R8, R9) | ✅ DONE 2026-05-15 | — | E-7 |
+| 1 — Provider migration (Anthropic → AI SDK) | ✅ DONE (rolled into v2.0.0) | v2.0.0 | F-1, F-2 prep |
+| 2 — Tool migration (37 tools → `tool()`) | ✅ DONE 2026-05-16/17 (~36h) | v1.35.0 → v1.38.0 | F-6 |
+| 3 — Engine loop migration (streamText + prepareStep) | ✅ DONE (rolled into v2.0.0) | v2.0.0 | F-3 prep |
+| 4 — MCP migration (createMCPClient + prompt adapter) | ✅ DONE 2026-05-17 | v2.1.0 | **F-7 ✅** |
+| 5 — Streaming protocol | 🟡 PARTIAL (Slices A+C done; B+D deferred to v0.7c) | v2.2.0 + v2.5.0 | partial U-3 |
+| 6 — Recipes → Skills | ✅ DONE 2026-05-17 (Phase 6 + 6G) | v2.3.0 + v2.4.0 | **F-10 ✅ S-7 ✅** |
+| 7 — MemWal integration + memory-infra refactor | 🟡 PROTOTYPE + CANARY LIVE; production gated on MemWal 2026-06-26 hard deadline | v2.7.0 | **F-4 ✅** (prototype); F-11/F-12/O-1/S-1/S-10 pending |
+| 8 — Hardening + ship | 🟡 PARTIAL (H6, per-package release, D-4 column shipped; 130-behavior catalogue walk + R9 smoke + final release framing pending) | — | E-1 (Phase 8 close) |
+
+**Original estimate:** 12-14 weeks. **Actual:** Phases 0-6 done in ~3 days due to Phase 2/3/4 AI-SDK-native consolidation collapsing 5 weeks of phased work into ~36h of single-rewrite execution. **Remaining work** is Phase 7 production close (MemWal-gated, deadline 2026-06-26) + Phase 8 hardening (most items not externally blocked).
+
+**What v0.7b shipped early (without committing to full v0.7b):**
+- D-4 (`TurnMetrics.streamResumeOutcome` column) ✅ S.155
+- D-6 (`approvalId` forward-compat alias) ✅ v2.6.0
+- D-7 (audric dry-run integration) ✅ S.153
+
+**What's deferred to v0.7c (chatbot UI fork):**
+- D-1 Slice D full (`pending_action` → `tool-approval-request` native)
+- D-3 Slice B (UIMessage production path)
+- D-2 Path A (silent in-flight re-execution) — only if D-4 data shows mid_tool >5%
+
+**What's gated on external timing:**
+- D-5 MemWal Plan B pivot trigger — only if Plan A misses 2026-06-26
+
+---
+
 ## 1. What shipped under the v0.7a label (engine releases)
 
 Recent run (Phase 4 → Phase 5 → Phase 5.5 → Phase 6 → Phase 6G → Phase 5 deferred follow-ups → D-6 prep → Phase 7 engine prototype), 2026-05-17 + 2026-05-18:
