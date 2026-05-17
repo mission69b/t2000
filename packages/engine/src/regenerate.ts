@@ -49,7 +49,7 @@ import { describeAction } from './describe-action.js';
 import { findTool } from './tool.js';
 import { getModifiableFields } from './tools/tool-modifiable-fields.js';
 import { REGENERATABLE_READ_TOOLS } from './tool-ttls.js';
-import type { QueryEngine } from './engine.js';
+import type { AISDKEngine } from './v2/engine.js';
 import type {
   ContentBlock,
   Message,
@@ -148,7 +148,7 @@ export type RegenerateResult = RegenerateSuccess | RegenerateFailure;
  * is still valid."
  */
 export async function regenerateBundle(
-  engine: QueryEngine,
+  engine: AISDKEngine,
   action: PendingAction,
 ): Promise<RegenerateResult> {
   // [SPEC 15 v0.7 follow-up — single-write regenerate, 2026-05-04]

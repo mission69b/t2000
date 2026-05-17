@@ -262,7 +262,6 @@ export async function enrichPendingActionWithLiveData(
           // TODO Day 14f: REMOVE this block once Bug 2 root cause is
           // confirmed and the targeted fix lands.
           if (toolName === 'borrow' || toolName === 'save_deposit') {
-            // eslint-disable-next-line no-console
             console.log(
               JSON.stringify({
                 tag: 'enrich-hf-debug',
@@ -288,7 +287,6 @@ export async function enrichPendingActionWithLiveData(
         .catch((err) => {
           // Graceful degradation — but log the error so we know if NAVI
           // is failing silently in prod.
-          // eslint-disable-next-line no-console
           console.log(
             JSON.stringify({
               tag: 'enrich-hf-debug-error',

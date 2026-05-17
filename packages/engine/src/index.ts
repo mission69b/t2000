@@ -1,6 +1,3 @@
-// Core engine
-export { QueryEngine, validateHistory } from './engine.js';
-
 // Types
 export type {
   Message,
@@ -35,21 +32,6 @@ export type {
 
 // [SPEC 8 v0.5.1 B3.2] Adaptive harness shape mapping helper.
 export { harnessShapeForEffort } from './types.js';
-
-// [SPEC 19 — 2026-05-09] Bounded indexer-catchup poll helper. NOT wired
-// into the post-write critical path as of Option 3 (v1.24.12) — Phase A's
-// per-iteration RPC time blew the promised 1500ms ceiling out to ~3.4s
-// typical / 5.7s worst-case (production smoke). Engine now skips the
-// post-write sleep entirely and observes staleness via
-// `engine.pwr.observed_stale_balance_check`. Helper kept exported so a
-// future re-introduction (with a TRUE wall-clock cap, not attempt-count)
-// can pick it up without re-implementing the diff/baseline plumbing.
-export { pollForIndexerCatchup } from './post-write-poll.js';
-export type {
-  PostWritePollOptions,
-  PostWritePollOutcome,
-  PostWritePollResult,
-} from './post-write-poll.js';
 
 // [SPEC 7 v0.4 Layer 2] Per-tool result freshness budgets for the
 // Quote-Refresh ReviewCard (Layer 3 / P2.4b host wires the regenerate UI).
@@ -300,27 +282,22 @@ export {
 } from './navi/reads.js';
 export type { NaviReadOptions, ProtocolStats } from './navi/reads.js';
 
-// Providers
-export { AnthropicProvider } from './providers/anthropic.js';
-export type { AnthropicProviderConfig } from './providers/anthropic.js';
-
 // [SPEC 37 v0.7a Phase 1] AI SDK-backed provider — drop-in replacement for
-// `AnthropicProvider`. Same `LLMProvider` contract; backs onto
-// `@ai-sdk/anthropic` + Vercel AI SDK v6. See
-// `providers/ai-sdk-anthropic.ts` for the soak-period rollback story.
+// the (since-deleted) `AnthropicProvider`. Same `LLMProvider` contract;
+// backs onto `@ai-sdk/anthropic` + Vercel AI SDK v6. AISDKEngine takes
+// `anthropicApiKey` directly so this provider is rarely instantiated by
+// hosts; kept exported for in-process embedding scenarios that need an
+// LLMProvider shape without an engine.
 export { AISDKAnthropicProvider } from './providers/ai-sdk-anthropic.js';
 export type { AISDKAnthropicProviderConfig } from './providers/ai-sdk-anthropic.js';
 
-// [SPEC 37 v0.7a Phase 2-4 — consolidated AI-SDK-native rewrite, Day 1]
-// AISDKEngine is the v0.7a end-state engine: a thin wrapper around AI SDK
-// v6's streamText + native tool() factory. Replaces ~21,800 LoC of custom
-// orchestration with ~4,500 LoC by composing engine-specific concerns
-// (USD permissions, 14 guards, postWriteRefresh, financial context,
-// recipes) around AI SDK primitives instead of re-implementing them.
-//
-// Behind the USE_AI_SDK_NATIVE_ENGINE feature flag — audric chooses at
-// engine factory time which class to instantiate. Legacy QueryEngine
-// stays exported above so production traffic is untouched until cutover.
+// [SPEC 37 v0.7a Phase 2-4 — consolidated AI-SDK-native rewrite]
+// [v2.0.0 — 2026-05-17] AISDKEngine is the ONLY engine. Legacy
+// QueryEngine + AnthropicProvider deleted; their ~17.3k LoC of custom
+// orchestration replaced by ~4,500 LoC wrapping AI SDK v6's streamText +
+// native tool() factory. Engine-specific concerns (USD permissions, 14
+// guards, postWriteRefresh, financial context, recipes) compose AROUND
+// AI SDK primitives instead of re-implementing them.
 //
 // See SPIKE_FINDINGS_v07a.md for the LoC delta + concerns mapping table
 // + 3-4 week effort estimate that justified the consolidated rewrite.

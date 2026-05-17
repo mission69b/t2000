@@ -1671,6 +1671,67 @@ Reused `vi.stubEnv('T2000_INTERNAL_KEY', ...)` + `vi.resetModules()` so the env 
 
 **Status: 1.38.2 closes the analytics-401 class. `activity_summary` should now render real data on the next smoke. Phase 3 remains unblocked.**
 
+### Day 20e — SSOT residue + bridge-parity contract (2026-05-17)
+
+**Framing (founder, immediately after Day 20d landed and the user smoked it):** *"Much better!! but i mean we have so many canvas and read and write tools, i dont want to play whack amole here and just test one canvas, when we might have issues with the rest. what do you suggest. should we move on."*
+
+The right question. Day 20c + 20d both surfaced ONE instance of the same class — "AISDKEngine pipeline gaps vs the legacy QueryEngine baseline." Whack-a-mole on individual surfaces will miss the next 5. Two classes of bug shipped today:
+
+| Class | Root cause | Surfaces affected | Status entering Day 20e |
+|---|---|---|---|
+| **A: AISDKEngine bridge gaps** | wrapper didn't unwrap; bridge dropped side-channel events | EVERY tool with `__canvas` or `__todoUpdate` flag | **Structurally fixed in 1.38.1** — no per-tool work needed |
+| **B: engine → audric API auth gap** | SPEC 30 Phase 1A.5 tightened audric routes to JWT-only; engine has no JWT | 4 analytics tools (fixed in 1.38.2) **+ 2 silent SSOT drifts unaccounted for** | Partially fixed |
+
+The 2 SSOT residues, caught while drafting the recommendation:
+
+- **`balance_check`** calls `fetchAudricPortfolio()` → `${base}/api/portfolio` with NO auth headers. The route now 401s, the tool falls back to direct BlockVision. Numbers still display correctly (the user saw $92.58 in the prior smoke), but the engine has been silently bypassing the canonical SSOT (`/api/portfolio` → `getPortfolio()`) for ~1 month. Engine vs dashboard CAN drift under degradation.
+- **`transaction_history`** calls `fetchAudricHistory()` → `${base}/api/history` with NO auth headers. Same story — 401s silently, falls back to direct Sui RPC. The 5-tx card the user saw came from the RPC fallback, not the SSOT path. Numbers happen to match today, but they're not guaranteed to under partial-data conditions.
+
+**The fix (Day 20e):**
+
+Mirrors Day 20d. Two engine-side changes:
+
+1. `audric-api.ts` `fetchAudricPortfolio()` + `fetchAudricHistory()` attach `x-internal-key` from `env.AUDRIC_INTERNAL_KEY` when set. Pre-Day-20e the calls had no auth headers at all.
+2. Two new audric routes flip to `authenticateAnalyticsRequest()` (Day 20d's helper): `/api/portfolio/route.ts` and `/api/history/route.ts`.
+
+Combined effect: every engine→audric API call now goes through the dual-auth helper. Class B fully closed.
+
+**The bigger fix: `bridge-parity.test.ts` — structural contract gate.**
+
+Codifies Day 20c finding #12 ("There's no test that catches 'engine yields N events but bridge yields M < N' for the same input"). The test classifies every `EngineEvent` variant in `types.ts` into one of:
+
+- `BRIDGE_EMITS` — the bridge `translate()` arm is the producer; per-event correctness lives in `event-bridge.test.ts`
+- `OUTER_ENGINE_EMITS` — emitted by code outside the LLM stream (orchestration, post-write-refresh, host-driven). Bridge correctly does NOT translate.
+
+The classification map is typed as `Record<EngineEvent['type'], FixtureBuilder | null>` — TypeScript enforces exhaustiveness at compile time. Adding a new variant to the union without updating this file FAILS TO TYPECHECK. The runtime assertions catch the rest:
+
+1. Every variant is classified (no orphans)
+2. The two sets are disjoint (no double-counting)
+3. Every `BRIDGE_EMITS` entry has a fixture builder AND `translate()` actually returns at least one event of the expected type for that fixture
+
+Effect: future Class-A bugs (bridge silently drops a new side-channel event when a new EngineEvent variant ships) FAIL CI instead of failing a founder smoke. Converts "founder finds bug → 2-day fix cycle" into "engineer changes bridge code → CI fails → fix in 20 min."
+
+**Verification:**
+- `pnpm --filter @t2000/engine test src/__tests__/audric-api.test.ts src/bridge/bridge-parity.test.ts src/bridge/event-bridge.test.ts src/v2/tool-wrapper.test.ts` — **89 / 89 passed** (17 audric-api incl. 2 new dual-auth, 13 new bridge-parity, 47 event-bridge, 12 tool-wrapper)
+- `pnpm --filter @t2000/engine test` (full suite) — 1443 passed, 1 flake (live Anthropic API `multi-block-thinking.test.ts`, unrelated to this change)
+- `pnpm --filter @t2000/engine typecheck` — clean (parity test's exhaustive `Record<EngineEvent['type'], ...>` type binding compiles)
+- `pnpm --filter @t2000/engine lint` — 0 errors
+- `pnpm --filter @t2000/engine build` — clean (dist 483.31 KB, +1 KB vs Day 20d's 482.30 KB for parity test infrastructure)
+- `pnpm --filter @audric/web typecheck` — clean
+- `pnpm --filter @audric/web test` — 3243 / 3243 passed (no test changes — the route migrations re-use Day 20d's `authenticateAnalyticsRequest()` helper which already has 11 dedicated tests)
+
+**Empirical findings locked Day 20e (added to the Phase 2 list):**
+
+18. **The "I just fixed it" instinct is wrong for class-of-bugs problems.** The user's pushback after Day 20d ("I don't want to play whack-a-mole here") was the right question at the right time. Two bugs (canvas-rendering + analytics-401) had been mis-classified as separate incidents. They were instances of one class: "AISDKEngine pipeline gaps vs legacy QueryEngine baseline." Without the structural gate (the parity test), I would have shipped Phase 3 with N more instances waiting. **Rule:** when 2+ bugs in a row share a root-cause shape, the next deliverable is a structural test that catches the WHOLE class, not the next individual fix.
+19. **Audit by greppable signal beats audit by tool-name list.** Day 20d fixed 4 audric-API tools by enumerating analytics route consumers. Day 20e found the 2 missed cases (balance + history) by grepping for ANY engine call to `${base}/api/` and asking "does this route have an auth gate now?" The grep would have found all 6 if it had run at the start of Day 20d — the enumeration missed 2 because the analytics-folder mental model didn't include `/api/portfolio` and `/api/history` (which live one level up). **Rule:** when fixing a route-auth class bug, grep the consumer-side `fetch()` call sites, not the producer-side route folder.
+20. **TypeScript-enforced exhaustiveness is the cheapest spec.** `Record<EngineEvent['type'], FixtureBuilder | null>` does in one type binding what a runtime assertion has to do across 17 variants. The runtime assertion is still there as a safety net, but the compile-time gate is what catches the bug at the point of the keystroke — the only point cheaper than CI. **Rule:** when writing a "did you remember to update X when you added Y?" contract test, look for a way to make the failure a typecheck error, not a runtime assertion.
+
+**Release:** engine **1.38.3** (patch — bug fix + new test infrastructure, no API surface change).
+
+**Audric bump:** `@t2000/engine 1.38.2 → 1.38.3` lands with the 2 route migrations in the same commit. Vercel auto-deploys.
+
+**Status: 1.38.3 closes Class A (structurally, via parity gate) + Class B (fully, via 2 SSOT route migrations). Phase 3 entry is now safe — bridge regressions fail CI, route auth drift can't recur because every engine→audric call goes through one auth helper.**
+
 **Day 2 onward plan — REVISED to B+ (per-tool migration with 2-day design baseline upfront, 2026-05-15 ~18:50 AEST):**
 
 The original Day 2-9 plan above was Option C (mechanical-first, then UX revamp later). After founder pushback ("isn't B better since we'd have to refactor for UX later anyway?"), traced through the math:

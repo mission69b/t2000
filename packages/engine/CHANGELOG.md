@@ -1,5 +1,80 @@
 # Changelog
 
+## 2.0.0 (PENDING — 2026-05-17 target) — Engine v2.0.0: AISDKEngine is the only engine
+
+**Breaking release.** The legacy `QueryEngine` (~21,800 LoC of custom orchestration) is deleted. `AISDKEngine` (~4,500 LoC wrapper around Vercel AI SDK v6 native primitives) is the only engine. Net **~17.3k LoC removed** from the package.
+
+This is the v0.7a end-state shipped after 4 weeks of Phase 1 (provider swap), Phase 2 (tool migration to `defineTool`), and Phase 3 (V2 card rollout + AISDKEngine global flip). See SPEC 37 (`SPIKE_FINDINGS_v07a.md` + `ENGINE_V2_ROLLOUT_PLAN_v07a.md`) for the full rationale.
+
+### Why the major version bump
+
+`QueryEngine` is a deleted symbol. Any consumer importing it from `@t2000/engine` fails at build time. `@t2000/cli` and `@t2000/mcp` are unaffected (they don't depend on `@t2000/engine`). The only impacted consumer is `audric/apps/web` — see migration guide below.
+
+### Removed
+
+- `QueryEngine` class (`src/engine.ts`) — replaced by `AISDKEngine` (`src/v2/engine.ts`)
+- `AnthropicProvider` (`src/providers/anthropic.ts`) — `AISDKEngine` takes `anthropicApiKey: string` directly; no provider abstraction needed
+- `pollForIndexerCatchup` + `PostWritePoll*` types (`src/post-write-poll.ts`) — `AISDKEngine` has its own post-write refresh path (no Sui-RPC poll)
+- `validateHistory` (was a `QueryEngine` static helper) — `AISDKEngine.loadMessages` validates inline
+- Test suites: `engine.test.ts`, `confirmation.test.ts`, `regenerate.test.ts`, `post-write-refresh.test.ts`, `pending-input.test.ts`, `engine-bundle.test.ts`, `multi-block-thinking.test.ts`, `spec9-canonical-eval.test.ts`, `haiku-routing.test.ts`, `update-todo.test.ts`, `canonical-route-text.test.ts`, `harness-shape.test.ts`, `proactive-text-cooldown.test.ts`, `post-write-poll.test.ts` — all `QueryEngine`-keyed; AISDKEngine equivalents live in `src/v2/`
+
+### Changed
+
+- `regenerateBundle(engine, ...)` parameter type narrowed from `QueryEngine` to `AISDKEngine`. Function body unchanged (uses `engine.getMessages` / `engine.getTools` / `engine.invokeReadTool` / `engine.loadMessages` — all present on `AISDKEngine` with identical signatures).
+
+### Kept (no consumer impact)
+
+- `AISDKAnthropicProvider` — still exported for hosts that want the AI SDK-backed `LLMProvider` shape without instantiating an engine (audric uses it nowhere now but the SPEC 37 Phase 1 soak proved its stability; cheap to keep)
+- `serializeSSE` / `parseSSE` / `engineToSSE` / `withStreamState` — audric routes wrap `AISDKEngine` stream with these
+- Every tool / NAVI / BlockVision / Sui / canvas / recipe / guard export — shared with AISDKEngine
+
+### Migration guide (audric/apps/web — the only consumer that breaks)
+
+```typescript
+// REMOVE these imports:
+import { QueryEngine, AISDKAnthropicProvider } from '@t2000/engine';
+import { isAddressAllowlisted } from './wallet-allowlist';
+
+// REPLACE the engine instantiation:
+- const useAiSdkNativeEngine =
+-   isAddressAllowlisted(address, env.USE_AI_SDK_NATIVE_ENGINE_WALLETS) ||
+-   env.USE_AI_SDK_NATIVE_ENGINE === '1' ||
+-   env.USE_AI_SDK_NATIVE_ENGINE === 'true';
+- const engine = useAiSdkNativeEngine
+-   ? new AISDKEngine({ ...sharedConfig, anthropicApiKey: API_KEY, mcpManager: mgr }) as unknown as QueryEngine
+-   : new QueryEngine({ ...sharedConfig, provider: new AISDKAnthropicProvider({ apiKey: API_KEY }), mcpManager: mgr });
++ const engine = new AISDKEngine({
++   ...sharedConfig,
++   anthropicApiKey: API_KEY,
++   mcpManager: mgr,
++ });
+
+// REMOVE from lib/env.ts schema:
+- USE_AI_SDK_NATIVE_ENGINE
+- USE_AI_SDK_NATIVE_ENGINE_WALLETS
+
+// DELETE these files:
+- lib/engine/wallet-allowlist.ts
+- lib/engine/wallet-allowlist.test.ts
+
+// REMOVE from Vercel env (no longer read):
+- USE_AI_SDK_NATIVE_ENGINE
+- USE_AI_SDK_NATIVE_ENGINE_WALLETS
+```
+
+Total audric-side diff: ~50 LoC removal in `engine-factory.ts`, ~20 LoC removal in `env.ts`, 2 file deletions, 2 Vercel env var removals.
+
+### Known issues (deferred to v2.0.1)
+
+1. **HF preview renders `∞ → ∞` for borrow against existing collateral.** Cosmetic safety annoyance — borrow still executes correctly, the receipt shows the real HF. Root cause under diagnostic in v1.38.5 logs (`enrich-hf-debug` log lines). Workaround: trust the receipt, not the preview.
+2. **BlockVision wallet cache may serve stale balance for ~60s after a withdraw confirms.** Recovers on follow-up read. Agent may make an incorrect "insufficient funds" call in that window. Workaround: ask "are you sure?" to force a re-fetch; or wait 60s.
+
+### Operational impact
+
+- **npm publish**: `@t2000/sdk`, `@t2000/engine`, `@t2000/cli`, `@t2000/mcp` all bump to `2.0.0` (monorepo lockstep — `release.yml` workflow). CLI + MCP don't import `@t2000/engine` so the bump is a no-op for them.
+- **Audric deploy**: bump `@t2000/sdk` + `@t2000/engine` to `2.0.0`, apply the migration guide diff, push. Vercel auto-deploys. After verifying the deploy is stable, remove `USE_AI_SDK_NATIVE_ENGINE*` from Vercel env.
+- **Rollback path**: `@t2000/engine@1.38.5` stays on npm. If v2.0.0 surfaces a regression, audric can pin to `1.38.5` and re-set `USE_AI_SDK_NATIVE_ENGINE=1` to keep AISDKEngine without the deletion.
+
 ## 1.38.5 (2026-05-17) — Day 14e diagnostic: HF preview debug logging
 
 Single-purpose release. Adds production logging to `enrichPendingActionWithLiveData` so we can see the actual inputs to `projectHF` per emit for `borrow` and `save_deposit` previews.
