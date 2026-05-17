@@ -164,11 +164,22 @@ export async function fetchAudricPortfolio(
     // cache benefit. The header is also kept (defence in depth in case
     // Vercel changes behaviour later).
     const cacheBuster = `_engineNoCache=${Date.now()}`;
+    // [Day 20e / 2026-05-17] Attach `x-internal-key` so audric's
+    // `authenticateAnalyticsRequest()` accepts the engine call server-side.
+    // Pre-fix the engine silently 401'd here and fell back to the in-engine
+    // BlockVision path — same numbers in the happy case, but a structural
+    // SSOT bypass under degradation. Header is optional so older audric
+    // deploys (single-auth `authenticateRequest`) still 401 cleanly and the
+    // fallback kicks in.
+    const internalKey = env?.AUDRIC_INTERNAL_KEY;
     const res = await fetch(
       `${base}/api/portfolio?address=${encodeURIComponent(address)}&${cacheBuster}`,
       {
         signal: signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        headers: { 'Cache-Control': 'no-cache' },
+        headers: {
+          'Cache-Control': 'no-cache',
+          ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+        },
       },
     );
     if (!res.ok) {
@@ -274,9 +285,17 @@ export async function fetchAudricHistory(
     // `/api/history` for browser perf can't silently regress engine-side
     // freshness.
     params.set('_engineNoCache', String(Date.now()));
+    // [Day 20e / 2026-05-17] See fetchAudricPortfolio — engine attaches
+    // `x-internal-key` so the route's dual-auth accepts the call. Pre-fix
+    // this silently 401'd and `transaction_history` fell back to the direct
+    // Sui-RPC path, bypassing audric's canonical `getTransactionHistory()`.
+    const internalKey = env?.AUDRIC_INTERNAL_KEY;
     const res = await fetch(`${base}/api/history?${params}`, {
       signal: signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      headers: { 'Cache-Control': 'no-cache' },
+      headers: {
+        'Cache-Control': 'no-cache',
+        ...(internalKey ? { 'x-internal-key': internalKey } : {}),
+      },
     });
     if (!res.ok) {
       console.warn(`[audric-api] history ${address.slice(0, 10)} → HTTP ${res.status}`);

@@ -173,6 +173,42 @@ describe('audric-api', () => {
       const headers = init.headers as Record<string, string> | undefined;
       expect(headers?.['Cache-Control']).toBe('no-cache');
     });
+
+    // [Day 20e / 2026-05-17] Engine attaches `x-internal-key` when env
+    // supplies AUDRIC_INTERNAL_KEY so audric's dual-auth helper accepts
+    // the call server-side. Without this, the engine silently 401s and
+    // falls back to the in-engine BlockVision path — same numbers in the
+    // happy case, but a structural SSOT bypass under degradation.
+    it('attaches x-internal-key when env.AUDRIC_INTERNAL_KEY is set', async () => {
+      const fetchSpy: typeof fetch = vi.fn(async () => new Response(
+        JSON.stringify({ wallet: [], walletValueUsd: 0, positions: {} }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+      global.fetch = fetchSpy;
+
+      await fetchAudricPortfolio(ADDRESS, {
+        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_KEY: 'secret-key-abc',
+      });
+
+      const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
+      const headers = (mock.calls[0][1]?.headers ?? {}) as Record<string, string>;
+      expect(headers['x-internal-key']).toBe('secret-key-abc');
+    });
+
+    it('omits x-internal-key when env.AUDRIC_INTERNAL_KEY is unset', async () => {
+      const fetchSpy: typeof fetch = vi.fn(async () => new Response(
+        JSON.stringify({ wallet: [], walletValueUsd: 0, positions: {} }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+      global.fetch = fetchSpy;
+
+      await fetchAudricPortfolio(ADDRESS, { T2000_AUDRIC_API: 'https://api.example' });
+
+      const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
+      const headers = (mock.calls[0][1]?.headers ?? {}) as Record<string, string>;
+      expect(headers['x-internal-key']).toBeUndefined();
+    });
   });
 
   describe('fetchAudricHistory', () => {
@@ -244,6 +280,24 @@ describe('audric-api', () => {
       const init = mock.calls[0][1] ?? {};
       const headers = init.headers as Record<string, string> | undefined;
       expect(headers?.['Cache-Control']).toBe('no-cache');
+    });
+
+    // [Day 20e / 2026-05-17] Same dual-auth posture as fetchAudricPortfolio.
+    it('attaches x-internal-key when env.AUDRIC_INTERNAL_KEY is set', async () => {
+      const fetchSpy: typeof fetch = vi.fn(async () => new Response(
+        JSON.stringify({ items: [] }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+      global.fetch = fetchSpy;
+
+      await fetchAudricHistory(ADDRESS, {}, {
+        T2000_AUDRIC_API: 'https://api.example',
+        AUDRIC_INTERNAL_KEY: 'secret-key-xyz',
+      });
+
+      const mock = (fetchSpy as unknown as { mock: { calls: Array<[string, RequestInit?]> } }).mock;
+      const headers = (mock.calls[0][1]?.headers ?? {}) as Record<string, string>;
+      expect(headers['x-internal-key']).toBe('secret-key-xyz');
     });
 
     it('returns null on HTTP error and null on network failure', async () => {
