@@ -1,8 +1,75 @@
 # Changelog
 
-## 2.0.3 (PENDING — 2026-05-17) — Dust-debt display + DRY threshold
+## 2.0.4 (PENDING — 2026-05-17) — Bundle resume + resume-path cache invalidation
+
+**Patch release.** Two correctness fixes for the confirm-tier resume path: a hard production crash on multi-op writes, plus a silent cache-staleness bug caught while shipping the first fix.
+
+### Fix 1 — Bundle (Payment Intent) resume
+
+Production smoke (audric session `s_1778988785644_eb8ace6010be`, "swap 2 SUI then save it") caught `AISDKEngine.resumeWithToolResult` crashing AFTER the host's sponsored-tx prepare+execute had already landed the bundle on-chain. The user saw "ALL SUCCEEDED · 1 ATOMIC TX · 2 ops" alongside two error banners and no post-bundle balance refresh.
+
+The v2.0.0 cleanup deleted `QueryEngine` (commit `f87d7329`) but left a stub in `AISDKEngine.resumeWithToolResult` that short-circuited on `action.steps !== undefined`. The stub comment expected a future Day 14+ port; production traffic hit it on every multi-op write before that landed.
+
+Ported the bundle resume path from the deleted `QueryEngine.resumeWithToolResult`:
+
+- Builds N `writeResultBlocks` (one per step) instead of 1 single-write block.
+- Each step's block is pulled from `response.stepResults[].toolUseId` mapping; missing entries on `approved: true` fail-closed with `_hostBugMissingStepResult: true` (SPEC 7 P2.3 BUG 11 contract).
+- Yields N `tool_result` events so the host PermissionCard renders one outcome row per leg.
+- Pushes the deferred assistant message (stripped of pseudo-`<thinking>` tags via the existing v1.27.0 sanitizer) into history BEFORE the user-message with tool_results, satisfying Anthropic's "every tool_use must have a matching tool_result in the next user message" invariant for N legs.
+
+### Fix 2 — Canonical-route block restored (SPEC 20.2 D-4)
+
+The QueryEngine deletion also removed `buildCanonicalRouteText` + `isExecutionResultFailure`. These were load-bearing for swap narration grounding — they tell the LLM the EXACT on-chain route a swap took so narration cites that path instead of a stale prior `swap_quote`. Without them, the post-bundle narration could narrate the wrong route (or invent one).
+
+Restored in `packages/engine/src/v2/canonical-route.ts` as pure functions, imported only by `resumeWithToolResult`. Per-leg success gating preserved: if any swap step's `tool_result` is `isError: true`, that leg is excluded from the canonical_route block. If every swap leg failed, no block at all (so the LLM narrates the failure from the error tool_results unambiguously). The 2026-05-09 money-trust-failure regression (LLM narrating "executed atomically" for a reverted bundle, session `s_1778363976666_bc618ba691bb`) is covered by this restored gating.
+
+### Fix 3 (SELF-REVIEW catch) — Resume-path cache invalidation
+
+While shipping the bundle fix above, I traced the v2.0.2 wallet+DeFi cache invalidation and found it was in `step-finish.ts`. That handler only fires when the LLM dispatches a tool through the AI SDK tool wrapper. **Confirm-tier write resumes never re-execute the write through the wrapper** — the host already executed it via the sponsored-tx flow and POSTs the executionResult back into `resumeWithToolResult`. So step-finish never fires for the confirm-tier path, and the BlockVision 60s cache stays stale for the next `balance_check`.
+
+This means the v2.0.2 fix wired the invalidation but never executed it for the bug it was supposed to fix. Production smoke reproduced this exactly: user withdrew 9 USDC successfully, then asked to save $6 USDC, and `balance_check` returned `$0.31 USDC` (the pre-withdraw cached snapshot).
+
+Fixed by invalidating the wallet + DeFi caches in `resumeWithToolResult` itself, right before re-invoking `streamText` for narration. Gated on any write leg succeeding:
+- **Bundle path:** `response.stepResults.some((sr) => !sr.isError)`.
+- **Single-write path:** `!isExecutionResultFailure(response.executionResult)` (reuses the SPEC 20.2 D-4b heuristic that catches `success: false`, `error: '...'`, `_bundleReverted`, `_sessionExpired`, `_txReverted`).
+
+Fire-and-forget — engine never blocks waiting on the cache store. Errors swallowed (cache invalidation is best-effort; the next read would just hit stale data, which is the bug we're trying to fix anyway). The step-finish v2.0.2 invalidation stays — it's the right home for the auto-tier path (sub-threshold writes that DO run through the wrapper). The two together cover both write surfaces.
+
+### Tests
+
+8 new tests:
+- 3 in `v2/engine.test.ts` for the bundle resume path (declined → N decline tool_results; approved → N success tool_results + history shape correct; approved + missing step result → fail-closed with `_hostBugMissingStepResult`).
+- 5 in `v2/engine.test.ts` for the resume-path cache invalidation (single-write success → invalidates; single-write decline → does NOT invalidate; single-write failure → does NOT invalidate; bundle with any success → invalidates; bundle with all failed → does NOT invalidate).
+
+Full engine suite: 1231 tests pass (+8 from v2.0.3's 1223).
+
+---
+
+## 2.0.3 — 2026-05-17 — Dust-debt display + DRY threshold
 
 **Patch release.** Polishes the "Repay all debt" UX and DRYs the `$0.01` dust threshold across the engine.
+
+After "Repay all debt", the LLM narrated:
+
+> Repaid all debt. Remaining debt is minimal at $0.001.
+
+The user had just successfully cleared their position; the dust residual is NAVI's lending index accruing sub-cent interest between blocks (typical $0.001-$0.005 leftover). Reading "remaining debt minimal at $0.001" framed a success as a partial failure.
+
+`repay_debt` now floors sub-`DEBT_DUST_USD` (currently `$0.01`) remaining debt to `0` in BOTH:
+1. The structured `data.remainingDebt` the LLM sees on its next turn.
+2. The `displayText` that surfaces in the chat receipt.
+
+When `cleanRemainingDebt === 0`, the displayText reads:
+
+> Repaid 0.5 USDC — no remaining debt (tx: abc123…)
+
+instead of:
+
+> Repaid 0.5 USDC — remaining debt: $0.001 (tx: abc123…)
+
+**DRY: `DEBT_DUST_USD` hoisted to `src/dust.ts`.** Pre-2.0.3 the `$0.01` threshold was defined locally in 3 places (`tools/health.ts`, `v2/enrich-pending-action.ts`, `navi/transforms.ts` as `ASSET_DUST_USD`). Adding repay.ts as the 4th consumer made the duplication a real maintenance hazard — bumping the threshold meant chasing 4 files. Hoisted to a single canonical home with documented cross-file usage. Per `coding-discipline.mdc`: factor when the LOGIC duplicates, not when the SHAPE does. Same value across all consumers IS the same logic.
+
+3 new tests in `__tests__/financial-tools.test.ts`. Full suite: 1224 tests pass (+3).
 
 ### The bug
 
@@ -29,17 +96,6 @@ instead of:
 ### DRY: `DEBT_DUST_USD` hoisted to `src/dust.ts`
 
 Pre-2.0.3 the `$0.01` threshold was defined locally in 3 places (`tools/health.ts`, `v2/enrich-pending-action.ts`, `navi/transforms.ts` as `ASSET_DUST_USD`). Adding repay.ts as the 4th consumer made the duplication a real maintenance hazard — bumping the threshold meant chasing 4 files. Hoisted to a single canonical home with documented cross-file usage. Per `coding-discipline.mdc`: factor when the LOGIC duplicates, not when the SHAPE does. Same value across all consumers IS the same logic.
-
-### Tests
-
-3 new tests in `__tests__/financial-tools.test.ts` cover:
-- sub-dust remaining debt → floors to 0 + "no remaining debt" displayText
-- above-dust remaining debt → preserves the value + "$0.25" displayText
-- exact 0 remaining debt → "no remaining debt" displayText
-
-Full suite: 1224 tests pass (+3).
-
----
 
 ## 2.0.2 — 2026-05-17 — Wallet + DeFi cache invalidation after writes
 

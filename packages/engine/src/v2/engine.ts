@@ -78,6 +78,15 @@ import { describeAction } from '../describe-action.js';
 import { getModifiableFields } from '../tools/tool-modifiable-fields.js';
 import { toAISDKMessages } from '../providers/ai-sdk-message-conversion.js';
 import { getToolPolicy } from './tool-policy.js';
+import {
+  buildCanonicalRouteText,
+  isExecutionResultFailure,
+} from './canonical-route.js';
+import { stripPseudoThinking } from '../strip-pseudo-thinking.js';
+import {
+  clearPortfolioCacheFor,
+  clearDefiCacheFor,
+} from '../blockvision-prices.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -422,21 +431,38 @@ export class AISDKEngine {
     action: PendingAction,
     response: PermissionResponse,
   ): AsyncGenerator<EngineEvent> {
-    if (Array.isArray(action.steps) && action.steps.length > 0) {
-      yield {
-        type: 'error',
-        error: new Error(
-          'AISDKEngine.resumeWithToolResult: bundle resume (action.steps !== undefined) ' +
-            'not yet implemented. Defer to legacy QueryEngine for bundle sessions until ' +
-            'Day 14+ adds bundle handling. The audric host can route bundles to legacy by ' +
-            'pinning the session to the QueryEngine path during the migration window.',
-        ),
-      };
-      yield { type: 'turn_complete', stopReason: 'error' };
-      return;
-    }
-
     this.abortController = new AbortController();
+
+    // [v2.0.4 / 2026-05-17] Bundle resume support.
+    //
+    // Pre-v2.0.4, this method short-circuited with an error for any
+    // action carrying `steps`. Audric's production "swap N SUI then save
+    // it" Payment Intent flow tripped this every time: the tx executed
+    // on-chain successfully (host's `/api/transactions/execute` returned
+    // a digest), the host called back into `/api/engine/resume` with
+    // `stepResults`, and the engine crashed before narrating. The user
+    // saw "ALL SUCCEEDED" alongside the error banner and no post-bundle
+    // balance refresh.
+    //
+    // Ported from the deleted QueryEngine.resumeWithToolResult (commit
+    // f87d7329). Bundle path differs from single-write in 3 places:
+    //   1. Build N writeResultBlocks (one per step) instead of 1.
+    //   2. Optionally append a <canonical_route> text block when any
+    //      swap_execute leg succeeded (SPEC 20.2 D-4) so narration
+    //      grounds on the actual on-chain route, not a stale prior quote.
+    //   3. Yield N tool_result events so the host PermissionCard renders
+    //      one outcome row per leg.
+    //
+    // Atomic-failure semantics: Payment Intent execution is atomic at the
+    // Sui layer. When audric detects a bundle-level failure (sponsor
+    // reverts, dry-run fails, on-chain abort), it populates every
+    // stepResults entry with `isError: true` carrying the same error
+    // message. This impl honors that — failed legs get error
+    // tool_result blocks, and the canonical_route block is suppressed
+    // for ANY failed swap leg (so the LLM doesn't narrate a successful
+    // route on a reverted bundle).
+    const isBundle =
+      Array.isArray(action.steps) && action.steps.length > 0;
 
     // Push the deferred assistant message (text + tool_use blocks) into
     // history. Without this, the next streamText call sees no record of
@@ -445,27 +471,80 @@ export class AISDKEngine {
     if (action.assistantContent && action.assistantContent.length > 0) {
       this.messages.push({
         role: 'assistant',
-        content: action.assistantContent as ContentBlock[],
+        content: stripPseudoThinking(
+          action.assistantContent as ContentBlock[],
+        ),
       });
     }
 
-    // Build the user message that satisfies the deferred tool_use:
-    //   - completedResults: any read tools from the same step that
-    //     completed before pending_action fired.
-    //   - the write tool's result, or a "user declined" error.
-    const writeResultBlock: ContentBlock = response.approved
-      ? {
-          type: 'tool_result',
-          toolUseId: action.toolUseId,
-          content: JSON.stringify(response.executionResult ?? { success: true }),
-          isError: false,
+    // Build the write tool_result blocks: N for bundles, 1 for single-write.
+    const writeResultBlocks: ContentBlock[] = [];
+    if (isBundle) {
+      const steps = action.steps!;
+      const stepResults = response.stepResults ?? [];
+      const resultByToolUseId = new Map(
+        stepResults.map((r) => [r.toolUseId, r]),
+      );
+
+      for (const step of steps) {
+        if (response.approved) {
+          const stepResult = resultByToolUseId.get(step.toolUseId);
+          if (stepResult) {
+            writeResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: step.toolUseId,
+              content: JSON.stringify(stepResult.result),
+              isError: stepResult.isError,
+            });
+          } else {
+            // Host approved the bundle but didn't supply this step's
+            // result. Fail closed — treat as an error so the LLM
+            // narrates "this step's outcome is unknown" instead of
+            // fake-success. Payment Intent execution is atomic at the
+            // Sui layer, so an approved+missing-result is a host bug;
+            // surfacing it as an error is safer than locking the user
+            // into a bad state.
+            writeResultBlocks.push({
+              type: 'tool_result',
+              toolUseId: step.toolUseId,
+              content: JSON.stringify({
+                error:
+                  "Host omitted this step's execution result. Treating " +
+                  'as failure — actual on-chain state is unknown. Re-check ' +
+                  'wallet via balance_check before re-attempting.',
+                _hostBugMissingStepResult: true,
+              }),
+              isError: true,
+            });
+          }
+        } else {
+          writeResultBlocks.push({
+            type: 'tool_result',
+            toolUseId: step.toolUseId,
+            content: JSON.stringify({ error: 'User declined this action' }),
+            isError: true,
+          });
         }
-      : {
-          type: 'tool_result',
-          toolUseId: action.toolUseId,
-          content: JSON.stringify({ error: 'User declined this action' }),
-          isError: true,
-        };
+      }
+    } else {
+      writeResultBlocks.push(
+        response.approved
+          ? {
+              type: 'tool_result',
+              toolUseId: action.toolUseId,
+              content: JSON.stringify(
+                response.executionResult ?? { success: true },
+              ),
+              isError: false,
+            }
+          : {
+              type: 'tool_result',
+              toolUseId: action.toolUseId,
+              content: JSON.stringify({ error: 'User declined this action' }),
+              isError: true,
+            },
+      );
+    }
 
     const allResults: ContentBlock[] = [
       ...(action.completedResults ?? []).map((r) => ({
@@ -474,28 +553,121 @@ export class AISDKEngine {
         content: r.content,
         isError: r.isError,
       })),
-      writeResultBlock,
+      ...writeResultBlocks,
     ];
+
+    // [SPEC 20.2 D-4] Append <canonical_route> text block when any
+    // swap_execute leg succeeded, gating per-leg success so a reverted
+    // bundle doesn't trick the LLM into narrating a successful route.
+    const canonicalRouteText = response.approved
+      ? buildCanonicalRouteText(action, response)
+      : null;
+    if (canonicalRouteText) {
+      allResults.push({ type: 'text', text: canonicalRouteText });
+    }
 
     this.messages.push({ role: 'user', content: allResults });
 
-    // Surface the per-step outcome to the host UI before any LLM
-    // narration so the PermissionCard renders the success/error row
-    // immediately on confirm, not after the narration arrives.
-    yield {
-      type: 'tool_result',
-      toolName: action.toolName,
-      toolUseId: action.toolUseId,
-      result: response.approved
-        ? response.executionResult ?? { success: true }
-        : { error: 'User declined this action' },
-      isError: !response.approved,
-      source: 'llm',
-    };
+    // Yield per-step outcome events before any LLM narration so the
+    // PermissionCard renders success/error rows immediately on confirm,
+    // not after the narration arrives.
+    if (isBundle) {
+      const steps = action.steps!;
+      const stepResults = response.stepResults ?? [];
+      const resultByToolUseId = new Map(
+        stepResults.map((r) => [r.toolUseId, r]),
+      );
+      for (const step of steps) {
+        const stepResult = resultByToolUseId.get(step.toolUseId);
+        let eventResult: unknown;
+        let eventIsError: boolean;
+        if (!response.approved) {
+          eventResult = { error: 'User declined this action' };
+          eventIsError = true;
+        } else if (stepResult) {
+          eventResult = stepResult.result;
+          eventIsError = stepResult.isError;
+        } else {
+          eventResult = {
+            error: "Host omitted this step's execution result.",
+            _hostBugMissingStepResult: true,
+          };
+          eventIsError = true;
+        }
+        yield {
+          type: 'tool_result',
+          toolName: step.toolName,
+          toolUseId: step.toolUseId,
+          result: eventResult,
+          isError: eventIsError,
+          source: 'llm',
+        };
+      }
+    } else {
+      yield {
+        type: 'tool_result',
+        toolName: action.toolName,
+        toolUseId: action.toolUseId,
+        result: response.approved
+          ? response.executionResult ?? { success: true }
+          : { error: 'User declined this action' },
+        isError: !response.approved,
+        source: 'llm',
+      };
+    }
 
     if (!response.approved) {
       yield { type: 'turn_complete', stopReason: 'end_turn' };
       return;
+    }
+
+    // [v2.0.4 / 2026-05-17] Wallet + DeFi cache invalidation on the
+    // confirm-tier resume path.
+    //
+    // SELF-REVIEW finding: v2.0.2 added cache invalidation in
+    // `step-finish.ts` for write tools, but step-finish only fires when
+    // the LLM dispatches a tool through the AI SDK wrapper. On
+    // confirm-tier resumes (the common path for save / borrow / swap /
+    // withdraw / repay), the write NEVER re-runs through the wrapper —
+    // the host executed it via the sponsored-tx flow and posts the
+    // result back via resumeWithToolResult. So step-finish never fires
+    // for that case and the BlockVision 60s cache stays stale for the
+    // next balance_check.
+    //
+    // Production smoke (prior session, 2026-05-17) reproduced this
+    // exactly: user withdrew 9 USDC successfully, then asked to save $6
+    // USDC, and balance_check returned "$0.31 USDC" — the pre-withdraw
+    // cached value. The v2.0.2 fix was wired but never executed.
+    //
+    // Fix: invalidate the BV portfolio + DeFi caches HERE, right before
+    // narration, whenever any write leg succeeded. Bundle path includes
+    // any successful step; single-write path is success-only because
+    // `response.approved && !isExecutionResultFailure(executionResult)`.
+    //
+    // Fire-and-forget Promise — engine never blocks waiting on the
+    // cache store. Errors are swallowed (cache invalidation is best-
+    // effort; the next read just hits stale data, which is the bug
+    // we're trying to fix anyway).
+    if (this.config.walletAddress) {
+      const anyWriteSucceeded = isBundle
+        ? (response.stepResults ?? []).some((sr) => !sr.isError)
+        : !isExecutionResultFailure(response.executionResult);
+      if (anyWriteSucceeded) {
+        const address = this.config.walletAddress;
+        Promise.resolve()
+          .then(() =>
+            Promise.all([
+              clearPortfolioCacheFor(address),
+              clearDefiCacheFor(address),
+            ]),
+          )
+          .catch((err) => {
+            console.warn(
+              '[v2/resumeWithToolResult] post-write cache invalidation failed:',
+              err,
+            );
+          });
+      }
     }
 
     // Approved → re-invoke streamText to narrate. Same tool/context/

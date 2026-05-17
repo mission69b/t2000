@@ -26,11 +26,21 @@
 // translation, abort signal forwarding.
 // ---------------------------------------------------------------------------
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { AISDKEngine, type AISDKEngineConfig } from './engine.js';
 import { defineTool } from './define-tool.js';
 import type { EngineEvent, Tool as LegacyTool } from '../types.js';
+import {
+  setWalletCacheStore,
+  resetWalletCacheStore,
+  type WalletCacheStore,
+} from '../cache/wallet.js';
+import {
+  setDefiCacheStore,
+  resetDefiCacheStore,
+  type DefiCacheStore,
+} from '../cache/defi.js';
 
 const RUN_REAL = process.env.RUN_REAL_API_TESTS === '1' && !!process.env.ANTHROPIC_API_KEY;
 const API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -623,54 +633,567 @@ describe('AISDKEngine — Day 13 follow-up: confirm-tier pending_action', () => 
     }
   });
 
-  it('resumeWithToolResult (bundle action) emits error event without crashing', async () => {
+  // ─────────────────────────────────────────────────────────────────────
+  // Bundle resume — v2.0.4 (2026-05-17)
+  //
+  // Production smoke (session s_1778988785644_eb8ace6010be, "swap 2 SUI
+  // then save it") caught the v2.0.0 bundle stub crashing AFTER the
+  // host's prepare + execute had already landed the bundle on-chain.
+  // User saw "ALL SUCCEEDED" with a tx digest alongside two error
+  // banners ("AISDKEngine.resumeWithToolResult: bundle resume not yet
+  // implemented") because the engine never narrated the post-bundle
+  // outcome and never refreshed the user's balance card.
+  //
+  // The fix ports QueryEngine's bundle path (deleted in v2.0.0 commit
+  // f87d7329) into AISDKEngine.resumeWithToolResult. The tests below
+  // pin the contract: bundle decline yields N decline tool_results,
+  // bundle approve yields N success tool_results + pushes the
+  // tool_result blocks into history so narration can run.
+  // ─────────────────────────────────────────────────────────────────────
+
+  function makeBundleAction(): PendingAction {
+    return {
+      toolName: 'swap_execute', // bundle "primary" — by convention, first step
+      toolUseId: 'toolu_swap_001',
+      input: { from: 'SUI', to: 'USDC', amount: 2 },
+      description: 'Bundle: swap + save',
+      assistantContent: [
+        { type: 'text', text: 'Executing swap then save. ' },
+        {
+          type: 'tool_use',
+          id: 'toolu_swap_001',
+          name: 'swap_execute',
+          input: { from: 'SUI', to: 'USDC', amount: 2 },
+        },
+        {
+          type: 'tool_use',
+          id: 'toolu_save_001',
+          name: 'save_deposit',
+          input: { amount: 2.109, asset: 'USDC' },
+        },
+      ],
+      completedResults: [],
+      turnIndex: 0,
+      attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      steps: [
+        {
+          toolName: 'swap_execute',
+          toolUseId: 'toolu_swap_001',
+          attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+          input: { from: 'SUI', to: 'USDC', amount: 2 },
+          description: 'Swap 2 SUI for USDC',
+        },
+        {
+          toolName: 'save_deposit',
+          toolUseId: 'toolu_save_001',
+          attemptId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
+          input: { amount: 2.109, asset: 'USDC' },
+          description: 'Save 2.109 USDC into lending',
+        },
+      ],
+    };
+  }
+
+  it('resumeWithToolResult (bundle, declined) yields one decline tool_result per step', async () => {
     const writeTool = makeWriteTool();
     const engine = new AISDKEngine({
       ...baseConfig('sk-test-fake-key-not-used'),
       tools: [writeTool],
     });
 
-    const bundleAction: PendingAction = {
+    const events: EngineEvent[] = [];
+    for await (const e of engine.resumeWithToolResult(makeBundleAction(), {
+      approved: false,
+    })) {
+      events.push(e);
+    }
+
+    const toolResults = events.filter((e) => e.type === 'tool_result');
+    expect(toolResults.length).toBe(2);
+    expect(toolResults[0]?.type === 'tool_result' && toolResults[0].toolName).toBe(
+      'swap_execute',
+    );
+    expect(toolResults[1]?.type === 'tool_result' && toolResults[1].toolName).toBe(
+      'save_deposit',
+    );
+    for (const tr of toolResults) {
+      if (tr.type !== 'tool_result') continue;
+      expect(tr.isError).toBe(true);
+      expect(tr.result).toEqual({ error: 'User declined this action' });
+    }
+
+    const turnComplete = events.filter((e) => e.type === 'turn_complete');
+    expect(turnComplete.length).toBe(1);
+    // No LLM narration on decline.
+    expect(events.filter((e) => e.type === 'text_delta').length).toBe(0);
+  });
+
+  it('resumeWithToolResult (bundle, approved) yields per-step tool_results AND pushes N tool_result blocks into history', async () => {
+    const writeTool = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [writeTool],
+    });
+
+    // [v2.0.4] When approved, the engine re-invokes streamText to
+    // narrate the outcome. We're not mocking the model here, so we
+    // capture events until the first error from the (fake) API call
+    // and then stop — what we care about is that the bundle BRANCH
+    // built the right tool_result blocks and history BEFORE handing
+    // off to narration.
+    const action = makeBundleAction();
+    const response: PermissionResponse = {
+      approved: true,
+      stepResults: [
+        {
+          toolUseId: 'toolu_swap_001',
+          attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+          result: {
+            success: true,
+            tx: 'EPqSDadL1234567890abcdef',
+            amount: 2,
+            received: 2.109,
+          },
+          isError: false,
+        },
+        {
+          toolUseId: 'toolu_save_001',
+          attemptId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
+          result: {
+            success: true,
+            tx: 'EPqSDadL1234567890abcdef',
+            amount: 2.109,
+          },
+          isError: false,
+        },
+      ],
+    };
+
+    const events: EngineEvent[] = [];
+    try {
+      for await (const e of engine.resumeWithToolResult(action, response)) {
+        events.push(e);
+        // Once we've collected both per-step tool_result events the
+        // bundle branch's job is done; subsequent events come from
+        // narration which we don't need to drive here.
+        if (
+          events.filter((ev) => ev.type === 'tool_result').length === 2 &&
+          events.some((ev) => ev.type === 'turn_complete' || ev.type === 'error')
+        ) {
+          break;
+        }
+      }
+    } catch {
+      // Narration round-trip will fail (fake API key). The per-step
+      // tool_result events fire BEFORE narration, so assertions below
+      // remain valid.
+    }
+
+    const toolResults = events.filter((e) => e.type === 'tool_result');
+    expect(toolResults.length).toBe(2);
+
+    const swap = toolResults.find(
+      (t) => t.type === 'tool_result' && t.toolName === 'swap_execute',
+    );
+    expect(swap?.type === 'tool_result' && swap.isError).toBe(false);
+    expect(swap?.type === 'tool_result' && (swap.result as any).tx).toBe(
+      'EPqSDadL1234567890abcdef',
+    );
+
+    const save = toolResults.find(
+      (t) => t.type === 'tool_result' && t.toolName === 'save_deposit',
+    );
+    expect(save?.type === 'tool_result' && save.isError).toBe(false);
+
+    // History must hold the deferred assistant message (with BOTH
+    // tool_use blocks) followed by a user message with EXACTLY 2
+    // tool_result blocks — one per leg. Without this, Anthropic
+    // rejects the narration call: "every tool_use must have a matching
+    // tool_result in the next message".
+    const messages = engine.getMessages();
+    expect(messages.length).toBeGreaterThanOrEqual(2);
+    expect(messages[0]?.role).toBe('assistant');
+    const toolUseCount = messages[0]?.content.filter(
+      (b) => b.type === 'tool_use',
+    ).length;
+    expect(toolUseCount).toBe(2);
+
+    expect(messages[1]?.role).toBe('user');
+    const userToolResults = messages[1]?.content.filter(
+      (b) => b.type === 'tool_result',
+    );
+    expect(userToolResults?.length).toBe(2);
+    expect(userToolResults?.[0]?.type === 'tool_result' && userToolResults[0].toolUseId).toBe(
+      'toolu_swap_001',
+    );
+    expect(userToolResults?.[1]?.type === 'tool_result' && userToolResults[1].toolUseId).toBe(
+      'toolu_save_001',
+    );
+  });
+
+  it('resumeWithToolResult (bundle, approved, MISSING step result) fail-closes that step (host-bug guard)', async () => {
+    const writeTool = makeWriteTool();
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [writeTool],
+    });
+
+    const action = makeBundleAction();
+    // Host approved the bundle but only supplied 1 of 2 stepResults
+    // (audric bug — should have populated all N). Per the SPEC 7 P2.3
+    // BUG 11 contract, the engine MUST fail closed: emit an error
+    // tool_result for the missing step so the LLM narrates "outcome
+    // unknown" instead of pretending success.
+    const response: PermissionResponse = {
+      approved: true,
+      stepResults: [
+        {
+          toolUseId: 'toolu_swap_001',
+          attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+          result: { success: true, tx: 'abc' },
+          isError: false,
+        },
+        // toolu_save_001 OMITTED on purpose.
+      ],
+    };
+
+    const events: EngineEvent[] = [];
+    try {
+      for await (const e of engine.resumeWithToolResult(action, response)) {
+        events.push(e);
+        if (
+          events.filter((ev) => ev.type === 'tool_result').length === 2 &&
+          events.some((ev) => ev.type === 'turn_complete' || ev.type === 'error')
+        ) {
+          break;
+        }
+      }
+    } catch {
+      /* narration fail expected with fake key */
+    }
+
+    const toolResults = events.filter((e) => e.type === 'tool_result');
+    expect(toolResults.length).toBe(2);
+
+    const swap = toolResults.find(
+      (t) => t.type === 'tool_result' && t.toolName === 'swap_execute',
+    );
+    expect(swap?.type === 'tool_result' && swap.isError).toBe(false);
+
+    const save = toolResults.find(
+      (t) => t.type === 'tool_result' && t.toolName === 'save_deposit',
+    );
+    // [SPEC 7 P2.3 BUG 11] missing step result → isError: true with
+    // the _hostBugMissingStepResult sentinel for observability.
+    expect(save?.type === 'tool_result' && save.isError).toBe(true);
+    expect(
+      save?.type === 'tool_result' &&
+        (save.result as any)._hostBugMissingStepResult,
+    ).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// v2.0.4 / 2026-05-17 — resume-path cache invalidation
+// ─────────────────────────────────────────────────────────────────────
+//
+// SELF-REVIEW finding while shipping the bundle resume fix: v2.0.2's
+// post-write cache invalidation lives in step-finish.ts, which only
+// fires when the LLM dispatches a tool through the AI SDK wrapper.
+// Confirm-tier write resumes (the common case) NEVER re-execute the
+// write through the wrapper — the host already executed it via the
+// sponsored-tx flow and posts the result back. So step-finish never
+// fired, and the BlockVision 60s cache stayed stale for the next
+// balance_check.
+//
+// Production reproducer (prior session, 2026-05-17): user withdrew 9
+// USDC successfully, then asked to "save $6 USDC". The post-withdraw
+// balance_check returned the pre-withdraw cached snapshot ($0.31
+// USDC), and the LLM correctly narrated "you only have $0.31 USDC".
+//
+// Fix: invalidate the wallet + DeFi caches in resumeWithToolResult,
+// right before re-invoking streamText for narration. Gated on any
+// write leg succeeding (bundle: any stepResult with !isError;
+// single-write: !isExecutionResultFailure(executionResult)).
+// ─────────────────────────────────────────────────────────────────────
+
+describe('AISDKEngine — resume-path cache invalidation (v2.0.4 follow-up to v2.0.2)', () => {
+  let walletDeleteSpy: ReturnType<typeof vi.fn>;
+  let defiDeleteSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    walletDeleteSpy = vi.fn(async () => undefined);
+    defiDeleteSpy = vi.fn(async () => undefined);
+
+    const stubWallet: WalletCacheStore = {
+      get: async () => null,
+      set: async () => undefined,
+      delete: walletDeleteSpy,
+      clear: async () => undefined,
+    };
+    const stubDefi: DefiCacheStore = {
+      get: async () => null,
+      set: async () => undefined,
+      delete: defiDeleteSpy,
+      clear: async () => undefined,
+    };
+
+    setWalletCacheStore(stubWallet);
+    setDefiCacheStore(stubDefi);
+  });
+
+  afterEach(() => {
+    resetWalletCacheStore();
+    resetDefiCacheStore();
+  });
+
+  function makeWriteTool(): LegacyTool {
+    return defineTool({
+      name: 'save_deposit',
+      description: 'Save USDC into NAVI lending.',
+      inputSchema: z.object({
+        amount: z.number(),
+        asset: z.enum(['USDC', 'USDsui']).optional(),
+      }),
+      flags: { mutating: true },
+      permissionLevel: 'confirm',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      call: async () => ({ data: { tx: 'never_called' } }),
+    });
+  }
+
+  function makeSingleWriteAction(): import('../types.js').PendingAction {
+    return {
       toolName: 'save_deposit',
       toolUseId: 'toolu_save_001',
       input: { amount: 0.05, asset: 'USDC' },
-      description: 'Bundle: save + send',
+      description: 'Save 0.05 USDC into lending',
+      assistantContent: [
+        { type: 'text', text: 'Saving. ' },
+        {
+          type: 'tool_use',
+          id: 'toolu_save_001',
+          name: 'save_deposit',
+          input: { amount: 0.05, asset: 'USDC' },
+        },
+      ],
+      completedResults: [],
+      turnIndex: 0,
+      attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    };
+  }
+
+  it('invalidates wallet + DeFi caches for a successful single-write resume', async () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [makeWriteTool()],
+    });
+
+    try {
+      for await (const _ of engine.resumeWithToolResult(makeSingleWriteAction(), {
+        approved: true,
+        executionResult: { success: true, tx: 'abc' },
+      })) {
+        // Narration round-trip will fail with the fake key; we only
+        // care that cache invalidation fires BEFORE the runStream call.
+      }
+    } catch {
+      /* expected — narration uses fake key */
+    }
+
+    // Wait for the fire-and-forget Promise chain.
+    await new Promise((r) => setImmediate(r));
+
+    const wallet = baseConfig('').walletAddress!;
+    expect(walletDeleteSpy).toHaveBeenCalledWith(wallet);
+    expect(defiDeleteSpy).toHaveBeenCalledWith(wallet);
+  });
+
+  it('does NOT invalidate caches when the user declines (no on-chain change to invalidate)', async () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [makeWriteTool()],
+    });
+
+    for await (const _ of engine.resumeWithToolResult(makeSingleWriteAction(), {
+      approved: false,
+    })) {
+      // Decline path runs synchronously, no narration.
+    }
+
+    await new Promise((r) => setImmediate(r));
+
+    expect(walletDeleteSpy).not.toHaveBeenCalled();
+    expect(defiDeleteSpy).not.toHaveBeenCalled();
+  });
+
+  it('does NOT invalidate caches when the single-write executionResult signals failure', async () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [makeWriteTool()],
+    });
+
+    try {
+      for await (const _ of engine.resumeWithToolResult(makeSingleWriteAction(), {
+        approved: true,
+        executionResult: {
+          success: false,
+          error: 'sponsor reverted: err_amount_out_slippage_check_failed',
+          _bundleReverted: true,
+        },
+      })) {
+        // narration fail expected
+      }
+    } catch {
+      /* expected */
+    }
+
+    await new Promise((r) => setImmediate(r));
+
+    expect(walletDeleteSpy).not.toHaveBeenCalled();
+    expect(defiDeleteSpy).not.toHaveBeenCalled();
+  });
+
+  it('invalidates caches for a bundle resume when ANY step succeeded', async () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [makeWriteTool()],
+    });
+
+    const bundleAction: import('../types.js').PendingAction = {
+      toolName: 'swap_execute',
+      toolUseId: 'toolu_swap_001',
+      input: { from: 'SUI', to: 'USDC', amount: 2 },
+      description: 'Bundle: swap + save',
+      assistantContent: [
+        { type: 'text', text: 'Executing. ' },
+        {
+          type: 'tool_use',
+          id: 'toolu_swap_001',
+          name: 'swap_execute',
+          input: { from: 'SUI', to: 'USDC', amount: 2 },
+        },
+        {
+          type: 'tool_use',
+          id: 'toolu_save_001',
+          name: 'save_deposit',
+          input: { amount: 2.109, asset: 'USDC' },
+        },
+      ],
+      completedResults: [],
+      turnIndex: 0,
+      attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      steps: [
+        {
+          toolName: 'swap_execute',
+          toolUseId: 'toolu_swap_001',
+          attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+          input: { from: 'SUI', to: 'USDC', amount: 2 },
+          description: 'Swap 2 SUI for USDC',
+        },
+        {
+          toolName: 'save_deposit',
+          toolUseId: 'toolu_save_001',
+          attemptId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
+          input: { amount: 2.109, asset: 'USDC' },
+          description: 'Save 2.109 USDC',
+        },
+      ],
+    };
+
+    try {
+      for await (const _ of engine.resumeWithToolResult(bundleAction, {
+        approved: true,
+        stepResults: [
+          {
+            toolUseId: 'toolu_swap_001',
+            attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+            result: { success: true, tx: 'tx_swap' },
+            isError: false,
+          },
+          {
+            toolUseId: 'toolu_save_001',
+            attemptId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
+            result: { success: true, tx: 'tx_save' },
+            isError: false,
+          },
+        ],
+      })) {
+        // narration fail expected
+      }
+    } catch {
+      /* expected */
+    }
+
+    await new Promise((r) => setImmediate(r));
+
+    const wallet = baseConfig('').walletAddress!;
+    expect(walletDeleteSpy).toHaveBeenCalledWith(wallet);
+    expect(defiDeleteSpy).toHaveBeenCalledWith(wallet);
+  });
+
+  it('does NOT invalidate caches when EVERY bundle step failed (sponsor revert)', async () => {
+    const engine = new AISDKEngine({
+      ...baseConfig('sk-test-fake-key-not-used'),
+      tools: [makeWriteTool()],
+    });
+
+    const bundleAction: import('../types.js').PendingAction = {
+      toolName: 'swap_execute',
+      toolUseId: 'toolu_swap_001',
+      input: { from: 'SUI', to: 'USDC', amount: 2 },
+      description: 'Bundle: swap + save',
       assistantContent: [],
       completedResults: [],
       turnIndex: 0,
       attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
       steps: [
         {
-          toolName: 'save_deposit',
-          toolUseId: 'toolu_save_001',
+          toolName: 'swap_execute',
+          toolUseId: 'toolu_swap_001',
           attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
-          input: { amount: 0.05 },
-          description: 'Save 0.05 USDC',
+          input: { from: 'SUI', to: 'USDC', amount: 2 },
+          description: 'Swap 2 SUI for USDC',
         },
         {
-          toolName: 'send_transfer',
-          toolUseId: 'toolu_send_001',
+          toolName: 'save_deposit',
+          toolUseId: 'toolu_save_001',
           attemptId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
-          input: { amount: 0.01, to: '0xabc' },
-          description: 'Send 0.01 USDC',
+          input: { amount: 2.109, asset: 'USDC' },
+          description: 'Save 2.109 USDC',
         },
       ],
     };
 
-    const events: EngineEvent[] = [];
-    for await (const e of engine.resumeWithToolResult(bundleAction, { approved: true })) {
-      events.push(e);
+    try {
+      for await (const _ of engine.resumeWithToolResult(bundleAction, {
+        approved: true,
+        stepResults: [
+          {
+            toolUseId: 'toolu_swap_001',
+            attemptId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+            result: { error: 'sponsor reverted', _bundleReverted: true },
+            isError: true,
+          },
+          {
+            toolUseId: 'toolu_save_001',
+            attemptId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
+            result: { error: 'sponsor reverted', _bundleReverted: true },
+            isError: true,
+          },
+        ],
+      })) {
+        // ...
+      }
+    } catch {
+      /* expected */
     }
 
-    const errorEvents = events.filter((e) => e.type === 'error');
-    expect(errorEvents.length).toBe(1);
-    if (errorEvents[0]?.type === 'error') {
-      expect(errorEvents[0].error.message).toContain('bundle resume');
-      expect(errorEvents[0].error.message).toContain('not yet implemented');
-    }
+    await new Promise((r) => setImmediate(r));
 
-    const turnComplete = events.filter((e) => e.type === 'turn_complete');
-    expect(turnComplete.length).toBe(1);
+    expect(walletDeleteSpy).not.toHaveBeenCalled();
+    expect(defiDeleteSpy).not.toHaveBeenCalled();
   });
 });
 
