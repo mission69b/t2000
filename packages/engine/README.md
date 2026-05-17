@@ -283,6 +283,49 @@ Notes:
 - Clear the stored `streamId` on `turn_complete` and `error`. Engine clears its own checkpoint on natural turn end.
 - Stream-checkpoint resume is for the **live LLM stream**. The confirm/deny round-trip after `pending_action` still goes through `resumeWithToolResult(action, response)` keyed on `attemptId`.
 
+### Memory Layer (v2.7.0+, Phase 7)
+
+Inject a vector-search-backed memory backend (production target: MemWal; reference impl: `InMemoryMemoryStore`) and the engine wires `prepareStep` to inject a `<memory_recall>` block at layer 3 of a deterministic 5-layer system-prompt assembly:
+
+1. **base system** — `EngineConfig.systemPrompt`
+2. **`<financial_context>`** — `EngineConfig.financialContextBlock` (pre-built by host snapshot cron)
+3. **`<memory_recall>`** — top-K `MemoryStore.recall(latestUserMessage)` results
+4. **skill recipe** — `EngineConfig.skillRecipeBlock` (typically from `McpPromptAdapter`)
+5. **user message** — `messages[]`
+
+Empty layers are skipped. Hosts that don't set `memoryStore` keep the legacy static-system-prompt path (no `prepareStep`, no wire-shape change).
+
+**1. Configure a store on the engine.**
+
+```typescript
+import { AISDKEngine, InMemoryMemoryStore } from '@t2000/engine';
+
+const engine = new AISDKEngine({
+  // ...other config
+  memoryStore: new InMemoryMemoryStore(),       // reference impl for tests / CLI
+  financialContextBlock: '<financial_context>...</financial_context>', // optional
+  skillRecipeBlock: 'Active recipe: yield-comparison...',              // optional
+});
+```
+
+Production hosts inject a real `MemoryStore` (audric will ship `MemWalMemoryStore` post-2026-05-29). The interface is intentionally minimal:
+
+```typescript
+interface MemoryStore {
+  remember(text: string, opts?: { namespace?: string }): Promise<void>;
+  recall(query: string, opts?: { topK?: number; namespace?: string }): Promise<MemoryRecord[]>;
+  destroy?(): void;
+}
+```
+
+**2. Per-turn caching is load-bearing.** `prepareStep` only calls `recall()` at `stepNumber === 0`; subsequent steps in the same `streamText` call (under `stopWhen: stepCountIs(maxTurns)`) read from `ToolContext.memoryCache`. MemWal p95 recall is 470-675ms — without the cache a 10-step turn would add ~7s. The cache invariant is verified in `five-layer-ordering.test.ts`.
+
+**3. Honest degradation.** If `recall()` throws (MemWal outage, network failure, auth error), the engine logs `[AISDKEngine] memory recall failed; continuing without:` and proceeds with an empty layer 3. The turn ALWAYS completes — a memory infra outage never wedges a user.
+
+**4. Write path.** `remember()` is host-triggered (typically after each turn from `onStepFinish` or from a daily snapshot cron). The engine never blocks on it — MemWal p50 ingest is 25s, so callers should fire-and-forget. The interface returns `Promise<void>` for completeness, but production hosts should swallow non-fatal errors inside the implementation rather than letting them bubble.
+
+See [`.cursor/rules/memory-injection-architecture.mdc`](https://github.com/mission69b/t2000/blob/main/.cursor/rules/memory-injection-architecture.mdc) for the binding contract + what's banned.
+
 ## Configuration
 
 ```typescript

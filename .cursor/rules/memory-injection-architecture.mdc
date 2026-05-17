@@ -1,0 +1,93 @@
+# Memory Injection Architecture (Phase 7)
+
+Codifies the F-4 5-layer system-prompt assembly that ships in engine v2.7.0+ when `EngineConfig.memoryStore` is configured. Re-read before touching `prepareStep`, `buildMemoryBlock`, the `MemoryStore` interface, or any code path that affects what the LLM sees at turn start.
+
+## The contract (binding)
+
+When a host configures `EngineConfig.memoryStore`, the engine wires `prepareStep` and assembles the system prompt in EXACTLY this order on every turn:
+
+| # | Layer | Source | When skipped |
+|---|---|---|---|
+| 1 | base system | `config.systemPrompt` (string or `SystemBlock[]`, joined) | when omitted entirely |
+| 2 | `<financial_context>` block | `config.financialContextBlock` (pre-built by host snapshot cron) | when undefined OR empty string |
+| 3 | `<memory_recall>` block | `buildMemoryBlock(memoryStore.recall(latestUserMessage))` | when recall returns 0 records OR recall throws |
+| 4 | skill recipe block | `config.skillRecipeBlock` (typically from `McpPromptAdapter.buildPrepareStepSystemPrefix()`) | when undefined OR empty string |
+| 5 | user message | `messages[]` (last user turn) | — always present |
+
+Layers 1–4 are joined with `\n\n`. Empty layers are dropped via `.filter((l) => l.length > 0)` — no empty wrappers, no double-blank separators. Layer 5 is passed to AI SDK as the regular `messages` argument; `prepareStep` only owns layers 1–4.
+
+## What's banned
+
+```typescript
+// ❌ Mixing static `system` and `prepareStep` (would let two sources race for layer 1/4)
+const stream = streamText({
+  system: 'static prompt',
+  prepareStep: () => ({ system: 'different prompt' }),
+});
+
+// ❌ Reordering layers (breaks F-4 verification + invalidates the spec invariant)
+const layers = [
+  buildMemoryBlock(records),  // layer 3 first
+  this.systemPromptString(),  // base second
+  // ...
+];
+
+// ❌ Calling memoryStore.recall() from anywhere other than prepareStep at stepNumber===0
+// (defeats the per-turn cache; MemWal p95 470-675ms × N steps = wedged turns)
+const records = await this.config.memoryStore.recall(...); // inside a tool
+const records = await this.config.memoryStore.recall(...); // inside onStepFinish
+
+// ❌ Awaiting memoryStore.remember() in the response path
+// (MemWal p50 ingest = 25s; would block the stream)
+await this.config.memoryStore.remember(turnSummary);
+
+// ❌ Throwing on recall failure
+// (memory infra outage MUST NOT wedge a turn)
+const records = await this.config.memoryStore.recall(query);
+if (records.length === 0) throw new Error('memory unavailable');
+```
+
+## What's load-bearing
+
+1. **Per-turn caching.** `prepareStep` fires N times per turn (once per multi-step iteration under `stopWhen: stepCountIs(maxTurns)`). The current implementation only re-recalls at `stepNumber === 0`; subsequent steps read from `internal.toolContext.memoryCache`. Removing this cache turns a 1 × 700ms recall into N × 700ms — a 10-step turn would add 7s of cumulative latency.
+
+2. **Honest degradation.** Recall failures are caught, logged via `console.warn`, and the cache is populated with `{ query, results: [] }`. Layer 3 becomes empty; the turn proceeds. This mirrors the same outage-tolerant contract as BlockVision sticky-positive caching and NAVI MCP circuit-breaker fallback paths.
+
+3. **Branch on `memoryStore` presence.** Legacy hosts (audric pre-v2.7.0, CLI, MCP, examples) leave `memoryStore` undefined; the engine takes the legacy `system: this.systemPromptString()` path with NO `prepareStep` hook. The wire shape stays identical to pre-v2.7.0 for those consumers.
+
+4. **`financialContextBlock` + `skillRecipeBlock` are ONLY read when `memoryStore` is set.** Without the memory path, the engine has no `prepareStep` to assemble layers 2 + 4 — hosts are expected to keep embedding `<financial_context>` and skill text inside `systemPrompt` directly (pre-Phase-7 contract). Mixing both styles silently is forbidden.
+
+## Why we chose `prepareStep` over extending `systemPromptString()`
+
+The subagent recommendation was to fold memory into `systemPromptString()` (simpler, no new hook). We chose `prepareStep` instead because:
+
+1. **Memory recall happens at turn start** — calling it from `systemPromptString()` means `runStream` must `await` recall before invoking `streamText`. Mixes the recall lifecycle into prompt assembly.
+2. **`prepareStep` enables future per-step recall** — if a tool result triggers a topic shift mid-turn, the existing `prepareStep` hook is the natural extension point. Wiring it now is the right architecture.
+3. **F-4 maps directly** — BENEFITS_SPEC literally names F-4 as "`prepareStep` (per-step tool gating)". Using the named primitive makes verification trivial.
+
+If a future iteration needs per-step memory refresh, the hook is already there — extend the `if (stepNumber === 0)` branch with a topic-shift detector.
+
+## Mock vs production
+
+| | `InMemoryMemoryStore` (engine ships) | `MemWalMemoryStore` (audric ships post-2026-05-29) |
+|---|---|---|
+| Scoring | negative bag-of-words overlap | cosine distance on embedding vectors |
+| Persistence | none (per-instance) | MystenLabs MemWal cluster |
+| Latency (recall) | <1ms | p95 470-675ms (live) / <5ms (session-cached) |
+| Latency (remember) | <1ms | p50 25s / p95 42s (fire-and-forget) |
+| Use cases | tests, CLI, MCP, pre-MemWal audric prototyping | production audric |
+
+Production hosts MUST inject a real `MemoryStore`. The mock is not production-grade.
+
+## Cross-references
+
+- Engine wiring → `packages/engine/src/v2/engine.ts` (`buildPrepareStepHook` method + branch in `runStream`)
+- Interface → `packages/engine/src/memory/store.ts`
+- Reference impl → `packages/engine/src/memory/in-memory-store.ts`
+- Layer-3 formatter → `packages/engine/src/memory/build-memory-block.ts`
+- Query extractor → `packages/engine/src/memory/extract-user-message.ts`
+- Integration test → `packages/engine/src/memory/five-layer-ordering.test.ts`
+- Scoping doc → `SPEC_PHASE_7_DRAFT.md`
+- BENEFITS_SPEC Phase 7 section → `BENEFITS_SPEC_v07a.md:1810-1895` (F-4, F-11, F-12, O-1, S-1, S-10)
+- MemWal smoke harness → `packages/engine/scripts/memwal-smoke.ts`
+- Engineering principles applied → Principle 4 (fix at root: memory ordering belongs in the engine, not in audric's chat route) + Principle 6 (cache pattern reasoning: MemoryStore deliberately does NOT factor with `XCacheStore` because the operations differ)

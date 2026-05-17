@@ -1,5 +1,62 @@
 # Changelog
 
+## 2.7.0 — 2026-05-18 — Phase 7 memory layer prototype (SPEC_PHASE_7_DRAFT.md)
+
+**Minor release.** Pure additive — every host that doesn't set the new `EngineConfig.memoryStore` field continues exactly as in v2.6.0. Opt-in only.
+
+### What changed
+
+Ships the engine-side prototype for the BENEFITS_SPEC Phase 7 memory infrastructure. Five engine-resident pieces land together:
+
+1. **`MemoryStore` interface + `MemoryRecord` type** (`packages/engine/src/memory/store.ts`) — pluggable backend abstraction. Operations: `remember(text)` (fire-and-forget ingest) + `recall(query, { topK, namespace })` (top-K similarity search) + optional `destroy()` cleanup. Modeled on MemWal's actual SDK (see `scripts/memwal-smoke.ts`).
+2. **`InMemoryMemoryStore` reference impl** (`packages/engine/src/memory/in-memory-store.ts`) — bag-of-words-overlap-scored mock, deterministic, zero infra dependency. Default for engine tests, CLI, MCP smokes, and pre-MemWal audric prototyping.
+3. **`EngineConfig` extensions** (`packages/engine/src/types.ts`):
+   - `memoryStore?: MemoryStore` — opt-in; engine wires `prepareStep` only when set
+   - `financialContextBlock?: string` — pre-built `<financial_context>` XML from host's daily snapshot cron
+   - `skillRecipeBlock?: string` — pre-built skill recipe block (typically `McpPromptAdapter.buildPrepareStepSystemPrefix()` output)
+4. **`prepareStep` wiring** (`packages/engine/src/v2/engine.ts` — `buildPrepareStepHook` method + branch in `runStream`) — first production use of `prepareStep` in v2. Assembles the system prompt in F-4 5-layer order on every step: **base → `<financial_context>` → `<memory_recall>` → skill → user_message**. Per-turn caching (`ToolContext.memoryCache`) keeps `memoryStore.recall()` to 1 call per turn even across multi-step iterations under `stopWhen: stepCountIs(maxTurns)`.
+5. **Honest degradation** — recall failures are caught, logged via `console.warn`, and the cache is populated with empty results. Layer 3 becomes empty; the turn completes. Memory infra outages NEVER wedge a user.
+
+### Why
+
+BENEFITS_SPEC §1903 commits Phase 7 to 6 benefits (O-1 ECS cron removal, F-4 prepareStep-per-step gating, F-11 + F-12 memory infra scaling, S-1 + S-10 Mysten partnership / E2E encryption). O-1 + F-4 + F-12 realize against any vector store, including the in-memory mock — so the engine prototype can verify end-to-end without any MemWal dependency. F-11 + S-1 + S-10 are MemWal-stability-gated (2026-06-26 hard deadline per BENEFITS_SPEC §1810); audric's `MemWalMemoryStore` integration ships post-checkpoint.
+
+### Hosts
+
+- **Audric (pre-Phase-7) — no action required.** Existing code keeps the legacy static-system-prompt path. v2.7.0 is wire-shape-compatible with v2.6.0 for hosts that don't opt in.
+- **Audric (Phase 7) — coordinated change required.** When wiring `memoryStore`, the host MUST also move its `<financial_context>` + skill recipe assembly OUT of the static `systemPrompt` and INTO the new `financialContextBlock` + `skillRecipeBlock` config fields. Mixing both styles silently is forbidden (the rule file makes this explicit).
+- **CLI / MCP / examples** — keep `memoryStore` undefined; legacy path is unchanged.
+- **Engine tests** — `InMemoryMemoryStore` is the default; `five-layer-ordering.test.ts` pins the F-4 ordering, per-turn cache, and degradation invariants. Any future edit that breaks the order, defeats the cache, or makes recall failures fatal will fail CI.
+
+### What this is NOT
+
+- **NOT a production memory store.** `InMemoryMemoryStore` is a deterministic mock for testing and prototyping. Production hosts MUST inject a real `MemoryStore` (`MemWalMemoryStore` once audric implements it).
+- **NOT a write-trigger policy.** The engine never decides WHEN to `remember()` — that's host concern. Audric's daily snapshot cron + per-turn intent writer land in the audric integration phase.
+- **NOT topic-shift detection.** Recall is one-shot per turn (cache stays warm). Per-step refresh based on intermediate tool results is a Phase 7+ extension; the `prepareStep` hook is already there if/when needed.
+- **NOT MCP exposure.** Cross-product memory sharing via MCP is deferred to v0.7c per BENEFITS_SPEC §1886 D-4.
+
+### Verification (Phase 7 engine prototype DONE criteria — all green)
+
+- ✅ `MemoryStore` interface + `InMemoryMemoryStore` mock exported from `@t2000/engine`
+- ✅ `EngineConfig.memoryStore` + `financialContextBlock` + `skillRecipeBlock` typecheck clean
+- ✅ `prepareStep` wired in `runStream` with branch-on-config
+- ✅ Integration test: F-4 layer ordering asserted via prompt-capture stub model (6 tests, all green)
+- ✅ Per-turn caching verified — 1 `recall()` call per `submitMessage` invocation
+- ✅ Degradation verified — recall throws → empty `<memory_recall>` block, turn completes
+- ✅ Documentation: README Phase 7 section + new `.cursor/rules/memory-injection-architecture.mdc` rule + `CLAUDE.md` import patterns
+
+### Test counts
+
+31 new memory-module tests (15 in-memory-store + 6 build-memory-block + 10 extract-user-message) + 6 integration tests = **37 new tests**, all green. Full engine suite: 1310 passed / 10 skipped (pre-existing) / 0 failed.
+
+### Cross-references
+
+- Scoping doc → `SPEC_PHASE_7_DRAFT.md` (local-only)
+- BENEFITS_SPEC Phase 7 → `BENEFITS_SPEC_v07a.md:1810-1895` (local-only)
+- Rule file → `.cursor/rules/memory-injection-architecture.mdc`
+- MemWal SDK reference → `packages/engine/scripts/memwal-smoke.ts`
+- Slice D / `approvalId` companion ship (this same dev cycle) → `SPEC_SLICE_D_DRAFT.md`
+
 ## 2.6.0 — 2026-05-18 — `approvalId` forward-compat alias (SPEC_SLICE_D_DRAFT D-6.1 + D-6.3)
 
 **Minor release.** Pure forward-compat addition. Zero behavior change for existing hosts; reading `attemptId` continues to work indefinitely.

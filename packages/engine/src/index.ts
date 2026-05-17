@@ -139,6 +139,16 @@ export type {
   StreamResumeOutcome,
 } from './stream-checkpoint.js';
 
+// [SPEC_PHASE_7_DRAFT.md / v2.7.0] Memory store (engine-side abstraction
+// for MemWal-class backends). Engine ships `InMemoryMemoryStore` as the
+// reference impl + test default; production hosts inject
+// `MemWalMemoryStore` (or similar) via `EngineConfig.memoryStore`.
+// Consumed by `prepareStep` in `v2/engine.ts` to inject a
+// `<memory_recall>` block as layer 3 of the F-4 5-layer system-prompt
+// assembly.
+export { InMemoryMemoryStore } from './memory/in-memory-store.js';
+export type { MemoryStore, MemoryRecord } from './memory/store.js';
+
 // Session store
 export { MemorySessionStore } from './session.js';
 export type { SessionData, SessionStore } from './session.js';

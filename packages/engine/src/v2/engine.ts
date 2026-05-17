@@ -92,6 +92,10 @@ import {
   detectInFlightTool,
   type StreamResumeOutcome,
 } from '../stream-checkpoint.js';
+// [SPEC_PHASE_7_DRAFT.md / v2.7.0] Memory layer — prepareStep injects a
+// `<memory_recall>` block at layer 3 of the F-4 5-layer system prompt.
+import { buildMemoryBlock } from '../memory/build-memory-block.js';
+import { extractLatestUserMessage } from '../memory/extract-user-message.js';
 
 // ---------------------------------------------------------------------------
 // AISDKEngine config — subset of legacy EngineConfig that's still needed
@@ -965,11 +969,27 @@ export class AISDKEngine {
     // any future host bug of this class.
     const validatedMessages = validateHistory(this.messages);
 
+    // [SPEC_PHASE_7_DRAFT.md / v2.7.0] Branch on `memoryStore` config:
+    // - When SET, prepareStep owns the system prompt (F-4 5-layer assembly:
+    //   base → financial_context → memory → skill). We DO NOT pass static
+    //   `system` because prepareStep's return value sets it fresh each step.
+    // - When UNSET (legacy path, all CLI / MCP / pre-Phase-7 audric), the
+    //   static `system: this.systemPromptString()` carries the prompt
+    //   unchanged. Hosts that haven't opted into memory keep their
+    //   pre-v2.7.0 wire shape — single system string, no per-step hook.
+    //
+    // The branch is binary by design: mixing static system + prepareStep
+    // would let two sources race for layer 1 / 4, defeating F-4 ordering
+    // guarantees. Hosts pick one assembly strategy and stay there.
+    const useMemoryPath = this.config.memoryStore !== undefined;
+
     const stream = streamText({
       model: this.anthropic(this.config.model ?? 'claude-sonnet-4-5'),
       tools,
       messages: toAISDKMessages(validatedMessages),
-      system: this.systemPromptString(),
+      ...(useMemoryPath
+        ? { prepareStep: this.buildPrepareStepHook(internal) }
+        : { system: this.systemPromptString() }),
       experimental_context: internal,
       stopWhen: stepCountIs(this.config.maxTurns ?? 10) as StopCondition<typeof tools>,
       abortSignal: this.abortController?.signal,
@@ -1353,6 +1373,72 @@ export class AISDKEngine {
       return sp.map((b) => b.text).join('\n\n');
     }
     return undefined;
+  }
+
+  /**
+   * [SPEC_PHASE_7_DRAFT.md / v2.7.0] Build the `prepareStep` callback for
+   * `streamText`. Returns a closure that:
+   *
+   *   1. Fires `memoryStore.recall()` ONCE per turn at `stepNumber === 0`,
+   *      caches the result on `internal.toolContext.memoryCache` for
+   *      subsequent steps in the same `streamText` call (multi-step turns
+   *      under `stopWhen: stepCountIs(maxTurns)` would otherwise re-recall
+   *      N times — MemWal p95 470-675ms per call, so the cache is
+   *      load-bearing for turn latency).
+   *
+   *   2. Assembles the system prompt in F-4 order from named config
+   *      segments + the cached memory results:
+   *
+   *        1. base — `systemPromptString()` (config.systemPrompt)
+   *        2. financial — `config.financialContextBlock`
+   *        3. memory — `<memory_recall>` from this turn's recall
+   *        4. skill — `config.skillRecipeBlock`
+   *
+   *      Empty segments are skipped via `.filter((l) => l.length > 0)`.
+   *
+   *   3. Degrades gracefully on recall failure — logs a `console.warn`,
+   *      populates `memoryCache` with `{ query, results: [] }` so layer 3
+   *      becomes empty (no `<memory_recall>` block), and lets the turn
+   *      proceed. A memory infra outage NEVER prevents a turn.
+   *
+   * Only called when `this.config.memoryStore` is set — `runStream`
+   * branches on the config and passes static `system` for legacy hosts.
+   */
+  private buildPrepareStepHook(internal: InternalContext) {
+    return async ({
+      stepNumber,
+      messages,
+    }: {
+      stepNumber: number;
+      messages: import('ai').ModelMessage[];
+    }): Promise<{ system: string }> => {
+      const memoryStore = this.config.memoryStore;
+      if (memoryStore && stepNumber === 0) {
+        const userMessage = extractLatestUserMessage(messages);
+        try {
+          const records = await memoryStore.recall(userMessage, { topK: 5 });
+          internal.toolContext.memoryCache = { query: userMessage, results: records };
+        } catch (err) {
+          // Honest degradation — log + empty cache so the turn proceeds
+          // with no `<memory_recall>` block. Mirrors the same "infra
+          // outage doesn't wedge the user" contract as the BlockVision
+          // sticky-positive cache and NAVI MCP fallback paths.
+          console.warn('[AISDKEngine] memory recall failed; continuing without:', err);
+          internal.toolContext.memoryCache = { query: userMessage, results: [] };
+        }
+      }
+
+      const layers: string[] = [
+        this.systemPromptString() ?? '',
+        this.config.financialContextBlock ?? '',
+        buildMemoryBlock(internal.toolContext.memoryCache?.results ?? []),
+        this.config.skillRecipeBlock ?? '',
+      ];
+
+      return {
+        system: layers.filter((l) => l.length > 0).join('\n\n'),
+      };
+    };
   }
 
 }

@@ -274,6 +274,19 @@ import { MemorySessionStore } from '@t2000/engine';
 import { InMemoryStreamCheckpointStore } from '@t2000/engine';
 import type { StreamCheckpointStore } from '@t2000/engine';
 
+// [v2.7.0 / SPEC_PHASE_7_DRAFT.md] Memory layer — wire
+// `EngineConfig.memoryStore` and the engine assembles the system prompt
+// in F-4 5-layer order via `prepareStep`:
+// 1. base systemPrompt → 2. financialContextBlock → 3. <memory_recall>
+// (top-K MemoryStore.recall(latestUserMessage)) → 4. skillRecipeBlock →
+// 5. messages[]. Per-turn caching (single recall per submitMessage call)
+// is load-bearing; recall failures degrade gracefully (empty layer 3).
+// CLI / MCP / tests use the InMemoryMemoryStore default; production
+// audric will inject MemWalMemoryStore post-2026-05-29 MemWal stability.
+// See `.cursor/rules/memory-injection-architecture.mdc` for the contract.
+import { InMemoryMemoryStore } from '@t2000/engine';
+import type { MemoryStore, MemoryRecord } from '@t2000/engine';
+
 // Context + cost + microcompact
 import { estimateTokens, compactMessages, CostTracker, microcompact } from '@t2000/engine';
 

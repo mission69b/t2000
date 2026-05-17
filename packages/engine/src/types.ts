@@ -832,6 +832,33 @@ export interface ToolContext {
    * return type.
    */
   retryStats?: { attemptCount: number };
+  /**
+   * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Per-turn memory recall cache.
+   * Populated ONCE per turn by the `prepareStep` hook in `v2/engine.ts`
+   * at `stepNumber === 0` when `EngineConfig.memoryStore` is configured.
+   * Subsequent steps in the same `streamText` call (under multi-step
+   * `stopWhen: stepCountIs(maxTurns)`) read from this cache rather than
+   * re-recalling — MemWal single-recall p95 is 470-675ms; caching avoids
+   * the N × 700ms amplification across multi-tool turns.
+   *
+   * Mutable ref shape (matches `retryStats` pattern) so the prepareStep
+   * hook can populate without rebuilding the entire context.
+   *
+   * `query` is preserved for debug / telemetry (which user message
+   * triggered this recall) and as an idempotency key — if the same query
+   * is encountered later in the same turn (rare; would require explicit
+   * re-recall logic) it can short-circuit without re-fetching.
+   *
+   * `null` (not undefined) when `memoryStore` is set but recall hasn't
+   * fired yet OR when recall failed and degraded to empty results — the
+   * cache slot exists but holds no records. Distinguishes "memory not
+   * configured" (undefined) from "memory configured, results empty"
+   * (null with `results: []`).
+   *
+   * Tools consuming this directly (rare today; future skill recipes may
+   * inspect it for cross-step continuity) should treat it as read-only.
+   */
+  memoryCache?: { query: string; results: import('./memory/store.js').MemoryRecord[] } | null;
 }
 
 export interface ServerPositionData {
@@ -1184,6 +1211,70 @@ export interface EngineConfig {
    * audric subscribes and pushes the outcome to its telemetry pipeline.
    */
   onStreamResume?: (info: import('./stream-checkpoint.js').StreamResumeOutcome) => void;
+  /**
+   * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Pluggable memory backend.
+   * When set, the engine wires `prepareStep` (currently otherwise unused
+   * in v2) to perform ONE memory recall per turn at `stepNumber === 0`
+   * and inject the top-K records as a `<memory_recall>` block at layer 3
+   * of the F-4 5-layer system-prompt assembly:
+   *
+   *   1. base `systemPrompt`
+   *   2. `<financial_context>` block (from `financialContextBlock` below)
+   *   3. `<memory_recall>` block (from `memoryStore.recall()` results)
+   *   4. skill recipe block (from `skillRecipeBlock` below)
+   *   5. user message (from `messages[]`)
+   *
+   * The recall result is cached in `ToolContext.memoryCache` for the
+   * duration of the turn — subsequent steps in the same `streamText`
+   * call (under `stopWhen: stepCountIs(maxTurns)`) read the cache; no
+   * re-recall fires until the next `submitMessage()`.
+   *
+   * **Latency.** MemWal single-recall p95 is 470-675ms; session-cached
+   * recalls hit in <5ms. The engine NEVER blocks the response stream on
+   * `memoryStore.remember()` — that's host-triggered after turn end.
+   *
+   * **Degradation.** If `recall()` throws, the engine logs a `console.warn`
+   * and continues with an empty `<memory_recall>` block — a memory infra
+   * outage NEVER prevents a turn from completing.
+   *
+   * **When undefined** the engine falls back to the legacy static system
+   * prompt assembly (pre-v2.7.0 behavior, `system: this.systemPromptString()`
+   * passed to `streamText` once at turn start, no `prepareStep` hook).
+   *
+   * Production wiring: audric injects `MemWalMemoryStore` here once
+   * MemWal stabilizes (post-2026-05-29 checkpoint per BENEFITS_SPEC §1810).
+   * Testing: engine ships `InMemoryMemoryStore` for unit + integration
+   * tests; CLI / MCP / examples leave it undefined.
+   */
+  memoryStore?: import('./memory/store.js').MemoryStore;
+  /**
+   * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Pre-built `<financial_context>`
+   * XML block sourced from the host's daily snapshot cron (in audric:
+   * `UserFinancialContext` table populated by the 02:00 UTC
+   * `financial-context-snapshot` cron). Engine inserts this at layer 2
+   * of the F-4 order via `prepareStep` when `memoryStore` is set.
+   *
+   * **Only consumed when `memoryStore` is set** — without `memoryStore`
+   * the engine takes the legacy static-system-prompt path and hosts are
+   * expected to keep embedding `<financial_context>` directly inside the
+   * `systemPrompt` string (the pre-v2.7.0 contract).
+   *
+   * Optional — when undefined, layer 2 is empty (and the prepareStep
+   * assembler skips it).
+   */
+  financialContextBlock?: string;
+  /**
+   * [SPEC_PHASE_7_DRAFT.md / engine v2.7.0] Pre-built skill recipe block
+   * — typically the output of `McpPromptAdapter.buildPrepareStepSystemPrefix()`
+   * (see `mcp/prompt-adapter.ts`). Engine inserts this at layer 4 of the
+   * F-4 order via `prepareStep` when `memoryStore` is set.
+   *
+   * **Only consumed when `memoryStore` is set** — same reasoning as
+   * `financialContextBlock` above.
+   *
+   * Optional — when undefined, layer 4 is empty.
+   */
+  skillRecipeBlock?: string;
 }
 
 // ---------------------------------------------------------------------------
