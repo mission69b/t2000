@@ -203,7 +203,7 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
     expect(system).toContain('user prefers USDC');
   });
 
-  it('per-turn caching: recall fires ONCE even if multiple AI SDK steps run', async () => {
+  it('per-turn caching (end-to-end): recall fires ONCE per submitMessage call', async () => {
     const store = new InMemoryMemoryStore();
     await store.remember('user has 100 USDC saved');
     const recallSpy = vi.spyOn(store, 'recall');
@@ -220,12 +220,122 @@ describe('Phase 7 — 5-layer system prompt ordering', () => {
 
     await collect(engine.submitMessage('show savings'));
 
-    // One submitMessage call = one turn = one recall, even across the
-    // (potentially) multi-step inner streamText loop. The mock turn is
-    // single-step (one `finish` part), but the cache check would still
-    // hold across 5 steps — prepareStep only re-recalls at stepNumber===0.
     expect(recallSpy).toHaveBeenCalledTimes(1);
     expect(recallSpy).toHaveBeenCalledWith('show savings', { topK: 5 });
+  });
+
+  // -------------------------------------------------------------------------
+  // Direct unit test of the prepareStep hook — proves the `stepNumber === 0`
+  // guard, which the end-to-end test above can't exercise because the stub
+  // model is single-step. Without this, removing the `=== 0` check would
+  // silently degrade multi-step turns from 1 × recall to N × recall (MemWal
+  // p95 470-675ms × N would wedge production turns).
+  // -------------------------------------------------------------------------
+  describe('buildPrepareStepHook (direct invocation)', () => {
+    // Pull the private method out via cast-via-unknown — same pattern
+    // the v2 engine tests use for stub-model installation. This is an
+    // intentional test seam; the method's behavior is load-bearing for
+    // cache semantics across multi-step turns.
+    type HookFactory = (
+      internal: unknown,
+    ) => (opts: {
+      stepNumber: number;
+      messages: unknown[];
+    }) => Promise<{ system: string }>;
+
+    function getHookFactory(engine: AISDKEngine): HookFactory {
+      return (engine as unknown as { buildPrepareStepHook: HookFactory })
+        .buildPrepareStepHook;
+    }
+
+    function makeInternal() {
+      // Minimal InternalContext shape — prepareStep only reads/writes
+      // `toolContext.memoryCache`, so other fields can be empty stubs.
+      return {
+        toolContext: { memoryCache: undefined as unknown },
+      };
+    }
+
+    it('fires recall at stepNumber === 0 and populates memoryCache', async () => {
+      const store = new InMemoryMemoryStore();
+      await store.remember('seed record');
+      const spy = vi.spyOn(store, 'recall');
+
+      const engine = new AISDKEngine({
+        ...baseEngineConfig(),
+        memoryStore: store,
+      });
+      const internal = makeInternal();
+      const hook = getHookFactory(engine).call(engine, internal);
+
+      const result = await hook({
+        stepNumber: 0,
+        messages: [{ role: 'user', content: 'first turn' }],
+      });
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith('first turn', { topK: 5 });
+      // memoryCache populated (even if recall returned [], the SLOT is set
+      // — distinguishes "not yet recalled" from "recalled, no matches").
+      expect(internal.toolContext.memoryCache).toBeDefined();
+      // Layer 1 (base) appears in the assembled prompt.
+      expect(result.system).toContain('BASE_MARKER');
+    });
+
+    it('DOES NOT fire recall at stepNumber > 0 (cache guard)', async () => {
+      const store = new InMemoryMemoryStore();
+      await store.remember('seed record');
+      const spy = vi.spyOn(store, 'recall');
+
+      const engine = new AISDKEngine({
+        ...baseEngineConfig(),
+        memoryStore: store,
+      });
+      const internal = makeInternal();
+      // Pre-seed the cache as if step 0 already ran — assembler should
+      // read from this, not re-recall.
+      internal.toolContext.memoryCache = {
+        query: 'first turn',
+        results: [{ text: 'cached-record', distance: -1, metadata: {} }],
+      };
+      const hook = getHookFactory(engine).call(engine, internal);
+
+      const result = await hook({
+        stepNumber: 1,
+        messages: [{ role: 'user', content: 'first turn' }],
+      });
+
+      // CRITICAL invariant: no second recall fires on step 1.
+      expect(spy).not.toHaveBeenCalled();
+      // The cached record is rendered into layer 3 (proves the assembler
+      // is reading from the cache, not from a fresh recall).
+      expect(result.system).toContain('cached-record');
+    });
+
+    it('multi-step turn: 5 prepareStep invocations = 1 recall total', async () => {
+      const store = new InMemoryMemoryStore();
+      await store.remember('seed record');
+      const spy = vi.spyOn(store, 'recall');
+
+      const engine = new AISDKEngine({
+        ...baseEngineConfig(),
+        memoryStore: store,
+      });
+      const internal = makeInternal();
+      const hook = getHookFactory(engine).call(engine, internal);
+
+      // Simulate 5 sequential prepareStep invocations within one turn —
+      // exactly what AI SDK does under stopWhen: stepCountIs(5).
+      for (let step = 0; step < 5; step++) {
+        await hook({
+          stepNumber: step,
+          messages: [{ role: 'user', content: 'one query' }],
+        });
+      }
+
+      // Cache invariant: 1 recall per turn, not N.
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('degradation: recall throws → engine continues with empty <memory_recall> block', async () => {

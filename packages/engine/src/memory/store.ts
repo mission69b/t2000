@@ -125,11 +125,24 @@ export interface MemoryStore {
   ): Promise<MemoryRecord[]>;
 
   /**
-   * Optional cleanup hook called by the engine when the request is
-   * torn down (parallel to the AbortController firing). Implementations
-   * SHOULD close network connections, wipe in-memory credentials, and
-   * release any per-request resources. The engine never throws if this
-   * is undefined.
+   * Optional cleanup hook for hosts that need to release per-request
+   * resources (close network connections, wipe in-memory credentials,
+   * etc.).
+   *
+   * **v2.7.0 behavior:** the engine does NOT auto-invoke `destroy()` —
+   * `AISDKEngine` has no request-end lifecycle hook today (the same
+   * instance can serve many `submitMessage()` calls, and the
+   * `AbortController` only fires per-message). Hosts that need cleanup
+   * MUST invoke `destroy()` themselves at the appropriate teardown
+   * point (e.g., session expiry, user logout, server shutdown).
+   *
+   * The slot exists on the interface so the contract is forward-compatible:
+   * a future engine version MAY add an auto-invocation point (e.g.
+   * `onEngineDispose()`); when that lands, hosts that already define
+   * `destroy()` will pick up the behavior for free.
+   *
+   * The mock's `destroy()` is used by `in-memory-store.test.ts` for test
+   * isolation between cases — not via the engine.
    */
   destroy?(): void;
 }

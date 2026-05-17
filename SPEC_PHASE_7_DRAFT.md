@@ -101,7 +101,11 @@ export interface MemoryStore {
 
   /**
    * Cleanup hook — wipe in-memory credentials, close connections.
-   * Called by the engine at request end (parallel to AbortController firing).
+   *
+   * v2.7.0 NOTE: engine does NOT auto-invoke; hosts call manually at
+   * teardown. The slot exists on the interface for forward compatibility
+   * (a future engine version may add an `onEngineDispose()` lifecycle
+   * point that auto-invokes destroy when defined).
    */
   destroy?(): void;
 }
