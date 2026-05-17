@@ -1,8 +1,8 @@
 {
   "name": "@t2000/mcp",
-  "version": "2.2.0",
-  "mcpName": "io.github.mission69b/t2000",
+  "version": "2.3.0",
   "description": "MCP server for AI agent bank accounts on Sui — 29 tools, 15 prompts, stdio transport. Drop-in for Claude Desktop, Cursor, Cline, Continue, or any MCP-compatible client.",
+  "mcpName": "io.github.mission69b/t2000",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
