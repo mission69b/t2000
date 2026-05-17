@@ -28,6 +28,22 @@ The ambiguity overwrote the wrong row's outcome.
 
 **Defensive fallback.** Pre-v1.4.2 sessions can rehydrate `PendingAction` without an `attemptId`. The legacy pair-keyed update stays as a dead-code fallback for one session-TTL rotation, then gets removed.
 
+### Item 3a — `approvalId` (forward-compat alias for `attemptId`)
+
+Added 2026-05-18 in engine v2.6.0 per `SPEC_SLICE_D_DRAFT.md` §7 (D-6.1). Every `pending_action` event carries an additional optional `approvalId` field that mirrors `attemptId` 1:1 at emit time.
+
+**Why it exists.** The Slice D scoping (2026-05-18) ruled out wholesale adoption of AI SDK v6's native `tool-approval-request` primitive because that primitive assumes server-executed tools (our zkLogin model is client-executed). But the AI SDK's terminology for the per-yield correlation id is `approvalId`, not `attemptId`. By stamping BOTH fields identically, any future v0.7c migration that adopts AI SDK conventions has a stable read path without breaking pre-migration hosts that read `attemptId`.
+
+**The contract.**
+1. Engine stamps `approvalId === attemptId` at all 4 emission sites (`v2/engine.ts` single-write, `regenerate.ts` quote refresh, `compose-bundle.ts` per-step + top-level).
+2. Hosts MAY read either field — they are identical by construction.
+3. New code SHOULD read `approvalId` to align with AI SDK v6 conventions. Reading `attemptId` remains supported indefinitely.
+4. The invariant `top.approvalId === top.attemptId === steps[0].approvalId === steps[0].attemptId` holds for bundles by the same mirror rule that pins `attemptId`.
+
+**What this is NOT.** This is NOT a migration to AI SDK's HITL primitive. We keep our 15-field `PendingAction` because the native primitive can't carry our extension fields (`description`, `modifiableFields`, `cetusRoute`, `steps[]`, `guardInjections`, `borrowApyBps`, `currentHF`, `projectedHF`, `quoteAge`, `canRegenerate`, `regenerateInput`) and assumes a server-execute model we structurally cannot use. See `SPEC_SLICE_D_DRAFT.md` for the full impedance analysis.
+
+**Future agents.** Do NOT re-attempt Slice D ("migrate `pending_action` to native `tool-approval-request`") without first re-reading `SPEC_SLICE_D_DRAFT.md`. The scoping ruled it out for v0.7b; it's v0.7c-class work that must be paired with Slice B (UIMessage / `useChat` migration).
+
 ### Item 6 — `modifiableFields` (user can edit before approving)
 
 Optional `modifiableFields: PendingActionModifiableField[]` on every `PendingAction`:

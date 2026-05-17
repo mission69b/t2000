@@ -1320,6 +1320,11 @@ export class AISDKEngine {
         ...(modifiableFields && modifiableFields.length > 0 ? { modifiableFields } : {}),
         turnIndex,
         attemptId,
+        // [D-6.1 / SPEC_SLICE_D_DRAFT.md §7 — 2026-05-18] Forward-compat
+        // alias; mirrors `attemptId` 1:1 at emit time so hosts that read
+        // either field interchangeably are unaffected by future Audric
+        // migration to AI SDK v6's `approvalId` HITL terminology.
+        approvalId: attemptId,
         ...(liveData.borrowApyBps !== undefined ? { borrowApyBps: liveData.borrowApyBps } : {}),
         ...(liveData.currentHF !== undefined ? { currentHF: liveData.currentHF } : {}),
         // [Day 14c] projectedHF — render alongside currentHF as

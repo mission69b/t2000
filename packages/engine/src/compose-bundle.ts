@@ -363,10 +363,16 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
       call.name === 'swap_execute' && input.swapQuoteReads
         ? findMatchingCetusRoute(call.input, input.swapQuoteReads)
         : undefined;
+    // [D-6.1 / SPEC_SLICE_D_DRAFT.md §7 — 2026-05-18] Stamp ONE UUID
+    // per step and mirror to both `attemptId` + `approvalId`.
+    // `approvalId` is a forward-compat alias for AI SDK v6's HITL
+    // terminology; identical to `attemptId` by construction.
+    const stepId = randomUUID();
     return {
       toolName: call.name,
       toolUseId: call.id,
-      attemptId: randomUUID(),
+      attemptId: stepId,
+      approvalId: stepId,
       input: call.input,
       description,
       ...(modifiableFields?.length ? { modifiableFields } : {}),
@@ -441,6 +447,12 @@ export function composeBundleFromToolResults(input: BundleCompositionInput): Pen
     ...(allGuardInjections.length ? { guardInjections: allGuardInjections } : {}),
     turnIndex: input.turnIndex,
     attemptId: firstStep.attemptId,
+    // [D-6.1 / SPEC_SLICE_D_DRAFT.md §7 — 2026-05-18] Top-level
+    // `approvalId` mirrors `steps[0].approvalId` (which already mirrors
+    // `steps[0].attemptId`), so the bundle invariant
+    // `top.attemptId === top.approvalId === steps[0].attemptId === steps[0].approvalId`
+    // holds by construction.
+    approvalId: firstStep.attemptId,
     // [SPEC 20.2 / D-1 (a)] Mirror step[0]'s cetusRoute to the top-level
     // field for backward compat with pre-bundle hosts that don't iterate
     // steps[]. Bundle-aware hosts read per-step `step.cetusRoute`.

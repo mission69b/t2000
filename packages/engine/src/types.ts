@@ -461,6 +461,21 @@ export interface PendingActionStep {
    * per-step shape (loop `stepResults`, update each row).
    */
   attemptId: string;
+  /**
+   * [D-6.1 / SPEC_SLICE_D_DRAFT.md §7 — 2026-05-18] Forward-compat
+   * alias for `attemptId`. Engine stamps `approvalId === attemptId`
+   * verbatim at emit time so hosts can read either field
+   * interchangeably. Exists to ease a future v0.7c migration if/when
+   * Audric (or any host) adopts AI SDK v6's `approvalId` terminology
+   * for HITL parts.
+   *
+   * Optional today because the field is additive; existing hosts that
+   * read `attemptId` continue to work unchanged. New code SHOULD read
+   * `approvalId` to align with AI SDK conventions, but reading
+   * `attemptId` remains supported indefinitely (the two fields are
+   * identical by construction at every emission site).
+   */
+  approvalId?: string;
   input: unknown;
   /** Per-step user-facing summary (rendered in the PermissionCard). */
   description: string;
@@ -548,6 +563,28 @@ export interface PendingAction {
    * route loops `stepResults` and updates each per-step row.
    */
   attemptId: string;
+  /**
+   * [D-6.1 / SPEC_SLICE_D_DRAFT.md §7 — 2026-05-18] Forward-compat
+   * alias for `attemptId`. Engine stamps `approvalId === attemptId`
+   * verbatim at emit time so hosts can read either field
+   * interchangeably. Exists to ease a future v0.7c migration if/when
+   * Audric (or any host) adopts AI SDK v6's `approvalId` terminology
+   * for HITL parts.
+   *
+   * **Bundles:** when `steps !== undefined`, the top-level `approvalId`
+   * mirrors `steps[0].approvalId` (which itself mirrors
+   * `steps[0].attemptId`) — same invariant as `attemptId`'s bundle
+   * mirroring rule above.
+   *
+   * Optional today because the field is additive; existing hosts that
+   * read `attemptId` continue to work unchanged. New code SHOULD read
+   * `approvalId` to align with AI SDK conventions, but reading
+   * `attemptId` remains supported indefinitely (the two fields are
+   * identical by construction at every emission site — see Slice D
+   * scoping doc for the impedance analysis explaining why we keep
+   * BOTH rather than migrating to AI SDK's HITL primitive wholesale).
+   */
+  approvalId?: string;
   /**
    * [SPEC 20.2 / D-1 (a)] Cetus route captured at `swap_quote` time and
    * threaded through to the prepare-route to skip the ~400-500ms

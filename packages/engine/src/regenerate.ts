@@ -400,7 +400,13 @@ export async function regenerateBundle(
         : {}),
       ...(modifiableFields?.length ? { modifiableFields } : {}),
       turnIndex: action.turnIndex,
-      attemptId: randomUUID(),
+      ...((): { attemptId: string; approvalId: string } => {
+        // [D-6.1 / SPEC_SLICE_D_DRAFT.md §7 — 2026-05-18] Stamp once,
+        // mirror to both fields. `approvalId` is a forward-compat alias
+        // exposing AI SDK v6 terminology to hosts that want it.
+        const id = randomUUID();
+        return { attemptId: id, approvalId: id };
+      })(),
       ...(canRegenerate
         ? {
             canRegenerate: true,

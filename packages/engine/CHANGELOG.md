@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.6.0 — 2026-05-18 — `approvalId` forward-compat alias (SPEC_SLICE_D_DRAFT D-6.1 + D-6.3)
+
+**Minor release.** Pure forward-compat addition. Zero behavior change for existing hosts; reading `attemptId` continues to work indefinitely.
+
+### What changed
+
+Every `pending_action` event now carries an additional optional `approvalId: string` field that mirrors `attemptId` 1:1 at emit time. The field is added to both `PendingAction` and `PendingActionStep`. The bundle mirror rule extends to the alias: `top.approvalId === top.attemptId === steps[0].approvalId === steps[0].attemptId` by construction.
+
+Stamped at all 4 emission sites:
+
+- `v2/engine.ts:1322-1328` (single-write `pending_action`)
+- `regenerate.ts:402-410` (quote-refresh / regenerate flow)
+- `compose-bundle.ts:367-381` (per-step bundle composition)
+- `compose-bundle.ts:443-454` (top-level bundle `PendingAction`)
+
+### Why
+
+The 2026-05-18 Slice D scoping (`SPEC_SLICE_D_DRAFT.md`) determined that AI SDK v6's native `tool-approval-request` / `needsApproval` HITL primitive is structurally incompatible with our zkLogin sponsored-tx model — the native primitive assumes server-executed tools, ours are client-executed. We keep our 15-field `PendingAction` shape, but the AI SDK's terminology for the per-yield correlation id is `approvalId` (not `attemptId`). By stamping both fields identically NOW, any future v0.7c migration that adopts AI SDK conventions has a stable read path without breaking pre-migration hosts.
+
+### Hosts
+
+- **No action required.** Existing code reading `attemptId` continues unchanged.
+- **New code SHOULD prefer `approvalId`** to align with AI SDK v6 conventions. Both fields are identical by construction so the choice is purely cosmetic / forward-looking.
+- The invariant `pendingAction.approvalId === pendingAction.attemptId` is asserted by `compose-bundle.test.ts` and will fail CI if a future edit accidentally re-introduces ID drift.
+
+### What this is NOT
+
+This is NOT a migration to AI SDK's HITL primitive. We deliberately keep our 15-field `PendingAction` shape because the native primitive cannot carry our extension fields (`description`, `modifiableFields`, `cetusRoute`, `steps[]`, `guardInjections`, `borrowApyBps`, `currentHF`, `projectedHF`, `quoteAge`, `canRegenerate`, `regenerateInput`) and assumes a server-execute model we structurally cannot use. See `SPEC_SLICE_D_DRAFT.md` for the full impedance analysis.
+
+### Docs shipped alongside
+
+- `packages/engine/README.md` — new "Why we keep our `PendingAction` shape" section explaining the AI SDK v6 impedance + the `approvalId` alias rationale.
+- `t2000/.cursor/rules/agent-harness-spec.mdc` — Item 3a section codifying the alias contract for future agents.
+
 ## 2.5.0 — 2026-05-17 — Stream resume telemetry + abort signal (SPEC 37 v0.7a Phase 5 deferred follow-ups)
 
 **Minor release.** Closes three Phase 5 Slice C follow-ups deferred at the v2.2.0 ship:

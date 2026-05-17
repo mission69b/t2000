@@ -185,6 +185,19 @@ Two upgrades shipped on top of the 5-system base:
 
 > Local-only specs: `AUDRIC_HARNESS_CORRECTNESS_SPEC_v1.3.md`, `AUDRIC_HARNESS_INTELLIGENCE_SPEC_v1.4.1.md`. Cross-repo contracts: `t2000/.cursor/rules/agent-harness-spec.mdc` + `t2000/.cursor/rules/blockvision-resilience.mdc` + `audric/.cursor/rules/audric-transaction-flow.mdc` + `audric/.cursor/rules/write-tool-pending-action.mdc`.
 
+### Why we keep our `PendingAction` shape instead of adopting AI SDK v6's HITL primitive
+
+Scoping in 2026-05-18 (`SPEC_SLICE_D_DRAFT.md`) determined that AI SDK v6's native `tool-approval-request` / `needsApproval` HITL primitive is **incompatible with our zkLogin sponsored-tx model.** The native primitive assumes:
+
+1. Tools have a `execute` function the server runs after the user approves
+2. The server returns the result via the next stream
+
+Our model is the opposite — the **client** signs sponsored transactions (zkLogin keeps the signing key browser-side), broadcasts them, and reports `{ txDigest, balanceChanges }` back to the engine via `resumeWithToolResult`. There is no server-side `execute` for our write tools because there cannot be one.
+
+The actually-fit-for-purpose AI SDK v6 primitive is **client-side tools** (no server `execute`, `onToolCall` + `addToolOutput`), but adopting it requires audric to migrate to `useChat` from `@ai-sdk/react` — that's Slice B's scope, naturally paired with the v0.7c chatbot template fork.
+
+Net effect: we keep our 15-field `PendingAction` event (which carries load-bearing extension fields the AI SDK primitive doesn't model — `description`, `modifiableFields`, `cetusRoute`, `steps[]`, `guardInjections`, `borrowApyBps`, `currentHF`, `projectedHF`, `quoteAge`, `canRegenerate`, `regenerateInput`), and add `approvalId` as a forward-compat alias for `attemptId` (D-6.1, 2026-05-18) so future migrations have a stable AI-SDK-aligned read path.
+
 ## Engine Features
 
 ### Streaming Tool Execution (Early Dispatch)
@@ -341,7 +354,7 @@ The `submitMessage()` async generator yields `EngineEvent`:
 | `pending_input` | `schema`, `inputId`, `prompt?` | **[SPEC 8 v0.5.1, D2]** Reserved for SPEC 9 v0.1.2 inline forms. Engine doesn't emit under SPEC 8 — host adds a no-op handler now to avoid crashing when SPEC 9 ships emission. |
 | `tool_start` | `toolName`, `toolUseId`, `input` | Tool execution begins |
 | `tool_result` | `toolName`, `toolUseId`, `result`, `isError` | Tool execution completes |
-| `pending_action` | `action` (PendingAction with `attemptId`, `toolUseId`, `turnIndex`, `name`, `input`) | Write tool awaiting client-side execution. `attemptId` is a per-yield UUID — hosts persist it on TurnMetrics and key the resume `updateMany` on it (avoids ambiguous `(sessionId, turnIndex)` updates) |
+| `pending_action` | `action` (PendingAction with `attemptId`, `approvalId`, `toolUseId`, `turnIndex`, `name`, `input`) | Write tool awaiting client-side execution. `attemptId` is a per-yield UUID — hosts persist it on TurnMetrics and key the resume `updateMany` on it (avoids ambiguous `(sessionId, turnIndex)` updates). **`approvalId` is a forward-compat alias for `attemptId`** (engine stamps both fields identically; reading either is safe). The alias exists to ease a future v0.7c migration if/when Audric (or any host) adopts AI SDK v6's `approvalId` HITL terminology — see `SPEC_SLICE_D_DRAFT.md` (D-6.1, 2026-05-18) for the impedance analysis explaining why we keep our `PendingAction` shape instead of migrating wholesale to AI SDK's `needsApproval` primitive (which is server-execute-only and incompatible with our zkLogin client-executed sponsored-tx model). |
 | `canvas` | `html` | Interactive HTML visualization from `render_canvas` |
 | `turn_complete` | `stopReason` | Conversation turn finished |
 | `usage` | `inputTokens`, `outputTokens`, `cacheReadTokens?`, `cacheWriteTokens?` | Token usage report |
