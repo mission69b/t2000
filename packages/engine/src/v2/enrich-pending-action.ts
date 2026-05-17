@@ -35,20 +35,15 @@
 import type { ToolContext } from '../types.js';
 import type { McpClientManager } from '../mcp/client.js';
 import { fetchRates, fetchHealthFactor } from '../navi/reads.js';
+// [v2.0.3 / 2026-05-17] Hoisted to ../dust.ts when repay.ts became the
+// 4th consumer; rationale + cross-file usage notes live there.
+import { DEBT_DUST_USD } from '../dust.js';
 
 /** Tools whose pending_action benefits from live NAVI borrow APY. */
 const BORROW_APY_TOOLS = new Set(['borrow', 'repay_debt']);
 
 /** Tools whose pending_action benefits from live health-factor data. */
 const HF_TOOLS = new Set(['borrow', 'withdraw', 'save_deposit', 'repay_debt']);
-
-/**
- * [Day 14c] Sub-cent debt is treated as no-debt for the projection math.
- * Mirrors the same `DEBT_DUST_USD` constant used by `serializeHf` /
- * `hfStatus` in `tools/health.ts` and the dust filter on per-asset
- * arrays in `transformHealthFactor`.
- */
-const DEBT_DUST_USD = 0.01;
 
 export interface PendingActionLiveData {
   borrowApyBps?: number;

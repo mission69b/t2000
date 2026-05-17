@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { defineTool } from '../v2/define-tool.js';
 import { requireAgent } from './utils.js';
+// [v2.0.3 / 2026-05-17] Sub-cent residual debt is treated as zero —
+// otherwise the LLM narrates "Remaining debt is minimal at $0.001"
+// after a successful "Repay all debt" tap, which reads as a failure
+// state. See ../dust.ts for the cross-tool rationale.
+import { DEBT_DUST_USD } from '../dust.js';
 
 const REPAY_ASSETS = ['USDC', 'USDsui'] as const;
 
@@ -35,16 +40,28 @@ export const repayDebtTool = defineTool({
     const result = await agent.repay({ amount: input.amount, asset });
     const repaidAsset = (result as { asset?: string }).asset ?? asset ?? 'USDC';
 
+    // [v2.0.3 / 2026-05-17] Floor sub-DEBT_DUST_USD to 0. NAVI's lending
+    // index accrues sub-cent interest between blocks; a "Repay all debt"
+    // typically leaves ~$0.001-$0.005 dust that the user (and the LLM
+    // narrating "Remaining debt is minimal at $0.001") would read as
+    // a failure. Floor here so both the structured `data.remainingDebt`
+    // the LLM sees AND the displayText render as "no remaining debt".
+    const cleanRemainingDebt =
+      result.remainingDebt < DEBT_DUST_USD ? 0 : result.remainingDebt;
+    const isDebtClear = cleanRemainingDebt === 0;
+
     return {
       data: {
         success: result.success,
         tx: result.tx,
         amount: result.amount,
         asset: repaidAsset,
-        remainingDebt: result.remainingDebt,
+        remainingDebt: cleanRemainingDebt,
         gasCost: result.gasCost,
       },
-      displayText: `Repaid ${result.amount.toFixed(2)} ${repaidAsset} — remaining debt: $${result.remainingDebt.toFixed(2)} (tx: ${result.tx.slice(0, 8)}…)`,
+      displayText: isDebtClear
+        ? `Repaid ${result.amount.toFixed(2)} ${repaidAsset} — no remaining debt (tx: ${result.tx.slice(0, 8)}…)`
+        : `Repaid ${result.amount.toFixed(2)} ${repaidAsset} — remaining debt: $${cleanRemainingDebt.toFixed(2)} (tx: ${result.tx.slice(0, 8)}…)`,
     };
   },
 });

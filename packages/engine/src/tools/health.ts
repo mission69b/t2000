@@ -4,14 +4,10 @@ import { fetchHealthFactor } from '../navi/reads.js';
 import { defineTool } from '../v2/define-tool.js';
 import { hasNaviMcpGlobal, getMcpManager, requireAgent } from './utils.js';
 import { normalizeAddressInput } from '../sui/address.js';
-
-/**
- * Anything below this threshold is treated as "no real debt" — NAVI can
- * accrue dust between blocks (sub-cent) even after a full repay, and we
- * don't want a $0.000018 phantom borrow flipping the user from "Healthy"
- * to "Warning" or worse.
- */
-const DEBT_DUST_USD = 0.01;
+// [v2.0.3 / 2026-05-17] Threshold hoisted to ../dust.ts when repay.ts
+// became the 4th consumer; rationale + cross-file usage notes live
+// there.
+import { DEBT_DUST_USD } from '../dust.js';
 
 function hfStatus(hf: number, borrowed: number): string {
   // Zero (or dust-only) debt accounts are maximally safe — math says HF=∞,

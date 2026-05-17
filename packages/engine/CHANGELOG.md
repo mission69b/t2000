@@ -1,6 +1,47 @@
 # Changelog
 
-## 2.0.2 (PENDING — 2026-05-17) — Wallet + DeFi cache invalidation after writes
+## 2.0.3 (PENDING — 2026-05-17) — Dust-debt display + DRY threshold
+
+**Patch release.** Polishes the "Repay all debt" UX and DRYs the `$0.01` dust threshold across the engine.
+
+### The bug
+
+After "Repay all debt", the LLM narrated:
+
+> Repaid all debt. Remaining debt is minimal at $0.001.
+
+The user had just successfully cleared their position; the dust residual is NAVI's lending index accruing sub-cent interest between blocks (typical $0.001-$0.005 leftover). Reading "remaining debt minimal at $0.001" framed a success as a partial failure.
+
+### The fix
+
+`repay_debt` now floors sub-`DEBT_DUST_USD` (currently `$0.01`) remaining debt to `0` in BOTH:
+1. The structured `data.remainingDebt` the LLM sees on its next turn.
+2. The `displayText` that surfaces in the chat receipt.
+
+When `cleanRemainingDebt === 0`, the displayText reads:
+
+> Repaid 0.5 USDC — no remaining debt (tx: abc123…)
+
+instead of:
+
+> Repaid 0.5 USDC — remaining debt: $0.001 (tx: abc123…)
+
+### DRY: `DEBT_DUST_USD` hoisted to `src/dust.ts`
+
+Pre-2.0.3 the `$0.01` threshold was defined locally in 3 places (`tools/health.ts`, `v2/enrich-pending-action.ts`, `navi/transforms.ts` as `ASSET_DUST_USD`). Adding repay.ts as the 4th consumer made the duplication a real maintenance hazard — bumping the threshold meant chasing 4 files. Hoisted to a single canonical home with documented cross-file usage. Per `coding-discipline.mdc`: factor when the LOGIC duplicates, not when the SHAPE does. Same value across all consumers IS the same logic.
+
+### Tests
+
+3 new tests in `__tests__/financial-tools.test.ts` cover:
+- sub-dust remaining debt → floors to 0 + "no remaining debt" displayText
+- above-dust remaining debt → preserves the value + "$0.25" displayText
+- exact 0 remaining debt → "no remaining debt" displayText
+
+Full suite: 1224 tests pass (+3).
+
+---
+
+## 2.0.2 — 2026-05-17 — Wallet + DeFi cache invalidation after writes
 
 **Patch release.** Fixes a user-visible cache-staleness bug where a write tool followed by a balance read could return pre-write cached state for up to 60 seconds.
 

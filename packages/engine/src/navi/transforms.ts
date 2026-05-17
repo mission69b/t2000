@@ -1,4 +1,8 @@
 import { getDecimalsForCoinType } from '@t2000/sdk';
+// [v2.0.3 / 2026-05-17] Single source of truth for the $0.01 dust
+// threshold. Was previously inlined as a local `ASSET_DUST_USD` constant
+// with the same value. See ../dust.ts for the cross-file rationale.
+import { ASSET_DUST_USD } from '../dust.js';
 
 // ---------------------------------------------------------------------------
 // Raw NAVI MCP response types (as returned by the live NAVI MCP server)
@@ -275,9 +279,8 @@ export function transformHealthFactor(
   // or oracle reprices a near-zero position; the aggregate `supplied` /
   // `borrowed` totals collapse them to "$0.00" but the per-asset arrays
   // would otherwise render rows like "USDC $0.00" + "USDsui $0.00" which
-  // is pure noise. Matches the same `DEBT_DUST_USD` semantics the health
-  // status / `serializeHf` use in `tools/health.ts`.
-  const ASSET_DUST_USD = 0.01;
+  // is pure noise. ASSET_DUST_USD imported from `../dust.ts` (v2.0.3
+  // canonical home for this threshold).
   const suppliedAssets: HealthPositionAsset[] = positions
     .filter((p) => p.type === 'supply' && p.valueUsd >= ASSET_DUST_USD)
     .map((p) => ({ symbol: p.symbol, amount: p.amount, valueUsd: p.valueUsd }));

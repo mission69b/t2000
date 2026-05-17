@@ -159,4 +159,86 @@ describe('repay_debt tool', () => {
     const required = (repayDebtTool.jsonSchema.required ?? []) as string[];
     expect(required).not.toContain('asset');
   });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // [v2.0.3 / 2026-05-17] Dust-debt display polish
+  // ─────────────────────────────────────────────────────────────────────
+  // Regression: after "Repay all debt" the LLM narrated
+  //   "Remaining debt is minimal at $0.001"
+  // which reads as a failure state — the user just tapped "repay all"
+  // and successfully cleared their position. NAVI's lending index
+  // accrues sub-cent interest between blocks, leaving ~$0.001-$0.005
+  // dust on a fresh full repay. Fix floors sub-DEBT_DUST_USD residual
+  // to 0 in BOTH the structured data the LLM sees AND the displayText.
+  describe('dust-debt floor (v2.0.3)', () => {
+    function mkContext(repayResult: {
+      success: boolean;
+      tx: string;
+      amount: number;
+      remainingDebt: number;
+      gasCost: number;
+      asset?: string;
+    }) {
+      // Minimal stub of the agent that repay.ts requires via requireAgent.
+      // Only the .repay() method is exercised here.
+      return {
+        sui: {} as never,
+        agent: {
+          repay: async () => repayResult,
+        } as never,
+      };
+    }
+
+    it('floors sub-DEBT_DUST_USD remaining debt to 0 in data + displayText', async () => {
+      const ctx = mkContext({
+        success: true,
+        tx: '0xabcdef1234567890',
+        amount: 0.5,
+        remainingDebt: 0.001, // NAVI dust
+        gasCost: 0.001,
+        asset: 'USDC',
+      });
+      const out = await repayDebtTool.call(
+        { amount: 0.5, asset: 'USDC' },
+        ctx as never,
+      );
+      expect((out.data as { remainingDebt: number }).remainingDebt).toBe(0);
+      expect(out.displayText).toContain('no remaining debt');
+      expect(out.displayText).not.toContain('$0.00');
+      expect(out.displayText).not.toContain('$0.001');
+    });
+
+    it('preserves above-dust remaining debt unchanged', async () => {
+      const ctx = mkContext({
+        success: true,
+        tx: '0xabcdef1234567890',
+        amount: 0.5,
+        remainingDebt: 0.25,
+        gasCost: 0.001,
+        asset: 'USDC',
+      });
+      const out = await repayDebtTool.call(
+        { amount: 0.5, asset: 'USDC' },
+        ctx as never,
+      );
+      expect((out.data as { remainingDebt: number }).remainingDebt).toBe(0.25);
+      expect(out.displayText).toContain('remaining debt: $0.25');
+    });
+
+    it('exact zero remainingDebt also reads as "no remaining debt"', async () => {
+      const ctx = mkContext({
+        success: true,
+        tx: '0xabcdef1234567890',
+        amount: 1,
+        remainingDebt: 0,
+        gasCost: 0.001,
+        asset: 'USDsui',
+      });
+      const out = await repayDebtTool.call(
+        { amount: 1, asset: 'USDsui' },
+        ctx as never,
+      );
+      expect(out.displayText).toContain('no remaining debt');
+    });
+  });
 });
