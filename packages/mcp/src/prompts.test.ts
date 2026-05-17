@@ -1,10 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerPrompts } from './prompts.js';
+import { loadSkillsFromDisk } from './test-load-skills.js';
+import type { SkillData } from './skills-prompts.js';
 
 describe('prompts', () => {
   let server: McpServer;
   let prompts: Map<string, Function>;
+  let skills: SkillData[];
+
+  // Load skills once for the whole suite (SKILL.md files are stable
+  // across the test run; reloading per test would burn ~20ms × 14 tests).
+  beforeAll(() => {
+    skills = loadSkillsFromDisk();
+  });
 
   beforeEach(() => {
     server = new McpServer({ name: 'test', version: '0.0.1' });
@@ -18,7 +27,9 @@ describe('prompts', () => {
       return origPrompt(...args);
     }) as any;
 
-    registerPrompts(server);
+    // [6G] Inject loaded skills since vitest doesn't run tsup
+    // (no `__BAKED_SKILLS__` define) — same data as production.
+    registerPrompts(server, { skills });
   });
 
   it('should register 14 prompts', () => {

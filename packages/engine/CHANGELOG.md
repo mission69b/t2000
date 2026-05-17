@@ -1,5 +1,47 @@
 # Changelog
 
+## 2.4.0 — 2026-05-17 — prompts.ts → skill-compositions (SPEC 37 v0.7a Phase 6G)
+
+**No engine surface changes** — this release exists to keep the four packages on the same version line per the monorepo's "all 4 packages always at same version" rule (see `CLAUDE.md`). All the work landed in `@t2000/mcp`.
+
+### `@t2000/mcp` — prompts.ts rewritten as skill-compositions
+
+The 14 hand-rolled MCP workflow prompts (`financial-report`, `optimize-yield`, `send-money`, `budget-check`, `savings-strategy`, `what-if`, `sweep`, `risk-check`, `weekly-recap`, `claim-rewards`, `safeguards`, `onboarding`, `emergency`, `optimize-all`) used to inline their own copy of each tool-call sequence and skill prose. Pre-6G that meant: change `t2000-borrow/SKILL.md` to add a new pre-borrow check → silently lag in `risk-check`, `what-if`, `safe_borrow` recipe (until 6C deleted it), and any other workflow that touched borrow. The fix Phase 6 (lock-hybrid) deferred to 6G is now done.
+
+**Mechanism.** Two new helpers in `packages/mcp/src/compose-skills.ts` (~110 LoC):
+
+- `composeSkillBody(name)` — returns the full markdown body for a baked skill.
+- `composeSkillSections(name, headers[])` — returns only the requested `## Header` blocks in skill source order, so prompts can pull a specific section (e.g. `t2000-borrow`'s `Pre-borrow safety check (always runs)`) without pulling the entire skill body.
+
+Both helpers throw with an available-list error on unknown skill / section — drift fails loudly at server boot, not silently at runtime.
+
+**Outcome.** Every workflow prompt is now `[role line] + [composed skill body or sections] + [workflow-specific framing]`. When a SKILL.md updates its tool sequence (e.g. `t2000-borrow` grows a new pre-flight guard), every dependent workflow prompt picks up the change automatically — no prose duplication to keep in sync.
+
+**Composition map (locked):**
+
+| Workflow prompt | Skill(s) composed |
+|---|---|
+| `financial-report` | `t2000-account-report` (Purpose + Engine orchestration) |
+| `optimize-yield` | `t2000-save` (Purpose) |
+| `savings-strategy` | `t2000-save` (Purpose) |
+| `sweep` | `t2000-save` (Purpose) |
+| `risk-check` | `t2000-borrow` (Pre-borrow safety check) + `t2000-account-report` (Engine orchestration) |
+| `weekly-recap` | `t2000-account-report` (Engine orchestration) |
+| `send-money` | `t2000-send` (Purpose + Pre-flight checks + Recipient resolution flow) |
+| `budget-check` | `t2000-check-balance` (Purpose) + `t2000-safeguards` (Controls) |
+| `what-if` | `t2000-save` + `t2000-borrow` + `t2000-withdraw` (scenario branching) |
+| `safeguards` | `t2000-safeguards` (full body — the workflow IS the skill) |
+| `onboarding` | `t2000-receive` + `t2000-save` + `t2000-safeguards` (all Purpose sections) |
+| `emergency` | `t2000-safeguards` (Controls) |
+| `optimize-all` | `t2000-save` + `t2000-rebalance` (When to use) + `t2000-account-report` (Engine orchestration) |
+| `claim-rewards` | (none — operational only; no `t2000-rewards` skill in the catalogue yet) |
+
+**Tests.** 15 new regression tests in `packages/mcp/src/prompts-compose.test.ts` assert each prompt contains both the workflow framing AND distinctive content from each composed skill section — so future drift between SKILL.md and prompts.ts can't happen silently. 11 new helper tests in `packages/mcp/src/compose-skills.test.ts` cover section extraction edge cases (multi-section ordering, H3+ nesting, missing-section errors, etc).
+
+**Smoke.** `packages/mcp/scripts/smoke-6g.mjs` spawns the built `dist/bin.js`, JSON-RPC-calls `prompts/get` for each of the 14 workflow prompts, and asserts both framing + skill substance landed in the rendered text. All 15 checks pass against v2.4.0 (`packages/mcp/dist/bin.js`).
+
+**Internal-only refactor — backwards-compatible to MCP clients.** Prompt names + descriptions + the rendered message shape (`{ messages: [{ role: 'user', content: { type: 'text', text } }] }`) are unchanged. The TEXT of each prompt is enriched (now contains the actual canonical skill body verbatim instead of a paraphrase), which is observable to MCP clients but additive — every existing client behaviour continues to work.
+
 ## 2.3.0 — 2026-05-17 — Skills ↔ MCP ↔ Prompts (SPEC 37 v0.7a Phase 6)
 
 **Breaking minor release.** Removes the YAML recipe runtime entirely; multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save", "emergency withdraw", "account report", "send to alice") moves from runtime-stepped YAML recipes to markdown **skills** that ship from `@t2000/mcp` and surface to MCP clients (Cursor, Claude Desktop) as `skill-<name>` prompts. Skill content guides the LLM via prose; the engine just runs the tools the LLM picks.

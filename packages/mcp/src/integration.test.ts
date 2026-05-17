@@ -6,6 +6,7 @@ import { registerReadTools } from './tools/read.js';
 import { registerWriteTools } from './tools/write.js';
 import { registerSafetyTools } from './tools/safety.js';
 import { registerPrompts } from './prompts.js';
+import { loadSkillsFromDisk } from './test-load-skills.js';
 
 function createMockAgent() {
   return {
@@ -93,7 +94,9 @@ describe('integration: MCP client ↔ server', () => {
     registerReadTools(server, agent);
     registerWriteTools(server, agent);
     registerSafetyTools(server, agent);
-    registerPrompts(server);
+    // [6G] Inject loaded skills since vitest doesn't run tsup
+    // (no `__BAKED_SKILLS__` define) — same data as production.
+    registerPrompts(server, { skills: loadSkillsFromDisk() });
 
     [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
