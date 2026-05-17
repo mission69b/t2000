@@ -1,6 +1,31 @@
 # Changelog
 
-## 2.0.0 (PENDING — 2026-05-17 target) — Engine v2.0.0: AISDKEngine is the only engine
+## 2.0.1 (PENDING — 2026-05-17) — `resumeWithInput` stub for audric type compat
+
+**Patch release.** Adds a stub `AISDKEngine.resumeWithInput(...)` method that yields a clear `error` event + `turn_complete`. Unblocks audric's `app/api/engine/resume-with-input/route.ts` typecheck without forking the host route or adding type casts.
+
+### Why
+Audric still imports + calls `engine.resumeWithInput(...)` from its `/api/engine/resume-with-input` route (the SPEC 9 P9.6 form-resume path for `add_recipient`). v2.0.0 removed `QueryEngine.resumeWithInput` without providing an `AISDKEngine` equivalent — audric's typecheck broke immediately.
+
+### What this ships
+- `AISDKEngine.resumeWithInput(pendingInput, values)` — stub that yields:
+  ```
+  { type: 'error', error: new Error('AISDKEngine.resumeWithInput: pending_input flow is not yet implemented in v2.x. ...') }
+  { type: 'turn_complete', stopReason: 'error' }
+  ```
+- Same signature as the deleted `QueryEngine.resumeWithInput` so audric needs zero call-site changes.
+
+### What this does NOT ship
+- A working `pending_input` flow. That's a v2.x.x future release. Today, the ONLY tool that produces `pending_input` is `addRecipientTool` (opt-in via `NEXT_PUBLIC_HARNESS_V9` in audric). Hosts with that flag OFF (the default) never reach this code path.
+
+### Migration
+- Audric on v2.0.0 with `NEXT_PUBLIC_HARNESS_V9` unset: zero impact.
+- Audric on v2.0.0 with `NEXT_PUBLIC_HARNESS_V9=1`: bump to 2.0.1 to avoid runtime errors when users trigger `add_recipient`. Until pending_input lands, set the flag back to unset to hide the tool.
+- New hosts shipping `addRecipientTool` (or any tool with `needsInput` preflight): pin to engine `^1.38.5` until pending_input is implemented in v2.x, OR don't expose pending_input tools yet.
+
+---
+
+## 2.0.0 — 2026-05-17 — Engine v2.0.0: AISDKEngine is the only engine
 
 **Breaking release.** The legacy `QueryEngine` (~21,800 LoC of custom orchestration) is deleted. `AISDKEngine` (~4,500 LoC wrapper around Vercel AI SDK v6 native primitives) is the only engine. Net **~17.3k LoC removed** from the package.
 

@@ -381,6 +381,43 @@ export class AISDKEngine {
    * sessions until then; the wallet-allowlist gate makes this a
    * non-issue for soak).
    */
+  async *resumeWithInput(
+    _pendingInput: unknown,
+    _values: Record<string, unknown>,
+  ): AsyncGenerator<EngineEvent> {
+    // [v2.0.1 — 2026-05-17] Stub for the pending_input flow.
+    //
+    // AISDKEngine does not yet support `needsInput` preflight verdicts +
+    // the resulting `pending_input` -> `resumeWithInput` round-trip.
+    // The legacy `QueryEngine` implemented this; `AISDKEngine` does not.
+    //
+    // Today, the ONLY built-in tool that produces `pending_input` is
+    // `add_recipient` (opt-in via host — exported as
+    // `addRecipientTool` from `@t2000/engine`). Audric gates exposure
+    // behind `NEXT_PUBLIC_HARNESS_V9`. When that flag is unset (the
+    // default) no tool ever produces `pending_input` and this method
+    // is never reached.
+    //
+    // We surface this gap as a clear engine error rather than a silent
+    // type cast in the host, so any future host that ships pending_input
+    // gets a precise diagnostic instead of a runtime crash deeper in
+    // the stream pipeline.
+    //
+    // Removal plan: implement properly in a follow-up release once the
+    // first host needs the feature.
+    yield {
+      type: 'error',
+      error: new Error(
+        'AISDKEngine.resumeWithInput: pending_input flow is not yet ' +
+          'implemented in v2.x. The only built-in tool that produces ' +
+          'pending_input is `add_recipient` (opt-in). Hosts that need this ' +
+          'feature should pin to engine v1.38.5 until pending_input lands in ' +
+          'a future v2.x release. See packages/engine/src/v2/engine.ts.',
+      ),
+    };
+    yield { type: 'turn_complete', stopReason: 'error' };
+  }
+
   async *resumeWithToolResult(
     action: PendingAction,
     response: PermissionResponse,
