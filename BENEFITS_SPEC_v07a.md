@@ -97,7 +97,7 @@ verification_phases: [phase-0-baseline, phase-4, phase-7, phase-8, v07b-decision
 | **S-3** | Vendor diversification on framework layer | v0.7a close | 3 vendors (Vercel / Mysten / Anthropic) supplying core framework, not 1 | No single-vendor lock-in |
 | **S-4** | Investor narrative — fundable stack | v0.7a close | "Built on AI SDK + MCP + MemWal" is recognizable to investors | Narrative tested in next fundraise round |
 | **S-5** | Anthropic upstream compatibility | Continuous | Time from Anthropic feature release to audric availability | <1 week (vs 1-3 weeks pre-v0.7a) |
-| **S-6** | Audric Intelligence moat preservation (moves UP the stack) | v0.7a close | Moat = 35 tools + 14 guards + 5+ skills + USD-permissions + MemWal-backed memory + sponsored-tx + 5 products bundle | Documented post-Phase 8 |
+| **S-6** | Audric Intelligence moat preservation (moves UP the stack) | v0.7a close | Moat = 37 tools + 14 guards + 14 skills (markdown playbooks via `@t2000/mcp`) + USD-permissions + MemWal-backed memory + sponsored-tx + 5 products bundle | Documented post-Phase 8 |
 | **S-7** | Skills as marketing surface | Phase 6 close | `t2000-skills/skills/` public repo + `@t2000/mcp` distribution to Cursor / Claude Desktop / claude-code | Discovery channel measurable via repo traffic |
 | **S-8** | Lower legal/compliance risk | v0.7a close | Stack runs on widely-adopted standards vs bespoke | Reduced "we own this code" liability |
 | **S-9** | Walrus Sites decentralization option | Post-v0.7c (separate SPEC) | Optional Audric Decentralization SPEC drafted | Available as future strategic move |
@@ -130,7 +130,7 @@ verification_phases: [phase-0-baseline, phase-4, phase-7, phase-8, v07b-decision
 | **F-3** | `experimental_telemetry` (OpenTelemetry native) | Phase 1 | OTel traces from engine turn end-to-end | All turns instrumented |
 | **F-4** | `prepareStep` (per-step tool gating) | Phase 7 | LLM injection: system → financial_context → memory → skill → user message | All 5 layers in correct order |
 | **F-5** | `experimental_transcribe` (voice native) | Phase 1 | Hand-rolled Whisper code deleted; AI SDK transcribe path active | `audric/apps/web/voice/transcribe/route.ts` uses `experimental_transcribe` |
-| **F-6** | `experimental_toToolResultContent` | Phase 2 | Tool results render via AI SDK content protocol | All 35 tools migrated |
+| **F-6** | `experimental_toToolResultContent` | Phase 2 | Tool results render via AI SDK content protocol | All 37 tools migrated |
 | **F-7** | Sui protocol MCP composability | ✅ **REALIZED** Phase 4 (2026-05-17, engine v2.1.0) + ongoing | `McpClientManager` internals migrated to `@ai-sdk/mcp`'s `createMCPClient`; public surface preserved verbatim. Adding a new MCP server now requires only an `McpServerConfig` + a `manager.connect(config)` call — `adaptAllServerTools(manager)` auto-flows the discovered tools into the engine registry (verified by `__tests__/mcp-client.test.ts:287` 2-server fixture + `mcp/createMCPClient-integration.test.ts` `buildMcpTools` ↔ `createMCPClient` wire test). NEW `McpPromptAdapter` (Phase 4 ship) closes the prompt half of the composition story; Phase 6 wires `t2000-skills/skills/` through `@t2000/mcp` into it. | Zero engine changes per new protocol — confirmed at Phase 4 close |
 | **F-8** | v0.7b option creation (engine deletion path open) | Phase 8 close | v0.7b SPEC drafted with go/no-go decision criteria | Option exists; exercise discretionary |
 | **F-9** | v0.7c option creation (UI modernization path open) | v0.7b close | v0.7c SPEC drafted (this doc references it) | Option exists; exercise discretionary |
@@ -1170,7 +1170,7 @@ Production smoke revealed `NEXT_PUBLIC_HEALTH_CARD_V2` was never enabled in Verc
 
 **Audit method.** Single explore subagent traversed `packages/engine/src/tools/*.ts` (~43 files including tests) and extracted per-tool signals: toolName, type, permission level, Zod schema presence, preflight presence, dependencies, LoC bucket, complexity classification (simple/medium/complex), modifiable fields, special notes. Cross-checked against `tools/index.ts` canonical list.
 
-**Verified counts:** 25 reads + 12 writes = **37 default** tools + 2 opt-in (`update_todo`, `add_recipient`) = **39 total** to migrate. CLAUDE.md tool counts match. ⚠️ `tools/index.ts` comments (lines 82-83) say "35 tools" — stale, predates the addition of `pending_rewards` (S.119) and `harvest_rewards` (Track B). To be corrected during Batch A.
+**Verified counts:** 25 reads + 12 writes = **37 default** tools + 2 opt-in (`update_todo`, `add_recipient`) = **39 total** to migrate. CLAUDE.md tool counts match. ✅ `tools/index.ts` tool-count comment fixed in v0.7a Phase 6 audit (2026-05-17) — now reads "25 reads + 12 writes = 37 tools".
 
 **Migration plan: 6 batches × ~0.5-1.5d each = ~7-12 FTE-days (~56-96h)** = matches the plan's ~2-week window.
 

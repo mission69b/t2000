@@ -19,7 +19,7 @@ The audit was run 2026-05-16 ~17:50 AEST via the explore subagent. Source files:
 - **WRITE_TOOLS:** 12 (`saveDepositTool` through `saveContactTool`)
 - **Default total via `getDefaultTools()`:** **37**
 - **Opt-in (imported but NOT in `getDefaultTools()`):** `updateTodoTool`, `addRecipientTool` → **+2** → **39 total to migrate** if opt-in surfaces are included.
-- **⚠️ Stale comment in `tools/index.ts` (lines 82-83) says "24 reads + 11 writes = 35 tools".** Update to "25 reads + 12 writes = 37 tools (+2 opt-in)" as part of Batch A migration.
+- **✅ Stale comment in `tools/index.ts` (lines 82-83) FIXED in v0.7a Phase 6 audit (2026-05-17).** Now reads "25 reads + 12 writes = 37 tools".
 
 ## Permission semantics (no-op work — already correct)
 

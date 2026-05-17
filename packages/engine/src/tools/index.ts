@@ -80,7 +80,9 @@ import { tokenPricesTool } from './token-prices.js';
 // change → BlockVision; Day 3: yield-pools/protocol-info/chain-tvl/
 // protocol-fees/sui-protocols deleted, no replacement). v1.4 left the
 // engine at 23 reads + 11 writes = 34 tools. SPEC 10 (May 2026) added
-// resolve_suins → current count is 24 reads + 11 writes = 35 tools.
+// resolve_suins (→ 24 reads / 35 total). S.119 added pending_rewards
+// + Track B added harvest_rewards → **current count is 25 reads + 12
+// writes = 37 tools** (matches the array literals below).
 
 export const READ_TOOLS: Tool[] = [
   renderCanvasTool,

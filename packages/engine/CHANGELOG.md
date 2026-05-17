@@ -1,6 +1,137 @@
 # Changelog
 
-## 2.0.5 (PENDING — 2026-05-17) — `validateHistory` safety net for Anthropic strict-shape rejections
+## 2.3.0 — 2026-05-17 — Skills ↔ MCP ↔ Prompts (SPEC 37 v0.7a Phase 6)
+
+**Breaking minor release.** Removes the YAML recipe runtime entirely; multi-step orchestration ("rebalance my portfolio", "safe borrow", "swap and save", "emergency withdraw", "account report", "send to alice") moves from runtime-stepped YAML recipes to markdown **skills** that ship from `@t2000/mcp` and surface to MCP clients (Cursor, Claude Desktop) as `skill-<name>` prompts. Skill content guides the LLM via prose; the engine just runs the tools the LLM picks.
+
+### Breaking changes
+
+- **`EngineConfig.recipes` removed.** The optional `RecipeRegistry` field is gone. Hosts that set it can simply delete the line — no replacement wiring is required (skill content is consumed client-side via MCP prompts, not engine-side).
+- **`RecipeRegistry`, `loadRecipes`, `parseRecipe`, `Recipe`, `RecipeStep`, `RecipeStepOnError`, `RecipePrerequisite` exports removed.** The entire `packages/engine/src/recipes/` directory was deleted (~510 LoC).
+- **`classifyEffort` signature changed.** The `matchedRecipe: Recipe | null` argument is dropped — `classifyEffort(model, message, sessionWriteCount)` is now the only signature. Effort boosts that previously keyed on recipe name / step count now key on message regex (`rebalance`, `emergency withdraw`, `account summary`, `safe borrow`, `swap and save`, `bulk mail`) — semantically equivalent, expressed against user intent rather than a runtime registry.
+- **`ConversationState['mid_recipe']` variant removed.** No host writes or reads this variant; it was dead from day one of the recipe-runtime deprecation plan. Hosts that need step-aware context across turns should rehydrate from message history.
+- **`js-yaml` dependency dropped.** No engine code consumes YAML anymore.
+
+### What ships in @t2000/mcp
+
+- **`registerSkillPrompts(server)`** — `packages/mcp/src/skills-prompts.ts` (~150 LoC) auto-registers all 14 baked skills as MCP prompts. Names follow `t2000-borrow` → `skill-borrow` to keep the MCP prompt namespace clean.
+- **`tsup` `bakeSkills()` build step** — reads every `t2000-skills/skills/*/SKILL.md` at build time, parses frontmatter (name/description) + body, injects into the bundle via a `__BAKED_SKILLS__` define. The published `@t2000/mcp` package is fully self-contained — no runtime filesystem reads, no skill directory shipped to consumers.
+- **`McpServer` wiring** — `src/index.ts` calls `registerSkillPrompts(server)` during `startMcpServer`. Cursor / Claude Desktop users see 14 new prompts the moment they `npx -y @t2000/mcp@latest`.
+
+### Skill catalogue (14 total — all baked into `@t2000/mcp` as `skill-<name>` prompts)
+
+**Multi-step playbooks (6)** — folded in the orchestration from the deleted recipes:
+
+- `t2000-rebalance` (NEW, v1.0) — multi-leg atomic swaps via single Payment Intent. Absorbs `portfolio_rebalance` recipe.
+- `t2000-account-report` (NEW, v1.0) — parallel `balance_check` + `savings_info` + `health_check` + `transaction_history` + `spending_analytics` + `yield_summary` renders 6 cards. Absorbs `account_report` recipe.
+- `t2000-borrow` (v1.4 → v1.5) — added safe-borrow pre-check (refuse HF < 1.5, warn 1.5–2.0). Absorbs `safe_borrow` recipe.
+- `t2000-withdraw` (v1.3 → v1.4) — added emergency / "close my position" flow with conditional atomic repay+withdraw bundle. Absorbs `emergency_withdraw` recipe.
+- `t2000-send` (v1.2 → v1.3) — added recipient resolution flow + offer-save-contact. Absorbs `send_to_contact` recipe.
+- `t2000-save` (v1.5 → v1.6) — added "saving a non-USDC token (swap and save)" section. Absorbs `swap_and_save` recipe.
+
+**Feature skills (5)** — unchanged this phase:
+
+- `t2000-check-balance` (v1.5), `t2000-contacts` (v1.0), `t2000-pay` (v2.0), `t2000-receive` (v1.1), `t2000-repay` (v1.5).
+
+**Meta / infrastructure skills (3)** — unchanged this phase:
+
+- `t2000-engine` (v1.0) — engine packaging + integration guidance.
+- `t2000-mcp` (v1.2) — MCP server packaging + adapter wiring.
+- `t2000-safeguards` (v1.5) — 14-guard reference for engine consumers.
+
+**Deleted demo recipes (2)** — never had skill equivalents; pure demos with no real-world consumer: `postcard.yaml`, `translate_document.yaml`.
+
+### Audric adapter updates (audric@1.4.3+)
+
+- `audric/apps/web/lib/engine/recipes.ts` deleted (~250 LoC of hand-rolled hardcoded YAML strings).
+- `engine-factory.ts` no longer imports `RecipeRegistry`, no longer passes `matchedRecipe` to `classifyEffort`, no longer sets `engineConfig.recipes`.
+- `clampProposalEffort` swaps the `!matchedRecipe` exclusion for a `!RICH_INTENT.test(message)` exclusion — same intent (don't clamp rich multi-step intents), keyed on message text instead of a deleted runtime registry.
+- `engine-factory.test.ts` — 11 test cases rewritten to remove `matchedRecipe` arg, added 6 new rich-intent passthrough assertions (safe-borrow, rebalance, account-report, swap-and-save, emergency-withdraw, bulk-send/mail/transfer).
+- `RICH_INTENT` regex extended in Phase 6 audit (2026-05-17) with `bulk\s+(send|mail|transfer)` after the probe found that "bulk send USDC to my contacts" was silently clamped from `high` to `medium` because the original regex missed bulk-mail (engine classifier → high, audric clamp demoted it because `send` is a write verb). The same regex is now reused by `buildHarnessRationale` (was a parallel copy that had already drifted) — there is now exactly one definition of "is this a rich intent" in audric/web.
+
+### Spec docs
+
+- `BENEFITS_SPEC_v07a.md`, `WHY_v07a.md`, `SPIKE_FINDINGS_v07a.md` — Phase 6 planning + decision capture (local-only).
+- D-2 (locked): **rewrite** `packages/mcp/src/prompts.ts` as skill-compositions — deferred to 6G (~2d effort), tracked as a follow-up task. The current `prompts.ts` continues to ship alongside `skill-*` prompts until the rewrite.
+- D-4 (locked): **drop** the engine's `matchedRecipe` coupling. Audric's `clampProposalEffort` absorbs the boost-preservation logic via `RICH_INTENT` regex.
+
+### Tests
+
+- Engine: 1257 tests pass (10 skipped) across 86 files. `classify-effort.test.ts` rewritten to drop the `recipe()` helper and exercise the new regex-driven effort boosts directly.
+- MCP: 101 tests pass across 10 files. `skills-prompts.test.ts` (NEW) verifies `toPromptName` mapping + all 14 skills register with expected names/descriptions/content.
+- SDK: 573 tests pass. CLI: 35 tests pass. No regressions.
+
+### Docs drift fix
+
+**t2000 side:** `CLAUDE.md`, `README.md`, `PRODUCT_FACTS.md`, `ARCHITECTURE.md`, `packages/engine/README.md`, `packages/engine/package.json` description, `packages/cli/package.json` description, `packages/mcp/server.json` description, `apps/web/app/docs/page.tsx`, `apps/web/app/page.tsx`, `apps/web/app/components/TabbedTerminal.tsx`, `packages/engine/src/prompt/index.ts` system prompt, `packages/engine/src/tools/index.ts` tool-count comment, `packages/engine/src/v2/engine.ts` migration comment, `docs/open-model-benchmark.md`, `BENEFITS_SPEC_v07a.md` (S-6 + F-6 success criteria).
+
+**audric side (deployed alongside the engine bump):** `audric/CLAUDE.md`, `audric/README.md`, `audric/.cursor/rules/engine-context-assembly.mdc`, `audric/.cursor/rules/audric-canonical-write.mdc`, `audric/apps/web/lib/engine/engine-context.ts` `STATIC_SYSTEM_PROMPT`, `audric/apps/web/lib/engine/engine-factory.ts` `buildUnauthPrompt`, `audric/apps/web/app/litepaper/page.tsx` (5 cells), `audric/apps/web/components/landing/IntelligenceSection.tsx`.
+
+All "6 skill recipes" / "35 tools" / "24 read / 11 write" references replaced with "14 skills via @t2000/mcp" / "37 tools (25 read + 12 write)". The system prompt's account-report section was rewritten to reference the skill directly instead of triggering a deleted runtime recipe.
+
+Engine v2.3.0 cleared every gate (typecheck / lint / build / full suite green). MCP, SDK, CLI also clean.
+
+---
+
+## 2.2.0 — 2026-05-17 — Stream checkpoint resume (SPEC 37 v0.7a Phase 5 Slice C)
+
+**Minor release.** Adds the engine-side primitive for surviving page reloads, Vercel cold starts, and mobile-tab swaps mid-stream **without re-running the LLM**. Replaces the legacy "tough luck, refresh and re-prompt" UX on any dropped stream.
+
+### What ships
+
+- **`StreamCheckpointStore` interface** (`packages/engine/src/stream-checkpoint.ts`) — pluggable per-stream `EngineEvent` log. Engine appends every yielded event to the configured store (fire-and-forget per Decision 5); on a subsequent `submitMessage({ resumeStreamId })` the engine replays the checkpoint then continues or terminates per the Path B contract.
+- **`InMemoryStreamCheckpointStore`** — default impl backed by `Map<streamId, EngineEvent[]>` with a sliding 5-min TTL. Suitable for CLI / MCP / tests / single-instance hosts. Multi-instance hosts (audric on Vercel) inject a Redis-backed impl at engine init — the reference implementation lives at `audric/apps/web/lib/engine/upstash-stream-checkpoint-store.ts` (Upstash LIST per `streamId`, namespaced by `sessionId`, Error-safe serialization).
+- **New `stream_started` `EngineEvent` variant** — yielded as the FIRST event whenever a checkpoint store is configured and `resumeStreamId` is not set. Carries the engine-generated UUID v4 `streamId` the host persists for reconnect.
+- **`EngineConfig.streamCheckpointStore` + `EngineConfig.resumeStreamId`** — engine wiring.
+- **`detectInFlightTool` helper** — scans a checkpointed event sequence for a dangling `tool_start`. On resume, the engine uses it to decide whether to continue (clean checkpoint) or emit a clear error (Path B — host re-prompts). Path A (silent re-execution) is deferred to v2.3.0+.
+
+### Design decisions (locked at spec sign-off)
+
+1. `append` returns the assigned sequence number (1-indexed, monotonic per `streamId`).
+2. `has(streamId)` is optional on the interface; in-memory impl provides it, Upstash impls can skip.
+3. TTL is store-driven — engine never inspects expiry, only calls `clear()` on natural turn end.
+4. `streamId` is engine-generated (`crypto.randomUUID()`).
+5. Writes are fire-and-forget. Live stream never stalls on store I/O. Transient store failures degrade to "this turn is not resumable" with a logged warning.
+6. In-flight tool resume = Path B (error + re-prompt). Path A deferred to v2.3.0+ once production tells us how often the mid-tool case fires.
+7. Default in-memory TTL = 5 min.
+
+### Bridge layer changes
+
+- `engineToSSE` adapter was **removed** in v2.2.0. Hosts now iterate the `EngineEvent` generator raw and call `serializeSSE` per event. The audric chat route switched to this pattern in `1.4.2` (Spec G3).
+- Bridge-parity test (`bridge/bridge-parity.test.ts`) extended to classify `stream_started` as `OUTER_ENGINE_EMITS` (engine yields it, bridge `translate()` arm is not the producer).
+
+### Tests
+
+- `src/stream-checkpoint.test.ts` — 18 tests covering: in-memory store CRUD, TTL behavior, `detectInFlightTool` happy path + dangling case + multi-tool ordering.
+- `src/v2/engine-checkpoint.test.ts` — 9 cases covering: stream_started emitted first; events appended in order; clean replay terminates without re-running LLM; mid-tool replay emits Path B error; empty checkpoint surfaces error; replay clears checkpoint; pending_action attemptId preserved verbatim across resume; missing terminal synthesises `turn_complete`; resume without configured store throws.
+
+Engine v2.2.0 cleared every gate (typecheck / lint / build / full suite green).
+
+---
+
+## 2.1.0 — 2026-05-17 — `McpClientManager` internals migrated to `@ai-sdk/mcp` + new `McpPromptAdapter`
+
+**Minor release.** SPEC 37 v0.7a Phase 4 ship — drains the hand-rolled MCP client onto AI SDK's native `createMCPClient`, with public surface preserved verbatim. Adds the prompts half of the composition story.
+
+### What ships
+
+- **`McpClientManager` internals** now backed by `@ai-sdk/mcp`'s `createMCPClient`. Public surface (`connect`, `listTools`, `callTool`, `disconnect`) preserved verbatim — every existing host integration works unchanged. Adapter test (`__tests__/mcp-client.test.ts`) extended with a 2-server fixture; wire test (`mcp/createMCPClient-integration.test.ts`) verifies `buildMcpTools` ↔ `createMCPClient` integration end-to-end.
+- **NEW `McpPromptAdapter`** (`packages/engine/src/mcp/prompt-adapter.ts`) — closes the prompts half of MCP composition. Wraps any client exposing `experimental_listPrompts` + `experimental_getPrompt` (the AI SDK MCP client already satisfies this shape). Discovers prompts via `listPrompts()`, fetches their concatenated text content via `getPromptText({ name, arguments })` suitable for direct concatenation into a `prepareStep.system` prefix. Phase 6 wires the `t2000-skills/skills/` repo through `@t2000/mcp` into this adapter so a single skill file is consumable by Cursor, Claude Desktop, `claude-code`, and the audric engine simultaneously.
+
+### Why this matters (F-7 realization)
+
+Realizes **F-7 (Sui protocol MCP composability)** from `BENEFITS_SPEC_v07a.md`: adding a new MCP server now requires only an `McpServerConfig` + a `manager.connect(config)` call — `adaptAllServerTools(manager)` auto-flows the discovered tools into the engine registry. Zero engine changes per new protocol. (Live NAVI wallet smoke is the one open soak item — see S.149 in `audric-build-tracker.md`.)
+
+### Tests
+
+- `__tests__/mcp-client.test.ts` — 2-server fixture (line 287) — both pass.
+- `mcp/createMCPClient-integration.test.ts` — `buildMcpTools` ↔ `createMCPClient` wire — green.
+
+Engine v2.1.0 cleared every gate.
+
+---
+
+## 2.0.5 — 2026-05-17 — `validateHistory` safety net for Anthropic strict-shape rejections
 
 **Patch release.** Restores a load-bearing safety net that was deleted in v2.0.0 and immediately surfaced in production as soon as bundle resume started landing successfully on-chain (engine v2.0.4).
 

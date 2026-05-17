@@ -36,7 +36,7 @@ const PACKAGES = [
     icon: "◈",
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine. 35 tools, adaptive thinking, guards, recipes, silent memory, canvas.",
+    desc: "Reasoning engine. 37 tools, adaptive thinking, 14 guards, skills via @t2000/mcp, silent memory, canvas.",
     install: "npm i @t2000/engine",
     href: "https://www.npmjs.com/package/@t2000/engine",
   },
@@ -107,7 +107,7 @@ const THREE_PRODUCTS = [
 ];
 
 const PRIMITIVES = [
-  { title: "Reasoning engine", desc: "Adaptive thinking, 14 step guards, 6 skill recipes. Complexity-based model routing.", isNew: true },
+  { title: "Reasoning engine", desc: "Adaptive thinking, 14 step guards, 14 skills (markdown playbooks shipped via @t2000/mcp). Complexity-based model routing.", isNew: true },
   { title: "Silent intelligence", desc: "Financial profile inference, episodic memory, chain memory, AdviceLog \u2014 all silent context that makes the chat smarter without ever surfacing.", isNew: true },
   { title: "Canvas infrastructure", desc: "8 visualization templates. Yield projector, health simulator, savings planner. Powers Audric Canvas.", isNew: true },
   { title: "Non-custodial wallet", desc: "Ed25519 keypair, AES-256-GCM encrypted locally at ~/.t2000/. Export/import anytime." },
@@ -136,7 +136,7 @@ const ARCH_LAYERS = [
     label: "Layer 4 \u2014 Intelligence",
     accent: true,
     split: [
-      { title: "Reasoning Engine", items: "Adaptive thinking \u00B7 14 step guards \u00B7 6 skill recipes \u00B7 Model routing" },
+      { title: "Reasoning Engine", items: "Adaptive thinking \u00B7 14 step guards \u00B7 14 skills (via @t2000/mcp) \u00B7 Model routing" },
       { title: "Silent Intelligence", items: "Financial profile \u00B7 Episodic memory \u00B7 Chain memory \u00B7 AdviceLog \u2014 silent context only" },
     ],
   },

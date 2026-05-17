@@ -56,15 +56,15 @@ const PACKAGES = [
   {
     title: "Engine",
     pkg: "@t2000/engine",
-    desc: "Reasoning engine for financial agents. 35 tools, adaptive thinking, 14 step guards, 6 skill recipes, silent intelligence layer, canvas, streaming.",
+    desc: "Reasoning engine for financial agents. 37 tools, adaptive thinking, 14 step guards, silent intelligence layer, canvas, streaming. Multi-step playbooks (skills) ship from @t2000/mcp.",
     install: "npm i @t2000/engine",
     npm: "https://www.npmjs.com/package/@t2000/engine",
     github: `${GITHUB_URL}/tree/main/packages/engine`,
     commands: [
       "1. classify effort (quick/moderate/deep)",
-      "2. match recipe (6 skill recipes)",
+      "2. match skill (14 markdown playbooks, via @t2000/mcp)",
       "3. run guards (14 pre/post gates across 3 tiers)",
-      "4. execute tools (35 financial tools)",
+      "4. execute tools (37 financial tools)",
       "5. self-evaluate (post-flight checklist)",
     ],
   },
@@ -221,9 +221,9 @@ export default function DocsPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
             {[
-              { value: "34", label: "Financial tools", sub: "23 read + 11 write" },
-              { value: "9", label: "Step guards", sub: "balance, HF, slippage, cost, ..." },
-              { value: "7", label: "Skill recipes", sub: "safe_borrow, swap_and_save, ..." },
+              { value: "37", label: "Financial tools", sub: "25 read + 12 write" },
+              { value: "14", label: "Step guards", sub: "balance, HF, slippage, cost, ..." },
+              { value: "14", label: "Skills (MCP prompts)", sub: "rebalance, safe-borrow, swap-and-save, ..." },
               { value: "8", label: "Canvas templates", sub: "yield, health, portfolio, ..." },
             ].map((cap) => (
               <div key={cap.label} className="bg-surface p-5 text-center">

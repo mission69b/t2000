@@ -9,17 +9,14 @@
 // State definitions
 // ---------------------------------------------------------------------------
 
+// [SPEC 37 v0.7a Phase 6 / 2026-05-17] The `mid_recipe` variant was removed
+// alongside the YAML recipe runtime. Multi-step orchestration is now a skill
+// concern (prose in `t2000-skills/skills/*/SKILL.md`, exposed to MCP clients
+// as prompts) rather than a runtime state machine. Hosts that need
+// step-aware context across turns should rehydrate from message history.
+
 export type ConversationState =
   | { type: 'idle' }
-
-  | {
-      type: 'mid_recipe';
-      recipeName: string;
-      currentStep: number;
-      totalSteps: number;
-      completedStepOutputs: Record<string, Record<string, string | number>>;
-      startedAt: number;
-    }
 
   | {
       type: 'awaiting_confirmation';
@@ -72,19 +69,6 @@ export function buildStateContext(state: ConversationState): string {
   switch (state.type) {
     case 'idle':
       return '';
-
-    case 'mid_recipe': {
-      const elapsed = Math.round((Date.now() - state.startedAt) / 60_000);
-      const outputs = JSON.stringify(state.completedStepOutputs);
-      return [
-        `Conversation state: MID-RECIPE`,
-        `Active recipe: ${state.recipeName} (step ${state.currentStep + 1} of ${state.totalSteps})`,
-        `Started: ${elapsed} minutes ago`,
-        `Completed step key outputs: ${outputs}`,
-        `If the user asks an unrelated question: answer briefly, then offer to continue the ${state.recipeName} flow.`,
-        `If the user says "cancel" or "stop": confirm you have abandoned the recipe and return to idle.`,
-      ].join('\n');
-    }
 
     case 'awaiting_confirmation': {
       const expiryMins = Math.max(0, Math.round((state.expiresAt - Date.now()) / 60_000));

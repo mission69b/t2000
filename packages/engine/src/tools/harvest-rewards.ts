@@ -5,7 +5,7 @@ import { defineTool } from '../v2/define-tool.js';
 /**
  * [Track B / 2026-05-08] `harvest_rewards` — single-PTB compound flow.
  *
- * **What it does (and why it's its own tool, not a multi-step recipe).**
+ * **What it does (and why it's its own tool, not a multi-step skill).**
  *
  * Many users want the same closed loop on their NAVI rewards every time:
  * claim → swap (everything that isn't already USDC) → save (deposit the

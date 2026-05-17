@@ -169,9 +169,12 @@ export type {
   GuardRunnerState,
 } from './guards.js';
 
-// Recipes (RE-3.1)
-export { RecipeRegistry, loadRecipes, parseRecipe } from './recipes/index.js';
-export type { Recipe, RecipeStep, RecipeStepOnError, RecipePrerequisite } from './recipes/index.js';
+// Recipes (RE-3.1) — REMOVED in v0.7a Phase 6 (6E, 2026-05-17). 8 YAML
+// recipes were folded into the 14 t2000-skills/skills/*/SKILL.md files;
+// custom YAML loader + RecipeRegistry deleted (~510 LoC). Runtime gating
+// (gate/requires/bundle) moved to `prepareStep.activeTools` + `needsApproval`
+// + the existing `compose-bundle.ts` permission gate. Skill content
+// distributes via @t2000/mcp skills-as-prompts adapter (see Phase 6 6C).
 
 // Complexity classifier
 export { classifyEffort } from './classify-effort.js';
@@ -330,8 +333,10 @@ export type { AISDKAnthropicProviderConfig } from './providers/ai-sdk-anthropic.
 // QueryEngine + AnthropicProvider deleted; their ~17.3k LoC of custom
 // orchestration replaced by ~4,500 LoC wrapping AI SDK v6's streamText +
 // native tool() factory. Engine-specific concerns (USD permissions, 14
-// guards, postWriteRefresh, financial context, recipes) compose AROUND
-// AI SDK primitives instead of re-implementing them.
+// guards, postWriteRefresh, financial context) compose AROUND AI SDK
+// primitives instead of re-implementing them.
+// [v0.7a Phase 6 — 2026-05-17] Recipes removed from this list — see the
+// RE-3.1 deletion note above.
 //
 // See SPIKE_FINDINGS_v07a.md for the LoC delta + concerns mapping table
 // + 3-4 week effort estimate that justified the consolidated rewrite.

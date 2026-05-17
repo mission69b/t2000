@@ -8,7 +8,7 @@
 // (~21,800 LoC of custom orchestration) with a thin wrapper around AI
 // SDK v6's `streamText` + native `tool()` factory. Engine-specific
 // concerns (USD permissions, 14 guards, postWriteRefresh, financial
-// context, recipes) compose around AI SDK primitives:
+// context) compose around AI SDK primitives:
 //
 //   - Tool dispatch       → streamText (native)
 //   - Parallel reads      → streamText (native)
@@ -34,7 +34,7 @@
 //   - One smoke test that runs a single read-tool turn end-to-end.
 //
 // What this file does NOT do yet:
-//   - Tool migration (all 35 tools still use legacy buildTool — Day 4-9
+//   - Tool migration (all 37 tools still use legacy buildTool — Day 4-9
 //     migrates them to the AI SDK tool() shape with wrappers).
 //   - Guard pipeline composition (Day 2 work).
 //   - USD-aware needsApproval wiring (Day 3 work).
@@ -109,7 +109,7 @@ import { detectInFlightTool } from '../stream-checkpoint.js';
 //     the local smoke (`rates_info: NAVI lending data is currently
 //     unavailable`). Drop-in compatibility > clean architecture for
 //     this soak window.
-//   - All the engine-specific config (guards, recipes, permissionConfig,
+//   - All the engine-specific config (guards, permissionConfig,
 //     priceCache, contacts, postWriteRefresh, onAutoExecuted, etc.)
 // ---------------------------------------------------------------------------
 export interface AISDKEngineConfig extends Omit<EngineConfig, 'provider'> {

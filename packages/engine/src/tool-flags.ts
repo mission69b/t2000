@@ -72,10 +72,16 @@ export function getToolFlags(name: string): ToolFlags {
 /**
  * [SPEC 7 P2.5 Layer 4] True if this tool is in the v1 bundleable set.
  *
- * Used by the recipe loader's `bundle: true` validation — recipes that
- * declare `bundle: true` on a step MUST point to a tool that returns
- * `true` here. The set is the 9 confirm-tier write tools whose on-chain
- * effect is fully expressible at compose time:
+ * [v0.7a Phase 6 — 2026-05-17] Was originally used by the now-deleted
+ * recipe loader's `bundle: true` validation. Still exported because the
+ * runtime permission gate (`compose-bundle.ts`) uses it to fail-close
+ * when the LLM emits parallel `tool_use` blocks for non-bundleable
+ * tools. Skill prose tells the LLM which tools are bundleable in the
+ * "PAYMENT INTENT" sections (see `t2000-rebalance` / `t2000-save` /
+ * `t2000-withdraw` SKILL.md files).
+ *
+ * The set is the 9 confirm-tier write tools whose on-chain effect is
+ * fully expressible at compose time:
  *
  *   save_deposit, withdraw, borrow, repay_debt, send_transfer,
  *   swap_execute, claim_rewards, volo_stake, volo_unstake.

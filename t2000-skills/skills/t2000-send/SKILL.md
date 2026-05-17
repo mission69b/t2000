@@ -3,12 +3,12 @@ name: t2000-send
 description: >-
   Send USDC from the t2000 agent wallet to another address on Sui. Use when
   asked to pay someone, transfer funds, send money, tip a creator, or make a
-  payment to a specific Sui address. Do NOT use for API payments — use
-  t2000-pay for MPP-protected services.
+  payment to a specific Sui address or saved contact. Do NOT use for API
+  payments — use t2000-pay for MPP-protected services.
 license: MIT
 metadata:
   author: t2000
-  version: "1.2"
+  version: "1.3"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -49,3 +49,41 @@ saved contact name (e.g. "Tom"). Use `t2000 contacts` to list saved contacts.
 - `INVALID_ADDRESS`: destination is not a valid Sui address
 - `CONTACT_NOT_FOUND`: name is not a saved contact or valid address
 - `SIMULATION_FAILED`: transaction would fail on-chain; details in error message
+
+## Recipient resolution flow
+
+When the user provides a recipient, resolve it before broadcasting:
+
+1. **Name given** → look up in saved contacts. If found, use the mapped
+   address. If not found and not a valid `0x...` address, ask the user
+   to clarify (suggest `t2000 contacts add <name> <address>` first).
+2. **Address given (`0x...`)** → validate with `isValidSuiAddress()`. If
+   invalid, refuse with `INVALID_ADDRESS`.
+3. **Ambiguous** (looks like a name AND a valid prefix) → ask the user
+   which they meant.
+
+After a successful send to a **previously-unknown raw address** (not a
+saved contact), offer to save it:
+
+> "Want to save 0x8b3e…d412 as a contact? Say `yes <name>` to save."
+
+If the user provides a name, call `save_contact` (engine) or
+`t2000 contacts add <name> <address>` (CLI). This makes future sends to
+the same person work by name (`t2000 send 10 USDC to <name>`).
+
+**Do not auto-save** without asking — the user might not want every
+one-off recipient cluttering their contacts list.
+
+## Engine orchestration (audric/web)
+
+When called inside the Audric chat agent:
+
+1. Resolve recipient (contacts lookup or address validation) — no tool call needed for contacts; resolution happens in prose.
+2. Call `balance_check` to confirm sufficient funds.
+3. Emit `send_transfer({ to, amount, asset })` as the write tool_use.
+4. After the send settles, if the recipient was a raw address not already
+   in contacts, surface the "save as contact?" prompt to the user (see
+   above). The user confirms in the next turn; engine emits `save_contact`.
+
+Sends are **single-write** — never bundle with another write in a
+Payment Intent. Each transfer is its own intent.

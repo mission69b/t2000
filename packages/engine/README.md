@@ -1,6 +1,6 @@
 # @t2000/engine
 
-Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (37 tools — 25 read, 12 write), Reasoning Engine (14 guards across 3 priority tiers + 6 YAML skill recipes), Silent Profile, Chain Memory, and AdviceLog. Every action it triggers waits on Audric Passport's tap-to-confirm.
+Agent engine for conversational finance — implements **Audric Intelligence** (the moat behind the Audric consumer product). Five systems work together: Agent Harness (37 tools — 25 read, 12 write), Reasoning Engine (14 guards across 3 priority tiers), Silent Profile, Chain Memory, and AdviceLog. Multi-step orchestration ("swap and save", "rebalance my portfolio", "emergency withdraw") lives in **skills** — markdown playbooks in `t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp` and exposed to Cursor / Claude Desktop as MCP prompts. Every action it triggers waits on Audric Passport's tap-to-confirm.
 
 QueryEngine orchestrates LLM conversations, financial tools, user confirmations, and MCP integrations into a single async-generator loop.
 
@@ -39,8 +39,8 @@ for await (const event of engine.submitMessage('What is my balance?')) {
 
 | System | One-line | Owns | Lives in |
 |---|---|---|---|
-| 🎛️ **Agent Harness** | 35 tools, one agent. | Tool registry, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
-| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), 6 YAML skill recipes, prompt caching, preflight validation | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` `cache_control` |
+| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), one agent. | Tool registry, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| ⚡ **Reasoning Engine** | Thinks before it acts. | Adaptive thinking effort, 14 guards (12 pre-exec + 2 post-exec), prompt caching, preflight validation. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` `cache_control` |
 | 🧠 **Silent Profile** | Knows your finances. | Daily on-chain orientation snapshot + Claude-inferred profile, injected as `<financial_context>` block at every boot | _Audric-side_: `UserFinancialContext` + `UserFinancialProfile` Prisma models + `buildFinancialContextBlock()` |
 | 🔗 **Chain Memory** | Remembers what you do on-chain. | 7 classifiers extract `ChainFact` rows from on-chain history, hydrated as silent context | _Audric-side_: 7 classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
 | 📓 **AdviceLog** | Remembers what it told you. | Every recommendation logged (`record_advice` audric tool); last 30 days hydrated each turn so the chat never contradicts itself | _Audric-side_: `AdviceLog` Prisma model + `record_advice` tool + `buildAdviceContext()` |
@@ -163,9 +163,10 @@ QueryEngine.submitMessage()
 > and `portfolio_analysis` rewired to BlockVision Indexer REST API for sub-500ms portfolio
 > fetches. `protocol_deep_dive` retains its DefiLlama dependency (narrow scope, no
 > equivalent on BlockVision). Net post-v1.4: 23 reads + 11 writes = 34 tools.
+> Post-SPEC-10 (`resolve_suins`) + S.119 (`pending_rewards`) + Track B (`harvest_rewards`): 25 reads + 12 writes = 37 tools.
 >
 > **SPEC 10 SuiNS reverse-lookup (May 2026):** Added 1 read tool — `resolve_suins`.
-> Net post-SPEC-10: 24 reads + 11 writes = 35 tools.
+> Net post-Phase-6 + S.119 + Track B: 25 reads + 12 writes = 37 tools.
 >
 > **S.119 NAVI rewards (May 2026):** Added 1 read tool — `pending_rewards` (preview claimable
 > rewards without triggering a claim) — and 1 write tool — `harvest_rewards` (compound: claim
@@ -206,10 +207,68 @@ Write tool permission resolved dynamically via `resolvePermissionTier(operation,
 
 - **Adaptive thinking** — routes queries to `low`/`medium`/`high` effort based on financial complexity
 - **Guard runner** — 14 guards (12 pre-execution + 2 post-execution hints) across 3 priority tiers (Safety > Financial > UX). See `guards.ts` for the full list.
-- **Skill recipes** — 6 YAML recipes (`swap_and_save`, `safe_borrow`, `send_to_contact`, `portfolio_rebalance`, `account_report`, `emergency_withdraw`) with longest-trigger-match-wins
+- **Skills** — 14 markdown playbooks in `t2000-skills/skills/*/SKILL.md` (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save section, `t2000-send` with offer-save-contact, plus 8 single-tool skills). Baked into `@t2000/mcp` at build time, exposed to MCP clients as `skill-<name>` prompts. Skill content guides the LLM through multi-step intents; the engine just runs the tools the LLM picks. (Pre-Phase 6 had a YAML recipe runtime; deleted May 2026 — see `index.ts` header comment for migration notes.)
 - **Context compaction** — 200k limit, 85% compact trigger, LLM summarizer fallback
 - **Tool flags** — `mutating`, `requiresBalance`, `affectsHealth`, `irreversible` etc.
 - **Preflight validation** — input validation on `send_transfer`, `swap_execute`, `pay_api`, `borrow`, `save_deposit`
+
+### Stream Checkpoint Resume (v2.2.0+)
+
+Survive page reloads, Vercel cold starts, and mobile-tab swaps mid-stream **without re-running the LLM**. Engine appends every yielded `EngineEvent` to a pluggable `StreamCheckpointStore`; on a subsequent `submitMessage({ resumeStreamId })`, the engine replays the checkpoint and either continues into the live stream (if the stream had finished) or surfaces a clear error (if a tool was in-flight when the original stream dropped).
+
+**1. Configure a store on the engine.**
+
+```typescript
+import { AISDKEngine, InMemoryStreamCheckpointStore } from '@t2000/engine';
+
+const engine = new AISDKEngine({
+  // ...other config
+  streamCheckpointStore: new InMemoryStreamCheckpointStore(),
+});
+```
+
+For single-instance hosts (CLI, dev, tests), the in-memory default is enough (5-min sliding TTL). Multi-instance hosts (audric on Vercel) inject a Redis-backed store — see [`audric/apps/web/lib/engine/upstash-stream-checkpoint-store.ts`](https://github.com/mission69b/audric/blob/main/apps/web/lib/engine/upstash-stream-checkpoint-store.ts) as the reference implementation (Upstash LIST per `streamId`, namespaced by `sessionId`, Error-safe serialization, fire-and-forget append).
+
+**2. Persist the `streamId` from the first event on each fresh stream.**
+
+```typescript
+for await (const ev of engine.submitMessage(prompt)) {
+  if (ev.type === 'stream_started') {
+    sessionStorage.setItem('liveStreamId', ev.streamId); // or any host-local store
+  }
+  // ...handle the rest of the stream
+}
+```
+
+`stream_started` is yielded as the **first** event whenever a checkpoint store is configured and `resumeStreamId` is not set. Engine generates a UUID v4 `streamId` per `submitMessage()`.
+
+**3. Resume on reconnect.**
+
+```typescript
+const resumeStreamId = sessionStorage.getItem('liveStreamId');
+if (resumeStreamId) {
+  const engine = new AISDKEngine({
+    streamCheckpointStore: store,
+    resumeStreamId,
+    // ...other config
+  });
+  for await (const ev of engine.submitMessage('')) {
+    // Engine replays every previously yielded event, then either:
+    //   (a) emits the original terminal (turn_complete or pending_action), OR
+    //   (b) synthesises turn_complete if the original was cut between
+    //       the last tool_result and turn_complete (defensive), OR
+    //   (c) emits an error if a tool_start has no matching tool_result
+    //       (Path B per Slice C spec — host re-prompts the user; Path A
+    //       silent re-execution is deferred to v2.3.0+).
+  }
+}
+```
+
+Notes:
+- The `message` argument is **ignored** on a resume call — pass `''`. Host validation must accept an empty message when `resumeStreamId` is set.
+- `resumeStreamId` without `streamCheckpointStore` throws — it's a host bug, fail loud.
+- Clear the stored `streamId` on `turn_complete` and `error`. Engine clears its own checkpoint on natural turn end.
+- Stream-checkpoint resume is for the **live LLM stream**. The confirm/deny round-trip after `pending_action` still goes through `resumeWithToolResult(action, response)` keyed on `attemptId`.
 
 ## Configuration
 
@@ -233,7 +292,7 @@ interface EngineConfig {
 
   // Reasoning engine
   guards?: GuardConfig;                     // Guard runner (RE-2.2)
-  recipes?: RecipeRegistry;                 // YAML skill recipes (RE-3.1)
+  // recipes?: RecipeRegistry;              // REMOVED v0.7a Phase 6 — skills moved to @t2000/mcp
   contextBudget?: ContextBudgetConfig;      // 200k limit, compaction trigger (RE-3.3)
   contextSummarizer?: (msgs) => Promise<string>; // LLM summarizer fallback for compaction
   thinking?: ThinkingConfig;                // Adaptive / extended thinking
@@ -259,6 +318,10 @@ interface EngineConfig {
     inputCostPerToken?: number;
     outputCostPerToken?: number;
   };
+
+  // [v2.2.0] Stream checkpoint resume (Slice C)
+  streamCheckpointStore?: StreamCheckpointStore; // Pluggable per-stream EngineEvent log (InMemoryStreamCheckpointStore default; hosts inject Redis-backed impl for multi-instance survival)
+  resumeStreamId?: string;                  // When set, engine replays the checkpointed events for this streamId before/instead of starting a fresh LLM stream
 }
 ```
 
@@ -283,6 +346,7 @@ The `submitMessage()` async generator yields `EngineEvent`:
 | `turn_complete` | `stopReason` | Conversation turn finished |
 | `usage` | `inputTokens`, `outputTokens`, `cacheReadTokens?`, `cacheWriteTokens?` | Token usage report |
 | `error` | `error` | Unrecoverable error |
+| `stream_started` | `streamId` | **[v2.2.0 Slice C]** First event when `streamCheckpointStore` is configured. Carries the engine-generated UUID v4 the host persists for page-reload / cold-start resume. Pass the same id back as `EngineConfig.resumeStreamId` on reconnect to replay the checkpointed events. |
 
 ## MCP Client Integration
 
@@ -304,6 +368,29 @@ const engine = new QueryEngine({
 ```
 
 Read tools automatically use MCP when available, falling back to the SDK.
+
+> **v2.1.0 internals:** `McpClientManager` now wraps `@ai-sdk/mcp`'s `createMCPClient` under the hood. The public surface (`connect`, `listTools`, `callTool`) is preserved verbatim — adding a new MCP server is still a single `mcpManager.connect(config)` call. See `__tests__/mcp-client.test.ts` for the 2-server fixture and `mcp/createMCPClient-integration.test.ts` for the wire test.
+
+### McpPromptAdapter (v2.1.0+)
+
+Closes the **prompts** half of the MCP composition story. MCP servers can expose prompts (parameterised reusable system messages); `McpPromptAdapter` discovers them and returns their text content for direct concatenation into the engine's `prepareStep.system` prefix.
+
+```typescript
+import { McpPromptAdapter, type PromptCapableMcpClient } from '@t2000/engine';
+
+// The adapter takes any client exposing experimental_listPrompts +
+// experimental_getPrompt — the AI SDK MCP client returned by
+// createMCPClient already satisfies this shape.
+const adapter = new McpPromptAdapter(mcpClient as PromptCapableMcpClient);
+
+const prompts = await adapter.listPrompts();
+const text = await adapter.getPromptText({
+  name: 'skill_name',
+  arguments: { foo: 'bar' },
+});
+```
+
+Phase 6 (engine moat) wires the `t2000-skills/skills/` repo through `@t2000/mcp` into this adapter so a single skill file is consumable by Cursor, Claude Desktop, `claude-code`, and the audric engine simultaneously.
 
 ## MCP Server Adapter
 

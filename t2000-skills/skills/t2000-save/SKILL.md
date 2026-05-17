@@ -1,13 +1,14 @@
 ---
 name: t2000-save
 description: >-
-  Deposit into savings to earn yield on Sui via NAVI Protocol. Use when
-  asked to save money, earn interest, deposit to savings, or put funds
-  to work. Not for sending to other addresses — use t2000-send for that.
+  Deposit USDC or USDsui into savings to earn yield on Sui via NAVI
+  Protocol. Use when asked to save money, earn interest, deposit to
+  savings, "swap and save" a non-USDC token, or put funds to work. Not
+  for sending to other addresses — use t2000-send for that.
 license: MIT
 metadata:
   author: t2000
-  version: "1.5"
+  version: "1.6"
   requires: t2000 CLI (npx @t2000/cli init)
 ---
 
@@ -51,3 +52,56 @@ t2000 save all --asset USDsui    # full USDsui balance (minus 1.0 reserve)
 - If available balance of the chosen asset is too low, returns INSUFFICIENT_BALANCE
 - `t2000 supply` is an alias for `t2000 save`
 - **Repay symmetry (v0.51.1+):** if you borrow USDsui, you must repay with USDsui (and USDC borrows must repay with USDC) — the SDK fetches the matching coin type per borrow asset.
+
+## Saving a non-USDC token ("swap and save")
+
+If the user wants to save a token that's **not** USDC or USDsui — GOLD,
+SUI, USDT, USDe, ETH, NAVX, WAL — the agent must swap first, then save.
+The right flow depends on the consumer:
+
+### Engine (audric/web) — bundled atomic swap + save
+
+Emit BOTH tool_use blocks in the SAME assistant turn. The engine's
+permission gate compiles them into ONE Payment Intent: the swap's
+`received` coin handles off as the save's input via coin-ref inside the
+same PTB. Atomic — both succeed or both revert. User signs once.
+
+```
+[ASSISTANT TURN — emit in parallel]
+  tool_use: swap_execute({ from: "SUI", to: "USDC", amount: 1.0 })
+  tool_use: save_deposit({ amount: <swap_received>, asset: "USDC" })
+```
+
+Before emitting, **always preview** to the user:
+- The source token + amount being swapped
+- Estimated USDC received (from `swap_quote`)
+- The save APY they'll earn
+- Total fees (Cetus + Audric overlay + NAVI save fee)
+
+**Do NOT** call swap then save in separate turns — that loses atomicity
+and exposes the user to price drift between the legs.
+
+**Do NOT** auto-decide for the user. If they say "save 10 SUI", confirm
+the intent: "That requires swapping ~10 SUI to ~$XX USDC first, then
+depositing. Proceed?" Some users want to hold SUI.
+
+### CLI — sequential (no bundling)
+
+The CLI doesn't support Payment Intent bundling. Run two commands:
+
+```bash
+t2000 swap 1.0 SUI to USDC
+t2000 save all
+```
+
+Each command prices against on-chain state at the moment of execution,
+so there's small price drift between them. For large amounts ($1k+),
+prefer the agent path which bundles into one Payment Intent.
+
+### What's NOT saveable
+
+GOLD, SUI, USDT, USDe, ETH, NAVX, WAL — none of these have NAVI lending
+pools today, so they can't be saved directly. Must swap to USDC or
+USDsui first. This is enforced by the SDK's `assertAllowedAsset('save',
+asset)` allow-list — calling `save_deposit({ asset: 'SUI' })` returns
+`UNSUPPORTED_ASSET`.

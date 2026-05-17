@@ -64,7 +64,7 @@
 | `@t2000/sdk`        | Published       | TypeScript SDK — agent core, adapters, safeguards                                 |
 | `@t2000/engine`     | Published       | Agent engine — QueryEngine, financial tools, LLM orchestration, MCP client/server |
 | `@t2000/cli`        | Published       | 29 CLI commands — `t2000 init`, `t2000 save`, `t2000 pay`, etc.                   |
-| `@t2000/mcp`        | Published       | MCP server — 29 tools + 14 prompts (subset of engine's 35 tools), stdio transport |
+| `@t2000/mcp`        | Published       | MCP server — 37 tools + 28 prompts (14 workflow prompts + 14 skill playbook prompts, baked from `t2000-skills/skills/`), stdio transport |
 | `@suimpp/mpp`       | Published       | Sui USDC payment method for MPP (client + server verification)                    |
 | `@suimpp/discovery` | Published       | Sui-specific discovery validation — OpenAPI checks + 402 probe                    |
 | `mppx`              | External (wevm) | MPP protocol middleware — 402 challenge/credential flow                           |
@@ -815,8 +815,8 @@ All write operations go through a `TxMutex` to prevent concurrent transactions (
 
 | System | Owns | Implementation files |
 |---|---|---|
-| 🎛️ **Agent Harness** | 35 tools, parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
-| ⚡ **Reasoning Engine** | Adaptive thinking, 14 guards, 6 skill recipes, prompt caching, preflight | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
+| 🎛️ **Agent Harness** | 37 tools (25 read + 12 write), parallel reads, serial writes, permission gates, streaming dispatch | `engine.ts`, `tool.ts`, `orchestration.ts`, `tools/*` |
+| ⚡ **Reasoning Engine** | Adaptive thinking, 14 guards, prompt caching, preflight. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
 | 🧠 **Silent Profile** | Daily on-chain snapshot + Claude-inferred profile, injected as `<financial_context>` block | audric-side: `UserFinancialProfile`, `UserFinancialContext`, `buildFinancialContextBlock()`, `buildProfileContext()` |
 | 🔗 **Chain Memory** | 7 classifiers extract `ChainFact` rows from on-chain history; injected silently | audric-side: classifier crons + `ChainFact` Prisma model + `buildMemoryContext()` |
 | 📓 **AdviceLog** | Every recommendation logged (`record_advice` audric-side tool); last 30 days hydrated each turn | audric-side: `AdviceLog` Prisma model + `buildAdviceContext()` |
@@ -898,7 +898,7 @@ The engine includes a three-layer reasoning system (extended thinking always on 
 
 1. **Adaptive thinking** (`classify-effort.ts`) — routes queries to `low`/`medium`/`high`/`max` thinking effort. `low` routes to Haiku; `max` reserved for Opus
 2. **Guard runner** (`guards.ts`) — 14 guards across 3 priority tiers (Safety > Financial > UX): 12 pre-execution gates (`input_validation`, `retry_protection`, `address_source`, `asset_intent`, `address_scope`, `swap_preview`, `irreversibility`, `balance_validation`, `health_factor`, `large_transfer`, `slippage`, `cost_warning`) + 2 post-execution hints (`artifact_preview`, `stale_data`). First block wins; warnings/hints are injected back into the LLM context.
-3. **Skill recipes** (`recipes/registry.ts`) — 6 YAML recipes loaded by `RecipeRegistry` with longest-trigger-match-wins (`swap_and_save`, `safe_borrow`, `send_to_contact`, `portfolio_rebalance`, `account_report`, `emergency_withdraw`), injected as prompt context
+3. **Skills** (`t2000-skills/skills/*/SKILL.md`, baked into `@t2000/mcp`) — 14 markdown playbooks exposed to MCP clients as `skill-<name>` prompts. The 6 multi-step skills (`t2000-rebalance`, `t2000-account-report`, `t2000-borrow` with safe-borrow logic, `t2000-withdraw` with emergency-close logic, `t2000-save` with swap-and-save section, `t2000-send` with offer-save-contact) absorbed the orchestration that pre-Phase 6 lived in YAML recipes. The runtime recipe registry was deleted v0.7a Phase 6 (May 2026); skills guide the LLM via prose, the engine just runs the tools the LLM picks.
 
 Additional features:
 
@@ -1053,7 +1053,7 @@ Spec 2 swapped the data layer + added boot-time orientation:
 
 | Change | Why |
 |---|---|
-| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net post-v1.4: 29 → 23 read tools, 40 → 34 total. (SPEC 10 then added `resolve_suins` → current 24 reads / 35 total.) |
+| **BlockVision swap** — replaced 7 `defillama_*` tools (`token_prices`, `price_change`, `yield_pools`, `protocol_info`, `chain_tvl`, `protocol_fees`, `sui_protocols`) with one `token_prices` tool. `balance_check` and `portfolio_analysis` rewired to BlockVision Indexer REST | DefiLlama was slow + frequently 5xx for Sui-native assets; BlockVision returns wallet portfolio + USD prices in a single round-trip. Net post-v1.4: 29 → 23 read tools, 40 → 34 total. SPEC 10 added `resolve_suins` (→ 24 reads / 35 total). S.119 + Track B added `pending_rewards` + `harvest_rewards` → current 25 reads / 12 writes / **37 total**. |
 | **Sticky-positive cache + retry/circuit breaker** for BlockVision (`fetchBlockVisionWithRetry`, `_resetBlockVisionCircuitBreaker`) | BlockVision started returning 429s under load; the cache no longer overwrites known-good positive values with degraded zeros. |
 | **`<financial_context>` block** injected at every engine boot from the daily `UserFinancialContext` snapshot | Every chat starts oriented — no warm-up tool calls before useful answers. Silent Profile system. |
 | **`attemptId` keyed resume** — `/api/engine/resume updateMany({ where: { sessionId, attemptId } })` instead of fragile `(sessionId, turnIndex)` | Two pending actions in the same turn no longer overwrite each other's `pendingActionOutcome`. |
@@ -1091,8 +1091,8 @@ See `audric-roadmap.md` for the canonical taxonomy + naming rules.
 
 | System | One-line pitch | Implementation |
 |---|---|---|
-| 🎛️ **Agent Harness** | 35 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `QueryEngine` + `getDefaultTools()` (24 read + 11 write) |
-| ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 14 guards, 6 skill recipes, prompt caching. | `classify-effort.ts`, `guards.ts`, `recipes/registry.ts`, `engine.ts` cache_control |
+| 🎛️ **Agent Harness** | 37 tools, one agent — the runtime that manages your money in one conversation. | `@t2000/engine` `AISDKEngine` + `getDefaultTools()` (25 read + 12 write) |
+| ⚡ **Reasoning Engine** | Thinks before it acts — adaptive thinking, 14 guards, prompt caching. Multi-step playbooks (skills) ship from `@t2000/mcp`. | `classify-effort.ts`, `guards.ts`, `engine.ts` cache_control, `t2000-skills/skills/` |
 | 🧠 **Silent Profile** | Knows your finances — daily on-chain snapshot + chat-inferred profile, injected silently. | `UserFinancialProfile` + `UserFinancialContext` + `buildFinancialContextBlock()` + 02:00 UTC cron |
 | 🔗 **Chain Memory** | Remembers what you do on-chain — 7 classifiers, no proposals, silent context. | 7 chain classifiers → `ChainFact` rows → `buildMemoryContext()` |
 | 📓 **AdviceLog** | Remembers what it told you — last 30 days hydrated each turn, no two contradictory answers. | `AdviceLog` Prisma model + `record_advice` audric-side tool + `buildAdviceContext()` |

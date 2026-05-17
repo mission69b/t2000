@@ -109,10 +109,10 @@ const TABS: TerminalTab[] = [
       { text: "$ node engine-demo.mjs", color: "white", delay: 0 },
       { text: "", delay: 300 },
       { text: "  import { QueryEngine } from '@t2000/engine'", color: "dim", delay: 200 },
-      { text: "  const engine = new QueryEngine({ tools: 34 })", color: "dim", delay: 200 },
+      { text: "  const engine = new QueryEngine({ tools: 37 })", color: "dim", delay: 200 },
       { text: "", delay: 300 },
       { text: "  → Classifying effort...", color: "dim", delay: 400 },
-      { text: "  ✓ Effort: moderate — matched recipe: swap_and_save", color: "green", delay: 350 },
+      { text: "  ✓ Effort: moderate — matched skill: swap-and-save", color: "green", delay: 350 },
       { text: "", delay: 200 },
       { text: "  → Running guards...", color: "dim", delay: 300 },
       { text: "  ✓ balance_required    passed", color: "green", delay: 200 },
@@ -266,7 +266,7 @@ export function TabbedTerminal() {
         {activeTab === 1 && "Save, send, borrow — all from the terminal"}
         {activeTab === 2 && "Full portfolio view with DeFi positions and limits"}
         {activeTab === 3 && "Pay for any API with USDC — no keys, no signup"}
-        {activeTab === 4 && "Reasoning engine: classify → recipe → guards → execute → self-evaluate"}
+        {activeTab === 4 && "Reasoning engine: classify → skill → guards → execute → self-evaluate"}
         {activeTab === 5 && "Accept USDC from anyone — fixed amount or open"}
       </div>
     </div>

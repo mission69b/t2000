@@ -11,7 +11,7 @@
 > to audric-side). The April-2026 v1.4 BlockVision swap then removed 7
 > `defillama_*` tools and added 1 (`token_prices`); the SPEC 10 identity
 > wave (May 2026) then added 1 read tool (`resolve_suins`), bringing the
-> engine to its current shape: **35 tools (24 read, 11 write)**. None of
+> engine to its current shape: **37 tools (25 read, 12 write)**. None of
 > these changes materially affect the open-weight comparison: tier mix is
 > roughly the same,
 > tool-selection accuracy requirement is the same, no nested-schema tool was
@@ -20,7 +20,7 @@
 
 ## Executive Summary
 
-Audric's tool set consists of 35 tools (24 read, 11 write — post-v1.4 BlockVision swap + SPEC 10 `resolve_suins`) spanning balance checks, DeFi operations, payment processing, and analytics. This report evaluates open-weight models against these requirements to determine feasibility for cost reduction or self-hosting.
+Audric's tool set consists of 37 tools (25 read, 12 write — post-v1.4 BlockVision swap + SPEC 10 `resolve_suins` + S.119 `pending_rewards` + Track B `harvest_rewards`) spanning balance checks, DeFi operations, reward compounding, payment processing, and analytics. This report evaluates open-weight models against these requirements to determine feasibility for cost reduction or self-hosting.
 
 **Verdict:** No open model today can replace Sonnet for write flows (multi-step DeFi transactions). However, **Qwen 3.5 32B** or **Llama 4 Scout** could replace Haiku for read-only queries within 1–2 months of integration work via LiteLLM.
 
@@ -87,9 +87,9 @@ The engine uses Anthropic's message format (tool_result content blocks inside us
 
 Audric presents 50+ tools per request. Open models below 32B struggle with selection accuracy at this scale. Mitigation: use the engine's `applyToolFlags` to filter tools contextually per query (e.g., exclude DeFiLlama tools for balance queries).
 
-### 3. Multi-step recipes
+### 3. Multi-step skills
 
-The `RecipeRegistry` orchestrates 3–5 tool chains (e.g., borrow: health_check → rates_info → borrow). Open models handle 2-step chains reliably but degrade on 3+ steps. **This is why Sonnet remains required for write flows.**
+Skill playbooks (markdown files in `t2000-skills/skills/`, baked into `@t2000/mcp` as MCP prompts since engine v2.3.0; pre-Phase-6 these were YAML recipes in a `RecipeRegistry`) orchestrate 3–6 tool chains (e.g., `t2000-borrow` → health_check → rates_info → borrow). Open models handle 2-step chains reliably but degrade on 3+ steps. **This is why Sonnet remains required for write flows.**
 
 ### 4. Extended thinking
 

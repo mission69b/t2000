@@ -156,7 +156,7 @@ export function wrapLegacyTool(legacy: LegacyTool): AISDKTool {
  * Note: AI SDK's `ToolSet` is `Record<string, Tool>`. The keys are
  * what the LLM sees as tool names — they MUST match the legacy tool's
  * `name` field exactly so prompts that reference tool names by string
- * (system prompt, recipes) keep working.
+ * (system prompt, skill bodies) keep working.
  */
 export function toAISDKTools(
   legacyTools: ReadonlyArray<LegacyTool>,
