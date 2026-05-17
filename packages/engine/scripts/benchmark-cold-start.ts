@@ -5,7 +5,13 @@
 //
 // SPEC 37 v0.7a Phase 0 deliverable 7 (2026-05-15). Minimal cold-start
 // benchmark — measures the wall-clock time for `import('@t2000/engine')`
-// + `QueryEngine` construction with default tools and a stubbed provider.
+// + `AISDKEngine` construction with default tools and a stub Anthropic
+// API key (no network — only constructor cost is measured).
+//
+// [v2.0.0 — 2026-05-17] Migrated from `QueryEngine` (deleted) to
+// `AISDKEngine`. Same measurement semantics — import + construct,
+// never `submitMessage`. Stub provider no longer needed; AISDKEngine
+// takes `anthropicApiKey` directly.
 //
 // Why this exists
 // ---------------
@@ -20,8 +26,8 @@
 // ----------------
 // Two numbers, both in milliseconds:
 //   • `importMs` — `await import('@t2000/engine')` round-trip.
-//   • `constructMs` — `new QueryEngine({...})` with default tools and
-//     a stub provider that never actually fires.
+//   • `constructMs` — `new AISDKEngine({...})` with default tools and
+//     a fake API key (no network — `submitMessage` is never called).
 //
 // Output shape (printed as JSON to stdout for CI consumption):
 //   {
@@ -49,9 +55,9 @@
 //
 // Failure modes
 // -------------
-// • If `QueryEngine` constructor signature changes, this script breaks
+// • If `AISDKEngine` constructor signature changes, this script breaks
 //   loudly (TypeScript error or runtime throw). That's the point — a
-//   constructor signature change is a v0.7a hot-path event worth surfacing.
+//   constructor signature change is a hot-path event worth surfacing.
 // • If the package becomes ESM-only (it already is) and the runner can't
 //   resolve, exit code 1 + stderr message. CI must use `tsx` or `node
 //   --experimental-loader`.
@@ -84,25 +90,14 @@ async function main(): Promise<BenchmarkResult> {
   const engineMod = await import('@t2000/engine');
   const importMs = performance.now() - importStart;
 
-  // Construct a QueryEngine with default tools and a stub provider that
-  // implements the minimum LLMProvider surface (a single `chat()` async
-  // generator). We're measuring the constructor cost, not a round-trip —
-  // the network never opens because we never call `submitMessage`.
+  // Construct an AISDKEngine with default tools and a fake API key.
+  // We're measuring constructor cost, not a round-trip — the network
+  // never opens because we never call `submitMessage`. AISDKEngine
+  // requires `anthropicApiKey` directly (no provider abstraction).
   const constructStart = performance.now();
-  const stubProvider: import('@t2000/engine').LLMProvider = {
-    // eslint-disable-next-line require-yield
-    async *chat() {
-      // Never invoked — benchmark only constructs, never calls submitMessage.
-      throw new Error('benchmark stub provider should never be invoked');
-    },
-  };
-
-  // QueryEngine config requires `provider`, accepts optional `tools`. We
-  // pull defaults from the engine exports so the benchmark stays in sync
-  // with the production tool registry.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _engine = new engineMod.QueryEngine({
-    provider: stubProvider,
+  const _engine = new engineMod.AISDKEngine({
+    anthropicApiKey: 'sk-ant-benchmark-stub-never-invoked',
     tools: engineMod.getDefaultTools(),
   });
   const constructMs = performance.now() - constructStart;
