@@ -61,7 +61,7 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 | # | Item | Source | Effort | Risk |
 |---|---|---|---|---|
 | **D-1** | **Slice D — `pending_action` ↔ native `tool-approval-request`** | Phase 5 backlog (always v0.7b-class) | ~1 week | Cross-cutting bridge + audric + metrics. Real platform alignment win. |
-| **D-2** | **Path A — silent in-flight tool re-execution** | Phase 5 5e-3 telemetry consumer | ~3-5 days | Gated on D-1 telemetry data. Engine-side change in `v2/engine.ts` resume branch. |
+| **D-2** | **Path A — silent in-flight tool re-execution** | Phase 5 5e-3 telemetry consumer | ~3-5 days | Gated on ~2 weeks of `onStreamResume` Vercel-log volume (already shipping post-audric `0255fc7`). Engine-side change in `v2/engine.ts` resume branch. |
 | **D-3** | **Slice B — UIMessage / `sse-format-adapter` production path** | Phase 5 backlog | ~3-5 days | Gated on audric committing to UIMessage. If audric stays on EngineEvent for v0.7c, defer to v0.7c. |
 | **D-4** | **`TurnMetrics.streamResumeOutcome` column** | onStreamResume telemetry consumer | ~2h Prisma migration + dashboard tile | Audric-side. Cheap once Vercel logs justify it. |
 | **D-5** | **MemWal Path B pivot** (Mem0 / Letta cloud / Letta self-hosted / Supermemory / Hindsight) | Phase 7 commitment gate | ~1-2 weeks if triggered | Only if 2026-06-26 Plan A decision fails. Otherwise Phase 7 absorbs MemWal as scoped. |
@@ -80,13 +80,14 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 | Signal | Pick |
 |---|---|
 | Founder wants user-visible progress | Phase 7 design scoping (engine-side prepareStep prototype against mock memory store) — unblocks v0.7c chatbot template fork |
-| Founder wants platform-alignment win | Slice D (`pending_action` → native `tool-approval-request`) |
-| Vercel logs show `mid_tool` resumes >5% of resume volume | Path A engine-side prototype |
-| Audric telemetry needs dashboarding | `TurnMetrics.streamResumeOutcome` column + dashboard tile |
-| Engineering bandwidth low (<2h session) | Spec hygiene (this doc + audric-build-tracker.md + BENEFITS_SPEC `[ ]` checkbox audit) |
-| 2026-05-29 is approaching | Re-run MemWal smoke against `https://relayer.memwal.ai`, update #159 comment, update spec checkbox |
+| Founder wants platform-alignment win | **D-1** Slice D (`pending_action` → native `tool-approval-request`) |
+| Vercel logs show `mid_tool` resumes >5% of resume volume | **D-2** Path A engine-side prototype |
+| Audric chat UI commits to UIMessage | **D-3** Slice B (UIMessage path) |
+| Audric telemetry needs dashboarding | **D-4** `TurnMetrics.streamResumeOutcome` column + dashboard tile |
+| Engineering bandwidth low (<2h session) | Spec hygiene (this doc + `audric-build-tracker.md` + BENEFITS_SPEC `[ ]` checkbox audit) |
+| 2026-05-29 is approaching | Re-run MemWal smoke against `https://relayer.memwal.ai`, update #159 comment, update §1 of this doc |
 | 2026-06-12 is approaching | Start passive fallback eval matrix (Mem0 / Letta / Supermemory / Hindsight — pricing + p95 + SEAL-equivalent encryption) |
-| 2026-06-26 is approaching | Plan A vs Plan B decision day |
+| 2026-06-26 is approaching | **D-5** trigger evaluation — Plan A vs Plan B decision day |
 
 ---
 
