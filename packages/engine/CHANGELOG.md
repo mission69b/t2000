@@ -10,10 +10,10 @@ Every `pending_action` event now carries an additional optional `approvalId: str
 
 Stamped at all 4 emission sites:
 
-- `v2/engine.ts:1322-1328` (single-write `pending_action`)
-- `regenerate.ts:402-410` (quote-refresh / regenerate flow)
-- `compose-bundle.ts:367-381` (per-step bundle composition)
-- `compose-bundle.ts:443-454` (top-level bundle `PendingAction`)
+- `v2/engine.ts:1322-1327` (single-write `pending_action` — `attemptId` + mirrored `approvalId`)
+- `regenerate.ts:403-409` (quote-refresh / regenerate flow — IIFE stamps one UUID into both fields)
+- `compose-bundle.ts:370-381` (per-step bundle composition — `stepId` mirrored into both fields)
+- `compose-bundle.ts:449-455` (top-level bundle `PendingAction` — mirrors `steps[0]`)
 
 ### Why
 
