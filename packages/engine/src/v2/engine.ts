@@ -83,6 +83,7 @@ import {
   isExecutionResultFailure,
 } from './canonical-route.js';
 import { stripPseudoThinking } from '../strip-pseudo-thinking.js';
+import { validateHistory } from './validate-history.js';
 import {
   clearPortfolioCacheFor,
   clearDefiCacheFor,
@@ -738,10 +739,34 @@ export class AISDKEngine {
     internal: InternalContext,
     onStepFinish: ReturnType<typeof buildStepFinishHandler>,
   ): AsyncGenerator<EngineEvent> {
+    // [v2.0.5 / 2026-05-17] validateHistory runs immediately before every
+    // streamText call as a SAFETY NET against orphaned tool_use /
+    // tool_result blocks. v2.0.0 deleted this from QueryEngine without
+    // porting; production session s_1778993279816_47a9814c835d
+    // (audric, "swap 2 SUI then save" fast-path bundle) hit Anthropic's
+    // strict-shape rejection on every turn after the bundle resumed,
+    // because audric's fast-path dispatch loads a synthetic
+    // assistant(text-only) message that the engine's resume then pushes
+    // tool_result blocks against — orphaning them by Anthropic's
+    // "tool_result must follow matching tool_use" contract.
+    //
+    // validateHistory is the single point of defense — no corrupt
+    // messages reach the API regardless of how they got into the
+    // session. Recovery: as soon as v2.0.5 deploys, every poisoned
+    // session self-heals on its next turn because the orphaned blocks
+    // are stripped before the API call.
+    //
+    // The host (audric) is still responsible for not introducing
+    // corruption in the first place — v2.0.5 SHIPS WITH the audric
+    // fast-path-bundle synth-tool_use fix so chat-time history is
+    // valid by construction. validateHistory is the safety net for
+    // any future host bug of this class.
+    const validatedMessages = validateHistory(this.messages);
+
     const stream = streamText({
       model: this.anthropic(this.config.model ?? 'claude-sonnet-4-5'),
       tools,
-      messages: toAISDKMessages(this.messages),
+      messages: toAISDKMessages(validatedMessages),
       system: this.systemPromptString(),
       experimental_context: internal,
       stopWhen: stepCountIs(this.config.maxTurns ?? 10) as StopCondition<typeof tools>,

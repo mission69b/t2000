@@ -1,8 +1,68 @@
 # Changelog
 
-## 2.0.4 (PENDING — 2026-05-17) — Bundle resume + resume-path cache invalidation
+## 2.0.5 (PENDING — 2026-05-17) — `validateHistory` safety net for Anthropic strict-shape rejections
+
+**Patch release.** Restores a load-bearing safety net that was deleted in v2.0.0 and immediately surfaced in production as soon as bundle resume started landing successfully on-chain (engine v2.0.4).
+
+### The bug
+
+Production session `s_1778993279816_47a9814c835d` (audric, "swap 2 SUI then save it" fast-path bundle): the bundle executed atomically on-chain (`42MLpbCp...1iUYiD`, "ALL SUCCEEDED · 1 ATOMIC TX · 2 ops"), then EVERY subsequent turn in the session crashed with:
+
+```
+messages.12.content.0: unexpected `tool_use_id` found in `tool_result`
+blocks: fastpath_9066d766-b495-4dd2-a795-1516f9047b7d_0. Each
+`tool_result` block must have a corresponding `tool_use` block in the
+previous message.
+```
+
+Three followup user prompts ("CHECK BALANCE", "VIEW RATES", "withdraw all USDC", "save $6 USDC") all hit the same rejection — the corrupt history poisoned the entire session.
+
+### Root cause
+
+Audric's fast-path bundle dispatch (chat-time, before resume) loads a synthetic `assistant(text-only)` message into the engine ledger:
+
+```ts
+engine.loadMessages([
+  ...prior,
+  { role: 'user', content: [{ type: 'text', text: 'Confirm' }] },
+  { role: 'assistant', content: [{ type: 'text', text: 'Compiling…' }] }, // ← NO tool_use blocks
+]);
+```
+
+On bundle resume, `action.assistantContent` is `[]` (per `fast-path-bundle.ts:571`) so the engine doesn't push it. Then `resumeWithToolResult` pushes a `user([tool_results])` message keyed on `fastpath_*` toolUseIds. The preceding assistant message has no matching `tool_use` blocks → Anthropic rejects.
+
+The deleted QueryEngine had a `validateHistory(messages)` pass that stripped exactly this kind of corruption before every API call. v2.0.0 deleted it without porting. Pre-v2.0.4 the bundle resume itself was stubbed out, so the bug was latent — v2.0.4 unstubbed it and the bug surfaced on day one.
+
+### The fix (two layers)
+
+**Layer 1 — engine `validateHistory` ported.** Lives at `packages/engine/src/v2/validate-history.ts`. Runs immediately before every `streamText` call in `runStream`. Enforces all four Anthropic invariants:
+
+1. Every `tool_use` → matching `tool_result` in the IMMEDIATELY NEXT user message.
+2. Every `tool_result` → matching `tool_use` in the IMMEDIATELY PRECEDING assistant message.
+3. Roles must alternate (no two assistant or two user messages in a row).
+4. First message must be `user` (no orphan user-tool_results in lead position).
+
+Single point of defense — no corrupt messages reach the API regardless of how they got into the session. Existing poisoned sessions self-heal on their next turn because the orphaned blocks are stripped before the API call.
+
+**Layer 2 — audric fast-path-bundle dispatch fix.** Ships in the same audric bump alongside engine v2.0.5. The fast-path dispatch now appends synthetic `tool_use` blocks (one per step, IDs matching `action.steps[i].toolUseId`) into the assistant message it loads into the engine ledger. Keeps chat-time history valid by construction — `validateHistory` becomes a true safety net for any FUTURE host bug of this class, not the primary line of defense.
+
+### Tests
+
+9 new tests in `src/v2/validate-history.test.ts`:
+- Production regression: exact session-12 fast-path bundle corruption strips the orphaned `fastpath_*` blocks and preserves surrounding history (the canonical test for this bug class).
+- Anthropic invariant 1: orphan `tool_use` blocks stripped from assistant; assistant fully dropped when only content was orphan tool_uses.
+- Anthropic invariant 2: orphan `tool_result` blocks stripped from user message; surrounding text preserved.
+- Edge cases: empty history; valid history is idempotent; consecutive same-role messages after stripping merged into one; leading non-user messages shifted off; leading user-orphan-only messages shifted off.
+
+Full engine suite: 1240 tests pass (+9 from v2.0.4's 1231).
+
+---
+
+## 2.0.4 — 2026-05-17 — Bundle resume + resume-path cache invalidation
 
 **Patch release.** Two correctness fixes for the confirm-tier resume path: a hard production crash on multi-op writes, plus a silent cache-staleness bug caught while shipping the first fix.
+
+> NOTE: v2.0.4's bundle-resume unstubbing immediately exposed a separate Anthropic strict-shape rejection on fast-path bundle resume sessions (production trace `s_1778993279816_47a9814c835d`). The strict-shape bug pre-dated v2.0.4 — it was just masked by the bundle-resume stub. Patched in v2.0.5 via `validateHistory` port + audric fast-path-bundle synth-tool_use fix.
 
 ### Fix 1 — Bundle (Payment Intent) resume
 
