@@ -60,11 +60,12 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 
 | # | Item | Source | Effort | Risk |
 |---|---|---|---|---|
-| **D-1** | **Slice D — `pending_action` ↔ native `tool-approval-request`** | Phase 5 backlog (always v0.7b-class) | ~1 week | Cross-cutting bridge + audric + metrics. Real platform alignment win. |
+| ~~**D-1**~~ | ~~**Slice D — `pending_action` ↔ native `tool-approval-request`**~~ **DEMOTED — see `SPEC_SLICE_D_DRAFT.md` 2026-05-18.** Scoping showed AI SDK v6's `needsApproval` is for server-executed tools; our zkLogin model needs client-side tools (`onToolCall` + `addToolOutput`), which requires audric to adopt `useChat` from `@ai-sdk/react` — that's Slice B's scope. D requires B as prerequisite; both naturally ride the v0.7c chatbot template fork. | Was Phase 5 backlog | **v0.7c-class, not v0.7b-class** | Doing D in v0.7b would either force B early (also v0.7c-class) or build cosmetic-only workarounds. |
 | **D-2** | **Path A — silent in-flight tool re-execution** | Phase 5 5e-3 telemetry consumer | ~3-5 days | Gated on ~2 weeks of `onStreamResume` Vercel-log volume (already shipping post-audric `0255fc7`). Engine-side change in `v2/engine.ts` resume branch. |
-| **D-3** | **Slice B — UIMessage / `sse-format-adapter` production path** | Phase 5 backlog | ~3-5 days | Gated on audric committing to UIMessage. If audric stays on EngineEvent for v0.7c, defer to v0.7c. |
+| **D-3** | **Slice B — UIMessage / `sse-format-adapter` production path** | Phase 5 backlog | ~3-5 days engine + multi-week audric | Re-gated post-D-scoping (2026-05-18): now linked to v0.7c chatbot template fork since that's when audric naturally commits to `useChat`. Engine-side adapter remains shippable standalone. |
 | **D-4** | **`TurnMetrics.streamResumeOutcome` column** | onStreamResume telemetry consumer | ~2h Prisma migration + dashboard tile | Audric-side. Cheap once Vercel logs justify it. |
 | **D-5** | **MemWal Path B pivot** (Mem0 / Letta cloud / Letta self-hosted / Supermemory / Hindsight) | Phase 7 commitment gate | ~1-2 weeks if triggered | Only if 2026-06-26 Plan A decision fails. Otherwise Phase 7 absorbs MemWal as scoped. |
+| **D-6** | **AI SDK shape alignment (prep)** — replaces the demoted D-1. 4 sub-items in `SPEC_SLICE_D_DRAFT.md` §7: add `approvalId` alias for `attemptId`, optionally rename `pending_action` → `pending-action` event, document the impedance, optionally add `experimental_aiSdkCompat` mode. | This scoping doc (2026-05-18) | ~half day (D-6.1+D-6.3) up to ~1 day (D-6.4 included) | Marginal value standalone — main payoff is reducing v0.7c migration cost when full Slice D lands. |
 
 ### v0.7b explicit NON-goals
 
@@ -80,9 +81,10 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 | Signal | Pick |
 |---|---|
 | Founder wants user-visible progress | Phase 7 design scoping (engine-side prepareStep prototype against mock memory store) — unblocks v0.7c chatbot template fork |
-| Founder wants platform-alignment win | **D-1** Slice D (`pending_action` → native `tool-approval-request`) |
+| Founder wants platform-alignment win in v0.7b | **D-6** lightweight cosmetic prep (~half day) — full Slice D is v0.7c-class now |
+| Founder wants platform-alignment win and is ready for v0.7c | Pair D + B as a coupled migration alongside chatbot template fork |
 | Vercel logs show `mid_tool` resumes >5% of resume volume | **D-2** Path A engine-side prototype |
-| Audric chat UI commits to UIMessage | **D-3** Slice B (UIMessage path) |
+| Audric chat UI commits to UIMessage | **D-3** Slice B (UIMessage path) — best paired with the v0.7c chatbot fork |
 | Audric telemetry needs dashboarding | **D-4** `TurnMetrics.streamResumeOutcome` column + dashboard tile |
 | Engineering bandwidth low (<2h session) | Spec hygiene (this doc + `audric-build-tracker.md` + BENEFITS_SPEC `[ ]` checkbox audit) |
 | 2026-05-29 is approaching | Re-run MemWal smoke against `https://relayer.memwal.ai`, update #159 comment, update §1 of this doc |
@@ -102,6 +104,7 @@ v0.7a's plan defined v0.7b as **F-8 "engine deletion path open"** — the option
 ## 6. Cross-references
 
 - Full v0.7a contract → `BENEFITS_SPEC_v07a.md`
+- **Slice D scoping result (2026-05-18)** → `SPEC_SLICE_D_DRAFT.md`
 - Audric build tracker (S.NNN entries) → `audric-build-tracker.md` (local-only)
 - Engine releases ledger → `packages/engine/CHANGELOG.md`
 - Audric chat-route resume wiring → `audric/apps/web/app/api/engine/chat/route.ts`
